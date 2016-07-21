@@ -37,6 +37,8 @@
 #define __Internal_H__
 
 #include <avs/config.h>
+#include <avs/minmax.h>
+#include <stdint.h>
 #include "version.h"
 
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
@@ -169,9 +171,14 @@ public:
 
 
 static __inline BYTE ScaledPixelClip(int i) {
-  return PixelClip((i+32768) >> 16);
+  // return PixelClip((i+32768) >> 16);
+  // PF: clamp is faster than lut
+  return (uint8_t)clamp((i + 32768) >> 16, 0, 255);
 }
 
+static __inline uint16_t ScaledPixelClip(__int64 i) {
+    return (uint16_t)clamp((i + 32768) >> 16, 0LL, 65535LL);
+}
 
 static __inline bool IsClose(int a, int b, unsigned threshold) 
   { return (unsigned(a-b+threshold) <= threshold*2); }
