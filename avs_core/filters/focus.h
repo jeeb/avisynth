@@ -52,7 +52,8 @@ public:
   }
 
 private:
-  const int amount;
+  const double amountd;
+  int half_amount;
 };
 
 
@@ -70,8 +71,8 @@ public:
   }
 
 private:
-  const int amount;
-
+  const double amountd;
+  int half_amount;
 };
 
 AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env);

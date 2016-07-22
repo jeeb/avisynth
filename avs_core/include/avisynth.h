@@ -322,35 +322,75 @@ struct VideoInfo {
 
   // Colorspace properties.
 /*
-7<<0  Planar Width Subsampling bits
-      Use (X+1) & 3 for GetPlaneWidthSubsampling
-        000 => 1        YV12, YV16
-        001 => 2        YV411, YUV9
-        010 => reserved
-        011 => 0        YV24
-        1xx => reserved
-
-1<<3  VPlaneFirst YV12, YV16, YV24, YV411, YUV9
-1<<4  UPlaneFirst I420
-
-7<<8  Planar Height Subsampling bits
-      Use ((X>>8)+1) & 3 for GetPlaneHeightSubsampling
-        000 => 1        YV12
-        001 => 2        YUV9
-        010 => reserved
-        011 => 0        YV16, YV24, YV411
-        1xx => reserved
-
-7<<16 Sample resolution bits
-        000 => 8
-        001 => 16
-        010 => 32
-        011 => reserved
-        1xx => reserved
 
 Planar match mask  1111.0000.0000.0111.0000.0111.0000.0111
-Planar signature   10xx.0000.0000.00xx.0000.00xx.00xx.00xx
-Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
+Planar signature   10xx.0000.0000.00xx.0000.00xx.00xx.00xx ?
+Planar signature   10xx.0000.0000.0xxx.0000.00xx.000x.x0xx ? *new
+Planar filter mask 1111.1111.1111.1111.1111.1111.1110.0111 (typo from old header fixed)
+
+pixel_type mapping
+==================
+pixel_type bit-map PIYB.0000.0???.0SSS.0000.0???.????.????
+            planar            CCC            HHH.000u.vWWW
+         nonplanar                           000.00wx xyAR
+Legend
+======
+Planar:
+  Code Bits Remark
+  W    0-2  Planar Width Subsampling bits
+            Use (X+1) & 3 for GetPlaneWidthSubsampling
+              000 => 1        YV12, YV16, YUV420, YUV422
+              001 => 2        YV411, YUV9
+              010 => reserved
+              011 => 0        YV24, YUV444, RGBP
+              1xx => reserved
+  v    3    VPlaneFirst YV12, YV16, YV24, YV411, YUV9
+  u    4    UPlaneFirst I420
+  H    7-9  Planar Height Subsampling bits
+            Use ((X>>8)+1) & 3 for GetPlaneHeightSubsampling
+              000 => 1        YV12, YUV420
+              001 => 2        YUV9
+              010 => reserved
+              011 => 0        YV16, YV24, YV411, YUV422, YUV444, RGBP
+              1xx => reserved
+
+Not Planar, Interleaved (I flag)
+Code Bits Remark
+  R   0   BGR24, and BGRx in future (with SSS bits for 8/16 bit/sample or float)
+  A   1   BGR32, and BGRAx in future (with SSS bits for 8/16 bit/sample or float)
+  y   2   YUY2
+  x   3-4 reserved
+  w   5   Raw32
+
+General
+Code Bits Remark
+  S 16-18 Sample resolution bits
+          000 => 8
+          001 => 16
+          010 => 32 (float)
+          011,100 => reserved
+          101 => 10 bits *,**
+          110 => 12 bits *,**
+          111 => 14 bits *,**
+
+Other YV12 specific (not used?)
+  C 20-22 Chroma Placement values 0-4 see CS_xxx_CHROMA_PLACEMENT
+
+Color family and layout
+Code Bits Remark      Classic_RGB  YUV  YUY2  Y_Grey Planar_RGB*
+  B  28   BGR             1         0    0      0        1
+  Y  29   YUV             0         1    1      1        0
+  I  30   Interleaved     1         0    1      1        0
+  P  31   Planar          0         1    0      1        1
+
+*= todo: define 10/12/14 bit YUV, 16bits/channel RGB and planar RGB color spaces
+**= requires changing byte size calculation logic in BytesFromPixel()
+    will not work: 
+      size = pixel_count << (pixel_type>>CS_Shift_Sample_Bits) & 3))
+    will work:
+      const int componentSizes[8] = {1,2,4,0,0,2,2,2};
+      size = pixel_count * componentSizes[(pixel_type>>CS_Shift_Sample_Bits) & 7]
+
 */
   enum {
     CS_BGR = 1<<28,
@@ -411,7 +451,6 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
     CS_YUV444P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
     CS_YUV422P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 16bit samples
     CS_YUV420P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 16bit samples
-    // no short naming style. CS_YV24->CS_YV48 = CS_YUV444P16 ok. but YV12->YV24? no-no.
 
     // grey 16
     CS_Y16 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_16,                                      // Y   4:0:0 16bit samples
@@ -420,7 +459,6 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
     CS_YUV444PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
     CS_YUV422PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 32bit samples
     CS_YUV420PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 32bit samples
-    // CS_YV96  = CS_YUV444PS, 
 
     // grey 32
     CS_Y32 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_32,                                      // Y   4:0:0 32bit samples
@@ -428,9 +466,6 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
     // todo: rgb
 
 /*
-    CS_YV48  = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
-
-    CS_YV96  = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
 
     CS_PRGB  = CS_PLANAR | CS_RGB | CS_Sample_Bits_8,                                                      // Planar RGB
     CS_RGB48 = CS_PLANAR | CS_RGB | CS_Sample_Bits_16,                                                     // Planar RGB 16bit samples
