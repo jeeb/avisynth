@@ -540,14 +540,26 @@ public:
         return ClipSpecifiesMtMode(clip) ? (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0) : defaultMode;
     }
 
+    static MtMode GetInstanceMode(const PClip &clip)
+    {
+        return (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0);
+    }
+
     static MtMode GetMtMode(const PClip &clip, const AVSFunction *invokeCall, const InternalEnvironment* env)
     {
         bool invokeModeForced;
 
-        MtMode instanceMode = GetInstanceMode(clip, env->GetDefaultMtMode());
         MtMode invokeMode = env->GetFilterMTMode(invokeCall, &invokeModeForced);
+        if (invokeModeForced) {
+            return invokeMode;
+        }
 
-        return invokeModeForced ? invokeMode : instanceMode;
+        bool hasInstanceMode = ClipSpecifiesMtMode(clip);
+        if (hasInstanceMode) {
+            return GetInstanceMode(clip);
+        } else {
+            return invokeMode;
+        }
     }
 
     static bool UsesDefaultMtMode(const PClip &clip, const AVSFunction *invokeCall, const InternalEnvironment* env)
@@ -2531,7 +2543,7 @@ success:;
         // Warn user if he forced an MT-mode that differs from the one specified by the filter itself
         if (is_mtmode_forced
             && MtModeEvaluator::ClipSpecifiesMtMode(clip)
-            && MtModeEvaluator::GetInstanceMode(clip, this->GetDefaultMtMode()) != mtmode)
+            && MtModeEvaluator::GetInstanceMode(clip) != mtmode)
         {
             OneTimeLogTicket ticket(LOGTICKET_W1005, f);
             LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() specifies an MT-mode for itself, but a script forced a different one. Either the plugin or the script is erronous.", f->canon_name);
