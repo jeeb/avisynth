@@ -505,8 +505,6 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
 static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix &matrix) {
   srcp += src_pitch * (height-1);
 
-  size_t mod8_width = width / 8 * 8;
-
   __m128i matrix_y = _mm_set_epi16(0, matrix.y_r, matrix.y_g, matrix.y_b, 0, matrix.y_r, matrix.y_g, matrix.y_b);
   __m128i matrix_u = _mm_set_epi16(0, matrix.u_r, matrix.u_g, matrix.u_b, 0, matrix.u_r, matrix.u_g, matrix.u_b);
   __m128i matrix_v = _mm_set_epi16(0, matrix.v_r, matrix.v_g, matrix.v_b, 0, matrix.v_r, matrix.v_g, matrix.v_b);
@@ -517,7 +515,7 @@ static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
   __m128i v128 = _mm_set1_epi16(128);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod8_width; x+=8) {
+    for (size_t x = 0; x < width; x += 8) {
       __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //pixels 0, 1, 2 and 3
       __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16));//pixels 4, 5, 6 and 7
 
@@ -533,24 +531,6 @@ static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstY+x), result_y);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstU+x), result_u);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstV+x), result_v);
-    }
-
-    if (mod8_width != width) {
-      __m128i src0123 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-32)); //pixels 0, 1, 2 and 3
-      __m128i src4567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-16));//pixels 4, 5, 6 and 7
-
-      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero); 
-      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero); 
-      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
-      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
-
-      __m128i result_y = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_y, round_mask, offset);
-      __m128i result_u = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_u, round_mask, v128);
-      __m128i result_v = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, v128);
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstY+width-8), result_y);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstU+width-8), result_u);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstV+width-8), result_v);
     }
 
     srcp -= src_pitch;
@@ -628,8 +608,6 @@ static void convert_rgb24_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
 static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix) {
   srcp += src_pitch * (height-1);
 
-  size_t mod4_width = width / 4 * 4;
-
   __m64 matrix_y = _mm_set_pi16(0, matrix.y_r, matrix.y_g, matrix.y_b);
   __m64 matrix_u = _mm_set_pi16(0, matrix.u_r, matrix.u_g, matrix.u_b);
   __m64 matrix_v = _mm_set_pi16(0, matrix.v_r, matrix.v_g, matrix.v_b);
@@ -640,7 +618,7 @@ static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const 
   __m64 v128 = _mm_set1_pi16(128);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod4_width; x+=4) {
+    for (size_t x = 0; x < width; x += 4) {
       __m64 src01 = *reinterpret_cast<const __m64*>(srcp+x*4); //pixels 0 and 1
       __m64 src23 = *reinterpret_cast<const __m64*>(srcp+x*4+8);//pixels 2 and 3
 
@@ -652,20 +630,6 @@ static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const 
       *reinterpret_cast<int*>(dstY+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_y, round_mask, offset);
       *reinterpret_cast<int*>(dstU+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_u, round_mask, v128);
       *reinterpret_cast<int*>(dstV+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, v128);
-    }
-
-    if (mod4_width != width) {
-      __m64 src01 = *reinterpret_cast<const __m64*>(srcp+width*4-16);
-      __m64 src23 = *reinterpret_cast<const __m64*>(srcp+width*4-8);
-
-      __m64 pixel0 = _mm_unpacklo_pi8(src01, zero); //a0 r0 g0 b0
-      __m64 pixel1 = _mm_unpackhi_pi8(src01, zero); //a1 r1 g1 b1
-      __m64 pixel2 = _mm_unpacklo_pi8(src23, zero); //a2 r2 g2 b2
-      __m64 pixel3 = _mm_unpackhi_pi8(src23, zero); //a3 r3 g3 b3
-
-      *reinterpret_cast<int*>(dstY+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_y, round_mask, offset);
-      *reinterpret_cast<int*>(dstU+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_u, round_mask, v128);
-      *reinterpret_cast<int*>(dstV+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, v128);
     }
 
     srcp -= src_pitch;
@@ -749,8 +713,6 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 
   const int Ypitch = dst->GetPitch(PLANAR_Y);
   const int UVpitch = dst->GetPitch(PLANAR_U);
-
-  const int awidth = dst->GetRowSize(PLANAR_Y_ALIGNED);
 
   if (pixel_step != 4 && pixel_step != 3) {
     env->ThrowError("Invalid pixel step. This is a bug.");
