@@ -1255,52 +1255,28 @@ ConvertYUY2ToYV16::ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env) : Gener
 
 }
 
-template<int instruction_set>
-void convert_yuy2_to_yv16_xsse(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
+
+static void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
-  __m128i low_byte_mask = _mm_set1_epi16(0x00FF);
-  size_t half_width = width / 2;
-  size_t mod8 = half_width / 8 * 8;
-  __m128i u_mask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 14, 12, 10, 8, 6, 4, 2, 0);
-  __m128i v_mask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 15, 13, 11, 9, 7, 5, 3, 1);
+  width /= 2;
 
-  for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod8; x+=8) {
-      __m128i p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x*4));
-      __m128i p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x*4 + 16));
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; x += 8) {
+      __m128i p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4));      // V3 Y7 U3 Y6 V2 Y5 U2 Y4 V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      __m128i p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4 + 16)); // V7 Yf U7 Ye V6 Yd U6 Yc V5 Yb U5 Ya V4 Y9 U4 Y8
 
-      __m128i p0_luma = _mm_and_si128(p0, low_byte_mask);
-      __m128i p1_luma = _mm_and_si128(p1, low_byte_mask); 
-      __m128i luma = _mm_packus_epi16(p0_luma, p1_luma);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp_y + x*2), luma);
+      __m128i p2 = _mm_unpacklo_epi8(p0, p1); // V5 V1 Yb Y3 U5 U1 Ya Y2 V4 V0 Y9 Y1 U4 U0 Y8 Y0
+      __m128i p3 = _mm_unpackhi_epi8(p0, p1); // V7 V3 Yf Y7 U7 U3 Ye Y6 V6 V2 Yd Y5 U6 U2 Yc Y4
 
-      __m128i p0_chroma = _mm_srli_epi16(p0, 8); //00 V3 00 U3 00 V2 00 U2 00 V1 00 U1 00 V0 00 U0
-      __m128i p1_chroma = _mm_srli_epi16(p1, 8); //00 V7 00 U7 00 V6 00 U6 00 V5 00 U5 00 V4 00 U4
+      p0 = _mm_unpacklo_epi8(p2, p3); // V6 V4 V2 V0 Yd Y9 Y5 Y1 U6 U4 U2 U0 Yc Y8 Y4 Y0
+      p1 = _mm_unpackhi_epi8(p2, p3); // V7 V5 V3 V1 Yf Yb Y7 Y3 U7 U5 U3 U1 Ye Ya Y6 Y2
 
-      __m128i tmp_chroma = _mm_packus_epi16(p0_chroma, p1_chroma); //V U V U V U V U V U
+      p2 = _mm_unpacklo_epi8(p0, p1); // U7 U6 U5 U4 U3 U2 U1 U0 Ye Yc Ya Y8 Y6 Y4 Y2 Y0
+      p3 = _mm_unpackhi_epi8(p0, p1); // V7 V6 V5 V4 V3 V2 V1 V0 Yf Yd Yb Y9 Y7 Y5 Y3 Y1
 
-      __m128i chroma_u, chroma_v;
-
-      if (instruction_set == CPUF_SSE2) {
-        __m128i chroma_u16 = _mm_and_si128(tmp_chroma, low_byte_mask);
-        __m128i chroma_v16 = _mm_srli_epi16(tmp_chroma, 8);
-
-        chroma_u = _mm_packus_epi16(chroma_u16, chroma_u16);
-        chroma_v = _mm_packus_epi16(chroma_v16, chroma_v16);
-      } else {
-        chroma_u = _mm_shuffle_epi8(tmp_chroma, u_mask);
-        chroma_v = _mm_shuffle_epi8(tmp_chroma, v_mask);
-      }
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_u + x), chroma_u);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_v + x), chroma_v);
-    }
-
-    for (size_t x=mod8; x<half_width; x++) {
-      dstp_y[x*2]   = srcp[x*4+0];
-      dstp_y[x*2+1] = srcp[x*4+2];
-      dstp_u[x]     = srcp[x*4+1];
-      dstp_v[x]     = srcp[x*4+3];
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_u + x), _mm_srli_si128(p2, 8));
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_v + x), _mm_srli_si128(p3, 8));
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp_y + x * 2), _mm_unpacklo_epi8(p2, p3));
     }
 
     srcp += src_pitch;
@@ -1313,43 +1289,24 @@ void convert_yuy2_to_yv16_xsse(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYT
 
 #ifdef X86_32
 
-void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
+static void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
-  __m64 low_byte_mask = _mm_set1_pi16(0x00FF);
-  size_t half_width = width / 2;
-  size_t mod4 = half_width / 4 * 4;
+  width /= 2;
 
-  for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod4; x+=4) {
-      __m64 p0 = *reinterpret_cast<const __m64*>(srcp + x*4);
-      __m64 p1 = *reinterpret_cast<const __m64*>(srcp + x*4 + 8);
+  for (size_t y = 0; y < height; ++y) { 
+    for (size_t x = 0; x < width; x += 4) {
+      __m64 p0 = *reinterpret_cast<const __m64*>(srcp + x * 4);     // V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      __m64 p1 = *reinterpret_cast<const __m64*>(srcp + x * 4 + 8); // V3 Y7 U3 Y6 V2 Y5 U2 Y4
 
-      __m64 p0_luma = _mm_and_si64(p0, low_byte_mask);
-      __m64 p0_chroma = _mm_srli_pi16(p0, 8); //0 V 0 U 0 V 0 U
-      __m64 p1_luma = _mm_and_si64(p1, low_byte_mask); 
-      __m64 p1_chroma = _mm_srli_pi16(p1, 8);
+      __m64 p2 = _mm_unpacklo_pi8(p0, p1); // V2 V0 Y5 Y1 U2 U0 Y4 Y0
+      __m64 p3 = _mm_unpackhi_pi8(p0, p1); // V3 V1 Y7 Y3 U3 U1 Y6 Y2
 
-      __m64 luma = _mm_packs_pu16(p0_luma, p1_luma);
-      *reinterpret_cast<__m64*>(dstp_y + x*2) = luma;
+      p0 = _mm_unpacklo_pi8(p2, p3); // U3 U2 U1 U0 Y6 Y4 Y2 Y0
+      p1 = _mm_unpackhi_pi8(p2, p3); // V3 V2 V1 V0 Y7 Y5 Y3 Y1
 
-      __m64 tmp_chroma = _mm_packs_pu16(p0_chroma, p1_chroma); //V U V U V U V U V U
-
-      __m64 chroma_u16 = _mm_and_si64(tmp_chroma, low_byte_mask);
-      __m64 chroma_v16 = _mm_srli_pi16(tmp_chroma, 8);
-
-      __m64 chroma_u = _mm_packs_pu16(chroma_u16, chroma_u16);
-      __m64 chroma_v = _mm_packs_pu16(chroma_v16, chroma_v16);
-
-      
-      *reinterpret_cast<int*>(dstp_u + x) = _mm_cvtsi64_si32(chroma_u);
-      *reinterpret_cast<int*>(dstp_v + x) = _mm_cvtsi64_si32(chroma_v);
-    }
-
-    for (size_t x=mod4; x<half_width; x++) {
-      dstp_y[x*2]   = srcp[x*4+0];
-      dstp_y[x*2+1] = srcp[x*4+2];
-      dstp_u[x]     = srcp[x*4+1];
-      dstp_v[x]     = srcp[x*4+3];
+      *reinterpret_cast<int*>(dstp_u + x) = _mm_cvtsi64_si32(_mm_srli_si64(p0, 4));
+      *reinterpret_cast<int*>(dstp_v + x) = _mm_cvtsi64_si32(_mm_srli_si64(p1, 4));
+      *reinterpret_cast<__m64*>(dstp_y + x * 2) = _mm_unpacklo_pi8(p0, p1);
     }
 
     srcp += src_pitch;
@@ -1362,14 +1319,15 @@ void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE
 
 #endif
 
-void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
+static void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
-  for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<width/2; x++) {
-      dstp_y[x*2]   = srcp[x*4+0];
-      dstp_y[x*2+1] = srcp[x*4+2];
-      dstp_u[x]     = srcp[x*4+1];
-      dstp_v[x]     = srcp[x*4+3];
+  width /= 2;
+  for (size_t y = 0; y < height; ++y) { 
+    for (size_t x = 0; x < width; ++x) {
+      dstp_y[x * 2]     = srcp[x * 4 + 0];
+      dstp_y[x * 2 + 1] = srcp[x * 4 + 2];
+      dstp_u[x]         = srcp[x * 4 + 1];
+      dstp_v[x]         = srcp[x * 4 + 3];
     }
     srcp += src_pitch;
     dstp_y += dst_pitch_y;
@@ -1383,16 +1341,13 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   const BYTE* srcP = src->GetReadPtr();
-  const int awidth = min(src->GetPitch()>>1, (vi.width+7) & -8);
 
   BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
   BYTE* dstU = dst->GetWritePtr(PLANAR_U);
   BYTE* dstV = dst->GetWritePtr(PLANAR_V);
 
-  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcP, 16)) {
-    convert_yuy2_to_yv16_xsse<CPUF_SSSE3>(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
-  } else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
-    convert_yuy2_to_yv16_xsse<CPUF_SSE2>(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
+    convert_yuy2_to_yv16_sse2(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
   } 
   else
 #ifdef X86_32
