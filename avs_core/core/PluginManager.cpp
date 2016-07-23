@@ -720,7 +720,11 @@ bool PluginManager::FunctionExists(const char* name) const
 static bool FunctionListHasDll(const FunctionList &list, const char *dll_path)
 {
     for (const auto &f : list) {
-        if (streqi(f->dll_path, dll_path)) {
+        if ( (nullptr == f->dll_path) || (nullptr == dll_path) ) {
+            if (f->dll_path == dll_path) {
+                return true;
+            }
+        } else if (streqi(f->dll_path, dll_path)) {
             return true;
         }
     }
