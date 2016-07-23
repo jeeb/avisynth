@@ -1812,7 +1812,8 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
 
   if (shrinkcount != 0)
   {
-      LogMsg(LOGLEVEL_WARNING, "Caches have been shrunk due to low memory limit. This will probably degrade performance. You can try increasing the limit using SetMemoryMax().");
+      OneTimeLogTicket ticket(LOGTICKET_W1003);
+      LogMsgOnce(ticket, LOGLEVEL_WARNING, "Caches have been shrunk due to low memory limit. This will probably degrade performance. You can try increasing the limit using SetMemoryMax().");
   }
 
   /* -----------------------------------------------------------
