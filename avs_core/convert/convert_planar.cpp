@@ -1322,6 +1322,7 @@ static void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_
 static void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
   width /= 2;
+
   for (size_t y = 0; y < height; ++y) { 
     for (size_t x = 0; x < width; ++x) {
       dstp_y[x * 2]     = srcp[x * 4 + 0];
@@ -1384,11 +1385,10 @@ ConvertYV16ToYUY2::ConvertYV16ToYUY2(PClip src, IScriptEnvironment* env) : Gener
 
 void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *srcp_v, BYTE *dstp, size_t src_pitch_y, size_t src_pitch_uv, size_t dst_pitch, size_t width, size_t height)
 {
-  size_t half_width = width / 2;
-  size_t mod8 = half_width / 8 * 8;
+  width /= 2;
 
   for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod8; x+=8) {
+    for (size_t x=0; x<width; x+=8) {
       
       __m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_y + x*2));
       __m128i u = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp_u + x));
@@ -1398,15 +1398,8 @@ void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYT
       __m128i yuv_lo = _mm_unpacklo_epi8(y, uv);
       __m128i yuv_hi = _mm_unpackhi_epi8(y, uv);
 
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x*4), yuv_lo);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x*4 + 16), yuv_hi);
-    }
-
-    for (size_t x=mod8; x<half_width; x++) {
-      dstp[x*4+0] = srcp_y[x*2];
-      dstp[x*4+1] = srcp_u[x];
-      dstp[x*4+2] = srcp_y[x*2+1];
-      dstp[x*4+3] = srcp_v[x];
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x*4), yuv_lo);
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x*4 + 16), yuv_hi);
     }
 
     srcp_y += src_pitch_y;
@@ -1419,11 +1412,10 @@ void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYT
 #ifdef X86_32
 void convert_yv16_to_yuy2_mmx(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *srcp_v, BYTE *dstp, size_t src_pitch_y, size_t src_pitch_uv, size_t dst_pitch, size_t width, size_t height)
 {
-  size_t half_width = width / 2;
-  size_t mod4 = half_width / 4 * 4;
+  width /= 2;
 
   for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod4; x+=4) {
+    for (size_t x=0; x<width; x+=4) {
       __m64 y = *reinterpret_cast<const __m64*>(srcp_y + x*2);
       __m64 u = *reinterpret_cast<const __m64*>(srcp_u + x);
       __m64 v = *reinterpret_cast<const __m64*>(srcp_v + x);
@@ -1434,13 +1426,6 @@ void convert_yv16_to_yuy2_mmx(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE
 
       *reinterpret_cast<__m64*>(dstp + x*4) = yuv_lo;
       *reinterpret_cast<__m64*>(dstp + x*4+8) = yuv_hi;
-    }
-
-    for (size_t x=mod4; x<half_width; x++) {
-      dstp[x*4+0] = srcp_y[x*2];
-      dstp[x*4+1] = srcp_u[x];
-      dstp[x*4+2] = srcp_y[x*2+1];
-      dstp[x*4+3] = srcp_v[x];
     }
 
     srcp_y += src_pitch_y;
@@ -1469,26 +1454,25 @@ void convert_yv16_to_yuy2_c(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *
 
 PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi, 16);
+  PVideoFrame dst = env->NewVideoFrame(vi, 32);
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
   const BYTE* srcV = src->GetReadPtr(PLANAR_V);
-  const int awidth = min(src->GetPitch(PLANAR_Y), (vi.width+7) & -8);
 
   BYTE* dstp = dst->GetWritePtr();
 
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcY, 16)) {
     //U and V don't have to be aligned since we user movq to read from those
-    convert_yv16_to_yuy2_sse2(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+    convert_yv16_to_yuy2_sse2(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   } else
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX) { 
-    convert_yv16_to_yuy2_mmx(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+    convert_yv16_to_yuy2_mmx(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   } else
 #endif
   {
-    convert_yv16_to_yuy2_c(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+    convert_yv16_to_yuy2_c(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   }
   
   return dst;
