@@ -55,8 +55,8 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToRGB32", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create32 },
   { "ConvertToY8",    BUILTIN_FUNC_PREFIX, "c[matrix]s", ConvertToY8::Create },
   { "ConvertToYV12",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToYV12::Create },
-  { "ConvertToYV24",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV24},
-  { "ConvertToYV16",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV16},
+  { "ConvertToYV24",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
+  { "ConvertToYV16",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV422},
   { "ConvertToYV411", BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV411},
   { "ConvertToYUY2",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToYUY2::Create },
   { "ConvertBackToYUY2", BUILTIN_FUNC_PREFIX, "c[matrix]s", ConvertBackToYUY2::Create },
@@ -580,7 +580,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* 
 
   if (vi.IsPlanar()) {
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
-    clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
+    clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
     return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 4 , env);
   }
 
@@ -603,7 +603,7 @@ AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment
 
   if (vi.IsPlanar()) {
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
-    clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
+    clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
     return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 4 , env);
   }
 
@@ -629,7 +629,7 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
 
   if (vi.IsPlanar()) {
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
-    clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
+    clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
     return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 3 , env);
   }
 
@@ -736,7 +736,7 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
   if (vi.IsYUY2() && !args[3].Defined() && !args[4].Defined() && !args[5].Defined())  // User has not requested options, do it fast!
     return new ConvertToYV12(clip,args[1].AsBool(false),env);
 
-  return ConvertToPlanarGeneric::CreateYV12(args,0,env);
+  return ConvertToPlanarGeneric::CreateYUV420(args, NULL,env);
 }
 
 /**********************************

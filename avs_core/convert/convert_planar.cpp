@@ -41,9 +41,10 @@
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
 #include <avs/win.h>
-#include <avs/minmax.h>
 #include <avs/alignment.h>
 #include <tmmintrin.h>
+#include <algorithm>
+#include <string>
 
 enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
 
@@ -1497,135 +1498,145 @@ AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironm
  * (c) Ian Brabham, 2011
  **********************************************/
 
-inline float ChrOffset(bool point, int sIn, float dIn, int sOut, float dOut) {
-      //     (1 - sOut/sIn)/2 + (dOut-dIn)/sIn; // Gavino Jan 2011
-      return point ? (dOut-dIn)/sIn : 0.5f + (dOut-dIn - 0.5f*sOut)/sIn;
-}
-
 ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
                                                const AVSValue& InPlacement, const AVSValue& chromaResampler,
                                                const AVSValue& OutPlacement, IScriptEnvironment* env) : GenericVideoFilter(src) {
   Yinput = vi.NumComponents() == 1;
   pixelsize = vi.ComponentSize();
 
-  if (!Yinput) {
-
-    if (! (vi.IsYV12() || dst_space == VideoInfo::CS_YV12 || 
-           vi.IsColorSpace(VideoInfo::CS_YUV420P16) || dst_space == VideoInfo::CS_YUV420P16 ||
-           vi.IsColorSpace(VideoInfo::CS_YUV420PS) || dst_space == VideoInfo::CS_YUV420PS))
-      interlaced = false;  // Ignore, if YV12/YUV420P16/YUV420PS is not involved.
-
-    // Describe input pixel positioning
-    float xdInU = 0.0f, txdInU = 0.0f, bxdInU = 0.0f;
-    float ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.0f;
-    float xdInV = 0.0f, txdInV = 0.0f, bxdInV = 0.0f;
-    float ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f;
-
-    if (vi.IsYV12() || vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS)) {
-      switch (getPlacement(InPlacement, env)) {
-        case PLACEMENT_DV:
-          ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.5f;
-          ydInV = 1.0f, tydInV = 0.5f, bydInV = 1.0f;
-          break;
-        case PLACEMENT_MPEG1:
-          xdInU = 0.5f, txdInU = 0.5f, bxdInU = 0.5f;
-          xdInV = 0.5f, txdInV = 0.5f, bxdInV = 0.5f;
-          // fall thru
-        case PLACEMENT_MPEG2:
-          ydInU = 0.5f, tydInU = 0.25f, bydInU = 0.75f;
-          ydInV = 0.5f, tydInV = 0.25f, bydInV = 0.75f;
-          break;
-      }
-    }
-    else if (InPlacement.Defined())
-      env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 source.");
-
-    const int xsIn = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
-    const int ysIn = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
-
+  if (Yinput) {
     vi.pixel_type = dst_space;
-
     if (vi.ComponentSize() != pixelsize)
       env->ThrowError("Convert: Conversion from %d to %d-byte format not supported.", pixelsize, vi.ComponentSize());
+    return;
+  }
 
-    // Describe output pixel positioning
-    float xdOutU = 0.0f, txdOutU = 0.0f, bxdOutU = 0.0f;
-    float ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.0f;
-    float xdOutV = 0.0f, txdOutV = 0.0f, bxdOutV = 0.0f;
-    float ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f;
+  auto Is420 = [](int pix_type) {
+    return pix_type == VideoInfo::CS_YV12 || pix_type == VideoInfo::CS_I420 ||
+      pix_type == VideoInfo::CS_YUV420P16 || pix_type == VideoInfo::CS_YUV420PS;
+  };
 
-    if (vi.IsYV12() || vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS)) {
-      switch (getPlacement(OutPlacement, env)) {
-        case PLACEMENT_DV:
-          ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.5f;
-          ydOutV = 1.0f, tydOutV = 0.5f, bydOutV = 1.0f;
-          break;
-        case PLACEMENT_MPEG1:
-          xdOutU = 0.5f, txdOutU = 0.5f, bxdOutU = 0.5f;
-          xdOutV = 0.5f, txdOutV = 0.5f, bxdOutV = 0.5f;
-          // fall thru
-        case PLACEMENT_MPEG2:
-          ydOutU = 0.5f, tydOutU = 0.25f, bydOutU = 0.75f;
-          ydOutV = 0.5f, tydOutV = 0.25f, bydOutV = 0.75f;
-          break;
-      }
+  if (!Is420(vi.pixel_type) && !Is420(dst_space))
+    interlaced = false;  // Ignore, if YV12/YUV420P16/YUV420PS is not involved.
+
+  // Describe input pixel positioning
+  float xdInU = 0.0f, txdInU = 0.0f, bxdInU = 0.0f;
+  float ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.0f;
+  float xdInV = 0.0f, txdInV = 0.0f, bxdInV = 0.0f;
+  float ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f;
+
+  if (Is420(vi.pixel_type)) {
+    switch (getPlacement(InPlacement, env)) {
+      case PLACEMENT_DV:
+        ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.5f;
+        ydInV = 1.0f, tydInV = 0.5f, bydInV = 1.0f;
+        break;
+      case PLACEMENT_MPEG1:
+        xdInU = 0.5f, txdInU = 0.5f, bxdInU = 0.5f;
+        xdInV = 0.5f, txdInV = 0.5f, bxdInV = 0.5f;
+        // fall thru
+      case PLACEMENT_MPEG2:
+        ydInU = 0.5f, tydInU = 0.25f, bydInU = 0.75f;
+        ydInV = 0.5f, tydInV = 0.25f, bydInV = 0.75f;
+        break;
     }
-    else if (OutPlacement.Defined())
-      env->ThrowError("Convert: Output ChromaPlacement only available with 4:2:0 output.");
+  }
+  else if (InPlacement.Defined())
+    env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 source.");
 
-    const int xsOut = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
-    const int xmask = xsOut - 1;
-    if (vi.width & xmask)
-      env->ThrowError("Convert: Cannot convert if width isn't mod%d!", xsOut);
+  const int xsIn = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
+  const int ysIn = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-    const int ysOut = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
-    const int ymask = ysOut - 1;
-    if (vi.height & ymask)
-      env->ThrowError("Convert: Cannot convert if height isn't mod%d!", ysOut);
+  vi.pixel_type = dst_space;
 
-    int uv_width  = vi.width  >> vi.GetPlaneWidthSubsampling(PLANAR_U);
-    int uv_height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+  if (vi.ComponentSize() != pixelsize)
+    env->ThrowError("Convert: Conversion from %d to %d-byte format not supported.", pixelsize, vi.ComponentSize());
 
-    ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), env);
+  // Describe output pixel positioning
+  float xdOutU = 0.0f, txdOutU = 0.0f, bxdOutU = 0.0f;
+  float ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.0f;
+  float xdOutV = 0.0f, txdOutV = 0.0f, bxdOutV = 0.0f;
+  float ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f;
 
-    bool P = !lstrcmpi(chromaResampler.AsString(""), "point");
-
-    if (interlaced) {
-      uv_height /=  2;
-
-      AVSValue tUsubSampling[4] = { ChrOffset(P, xsIn, txdInU, xsOut, txdOutU), ChrOffset(P, ysIn, tydInU, ysOut, tydOutU), AVSValue(), AVSValue() };
-      AVSValue bUsubSampling[4] = { ChrOffset(P, xsIn, bxdInU, xsOut, bxdOutU), ChrOffset(P, ysIn, bydInU, ysOut, bydOutU), AVSValue(), AVSValue() };
-      AVSValue tVsubSampling[4] = { ChrOffset(P, xsIn, txdInV, xsOut, txdOutV), ChrOffset(P, ysIn, tydInV, ysOut, tydOutV), AVSValue(), AVSValue() };
-      AVSValue bVsubSampling[4] = { ChrOffset(P, xsIn, bxdInV, xsOut, bxdOutV), ChrOffset(P, ysIn, bydInV, ysOut, bydOutV), AVSValue(), AVSValue() };
-
-      Usource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::UToY8, env), true), env); // also works for Y16/Y32
-      Vsource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::VToY8, env), true), env); // also works for Y16/Y32
-
-      PClip *tbUsource = new PClip[2]; // Interleave()::~Interleave() will delete these
-      PClip *tbVsource = new PClip[2];
-
-	  tbUsource[0] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 0, env), uv_width, uv_height, tUsubSampling, filter, env);
-	  tbUsource[1] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 1, env), uv_width, uv_height, bUsubSampling, filter, env);
-	  tbVsource[0] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 0, env), uv_width, uv_height, tVsubSampling, filter, env);
-	  tbVsource[1] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 1, env), uv_width, uv_height, bVsubSampling, filter, env);
-
-	  Usource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbUsource, env)), 2, 0, env);
-	  Vsource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbVsource, env)), 2, 0, env);
+  if (Is420(vi.pixel_type)) {
+    switch (getPlacement(OutPlacement, env)) {
+      case PLACEMENT_DV:
+        ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.5f;
+        ydOutV = 1.0f, tydOutV = 0.5f, bydOutV = 1.0f;
+        break;
+      case PLACEMENT_MPEG1:
+        xdOutU = 0.5f, txdOutU = 0.5f, bxdOutU = 0.5f;
+        xdOutV = 0.5f, txdOutV = 0.5f, bxdOutV = 0.5f;
+        // fall thru
+      case PLACEMENT_MPEG2:
+        ydOutU = 0.5f, tydOutU = 0.25f, bydOutU = 0.75f;
+        ydOutV = 0.5f, tydOutV = 0.25f, bydOutV = 0.75f;
+        break;
     }
-    else {
-      AVSValue UsubSampling[4] = { ChrOffset(P, xsIn, xdInU, xsOut, xdOutU), ChrOffset(P, ysIn, ydInU, ysOut, ydOutU), AVSValue(), AVSValue() };
-      AVSValue VsubSampling[4] = { ChrOffset(P, xsIn, xdInV, xsOut, xdOutV), ChrOffset(P, ysIn, ydInV, ysOut, ydOutV), AVSValue(), AVSValue() };
+  }
+  else if (OutPlacement.Defined())
+    env->ThrowError("Convert: Output ChromaPlacement only available with 4:2:0 output.");
 
-      Usource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::UToY8, env), uv_width, uv_height, UsubSampling, filter, env);
-      Vsource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::VToY8, env), uv_width, uv_height, VsubSampling, filter, env);
-    }
-    delete filter;
+  const int xsOut = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
+  const int xmask = xsOut - 1;
+  if (vi.width & xmask)
+    env->ThrowError("Convert: Cannot convert if width isn't mod%d!", xsOut);
+
+  const int ysOut = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
+  const int ymask = ysOut - 1;
+  if (vi.height & ymask)
+    env->ThrowError("Convert: Cannot convert if height isn't mod%d!", ysOut);
+
+  int uv_width  = vi.width  >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+  int uv_height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+  ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), env);
+
+  bool P = !lstrcmpi(chromaResampler.AsString(""), "point");
+
+  auto ChrOffset = [P](int sIn, float dIn, int sOut, float dOut) {
+    //     (1 - sOut/sIn)/2 + (dOut-dIn)/sIn; // Gavino Jan 2011
+    return P ? (dOut - dIn) / sIn : 0.5f + (dOut - dIn - 0.5f*sOut) / sIn;
+  };
+
+  if (interlaced) {
+    uv_height /=  2;
+
+    AVSValue tUsubSampling[4] = { ChrOffset(xsIn, txdInU, xsOut, txdOutU), ChrOffset(ysIn, tydInU, ysOut, tydOutU), AVSValue(), AVSValue() };
+    AVSValue bUsubSampling[4] = { ChrOffset(xsIn, bxdInU, xsOut, bxdOutU), ChrOffset(ysIn, bydInU, ysOut, bydOutU), AVSValue(), AVSValue() };
+    AVSValue tVsubSampling[4] = { ChrOffset(xsIn, txdInV, xsOut, txdOutV), ChrOffset(ysIn, tydInV, ysOut, tydOutV), AVSValue(), AVSValue() };
+    AVSValue bVsubSampling[4] = { ChrOffset(xsIn, bxdInV, xsOut, bxdOutV), ChrOffset(ysIn, bydInV, ysOut, bydOutV), AVSValue(), AVSValue() };
+
+    Usource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::UToY8, env), true), env); // also works for Y16/Y32
+    Vsource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::VToY8, env), true), env); // also works for Y16/Y32
+
+    PClip *tbUsource = new PClip[2]; // Interleave()::~Interleave() will delete these
+    PClip *tbVsource = new PClip[2];
+
+  tbUsource[0] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 0, env), uv_width, uv_height, tUsubSampling, filter, env);
+  tbUsource[1] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 1, env), uv_width, uv_height, bUsubSampling, filter, env);
+  tbVsource[0] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 0, env), uv_width, uv_height, tVsubSampling, filter, env);
+  tbVsource[1] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 1, env), uv_width, uv_height, bVsubSampling, filter, env);
+
+  Usource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbUsource, env)), 2, 0, env);
+  Vsource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbVsource, env)), 2, 0, env);
   }
   else {
-    vi.pixel_type = dst_space;
-    if (vi.ComponentSize() != pixelsize)
-      env->ThrowError("Convert: Conversion from %d to %d-byte format not supported.", pixelsize, vi.ComponentSize());
+    AVSValue UsubSampling[4] = { ChrOffset(xsIn, xdInU, xsOut, xdOutU), ChrOffset(ysIn, ydInU, ysOut, ydOutU), AVSValue(), AVSValue() };
+    AVSValue VsubSampling[4] = { ChrOffset(xsIn, xdInV, xsOut, xdOutV), ChrOffset(ysIn, ydInV, ysOut, ydOutV), AVSValue(), AVSValue() };
+
+    Usource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::UToY8, env), uv_width, uv_height, UsubSampling, filter, env);
+    Vsource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::VToY8, env), uv_width, uv_height, VsubSampling, filter, env);
   }
+  delete filter;
+}
+
+template <typename pixel_type>
+static inline void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, pixel_type val)
+{
+  size_t size = height * pitch / sizeof(pixel_type);
+  std::fill_n(reinterpret_cast<pixel_type*>(dstp_u), size, val);
+  std::fill_n(reinterpret_cast<pixel_type*>(dstp_v), size, val);
 }
 
 PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment* env) {
@@ -1634,216 +1645,104 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
 
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
               src->GetRowSize(PLANAR_Y_ALIGNED), src->GetHeight(PLANAR_Y));
+
+  BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
+  const int height = dst->GetHeight(PLANAR_U);
+  const int dst_pitch = dst->GetPitch(PLANAR_U);
+
   if (Yinput) {
     switch (vi.ComponentSize())
     {
       case 1:
-        memset(dst->GetWritePtr(PLANAR_U), 0x80, dst->GetHeight(PLANAR_U)*dst->GetPitch(PLANAR_U));
-        memset(dst->GetWritePtr(PLANAR_V), 0x80, dst->GetHeight(PLANAR_V)*dst->GetPitch(PLANAR_V));
+        fill_chroma<BYTE>(dstp_u, dstp_v, height, dst_pitch, 0x80);
         break;
       case 2:
-      {
-        int planes[2] = { PLANAR_U, PLANAR_V };
-        for (int p = 0; p < 2; p++)
-        {
-          int plane = planes[p];
-          uint16_t* dstp = reinterpret_cast<uint16_t*>(dst->GetWritePtr(plane));
-          for (int y = 0; y < vi.height >> vi.GetPlaneHeightSubsampling(plane); y++)
-          {
-            for (int x = 0; x < vi.width >> vi.GetPlaneWidthSubsampling(plane); x++)
-              dstp[x] = 0x8000;
-            dstp += dst->GetPitch(plane) / sizeof(uint16_t);
-          }
-        }
+        fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 0x8000);
         break;
-      }
-      case 4: 
-      {
-        int planes[2] = { PLANAR_U, PLANAR_V };
-        for (int p = 0; p < 2; p++)
-        {
-          int plane = planes[p];
-          float* dstp = reinterpret_cast<float*>(dst->GetWritePtr(plane));
-          for (int y = 0; y < vi.height >> vi.GetPlaneHeightSubsampling(plane); y++)
-          {
-            for (int x = 0; x < vi.width >> vi.GetPlaneWidthSubsampling(plane); x++)
-              dstp[x] = 0.5f;
-            dstp += dst->GetPitch(plane) / sizeof(float);
-          }
-        }
+      case 4:
+        fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, 0.5f);
         break;
-      }
     }
   } else {
     src = Usource->GetFrame(n, env);
-    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
-                src->GetRowSize(PLANAR_Y_ALIGNED), dst->GetHeight(PLANAR_U));
+    env->BitBlt(dstp_u, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
     src = Vsource->GetFrame(n, env);
-    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
-                src->GetRowSize(PLANAR_Y_ALIGNED), dst->GetHeight(PLANAR_V));
+    env->BitBlt(dstp_v, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
   }
   return dst;
 }
 
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  // similar to YV12
-  // we work within the same bitdepth
-  if (clip->GetVideoInfo().IsYV12() || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV420P16) || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV420PS) ) {
-    if (getPlacement(args[3], env) == getPlacement(args[5], env))
-      return clip;
-  }
-  else if (clip->GetVideoInfo().IsRGB()) // 8 bit only
+  VideoInfo vi = clip->GetVideoInfo();
+
+  if (vi.IsRGB()) { // 8 bit only
     clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-  else if (clip->GetVideoInfo().IsYUY2()) // 8 bit only
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYUV420: Can only convert from Planar YUV.");
-
-  int pixel_type;
-  switch (clip->GetVideoInfo().ComponentSize())
-  {
-  case 1: pixel_type = VideoInfo::CS_YV12; break;
-  case 2: pixel_type = VideoInfo::CS_YUV420P16; break;
-  case 4: pixel_type = VideoInfo::CS_YUV420PS; break;
-  default:
-    env->ThrowError("ConvertToYUV420: unsupported bit depth");
+    vi = clip->GetVideoInfo();
   }
+  else if (vi.IsYUY2()) { // 8 bit only
+    clip = new ConvertYUY2ToYV16(clip, env);
+    vi = clip->GetVideoInfo();
+  }
+  else if (!vi.IsPlanar())
+    env->ThrowError("%s: Can only convert from Planar YUV.", filter);
 
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], args[5], env);
+  int pixel_type = VideoInfo::CS_UNKNOWN;
+  AVSValue outplacement = AVSValue();
+
+  if (strcmp(filter, "ConvertToYUV420") == 0) {
+    if (vi.IsYV12() || vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS))
+      if (getPlacement(args[3], env) == getPlacement(args[5], env))
+        return clip;
+    outplacement = args[5];
+    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV12;
+    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV420P16;
+    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV420PS;
+  }
+  else if (strcmp(filter, "ConvertToYUV422") == 0) {
+    if (vi.IsYV16() || vi.IsColorSpace(VideoInfo::CS_YUV422P16) || vi.IsColorSpace(VideoInfo::CS_YUV422PS))
+      return clip;
+    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV16;
+    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV422P16;
+    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV422PS;
+  }
+  else if (strcmp(filter, "ConvertToYUV444") == 0) {
+    if (vi.IsYV24() || vi.IsColorSpace(VideoInfo::CS_YUV444P16) || vi.IsColorSpace(VideoInfo::CS_YUV444PS))
+      return clip;
+    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV24;
+    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV444P16;
+    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV444PS;
+  }
+  else if (strcmp(filter, "ConvertToYV411") == 0) {
+    if (vi.IsYV411()) return clip;
+    pixel_type = VideoInfo::CS_YV411;
+  }
+  else env->ThrowError("Convert: unknown filter '%s'.", filter);
+
+
+  if (pixel_type == VideoInfo::CS_UNKNOWN)
+    env->ThrowError("%s: unsupported bit depth", filter);
+
+  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], outplacement, env);
+}
+
+AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void*, IScriptEnvironment* env) {
+  return Create(args, "ConvertToYUV420", env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV422(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  // similar to YV16
-  // we work within the same bitdepth
-  if (clip->GetVideoInfo().IsYV16() || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV422P16) || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV422PS) )
-    return clip;
-  if (clip->GetVideoInfo().IsYUY2())
-    return new ConvertYUY2ToYV16(clip,  env);
-
-  if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYUV422: Can only convert from Planar YUV.");
-
-  int pixel_type;
-  switch (clip->GetVideoInfo().ComponentSize())
-  {
-  case 1: pixel_type = VideoInfo::CS_YV16; break;
-  case 2: pixel_type = VideoInfo::CS_YUV422P16; break;
-  case 4: pixel_type = VideoInfo::CS_YUV422PS; break;
-  default:
-    env->ThrowError("ConvertToYUV422: unsupported bit depth");
-  }
-
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
+  return Create(args, "ConvertToYUV422", env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV444(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  // similar to YV24
-  // we work within the same bitdepth
-  if (clip->GetVideoInfo().IsYV24() || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV444P16) || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV444PS) ) 
-    return clip;
-  
-  if (clip->GetVideoInfo().IsRGB())
-    return new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYUV444: Can only convert from Planar YUV.");
-
-  int pixel_type;
-  switch (clip->GetVideoInfo().ComponentSize())
-  {
-  case 1: pixel_type = VideoInfo::CS_YV24; break;
-  case 2: pixel_type = VideoInfo::CS_YUV444P16; break;
-  case 4: pixel_type = VideoInfo::CS_YUV444PS; break;
-  default:
-    env->ThrowError("ConvertToYUV444: unsupported bit depth");
-  }
-
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
-
-}
-
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYV12(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-  
-  if (clip->GetVideoInfo().IsYV12()) {
-    if (getPlacement(args[3], env) == getPlacement(args[5], env))
-      return clip;
-  }
-  else if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-  else if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV12: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV12, args[1].AsBool(false), args[3], args[4], args[5], env);
-}
-
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYV16(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  if (clip->GetVideoInfo().IsYV16())
-    return clip;
-
-  if (clip->GetVideoInfo().IsYUY2())
-    return new ConvertYUY2ToYV16(clip,  env);
-
-  if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV16: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV16, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
-}
-
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYV24(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  if (clip->GetVideoInfo().IsYV24() )
-    return clip;
-
-  if (clip->GetVideoInfo().IsRGB())
-    return new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV24: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV24, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
+  return Create(args, "ConvertToYUV444", env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  if (clip->GetVideoInfo().IsYV411() )
-    return clip;
-
-  if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-  else if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV411: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV411, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
+  return Create(args, "ConvertToYV411", env);
 }
+
 
 
 static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
