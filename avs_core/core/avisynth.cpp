@@ -2693,7 +2693,22 @@ IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
   return CreateScriptEnvironment2(version);
 }
 
-IScriptEnvironment2* __stdcall CreateScriptEnvironment2(int version) {
+IScriptEnvironment2* __stdcall CreateScriptEnvironment2(int version)
+{
+  /* Some plugins use OpenMP. But OMP threads do not exit immediately
+  * after all work is exhausted, and keep spinning for a small amount
+  * of time waiting for new jobs. If we unload the OMP DLL (indirectly
+  * by unloading its plugin that started it) while its threads are
+  * running, the sky comes crashing down. This results in crashes
+  * from OMP plugins if the IScriptEnvironment is destructed shortly
+  * after a GetFrame() call.
+  *
+  * OMP_WAIT_POLICY=passive changes the behavior of OMP thread pools
+  * to shut down immediately instead of continuing to spin.
+  * This solves our problem at the cost of some performance.
+  */
+  putenv("OMP_WAIT_POLICY=passive");
+
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment();
   else
