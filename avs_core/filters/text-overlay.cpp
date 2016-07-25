@@ -1181,6 +1181,18 @@ const char* const t_Y8="Y8";
 const char* const t_YV16="YV16";
 const char* const t_Y41P="YUV 411 Planar";
 
+const char* const t_YUV420P10="YUV420P10";
+const char* const t_YUV422P10="YUV422P10";
+const char* const t_YUV444P10="YUV444P10";
+const char* const t_Y10="Y10";
+const char* const t_YUV420P12="YUV420P12";
+const char* const t_YUV422P12="YUV422P12";
+const char* const t_YUV444P12="YUV444P12";
+const char* const t_Y12="Y12";
+const char* const t_YUV420P14="YUV420P14";
+const char* const t_YUV422P14="YUV422P14";
+const char* const t_YUV444P14="YUV444P14";
+const char* const t_Y14="Y14";
 const char* const t_YUV420P16="YUV420P16";
 const char* const t_YUV422P16="YUV422P16";
 const char* const t_YUV444P16="YUV444P16";
@@ -1189,6 +1201,16 @@ const char* const t_YUV420PS="YUV420PS";
 const char* const t_YUV422PS="YUV422PS";
 const char* const t_YUV444PS="YUV444PS";
 const char* const t_Y32="Y32";
+
+const char* const t_RGB48="RGB48";
+const char* const t_RGB64="RGB64";
+
+const char* const t_RGBP="RGBP";
+const char* const t_RGBP10="RGBP10";
+const char* const t_RGBP12="RGBP12";
+const char* const t_RGBP14="RGBP14";
+const char* const t_RGBP16="RGBP16";
+const char* const t_RGBPS="RGBPS";
 
 const char* const t_INT8="Integer 8 bit";
 const char* const t_INT16="Integer 16 bit";
@@ -1276,6 +1298,18 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       else if (vii.IsY8())    c_space=t_Y8;
       else if (vii.IsYV16())  c_space=t_YV16;
       else if (vii.IsYV411()) c_space=t_Y41P;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P10)) c_space=t_YUV420P10;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P10)) c_space=t_YUV422P10;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P10)) c_space=t_YUV444P10;
+      else if (vii.IsColorSpace(VideoInfo::CS_Y10)) c_space=t_Y10;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P12)) c_space=t_YUV420P12;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P12)) c_space=t_YUV422P12;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P12)) c_space=t_YUV444P12;
+      else if (vii.IsColorSpace(VideoInfo::CS_Y12)) c_space=t_Y12;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P14)) c_space=t_YUV420P14;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P14)) c_space=t_YUV422P14;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P14)) c_space=t_YUV444P14;
+      else if (vii.IsColorSpace(VideoInfo::CS_Y14)) c_space=t_Y14;
       else if (vii.IsColorSpace(VideoInfo::CS_YUV420P16)) c_space=t_YUV420P16;
       else if (vii.IsColorSpace(VideoInfo::CS_YUV422P16)) c_space=t_YUV422P16;
       else if (vii.IsColorSpace(VideoInfo::CS_YUV444P16)) c_space=t_YUV444P16;
@@ -1284,6 +1318,14 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       else if (vii.IsColorSpace(VideoInfo::CS_YUV422PS)) c_space=t_YUV422PS;
       else if (vii.IsColorSpace(VideoInfo::CS_YUV444PS)) c_space=t_YUV444PS;
       else if (vii.IsColorSpace(VideoInfo::CS_Y32)) c_space=t_Y32;
+      else if (vii.IsColorSpace(VideoInfo::CS_BGR48)) c_space=t_RGB48;
+      else if (vii.IsColorSpace(VideoInfo::CS_BGR64)) c_space=t_RGB64;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBP)) c_space=t_RGBP;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBP10)) c_space=t_RGBP10;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBP12)) c_space=t_RGBP12;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBP14)) c_space=t_RGBP14;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBP16)) c_space=t_RGBP16;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBPS)) c_space=t_RGBPS;
 
       if (vii.IsFieldBased()) {
         if (child->GetParity(n)) {
@@ -1305,6 +1347,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
         "Frame: %8u of %-8u\n"                                //  28
         "Time: %02d:%02d:%02d.%03d of %02d:%02d:%02d.%03d\n"  //  35
         "ColorSpace: %s\n"                                    //  18=13+5
+        "Bits per component: %2u\n"                           //  22
         "Width:%4u pixels, Height:%4u pixels.\n"              //  39
         "Frames per second: %7.4f (%u/%u)\n"                  //  51=31+20
         "FieldBased (Separated) Video: %s\n"                  //  35=32+3
@@ -1315,6 +1358,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
         , (cPosInMsecs/(60*60*1000)), (cPosInMsecs/(60*1000))%60 ,(cPosInMsecs/1000)%60, cPosInMsecs%1000,
           (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000 
         , c_space
+        , vii.BitsPerComponent()
         , vii.width, vii.height
         , (float)vii.fps_numerator/(float)vii.fps_denominator, vii.fps_numerator, vii.fps_denominator
         , vii.IsFieldBased() ? t_YES : t_NO
