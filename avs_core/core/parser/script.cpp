@@ -235,6 +235,15 @@ extern const AVSFunction Script_functions[] = {
   { "SetLogParams",     BUILTIN_FUNC_PREFIX, "[target]s[level]i", SetLogParams },
   { "LogMsg",              BUILTIN_FUNC_PREFIX, "si", LogMsg },
 
+  { "IsY",       BUILTIN_FUNC_PREFIX, "c", IsY },
+  { "IsYUV420",  BUILTIN_FUNC_PREFIX, "c", IsYUV420 },
+  { "IsYUV422",  BUILTIN_FUNC_PREFIX, "c", IsYUV422 },
+  { "IsYUV444",  BUILTIN_FUNC_PREFIX, "c", IsYUV444 },
+  { "IsRGB48",       BUILTIN_FUNC_PREFIX, "c", IsRGB48 },
+  { "IsRGB64",       BUILTIN_FUNC_PREFIX, "c", IsRGB64 },
+  { "ComponentSize", BUILTIN_FUNC_PREFIX, "c", ComponentSize },
+  { "BitsPerComponent", BUILTIN_FUNC_PREFIX, "c", BitsPerComponent },
+
   { 0 }
 };
 
@@ -830,22 +839,34 @@ AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env) {
 	  return "YV411";
     case VideoInfo::CS_Y8    :
 	  return "Y8";
-    case VideoInfo::CS_YUV420P16 :
-    return "YUV420P16";
-    case VideoInfo::CS_YUV422P16 :
-    return "YUV422P16";
-    case VideoInfo::CS_YUV444P16 :
-    return "YUV444P16";
-    case VideoInfo::CS_Y16       :
-    return "Y16";
-    case VideoInfo::CS_YUV420PS  :
-    return "YUV420PS";
-    case VideoInfo::CS_YUV422PS  :
-    return "YUV422PS";
-    case VideoInfo::CS_YUV444PS  :
-    return "YUV444PS";
-    case VideoInfo::CS_Y32       :
-    return "Y32";
+    case VideoInfo::CS_YUV420P10 :    return "YUV420P10";
+    case VideoInfo::CS_YUV422P10 :    return "YUV422P10";
+    case VideoInfo::CS_YUV444P10 :    return "YUV444P10";
+    case VideoInfo::CS_Y10       :    return "Y10";
+    case VideoInfo::CS_YUV420P12 :    return "YUV420P12";
+    case VideoInfo::CS_YUV422P12 :    return "YUV422P12";
+    case VideoInfo::CS_YUV444P12 :    return "YUV444P12";
+    case VideoInfo::CS_Y12       :    return "Y12";
+    case VideoInfo::CS_YUV420P14 :    return "YUV420P14";
+    case VideoInfo::CS_YUV422P14 :    return "YUV422P14";
+    case VideoInfo::CS_YUV444P14 :    return "YUV444P14";
+    case VideoInfo::CS_Y14       :    return "Y14";
+    case VideoInfo::CS_YUV420P16 :    return "YUV420P16";
+    case VideoInfo::CS_YUV422P16 :    return "YUV422P16";
+    case VideoInfo::CS_YUV444P16 :    return "YUV444P16";
+    case VideoInfo::CS_Y16       :    return "Y16";
+    case VideoInfo::CS_YUV420PS  :    return "YUV420PS";
+    case VideoInfo::CS_YUV422PS  :    return "YUV422PS";
+    case VideoInfo::CS_YUV444PS  :    return "YUV444PS";
+    case VideoInfo::CS_Y32       :    return "Y32";
+    case VideoInfo::CS_BGR48     :    return "RGB48";
+    case VideoInfo::CS_BGR64     :    return "RGB64";
+    case VideoInfo::CS_RGBP      :    return "RGBP";
+    case VideoInfo::CS_RGBP10    :    return "RGBP10";
+    case VideoInfo::CS_RGBP12    :    return "RGBP12";
+    case VideoInfo::CS_RGBP14    :    return "RGBP14";
+    case VideoInfo::CS_RGBP16    :    return "RGBP16";
+    case VideoInfo::CS_RGBPS     :    return "RGBPS";
     default:
 	  break;
   }
@@ -1086,3 +1107,13 @@ AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env)
     }
     return AVSValue();
 }
+
+AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsY8(); }
+AVSValue IsYUV420(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV420(); }
+AVSValue IsYUV422(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV422(); }
+AVSValue IsYUV444(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV444(); }
+AVSValue IsRGB48(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB48(); }
+AVSValue IsRGB64(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB64(); }
+AVSValue ComponentSize(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).ComponentSize(); }
+AVSValue BitsPerComponent(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BitsPerComponent(); }
+
