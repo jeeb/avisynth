@@ -1881,13 +1881,10 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 {
   if (align < 0)
   {
-    // Forced alignment
+    _RPT0(0, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
     align = -align;
   }
-  else
-  {
-    align = max(align, FRAME_ALIGN);
-  }
+  align = max(align, FRAME_ALIGN);
 
   int pitchUV;
   const int pitchY = AlignNumber(row_size, align);
@@ -1933,13 +1930,10 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 {
   if (align < 0)
   {
-    // Forced alignment
+    _RPT0(0, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
     align = -align;
   }
-  else
-  {
-    align = max(align, FRAME_ALIGN);
-  }
+  align = max(align, FRAME_ALIGN);
 
   const int pitch = AlignNumber(row_size, align);
   size_t size = pitch * height;

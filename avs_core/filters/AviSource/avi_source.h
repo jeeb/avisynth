@@ -37,6 +37,30 @@
 #include "AVIReadHandler.h"
 
 
+// AVI Decompressors require 4bytes aligned buffer with minimum padding or no padding buffer.
+// Therefore, PVideoFrame shouldn't be used as those.
+
+class TemporalBuffer { // do not new this class.
+  IScriptEnvironment2* env2;
+  void* orig;
+  BYTE* pY;
+  BYTE* pV;
+  BYTE* pU;
+  int pitchY;
+  int pitchUV;
+  size_t size;
+public:
+  TemporalBuffer(const VideoInfo& vi, bool bMediaPad, int n, IScriptEnvironment* env);
+  ~TemporalBuffer() { if (orig) env2->Free(orig); }
+  int GetPitch(int plane=PLANAR_Y) { return (plane == PLANAR_Y) ? pitchY : pitchUV; }
+  size_t GetSize() { return size; }
+  BYTE* GetPtr(int plane=PLANAR_Y)
+  {
+    switch (plane) { case PLANAR_U: return pU; case PLANAR_V: return pV; default: return pY; }
+  }
+};
+
+
 class AVISource : public IClip {
   IAVIReadHandler *pfile;
   IAVIReadStream *pvideo;
@@ -59,7 +83,7 @@ class AVISource : public IClip {
   __int64 audio_stream_pos;
 
   LRESULT DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst);
-  LRESULT DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScriptEnvironment* env);
+  LRESULT DecompressFrame(int n, bool preroll, TemporalBuffer &frame, IScriptEnvironment* env);
 
   void CheckHresult(HRESULT hr, const char* msg, IScriptEnvironment* env);
   bool AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih);
