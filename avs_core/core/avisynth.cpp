@@ -1964,6 +1964,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 
 
 PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
+  // todo: high bit-depth: we have too many types now. Do we need really check?
   // Check requested pixel_type:
   switch (vi.pixel_type) {
     case VideoInfo::CS_BGR24:
@@ -1976,6 +1977,19 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     case VideoInfo::CS_YV411:
     case VideoInfo::CS_I420:
     // AVS16 do not reject when a filter requests it
+        // planar YUV 10-32 bit
+    case VideoInfo::CS_YUV420P10:
+    case VideoInfo::CS_YUV422P10:
+    case VideoInfo::CS_YUV444P10:
+    case VideoInfo::CS_Y10:
+    case VideoInfo::CS_YUV420P12:
+    case VideoInfo::CS_YUV422P12:
+    case VideoInfo::CS_YUV444P12:
+    case VideoInfo::CS_Y12:
+    case VideoInfo::CS_YUV420P14:
+    case VideoInfo::CS_YUV422P14:
+    case VideoInfo::CS_YUV444P14:
+    case VideoInfo::CS_Y14:
     case VideoInfo::CS_YUV420P16:
     case VideoInfo::CS_YUV422P16:
     case VideoInfo::CS_YUV444P16:
@@ -1984,7 +1998,17 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     case VideoInfo::CS_YUV422PS:
     case VideoInfo::CS_YUV444PS:
     case VideoInfo::CS_Y32:
-      break;
+        // 16 bit/sample packed RGB
+    case VideoInfo::CS_BGR48:
+    case VideoInfo::CS_BGR64:
+        // planar RGB
+    case VideoInfo::CS_RGBP:
+    case VideoInfo::CS_RGBP10:
+    case VideoInfo::CS_RGBP12:
+    case VideoInfo::CS_RGBP14:
+    case VideoInfo::CS_RGBP16:
+    case VideoInfo::CS_RGBPS:
+        break;
     default:
       ThrowError("Filter Error: Filter attempted to create VideoFrame with invalid pixel_type.");
   }

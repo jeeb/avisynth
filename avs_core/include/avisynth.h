@@ -287,6 +287,13 @@ struct AVS_Linkage {
   // AviSynth+ additions
   int     (VideoInfo::*NumComponents)() const;
   int     (VideoInfo::*ComponentSize)() const;
+  int     (VideoInfo::*BitsPerComponent)() const;
+  bool    (VideoInfo::*IsYUV444)() const;
+  bool    (VideoInfo::*IsYUV422)() const;
+  bool    (VideoInfo::*IsYUV420)() const;
+  bool    (VideoInfo::*IsY)() const;
+  bool    (VideoInfo::*IsRGB48)() const;
+  bool    (VideoInfo::*IsRGB64)() const;
   /**********************************************************************/
 };
 
@@ -383,16 +390,8 @@ Code Bits Remark      Classic_RGB  YUV  YUY2  Y_Grey Planar_RGB*
   I  30   Interleaved     1         0    1      1        0
   P  31   Planar          0         1    0      1        1
 
-*= todo: define 10/12/14 bit YUV, 16bits/channel RGB and planar RGB color spaces
-**= requires changing byte size calculation logic in BytesFromPixel()
-    will not work: 
-      size = pixel_count << (pixel_type>>CS_Shift_Sample_Bits) & 3))
-    will work:
-      const int componentSizes[8] = {1,2,4,0,0,2,2,2};
-      size = pixel_count * componentSizes[(pixel_type>>CS_Shift_Sample_Bits) & 7]
-
 */
-  enum {
+enum {
     CS_BGR = 1<<28,
     CS_YUV = 1<<29,
     CS_INTERLEAVED = 1<<30,
@@ -417,60 +416,86 @@ Code Bits Remark      Classic_RGB  YUV  YUY2  Y_Grey Planar_RGB*
 
     CS_Sample_Bits_Mask  = 7 << CS_Shift_Sample_Bits,
     CS_Sample_Bits_8     = 0 << CS_Shift_Sample_Bits,
+    CS_Sample_Bits_10    = 5 << CS_Shift_Sample_Bits,
+    CS_Sample_Bits_12    = 6 << CS_Shift_Sample_Bits,
+    CS_Sample_Bits_14    = 7 << CS_Shift_Sample_Bits,
     CS_Sample_Bits_16    = 1 << CS_Shift_Sample_Bits,
     CS_Sample_Bits_32    = 2 << CS_Shift_Sample_Bits,
 
     CS_PLANAR_MASK       = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_BGR | CS_Sample_Bits_Mask
-                                                  | CS_Sub_Height_Mask | CS_Sub_Width_Mask,
+    | CS_Sub_Height_Mask | CS_Sub_Width_Mask,
     CS_PLANAR_FILTER     = ~( CS_VPlaneFirst | CS_UPlaneFirst ),
 
-  // Specific colorformats
+    // Specific colorformats
     CS_UNKNOWN = 0,
     CS_BGR24 = 1<<0 | CS_BGR | CS_INTERLEAVED,
     CS_BGR32 = 1<<1 | CS_BGR | CS_INTERLEAVED,
     CS_YUY2  = 1<<2 | CS_YUV | CS_INTERLEAVED,
-//  CS_YV12  = 1<<3  Reserved
-//  CS_I420  = 1<<4  Reserved
+    //  CS_YV12  = 1<<3  Reserved
+    //  CS_I420  = 1<<4  Reserved
     CS_RAW32 = 1<<5 | CS_INTERLEAVED,
 
-//  YV12 must be 0xA000008 2.5 Baked API will see all new planar as YV12
-//  I420 must be 0xA000010
+    //  YV12 must be 0xA000008 2.5 Baked API will see all new planar as YV12
+    //  I420 must be 0xA000010
 
-    CS_YV24  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1,  // YVU 4:4:4 planar
-    CS_YV16  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2,  // YVU 4:2:2 planar
-    CS_YV12  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // YVU 4:2:0 planar
+    CS_GENERIC_YUV420 = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // 4:2:0 planar
+    CS_GENERIC_YUV422 = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2,  // 4:2:2 planar
+    CS_GENERIC_YUV444 = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1,  // 4:4:4 planar
+    CS_GENERIC_Y      = CS_PLANAR | CS_INTERLEAVED | CS_YUV,                                     // Y only (4:0:0)
+    CS_GENERIC_RGBP   = CS_PLANAR | CS_BGR,                                                      // planar RGB
+
+    CS_YV24  = CS_GENERIC_YUV444 | CS_Sample_Bits_8,  // YVU 4:4:4 planar
+    CS_YV16  = CS_GENERIC_YUV422 | CS_Sample_Bits_8,  // YVU 4:2:2 planar
+    CS_YV12  = CS_GENERIC_YUV420 | CS_Sample_Bits_8,  // YVU 4:2:0 planar
     CS_I420  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_UPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // YUV 4:2:0 planar
     CS_IYUV  = CS_I420,
     CS_YUV9  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_4 | CS_Sub_Width_4,  // YUV 4:1:0 planar
     CS_YV411 = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_4,  // YUV 4:1:1 planar
 
-    CS_Y8    = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_8,                                     // Y   4:0:0 planar
+    CS_Y8    = CS_GENERIC_Y | CS_Sample_Bits_8,                                                            // Y   4:0:0 planar
 
     //-------------------------
-    // AVS16: new planar constants go live! Experimental PF 160613 
-    CS_YUV444P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
-    CS_YUV422P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 16bit samples
-    CS_YUV420P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 16bit samples
+    // AVS16: new planar constants go live! Experimental PF 160613
+    // 10-12-14 bit + planar RGB + BRG48/64 160725
 
-    // grey 16
-    CS_Y16 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_16,                                      // Y   4:0:0 16bit samples
+    CS_YUV444P10 = CS_GENERIC_YUV444 | CS_Sample_Bits_10, // YUV 4:4:4 10bit samples
+    CS_YUV422P10 = CS_GENERIC_YUV422 | CS_Sample_Bits_10, // YUV 4:2:2 10bit samples
+    CS_YUV420P10 = CS_GENERIC_YUV420 | CS_Sample_Bits_10, // YUV 4:2:0 10bit samples
+    CS_Y10 = CS_GENERIC_Y | CS_Sample_Bits_10,            // Y   4:0:0 10bit samples
+
+    CS_YUV444P12 = CS_GENERIC_YUV444 | CS_Sample_Bits_12, // YUV 4:4:4 12bit samples
+    CS_YUV422P12 = CS_GENERIC_YUV422 | CS_Sample_Bits_12, // YUV 4:2:2 12bit samples
+    CS_YUV420P12 = CS_GENERIC_YUV420 | CS_Sample_Bits_12, // YUV 4:2:0 12bit samples
+    CS_Y12 = CS_GENERIC_Y | CS_Sample_Bits_12,            // Y   4:0:0 12bit samples
+
+    CS_YUV444P14 = CS_GENERIC_YUV444 | CS_Sample_Bits_14, // YUV 4:4:4 14bit samples
+    CS_YUV422P14 = CS_GENERIC_YUV422 | CS_Sample_Bits_14, // YUV 4:2:2 14bit samples
+    CS_YUV420P14 = CS_GENERIC_YUV420 | CS_Sample_Bits_14, // YUV 4:2:0 14bit samples
+    CS_Y14 = CS_GENERIC_Y | CS_Sample_Bits_14,            // Y   4:0:0 14bit samples
+
+    CS_YUV444P16 = CS_GENERIC_YUV444 | CS_Sample_Bits_16, // YUV 4:4:4 16bit samples
+    CS_YUV422P16 = CS_GENERIC_YUV422 | CS_Sample_Bits_16, // YUV 4:2:2 16bit samples
+    CS_YUV420P16 = CS_GENERIC_YUV420 | CS_Sample_Bits_16, // YUV 4:2:0 16bit samples
+    CS_Y16 = CS_GENERIC_Y | CS_Sample_Bits_16,            // Y   4:0:0 16bit samples
 
     // 32 bit samples (float)
-    CS_YUV444PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
-    CS_YUV422PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 32bit samples
-    CS_YUV420PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 32bit samples
+    CS_YUV444PS = CS_GENERIC_YUV444 | CS_Sample_Bits_32,  // YUV 4:4:4 32bit samples
+    CS_YUV422PS = CS_GENERIC_YUV422 | CS_Sample_Bits_32,  // YUV 4:2:2 32bit samples
+    CS_YUV420PS = CS_GENERIC_YUV420 | CS_Sample_Bits_32,  // YUV 4:2:0 32bit samples
+    CS_Y32 = CS_GENERIC_Y | CS_Sample_Bits_32,            // Y   4:0:0 32bit samples
 
-    // grey 32
-    CS_Y32 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_32,                                      // Y   4:0:0 32bit samples
+    // RGB packed
+    CS_BGR48 = 1<<0 | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16, // BGR 3x16 bit
+    CS_BGR64 = 1<<1 | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16, // BGR 4x16 bit
+    // no packed 32 bit (float) support for these legacy types
 
-    // todo: rgb
-
-/*
-
-    CS_PRGB  = CS_PLANAR | CS_RGB | CS_Sample_Bits_8,                                                      // Planar RGB
-    CS_RGB48 = CS_PLANAR | CS_RGB | CS_Sample_Bits_16,                                                     // Planar RGB 16bit samples
-    CS_RGB96 = CS_PLANAR | CS_RGB | CS_Sample_Bits_32,                                                     // Planar RGB 32bit samples
-*/
+    // RGB planar
+    CS_RGBP   = CS_GENERIC_RGBP | CS_Sample_Bits_8,  // Planar RGB 8 bit samples
+    CS_RGBP10 = CS_GENERIC_RGBP | CS_Sample_Bits_10, // Planar RGB 10bit samples
+    CS_RGBP12 = CS_GENERIC_RGBP | CS_Sample_Bits_12, // Planar RGB 12bit samples
+    CS_RGBP14 = CS_GENERIC_RGBP | CS_Sample_Bits_14, // Planar RGB 14bit samples
+    CS_RGBP16 = CS_GENERIC_RGBP | CS_Sample_Bits_16, // Planar RGB 16bit samples
+    CS_RGBPS  = CS_GENERIC_RGBP | CS_Sample_Bits_32, // Planar RGB 32bit samples
   };
 
   int pixel_type;                // changed to int as of 2.5
@@ -564,6 +589,27 @@ Code Bits Remark      Classic_RGB  YUV  YUY2  Y_Grey Planar_RGB*
 
   // Returns the size in bytes of a single component of a pixel
   int ComponentSize() const AVS_BakedCode(return AVS_LinkCall(ComponentSize)())
+
+  // Returns the bit depth of a single component of a pixel
+  int BitsPerComponent() const AVS_BakedCode(return AVS_LinkCall(BitsPerComponent)())
+
+  // like IsYV24, but bit-depth independent
+  bool IsYUV444() const AVS_BakedCode( return AVS_LinkCall(IsYUV444)() )
+  
+  // like IsYV16, but bit-depth independent
+  bool IsYUV422() const AVS_BakedCode( return AVS_LinkCall(IsYUV422)() )
+
+  // like IsYV12, but bit-depth independent
+  bool IsYUV420() const AVS_BakedCode( return AVS_LinkCall(IsYUV420)() )
+
+  // like IsY8, but bit-depth independent
+  bool IsY()      const AVS_BakedCode( return AVS_LinkCall(IsY)() )
+
+  // like IsRGB24 for 16 bit samples
+  bool IsRGB48() const AVS_BakedCode( return AVS_LinkCall(IsRGB48)() )
+
+  // like IsRGB32 for 16 bit samples
+  bool IsRGB64() const AVS_BakedCode( return AVS_LinkCall(IsRGB64)() )
 
 }; // end struct VideoInfo
 

@@ -67,3 +67,10 @@ EXPORTS
   avs_is_yuv422ps
   avs_is_yuv420ps
   avs_is_y32
+  avs_num_components
+  avs_component_size
+  avs_bits_per_component
+  avs_is_yuv444
+  avs_is_yuv422
+  avs_is_yuv420
+  avs_is_y

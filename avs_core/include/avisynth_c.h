@@ -99,11 +99,20 @@ enum {AVS_CS_BGR = 1<<28,
 
       AVS_CS_SAMPLE_BITS_MASK  = 7 << AVS_CS_SHIFT_SAMPLE_BITS,
       AVS_CS_SAMPLE_BITS_8     = 0 << AVS_CS_SHIFT_SAMPLE_BITS,
+      AVS_CS_SAMPLE_BITS_10    = 5 << AVS_CS_SHIFT_SAMPLE_BITS,
+      AVS_CS_SAMPLE_BITS_12    = 6 << AVS_CS_SHIFT_SAMPLE_BITS,
+      AVS_CS_SAMPLE_BITS_14    = 7 << AVS_CS_SHIFT_SAMPLE_BITS,
       AVS_CS_SAMPLE_BITS_16    = 1 << AVS_CS_SHIFT_SAMPLE_BITS,
       AVS_CS_SAMPLE_BITS_32    = 2 << AVS_CS_SHIFT_SAMPLE_BITS,
 
       AVS_CS_PLANAR_MASK       = AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_BGR | AVS_CS_SAMPLE_BITS_MASK | AVS_CS_SUB_HEIGHT_MASK | AVS_CS_SUB_WIDTH_MASK,
-      AVS_CS_PLANAR_FILTER     = ~( AVS_CS_VPLANEFIRST | AVS_CS_UPLANEFIRST )};
+      AVS_CS_PLANAR_FILTER     = ~( AVS_CS_VPLANEFIRST | AVS_CS_UPLANEFIRST ),
+
+      AVS_CS_GENERIC_YUV420 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // 4:2:0 planar
+      AVS_CS_GENERIC_YUV422 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2,  // 4:2:2 planar
+      AVS_CS_GENERIC_YUV444 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1,  // 4:4:4 planar
+      AVS_CS_GENERIC_Y      = AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV,                                             // Y only (4:0:0)
+      AVS_CS_GENERIC_RGBP   = AVS_CS_PLANAR | AVS_CS_BGR};                                                                 // planar RGB
 
   // Specific colorformats
 enum {
@@ -115,35 +124,55 @@ enum {
   //  AVS_CS_I420  = 1<<4  Reserved
   AVS_CS_RAW32 = 1<<5 | AVS_CS_INTERLEAVED,
 
-  AVS_CS_YV24  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1,  // YVU 4:4:4 planar
-  AVS_CS_YV16  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2,  // YVU 4:2:2 planar
-  AVS_CS_YV12  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // YVU 4:2:0 planar
+  AVS_CS_YV24  = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:4:4 planar
+  AVS_CS_YV16  = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:2:2 planar
+  AVS_CS_YV12  = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:2:0 planar
   AVS_CS_I420  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_UPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // YUV 4:2:0 planar
   AVS_CS_IYUV  = AVS_CS_I420,
   AVS_CS_YV411 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:1 planar
   AVS_CS_YUV9  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_4 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:0 planar
-  AVS_CS_Y8    = AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8,                                              // Y   4:0:0 planar
+  AVS_CS_Y8    = AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_8,       // Y   4:0:0 planar
 
   //-------------------------
   // AVS16: new planar constants go live! Experimental PF 160613
-  AVS_CS_YUV444P16 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_16 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1, // YUV 4:4:4 16bit samples
-  AVS_CS_YUV422P16 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_16 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2, // YUV 4:2:2 16bit samples
-  AVS_CS_YUV420P16 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_16 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2, // YUV 4:2:0 16bit samples
-  // no short naming style. AVS_CS_YV24->AVS_CS_YV48 = AVS_CS_YUV444P16 ok. but YV12->YV24? no-no.
+  // 10-12-14 bit + planar RGB + BRG48/64 160725
+  AVS_CS_YUV444P10 = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_10, // YUV 4:4:4 10bit samples
+  AVS_CS_YUV422P10 = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:2 10bit samples
+  AVS_CS_YUV420P10 = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:0 10bit samples
+  AVS_CS_Y10       = AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_10,      // Y   4:0:0 10bit samples
 
-  // grey 16
-  AVS_CS_Y16 = AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_16,                                      // Y   4:0:0 16bit samples
+  AVS_CS_YUV444P12 = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_12, // YUV 4:4:4 12bit samples
+  AVS_CS_YUV422P12 = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_12, // YUV 4:2:2 12bit samples
+  AVS_CS_YUV420P12 = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_12, // YUV 4:2:0 12bit samples
+  AVS_CS_Y12       = AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_12,      // Y   4:0:0 12bit samples
+
+  AVS_CS_YUV444P14 = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_14, // YUV 4:4:4 14bit samples
+  AVS_CS_YUV422P14 = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_14, // YUV 4:2:2 14bit samples
+  AVS_CS_YUV420P14 = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_14, // YUV 4:2:0 14bit samples
+  AVS_CS_Y14       = AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_14,      // Y   4:0:0 14bit samples
+
+  AVS_CS_YUV444P16 = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_16, // YUV 4:4:4 16bit samples
+  AVS_CS_YUV422P16 = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_16, // YUV 4:2:2 16bit samples
+  AVS_CS_YUV420P16 = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_16, // YUV 4:2:0 16bit samples
+  AVS_CS_Y16       = AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_16,      // Y   4:0:0 16bit samples
 
   // 32 bit samples (float)
-  AVS_CS_YUV444PS = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_32 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1, // YUV 4:4:4 32bit samples
-  AVS_CS_YUV422PS = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_32 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2, // YUV 4:2:2 32bit samples
-  AVS_CS_YUV420PS = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_32 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2, // YUV 4:2:0 32bit samples
-  // AVS_CS_YV96  = AVS_CS_YUV444PS,
+  AVS_CS_YUV444PS = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_32,  // YUV 4:4:4 32bit samples
+  AVS_CS_YUV422PS = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_32,  // YUV 4:2:2 32bit samples
+  AVS_CS_YUV420PS = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_32,  // YUV 4:2:0 32bit samples
+  AVS_CS_Y32      = AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_32,       // Y   4:0:0 32bit samples
 
-  // grey 32
-  AVS_CS_Y32 = AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_32                                      // Y   4:0:0 32bit samples
+  // RGB packed
+  AVS_CS_BGR48 = 1<<0 | AVS_CS_BGR | AVS_CS_INTERLEAVED | AVS_CS_SAMPLE_BITS_16,    // BGR 3x16 bit
+  AVS_CS_BGR64 = 1<<1 | AVS_CS_BGR | AVS_CS_INTERLEAVED | AVS_CS_SAMPLE_BITS_16,    // BGR 4x16 bit
+  // no packed 32 bit (float) support for these legacy types
 
-  // todo: rgb
+  AVS_CS_RGBP   = AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_8,  // Planar RGB 8 bit samples
+  AVS_CS_RGBP10 = AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_10, // Planar RGB 10bit samples
+  AVS_CS_RGBP12 = AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_12, // Planar RGB 12bit samples
+  AVS_CS_RGBP14 = AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_14, // Planar RGB 14bit samples
+  AVS_CS_RGBP16 = AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_16, // Planar RGB 16bit samples
+  AVS_CS_RGBPS  = AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_32  // Planar RGB 32bit samples
 
 };
 
@@ -259,26 +288,26 @@ typedef struct AVS_VideoInfo {
 } AVS_VideoInfo;
 
 // useful functions of the above
-AVSC_INLINE int avs_has_video(const AVS_VideoInfo * p) 
+AVSC_INLINE int avs_has_video(const AVS_VideoInfo * p)
         { return (p->width!=0); }
 
-AVSC_INLINE int avs_has_audio(const AVS_VideoInfo * p) 
+AVSC_INLINE int avs_has_audio(const AVS_VideoInfo * p)
         { return (p->audio_samples_per_second!=0); }
 
-AVSC_INLINE int avs_is_rgb(const AVS_VideoInfo * p) 
+AVSC_INLINE int avs_is_rgb(const AVS_VideoInfo * p)
         { return !!(p->pixel_type&AVS_CS_BGR); }
 
-AVSC_INLINE int avs_is_rgb24(const AVS_VideoInfo * p) 
-        { return (p->pixel_type&AVS_CS_BGR24)==AVS_CS_BGR24; } // Clear out additional properties
+AVSC_INLINE int avs_is_rgb24(const AVS_VideoInfo * p)
+        { return ((p->pixel_type&AVS_CS_BGR24)==AVS_CS_BGR24) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_8); }
 
-AVSC_INLINE int avs_is_rgb32(const AVS_VideoInfo * p) 
-        { return (p->pixel_type & AVS_CS_BGR32) == AVS_CS_BGR32 ; }
+AVSC_INLINE int avs_is_rgb32(const AVS_VideoInfo * p)
+       { return ((p->pixel_type&AVS_CS_BGR24)==AVS_CS_BGR32) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_8); }
 
-AVSC_INLINE int avs_is_yuv(const AVS_VideoInfo * p) 
+AVSC_INLINE int avs_is_yuv(const AVS_VideoInfo * p)
         { return !!(p->pixel_type&AVS_CS_YUV ); }
 
-AVSC_INLINE int avs_is_yuy2(const AVS_VideoInfo * p) 
-        { return (p->pixel_type & AVS_CS_YUY2) == AVS_CS_YUY2; }  
+AVSC_INLINE int avs_is_yuy2(const AVS_VideoInfo * p)
+        { return (p->pixel_type & AVS_CS_YUY2) == AVS_CS_YUY2; }
 
 AVSC_API(int, avs_is_yv24)(const AVS_VideoInfo * p);
 
@@ -305,6 +334,22 @@ AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p);
 AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_yuv444)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_yuv422)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_yuv420)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_y)(const AVS_VideoInfo * p);
+
+AVSC_INLINE int avs_is_rgb48(const AVS_VideoInfo * p) 
+{ return ((p->pixel_type&AVS_CS_BGR24)==AVS_CS_BGR24) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_16); }
+
+AVSC_INLINE int avs_is_rgb64(const AVS_VideoInfo * p) 
+{ return ((p->pixel_type&AVS_CS_BGR32)==AVS_CS_BGR32) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_16); }
+
+
 
 AVSC_INLINE int avs_is_property(const AVS_VideoInfo * p, int property) 
         { return ((p->image_type & property)==property ); }
@@ -400,6 +445,12 @@ AVSC_INLINE int avs_is_same_colorspace(AVS_VideoInfo * x, AVS_VideoInfo * y)
         return (x->pixel_type == y->pixel_type)
                 || (avs_is_yv12(x) && avs_is_yv12(y));
 }
+
+AVSC_API(int, avs_num_components)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_component_size)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_bits_per_component)(const AVS_VideoInfo * p);
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -804,6 +855,10 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_is_yuv422ps);
   AVSC_DECLARE_FUNC(avs_is_yuv420ps);
   AVSC_DECLARE_FUNC(avs_is_y32);
+  AVSC_DECLARE_FUNC(avs_is_yuv444);
+  AVSC_DECLARE_FUNC(avs_is_yuv422);
+  AVSC_DECLARE_FUNC(avs_is_yuv420);
+  AVSC_DECLARE_FUNC(avs_is_y);
   AVSC_DECLARE_FUNC(avs_is_color_space);
 
   AVSC_DECLARE_FUNC(avs_get_plane_width_subsampling);
@@ -818,6 +873,11 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_get_read_ptr_p);
   AVSC_DECLARE_FUNC(avs_is_writable);
   AVSC_DECLARE_FUNC(avs_get_write_ptr_p);
+
+  AVSC_DECLARE_FUNC(avs_num_components);
+  AVSC_DECLARE_FUNC(avs_component_size);
+  AVSC_DECLARE_FUNC(avs_bits_per_component);
+
 };
 
 #undef AVSC_DECLARE_FUNC
@@ -891,6 +951,10 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_is_yuv422ps);
   AVSC_LOAD_FUNC(avs_is_yuv420ps);
   AVSC_LOAD_FUNC(avs_is_y32);
+  AVSC_LOAD_FUNC(avs_is_yuv444);
+  AVSC_LOAD_FUNC(avs_is_yuv422);
+  AVSC_LOAD_FUNC(avs_is_yuv420);
+  AVSC_LOAD_FUNC(avs_is_y);
   AVSC_LOAD_FUNC(avs_is_color_space);
 
   AVSC_LOAD_FUNC(avs_get_plane_width_subsampling);
@@ -905,6 +969,12 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_get_read_ptr_p);
   AVSC_LOAD_FUNC(avs_is_writable);
   AVSC_LOAD_FUNC(avs_get_write_ptr_p);
+
+  AVSC_LOAD_FUNC(avs_num_components);
+  AVSC_LOAD_FUNC(avs_component_size);
+  AVSC_LOAD_FUNC(avs_bits_per_component);
+
+
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY
