@@ -203,8 +203,10 @@ AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment
  *****************************/
 
 Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child), align(0), xsub(0), ysub(0)
+ : GenericVideoFilter(_child), align(FRAME_ALIGN - 1), xsub(0), ysub(0)
 {
+  // _align parameter exists only for the backward compatibility.
+
   /* Negative values -> VDub-style syntax
      Namely, Crop(a, b, -c, -d) will crop c pixels from the right and d pixels from the bottom.  
      Flags on 0 values too since AFAICT it's much more useful to this syntax than the standard one. */
@@ -251,10 +253,6 @@ Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _chi
   top = _top;
   vi.width = _width;
   vi.height = _height;
-
-  if (_align) {
-    align = FRAME_ALIGN-1;
-  }
 
 }
 
