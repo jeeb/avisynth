@@ -141,9 +141,9 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, TemporalBuffer &frame, I
     flags |= !pvideo->IsKeyFrame(n) ? ICDECOMPRESS_NOTKEYFRAME : 0;
     pbiSrc->biSizeImage = bytes_read;
     LRESULT result = !ex ? ICDecompress(hic, flags, pbiSrc, srcbuffer, &biDst, buf)
-      : ICDecompressEx(hic, flags, pbiSrc, srcbuffer,
-      0, 0, vi.width, vi.height, &biDst, buf,
-      0, 0, vi.width, vi.height);
+                         : ICDecompressEx(hic, flags, pbiSrc, srcbuffer,
+                                          0, 0, vi.width, vi.height, &biDst, buf,
+                                          0, 0, vi.width, vi.height);
     if (result != ICERR_OK) return result;
   }
   return ICERR_OK;
@@ -555,7 +555,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     dropped_frame=false;
 
     if (mode != MODE_WAV) {
-      bMediaPad = bMediaPad && !vi.IsY8() && vi.IsPlanar();
+      bMediaPad = !(!bMediaPad && !vi.IsY8() && vi.IsPlanar());
       int keyframe = pvideo->NearestKeyFrame(0);
       auto frame = TemporalBuffer(vi, bMediaPad, 0, env);
 
