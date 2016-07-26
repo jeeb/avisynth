@@ -42,6 +42,7 @@
 #include "planeswap.h"
 #include "../core/internal.h"
 #include <tmmintrin.h>
+#include <algorithm>
 #include <avs/alignment.h>
 
 
@@ -65,43 +66,17 @@ extern const AVSFunction Swap_filters[] = {
  *  Swap - swaps UV on planar maps
  **************************************/
 
-typedef __m128i (SseYuy2Swap)(__m128i, __m128i);
-
-__forceinline __m128i sse2_yuy2_swap_register(__m128i src, __m128i zero) {
-  __m128i src_unpck_lo = _mm_unpacklo_epi8(src, zero); //0V0Y0U0Y x2
-  __m128i src_unpck_hi = _mm_unpackhi_epi8(src, zero); 
-
-  src_unpck_lo = _mm_shufflelo_epi16(src_unpck_lo, _MM_SHUFFLE(1, 2, 3, 0)); 
-  src_unpck_lo = _mm_shufflehi_epi16(src_unpck_lo, _MM_SHUFFLE(1, 2, 3, 0));
-  src_unpck_hi = _mm_shufflelo_epi16(src_unpck_hi, _MM_SHUFFLE(1, 2, 3, 0)); 
-  src_unpck_hi = _mm_shufflehi_epi16(src_unpck_hi, _MM_SHUFFLE(1, 2, 3, 0));
-
-  return _mm_packus_epi16(src_unpck_lo, src_unpck_hi);
-}
-
-__forceinline __m128i ssse3_yuy2_swap_register(__m128i src, __m128i) {
-  return _mm_shuffle_epi8(src, _mm_set_epi8(13, 14, 15, 12, 9, 10, 11, 8, 5, 6, 7, 4, 1, 2, 3, 0));
-}
-
-template<SseYuy2Swap swap>
-static void ssex_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+static void yuy2_swap_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
 {
-  int mod16width = width / 16 * 16;
-
-  __m128i zero = _mm_setzero_si128();
+  const __m128i mask = _mm_set1_epi16(0x00FF);
 
   for (int y = 0; y < height; ++y ) {
-    for (int x = 0; x < mod16width; x+= 16) {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x)); 
-      __m128i dst = swap(src, zero);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), dst);
-    }
-    
-    if (mod16width != width) {
-      int x = width-16;
-      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x)); 
-      __m128i dst = swap(src, zero);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+x), dst);
+    for (int x = 0; x < width; x += 16) {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
+      __m128i swapped = _mm_shufflelo_epi16(src, _MM_SHUFFLE(2, 3, 0, 1));
+      swapped = _mm_shufflehi_epi16(swapped, _MM_SHUFFLE(2, 3, 0, 1));
+      swapped = _mm_or_si128(_mm_and_si128(mask, src), _mm_andnot_si128(mask, swapped));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), swapped);
     }
 
     dstp += dst_pitch;
@@ -109,37 +84,33 @@ static void ssex_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_
   }
 }
 
-
-#ifdef X86_32
-
-static __forceinline __m64 isse_yuy2_swap_register(__m64 src, __m64 zero) {
-  __m64 src_unpck_lo = _mm_unpacklo_pi8(src, zero); //0V0Y0U0Y
-  __m64 src_unpck_hi = _mm_unpackhi_pi8(src, zero); 
-
-  src_unpck_lo = _mm_shuffle_pi16(src_unpck_lo, _MM_SHUFFLE(1, 2, 3, 0)); 
-  src_unpck_hi = _mm_shuffle_pi16(src_unpck_hi, _MM_SHUFFLE(1, 2, 3, 0)); 
-
-  return _mm_packs_pu16(src_unpck_lo, src_unpck_hi);
-}
-
-static void isse_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+static void yuy2_swap_ssse3(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
 {
-  int mod8width = width / 8 * 8;
+  const __m128i mask = _mm_set_epi8(13, 14, 15, 12, 9, 10, 11, 8, 5, 6, 7, 4, 1, 2, 3, 0);
 
-  __m64 zero = _mm_setzero_si64();
-
-  for (int y = 0; y < height; ++y ) {
-    for (int x = 0; x < mod8width; x+= 8) {
-      __m64 src = *reinterpret_cast<const __m64*>(srcp+x); 
-      __m64 dst = isse_yuy2_swap_register(src, zero);
-      *reinterpret_cast<__m64*>(dstp+x) = dst;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; x += 16) {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
+      __m128i dst = _mm_shuffle_epi8(src, mask);
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), dst);
     }
 
-    if (mod8width != width) {
-      int x = width-8;
-      __m64 src = *reinterpret_cast<const __m64*>(srcp+x); 
-      __m64 dst = isse_yuy2_swap_register(src, zero);
-      *reinterpret_cast<__m64*>(dstp+x) = dst;
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+#ifdef X86_32
+static void yuy2_swap_isse(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+{
+  __m64 mask = _mm_set1_pi16(0x00FF);
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; x+= 8) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
+      __m64 swapped = _mm_shuffle_pi16(src, _MM_SHUFFLE(2, 3, 0, 1));
+      swapped = _mm_or_si64(_mm_and_si64(mask, src), _mm_andnot_si64(mask, swapped));
+      *reinterpret_cast<__m64*>(dstp + x) = swapped;
     }
 
     dstp += dst_pitch;
@@ -149,9 +120,22 @@ static void isse_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_
 }
 #endif
 
+static void yuy2_swap_c(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+{
+  for (int y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; x += 4) {
+      dstp[x + 0] = srcp[x + 0];
+      dstp[x + 3] = srcp[x + 1];
+      dstp[x + 2] = srcp[x + 2];
+      dstp[x + 1] = srcp[x + 3];
+    }
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
 
-
-AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
   PClip p = args[0].AsClip();
   if (p->GetVideoInfo().NumComponents() == 1)
     return p;
@@ -159,14 +143,14 @@ AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnv
 }
 
 
-SwapUV::SwapUV(PClip _child, IScriptEnvironment* env)
-  : GenericVideoFilter(_child) {
-
+SwapUV::SwapUV(PClip _child, IScriptEnvironment* env) : GenericVideoFilter(_child)
+{
   if (!vi.IsYUV())
-    env->ThrowError("SwapUV: YUV data only!");    
+    env->ThrowError("SwapUV: YUV data only!");
 }
 
-PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
+{
   PVideoFrame src = child->GetFrame(n, env);
   
   if (vi.IsPlanar()) {
@@ -176,81 +160,54 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
     return env->SubframePlanar(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
                          uvoffset, -uvoffset, src->GetPitch(PLANAR_V));
   }
-  else if (vi.IsYUY2()) { // YUY2
-    BYTE* srcp = src->GetWritePtr(); // Returns 0 if not writable
-    if (srcp) { // Do it in place!
-      for (int y=0; y<vi.height; y++) {
-        for (int x = 0; x < src->GetRowSize(); x+=4) {
-          const BYTE t = srcp[x+3]; // This is surprisingly fast,
-          srcp[x+3] = srcp[x+1];    // faster than any MMX/SSE code
-          srcp[x+1] = t;            // I could write.
-        }
-        srcp += src->GetPitch();
-      }
-      return src;
-    }
-    else { // avoid the cost of a frame blit, we have to parse the frame anyway
-      const BYTE* srcp = src->GetReadPtr();
-      PVideoFrame dst = env->NewVideoFrame(vi);
-      
-      if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16) && dst->GetRowSize() >= 16) {
-        ssex_yuy2_swap<ssse3_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(),
-          dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
-      } else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && dst->GetRowSize() >= 16) {
-        ssex_yuy2_swap<sse2_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(), 
-          dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
-      } else
+
+  // YUY2
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  const BYTE* srcp = src->GetReadPtr();
+  BYTE* dstp = dst->GetWritePtr();
+  int src_pitch = src->GetPitch();
+  int dst_pitch = dst->GetPitch();
+  int rowsize = src->GetRowSize();
+
+  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16))
+    yuy2_swap_ssse3(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
+  else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16))
+    yuy2_swap_sse2(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
 #ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && dst->GetRowSize() >= 8)   // need pshufw
-      {
-        isse_yuy2_swap(srcp, dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
-      }
-      else
+  else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) // need pshufw
+    yuy2_swap_isse(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
 #endif
-      {
-        short* dstp = (short*)dst->GetWritePtr();
-        const int srcpitch = src->GetPitch();
-        const int dstpitch = dst->GetPitch()>>1;
-        const int endx = dst->GetRowSize()>>1;
-        for (int y=0; y<vi.height; y++) {
-          for (int x = 0; x < endx; x+=2) {
-            // The compiler generates very good code for this construct 
-            // using ah, al & ax register variants to very good effect.
-            dstp[x+0] = (srcp[x*2+3] << 8) | srcp[x*2+0];
-            dstp[x+1] = (srcp[x*2+1] << 8) | srcp[x*2+2];
-          }
-          srcp += srcpitch;
-          dstp += dstpitch;
-        }
-      }
-      return dst;
-    }
-  }
-  return src;
+  else
+    yuy2_swap_c(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
+  return dst;
 }
 
 
-AVSValue __cdecl SwapUVToY::CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapUVToY::CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
   return new SwapUVToY(args[0].AsClip(), UToY, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreateUToY8(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapUVToY::CreateUToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
   PClip clip = args[0].AsClip();
   return new SwapUVToY(clip, (clip->GetVideoInfo().IsYUY2()) ? YUY2UToY8 : UToY8, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapUVToY::CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
   return new SwapUVToY(args[0].AsClip(), VToY, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreateVToY8(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapUVToY::CreateVToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
   PClip clip = args[0].AsClip();
   return new SwapUVToY(clip, (clip->GetVideoInfo().IsYUY2()) ? YUY2VToY8 : VToY8, env);
 }
 
 SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), mode(_mode) {
-
+  : GenericVideoFilter(_child), mode(_mode)
+{
   if (!vi.IsYUV())
     env->ThrowError("UVtoY: YUV data only!");
 
@@ -260,204 +217,180 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
   vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
 
-  if (mode == UToY8 || mode == VToY8)
-  {
-    switch (vi.BytesFromPixels(1)) // although name is Y8, it means that greyscale stays in the same bitdepth
+  if (mode == UToY8 || mode == VToY8 || mode == YUY2UToY8 || mode == YUY2VToY8) {
+    switch (vi.ComponentSize()) // although name is Y8, it means that greyscale stays in the same bitdepth
     {
     case 1: vi.pixel_type = VideoInfo::CS_Y8; break;
     case 2: vi.pixel_type = VideoInfo::CS_Y16; break;
     case 4: vi.pixel_type = VideoInfo::CS_Y32; break;
     }
   }
-  else if (mode == YUY2UToY8 || mode == YUY2VToY8)
-    vi.pixel_type = VideoInfo::CS_Y8;
-
 }
 
+static void yuy2_uvtoy_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int dst_width, int height, int pos)
+{
+  const __m128i chroma = _mm_set1_epi32(0x80008000);
+  const __m128i mask = _mm_set1_epi32(0x000000FF);
+  pos *= 8;
 
-PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env) {
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < dst_width; x += 16) {
+      __m128i s0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 2 * x));
+      __m128i s1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 2 * x + 16));
+      s0 = _mm_and_si128(mask, _mm_srli_epi32(s0, pos));
+      s1 = _mm_and_si128(mask, _mm_srli_epi32(s1, pos));
+      s0 = _mm_packs_epi32(s0, s1);
+      s0 = _mm_or_si128(s0, chroma);
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), s0);
+    }
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+static void yuy2_uvtoy8_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int dst_width, int height, int pos)
+{
+  const __m128i mask = _mm_set1_epi32(0x000000FF);
+  pos *= 8;
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < dst_width; x += 8) {
+      __m128i s0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4 * x));
+      __m128i s1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4 * x + 16));
+      s0 = _mm_and_si128(mask, _mm_srli_epi32(s0, pos));
+      s1 = _mm_and_si128(mask, _mm_srli_epi32(s1, pos));
+      s0 = _mm_packs_epi32(s0, s1);
+      s0 = _mm_packus_epi16(s0, s0);
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + x), s0);
+    }
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+template <typename T>
+static void fill_plane(BYTE* dstp, int rowsize, int height, int pitch, T val)
+{
+  rowsize /= sizeof(T);
+  for (int y = 0; y < height; ++y) {
+    std::fill_n(reinterpret_cast<T*>(dstp), rowsize, val);
+    dstp += pitch;
+  }
+}
+
+PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
+{
   PVideoFrame src = child->GetFrame(n, env);
 
-  if (vi.IsYUY2()) {  // YUY2 interleaved
-    PVideoFrame dst = env->NewVideoFrame(vi);
-    const BYTE* srcp = src->GetReadPtr();
-    short* dstp = (short*)dst->GetWritePtr();
-    const int srcpitch = src->GetPitch();
-    const int dstpitch = dst->GetPitch()>>1;
-    const int endx = dst->GetRowSize()>>1;
-    if (mode==UToY) {
-      for (int y=0; y<vi.height; y++) {
-        for (int x = 0; x < endx; x+=2) {
-          dstp[x  ] = 0x8000 | srcp[x*4+1];
-          dstp[x+1] = 0x8000 | srcp[x*4+5];
-        }
-        srcp += srcpitch;
-        dstp += dstpitch;
-      }
-    }
-    else if (mode==VToY) {
-      for (int y=0; y<vi.height; y++) {
-        for (int x = 0; x < endx; x+=2) {
-          dstp[x  ] = 0x8000 | srcp[x*4+3];
-          dstp[x+1] = 0x8000 | srcp[x*4+7];
-        }
-        srcp += srcpitch;
-        dstp += dstpitch;
-      }
-    }
-    return dst;
-  }
-
-  // Planar
-
-  if (mode==UToY8) {
-    const int offset = src->GetOffset(PLANAR_U) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
-    // Abuse Subframe to snatch the U plane
-    return env->Subframe(src, offset, src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-  }
-  else if (mode == VToY8) {
-    const int offset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
-    // Abuse Subframe to snatch the V plane
-    return env->Subframe(src, offset, src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  if (mode == UToY8 || mode == VToY8) { // Planar to Y8/Y16/Y32
+    const int plane = mode == UToY8 ? PLANAR_U : PLANAR_V;
+    const int offset = src->GetOffset(plane) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
+    // Abuse Subframe to snatch the U/V plane
+    return env->Subframe(src, offset, src->GetPitch(plane), src->GetRowSize(plane), vi.height);
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  if (mode==YUY2UToY8 || mode==YUY2VToY8) {  // YUY2 U To Y
+  if (mode == YUY2UToY8 || mode == YUY2VToY8 || vi.IsYUY2()) {
     const BYTE* srcp = src->GetReadPtr();
-    BYTE* dstp = (BYTE*)dst->GetWritePtr(PLANAR_Y);
-    srcp += (mode==YUY2UToY8) ? 1 : 3;
-    for (int y=0; y<vi.height; y++) {
-      for (int x = 0; x < vi.width; x++) {
-        dstp[x] = srcp[(x<<2)];
+    BYTE* dstp = dst->GetWritePtr();
+    int src_pitch = src->GetPitch();
+    int dst_pitch = dst->GetPitch();
+    int pos = mode == YUY2UToY8 ? 1 : 3;
+
+    if (vi.IsYUY2()) {  // YUY2 To YUY2
+      int rowsize = dst->GetRowSize();
+      if (env->GetCPUFlags() & CPUF_SSE2) {
+        yuy2_uvtoy_sse2(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height, pos);
+        return dst;
       }
-      srcp += src->GetPitch();
-      dstp += dst->GetPitch(PLANAR_Y);
-    }      
+
+      srcp += pos;
+      for (int y = 0; y < vi.height; ++y) {
+        for (int x = 0; x < rowsize; x += 2) {
+          dstp[x + 0] = srcp[2 * x];
+          dstp[x + 1] = 0x80;
+        }
+        srcp += src_pitch;
+        dstp += dst_pitch;
+      }
+      return dst;
+    }
+
+    // YUY2 to Y8
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      yuy2_uvtoy8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, pos);
+      return dst;
+    }
+
+    srcp += pos;
+    for (int y = 0; y < vi.height; ++y) {
+      for (int x = 0; x < vi.width; ++x) {
+        dstp[x] = srcp[x * 4];
+      }
+      srcp += src_pitch;
+      dstp += dst_pitch;
+    }
     return dst;
   }
 
-  if (mode==UToY) {
-    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
-                src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), dst->GetRowSize(), dst->GetHeight());
-  }
-  else if (mode==VToY) {
-    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
-                src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), dst->GetRowSize(), dst->GetHeight());
-  }
+  // Planar to Planar
+  const int plane = mode == UToY ? PLANAR_U : PLANAR_V;
+  env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(plane),
+              src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
 
   // Clear chroma
-  const int pitch = dst->GetPitch(PLANAR_U)/4; // uint32_t sized copy. bytecount div 4
-  const int myx = (dst->GetRowSize(PLANAR_U)+3)/4;
-  const int myy = dst->GetHeight(PLANAR_U);
+  int pitch = dst->GetPitch(PLANAR_U);
+  int height = dst->GetHeight(PLANAR_U);
+  int rowsize = dst->GetRowSize(PLANAR_U);
+  BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
 
-  int *srcpUV = (int*)dst->GetWritePtr(PLANAR_U);
-  union {
-    int i;
-    float f;
-  } filler;
-
-  switch (vi.BytesFromPixels(1))
-  {
-  case 1: filler.i = 0x80808080; break;
-  case 2: filler.i = 0x80008000; break;
-  case 4: filler.f = 0.5f;
+  if (vi.ComponentSize() == 1) {  // 8bit
+    fill_plane<BYTE>(dstp_u, rowsize, height, pitch, 0x80);
+    fill_plane<BYTE>(dstp_v, rowsize, height, pitch, 0x80);
+  }
+  else if (vi.ComponentSize() == 2) {  // 16bit
+    fill_plane<uint16_t>(dstp_u, rowsize, height, pitch, 0x8000);
+    fill_plane<uint16_t>(dstp_v, rowsize, height, pitch, 0x8000);
+  }
+  else {  // 32bit(float)
+    fill_plane<float>(dstp_u, rowsize, height, pitch, 0.5f);
+    fill_plane<float>(dstp_v, rowsize, height, pitch, 0.5f);
   }
 
-  for (int y=0; y<myy; y++) {
-    for (int x=0; x<myx; x++) {
-      srcpUV[x] = filler.i;
-    }
-    srcpUV += pitch;
-  }
-
-  srcpUV = (int*)dst->GetWritePtr(PLANAR_V);
-  for (int y=0; y<myy; ++y) {
-    for (int x=0; x<myx; x++) {
-      srcpUV[x] = filler.i;
-    }
-    srcpUV += pitch;
-  }
   return dst;
 }
 
 
-AVSValue __cdecl SwapYToUV::CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapYToUV::CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
   return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), NULL , env);
 }
 
-AVSValue __cdecl SwapYToUV::CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapYToUV::CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
   return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), env);
 }
 
 
 SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), clip(_clip), clipY(_clipY) {
-
+  : GenericVideoFilter(_child), clip(_clip), clipY(_clipY)
+{
   if (!vi.IsYUV())
     env->ThrowError("YToUV: Only YUV data accepted");
 
-  VideoInfo vi2=clip->GetVideoInfo();
-  if (vi.height!=vi2.height)
+  const VideoInfo& vi2 = clip->GetVideoInfo();
+  if (vi.height != vi2.height)
     env->ThrowError("YToUV: Clips do not have the same height (U & V mismatch) !");
-  if (vi.width!=vi2.width)
+  if (vi.width != vi2.width)
     env->ThrowError("YToUV: Clips do not have the same width (U & V mismatch) !");
   if (vi.IsYUY2() != vi2.IsYUY2()) 
     env->ThrowError("YToUV: YUY2 Clips must have same colorspace (U & V mismatch) !");
 
-  if (clipY) {
-    VideoInfo vi3=clipY->GetVideoInfo();
-    if (vi.IsYUY2() != vi3.IsYUY2()) 
-      env->ThrowError("YToUV: YUY2 Clips must have same colorspace (UV & Y mismatch) !");
-
-    if (vi.IsYUY2()) {
-      if (vi3.height != vi.height)
-        env->ThrowError("YToUV: Y clip does not have the same height of the UV clips! (YUY2 mode)");
-
-      vi.width *= 2;
-      if (vi3.width!=vi.width)
-        env->ThrowError("YToUV: Y clip does not have the double width of the UV clips!");
-    }
-    else {  // Autogenerate destination colorformat
-      switch (vi.BytesFromPixels(1))
-      {
-      case 1: vi.pixel_type = VideoInfo::CS_YV12; break;// CS_Sub_Width_2 and CS_Sub_Height_2 are 0
-      case 2: vi.pixel_type = VideoInfo::CS_YUV420P16; break;
-      case 4: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
-      }
-
-      if (vi3.width == vi.width) {
-        vi.pixel_type |= VideoInfo::CS_Sub_Width_1;
-      }
-      else if (vi3.width == vi.width * 4) {
-        vi.pixel_type |= VideoInfo::CS_Sub_Width_4;
-        vi.width *= 4;
-      }
-      else if (vi3.width != vi.width * 2) {
-        env->ThrowError("YToUV: Video width ratio does not match any internal colorspace.");
-      }
-      else {
-        vi.width *= 2;
-      }
-       
-      if (vi3.height == vi.height) {
-        vi.pixel_type |= VideoInfo::CS_Sub_Height_1;
-      }
-      else if (vi3.height == vi.height * 4) {
-        vi.pixel_type |= VideoInfo::CS_Sub_Height_4;
-        vi.height *= 4;
-      }
-      else if (vi3.height != vi.height * 2) {
-        env->ThrowError("YToUV: Video height ratio does not match any internal colorspace.");
-      }
-      else {
-        vi.height *= 2;
-      }
-    }
-  }
-  else {
+  if (!clipY) {
     if (vi.IsYUY2())
-      vi.width <<= 1;
+      vi.width *= 2;
     else if (vi.IsY8())
       vi.pixel_type = VideoInfo::CS_YV24;
     else if (vi.IsColorSpace(VideoInfo::CS_Y16))
@@ -466,8 +399,103 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
       vi.pixel_type = VideoInfo::CS_YUV444PS;
     else {
       vi.height <<= vi.GetPlaneHeightSubsampling(PLANAR_U);
-      vi.width  <<= vi.GetPlaneWidthSubsampling(PLANAR_U);
+      vi.width <<= vi.GetPlaneWidthSubsampling(PLANAR_U);
     }
+    return;
+  }
+
+  const VideoInfo& vi3 = clipY->GetVideoInfo();
+  if (vi.IsYUY2() != vi3.IsYUY2()) 
+    env->ThrowError("YToUV: YUY2 Clips must have same colorspace (UV & Y mismatch) !");
+
+  if (vi.IsYUY2()) {
+    if (vi3.height != vi.height)
+      env->ThrowError("YToUV: Y clip does not have the same height of the UV clips! (YUY2 mode)");
+    vi.width *= 2;
+    if (vi3.width != vi.width)
+      env->ThrowError("YToUV: Y clip does not have the double width of the UV clips!");
+    return;
+  }
+
+  // Autogenerate destination colorformat
+  switch (vi.ComponentSize())
+  {
+  case 1: vi.pixel_type = VideoInfo::CS_YV12; break;// CS_Sub_Width_2 and CS_Sub_Height_2 are 0
+  case 2: vi.pixel_type = VideoInfo::CS_YUV420P16; break;
+  case 4: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
+  }
+
+  if (vi3.width == vi.width)
+    vi.pixel_type |= VideoInfo::CS_Sub_Width_1;
+  else if (vi3.width == vi.width * 2)
+    vi.width *= 2;
+  else if (vi3.width == vi.width * 4) {
+    vi.pixel_type |= VideoInfo::CS_Sub_Width_4;
+    vi.width *= 4;
+  }
+  else
+    env->ThrowError("YToUV: Video width ratio does not match any internal colorspace.");
+
+  if (vi3.height == vi.height)
+    vi.pixel_type |= VideoInfo::CS_Sub_Height_1;
+  else if (vi3.height == vi.height * 2)
+    vi.height *= 2;
+  else if (vi3.height == vi.height * 4) {
+    vi.pixel_type |= VideoInfo::CS_Sub_Height_4;
+    vi.height *= 4;
+  }
+  else
+    env->ThrowError("YToUV: Video height ratio does not match any internal colorspace.");
+}
+
+template <bool has_clipY>
+static void yuy2_ytouv_sse2(const BYTE* srcp_y, const BYTE* srcp_u, const BYTE* srcp_v, BYTE* dstp, int pitch_y, int pitch_u, int pitch_v, int dst_pitch, int dst_rowsize, int height)
+{
+  const __m128i mask = _mm_set1_epi16(0x00FF);
+  const __m128i zero = _mm_setzero_si128();
+  const __m128i fill = _mm_set1_epi16(0x007e);
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < dst_rowsize; x += 32) {
+      __m128i u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_u + x / 2));
+      __m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_v + x / 2));
+      __m128i uv = _mm_or_si128(_mm_and_si128(u, mask), _mm_slli_epi16(v, 8));
+      __m128i uv_lo = _mm_unpacklo_epi8(zero, uv);
+      __m128i uv_hi = _mm_unpackhi_epi8(zero, uv);
+      if (has_clipY) {
+        __m128i y_lo = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_y + x));
+        __m128i y_hi = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_y + x + 16));
+        uv_lo = _mm_or_si128(uv_lo, _mm_and_si128(y_lo, mask));
+        uv_hi = _mm_or_si128(uv_hi, _mm_and_si128(y_hi, mask));
+      }
+      else {
+        uv_lo = _mm_or_si128(uv_lo, fill);
+        uv_hi = _mm_or_si128(uv_hi, fill);
+      }
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), uv_lo);
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x + 16), uv_hi);
+    }
+    srcp_y += pitch_y;
+    srcp_u += pitch_u;
+    srcp_v += pitch_v;
+    dstp += dst_pitch;
+  }
+}
+
+template <bool has_clipY>
+static void yuy2_ytouv_c(const BYTE* src_y, const BYTE* src_u, const BYTE* src_v, BYTE* dstp, int pitch_y, int pitch_u, int pitch_v, int dst_pitch, int dst_rowsize, int height)
+{
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < dst_rowsize; x += 4) {
+      dstp[x + 0] = has_clipY ? src_y[x] : 0x7e;
+      dstp[x + 1] = src_u[x / 2];
+      dstp[x + 2] = has_clipY ? src_y[x + 2] : 0x7e;
+      dstp[x + 3] = src_v[x / 2];
+    }
+    src_y += pitch_y;
+    src_u += pitch_u;
+    src_v += pitch_v;
+    dstp += dst_pitch;
   }
 }
 
@@ -476,46 +504,35 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
   
   if (vi.IsYUY2()) {
-    const BYTE* srcpU = src->GetReadPtr();
-    const int srcUpitch = src->GetPitch();
-    
-    PVideoFrame srcV = clip->GetFrame(n, env);
-    const BYTE* srcpV = srcV->GetReadPtr();
-    const int srcVpitch = srcV->GetPitch();
-    
-    short* dstp = (short*)dst->GetWritePtr();
-    const int endx = dst->GetRowSize()>>1;
-    const int dstpitch = dst->GetPitch()>>1;
-    
+    const BYTE* srcp_u = src->GetReadPtr();
+    const int pitch_u = src->GetPitch();
+
+    PVideoFrame srcv = clip->GetFrame(n, env);
+    const BYTE* srcp_v = srcv->GetReadPtr();
+    const int pitch_v = srcv->GetPitch();
+
+    BYTE* dstp = dst->GetWritePtr();
+    const int rowsize = dst->GetRowSize();
+    const int dst_pitch = dst->GetPitch();
+
     if (clipY) {
-      PVideoFrame srcY = clipY->GetFrame(n, env);
-      const BYTE* srcpY = srcY->GetReadPtr();
-      const int srcYpitch = srcY->GetPitch();
-      
-      for (int y=0; y<vi.height; y++) {
-        for (int x = 0; x < endx; x+=2) {
-          dstp[x+0] = (srcpU[x] << 8) | srcpY[x*2+0];
-          dstp[x+1] = (srcpV[x] << 8) | srcpY[x*2+2];
-        }
-        srcpY += srcYpitch;
-        srcpU += srcUpitch;
-        srcpV += srcVpitch;
-        dstp += dstpitch;
-      }
+      PVideoFrame srcy = clipY->GetFrame(n, env);
+      const BYTE* srcp_y = srcy->GetReadPtr();
+      const int pitch_y = srcy->GetPitch();
+
+      if (env->GetCPUFlags() & CPUF_SSE2)
+        yuy2_ytouv_sse2<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
+      else
+        yuy2_ytouv_c<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
     }
-    else {
-      for (int y=0; y<vi.height; y++) {
-        for (int x = 0; x < endx; x+=2) {
-          dstp[x+0] = (srcpU[x] << 8) | 0x7e;  // Luma = 126
-          dstp[x+1] = (srcpV[x] << 8) | 0x7e;
-        }
-        srcpU += srcUpitch;
-        srcpV += srcVpitch;
-        dstp += dstpitch;
-      }
-    }
+    else if (env->GetCPUFlags() & CPUF_SSE2)
+      yuy2_ytouv_sse2<false>(nullptr, srcp_u, srcp_v, dstp, 0, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
+    else
+      yuy2_ytouv_c<false>(nullptr, srcp_u, srcp_v, dstp, 0, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
+
     return dst;
   }
+
   // Planar:
   env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U),
               src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
@@ -523,36 +540,26 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   src = clip->GetFrame(n, env);
   env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
               src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
-  
-  if (!clipY) {
-    // Luma = 126 (0x7e)
-    const int pitch = dst->GetPitch(PLANAR_Y)/4; // cycle is uint32_t
-    int *dstpY = (int*)dst->GetWritePtr(PLANAR_Y);
-    const int myx = (dst->GetRowSize(PLANAR_Y)+3)/4;
-    const int myy = dst->GetHeight(PLANAR_Y);
 
-    union {
-      int i;
-      float f;
-    } filler;
-
-    switch (vi.BytesFromPixels(1))
-    {
-    case 1: filler.i = 0x7e7e7e7e; break;
-    case 2: filler.i = 0x7e007e00; break;
-    case 4: filler.f = 126.0f/256.0; // float
-    }
-
-    for (int y=0; y<myy; y++) {
-      for (int x=0; x<myx; x++) {
-        dstpY[x] = filler.i;  // mod 4
-      }
-      dstpY += pitch;
-    }
-  } else {
+  if (clipY) {
     src = clipY->GetFrame(n, env);
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
                 src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
+    return dst;
   }
+
+  // Luma = 126 (0x7e)
+  BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
+  int rowsize = dst->GetRowSize(PLANAR_Y);
+  int pitch = dst->GetPitch(PLANAR_Y);
+
+  if (vi.ComponentSize() == 1)  // 8bit
+    fill_plane<BYTE>(dstp, rowsize, vi.height, pitch, 0x7e);
+  else if (vi.ComponentSize() == 2)  // 16bit
+    fill_plane<uint16_t>(dstp, rowsize, vi.height, pitch, 0x7e00);
+  else  // 32bit(float)
+    fill_plane<float>(dstp, rowsize, vi.height, pitch, 126.0f / 256);
+
   return dst;
 }
+
