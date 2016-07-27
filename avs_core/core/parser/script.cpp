@@ -236,13 +236,16 @@ extern const AVSFunction Script_functions[] = {
   { "LogMsg",              BUILTIN_FUNC_PREFIX, "si", LogMsg },
 
   { "IsY",       BUILTIN_FUNC_PREFIX, "c", IsY },
-  { "IsYUV420",  BUILTIN_FUNC_PREFIX, "c", IsYUV420 },
-  { "IsYUV422",  BUILTIN_FUNC_PREFIX, "c", IsYUV422 },
-  { "IsYUV444",  BUILTIN_FUNC_PREFIX, "c", IsYUV444 },
+  { "Is420",     BUILTIN_FUNC_PREFIX, "c", Is420 },
+  { "Is422",     BUILTIN_FUNC_PREFIX, "c", Is422 },
+  { "Is444",     BUILTIN_FUNC_PREFIX, "c", Is444 },
   { "IsRGB48",       BUILTIN_FUNC_PREFIX, "c", IsRGB48 },
   { "IsRGB64",       BUILTIN_FUNC_PREFIX, "c", IsRGB64 },
   { "ComponentSize", BUILTIN_FUNC_PREFIX, "c", ComponentSize },
   { "BitsPerComponent", BUILTIN_FUNC_PREFIX, "c", BitsPerComponent },
+  { "IsYUVA",       BUILTIN_FUNC_PREFIX, "c", IsYUVA },
+  { "IsPlanarRGB",  BUILTIN_FUNC_PREFIX, "c", IsPlanarRGB },
+  { "IsPlanarRGBA", BUILTIN_FUNC_PREFIX, "c", IsPlanarRGBA },
 
   { 0 }
 };
@@ -1109,11 +1112,14 @@ AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsY8(); }
-AVSValue IsYUV420(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV420(); }
-AVSValue IsYUV422(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV422(); }
-AVSValue IsYUV444(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV444(); }
+AVSValue Is420(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is420(); }
+AVSValue Is422(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is422(); }
+AVSValue Is444(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is444(); }
 AVSValue IsRGB48(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB48(); }
 AVSValue IsRGB64(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB64(); }
 AVSValue ComponentSize(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).ComponentSize(); }
 AVSValue BitsPerComponent(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BitsPerComponent(); }
+AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUVA(); }
+AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGB(); }
+AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA(); }
 

@@ -59,7 +59,7 @@
 bool VideoInfo::HasVideo() const { return (width!=0); }
 bool VideoInfo::HasAudio() const { return (audio_samples_per_second!=0); }
 bool VideoInfo::IsRGB() const { return !!(pixel_type&CS_BGR); }
-bool VideoInfo::IsRGB24() const { return ((pixel_type&CS_BGR24)==CS_BGR24) && ((pixel_type & CS_Sample_Bits_Mask) == CS_Sample_Bits_8); } // Clear out additional properties
+bool VideoInfo::IsRGB24() const { return ((pixel_type & CS_BGR24) == CS_BGR24) && ((pixel_type & CS_Sample_Bits_Mask) == CS_Sample_Bits_8); } // Clear out additional properties
 bool VideoInfo::IsRGB32() const { return ((pixel_type & CS_BGR32) == CS_BGR32) && ((pixel_type & CS_Sample_Bits_Mask) == CS_Sample_Bits_8); }
 bool VideoInfo::IsYUV() const { return !!(pixel_type&CS_YUV ); }
 bool VideoInfo::IsYUY2() const { return (pixel_type & CS_YUY2) == CS_YUY2; }
@@ -156,16 +156,28 @@ int VideoInfo::BytesFromPixels(int pixels) const {
 
 int VideoInfo::RowSize(int plane) const {
   const int rowsize = BytesFromPixels(width);
-  // todo: planar RGB
   switch (plane) {
     case PLANAR_U: case PLANAR_V:
-      return ((NumComponents() > 1) && IsPlanar()) ? rowsize>>GetPlaneWidthSubsampling(plane) : 0;
+      return ((NumComponents() > 1) && IsPlanar() && !IsPlanarRGB() && !IsPlanarRGBA()) ? rowsize>>GetPlaneWidthSubsampling(plane) : 0;
 
     case PLANAR_U_ALIGNED: case PLANAR_V_ALIGNED:
-      return ((NumComponents() > 1) && IsPlanar()) ? ((rowsize>>GetPlaneWidthSubsampling(plane))+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
+      return ((NumComponents() > 1) && IsPlanar() && !IsPlanarRGB() && !IsPlanarRGBA()) ? ((rowsize>>GetPlaneWidthSubsampling(plane))+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
 
-    case PLANAR_Y_ALIGNED:
+    case PLANAR_Y_ALIGNED: 
       return (rowsize+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
+    
+    case PLANAR_R: case PLANAR_G: case PLANAR_B: 
+        return ((NumComponents() > 1) && (IsPlanarRGB() || IsPlanarRGBA())) ? rowsize : 0;
+
+    case PLANAR_R_ALIGNED: case PLANAR_G_ALIGNED: case PLANAR_B_ALIGNED:
+        return IsPlanarRGB() || IsPlanarRGBA() ? (rowsize+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
+
+    case PLANAR_A:
+        return ((NumComponents() == 4) && IsPlanar()) ? rowsize : 0;
+
+    case PLANAR_A_ALIGNED: 
+        return ((NumComponents() == 4) && IsPlanar()) ? (rowsize+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
+ 
   }
   return rowsize;
 }
@@ -311,7 +323,9 @@ int VideoInfo::NumComponents() const {
   case CS_BGR64:
     return 4; // these are not planar but return the count
   default:
-    return 3; // YUV, planar RGB, 24/48 bit RGB
+      return (IsYUVA() || IsPlanarRGBA()) ? 4 : 3;
+      // 3: YUV, planar RGB, 24/48 bit RGB
+      // 4: YUVA and PlanarRGBA
   }
 }
 
@@ -345,12 +359,18 @@ int VideoInfo::BitsPerComponent() const {
 }
 
 // bit-depth independent helper functions instead of 8 bit specific IsYV24/16/12/8
-bool VideoInfo::IsYUV444()  const { return (pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUV444 & CS_PLANAR_FILTER); }
-bool VideoInfo::IsYUV422()  const { return (pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUV422 & CS_PLANAR_FILTER); }
-bool VideoInfo::IsYUV420()  const { return (pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUV420 & CS_PLANAR_FILTER); }
+bool VideoInfo::Is444()  const { return ((pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUV444 & CS_PLANAR_FILTER)) ||
+                                        ((pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUVA444 & CS_PLANAR_FILTER)) ; }
+bool VideoInfo::Is422()  const { return ((pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUV422 & CS_PLANAR_FILTER)) ||
+                                        ((pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUVA422 & CS_PLANAR_FILTER)); }
+bool VideoInfo::Is420()  const { return ((pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUV420 & CS_PLANAR_FILTER)) ||
+                                        ((pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_YUVA420 & CS_PLANAR_FILTER)); }
 bool VideoInfo::IsY()       const { return (pixel_type & CS_PLANAR_MASK & ~CS_Sample_Bits_Mask) == (CS_GENERIC_Y      & CS_PLANAR_FILTER); }
 bool VideoInfo::IsRGB48()   const { return ((pixel_type & CS_BGR24) == CS_BGR24) && ((pixel_type & CS_Sample_Bits_Mask) == CS_Sample_Bits_16); } // Clear out additional properties
 bool VideoInfo::IsRGB64()   const { return ((pixel_type & CS_BGR32) == CS_BGR32) && ((pixel_type & CS_Sample_Bits_Mask) == CS_Sample_Bits_16); }
+bool VideoInfo::IsYUVA() const { return !!(pixel_type&CS_YUVA ); }
+bool VideoInfo::IsPlanarRGB() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_BGR24); }
+bool VideoInfo::IsPlanarRGBA() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_BGR32); }
 
 
 // end struct VideoInfo
@@ -444,18 +464,27 @@ int VideoFrame::GetRowSize(int plane) const {
     }
     else return 0;
   case PLANAR_ALIGNED: case PLANAR_Y_ALIGNED:
+  case PLANAR_R_ALIGNED: case PLANAR_G_ALIGNED: case PLANAR_B_ALIGNED: case PLANAR_A_ALIGNED:
     const int r = (row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
     if (r<=pitch)
       return r;
     return row_size;
   }
-  return row_size; }
+  return row_size; // PLANAR_Y, PLANAR_G, PLANAR_B, PLANAR_R
+}
 
 int VideoFrame::GetHeight(int plane) const {  switch (plane) {case PLANAR_U: case PLANAR_V: if (pitchUV) return heightUV; return 0;} return height; }
 
 // Generally you should not be using these two
 VideoFrameBuffer* VideoFrame::GetFrameBuffer() const { return vfb; }
-int VideoFrame::GetOffset(int plane) const { switch (plane) {case PLANAR_U: return offsetU;case PLANAR_V: return offsetV;default: return offset;}; }
+int VideoFrame::GetOffset(int plane) const { 
+    switch (plane) {
+    case PLANAR_U: case PLANAR_B: return offsetU; // R is first. Then G,B in arbitrary order (from user's point of view).
+    case PLANAR_V: case PLANAR_R: return offsetV;
+    //case PLANAR_A: return offsetA;
+    default: return offset; // PLANAR Y, PLANAR_G
+    }; 
+}
 
 const BYTE* VideoFrame::GetReadPtr(int plane) const { return vfb->GetReadPtr() + GetOffset(plane); }
 
@@ -468,7 +497,7 @@ bool VideoFrame::IsWritable() const {
 }
 
 BYTE* VideoFrame::GetWritePtr(int plane) const {
-  if (!plane || plane == PLANAR_Y) {
+  if (!plane || plane == PLANAR_Y || plane == PLANAR_R) { // todo: check planar RGB order. Supposing R is first
     if (vfb->GetRefcount()>1) {
       _ASSERT(FALSE);
 //        throw AvisynthError("Internal Error - refcount was more than one!");
@@ -852,12 +881,15 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoInfo::NumComponents,                //   int     (VideoInfo::*NumChannels)() const;
   &VideoInfo::ComponentSize,                //   int     (VideoInfo::*ComponentSize)() const;
   &VideoInfo::BitsPerComponent,             //   int     (VideoInfo::*BitsPerComponent)() const;
-  &VideoInfo::IsYUV444,                     //   bool    (VideoInfo::*IsYUV444)()  const;
-  &VideoInfo::IsYUV422,                     //   bool    (VideoInfo::*IsYUV422)()  const;
-  &VideoInfo::IsYUV420,                     //   bool    (VideoInfo::*IsYUV420)()  const;
+  &VideoInfo::Is444,                        //   bool    (VideoInfo::*Is444)()  const;
+  &VideoInfo::Is422,                        //   bool    (VideoInfo::*Is422)()  const;
+  &VideoInfo::Is420,                        //   bool    (VideoInfo::*Is420)()  const;
   &VideoInfo::IsY,                          //   bool    (VideoInfo::*IsY)()    const;
   &VideoInfo::IsRGB48,                      //   bool    (VideoInfo::*IsRGB48)()  const;
-  &VideoInfo::IsRGB64                       //   bool    (VideoInfo::*IsRGB64)()  const;
+  &VideoInfo::IsRGB64,                      //   bool    (VideoInfo::*IsRGB64)()  const;
+  &VideoInfo::IsYUVA,                       //   bool    (VideoInfo::*IsYUVA)()  const;
+  &VideoInfo::IsPlanarRGB,                  //   bool    (VideoInfo::*IsPlanarRGB)()  const;
+  &VideoInfo::IsPlanarRGBA,                        //   bool    (VideoInfo::*IsPlanarRGBA)()  const;
 /**********************************************************************/
 };                                          // }
 
