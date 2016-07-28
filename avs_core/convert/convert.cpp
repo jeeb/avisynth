@@ -743,6 +743,39 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
 ******  Bitdepth conversions  *****
 **********************************/
 
+static void convert_planar_rgb_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
+    src_pitch = src_pitch / sizeof(uint16_t);
+    int src_width = src_rowsize / sizeof(uint16_t);
+    for(int y=0; y<src_height; y++)
+    { 
+        for (int x = 0; x < src_width; x++)
+        {
+            dstp[x] = srcp0[x] / 257; // RGB: full range 0..255 <-> 0..65535
+        }
+        dstp += dst_pitch;
+        srcp0 += src_pitch;
+    }
+}
+
+static void convert_packed_rgb_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
+    src_pitch = src_pitch / sizeof(uint16_t);
+    int src_width = src_rowsize / sizeof(uint16_t);
+    for(int y=0; y<src_height; y++)
+    { 
+        for (int x = 0; x < src_width; x++)
+        {
+            dstp[x] = srcp0[x] / 257; // RGB: full range 0..255 <-> 0..65535
+        }
+        dstp += dst_pitch;
+        srcp0 += src_pitch;
+    }
+}
+
+// YUV conversions (bit shifts)
 // BitDepthConvFuncPtr
 static void convert_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
@@ -850,7 +883,14 @@ ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _
 
   if (vi.ComponentSize() == 2) // 16->8 bit
   {
-    conv_function = convert_16_to_8_c;
+      if (vi.IsRGB48() || vi.IsRGB64())
+          conv_function = convert_packed_rgb_16_to_8_c;
+      else if (vi.IsPlanarRGB())
+          conv_function = convert_planar_rgb_16_to_8_c;
+      else if (vi.IsYUV())
+          conv_function = convert_16_to_8_c;
+      else
+          env->ThrowError("ConvertTo8bit: unsupported color space");
   } else if (vi.ComponentSize() == 4) // 32->8 bit
   {
     conv_function = convert_32_to_uintN_c<uint8_t>;
@@ -859,14 +899,20 @@ ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _
 
   if (vi.NumComponents() == 1)
     vi.pixel_type = VideoInfo::CS_Y8;
-  else if (vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS))
+  else if (vi.Is420())
     vi.pixel_type = VideoInfo::CS_YV12;
-  else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16) || vi.IsColorSpace(VideoInfo::CS_YUV422PS))
+  else if (vi.Is422())
     vi.pixel_type = VideoInfo::CS_YV16;
-  else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16) || vi.IsColorSpace(VideoInfo::CS_YUV444PS))
+  else if (vi.Is444())
     vi.pixel_type = VideoInfo::CS_YV24;
+  else if (vi.IsRGB48())
+      vi.pixel_type = VideoInfo::CS_BGR24;
+  else if (vi.IsRGB64())
+      vi.pixel_type = VideoInfo::CS_BGR32;
+  else if (vi.IsPlanarRGB())
+      vi.pixel_type = VideoInfo::CS_RGBP;
   else
-    env->ThrowError("ConvertTo8bit: unsupported color space");
+      env->ThrowError("ConvertTo8bit: unsupported color space");
 }
 
 
@@ -875,8 +921,8 @@ AVSValue __cdecl ConvertTo8bit::Create(AVSValue args, void*, IScriptEnvironment*
   
   const VideoInfo &vi = clip->GetVideoInfo();
 
-  if (!vi.IsPlanar())
-    env->ThrowError("ConvertTo8bit: Can only convert from Planar YUV.");
+  if (!vi.IsPlanar() && !vi.IsRGB())
+    env->ThrowError("ConvertTo8bit: Can only convert from Planar YUV/RGB or packed RGB.");
 
   if (vi.ComponentSize() == 1)
     return clip; // 8 bit -> 8 bit: no conversion
@@ -903,12 +949,23 @@ PVideoFrame __stdcall ConvertTo8bit::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  static const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-  for (int p = 0; p < vi.NumComponents(); ++p) {
-    const int plane = planes[p];
-    conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
-      src->GetRowSize(plane), src->GetHeight(plane),
-      src->GetPitch(plane), dst->GetPitch(plane), float_range /*, dither_mode */);
+  if(vi.IsPlanar())
+  {
+    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+    for (int p = 0; p < vi.NumComponents(); ++p) {
+        const int plane = planes[p];
+        conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
+            src->GetRowSize(plane), src->GetHeight(plane),
+            src->GetPitch(plane), dst->GetPitch(plane), float_range /*, dither_mode */);
+    }
+  }
+  else {
+      // packed RGBs
+      conv_function(src->GetReadPtr(), dst->GetWritePtr(),
+          src->GetRowSize(), src->GetHeight(),
+          src->GetPitch(), dst->GetPitch(), float_range /*, dither_mode */);
   }
 
   return dst;
