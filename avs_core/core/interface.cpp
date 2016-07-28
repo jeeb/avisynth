@@ -331,7 +331,6 @@ int VideoInfo::NumComponents() const {
 
 int VideoInfo::ComponentSize() const {
 // occupied bytes per one pixel component
-// packed rgb is special!
   if(IsPlanar()) {
     const int componentSizes[8] = {1,2,4,0,0,2,2,2};
     return componentSizes[(pixel_type >> CS_Shift_Sample_Bits) & 7];
@@ -341,7 +340,10 @@ int VideoInfo::ComponentSize() const {
     return 0;
   case CS_RAW32:
     return 4;
-  default: // yes, also 1 for packed BGR
+  case CS_BGR48:
+  case CS_BGR64:
+    return 2;
+  default: // YUY2, packed 8 bit BGRs
     return 1;
   }
 }
@@ -450,7 +452,7 @@ void VideoFrame::Release() {
     InterlockedDecrement(&_vfb->refcount);
 }
 
-int VideoFrame::GetPitch(int plane) const { switch (plane) {case PLANAR_U: case PLANAR_V: return pitchUV;} return pitch; }
+int VideoFrame::GetPitch(int plane) const { switch (plane) { case PLANAR_U: case PLANAR_V: return pitchUV; case PLANAR_A: return pitchA; } return pitch; }
 
 int VideoFrame::GetRowSize(int plane) const {
   switch (plane) {
