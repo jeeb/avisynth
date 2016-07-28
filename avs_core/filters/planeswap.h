@@ -82,8 +82,9 @@ public:
   static AVSValue __cdecl CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateUToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateVToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreatePlaneToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
 
-  enum {UToY=1, VToY, UToY8, VToY8, YUY2UToY8, YUY2VToY8};
+  enum {UToY=1, VToY, UToY8, VToY8, YUY2UToY8, YUY2VToY8, AToY8, RToY8, GToY8, BToY8, YToY8};
 
 private:
   int mode;
@@ -112,6 +113,5 @@ private:
   int mode;
   int test;
 };
-
 
 #endif  // __Planeswap_H__

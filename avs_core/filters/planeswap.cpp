@@ -57,6 +57,7 @@ extern const AVSFunction Swap_filters[] = {
   {  "VToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 },
   {  "YToUV",  BUILTIN_FUNC_PREFIX, "cc", SwapYToUV::CreateYToUV },
   {  "YToUV",  BUILTIN_FUNC_PREFIX, "ccc", SwapYToUV::CreateYToYUV },
+  {  "PlaneToY",  BUILTIN_FUNC_PREFIX, "c[plane]s", SwapUVToY::CreatePlaneToY8 },
   { 0 }
 };
 
@@ -248,19 +249,53 @@ AVSValue __cdecl SwapUVToY::CreateVToY8(AVSValue args, void* user_data, IScriptE
   return new SwapUVToY(clip, (clip->GetVideoInfo().IsYUY2()) ? YUY2VToY8 : VToY8, env);
 }
 
+AVSValue __cdecl SwapUVToY::CreatePlaneToY8(AVSValue args, void* user_data, IScriptEnvironment* env) {
+    PClip clip = args[0].AsClip();
+    const char* plane = args[1].AsString("");
+    int mode = 0;
+    // enum {UToY=1, VToY, UToY8, VToY8, YUY2UToY8, YUY2VToY8, AToY8, RToY8, GToY8, BToY8, YToY8};
+    if (!lstrcmpi(plane, "Y")) mode = YToY8;
+    else if (!lstrcmpi(plane, "U")) mode = clip->GetVideoInfo().IsYUY2() ? YUY2UToY8 : UToY8;
+    else if (!lstrcmpi(plane, "V")) mode = clip->GetVideoInfo().IsYUY2() ? YUY2VToY8 : VToY8;
+    else if (!lstrcmpi(plane, "A")) mode = AToY8;
+    else if (!lstrcmpi(plane, "R")) mode = RToY8;
+    else if (!lstrcmpi(plane, "G")) mode = GToY8;
+    else if (!lstrcmpi(plane, "B")) mode = BToY8;
+    else env->ThrowError("PlaneToY: Invalid plane!");
+
+    if (clip->GetVideoInfo().IsYUY2() && mode == YToY8)
+        env->ThrowError("PlaneToY: Y plane not allowed for YUY2!");
+
+    return new SwapUVToY(clip, mode, env);
+}
+
+
 SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   : GenericVideoFilter(_child), mode(_mode) {
 
-  if (!vi.IsYUV())
-    env->ThrowError("UVtoY: YUV data only!");
+  bool YUVmode = mode == YToY8 || mode == UToY8 || mode == VToY8 || mode == UToY || mode == VToY || mode == YUY2UToY8 || mode == YUY2VToY8;
+  bool YUVAmode = mode == YToY8 || mode == UToY8 || mode == VToY8;
+  bool RGBmode = mode == RToY8 || mode == GToY8 || mode == BToY8;
+  bool Alphamode = mode == AToY8;
+
+  if(!vi.IsYUVA() && !vi.IsPlanarRGBA() && Alphamode)
+      env->ThrowError("PlaneToY: Clip has no Alpha channel!");
+
+  if (!vi.IsYUV() && !vi.IsYUVA() && YUVmode )
+    env->ThrowError("PlaneToY: clip is not YUV!");
+
+  if (!vi.IsPlanarRGB() && RGBmode )
+      env->ThrowError("PlaneToY: clip is not planar RGB!");
 
   if (vi.NumComponents() == 1)
-    env->ThrowError("UVtoY: There are no chroma channels in Y8/Y16/Y32!");
+    env->ThrowError("PlaneToY: There are no chroma channels in Y8/Y16/Y32!");
 
-  vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
-  vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
+  if(YUVmode) {
+    vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
+    vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
+  }
 
-  if (mode == UToY8 || mode == VToY8)
+  if (mode == YToY8 || mode == UToY8 || mode == VToY8 || RGBmode || Alphamode)
   {
     switch (vi.BytesFromPixels(1)) // although name is Y8, it means that greyscale stays in the same bitdepth
     {
@@ -310,15 +345,22 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env) {
 
   // Planar
 
-  if (mode==UToY8) {
-    const int offset = src->GetOffset(PLANAR_U) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
-    // Abuse Subframe to snatch the U plane
-    return env->Subframe(src, offset, src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+  bool NonYUY2toY8 = true;
+  int target_plane, source_plane;
+  switch (mode) {
+  case YToY8: source_plane = PLANAR_Y; target_plane = PLANAR_Y; break;
+  case UToY8: source_plane = PLANAR_U; target_plane = PLANAR_Y; break;
+  case VToY8: source_plane = PLANAR_V; target_plane = PLANAR_Y; break;
+  case RToY8: source_plane = PLANAR_R; target_plane = PLANAR_G; break; // Planar RGB: GBR!
+  case GToY8: source_plane = PLANAR_G; target_plane = PLANAR_G; break; 
+  case BToY8: source_plane = PLANAR_B; target_plane = PLANAR_G; break; 
+  case AToY8: source_plane = PLANAR_A; target_plane = vi.IsYUVA() ? PLANAR_Y : PLANAR_G; break; // Planar RGB: GBR!
+  default: NonYUY2toY8 = false;
   }
-  else if (mode == VToY8) {
-    const int offset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
-    // Abuse Subframe to snatch the V plane
-    return env->Subframe(src, offset, src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  if (NonYUY2toY8) {
+      const int offset = src->GetOffset(source_plane) - src->GetOffset(target_plane); // very naughty - don't do this at home!!
+      // Abuse Subframe to snatch the U/V/R/G/B/A plane
+      return env->Subframe(src, offset, src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
