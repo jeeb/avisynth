@@ -678,7 +678,6 @@ public:
   // alpha support
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha);
   PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
-  // putting new functions here would break plugins using IScriptEnvirontment2
 
   /* IScriptEnvironment2 */
   virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const;
@@ -2060,7 +2059,10 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     case VideoInfo::CS_RGBAP14:
     case VideoInfo::CS_RGBAP16:
     case VideoInfo::CS_RGBAPS:
-        // planar YUVA 10-32 bit
+        // planar YUVA 8-32 bit
+    case VideoInfo::CS_YUVA420:
+    case VideoInfo::CS_YUVA422:
+    case VideoInfo::CS_YUVA444:
     case VideoInfo::CS_YUVA420P10:
     case VideoInfo::CS_YUVA422P10:
     case VideoInfo::CS_YUVA444P10:
