@@ -92,20 +92,40 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
 
     int pixelsize = vi.ComponentSize();
 
-    int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
+    int color_yuv = (mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
 
     union {
       uint32_t i;
       float f;
     } Cval;
 
-    int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+    bool isyuvlike = vi.IsYUV() || vi.IsYUVA();
+
+    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = isyuvlike ? planes_y : planes_r;
+
+    // color order: ARGB or AYUV
     for (int p = 0; p < vi.NumComponents(); p++)
     {
-      Cval.i = (color_yuv >> 16) & 0xff;
-      color_yuv <<= 8;
-
       int plane = planes[p];
+      if (isyuvlike) {
+          switch(plane) {
+          case PLANAR_A: Cval.i = (color >> 24) & 0xff; break;
+          case PLANAR_Y: Cval.i = (color_yuv >> 16) & 0xff; break;
+          case PLANAR_U: Cval.i = (color_yuv >> 8) & 0xff; break;
+          case PLANAR_V: Cval.i = color_yuv & 0xff; break;
+          }
+      } else {
+          // planar RGB
+          switch(plane) {
+          case PLANAR_A: Cval.i = (color >> 24) & 0xff; break;
+          case PLANAR_R: Cval.i = (color >> 16) & 0xff; break;
+          case PLANAR_G: Cval.i = (color >> 8) & 0xff; break;
+          case PLANAR_B: Cval.i = color & 0xff; break;
+          }
+      }
+
 
       BYTE *dstp = frame->GetWritePtr(plane);
       int size = frame->GetPitch(plane) * frame->GetHeight(plane);
@@ -186,6 +206,30 @@ static int PixelTypeFromName(const char *pixel_type_string) {
     else if (!lstrcmpi(pixel_type_string, "RGBP14")) return VideoInfo::CS_RGBP14;
     else if (!lstrcmpi(pixel_type_string, "RGBP16")) return VideoInfo::CS_RGBP16;
     else if (!lstrcmpi(pixel_type_string, "RGBPS")) return VideoInfo::CS_RGBPS;
+    else if (!lstrcmpi(pixel_type_string, "RGBAP")) return VideoInfo::CS_RGBP;
+    else if (!lstrcmpi(pixel_type_string, "RGBAP10")) return VideoInfo::CS_RGBAP10;
+    else if (!lstrcmpi(pixel_type_string, "RGBAP12")) return VideoInfo::CS_RGBAP12;
+    else if (!lstrcmpi(pixel_type_string, "RGBAP14")) return VideoInfo::CS_RGBAP14;
+    else if (!lstrcmpi(pixel_type_string, "RGBAP16")) return VideoInfo::CS_RGBAP16;
+    else if (!lstrcmpi(pixel_type_string, "RGBAPS")) return VideoInfo::CS_RGBAPS;
+    else if (!lstrcmpi(pixel_type_string, "YUVA420")) return VideoInfo::CS_YUVA420;
+    else if (!lstrcmpi(pixel_type_string, "YUVA420P10")) return VideoInfo::CS_YUVA420P10;
+    else if (!lstrcmpi(pixel_type_string, "YUVA420P12")) return VideoInfo::CS_YUVA420P12;
+    else if (!lstrcmpi(pixel_type_string, "YUVA420P14")) return VideoInfo::CS_YUVA420P14;
+    else if (!lstrcmpi(pixel_type_string, "YUVA420P16")) return VideoInfo::CS_YUVA420P16;
+    else if (!lstrcmpi(pixel_type_string, "YUVA420PS")) return VideoInfo::CS_YUVA420PS;
+    else if (!lstrcmpi(pixel_type_string, "YUVA422")) return VideoInfo::CS_YUVA422;
+    else if (!lstrcmpi(pixel_type_string, "YUVA422P10")) return VideoInfo::CS_YUVA422P10;
+    else if (!lstrcmpi(pixel_type_string, "YUVA422P12")) return VideoInfo::CS_YUVA422P12;
+    else if (!lstrcmpi(pixel_type_string, "YUVA422P14")) return VideoInfo::CS_YUVA422P14;
+    else if (!lstrcmpi(pixel_type_string, "YUVA422P16")) return VideoInfo::CS_YUVA422P16;
+    else if (!lstrcmpi(pixel_type_string, "YUVA422PS")) return VideoInfo::CS_YUVA422PS;
+    else if (!lstrcmpi(pixel_type_string, "YUVA444")) return VideoInfo::CS_YUVA444;
+    else if (!lstrcmpi(pixel_type_string, "YUVA444P10")) return VideoInfo::CS_YUVA444P10;
+    else if (!lstrcmpi(pixel_type_string, "YUVA444P12")) return VideoInfo::CS_YUVA444P12;
+    else if (!lstrcmpi(pixel_type_string, "YUVA444P14")) return VideoInfo::CS_YUVA444P14;
+    else if (!lstrcmpi(pixel_type_string, "YUVA444P16")) return VideoInfo::CS_YUVA444P16;
+    else if (!lstrcmpi(pixel_type_string, "YUVA444PS")) return VideoInfo::CS_YUVA444PS;
     else {
         return VideoInfo::CS_UNKNOWN;
     }
@@ -263,6 +307,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
               "\"RGB48\",\"RGB64\",\"RGBP\",\"RGBP?\",\n"\
               "\"YV411\" or \"YUY2\"");
       }
+      vi.pixel_type = pixel_type;
   }
   else {
     vi.pixel_type = vi_default.pixel_type;
@@ -330,11 +375,11 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   if (args[11].Defined()) {
     if (color != 0) // Not quite 100% test
       env->ThrowError("BlankClip: color and color_yuv are mutually exclusive");
-    if (!vi.IsYUV())
+    if (!vi.IsYUV() && !vi.IsYUVA())
       env->ThrowError("BlankClip: color_yuv only valid for YUV color spaces");
     color = args[11].AsInt();
     mode=COLOR_MODE_YUV;
-    if ((unsigned)color > 0xffffff)
+    if (!vi.IsYUVA() && (unsigned)color > 0xffffff)
       env->ThrowError("BlankClip: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
