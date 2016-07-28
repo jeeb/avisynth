@@ -44,6 +44,7 @@
 #include <new>
 #include <cassert>
 #include <stdint.h>
+#include <algorithm>
 
 /********************************************************************
 ********************************************************************/
@@ -87,6 +88,9 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
   if (!vi.HasVideo()) return 0;
 
   PVideoFrame frame = env->NewVideoFrame(vi);
+
+  // RGB 8->16 bit: not << 8 like YUV but 0..255 -> 0..65535
+  auto rgbcolor8to16 = [](uint8_t color8) { return (uint16_t)color8 * 257; };
 
   if (vi.IsPlanar()) {
 
@@ -165,6 +169,28 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
   } else if (vi.IsRGB32()) {
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = color;
+  } else if (vi.IsRGB48()) {
+      const uint16_t clr0  = rgbcolor8to16(color & 0xFF);
+      uint16_t r = rgbcolor8to16((color >> 16) & 0xFF);
+      uint16_t g = rgbcolor8to16((color >> 8 ) & 0xFF);
+      const uint32_t clr1 = (r << 16) + (g);
+      const int gr = frame->GetRowSize() / sizeof(uint16_t);
+      const int gp = frame->GetPitch() / sizeof(uint16_t);
+      uint16_t* p16 = reinterpret_cast<uint16_t*>(p);
+      for (int y=frame->GetHeight();y>0;y--) {
+          for (int i=0; i<gr; i+=3) {
+              p16[i] = clr0;   // b
+              *reinterpret_cast<uint32_t*>(p16+i+1) = clr1; // gr
+          }
+          p16 += gp;
+      }
+  } else if (vi.IsRGB64()) {
+      uint64_t r = rgbcolor8to16((color >> 16) & 0xFF);
+      uint64_t g = rgbcolor8to16((color >> 8 ) & 0xFF);
+      uint64_t b = rgbcolor8to16((color      ) & 0xFF);
+      uint64_t a = rgbcolor8to16((color >> 24) & 0xFF);
+      uint64_t color64 = (a << 48) + (r << 32) + (g << 16) + (b);
+      std::fill_n(reinterpret_cast<uint64_t*>(p), size / sizeof(uint64_t), color64);
   }
   return frame;
 }
