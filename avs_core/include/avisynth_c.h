@@ -342,7 +342,7 @@ AVSC_INLINE int avs_is_rgb24(const AVS_VideoInfo * p)
         { return ((p->pixel_type&AVS_CS_BGR24)==AVS_CS_BGR24) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_8); }
 
 AVSC_INLINE int avs_is_rgb32(const AVS_VideoInfo * p)
-       { return ((p->pixel_type&AVS_CS_BGR24)==AVS_CS_BGR32) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_8); }
+       { return ((p->pixel_type&AVS_CS_BGR32)==AVS_CS_BGR32) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_8); }
 
 AVSC_INLINE int avs_is_yuv(const AVS_VideoInfo * p)
         { return !!(p->pixel_type&AVS_CS_YUV ); }
