@@ -193,7 +193,7 @@ int VideoInfo::BMPSize() const {
 }
 
 int VideoInfo::GetPlaneWidthSubsampling(int plane) const {  // Subsampling in bitshifts!
-  if (plane == PLANAR_Y)  // No subsampling
+  if (plane == PLANAR_Y || plane == PLANAR_R || plane == PLANAR_G || plane == PLANAR_B || plane == PLANAR_A)  // No subsampling
     return 0;
   if (NumComponents() == 1)
     throw AvisynthError("Filter error: GetPlaneWidthSubsampling not available on greyscale pixel type.");
@@ -209,7 +209,7 @@ int VideoInfo::GetPlaneWidthSubsampling(int plane) const {  // Subsampling in bi
 }
 
 int VideoInfo::GetPlaneHeightSubsampling(int plane) const {  // Subsampling in bitshifts!
-  if (plane == PLANAR_Y)  // No subsampling
+  if (plane == PLANAR_Y || plane == PLANAR_R || plane == PLANAR_G || plane == PLANAR_B || plane == PLANAR_A)  // No subsampling
     return 0;
   if (NumComponents() == 1)
     throw AvisynthError("Filter error: GetPlaneHeightSubsampling not available on greyscale pixel type.");
@@ -499,7 +499,7 @@ bool VideoFrame::IsWritable() const {
 }
 
 BYTE* VideoFrame::GetWritePtr(int plane) const {
-  if (!plane || plane == PLANAR_Y || plane == PLANAR_R) { // todo: check planar RGB order. Supposing R is first
+  if (!plane || plane == PLANAR_Y || plane == PLANAR_G) { // planar RGB order GBR
     if (vfb->GetRefcount()>1) {
       _ASSERT(FALSE);
 //        throw AvisynthError("Internal Error - refcount was more than one!");
