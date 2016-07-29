@@ -171,10 +171,10 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
 {
   if (!alpha_calcs) return;
 
-  if (vi.IsRGB32())
-    ApplyRGB32((*frame)->GetWritePtr(), pitch);
-  else if (vi.IsRGB24())
-    ApplyRGB24((*frame)->GetWritePtr(), pitch);
+  if (vi.IsRGB32() || vi.IsRGB64())
+    ApplyRGB32_64((*frame)->GetWritePtr(), pitch, vi.ComponentSize());
+  else if (vi.IsRGB24() || vi.IsRGB48())
+    ApplyRGB24_48((*frame)->GetWritePtr(), pitch, vi.ComponentSize());
   else if (vi.IsYUY2())
     ApplyYUY2((*frame)->GetWritePtr(), pitch);
   else if (vi.IsYV12()) // YUV420 16/32 bit goes to generic path
@@ -184,14 +184,25 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
               (*frame)->GetWritePtr(PLANAR_V) );
   else if (vi.NumComponents() == 1) // Y8, Y16, Y32
     ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0, vi.ComponentSize());
-  else if (vi.IsPlanar())
-    ApplyPlanar((*frame)->GetWritePtr(), pitch,
-                (*frame)->GetPitch(PLANAR_U),
-                (*frame)->GetWritePtr(PLANAR_U),
-                (*frame)->GetWritePtr(PLANAR_V),
-                vi.GetPlaneWidthSubsampling(PLANAR_U),
-                vi.GetPlaneHeightSubsampling(PLANAR_U),
-                vi.ComponentSize() );
+  else if (vi.IsPlanar()) {
+      if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+          // color are OK if plane order is sent as G R B
+        ApplyPlanar((*frame)->GetWritePtr(PLANAR_G), pitch,
+            (*frame)->GetPitch(PLANAR_G),
+            (*frame)->GetWritePtr(PLANAR_R),
+            (*frame)->GetWritePtr(PLANAR_B),
+            vi.GetPlaneWidthSubsampling(PLANAR_G),  // no subsampling
+            vi.GetPlaneHeightSubsampling(PLANAR_G),
+            vi.ComponentSize() );
+      else
+        ApplyPlanar((*frame)->GetWritePtr(), pitch,
+                    (*frame)->GetPitch(PLANAR_U),
+                    (*frame)->GetWritePtr(PLANAR_U),
+                    (*frame)->GetWritePtr(PLANAR_V),
+                    vi.GetPlaneWidthSubsampling(PLANAR_U),
+                    vi.GetPlaneHeightSubsampling(PLANAR_U),
+                    vi.ComponentSize());
+  }
 }
 
 
@@ -417,42 +428,79 @@ void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
 }
 
 
-void Antialiaser::ApplyRGB24(BYTE* buf, int pitch) {
+void Antialiaser::ApplyRGB24_48(BYTE* buf, int pitch, int pixelsize) {
   if (dirty) GetAlphaRect();
   unsigned short* alpha = alpha_calcs + yb*w*4;
   buf  += pitch*(h-yb-1);
 
-  for (int y=yb; y<=yt; ++y) {
-    for (int x=xl; x<=xr; ++x) {
-      const int basealpha = alpha[x*4+0];
-      if (basealpha != 256) {
-        buf[x*3+0] = BYTE((buf[x*3+0] * basealpha + alpha[x*4+1]) >> 8);
-        buf[x*3+1] = BYTE((buf[x*3+1] * basealpha + alpha[x*4+2]) >> 8);
-        buf[x*3+2] = BYTE((buf[x*3+2] * basealpha + alpha[x*4+3]) >> 8);
+  if(pixelsize==1)
+  {
+      for (int y=yb; y<=yt; ++y) {
+        for (int x=xl; x<=xr; ++x) {
+          const int basealpha = alpha[x*4+0];
+          if (basealpha != 256) {
+            buf[x*3+0] = BYTE((buf[x*3+0] * basealpha + alpha[x*4+1]) >> 8);
+            buf[x*3+1] = BYTE((buf[x*3+1] * basealpha + alpha[x*4+2]) >> 8);
+            buf[x*3+2] = BYTE((buf[x*3+2] * basealpha + alpha[x*4+3]) >> 8);
+          }
+        }
+        buf -= pitch;
+        alpha += w*4;
       }
-    }
-    buf -= pitch;
-    alpha += w*4;
+  }
+  else {
+      // pixelsize == 2
+      for (int y=yb; y<=yt; ++y) {
+          for (int x=xl; x<=xr; ++x) {
+              const int basealpha = alpha[x*4+0];
+              if (basealpha != 256) {
+                  reinterpret_cast<uint16_t *>(buf)[x*3+0] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x*3+0] * basealpha + ((int)alpha[x*4+1] << 8)) >> 8);
+                  reinterpret_cast<uint16_t *>(buf)[x*3+1] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x*3+1] * basealpha + ((int)alpha[x*4+2] << 8)) >> 8);
+                  reinterpret_cast<uint16_t *>(buf)[x*3+2] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x*3+2] * basealpha + ((int)alpha[x*4+3] << 8)) >> 8);
+              }
+          }
+          buf -= pitch;
+          alpha += w*4;
+      }
   }
 }
 
 
-void Antialiaser::ApplyRGB32(BYTE* buf, int pitch) {
+void Antialiaser::ApplyRGB32_64(BYTE* buf, int pitch, int pixelsize) {
   if (dirty) GetAlphaRect();
   unsigned short* alpha = alpha_calcs + yb*w*4;
   buf  += pitch*(h-yb-1);
 
-  for (int y=yb; y<=yt; ++y) {
-    for (int x=xl; x<=xr; ++x) {
-      const int basealpha = alpha[x*4+0];
-      if (basealpha != 256) {
-        buf[x*4+0] = BYTE((buf[x*4+0] * basealpha + alpha[x*4+1]) >> 8);
-        buf[x*4+1] = BYTE((buf[x*4+1] * basealpha + alpha[x*4+2]) >> 8);
-        buf[x*4+2] = BYTE((buf[x*4+2] * basealpha + alpha[x*4+3]) >> 8);
+  if(pixelsize==1)
+  {
+      for (int y=yb; y<=yt; ++y) {
+        for (int x=xl; x<=xr; ++x) {
+          const int basealpha = alpha[x*4+0];
+          if (basealpha != 256) {
+            buf[x*4+0] = BYTE((buf[x*4+0] * basealpha + alpha[x*4+1]) >> 8);
+            buf[x*4+1] = BYTE((buf[x*4+1] * basealpha + alpha[x*4+2]) >> 8);
+            buf[x*4+2] = BYTE((buf[x*4+2] * basealpha + alpha[x*4+3]) >> 8);
+          }
+        }
+        buf -= pitch;
+        alpha += w*4;
       }
-    }
-    buf -= pitch;
-    alpha += w*4;
+  }
+  else {
+      // pixelsize == 2
+      for (int y=yb; y<=yt; ++y) {
+          for (int x=xl; x<=xr; ++x) {
+              const int basealpha = alpha[x*4+0];
+              if (basealpha != 256) {
+                  reinterpret_cast<uint16_t *>(buf)[x*4+0] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x*4+0] * basealpha + ((int)alpha[x*4+1] << 8)) >> 8);
+                  reinterpret_cast<uint16_t *>(buf)[x*4+1] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x*4+1] * basealpha + ((int)alpha[x*4+2] << 8)) >> 8);
+                  reinterpret_cast<uint16_t *>(buf)[x*4+2] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x*4+2] * basealpha + ((int)alpha[x*4+3] << 8)) >> 8);
+              }
+          }
+          buf -= pitch;
+          alpha += w*4;
+      }
+
   }
 }
 
@@ -1202,6 +1250,22 @@ const char* const t_YUV422PS="YUV422PS";
 const char* const t_YUV444PS="YUV444PS";
 const char* const t_Y32="Y32";
 
+const char* const t_YUVA420P10="YUVA420P10";
+const char* const t_YUVA422P10="YUVA422P10";
+const char* const t_YUVA444P10="YUVA444P10";
+const char* const t_YUVA420P12="YUVA420P12";
+const char* const t_YUVA422P12="YUVA422P12";
+const char* const t_YUVA444P12="YUVA444P12";
+const char* const t_YUVA420P14="YUVA420P14";
+const char* const t_YUVA422P14="YUVA422P14";
+const char* const t_YUVA444P14="YUVA444P14";
+const char* const t_YUVA420P16="YUVA420P16";
+const char* const t_YUVA422P16="YUVA422P16";
+const char* const t_YUVA444P16="YUVA444P16";
+const char* const t_YUVA420PS="YUVA420PS";
+const char* const t_YUVA422PS="YUVA422PS";
+const char* const t_YUVA444PS="YUVA444PS";
+
 const char* const t_RGB48="RGB48";
 const char* const t_RGB64="RGB64";
 
@@ -1211,6 +1275,13 @@ const char* const t_RGBP12="RGBP12";
 const char* const t_RGBP14="RGBP14";
 const char* const t_RGBP16="RGBP16";
 const char* const t_RGBPS="RGBPS";
+
+const char* const t_RGBAP="RGBAP";
+const char* const t_RGBAP10="RGBAP10";
+const char* const t_RGBAP12="RGBAP12";
+const char* const t_RGBAP14="RGBAP14";
+const char* const t_RGBAP16="RGBAP16";
+const char* const t_RGBAPS="RGBAPS";
 
 const char* const t_INT8="Integer 8 bit";
 const char* const t_INT16="Integer 16 bit";
@@ -1318,14 +1389,39 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       else if (vii.IsColorSpace(VideoInfo::CS_YUV422PS)) c_space=t_YUV422PS;
       else if (vii.IsColorSpace(VideoInfo::CS_YUV444PS)) c_space=t_YUV444PS;
       else if (vii.IsColorSpace(VideoInfo::CS_Y32)) c_space=t_Y32;
+
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P10)) c_space=t_YUVA420P10;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P10)) c_space=t_YUVA422P10;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P10)) c_space=t_YUVA444P10;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P12)) c_space=t_YUVA420P12;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P12)) c_space=t_YUVA422P12;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P12)) c_space=t_YUVA444P12;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P14)) c_space=t_YUVA420P14;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P14)) c_space=t_YUVA422P14;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P14)) c_space=t_YUVA444P14;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P16)) c_space=t_YUVA420P16;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P16)) c_space=t_YUVA422P16;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P16)) c_space=t_YUVA444P16;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420PS)) c_space=t_YUVA420PS;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422PS)) c_space=t_YUVA422PS;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444PS)) c_space=t_YUVA444PS;
+
       else if (vii.IsColorSpace(VideoInfo::CS_BGR48)) c_space=t_RGB48;
       else if (vii.IsColorSpace(VideoInfo::CS_BGR64)) c_space=t_RGB64;
+
       else if (vii.IsColorSpace(VideoInfo::CS_RGBP)) c_space=t_RGBP;
       else if (vii.IsColorSpace(VideoInfo::CS_RGBP10)) c_space=t_RGBP10;
       else if (vii.IsColorSpace(VideoInfo::CS_RGBP12)) c_space=t_RGBP12;
       else if (vii.IsColorSpace(VideoInfo::CS_RGBP14)) c_space=t_RGBP14;
       else if (vii.IsColorSpace(VideoInfo::CS_RGBP16)) c_space=t_RGBP16;
       else if (vii.IsColorSpace(VideoInfo::CS_RGBPS)) c_space=t_RGBPS;
+
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP)) c_space=t_RGBAP;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP10)) c_space=t_RGBAP10;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP12)) c_space=t_RGBAP12;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP14)) c_space=t_RGBAP14;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP16)) c_space=t_RGBAP16;
+      else if (vii.IsColorSpace(VideoInfo::CS_RGBAPS)) c_space=t_RGBAPS;
 
       if (vii.IsFieldBased()) {
         if (child->GetParity(n)) {
@@ -1478,10 +1574,10 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
       case 'r':
       case 'R': mask |= 0x00ff0000; break;
       case 'a':
-      case 'A': mask |= 0xff000000; if (vi.IsRGB32()) break; // else fall thru
+      case 'A': mask |= 0xff000000; if (vi.IsRGB32() || vi.IsRGB64()) break; // else fall thru
       default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
       }
-      if (vi.IsRGB24()) mask &= 0x00ffffff;   // no alpha channel in RGB24
+      if (vi.IsRGB24() || vi.IsRGB48()) mask &= 0x00ffffff;   // no alpha channel in RGB24
     } else if (vi.IsPlanar()) {
       switch (channels[i]) {
       case 'y':
