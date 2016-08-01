@@ -1553,7 +1553,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
   if (!(vi.IsRGB24() || vi.IsYUY2() || vi.IsRGB32() || vi.IsPlanar() || vi.IsRGB48() || vi.IsRGB64()))
     env->ThrowError("Compare: Clips have unknown pixel format. RGB24/32/48/64, YUY2 and YUV/RGB Planar supported.");
 
-  if (!vi.ComponentSize() == 4)
+  if (vi.ComponentSize() == 4)
       env->ThrowError("Compare: Float pixel format not supported.");
 
   if (channels[0] == 0) {
