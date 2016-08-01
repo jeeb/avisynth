@@ -1553,7 +1553,9 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
   if (!(vi.IsRGB24() || vi.IsYUY2() || vi.IsRGB32() || vi.IsPlanar() || vi.IsRGB48() || vi.IsRGB64()))
     env->ThrowError("Compare: Clips have unknown pixel format. RGB24/32/48/64, YUY2 and YUV/RGB Planar supported.");
 
-  if (vi.ComponentSize() == 4)
+  pixelsize = vi.ComponentSize();
+
+  if (pixelsize == 4)
       env->ThrowError("Compare: Float pixel format not supported.");
 
   if (channels[0] == 0) {
@@ -1656,7 +1658,7 @@ Compare::~Compare()
     fprintf(log,"Mean Absolute Deviation: %9.4f %9.4f %9.4f\n", MAD_min, MAD_tot/framecount, MAD_max);
     fprintf(log,"         Mean Deviation: %+9.4f %+9.4f %+9.4f\n", MD_min, MD_tot/framecount, MD_max);
     fprintf(log,"                   PSNR: %9.4f %9.4f %9.4f\n", PSNR_min, PSNR_tot/framecount, PSNR_max);
-    double factor = vi.ComponentSize() == 1 ? 255.0 : 65536.0;
+    double factor = pixelsize == 1 ? 255.0 : 65535.0;
     double PSNR_overall = 10.0 * log10(bytecount_overall * factor * factor / SSD_overall);
     fprintf(log,"           Overall PSNR: %9.4f\n", PSNR_overall);
     fclose(log);
@@ -1997,8 +1999,6 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
   double SSD = 0;
 
   int bytecount = 0;
-
-  int pixelsize = vi.ComponentSize();
 
   const int incr = (vi.IsRGB24() || vi.IsRGB48()) ? 3 : 4;
 

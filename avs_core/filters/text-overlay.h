@@ -200,6 +200,7 @@ private:
   double bytecount_overall, SSD_overall;
   int framecount;
   int planar_plane;
+  int pixelsize;
 
 };
 
