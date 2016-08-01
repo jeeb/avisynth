@@ -1538,7 +1538,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     child2(_child2),
     log(NULL),
     show_graph(_show_graph),
-    antialiaser(vi.width, vi.height, "Courier New", 128, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0),
+    antialiaser(vi.width, vi.height, "Courier New", 128, (vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00, (vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
     framecount(0)
 {
   const VideoInfo& vi2 = child2->GetVideoInfo();
@@ -1656,7 +1656,8 @@ Compare::~Compare()
     fprintf(log,"Mean Absolute Deviation: %9.4f %9.4f %9.4f\n", MAD_min, MAD_tot/framecount, MAD_max);
     fprintf(log,"         Mean Deviation: %+9.4f %+9.4f %+9.4f\n", MD_min, MD_tot/framecount, MD_max);
     fprintf(log,"                   PSNR: %9.4f %9.4f %9.4f\n", PSNR_min, PSNR_tot/framecount, PSNR_max);
-    double PSNR_overall = 10.0 * log10(bytecount_overall * 255.0 * 255.0 / SSD_overall);
+    double factor = vi.ComponentSize() == 1 ? 255.0 : 65536.0;
+    double PSNR_overall = 10.0 * log10(bytecount_overall * factor * factor / SSD_overall);
     fprintf(log,"           Overall PSNR: %9.4f\n", PSNR_overall);
     fclose(log);
   }
@@ -1994,7 +1995,6 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
   int pos_D = 0;
   int neg_D = 0;
   double SSD = 0;
-  //int row_SSD;
 
   int bytecount = 0;
 
@@ -2103,9 +2103,12 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     SSD_overall += SSD;  
   }
 
-  if (log)
-    fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", (unsigned int)n, MAD, MD, pos_D, neg_D, PSNR);
-  else {
+  if (log) {
+    if (pixelsize == 1)
+      fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", (unsigned int)n, MAD, MD, pos_D, neg_D, PSNR);
+    else
+      fprintf(log,"%6u  %11.4f  %+12.4f  %7d    %7d    %8.4f\n", (unsigned int)n, MAD, MD, pos_D, neg_D, PSNR);
+  } else {
     env->MakeWritable(&f1);
     BYTE* dstp = f1->GetWritePtr();
     int dst_pitch = f1->GetPitch();
@@ -2113,7 +2116,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     HDC hdc = antialiaser.GetDC();
     if (hdc) {
         char text[600];
-        RECT r = { 32, 16, min((51+12)*67,vi.width * 8), 768 + 128 }; // orig: 3440: 51*67, not enough for 16 bit data
+        RECT r = { 32, 16, min((51+(pixelsize==1 ? 0: 12))*67,vi.width * 8), 768 + 128 }; // orig: 3440: 51*67, not enough for 16 bit data
         double PSNR_overall = 10.0 * log10(bytecount_overall * factor * factor / SSD_overall);
         if (pixelsize == 1)
             _snprintf(text, sizeof(text),
