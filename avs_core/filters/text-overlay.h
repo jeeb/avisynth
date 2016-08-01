@@ -38,6 +38,7 @@
 #include <avisynth.h>
 #include <avs/win.h>
 #include <cstdio>
+#include <stdint.h>
 
 
 /********************************************************************
@@ -188,6 +189,7 @@ private:
   Antialiaser antialiaser;
   PClip child2;
   DWORD mask;
+  uint64_t mask64;
   int masked_bytes;
   FILE* log;
   int* psnrs;
