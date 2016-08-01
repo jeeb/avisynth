@@ -444,10 +444,14 @@ enum {
     | CS_Sub_Height_Mask | CS_Sub_Width_Mask,
     CS_PLANAR_FILTER     = ~( CS_VPlaneFirst | CS_UPlaneFirst ),
 
+    CS_RGB_TYPE  = 1 << 0,
+    CS_RGBA_TYPE = 1 << 1,
+
     // Specific colorformats
     CS_UNKNOWN = 0,
-    CS_BGR24 = 1<<0 | CS_BGR | CS_INTERLEAVED,
-    CS_BGR32 = 1<<1 | CS_BGR | CS_INTERLEAVED,
+
+    CS_BGR24 = CS_RGB_TYPE  | CS_BGR | CS_INTERLEAVED,
+    CS_BGR32 = CS_RGBA_TYPE | CS_BGR | CS_INTERLEAVED,
     CS_YUY2  = 1<<2 | CS_YUV | CS_INTERLEAVED,
     //  CS_YV12  = 1<<3  Reserved
     //  CS_I420  = 1<<4  Reserved
@@ -460,8 +464,8 @@ enum {
     CS_GENERIC_YUV422  = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2,  // 4:2:2 planar
     CS_GENERIC_YUV444  = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1,  // 4:4:4 planar
     CS_GENERIC_Y       = CS_PLANAR | CS_INTERLEAVED | CS_YUV,                                     // Y only (4:0:0)
-    CS_GENERIC_RGBP    = CS_PLANAR | CS_BGR | 1<<0,                                               // planar RGB. Though name is RGB but plane order G,B,R
-    CS_GENERIC_RGBAP   = CS_PLANAR | CS_BGR | 1<<1,                                               // planar RGBA
+    CS_GENERIC_RGBP    = CS_PLANAR | CS_BGR | CS_RGB_TYPE,                                        // planar RGB. Though name is RGB but plane order G,B,R
+    CS_GENERIC_RGBAP   = CS_PLANAR | CS_BGR | CS_RGBA_TYPE,                                       // planar RGBA
     CS_GENERIC_YUVA420 = CS_PLANAR | CS_YUVA | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // 4:2:0:A planar
     CS_GENERIC_YUVA422 = CS_PLANAR | CS_YUVA | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // 4:2:2:A planar
     CS_GENERIC_YUVA444 = CS_PLANAR | CS_YUVA | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // 4:4:4:A planar
@@ -507,8 +511,8 @@ enum {
     CS_Y32 = CS_GENERIC_Y | CS_Sample_Bits_32,            // Y   4:0:0 32bit samples
 
     // RGB packed
-    CS_BGR48 = 1<<0 | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16, // BGR 3x16 bit
-    CS_BGR64 = 1<<1 | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16, // BGR 4x16 bit
+    CS_BGR48 = CS_RGB_TYPE  | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16, // BGR 3x16 bit
+    CS_BGR64 = CS_RGBA_TYPE | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16, // BGR 4x16 bit
     // no packed 32 bit (float) support for these legacy types
 
     // RGB planar

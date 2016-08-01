@@ -371,8 +371,8 @@ bool VideoInfo::IsY()       const { return (pixel_type & CS_PLANAR_MASK & ~CS_Sa
 bool VideoInfo::IsRGB48()   const { return ((pixel_type & CS_BGR24) == CS_BGR24) && ((pixel_type & CS_Sample_Bits_Mask) == CS_Sample_Bits_16); } // Clear out additional properties
 bool VideoInfo::IsRGB64()   const { return ((pixel_type & CS_BGR32) == CS_BGR32) && ((pixel_type & CS_Sample_Bits_Mask) == CS_Sample_Bits_16); }
 bool VideoInfo::IsYUVA() const { return !!(pixel_type&CS_YUVA ); }
-bool VideoInfo::IsPlanarRGB() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_BGR24); }
-bool VideoInfo::IsPlanarRGBA() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_BGR32); }
+bool VideoInfo::IsPlanarRGB() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_RGB_TYPE); }
+bool VideoInfo::IsPlanarRGBA() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_RGBA_TYPE); }
 
 
 // end struct VideoInfo

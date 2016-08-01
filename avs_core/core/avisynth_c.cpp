@@ -127,10 +127,10 @@ int AVSC_CC avs_is_yuva(const AVS_VideoInfo * p)
 { return !!(p->pixel_type&AVS_CS_YUVA ); }
 
 int AVSC_CC avs_is_planar_rgb(const AVS_VideoInfo * p)
-{ return !!(p->pixel_type&AVS_CS_PLANAR) && !!(p->pixel_type&AVS_CS_BGR) && !!(p->pixel_type&AVS_CS_BGR24); }
+{ return !!(p->pixel_type&AVS_CS_PLANAR) && !!(p->pixel_type&AVS_CS_BGR) && !!(p->pixel_type&AVS_CS_RGB_TYPE); }
 
 int AVSC_CC avs_is_planar_rgba(const AVS_VideoInfo * p)
-{ return !!(p->pixel_type&AVS_CS_PLANAR) && !!(p->pixel_type&AVS_CS_BGR) && !!(p->pixel_type&AVS_CS_BGR32); }
+{ return !!(p->pixel_type&AVS_CS_PLANAR) && !!(p->pixel_type&AVS_CS_BGR) && !!(p->pixel_type&AVS_CS_RGBA_TYPE); }
 
 extern "C"
 int AVSC_CC avs_get_plane_width_subsampling(const AVS_VideoInfo * p, int plane)
