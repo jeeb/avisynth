@@ -232,7 +232,7 @@ static int PixelTypeFromName(const char *pixel_type_string) {
     else if (!lstrcmpi(pixel_type_string, "RGBP14")) return VideoInfo::CS_RGBP14;
     else if (!lstrcmpi(pixel_type_string, "RGBP16")) return VideoInfo::CS_RGBP16;
     else if (!lstrcmpi(pixel_type_string, "RGBPS")) return VideoInfo::CS_RGBPS;
-    else if (!lstrcmpi(pixel_type_string, "RGBAP")) return VideoInfo::CS_RGBP;
+    else if (!lstrcmpi(pixel_type_string, "RGBAP")) return VideoInfo::CS_RGBAP;
     else if (!lstrcmpi(pixel_type_string, "RGBAP10")) return VideoInfo::CS_RGBAP10;
     else if (!lstrcmpi(pixel_type_string, "RGBAP12")) return VideoInfo::CS_RGBAP12;
     else if (!lstrcmpi(pixel_type_string, "RGBAP14")) return VideoInfo::CS_RGBAP14;
@@ -900,7 +900,7 @@ public:
       _RPT2(0, "ColorBars GetFrame origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result); // P.F.
       env->BitBlt(result->GetWritePtr(), result->GetPitch(), frame->GetReadPtr(), frame->GetPitch(), frame->GetRowSize(), frame->GetHeight());
       env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
-      env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));      env->MakeWritable(&frame);
+      env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
       return result;
 /*
       PVideoFrame newframe = AdjustFrameAlignment(frame, vi, env); // P.F.
@@ -910,6 +910,7 @@ public:
     }
     //return frame;
   }
+
   bool __stdcall GetParity(int n) { return false; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   int __stdcall SetCacheHints(int cachehints,int frame_range)
