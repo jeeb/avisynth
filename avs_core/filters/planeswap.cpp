@@ -284,7 +284,7 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   if (!vi.IsYUV() && !vi.IsYUVA() && YUVmode )
     env->ThrowError("PlaneToY: clip is not YUV!");
 
-  if (!vi.IsPlanarRGB() && RGBmode )
+  if (!vi.IsPlanarRGB() && !vi.IsPlanarRGBA() && RGBmode )
       env->ThrowError("PlaneToY: clip is not planar RGB!");
 
   if (vi.NumComponents() == 1)
