@@ -890,7 +890,7 @@ ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _
   if (vi.ComponentSize() == 2) // 16->8 bit
   {
       // for RGB scaling is not shift by 8 as in YUV but 0..65535->0..255
-      if (vi.IsRGB48() || vi.IsRGB64() || vi.IsPlanarRGB())
+      if (vi.IsRGB48() || vi.IsRGB64() || vi.IsPlanarRGB() || vi.IsPlanarRGBA())
           conv_function = convert_rgb_16_to_8_c;
       else if (vi.IsYUV() || vi.IsYUVA())
           conv_function = convert_16_to_8_c;
