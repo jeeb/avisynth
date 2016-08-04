@@ -1881,13 +1881,10 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 {
   if (align < 0)
   {
-    // Forced alignment
+    _RPT0(0, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
     align = -align;
   }
-  else
-  {
-    align = max(align, FRAME_ALIGN);
-  }
+  align = max(align, FRAME_ALIGN);
 
   int pitchUV;
   const int pitchY = AlignNumber(row_size, align);
@@ -1933,13 +1930,10 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 {
   if (align < 0)
   {
-    // Forced alignment
+    _RPT0(0, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
     align = -align;
   }
-  else
-  {
-    align = max(align, FRAME_ALIGN);
-  }
+  align = max(align, FRAME_ALIGN);
 
   const int pitch = AlignNumber(row_size, align);
   size_t size = pitch * height;
@@ -2070,6 +2064,9 @@ void ScriptEnvironment::PopContextGlobal() {
 
 PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
 
+  if ((new_pitch | rel_offset) & (FRAME_ALIGN - 1))
+    ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
+
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
 
@@ -2090,6 +2087,9 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 //tsp June 2005 new function compliments the above function
 PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
                                                         int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
+  if ((rel_offset | new_pitch | rel_offsetU | rel_offsetV | new_pitchUV) & (FRAME_ALIGN - 1))
+    ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
+
 	VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
 
