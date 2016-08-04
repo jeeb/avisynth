@@ -41,9 +41,10 @@
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
 #include <avs/win.h>
-#include <avs/minmax.h>
 #include <avs/alignment.h>
 #include <tmmintrin.h>
+#include <algorithm>
+#include <string>
 
 enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
 
@@ -116,24 +117,15 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
 //This is faster than mmx only sometimes. But will work on x64
 static void convert_yuy2_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
 {
-  size_t mod16_width = (width / 16) * 16;
   __m128i luma_mask = _mm_set1_epi16(0xFF);
 
   for(size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod16_width; x+=16) {
+    for (size_t x = 0; x < width; x += 16) {
       __m128i src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2));
       __m128i src2 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2+16));
       src1 = _mm_and_si128(src1, luma_mask);
       src2 = _mm_and_si128(src2, luma_mask);
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), _mm_packus_epi16(src1, src2));
-    }
-
-    if (width != mod16_width) {
-      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*2-32));
-      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*2-16));
-      src1 = _mm_and_si128(src1, luma_mask);
-      src2 = _mm_and_si128(src2, luma_mask);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+width-16), _mm_packus_epi16(src1, src2));
     }
 
     dstp += dst_pitch;
@@ -144,24 +136,15 @@ static void convert_yuy2_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pit
 #ifdef X86_32
 static void convert_yuy2_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
 {
-  size_t mod8_width = (width / 8) * 8;
   __m64 luma_mask = _mm_set1_pi16(0xFF);
 
   for(size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod8_width; x+=8) {
+    for (size_t x = 0; x < width; x += 8) {
       __m64 src1 = *reinterpret_cast<const __m64*>(srcp+x*2);
       __m64 src2 = *reinterpret_cast<const __m64*>(srcp+x*2+8);
       src1 = _mm_and_si64(src1, luma_mask);
       src2 = _mm_and_si64(src2, luma_mask);
       *reinterpret_cast<__m64*>(dstp+x) = _mm_packs_pu16(src1, src2);
-    }
-
-    if (width != mod8_width) {
-      __m64 src1 = *reinterpret_cast<const __m64*>(srcp+width*2-16);
-      __m64 src2 = *reinterpret_cast<const __m64*>(srcp+width*2-8);
-      src1 = _mm_and_si64(src1, luma_mask);
-      src2 = _mm_and_si64(src2, luma_mask);
-      *reinterpret_cast<__m64*>(dstp+width-8) = _mm_packs_pu16(src1, src2);
     }
 
     dstp += dst_pitch;
@@ -209,20 +192,8 @@ static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
   __m128i offset = _mm_set1_epi16(matrix.offset_y);
   __m128i round_mask = _mm_set1_epi32(16384);
 
-  size_t loop_limit;
-  bool not_mod8 = false;
-  //todo: simplify
-  if (width % 8 == 0) {
-    loop_limit = width;
-  } else if (dst_pitch % 8 == 0) {
-    loop_limit = dst_pitch; //we'll just write some garbage
-  } else {
-    loop_limit = width / 8 * 8;
-    not_mod8 = true;
-  }
-
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < loop_limit; x+=8) {
+    for (size_t x = 0; x < width; x+=8) {
       __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //pixels 0, 1, 2 and 3
       __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16));//pixels 4, 5, 6 and 7
 
@@ -232,18 +203,6 @@ static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
 
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
-    }
-
-    if (not_mod8) {
-      __m128i src0123 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-32)); //pixels 0, 1, 2 and 3
-      __m128i src4567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-16));//pixels 4, 5, 6 and 7
-
-      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero); 
-      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero); 
-      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
-      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
     }
 
     srcp -= src_pitch;
@@ -258,20 +217,8 @@ static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
   __m128i offset = _mm_set1_epi16(matrix.offset_y);
   __m128i round_mask = _mm_set1_epi32(16384);
 
-  size_t loop_limit;
-  bool not_mod8 = false;
-  //todo: simplify
-  if (width % 8 == 0) {
-    loop_limit = width;
-  } else if (dst_pitch % 8 == 0) {
-    loop_limit = dst_pitch; //we'll just write some garbage
-  } else {
-    loop_limit = width / 8 * 8;
-    not_mod8 = true;
-  }
-
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < loop_limit; x+=8) {
+    for (size_t x = 0; x < width; x+=8) {
       __m128i pixel01 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3)); //pixels 0 and 1
       __m128i pixel23 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+6)); //pixels 2 and 3
       __m128i pixel45 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+12)); //pixels 4 and 5
@@ -285,20 +232,6 @@ static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
 
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
-    }
-
-    if (not_mod8) {
-      __m128i pixel01 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-24)); //pixels 0 and 1
-      __m128i pixel23 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-18)); //pixels 2 and 3
-      __m128i pixel45 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-12)); //pixels 4 and 5
-      __m128i pixel67 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-6)); //pixels 6 and 7
-
-      pixel01 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel01, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
-      pixel23 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel23, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
-      pixel45 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel45, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
-      pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
     }
 
     srcp -= src_pitch;
@@ -349,20 +282,8 @@ static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
   __m64 offset = _mm_set1_pi16(matrix.offset_y);
   __m64 round_mask = _mm_set1_pi32(16384);
 
-  size_t loop_limit;
-  bool not_mod4 = false;
-  //todo: simplify
-  if (width % 4 == 0) {
-    loop_limit = width;
-  } else if (dst_pitch % 4 == 0) {
-    loop_limit = dst_pitch; //we'll just write some garbage
-  } else {
-    loop_limit = width / 4 * 4;
-    not_mod4 = true;
-  }
-
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < loop_limit; x+=4) {
+    for (size_t x = 0; x < width; x+=4) {
       __m64 src01 = *reinterpret_cast<const __m64*>(srcp+x*4); //pixels 0 and 1
       __m64 src23 = *reinterpret_cast<const __m64*>(srcp+x*4+8);//pixels 2 and 3
 
@@ -372,18 +293,6 @@ static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
       __m64 pixel3 = _mm_unpackhi_pi8(src23, zero); //a3 r3 g3 b3
 
       *reinterpret_cast<int*>(dstp+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
-    }
-
-    if (not_mod4) {
-      __m64 src01 = *reinterpret_cast<const __m64*>(srcp+width*4-16);
-      __m64 src23 = *reinterpret_cast<const __m64*>(srcp+width*4-8);
-
-      __m64 pixel0 = _mm_unpacklo_pi8(src01, zero); //a0 r0 g0 b0
-      __m64 pixel1 = _mm_unpackhi_pi8(src01, zero); //a1 r1 g1 b1
-      __m64 pixel2 = _mm_unpacklo_pi8(src23, zero); //a2 r2 g2 b2
-      __m64 pixel3 = _mm_unpackhi_pi8(src23, zero); //a3 r3 g3 b3
-
-      *reinterpret_cast<int*>(dstp+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
     }
 
     srcp -= src_pitch;
@@ -399,20 +308,8 @@ static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
   __m64 offset = _mm_set1_pi16(matrix.offset_y);
   __m64 round_mask = _mm_set1_pi32(16384);
 
-  size_t loop_limit;
-  bool not_mod4 = false;
-  //todo: simplify
-  if (width % 4 == 0) {
-    loop_limit = width;
-  } else if (dst_pitch % 4 == 0) {
-    loop_limit = dst_pitch; //we'll just write some garbage
-  } else {
-    loop_limit = width / 4 * 4;
-    not_mod4 = true;
-  }
-
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < loop_limit; x+=4) {
+    for (size_t x = 0; x < width; x += 4) {
       __m64 pixel0 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3)); //pixel 0
       __m64 pixel1 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+3)); //pixel 1
       __m64 pixel2 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+6)); //pixel 2
@@ -424,20 +321,6 @@ static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
       pixel3 = _mm_unpacklo_pi8(pixel3, zero);
 
       *reinterpret_cast<int*>(dstp+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
-    }
-
-    if (not_mod4) {
-      __m64 pixel0 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width*3-12)); //pixel 0
-      __m64 pixel1 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width*3-9)); //pixel 1
-      __m64 pixel2 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width*3-6)); //pixel 2
-      __m64 pixel3 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width*3-3)); //pixel 3
-
-      pixel0 = _mm_unpacklo_pi8(pixel0, zero);
-      pixel1 = _mm_unpacklo_pi8(pixel1, zero);
-      pixel2 = _mm_unpacklo_pi8(pixel2, zero);
-      pixel3 = _mm_unpacklo_pi8(pixel3, zero);
-
-      *reinterpret_cast<int*>(dstp+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
     }
 
     srcp -= src_pitch;
@@ -457,68 +340,60 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     return env->Subframe(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   }
 
+  const BYTE* srcp = src->GetReadPtr();
+  const int src_pitch = src->GetPitch();
+
   PVideoFrame dst = env->NewVideoFrame(vi);
+  BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
+  const int dst_pitch = dst->GetPitch(PLANAR_Y);
+  int width = dst->GetRowSize(PLANAR_Y);
+  int height = dst->GetHeight(PLANAR_Y);
+
   if (yuy2_input) {
-
-    const BYTE* srcP = src->GetReadPtr();
-    const int srcPitch = src->GetPitch();
-    int width = dst->GetRowSize(PLANAR_Y);
-    int height = dst->GetHeight(PLANAR_Y);
-
-    BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
-    const int dstPitch = dst->GetPitch(PLANAR_Y);
-    
-
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
-      convert_yuy2_to_y8_sse2(srcP, dstY, srcPitch, dstPitch, width, height);
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
+      convert_yuy2_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, width, height);
     } else
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_MMX) {
-      convert_yuy2_to_y8_mmx(srcP, dstY, srcPitch, dstPitch, width, height);
+      convert_yuy2_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, width, height);
     } else
 #endif 
     {
-      for (int y=0; y<height; y++) {
-        for (int x=0; x<width; x++) {
-          dstY[x] = srcP[x*2];
+      for (int y=0; y < height; y++) {
+        for (int x=0; x < width; x++) {
+          dstp[x] = srcp[x*2];
         }
-        srcP+=srcPitch;
-        dstY+=dstPitch;
+        srcp += src_pitch;
+        dstp += dst_pitch;
       }
     }
     return dst;
   }
 
   if (rgb_input) {
-    const int src_pitch = src->GetPitch();
-    const BYTE* srcp = src->GetReadPtr() + src_pitch * (vi.height-1);  // We start at last line
-
-    BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
-    const int dst_pitch = dst->GetPitch(PLANAR_Y);
+    srcp += src_pitch * (vi.height-1);  // We start at last line
 
     if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
       if (pixel_step == 4) {
-        convert_rgb32_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
-        return dst;
-      } else if (pixel_step == 3) {
-        convert_rgb24_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
-        return dst;
+        convert_rgb32_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
+      } else {
+        convert_rgb24_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
       }
+      return dst;
     }
 
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_MMX) {
       if (pixel_step == 4) {
-        convert_rgb32_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
-        return dst;
-      } else if (pixel_step == 3) {
-        convert_rgb24_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
-        return dst;
-      } 
+        convert_rgb32_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
+      } else {
+        convert_rgb24_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
+      }
+      return dst;
     }
 #endif
 
-    const int srcMod = src_pitch + (vi.width * pixel_step);
+    const int srcMod = src_pitch + width * pixel_step;
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<vi.width; x++) {
         const int Y = matrix.offset_y + ((matrix.b * srcp[0] + matrix.g * srcp[1] + matrix.r * srcp[2] + 16384) >> 15);
@@ -631,8 +506,6 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
 static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix &matrix) {
   srcp += src_pitch * (height-1);
 
-  size_t mod8_width = width / 8 * 8;
-
   __m128i matrix_y = _mm_set_epi16(0, matrix.y_r, matrix.y_g, matrix.y_b, 0, matrix.y_r, matrix.y_g, matrix.y_b);
   __m128i matrix_u = _mm_set_epi16(0, matrix.u_r, matrix.u_g, matrix.u_b, 0, matrix.u_r, matrix.u_g, matrix.u_b);
   __m128i matrix_v = _mm_set_epi16(0, matrix.v_r, matrix.v_g, matrix.v_b, 0, matrix.v_r, matrix.v_g, matrix.v_b);
@@ -643,7 +516,7 @@ static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
   __m128i v128 = _mm_set1_epi16(128);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod8_width; x+=8) {
+    for (size_t x = 0; x < width; x += 8) {
       __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //pixels 0, 1, 2 and 3
       __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16));//pixels 4, 5, 6 and 7
 
@@ -659,24 +532,6 @@ static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstY+x), result_y);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstU+x), result_u);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstV+x), result_v);
-    }
-
-    if (mod8_width != width) {
-      __m128i src0123 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-32)); //pixels 0, 1, 2 and 3
-      __m128i src4567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-16));//pixels 4, 5, 6 and 7
-
-      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero); 
-      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero); 
-      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
-      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
-
-      __m128i result_y = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_y, round_mask, offset);
-      __m128i result_u = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_u, round_mask, v128);
-      __m128i result_v = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, v128);
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstY+width-8), result_y);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstU+width-8), result_u);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstV+width-8), result_v);
     }
 
     srcp -= src_pitch;
@@ -754,8 +609,6 @@ static void convert_rgb24_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
 static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix) {
   srcp += src_pitch * (height-1);
 
-  size_t mod4_width = width / 4 * 4;
-
   __m64 matrix_y = _mm_set_pi16(0, matrix.y_r, matrix.y_g, matrix.y_b);
   __m64 matrix_u = _mm_set_pi16(0, matrix.u_r, matrix.u_g, matrix.u_b);
   __m64 matrix_v = _mm_set_pi16(0, matrix.v_r, matrix.v_g, matrix.v_b);
@@ -766,7 +619,7 @@ static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const 
   __m64 v128 = _mm_set1_pi16(128);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod4_width; x+=4) {
+    for (size_t x = 0; x < width; x += 4) {
       __m64 src01 = *reinterpret_cast<const __m64*>(srcp+x*4); //pixels 0 and 1
       __m64 src23 = *reinterpret_cast<const __m64*>(srcp+x*4+8);//pixels 2 and 3
 
@@ -778,20 +631,6 @@ static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const 
       *reinterpret_cast<int*>(dstY+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_y, round_mask, offset);
       *reinterpret_cast<int*>(dstU+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_u, round_mask, v128);
       *reinterpret_cast<int*>(dstV+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, v128);
-    }
-
-    if (mod4_width != width) {
-      __m64 src01 = *reinterpret_cast<const __m64*>(srcp+width*4-16);
-      __m64 src23 = *reinterpret_cast<const __m64*>(srcp+width*4-8);
-
-      __m64 pixel0 = _mm_unpacklo_pi8(src01, zero); //a0 r0 g0 b0
-      __m64 pixel1 = _mm_unpackhi_pi8(src01, zero); //a1 r1 g1 b1
-      __m64 pixel2 = _mm_unpacklo_pi8(src23, zero); //a2 r2 g2 b2
-      __m64 pixel3 = _mm_unpackhi_pi8(src23, zero); //a3 r3 g3 b3
-
-      *reinterpret_cast<int*>(dstY+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_y, round_mask, offset);
-      *reinterpret_cast<int*>(dstU+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_u, round_mask, v128);
-      *reinterpret_cast<int*>(dstV+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, v128);
     }
 
     srcp -= src_pitch;
@@ -875,8 +714,6 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 
   const int Ypitch = dst->GetPitch(PLANAR_Y);
   const int UVpitch = dst->GetPitch(PLANAR_U);
-
-  const int awidth = dst->GetRowSize(PLANAR_Y_ALIGNED);
 
   if (pixel_step != 4 && pixel_step != 3) {
     env->ThrowError("Invalid pixel step. This is a bug.");
@@ -1063,7 +900,7 @@ template<int rgb_pixel_step, int instruction_set>
 static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t width, size_t height, const ConversionMatrix &matrix) {
   dstp += dst_pitch * (height-1);  // We start at last line
 
-  size_t mod8_width = width / 8 * 8;
+  size_t mod8_width = rgb_pixel_step == 3 ? width / 8 * 8 : width;
 
   __m128i matrix_b = _mm_set_epi16(0, matrix.v_b, matrix.u_b, matrix.y_b, 0, matrix.v_b, matrix.u_b, matrix.y_b);
   __m128i matrix_g = _mm_set_epi16(0, matrix.v_g, matrix.u_g, matrix.y_g, 0, matrix.v_g, matrix.u_g, matrix.y_g);
@@ -1071,10 +908,6 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
 
   __m128i zero = _mm_setzero_si128();
   __m128i round_mask = _mm_set1_epi32(4096);
-#pragma warning(push)
-#pragma warning(disable: 4309)
-  __m128i ff = _mm_set1_epi8(0xFF);
-#pragma warning(pop)
   __m128i offset = _mm_set_epi16(0, -128, -128, matrix.offset_y, 0, -128, -128, matrix.offset_y);
   __m128i pixels0123_mask = _mm_set_epi8(0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
   __m128i pixels4567_mask = _mm_set_epi8(4, 2, 1, 0, 0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5);
@@ -1108,6 +941,7 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
       __m128i result_r = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_r, round_mask); //00 00 00 00 00 00 00 00 r7 r6 r5 r4 r3 r2 r1 r0
 
       __m128i result_bg = _mm_unpacklo_epi8(result_b, result_g); //g7 b7 g6 b6 g5 b5 g4 b4 g3 b3 g2 b2 g1 b1 g0 b0
+      __m128i ff = _mm_cmpeq_epi32(result_r, result_r);
       __m128i result_ra = _mm_unpacklo_epi8(result_r, ff);       //a7 r7 a6 r6 a5 r5 a4 r4 a3 r3 a2 r2 a1 r1 a0 r0
 
       __m128i result_lo = _mm_unpacklo_epi16(result_bg, result_ra);
@@ -1148,21 +982,22 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
       }
     }
 
-    for (size_t x = mod8_width; x < width; ++x) {
-      int Y = srcY[x] + matrix.offset_y;
-      int U = srcU[x] - 128;
-      int V = srcV[x] - 128;
-      int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096)>>13);
-      int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096)>>13);
-      int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096)>>13);
-      dstp[x*rgb_pixel_step+0] = PixelClip(b);  
-      dstp[x*rgb_pixel_step+1] = PixelClip(g);  
-      dstp[x*rgb_pixel_step+2] = PixelClip(r);
-      if (rgb_pixel_step == 4) {
-        dstp[x*4+3] = 255; 
+    if (rgb_pixel_step == 3) {
+      for (size_t x = mod8_width; x < width; ++x) {
+        int Y = srcY[x] + matrix.offset_y;
+        int U = srcU[x] - 128;
+        int V = srcV[x] - 128;
+        int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096) >> 13);
+        int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096) >> 13);
+        int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096) >> 13);
+        dstp[x*rgb_pixel_step + 0] = PixelClip(b);
+        dstp[x*rgb_pixel_step + 1] = PixelClip(g);
+        dstp[x*rgb_pixel_step + 2] = PixelClip(r);
+        if (rgb_pixel_step == 4) {
+          dstp[x * 4 + 3] = 255;
+        }
       }
     }
-
     dstp -= dst_pitch;
     srcY += src_pitch_y;
     srcU += src_pitch_uv;
@@ -1207,7 +1042,7 @@ template<int rgb_pixel_step>
 static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t width, size_t height, const ConversionMatrix &matrix) {
   dstp += dst_pitch * (height-1);  // We start at last line
 
-  size_t mod4_width = width / 4 * 4;
+  size_t mod4_width = rgb_pixel_step == 3 ? width / 4 * 4 : width;
 
   __m64 matrix_b = _mm_set_pi16(0, matrix.v_b, matrix.u_b, matrix.y_b);
   __m64 matrix_g = _mm_set_pi16(0, matrix.v_g, matrix.u_g, matrix.y_g);
@@ -1215,10 +1050,7 @@ static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* sr
 
   __m64 zero = _mm_setzero_si64();
   __m64 round_mask = _mm_set1_pi32(4096);
-#pragma warning(push)
-#pragma warning(disable: 4309)
-  __m64 ff = _mm_set1_pi8(0xFF);
-#pragma warning(pop)
+  __m64 ff = _mm_set1_pi32(0xFFFFFFFF);
   __m64 offset = _mm_set_pi16(0, -128, -128, matrix.offset_y);
   __m64 low_pixel_mask = _mm_set_pi32(0, 0x00FFFFFF);
   __m64 high_pixel_mask = _mm_set_pi32(0x00FFFFFF, 0);
@@ -1276,18 +1108,20 @@ static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* sr
       }
     }
 
-    for (size_t x = mod4_width; x < width; ++x) {
-      int Y = srcY[x] + matrix.offset_y;
-      int U = srcU[x] - 128;
-      int V = srcV[x] - 128;
-      int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096)>>13);
-      int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096)>>13);
-      int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096)>>13);
-      dstp[x*rgb_pixel_step+0] = PixelClip(b);  
-      dstp[x*rgb_pixel_step+1] = PixelClip(g);  
-      dstp[x*rgb_pixel_step+2] = PixelClip(r);
-      if (rgb_pixel_step == 4) {
-        dstp[x*4+3] = 255; 
+    if (rgb_pixel_step == 3) {
+      for (size_t x = mod4_width; x < width; ++x) {
+        int Y = srcY[x] + matrix.offset_y;
+        int U = srcU[x] - 128;
+        int V = srcV[x] - 128;
+        int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096) >> 13);
+        int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096) >> 13);
+        int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096) >> 13);
+        dstp[x*rgb_pixel_step + 0] = PixelClip(b);
+        dstp[x*rgb_pixel_step + 1] = PixelClip(g);
+        dstp[x*rgb_pixel_step + 2] = PixelClip(r);
+        if (rgb_pixel_step == 4) {
+          dstp[x * 4 + 3] = 255;
+        }
       }
     }
 
@@ -1337,7 +1171,6 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
     }
     return dst;
   }
-
 
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX) {
@@ -1423,52 +1256,28 @@ ConvertYUY2ToYV16::ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env) : Gener
 
 }
 
-template<int instruction_set>
-void convert_yuy2_to_yv16_xsse(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
+
+static void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
-  __m128i low_byte_mask = _mm_set1_epi16(0x00FF);
-  size_t half_width = width / 2;
-  size_t mod8 = half_width / 8 * 8;
-  __m128i u_mask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 14, 12, 10, 8, 6, 4, 2, 0);
-  __m128i v_mask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 15, 13, 11, 9, 7, 5, 3, 1);
+  width /= 2;
 
-  for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod8; x+=8) {
-      __m128i p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x*4));
-      __m128i p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x*4 + 16));
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; x += 8) {
+      __m128i p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4));      // V3 Y7 U3 Y6 V2 Y5 U2 Y4 V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      __m128i p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4 + 16)); // V7 Yf U7 Ye V6 Yd U6 Yc V5 Yb U5 Ya V4 Y9 U4 Y8
 
-      __m128i p0_luma = _mm_and_si128(p0, low_byte_mask);
-      __m128i p1_luma = _mm_and_si128(p1, low_byte_mask); 
-      __m128i luma = _mm_packus_epi16(p0_luma, p1_luma);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp_y + x*2), luma);
+      __m128i p2 = _mm_unpacklo_epi8(p0, p1); // V5 V1 Yb Y3 U5 U1 Ya Y2 V4 V0 Y9 Y1 U4 U0 Y8 Y0
+      __m128i p3 = _mm_unpackhi_epi8(p0, p1); // V7 V3 Yf Y7 U7 U3 Ye Y6 V6 V2 Yd Y5 U6 U2 Yc Y4
 
-      __m128i p0_chroma = _mm_srli_epi16(p0, 8); //00 V3 00 U3 00 V2 00 U2 00 V1 00 U1 00 V0 00 U0
-      __m128i p1_chroma = _mm_srli_epi16(p1, 8); //00 V7 00 U7 00 V6 00 U6 00 V5 00 U5 00 V4 00 U4
+      p0 = _mm_unpacklo_epi8(p2, p3); // V6 V4 V2 V0 Yd Y9 Y5 Y1 U6 U4 U2 U0 Yc Y8 Y4 Y0
+      p1 = _mm_unpackhi_epi8(p2, p3); // V7 V5 V3 V1 Yf Yb Y7 Y3 U7 U5 U3 U1 Ye Ya Y6 Y2
 
-      __m128i tmp_chroma = _mm_packus_epi16(p0_chroma, p1_chroma); //V U V U V U V U V U
+      p2 = _mm_unpacklo_epi8(p0, p1); // U7 U6 U5 U4 U3 U2 U1 U0 Ye Yc Ya Y8 Y6 Y4 Y2 Y0
+      p3 = _mm_unpackhi_epi8(p0, p1); // V7 V6 V5 V4 V3 V2 V1 V0 Yf Yd Yb Y9 Y7 Y5 Y3 Y1
 
-      __m128i chroma_u, chroma_v;
-
-      if (instruction_set == CPUF_SSE2) {
-        __m128i chroma_u16 = _mm_and_si128(tmp_chroma, low_byte_mask);
-        __m128i chroma_v16 = _mm_srli_epi16(tmp_chroma, 8);
-
-        chroma_u = _mm_packus_epi16(chroma_u16, chroma_u16);
-        chroma_v = _mm_packus_epi16(chroma_v16, chroma_v16);
-      } else {
-        chroma_u = _mm_shuffle_epi8(tmp_chroma, u_mask);
-        chroma_v = _mm_shuffle_epi8(tmp_chroma, v_mask);
-      }
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_u + x), chroma_u);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_v + x), chroma_v);
-    }
-
-    for (size_t x=mod8; x<half_width; x++) {
-      dstp_y[x*2]   = srcp[x*4+0];
-      dstp_y[x*2+1] = srcp[x*4+2];
-      dstp_u[x]     = srcp[x*4+1];
-      dstp_v[x]     = srcp[x*4+3];
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_u + x), _mm_srli_si128(p2, 8));
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_v + x), _mm_srli_si128(p3, 8));
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp_y + x * 2), _mm_unpacklo_epi8(p2, p3));
     }
 
     srcp += src_pitch;
@@ -1481,43 +1290,24 @@ void convert_yuy2_to_yv16_xsse(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYT
 
 #ifdef X86_32
 
-void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
+static void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
-  __m64 low_byte_mask = _mm_set1_pi16(0x00FF);
-  size_t half_width = width / 2;
-  size_t mod4 = half_width / 4 * 4;
+  width /= 2;
 
-  for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod4; x+=4) {
-      __m64 p0 = *reinterpret_cast<const __m64*>(srcp + x*4);
-      __m64 p1 = *reinterpret_cast<const __m64*>(srcp + x*4 + 8);
+  for (size_t y = 0; y < height; ++y) { 
+    for (size_t x = 0; x < width; x += 4) {
+      __m64 p0 = *reinterpret_cast<const __m64*>(srcp + x * 4);     // V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      __m64 p1 = *reinterpret_cast<const __m64*>(srcp + x * 4 + 8); // V3 Y7 U3 Y6 V2 Y5 U2 Y4
 
-      __m64 p0_luma = _mm_and_si64(p0, low_byte_mask);
-      __m64 p0_chroma = _mm_srli_pi16(p0, 8); //0 V 0 U 0 V 0 U
-      __m64 p1_luma = _mm_and_si64(p1, low_byte_mask); 
-      __m64 p1_chroma = _mm_srli_pi16(p1, 8);
+      __m64 p2 = _mm_unpacklo_pi8(p0, p1); // V2 V0 Y5 Y1 U2 U0 Y4 Y0
+      __m64 p3 = _mm_unpackhi_pi8(p0, p1); // V3 V1 Y7 Y3 U3 U1 Y6 Y2
 
-      __m64 luma = _mm_packs_pu16(p0_luma, p1_luma);
-      *reinterpret_cast<__m64*>(dstp_y + x*2) = luma;
+      p0 = _mm_unpacklo_pi8(p2, p3); // U3 U2 U1 U0 Y6 Y4 Y2 Y0
+      p1 = _mm_unpackhi_pi8(p2, p3); // V3 V2 V1 V0 Y7 Y5 Y3 Y1
 
-      __m64 tmp_chroma = _mm_packs_pu16(p0_chroma, p1_chroma); //V U V U V U V U V U
-
-      __m64 chroma_u16 = _mm_and_si64(tmp_chroma, low_byte_mask);
-      __m64 chroma_v16 = _mm_srli_pi16(tmp_chroma, 8);
-
-      __m64 chroma_u = _mm_packs_pu16(chroma_u16, chroma_u16);
-      __m64 chroma_v = _mm_packs_pu16(chroma_v16, chroma_v16);
-
-      
-      *reinterpret_cast<int*>(dstp_u + x) = _mm_cvtsi64_si32(chroma_u);
-      *reinterpret_cast<int*>(dstp_v + x) = _mm_cvtsi64_si32(chroma_v);
-    }
-
-    for (size_t x=mod4; x<half_width; x++) {
-      dstp_y[x*2]   = srcp[x*4+0];
-      dstp_y[x*2+1] = srcp[x*4+2];
-      dstp_u[x]     = srcp[x*4+1];
-      dstp_v[x]     = srcp[x*4+3];
+      *reinterpret_cast<int*>(dstp_u + x) = _mm_cvtsi64_si32(_mm_srli_si64(p0, 4));
+      *reinterpret_cast<int*>(dstp_v + x) = _mm_cvtsi64_si32(_mm_srli_si64(p1, 4));
+      *reinterpret_cast<__m64*>(dstp_y + x * 2) = _mm_unpacklo_pi8(p0, p1);
     }
 
     srcp += src_pitch;
@@ -1530,14 +1320,16 @@ void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE
 
 #endif
 
-void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
+static void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
-  for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<width/2; x++) {
-      dstp_y[x*2]   = srcp[x*4+0];
-      dstp_y[x*2+1] = srcp[x*4+2];
-      dstp_u[x]     = srcp[x*4+1];
-      dstp_v[x]     = srcp[x*4+3];
+  width /= 2;
+
+  for (size_t y = 0; y < height; ++y) { 
+    for (size_t x = 0; x < width; ++x) {
+      dstp_y[x * 2]     = srcp[x * 4 + 0];
+      dstp_y[x * 2 + 1] = srcp[x * 4 + 2];
+      dstp_u[x]         = srcp[x * 4 + 1];
+      dstp_v[x]         = srcp[x * 4 + 3];
     }
     srcp += src_pitch;
     dstp_y += dst_pitch_y;
@@ -1551,16 +1343,13 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   const BYTE* srcP = src->GetReadPtr();
-  const int awidth = min(src->GetPitch()>>1, (vi.width+7) & -8);
 
   BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
   BYTE* dstU = dst->GetWritePtr(PLANAR_U);
   BYTE* dstV = dst->GetWritePtr(PLANAR_V);
 
-  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcP, 16)) {
-    convert_yuy2_to_yv16_xsse<CPUF_SSSE3>(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
-  } else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
-    convert_yuy2_to_yv16_xsse<CPUF_SSE2>(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
+    convert_yuy2_to_yv16_sse2(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
   } 
   else
 #ifdef X86_32
@@ -1597,11 +1386,10 @@ ConvertYV16ToYUY2::ConvertYV16ToYUY2(PClip src, IScriptEnvironment* env) : Gener
 
 void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *srcp_v, BYTE *dstp, size_t src_pitch_y, size_t src_pitch_uv, size_t dst_pitch, size_t width, size_t height)
 {
-  size_t half_width = width / 2;
-  size_t mod8 = half_width / 8 * 8;
+  width /= 2;
 
   for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod8; x+=8) {
+    for (size_t x=0; x<width; x+=8) {
       
       __m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_y + x*2));
       __m128i u = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp_u + x));
@@ -1611,15 +1399,8 @@ void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYT
       __m128i yuv_lo = _mm_unpacklo_epi8(y, uv);
       __m128i yuv_hi = _mm_unpackhi_epi8(y, uv);
 
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x*4), yuv_lo);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x*4 + 16), yuv_hi);
-    }
-
-    for (size_t x=mod8; x<half_width; x++) {
-      dstp[x*4+0] = srcp_y[x*2];
-      dstp[x*4+1] = srcp_u[x];
-      dstp[x*4+2] = srcp_y[x*2+1];
-      dstp[x*4+3] = srcp_v[x];
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x*4), yuv_lo);
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x*4 + 16), yuv_hi);
     }
 
     srcp_y += src_pitch_y;
@@ -1632,11 +1413,10 @@ void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYT
 #ifdef X86_32
 void convert_yv16_to_yuy2_mmx(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *srcp_v, BYTE *dstp, size_t src_pitch_y, size_t src_pitch_uv, size_t dst_pitch, size_t width, size_t height)
 {
-  size_t half_width = width / 2;
-  size_t mod4 = half_width / 4 * 4;
+  width /= 2;
 
   for (size_t y=0; y<height; y++) { 
-    for (size_t x=0; x<mod4; x+=4) {
+    for (size_t x=0; x<width; x+=4) {
       __m64 y = *reinterpret_cast<const __m64*>(srcp_y + x*2);
       __m64 u = *reinterpret_cast<const __m64*>(srcp_u + x);
       __m64 v = *reinterpret_cast<const __m64*>(srcp_v + x);
@@ -1647,13 +1427,6 @@ void convert_yv16_to_yuy2_mmx(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE
 
       *reinterpret_cast<__m64*>(dstp + x*4) = yuv_lo;
       *reinterpret_cast<__m64*>(dstp + x*4+8) = yuv_hi;
-    }
-
-    for (size_t x=mod4; x<half_width; x++) {
-      dstp[x*4+0] = srcp_y[x*2];
-      dstp[x*4+1] = srcp_u[x];
-      dstp[x*4+2] = srcp_y[x*2+1];
-      dstp[x*4+3] = srcp_v[x];
     }
 
     srcp_y += src_pitch_y;
@@ -1682,26 +1455,25 @@ void convert_yv16_to_yuy2_c(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *
 
 PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi, 16);
+  PVideoFrame dst = env->NewVideoFrame(vi, 32);
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
   const BYTE* srcV = src->GetReadPtr(PLANAR_V);
-  const int awidth = min(src->GetPitch(PLANAR_Y), (vi.width+7) & -8);
 
   BYTE* dstp = dst->GetWritePtr();
 
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcY, 16)) {
     //U and V don't have to be aligned since we user movq to read from those
-    convert_yv16_to_yuy2_sse2(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+    convert_yv16_to_yuy2_sse2(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   } else
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX) { 
-    convert_yv16_to_yuy2_mmx(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+    convert_yv16_to_yuy2_mmx(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   } else
 #endif
   {
-    convert_yv16_to_yuy2_c(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+    convert_yv16_to_yuy2_c(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   }
   
   return dst;
@@ -1726,135 +1498,145 @@ AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironm
  * (c) Ian Brabham, 2011
  **********************************************/
 
-inline float ChrOffset(bool point, int sIn, float dIn, int sOut, float dOut) {
-      //     (1 - sOut/sIn)/2 + (dOut-dIn)/sIn; // Gavino Jan 2011
-      return point ? (dOut-dIn)/sIn : 0.5f + (dOut-dIn - 0.5f*sOut)/sIn;
-}
-
 ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
                                                const AVSValue& InPlacement, const AVSValue& chromaResampler,
                                                const AVSValue& OutPlacement, IScriptEnvironment* env) : GenericVideoFilter(src) {
   Yinput = vi.NumComponents() == 1;
   pixelsize = vi.ComponentSize();
 
-  if (!Yinput) {
-
-    if (! (vi.IsYV12() || dst_space == VideoInfo::CS_YV12 || 
-           vi.IsColorSpace(VideoInfo::CS_YUV420P16) || dst_space == VideoInfo::CS_YUV420P16 ||
-           vi.IsColorSpace(VideoInfo::CS_YUV420PS) || dst_space == VideoInfo::CS_YUV420PS))
-      interlaced = false;  // Ignore, if YV12/YUV420P16/YUV420PS is not involved.
-
-    // Describe input pixel positioning
-    float xdInU = 0.0f, txdInU = 0.0f, bxdInU = 0.0f;
-    float ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.0f;
-    float xdInV = 0.0f, txdInV = 0.0f, bxdInV = 0.0f;
-    float ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f;
-
-    if (vi.IsYV12() || vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS)) {
-      switch (getPlacement(InPlacement, env)) {
-        case PLACEMENT_DV:
-          ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.5f;
-          ydInV = 1.0f, tydInV = 0.5f, bydInV = 1.0f;
-          break;
-        case PLACEMENT_MPEG1:
-          xdInU = 0.5f, txdInU = 0.5f, bxdInU = 0.5f;
-          xdInV = 0.5f, txdInV = 0.5f, bxdInV = 0.5f;
-          // fall thru
-        case PLACEMENT_MPEG2:
-          ydInU = 0.5f, tydInU = 0.25f, bydInU = 0.75f;
-          ydInV = 0.5f, tydInV = 0.25f, bydInV = 0.75f;
-          break;
-      }
-    }
-    else if (InPlacement.Defined())
-      env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 source.");
-
-    const int xsIn = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
-    const int ysIn = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
-
+  if (Yinput) {
     vi.pixel_type = dst_space;
-
     if (vi.ComponentSize() != pixelsize)
       env->ThrowError("Convert: Conversion from %d to %d-byte format not supported.", pixelsize, vi.ComponentSize());
+    return;
+  }
 
-    // Describe output pixel positioning
-    float xdOutU = 0.0f, txdOutU = 0.0f, bxdOutU = 0.0f;
-    float ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.0f;
-    float xdOutV = 0.0f, txdOutV = 0.0f, bxdOutV = 0.0f;
-    float ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f;
+  auto Is420 = [](int pix_type) {
+    return pix_type == VideoInfo::CS_YV12 || pix_type == VideoInfo::CS_I420 ||
+      pix_type == VideoInfo::CS_YUV420P16 || pix_type == VideoInfo::CS_YUV420PS;
+  };
 
-    if (vi.IsYV12() || vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS)) {
-      switch (getPlacement(OutPlacement, env)) {
-        case PLACEMENT_DV:
-          ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.5f;
-          ydOutV = 1.0f, tydOutV = 0.5f, bydOutV = 1.0f;
-          break;
-        case PLACEMENT_MPEG1:
-          xdOutU = 0.5f, txdOutU = 0.5f, bxdOutU = 0.5f;
-          xdOutV = 0.5f, txdOutV = 0.5f, bxdOutV = 0.5f;
-          // fall thru
-        case PLACEMENT_MPEG2:
-          ydOutU = 0.5f, tydOutU = 0.25f, bydOutU = 0.75f;
-          ydOutV = 0.5f, tydOutV = 0.25f, bydOutV = 0.75f;
-          break;
-      }
+  if (!Is420(vi.pixel_type) && !Is420(dst_space))
+    interlaced = false;  // Ignore, if YV12/YUV420P16/YUV420PS is not involved.
+
+  // Describe input pixel positioning
+  float xdInU = 0.0f, txdInU = 0.0f, bxdInU = 0.0f;
+  float ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.0f;
+  float xdInV = 0.0f, txdInV = 0.0f, bxdInV = 0.0f;
+  float ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f;
+
+  if (Is420(vi.pixel_type)) {
+    switch (getPlacement(InPlacement, env)) {
+      case PLACEMENT_DV:
+        ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.5f;
+        ydInV = 1.0f, tydInV = 0.5f, bydInV = 1.0f;
+        break;
+      case PLACEMENT_MPEG1:
+        xdInU = 0.5f, txdInU = 0.5f, bxdInU = 0.5f;
+        xdInV = 0.5f, txdInV = 0.5f, bxdInV = 0.5f;
+        // fall thru
+      case PLACEMENT_MPEG2:
+        ydInU = 0.5f, tydInU = 0.25f, bydInU = 0.75f;
+        ydInV = 0.5f, tydInV = 0.25f, bydInV = 0.75f;
+        break;
     }
-    else if (OutPlacement.Defined())
-      env->ThrowError("Convert: Output ChromaPlacement only available with 4:2:0 output.");
+  }
+  else if (InPlacement.Defined())
+    env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 source.");
 
-    const int xsOut = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
-    const int xmask = xsOut - 1;
-    if (vi.width & xmask)
-      env->ThrowError("Convert: Cannot convert if width isn't mod%d!", xsOut);
+  const int xsIn = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
+  const int ysIn = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-    const int ysOut = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
-    const int ymask = ysOut - 1;
-    if (vi.height & ymask)
-      env->ThrowError("Convert: Cannot convert if height isn't mod%d!", ysOut);
+  vi.pixel_type = dst_space;
 
-    int uv_width  = vi.width  >> vi.GetPlaneWidthSubsampling(PLANAR_U);
-    int uv_height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+  if (vi.ComponentSize() != pixelsize)
+    env->ThrowError("Convert: Conversion from %d to %d-byte format not supported.", pixelsize, vi.ComponentSize());
 
-    ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), env);
+  // Describe output pixel positioning
+  float xdOutU = 0.0f, txdOutU = 0.0f, bxdOutU = 0.0f;
+  float ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.0f;
+  float xdOutV = 0.0f, txdOutV = 0.0f, bxdOutV = 0.0f;
+  float ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f;
 
-    bool P = !lstrcmpi(chromaResampler.AsString(""), "point");
-
-    if (interlaced) {
-      uv_height /=  2;
-
-      AVSValue tUsubSampling[4] = { ChrOffset(P, xsIn, txdInU, xsOut, txdOutU), ChrOffset(P, ysIn, tydInU, ysOut, tydOutU), AVSValue(), AVSValue() };
-      AVSValue bUsubSampling[4] = { ChrOffset(P, xsIn, bxdInU, xsOut, bxdOutU), ChrOffset(P, ysIn, bydInU, ysOut, bydOutU), AVSValue(), AVSValue() };
-      AVSValue tVsubSampling[4] = { ChrOffset(P, xsIn, txdInV, xsOut, txdOutV), ChrOffset(P, ysIn, tydInV, ysOut, tydOutV), AVSValue(), AVSValue() };
-      AVSValue bVsubSampling[4] = { ChrOffset(P, xsIn, bxdInV, xsOut, bxdOutV), ChrOffset(P, ysIn, bydInV, ysOut, bydOutV), AVSValue(), AVSValue() };
-
-      Usource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::UToY8, env), true), env); // also works for Y16/Y32
-      Vsource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::VToY8, env), true), env); // also works for Y16/Y32
-
-      PClip *tbUsource = new PClip[2]; // Interleave()::~Interleave() will delete these
-      PClip *tbVsource = new PClip[2];
-
-	  tbUsource[0] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 0, env), uv_width, uv_height, tUsubSampling, filter, env);
-	  tbUsource[1] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 1, env), uv_width, uv_height, bUsubSampling, filter, env);
-	  tbVsource[0] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 0, env), uv_width, uv_height, tVsubSampling, filter, env);
-	  tbVsource[1] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 1, env), uv_width, uv_height, bVsubSampling, filter, env);
-
-	  Usource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbUsource, env)), 2, 0, env);
-	  Vsource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbVsource, env)), 2, 0, env);
+  if (Is420(vi.pixel_type)) {
+    switch (getPlacement(OutPlacement, env)) {
+      case PLACEMENT_DV:
+        ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.5f;
+        ydOutV = 1.0f, tydOutV = 0.5f, bydOutV = 1.0f;
+        break;
+      case PLACEMENT_MPEG1:
+        xdOutU = 0.5f, txdOutU = 0.5f, bxdOutU = 0.5f;
+        xdOutV = 0.5f, txdOutV = 0.5f, bxdOutV = 0.5f;
+        // fall thru
+      case PLACEMENT_MPEG2:
+        ydOutU = 0.5f, tydOutU = 0.25f, bydOutU = 0.75f;
+        ydOutV = 0.5f, tydOutV = 0.25f, bydOutV = 0.75f;
+        break;
     }
-    else {
-      AVSValue UsubSampling[4] = { ChrOffset(P, xsIn, xdInU, xsOut, xdOutU), ChrOffset(P, ysIn, ydInU, ysOut, ydOutU), AVSValue(), AVSValue() };
-      AVSValue VsubSampling[4] = { ChrOffset(P, xsIn, xdInV, xsOut, xdOutV), ChrOffset(P, ysIn, ydInV, ysOut, ydOutV), AVSValue(), AVSValue() };
+  }
+  else if (OutPlacement.Defined())
+    env->ThrowError("Convert: Output ChromaPlacement only available with 4:2:0 output.");
 
-      Usource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::UToY8, env), uv_width, uv_height, UsubSampling, filter, env);
-      Vsource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::VToY8, env), uv_width, uv_height, VsubSampling, filter, env);
-    }
-    delete filter;
+  const int xsOut = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
+  const int xmask = xsOut - 1;
+  if (vi.width & xmask)
+    env->ThrowError("Convert: Cannot convert if width isn't mod%d!", xsOut);
+
+  const int ysOut = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
+  const int ymask = ysOut - 1;
+  if (vi.height & ymask)
+    env->ThrowError("Convert: Cannot convert if height isn't mod%d!", ysOut);
+
+  int uv_width  = vi.width  >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+  int uv_height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+  ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), env);
+
+  bool P = !lstrcmpi(chromaResampler.AsString(""), "point");
+
+  auto ChrOffset = [P](int sIn, float dIn, int sOut, float dOut) {
+    //     (1 - sOut/sIn)/2 + (dOut-dIn)/sIn; // Gavino Jan 2011
+    return P ? (dOut - dIn) / sIn : 0.5f + (dOut - dIn - 0.5f*sOut) / sIn;
+  };
+
+  if (interlaced) {
+    uv_height /=  2;
+
+    AVSValue tUsubSampling[4] = { ChrOffset(xsIn, txdInU, xsOut, txdOutU), ChrOffset(ysIn, tydInU, ysOut, tydOutU), AVSValue(), AVSValue() };
+    AVSValue bUsubSampling[4] = { ChrOffset(xsIn, bxdInU, xsOut, bxdOutU), ChrOffset(ysIn, bydInU, ysOut, bydOutU), AVSValue(), AVSValue() };
+    AVSValue tVsubSampling[4] = { ChrOffset(xsIn, txdInV, xsOut, txdOutV), ChrOffset(ysIn, tydInV, ysOut, tydOutV), AVSValue(), AVSValue() };
+    AVSValue bVsubSampling[4] = { ChrOffset(xsIn, bxdInV, xsOut, bxdOutV), ChrOffset(ysIn, bydInV, ysOut, bydOutV), AVSValue(), AVSValue() };
+
+    Usource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::UToY8, env), true), env); // also works for Y16/Y32
+    Vsource = new SeparateFields(new AssumeParity(new SwapUVToY(child, SwapUVToY::VToY8, env), true), env); // also works for Y16/Y32
+
+    PClip *tbUsource = new PClip[2]; // Interleave()::~Interleave() will delete these
+    PClip *tbVsource = new PClip[2];
+
+  tbUsource[0] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 0, env), uv_width, uv_height, tUsubSampling, filter, env);
+  tbUsource[1] = FilteredResize::CreateResize(new SelectEvery(Usource, 2, 1, env), uv_width, uv_height, bUsubSampling, filter, env);
+  tbVsource[0] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 0, env), uv_width, uv_height, tVsubSampling, filter, env);
+  tbVsource[1] = FilteredResize::CreateResize(new SelectEvery(Vsource, 2, 1, env), uv_width, uv_height, bVsubSampling, filter, env);
+
+  Usource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbUsource, env)), 2, 0, env);
+  Vsource = new SelectEvery(new DoubleWeaveFields(new Interleave(2, tbVsource, env)), 2, 0, env);
   }
   else {
-    vi.pixel_type = dst_space;
-    if (vi.ComponentSize() != pixelsize)
-      env->ThrowError("Convert: Conversion from %d to %d-byte format not supported.", pixelsize, vi.ComponentSize());
+    AVSValue UsubSampling[4] = { ChrOffset(xsIn, xdInU, xsOut, xdOutU), ChrOffset(ysIn, ydInU, ysOut, ydOutU), AVSValue(), AVSValue() };
+    AVSValue VsubSampling[4] = { ChrOffset(xsIn, xdInV, xsOut, xdOutV), ChrOffset(ysIn, ydInV, ysOut, ydOutV), AVSValue(), AVSValue() };
+
+    Usource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::UToY8, env), uv_width, uv_height, UsubSampling, filter, env);
+    Vsource = FilteredResize::CreateResize(new SwapUVToY(child, SwapUVToY::VToY8, env), uv_width, uv_height, VsubSampling, filter, env);
   }
+  delete filter;
+}
+
+template <typename pixel_type>
+static inline void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, pixel_type val)
+{
+  size_t size = height * pitch / sizeof(pixel_type);
+  std::fill_n(reinterpret_cast<pixel_type*>(dstp_u), size, val);
+  std::fill_n(reinterpret_cast<pixel_type*>(dstp_v), size, val);
 }
 
 PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment* env) {
@@ -1863,216 +1645,104 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
 
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
               src->GetRowSize(PLANAR_Y_ALIGNED), src->GetHeight(PLANAR_Y));
+
+  BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
+  const int height = dst->GetHeight(PLANAR_U);
+  const int dst_pitch = dst->GetPitch(PLANAR_U);
+
   if (Yinput) {
     switch (vi.ComponentSize())
     {
       case 1:
-        memset(dst->GetWritePtr(PLANAR_U), 0x80, dst->GetHeight(PLANAR_U)*dst->GetPitch(PLANAR_U));
-        memset(dst->GetWritePtr(PLANAR_V), 0x80, dst->GetHeight(PLANAR_V)*dst->GetPitch(PLANAR_V));
+        fill_chroma<BYTE>(dstp_u, dstp_v, height, dst_pitch, 0x80);
         break;
       case 2:
-      {
-        int planes[2] = { PLANAR_U, PLANAR_V };
-        for (int p = 0; p < 2; p++)
-        {
-          int plane = planes[p];
-          uint16_t* dstp = reinterpret_cast<uint16_t*>(dst->GetWritePtr(plane));
-          for (int y = 0; y < vi.height >> vi.GetPlaneHeightSubsampling(plane); y++)
-          {
-            for (int x = 0; x < vi.width >> vi.GetPlaneWidthSubsampling(plane); x++)
-              dstp[x] = 0x8000;
-            dstp += dst->GetPitch(plane) / sizeof(uint16_t);
-          }
-        }
+        fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 0x8000);
         break;
-      }
-      case 4: 
-      {
-        int planes[2] = { PLANAR_U, PLANAR_V };
-        for (int p = 0; p < 2; p++)
-        {
-          int plane = planes[p];
-          float* dstp = reinterpret_cast<float*>(dst->GetWritePtr(plane));
-          for (int y = 0; y < vi.height >> vi.GetPlaneHeightSubsampling(plane); y++)
-          {
-            for (int x = 0; x < vi.width >> vi.GetPlaneWidthSubsampling(plane); x++)
-              dstp[x] = 0.5f;
-            dstp += dst->GetPitch(plane) / sizeof(float);
-          }
-        }
+      case 4:
+        fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, 0.5f);
         break;
-      }
     }
   } else {
     src = Usource->GetFrame(n, env);
-    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
-                src->GetRowSize(PLANAR_Y_ALIGNED), dst->GetHeight(PLANAR_U));
+    env->BitBlt(dstp_u, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
     src = Vsource->GetFrame(n, env);
-    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
-                src->GetRowSize(PLANAR_Y_ALIGNED), dst->GetHeight(PLANAR_V));
+    env->BitBlt(dstp_v, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
   }
   return dst;
 }
 
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  // similar to YV12
-  // we work within the same bitdepth
-  if (clip->GetVideoInfo().IsYV12() || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV420P16) || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV420PS) ) {
-    if (getPlacement(args[3], env) == getPlacement(args[5], env))
-      return clip;
-  }
-  else if (clip->GetVideoInfo().IsRGB()) // 8 bit only
+  VideoInfo vi = clip->GetVideoInfo();
+
+  if (vi.IsRGB()) { // 8 bit only
     clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-  else if (clip->GetVideoInfo().IsYUY2()) // 8 bit only
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYUV420: Can only convert from Planar YUV.");
-
-  int pixel_type;
-  switch (clip->GetVideoInfo().ComponentSize())
-  {
-  case 1: pixel_type = VideoInfo::CS_YV12; break;
-  case 2: pixel_type = VideoInfo::CS_YUV420P16; break;
-  case 4: pixel_type = VideoInfo::CS_YUV420PS; break;
-  default:
-    env->ThrowError("ConvertToYUV420: unsupported bit depth");
+    vi = clip->GetVideoInfo();
   }
+  else if (vi.IsYUY2()) { // 8 bit only
+    clip = new ConvertYUY2ToYV16(clip, env);
+    vi = clip->GetVideoInfo();
+  }
+  else if (!vi.IsPlanar())
+    env->ThrowError("%s: Can only convert from Planar YUV.", filter);
 
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], args[5], env);
+  int pixel_type = VideoInfo::CS_UNKNOWN;
+  AVSValue outplacement = AVSValue();
+
+  if (strcmp(filter, "ConvertToYUV420") == 0) {
+    if (vi.IsYV12() || vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS))
+      if (getPlacement(args[3], env) == getPlacement(args[5], env))
+        return clip;
+    outplacement = args[5];
+    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV12;
+    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV420P16;
+    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV420PS;
+  }
+  else if (strcmp(filter, "ConvertToYUV422") == 0) {
+    if (vi.IsYV16() || vi.IsColorSpace(VideoInfo::CS_YUV422P16) || vi.IsColorSpace(VideoInfo::CS_YUV422PS))
+      return clip;
+    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV16;
+    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV422P16;
+    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV422PS;
+  }
+  else if (strcmp(filter, "ConvertToYUV444") == 0) {
+    if (vi.IsYV24() || vi.IsColorSpace(VideoInfo::CS_YUV444P16) || vi.IsColorSpace(VideoInfo::CS_YUV444PS))
+      return clip;
+    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV24;
+    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV444P16;
+    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV444PS;
+  }
+  else if (strcmp(filter, "ConvertToYV411") == 0) {
+    if (vi.IsYV411()) return clip;
+    pixel_type = VideoInfo::CS_YV411;
+  }
+  else env->ThrowError("Convert: unknown filter '%s'.", filter);
+
+
+  if (pixel_type == VideoInfo::CS_UNKNOWN)
+    env->ThrowError("%s: unsupported bit depth", filter);
+
+  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], outplacement, env);
+}
+
+AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void*, IScriptEnvironment* env) {
+  return Create(args, "ConvertToYUV420", env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV422(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  // similar to YV16
-  // we work within the same bitdepth
-  if (clip->GetVideoInfo().IsYV16() || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV422P16) || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV422PS) )
-    return clip;
-  if (clip->GetVideoInfo().IsYUY2())
-    return new ConvertYUY2ToYV16(clip,  env);
-
-  if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYUV422: Can only convert from Planar YUV.");
-
-  int pixel_type;
-  switch (clip->GetVideoInfo().ComponentSize())
-  {
-  case 1: pixel_type = VideoInfo::CS_YV16; break;
-  case 2: pixel_type = VideoInfo::CS_YUV422P16; break;
-  case 4: pixel_type = VideoInfo::CS_YUV422PS; break;
-  default:
-    env->ThrowError("ConvertToYUV422: unsupported bit depth");
-  }
-
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
+  return Create(args, "ConvertToYUV422", env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV444(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  // similar to YV24
-  // we work within the same bitdepth
-  if (clip->GetVideoInfo().IsYV24() || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV444P16) || clip->GetVideoInfo().IsColorSpace(VideoInfo::CS_YUV444PS) ) 
-    return clip;
-  
-  if (clip->GetVideoInfo().IsRGB())
-    return new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYUV444: Can only convert from Planar YUV.");
-
-  int pixel_type;
-  switch (clip->GetVideoInfo().ComponentSize())
-  {
-  case 1: pixel_type = VideoInfo::CS_YV24; break;
-  case 2: pixel_type = VideoInfo::CS_YUV444P16; break;
-  case 4: pixel_type = VideoInfo::CS_YUV444PS; break;
-  default:
-    env->ThrowError("ConvertToYUV444: unsupported bit depth");
-  }
-
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
-
-}
-
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYV12(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-  
-  if (clip->GetVideoInfo().IsYV12()) {
-    if (getPlacement(args[3], env) == getPlacement(args[5], env))
-      return clip;
-  }
-  else if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-  else if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV12: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV12, args[1].AsBool(false), args[3], args[4], args[5], env);
-}
-
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYV16(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  if (clip->GetVideoInfo().IsYV16())
-    return clip;
-
-  if (clip->GetVideoInfo().IsYUY2())
-    return new ConvertYUY2ToYV16(clip,  env);
-
-  if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV16: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV16, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
-}
-
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYV24(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  if (clip->GetVideoInfo().IsYV24() )
-    return clip;
-
-  if (clip->GetVideoInfo().IsRGB())
-    return new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-
-  if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV24: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV24, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
+  return Create(args, "ConvertToYUV444", env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-
-  if (clip->GetVideoInfo().IsYV411() )
-    return clip;
-
-  if (clip->GetVideoInfo().IsRGB())
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
-  else if (clip->GetVideoInfo().IsYUY2())
-    clip = new ConvertYUY2ToYV16(clip,  env);
-
-  if (!clip->GetVideoInfo().IsPlanar())
-    env->ThrowError("ConvertToYV411: Can only convert from Planar YUV.");
-
-  return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV411, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
+  return Create(args, "ConvertToYV411", env);
 }
+
 
 
 static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {

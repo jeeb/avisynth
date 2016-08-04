@@ -149,14 +149,18 @@ public:
                          const AVSValue& OutPlacement, IScriptEnvironment* env);
   ~ConvertToPlanarGeneric() {}
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateYV12(AVSValue args, void*, IScriptEnvironment* env);   
-  static AVSValue __cdecl CreateYV16(AVSValue args, void*, IScriptEnvironment* env);   
-  static AVSValue __cdecl CreateYV24(AVSValue args, void*, IScriptEnvironment* env);   
-  static AVSValue __cdecl CreateYV411(AVSValue args, void*, IScriptEnvironment* env);   
-  static AVSValue __cdecl CreateYUV420(AVSValue args, void*, IScriptEnvironment* env);   
-  static AVSValue __cdecl CreateYUV422(AVSValue args, void*, IScriptEnvironment* env);   
-  static AVSValue __cdecl CreateYUV444(AVSValue args, void*, IScriptEnvironment* env);   
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static AVSValue __cdecl CreateYV411(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYUV420(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYUV422(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYUV444(AVSValue args, void*, IScriptEnvironment* env);
+
 private:
+  static AVSValue Create(AVSValue& args, const char* filter, IScriptEnvironment* env);
   bool Yinput;
   int pixelsize;
   PClip Usource;
