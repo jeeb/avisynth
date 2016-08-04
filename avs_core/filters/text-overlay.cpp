@@ -2160,6 +2160,8 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
     if (show_graph) {
       // original idea by Marc_FD
+      // PF remark: show-graph (and file logging) is not for multitask
+      // psnrs array is instance specific
       psnrs[n] = min((int)(PSNR + 0.5), 100);
       if (vi.height > 196) {
         if (vi.IsYUY2()) {
