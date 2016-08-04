@@ -95,6 +95,11 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
+
 private:
   Antialiaser antialiaser;
   const bool scroll;
@@ -116,6 +121,11 @@ public:
 
   static AVSValue __cdecl CreateSMTPE(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateTime(AVSValue args, void*, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
 
 private:
   Antialiaser antialiaser;
@@ -142,6 +152,11 @@ public:
   
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
+
 private:
   void InitAntialiaser(IScriptEnvironment* env);
   
@@ -167,6 +182,11 @@ public:
   
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
+
 private:
   const VideoInfo& AdjustVi();
 
@@ -185,6 +205,17 @@ public:
   ~Compare();
   static AVSValue __cdecl Create(AVSValue args, void* , IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+      // show_graph gathers data of last n frames inside class -> conditional MT_SERIALIZED
+      // logfile writing: if log -> conditional MT_SERIALIZED
+      // display of global counters -> MT_SERIALIZED
+      // So least common multiple -> MT_SERIALIZED
+  }
+
+
 private:
   Antialiaser antialiaser;
   PClip child2;
