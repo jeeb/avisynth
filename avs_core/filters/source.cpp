@@ -806,12 +806,12 @@ public:
   // By the new "staticframes" parameter: colorbars we generate (copy) real new frames instead of a ready-to-use static one
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) 
   { 
-    _RPT2(0, "ColorBars::GetFrame %d\n", n); // P.F.
+    _RPT1(0, "ColorBars::GetFrame %d\n", n); // P.F.
     if (staticframes) // P.F. 
       return frame; // original default method returns precomputed static frame.
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
-      _RPT2(0, "ColorBars GetFrame origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result); // P.F.
+      _RPT3(0, "ColorBars GetFrame origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result); // P.F.
       env->BitBlt(result->GetWritePtr(), result->GetPitch(), frame->GetReadPtr(), frame->GetPitch(), frame->GetRowSize(), frame->GetHeight());
       env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
       env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));      env->MakeWritable(&frame);
