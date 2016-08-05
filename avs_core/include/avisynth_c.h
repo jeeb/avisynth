@@ -53,7 +53,7 @@ enum { AVISYNTH_INTERFACE_VERSION = 6 };
 #endif
 
 enum {AVS_SAMPLE_INT8  = 1<<0,
-      AVS_SAMPLE_INT16 = 1<<1, 
+      AVS_SAMPLE_INT16 = 1<<1,
       AVS_SAMPLE_INT24 = 1<<2,
       AVS_SAMPLE_INT32 = 1<<3,
       AVS_SAMPLE_FLOAT = 1<<4};
@@ -298,10 +298,10 @@ enum {
 
 #ifdef BUILDING_AVSCORE
 struct AVS_ScriptEnvironment {
-	IScriptEnvironment * env;
-	const char * error;
-	AVS_ScriptEnvironment(IScriptEnvironment * e = 0)
-		: env(e), error(0) {}
+        IScriptEnvironment * env;
+        const char * error;
+        AVS_ScriptEnvironment(IScriptEnvironment * e = 0)
+                : env(e), error(0) {}
 };
 #endif
 
@@ -320,7 +320,7 @@ typedef struct AVS_VideoInfo {
   int num_frames;
 
   int pixel_type;
-  
+
   int audio_samples_per_second;   // 0 means no audio
   int sample_type;
   INT64 num_audio_samples;
@@ -432,11 +432,11 @@ AVSC_API(int, avs_row_size)(const AVS_VideoInfo * p, int plane);
 
 AVSC_API(int, avs_bmp_size)(const AVS_VideoInfo * vi);
 
-AVSC_INLINE int avs_samples_per_second(const AVS_VideoInfo * p) 
+AVSC_INLINE int avs_samples_per_second(const AVS_VideoInfo * p)
         { return p->audio_samples_per_second; }
 
 
-AVSC_INLINE int avs_bytes_per_channel_sample(const AVS_VideoInfo * p) 
+AVSC_INLINE int avs_bytes_per_channel_sample(const AVS_VideoInfo * p)
 {
     switch (p->sample_type) {
       case AVS_SAMPLE_INT8:  return sizeof(signed char);
@@ -447,38 +447,38 @@ AVSC_INLINE int avs_bytes_per_channel_sample(const AVS_VideoInfo * p)
       default: return 0;
     }
 }
-AVSC_INLINE int avs_bytes_per_audio_sample(const AVS_VideoInfo * p)   
+AVSC_INLINE int avs_bytes_per_audio_sample(const AVS_VideoInfo * p)
         { return p->nchannels*avs_bytes_per_channel_sample(p);}
 
-AVSC_INLINE INT64 avs_audio_samples_from_frames(const AVS_VideoInfo * p, INT64 frames) 
+AVSC_INLINE INT64 avs_audio_samples_from_frames(const AVS_VideoInfo * p, INT64 frames)
         { return ((INT64)(frames) * p->audio_samples_per_second * p->fps_denominator / p->fps_numerator); }
 
-AVSC_INLINE int avs_frames_from_audio_samples(const AVS_VideoInfo * p, INT64 samples) 
+AVSC_INLINE int avs_frames_from_audio_samples(const AVS_VideoInfo * p, INT64 samples)
         { return (int)(samples * (INT64)p->fps_numerator / (INT64)p->fps_denominator / (INT64)p->audio_samples_per_second); }
 
-AVSC_INLINE INT64 avs_audio_samples_from_bytes(const AVS_VideoInfo * p, INT64 bytes) 
+AVSC_INLINE INT64 avs_audio_samples_from_bytes(const AVS_VideoInfo * p, INT64 bytes)
         { return bytes / avs_bytes_per_audio_sample(p); }
 
-AVSC_INLINE INT64 avs_bytes_from_audio_samples(const AVS_VideoInfo * p, INT64 samples) 
+AVSC_INLINE INT64 avs_bytes_from_audio_samples(const AVS_VideoInfo * p, INT64 samples)
         { return samples * avs_bytes_per_audio_sample(p); }
 
-AVSC_INLINE int avs_audio_channels(const AVS_VideoInfo * p) 
+AVSC_INLINE int avs_audio_channels(const AVS_VideoInfo * p)
         { return p->nchannels; }
 
 AVSC_INLINE int avs_sample_type(const AVS_VideoInfo * p)
         { return p->sample_type;}
 
 // useful mutator
-AVSC_INLINE void avs_set_property(AVS_VideoInfo * p, int property)  
+AVSC_INLINE void avs_set_property(AVS_VideoInfo * p, int property)
         { p->image_type|=property; }
 
-AVSC_INLINE void avs_clear_property(AVS_VideoInfo * p, int property)  
+AVSC_INLINE void avs_clear_property(AVS_VideoInfo * p, int property)
         { p->image_type&=~property; }
 
-AVSC_INLINE void avs_set_field_based(AVS_VideoInfo * p, int isfieldbased)  
+AVSC_INLINE void avs_set_field_based(AVS_VideoInfo * p, int isfieldbased)
         { if (isfieldbased) p->image_type|=AVS_IT_FIELDBASED; else p->image_type&=~AVS_IT_FIELDBASED; }
 
-AVSC_INLINE void avs_set_fps(AVS_VideoInfo * p, unsigned numerator, unsigned denominator) 
+AVSC_INLINE void avs_set_fps(AVS_VideoInfo * p, unsigned numerator, unsigned denominator)
 {
     unsigned x=numerator, y=denominator;
     while (y) {   // find gcd
@@ -623,34 +623,34 @@ AVSC_INLINE int avs_is_error(AVS_Value v) { return v.type == 'e'; }
 AVSC_API(AVS_Clip *, avs_take_clip)(AVS_Value, AVS_ScriptEnvironment *);
 AVSC_API(void, avs_set_to_clip)(AVS_Value *, AVS_Clip *);
 
-AVSC_INLINE int avs_as_bool(AVS_Value v) 
-        { return v.d.boolean; }   
-AVSC_INLINE int avs_as_int(AVS_Value v) 
-        { return v.d.integer; }   
-AVSC_INLINE const char * avs_as_string(AVS_Value v) 
+AVSC_INLINE int avs_as_bool(AVS_Value v)
+        { return v.d.boolean; }
+AVSC_INLINE int avs_as_int(AVS_Value v)
+        { return v.d.integer; }
+AVSC_INLINE const char * avs_as_string(AVS_Value v)
         { return avs_is_error(v) || avs_is_string(v) ? v.d.string : 0; }
-AVSC_INLINE double avs_as_float(AVS_Value v) 
+AVSC_INLINE double avs_as_float(AVS_Value v)
         { return avs_is_int(v) ? v.d.integer : v.d.floating_pt; }
-AVSC_INLINE const char * avs_as_error(AVS_Value v) 
+AVSC_INLINE const char * avs_as_error(AVS_Value v)
         { return avs_is_error(v) ? v.d.string : 0; }
 AVSC_INLINE const AVS_Value * avs_as_array(AVS_Value v)
         { return v.d.array; }
-AVSC_INLINE int avs_array_size(AVS_Value v) 
+AVSC_INLINE int avs_array_size(AVS_Value v)
         { return avs_is_array(v) ? v.array_size : 1; }
-AVSC_INLINE AVS_Value avs_array_elt(AVS_Value v, int index) 
+AVSC_INLINE AVS_Value avs_array_elt(AVS_Value v, int index)
         { return avs_is_array(v) ? v.d.array[index] : v; }
 
 // only use these functions on an AVS_Value that does not already have
 // an active value.  Remember, treat AVS_Value as a fat pointer.
-AVSC_INLINE AVS_Value avs_new_value_bool(int v0) 
-        { AVS_Value v; v.type = 'b'; v.d.boolean = v0 == 0 ? 0 : 1; return v; }   
-AVSC_INLINE AVS_Value avs_new_value_int(int v0) 
-        { AVS_Value v; v.type = 'i'; v.d.integer = v0; return v; }   
-AVSC_INLINE AVS_Value avs_new_value_string(const char * v0) 
+AVSC_INLINE AVS_Value avs_new_value_bool(int v0)
+        { AVS_Value v; v.type = 'b'; v.d.boolean = v0 == 0 ? 0 : 1; return v; }
+AVSC_INLINE AVS_Value avs_new_value_int(int v0)
+        { AVS_Value v; v.type = 'i'; v.d.integer = v0; return v; }
+AVSC_INLINE AVS_Value avs_new_value_string(const char * v0)
         { AVS_Value v; v.type = 's'; v.d.string = v0; return v; }
-AVSC_INLINE AVS_Value avs_new_value_float(float v0) 
+AVSC_INLINE AVS_Value avs_new_value_float(float v0)
         { AVS_Value v; v.type = 'f'; v.d.floating_pt = v0; return v;}
-AVSC_INLINE AVS_Value avs_new_value_error(const char * v0) 
+AVSC_INLINE AVS_Value avs_new_value_error(const char * v0)
         { AVS_Value v; v.type = 'e'; v.d.string = v0; return v; }
 #ifndef AVSC_NO_DECLSPEC
 AVSC_INLINE AVS_Value avs_new_value_clip(AVS_Clip * v0)
@@ -672,18 +672,18 @@ AVSC_API(const char *, avs_clip_get_error)(AVS_Clip *); // return 0 if no error
 AVSC_API(const AVS_VideoInfo *, avs_get_video_info)(AVS_Clip *);
 
 AVSC_API(int, avs_get_version)(AVS_Clip *);
- 
+
 AVSC_API(AVS_VideoFrame *, avs_get_frame)(AVS_Clip *, int n);
 // The returned video frame must be released with avs_release_video_frame
 
-AVSC_API(int, avs_get_parity)(AVS_Clip *, int n); 
+AVSC_API(int, avs_get_parity)(AVS_Clip *, int n);
 // return field parity if field_based, else parity of first field in frame
 
-AVSC_API(int, avs_get_audio)(AVS_Clip *, void * buf, 
-                             INT64 start, INT64 count); 
+AVSC_API(int, avs_get_audio)(AVS_Clip *, void * buf,
+                             INT64 start, INT64 count);
 // start and count are in samples
 
-AVSC_API(int, avs_set_cache_hints)(AVS_Clip *, 
+AVSC_API(int, avs_set_cache_hints)(AVS_Clip *,
                                    int cachehints, int frame_range);
 
 // This is the callback type used by avs_add_function
@@ -699,12 +699,12 @@ struct AVS_FilterInfo
   AVS_ScriptEnvironment * env;
   AVS_VideoFrame * (AVSC_CC * get_frame)(AVS_FilterInfo *, int n);
   int (AVSC_CC * get_parity)(AVS_FilterInfo *, int n);
-  int (AVSC_CC * get_audio)(AVS_FilterInfo *, void * buf, 
+  int (AVSC_CC * get_audio)(AVS_FilterInfo *, void * buf,
                                   INT64 start, INT64 count);
-  int (AVSC_CC * set_cache_hints)(AVS_FilterInfo *, int cachehints, 
+  int (AVSC_CC * set_cache_hints)(AVS_FilterInfo *, int cachehints,
                                         int frame_range);
   void (AVSC_CC * free_filter)(AVS_FilterInfo *);
-  
+
   // Should be set when ever there is an error to report.
   // It is cleared before any of the above methods are called
   const char * error;
@@ -729,7 +729,7 @@ AVSC_API(AVS_Clip *, avs_new_c_filter)(AVS_ScriptEnvironment * e,
 //
 
 // For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
-enum {                    
+enum {
                                 /* slowest CPU to support extension */
   AVS_CPU_FORCE        = 0x01,   // N/A
   AVS_CPU_FPU          = 0x02,   // 386/486DX
@@ -739,7 +739,7 @@ enum {
   AVS_CPU_SSE2         = 0x20,   // PIV, Hammer
   AVS_CPU_3DNOW        = 0x40,   // K6-2
   AVS_CPU_3DNOW_EXT    = 0x80,   // Athlon
-  AVS_CPU_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2, 
+  AVS_CPU_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2,
                                  // which only Hammer will have anyway)
   AVS_CPUF_SSE3       = 0x100,   //  PIV+, K8 Venice
   AVS_CPUF_SSSE3      = 0x200,   //  Core 2
@@ -763,13 +763,13 @@ AVSC_API(char *, avs_sprintf)(AVS_ScriptEnvironment *, const char * fmt, ...);
 AVSC_API(char *, avs_vsprintf)(AVS_ScriptEnvironment *, const char * fmt, void* val);
  // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
 
-AVSC_API(int, avs_add_function)(AVS_ScriptEnvironment *, 
-                                const char * name, const char * params, 
+AVSC_API(int, avs_add_function)(AVS_ScriptEnvironment *,
+                                const char * name, const char * params,
                                 AVS_ApplyFunc apply, void * user_data);
 
 AVSC_API(int, avs_function_exists)(AVS_ScriptEnvironment *, const char * name);
 
-AVSC_API(AVS_Value, avs_invoke)(AVS_ScriptEnvironment *, const char * name, 
+AVSC_API(AVS_Value, avs_invoke)(AVS_ScriptEnvironment *, const char * name,
                                AVS_Value args, const char** arg_names);
 // The returned value must be be released with avs_release_value
 
@@ -783,18 +783,18 @@ AVSC_API(int, avs_set_global_var)(AVS_ScriptEnvironment *, const char* name, con
 //void avs_push_context(AVS_ScriptEnvironment *, int level=0);
 //void avs_pop_context(AVS_ScriptEnvironment *);
 
-AVSC_API(AVS_VideoFrame *, avs_new_video_frame_a)(AVS_ScriptEnvironment *, 
+AVSC_API(AVS_VideoFrame *, avs_new_video_frame_a)(AVS_ScriptEnvironment *,
                                           const AVS_VideoInfo * vi, int align);
 // align should be at least 16
 
 #ifndef AVSC_NO_DECLSPEC
-AVSC_INLINE 
-AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env, 
+AVSC_INLINE
+AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env,
                                      const AVS_VideoInfo * vi)
   {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
 
-AVSC_INLINE 
-AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env, 
+AVSC_INLINE
+AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env,
                                const AVS_VideoInfo * vi)
   {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
 #endif
