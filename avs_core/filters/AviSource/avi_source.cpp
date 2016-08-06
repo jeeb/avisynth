@@ -113,7 +113,7 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, TemporalBuffer &frame, I
   long bytes_read;
 
   if (!hic) {
-    bytes_read = frame.GetSize();
+    bytes_read = long(frame.GetSize());
     pvideo->Read(n, 1, buf, bytes_read, &bytes_read, NULL);
     dropped_frame = !bytes_read;
     if (dropped_frame) return ICERR_OK;  // If frame is 0 bytes (dropped), return instead of attempt decompressing as Vdub.
