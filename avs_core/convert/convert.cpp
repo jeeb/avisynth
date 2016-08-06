@@ -65,7 +65,7 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToYUV422",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV422},
   { "ConvertToYUV444",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
   { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[scale]f[dither]i", ConvertTo8bit::Create},
-  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[scale]f[dither]i[bitdepth]i[modifyrange]b", ConvertTo16bit::Create},
+  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[scale]f[dither]i[bits]i[modifyrange]b", ConvertTo16bit::Create},
   { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[scale]f", ConvertToFloat::Create},
   { 0 }
 };
