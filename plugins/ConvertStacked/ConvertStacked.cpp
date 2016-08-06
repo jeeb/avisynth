@@ -134,13 +134,41 @@ class ConvertFromStacked : public GenericVideoFilter
 {
 public:
 
-    ConvertFromStacked::ConvertFromStacked(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src)
+    ConvertFromStacked::ConvertFromStacked(PClip src, int bits, IScriptEnvironment* env) : GenericVideoFilter(src)
     {
-        if (vi.IsYV12()) vi.pixel_type = VideoInfo::CS_YUV420P16;
-        else if (vi.IsYV16()) vi.pixel_type = VideoInfo::CS_YUV422P16;
-        else if (vi.IsYV24()) vi.pixel_type = VideoInfo::CS_YUV444P16;
-        else if (vi.IsY8()) vi.pixel_type = VideoInfo::CS_Y16;
-        else env->ThrowError("ConvertFromStacked: Input stacked clip must be YV12, YV16, YV24 or Y8");
+        if (bits == 10 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P10;
+        else if (bits == 10 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P10;
+        else if (bits == 10 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P10;
+        else if (bits == 10 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y10;
+        else if (bits == 12 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P12;
+        else if (bits == 12 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P12;
+        else if (bits == 12 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P12;
+        else if (bits == 12 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y12;
+        else if (bits == 14 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P14;
+        else if (bits == 14 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P14;
+        else if (bits == 14 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P14;
+        else if (bits == 14 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y14;
+        else if (bits == 16 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P16;
+        else if (bits == 16 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P16;
+        else if (bits == 16 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P16;
+        else if (bits == 16 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y16;
+        else env->ThrowError("ConvertStackedToNative: Input stacked clip must be YV12, YV16, YV24 or Y8");
 
         vi.height = vi.height >> 1; // div 2 non stacked
 
@@ -210,7 +238,9 @@ public:
     static AVSValue __cdecl ConvertFromStacked::Create(AVSValue args, void*, IScriptEnvironment* env)
     {
         PClip clip = args[0].AsClip();
-        return new ConvertFromStacked(clip, env);
+        int bits = args[1].AsInt(16);
+
+        return new ConvertFromStacked(clip, bits, env);
     }
 };
 
@@ -219,15 +249,43 @@ class ConvertFromDoubleWidth : public GenericVideoFilter
 {
 public:
 
-    ConvertFromDoubleWidth(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src)
+    ConvertFromDoubleWidth(PClip src, int bits, IScriptEnvironment* env) : GenericVideoFilter(src)
     {
         if (vi.RowSize(PLANAR_U) % 2)
             env->ThrowError("ConvertFromDoubleWidth: Input clip's chroma width must be even.");
 
-        if (vi.IsYV12()) vi.pixel_type = VideoInfo::CS_YUV420P16;
-        else if (vi.IsYV16()) vi.pixel_type = VideoInfo::CS_YUV422P16;
-        else if (vi.IsYV24()) vi.pixel_type = VideoInfo::CS_YUV444P16;
-        else if (vi.IsY8()) vi.pixel_type = VideoInfo::CS_Y16;
+        if (bits == 10 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P10;
+        else if (bits == 10 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P10;
+        else if (bits == 10 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P10;
+        else if (bits == 10 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y10;
+        else if (bits == 12 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P12;
+        else if (bits == 12 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P12;
+        else if (bits == 12 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P12;
+        else if (bits == 12 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y12;
+        else if (bits == 14 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P14;
+        else if (bits == 14 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P14;
+        else if (bits == 14 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P14;
+        else if (bits == 14 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y14;
+        else if (bits == 16 && vi.IsYV12())
+            vi.pixel_type = VideoInfo::CS_YUV420P16;
+        else if (bits == 16 && vi.IsYV16())
+            vi.pixel_type = VideoInfo::CS_YUV422P16;
+        else if (bits == 16 && vi.IsYV24())
+            vi.pixel_type = VideoInfo::CS_YUV444P16;
+        else if (bits == 16 && vi.IsY8())
+            vi.pixel_type = VideoInfo::CS_Y16;
         else env->ThrowError("ConvertFromDoubleWidth: Input double width clip must be YV12, YV16, YV24 or Y8");
 
         vi.width /= 2;
@@ -247,7 +305,9 @@ public:
     static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
     {
         PClip clip = args[0].AsClip();
-        return new ConvertFromDoubleWidth(clip, env);
+        int bits = args[1].AsInt(16);
+
+        return new ConvertFromDoubleWidth(clip, bits, env);
     }
 };
 
@@ -289,9 +349,9 @@ static const AVS_Linkage * AVS_linkage = 0;
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors) {
     AVS_linkage = vectors;
 
-    env->AddFunction("ConvertFromStacked", "c", ConvertFromStacked::Create, 0);
+    env->AddFunction("ConvertFromStacked", "c[bits]i", ConvertFromStacked::Create, 0);
     env->AddFunction("ConvertToStacked", "c", ConvertToStacked::Create, 0);
-    env->AddFunction("ConvertFromDoubleWidth", "c", ConvertFromDoubleWidth::Create, 0);
+    env->AddFunction("ConvertFromDoubleWidth", "c[bits]i", ConvertFromDoubleWidth::Create, 0);
     env->AddFunction("ConvertToDoubleWidth", "c", ConvertToDoubleWidth::Create, 0);
 
     return "`ConvertStacked' Stacked format conversion for 16-bit formats.";
