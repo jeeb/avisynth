@@ -252,7 +252,7 @@ int VideoInfo::BitsPerPixel() const {
     if (IsPlanar()) {
       const int componentSizes[8] = {1,2,4,0,0,2,2,2};
       const int S = (IsYUV() || IsYUVA()) ? GetPlaneWidthSubsampling(PLANAR_U) + GetPlaneHeightSubsampling(PLANAR_U) : 0;
-      return ( ((1<<S)+2) * (componentSizes[(pixel_type>>CS_Shift_Sample_Bits) & 7]) ) >> S;
+      return ( ((1<<S)+2) * (componentSizes[(pixel_type>>CS_Shift_Sample_Bits) & 7]) * 8 ) >> S;
     }
     return 0;
 }
