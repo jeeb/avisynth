@@ -168,7 +168,7 @@ public:
             vi.pixel_type = VideoInfo::CS_YUV444P16;
         else if (bits == 16 && vi.IsY8())
             vi.pixel_type = VideoInfo::CS_Y16;
-        else env->ThrowError("ConvertStackedToNative: Input stacked clip must be YV12, YV16, YV24 or Y8");
+        else env->ThrowError("ConvertFromStacked: Input stacked clip must be YV12, YV16, YV24 or Y8");
 
         vi.height = vi.height >> 1; // div 2 non stacked
 
