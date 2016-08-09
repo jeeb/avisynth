@@ -38,7 +38,6 @@
 #include <avs/minmax.h>
 #include <cmath>
 #include <cassert>
-#include <new>
 
 
 
@@ -85,71 +84,51 @@ StackVertical::StackVertical(const std::vector<PClip>& child_array, IScriptEnvir
 
     vi.height += vin.height;
   }
+
+  // reverse the order of the clips in RGB mode because it's upside-down
+  if (vi.IsRGB())
+    std::reverse(children.begin(), children.end());
 }
 
 
 PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env) 
 {
-  const size_t nClips = children.size();
-  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame)*nClips));
+  std::vector<PVideoFrame> frames;
+  frames.reserve(children.size());
 
-  for (size_t i = 0; i < nClips; ++i) {
-    new(frames+i) PVideoFrame;
-    frames[i] = children[i]->GetFrame(n, env);
-  }
+  for (const auto& child: children)
+    frames.emplace_back(child->GetFrame(n, env));
 
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   const int dst_pitch = dst->GetPitch();
   const int row_size = dst->GetRowSize();
-
   BYTE* dstp = dst->GetWritePtr();
-  if (vi.IsRGB()) {
-    // reverse the order of the clips in RGB mode because it's upside-down
-    for (size_t i = children.size(); i-- > 0; /* empty */)
-    {
-      const BYTE* srcp = frames[i]->GetReadPtr();
-      const int src_pitch = frames[i]->GetPitch();
-      const int src_height = frames[i]->GetHeight();
 
-      env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
-      dstp += dst_pitch * src_height;
-    }
+  for (const auto& src: frames)
+  {
+    const int src_height = src->GetHeight();
+    env->BitBlt(dstp, dst_pitch, src->GetReadPtr(), src->GetPitch(), row_size, src_height);
+    dstp += dst_pitch * src_height;
   }
-  else {
-    for (size_t i = 0; i < nClips; ++i)
+
+  if (vi.IsPlanar() && (vi.NumComponents() > 1))
+  {
+    // Copy Planar
+    const int dst_pitchUV = dst->GetPitch(PLANAR_U);
+    const int row_sizeUV = dst->GetRowSize(PLANAR_U);
+
+    for (const int& plane: { PLANAR_U, PLANAR_V })
     {
-      const BYTE* srcp = frames[i]->GetReadPtr();
-      const int src_pitch = frames[i]->GetPitch();
-      const int src_height = frames[i]->GetHeight();
-
-      env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
-      dstp += dst_pitch * src_height;
-    }
-    
-    if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
-      // Copy Planar
-      const int dst_pitchUV = dst->GetPitch(PLANAR_U);
-      const int row_sizeUV = dst->GetRowSize(PLANAR_U);
-      const static int planes[2] = { PLANAR_U, PLANAR_V };
-
-      for (int plane: planes) {
-        BYTE* dstp_uv = dst->GetWritePtr(plane);
-        for (size_t i = 0; i < nClips; ++i)
-        {
-          const BYTE* srcp = frames[i]->GetReadPtr(plane);
-          const int src_pitch = frames[i]->GetPitch(plane);
-          const int src_height = frames[i]->GetHeight(plane);
-
-        env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, row_sizeUV, src_height);
-        dstp_uv += dst_pitchUV * src_height;
-        }
+      dstp = dst->GetWritePtr(plane);
+      for (const auto& src: frames)
+      {
+        const int src_height = src->GetHeight(plane);
+        env->BitBlt(dstp, dst_pitchUV, src->GetReadPtr(plane), src->GetPitch(plane), row_sizeUV, src_height);
+        dstp += dst_pitchUV * src_height;
       }
     }
   }
-
-  for (size_t i = 0; i < nClips; ++i)
-    frames[i] = nullptr;
 
   return dst;
 }
@@ -208,26 +187,21 @@ StackHorizontal::StackHorizontal(const std::vector<PClip>& child_array, IScriptE
 
 PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env) 
 {
-  const size_t nClips = children.size();
-  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame)*nClips));
+  std::vector<PVideoFrame> frames;
+  frames.reserve(children.size());
 
-  for (size_t i = 0; i < nClips; ++i) {
-    new(frames+i) PVideoFrame;
-    frames[i] = children[i]->GetFrame(n, env);
-  }
+  for (const auto& child : children)
+    frames.emplace_back(child->GetFrame(n, env));
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   const int dst_pitch = dst->GetPitch();
   const int height = dst->GetHeight();
 
   BYTE* dstp = dst->GetWritePtr();
-  for (size_t i = 0; i < nClips; ++i)
+  for (const auto& src: frames)
   {
-    const BYTE* srcp = frames[i]->GetReadPtr();
-    const int src_pitch = frames[i]->GetPitch();
-    const int src_rowsize = frames[i]->GetRowSize();
-
-    env->BitBlt(dstp, dst_pitch, srcp, src_pitch, src_rowsize, height);
+    const int src_rowsize = src->GetRowSize();
+    env->BitBlt(dstp, dst_pitch, src->GetReadPtr(), src->GetPitch(), src_rowsize, height);
     dstp += src_rowsize;
   }
 
@@ -236,23 +210,16 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
     const int dst_pitchUV = dst->GetPitch(PLANAR_U);
     const int heightUV = dst->GetHeight(PLANAR_U);
 
-    const static int planes[2] = { PLANAR_U, PLANAR_V };
-    for (int plane: planes) {
-      BYTE* dstp_uv = dst->GetWritePtr(plane);
-      for (size_t i = 0; i < nClips; ++i)
+    for (const int plane: { PLANAR_U, PLANAR_V }) {
+      dstp = dst->GetWritePtr(plane);
+      for (const auto& src: frames)
       {
-        const BYTE* srcp = frames[i]->GetReadPtr(plane);
-        const int src_pitch = frames[i]->GetPitch(plane);
-        const int src_width = frames[i]->GetRowSize(plane);
-
-      env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, src_width, heightUV);
-      dstp_uv += src_width;
+        const int src_rowsize = src->GetRowSize(plane);
+        env->BitBlt(dstp, dst_pitchUV, src->GetReadPtr(plane), src->GetPitch(plane), src_rowsize, heightUV);
+        dstp += src_rowsize;
       }
     }
   }
-
-  for (size_t i = 0; i < nClips; ++i)
-    frames[i] = nullptr;
 
   return dst;
 }
@@ -395,6 +362,7 @@ AVSValue __cdecl ShowFiveVersions::Create(AVSValue args, void*, IScriptEnvironme
     children[i] = args[i].AsClip();
   return new ShowFiveVersions(children, env);
 }
+
 
 
 
