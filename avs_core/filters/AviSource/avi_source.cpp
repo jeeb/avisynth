@@ -42,10 +42,14 @@
 #include "avi_source.h"
 #include <avs/minmax.h>
 
-TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad, int n, IScriptEnvironment* env)
+static void __cdecl free_buffer(void* buff, IScriptEnvironment* env)
 {
-  env2 = static_cast<IScriptEnvironment2*>(env);
+  if (buff)
+    static_cast<IScriptEnvironment2*>(env)->Free(buff);
+}
 
+TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad, IScriptEnvironment* env)
+{
   int heightY = vi.height;
   int heightUV = (vi.pixel_type & VideoInfo::CS_INTERLEAVED) ? 0 :heightY >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
@@ -61,10 +65,12 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad, int n, IScri
   size_t sizeUV = pitchUV * heightUV;
   size = sizeY + 2 * sizeUV;
 
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
   // maybe memcpy become fast by aligned start address. 
   orig = env2->Allocate(size, FRAME_ALIGN, AVS_POOLED_ALLOC);
   if (!orig)
-    env->ThrowError("AVISource: couldn't allocate temporal buffer at frame %d.", n);
+    env->ThrowError("AVISource: couldn't allocate temporal buffer.");
+  env->AtExit(free_buffer, orig);
 
   pY = reinterpret_cast<uint8_t*>(orig);
   if (vi.pixel_type & VideoInfo::CS_UPlaneFirst) {
@@ -76,7 +82,7 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad, int n, IScri
   }
 }
 
-static PVideoFrame AdjustFrameAlignment(TemporalBuffer& frame, const VideoInfo& vi, bool bInvertFrames, IScriptEnvironment* env)
+static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& vi, bool bInvertFrames, IScriptEnvironment* env)
 {
     auto result = env->NewVideoFrame(vi);
     BYTE* dstp = result->GetWritePtr();
@@ -87,9 +93,9 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer& frame, const VideoInfo& 
       pitch = -pitch;
     }
 
-    env->BitBlt(dstp,                          pitch,                      frame.GetPtr(),         frame.GetPitch(),         result->GetRowSize(),         result->GetHeight());
-    env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame.GetPtr(PLANAR_V), frame.GetPitch(PLANAR_V), result->GetRowSize(PLANAR_V), result->GetHeight(PLANAR_V));
-    env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame.GetPtr(PLANAR_U), frame.GetPitch(PLANAR_U), result->GetRowSize(PLANAR_U), result->GetHeight(PLANAR_U));
+    env->BitBlt(dstp,                          pitch,                      frame->GetPtr(),         frame->GetPitch(),         result->GetRowSize(),         result->GetHeight());
+    env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetPtr(PLANAR_V), frame->GetPitch(PLANAR_V), result->GetRowSize(PLANAR_V), result->GetHeight(PLANAR_V));
+    env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetPtr(PLANAR_U), frame->GetPitch(PLANAR_U), result->GetRowSize(PLANAR_U), result->GetHeight(PLANAR_U));
     return result;
 }
 
@@ -107,13 +113,13 @@ LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADE
     lpbiDst, 0, 0, 0, lpbiDst->biWidth, lpbiDst->biHeight);
 }
 
-LRESULT AVISource::DecompressFrame(int n, bool preroll, TemporalBuffer &frame, IScriptEnvironment* env) {
+LRESULT AVISource::DecompressFrame(int n, bool preroll, IScriptEnvironment* env) {
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
-  BYTE* buf = frame.GetPtr();
+  BYTE* buf = frame->GetPtr();
   long bytes_read;
 
   if (!hic) {
-    bytes_read = frame.GetSize();
+    bytes_read = frame->GetSize();
     pvideo->Read(n, 1, buf, bytes_read, &bytes_read, NULL);
     dropped_frame = !bytes_read;
     if (dropped_frame) return ICERR_OK;  // If frame is 0 bytes (dropped), return instead of attempt decompressing as Vdub.
@@ -298,6 +304,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   hic = 0;
   bInvertFrames = false;
   bMediaPad = false;
+  frame = 0;
 
   AVIFileInit();
   try {
@@ -557,9 +564,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode != MODE_WAV) {
       bMediaPad = !(!bMediaPad && !vi.IsY8() && vi.IsPlanar());
       int keyframe = pvideo->NearestKeyFrame(0);
-      auto frame = TemporalBuffer(vi, bMediaPad, 0, env);
+      frame = new TemporalBuffer(vi, bMediaPad, env);
 
-      LRESULT error = DecompressFrame(keyframe, false, frame, env);
+      LRESULT error = DecompressFrame(keyframe, false, env);
       if (error != ICERR_OK)   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not decompress frame 0");
 
@@ -567,7 +574,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       // frames, just return the first key frame
       if (dropped_frame) {
         keyframe = pvideo->NextKeyFrame(0);
-        error = DecompressFrame(keyframe, false, frame, env);
+        error = DecompressFrame(keyframe, false, env);
         if (error != ICERR_OK)   // shutdown, if init not succesful.
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
       }
@@ -600,6 +607,8 @@ void AVISource::CleanUp() { // Tritical - Jan 2006
     free(pbiSrc);
   if (srcbuffer)  // Tritical May 2005
     delete[] srcbuffer;
+  if (frame)
+    delete frame;
 }
 
 const VideoInfo& AVISource::GetVideoInfo() { return vi; }
@@ -618,13 +627,12 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 
     bool frameok = false;
     //PVideoFrame frame = env->NewVideoFrame(vi, -4);
-    auto frame = TemporalBuffer(vi, bMediaPad, n, env);
 
     bool not_found_yet;
     do {
       not_found_yet=false;
       for (int i = keyframe; i <= n; ++i) {
-        LRESULT error = DecompressFrame(i, i != n, frame, env);
+        LRESULT error = DecompressFrame(i, i != n, env);
         if ((!dropped_frame) && (error == ICERR_OK)) frameok = true;   // Better safe than sorry
       }
       last_frame_no = n;
