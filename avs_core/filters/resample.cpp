@@ -1218,69 +1218,69 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
 
 AVSValue __cdecl FilteredResize::Create_PointResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &PointFilter(), env );
+  auto f = PointFilter();
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 
 AVSValue __cdecl FilteredResize::Create_BilinearResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &TriangleFilter(), env );
+  auto f = TriangleFilter();
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 
 AVSValue __cdecl FilteredResize::Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5],
-                       &MitchellNetravaliFilter(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.)), env );
+  auto f = MitchellNetravaliFilter(args[3].AsDblDef(1. / 3.), args[4].AsDblDef(1. / 3.));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &LanczosFilter(args[7].AsInt(3)), env );
+  auto f = LanczosFilter(args[7].AsInt(3));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &LanczosFilter(4), env );
+  auto f = LanczosFilter(4);
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &BlackmanFilter(args[7].AsInt(4)), env );
+  auto f = BlackmanFilter(args[7].AsInt(4));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &Spline16Filter(), env );
+  auto f = Spline16Filter();
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &Spline36Filter(), env );
+  auto f = Spline36Filter();
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &Spline64Filter(), env );
+  auto f = Spline64Filter();
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &GaussianFilter(args[7].AsFloat(30.0f)), env );
+  auto f = GaussianFilter(args[7].AsFloat(30.0f));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
 AVSValue __cdecl FilteredResize::Create_SincResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &SincFilter(args[7].AsInt(4)), env );
+  auto f = SincFilter(args[7].AsInt(4));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
