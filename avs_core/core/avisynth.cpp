@@ -1917,8 +1917,9 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 {
   if (align < 0)
   {
-    _RPT0(0, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
     align = -align;
+    OneTimeLogTicket ticket(LOGTICKET_W1009);
+    this->LogMsgOnce(ticket, LOGLEVEL_WARNING, "A filter is using forced frame alignment, a feature that is deprecated and disabled. The filter will likely behave erroneously.");
   }
   align = max(align, FRAME_ALIGN);
 
@@ -1973,8 +1974,9 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 {
   if (align < 0)
   {
-    _RPT0(0, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
     align = -align;
+    OneTimeLogTicket ticket(LOGTICKET_W1009);
+    this->LogMsgOnce(ticket, LOGLEVEL_WARNING, "A filter is using forced frame alignment, a feature that is deprecated and disabled. The filter will likely behave erroneously.");
   }
   align = max(align, FRAME_ALIGN);
 
