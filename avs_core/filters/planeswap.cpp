@@ -124,7 +124,7 @@ static void yuy2_swap_isse(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_
 static void yuy2_swap_c(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
 {
   for (int y = 0; y < height; ++y) {
-    for (size_t x = 0; x < width; x += 4) {
+    for (int x = 0; x < width; x += 4) {
       dstp[x + 0] = srcp[x + 0];
       dstp[x + 3] = srcp[x + 1];
       dstp[x + 2] = srcp[x + 2];

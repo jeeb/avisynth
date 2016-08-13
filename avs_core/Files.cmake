@@ -13,7 +13,6 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "core/*.c"
   "core/*.cpp"
   "core/*.h"
-  "core/avisynth.def"
   "core/avisynth.rc"
 
   "core/parser/*.c"
@@ -36,3 +35,9 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "filters/AviSource/*.cpp"
   "filters/AviSource/*.h"
 )
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  # Export definitions are not needed on x64 and only cause warnings,
+  # so add them only when compiling for 32-bits.
+  LIST(APPEND AvsCore_Sources "core/avisynth.def")
+endif() 
