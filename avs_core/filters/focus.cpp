@@ -34,7 +34,7 @@
 
 #include "focus.h"
 #include <cmath>
-#include <new>
+#include <vector>
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
@@ -1505,11 +1505,11 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     planeDisabled[p] = false;
   }
 
-  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame) * kernel)); // allocate "kernel" count of pointers
-  
-  for (int p = n-radius; p<=n+radius; p++) {
-    new(frames+p+radius-n) PVideoFrame; // n-radius .. n .. n+radius  
-    frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env); // radius == 3 -> 0, 1, 2
+  std::vector<PVideoFrame> frames;
+  frames.reserve(kernel);
+
+  for (int p = n - radius; p <= n + radius; ++p) {
+    frames.emplace_back(child->GetFrame(clamp(p, 0, vi.num_frames - 1), env));
   }
 
   // P.F. 16.04.06 leak fix r1841 after 8 days of bug chasing: 
@@ -1619,10 +1619,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     c += 2;
   } while (planes[c]);
 
-//  PVideoFrame result = frames[radius]; // we are using CenterFrame instead
-  for (int i = 0; i < kernel; ++i) 
-    frames[i] = nullptr; 
-
+  //  PVideoFrame result = frames[radius]; // we are using CenterFrame instead
   //  return result;
   return CenterFrame;
 }
