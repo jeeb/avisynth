@@ -113,6 +113,12 @@ __declspec(align(16)) static const BYTE ditherMap4[16] = {
   0xF, 0x4, 0xA, 0x1,
 };
 
+static void __cdecl free_buffer(void* buff, IScriptEnvironment* env)
+{
+    if (buff) {
+        static_cast<IScriptEnvironment2*>(env)->Free(buff);
+    }
+}
 
 /********************************
  *******   Levels Filter   ******
@@ -120,7 +126,7 @@ __declspec(align(16)) static const BYTE ditherMap4[16] = {
 
 Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, bool _dither,
   IScriptEnvironment* env)
-  : GenericVideoFilter(_child), map(nullptr), mapchroma(nullptr), dither(_dither), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
+  : GenericVideoFilter(_child), dither(_dither)
 {
   if (gamma <= 0.0)
     env->ThrowError("Levels: gamma must be positive");
@@ -138,17 +144,16 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
     bias = -127.5;
   }
 
-  map = static_cast<uint8_t*>(env2_unsafe->Allocate(256*scale, 8, AVS_NORMAL_ALLOC));
-  if (!map) {
-	  env->ThrowError("Levels: Could not reserve memory.");
-  }
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  size_t num_map = vi.IsYUV() ? 2 : 1;
+  map = static_cast<uint8_t*>(env2->Allocate(256 * scale * num_map, 8, AVS_NORMAL_ALLOC));
+  if (!map)
+    env->ThrowError("Levels: Could not reserve memory.");
+  env->AtExit(free_buffer, map);
 
   if (vi.IsYUV()) 
   {
-    mapchroma = static_cast<uint8_t*>(env2_unsafe->Allocate(256*scale, 8, AVS_NORMAL_ALLOC));
-    if (!mapchroma) {
-      env->ThrowError("Levels: Could not reserve memory.");
-    }
+    mapchroma = map + 256 * scale;
 
     for (int i = 0; i<256*scale; ++i) {
       double p;
@@ -183,12 +188,6 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
       map[i] = (BYTE)clamp(int(p+0.5), 0, 255);
     }
   }
-}
-
-
-Levels::~Levels() {
-  env2_unsafe->Free(map);
-  env2_unsafe->Free(mapchroma);
 }
 
 
@@ -328,8 +327,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     double rb, double gb, double bb, double ab,
     double rg, double gg, double bg, double ag,
     bool _analyze, bool _dither, IScriptEnvironment* env)
-    : GenericVideoFilter(_child), analyze(_analyze), dither(_dither), mapR(nullptr), mapG(nullptr),
-    mapB(nullptr), mapA(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
+    : GenericVideoFilter(_child), analyze(_analyze), dither(_dither)
 {
     if (!vi.IsRGB())
         env->ThrowError("RGBAdjust requires RGB input");
@@ -339,61 +337,39 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
 
     rg = 1 / rg; gg = 1 / gg; bg = 1 / bg; ag = 1 / ag;
 
+    auto env2 = static_cast<IScriptEnvironment2*>(env);
+    size_t num_map = vi.IsRGB24() ? 3 : 4;
+    size_t map_size = dither ? 256 * 256 : 256;
+
+    mapR = static_cast<uint8_t*>(env2->Allocate(map_size * num_map, 8, AVS_NORMAL_ALLOC));
+    if (!mapR)
+        env->ThrowError("RGBAdjust: Could not reserve memory.");
+    env->AtExit(free_buffer, mapR);
+
+    mapG = mapR + map_size;
+    mapB = mapG + map_size;
+    mapA = num_map == 4 ? mapB + map_size : nullptr;
+
+    void(*set_map)(BYTE*, const double, const double, const double);
     if (dither) {
-        mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
-        mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
-        mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
-        mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
-        if (!mapR || !mapG || !mapB || !mapA)
-        {
-            env2_unsafe->Free(mapR);
-            env2_unsafe->Free(mapG);
-            env2_unsafe->Free(mapB);
-            env2_unsafe->Free(mapA);
-            env->ThrowError("RGBAdjust: Could not reserve memory.");
-        }
-
-        for (int i = 0; i < 256 * 256; ++i) {
-            mapR[i] = BYTE(pow(clamp((rb * 256 + i * r - 127.5) / (255.0 * 256), 0.0, 1.0), rg) * 255.0 + 0.5);
-            mapG[i] = BYTE(pow(clamp((gb * 256 + i * g - 127.5) / (255.0 * 256), 0.0, 1.0), gg) * 255.0 + 0.5);
-            mapB[i] = BYTE(pow(clamp((bb * 256 + i * b - 127.5) / (255.0 * 256), 0.0, 1.0), bg) * 255.0 + 0.5);
-            mapA[i] = BYTE(pow(clamp((ab * 256 + i * a - 127.5) / (255.0 * 256), 0.0, 1.0), ag) * 255.0 + 0.5);
-        }
-    }
-    else {
-        mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-        mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-        mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-        mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-        if (!mapR || !mapG || !mapB || !mapA)
-        {
-            env2_unsafe->Free(mapR);
-            env2_unsafe->Free(mapG);
-            env2_unsafe->Free(mapB);
-            env2_unsafe->Free(mapA);
-            env->ThrowError("RGBAdjust: Could not reserve memory.");
-        }
-
-        for (int i = 0; i < 256; ++i) {
-            mapR[i] = BYTE(pow(clamp((rb + i * r) / 255.0, 0.0, 1.0), rg) * 255.0 + 0.5);
-            mapG[i] = BYTE(pow(clamp((gb + i * g) / 255.0, 0.0, 1.0), gg) * 255.0 + 0.5);
-            mapB[i] = BYTE(pow(clamp((bb + i * b) / 255.0, 0.0, 1.0), bg) * 255.0 + 0.5);
-            mapA[i] = BYTE(pow(clamp((ab + i * a) / 255.0, 0.0, 1.0), ag) * 255.0 + 0.5);
-        }
+        set_map = [](BYTE* map, const double c0, const double c1, const double c2) {
+            for (int i = 0; i < 256 * 256; ++i) {
+                map[i] = BYTE(pow(clamp((c0 * 256 + i * c1 - 127.5) / (255.0 * 256), 0.0, 1.0), c2) * 255.0 + 0.5);
+            }
+        };
+    } else {
+        set_map = [](BYTE* map, const double c0, const double c1, const double c2) {
+            for (int i = 0; i < 256 * 256; ++i) {
+                map[i] = BYTE(pow(clamp((c0 + i * c1) / 255.0, 0.0, 1.0), c2) * 255.0 + 0.5);
+            }
+        };
     }
 
-    if (vi.IsRGB24()) {
-        env2_unsafe->Free(mapA);
-        mapA = nullptr;
-    }
-}
-
-
-RGBAdjust::~RGBAdjust() {
-  env2_unsafe->Free(mapR);
-  env2_unsafe->Free(mapG);
-  env2_unsafe->Free(mapB);
-  env2_unsafe->Free(mapA);
+    set_map(mapR, rb, r, rg);
+    set_map(mapG, gb, g, gg);
+    set_map(mapB, bb, b, bg);
+    if (num_map == 4)
+        set_map(mapA, ab, a, ag);
 }
 
 
@@ -662,9 +638,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
             bool _dither, bool _realcalc, IScriptEnvironment* env)
   : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), realcalc(_realcalc), 
   dhue(_hue), dsat(_sat), dbright(_bright), dcont(_cont), dstartHue(_startHue), dendHue(_endHue), 
-  dmaxSat(_maxSat), dminSat(_minSat), dinterp(p),
-  map(nullptr),
-  mapUV(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
+  dmaxSat(_maxSat), dminSat(_minSat), dinterp(p)
 {
   if (vi.IsRGB())
         env->ThrowError("Tweak: YUV data only (no RGB)");
@@ -716,14 +690,17 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   if (vi.IsPlanar() && (vi.ComponentSize() > 1))
     realcalc = true; // 16/32 bit: no lookup tables.
 
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+
   if(!(realcalc && vi.IsPlanar()))
   { // fill brightness/constrast lookup tables
-    if (dither) {
-      map = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
-      if (!map) {
-        env->ThrowError("Tweak: Could not reserve memory.");
-      }
+    size_t map_size = dither ? 256 * 256 : 256;
+    map = static_cast<uint8_t*>(env2->Allocate(map_size, 8, AVS_NORMAL_ALLOC));
+    if (!map)
+      env->ThrowError("Tweak: Could not reserve memory.");
+    env->AtExit(free_buffer, map);
 
+    if (dither) {
       if (coring) {
         for (int i = 0; i < 256 * 256; i++) {
           /* brightness and contrast */
@@ -741,11 +718,6 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
       }
     }
     else {
-      map = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-      if (!map) {
-        env->ThrowError("Tweak: Could not reserve memory.");
-      }
-
       if (coring) {
         for (int i = 0; i < 256; i++) {
           /* brightness and contrast */
@@ -775,12 +747,13 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
 
   if (!(realcalc && vi.IsPlanar()))
   { // fill lookup tables for UV
-    if (dither) {
-      mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256 * 256 * 16 * sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
-      if (!mapUV) {
-        env->ThrowError("Tweak: Could not reserve memory.");
-      }
+    size_t map_size = 256 * 256 * sizeof(uint16_t) * (dither ? 16 : 1);
+    mapUV = static_cast<uint16_t*>(env2->Allocate(map_size, 8, AVS_NORMAL_ALLOC));
+    if (!mapUV)
+      env->ThrowError("Tweak: Could not reserve memory.");
+    env->AtExit(free_buffer, mapUV);
 
+    if (dither) {
       for (int d = 0; d < 16; d++) {
         for (int u = 0; u < 256; u++) {
           const double destu = ((u << 4 | d) - 7.5) / 16.0 - 128.0;
@@ -802,11 +775,6 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
       }
     }
     else {
-      mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256 * 256 * sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
-      if (!mapUV) {
-        env->ThrowError("Tweak: Could not reserve memory.");
-      }
-
       for (int u = 0; u < 256; u++) {
         const double destu = u - 128;
         for (int v = 0; v < 256; v++) {
@@ -826,12 +794,6 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
       }
     }
   }
-}
-
-
-Tweak::~Tweak() {
-  env2_unsafe->Free(map);
-  env2_unsafe->Free(mapUV);
 }
 
 
