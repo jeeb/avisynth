@@ -36,6 +36,7 @@
 #include "internal.h"
 #include "LruCache.h"
 #include <cassert>
+#include <cstdio>
 
 #ifdef X86_32
 #include <mmintrin.h>
@@ -161,10 +162,14 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       t_end = std::chrono::high_resolution_clock::now();
       elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
-      if (NULL == cache_handle.first->value)
-        _RPT5(0, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: HEY! got nulled! [%s] n=%6d child=%p frame=%p framebefore=%p SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, elapsed_seconds.count()); // P.F.
-      else
-        _RPT5(0, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: [%s] n=%6d child=%p frame=%p framebefore=%p videoCacheSize=%zu SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      char buf[256];
+      if (NULL == cache_handle.first->value) {
+          _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: HEY! got nulled! [%s] n=%6d child=%p frame=%p framebefore=%p SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, elapsed_seconds.count()); // P.F.
+          _RPT0(0, buf);
+      } else {
+          _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: [%s] n=%6d child=%p frame=%p framebefore=%p videoCacheSize=%zu SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+          _RPT0(0, buf);
+      }
 #endif
       // result = cache_handle.first->value; not here! 
       // its content may change after commit when the last lock is released 
@@ -178,9 +183,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
-      _RPT5(0, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)cache_handle.first->value->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      char buf[256];
+      _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)cache_handle.first->value->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      _RPT0(0, buf);
       assert(result != NULL);
-     
 #endif
       break;
     }
@@ -191,7 +197,9 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
-      _RPT5(0, "Cache::GetFrame LRU_LOOKUP_NO_CACHE: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)result, (void *)result->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      char buf[256];
+      _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NO_CACHE: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)result, (void *)result->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      _RPT0(0, buf);
 #endif
       break;
     }

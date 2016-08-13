@@ -53,6 +53,7 @@
 #include <objbase.h>
 
 #include <string>
+#include <cstdio>
 #include <cstdarg>
 #include <cassert>
 #include "MTGuard.h"
@@ -1510,7 +1511,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
     ++it)
   {
     size1++;
-    _RPT5(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7Iu is %7Iu\n", size1, it->first, it->second.size());
+    _RPT3(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7Iu is %7Iu\n", size1, it->first, it->second.size());
     for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
       it2 != end_it2;
       ++it2)
@@ -1519,8 +1520,9 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       VideoFrameBuffer *vfb = it2->first;
       total_vfb_size += vfb->GetDataSize();
       size_t inner_frame_count_size = it2->second.size();
-      _RPT5(0, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber()); // P.F.
-                                                                                                   // iterate the frame list of this vfb
+      char buf[128];
+      _snprintf(buf, 127, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
+      _RPT0(0, buf); // P.F. iterate the frame list of this vfb
       int inner_frame_count = 0;
       int inner_frame_count_for_frame_refcount_nonzero = 0;
       for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
@@ -1556,19 +1558,19 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
             // log the last one
             if (frame->refcount > 0)
             {
-              _RPT5(0, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount);
+              _RPT4(0, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount);
             }
-            _RPT5(0, "  == TOTAL of %d frames. Number of nonzero refcount=%d \n", inner_frame_count, inner_frame_count_for_frame_refcount_nonzero);
+            _RPT2(0, "  == TOTAL of %d frames. Number of nonzero refcount=%d \n", inner_frame_count, inner_frame_count_for_frame_refcount_nonzero);
           }
           if (0 == vfb->refcount && 0 != frame->refcount)
           {
-            _RPT5(0, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n", vfb, frame, frame->refcount);
+            _RPT3(0, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n", vfb, frame, frame->refcount);
           }
         }
       }
     }
   }
-  _RPT5(0, ">> >> >> array sizes %d %d %d Total VFB size=%Iu\n", size1, size2, size3, total_vfb_size);
+  _RPT4(0, ">> >> >> array sizes %d %d %d Total VFB size=%Iu\n", size1, size2, size3, total_vfb_size);
   _RPT0(0, "  ----------------------------\n");
 }
 #endif
@@ -1641,11 +1643,13 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           if (!found)
           {
             InterlockedIncrement(&(frame->vfb->refcount)); // same as &(vfb->refcount)
-#ifdef _DEBUG	
+#ifdef _DEBUG
+            char buf[256];
             t_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_seconds = t_end - t_start;
-            _RPT4(0, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7Iu GotSize=%7Iu FrReg.Size=%6Iu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
-            _RPT4(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
+            _snprintf(buf, 255, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7Iu GotSize=%7Iu FrReg.Size=%6Iu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
+            _RPT0(0, buf);
+            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #endif
             // only 1 frame in list -> no delete
             if (videoFrameListSize <= 1)
@@ -1685,7 +1689,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       }
     } // for it2
   } // for it
-  _RPT1(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
+  _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
 
 #ifdef _DEBUG
   //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames
@@ -1705,7 +1709,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    * Couldn't allocate, try to free up unused frames of any size
    * -----------------------------------------------------------
    */
-  _RPT2(0, "Allocate failed. GC start memory_used=%I64d\n", memory_used.load());
+  _RPT1(0, "Allocate failed. GC start memory_used=%I64d\n", memory_used.load());
   // unfortunately if we reach here, only 0 or 1 vfbs or frames can be freed, from lower vfb sizes
   // usually it's not enough
   // yet it is true that it's meaningful only to free up smaller vfb sizes here
@@ -1829,7 +1833,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
     int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
     if (cache_size != 0)
     {
-      _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit shrink cache. cache=%p new size=%d\n", (void *)cache, cache_size - 1);
+      _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit shrink cache. cache=%p new size=%d\n", (void *)cache, cache_size - 1);
       cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, cache_size - 1);
       shrinkcount++;
     } // if
@@ -1848,7 +1852,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
   // Free up in one pass in FrameRegistry2
   if (shrinkcount)
   {
-    _RPT2(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used.load());
+    _RPT1(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used.load());
     int freed_vfb_count = 0;
     int freed_frame_count = 0;
     int unfreed_frame_count = 0;
@@ -1888,7 +1892,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
             else {
               // there should not be such case: vfb.refcount=0 and frame.refcount!=0
               ++unfreed_frame_count;
-              _RPT4(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount); // P.F.
+              _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount); // P.F.
             }
           }
           // delete array belonging to this vfb in one step
@@ -2567,7 +2571,7 @@ success:;
   {
     *result = funcCtor->InstantiateFilter();
 #ifdef _DEBUG
-    _RPT2(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
+    _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
 #endif
   }
   else
@@ -2753,7 +2757,7 @@ char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
   try {
     std::string str = FormatString(fmt, (va_list)val);
     std::lock_guard<std::mutex> lock(string_mutex);
-    return string_dump.SaveString(str.c_str(), str.size()); // SaveString will add the NULL in len mode.
+    return string_dump.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
   } catch (...) {
     return NULL;
   }
@@ -2829,7 +2833,7 @@ IScriptEnvironment2* __stdcall CreateScriptEnvironment2(int version)
   * to shut down immediately instead of continuing to spin.
   * This solves our problem at the cost of some performance.
   */
-  putenv("OMP_WAIT_POLICY=passive");
+  _putenv("OMP_WAIT_POLICY=passive");
 
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment();
