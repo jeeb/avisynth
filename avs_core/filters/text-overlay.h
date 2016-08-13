@@ -38,6 +38,7 @@
 #include <avisynth.h>
 #include <avs/win.h>
 #include <cstdio>
+#include <stdint.h>
 
 
 /********************************************************************
@@ -63,8 +64,8 @@ private:
   void ApplyYV12(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU);
   void ApplyPlanar(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU, int shiftX, int shiftY, int pixelsize);
   void ApplyYUY2(BYTE* buf, int pitch);
-  void ApplyRGB24(BYTE* buf, int pitch);
-  void ApplyRGB32(BYTE* buf, int pitch);  
+  void ApplyRGB24_48(BYTE* buf, int pitch, int pixelsize);
+  void ApplyRGB32_64(BYTE* buf, int pitch, int pixelsize);  
 
   void* lpAntialiasBits;
   unsigned short* alpha_calcs;
@@ -94,6 +95,11 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
+
 private:
   Antialiaser antialiaser;
   const bool scroll;
@@ -115,6 +121,11 @@ public:
 
   static AVSValue __cdecl CreateSMTPE(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateTime(AVSValue args, void*, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
 
 private:
   Antialiaser antialiaser;
@@ -141,6 +152,11 @@ public:
   
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
+
 private:
   void InitAntialiaser(IScriptEnvironment* env);
   
@@ -166,6 +182,11 @@ public:
   
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
+
 private:
   const VideoInfo& AdjustVi();
 
@@ -184,10 +205,22 @@ public:
   ~Compare();
   static AVSValue __cdecl Create(AVSValue args, void* , IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0;
+      // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+      // show_graph gathers data of last n frames inside class -> conditional MT_SERIALIZED
+      // logfile writing: if log -> conditional MT_SERIALIZED
+      // display of global counters -> MT_SERIALIZED
+      // So least common multiple -> MT_SERIALIZED
+  }
+
+
 private:
   Antialiaser antialiaser;
   PClip child2;
   DWORD mask;
+  uint64_t mask64;
   int masked_bytes;
   FILE* log;
   int* psnrs;
@@ -198,6 +231,7 @@ private:
   double bytecount_overall, SSD_overall;
   int framecount;
   int planar_plane;
+  int pixelsize;
 
 };
 

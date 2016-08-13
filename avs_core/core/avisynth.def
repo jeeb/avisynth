@@ -67,3 +67,14 @@ EXPORTS
   avs_is_yuv422ps
   avs_is_yuv420ps
   avs_is_y32
+  avs_num_components
+  avs_component_size
+  avs_bits_per_component
+  avs_is_444
+  avs_is_422
+  avs_is_420
+  avs_is_y
+  avs_is_yuva
+  avs_is_planar_rgb
+  avs_is_planar_rgba
+  

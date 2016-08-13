@@ -193,7 +193,7 @@ private:
 class ConvertTo16bit : public GenericVideoFilter
 {
 public:
-  ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env);
+  ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, const int _bitdepth, bool _modify_range, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -206,6 +206,9 @@ private:
   float float_range;
   int dither_mode;
   int pixelsize;
+  int bitdepth; // effective 10/12/14/16 bits within the 2 byte container
+  bool modify_range; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
+  bool change_only_format; // if 16->10 bit affects only pixel_type
 };
 
 class ConvertToFloat : public GenericVideoFilter

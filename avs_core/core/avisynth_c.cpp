@@ -43,6 +43,14 @@ public:
 //
 
 extern "C"
+int AVSC_CC avs_is_rgb48(const AVS_VideoInfo * p)
+  { return ((p->pixel_type & AVS_CS_BGR24) == AVS_CS_BGR24) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_16); }
+
+extern "C"
+int AVSC_CC avs_is_rgb64(const AVS_VideoInfo * p)
+  { return ((p->pixel_type & AVS_CS_BGR32) == AVS_CS_BGR32) && ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == AVS_CS_SAMPLE_BITS_16); }
+
+extern "C"
 int AVSC_CC avs_is_yv24(const AVS_VideoInfo * p)
   { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YV24  & AVS_CS_PLANAR_FILTER); }
 
@@ -95,13 +103,45 @@ int AVSC_CC avs_is_y32(const AVS_VideoInfo * p)
   { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_Y32   & AVS_CS_PLANAR_FILTER); }
 
 extern "C"
+int AVSC_CC avs_is_444(const AVS_VideoInfo * p)
+{ return ((p->pixel_type & AVS_CS_PLANAR_MASK & ~AVS_CS_SAMPLE_BITS_MASK) == (AVS_CS_GENERIC_YUV444 & AVS_CS_PLANAR_FILTER)) ||
+         ((p->pixel_type & AVS_CS_PLANAR_MASK & ~AVS_CS_SAMPLE_BITS_MASK) == (AVS_CS_GENERIC_YUVA444 & AVS_CS_PLANAR_FILTER)); }
+
+extern "C"
+int AVSC_CC avs_is_422(const AVS_VideoInfo * p)
+{ return ((p->pixel_type & AVS_CS_PLANAR_MASK & ~AVS_CS_SAMPLE_BITS_MASK) == (AVS_CS_GENERIC_YUV422 & AVS_CS_PLANAR_FILTER)) ||
+         ((p->pixel_type & AVS_CS_PLANAR_MASK & ~AVS_CS_SAMPLE_BITS_MASK) == (AVS_CS_GENERIC_YUVA422 & AVS_CS_PLANAR_FILTER)); }
+
+extern "C"
+int AVSC_CC avs_is_420(const AVS_VideoInfo * p)
+{ return ((p->pixel_type & AVS_CS_PLANAR_MASK & ~AVS_CS_SAMPLE_BITS_MASK) == (AVS_CS_GENERIC_YUV420 & AVS_CS_PLANAR_FILTER)) ||
+         ((p->pixel_type & AVS_CS_PLANAR_MASK & ~AVS_CS_SAMPLE_BITS_MASK) == (AVS_CS_GENERIC_YUVA420 & AVS_CS_PLANAR_FILTER)); }
+
+extern "C"
+int AVSC_CC avs_is_y(const AVS_VideoInfo * p)
+{ return (p->pixel_type & AVS_CS_PLANAR_MASK & ~AVS_CS_SAMPLE_BITS_MASK) == (AVS_CS_GENERIC_Y & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
 int AVSC_CC avs_is_color_space(const AVS_VideoInfo * p, int c_space)
 {
-  return avs_is_planar(p) ?
+    return avs_is_planar(p) ?
     ((p->pixel_type & AVS_CS_PLANAR_MASK) == (c_space & AVS_CS_PLANAR_FILTER))
-  :
-    ((p->pixel_type & c_space) == c_space);
+    :
+    ( ((p->pixel_type & ~AVS_CS_SAMPLE_BITS_MASK & c_space) == (c_space & ~AVS_CS_SAMPLE_BITS_MASK)) && // RGB got sample bits
+      ((p->pixel_type & AVS_CS_SAMPLE_BITS_MASK) == (c_space & AVS_CS_SAMPLE_BITS_MASK)) );
 }
+
+extern "C"
+int AVSC_CC avs_is_yuva(const AVS_VideoInfo * p)
+{ return !!(p->pixel_type&AVS_CS_YUVA ); }
+
+extern "C"
+int AVSC_CC avs_is_planar_rgb(const AVS_VideoInfo * p)
+{ return !!(p->pixel_type&AVS_CS_PLANAR) && !!(p->pixel_type&AVS_CS_BGR) && !!(p->pixel_type&AVS_CS_RGB_TYPE); }
+
+extern "C"
+int AVSC_CC avs_is_planar_rgba(const AVS_VideoInfo * p)
+{ return !!(p->pixel_type&AVS_CS_PLANAR) && !!(p->pixel_type&AVS_CS_BGR) && !!(p->pixel_type&AVS_CS_RGBA_TYPE); }
 
 extern "C"
 int AVSC_CC avs_get_plane_width_subsampling(const AVS_VideoInfo * p, int plane)
@@ -248,6 +288,26 @@ AVS_VideoFrame * AVSC_CC avs_copy_video_frame(AVS_VideoFrame * f)
   new ((PVideoFrame *)&fnew) PVideoFrame(*(PVideoFrame *)&f);
   return fnew;
 }
+
+
+extern "C"
+int AVSC_CC avs_num_components(const AVS_VideoInfo * p)
+{
+    return ((VideoInfo *)p)->NumComponents();
+}
+
+extern "C"
+int AVSC_CC avs_component_size(const AVS_VideoInfo * p)
+{
+    return ((VideoInfo *)p)->ComponentSize();
+}
+
+extern "C"
+int AVSC_CC avs_bits_per_component(const AVS_VideoInfo * p)
+{
+    return ((VideoInfo *)p)->BitsPerComponent();
+}
+
 
 
 /////////////////////////////////////////////////////////////////////
