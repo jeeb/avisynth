@@ -240,6 +240,9 @@ int VideoInfo::BitsPerPixel() const {
         return 16;
       case CS_Y8:
         return 8;
+      case CS_Y10:
+      case CS_Y12:
+      case CS_Y14:
       case CS_Y16: // AVS16
         return 16;
       case CS_Y32: 
