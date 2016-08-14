@@ -753,7 +753,16 @@ private:
   bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
 
 #ifdef _DEBUG
-  typedef std::vector<std::pair<VideoFrame*, std::chrono::time_point<std::chrono::high_resolution_clock >>> VideoFrameArrayType;
+  struct TimestampedFrame
+  {
+    VideoFrame *frame;
+    std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
+
+    TimestampedFrame(VideoFrame *_frame, std::chrono::time_point<std::chrono::high_resolution_clock> &_ts)
+      : frame(_frame), timestamp(_ts)
+    {}
+  };
+  typedef std::vector<TimestampedFrame> VideoFrameArrayType;
 #else
   typedef std::vector<VideoFrame*> VideoFrameArrayType;
 #endif
@@ -955,7 +964,7 @@ ScriptEnvironment::~ScriptEnvironment() {
         ++it3)
       {
 #ifdef _DEBUG
-        VideoFrame *frame = it3->first; // ->second is timestamp in debug mode
+        VideoFrame *frame = it3->frame; // ->second is timestamp in debug mode
 #else
         VideoFrame *frame = *it3;
 #endif
@@ -1480,7 +1489,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   // no locking here, calling method have done it already
 #ifdef _DEBUG
   // insert with timestamp!
-  FrameRegistry2[vfb_size][vfb].push_back(std::make_pair(newFrame, std::chrono::high_resolution_clock::now()));
+  FrameRegistry2[vfb_size][vfb].push_back(TimestampedFrame(newFrame, std::chrono::high_resolution_clock::now()));
 #else
   FrameRegistry2[vfb_size][vfb].push_back(newFrame);
 #endif
@@ -1532,8 +1541,8 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
         size3++;
         inner_frame_count++;
 #ifdef _DEBUG
-        VideoFrame *frame = it3->first;
-        std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->second;
+        VideoFrame *frame = it3->frame;
+        std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->timestamp;
 #else
         VideoFrame *frame = *it3;
 #endif
@@ -1631,7 +1640,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           /*++it3 not here, because of the delete*/)
         {
 #ifdef _DEBUG
-          VideoFrame *frame = it3->first; // -> second is frame creation timestamp
+          VideoFrame *frame = it3->frame; // -> second is frame creation timestamp
 #else
           VideoFrame *frame = *it3;
 #endif
@@ -1656,7 +1665,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             {
               _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame. VideoFrameListSize was 1\n", videoFrameListSize); // P.F.
 #ifdef _DEBUG
-              it3->second = std::chrono::high_resolution_clock::now(); // refresh timestamp!
+              it3->timestamp = std::chrono::high_resolution_clock::now(); // refresh timestamp!
 #endif
               return frame; // return immediately
               break;
@@ -1680,7 +1689,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           it2->second.clear();
           it2->second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
 #ifdef _DEBUG
-          it2->second.push_back(std::make_pair(frame_found, std::chrono::high_resolution_clock::now())); // keep only the first
+          it2->second.push_back(TimestampedFrame(frame_found, std::chrono::high_resolution_clock::now())); // keep only the first
 #else
           it2->second.push_back(frame_found); // keep only the first
 #endif
@@ -1732,7 +1741,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           ++it3)
         {
 #ifdef _DEBUG
-          VideoFrame *frame = it3->first; // ->second is the timestamp
+          VideoFrame *frame = it3->frame; // ->second is the timestamp
 #else
           VideoFrame *frame = *it3;
 #endif
@@ -1879,7 +1888,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
             ++it3)
           {
 #ifdef _DEBUG
-            VideoFrame *frame = it3->first;
+            VideoFrame *frame = it3->frame;
 #else
             VideoFrame *frame = *it3;
 #endif
@@ -2185,7 +2194,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
   // automatically inserts if not exists!
 #ifdef _DEBUG
   assert(NULL != subframe);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(std::make_pair(subframe, std::chrono::high_resolution_clock::now())); // insert with timestamp!
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(TimestampedFrame(subframe, std::chrono::high_resolution_clock::now())); // insert with timestamp!
 #else  
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(subframe);
 #endif
@@ -2207,7 +2216,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
   // automatically inserts if not exists!
 #ifdef _DEBUG
   assert(subframe != NULL);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(std::make_pair(subframe, std::chrono::high_resolution_clock::now())); // insert with timestamp! 
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(TimestampedFrame(subframe, std::chrono::high_resolution_clock::now())); // insert with timestamp! 
 #else
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(subframe); 
 #endif
@@ -2227,7 +2236,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
                                                          // automatically inserts if not exists!
 #ifdef _DEBUG
     assert(subframe != NULL);
-    FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(std::make_pair(subframe, std::chrono::high_resolution_clock::now())); // insert with timestamp! 
+    FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(TimestampedFrame(subframe, std::chrono::high_resolution_clock::now())); // insert with timestamp! 
 #else
     FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(subframe); 
 #endif
