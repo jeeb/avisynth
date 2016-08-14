@@ -316,6 +316,9 @@ int VideoInfo::NumComponents() const {
      return 0;
   case CS_RAW32:
   case CS_Y8:
+  case CS_Y10:
+  case CS_Y12:
+  case CS_Y14:
   case CS_Y16:
   case CS_Y32:
     return 1;
