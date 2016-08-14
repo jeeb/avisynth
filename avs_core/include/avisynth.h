@@ -1239,7 +1239,7 @@ public:
 
 // avisynth.dll exports this; it's a way to use it as a library, without
 // writing an AVS script or without going through AVIFile.
-IScriptEnvironment* __stdcall CreateScriptEnvironment(int version = AVISYNTH_INTERFACE_VERSION);
+AVSC_API(IScriptEnvironment*, CreateScriptEnvironment)(int version = AVISYNTH_INTERFACE_VERSION);
 
 
 // These are some global variables you can set in your script to change AviSynth's behavior.
