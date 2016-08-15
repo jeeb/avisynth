@@ -263,7 +263,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
   return TRUE;
 }
 
-STDAPI  DllGetClassObject(IN REFCLSID rclsid, IN REFIID riid, OUT LPVOID FAR* ppv){
+STDAPI DllGetClassObject(IN REFCLSID rclsid, IN REFIID riid, OUT LPVOID FAR* ppv){
 
   if (rclsid != CLSID_CAVIFileSynth) {
     _RPT0(0,"DllGetClassObject() CLASS_E_CLASSNOTAVAILABLE\n");
@@ -277,8 +277,6 @@ STDAPI  DllGetClassObject(IN REFCLSID rclsid, IN REFIID riid, OUT LPVOID FAR* pp
 
   return hresult;
 }
-
-extern "C" STDAPI DllCanUnloadNow();
 
 STDAPI DllCanUnloadNow() {
   _RPT1(0,"DllCanUnloadNow(): gRefCnt = %ld\n", gRefCnt);

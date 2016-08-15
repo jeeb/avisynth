@@ -35,8 +35,10 @@
 // Whenever you need windows headers, start by including this file, then the rest.
 
 // WWUUT? We require XP now?
-#define _WIN32_WINNT 0x0502
-#define WINVER 0x0502
+#if !defined(NTDDI_VERSION) && !defined(_WIN32_WINNT)
+  #define NTDDI_VERSION NTDDI_WS03
+  #define _WIN32_WINNT  _WIN32_WINNT_WS03
+#endif
 
 #define WIN32_LEAN_AND_MEAN
 #define STRICT
