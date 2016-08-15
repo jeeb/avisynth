@@ -227,10 +227,10 @@ int VideoInfo::GetPlaneHeightSubsampling(int plane) const {  // Subsampling in b
 int VideoInfo::BitsPerPixel() const {
 // Lookup Interleaved, calculate PLANAR's
 // Remark:
-// - total bitsize for interleaved types, e.g. RGB48 = 48 = 3x16
-// - byte size corrected with subsampling factor for Planar
-//   (is it used for planar anywhere?)
-// use BitsPerComponent instead for returning the component format 8/10/12/14/16/32 bit
+// - total bitsize for interleaved/packed types, e.g. RGB48 = 48 = 3x16
+// - byte size corrected with U-V subsampling factor for Planar YUV/YUVA
+// - external softwares may use it for calculating buffer size
+// - use BitsPerComponent instead for returning the pixel component format 8/10/12/14/16/32 bits
     switch (pixel_type) {
       case CS_BGR24:
         return 24;
@@ -254,8 +254,9 @@ int VideoInfo::BitsPerPixel() const {
     }
     if (IsPlanar()) {
       const int componentSizes[8] = {1,2,4,0,0,2,2,2};
-      const int S = (IsYUV() || IsYUVA()) ? GetPlaneWidthSubsampling(PLANAR_U) + GetPlaneHeightSubsampling(PLANAR_U) : 0;
-      return ( ((1<<S)+2) * (componentSizes[(pixel_type>>CS_Shift_Sample_Bits) & 7]) * 8 ) >> S;
+      const int S = (IsYUV() || IsYUVA()) ? GetPlaneWidthSubsampling(PLANAR_U) + GetPlaneHeightSubsampling(PLANAR_U) : 0; // planar RGBA: no subsampling
+      const int fullSizePlaneCount = IsYUVA() || IsPlanarRGBA() ? 2 : 1; // alpha plane is always full size
+      return (((fullSizePlaneCount << S) + 2) * (componentSizes[(pixel_type >> CS_Shift_Sample_Bits) & 7]) * 8) >> S;
     }
     return 0;
 }
