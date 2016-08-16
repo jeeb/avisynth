@@ -792,6 +792,7 @@ private:
   VideoFrame* GetNewFrame(size_t vfb_size);
   VideoFrame* AllocateFrame(size_t vfb_size);
   std::mutex memory_mutex;
+  std::recursive_mutex invoke_mutex;
 
   BufferPool BufferPool;
 
@@ -1108,6 +1109,7 @@ void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_l
     GetConsoleScreenBufferInfo(hConsole, &Info);
 
     // Do the output
+    std::lock_guard<std::mutex> lock(string_mutex);
     *targetStream << "---------------------------------------------------------------------" << std::endl;
     SetConsoleTextAttribute(hConsole, levelAttr);
     *targetStream << levelStr;
@@ -2223,6 +2225,8 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 // ScriptEnvironment class without extending the IScriptEnvironment
 // definition.
 
+  std::lock_guard<std::mutex> env_lock(memory_mutex);
+
   switch((MANAGE_CACHE_KEYS)key)
   {
   // Called by Cache instances upon creation
@@ -2247,7 +2251,6 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
   // Called by Cache instances when they want to expand their limit
   case MC_NodAndExpandCache:
   {
-    std::unique_lock<std::mutex> env_lock(memory_mutex);
     Cache* cache = reinterpret_cast<Cache*>(data);
 
     // Nod
@@ -2295,7 +2298,6 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     if (cache == FrontCache)
       return 0;
 
-    std::unique_lock<std::mutex> env_lock(memory_mutex);
     CacheRegistry.move_to_back(cache);
     break;
   } // case
@@ -2418,6 +2420,8 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
 
 bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names)
 {
+  std::lock_guard<std::recursive_mutex> env_lock(invoke_mutex);
+
   bool strict = false;
   const AVSFunction *f;
 

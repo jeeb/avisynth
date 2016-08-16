@@ -26,8 +26,8 @@ typedef enum _ELogTicketType
     LOGTICKET_W1005 = 1005, // filter with inconsequent MT-modes
     LOGTICKET_W1006 = 1006, // filter with redundant MT-modes
     LOGTICKET_W1007 = 1007, // user should try 64-bit AVS for more memory
-	LOGTICKET_W1008 = 1008, // multiple plugins define the same function
-	LOGTICKET_W1009 = 1009, // a filter is using forced alignment
+    LOGTICKET_W1008 = 1008, // multiple plugins define the same function
+    LOGTICKET_W1009 = 1009, // a filter is using forced alignment
 } ELogTicketType;
 
 class OneTimeLogTicket
