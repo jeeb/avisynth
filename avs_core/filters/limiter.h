@@ -54,7 +54,9 @@ private:
   int min_luma;
   int max_chroma;
   int min_chroma;
-  const enum SHOW {show_none, show_luma, show_luma_grey, show_chroma, show_chroma_grey} show;
+
+  enum show_e{show_none, show_luma, show_luma_grey, show_chroma, show_chroma_grey};
+  const show_e show;
 };
 
 #endif  // __Limiter_H__

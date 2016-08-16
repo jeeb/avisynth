@@ -84,7 +84,7 @@ private:
   ObjectPool<entry_type> EntryPool;
   mutable std::mutex mutex;
 
-  static bool MainEvictEvent(CacheType* cache, typename const CacheType::Entry& entry, void* userData)
+  static bool MainEvictEvent(CacheType* cache, const typename CacheType::Entry& entry, void* userData)
   {
     if (entry.value->locks > 0)
       return false;
@@ -92,7 +92,7 @@ private:
     LruCache* me = reinterpret_cast<LruCache*>(userData);
 
     bool ghost_found;
-    GhostCacheType::value_type* g = me->Ghosts.lookup(entry.key, &ghost_found);
+    auto *g = me->Ghosts.lookup(entry.key, &ghost_found);
     if (!ghost_found)
     {
       *g = LruGhostEntry(entry.key, entry.value->ghosted+1);
@@ -114,7 +114,7 @@ public:
   LruCache(size_type capacity) :
     GHOSTS_MIN_CAPACITY(50),
     MainCache(capacity, &MainEvictEvent, reinterpret_cast<void*>(this)),
-    Ghosts(GHOSTS_MIN_CAPACITY, GhostCacheType::EvictEventType(), reinterpret_cast<void*>(this))
+    Ghosts(GHOSTS_MIN_CAPACITY, typename GhostCacheType::EvictEventType(), reinterpret_cast<void*>(this))
   {
   }
 
@@ -189,7 +189,7 @@ public:
     else
     {
       bool ghost_found;
-      GhostCacheType::value_type* g = Ghosts.lookup(key, &ghost_found);
+      auto *g = Ghosts.lookup(key, &ghost_found);
       assert(g != NULL);
       if (!ghost_found)
       {
@@ -243,7 +243,7 @@ public:
   void rollback(handle *hndl)
   {
     std::unique_lock<std::mutex> global_lock(mutex);
-    
+
     entry_ptr e = hndl->first;
     assert(e->locks > 0);
 

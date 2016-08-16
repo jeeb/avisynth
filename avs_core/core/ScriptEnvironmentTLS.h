@@ -18,7 +18,7 @@ private:
   BufferPool BufferPool;
 
 public:
-  ScriptEnvironmentTLS(size_t _thread_id) : 
+  ScriptEnvironmentTLS(size_t _thread_id) :
     core(NULL),
     thread_id(_thread_id),
     global_var_table(NULL),
@@ -108,7 +108,7 @@ public:
       return def;
   }
 
-  int __stdcall GetVar(const char* name, int def) const 
+  int __stdcall GetVar(const char* name, int def) const
   {
     AVSValue val;
     if (this->GetVar(name, &val))
@@ -270,7 +270,7 @@ public:
     core->ThrowError("Cannot delete environment from a TLS proxy.");
   }
 
-  void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor)
+  void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor)
   {
     core->ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor);
   }
@@ -346,7 +346,7 @@ public:
   {
     return core->FilterHasMtMode(filter);
   }
-      
+
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity)
   {
     return core->NewCompletion(capacity);

@@ -60,12 +60,6 @@
 #include "cache.h"
 #include <clocale>
 
-#ifdef _MSC_VER
-  #define strnicmp(a,b,c) _strnicmp(a,b,c)
-#else
-  #define _RPT1(x,y,z) ((void)0)
-#endif
-
 #ifndef YieldProcessor // low power spin idle
   #define YieldProcessor() __nop(void)
 #endif
@@ -116,7 +110,7 @@ static DWORD CountSetBits(ULONG_PTR bitMask)
 {
   DWORD LSHIFT = sizeof(ULONG_PTR)*8 - 1;
   DWORD bitSetCount = 0;
-  ULONG_PTR bitTest = (ULONG_PTR)1 << LSHIFT;    
+  ULONG_PTR bitTest = (ULONG_PTR)1 << LSHIFT;
   DWORD i;
 
   for (i = 0; i <= LSHIFT; ++i)
@@ -128,9 +122,10 @@ static DWORD CountSetBits(ULONG_PTR bitMask)
   return bitSetCount;
 }
 
-typedef BOOL (WINAPI *LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
 static size_t GetNumPhysicalCPUs()
 {
+#ifdef MSVC
+  typedef BOOL (WINAPI *LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
   LPFN_GLPI glpi;
   BOOL done = FALSE;
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL;
@@ -149,7 +144,7 @@ static size_t GetNumPhysicalCPUs()
   glpi = (LPFN_GLPI) GetProcAddress(
     GetModuleHandle(TEXT("kernel32")),
     "GetLogicalProcessorInformation");
-  if (NULL == glpi) 
+  if (NULL == glpi)
   {
 //    _tprintf(TEXT("\nGetLogicalProcessorInformation is not supported.\n"));
     return (0);
@@ -159,28 +154,28 @@ static size_t GetNumPhysicalCPUs()
   {
     BOOL rc = glpi(buffer, &returnLength);
 
-    if (FALSE == rc) 
+    if (FALSE == rc)
     {
-      if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) 
+      if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
       {
-        if (buffer) 
+        if (buffer)
           free(buffer);
 
         buffer = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)malloc(
           returnLength);
 
-        if (NULL == buffer) 
+        if (NULL == buffer)
         {
 //          _tprintf(TEXT("\nError: Allocation failure\n"));
           return (0);
         }
-      } 
-      else 
+      }
+      else
       {
 //        _tprintf(TEXT("\nError %d\n"), GetLastError());
         return (0);
       }
-    } 
+    }
     else
     {
       done = TRUE;
@@ -189,9 +184,9 @@ static size_t GetNumPhysicalCPUs()
 
   ptr = buffer;
 
-  while (byteOffset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= returnLength) 
+  while (byteOffset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= returnLength)
   {
-    switch (ptr->Relationship) 
+    switch (ptr->Relationship)
     {
     case RelationNumaNode:
       // Non-NUMA systems report a single record of this type.
@@ -206,7 +201,7 @@ static size_t GetNumPhysicalCPUs()
       break;
 
     case RelationCache:
-      // Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache. 
+      // Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache.
       Cache = &ptr->Cache;
       if (Cache->Level == 1)
       {
@@ -237,15 +232,15 @@ static size_t GetNumPhysicalCPUs()
 
   /*
   _tprintf(TEXT("\nGetLogicalProcessorInformation results:\n"));
-  _tprintf(TEXT("Number of NUMA nodes: %d\n"), 
+  _tprintf(TEXT("Number of NUMA nodes: %d\n"),
     numaNodeCount);
-  _tprintf(TEXT("Number of physical processor packages: %d\n"), 
+  _tprintf(TEXT("Number of physical processor packages: %d\n"),
     processorPackageCount);
-  _tprintf(TEXT("Number of processor cores: %d\n"), 
+  _tprintf(TEXT("Number of processor cores: %d\n"),
     processorCoreCount);
-  _tprintf(TEXT("Number of logical processors: %d\n"), 
+  _tprintf(TEXT("Number of logical processors: %d\n"),
     logicalProcessorCount);
-  _tprintf(TEXT("Number of processor L1/L2/L3 caches: %d/%d/%d\n"), 
+  _tprintf(TEXT("Number of processor L1/L2/L3 caches: %d/%d/%d\n"),
     processorL1CacheCount,
     processorL2CacheCount,
     processorL3CacheCount);
@@ -254,8 +249,12 @@ static size_t GetNumPhysicalCPUs()
   free(buffer);
 
   return processorCoreCount;
+#else
+  return 4; // GCC TODO
+#endif
 }
 
+#ifdef MSVC
 static std::string FormatString(const char *fmt, va_list args)
 {
   va_list args2;
@@ -271,6 +270,21 @@ static std::string FormatString(const char *fmt, va_list args)
 
   return std::string(buf.data());
 }
+#else
+static std::string FormatString(const char *fmt, va_list args)
+{
+  va_list args2;
+  va_copy(args2, args);
+
+  int count = vsnprintf(NULL, 0, fmt, args);
+  std::vector<char> buf(count + 1);
+  vsnprintf(buf.data(), buf.size(), fmt, args2);
+
+  va_end(args2);
+
+  return std::string(buf.data());
+}
+#endif
 
 void* VideoFrame::operator new(size_t size) {
   return ::operator new(size);
@@ -344,7 +358,7 @@ VideoFrameBuffer::VideoFrameBuffer(int size) :
   data(new BYTE[size]),
 #endif
   data_size(size),
-  sequence_number(0) 
+  sequence_number(0)
 {
 
 #ifdef _DEBUG
@@ -372,8 +386,8 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   if (data) delete[] data;
-  (BYTE*)data = 0; // and mark it invalid!!
-  (int)data_size = 0;   // and don't forget to set the size to 0 as well!
+  data = nullptr; // and mark it invalid!!
+  data_size = 0;   // and don't forget to set the size to 0 as well!
 }
 
 
@@ -480,10 +494,6 @@ typedef enum class _MtWeight
 
 class ClipDataStore
 {
-private:
-    ClipDataStore(const ClipDataStore&) = delete;
-    ClipDataStore& operator=(const ClipDataStore&) = delete;
-
 public:
 
     // The clip instance that we hold data for.
@@ -667,12 +677,12 @@ public:
   PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
   int __stdcall SetMemoryMax(int mem);
   int __stdcall SetWorkingDir(const char * newdir);
-  __stdcall ~ScriptEnvironment();
+  AVSC_CC ~ScriptEnvironment();
   void* __stdcall ManageCache(int key, void* data);
   bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key);
   PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
   void __stdcall DeleteScriptEnvironment();
-  void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
+  void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
   const AVS_Linkage* const __stdcall GetAVSLinkage();
   AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue());
 
@@ -771,7 +781,7 @@ private:
   typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; // post r1825 P.F.
   typedef mapped_list<Cache*> CacheRegistryType;
 
- 
+
   FrameRegistryType2 FrameRegistry2; // P.F.
 #ifdef _DEBUG
   void ListFrameRegistry(size_t min_size, size_t max_size, bool someframes);
@@ -823,13 +833,13 @@ static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
   unsigned __int64 mem_sysreserve = 0;
   if (memstatus.ullTotalPhys > memstatus.ullTotalVirtual)
   {
-    // We are probably running on a 32bit OS system where the virtual space is capped to 
+    // We are probably running on a 32bit OS system where the virtual space is capped to
     // much less than what the system can use, so it is enough to reserve only a small amount.
-    mem_sysreserve = 128*1024*1024ull;  
+    mem_sysreserve = 128*1024*1024ull;
   }
   else
   {
-    // We could probably use up all the RAM in our single application, 
+    // We could probably use up all the RAM in our single application,
     // so reserve more to leave some RAM for other apps and the OS too.
     mem_sysreserve = 1024*1024*1024ull;
   }
@@ -1125,7 +1135,7 @@ void __stdcall ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket &tick
 
 ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
 {
-#if ( defined(_MSC_VER) && (_MSC_VER < 1900) )
+#if ( !defined(_MSC_VER) || (_MSC_VER < 1900) )
     return &(clip_data.emplace(clip, clip).first->second);
 #else
     return &(clip_data.try_emplace(clip, clip).first->second);
@@ -1167,7 +1177,7 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
 {
     this->SetFilterMTMode(filter, mode, force ? MtWeight::MT_WEIGHT_2_USERFORCE : MtWeight::MT_WEIGHT_1_USERSPEC);
 }
-    
+
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight)
 {
   assert(NULL != filter);
@@ -1253,7 +1263,7 @@ void __stdcall ScriptEnvironment::Free(void* ptr)
 }
 
 /* This function adds information about builtin functions into global variables.
- * External utilities (like AvsPmod) can parse these variables and use them 
+ * External utilities (like AvsPmod) can parse these variables and use them
  * to learn about supported functions and their syntax.
  */
 void ScriptEnvironment::ExportBuiltinFilters()
@@ -1323,7 +1333,7 @@ int __stdcall ScriptEnvironment::DecrImportDepth()
 bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
 {
   // Autoload needed to ensure that manual LoadPlugin() calls always override autoloaded plugins.
-  // For that, autoloading must happen before any LoadPlugin(), so we force an 
+  // For that, autoloading must happen before any LoadPlugin(), so we force an
   // autoload operation before any LoadPlugin().
   this->AutoloadPlugins();
   return plugin_manager->LoadPlugin(filePath, throwOnError, result);
@@ -1374,7 +1384,7 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
 // Throws if unsuccessfull
 AVSValue ScriptEnvironment::GetVar(const char* name) {
   if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
-  
+
   AVSValue val;
   if (var_table->Get(name, &val))
     return val;
@@ -1400,7 +1410,7 @@ AVSValue ScriptEnvironment::GetVarDef(const char* name, const AVSValue& def) {
 
 bool ScriptEnvironment::GetVar(const char* name, bool def) const {
   if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-  
+
   AVSValue val;
   if (this->GetVar(name, &val))
     return val.AsBool(def);
@@ -1410,7 +1420,7 @@ bool ScriptEnvironment::GetVar(const char* name, bool def) const {
 
 int ScriptEnvironment::GetVar(const char* name, int def) const {
   if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-  
+
   AVSValue val;
   if (this->GetVar(name, &val))
     return val.AsInt(def);
@@ -1420,7 +1430,7 @@ int ScriptEnvironment::GetVar(const char* name, int def) const {
 
 double ScriptEnvironment::GetVar(const char* name, double def) const {
   if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-  
+
   AVSValue val;
   if (this->GetVar(name, &val))
     return val.AsDblDef(def);
@@ -1430,7 +1440,7 @@ double ScriptEnvironment::GetVar(const char* name, double def) const {
 
 const char* ScriptEnvironment::GetVar(const char* name, const char* def) const {
   if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-  
+
   AVSValue val;
   if (this->GetVar(name, &val))
     return val.AsString(def);
@@ -1458,7 +1468,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   }
 
   EnsureMemoryLimit(vfb_size);
-  
+
   VideoFrameBuffer* vfb = NULL;
   try
   {
@@ -1506,7 +1516,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
   _RPT3(0, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7Iu and %7Iu\n", &FrameRegistry2, min_size, max_size);
   _RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%Iu \n", FrameRegistry2.size());
   size_t total_vfb_size = 0;
-  // list to debugview: all frames up-to vfb_size size  
+  // list to debugview: all frames up-to vfb_size size
   for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(min_size), end_it = FrameRegistry2.upper_bound(max_size);
     it != end_it;
     ++it)
@@ -1546,7 +1556,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
           std::chrono::duration<double> elapsed_seconds = t_end - frame_entry_timestamp;
           if (inner_frame_count <= 2) // list only the first 2. There can be even many thousand of frames!
           {
-            // log only if frame creation timestamp is too old! 
+            // log only if frame creation timestamp is too old!
             // e.g. 100 secs, it must be a stuck frame (but can also be a valid static frame from ColorBars)
             // if (elapsed_seconds.count() > 100.0f && frame->refcount > 0)
             if (frame->refcount > 0)
@@ -1601,14 +1611,14 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   // FrameRegistry2 is like: map<key1, map<key2, vector<VideoFrame *>> >
   // typedef std::vector<VideoFrame*> VideoFrameArrayType;
   // typedef std::map<VideoFrameBuffer *, VideoFrameArrayType> FrameBufferRegistryType;
-  // typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; 
+  // typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2;
   // [vfb_size = 10000][vfb = 0x111111111] [frame = 0x129837192(,timestamp=xxx)]
-  //                                       [frame = 0x012312122(,timestamp=xxx)] 
-  //                                       [frame = 0x232323232(,timestamp=xxx)] 
+  //                                       [frame = 0x012312122(,timestamp=xxx)]
+  //                                       [frame = 0x232323232(,timestamp=xxx)]
   //                   [vfb = 0x222222222] [frame = 0x333333333(,timestamp=xxx)]
   //                                       [frame = 0x444444444(,timestamp=xxx)]
-  // Which is better? 
-  // - found exact vfb_size or 
+  // Which is better?
+  // - found exact vfb_size or
   // - allow reusing existing vfb's with size up to size_to_find*1.5 THIS ONE!
   // - allow to occupy any buffer that is bigger than the requested size
   //for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size); // exact! no-go. special service clips can fragment it
@@ -1664,7 +1674,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             ++it3;
           }
           else {
-            // if the first frame to this vfb was already found, then we free all others and delete it from the list   
+            // if the first frame to this vfb was already found, then we free all others and delete it from the list
             // Benefit: no 4-5k frame list count per a single vfb.
             //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
             delete frame;
@@ -1785,7 +1795,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
 
   _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used.load(), memory_max);
 #ifdef _DEBUG
-  // #define LIST_CACHES    
+  // #define LIST_CACHES
   // list all cache_entries
 #ifdef LIST_CACHES
   int cache_counter = 0;
@@ -1801,7 +1811,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
     int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
     _RPT4(0, "  cache#%d cache_ptr=%p cache_size=%d \n", cache_counter, (void *)cache, cache_size); // let's see what's in the cache
   }
-#endif    
+#endif
 #endif
 
   int shrinkcount = 0;
@@ -1919,9 +1929,9 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     pitchUV = AlignNumber(row_sizeUV, align);
   }
 
-  size_t size = pitchY * height + 2 * pitchUV * heightUV + (alpha ? pitchY * height : 0); 
+  size_t size = pitchY * height + 2 * pitchUV * heightUV + (alpha ? pitchY * height : 0);
   size = size + align -1;
-  
+
   VideoFrame *res = GetNewFrame(size);
 
   int  offsetU, offsetV, offsetA;
@@ -2187,8 +2197,8 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
   std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
   // automatically inserts if not exists!
   assert(subframe != NULL);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp! 
-																		 
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
+
   return subframe;
 }
 
@@ -2203,7 +2213,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
     std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
                                                          // automatically inserts if not exists!
     assert(subframe != NULL);
-    FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp! 
+    FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
 
     return subframe;
 }
@@ -2220,7 +2230,7 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
   {
     Cache* cache = reinterpret_cast<Cache*>(data);
     if (FrontCache != NULL)
-      CacheRegistry.push_back(FrontCache);     
+      CacheRegistry.push_back(FrontCache);
     FrontCache = cache;
     break;
   }
@@ -2337,7 +2347,7 @@ bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAl
 /* A helper for Invoke.
    Copy a nested array of 'src' into a flat array 'dst'.
    Returns the number of elements that have been written to 'dst'.
-   If 'dst' is NULL, will still return the number of elements 
+   If 'dst' is NULL, will still return the number of elements
    that would have been written to 'dst', but will not actually write to 'dst'.
 */
 static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, const char* const* arg_names = NULL) {
@@ -2440,7 +2450,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
           foundClipArgument = true;
 
           const PClip &clip = argx.AsClip();
-          IClip *clip_raw = (IClip*)((void*)clip); 
+          IClip *clip_raw = (IClip*)((void*)clip);
           ClipDataStore *data = this->ClipData(clip_raw);
 
           if (!data->CreatedByInvoke)
@@ -2510,7 +2520,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
           p += 1;
           const char* q = strchr(p, ']');
           if (!q) break;
-          if (strlen(arg_names[i]) == size_t(q-p) && !strnicmp(arg_names[i], p, q-p)) {
+          if (strlen(arg_names[i]) == size_t(q-p) && !_strnicmp(arg_names[i], p, q-p)) {
             // we have a match
             if (args3[named_arg_index].Defined()) {
               ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
@@ -2533,7 +2543,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 success:;
     }
   }
- 
+
   // Trim array size to the actual number of arguments
   args3.resize(args3_count);
   std::vector<AVSValue>(args3).swap(args3);
@@ -2567,7 +2577,7 @@ success:;
         invoke_stack.pop();
         throw;
     }
-    
+
     // Determine MT-mode, as if this instance had not called Invoke()
     // in its constructor. Note that this is not necessary the final
     // MT-mode.
@@ -2778,7 +2788,7 @@ const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
 }
 
 
-void _stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
+void __stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
   ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);
 }
 
@@ -2790,11 +2800,11 @@ void __stdcall ScriptEnvironment::DeleteScriptEnvironment() {
 }
 
 
-IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
+AVSC_API(IScriptEnvironment*, CreateScriptEnvironment)(int version) {
   return CreateScriptEnvironment2(version);
 }
 
-IScriptEnvironment2* __stdcall CreateScriptEnvironment2(int version)
+AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version)
 {
   /* Some plugins use OpenMP. But OMP threads do not exit immediately
   * after all work is exhausted, and keep spinning for a small amount

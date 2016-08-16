@@ -328,8 +328,8 @@ static void coloryuv_apply_lut_yuy2(BYTE* pDst, const BYTE* pSrc, int dst_pitch,
     {                                                     \
         const double t = env2->GetVar("coloryuv_" #var_name "_" #plane, DBL_MIN); \
         if (t != DBL_MIN) {                               \
-            c_##plane##->internal_name = t;               \
-            c_##plane##->changed = true;                  \
+            c_##plane->internal_name = t;               \
+            c_##plane->changed = true;                  \
         }                                                 \
     }
 
@@ -491,7 +491,7 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
                         dY.loose_min, dU.loose_min, dV.loose_min,
                         dY.loose_max, dU.loose_max, dV.loose_max
                         );
-            } 
+            }
             else
             {
                 sprintf(text,
@@ -586,7 +586,7 @@ AVSValue __cdecl ColorYUV::Create(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 extern const AVSFunction Color_filters[] = {
-    { "ColorYUV", BUILTIN_FUNC_PREFIX, 
+    { "ColorYUV", BUILTIN_FUNC_PREFIX,
                   "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
                   "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
                   "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \

@@ -38,6 +38,7 @@
 #include <cstdio>
 #include <cmath>
 #include <avs/minmax.h>
+#include <avs/alignment.h>
 #include "../core/internal.h"
 #include <xmmintrin.h>
 
@@ -58,8 +59,7 @@ extern const AVSFunction Levels_filters[] = {
 };
 
 
-
-__declspec(align(64)) static const BYTE ditherMap[256] = {
+avs_alignas(64) static const BYTE ditherMap[256] = {
 #if 0
   // default 0231 recursed table
   0x00, 0x80, 0x20, 0xA0,  0x08, 0x88, 0x28, 0xA8,  0x02, 0x82, 0x22, 0xA2,  0x0A, 0x8A, 0x2A, 0xAA,
@@ -106,7 +106,7 @@ __declspec(align(64)) static const BYTE ditherMap[256] = {
 };
 
 
-__declspec(align(16)) static const BYTE ditherMap4[16] = {
+avs_alignas(16) static const BYTE ditherMap4[16] = {
   0x0, 0xB, 0x6, 0xD,
   0xC, 0x7, 0x9, 0x2,
   0x3, 0x8, 0x5, 0xE,
@@ -151,7 +151,7 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
     env->ThrowError("Levels: Could not reserve memory.");
   env->AtExit(free_buffer, map);
 
-  if (vi.IsYUV()) 
+  if (vi.IsYUV())
   {
     mapchroma = map + 256 * scale;
 
@@ -178,8 +178,8 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
       else
         mapchroma[i] = (BYTE)clamp((int)q, 0, 255);
     }
-  } 
-  else if (vi.IsRGB()) 
+  }
+  else if (vi.IsRGB())
   {
     for (int i = 0; i<256*scale; ++i) {
       double p = (bias + i - in_min) / divisor;
@@ -636,8 +636,8 @@ static bool ProcessPixelUnscaled(double X, double Y, double startHue, double end
 Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
             double _startHue, double _endHue, double _maxSat, double _minSat, double p,
             bool _dither, bool _realcalc, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), realcalc(_realcalc), 
-  dhue(_hue), dsat(_sat), dbright(_bright), dcont(_cont), dstartHue(_startHue), dendHue(_endHue), 
+  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), realcalc(_realcalc),
+  dhue(_hue), dsat(_sat), dbright(_bright), dcont(_cont), dstartHue(_startHue), dendHue(_endHue),
   dmaxSat(_maxSat), dminSat(_minSat), dinterp(p)
 {
   if (vi.IsRGB())
@@ -867,7 +867,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
                 for (int y = 0; y < height; ++y) {
                     const int _y = (y << 4) & 0xf0;
                     for (int x = 0; x < width; ++x) {
-                        if (dither) 
+                        if (dither)
                             ditherval = (ditherMap[(x & 0x0f) | _y] - 127.5f) / 256.0f; // 0x00..0xFF -> -0.5 .. + 0.5 (+/- maxrange/512)
                         float y0 = minY + ((srcp[x] - minY) + ditherval)*(float)dcont + (float)dbright; // dbright parameter always 0..255
                         srcp[x] = (BYTE)clamp(y0, minY, maxY);
@@ -969,8 +969,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
                         v = v + ditherval - 0.5;
                         double dWorkSat = dsat; // init from original param
                         ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
-                        double du = (u*cosHue + v*sinHue) * dWorkSat + 0.5f; // back to 0..1 
-                        double dv = (v*cosHue - u*sinHue) * dWorkSat + 0.5f; 
+                        double du = (u*cosHue + v*sinHue) * dWorkSat + 0.5f; // back to 0..1
+                        double dv = (v*cosHue - u*sinHue) * dWorkSat + 0.5f;
                         srcpu[x] = (BYTE)clamp(du * 256.0, minUV, maxUV);
                         srcpv[x] = (BYTE)clamp(dv * 256.0, minUV, maxUV);
                     }
@@ -983,7 +983,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
                 for (int y = 0; y < height; ++y) {
                     const int _y = (y << 2) & 0xC;
                     for (int x = 0; x < width; ++x) {
-                        
+
                         if (dither)
                             ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 256;
                         u = reinterpret_cast<uint16_t *>(srcpu)[x] / 65536.0f;
@@ -993,8 +993,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
                         v = v + ditherval - 0.5;
                         double dWorkSat = dsat; // init from original param
                         ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
-                        double du = ((u*cosHue + v*sinHue) * dWorkSat) + 0.5; // back to 0..1 
-                        double dv = ((v*cosHue - u*sinHue) * dWorkSat) + 0.5; 
+                        double du = ((u*cosHue + v*sinHue) * dWorkSat) + 0.5; // back to 0..1
+                        double dv = ((v*cosHue - u*sinHue) * dWorkSat) + 0.5;
                         reinterpret_cast<uint16_t *>(srcpu)[x] = (uint16_t)clamp(du * 65536.0, minUV, maxUV);
                         reinterpret_cast<uint16_t *>(srcpv)[x] = (uint16_t)clamp(dv * 65536.0, minUV, maxUV);
                     }
@@ -1016,8 +1016,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
                         v = v + ditherval - 0.5;
                         double dWorkSat = dsat; // init from original param
                         ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
-                        double du = ((u*cosHue + v*sinHue) * dWorkSat) + 0.5; // back to 0..1 
-                        double dv = ((v*cosHue - u*sinHue) * dWorkSat) + 0.5; 
+                        double du = ((u*cosHue + v*sinHue) * dWorkSat) + 0.5; // back to 0..1
+                        double dv = ((v*cosHue - u*sinHue) * dWorkSat) + 0.5;
                         reinterpret_cast<float *>(srcpu)[x] = (float)clamp(du/* * factor*/, minUV, maxUV);
                         reinterpret_cast<float *>(srcpv)[x] = (float)clamp(dv/* * factor*/, minUV, maxUV);
                     }

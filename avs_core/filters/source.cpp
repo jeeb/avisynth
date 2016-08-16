@@ -133,11 +133,11 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
 
       BYTE *dstp = frame->GetWritePtr(plane);
       int size = frame->GetPitch(plane) * frame->GetHeight(plane);
-      
+
       switch(pixelsize) {
       case 1: Cval.i |= (Cval.i << 8) | (Cval.i << 16) | (Cval.i << 24); break; // 4 pixels at a time
       case 2: Cval.i = (Cval.i << 8) | (Cval.i << 24); break; // 2 pixels at a time
-      default: // case 4: 
+      default: // case 4:
         Cval.f = float(Cval.i) / 256.0f; // 32 bit float 128=0.5
       }
 
@@ -145,7 +145,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
         *(uint32_t*)(dstp + i) = Cval.i;
     }
     return frame;
-  } 
+  }
 
   BYTE* p = frame->GetWritePtr();
   int size = frame->GetPitch() * frame->GetHeight();
@@ -483,7 +483,7 @@ public:
 
   ColorBars(int w, int h, const char* pixel_type, bool _staticframes, int type, IScriptEnvironment* env) {
     memset(&vi, 0, sizeof(VideoInfo));
-    staticframes = _staticframes; // P.F. 
+    staticframes = _staticframes; // P.F.
     vi.width = w;
     vi.height = h;
     vi.fps_numerator = 30000;
@@ -526,7 +526,7 @@ public:
     const int pitch = frame->GetPitch()/4;
 
     int y = 0;
-    
+
 	// HD colorbars arib_std_b28
 	// Rec709 yuv values calculated by jmac698, Jan 2010, for Midzuki
 	if (type) { // ColorbarsHD
@@ -733,7 +733,7 @@ public:
 				p[x] = bottom_quarter[7];
 			p += pitch;
 		}
-		
+
 		static const int two_thirds_to_three_quarters[] =
 // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
 			{ 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
@@ -745,7 +745,7 @@ public:
 			}
 			p += pitch;
 		}
-		
+
 		static const int top_two_thirds[] =
 // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
 			{ 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
@@ -890,10 +890,10 @@ public:
   }
 
   // By the new "staticframes" parameter: colorbars we generate (copy) real new frames instead of a ready-to-use static one
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) 
-  { 
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
+  {
     _RPT1(0, "ColorBars::GetFrame %d\n", n); // P.F.
-    if (staticframes) // P.F. 
+    if (staticframes) // P.F.
       return frame; // original default method returns precomputed static frame.
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
@@ -904,7 +904,7 @@ public:
       return result;
 /*
       PVideoFrame newframe = AdjustFrameAlignment(frame, vi, env); // P.F.
-      return newframe; // Forcing to create new frame to avoid the excessive SubFrame referencing. 
+      return newframe; // Forcing to create new frame to avoid the excessive SubFrame referencing.
                        // Perhaps a bit more real-life for synthetic tests
       */
     }
@@ -914,7 +914,7 @@ public:
   bool __stdcall GetParity(int n) { return false; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   int __stdcall SetCacheHints(int cachehints,int frame_range)
-  { 
+  {
       switch (cachehints)
       {
       case CACHE_GET_MTMODE:
@@ -945,8 +945,8 @@ public:
     __int64 Hz=440;
     // Calculate what start equates in cycles.
     // This is the number of cycles (rounded down) that has already been taken.
-    __int64 startcycle = (start*Hz) /  vi.audio_samples_per_second;  
-    
+    __int64 startcycle = (start*Hz) /  vi.audio_samples_per_second;
+
     // Move offset down - this is to avoid float rounding errors
     int start_offset = (int)(start - ((startcycle * vi.audio_samples_per_second) / Hz));
 
@@ -972,7 +972,7 @@ public:
 
     return new ColorBars(args[0].AsInt(   type ? 1288 : 640),
                          args[1].AsInt(   type ?  720 : 480),
-                         args[2].AsString(type ? "YV24" : "RGB32"), 
+                         args[2].AsString(type ? "YV24" : "RGB32"),
                          args[3].AsBool(true), // new staticframes parameter
                          type, env);
   }
@@ -1036,7 +1036,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
     if (extension)
       *extension++ = 0;
     else
-      extension = "";
+      extension[0] = 0;
     for (int j = 0; j < 100; ++j) {
       char filename[260];
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
@@ -1208,7 +1208,7 @@ extern const AVSFunction Source_filters[] = {
   { "WAVSource",     BUILTIN_FUNC_PREFIX, "s+", AVISource::Create, (void*) AVISource::MODE_WAV },
   { "OpenDMLSource", BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", AVISource::Create, (void*) AVISource::MODE_OPENDML },
   { "SegmentedAVISource", BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", Create_SegmentedSource, (void*)0 },
-  { "SegmentedDirectShowSource", BUILTIN_FUNC_PREFIX, 
+  { "SegmentedDirectShowSource", BUILTIN_FUNC_PREFIX,
 // args               0      1      2       3       4            5          6         7            8
                      "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",
                      Create_SegmentedSource, (void*)1 },

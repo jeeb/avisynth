@@ -245,7 +245,7 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
         // args2 and args3 are not valid after this point anymore
     }
     default:
-        // There are broken plugins out there in the wild that have (GetVersion() >= 5), but still 
+        // There are broken plugins out there in the wild that have (GetVersion() >= 5), but still
         // return garbage for SetCacheHints(). However, this case should be recognized and
         // handled earlier, so we can never get to this default-branch. If we do, assume the worst.
         assert(0);
@@ -278,9 +278,9 @@ public:
 
 private:
     T *mutex_;
-}; 
+};
 
-MTGuardExit::MTGuardExit(PClip &clip) :
+MTGuardExit::MTGuardExit(const PClip &clip) :
     NonCachedGenericVideoFilter(clip)
 {}
 

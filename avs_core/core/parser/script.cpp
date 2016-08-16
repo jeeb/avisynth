@@ -56,7 +56,7 @@
 
 extern const AVSFunction Script_functions[] = {
   { "muldiv",   BUILTIN_FUNC_PREFIX, "iii", Muldiv },
-                
+
   { "floor",    BUILTIN_FUNC_PREFIX, "f", Floor },
   { "ceil",     BUILTIN_FUNC_PREFIX, "f", Ceil },
   { "round",    BUILTIN_FUNC_PREFIX, "f", Round },
@@ -211,17 +211,17 @@ extern const AVSFunction Script_functions[] = {
 
   { "VersionNumber", BUILTIN_FUNC_PREFIX, "", VersionNumber },
   { "VersionString", BUILTIN_FUNC_PREFIX, "", VersionString },
-  
+
   { "HasVideo", BUILTIN_FUNC_PREFIX, "c", HasVideo },
   { "HasAudio", BUILTIN_FUNC_PREFIX, "c", HasAudio },
 
   { "Min", BUILTIN_FUNC_PREFIX, "f+", AvsMin },
   { "Max", BUILTIN_FUNC_PREFIX, "f+", AvsMax },
- 
+
   { "ScriptName", BUILTIN_FUNC_PREFIX, "", ScriptName },
   { "ScriptFile", BUILTIN_FUNC_PREFIX, "", ScriptFile },
   { "ScriptDir",  BUILTIN_FUNC_PREFIX, "", ScriptDir  },
- 
+
   { "PixelType",  BUILTIN_FUNC_PREFIX, "c", PixelType  },
 
   { "AddAutoloadDir",     BUILTIN_FUNC_PREFIX, "s[toFront]b", AddAutoloadDir  },
@@ -257,8 +257,8 @@ extern const AVSFunction Script_functions[] = {
  *********************************/
 
 ScriptFunction::ScriptFunction( const PExpression& _body, const bool* _param_floats,
-                                const char** _param_names, int param_count ) 
-  : body(_body) 
+                                const char** _param_names, int param_count )
+  : body(_body)
 {
   param_floats = new bool[param_count];
   memcpy(param_floats, _param_floats, param_count*sizeof(const bool));
@@ -266,9 +266,9 @@ ScriptFunction::ScriptFunction( const PExpression& _body, const bool* _param_flo
   param_names = new const char*[param_count];
   memcpy(param_names, _param_names, param_count*sizeof(const char*));
 }
-  
 
-AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironment* env) 
+
+AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   ScriptFunction* self = (ScriptFunction*)user_data;
   env->PushContext();
@@ -289,7 +289,7 @@ AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironm
   return result;
 }
 
-void ScriptFunction::Delete(void* self, IScriptEnvironment*) 
+void ScriptFunction::Delete(void* self, IScriptEnvironment*)
 {
     delete (ScriptFunction*)self;
 }
@@ -336,14 +336,14 @@ DllDirChanger::~DllDirChanger(void)
   delete [] old_directory;
 }
 
-AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (!args[0].AsBool())
     env->ThrowError("%s", args[1].Defined() ? args[1].AsString() : "Assert: assertion failed");
   return AVSValue();
 }
 
-AVSValue AssertEval(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue AssertEval(AVSValue args, void*, IScriptEnvironment* env)
 {
   const char* pred = args[0].AsString();
   AVSValue eval_args[] = { args[0].AsString(), "asserted expression" };
@@ -355,7 +355,7 @@ AVSValue AssertEval(AVSValue args, void*, IScriptEnvironment* env)
   return AVSValue();
 }
 
-AVSValue Eval(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue Eval(AVSValue args, void*, IScriptEnvironment* env)
 {
   const char *filename = args[1].AsString(0);
   if (filename) filename = env->SaveString(filename);
@@ -364,12 +364,12 @@ AVSValue Eval(AVSValue args, void*, IScriptEnvironment* env)
   return exp->Evaluate(env);
 }
 
-AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env)
 {
   return env->Invoke(args[0].AsString(), args[1]);
 }
 
-AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env)
 {
   AVSValue prev_last = env->GetVarDef("last");  // Store previous last
   env->SetVar("last", args[0]);              // Set implicit last
@@ -386,7 +386,7 @@ AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env)
   return result;
 }
 
-AVSValue Import(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 {
   args = args[0];
   AVSValue result;
@@ -478,21 +478,21 @@ AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env) { return int(floor
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return int(ceil(args[0].AsFloat())); }
 AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()<0 ? -int(-args[0].AsFloat()+.5) : int(args[0].AsFloat()+.5); }
 
-AVSValue Acos(AVSValue args, void* user_data, IScriptEnvironment* env) { return acos(args[0].AsFloat()); } 
-AVSValue Asin(AVSValue args, void* user_data, IScriptEnvironment* env) { return asin(args[0].AsFloat()); } 
-AVSValue Atan(AVSValue args, void* user_data, IScriptEnvironment* env) { return atan(args[0].AsFloat()); } 
-AVSValue Atan2(AVSValue args, void* user_data, IScriptEnvironment* env) { return atan2(args[0].AsFloat(), args[1].AsFloat()); } 
+AVSValue Acos(AVSValue args, void* user_data, IScriptEnvironment* env) { return acos(args[0].AsFloat()); }
+AVSValue Asin(AVSValue args, void* user_data, IScriptEnvironment* env) { return asin(args[0].AsFloat()); }
+AVSValue Atan(AVSValue args, void* user_data, IScriptEnvironment* env) { return atan(args[0].AsFloat()); }
+AVSValue Atan2(AVSValue args, void* user_data, IScriptEnvironment* env) { return atan2(args[0].AsFloat(), args[1].AsFloat()); }
 AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env) { return cos(args[0].AsFloat()); }
 AVSValue Cosh(AVSValue args, void* user_data, IScriptEnvironment* env) { return cosh(args[0].AsFloat()); }
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env) { return exp(args[0].AsFloat()); }
-AVSValue Fmod(AVSValue args, void* user_data, IScriptEnvironment* env) { return fmod(args[0].AsFloat(), args[1].AsFloat()); } 
+AVSValue Fmod(AVSValue args, void* user_data, IScriptEnvironment* env) { return fmod(args[0].AsFloat(), args[1].AsFloat()); }
 AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env) { return log(args[0].AsFloat()); }
 AVSValue Log10(AVSValue args, void* user_data, IScriptEnvironment* env) { return log10(args[0].AsFloat()); }
 AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) { return pow(args[0].AsFloat(),args[1].AsFloat()); }
 AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
 AVSValue Sinh(AVSValue args, void* user_data, IScriptEnvironment* env) { return sinh(args[0].AsFloat()); }
-AVSValue Tan(AVSValue args, void* user_data, IScriptEnvironment* env) { return tan(args[0].AsFloat()); } 
-AVSValue Tanh(AVSValue args, void* user_data, IScriptEnvironment* env) { return tanh(args[0].AsFloat()); } 
+AVSValue Tan(AVSValue args, void* user_data, IScriptEnvironment* env) { return tan(args[0].AsFloat()); }
+AVSValue Tanh(AVSValue args, void* user_data, IScriptEnvironment* env) { return tanh(args[0].AsFloat()); }
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return sqrt(args[0].AsFloat()); }
 
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
@@ -568,7 +568,7 @@ AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env)
    strncat(result, args[0].AsString(), count);
    AVSValue ret = env->SaveString(result);
    delete[] result;
-   return ret; 
+   return ret;
  }
 
 AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env)
@@ -603,7 +603,7 @@ AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
    strncat(result, args[0].AsString()+offset, args[1].AsInt());
    AVSValue ret = env->SaveString(result);
    delete[] result;
-   return ret; 
+   return ret;
  }
 
 AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env)
@@ -621,7 +621,7 @@ AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
   const char *pdest = strstr( args[0].AsString(),args[1].AsString() );
   int result = (int)(pdest - args[0].AsString() + 1);
   if (pdest == NULL) result = 0;
-  return result; 
+  return result;
 }
 
 AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env)
@@ -648,7 +648,7 @@ AVSValue Select(AVSValue args, void*, IScriptEnvironment* env)
   return args[1][i];
 }
 
-AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env) { return NULL;}
+AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env) { return 0;}
 
 AVSValue Undefined(AVSValue args, void*, IScriptEnvironment* env) { return AVSValue();}
 
@@ -727,7 +727,7 @@ int splint(float xa[], float ya[], float y2a[], int n, float x, float &y, bool c
 	return 0;
 }
 
-// the script functions 
+// the script functions
 AVSValue AVSChr(AVSValue args, void*, IScriptEnvironment* env )
 {
     char s[2];
@@ -761,7 +761,7 @@ AVSValue FillStr(AVSValue args, void*, IScriptEnvironment* env )
 
     AVSValue ret = env->SaveString(buff, total);
     delete[] buff;
-    return ret; 
+    return ret;
 }
 
 AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env )
@@ -808,7 +808,7 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 	for (i=1; i<n; i++) {
 		if (xa[i] >= xa[i+1]) env->ThrowError("Spline: all x values have to be different and in ascending order!");
 	}
-	
+
 	spline(xa, ya, n, y2a);
 	splint(xa, ya, y2a, n, x, y, cubic);
 
@@ -886,7 +886,7 @@ AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(ar
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
 AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
-AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) { char s[32]; return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10)); } 
+AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) { char s[32]; return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10)); }
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
 AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment* env) {
   const VideoInfo& vi = VI(args[0]);
@@ -921,7 +921,7 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[0].IsString()) return args[0];
   if (args[0].IsBool()) return (args[0].AsBool()?"true":"false");
-  if (args[1].Defined()) {	// WE --> a format parameter is present 
+  if (args[1].Defined()) {	// WE --> a format parameter is present
 		if (args[0].IsFloat()) {	//if it is an Int: IsFloat gives True, also !
 			return  env->Sprintf(args[1].AsString("%f"),args[0].AsFloat());
 		}
@@ -933,16 +933,20 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 	  }
 	  if (args[0].IsFloat()) {
 		char s[30];
+#ifdef MSVC
     _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
     _sprintf_l(s,"%lf", locale, args[0].AsFloat());
     _free_locale(locale);
+#else
+    sprintf(s,"%lf", args[0].AsFloat());
+#endif
 		return env->SaveString(s);
 	  }
   }
   return "";
-} 
+}
 
-AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env) { char s[9]; return env->SaveString(_itoa(args[0].AsInt(), s, 16)); } 
+AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env) { char s[9]; return env->SaveString(_itoa(args[0].AsInt(), s, 16)); }
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsBool(); }
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsInt(); }
@@ -956,7 +960,7 @@ AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return A
 AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_FULLVERSION; }
 
 AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
-AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - __int64(args[0].AsFloat()); }
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int64_t(args[0].AsFloat()); }
 AVSValue Float(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat(); }
 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }

@@ -75,14 +75,14 @@ static const int cgv_rec601 = int(0.813*65536+0.5);
 static const int cgu_rec601 = int(0.391*65536+0.5);
 static const int cbu_rec601 = int(2.018*65536+0.5);
 
-static const int crv_rec709 = int(1.793*65536+0.5); 
+static const int crv_rec709 = int(1.793*65536+0.5);
 static const int cgv_rec709 = int(0.533*65536+0.5);
 static const int cgu_rec709 = int(0.213*65536+0.5);
 static const int cbu_rec709 = int(2.112*65536+0.5);
 
 static const int crv_pc601 = int(1.407*65536+0.5);
 static const int cgv_pc601 = int(0.717*65536+0.5);
-static const int cgu_pc601 = int(0.345*65536+0.5); 
+static const int cgu_pc601 = int(0.345*65536+0.5);
 static const int cbu_pc601 = int(1.779*65536+0.5);
 
 static const int crv_pc709 = int(1.581*65536+0.5);
@@ -150,6 +150,7 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
   vi.pixel_type = rgb24 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
 }
 
+#if defined(__SSE2__)
 template<int rgb_size>
 static __forceinline __m128i convert_yuy2_to_rgb_sse2_core(const __m128i& src_luma_scaled, const __m128i& src_chroma, const __m128i &alpha,
                                                            const __m128i& v128, const __m128i& zero, const __m128i& rounder, const __m128i &ff,
@@ -167,16 +168,16 @@ static __forceinline __m128i convert_yuy2_to_rgb_sse2_core(const __m128i& src_lu
   __m128i g = _mm_madd_epi16(chroma_scaled, gmul); // (V0+V1-256)*cgv + (U0+U1-256)*cgu | (V0-128)*2*cgv + (U0-128)*2*cgu
   __m128i r = _mm_madd_epi16(chroma_scaled, rmul); // (V0+V1-256)*crv + 0               | (V0-128)*2*crv + 0
 
-  b = _mm_add_epi32(luma_scaled, b);  
-  g = _mm_add_epi32(luma_scaled, g);  
-  r = _mm_add_epi32(luma_scaled, r);  
+  b = _mm_add_epi32(luma_scaled, b);
+  g = _mm_add_epi32(luma_scaled, g);
+  r = _mm_add_epi32(luma_scaled, r);
 
-  b = _mm_srai_epi32(b, 14); //b3 b3 b3 b3 | b2 b2 b2 b2  | b1 b1 b1 b1 | b0 b0 b0 b0 
-  g = _mm_srai_epi32(g, 14); //g3 g3 g3 g3 | g2 g2 g2 g2  | g1 g1 g1 g1 | g0 g0 g0 g0 
-  r = _mm_srai_epi32(r, 14); //g3 g3 g3 g3 | g2 g2 g2 g2  | g1 g1 g1 g1 | g0 g0 g0 g0 
+  b = _mm_srai_epi32(b, 14); //b3 b3 b3 b3 | b2 b2 b2 b2  | b1 b1 b1 b1 | b0 b0 b0 b0
+  g = _mm_srai_epi32(g, 14); //g3 g3 g3 g3 | g2 g2 g2 g2  | g1 g1 g1 g1 | g0 g0 g0 g0
+  r = _mm_srai_epi32(r, 14); //g3 g3 g3 g3 | g2 g2 g2 g2  | g1 g1 g1 g1 | g0 g0 g0 g0
 
 
-  if (rgb_size == 4) 
+  if (rgb_size == 4)
   {
     b = _mm_max_epi16(b, zero);
     g = _mm_max_epi16(g, zero);
@@ -192,8 +193,8 @@ static __forceinline __m128i convert_yuy2_to_rgb_sse2_core(const __m128i& src_lu
     __m128i rb = _mm_or_si128(r, b);
     __m128i rgb = _mm_or_si128(rb, g);
     return _mm_or_si128(rgb, alpha);
-  } 
-  else 
+  }
+  else
   {
     __m128i bg = _mm_packs_epi32(b, g); //g3g3 | g2g2 | g1g1 | g0g0 | b3b3 | b2b2 | b1b1 | b0b0
     r = _mm_packs_epi32(r, zero); //0000 | 0000 | 0000 | 0000 | r3r3 | r2r2 | r1r1 | r0r0
@@ -250,7 +251,7 @@ static void convert_yuy2_to_rgb_sse2(const BYTE *srcp, BYTE* dstp, int src_pitch
         rgb = _mm_srli_si128(rgb, 1); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0
         *reinterpret_cast<int*>(dstp+x*3) = _mm_cvtsi128_si32(rgb);
         rgb = _mm_shufflelo_epi16(rgb, _MM_SHUFFLE(2, 3, 3, 3)); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || r1 | g1 | 00 | 00 | 00 | 00 | 00 | 00
-        rgb = _mm_srli_si128(rgb, 6); //00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 || r3 | g3 | b3 | r2 | g2 | b2 | r1 | g1 
+        rgb = _mm_srli_si128(rgb, 6); //00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 || r3 | g3 | b3 | r2 | g2 | b2 | r1 | g1
         _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*3+4), rgb);
       }
     }
@@ -298,7 +299,7 @@ static void convert_yuy2_to_rgb_sse2(const BYTE *srcp, BYTE* dstp, int src_pitch
         rgb = _mm_srli_si128(rgb, 1); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0
         *reinterpret_cast<int*>(dstp+width*3-12) = _mm_cvtsi128_si32(rgb);
         rgb = _mm_shufflelo_epi16(rgb, _MM_SHUFFLE(2, 3, 3, 3)); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || r1 | g1 | 00 | 00 | 00 | 00 | 00 | 00
-        rgb = _mm_srli_si128(rgb, 6); //00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 || r3 | g3 | b3 | r2 | g2 | b2 | r1 | g1 
+        rgb = _mm_srli_si128(rgb, 6); //00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 || r3 | g3 | b3 | r2 | g2 | b2 | r1 | g1
         _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width*3-8), rgb);
       }
     }
@@ -306,7 +307,7 @@ static void convert_yuy2_to_rgb_sse2(const BYTE *srcp, BYTE* dstp, int src_pitch
     dstp += dst_pitch;
   }
 }
-
+#endif
 
 #ifdef X86_32
 
@@ -331,11 +332,11 @@ static __forceinline __m64 convert_yuy2_to_rgb_isse_core(const __m64& src_luma_s
   g = _mm_add_pi32(luma_scaled, g);  //g1 | g0
   r = _mm_add_pi32(luma_scaled, r);  //r1 | r0
 
-  b = _mm_srai_pi32(b, 14); //BBBB | bbbb  
+  b = _mm_srai_pi32(b, 14); //BBBB | bbbb
   g = _mm_srai_pi32(g, 14); //GGGG | gggg
   r = _mm_srai_pi32(r, 14); //RRRR | rrrr
 
-  if (rgb_size == 4) 
+  if (rgb_size == 4)
   {
     b = _mm_max_pi16(b, zero);
     g = _mm_max_pi16(g, zero);
@@ -351,8 +352,8 @@ static __forceinline __m64 convert_yuy2_to_rgb_isse_core(const __m64& src_luma_s
     __m64 rb = _mm_or_si64(r, b);
     __m64 rgb = _mm_or_si64(rb, g);
     return _mm_or_si64(rgb, alpha);
-  } 
-  else 
+  }
+  else
   {
     __m64 bg = _mm_packs_pi32(b, g); //GGGG | gggg | BBBB | bbbb
     r = _mm_packs_pi32(r, zero); //0000 | 0000 | RRRR | rrrr
@@ -536,6 +537,7 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   int tv_scale = theMatrix == Rec601 || theMatrix == Rec709 ? 16 : 0;
 
 
+#ifdef __SSE2__
   if (env->GetCPUFlags() & CPUF_SSE2) {
     if (vi.IsRGB32()) {
       convert_yuy2_to_rgb_sse2<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
@@ -544,8 +546,9 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
       convert_yuy2_to_rgb_sse2<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
         crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
     }
-  } 
-  else 
+  }
+  else
+#endif
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
     if (vi.IsRGB32()) {
@@ -555,12 +558,12 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
       convert_yuy2_to_rgb_isse<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
         crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
     }
-  } 
-  else 
+  }
+  else
 #endif
   {
     if (vi.IsRGB32()) {
-      convert_yuy2_to_rgb_c<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width, 
+      convert_yuy2_to_rgb_c<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
         crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
     } else {
       convert_yuy2_to_rgb_c<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
@@ -677,7 +680,7 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (interlaced) {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) 
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
     {
       convert_yuy2_to_yv12_interlaced_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
         dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
@@ -698,10 +701,10 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
           dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
       }
-  } 
+  }
   else
   {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) 
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
     {
       convert_yuy2_to_yv12_progressive_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
         dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
@@ -749,7 +752,7 @@ static void convert_rgb_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     src_pitch = src_pitch / sizeof(uint16_t);
     int src_width = src_rowsize / sizeof(uint16_t);
     for(int y=0; y<src_height; y++)
-    { 
+    {
         for (int x = 0; x < src_width; x++)
         {
             dstp[x] = srcp0[x] / 257; // RGB: full range 0..255 <-> 0..65535
@@ -767,7 +770,7 @@ static void convert_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
   src_pitch = src_pitch / sizeof(uint16_t);
   int src_width = src_rowsize / sizeof(uint16_t);
   for(int y=0; y<src_height; y++)
-  { 
+  {
     for (int x = 0; x < src_width; x++)
     {
       dstp[x] = srcp0[x] >> 8; // no dithering, no range conversion, simply use msb
@@ -788,7 +791,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   dst_pitch = dst_pitch / sizeof(pixel_t);
 
   int src_width = src_rowsize / sizeof(float);
-  
+
   float max_dst_pixelvalue;
   if(sizeof(pixel_t)==1)
     max_dst_pixelvalue = 255.0f;
@@ -796,9 +799,9 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     max_dst_pixelvalue = 65535.0f;
 
   float factor = 1.0f / float_range * max_dst_pixelvalue;
-  
+
   for(int y=0; y<src_height; y++)
-  { 
+  {
     for (int x = 0; x < src_width; x++)
     {
       float pixel = srcp0[x] * factor + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
@@ -821,7 +824,7 @@ static void convert_rgb_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     int src_width = src_rowsize / sizeof(uint8_t);
 
     for(int y=0; y<src_height; y++)
-    { 
+    {
         for (int x = 0; x < src_width; x++)
         {
             dstp0[x] = srcp0[x] * 257; // hope that compiler recognizes n*256 +n
@@ -838,11 +841,11 @@ static void convert_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
 
   src_pitch = src_pitch / sizeof(uint8_t);
   dst_pitch = dst_pitch / sizeof(uint16_t);
-  
+
   int src_width = src_rowsize / sizeof(uint8_t);
-  
+
   for(int y=0; y<src_height; y++)
-  { 
+  {
     for (int x = 0; x < src_width; x++)
     {
       dstp0[x] = srcp0[x] << 8;
@@ -858,10 +861,10 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
 {
   const pixel_t *srcp0 = reinterpret_cast<const pixel_t *>(srcp);
   float *dstp0 = reinterpret_cast<float *>(dstp);
-  
+
   src_pitch = src_pitch / sizeof(pixel_t);
   dst_pitch = dst_pitch / sizeof(float);
-  
+
   int src_width = src_rowsize / sizeof(pixel_t);
 
   float max_src_pixelvalue;
@@ -873,7 +876,7 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   // 0..255,65535 -> 0..float_range
 
   for(int y=0; y<src_height; y++)
-  { 
+  {
     for (int x = 0; x < src_width; x++)
     {
       dstp0[x] = srcp0[x] / max_src_pixelvalue * float_range; //  or lookup
@@ -925,7 +928,7 @@ ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _
 
 AVSValue __cdecl ConvertTo8bit::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  
+
   const VideoInfo &vi = clip->GetVideoInfo();
 
   if (!vi.IsPlanar() && !vi.IsRGB())
@@ -945,7 +948,7 @@ AVSValue __cdecl ConvertTo8bit::Create(AVSValue args, void*, IScriptEnvironment*
       env->ThrowError("ConvertTo8bit: Float range parameter cannot be <= 0");
     // other checkings
   }
-  
+
   // dither parameter rfu
   int dither_type = args[2].AsInt(-1);
 
@@ -1069,12 +1072,12 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
       }
   } else if(vi.IsRGB24()) {
       if(bitdepth == 16)
-          vi.pixel_type = VideoInfo::CS_BGR48; 
+          vi.pixel_type = VideoInfo::CS_BGR48;
       else
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
   } else if(vi.IsRGB32()) {
       if(bitdepth == 16)
-          vi.pixel_type = VideoInfo::CS_BGR64; 
+          vi.pixel_type = VideoInfo::CS_BGR64;
       else
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
   } else
@@ -1086,7 +1089,7 @@ AVSValue __cdecl ConvertTo16bit::Create(AVSValue args, void*, IScriptEnvironment
   PClip clip = args[0].AsClip();
   //0   1        2        3           4
   //c[scale]f[dither]i[bitdepth]i[modifyrange]b
-  
+
   const VideoInfo &vi = clip->GetVideoInfo();
 
   // float range parameter
@@ -1094,7 +1097,7 @@ AVSValue __cdecl ConvertTo16bit::Create(AVSValue args, void*, IScriptEnvironment
   bool modify_range = args[4].AsBool(false); // for 10->16 conversion
 
   if (vi.ComponentSize() == 2 && vi.BitsPerComponent() == target_bitdepth)
-      return clip; // 16 bit -> 16 bit: no conversion 16->10 e.g. conversion option with range reducing 
+      return clip; // 16 bit -> 16 bit: no conversion 16->10 e.g. conversion option with range reducing
 
   if (!vi.IsPlanar() && !vi.IsRGB24() && !vi.IsRGB32())
     env->ThrowError("ConvertTo16bit: Can only convert from Planar YUV/RGB or packed RGB.");
@@ -1138,7 +1141,7 @@ PVideoFrame __stdcall ConvertTo16bit::GetFrame(int n, IScriptEnvironment* env) {
           env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
       }
       return dst;
-  } 
+  }
   if(vi.IsPlanar())
   {
       int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };

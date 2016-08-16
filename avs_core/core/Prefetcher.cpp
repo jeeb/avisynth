@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <atomic>
+#include <mmintrin.h>
 #include <avisynth.h>
 #include "ThreadPool.h"
 #include "ObjectPool.h"
@@ -51,7 +52,7 @@ struct PrefetcherPimpl
   int LastRequestedFrame;
 
   std::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
-  std::atomic<int> running_workers;  
+  std::atomic<int> running_workers;
   std::mutex worker_exception_mutex;
   std::exception_ptr worker_exception;
   bool worker_exception_present;
@@ -95,7 +96,7 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   {
     cache_handle.first->value = prefetcher->_pimpl->child->GetFrame(n, env);
     #ifdef X86_32
-          _mm_empty();
+    _mm_empty();
     #endif
 
     prefetcher->_pimpl->VideoCache->commit_value(&cache_handle);
@@ -124,7 +125,11 @@ Prefetcher::Prefetcher(const PClip& _child, int _nThreads) :
 Prefetcher::~Prefetcher()
 {
   while (_pimpl->running_workers > 0) {
+#if defined(GCC)
+    __asm__("");
+#else
     __noop();
+#endif // defined
   }
   delete _pimpl;
 }
@@ -181,7 +186,7 @@ int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, In
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
   InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
-  
+
   int pattern = n - _pimpl->LastRequestedFrame;
   _pimpl->LastRequestedFrame = n;
   if (pattern == 0)
@@ -329,7 +334,7 @@ AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
   PClip child = args[0].AsClip();
 
   int PrefetchThreads = args[1].AsInt((int)envi->GetProperty(AEP_PHYSICAL_CPUS)+1);
-  
+
   if (PrefetchThreads > 0)
   {
     Prefetcher* prefetcher = new Prefetcher(child, PrefetchThreads);

@@ -374,7 +374,7 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
 	const int bpcc = bpcs*clip_channels[i];
 
 	switch (bpcc) {
-	
+
 	case 2: { // mono 16 bit
         for (int l = 0, k=dst_offset; l < count; l++, k+=bps) {
           *(short*)(samples+k) = ((short*)src_buf)[l];
@@ -388,10 +388,10 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
         break;
       }
 	case 8: { // stereo float/32 bit
-#ifdef X86_32
-		if (env->GetCPUFlags() & CPUF_MMX) 
+#if defined(X86_32) && defined(MSVC)
+		if (env->GetCPUFlags() & CPUF_MMX)
     {
-      __asm 
+      __asm
       {
         mov eax,[src_buf]
         mov edi,[samples]
@@ -422,10 +422,10 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
         emms
       }
     }
-		else 
+		else
 #endif // X86_32
     {
-      for (int l = 0, k=dst_offset; l < count; l++, k+=bps) 
+      for (int l = 0, k=dst_offset; l < count; l++, k+=bps)
       {
         *(__int64*)(samples+k) = ((__int64*)src_buf)[l];
       }
@@ -495,7 +495,7 @@ void __stdcall GetChannel::GetAudio(void* buf, __int64 start, __int64 count, ISc
     tempbuffer_size = (int)count;
   }
   child->GetAudio(tempbuffer, start, count, env);
-  
+
   switch (cbps) {
   case 1: {    // 8 bit
       char* samples = (char*)buf;
@@ -634,7 +634,7 @@ AVSValue __cdecl KillAudio::Create(AVSValue args, void*, IScriptEnvironment*) {
  *****************************/
 
 DelayAudio::DelayAudio(double delay, PClip _child)
-    : GenericVideoFilter(_child), delay_samples(__int64(delay * vi.audio_samples_per_second + 0.5)) {
+    : GenericVideoFilter(_child), delay_samples(int64_t(delay * vi.audio_samples_per_second + 0.5)) {
   vi.num_audio_samples += delay_samples;
 }
 
@@ -669,10 +669,10 @@ Amplify::~Amplify()
 void __stdcall Amplify::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   child->GetAudio(buf, start, count, env);
   int channels = vi.AudioChannels();
-  int countXchannels = (int)count*channels; 
+  int countXchannels = (int)count*channels;
 
   if (vi.SampleType() == SAMPLE_INT16) {
-#ifdef X86_32
+#if defined(X86_32) && defined(MSVC)
     const short* endsample = (short*)buf + countXchannels;
     const int* iv = i_v;
 
@@ -726,7 +726,7 @@ saturate0:
   }
 
   if (vi.SampleType() == SAMPLE_INT32) {
-#ifdef X86_32
+#if defined(X86_32) && defined(MSVC)
     const int* endsample = (int*)buf + countXchannels;
     const int* iv = i_v;
 
@@ -781,7 +781,7 @@ saturate1:
   if (vi.SampleType() == SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
     for (int i = 0; i < countXchannels; i+=channels) {
-      for (int j = 0;j < channels;j++) {				// Does not saturate, as other filters do. 
+      for (int j = 0;j < channels;j++) {				// Does not saturate, as other filters do.
         samples[i + j] = samples[i + j] * volumes[j];	// We should saturate only on conversion.
       }
     }
@@ -938,7 +938,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       const int chanXbcount = (int)bcount * vi.AudioChannels();
       const __int64 passes = vi.num_audio_samples / bcount;
 	  __int64 peaksampleno=-1;
-	  
+
       for (__int64 i = 0;i < passes;i++) {
         child->GetAudio(samples, bcount*i, bcount, env);
         for (int j = 0;j < chanXbcount;j++) {
@@ -974,7 +974,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
     const int factor = (int)(max_factor * 131072.0f + 0.5f);
     child->GetAudio(buf, start, count, env);
 
-#ifdef X86_32
+#if defined(X86_32) && defined(MSVC)
     const short* endsample = (short*)buf + chanXcount;
 
     __asm {
@@ -1090,7 +1090,7 @@ void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScri
   unsigned channels = vi.AudioChannels();
 
   if (vi.SampleType()&SAMPLE_INT16) {
-#ifdef X86_32
+#if defined(X86_32) && defined(MSVC)
     const short* tbuffer = (short*)tempbuffer;
     const short* endsample = (short*)buf + unsigned(count)*channels;
 	  const int t1_factor = track1_factor;
@@ -1257,8 +1257,8 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
     child->GetAudio(buf, start, count, env);
     return ;
   }
-  __int64 src_start = __int64(((long double)start           / factor) * (1 << Np) + 0.5);
-  __int64 src_end   = __int64(((long double)(start + count) / factor) * (1 << Np) + 0.5);
+  auto src_start = int64_t(((long double)start           / factor) * (1 << Np) + 0.5);
+  auto src_end   = int64_t(((long double)(start + count) / factor) * (1 << Np) + 0.5);
   const __int64 source_samples = ((src_end - src_start) >> Np) + 2 * Xoff + 1;
   const int source_bytes = (int)vi.BytesFromAudioSamples(source_samples);
 
@@ -1278,7 +1278,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 
 	const int offset = int((src_start >> Np) - Xoff - last_start);  // Difference from last time
 	last_start = (src_start >> Np) - Xoff;                          // Start for next time
-	
+
 	int overlap = int(last_samples - offset);                       // How many samples already fetched
 	if ((offset < 0) || (overlap <= 0))                             // Is there any overlap?
 	  overlap = 0;
@@ -1296,8 +1296,8 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 
 	short* dst_end = &dst[count * ch];
 
-#ifdef X86_32
-	if (env->GetCPUFlags() & CPUF_MMX) 
+#if defined(X86_32) && defined(MSVC)
+	if (env->GetCPUFlags() & CPUF_MMX)
   {
 	  static const int r_Na     = 1 << (Na-1);
 	  static const int r_Nhxn   = 1 << (Nhxn-1);
@@ -1334,7 +1334,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 
 		  FilterUD_mmx(Xp + ch + q, (unsigned)(-pos) & Pmask,  inc, dhb, Imp, Nwing);  /* Perform right-wing inner product */
 		  FilterUD_mmx(Xp      + q, (unsigned)( pos) & Pmask, -inc, dhb, Imp, Nwing);  /* Perform left-wing inner product */
-		  
+
 		  __asm {
 		    psrad      mm7, mm2              ; scaled Nhg guard bits
 		     mov       eax, [dst]
@@ -1425,7 +1425,7 @@ nofix:
 
 	const int offset = int((src_start >> Np) - Xoff - last_start);
 	last_start = (src_start >> Np) - Xoff;
-	
+
 	int overlap = int(last_samples - offset);
 	if ((offset < 0) || (overlap <= 0))
 	  overlap = 0;
@@ -1465,7 +1465,7 @@ AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment*
 }
 
 
-#ifdef X86_32
+#if defined(X86_32) && defined(MSVC)
 // FilterUD MMX SAMPLE_INT16 Version -- approx 3.25 times faster than original (2.4x than new)
 /*
  * MMx registers transfered across calls
@@ -1481,7 +1481,7 @@ AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment*
 void FilterUD_mmx(short *Xp, unsigned Ph, int _inc, int _dhb, short *p_Imp, unsigned End) {
 
   unsigned Ho  = (Ph * (unsigned)_dhb) >> Np;
-  
+
   if (_inc > 0) {   // If doing right wing drop extra coeff, so when Ph is
     End--;          // 0.5, we don't do one too many mult's
     if (Ph == 0)    // If the phase is zero then we've already skipped the
@@ -1511,7 +1511,7 @@ loop1:
 	 pslld      mm0,16-Na			; <<= 16-Na
 	mov			eax,Amask
 	 psrld		mm0,16				; 0000 0000 0000 coeff
-	punpcklwd	mm1,mm1				; *(Xp+1) *(Xp+1) *Xp *Xp 
+	punpcklwd	mm1,mm1				; *(Xp+1) *(Xp+1) *Xp *Xp
 	 mov 		edx,esi
 	punpckldq	mm0,mm0				; 0000 coeff 0000 coeff
 	 and		eax,esi				; Ho & Amask

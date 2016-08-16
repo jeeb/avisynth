@@ -39,10 +39,14 @@
 #  define EXTERN_C
 #endif
 
+#ifdef MSVC
 #ifndef AVSC_USE_STDCALL
 #  define AVSC_CC __cdecl
 #else
 #  define AVSC_CC __stdcall
+#endif
+#else
+#  define AVSC_CC
 #endif
 
 #define AVSC_INLINE static __inline

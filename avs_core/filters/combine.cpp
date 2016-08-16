@@ -38,6 +38,7 @@
 #include <avs/minmax.h>
 #include <cmath>
 #include <cassert>
+#include <algorithm>
 
 
 
@@ -51,8 +52,8 @@ extern const AVSFunction Combine_filters[] = {
   { "StackHorizontal", BUILTIN_FUNC_PREFIX, "cc+", StackHorizontal::Create },
   { "ShowFiveVersions", BUILTIN_FUNC_PREFIX, "ccccc", ShowFiveVersions::Create },
   { "Animate", BUILTIN_FUNC_PREFIX, "iis.*", Animate::Create },  // start frame, end frame, filter, start-args, end-args
-  { "Animate", BUILTIN_FUNC_PREFIX, "ciis.*", Animate::Create }, 
-  { "ApplyRange", BUILTIN_FUNC_PREFIX, "ciis.*", Animate::Create_Range }, 
+  { "Animate", BUILTIN_FUNC_PREFIX, "ciis.*", Animate::Create },
+  { "ApplyRange", BUILTIN_FUNC_PREFIX, "ciis.*", Animate::Create_Range },
   { 0 }
 };
 
@@ -91,7 +92,7 @@ StackVertical::StackVertical(const std::vector<PClip>& child_array, IScriptEnvir
 }
 
 
-PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
 {
   std::vector<PVideoFrame> frames;
   frames.reserve(children.size());
@@ -133,7 +134,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[1].IsArray()) {
     std::vector<PClip> children(1+args[1].ArraySize());
@@ -154,7 +155,7 @@ AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment*
   }
   else {
     env->ThrowError("StackVertical: clip array not recognized!");
-    return NULL;
+    return 0;
   }
 }
 
@@ -185,7 +186,7 @@ StackHorizontal::StackHorizontal(const std::vector<PClip>& child_array, IScriptE
   }
 }
 
-PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
 {
   std::vector<PVideoFrame> frames;
   frames.reserve(children.size());
@@ -224,7 +225,7 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-AVSValue __cdecl StackHorizontal::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl StackHorizontal::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[1].IsArray()) {
     std::vector<PClip> children(1+args[1].ArraySize());
@@ -245,7 +246,7 @@ AVSValue __cdecl StackHorizontal::Create(AVSValue args, void*, IScriptEnvironmen
   }
   else {
     env->ThrowError("StackHorizontal: clip array not recognized!");
-    return NULL;
+    return 0;
   }
 }
 
@@ -309,7 +310,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
     }
   }
 
-  for (int c=0; c<5; ++c) 
+  for (int c=0; c<5; ++c)
   {
     PVideoFrame src = child[c]->GetFrame(n, env);
     if (vi.IsPlanar()) {
@@ -376,14 +377,14 @@ AVSValue __cdecl ShowFiveVersions::Create(AVSValue args, void*, IScriptEnvironme
  *******   Animate (Recursive)   ******
  **************************************/
 
-Animate::Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before, 
+Animate::Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before,
                   const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env )
    : first(_first), last(_last), name(_name), num_args(_num_args), range_limit(_range_limit)
 {
-  if (first > last) 
+  if (first > last)
     env->ThrowError("Animate: final frame number must be greater than initial.");
 
-  if (first == last && (!range_limit)) 
+  if (first == last && (!range_limit))
     env->ThrowError("Animate: final frame cannot be the same as initial frame.");
 
   // check that argument types match
@@ -443,8 +444,8 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
 
     if (vi.width != vi1.width || vi.height != vi1.height)
       env->ThrowError("ApplyRange: Filtered and unfiltered video frame sizes must match");
-      
-    if (!vi.IsSameColorspace(vi1)) 
+
+    if (!vi.IsSameColorspace(vi1))
       env->ThrowError("ApplyRange: Filtered and unfiltered video colorspace must match");
   }
   else {
@@ -458,7 +459,7 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
 }
 
 
-bool __stdcall Animate::GetParity(int n) 
+bool __stdcall Animate::GetParity(int n)
 {
   if (range_limit) {
     if ((n<first) || (n>last)) {
@@ -473,7 +474,7 @@ bool __stdcall Animate::GetParity(int n)
 }
 
 
-PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env)
 {
   if (range_limit) {
     if ((n<first) || (n>last)) {
@@ -509,7 +510,7 @@ PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env)
   return cache[furthest]->GetFrame(n, env);
 }
 
-void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)  { 
+void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)  {
   if (range_limit) {  // Applyrange - hard switch between streams.
 
     const VideoInfo& vi1 = cache[0]->GetVideoInfo();
@@ -535,24 +536,24 @@ void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScrip
 
       // The bit in the middle
       const __int64 filt_count = (end_switch < start+count) ? (end_switch - start) : count;
-      cache[0]->GetAudio(buf, start, filt_count, env);  // Filtered 
+      cache[0]->GetAudio(buf, start, filt_count, env);  // Filtered
       start += filt_count;
       count -= filt_count;
       buf = (void*)( (BYTE*)buf + vi1.BytesFromAudioSamples(filt_count) );
 
       // The bit after
-      if (count > 0) 
+      if (count > 0)
         args_after[0].AsClip()->GetAudio(buf, start, count, env);  // UnFiltered
 
       return;
     }
     // Everything filtered
   }
-  cache[0]->GetAudio(buf, start, count, env);  // Filtered 
-} 
-  
+  cache[0]->GetAudio(buf, start, count, env);  // Filtered
+}
 
-AVSValue __cdecl Animate::Create(AVSValue args, void*, IScriptEnvironment* env) 
+
+AVSValue __cdecl Animate::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip context;
   if (args[0].IsClip()) {
@@ -569,7 +570,7 @@ AVSValue __cdecl Animate::Create(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl Animate::Create_Range(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Animate::Create_Range(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip context = args[0].AsClip();
 

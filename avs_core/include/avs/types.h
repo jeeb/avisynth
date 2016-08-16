@@ -35,6 +35,8 @@
 
 // Define all types necessary for interfacing with avisynth.dll
 
+#include <cstddef>
+
 // Raster types used by VirtualDub & Avisynth
 typedef unsigned int    Pixel32;
 typedef unsigned char   BYTE;

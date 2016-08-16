@@ -45,8 +45,8 @@
  *******  for pitch challenged plugins  *******
  **********************************************/
 
-class PlanarLegacyAlignment : public GenericVideoFilter 
-{ 
+class PlanarLegacyAlignment : public GenericVideoFilter
+{
 private:
   const IScriptEnvironment::PlanarChromaAlignmentMode mode;
 
@@ -85,8 +85,8 @@ public:
  *******  Call GetFrame on all source clips*****
  ***********************************************/
 
-class Echo : public GenericVideoFilter 
-{ 
+class Echo : public GenericVideoFilter
+{
 private:
   const int ClipCount;
   PClip *clips;
@@ -127,8 +127,8 @@ public:
  ******  Preroll GetFrame/GetAudio Filter ******
  ***********************************************/
 
-class Preroll : public GenericVideoFilter 
-{ 
+class Preroll : public GenericVideoFilter
+{
 private:
   const int videopr;
   const __int64 audiopr;
@@ -140,7 +140,7 @@ public:
   Preroll( PClip _child, const int _videopr, const double _audiopr, IScriptEnvironment* env )
     : GenericVideoFilter(_child),
       videopr(_videopr),
-      audiopr(__int64(_audiopr*vi.audio_samples_per_second+0.5)),
+      audiopr(int64_t(_audiopr*vi.audio_samples_per_second+0.5)),
       videonext(0),
       audionext(0) {
 
@@ -217,7 +217,7 @@ extern const AVSFunction Debug_filters[] = {
 
 Null::Null(PClip _child, const char * _copy, IScriptEnvironment* env)
   : GenericVideoFilter(_child), copy(_copy)
-{  
+{
 }
 
 Null::~Null()
@@ -225,20 +225,20 @@ Null::~Null()
 }
 
 
-PVideoFrame __stdcall Null::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall Null::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-    
+
   BYTE * foo = new BYTE[256];
   BYTE * bar = new BYTE[256];
   MemDebug md;
-  
+
   md.randomFill(foo, 8, 8, 8);
   env->BitBlt(bar, 8, foo, 8, 8, 8);
 
   md.reset();
   int i = md.randomCheck(bar, 9, 8, 8);
-  
+
   if (i)
     env->ThrowError("bug found");
 
@@ -261,14 +261,14 @@ PVideoFrame __stdcall Null::GetFrame(int n, IScriptEnvironment* env)
     memcpy( dst->GetWritePtr(), src->GetReadPtr(), src->GetPitch() * src->GetHeight() );
     return dst;
   }
-  
+
   if (!lstrcmpi(copy, "bitblt"))
   {
     PVideoFrame dst = env->NewVideoFrame(child->GetVideoInfo(), 16);
     if (dst->IsWritable() == false)
       env->ThrowError("new frame not writable"); // honestly don't know whether to expect this condition
 
-    env->BitBlt( dst->GetWritePtr(), src->GetPitch(), src->GetReadPtr(), src->GetPitch(), 
+    env->BitBlt( dst->GetWritePtr(), src->GetPitch(), src->GetReadPtr(), src->GetPitch(),
             src->GetRowSize(), src->GetHeight() );
     return dst;
   }
@@ -278,17 +278,17 @@ PVideoFrame __stdcall Null::GetFrame(int n, IScriptEnvironment* env)
   return src;
 }
 
-AVSValue __cdecl Null::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Null::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new Null(args[0].AsClip(), args[1].AsString("none"), env);
 }
 
 
 
-  
+
 MemDebug::MemDebug() : mask(0xff)
-{ 
-  reset();  
+{
+  reset();
 }
 
 
@@ -296,11 +296,11 @@ MemDebug::~MemDebug()
 {
 }
 
-  
+
 // fills a buffer with "random" (the same every time) data we can
 // test for after some manipulation (e.g. BitBlt)
 void MemDebug::randomFill(BYTE* const buf, const int pitch, const int row_size, const int height)
-{  
+{
   for(int x=0; x<height; ++x)
   {
     for(int y=0; y<row_size; ++y)
@@ -314,7 +314,7 @@ void MemDebug::randomFill(BYTE* const buf, const int pitch, const int row_size, 
 // checks a buffer to see if "random" data is intact or copied correctly
 // return value == offset of first discrepancy, or 0 if all's well
 int MemDebug::randomCheck(BYTE* const buf, const int pitch, const int row_size, const int height)
-{  
+{
   for(int x=0; x<height; ++x)
   {
     for(int y=0; y<row_size; ++y)
@@ -323,10 +323,10 @@ int MemDebug::randomCheck(BYTE* const buf, const int pitch, const int row_size, 
       if (buf[x*pitch + y] != n) return x*pitch + y;
     }
   }
-  
+
   return 0;
 }
- 
+
 
 char MemDebug::nextNum()
 {
@@ -336,7 +336,7 @@ char MemDebug::nextNum()
   {
     randNum *= 0x41c64e6d;
     randNum += 0x3039;
-  }  
+  }
 
   return char((randNum & (mask << (whichByte * 8))) >> (whichByte * 8));
 }

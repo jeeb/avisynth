@@ -36,7 +36,7 @@
 #include <cstring>
 #include <cassert>
 
-#ifdef X86_32
+#if defined(X86_32) && defined(MSVC)
 
 // Assembler bitblit by Steady
 static void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
@@ -260,8 +260,8 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
 {
   if ( (!height) || (!row_size) ) return;
 
-#ifdef X86_32
-  if (GetCPUFlags() & CPUF_INTEGER_SSE) 
+#if defined(X86_32) && defined(MSVC)
+  if (GetCPUFlags() & CPUF_INTEGER_SSE)
   {
     if (height == 1 || (src_pitch == dst_pitch && dst_pitch == row_size)) {
       memcpy_amd(dstp, srcp, row_size*height);

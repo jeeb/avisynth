@@ -161,7 +161,7 @@ static bool IsValidParameterString(const char* p) {
 ---------------------------------------------------------------------------------
 */
 
-AVSFunction::AVSFunction(void*) : 
+AVSFunction::AVSFunction(void*) :
     AVSFunction(NULL, NULL, NULL, NULL, NULL, NULL)
 {}
 
@@ -362,7 +362,7 @@ struct PluginFile
   PluginFile(const std::string &filePath);
 };
 
-PluginFile::PluginFile(const std::string &filePath) : 
+PluginFile::PluginFile(const std::string &filePath) :
   FilePath(GetFullPathNameWrap(filePath)), BaseName(), Library(NULL)
 {
   // Turn all '\' into '/'
@@ -498,7 +498,7 @@ void PluginManager::AutoloadPlugins()
         {
           if (streqi(AutoLoadedPlugins[i].BaseName.c_str(), p.BaseName.c_str()))
           {
-            // Prevent loading a plugin with a basename that is 
+            // Prevent loading a plugin with a basename that is
             // already loaded (from another autoload folder).
             continue;
           }
@@ -537,7 +537,7 @@ void PluginManager::AutoloadPlugins()
         {
           if (streqi(AutoLoadedImports[i].BaseName.c_str(), p.BaseName.c_str()))
           {
-            // Prevent loading a plugin with a basename that is 
+            // Prevent loading a plugin with a basename that is
             // already loaded (from another autoload folder).
             continue;
           }
@@ -603,7 +603,7 @@ void PluginManager::UpdateFunctionExports(const char* funcName, const char* func
   const char *oldFnList = Env->GetVar(exportVar, "");
   std::string FnList(oldFnList);
   if (FnList.size() > 0)    // if the list is not empty...
-    FnList.push_back(' ');  // ...add a delimiting whitespace 
+    FnList.push_back(' ');  // ...add a delimiting whitespace
   FnList.append(funcName);
   Env->SetGlobalVar(exportVar, AVSValue( Env->SaveString(FnList.c_str(), (int)FnList.size()) ));
 
@@ -618,7 +618,8 @@ void PluginManager::UpdateFunctionExports(const char* funcName, const char* func
 
 bool PluginManager::LoadPlugin(const char* path, bool throwOnError, AVSValue *result)
 {
-  return LoadPlugin(PluginFile(path), throwOnError, result);
+  auto pf = PluginFile { path };
+  return LoadPlugin(pf, throwOnError, result);
 }
 
 bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result)
@@ -848,7 +849,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
         AVS_ScriptEnvironment *pe;
         pe = &e;
         const char *s = NULL;
-#ifdef X86_32
+#if defined(X86_32) && defined(MSVC)
         int callok = 1; // (stdcall)
         __asm // Tritical - Jan 2006
         {
@@ -917,7 +918,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 ---------------------------------------------------------------------------------
 */
 
-AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) 
+AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 

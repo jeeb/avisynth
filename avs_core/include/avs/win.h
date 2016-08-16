@@ -36,13 +36,15 @@
 
 // WWUUT? We require XP now?
 #if !defined(NTDDI_VERSION) && !defined(_WIN32_WINNT)
-  #define NTDDI_VERSION NTDDI_WS03
-  #define _WIN32_WINNT  _WIN32_WINNT_WS03
+  #define NTDDI_VERSION 0x05020000
+  #define _WIN32_WINNT  0x0502
 #endif
 
 #define WIN32_LEAN_AND_MEAN
 #define STRICT
-#define NOMINMAX
+#if !defined(NOMINMAX)
+    #define NOMINMAX
+#endif
 
 #include <windows.h>
 

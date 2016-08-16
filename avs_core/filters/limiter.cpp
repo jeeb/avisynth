@@ -92,7 +92,7 @@ Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, in
   max_luma(_max_luma),
   min_chroma(_min_chroma),
   max_chroma(_max_chroma),
-  show(enum SHOW(_show))
+  show(show_e(_show))
 {
   if (!vi.IsYUV())
       env->ThrowError("Limiter: Source must be YUV");
@@ -435,14 +435,14 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   if (vi.IsPlanar())
   {
     //todo: separate to functions and use sse2 for aligned planes even if some are unaligned
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && 
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) &&
       IsPtrAligned(frame->GetWritePtr(PLANAR_U), 16) && IsPtrAligned(frame->GetWritePtr(PLANAR_V), 16)) {
         limit_plane_sse2(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
 
-        limit_plane_sse2(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+        limit_plane_sse2(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
           frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
 
-        limit_plane_sse2(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+        limit_plane_sse2(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
           frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
 
         return frame;
@@ -452,9 +452,9 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
     {
       limit_plane_isse(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
-      limit_plane_isse(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+      limit_plane_isse(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
         frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
-      limit_plane_isse(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+      limit_plane_isse(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
         frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
 
       return frame;
@@ -501,7 +501,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
 	const char* option = args[5].AsString(0);
-	enum SHOW show = show_none;
+	show_e show = show_none;
 
 	if (option) {
 	  if      (lstrcmpi(option, "luma") == 0)

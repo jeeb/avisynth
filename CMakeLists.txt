@@ -43,6 +43,8 @@ IF( MSVC_IDE )  # Check for Visual Studio
   # Enable CRT heap debugging - only effective in debug builds
   add_definitions("/D _CRTDBG_MAP_ALLOC")
   
+  add_definitions("/D __SSE2__")
+
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     # VC++ enables the SSE2 instruction set by default even on 32-bits. Step back a bit.
     add_definitions("/arch:SSE")
@@ -51,6 +53,10 @@ IF( MSVC_IDE )  # Check for Visual Studio
   # Set additional optimization flags
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS-")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oy /Ot /GS-")
+ELSE()
+
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++14" )
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native" )
 
 ENDIF()
 

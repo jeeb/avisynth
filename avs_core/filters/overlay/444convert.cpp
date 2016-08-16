@@ -127,20 +127,20 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
 
   int width = src->GetRowSize(PLANAR_U);
   int height = src->GetHeight(PLANAR_U);
-  
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16))  
+
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16))
   {
     convert_yv12_chroma_to_yv24_sse2(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
     convert_yv12_chroma_to_yv24_sse2(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
   }
   else
 #ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX) 
+  if (env->GetCPUFlags() & CPUF_MMX)
   {
     convert_yv12_chroma_to_yv24_mmx(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
     convert_yv12_chroma_to_yv24_mmx(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
-  } 
-  else 
+  }
+  else
 #endif
   {
     convert_yv12_chroma_to_yv24_c(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
@@ -375,7 +375,7 @@ static void convert_yv24_chroma_to_yv12_isse(BYTE *dstp, const BYTE *srcp, int d
   _mm_empty();
 }
 
-#endif X86_32
+#endif // X86_32
 
 static void convert_yv24_chroma_to_yv12_c(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_hegiht) {
   for (int y=0; y < dst_hegiht; y++) {
@@ -407,7 +407,7 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
   int w = dst->GetRowSize(PLANAR_U);
   int h = dst->GetHeight(PLANAR_U);
 
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16)) 
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16))
   {
     convert_yv24_chroma_to_yv12_sse2(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
     convert_yv24_chroma_to_yv12_sse2(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
@@ -418,7 +418,7 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
   {
     convert_yv24_chroma_to_yv12_isse(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
     convert_yv24_chroma_to_yv12_isse(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
-  } 
+  }
   else
 #endif
   {

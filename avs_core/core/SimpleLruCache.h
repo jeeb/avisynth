@@ -38,7 +38,7 @@ private:
   const EvictEventType EvictEvent;
 
 public:
-  SimpleLruCache(size_t capacity, const EvictEventType& evict, void* evData) :
+  SimpleLruCache(size_t capacity, const EvictEventType&& evict, void* evData) :
     MinCapacity(0),
     MaxCapacity(std::numeric_limits<size_t>::max()),
     RequestedCapacity(capacity),
@@ -146,10 +146,10 @@ public:
     if (Cache.size() > RealCapacity)
     {
       size_t nItemsToDelete = Cache.size() - RealCapacity;
-      std::list<Entry>::iterator it = --Cache.end();
+      auto it = --Cache.end();
       for (size_t i = 0; i < nItemsToDelete; ++i)
       {
-        std::list<Entry>::iterator prev_it;
+        auto prev_it = it;
         bool end = (it == Cache.begin());
         if (!end)
         {

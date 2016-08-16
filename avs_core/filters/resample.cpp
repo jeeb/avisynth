@@ -101,7 +101,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 {
   int filter_size = program->filter_size;
 
-  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
   coeff_t *current_coeff;
 
   if (!std::is_floating_point<pixel_t>::value)
@@ -114,7 +114,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   dst_pitch = dst_pitch / sizeof(pixel_t);
 
   pixel_t limit = 0;
-  if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
+  if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
     if (sizeof(pixel_t) == 1) limit = 255;
     else if (sizeof(pixel_t) == 2) limit = pixel_t(65535);
   }
@@ -125,12 +125,12 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 
     for (int x = 0; x < width; x++) {
       // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
-      std::conditional < sizeof(pixel_t) == 1, int, std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
+      typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
         result += (src_ptr+pitch_table[i] / sizeof(pixel_t))[x] * current_coeff[i];
       }
-      if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
+      if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
         result = ((result + 8192) / 16384);
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
@@ -168,19 +168,19 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
         __m64 src_p1 = *(reinterpret_cast<const __m64*>(src_ptr+pitch_table[i]+x));   // For detailed explanation please see SSE2 version.
         __m64 src_p2 = *(reinterpret_cast<const __m64*>(src_ptr+pitch_table[i+1]+x));
 
-        __m64 src_l = _mm_unpacklo_pi8(src_p1, src_p2);                                   
-        __m64 src_h = _mm_unpackhi_pi8(src_p1, src_p2);                                   
+        __m64 src_l = _mm_unpacklo_pi8(src_p1, src_p2);
+        __m64 src_h = _mm_unpackhi_pi8(src_p1, src_p2);
 
-        __m64 src_1 = _mm_unpacklo_pi8(src_l, zero);                                      
-        __m64 src_2 = _mm_unpackhi_pi8(src_l, zero);                                      
-        __m64 src_3 = _mm_unpacklo_pi8(src_h, zero);                                      
-        __m64 src_4 = _mm_unpackhi_pi8(src_h, zero);                                      
+        __m64 src_1 = _mm_unpacklo_pi8(src_l, zero);
+        __m64 src_2 = _mm_unpackhi_pi8(src_l, zero);
+        __m64 src_3 = _mm_unpacklo_pi8(src_h, zero);
+        __m64 src_4 = _mm_unpackhi_pi8(src_h, zero);
 
-        __m64 coeff = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(current_coeff+i));   
-        coeff = _mm_unpacklo_pi32(coeff, coeff);                                               
+        __m64 coeff = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(current_coeff+i));
+        coeff = _mm_unpacklo_pi32(coeff, coeff);
 
-        __m64 dst_1 = _mm_madd_pi16(src_1, coeff);                                        
-        __m64 dst_2 = _mm_madd_pi16(src_2, coeff);                                        
+        __m64 dst_1 = _mm_madd_pi16(src_1, coeff);
+        __m64 dst_2 = _mm_madd_pi16(src_2, coeff);
         __m64 dst_3 = _mm_madd_pi16(src_3, coeff);
         __m64 dst_4 = _mm_madd_pi16(src_4, coeff);
 
@@ -252,7 +252,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
-  
+
   int wMod16 = (width / 16) * 16;
   int sizeMod2 = (filter_size/2) * 2;
   bool notMod2 = sizeMod2 < filter_size;
@@ -268,11 +268,11 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
       __m128i result_2 = result_1;
       __m128i result_3 = result_1;
       __m128i result_4 = result_1;
-      
+
       for (int i = 0; i < sizeMod2; i += 2) {
         __m128i src_p1 = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i]+x));   // p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
         __m128i src_p2 = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i+1]+x)); // P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
-         
+
         __m128i src_l = _mm_unpacklo_epi8(src_p1, src_p2);                                   // Hh|Gg|Ff|Ee|Dd|Cc|Bb|Aa
         __m128i src_h = _mm_unpackhi_epi8(src_p1, src_p2);                                   // Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
 
@@ -283,7 +283,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
         __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff+i));   // XX|XX|XX|XX|XX|XX|CO|co
         coeff = _mm_shuffle_epi32(coeff, 0);                                                 // CO|co|CO|co|CO|co|CO|co
-        
+
         __m128i dst_1 = _mm_madd_epi16(src_1, coeff);                                         // CO*D+co*d | CO*C+co*c | CO*B+co*b | CO*A+co*a
         __m128i dst_2 = _mm_madd_epi16(src_2, coeff);                                         // etc.
         __m128i dst_3 = _mm_madd_epi16(src_3, coeff);
@@ -294,7 +294,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
         result_3 = _mm_add_epi32(result_3, dst_3);
         result_4 = _mm_add_epi32(result_4, dst_4);
       }
-      
+
       if (notMod2) { // do last odd row
         __m128i src_p = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[sizeMod2]+x));
 
@@ -318,7 +318,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
         result_3 = _mm_add_epi32(result_3, dst_3);
         result_4 = _mm_add_epi32(result_4, dst_4);
       }
-      
+
       // Divide by 16348 (FPRound)
       result_1  = _mm_srai_epi32(result_1, 14);
       result_2  = _mm_srai_epi32(result_2, 14);
@@ -354,7 +354,7 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
 {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
-  
+
   int wMod16 = (width / 16) * 16;
 
   __m128i zero = _mm_setzero_si128();
@@ -369,7 +369,7 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
       __m128i result_h = result_l;
 
       const BYTE* src2_ptr = src_ptr+x;
-      
+
       for (int i = 0; i < filter_size; i++) {
         __m128i src_p = load(reinterpret_cast<const __m128i*>(src2_ptr));
 
@@ -462,7 +462,7 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* 
 
   memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
   memset(new_coeff_float, 0, sizeof(float) * p->target_size * filter_size);
-  
+
   // Copy coeff
   short *dst = new_coeff, *src = p->pixel_coefficient;
   float *dst_f = new_coeff_float, *src_f = p->pixel_coefficient_float;
@@ -486,7 +486,7 @@ template<typename pixel_t>
 static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = program->filter_size;
 
-  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
   coeff_t *current_coeff;
 
   if (!std::is_floating_point<pixel_t>::value)
@@ -495,7 +495,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
     current_coeff = (coeff_t *)program->pixel_coefficient_float;
 
   pixel_t limit = 0;
-  if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
+  if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
     if (sizeof(pixel_t) == 1) limit = 255;
     else if (sizeof(pixel_t) == 2) limit = pixel_t(65535);
   }
@@ -510,12 +510,12 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
     int begin = program->pixel_offset[x];
     for (int y = 0; y < height; y++) {
       // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
-      std::conditional < sizeof(pixel_t) == 1, int, std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
+      typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
         result += (src0+y*src_pitch)[(begin+i)] * current_coeff[i];
       }
-      if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
+      if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
         result = ((result + 8192) / 16384);
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
@@ -785,7 +785,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       turn_left = turn_left_rgb24;
       turn_right = turn_right_rgb24;
     } else if (vi.IsRGB32()) {
-      if (has_sse2) { 
+      if (has_sse2) {
         turn_left = turn_left_rgb32_sse2;
         turn_right = turn_right_rgb32_sse2;
       } else {
@@ -869,7 +869,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 
         // turn_xxx: width * pixelsize: needs GetPlaneWidth-like full size
         // U Plane
-        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width * pixelsize, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);  
+        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width * pixelsize, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);
         resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
         turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height * pixelsize, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
 
@@ -1030,7 +1030,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, work_width, vi.height, src_pitch_table_luma, filter_storage_luma_aligned);
   else
     resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, work_width, vi.height, src_pitch_table_luma, filter_storage_luma_unaligned);
-    
+
   if (!grey && vi.IsPlanar()) {
     int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
     int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -1040,7 +1040,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     dst_pitch = dst->GetPitch(PLANAR_U);
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
-      
+
     if (IsPtrAligned(srcp, 16) && (src_pitch & 15) == 0)
       resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU, filter_storage_chroma_unaligned);
     else
@@ -1051,7 +1051,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     dst_pitch = dst->GetPitch(PLANAR_V);
     srcp = src->GetReadPtr(PLANAR_V);
     dstp = dst->GetWritePtr(PLANAR_V);
-  
+
     if (IsPtrAligned(srcp, 16) && (src_pitch & 15) == 0)
       resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV, filter_storage_chroma_unaligned);
     else
@@ -1122,7 +1122,7 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, v
     else if (pixelsize == 2) {
       return resize_v_c_planar<uint16_t>;
     }
-    else { // if (pixelsize== 4) 
+    else { // if (pixelsize== 4)
       return resize_v_c_planar<float>;
     }
   }
@@ -1193,7 +1193,7 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
 {
   const VideoInfo& vi = clip->GetVideoInfo();
   const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
-  
+
   double subrange_width = args[2].AsDblDef(vi.width), subrange_height = args[3].AsDblDef(vi.height);
   // Crop style syntax
   if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;

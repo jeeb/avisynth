@@ -32,6 +32,10 @@
 #ifndef AVSCORE_EXCEPTION_H
 #define AVSCORE_EXCEPTION_H
 
+#include <avs/config.h>
+
+#if defined(MSVC)
+
 // IMPORTANT: Project must be compiled with /EHa
 #include <eh.h>
 
@@ -53,6 +57,18 @@ public:
 private:
     _se_translator_function m_prev;
 };
+#else
+
+// TODO: port to unix signals
+class SehGuard
+{
+public:
+    SehGuard() { }
+
+    ~SehGuard() { }
+};
+
+#endif
 
 class SehException
 {

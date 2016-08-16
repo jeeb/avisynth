@@ -18,7 +18,7 @@ class MTGuard : public IClip
 private:
   IScriptEnvironment2* Env;
 
-  std::vector<PClip> ChildFilters; 
+  std::vector<PClip> ChildFilters;
   std::mutex *FilterMutex;
   size_t nThreads;
   VideoInfo vi;
@@ -50,11 +50,11 @@ private:
     MTGuard *guard = nullptr;
 
 public:
-    MTGuardExit(PClip &clip);
+    MTGuardExit(const PClip &clip);
     void Activate(PClip &with_guard);
 
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
     void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 };
 
-#endif _AVS_MTGUARD_H
+#endif // _AVS_MTGUARD_H

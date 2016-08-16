@@ -48,7 +48,7 @@ public:
 // these interfaces.
 class InternalEnvironment : public IScriptEnvironment2 {
 public:
-    virtual __stdcall ~InternalEnvironment() {}
+    virtual ~InternalEnvironment() {}
 
     virtual int __stdcall IncrImportDepth() = 0;
     virtual int __stdcall DecrImportDepth() = 0;

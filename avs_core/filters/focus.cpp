@@ -41,7 +41,7 @@
 #include <emmintrin.h>
 #include <stdint.h>
 
- 
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -55,7 +55,7 @@ extern const AVSFunction Focus_filters[] = {
 };
 
 
- 
+
 
 
 /****************************************
@@ -76,11 +76,11 @@ AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
 
 template<typename pixel_t>
 static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const int half_amount) {
-  typedef std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t;
   // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
   weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
   weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
-  
+
   pixel_t * dstp = reinterpret_cast<pixel_t *>(dstp8);
   pixel_t * line_buf = reinterpret_cast<pixel_t *>(line_buf8);
   int pitch = pitch8 / sizeof(pixel_t);
@@ -104,7 +104,7 @@ static void af_vertical_c_float(BYTE* line_buf8, BYTE* dstp8, const int height, 
     float *dstp = reinterpret_cast<float *>(dstp8);
     float *line_buf = reinterpret_cast<float *>(line_buf8);
     int pitch = pitch8 / sizeof(float);
-    
+
     const float center_weight = amount;
     const float outer_weight = (1.0f - amount) / 2.0f;
 
@@ -334,7 +334,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
             switch (pixelsize) {
             case 1: af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env); break;
             case 2: af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, env); break;
-            default: // 4: float 
+            default: // 4: float
                 af_vertical_process_float(line_buf, dstp, height, pitch, row_size, amountd, env); break;
             }
         }
@@ -345,7 +345,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
         int row_size = vi.RowSize();
         int height = vi.height;
         memcpy(line_buf, dstp, row_size); // First row - map centre as upper
-        
+
         af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env);
     }
 
@@ -366,19 +366,19 @@ AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
 
 static __forceinline void af_horizontal_rgb32_process_line_c(BYTE b_left, BYTE g_left, BYTE r_left, BYTE a_left, BYTE *dstp, size_t width, int center_weight, int outer_weight) {
   size_t x;
-  for (x = 0; x < width-1; ++x) 
+  for (x = 0; x < width-1; ++x)
   {
     BYTE b = ScaledPixelClip(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+4]) * outer_weight);
-    b_left = dstp[x*4+0]; 
+    b_left = dstp[x*4+0];
     dstp[x*4+0] = b;
     BYTE g = ScaledPixelClip(dstp[x*4+1] * center_weight + (g_left + dstp[x*4+5]) * outer_weight);
-    g_left = dstp[x*4+1]; 
+    g_left = dstp[x*4+1];
     dstp[x*4+1] = g;
     BYTE r = ScaledPixelClip(dstp[x*4+2] * center_weight + (r_left + dstp[x*4+6]) * outer_weight);
-    r_left = dstp[x*4+2]; 
+    r_left = dstp[x*4+2];
     dstp[x*4+2] = r;
     BYTE a = ScaledPixelClip(dstp[x*4+3] * center_weight + (a_left + dstp[x*4+7]) * outer_weight);
-    a_left = dstp[x*4+3]; 
+    a_left = dstp[x*4+3];
     dstp[x*4+3] = a;
   }
   dstp[x*4+0] = ScaledPixelClip(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+0]) * outer_weight);
@@ -390,7 +390,7 @@ static __forceinline void af_horizontal_rgb32_process_line_c(BYTE b_left, BYTE g
 static void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   int center_weight = int(amount*2);
   int outer_weight = int(32768-amount);
-  for (size_t y = height; y>0; --y) 
+  for (size_t y = height; y>0; --y)
   {
     BYTE b_left = dstp[0];
     BYTE g_left = dstp[1];
@@ -516,13 +516,13 @@ static void af_horizontal_rgb32_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int amount) {
   const int center_weight = amount*2;
   const int outer_weight = 32768-amount;
-  for (int y0 = height; y0>0; --y0) 
+  for (int y0 = height; y0>0; --y0)
   {
     BYTE yy = p[0];
     BYTE uv = p[1];
     BYTE vu = p[3];
     int x;
-    for (x = 0; x < width-2; ++x) 
+    for (x = 0; x < width-2; ++x)
     {
       BYTE y = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
       yy   = p[x*2+0];
@@ -544,7 +544,7 @@ static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int 
 }
 
 
-static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask, 
+static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask,
                                              __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i left_luma = _mm_and_si128(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
   __m128i center_luma = _mm_and_si128(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
@@ -560,7 +560,7 @@ static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, 
     _mm_slli_si128(right_luma, 2)//0 Y4 0 Y3 0 Y2 0 0
     );
 
-  __m128i result_luma = af_blend_sse2(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
+  __m128i result_luma = af_blend_sse2(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask);
 
   __m128i left_chroma = _mm_srli_epi16(left, 8); //0 V 0 U 0 V 0 U
   __m128i center_chroma = _mm_srli_epi16(center, 8); //0 V 0 U 0 V 0 U
@@ -598,7 +598,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 
     //todo: now this is dumb
     left = _mm_or_si128(
-      _mm_and_si128(center, left_mask), 
+      _mm_and_si128(center, left_mask),
       _mm_slli_si128(center, 4)
       );//V0 Y1 U0 Y0 V0 Y1 U0 Y0
     left = _mm_or_si128(
@@ -625,7 +625,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 
     //todo: now this is dumb2
     right = _mm_or_si128(
-      _mm_and_si128(center, right_mask), 
+      _mm_and_si128(center, right_mask),
       _mm_srli_si128(center, 4)
       );//V1 Y3 U1 Y2 V1 Y3 U1 Y2
 
@@ -649,8 +649,8 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 // -------------------------------------
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
-// 
-static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask, 
+//
+static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask,
                            __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
   __m64 left_luma = _mm_and_si64(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
   __m64 center_luma = _mm_and_si64(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
@@ -666,7 +666,7 @@ static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &
     _mm_slli_si64(right_luma, 16)//0 Y4 0 Y3 0 Y2 0 0
     );
 
-  __m64 result_luma = af_blend_mmx(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
+  __m64 result_luma = af_blend_mmx(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask);
 
   __m64 left_chroma = _mm_srli_pi16(left, 8); //0 V 0 U 0 V 0 U
   __m64 center_chroma = _mm_srli_pi16(center, 8); //0 V 0 U 0 V 0 U
@@ -704,7 +704,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
 
     //todo: now this is dumb
     left = _mm_or_si64(
-      _mm_and_si64(center, left_mask), 
+      _mm_and_si64(center, left_mask),
       _mm_slli_si64(center, 32)
       );//V0 Y1 U0 Y0 V0 Y1 U0 Y0
     left = _mm_or_si64(
@@ -731,7 +731,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
 
     //todo: now this is dumb2
     right = _mm_or_si64(
-      _mm_and_si64(center, right_mask), 
+      _mm_and_si64(center, right_mask),
       _mm_srli_si64(center, 32)
       );//V1 Y3 U1 Y2 V1 Y3 U1 Y2
     right = _mm_or_si64(
@@ -759,14 +759,14 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
 static void af_horizontal_rgb24_c(BYTE* p, int height, int pitch, int width, int amount) {
   const int center_weight = amount*2;
   const int outer_weight = 32768-amount;
-  for (int y = height; y>0; --y) 
+  for (int y = height; y>0; --y)
   {
 
     BYTE bb = p[0];
     BYTE gg = p[1];
     BYTE rr = p[2];
     int x;
-    for (x = 0; x < width-1; ++x) 
+    for (x = 0; x < width-1; ++x)
     {
       BYTE b = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+3]) * outer_weight);
       bb = p[x*3+0]; p[x*3+0] = b;
@@ -790,11 +790,11 @@ template<typename pixel_t>
 static __forceinline void af_horizontal_yv12_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
   size_t x;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
-  typedef std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t; // for calling the right ScaledPixelClip()
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t; // for calling the right ScaledPixelClip()
   size_t width = row_size / sizeof(pixel_t);
   for (x = 0; x < width-1; ++x) {
     pixel_t temp = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x+1]) * (weight_t)outer_weight));
-    left = dstp[x]; 
+    left = dstp[x];
     dstp[x] = temp;
   }
   // ScaledPixelClip has 2 overloads: BYTE/uint16_t (int/int64 i)
@@ -802,7 +802,7 @@ static __forceinline void af_horizontal_yv12_process_line_c(pixel_t left, BYTE *
 }
 
 template<typename pixel_t>
-static void af_horizontal_yv12_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, size_t half_amount) 
+static void af_horizontal_yv12_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, size_t half_amount)
 {
     pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
     size_t pitch = pitch8 / sizeof(pixel_t);
@@ -821,13 +821,13 @@ static __forceinline void af_horizontal_yv12_process_line_float_c(float left, fl
     size_t width = row_size / sizeof(float);
     for (x = 0; x < width-1; ++x) {
         float temp = dstp[x] * center_weight + (left + dstp[x+1]) * outer_weight;
-        left = dstp[x]; 
+        left = dstp[x];
         dstp[x] = temp;
     }
     dstp[x] = dstp[x] * center_weight + (left + dstp[x]) * outer_weight;
 }
 
-static void af_horizontal_yv12_float_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, float amount) 
+static void af_horizontal_yv12_float_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, float amount)
 {
     float* dstp = reinterpret_cast<float *>(dstp8);
     size_t pitch = pitch8 / sizeof(float);
@@ -843,7 +843,7 @@ static void af_horizontal_yv12_float_c(BYTE* dstp8, size_t height, size_t pitch8
 
 static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   size_t mod16_width = (width / 16) * 16;
-  size_t sse_loop_limit = width == mod16_width ? mod16_width - 16 : mod16_width; 
+  size_t sse_loop_limit = width == mod16_width ? mod16_width - 16 : mod16_width;
   int center_weight_c = int(amount*2);
   int outer_weight_c = int(32768-amount);
 
@@ -876,7 +876,7 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
       right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp+x+1));
 
       result = af_unpack_blend_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
-      
+
       left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp+x+15));
 
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
@@ -893,7 +893,7 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
     } else { //some stuff left
       BYTE l = _mm_cvtsi128_si32(left) & 0xFF;
       af_horizontal_yv12_process_line_c<uint8_t>(l, dstp+mod16_width, width-mod16_width, center_weight_c, outer_weight_c);
-      
+
     }
 
     dstp += pitch;
@@ -905,7 +905,7 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
 
 static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   size_t mod8_width = (width / 8) * 8;
-  size_t mmx_loop_limit = width == mod8_width ? mod8_width - 8 : mod8_width; 
+  size_t mmx_loop_limit = width == mod8_width ? mod8_width - 8 : mod8_width;
   int center_weight_c = amount*2;
   int outer_weight_c = 32768-amount;
 
@@ -921,7 +921,7 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
 #pragma warning(pop)
 
   __m64 left;
-  
+
   for (size_t y = 0; y < height; ++y) {
     //left border
     __m64 center = *reinterpret_cast<const __m64*>(dstp);
@@ -936,7 +936,7 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
     for (size_t x = 8; x < mmx_loop_limit; x+= 8) {
       center = *reinterpret_cast<const __m64*>(dstp+x);
       right = *reinterpret_cast<const __m64*>(dstp+x+1);
-      
+
       result = af_unpack_blend_mmx(left, center, right, center_weight, outer_weight, round_mask, zero);
       left = *reinterpret_cast<const __m64*>(dstp+x+7);
 
@@ -979,7 +979,7 @@ static void copy_frame(const PVideoFrame &src, PVideoFrame &dst, IScriptEnvironm
 // Blur/Sharpen Horizontal GetFrame()
 // ----------------------------------
 
-PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -1009,8 +1009,8 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
             default: // 4: float
                     af_horizontal_yv12_float_c(q, height, pitch, row_size, (float)amountd); break;
             }
-          
-        } 
+
+        }
     }
   } else {
     if (vi.IsYUY2()) {
@@ -1028,7 +1028,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
         copy_frame(src, dst, env); //in-place
         af_horizontal_yuy2_c(q,vi.height,pitch,vi.width,half_amount);
       }
-    } 
+    }
     else if (vi.IsRGB32()) {
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
         //this one is NOT in-place
@@ -1058,7 +1058,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
  *******   Sharpen/Blur Factory Methods   *******
  ***********************************************/
 
-AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env)
 {
   const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
 
@@ -1083,7 +1083,7 @@ AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env)
   }
 }
 
-AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
 {
   const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
   const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
@@ -1116,7 +1116,7 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
  ****  TemporalSoften  *****
  **************************/
 
-TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, 
+TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh,
                                 unsigned chroma_thresh, int _scenechange, IScriptEnvironment* env )
   : GenericVideoFilter  (_child),
     chroma_threshold    (min(chroma_thresh,255u)),
@@ -1175,8 +1175,8 @@ template<typename pixel_t>
 static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, int offset, size_t rowsize, BYTE _threshold, int div) {
   pixel_t *c_plane = reinterpret_cast<pixel_t *>(_c_plane);
 
-  typedef std::conditional < sizeof(pixel_t) == 1, unsigned int, std::conditional < sizeof(pixel_t) == 2, unsigned __int64, float>::type >::type sum_t;
-  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, size_t>::type threshold_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, unsigned int, typename std::conditional < sizeof(pixel_t) == 2, unsigned __int64, float>::type >::type sum_t;
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, size_t>::type threshold_t;
 
   size_t width = rowsize / sizeof(pixel_t);
 
@@ -1188,7 +1188,7 @@ static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, i
 
   for (size_t x = offset; x < width; ++x) {
     pixel_t current = c_plane[x];
-    sum_t sum = current; 
+    sum_t sum = current;
 
     for (int plane = planes - 1; plane >= 0; plane--) {
       pixel_t p = reinterpret_cast<const pixel_t *>(planeP[plane])[x];
@@ -1200,7 +1200,7 @@ static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, i
         sum += current;
       }
     }
-    
+
     if (std::is_floating_point<pixel_t>::value)
       c_plane[x] = (pixel_t)(sum / (planes + 1)); // float: simple average
     else
@@ -1239,8 +1239,8 @@ static void accumulate_line_yuy2_c(BYTE* c_plane, const BYTE** planeP, int plane
   }
 }
 
-
-static __forceinline __m128i ts_multiply_repack_sse2(__m128i &src, __m128i &div, __m128i &halfdiv, __m128i &zero) {
+#ifdef __SSE2__
+static __forceinline __m128i ts_multiply_repack_sse2(const __m128i &src, const __m128i &div, __m128i &halfdiv, __m128i &zero) {
   __m128i acc = _mm_madd_epi16(src, div);
   acc = _mm_add_epi32(acc, halfdiv);
   acc = _mm_srli_epi32(acc, 15);
@@ -1289,14 +1289,15 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
     high = _mm_unpacklo_epi32(high_low, high_high);
 
     __m128i acc = _mm_unpacklo_epi64(low, high);
-    
+
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
   }
 }
+#endif
 
 #ifdef X86_32
 
-static __forceinline __m64 ts_multiply_repack_mmx(__m64 &src, __m64 &div, __m64 &halfdiv, __m64 &zero) {
+static __forceinline __m64 ts_multiply_repack_mmx(const __m64 &src, const __m64 &div, __m64 &halfdiv, __m64 &zero) {
   __m64 acc = _mm_madd_pi16(src, div);
   acc = _mm_add_pi32(acc, halfdiv);
   acc = _mm_srli_pi32(acc, 15);
@@ -1335,7 +1336,7 @@ static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, 
       low = _mm_adds_pu16(low, add_low);
       high = _mm_adds_pu16(high, add_high);
     }
-    
+
     __m64 low_low   = ts_multiply_repack_mmx(_mm_unpacklo_pi16(low, zero), div_vector, halfdiv_vector, zero);
     __m64 low_high  = ts_multiply_repack_mmx(_mm_unpackhi_pi16(low, zero), div_vector, halfdiv_vector, zero);
     __m64 high_low  = ts_multiply_repack_mmx(_mm_unpacklo_pi16(high, zero), div_vector, halfdiv_vector, zero);
@@ -1360,7 +1361,7 @@ static void accumulate_line_yuy2(BYTE* c_plane, const BYTE** planeP, int planes,
 #ifdef X86_32
   if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
     accumulate_line_mmx(c_plane, planeP, planes, width, threshold_luma | (threshold_chroma << 8), div); //yuy2 is always at least mod8
-  } else 
+  } else
 #endif
     accumulate_line_yuy2_c(c_plane, planeP, planes, width, threshold_luma, threshold_chroma, div);
 }
@@ -1378,7 +1379,7 @@ static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size
     if (mod8_width != rowsize) {
       accumulate_line_c<uint8_t>(c_plane, planeP, planes, mod8_width, rowsize - mod8_width, threshold, div);
     }
-  } else 
+  } else
 #endif
     switch(pixelsize) {
     case 1: accumulate_line_c<uint8_t>(c_plane, planeP, planes, 0, rowsize, threshold, div); break;
@@ -1449,8 +1450,8 @@ static size_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
   const pixel_t *ptr2 = reinterpret_cast<const pixel_t *>(other_ptr);
   size_t width = rowsize / sizeof(pixel_t);
 
-  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, size_t>::type sum_t;
-  sum_t sum = 0; 
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, size_t>::type sum_t;
+  sum_t sum = 0;
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
@@ -1465,7 +1466,7 @@ static size_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
     return (size_t)sum;
 }
 
-// sum of byte-diffs. 
+// sum of byte-diffs.
 static size_t calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, IScriptEnvironment* env) {
   // todo: sse for 16bit/float
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
@@ -1483,7 +1484,7 @@ static size_t calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_
     return calculate_sad_c<float>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 
-  
+
 }
 
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
@@ -1512,8 +1513,8 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     frames.emplace_back(child->GetFrame(clamp(p, 0, vi.num_frames - 1), env));
   }
 
-  // P.F. 16.04.06 leak fix r1841 after 8 days of bug chasing: 
-  // Reason #1 of the random QTGMC memory leaks (stuck frame refcounts) 
+  // P.F. 16.04.06 leak fix r1841 after 8 days of bug chasing:
+  // Reason #1 of the random QTGMC memory leaks (stuck frame refcounts)
   // MakeWritable alters the pointer if it is not yet writeable, thus the original PVideoFrame won't be freed (refcount decremented)
   // To fix this, we leave the frame[] array in its place and copy frame[radius] to CenterFrame and make further write operations on this new frame.
   // env->MakeWritable(&frames[radius]); // old culprit line. if not yet writeable -> gives another pointer
@@ -1590,7 +1591,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     {
       // Memory leak reason #2 r1841: this wasn't here before return
       for (int i = 0; i < kernel; ++i)
-        frames[i] = nullptr; 
+        frames[i] = nullptr;
       // return frames[radius];
       return CenterFrame; // return the modified frame
     }
@@ -1625,9 +1626,9 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new TemporalSoften( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), 
+  return new TemporalSoften( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),
                              args[3].AsInt(), args[4].AsInt(0),/*args[5].AsInt(1),*/env ); //ignore mode parameter
 }
 
@@ -1637,7 +1638,7 @@ AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment
  ****  Spatial Soften   *****
  ***************************/
 
-SpatialSoften::SpatialSoften( PClip _child, int _radius, unsigned _luma_threshold, 
+SpatialSoften::SpatialSoften( PClip _child, int _radius, unsigned _luma_threshold,
                               unsigned _chroma_threshold, IScriptEnvironment* env )
   : GenericVideoFilter(_child), diameter(_radius*2+1),
     luma_threshold(_luma_threshold), chroma_threshold(_chroma_threshold)
@@ -1647,7 +1648,7 @@ SpatialSoften::SpatialSoften( PClip _child, int _radius, unsigned _luma_threshol
 }
 
 
-PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -1658,7 +1659,7 @@ PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
   int dst_pitch = dst->GetPitch();
   int row_size = src->GetRowSize();
 
-  for (int y=0; y<vi.height; ++y) 
+  for (int y=0; y<vi.height; ++y)
   {
     const BYTE* line[65];    // better not make diameter bigger than this...
     for (int h=0; h<diameter; ++h)
@@ -1668,18 +1669,18 @@ PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
     int edge = (diameter+1) & -4;
     for (x=0; x<edge; ++x)  // diameter-1 == (diameter>>1) * 2
       dstp[y*dst_pitch + x] = srcp[y*src_pitch + x];
-    for (; x < row_size - edge; x+=2) 
+    for (; x < row_size - edge; x+=2)
     {
       int cnt=0, _y=0, _u=0, _v=0;
       int xx = x | 3;
       int Y = srcp[y*src_pitch + x], U = srcp[y*src_pitch + xx - 2], V = srcp[y*src_pitch + xx];
-      for (int h=0; h<diameter; ++h) 
+      for (int h=0; h<diameter; ++h)
       {
-        for (int w = -diameter+1; w < diameter; w += 2) 
+        for (int w = -diameter+1; w < diameter; w += 2)
         {
           int xw = (x+w) | 3;
           if (IsClose(line[h][x+w], Y, luma_threshold) && IsClose(line[h][xw-2], U,
-                      chroma_threshold) && IsClose(line[h][xw], V, chroma_threshold)) 
+                      chroma_threshold) && IsClose(line[h][xw], V, chroma_threshold))
           {
             ++cnt; _y += line[h][x+w]; _u += line[h][xw-2]; _v += line[h][xw];
           }
@@ -1701,6 +1702,6 @@ PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl SpatialSoften::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new SpatialSoften( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), 
+  return new SpatialSoften( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),
                             args[3].AsInt(), env );
 }

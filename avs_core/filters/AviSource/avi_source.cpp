@@ -40,6 +40,7 @@
 #include "VD_Audio.h"
 #include "AVIReadHandler.h"
 #include "avi_source.h"
+#include <vfw.h>
 #include <avs/minmax.h>
 
 static void __cdecl free_buffer(void* buff, IScriptEnvironment* env)
@@ -66,7 +67,7 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad, IScriptEnvir
   size = sizeY + 2 * sizeUV;
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
-  // maybe memcpy become fast by aligned start address. 
+  // maybe memcpy become fast by aligned start address.
   orig = env2->Allocate(size, FRAME_ALIGN, AVS_POOLED_ALLOC);
   if (!orig)
     env->ThrowError("AVISource: couldn't allocate temporal buffer.");
@@ -98,6 +99,48 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
     env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetPtr(PLANAR_U), frame->GetPitch(PLANAR_U), result->GetRowSize(PLANAR_U), result->GetHeight(PLANAR_U));
     return result;
 }
+
+#ifndef MSVC
+static __inline LRESULT
+ICDecompressEx(HIC hic,DWORD dwFlags,LPBITMAPINFOHEADER lpbiSrc,LPVOID lpSrc,INT xSrc,INT ySrc,INT dxSrc,INT dySrc,LPBITMAPINFOHEADER lpbiDst,LPVOID lpDst,INT xDst,INT yDst,INT dxDst,INT dyDst)
+{
+	ICDECOMPRESSEX ic;
+	ic.dwFlags = dwFlags;
+	ic.lpbiSrc = lpbiSrc;
+	ic.lpSrc = lpSrc;
+	ic.xSrc = xSrc;
+	ic.ySrc = ySrc;
+	ic.dxSrc = dxSrc;
+	ic.dySrc = dySrc;
+	ic.lpbiDst = lpbiDst;
+	ic.lpDst = lpDst;
+	ic.xDst = xDst;
+	ic.yDst = yDst;
+	ic.dxDst = dxDst;
+	ic.dyDst = dyDst;
+	return ICSendMessage(hic,ICM_DECOMPRESSEX,(DWORD)&ic,sizeof(ic));
+}
+
+static __inline LRESULT
+ICDecompressExBegin(HIC hic,DWORD dwFlags,LPBITMAPINFOHEADER lpbiSrc,LPVOID lpSrc,INT xSrc,INT ySrc,INT dxSrc,INT dySrc,LPBITMAPINFOHEADER lpbiDst,LPVOID lpDst,INT xDst,INT yDst,INT dxDst,INT dyDst)
+{
+	ICDECOMPRESSEX ic;
+	ic.dwFlags = dwFlags;
+	ic.lpbiSrc = lpbiSrc;
+	ic.lpSrc = lpSrc;
+	ic.xSrc = xSrc;
+	ic.ySrc = ySrc;
+	ic.dxSrc = dxSrc;
+	ic.dySrc = dySrc;
+	ic.lpbiDst = lpbiDst;
+	ic.lpDst = lpDst;
+	ic.xDst = xDst;
+	ic.yDst = yDst;
+	ic.dxDst = dxDst;
+	ic.dyDst = dyDst;
+	return ICSendMessage(hic,ICM_DECOMPRESSEX_BEGIN,(DWORD)&ic,sizeof(ic));
+}
+#endif // MSVC
 
 LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst) {
   if (!ex) {
@@ -188,7 +231,7 @@ bool AVISource::AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih
 
       // This never seems to work...
 
-      hic = ICLocate(ICTYPE_VIDEO, NULL, bmih, NULL, ICMODE_DECOMPRESS);
+      hic = ICLocate(ICTYPE_VIDEO, 0, bmih, NULL, ICMODE_DECOMPRESS);
     }
   }
 
@@ -211,7 +254,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
     pbiSrc->biSize      = sizeof(BITMAPINFOHEADER);
     pbiSrc->biWidth     = 720;
 
-    if (asi.dwRate > asi.dwScale*26i64)
+    if (asi.dwRate > asi.dwScale*26LL)
       pbiSrc->biHeight      = 480;
     else
       pbiSrc->biHeight      = 576;

@@ -36,10 +36,12 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "filters/AviSource/*.h"
 )
 
-# Export definitions in general are not needed on x64 and only cause warnings,
-# unfortunately we still must need a .def file for some COM functions.
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  LIST(APPEND AvsCore_Sources "core/avisynth64.def")
-else()
-  LIST(APPEND AvsCore_Sources "core/avisynth.def")
-endif() 
+IF( MSVC_IDE )
+    # Export definitions in general are not needed on x64 and only cause warnings,
+    # unfortunately we still must need a .def file for some COM functions.
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      LIST(APPEND AvsCore_Sources "core/avisynth64.def")
+    else()
+      LIST(APPEND AvsCore_Sources "core/avisynth.def")
+    endif() 
+ENDIF()

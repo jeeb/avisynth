@@ -14,7 +14,7 @@
 #include <cstdarg>
 
 
-struct AVS_Clip 
+struct AVS_Clip
 {
 	PClip clip;
 	IScriptEnvironment * env;
@@ -34,7 +34,7 @@ public:
 	const VideoInfo & __stdcall GetVideoInfo();
 	bool __stdcall GetParity(int n);
 	int __stdcall SetCacheHints(int cachehints,int frame_range);
-	__stdcall ~C_VideoFilter();
+	AVSC_CC ~C_VideoFilter();
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -242,7 +242,7 @@ int AVSC_CC avs_get_height_p(const AVS_VideoFrame * p, int plane)
   return p->height;
 }
 
-extern "C" 
+extern "C"
 const BYTE * AVSC_CC avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane)
 {
   switch (plane) {
@@ -315,7 +315,7 @@ int AVSC_CC avs_bits_per_component(const AVS_VideoInfo * p)
 // C_VideoFilter
 //
 
-PVideoFrame C_VideoFilter::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame C_VideoFilter::GetFrame(int n, IScriptEnvironment* env)
 {
 	if (d.get_frame) {
 		d.error = 0;
@@ -323,14 +323,14 @@ PVideoFrame C_VideoFilter::GetFrame(int n, IScriptEnvironment* env)
 		if (d.error)
 			throw AvisynthError(d.error);
 		PVideoFrame fr((VideoFrame *)f);
-    ((PVideoFrame *)&f)->~PVideoFrame();  
+    ((PVideoFrame *)&f)->~PVideoFrame();
     return fr;
 	} else {
-		return d.child->clip->GetFrame(n, env); 
+		return d.child->clip->GetFrame(n, env);
 	}
 }
 
-void __stdcall C_VideoFilter::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
+void __stdcall C_VideoFilter::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
 	if (d.get_audio) {
 		d.error = 0;
@@ -342,12 +342,12 @@ void __stdcall C_VideoFilter::GetAudio(void* buf, __int64 start, __int64 count, 
 	}
 }
 
-const VideoInfo& __stdcall C_VideoFilter::GetVideoInfo() 
+const VideoInfo& __stdcall C_VideoFilter::GetVideoInfo()
 {
-	return *(VideoInfo *)&d.vi; 
+	return *(VideoInfo *)&d.vi;
 }
 
-bool __stdcall C_VideoFilter::GetParity(int n) 
+bool __stdcall C_VideoFilter::GetParity(int n)
 {
 	if (d.get_parity) {
 		d.error = 0;
@@ -360,7 +360,7 @@ bool __stdcall C_VideoFilter::GetParity(int n)
 	}
 }
 
-int __stdcall C_VideoFilter::SetCacheHints(int cachehints, int frame_range) 
+int __stdcall C_VideoFilter::SetCacheHints(int cachehints, int frame_range)
 {
 	if (d.set_cache_hints) {
 		d.error = 0;
@@ -426,7 +426,7 @@ AVS_VideoFrame * AVSC_CC avs_get_frame(AVS_Clip * p, int n)
 	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return 0;
-	} 
+	}
 }
 
 extern "C"
@@ -438,7 +438,7 @@ int AVSC_CC avs_get_parity(AVS_Clip * p, int n) // return field parity if field_
 	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
-	} 
+	}
 }
 
 extern "C"
@@ -451,7 +451,7 @@ int AVSC_CC avs_get_audio(AVS_Clip * p, void * buf, INT64 start, INT64 count) //
 	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
-	} 
+	}
 }
 
 extern "C"
@@ -556,8 +556,8 @@ AVSValue __cdecl create_c_video_filter(AVSValue args, void * user_data,
 }
 
 extern "C"
-int AVSC_CC 
-  avs_add_function(AVS_ScriptEnvironment * p, const char * name, const char * params, 
+int AVSC_CC
+  avs_add_function(AVS_ScriptEnvironment * p, const char * name, const char * params,
 				   AVS_ApplyFunc applyf, void * user_data)
 {
 	C_VideoFilter_UserData *dd, *d = new C_VideoFilter_UserData;
@@ -571,7 +571,7 @@ int AVSC_CC
 	} catch (AvisynthError & err) {
 		p->error = err.msg;
 		return -1;
-	} 
+	}
 	return 0;
 }
 
@@ -739,7 +739,7 @@ void __cdecl shutdown_func_bridge(void* user_data, IScriptEnvironment* env)
 }
 
 extern "C"
-void AVSC_CC avs_at_exit(AVS_ScriptEnvironment * p, 
+void AVSC_CC avs_at_exit(AVS_ScriptEnvironment * p,
                            AVS_ShutdownFunc function, void * user_data)
 {
   p->error = 0;
@@ -765,7 +765,7 @@ int AVSC_CC avs_check_version(AVS_ScriptEnvironment * p, int version)
 }
 
 extern "C"
-AVS_VideoFrame * AVSC_CC avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0, 
+AVS_VideoFrame * AVSC_CC avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0,
 							  int rel_offset, int new_pitch, int new_row_size, int new_height)
 {
 	p->error = 0;
@@ -781,7 +781,7 @@ AVS_VideoFrame * AVSC_CC avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame 
 }
 
 extern "C"
-AVS_VideoFrame * AVSC_CC avs_subframe_planar(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0, 
+AVS_VideoFrame * AVSC_CC avs_subframe_planar(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0,
 							  int rel_offset, int new_pitch, int new_row_size, int new_height,
 							  int rel_offsetU, int rel_offsetV, int new_pitchUV)
 {
@@ -823,10 +823,10 @@ int AVSC_CC avs_set_working_dir(AVS_ScriptEnvironment * p, const char * newdir)
 }
 /////////////////////////////////////////////////////////////////////
 //
-// 
+//
 //
 
-extern "C" 
+extern "C"
 AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 {
 	AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
@@ -843,10 +843,10 @@ AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 
 /////////////////////////////////////////////////////////////////////
 //
-// 
+//
 //
 
-extern "C" 
+extern "C"
 void AVSC_CC avs_delete_script_environment(AVS_ScriptEnvironment * e)
 {
 	if (e) {

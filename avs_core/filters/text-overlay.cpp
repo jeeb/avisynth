@@ -38,13 +38,14 @@
 #include <avs/win.h>
 #include <sstream>
 #include <cstdint>
+#include <cmath>
 #include <avs/config.h>
 #include <avs/minmax.h>
 #include <emmintrin.h>
 
 
 
-static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0) 
+static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0)
 {
   return CreateFont( size, width, angle, angle, bold ? FW_BOLD : FW_NORMAL,
                      italic, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
@@ -56,26 +57,26 @@ static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int w
 ********************************************************************/
 
 extern const AVSFunction Text_filters[] = {
-  { "ShowFrameNumber",BUILTIN_FUNC_PREFIX, 
+  { "ShowFrameNumber",BUILTIN_FUNC_PREFIX,
 	"c[scroll]b[offset]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowFrameNumber::Create },
 
-  { "ShowSMPTE",BUILTIN_FUNC_PREFIX, 
+  { "ShowSMPTE",BUILTIN_FUNC_PREFIX,
 	"c[fps]f[offset]s[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowSMPTE::CreateSMTPE },
 
-  { "ShowTime",BUILTIN_FUNC_PREFIX, 
+  { "ShowTime",BUILTIN_FUNC_PREFIX,
 	"c[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowSMPTE::CreateTime },
 
   { "Info", BUILTIN_FUNC_PREFIX, "c", FilterInfo::Create },  // clip
 
-  { "Subtitle",BUILTIN_FUNC_PREFIX, 
+  { "Subtitle",BUILTIN_FUNC_PREFIX,
 	"cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
-	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b", 
+	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b",
     Subtitle::Create },       // see docs!
 
-  { "Compare",BUILTIN_FUNC_PREFIX, 
+  { "Compare",BUILTIN_FUNC_PREFIX,
 	"cc[channels]s[logfile]s[show_graph]b",
 	Compare::Create },
 
@@ -269,7 +270,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
               const int x4 = x<<2;
               const int basealpha = alpha[x4+0];
               if (basealpha != 256) {
-                  buf[x] = BYTE((buf[x] * basealpha + alpha[x4 + 3]) >> 8); 
+                  buf[x] = BYTE((buf[x] * basealpha + alpha[x4 + 3]) >> 8);
               }
           }
           buf += pitch;
@@ -282,7 +283,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
               const int x4 = x<<2;
               const int basealpha = alpha[x4+0];
               if (basealpha != 256) {
-                  reinterpret_cast<uint16_t *>(buf)[x] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x] * basealpha + ((int)alpha[x4 + 3] << 8)) >> 8); 
+                  reinterpret_cast<uint16_t *>(buf)[x] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x] * basealpha + ((int)alpha[x4 + 3] << 8)) >> 8);
               }
           }
           buf += pitch;
@@ -295,7 +296,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
               const int x4 = x<<2;
               const int basealpha = alpha[x4+0];
               if (basealpha != 256) {
-                  reinterpret_cast<float *>(buf)[x] = reinterpret_cast<float *>(buf)[x] * basealpha / 256.0f + alpha[x4 + 3] / 65536.0f; 
+                  reinterpret_cast<float *>(buf)[x] = reinterpret_cast<float *>(buf)[x] * basealpha / 256.0f + alpha[x4 + 3] / 65536.0f;
               }
           }
           buf += pitch;
@@ -520,7 +521,7 @@ void Antialiaser::GetAlphaRect()
 
     const double scale = 516*64/sqrt(128.0);
     {for(int i=0; i<=128; i++)
-      gamma[i]=unsigned short(sqrt((double)i) * scale + 0.5); // Gamma = 2.0
+      gamma[i]=uint16_t(sqrt((double)i) * scale + 0.5); // Gamma = 2.0
     }
 
 	{for(int i=0; i<256; i++) {
@@ -708,7 +709,7 @@ void Antialiaser::GetAlphaRect()
         alpha2  = gamma[alpha2];
         alpha1  = gamma[alpha1];
 
-        alpha2 -= alpha1;        
+        alpha2 -= alpha1;
         alpha2 *= Ahalo;
         alpha1 *= Atext;
         // Pre calulate table for quick use  --  Pc = (Pc * dest[0] + dest[c]) >> 8;
@@ -791,7 +792,7 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   bool scroll = args[1].AsBool(false);
@@ -837,24 +838,24 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
   if (_rate > 23.975 && _rate < 23.977) { // Pulldown drop frame rate
     rate = 24;
     dropframe = true;
-  } 
+  }
   else if (_rate > 29.969 && _rate < 29.971) {
     rate = 30;
     dropframe = true;
-  } 
+  }
   else if (_rate > 47.951 && _rate < 47.953) {
     rate = 48;
     dropframe = true;
-  } 
+  }
   else if (_rate > 59.939 && _rate < 59.941) {
     rate = 60;
     dropframe = true;
-  } 
+  }
   else if (_rate > 119.879 && _rate < 119.881) {
     rate = 120;
     dropframe = true;
-  } 
-  else if (abs(_rate - rate) > 0.001) {
+  }
+  else if (fabs(_rate - rate) > 0.001) {
     env->ThrowError("ShowSMPTE: rate argument must be 23.976, 29.97 or an integer");
   }
 
@@ -902,7 +903,7 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
 }
 
 
-PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   n+=offset_f;
@@ -925,7 +926,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 	  if (low>=2)
 		low += 2 * ((low-2) / 1798);
 	  n = high * 18000 + low;
-	  
+
 	  n = f*n + r;
 	}
 	else {
@@ -1013,11 +1014,11 @@ AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment*
  **********************************/
 
 
-Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe, 
-                    int _lastframe, const char _fontname[], int _size, int _textcolor, 
+Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe,
+                    int _lastframe, const char _fontname[], int _size, int _textcolor,
                     int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
 					int _font_width, int _font_angle, bool _interlaced )
- : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y), 
+ : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y),
    firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
    textcolor(vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor),
    halocolor(vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor),
@@ -1028,14 +1029,14 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
 
 
 
-Subtitle::~Subtitle(void) 
+Subtitle::~Subtitle(void)
 {
   delete antialiaser;
 }
 
 
 
-PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
 
@@ -1060,7 +1061,7 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
   return frame;
 }
 
-AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
     PClip clip = args[0].AsClip();
     const char* text = args[1].AsString();
@@ -1102,7 +1103,7 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
-void Subtitle::InitAntialiaser(IScriptEnvironment* env) 
+void Subtitle::InitAntialiaser(IScriptEnvironment* env)
 {
   antialiaser = new Antialiaser(vi.width, vi.height, fontname, size, textcolor, halocolor,
                                 font_width, font_angle, interlaced);
@@ -1200,12 +1201,12 @@ FilterInfo::FilterInfo( PClip _child)
 }
 
 
-FilterInfo::~FilterInfo(void) 
+FilterInfo::~FilterInfo(void)
 {
 }
 
 
-const VideoInfo& FilterInfo::AdjustVi() 
+const VideoInfo& FilterInfo::AdjustVi()
 {
   if ( !vi.HasVideo() ) {
     vi.fps_denominator=1;
@@ -1343,7 +1344,7 @@ bool FilterInfo::GetParity(int n)
 }
 
 
-PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = vii.HasVideo() ? child->GetFrame(n, env) : env->NewVideoFrame(vi);
 
@@ -1452,7 +1453,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
         "Has Audio: %s\n"                                     //  15=12+3
         , n, vii.num_frames
         , (cPosInMsecs/(60*60*1000)), (cPosInMsecs/(60*1000))%60 ,(cPosInMsecs/1000)%60, cPosInMsecs%1000,
-          (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000 
+          (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000
         , c_space
         , vii.BitsPerComponent()
         , vii.width, vii.height
@@ -1513,7 +1514,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
   return frame;
 }
 
-AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
     PClip clip = args[0].AsClip();
     return new FilterInfo(clip);
@@ -1678,7 +1679,7 @@ AVSValue __cdecl Compare::Create(AVSValue args, void*, IScriptEnvironment *env)
 }
 
 static void compare_planar_c(
-    const BYTE * f1ptr, int pitch1, 
+    const BYTE * f1ptr, int pitch1,
     const BYTE * f2ptr, int pitch2,
     int rowsize, int height,
     int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
@@ -1704,7 +1705,7 @@ static void compare_planar_c(
 }
 
 static void compare_planar_uint16_t_c(
-    const BYTE * f1ptr8, int pitch1, 
+    const BYTE * f1ptr8, int pitch1,
     const BYTE * f2ptr8, int pitch2,
     int rowsize, int height,
     __int64 &SAD_sum, __int64 &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
@@ -1738,7 +1739,7 @@ static void compare_planar_uint16_t_c(
 
 
 static void compare_c(DWORD mask, int increment,
-    const BYTE * f1ptr, int pitch1, 
+    const BYTE * f1ptr, int pitch1,
     const BYTE * f2ptr, int pitch2,
     int rowsize, int height,
     int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
@@ -1767,13 +1768,13 @@ static void compare_c(DWORD mask, int increment,
 }
 
 static void compare_uint16_t_c(uint64_t mask64, int increment,
-    const BYTE * f1ptr8, int pitch1, 
+    const BYTE * f1ptr8, int pitch1,
     const BYTE * f2ptr8, int pitch2,
     int rowsize, int height,
     __int64 &SAD_sum, __int64 &SD_sum, int &pos_D, int &neg_D, double &SSD_sum)
 {
     __int64 row_SSD;
-    
+
     const uint16_t *f1ptr = reinterpret_cast<const uint16_t *>(f1ptr8);
     const uint16_t *f2ptr = reinterpret_cast<const uint16_t *>(f2ptr8);
     pitch1 /= sizeof(uint16_t);
@@ -1803,11 +1804,11 @@ static void compare_uint16_t_c(uint64_t mask64, int increment,
 
 
 static void compare_sse2(DWORD mask, int increment,
-                         const BYTE * f1ptr, int pitch1, 
+                         const BYTE * f1ptr, int pitch1,
                          const BYTE * f2ptr, int pitch2,
                          int rowsize, int height,
                          int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
-{ 
+{
   // rowsize multiple of 16 for YUV Planar, RGB32 and YUY2; 12 for RGB24
   // increment must be 3 for RGB24 and 4 for others
 
@@ -1826,7 +1827,7 @@ static void compare_sse2(DWORD mask, int increment,
     mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 4));
     mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 8));
   }
-  
+
 
 
   for (int y = 0; y < height; ++y) {
@@ -1899,11 +1900,11 @@ static void compare_sse2(DWORD mask, int increment,
 #ifdef X86_32
 
 static void compare_isse(DWORD mask, int increment,
-                         const BYTE * f1ptr, int pitch1, 
+                         const BYTE * f1ptr, int pitch1,
                          const BYTE * f2ptr, int pitch2,
                          int rowsize, int height,
                          int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
-{ 
+{
   // rowsize multiple of 8 for YUV Planar, RGB32 and YUY2; 6 for RGB24
   // increment must be 3 for RGB24 and 4 for others
 
@@ -2016,7 +2017,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     if (((vi.IsRGB32() && (rowsize % 16 == 0)) || (vi.IsRGB24() && (rowsize % 12 == 0)) || (vi.IsYUY2() && (rowsize % 16 == 0))) &&
         (pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2)) // only for uint8_t (pixelsize==1), todo
     {
-      
+
       compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
     }
     else
@@ -2024,7 +2025,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     if (((vi.IsRGB32() && (rowsize % 8 == 0)) || (vi.IsRGB24() && (rowsize % 6 == 0)) || (vi.IsYUY2() && (rowsize % 8 == 0))) &&
         (pixelsize==1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) // only for uint8_t (pixelsize==1), todo
     {
-      compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD); 
+      compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
     }
     else
 #endif
@@ -2036,7 +2037,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     }
   }
   else { // Planar
-  
+
     int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
     int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
     int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
@@ -2054,13 +2055,13 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
         bytecount += (rowsize / pixelsize) * height;
 
-        if ((pixelsize==1) && (rowsize % 16 == 0) && (env->GetCPUFlags() & CPUF_SSE2)) 
+        if ((pixelsize==1) && (rowsize % 16 == 0) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
         }
         else
 #ifdef X86_32
-        if ((pixelsize==1) && (rowsize % 8 == 0) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) 
+        if ((pixelsize==1) && (rowsize % 8 == 0) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
          compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
         }
@@ -2100,7 +2101,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     PSNR_tot += PSNR;
     PSNR_max = max(PSNR_max, PSNR);
     bytecount_overall += double(bytecount);
-    SSD_overall += SSD;  
+    SSD_overall += SSD;
   }
 
   if (log) {
@@ -2166,7 +2167,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
       if (vi.height > 196) {
         if (vi.IsYUY2()) {
           dstp += (vi.height - 1) * dst_pitch;
-          for (int y = 0; y <= 100; y++) {            
+          for (int y = 0; y <= 100; y++) {
             for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
               if (y <= psnrs[n - vi.width + 1 + x]) {
                 if (y <= psnrs[n - vi.width + 1 + x] - 2) {
@@ -2192,14 +2193,14 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
                 dstp_RGBP[0] += (vi.height - 1) * dst_pitch_RGBP[0];
                 dstp_RGBP[1] += (vi.height - 1) * dst_pitch_RGBP[1];
                 dstp_RGBP[2] += (vi.height - 1) * dst_pitch_RGBP[2];
-                for (int y = 0; y <= 100; y++) {            
+                for (int y = 0; y <= 100; y++) {
                     for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
                         if (y <= psnrs[n - vi.width + 1 + x]) {
                             if (y <= psnrs[n - vi.width + 1 + x] - 2) {
                                 if(pixelsize==1) {
-                                    dstp_RGBP[0][x] = 0; 
-                                    dstp_RGBP[1][x] = 0; 
-                                    dstp_RGBP[2][x] = 0; 
+                                    dstp_RGBP[0][x] = 0;
+                                    dstp_RGBP[1][x] = 0;
+                                    dstp_RGBP[2][x] = 0;
                                 } else {
                                     reinterpret_cast<uint16_t *>(dstp_RGBP[0])[x] = 0;
                                     reinterpret_cast<uint16_t *>(dstp_RGBP[1])[x] = 0;
@@ -2225,7 +2226,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
             } else {
                 // planar YUV
                 dstp += (vi.height - 1) * dst_pitch;
-                for (int y = 0; y <= 100; y++) {            
+                for (int y = 0; y <= 100; y++) {
                     for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
                         if (y <= psnrs[n - vi.width + 1 + x]) {
                             if (y <= psnrs[n - vi.width + 1 + x] - 2) {
@@ -2236,7 +2237,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
                             } else {
                                 if(pixelsize==1)
                                     dstp[x] = 235; // Y
-                                else 
+                                else
                                     reinterpret_cast<uint16_t *>(dstp)[x] = 235*256; // Y
                             }
                         }
@@ -2298,7 +2299,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
  *******   Helper Functions    ******
  ***********************************/
 
-bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold, 
+bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold,
                          bool italic, int align, int* width, int* height )
 {
   HFONT hfont = LoadFont(fontname, size, bold, italic);
@@ -2342,8 +2343,8 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 }
 
 
-void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, 
-                   int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env ) 
+void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
+                   int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env )
 {
   if (vi.IsYUV()) {
     textcolor = RGB2YUV(textcolor);

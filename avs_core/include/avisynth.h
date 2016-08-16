@@ -61,14 +61,24 @@ enum { AVISYNTH_INTERFACE_VERSION = 6 };
 #ifdef _MSC_VER
   #include <crtdbg.h>
 #else
+  #undef _RPT0
+  #undef _RPT1
+  #undef _RPT2
+  #undef _RPT3
+  #undef _RPT4
+  #undef _RPT5
   #define _RPT0(a,b) ((void)0)
   #define _RPT1(a,b,c) ((void)0)
   #define _RPT2(a,b,c,d) ((void)0)
   #define _RPT3(a,b,c,d,e) ((void)0)
   #define _RPT4(a,b,c,d,e,f) ((void)0)
+  #define _RPT5(a,b,c,d,e,f,g) ((void)0)
 
+  #include <cassert>
+  #undef _ASSERTE
+  #undef _ASSERT
   #define _ASSERTE(x) assert(x)
-  #include <assert.h>
+  #define _ASSERT(x) assert(x)
 #endif
 
 
@@ -117,14 +127,19 @@ private:
 
 
 /* Forward references */
-struct __single_inheritance VideoInfo;
-class __single_inheritance VideoFrameBuffer;
-class __single_inheritance VideoFrame;
+#if defined(MSVC)
+    #define SINGLE_INHERITANCE __single_inheritance
+#else
+    #define SINGLE_INHERITANCE
+#endif
+struct SINGLE_INHERITANCE VideoInfo;
+class SINGLE_INHERITANCE VideoFrameBuffer;
+class SINGLE_INHERITANCE VideoFrame;
 class IClip;
-class __single_inheritance PClip;
-class __single_inheritance PVideoFrame;
+class SINGLE_INHERITANCE PClip;
+class SINGLE_INHERITANCE PVideoFrame;
 class IScriptEnvironment;
-class __single_inheritance AVSValue;
+class SINGLE_INHERITANCE AVSValue;
 
 
 /*
@@ -655,7 +670,7 @@ enum {
 
   // like IsYV24, but bit-depth independent also for YUVA
   bool Is444() const AVS_BakedCode( return AVS_LinkCall(Is444)() )
-  
+
   // like IsYV16, but bit-depth independent also for YUVA
   bool Is422() const AVS_BakedCode( return AVS_LinkCall(Is422)() )
 
@@ -692,8 +707,8 @@ enum {
 // file is closed.
 
 class VideoFrameBuffer {
-  BYTE* const data;
-  const int data_size;
+  BYTE* data;
+  int data_size;
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
   volatile long sequence_number;
@@ -732,7 +747,7 @@ class VideoFrame {
   // Due to technical reasons these members are not const, but should be treated as such.
   // That means do not modify them once the class has been constructed.
   int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
-  int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane. 
+  int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
                             // for Planar RGB pitchUV and row_sizeUV = 0, because when no VideoInfo (MakeWriteable)
                             // the decision on existance of UV is checked by zero pitch
   // AVS+ extension, does not break plugins if appended here
@@ -875,7 +890,7 @@ public:
   /* Need to check GetVersion first, pre v5 will return random crap from EAX reg. */
   virtual int __stdcall SetCacheHints(int cachehints,int frame_range) = 0 ;  // We do not pass cache requests upwards, only to the next filter.
   virtual const VideoInfo& __stdcall GetVideoInfo() = 0;
-  virtual __stdcall ~IClip() {}
+  virtual AVSC_CC ~IClip() {}
 }; // end class IClip
 
 
@@ -989,7 +1004,7 @@ public:
   const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
   double AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
   float AsFloatf() const AVS_BakedCode( return float( AVS_LinkCall(AsFloat1)() ) )
-  
+
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
   double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) ) // Value is still a float
@@ -1071,7 +1086,7 @@ public:
 
 class IScriptEnvironment {
 public:
-  virtual __stdcall ~IScriptEnvironment() {}
+  virtual AVSC_CC ~IScriptEnvironment() {}
 
   virtual /*static*/ int __stdcall GetCPUFlags() = 0;
 
@@ -1183,9 +1198,9 @@ enum AvsAllocType
 };
 
 /* -----------------------------------------------------------------------------
-   Note to plugin authors: The interface in IScriptEnvironment2 is 
+   Note to plugin authors: The interface in IScriptEnvironment2 is
       preliminary / under construction / only for testing / non-final etc.!
-      As long as you see this note here, IScriptEnvironment2 might still change, 
+      As long as you see this note here, IScriptEnvironment2 might still change,
       in which case your plugin WILL break. This also means that you are welcome
       to test it and give your feedback about any ideas, improvements, or issues
       you might have.
@@ -1193,7 +1208,7 @@ enum AvsAllocType
 class AVSFunction;
 class IScriptEnvironment2 : public IScriptEnvironment{
 public:
-  virtual __stdcall ~IScriptEnvironment2() {}
+  virtual ~IScriptEnvironment2() {}
 
   // Generic system to ask for various properties
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;

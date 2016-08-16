@@ -64,10 +64,10 @@
 #undef _RPT5
 #  endif
 
-#define _RPT0(rptno, msg)                     ReportMe(msg)                         
-#define _RPT1(rptno, msg, a1)                 ReportMe(msg, a1)                  
-#define _RPT2(rptno, msg, a1, a2)             ReportMe(msg, a1, a2)            
-#define _RPT3(rptno, msg, a1, a2, a3)         ReportMe(msg, a1, a2, a3)      
+#define _RPT0(rptno, msg)                     ReportMe(msg)
+#define _RPT1(rptno, msg, a1)                 ReportMe(msg, a1)
+#define _RPT2(rptno, msg, a1, a2)             ReportMe(msg, a1, a2)
+#define _RPT3(rptno, msg, a1, a2, a3)         ReportMe(msg, a1, a2, a3)
 #define _RPT4(rptno, msg, a1, a2, a3, a4)     ReportMe(msg, a1, a2, a3, a4)
 #define _RPT5(rptno, msg, a1, a2, a3, a4, a5) ReportMe(msg, a1, a2, a3, a4, a5)
 
@@ -229,7 +229,7 @@ public:
   STDMETHODIMP ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbFormat);
   STDMETHODIMP SetFormat(LONG lPos, LPVOID lpFormat, LONG cbFormat);
   STDMETHODIMP Write(LONG lStart, LONG lSamples, LPVOID lpBuffer,
-    LONG cbBuffer, DWORD dwFlags, LONG FAR *plSampWritten, 
+    LONG cbBuffer, DWORD dwFlags, LONG FAR *plSampWritten,
     LONG FAR *plBytesWritten);
   STDMETHODIMP WriteData(DWORD fcc, LPVOID lpBuffer, LONG cbBuffer);
   STDMETHODIMP SetInfo(AVISTREAMINFOW *psi, LONG lSize);
@@ -333,7 +333,7 @@ STDMETHODIMP CAVIFileSynth::IsDirty() {
 STDMETHODIMP CAVIFileSynth::Load(LPCOLESTR lpszFileName, DWORD grfMode) {
   char filename[MAX_PATH];
 
-  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, lpszFileName, -1, filename, sizeof filename, NULL, NULL); 
+  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, lpszFileName, -1, filename, sizeof filename, NULL, NULL);
 
   _RPT3(0,"%p->CAVIFileSynth::Load(\"%s\", 0x%X)\n", this, filename, grfMode);
 
@@ -611,9 +611,9 @@ bool CAVIFileSynth::DelayInit() {
 
 bool CAVIFileSynth::DelayInit2() {
   // _RPT1(0,"Original: 0x%.4x\n", _control87( 0, 0 ) );
-#ifdef X86_32
-  int fp_state = _control87( 0, 0 );
-  _control87( FP_STATE, 0xffffffff );
+#if defined(MSVC)
+  int fp_state = _controlfp( 0, 0 );
+  _controlfp( FP_STATE, 0xffffffff );
 #endif
   if (szScriptName)
   {
@@ -638,7 +638,7 @@ bool CAVIFileSynth::DelayInit2() {
           // Allow WAVE_FORMAT_IEEE_FLOAT audio output
           const bool AllowFloatAudio = env->GetVar(VARNAME_AllowFloatAudio, false);
 
-          if (!AllowFloatAudio && filter_graph->GetVideoInfo().IsSampleType(SAMPLE_FLOAT)) // Ensure samples are int     
+          if (!AllowFloatAudio && filter_graph->GetVideoInfo().IsSampleType(SAMPLE_FLOAT)) // Ensure samples are int
             filter_graph = env->Invoke("ConvertAudioTo16bit", AVSValue(&return_val, 1)).AsClip();
 
           filter_graph = env->Invoke("Cache", AVSValue(filter_graph)).AsClip();
@@ -694,29 +694,37 @@ bool CAVIFileSynth::DelayInit2() {
 
       delete[] szScriptName;
       szScriptName = NULL;
-      _clear87();
 #ifdef X86_32
       _mm_empty();
-      _control87( fp_state, 0xffffffff );
+#endif
+#if defined(MSVC)
+      _clearfp();
+      _controlfp( fp_state, 0xffffffff );
 #endif
       return true;
 #ifndef _DEBUG
     }
     catch (...) {
       _RPT0(1,"DelayInit() caught general exception!\n");
-      _clear87();
+#if defined(MSVC)
+      _clearfp();
+#endif
 #ifdef X86_32
       _mm_empty();
-      _control87( fp_state, 0xffffffff );
+#if defined(MSVC)
+      _controlfp( fp_state, 0xffffffff );
+#endif
 #endif
       return false;
     }
 #endif
   } else {
-    _clear87();
 #ifdef X86_32
     _mm_empty();
-    _control87( fp_state, 0xffffffff );
+#endif
+#if defined(MSVC)
+    _clearfp();
+    _controlfp( fp_state, 0xffffffff );
 #endif
     return (env && filter_graph && vi);
   }
@@ -803,12 +811,12 @@ STDMETHODIMP CAVIFileSynth::GetStream(PAVISTREAM *ppStream, DWORD fccType, LONG 
 
   *ppStream = NULL;
 
-  if (!fccType) 
+  if (!fccType)
   {
     // Maybe an Option to set the order of stream discovery
     if ((lParam==0) && (vi->HasVideo()) )
       fccType = streamtypeVIDEO;
-    else 
+    else
       if ( ((lParam==1) && (vi->HasVideo())) ||  ((lParam==0) && vi->HasAudio()) )
       {
         lParam=0;
@@ -966,20 +974,20 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
   } else {
     const int image_size = parent->ImageSize();
     asi.fccHandler = 'UNKN';
-    if (vi->IsRGB()) 
+    if (vi->IsRGB())
       asi.fccHandler = ' BID';
     else if (vi->IsYUY2())
       asi.fccHandler = '2YUY';
     else if (vi->IsYV12())
-      asi.fccHandler = '21VY'; 
+      asi.fccHandler = '21VY';
     else if (vi->IsY8())
-      asi.fccHandler = '008Y'; 
+      asi.fccHandler = '008Y';
     else if (vi->IsYV24())
-      asi.fccHandler = '42VY'; 
-    else if (vi->IsYV16()) 
-      asi.fccHandler = '61VY'; 
-    else if (vi->IsYV411()) 
-      asi.fccHandler = 'B14Y'; 
+      asi.fccHandler = '42VY';
+    else if (vi->IsYV16())
+      asi.fccHandler = '61VY';
+    else if (vi->IsYV411())
+      asi.fccHandler = 'B14Y';
     else {
       _ASSERT(FALSE);
     }
@@ -1088,7 +1096,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
 
 STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG cbBuffer, LONG *plBytes, LONG *plSamples) {
 
-#ifdef  X86_32
+#if defined(X86_32) && defined(MSVC)
   // TODO: Does this need 64-bit porting?
   __asm { // Force compiler to protect these registers!
     mov ebx,ebx;
@@ -1110,9 +1118,9 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
 
   //  _RPT3(0,"%p->CAVIStreamSynth::Read(%ld samples at %ld)\n", this, lSamples, lStart);
   //  _RPT2(0,"\tbuffer: %ld bytes at %p\n", cbBuffer, lpBuffer);
-#ifdef X86_32
-  int fp_state = _control87( 0, 0 );
-  _control87( FP_STATE, 0xffffffff );
+#ifdef MSVC
+  int fp_state = _controlfp( 0, 0 );
+  _controlfp( FP_STATE, 0xffffffff );
 #endif
 
   const VideoInfo* const vi = parent->vi;
@@ -1122,7 +1130,7 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     if (lSamples == AVISTREAMREAD_CONVENIENT)
       lSamples = (int)vi->AudioSamplesFromFrames(1);
 
-    if (__int64(lStart)+lSamples > vi->num_audio_samples) {
+    if (int64_t(lStart)+lSamples > vi->num_audio_samples) {
       lSamples = (int)(vi->num_audio_samples - lStart);
       if (lSamples < 0) lSamples = 0;
     }
@@ -1185,18 +1193,22 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     }
   }
   catch (...) {
-    _clear87();
 #ifdef X86_32
     _mm_empty();
-    _control87( fp_state, 0xffffffff );
+#endif
+#ifdef MSVC
+    _clearfp();
+    _controlfp( fp_state, 0xffffffff );
 #endif
     return E_FAIL;
   }
 #endif
-  _clear87();
 #ifdef X86_32
   _mm_empty();
-  _control87( fp_state, 0xffffffff );
+#endif
+#ifdef MSVC
+  _clearfp();
+  _controlfp( fp_state, 0xffffffff );
 #endif
   return S_OK;
 }
@@ -1220,11 +1232,11 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
   const VideoInfo* const vi = parent->vi;
 
   if (fAudio) {
-    if (UseWaveExtensible) {  // Use WAVE_FORMAT_EXTENSIBLE audio output format 
-#ifndef KSDATAFORMAT_SUBTYPE_PCM	// VS2005 does not define this
+    if (UseWaveExtensible) {  // Use WAVE_FORMAT_EXTENSIBLE audio output format
+#ifndef MSVC
       const GUID KSDATAFORMAT_SUBTYPE_PCM       = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 #endif
-#ifndef KSDATAFORMAT_SUBTYPE_IEEE_FLOAT	// VS2005 does not define this
+#ifndef MSVC
       const GUID KSDATAFORMAT_SUBTYPE_IEEE_FLOAT= {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 #endif
       WAVEFORMATEXTENSIBLE wfxt;
@@ -1282,20 +1294,20 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
     bi.biPlanes = 1;
     bi.biBitCount = (WORD)vi->BitsPerPixel();
 
-    if (vi->IsRGB()) 
+    if (vi->IsRGB())
       bi.biCompression = BI_RGB;
     else if (vi->IsYUY2())
       bi.biCompression = '2YUY';
     else if (vi->IsYV12())
       bi.biCompression = '21VY';
     else if (vi->IsY8())
-      bi.biCompression = '008Y'; 
+      bi.biCompression = '008Y';
     else if (vi->IsYV24())
-      bi.biCompression = '42VY'; 
-    else if (vi->IsYV16()) 
-      bi.biCompression = '61VY'; 
-    else if (vi->IsYV411()) 
-      bi.biCompression = 'B14Y'; 
+      bi.biCompression = '42VY';
+    else if (vi->IsYV16())
+      bi.biCompression = '61VY';
+    else if (vi->IsYV411())
+      bi.biCompression = 'B14Y';
     else {
       _ASSERT(FALSE);
     }
@@ -1308,7 +1320,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 }
 
 STDMETHODIMP CAVIStreamSynth::Write(LONG lStart, LONG lSamples, LPVOID lpBuffer,
-                                    LONG cbBuffer, DWORD dwFlags, LONG FAR *plSampWritten, 
+                                    LONG cbBuffer, DWORD dwFlags, LONG FAR *plSampWritten,
                                     LONG FAR *plBytesWritten) {
 
                                       _RPT1(0,"%p->CAVIStreamSynth::Write()\n", this);
