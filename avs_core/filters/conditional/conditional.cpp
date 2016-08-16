@@ -92,6 +92,10 @@ ConditionalSelect::~ConditionalSelect() {
   delete[] child_array;
 }
 
+int __stdcall ConditionalSelect::SetCacheHints(int cachehints, int frame_range)
+{
+  return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+}
 
 PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env) {
 
@@ -236,6 +240,10 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
 const char* const t_TRUE="TRUE"; 
 const char* const t_FALSE="FALSE";
 
+int __stdcall ConditionalFilter::SetCacheHints(int cachehints, int frame_range)
+{
+  return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+}
 
 PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env) {
 
@@ -407,7 +415,13 @@ AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScri
 ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, bool _eval_after_frame, IScriptEnvironment* env) :
   GenericVideoFilter(_child), script(_script), show(_show), only_eval(_only_eval), eval_after(_eval_after_frame) {
 
-  }
+}
+
+
+int __stdcall ScriptClip::SetCacheHints(int cachehints, int frame_range)
+{
+  return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+}
 
 PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   AVSValue prev_last = env->GetVarDef("last");  // Store previous last
