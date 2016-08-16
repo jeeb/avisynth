@@ -25,7 +25,7 @@ class InputFile;
 
 class DubSource {
 private:
-	void *	format;
+	char  *format;
 	int		format_len;
 
 protected:

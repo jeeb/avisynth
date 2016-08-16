@@ -30,6 +30,7 @@
 #include "clip_info.h"
 
 #include <cmath>
+#include <cstdint>
 
 
 #pragma warning(disable: 4706)    // assignment within conditional expression
@@ -214,7 +215,7 @@ private:
 class AVIStreamNode : public ListNode2<AVIStreamNode> {
 public:
 	AVIStreamHeader_fixed	hdr;
-	void					*pFormat;
+	char					*pFormat;
 	long					lFormatLen;
 	AVIIndex				index;
 	__int64					bytes;
@@ -244,7 +245,7 @@ AVIStreamNode::AVIStreamNode() {
 	bytes = 0;
 	handler_count = 0;
 	streaming_count = 0;
-	
+
 	stream_bytes = 0;
 	stream_pushes = 0;
 	cache = NULL;
@@ -253,7 +254,7 @@ AVIStreamNode::AVIStreamNode() {
 }
 
 AVIStreamNode::~AVIStreamNode() {
-	delete pFormat;
+	delete [] pFormat;
 	delete cache;
 }
 
@@ -345,10 +346,10 @@ public:
 	void EnableStreaming(int stream);
 	void DisableStreaming(int stream);
 	void AdjustRealTime(bool fRealTime);
-	bool Stream(AVIStreamNode *, _int64 pos);
-	__int64 getStreamPtr();
+	bool Stream(AVIStreamNode *, int64_t pos);
+	int64_t getStreamPtr();
 	void FixCacheProblems(class AVIReadStream *);
-	long ReadData(int stream, void *buffer, __int64 position, long len);
+	long ReadData(int stream, void *buffer, int64_t position, long len);
 
 private:
 //	enum { STREAM_SIZE = 65536 };
@@ -359,7 +360,7 @@ private:
 	IAvisynthClipInfo *pAvisynthClipInfo;
 	PAVIFILE paf;
 	int ref_count;
-	__int64		i64StreamPosition;
+	int64_t		i64StreamPosition;
 	int			streams;
 	char		*streamBuffer;
 	int			sbPosition;
@@ -368,7 +369,7 @@ private:
 	int			nRealTime;
 	int			nActiveStreamers;
 	bool		fFakeIndex;
-	__int64		i64Size;
+	int64_t		i64Size;
 	int			nFiles, nCurrentFile;
 	char *		pSegmentHint;
 
@@ -1101,12 +1102,12 @@ HRESULT AVIReadStream::Read(long lStart, long lSamples, void *lpBuffer, long cbB
 						parent->DisableStreaming(streamno);
 					}
 				}
-						
+
 				lStreamTrackValue = lStart;
 			}
 
 			// read data
-			
+
 			long size = avie2->size & 0x7FFFFFFF;
 
 			if (psnData->cache && fStreamingActive && size < psnData->cache->getMaxRead()) {
@@ -1516,7 +1517,7 @@ bool AVIReadHandler::AppendFile(const char *pszFile) {
 
 		pasn_old = pasn_old_next;
 		delete pasn_new;
-	}	
+	}
 
 	++nFiles;
 	listFiles.AddTail(pDesc);
@@ -1709,7 +1710,7 @@ terminate_scan:
 
 			// Validate the FOURCC itself but avoid validating the size, since it
 			// may be too large for the last LIST/movi.
-			
+
 			if (!_readChunkHeader(fccType, dwLength))
 				break;
 
@@ -1718,8 +1719,8 @@ terminate_scan:
 			// In aggressive mode, verify that a valid FOURCC follows this chunk.
 
 			if (bAggressive) {
-				__int64 current_pos = _posFile();
-				__int64 rounded_length = (dwLength+1i64) & ~1i64;
+				int64_t current_pos = _posFile();
+				int64_t rounded_length = (dwLength+1LL) & ~1LL;
 
 				if (current_pos + dwLength > i64FileSize)
 					bValid = false;
@@ -1736,7 +1737,7 @@ terminate_scan:
 					_seekFile(current_pos);
 				}
 			}
-			
+
 			if (!bValid) {
 				// Notify the user that recovering this file requires stronger measures.
 
@@ -1754,7 +1755,7 @@ terminate_scan:
 			}
 
 			int stream;
-			
+
 //			_RPT2(0,"(stream header) Chunk '%-4s', length %08lx\n", &fccType, dwLength);
 
 			dwLengthLeft -= 8+(dwLength + (dwLength&1));
@@ -1858,7 +1859,7 @@ bool AVIReadHandler::_parseStreamHeader(List2<AVIStreamNode>& streamlist, DWORD 
 	FOURCC fccType;
 	DWORD dwLength;
 	bool hyperindexed = false;
-	
+
 	if (!(pasn = new(std::nothrow) AVIStreamNode()))
 		throw MyMemoryError();
 
@@ -2272,10 +2273,10 @@ char *AVIReadHandler::_StreamRead(long& bytes) {
 		_SelectFile((int)(i64StreamPosition>>48));
 
 	if (sbPosition >= sbSize) {
-		if (nRealTime || (((i64StreamPosition&0x0000FFFFFFFFFFFFi64)+sbSize) & -STREAM_BLOCK_SIZE)+STREAM_SIZE > i64Size) {
+		if (nRealTime || (((i64StreamPosition&0x0000FFFFFFFFFFFFLL)+sbSize) & -STREAM_BLOCK_SIZE)+STREAM_SIZE > i64Size) {
 			i64StreamPosition += sbSize;
 			sbPosition = 0;
-			_seekFile(i64StreamPosition & 0x0000FFFFFFFFFFFFi64);
+			_seekFile(i64StreamPosition & 0x0000FFFFFFFFFFFFLL);
 
 			sbSize = _readFile(streamBuffer, STREAM_RT_SIZE);
 
@@ -2287,7 +2288,7 @@ char *AVIReadHandler::_StreamRead(long& bytes) {
 			i64StreamPosition += sbSize;
 			sbPosition = (int)i64StreamPosition & (STREAM_BLOCK_SIZE-1);
 			i64StreamPosition &= -STREAM_BLOCK_SIZE;
-			_seekFileUnbuffered(i64StreamPosition & 0x0000FFFFFFFFFFFFi64);
+			_seekFileUnbuffered(i64StreamPosition & 0x0000FFFFFFFFFFFFLL);
 
 			sbSize = _readFileUnbuffered(streamBuffer, STREAM_SIZE);
 
@@ -2387,7 +2388,7 @@ bool AVIReadHandler::Stream(AVIStreamNode *pusher, __int64 pos) {
 						actual = left;
 
 						dst = _StreamRead(actual);
-						
+
 						if (!dst) {
 							if (fWrite)
 								pasn->cache->WriteEnd();
@@ -2527,7 +2528,7 @@ long AVIReadHandler::ReadData(int stream, void *buffer, __int64 position, long l
 
 //	_RPT3(0,"Reading from file %d, position %I64x, size %d\n", nCurrentFile, position, len);
 
-	if (!_seekFile2(position & 0x0000FFFFFFFFFFFFi64))
+	if (!_seekFile2(position & 0x0000FFFFFFFFFFFFLL))
 		return -1;
 	return _readFile(buffer, len);
 }
