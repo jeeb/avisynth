@@ -14,7 +14,7 @@ private:
 
   static AVSValue ThreadWorker(IScriptEnvironment2* env, void* data);
   int __stdcall SchedulePrefetch(int current_n, int prefetch_start, InternalEnvironment* env);
-  Prefetcher(const PClip& _child, int _nThreads);
+  Prefetcher(const PClip& _child, int _nThreads, IScriptEnvironment *env);
 
 public:
   ~Prefetcher();
@@ -24,6 +24,8 @@ public:
   virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   virtual int __stdcall SetCacheHints(int cachehints, int frame_range);
   virtual const VideoInfo& __stdcall GetVideoInfo();
+
+  void Destroy();
 
   static AVSValue Create(AVSValue args, void*, IScriptEnvironment* env);
 

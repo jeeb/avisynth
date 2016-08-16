@@ -791,8 +791,7 @@ private:
   Cache* FrontCache;
   VideoFrame* GetNewFrame(size_t vfb_size);
   VideoFrame* AllocateFrame(size_t vfb_size);
-  std::mutex memory_mutex;
-  std::recursive_mutex invoke_mutex;
+  std::recursive_mutex memory_mutex;
 
   BufferPool BufferPool;
 
@@ -944,6 +943,8 @@ void ScriptEnvironment::InitMT()
 
 ScriptEnvironment::~ScriptEnvironment() {
 
+  _RPT0(0, "~ScriptEnvironment() called.\n");
+
   closing = true;
 
   // Before we start to pull the world apart
@@ -957,6 +958,18 @@ ScriptEnvironment::~ScriptEnvironment() {
 
   while (global_var_table)
     PopContextGlobal();
+
+  // There can be a circular reference between the Prefetcher and the
+  // TLS PopContext() variables of the threads started by it. Normally
+  // this doesn't happen, but it can for example when somebody
+  // sets 'last' in a TLS (see ScriptClip for a specific example).
+  // This circular reference causes leaks, so we call
+  // Destroy() on the prefetcher, which will in turn terminate all
+  // its TLS stuff and break the chain.
+  if (prefetcher)
+  {
+    prefetcher->Destroy();
+  }
 
   // and deleting the frame buffer from FrameRegistry2 as well
   bool somethingLeaks = false;
@@ -1146,6 +1159,12 @@ ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
 
 void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
 {
+  if (!p)
+  {
+    prefetcher = NULL;
+    return;
+  }
+
   if (prefetcher != NULL)
     throw AvisynthError("Only a single prefetcher is allowed per script.");
 
@@ -1591,7 +1610,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
 
 VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 {
-  std::unique_lock<std::mutex> env_lock(memory_mutex);
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
 
   /* -----------------------------------------------------------
    *   Try to return an unused but already allocated instance
@@ -2178,7 +2197,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
-  std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
   // automatically inserts if not exists!
   assert(NULL != subframe);
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
@@ -2196,7 +2215,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
-  std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
   // automatically inserts if not exists!
   assert(subframe != NULL);
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
@@ -2212,7 +2231,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 
     size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
-    std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
+    std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
                                                          // automatically inserts if not exists!
     assert(subframe != NULL);
     FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
@@ -2225,7 +2244,7 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 // ScriptEnvironment class without extending the IScriptEnvironment
 // definition.
 
-  std::lock_guard<std::mutex> env_lock(memory_mutex);
+  std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
 
   switch((MANAGE_CACHE_KEYS)key)
   {
@@ -2420,7 +2439,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
 
 bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names)
 {
-  std::lock_guard<std::recursive_mutex> env_lock(invoke_mutex);
+  std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
 
   bool strict = false;
   const AVSFunction *f;
