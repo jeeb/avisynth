@@ -8,7 +8,7 @@ e-mail   : shibatch@users.sourceforge.net
 
 Some changes are:
 
-Copyright ｩ 2001-2003, Peter Pawlowski
+Copyright (c) 2001-2003, Peter Pawlowski
 All rights reserved.
 
 *******************************************************/
@@ -212,14 +212,12 @@ class Upsampler : public Resampler_i_base<REAL>
   int i,j;
 
 		int n2b2;//=n2b/2;
-		int rp;        // inbufのfs1での次に読むサンプルの場所を保持
-		int ds;        // 次にdisposeするsfrqでのサンプル数
-		int nsmplwrt1; // 実際にファイルからinbufに読み込まれた値から計算した
-					   // stage2 filterに渡されるサンプル数
-		int nsmplwrt2; // 実際にファイルからinbufに読み込まれた値から計算した
-					   // stage2 filterに渡されるサンプル数
-		int s1p;       // stage1 filterから出力されたサンプルの数をn1y*osfで割った余り
-		int init;
+		int rp;        // keep the location of the next samples to read in inbuf at fs1.
+		int ds;        // number of samples to dispose next in sfrq.
+		int nsmplwrt1; // actually number of samples to send stage2 filters .
+		int nsmplwrt2; // actually number of samples to send stage2 filters .
+		int s1p;       // the reminder obtained by dividing the samples output from stage1 filter by n1y*osf.
+        int init;
 		unsigned int sumread,sumwrite;
 		int osc;
 		REAL *ip,*ip_backup;
@@ -634,16 +632,15 @@ private:
 
 
     int n1b2;// = n1b/2;
-    int rp;        // inbufのfs1での次に読むサンプルの場所を保持
-    int rps;       // rpを(fs1/sfrq=osf)で割った余り
-    int rp2;       // buf2のfs2での次に読むサンプルの場所を保持
-    int ds;        // 次にdisposeするsfrqでのサンプル数
-    int nsmplwrt2; // 実際にファイルからinbufに読み込まれた値から計算した
-                   // stage2 filterに渡されるサンプル数
-    int s2p;       // stage1 filterから出力されたサンプルの数をn1y*osfで割った余り
+    int rp;        // keep the location of the next samples to read in inbuf at fs1.
+    int rps;       // the reminder obtained by dividing rp by (fs1/sfrq=osf).
+    int rp2;       // keep the location of the next samples to read in buf2 at fs2.
+    int ds;        // the number of samples to dispose next in sfrq.
+    int nsmplwrt2; // actually number of samples to send stage2 filter .
+    int s2p;       // the reminder obtained by dividing the samples output from stage1 filter by n1y*osf.
     int init,ending;
     int osc;
-    REAL *bp; // rp2から計算される．buf2の次に読むサンプルの位置
+    REAL *bp; // the location of the next samples to read calculated with rp2
     int rps_backup,s2p_backup;
     int k,ch,p;
     int inbuflen;//=0;
@@ -754,7 +751,7 @@ public:
     alp = alpha(aa);
     iza = dbesi0(alp);
 
-    n2y = fs2/fs1; // 0でないサンプルがfs2で何サンプルおきにあるか？
+    n2y = fs2/fs1; // The interval where the sample which isn't 0 in fs2 exists.
     n2x = n2/n2y+1;
 
     f2order = (int*)_aligned_malloc(sizeof(int)*n2y, 64);
@@ -792,13 +789,13 @@ public:
     //    |....B....|....C....|   buf1      n1b2+n1b2
     //|.A.|....D....|             buf2  n2x+n1b2
     //
-    // まずinbufからBにosf倍サンプリングしながらコピー
-    // Cはクリア
-    // BCにstage 1 filterをかける
-    // DにBを足す
-    // ADにstage 2 filterをかける
-    // Dの後ろをAに移動
-    // CをDにコピー
+    // At first, take samples from inbuf and multiplied by osf, then write those into B.
+    // Clear C.
+    // Apply stage1-filter to B and C.
+    // Add B to D.
+    // Apply stage2-filter to A and D
+    // Move last part of D to A.
+    // Copy C to D.
 
     buf1 = (REAL**)_aligned_malloc(sizeof(REAL *)*nch, 64);
     for(i=0;i<nch;i++)

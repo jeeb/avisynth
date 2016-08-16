@@ -8,12 +8,12 @@ e-mail   : shibatch@users.sourceforge.net
 
 Some changes are:
 
-Copyright © 2001-2003, Peter Pawlowski
+Copyright (c) 2001-2003, Peter Pawlowski
 All rights reserved.
 
 Other changes are:
 
-Copyright © 2003, Klaus Post
+Copyright (c) 2003, Klaus Post
 
 *******************************************************/
 
