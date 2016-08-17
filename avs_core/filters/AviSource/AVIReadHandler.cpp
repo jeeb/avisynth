@@ -23,7 +23,7 @@
 //#include "ProgressDialog.h"
 #include "AVIIndex.h"
 #include "Error.h"
-#include "List.h"
+#include "list.h"
 #include "Fixes.h"
 #include "File64.h"
 
