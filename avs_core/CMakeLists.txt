@@ -31,9 +31,10 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
 # Windows DLL dependencies 
-target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
-if (NOT MSVC_IDE)
-  target_link_libraries("AvsCore" "libuuid.lib")
+if (MSVC_IDE)
+  target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
+else()
+  target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32")
 endif()
 
 if (MSVC_IDE)    
