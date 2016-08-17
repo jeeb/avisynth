@@ -2226,6 +2226,8 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 // alpha aware version
 PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) {
+    if ((rel_offset | new_pitch | rel_offsetU | rel_offsetV | new_pitchUV | rel_offsetA) & (FRAME_ALIGN - 1))
+        ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
     VideoFrame* subframe;
     subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
 
