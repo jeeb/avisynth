@@ -7,6 +7,10 @@ project("AvsCore")
 Include("Files.cmake")
 add_library("AvsCore" SHARED ${AvsCore_Sources})
 set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "AviSynth")
+if (MINGW)
+  set_target_properties("AvsCore" PROPERTIES PREFIX "")
+  set_target_properties("AvsCore" PROPERTIES IMPORT_PREFIX "")
+endif()
 
 # Automatically group source files according to directory structure
 foreach(FILE ${AvsCore_Sources}) 
