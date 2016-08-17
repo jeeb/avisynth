@@ -2323,7 +2323,16 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
   case MC_RegisterMTGuard:
   {
     MTGuard* guard = reinterpret_cast<MTGuard*>(data);
+
+    // If we already have a prefetcher, enable MT on the guard
+    if (prefetcher)
+    {
+      size_t nTotalThreads = 1 + prefetcher->NumPrefetchThreads();
+      guard->EnableMT(nTotalThreads);
+    }
+
     MTGuardRegistry.push_back(guard);
+
     break;
   }
   case MC_UnRegisterMTGuard:
