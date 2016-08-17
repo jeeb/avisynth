@@ -37,7 +37,7 @@ target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 # Windows DLL dependencies 
 if (MSVC_IDE)
   target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
-else()
+elseif (MINGW)
   target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32")
 endif()
 
