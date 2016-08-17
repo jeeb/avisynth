@@ -2586,6 +2586,13 @@ success:;
 
   if (funcCtor->IsScriptFunction())
   {
+    // Warn user if he set an MT-mode for a script function
+    if (this->FilterHasMtMode(f))
+    {
+      OneTimeLogTicket ticket(LOGTICKET_W1010, f);
+      LogMsgOnce(ticket, LOGLEVEL_WARNING, "An MT-mode is set for %s() but it is a script function. You can only set the MT-mode for binary filters, for scripted functions it will be ignored.", f->name);
+    }
+
     *result = funcCtor->InstantiateFilter();
 #ifdef _DEBUG
     _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
