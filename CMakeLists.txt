@@ -9,6 +9,8 @@ set(CMAKE_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 set(CMAKE_C_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 set(CMAKE_CXX_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 
+option(ENABLE_PLUGINS "Build set of default external plugins" ON)
+
 if(CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
   set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING "Reset the configurations to what we need" FORCE)
@@ -61,7 +63,9 @@ ELSE()
 ENDIF()
 
 add_subdirectory("avs_core")
-add_subdirectory("plugins")
+if(ENABLE_PLUGINS)
+  add_subdirectory("plugins")
+endif()
 
 # uninstall target
 configure_file(
