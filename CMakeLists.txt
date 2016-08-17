@@ -2,7 +2,7 @@
 # "Target Usage Requirements" and "Generator Toolset selection"
 CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
 
-project("AvsMod")
+project("AviSynth+")
 
 # Avoid uselessly linking to unused libraries
 set(CMAKE_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
