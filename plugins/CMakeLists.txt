@@ -1,7 +1,7 @@
 include_directories(${AvsCore_SOURCE_DIR}/include)
 
 option(BUILD_IMAGESEQ "Build ImageSeq plugin" ON)
-option(BUILD_DIRECTSHOWSOURCE "Build DirectShowSource plugin" ON)
+option(BUILD_DIRECTSHOWSOURCE "Build DirectShowSource plugin" OFF)
 option(BUILD_TIMESTRETCH "Build TimeStretch plugin" ON)
 option(BUILD_SHIBATCH "Build Shibatch plugin" ON)
 option(BUILD_VDUBFILTER "Build VDubFilter plugin" ON)
