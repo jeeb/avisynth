@@ -175,7 +175,7 @@ class FilterInfo : public GenericVideoFilter
  **/
 {
 public:
-  FilterInfo( PClip _child);
+  FilterInfo( PClip _child, bool _font_override, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env);
   virtual ~FilterInfo(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
@@ -191,6 +191,10 @@ private:
   const VideoInfo& AdjustVi();
 
   const VideoInfo &vii;
+
+  const int size;
+  const bool font_override;
+
   Antialiaser antialiaser;  
 };
 

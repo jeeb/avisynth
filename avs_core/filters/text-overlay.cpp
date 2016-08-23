@@ -69,7 +69,7 @@ extern const AVSFunction Text_filters[] = {
 	"c[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowSMPTE::CreateTime },
 
-  { "Info", BUILTIN_FUNC_PREFIX, "c", FilterInfo::Create },  // clip
+  { "Info", BUILTIN_FUNC_PREFIX, "c[font]s[size]f[text_color]i[halo_color]i", FilterInfo::Create },  // clip
 
   { "Subtitle",BUILTIN_FUNC_PREFIX,
 	"cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
@@ -747,8 +747,8 @@ ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
  : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
    antialiaser(vi.width, vi.height, _fontname, _size,
-               vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor,
-               vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor,
+               vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
+               vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
 			   font_width, font_angle)
 {
 }
@@ -827,8 +827,8 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
   : GenericVideoFilter(_child), x(_x), y(_y),
     antialiaser(vi.width, vi.height, _fontname, _size,
-                vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor,
-                vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor,
+                vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
+                vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
 			    font_width, font_angle)
 {
   int off_f, off_sec, off_min, off_hour;
@@ -1020,8 +1020,8 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
 					int _font_width, int _font_angle, bool _interlaced )
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y),
    firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
-   textcolor(vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor),
-   halocolor(vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor),
+   textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
+   halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor),
    align(_align), spc(_spc), multiline(_multiline), lsp(_lsp),
    font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced)
 {
@@ -1194,10 +1194,12 @@ inline int CalcFontSize(int w, int h)
  *******   FilterInfo Filter    ******
  **********************************/
 
-
-FilterInfo::FilterInfo( PClip _child)
-: GenericVideoFilter(_child), vii(AdjustVi()),
-  antialiaser(vi.width, vi.height, "Courier New", CalcFontSize(vi.width, vi.height), vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0) {
+FilterInfo::FilterInfo( PClip _child, bool _font_override, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
+: GenericVideoFilter(_child), vii(AdjustVi()), font_override(_font_override), size(_size),
+  antialiaser(vi.width, vi.height, _fontname, size,
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
+{
 }
 
 
@@ -1349,7 +1351,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = vii.HasVideo() ? child->GetFrame(n, env) : env->NewVideoFrame(vi);
 
   if ( !vii.HasVideo() ) {
-	memset(frame->GetWritePtr(), 0, frame->GetPitch()*frame->GetHeight()); // Blank frame
+    memset(frame->GetWritePtr(), 0, frame->GetPitch()*frame->GetHeight()); // Blank frame
   }
 
   HDC hdcAntialias = antialiaser.GetDC();
@@ -1357,9 +1359,8 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     const char* c_space = "Unknown";
     const char* s_type = t_NONE;
     const char* s_parity;
-    char text[512];
-	int tlen;
-    RECT r= { 32, 16, min(3440,vi.width*8), 900*2 };
+    char text[1024];
+    int tlen;
 
     if (vii.HasVideo()) {
       if      (vii.IsRGB24()) c_space=t_RGB24;
@@ -1451,6 +1452,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
         "Parity: %s\n"                                        //  35=9+26
         "Video Pitch: %5u bytes.\n"                           //  25
         "Has Audio: %s\n"                                     //  15=12+3
+//        "123456789012345678901234567890123456789012345678901234567890\n"         // test
         , n, vii.num_frames
         , (cPosInMsecs/(60*60*1000)), (cPosInMsecs/(60*1000))%60 ,(cPosInMsecs/1000)%60, cPosInMsecs%1000,
           (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000
@@ -1498,14 +1500,57 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
 	  tlen += 1;
 	}
     tlen += _snprintf(text+tlen, sizeof(text)-tlen,
-      "CPU detected: %s\n"                                  //  60=15+45
+      "CPU detected: %s\n"                                  // 60=15+45 max line length=60(?)
       , GetCpuMsg(env).c_str()                              // 442
     );
+
+
+    // So far RECT dimensions were hardcoded: RECT r = { 32, 16, min(3440,vi.width * 8), 900*2 };
+    // More flexible way: get text extent
+    RECT r;
+
+    if(!font_override)
+    {
+        // To prevent slowish full MxN rendering, we calculate a dummy
+        // 1xN sized vertical and a Mx1 sized horizontal line extent
+        // Assuming that we are using fixed font (e.g. default Courier New)
+        std::string s = text;
+        size_t n = std::count(s.begin(), s.end(), '\n');
+        // create dummy vertical string
+        std::string s_vert;
+        for (size_t i=0; i<n; i++) s_vert += " \n";
+        RECT r0_v = { 0, 0, 100, 100 };
+        DrawText(hdcAntialias, s_vert.c_str(), -1, &r0_v, DT_CALCRECT);
+        // create dummy horizontal
+        int counter = 0; int max_line = -1;
+        int len = s.length();
+        for (int i = 0; i < len; i++) // get length of longest line
+        {
+            if(s[i] != '\n') counter++;
+            if(s[i] == '\n' || i == len - 1) {
+                if(counter > max_line) max_line = counter;
+                counter = 0;
+            }
+        }
+        std::string s_horiz = std::string(max_line > 0 ? max_line : 1, ' '); // M*spaces
+        RECT r0_h = { 0, 0, 100, 100 }; // for output
+        DrawText(hdcAntialias, s_horiz.c_str(), -1, &r0_h, DT_CALCRECT);
+        // and use the width and height dimensions from the two results
+        r = { 32, 16, min(32+(int)r0_h.right,vi.width * 8-1), min(16+int(r0_v.bottom), vi.height*8-1) }; // do not crop if larger font is used
+    } else {
+        // font was overridden, may not be fixed type
+        RECT r0 = { 0, 0, 100, 100 }; // do not crop if larger font is used
+        DrawText(hdcAntialias, text, -1, &r0, DT_CALCRECT);
+        r = { 32, 16, min(32+(int)r0.right,vi.width * 8 -1), min(16+int(r0.bottom), vi.height*8-1) };
+    }
+
+    // RECT r = { 32, 16, min(3440,vi.width * 8), 900*2 };
+    // original code. Values possibly experimented Courier New size 18 + knowing max. text length/line count
 
     DrawText(hdcAntialias, text, -1, &r, 0);
     GdiFlush();
 
-	env->MakeWritable(&frame);
+    env->MakeWritable(&frame);
     frame->GetWritePtr(); // Bump sequence_number
     int dst_pitch = frame->GetPitch();
     antialiaser.Apply(vi, &frame, dst_pitch );
@@ -1516,16 +1561,20 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
+    // 0   1      2       3             4
+    // c[font]s[size]f[text_color]i[halo_color]i
     PClip clip = args[0].AsClip();
-    return new FilterInfo(clip);
+    // new parameters 20160823
+    const char* font = args[1].AsString("Courier New");
+    int size = int(args[2].AsFloat(0) * 8 + 0.5);
+    if (!args[2].Defined())
+        size = CalcFontSize(clip->GetVideoInfo().width, clip->GetVideoInfo().height);
+    const int text_color = args[3].AsInt(0xFFFF00);
+    const int halo_color = args[4].AsInt(0);
+
+    return new FilterInfo(clip, args[1].Defined(), font, size, text_color, halo_color, env);
+    //return new FilterInfo(clip);
 }
-
-
-
-
-
-
-
 
 
 
@@ -2346,7 +2395,7 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
                    int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env )
 {
-  if (vi.IsYUV()) {
+  if (vi.IsYUV() || vi.IsYUVA()) {
     textcolor = RGB2YUV(textcolor);
     halocolor = RGB2YUV(halocolor);
   }
