@@ -175,7 +175,7 @@ typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsiz
 class ConvertTo8bit : public GenericVideoFilter
 {
 public:
-  ConvertTo8bit(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env);
+  ConvertTo8bit(PClip _child, const float _float_range, const int _dither_mode, const int _source_bitdepth, const int _truerange, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -188,12 +188,14 @@ private:
   float float_range;
   int dither_mode;
   int pixelsize;
+  int source_bitdepth;
+  int truerange;
 };
 
 class ConvertTo16bit : public GenericVideoFilter
 {
 public:
-  ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, const int _bitdepth, bool _modify_range, IScriptEnvironment* env);
+  ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, const int _source_bitdepth, const int _target_bitdepth, bool _truerange, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -206,15 +208,16 @@ private:
   float float_range;
   int dither_mode;
   int pixelsize;
-  int bitdepth; // effective 10/12/14/16 bits within the 2 byte container
-  bool modify_range; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
+  int source_bitdepth; // effective 10/12/14/16 bits within the 2 byte container
+  int target_bitdepth; // effective 10/12/14/16 bits within the 2 byte container
+  bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
   bool change_only_format; // if 16->10 bit affects only pixel_type
 };
 
 class ConvertToFloat : public GenericVideoFilter
 {
 public:
-  ConvertToFloat(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env);
+  ConvertToFloat(PClip _child, const float _float_range, const int _source_bitdepth, bool _truerange, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -225,7 +228,8 @@ public:
 private:
   BitDepthConvFuncPtr conv_function;
   float float_range;
-  int dither_mode;
+  int source_bitdepth; // effective 10/12/14/16 bits within the 2 byte container
+  bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
   int pixelsize;
 };
 

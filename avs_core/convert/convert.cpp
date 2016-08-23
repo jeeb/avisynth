@@ -64,9 +64,9 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToYUV420",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToPlanarGeneric::CreateYUV420},
   { "ConvertToYUV422",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV422},
   { "ConvertToYUV444",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
-  { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[scale]f[dither]i", ConvertTo8bit::Create},
-  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[scale]f[dither]i[bits]i[modifyrange]b", ConvertTo16bit::Create},
-  { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[scale]f", ConvertToFloat::Create},
+  { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[truerange]b[dither]i[scale]f", ConvertTo8bit::Create},
+  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f", ConvertTo16bit::Create},
+  { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[truerange]b[scale]f", ConvertToFloat::Create},
   { 0 }
 };
 
@@ -746,7 +746,8 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
 ******  Bitdepth conversions  *****
 **********************************/
 
-static void convert_rgb_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+template<uint8_t sourcebits>
+static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
     const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
     src_pitch = src_pitch / sizeof(uint16_t);
@@ -755,7 +756,15 @@ static void convert_rgb_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     {
         for (int x = 0; x < src_width; x++)
         {
-            dstp[x] = srcp0[x] / 257; // RGB: full range 0..255 <-> 0..65535
+            // test
+            if(sourcebits==16)
+              dstp[x] = srcp0[x] / 257; // RGB: full range 0..255 <-> 0..65535 (*255 / 65535)
+            else if (sourcebits==14)
+                dstp[x] = srcp0[x] * 255 / 16383; // RGB: full range 0..255 <-> 0..16384-1
+            else if (sourcebits==12)
+                dstp[x] = srcp0[x] * 255 / 4095; // RGB: full range 0..255 <-> 0..4096-1
+            else if (sourcebits==10)
+                dstp[x] = srcp0[x] * 255 / 1023; // RGB: full range 0..255 <-> 0..1024-1
         }
         dstp += dst_pitch;
         srcp0 += src_pitch;
@@ -764,7 +773,9 @@ static void convert_rgb_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 
 // YUV conversions (bit shifts)
 // BitDepthConvFuncPtr
-static void convert_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+// Conversion from 16-14-12-10 to 8 bits (bitshift: 8-6-4-2)
+template<uint8_t sourcebits>
+static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
   const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
   src_pitch = src_pitch / sizeof(uint16_t);
@@ -773,15 +784,15 @@ static void convert_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
   {
     for (int x = 0; x < src_width; x++)
     {
-      dstp[x] = srcp0[x] >> 8; // no dithering, no range conversion, simply use msb
+      dstp[x] = srcp0[x] >> (sourcebits-8); // no dithering, no range conversion, simply shift
     }
     dstp += dst_pitch;
     srcp0 += src_pitch;
   }
 }
 
-// float to 8 bit, float to 16 bit
-template<typename pixel_t>
+// float to 8 bit, float to 10/12/14/16 bit
+template<typename pixel_t, uint8_t targetbits>
 static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
   const float *srcp0 = reinterpret_cast<const float *>(srcp);
@@ -792,11 +803,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 
   int src_width = src_rowsize / sizeof(float);
 
-  float max_dst_pixelvalue;
-  if(sizeof(pixel_t)==1)
-    max_dst_pixelvalue = 255.0f;
-  if(sizeof(pixel_t)==2)
-    max_dst_pixelvalue = 65535.0f;
+  float max_dst_pixelvalue = (float)((1<<targetbits) - 1); // 255, 1023, 4095, 16383, 65535.0
 
   float factor = 1.0f / float_range * max_dst_pixelvalue;
 
@@ -812,8 +819,9 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   }
 }
 
-// rgb: full scale. Difference to YUV: *257 instead of << 8
-static void convert_rgb_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+// rgb: full scale. Difference to YUV: *257 instead of << 8 (full 16 bit sample)
+template<uint8_t targetbits>
+static void convert_rgb_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
     const uint8_t *srcp0 = reinterpret_cast<const uint8_t *>(srcp);
     uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
@@ -827,14 +835,24 @@ static void convert_rgb_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     {
         for (int x = 0; x < src_width; x++)
         {
-            dstp0[x] = srcp0[x] * 257; // hope that compiler recognizes n*256 +n
+            // test
+            if(targetbits==16)
+                dstp0[x] = srcp0[x] * 257; // RGB: full range 0..255 <-> 0..65535 (257 = 65535 / 255)
+            else if (targetbits==14)
+                dstp0[x] = srcp0[x] * 16383 / 255; // RGB: full range 0..255 <-> 0..16384-1
+            else if (targetbits==12)
+                dstp0[x] = srcp0[x] * 4095 / 255; // RGB: full range 0..255 <-> 0..4096-1
+            else if (targetbits==10)
+                dstp0[x] = srcp0[x] * 1023 / 255; // RGB: full range 0..255 <-> 0..1024-1
         }
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
     }
 }
 
-static void convert_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+// YUV: bit shift 8 to 10-12-14-16 bits
+template<uint8_t targetbits>
+static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
   const uint8_t *srcp0 = reinterpret_cast<const uint8_t *>(srcp);
   uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
@@ -848,15 +866,72 @@ static void convert_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
   {
     for (int x = 0; x < src_width; x++)
     {
-      dstp0[x] = srcp0[x] << 8;
+        dstp0[x] = srcp0[x] << (targetbits-8);
     }
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
   }
 }
 
-// 8 bit to float, 16 bit to float
-template<typename pixel_t>
+// RGB full range: 10-12-14 <=> 16 bits
+template<uint8_t sourcebits, uint8_t targetbits>
+static void convert_rgb_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
+    uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
+
+    src_pitch = src_pitch / sizeof(uint16_t);
+    dst_pitch = dst_pitch / sizeof(uint16_t);
+
+    const int src_width = src_rowsize / sizeof(uint16_t);
+
+    const uint16_t source_max = (1 << sourcebits) - 1;
+    const uint16_t target_max = (1 << targetbits) - 1;
+
+    for(int y=0; y<src_height; y++)
+    {
+        for (int x = 0; x < src_width; x++)
+        {
+            // int64: avoid unsigned * unsigned = signed arithmetic overflow
+            if(sourcebits<targetbits) {
+                dstp0[x] = (uint16_t)((int64_t)srcp0[x] * target_max / source_max); // expand range
+            } else {
+                dstp0[x] = (uint16_t)((int64_t)srcp0[x] * source_max / target_max); // reduce range
+            }
+        }
+        dstp0 += dst_pitch;
+        srcp0 += src_pitch;
+    }
+}
+
+// YUV: bit shift 10-12-14-16 <=> 16 bits
+template<bool expandrange, uint8_t shiftbits>
+static void convert_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
+    uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
+
+    src_pitch = src_pitch / sizeof(uint16_t);
+    dst_pitch = dst_pitch / sizeof(uint16_t);
+
+    const int src_width = src_rowsize / sizeof(uint16_t);
+
+    for(int y=0; y<src_height; y++)
+    {
+        for (int x = 0; x < src_width; x++)
+        {
+            if(expandrange)
+                dstp0[x] = srcp0[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
+            else
+                dstp0[x] = srcp0[x] >> shiftbits;  // reduce range
+        }
+        dstp0 += dst_pitch;
+        srcp0 += src_pitch;
+    }
+}
+
+// 8 bit to float, 16/14/12/10 bits to float
+template<typename pixel_t, uint8_t sourcebits>
 static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
   const pixel_t *srcp0 = reinterpret_cast<const pixel_t *>(srcp);
@@ -867,11 +942,7 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
 
   int src_width = src_rowsize / sizeof(pixel_t);
 
-  float max_src_pixelvalue;
-  if (sizeof(pixel_t) == 1)
-    max_src_pixelvalue = 255.0;
-  if (sizeof(pixel_t) == 2)
-    max_src_pixelvalue = 65535.0;
+  float max_src_pixelvalue = (float)((1<<sourcebits) - 1); // 255, 1023, 4095, 16383, 65535.0
 
   // 0..255,65535 -> 0..float_range
 
@@ -886,22 +957,47 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   }
 }
 
-ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env) :
-    GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode)
+ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _dither_mode, const int _bitdepth, const int _truerange, IScriptEnvironment* env) :
+    GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), source_bitdepth(_bitdepth), truerange(_truerange)
 {
 
-  if (vi.ComponentSize() == 2) // 16->8 bit
+  if (vi.ComponentSize() == 2) // 16(,14,12,10)->8 bit
   {
       // for RGB scaling is not shift by 8 as in YUV but 0..65535->0..255
-      if (vi.IsRGB48() || vi.IsRGB64() || vi.IsPlanarRGB() || vi.IsPlanarRGBA())
-          conv_function = convert_rgb_16_to_8_c;
-      else if (vi.IsYUV() || vi.IsYUVA())
-          conv_function = convert_16_to_8_c;
-      else
+      if (vi.IsRGB48() || vi.IsRGB64())
+          conv_function = convert_rgb_uint16_to_8_c<16>;
+      else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+          if(truerange) {
+              switch(source_bitdepth)
+              {
+              case 10: conv_function = convert_rgb_uint16_to_8_c<10>; break;
+              case 12: conv_function = convert_rgb_uint16_to_8_c<12>; break;
+              case 14: conv_function = convert_rgb_uint16_to_8_c<14>; break;
+              case 16: conv_function = convert_rgb_uint16_to_8_c<16>; break;
+              default: env->ThrowError("ConvertTo8bit: invalid source bitdepth");
+              }
+          } else {
+              conv_function = convert_rgb_uint16_to_8_c<16>;
+          }
+      } else if (vi.IsYUV() || vi.IsYUVA())
+      {
+          if(truerange) {
+              switch(source_bitdepth)
+              {
+              case 10: conv_function = convert_uint16_to_8_c<10>; break;
+              case 12: conv_function = convert_uint16_to_8_c<12>; break;
+              case 14: conv_function = convert_uint16_to_8_c<14>; break;
+              case 16: conv_function = convert_uint16_to_8_c<16>; break;
+              default: env->ThrowError("ConvertTo8bit: invalid source bitdepth");
+              }
+          } else {
+              conv_function = convert_uint16_to_8_c<16>; // always convet from 16 bit scale
+          }
+      } else
           env->ThrowError("ConvertTo8bit: unsupported color space");
   } else if (vi.ComponentSize() == 4) // 32->8 bit
   {
-    conv_function = convert_32_to_uintN_c<uint8_t>;
+    conv_function = convert_32_to_uintN_c<uint8_t, 8>;
   } else
     env->ThrowError("ConvertTo8bit: unsupported bit depth");
 
@@ -931,6 +1027,8 @@ AVSValue __cdecl ConvertTo8bit::Create(AVSValue args, void*, IScriptEnvironment*
 
   const VideoInfo &vi = clip->GetVideoInfo();
 
+  // c[truerange]b[dither]i[scale]f,
+
   if (!vi.IsPlanar() && !vi.IsRGB())
     env->ThrowError("ConvertTo8bit: Can only convert from Planar YUV/RGB or packed RGB.");
 
@@ -952,7 +1050,17 @@ AVSValue __cdecl ConvertTo8bit::Create(AVSValue args, void*, IScriptEnvironment*
   // dither parameter rfu
   int dither_type = args[2].AsInt(-1);
 
-  return new ConvertTo8bit(clip, float_range, dither_type, env);
+  if ((!vi.IsPlanar() || vi.ComponentSize() != 2) && args[3].Defined())
+      env->ThrowError("ConvertTo8bit: truerange specified for non-16bit or non-planar source");
+
+  int source_bitdepth = 16; // n/a
+  if (vi.IsPlanar() && vi.ComponentSize() == 2)
+      source_bitdepth = vi.BitsPerComponent();
+
+  // when converting from 10-16 bit formats, truerange=false indicates bitdepth of 16 bits regardless of the 10-12-14 bit format
+  int assume_truerange = args[3].AsBool(true); // n/a for non planar formats
+
+  return new ConvertTo8bit(clip, float_range, dither_type, source_bitdepth, assume_truerange, env);
 }
 
 PVideoFrame __stdcall ConvertTo8bit::GetFrame(int n, IScriptEnvironment* env) {
@@ -981,37 +1089,146 @@ PVideoFrame __stdcall ConvertTo8bit::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
-// 16 bit
-ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, const int _bitdepth, bool _modify_range, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), bitdepth(_bitdepth), modify_range(_modify_range)
+// Conversion to uint16_t targets
+// planar YUV(A) and RGB(A):
+// from 8 bit -> 10/12/14/16 with strict range expansion or expansion to 16
+// from 10/12/14 -> 16 bit with strict source range (expansion from 10/12/14 to 16 bit) or just casting pixel_type
+// from 16 bit -> 10/12/14 bit with strict target range (reducing range from 16 bit to 10/12/14 bits) or just casting pixel_type
+// from float -> 10/12/14/16 with strict range expansion or expansion to 16
+// packed RGB:
+//   RGB24->RGB48, RGB32->RGB64
+ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, const int _source_bitdepth, const int _target_bitdepth, bool _truerange, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), source_bitdepth(_source_bitdepth), target_bitdepth(_target_bitdepth), truerange(_truerange)
 {
-  change_only_format = false;
+    change_only_format = false;
 
-  if (vi.ComponentSize() == 1) // 8->16 bit
-  {
-      // for RGB scaling is not shift by 8 as in YUV but 0..65535->0..255
-      if (vi.IsPlanarRGB() || vi.IsPlanarRGBA() || vi.IsRGB24() || vi.IsRGB32())
-          conv_function = convert_rgb_8_to_16_c;
-      else if(vi.IsYUV() || vi.IsYUVA())
-          conv_function = convert_8_to_16_c;
-      else
-          env->ThrowError("ConvertTo16bit: unsupported color space");
-  } else if (vi.ComponentSize() == 2)
-  {
-      // 10/12/14 -> 16 bit / 16 bit -> 10/12/14 bit
-      // range reducing or expansion, or just overriding the pixel_type
-      if(modify_range)
-        env->ThrowError("ConvertTo16bit: effective bit depth conversion within 16 bit is not yet implemented");
-      else
-        change_only_format = true;
-  } else if (vi.ComponentSize() == 4) // 32->16 bit
-  {
-     conv_function = convert_32_to_uintN_c<uint16_t>;
-  } else
-    env->ThrowError("ConvertTo16bit: unsupported bit depth");
+    if (vi.ComponentSize() == 1) // 8->10-12-14-16 bit
+    {
+        // RGB scaling is not shift by 8 as in YUV but like 0..255->0..65535
+        if (vi.IsRGB24() || vi.IsRGB32())
+            conv_function = convert_rgb_8_to_uint16_c<16>;
+        else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+            if (truerange)
+            {
+                switch (target_bitdepth)
+                {
+                case 10: conv_function = convert_rgb_8_to_uint16_c<10>; break;
+                case 12: conv_function = convert_rgb_8_to_uint16_c<12>; break;
+                case 14: conv_function = convert_rgb_8_to_uint16_c<14>; break;
+                case 16: conv_function = convert_rgb_8_to_uint16_c<16>; break;
+                default: env->ThrowError("ConvertTo16bit: unsupported bit depth");
+                }
+            }
+            else {
+                conv_function = convert_rgb_8_to_uint16_c<16>;
+            }
+        }
+        else if (vi.IsYUV() || vi.IsYUVA()) {
+            if (truerange)
+            {
+                switch (target_bitdepth)
+                {
+                case 10: conv_function = convert_8_to_uint16_c<10>; break;
+                case 12: conv_function = convert_8_to_uint16_c<12>; break;
+                case 14: conv_function = convert_8_to_uint16_c<14>; break;
+                case 16: conv_function = convert_8_to_uint16_c<16>; break;
+                default: env->ThrowError("ConvertTo16bit: unsupported bit depth");
+                }
+            }
+            else {
+                conv_function = convert_8_to_uint16_c<16>; // always 16 bit scale
+            }
+        }
+        else
+            env->ThrowError("ConvertTo16bit: unsupported color space");
+    }
+    else if (vi.ComponentSize() == 2)
+    {
+        // 10/12/14 -> 16 bit or 16 bit -> 10/12/14 bit
+        // range reducing or expansion (truerange=true), or just overriding the pixel_type, keeping scale at 16 bits
+        if (truerange) {
+            // invalid combinations were already checked
+            if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+                if (source_bitdepth > target_bitdepth) // reduce range
+                {
+                    if (source_bitdepth == 16) // 16->10/12/14 keep full range
+                        switch (target_bitdepth)
+                        {
+                        case 10: conv_function = convert_rgb_uint16_to_uint16_c<16, 10>; break;
+                        case 12: conv_function = convert_rgb_uint16_to_uint16_c<16, 12>; break;
+                        case 14: conv_function = convert_rgb_uint16_to_uint16_c<16, 14>; break;
+                        }
+                    else if (source_bitdepth == 14) // 14->10/12 keep full range
+                        switch (target_bitdepth)
+                        {
+                        case 10: conv_function = convert_rgb_uint16_to_uint16_c<14, 10>; break;
+                        case 12: conv_function = convert_rgb_uint16_to_uint16_c<14, 12>; break;
+                        }
+                    else if (source_bitdepth == 12) // 14->10/12 keep full range
+                        switch (target_bitdepth)
+                        {
+                        case 10: conv_function = convert_rgb_uint16_to_uint16_c<12, 10>; break;
+                        }
+                } else {// expand
+                    if (target_bitdepth == 16) // 10/12/14->16 keep full range
+                        switch (source_bitdepth)
+                        {
+                        case 10: conv_function = convert_rgb_uint16_to_uint16_c<10, 16>; break;
+                        case 12: conv_function = convert_rgb_uint16_to_uint16_c<12, 16>; break;
+                        case 14: conv_function = convert_rgb_uint16_to_uint16_c<14, 16>; break;
+                        }
+                    else if (target_bitdepth == 14) // 10/12->14 keep full range
+                        switch (source_bitdepth)
+                        {
+                        case 10: conv_function = convert_rgb_uint16_to_uint16_c<10, 14>; break;
+                        case 12: conv_function = convert_rgb_uint16_to_uint16_c<12, 14>; break;
+                        }
+                    else if (target_bitdepth == 12) // 10->12 keep full range
+                        switch (source_bitdepth)
+                        {
+                        case 10: conv_function = convert_rgb_uint16_to_uint16_c<10, 12>; break;
+                        }
+                }
+            }
+            else if (vi.IsYUV() || vi.IsYUVA()) {
+                if (source_bitdepth > target_bitdepth) // reduce range 16->14/12/10 14->12/10 12->10. template: bitshift
+                    switch (source_bitdepth - target_bitdepth)
+                    {
+                    case 2: conv_function = convert_uint16_to_uint16_c<false, 2>; break;
+                    case 4: conv_function = convert_uint16_to_uint16_c<false, 4>; break;
+                    case 6: conv_function = convert_uint16_to_uint16_c<false, 6>; break;
+                    }
+                else // expand range
+                    switch (target_bitdepth - source_bitdepth)
+                    {
+                    case 2: conv_function = convert_uint16_to_uint16_c<true, 2>; break;
+                    case 4: conv_function = convert_uint16_to_uint16_c<true, 4>; break;
+                    case 6: conv_function = convert_uint16_to_uint16_c<true, 6>; break;
+                    }
+            }
+        }
+        else { // truerange==false
+            change_only_format = true;
+        }
+    }
+    else if (vi.ComponentSize() == 4) // 32->16 bit
+    {
+        if (truerange) {
+            switch(target_bitdepth)
+            {
+            case 10: conv_function = convert_32_to_uintN_c<uint16_t, 10>; break;
+            case 12: conv_function = convert_32_to_uintN_c<uint16_t, 12>; break;
+            case 14: conv_function = convert_32_to_uintN_c<uint16_t, 14>; break;
+            case 16: conv_function = convert_32_to_uintN_c<uint16_t, 16>; break;
+            }
+        } else {
+            conv_function = convert_32_to_uintN_c<uint16_t, 16>;
+        }
+    } else
+        env->ThrowError("ConvertTo16bit: unsupported bit depth");
 
   if (vi.NumComponents() == 1) {
-      switch(bitdepth)
+      switch(target_bitdepth)
       {
       case 10: vi.pixel_type = VideoInfo::CS_Y10; break;
       case 12: vi.pixel_type = VideoInfo::CS_Y12; break;
@@ -1021,7 +1238,7 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
       }
   } else if (vi.Is420()) {
-      switch(bitdepth)
+      switch(target_bitdepth)
       {
       case 10: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA420P10 : VideoInfo::CS_YUV420P10; break;
       case 12: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA420P12 : VideoInfo::CS_YUV420P12; break;
@@ -1031,7 +1248,7 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
       }
   } else if (vi.Is422()) {
-      switch(bitdepth)
+      switch(target_bitdepth)
       {
       case 10: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA422P10 : VideoInfo::CS_YUV422P10; break;
       case 12: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA422P12 : VideoInfo::CS_YUV422P12; break;
@@ -1041,7 +1258,7 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
       }
   } else if (vi.Is444()) {
-      switch(bitdepth)
+      switch(target_bitdepth)
       {
       case 10: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA444P10 : VideoInfo::CS_YUV444P10; break;
       case 12: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA444P12 : VideoInfo::CS_YUV444P12; break;
@@ -1051,7 +1268,7 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
       }
   } else if (vi.IsPlanarRGB()) {
-      switch(bitdepth)
+      switch(target_bitdepth)
       {
       case 10: vi.pixel_type = VideoInfo::CS_RGBP10; break;
       case 12: vi.pixel_type = VideoInfo::CS_RGBP12; break;
@@ -1061,7 +1278,7 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
       }
   } else if (vi.IsPlanarRGBA()) {
-      switch(bitdepth)
+      switch(target_bitdepth)
       {
       case 10: vi.pixel_type = VideoInfo::CS_RGBAP10; break;
       case 12: vi.pixel_type = VideoInfo::CS_RGBAP12; break;
@@ -1071,15 +1288,15 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
           env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
       }
   } else if(vi.IsRGB24()) {
-      if(bitdepth == 16)
+      if(target_bitdepth == 16)
           vi.pixel_type = VideoInfo::CS_BGR48;
       else
-          env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
+          env->ThrowError("ConvertTo16bit: unsupported bit depth");
   } else if(vi.IsRGB32()) {
-      if(bitdepth == 16)
+      if(target_bitdepth == 16)
           vi.pixel_type = VideoInfo::CS_BGR64;
       else
-          env->ThrowError("ConvertTo16bit: unsupported effective bit depth");
+          env->ThrowError("ConvertTo16bit: unsupported bit depth");
   } else
     env->ThrowError("ConvertTo16bit: unsupported color space");
 }
@@ -1087,33 +1304,46 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
 
 AVSValue __cdecl ConvertTo16bit::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  //0   1        2        3           4
-  //c[scale]f[dither]i[bitdepth]i[modifyrange]b
+  //0   1        2        3         4
+  //c[bits]i[truerange]b[dither]i[scale]f
 
   const VideoInfo &vi = clip->GetVideoInfo();
 
-  // float range parameter
-  int target_bitdepth = args[3].AsInt(16); // default: 16 bit. can override with 10/12/14 bits
-  bool modify_range = args[4].AsBool(false); // for 10->16 conversion
-
-  if (vi.ComponentSize() == 2 && vi.BitsPerComponent() == target_bitdepth)
-      return clip; // 16 bit -> 16 bit: no conversion 16->10 e.g. conversion option with range reducing
-
   if (!vi.IsPlanar() && !vi.IsRGB24() && !vi.IsRGB32())
-    env->ThrowError("ConvertTo16bit: Can only convert from Planar YUV/RGB or packed RGB.");
+      env->ThrowError("ConvertTo16bit: Can only convert from Planar YUV/RGB or packed RGB.");
+  if (vi.ComponentSize() != 4 && args[4].Defined())
+      env->ThrowError("ConvertTo16bit: Float range parameter not allowed for non float source");
+  // float range parameter
+  float float_range = (float)args[4].AsFloat(1.0f);
+
+  // when converting from/true 10-16 bit formats, truerange=false indicates bitdepth of 16 bits regardless of the 10-12-14 bit format
+  bool assume_truerange = args[2].AsBool(true); // n/a for non planar formats
+  int target_bitdepth = args[1].AsInt(16); // default: 16 bit. can override with 10/12/14 bits
+  int source_bitdepth = vi.BitsPerComponent();
+
+  if(target_bitdepth!=10 && target_bitdepth!=12 && target_bitdepth!=14 && target_bitdepth!=16)
+      env->ThrowError("ConvertTo16bit: invalid bit depth");
+
+  if (!vi.IsPlanar() && args[2].Defined())
+      env->ThrowError("ConvertTo16bit: truerange specified for non-planar source");
 
   if (vi.IsRGB24() || vi.IsRGB32()) {
       if (target_bitdepth != 16)
           env->ThrowError("ConvertTo16bit: only 16 bit allowed for packed RGB");
-      if (modify_range)
-          env->ThrowError("ConvertTo16bit: range reducing parameter is not allowed for packed RGB");
   }
 
-  if (vi.ComponentSize() != 4 && args[1].Defined())
-    env->ThrowError("ConvertTo16bit: Float range parameter not allowed for non float source");
-
-  // float range parameter
-  float float_range = (float)args[1].AsFloat(1.0f);
+  // 10/12/14/16 -> 10/12/14/16
+  if (vi.ComponentSize() == 2)
+  {
+      if((source_bitdepth == target_bitdepth) && assume_truerange) // 10->10 .. 16->16
+        return clip;
+      // source_10_bit.ConvertTo16bit(truerange=true)  : upscale range
+      // source_10_bit.ConvertTo16bit(truerange=false) : leaves data, only format conversion
+      // source_10_bit.ConvertTo16bit(bits=12,truerange=true)  : upscale range from 10 to 12
+      // source_10_bit.ConvertTo16bit(bits=12,truerange=false) : leaves data, only format conversion
+      // source_16_bit.ConvertTo16bit(bits=10, truerange=true)  : downscale range
+      // source_16_bit.ConvertTo16bit(bits=10, truerange=false) : leaves data, only format conversion
+  }
 
   if (vi.ComponentSize() == 4) {
     if(float_range<=0.0)
@@ -1122,9 +1352,9 @@ AVSValue __cdecl ConvertTo16bit::Create(AVSValue args, void*, IScriptEnvironment
   }
 
   // dither parameter, rfu
-  int dither_type = args[2].AsInt(-1);
+  int dither_type = args[3].AsInt(-1);
 
-  return new ConvertTo16bit(clip, float_range, dither_type, target_bitdepth, modify_range, env);
+  return new ConvertTo16bit(clip, float_range, dither_type, source_bitdepth, target_bitdepth, assume_truerange, env);
 }
 
 PVideoFrame __stdcall ConvertTo16bit::GetFrame(int n, IScriptEnvironment* env) {
@@ -1165,18 +1395,29 @@ PVideoFrame __stdcall ConvertTo16bit::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-
 // float 32 bit
-ConvertToFloat::ConvertToFloat(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode)
+ConvertToFloat::ConvertToFloat(PClip _child, const float _float_range, const int _source_bitdepth, bool _truerange, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), float_range(_float_range), source_bitdepth(_source_bitdepth), truerange(_truerange)
 {
 
   if (vi.ComponentSize() == 1) // 8->32 bit
   {
-    conv_function = convert_uintN_to_float_c<uint8_t>;
+    conv_function = convert_uintN_to_float_c<uint8_t, 8>;
   } else if (vi.ComponentSize() == 2) // 16->32 bit
   {
-    conv_function = convert_uintN_to_float_c<uint16_t>;
+      if (vi.IsPlanar() && truerange)
+      {
+          switch (source_bitdepth)
+          {
+          case 10: conv_function = convert_uintN_to_float_c<uint16_t, 10>; break;
+          case 12: conv_function = convert_uintN_to_float_c<uint16_t, 12>; break;
+          case 14: conv_function = convert_uintN_to_float_c<uint16_t, 14>; break;
+          case 16: conv_function = convert_uintN_to_float_c<uint16_t, 16>; break;
+          default: env->ThrowError("ConvertToFloat: unsupported bit depth");
+          }
+      } else {
+        conv_function = convert_uintN_to_float_c<uint16_t, 16>;
+      }
   } else
     env->ThrowError("ConvertToFloat: unsupported bit depth");
 
@@ -1201,26 +1442,28 @@ AVSValue __cdecl ConvertToFloat::Create(AVSValue args, void*, IScriptEnvironment
   PClip clip = args[0].AsClip();
 
   const VideoInfo &vi = clip->GetVideoInfo();
+  //0    1         2
+  //c[truerange]b[scale]f
 
   if (!vi.IsPlanar())
-    env->ThrowError("ConvertToFloat: Can only convert from Planar YUV.");
+    env->ThrowError("ConvertToFloat: Can only convert from Planar YUV(A) or RGB(A).");
 
   if (vi.ComponentSize() == 4)
     return clip; // 32 bit -> 32 bit: no conversion
 
   // float range parameter
-  float float_range = (float)args[1].AsFloat(1.0f);
+  float float_range = (float)args[2].AsFloat(1.0f);
 
-  if (vi.ComponentSize() == 4) {
-    if(float_range<=0.0)
+  if(float_range<=0.0)
       env->ThrowError("ConvertToFloat: Float range parameter cannot be <= 0");
-    // other checkings
-  }
 
-  // dither parameter
-  int dither_type = args[2].AsInt(-1);
+  bool assume_truerange = args[1].AsBool(true); // n/a for non planar formats
+  int source_bitdepth = vi.BitsPerComponent();
 
-  return new ConvertToFloat(clip, float_range, dither_type, env);
+  if (vi.ComponentSize() != 2 && args[1].Defined())
+      env->ThrowError("ConvertToFloat: truerange specified for 8 bit source");
+
+  return new ConvertToFloat(clip, float_range, source_bitdepth, assume_truerange, env);
 }
 
 PVideoFrame __stdcall ConvertToFloat::GetFrame(int n, IScriptEnvironment* env) {
