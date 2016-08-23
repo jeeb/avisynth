@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+﻿// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -34,7 +34,7 @@
 
 /*
 ** Turn. version 0.1
-** (c) 2003 - Ernst Pech�
+** (c) 2003 - Ernst Peché
 **
 */
 
@@ -367,6 +367,83 @@ void turn_right_rgb24(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_hei
 }
 
 
+struct Rgb48 {
+    uint16_t b, g, r;
+};
+
+
+void turn_left_rgb48(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<Rgb48>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_right_rgb48(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<Rgb48>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 6 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+void turn_left_rgb64_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<uint64_t>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_right_rgb64_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<uint64_t>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 3 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+static inline void turn_right_plane_64_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    const BYTE* s0 = srcp + src_pitch * (src_height - 1);
+    int w = src_rowsize & ~15;
+    int h = src_height & ~1;
+
+    for (int y = 0; y < h; y += 2)
+    {
+        BYTE* d0 = dstp + y * 8;
+        for (int x = 0; x < w; x += 16)
+        {
+            __m128i a01 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
+            __m128i b01 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x - src_pitch));
+            __m128i ab0 = _mm_unpacklo_epi64(a01, b01);
+            __m128i ab1 = _mm_unpacklo_epi64(a01, b01);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(d0), ab0);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(d0 + dst_pitch), ab1);
+            d0 += 2 * dst_pitch;
+        }
+        s0 -= 2 * src_pitch;
+    }
+
+    if (src_rowsize != w)
+    {
+        turn_right_plane_c<uint64_t>(srcp + w, dstp + w / 8 * dst_pitch, 8, src_height, src_pitch, dst_pitch);
+    }
+
+    if (src_height != h)
+    {
+        turn_right_plane_c<uint64_t>(srcp, dstp + h * 8, src_rowsize, 1, src_pitch, dst_pitch);
+    }
+}
+
+
+void turn_left_rgb64_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_64_sse2(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_right_rgb64_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_64_sse2(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 8 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+
+
 static void turn_right_yuy2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     dstp += (src_height - 2) * 2;
@@ -445,7 +522,11 @@ static void turn_180_plane_xsse(const BYTE* srcp, BYTE* dstp, int src_rowsize, i
         for (int x = 0; x < w; x += 16)
         {
             __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
-            if (sizeof(T) == 4)
+            if (sizeof(T) == 8)
+            {
+                src = _mm_shuffle_epi32(src, _MM_SHUFFLE(1, 0, 3, 2));
+            }
+            else if (sizeof(T) == 4)
             {
                 src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
             }
@@ -498,11 +579,18 @@ static void turn_180_yuy2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src
 
 Turn::Turn(PClip c, int direction, IScriptEnvironment* env) : GenericVideoFilter(c), u_source(nullptr), v_source(nullptr)
 {
-    num_planes = (vi.pixel_type & VideoInfo::CS_INTERLEAVED) ? 1 : 3;
+    if (vi.pixel_type & VideoInfo::CS_INTERLEAVED) {
+        num_planes = 1;
+    } else if (vi.IsPlanarRGBA() || vi.IsYUVA()) {
+        num_planes = 4;
+    } else {
+        num_planes = 3;
+    }
 
     splanes[0] = 0;
-    splanes[1] = PLANAR_U;
-    splanes[2] = PLANAR_V;
+    splanes[1] = vi.IsRGB() ? PLANAR_B : PLANAR_U;
+    splanes[2] = vi.IsRGB() ? PLANAR_R : PLANAR_V;
+    splanes[3] = PLANAR_A;
 
     if (direction != DIRECTION_180)
     {
@@ -567,11 +655,26 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
         funcs[2] = t180;
     };
 
-    if (vi.IsRGB32())
+    if (vi.IsRGB64())
     {
         if (cpu & CPUF_SSE2)
         {
-            set_funcs(turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_plane_xsse<uint32_t, CPUF_SSE2>);
+            set_funcs(turn_left_rgb64_sse2, turn_right_rgb64_sse2, turn_180_plane_xsse<uint64_t>);
+        }
+        else
+        {
+            set_funcs(turn_left_rgb64_c, turn_right_rgb64_c, turn_180_plane_c<uint64_t>);
+        }
+    }
+    else if (vi.IsRGB48())
+    {
+        set_funcs(turn_left_rgb48, turn_right_rgb48, turn_180_plane_c<Rgb48>);
+    }
+    else if (vi.IsRGB32())
+    {
+        if (cpu & CPUF_SSE2)
+        {
+            set_funcs(turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_plane_xsse<uint32_t>);
         }
         else
         {
@@ -632,15 +735,21 @@ int __stdcall Turn::SetCacheHints(int cachehints, int frame_range)
 
 PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
 {
-    static const int dplanes[] = { 0, PLANAR_U, PLANAR_V };
+    static const int dplanes[] = {
+        0,
+        vi.IsRGB() ? PLANAR_B : PLANAR_U,
+        vi.IsRGB() ? PLANAR_R : PLANAR_V,
+        PLANAR_A,
+    };
 
     auto src = child->GetFrame(n, env);
     auto dst = env->NewVideoFrame(vi);
 
-    PVideoFrame srcs[3] = {
+    PVideoFrame srcs[4] = {
         src,
         u_source ? u_source->GetFrame(n, env) : src,
         v_source ? v_source->GetFrame(n, env) : src,
+        src,
     };
 
     for (int p = 0; p < num_planes; ++p) {

@@ -46,7 +46,7 @@ class Turn : public GenericVideoFilter {
     PClip v_source;
 
     int num_planes;
-    int splanes[3];
+    int splanes[4];
 
     void SetUVSource(int mul_h, int mul_v, IScriptEnvironment* env);
     void SetTurnFunction(int direction, IScriptEnvironment* env);
@@ -79,6 +79,11 @@ void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, 
 void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
 void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
+void turn_left_rgb48(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
+
+void turn_left_rgb64_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
+void turn_left_rgb64_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+
 void turn_right_plane_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
 void turn_right_plane_8_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int srcHeight, int src_pitch, int dst_pitch);
 
@@ -92,5 +97,10 @@ void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_hei
 
 void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+
+void turn_right_rgb48(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+
+void turn_right_rgb64_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+void turn_right_rgb64_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
 #endif  // _AVS_TURN_H
