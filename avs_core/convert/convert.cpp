@@ -50,9 +50,12 @@
 ********************************************************************/
 
 extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
-  { "ConvertToRGB",   BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create },
-  { "ConvertToRGB24", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create24 },
-  { "ConvertToRGB32", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create32 },
+  { "ConvertToRGB",   BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)0 },
+  { "ConvertToRGB24", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)24 },
+  { "ConvertToRGB32", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)32 },
+  { "ConvertToRGB48", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)48 },
+  { "ConvertToRGB64", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)64 },
+  { "ConvertToPlanarRGB", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)-1 },
   { "ConvertToY8",    BUILTIN_FUNC_PREFIX, "c[matrix]s", ConvertToY8::Create },
   { "ConvertToYV12",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToYV12::Create },
   { "ConvertToYV24",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
@@ -126,6 +129,7 @@ int getMatrix( const char* matrix, IScriptEnvironment* env) {
 *******   Convert to RGB / RGBA   ******
 ***************************************/
 
+// YUY2 only
 ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
                            IScriptEnvironment* env )
                            : GenericVideoFilter(_child)
@@ -524,7 +528,7 @@ static void convert_yuy2_to_rgb_c(const BYTE *srcp, BYTE* dstp, int src_pitch, i
   }
 }
 
-
+// YUY2 only
 PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
@@ -573,30 +577,102 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-
-AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* env)
+// general for all colorspaces
+// however class is constructed only for YUY2 input
+AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   const bool haveOpts = args[3].Defined() || args[4].Defined();
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
   const VideoInfo& vi = clip->GetVideoInfo();
 
-  if (vi.IsPlanar()) {
+  // todo bitdepth conversion on-the-fly
+
+  // common Create for all CreateRGB24/32/48/64/Planar(-1) using user_data
+  int target_rgbtype = (int)reinterpret_cast<intptr_t>(user_data);
+  // -1: Planar RGB
+  //  0: not specified (leave if input is packed RGB, convert to rgb32/64 input colorspace dependent)
+  // 24,32,48,64: RGB24/32/48/64
+
+  // planar YUV-like
+  if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) {
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
+    // conversion to planar or packed RGB is always from 444
     clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 4 , env);
+    if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
+        env->ThrowError("ConvertToRGB: conversion is allowed only from 8 bit colorspace");
+    if((target_rgbtype==48 || target_rgbtype==64) && vi.ComponentSize()!=2)
+        env->ThrowError("ConvertToRGB: conversion is allowed only from 16 bit colorspace");
+    if(target_rgbtype==0 && vi.ComponentSize()==4)
+        env->ThrowError("ConvertToRGB: conversion is allowed only from 8 or 16 bit colorspaces");
+    int rgbtype_param;
+    switch (target_rgbtype)
+    {
+    case -1:
+        rgbtype_param = -1; break; // planar RGB(A)
+    case 0:
+        rgbtype_param = vi.ComponentSize() == 1 ? 4 : 8; break; // input bitdepth adaptive
+    case 24:
+        rgbtype_param = 3; break; // RGB24
+    case 32:
+        rgbtype_param = 4; break; // RGB32
+    case 48:
+        rgbtype_param = 6; break; // RGB48
+    case 64:
+        rgbtype_param = 8; break; // RGB64
+    }
+    return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), rgbtype_param , env);
   }
 
   if (haveOpts)
     env->ThrowError("ConvertToRGB: ChromaPlacement and ChromaResample options are not supported.");
 
-  if (vi.IsYUV())
-    return new ConvertToRGB(clip, false, matrix, env);
+  // planar RGB-like
+  if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+  {
+      if (target_rgbtype == -1) // planar to planar
+          return clip;
+      if(vi.ComponentSize() == 4)
+          env->ThrowError("ConvertToRGB: conversion from float colorspace is not supported.");
+      if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
+          env->ThrowError("ConvertToRGB: conversion is allowed only from 8 bit colorspace");
+      if((target_rgbtype==48 || target_rgbtype==64) && vi.ComponentSize()!=2)
+          env->ThrowError("ConvertToRGB: conversion is allowed only from 16 bit colorspace");
+      env->ThrowError("ConvertToRGB: Planar RGB to packed RGB conversion is not yet implemented");
+      //return new PlanarRGBtoPackedRGB(clip); todo
+  }
+
+  // YUY2
+  if (vi.IsYUV()) // at this point IsYUV means YUY2 (non-planar)
+  {
+    if (target_rgbtype==48 || target_rgbtype==64 || target_rgbtype==-1)
+        env->ThrowError("ConvertToRGB: conversion from YUY2 is allowed only to 8 bit packed RGB");
+    return new ConvertToRGB(clip, target_rgbtype==24, matrix, env);
+  }
+
+  // conversions from packed RGB
+
+  if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
+      env->ThrowError("ConvertToRGB%d: conversion is allowed only from 8 bit colorspace",target_rgbtype);
+  if((target_rgbtype==48 || target_rgbtype==64) && vi.ComponentSize()!=2)
+      env->ThrowError("ConvertToRGB%d: conversion is allowed only from 16 bit colorspace",target_rgbtype);
+
+  if(target_rgbtype==32 || target_rgbtype==64)
+      if (vi.IsRGB24() || vi.IsRGB48())
+          return new RGBtoRGBA(clip); // also handles 48to64
+
+  if(target_rgbtype==24 || target_rgbtype==48)
+      if (vi.IsRGB32() || vi.IsRGB64())
+          return new RGBAtoRGB(clip); // also handles 64to48
+
+  if (target_rgbtype == -1)
+    return new PackedRGBtoPlanarRGB(clip);
 
   return clip;
 }
 
-
+#if 0
+// merged into Create
 AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env)
 {
   const bool haveOpts = args[3].Defined() || args[4].Defined();
@@ -607,7 +683,7 @@ AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment
   if (vi.IsPlanar()) {
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
     clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 4 , env);
+    return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), 4 , env);
   }
 
   if (haveOpts)
@@ -621,8 +697,10 @@ AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment
 
   return clip;
 }
+#endif
 
-
+#if 0
+// merged into Create
 AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env)
 {
   const bool haveOpts = args[3].Defined() || args[4].Defined();
@@ -633,7 +711,7 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
   if (vi.IsPlanar()) {
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
     clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 3 , env);
+    return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), 3 , env);
   }
 
   if (haveOpts)
@@ -647,6 +725,7 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
 
   return clip;
 }
+#endif
 
 /**********************************
 *******   Convert to YV12   ******

@@ -38,13 +38,13 @@
 #include <avisynth.h>
 
 
-class RGB24to32 : public GenericVideoFilter
+class RGBtoRGBA : public GenericVideoFilter
 /**
-  * RGB -> RGBA, setting alpha channel to 255
+  * RGB -> RGBA, setting alpha channel to 255/65535
   */
 {
 public:
-  RGB24to32(PClip src);
+  RGBtoRGBA(PClip src);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -53,13 +53,27 @@ public:
 };
 
 
-class RGB32to24 : public GenericVideoFilter
+class RGBAtoRGB : public GenericVideoFilter
 /**
   * Class to strip alpha channel
   */
 {
 public:
-  RGB32to24(PClip src);
+  RGBAtoRGB(PClip src);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+};
+
+class PackedRGBtoPlanarRGB : public GenericVideoFilter
+  /**
+  * RGB(A) -> RGBP(A)
+  */
+{
+public:
+  PackedRGBtoPlanarRGB(PClip src);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {

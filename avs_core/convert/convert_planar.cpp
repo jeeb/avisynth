@@ -501,6 +501,17 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   matrix.v_g  = (int16_t)(Suv * Kg/(Kr-1) * mulfac / Srgb + 0.5);
   matrix.v_r  = (int16_t)(Suv             * mulfac / Srgb + 0.5);
   matrix.offset_y = Oy;
+
+  matrix.y_b_f  = (float)(Sy/256.0  * Kb        ); //B
+  matrix.y_g_f  = (float)(Sy/256.0  * Kg        ); //G
+  matrix.y_r_f  = (float)(Sy/256.0  * Kr        ); //R
+  matrix.u_b_f  = (float)(Suv/256.0             );
+  matrix.u_g_f  = (float)(Suv/256.0 * Kg/(Kb-1) );
+  matrix.u_r_f  = (float)(Suv/256.0 * Kr/(Kb-1) );
+  matrix.v_b_f  = (float)(Suv/256.0 * Kb/(Kr-1) );
+  matrix.v_g_f  = (float)(Suv/256.0 * Kg/(Kr-1) );
+  matrix.v_r_f  = (float)(Suv/256.0             );
+
 }
 
 static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix &matrix) {
@@ -777,18 +788,37 @@ AVSValue __cdecl ConvertRGBToYV24::Create(AVSValue args, void*, IScriptEnvironme
  * ConvertYV24ToRGB
  *
  * (c) Klaus Post, 2005
+ * Generic 4:4:4(:4), 16 bit and Planar RGB(A) support 2016 by PF
  ******************************************************/
 
 
-ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IScriptEnvironment* env)
+ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, int in_matrix, int _pixel_step, IScriptEnvironment* env)
  : GenericVideoFilter(src), pixel_step(_pixel_step)
 {
 
-  if (!vi.IsYV24())
-    env->ThrowError("ConvertYV24ToRGB: Only YV24 data input accepted");
+  if (!vi.Is444())
+    env->ThrowError("ConvertYUV444ToRGB: Only 4:4:4 data input accepted");
 
-  vi.pixel_type = (pixel_step == 3) ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
-  const int shift = 13;
+  switch (pixel_step)
+  {
+  case -1:
+    switch (vi.BitsPerComponent())
+    {
+    case 8: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP : VideoInfo::CS_RGBP; break;
+    case 10: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP10 : VideoInfo::CS_RGBP10; break;
+    case 12: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP12 : VideoInfo::CS_RGBP12; break;
+    case 14: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP14 : VideoInfo::CS_RGBP14; break;
+    case 16: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16; break;
+    case 32: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAPS : VideoInfo::CS_RGBPS; break;
+    }
+    break;
+  case 3: vi.pixel_type = VideoInfo::CS_BGR24; break;
+  case 4: vi.pixel_type = VideoInfo::CS_BGR32; break;
+  case 6: vi.pixel_type = VideoInfo::CS_BGR48; break;
+  case 8: vi.pixel_type = VideoInfo::CS_BGR64; break;
+  }
+
+  const int shift = 13; // for integer arithmetic
 
   if (in_matrix == Rec601) {
 /*
@@ -824,7 +854,7 @@ ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IS
   }
 }
 
-void ConvertYV24ToRGB::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift)
+void ConvertYUV444ToRGB::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift)
 {
 /*
   Kr   = {0.299, 0.2126}
@@ -863,6 +893,16 @@ void ConvertYV24ToRGB::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   matrix.u_r = (int16_t)(Srgb * 0.000        * mulfac / Suv + 0.5);
   matrix.v_r = (int16_t)(Srgb * (1-Kr)       * mulfac / Suv + 0.5);
   matrix.offset_y = -Oy;
+
+  matrix.y_b_f = (float)(1.000        / (Sy/256.0) ); //Y
+  matrix.u_b_f = (float)((1-Kb)       / (Suv/256.0)); //U
+  matrix.v_b_f = (float)(0.000        / (Suv/256.0)); //V
+  matrix.y_g_f = (float)(1.000        / (Sy/256.0) );
+  matrix.u_g_f = (float)((Kb-1)*Kb/Kg / (Suv/256.0));
+  matrix.v_g_f = (float)((Kr-1)*Kr/Kg / (Suv/256.0));
+  matrix.y_r_f = (float)(1.000        / (Sy/256.0) );
+  matrix.u_r_f = (float)(0.000        / (Suv/256.0));
+  matrix.v_r_f = (float)((1-Kr)       / (Suv/256.0));
 }
 
 static __forceinline __m128i convert_yuv_to_rgb_sse2_core(const __m128i &px01, const __m128i &px23, const __m128i &px45, const __m128i &px67, const __m128i& zero, const __m128i &matrix, const __m128i &round_mask) {
@@ -1135,15 +1175,16 @@ static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* sr
 
 #endif
 
-PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi, 8);
-
+  //PVideoFrame dst = env->NewVideoFrame(vi, 8); // PF: why 8? A larger default Avisynth align should work fine
+  PVideoFrame dst = env->NewVideoFrame(vi);
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
   const BYTE* srcV = src->GetReadPtr(PLANAR_V);
+  const BYTE* srcA = src->GetReadPtr(PLANAR_A);
 
   BYTE* dstp = dst->GetWritePtr();
 
@@ -1151,16 +1192,19 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 
   const int src_pitch_y = src->GetPitch(PLANAR_Y);
   const int src_pitch_uv = src->GetPitch(PLANAR_U);
+  const int src_pitch_a = src->GetPitch(PLANAR_A); // zero if no Alpha
 
   const int dst_pitch = dst->GetPitch();
 
-  if (pixel_step != 4 && pixel_step != 3) {
+  if (pixel_step != 4 && pixel_step != 3 && pixel_step != 8 && pixel_step != 6 && pixel_step != -1) {
     env->ThrowError("Invalid pixel step. This is a bug.");
   }
 
-  if (env->GetCPUFlags() & CPUF_SSE2) {
+  // todo: SSE for not only 8 bit RGB
+  if ((env->GetCPUFlags() & CPUF_SSE2) && (pixel_step==3 || pixel_step==4)) {
     //we load using movq so no need to check for alignment
     if (pixel_step == 4) {
+        // todo: move alpha channel from YUVA
       convert_yv24_to_rgb_ssex<4, CPUF_SSE2>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, matrix);
     } else {
       if (env->GetCPUFlags() & CPUF_SSSE3) {
@@ -1173,7 +1217,7 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
   }
 
 #ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX) {
+  if ((env->GetCPUFlags() & CPUF_MMX) && (pixel_step==3 || pixel_step==4)) {
     if (pixel_step == 4) {
       convert_yv24_to_rgb_mmx<4>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, matrix);
     } else {
@@ -1185,27 +1229,30 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 
   //Slow C-code.
 
-  dstp += dst_pitch * (vi.height-1);  // We start at last line
+  dstp += dst_pitch * (vi.height-1);  // We start at last line. Not for Planar RGB
+  bool hasAlpha = (src_pitch_a != 0);
   if (pixel_step == 4) {
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
         int Y = srcY[x] + matrix.offset_y;
         int U = srcU[x] - 128;
         int V = srcV[x] - 128;
+        uint8_t a = hasAlpha ? srcA[x] : 255; // YUVA aware
         int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096)>>13);
         int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096)>>13);
         int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096)>>13);
         dstp[x*4+0] = PixelClip(b);  // All the safety we can wish for.
         dstp[x*4+1] = PixelClip(g);  // Probably needed here.
         dstp[x*4+2] = PixelClip(r);
-        dstp[x*4+3] = 255; // alpha
+        dstp[x*4+3] = a; // alpha
       }
       dstp -= dst_pitch;
       srcY += src_pitch_y;
       srcU += src_pitch_uv;
       srcV += src_pitch_uv;
+      srcA += src_pitch_a;
     }
-  } else {
+  } else if (pixel_step == 3) {
     const int Dstep = dst_pitch + (vi.width * pixel_step);
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
@@ -1225,23 +1272,168 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
       srcU += src_pitch_uv;
       srcV += src_pitch_uv;
     }
+  } else if (pixel_step == 8) { // RGB64
+    for (int y = 0; y < vi.height; y++) {
+        for (int x = 0; x < vi.width; x++) {
+            int Y = reinterpret_cast<const uint16_t *>(srcY)[x] + (matrix.offset_y << 8);
+            int U = reinterpret_cast<const uint16_t *>(srcU)[x] - 32768;
+            int V = reinterpret_cast<const uint16_t *>(srcV)[x] - 32768;
+            uint16_t a = hasAlpha ? reinterpret_cast<const uint16_t *>(srcA)[x] : 65535; // YUVA aware
+            int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
+            int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
+            int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
+            reinterpret_cast<uint16_t *>(dstp)[x*4+0] = clamp(b,0,65535);  // All the safety we can wish for.
+            reinterpret_cast<uint16_t *>(dstp)[x*4+1] = clamp(g,0,65535);  // Probably needed here.
+            reinterpret_cast<uint16_t *>(dstp)[x*4+2] = clamp(r,0,65535);
+            reinterpret_cast<uint16_t *>(dstp)[x*4+3] = a; // alpha
+        }
+        dstp -= dst_pitch;
+        srcY += src_pitch_y;
+        srcU += src_pitch_uv;
+        srcV += src_pitch_uv;
+        srcA += src_pitch_a;
+    }
+  } else if (pixel_step == 6) { // RGB48
+    const int Dstep = dst_pitch + (vi.width * pixel_step);
+    for (int y = 0; y < vi.height; y++) {
+        for (int x = 0; x < vi.width; x++) {
+            int Y = reinterpret_cast<const uint16_t *>(srcY)[x] + (matrix.offset_y << 8);
+            int U = reinterpret_cast<const uint16_t *>(srcU)[x] - 32768;
+            int V = reinterpret_cast<const uint16_t *>(srcV)[x] - 32768;
+            int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
+            int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
+            int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
+            reinterpret_cast<uint16_t *>(dstp)[0] = clamp(b,0,65535);  // All the safety we can wish for.
+            reinterpret_cast<uint16_t *>(dstp)[1] = clamp(g,0,65535);  // Probably needed here.
+            reinterpret_cast<uint16_t *>(dstp)[2] = clamp(r,0,65535);
+            dstp += pixel_step;
+        }
+        dstp -= Dstep;
+        srcY += src_pitch_y;
+        srcU += src_pitch_uv;
+        srcV += src_pitch_uv;
+    }
+  } else if(pixel_step==-1)
+  {
+      // YUV444 -> PlanarRGB
+      // YUVA444 -> PlanarRGBA
+    BYTE *dstpG = dst->GetWritePtr(PLANAR_G);
+    BYTE *dstpB = dst->GetWritePtr(PLANAR_B);
+    BYTE *dstpR = dst->GetWritePtr(PLANAR_R);
+    BYTE *dstpA = dst->GetWritePtr(PLANAR_A);
+
+    int dst_pitchG = dst->GetPitch(PLANAR_G);
+    int dst_pitchB = dst->GetPitch(PLANAR_B);
+    int dst_pitchR = dst->GetPitch(PLANAR_R);
+    int dst_pitchA = dst->GetPitch(PLANAR_A);
+
+    int pixelsize = vi.ComponentSize();
+
+    // todo: template, maybe sse
+    if(pixelsize==1)
+    {
+      for (int y = 0; y < vi.height; y++) {
+        for (int x = 0; x < vi.width; x++) {
+          int Y = reinterpret_cast<const uint8_t *>(srcY)[x] + (matrix.offset_y);
+          int U = reinterpret_cast<const uint8_t *>(srcU)[x] - 128;
+          int V = reinterpret_cast<const uint8_t *>(srcV)[x] - 128;
+          int A;
+          if(hasAlpha)
+            A = reinterpret_cast<const uint8_t *>(srcA)[x];
+          int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
+          int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
+          int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
+          reinterpret_cast<uint8_t *>(dstpB)[x] = clamp(b,0,255);  // All the safety we can wish for.
+          reinterpret_cast<uint8_t *>(dstpG)[x] = clamp(g,0,255);  // Probably needed here.
+          reinterpret_cast<uint8_t *>(dstpR)[x] = clamp(r,0,255);
+          if(hasAlpha)
+            reinterpret_cast<uint8_t *>(dstpA)[x] = A;
+        }
+        dstpG += dst_pitchG;
+        dstpB += dst_pitchB;
+        dstpR += dst_pitchR;
+        if(hasAlpha)
+          dstpA += dst_pitchA;
+        srcY += src_pitch_y;
+        srcU += src_pitch_uv;
+        srcV += src_pitch_uv;
+      }
+    } else if (pixelsize==2) {
+      for (int y = 0; y < vi.height; y++) {
+        for (int x = 0; x < vi.width; x++) {
+          int Y = reinterpret_cast<const uint16_t *>(srcY)[x] + (matrix.offset_y << 8);
+          int U = reinterpret_cast<const uint16_t *>(srcU)[x] - 32768;
+          int V = reinterpret_cast<const uint16_t *>(srcV)[x] - 32768;
+          int A;
+          if(hasAlpha)
+            A = reinterpret_cast<const uint16_t *>(srcA)[x];
+          int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
+          int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
+          int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
+          reinterpret_cast<uint16_t *>(dstpB)[x] = clamp(b,0,65535);  // All the safety we can wish for.
+          reinterpret_cast<uint16_t *>(dstpG)[x] = clamp(g,0,65535);  // Probably needed here.
+          reinterpret_cast<uint16_t *>(dstpR)[x] = clamp(r,0,65535);
+          if(hasAlpha)
+            reinterpret_cast<uint16_t *>(dstpA)[x] = A;
+        }
+        dstpG += dst_pitchG;
+        dstpB += dst_pitchB;
+        dstpR += dst_pitchR;
+        if(hasAlpha)
+          dstpA += dst_pitchA;
+        srcY += src_pitch_y;
+        srcU += src_pitch_uv;
+        srcV += src_pitch_uv;
+      }
+    } else { // pixelsize==4 float
+      for (int y = 0; y < vi.height; y++) {
+        for (int x = 0; x < vi.width; x++) {
+          float Y = reinterpret_cast<const float *>(srcY)[x] + ((float)matrix.offset_y / 256.0f);
+          float U = reinterpret_cast<const float *>(srcU)[x] - 0.5f;
+          float V = reinterpret_cast<const float *>(srcV)[x] - 0.5f;
+          float A;
+          if(hasAlpha)
+            A = reinterpret_cast<const float *>(srcA)[x];
+          float b = matrix.y_b_f * Y + matrix.u_b_f * U + matrix.v_b_f * V;
+          float g = matrix.y_g_f * Y + matrix.u_g_f * U + matrix.v_g_f * V;
+          float r = matrix.y_r_f * Y + matrix.u_r_f * U + matrix.v_r_f * V;
+          reinterpret_cast<float *>(dstpB)[x] = clamp(b, 0.0f, 1.0f);  // All the safety we can wish for.
+          reinterpret_cast<float *>(dstpG)[x] = clamp(g, 0.0f, 1.0f);  // Probably needed here.
+          reinterpret_cast<float *>(dstpR)[x] = clamp(r, 0.0f, 1.0f);
+          if(hasAlpha)
+            reinterpret_cast<float *>(dstpA)[x] = A;
+        }
+        dstpG += dst_pitchG;
+        dstpB += dst_pitchB;
+        dstpR += dst_pitchR;
+        if(hasAlpha)
+          dstpA += dst_pitchA;
+        srcY += src_pitch_y;
+        srcU += src_pitch_uv;
+        srcV += src_pitch_uv;
+      }
+    }
   }
   return dst;
 }
 
-AVSValue __cdecl ConvertYV24ToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env) {
+#if 0
+AVSValue __cdecl ConvertYUV444ToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsRGB())
     return clip;
-  return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString(0), env), 4, env);
+  return new ConvertYUV444ToRGB(clip, getMatrix(args[1].AsString(0), env), 4, env);
 }
+#endif
 
-AVSValue __cdecl ConvertYV24ToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env) {
+#if 0
+AVSValue __cdecl ConvertYUV444ToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsRGB())
     return clip;
-  return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString(0), env), 3, env);
+  return new ConvertYUV444ToRGB(clip, getMatrix(args[1].AsString(0), env), 3, env);
 }
+#endif
 
 /************************************
  * YUY2 to YV16

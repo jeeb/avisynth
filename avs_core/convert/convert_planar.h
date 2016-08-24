@@ -77,6 +77,16 @@ struct ConversionMatrix {
   int16_t v_g;
   int16_t v_b;
 
+  float y_r_f;
+  float y_g_f;
+  float y_b_f;
+  float u_r_f;
+  float u_g_f;
+  float u_b_f;
+  float v_r_f;
+  float v_g_f;
+  float v_b_f;
+
   int offset_y;
 };
 
@@ -110,18 +120,19 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
-class ConvertYV24ToRGB : public GenericVideoFilter
+// note for AVS16: renamed from ConvertYV24ToRGB (Convert444ToRGB is already used in Overlay)
+class ConvertYUV444ToRGB : public GenericVideoFilter
 {
 public:
-  ConvertYV24ToRGB(PClip src, int matrix, int pixel_step, IScriptEnvironment* env);
+  ConvertYUV444ToRGB(PClip src, int matrix, int pixel_step, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
+//  static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
+//  static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
   ConversionMatrix matrix;

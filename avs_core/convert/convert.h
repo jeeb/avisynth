@@ -80,9 +80,9 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
-  static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+//  static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
+//  static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   int theMatrix;

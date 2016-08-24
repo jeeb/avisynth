@@ -42,10 +42,10 @@
  *******   RGB Helper Classes   ******
  *************************************/
 
-RGB24to32::RGB24to32(PClip src)
+RGBtoRGBA::RGBtoRGBA(PClip src)
   : GenericVideoFilter(src)
 {
-  vi.pixel_type = VideoInfo::CS_BGR32;
+  vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ? VideoInfo::CS_BGR32 : VideoInfo::CS_BGR64;
 }
 
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
@@ -139,8 +139,17 @@ static void convert_rgb24_to_rgb32_c(const BYTE *srcp, BYTE *dstp, size_t src_pi
   }
 }
 
+static void convert_rgb48_to_rgb64_c(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  for (size_t y = height; y > 0; --y) {
+    for (size_t x = 0; x < width; ++x) {
+      *reinterpret_cast<uint64_t*>(dstp + x*8) = *reinterpret_cast<const uint64_t*>(srcp+x*6) | 0xFFFF000000000000ULL;
+    }
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
 
-PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env)
+PVideoFrame __stdcall RGBtoRGBA::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -149,19 +158,25 @@ PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env)
   const int src_pitch = src->GetPitch();
   const int dst_pitch = dst->GetPitch();
 
-  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
+  int pixelsize = vi.ComponentSize();
+
+  // todo sse for 16 bit
+  if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
     convert_rgb24_to_rgb32_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
   } 
   else
 #ifdef X86_32
-    if (env->GetCPUFlags() & CPUF_MMX)
+    if (pixelsize==1 && (env->GetCPUFlags() & CPUF_MMX))
     {
       convert_rgb24_to_rgb32_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     }
     else 
 #endif
     {
-      convert_rgb24_to_rgb32_c(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+      if (pixelsize == 1)
+        convert_rgb24_to_rgb32_c(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+      else
+        convert_rgb48_to_rgb64_c(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     }
   return dst;
 }
@@ -169,10 +184,10 @@ PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env)
 
 
 
-RGB32to24::RGB32to24(PClip src)
+RGBAtoRGB::RGBAtoRGB(PClip src)
 : GenericVideoFilter(src)
 {
-  vi.pixel_type = VideoInfo::CS_BGR24;
+  vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR48;
 }
 
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
@@ -272,7 +287,23 @@ static void convert_rgb32_to_rgb24_c(const BYTE *srcp, BYTE *dstp, size_t src_pi
   }
 }
 
-PVideoFrame __stdcall RGB32to24::GetFrame(int n, IScriptEnvironment* env)
+static void convert_rgb64_to_rgb48_c(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  for (size_t y = height; y > 0; --y) {
+    size_t x;
+    for (x = 0; x < width-1; ++x) { // width-1 really!
+      *reinterpret_cast<uint64_t*>(dstp+x*6) = *reinterpret_cast<const uint64_t*>(srcp+x*8);
+    }
+    //last pixel
+    reinterpret_cast<uint16_t*>(dstp)[x*3+0] = reinterpret_cast<const uint16_t*>(srcp)[x*4+0];
+    reinterpret_cast<uint16_t*>(dstp)[x*3+1] = reinterpret_cast<const uint16_t*>(srcp)[x*4+1];
+    reinterpret_cast<uint16_t*>(dstp)[x*3+2] = reinterpret_cast<const uint16_t*>(srcp)[x*4+2];
+
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+PVideoFrame __stdcall RGBAtoRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -281,20 +312,90 @@ PVideoFrame __stdcall RGB32to24::GetFrame(int n, IScriptEnvironment* env)
   size_t src_pitch = src->GetPitch();
   size_t dst_pitch = dst->GetPitch();
 
-  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
+  int pixelsize = vi.ComponentSize();
+
+  // todo sse for 16 bit
+  if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
     convert_rgb32_to_rgb24_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
   } 
   else
 #ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX)
+  if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX))
   {
     convert_rgb32_to_rgb24_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
   }
   else 
 #endif
   {
-	 convert_rgb32_to_rgb24_c(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    if(pixelsize==1)
+      convert_rgb32_to_rgb24_c(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    else
+      convert_rgb64_to_rgb48_c(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
   }
   return dst;
 }
 
+PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src)
+  : GenericVideoFilter(src)
+{
+  vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ?
+    (src->GetVideoInfo().IsRGB24() ? VideoInfo::CS_RGBP : VideoInfo::CS_RGBAP) : // RGB24, RGB32
+    (src->GetVideoInfo().IsRGB48() ? VideoInfo::CS_RGBP16 : VideoInfo::CS_RGBAP16);  // RGB48, RGB64
+}
+
+template<typename pixel_t, int numcomponents>
+static void convert_rgb_to_rgbp_c(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], size_t width, size_t height) {
+  for (size_t y = height; y > 0; --y) {
+    size_t x;
+    // not proud of it but it works
+    for (x = 0; x < width; ++x) {
+      pixel_t B = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 0];
+      pixel_t G = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 1];
+      pixel_t R = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 2];
+      pixel_t A;
+      if(numcomponents==4)
+        A = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 3];
+      reinterpret_cast<pixel_t *>(dstp[0])[x] = G;
+      reinterpret_cast<pixel_t *>(dstp[1])[x] = B;
+      reinterpret_cast<pixel_t *>(dstp[2])[x] = R;
+      if(numcomponents==4)
+        reinterpret_cast<pixel_t *>(dstp[3])[x] = A;
+    }
+
+    srcp -= src_pitch; // source packed RGB is upside down
+    dstp[0] += dst_pitch[0];
+    dstp[1] += dst_pitch[1];
+    dstp[2] += dst_pitch[2];
+    if (numcomponents == 4)
+      dstp[3] += dst_pitch[3];
+  }
+}
+
+PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  int src_pitch = src->GetPitch();
+  const BYTE *srcp = src->GetReadPtr();
+  BYTE *dstp[4] = {dst->GetWritePtr(PLANAR_G),dst->GetWritePtr(PLANAR_B),dst->GetWritePtr(PLANAR_R),dst->GetWritePtr(PLANAR_A)};
+  int dst_pitch[4] = {dst->GetPitch(PLANAR_G),dst->GetPitch(PLANAR_B),dst->GetPitch(PLANAR_R),dst->GetPitch(PLANAR_A)};
+
+  int pixelsize = vi.ComponentSize();
+
+  srcp += src_pitch * (vi.height - 1); // start from bottom: packed RGB is upside down
+
+  // todo sse
+  if(pixelsize==1)
+  {
+    if(vi.IsPlanarRGB())
+      convert_rgb_to_rgbp_c<uint8_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    else // RGBA
+      convert_rgb_to_rgbp_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+  } else {
+    if(vi.IsPlanarRGB())
+      convert_rgb_to_rgbp_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    else // RGBA
+      convert_rgb_to_rgbp_c<uint16_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+  }
+  return dst;
+}
