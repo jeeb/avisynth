@@ -335,8 +335,8 @@ PVideoFrame __stdcall RGBAtoRGB::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _targetHasAlpha)
-  : GenericVideoFilter(src), targetHasAlpha(_targetHasAlpha)
+PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _sourceHasAlpha, bool _targetHasAlpha)
+  : GenericVideoFilter(src), sourceHasAlpha(_sourceHasAlpha), targetHasAlpha(_targetHasAlpha)
 {
   vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ?
     (targetHasAlpha ? VideoInfo::CS_RGBAP : VideoInfo::CS_RGBP) :
@@ -389,15 +389,15 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
   if(pixelsize==1)
   {
     // targetHasAlpha decision in convert function
-    if(vi.IsPlanarRGB())
-      convert_rgb_to_rgbp_c<uint8_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-    else // RGBA
+    if(sourceHasAlpha)
       convert_rgb_to_rgbp_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-  } else {
-    if(vi.IsPlanarRGB())
-      convert_rgb_to_rgbp_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     else // RGBA
+      convert_rgb_to_rgbp_c<uint8_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+  } else {
+    if(sourceHasAlpha)
       convert_rgb_to_rgbp_c<uint16_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    else // RGBA
+      convert_rgb_to_rgbp_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
   }
   return dst;
 }

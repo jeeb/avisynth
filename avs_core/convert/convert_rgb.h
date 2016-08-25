@@ -73,13 +73,14 @@ class PackedRGBtoPlanarRGB : public GenericVideoFilter
   */
 {
 public:
-  PackedRGBtoPlanarRGB(PClip src, bool _targetHasAlpha);
+  PackedRGBtoPlanarRGB(PClip src, bool _sourceHasAlpha, bool _targetHasAlpha);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
+  const bool sourceHasAlpha;
   const bool targetHasAlpha;
 };
 

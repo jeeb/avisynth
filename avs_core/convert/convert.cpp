@@ -670,7 +670,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
           return new RGBAtoRGB(clip);
 
   if (target_rgbtype < 0)
-    return new PackedRGBtoPlanarRGB(clip, target_rgbtype==-2);
+    return new PackedRGBtoPlanarRGB(clip, vi.IsRGB32() || vi.IsRGB64(), target_rgbtype==-2);
 
   return clip;
 }
