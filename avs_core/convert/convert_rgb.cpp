@@ -335,30 +335,31 @@ PVideoFrame __stdcall RGBAtoRGB::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src)
-  : GenericVideoFilter(src)
+PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _targetHasAlpha)
+  : GenericVideoFilter(src), targetHasAlpha(_targetHasAlpha)
 {
   vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ?
-    (src->GetVideoInfo().IsRGB24() ? VideoInfo::CS_RGBP : VideoInfo::CS_RGBAP) : // RGB24, RGB32
-    (src->GetVideoInfo().IsRGB48() ? VideoInfo::CS_RGBP16 : VideoInfo::CS_RGBAP16);  // RGB48, RGB64
+    (targetHasAlpha ? VideoInfo::CS_RGBAP : VideoInfo::CS_RGBP) :
+    (targetHasAlpha ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16);
 }
 
-template<typename pixel_t, int numcomponents>
+template<typename pixel_t, int src_numcomponents>
 static void convert_rgb_to_rgbp_c(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], size_t width, size_t height) {
+  bool targetHasAlpha = (dst_pitch[3] != 0);
   for (size_t y = height; y > 0; --y) {
     size_t x;
     // not proud of it but it works
     for (x = 0; x < width; ++x) {
-      pixel_t B = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 0];
-      pixel_t G = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 1];
-      pixel_t R = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 2];
+      pixel_t B = reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 0];
+      pixel_t G = reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 1];
+      pixel_t R = reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 2];
       pixel_t A;
-      if(numcomponents==4)
-        A = reinterpret_cast<const pixel_t *>(srcp)[x*numcomponents + 3];
+      if(targetHasAlpha)
+        A = (src_numcomponents==4) ? reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 3] : (1<<(8*sizeof(pixel_t))) - 1;
       reinterpret_cast<pixel_t *>(dstp[0])[x] = G;
       reinterpret_cast<pixel_t *>(dstp[1])[x] = B;
       reinterpret_cast<pixel_t *>(dstp[2])[x] = R;
-      if(numcomponents==4)
+      if(targetHasAlpha)
         reinterpret_cast<pixel_t *>(dstp[3])[x] = A;
     }
 
@@ -366,7 +367,7 @@ static void convert_rgb_to_rgbp_c(const BYTE *srcp, BYTE * (&dstp)[4], int src_p
     dstp[0] += dst_pitch[0];
     dstp[1] += dst_pitch[1];
     dstp[2] += dst_pitch[2];
-    if (numcomponents == 4)
+    if (targetHasAlpha)
       dstp[3] += dst_pitch[3];
   }
 }
@@ -387,6 +388,7 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
   // todo sse
   if(pixelsize==1)
   {
+    // targetHasAlpha decision in convert function
     if(vi.IsPlanarRGB())
       convert_rgb_to_rgbp_c<uint8_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     else // RGBA
@@ -399,3 +401,71 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
   }
   return dst;
 }
+
+PlanarRGBtoPackedRGB::PlanarRGBtoPackedRGB(PClip src, bool _targetHasAlpha)
+  : GenericVideoFilter(src), targetHasAlpha(_targetHasAlpha)
+{
+  vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ?
+    (targetHasAlpha ? VideoInfo::CS_BGR32 : VideoInfo::CS_BGR24) : // PlanarRGB(A)->RGB24/32
+    (targetHasAlpha ? VideoInfo::CS_BGR64 : VideoInfo::CS_BGR48);  // PlanarRGB(A)->RGB48/64
+}
+
+template<typename pixel_t, int target_numcomponents>
+static void convert_rgbp_to_rgb_c(const BYTE *(&srcp)[4], BYTE * dstp, int (&src_pitch)[4], int dst_pitch, size_t width, size_t height) {
+  bool hasSrcAlpha = (src_pitch[3] != 0);
+  for (size_t y = 0; y < height; y++) {
+    size_t x;
+    // not proud of it but it works
+    for (x = 0; x < width; ++x) {
+      pixel_t G = reinterpret_cast<const pixel_t *>(srcp[0])[x];
+      pixel_t B = reinterpret_cast<const pixel_t *>(srcp[1])[x];
+      pixel_t R = reinterpret_cast<const pixel_t *>(srcp[2])[x];
+      pixel_t A;
+      if(target_numcomponents==4) // either from A channel or default transparent constant
+        A = hasSrcAlpha ? reinterpret_cast<const pixel_t *>(srcp[3])[x] : (1<<(8*sizeof(pixel_t))) - -1; // 255/65535
+      reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+0] = B;
+      reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+1] = G;
+      reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+2] = R;
+      if(target_numcomponents==4)
+        reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+3] = A;
+    }
+
+    dstp -= dst_pitch; // source packed RGB is upside down
+    srcp[0] += src_pitch[0];
+    srcp[1] += src_pitch[1];
+    srcp[2] += src_pitch[2];
+    if (hasSrcAlpha)
+      srcp[3] += src_pitch[3];
+  }
+}
+
+PVideoFrame __stdcall PlanarRGBtoPackedRGB::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  int dst_pitch = dst->GetPitch();
+  BYTE *dstp = dst->GetWritePtr();
+  const BYTE *srcp[4] = {src->GetReadPtr(PLANAR_G),src->GetReadPtr(PLANAR_B),src->GetReadPtr(PLANAR_R),src->GetReadPtr(PLANAR_A)};
+  int src_pitch[4] = {src->GetPitch(PLANAR_G),src->GetPitch(PLANAR_B),src->GetPitch(PLANAR_R),src->GetPitch(PLANAR_A)};
+
+  int pixelsize = vi.ComponentSize();
+
+  dstp += dst_pitch * (vi.height - 1); // start from bottom: packed RGB is upside down
+
+  bool hasTargetAlpha = (vi.NumComponents() == 4);
+  // todo sse
+  if(pixelsize==1)
+  {
+    if(!hasTargetAlpha)
+      convert_rgbp_to_rgb_c<uint8_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    else // RGBA
+      convert_rgbp_to_rgb_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+  } else {
+    if(!hasTargetAlpha)
+      convert_rgbp_to_rgb_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    else // RGBA
+      convert_rgbp_to_rgb_c<uint16_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+  }
+  return dst;
+}
+

@@ -55,7 +55,8 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToRGB32", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)32 },
   { "ConvertToRGB48", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)48 },
   { "ConvertToRGB64", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)64 },
-  { "ConvertToPlanarRGB", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)-1 },
+  { "ConvertToPlanarRGB",  BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)-1 },
+  { "ConvertToPlanarRGBA", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)-2 },
   { "ConvertToY8",    BUILTIN_FUNC_PREFIX, "c[matrix]s", ConvertToY8::Create },
   { "ConvertToYV12",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToYV12::Create },
   { "ConvertToYV24",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
@@ -588,9 +589,9 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 
   // todo bitdepth conversion on-the-fly
 
-  // common Create for all CreateRGB24/32/48/64/Planar(-1) using user_data
+  // common Create for all CreateRGB24/32/48/64/Planar(RGBP:-1, RGPAP:-2) using user_data
   int target_rgbtype = (int)reinterpret_cast<intptr_t>(user_data);
-  // -1: Planar RGB
+  // -1,-2: Planar RGB(A)
   //  0: not specified (leave if input is packed RGB, convert to rgb32/64 input colorspace dependent)
   // 24,32,48,64: RGB24/32/48/64
 
@@ -600,16 +601,16 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
     // conversion to planar or packed RGB is always from 444
     clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
     if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
-        env->ThrowError("ConvertToRGB: conversion is allowed only from 8 bit colorspace");
+        env->ThrowError("ConvertToRGB%d: conversion is allowed only from 8 bit colorspace",target_rgbtype);
     if((target_rgbtype==48 || target_rgbtype==64) && vi.ComponentSize()!=2)
-        env->ThrowError("ConvertToRGB: conversion is allowed only from 16 bit colorspace");
+        env->ThrowError("ConvertToRGB%d: conversion is allowed only from 16 bit colorspace",target_rgbtype);
     if(target_rgbtype==0 && vi.ComponentSize()==4)
         env->ThrowError("ConvertToRGB: conversion is allowed only from 8 or 16 bit colorspaces");
     int rgbtype_param;
     switch (target_rgbtype)
     {
-    case -1:
-        rgbtype_param = -1; break; // planar RGB(A)
+    case -1: case -2:
+        rgbtype_param = target_rgbtype; break; // planar RGB(A)
     case 0:
         rgbtype_param = vi.ComponentSize() == 1 ? 4 : 8; break; // input bitdepth adaptive
     case 24:
@@ -627,25 +628,28 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   if (haveOpts)
     env->ThrowError("ConvertToRGB: ChromaPlacement and ChromaResample options are not supported.");
 
-  // planar RGB-like
+  // planar RGB-like source
   if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
   {
-      if (target_rgbtype == -1) // planar to planar
-          return clip;
+      if (target_rgbtype < 0) // planar to planar
+      {
+         if ((vi.IsPlanarRGB() && target_rgbtype==-1) || (vi.IsPlanarRGBA() && target_rgbtype==-2))
+           return clip;
+         env->ThrowError("ConvertToPlanarRGB: cannon convert between RGBP and RGBAP");
+      }
       if(vi.ComponentSize() == 4)
           env->ThrowError("ConvertToRGB: conversion from float colorspace is not supported.");
       if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
           env->ThrowError("ConvertToRGB: conversion is allowed only from 8 bit colorspace");
       if((target_rgbtype==48 || target_rgbtype==64) && vi.ComponentSize()!=2)
           env->ThrowError("ConvertToRGB: conversion is allowed only from 16 bit colorspace");
-      env->ThrowError("ConvertToRGB: Planar RGB to packed RGB conversion is not yet implemented");
-      //return new PlanarRGBtoPackedRGB(clip); todo
+      return new PlanarRGBtoPackedRGB(clip, (target_rgbtype==32 || target_rgbtype==64));
   }
 
   // YUY2
   if (vi.IsYUV()) // at this point IsYUV means YUY2 (non-planar)
   {
-    if (target_rgbtype==48 || target_rgbtype==64 || target_rgbtype==-1)
+    if (target_rgbtype==48 || target_rgbtype==64 || target_rgbtype < 0)
         env->ThrowError("ConvertToRGB: conversion from YUY2 is allowed only to 8 bit packed RGB");
     return new ConvertToRGB(clip, target_rgbtype==24, matrix, env);
   }
@@ -659,14 +663,14 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 
   if(target_rgbtype==32 || target_rgbtype==64)
       if (vi.IsRGB24() || vi.IsRGB48())
-          return new RGBtoRGBA(clip); // also handles 48to64
+          return new RGBtoRGBA(clip);
 
   if(target_rgbtype==24 || target_rgbtype==48)
       if (vi.IsRGB32() || vi.IsRGB64())
-          return new RGBAtoRGB(clip); // also handles 64to48
+          return new RGBAtoRGB(clip);
 
-  if (target_rgbtype == -1)
-    return new PackedRGBtoPlanarRGB(clip);
+  if (target_rgbtype < 0)
+    return new PackedRGBtoPlanarRGB(clip, target_rgbtype==-2);
 
   return clip;
 }

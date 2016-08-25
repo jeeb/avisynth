@@ -801,21 +801,25 @@ ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, int in_matrix, int _pixel_step
 
   switch (pixel_step)
   {
-  case -1:
+  case -1: case -2:
     switch (vi.BitsPerComponent())
     {
-    case 8: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP : VideoInfo::CS_RGBP; break;
-    case 10: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP10 : VideoInfo::CS_RGBP10; break;
-    case 12: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP12 : VideoInfo::CS_RGBP12; break;
-    case 14: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP14 : VideoInfo::CS_RGBP14; break;
-    case 16: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16; break;
-    case 32: vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_RGBAPS : VideoInfo::CS_RGBPS; break;
+    case 8:  vi.pixel_type = pixel_step == -2 ? VideoInfo::CS_RGBAP : VideoInfo::CS_RGBP; break;
+    case 10: vi.pixel_type = pixel_step == -2 ? VideoInfo::CS_RGBAP10 : VideoInfo::CS_RGBP10; break;
+    case 12: vi.pixel_type = pixel_step == -2 ? VideoInfo::CS_RGBAP12 : VideoInfo::CS_RGBP12; break;
+    case 14: vi.pixel_type = pixel_step == -2 ? VideoInfo::CS_RGBAP14 : VideoInfo::CS_RGBP14; break;
+    case 16: vi.pixel_type = pixel_step == -2 ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16; break;
+    case 32: vi.pixel_type = pixel_step == -2 ? VideoInfo::CS_RGBAPS : VideoInfo::CS_RGBPS; break;
+    default:
+      env->ThrowError("ConvertYUV444ToRGB: invalid vi.BitsPerComponent(): %d", vi.BitsPerComponent());
     }
     break;
   case 3: vi.pixel_type = VideoInfo::CS_BGR24; break;
   case 4: vi.pixel_type = VideoInfo::CS_BGR32; break;
   case 6: vi.pixel_type = VideoInfo::CS_BGR48; break;
   case 8: vi.pixel_type = VideoInfo::CS_BGR64; break;
+  default:
+    env->ThrowError("ConvertYUV444ToRGB: invalid pixel step: %d", pixel_step);
   }
 
   const int shift = 13; // for integer arithmetic
@@ -1196,9 +1200,9 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
 
   const int dst_pitch = dst->GetPitch();
 
-  if (pixel_step != 4 && pixel_step != 3 && pixel_step != 8 && pixel_step != 6 && pixel_step != -1) {
+  /*if (pixel_step != 4 && pixel_step != 3 && pixel_step != 8 && pixel_step != 6 && pixel_step != -1 && pixel_step != -2) {
     env->ThrowError("Invalid pixel step. This is a bug.");
-  }
+  }*/
 
   // todo: SSE for not only 8 bit RGB
   if ((env->GetCPUFlags() & CPUF_SSE2) && (pixel_step==3 || pixel_step==4)) {
@@ -1230,14 +1234,14 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
   //Slow C-code.
 
   dstp += dst_pitch * (vi.height-1);  // We start at last line. Not for Planar RGB
-  bool hasAlpha = (src_pitch_a != 0);
+  bool srcHasAlpha = (src_pitch_a != 0);
   if (pixel_step == 4) {
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
         int Y = srcY[x] + matrix.offset_y;
         int U = srcU[x] - 128;
         int V = srcV[x] - 128;
-        uint8_t a = hasAlpha ? srcA[x] : 255; // YUVA aware
+        uint8_t a = srcHasAlpha ? srcA[x] : 255; // YUVA aware
         int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096)>>13);
         int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096)>>13);
         int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096)>>13);
@@ -1278,7 +1282,7 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
             int Y = reinterpret_cast<const uint16_t *>(srcY)[x] + (matrix.offset_y << 8);
             int U = reinterpret_cast<const uint16_t *>(srcU)[x] - 32768;
             int V = reinterpret_cast<const uint16_t *>(srcV)[x] - 32768;
-            uint16_t a = hasAlpha ? reinterpret_cast<const uint16_t *>(srcA)[x] : 65535; // YUVA aware
+            uint16_t a = srcHasAlpha ? reinterpret_cast<const uint16_t *>(srcA)[x] : 65535; // YUVA aware
             int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
             int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
             int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
@@ -1313,14 +1317,18 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
         srcU += src_pitch_uv;
         srcV += src_pitch_uv;
     }
-  } else if(pixel_step==-1)
+  } else if(pixel_step < 0) // -1: RGBP  -2:RGBAP
   {
       // YUV444 -> PlanarRGB
       // YUVA444 -> PlanarRGBA
+    bool targetHasAlpha = pixel_step == -2;
+
     BYTE *dstpG = dst->GetWritePtr(PLANAR_G);
     BYTE *dstpB = dst->GetWritePtr(PLANAR_B);
     BYTE *dstpR = dst->GetWritePtr(PLANAR_R);
-    BYTE *dstpA = dst->GetWritePtr(PLANAR_A);
+    BYTE *dstpA;
+    if(targetHasAlpha)
+      dstpA = dst->GetWritePtr(PLANAR_A);
 
     int dst_pitchG = dst->GetPitch(PLANAR_G);
     int dst_pitchB = dst->GetPitch(PLANAR_B);
@@ -1329,7 +1337,7 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
 
     int pixelsize = vi.ComponentSize();
 
-    // todo: template, maybe sse
+    // todo: template for integers, maybe sse
     if(pixelsize==1)
     {
       for (int y = 0; y < vi.height; y++) {
@@ -1338,21 +1346,21 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
           int U = reinterpret_cast<const uint8_t *>(srcU)[x] - 128;
           int V = reinterpret_cast<const uint8_t *>(srcV)[x] - 128;
           int A;
-          if(hasAlpha)
-            A = reinterpret_cast<const uint8_t *>(srcA)[x];
-          int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
-          int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
-          int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
+          if(targetHasAlpha)
+            A = srcHasAlpha ? reinterpret_cast<const uint8_t *>(srcA)[x] : 255;
+          int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096)>>13);
+          int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096)>>13);
+          int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096)>>13);
           reinterpret_cast<uint8_t *>(dstpB)[x] = clamp(b,0,255);  // All the safety we can wish for.
           reinterpret_cast<uint8_t *>(dstpG)[x] = clamp(g,0,255);  // Probably needed here.
           reinterpret_cast<uint8_t *>(dstpR)[x] = clamp(r,0,255);
-          if(hasAlpha)
+          if(targetHasAlpha)
             reinterpret_cast<uint8_t *>(dstpA)[x] = A;
         }
         dstpG += dst_pitchG;
         dstpB += dst_pitchB;
         dstpR += dst_pitchR;
-        if(hasAlpha)
+        if(targetHasAlpha)
           dstpA += dst_pitchA;
         srcY += src_pitch_y;
         srcU += src_pitch_uv;
@@ -1365,21 +1373,22 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
           int U = reinterpret_cast<const uint16_t *>(srcU)[x] - 32768;
           int V = reinterpret_cast<const uint16_t *>(srcV)[x] - 32768;
           int A;
-          if(hasAlpha)
-            A = reinterpret_cast<const uint16_t *>(srcA)[x];
+          if(targetHasAlpha)
+            A = srcHasAlpha ? reinterpret_cast<const uint16_t *>(srcA)[x] : 65535;
+          // __int64 needed for 16 bit pixels
           int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
           int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
           int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
           reinterpret_cast<uint16_t *>(dstpB)[x] = clamp(b,0,65535);  // All the safety we can wish for.
           reinterpret_cast<uint16_t *>(dstpG)[x] = clamp(g,0,65535);  // Probably needed here.
           reinterpret_cast<uint16_t *>(dstpR)[x] = clamp(r,0,65535);
-          if(hasAlpha)
+          if(targetHasAlpha)
             reinterpret_cast<uint16_t *>(dstpA)[x] = A;
         }
         dstpG += dst_pitchG;
         dstpB += dst_pitchB;
         dstpR += dst_pitchR;
-        if(hasAlpha)
+        if(targetHasAlpha)
           dstpA += dst_pitchA;
         srcY += src_pitch_y;
         srcU += src_pitch_uv;
@@ -1392,21 +1401,21 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
           float U = reinterpret_cast<const float *>(srcU)[x] - 0.5f;
           float V = reinterpret_cast<const float *>(srcV)[x] - 0.5f;
           float A;
-          if(hasAlpha)
-            A = reinterpret_cast<const float *>(srcA)[x];
+          if(targetHasAlpha)
+            A = srcHasAlpha ? reinterpret_cast<const float *>(srcA)[x] : 1.0f;
           float b = matrix.y_b_f * Y + matrix.u_b_f * U + matrix.v_b_f * V;
           float g = matrix.y_g_f * Y + matrix.u_g_f * U + matrix.v_g_f * V;
           float r = matrix.y_r_f * Y + matrix.u_r_f * U + matrix.v_r_f * V;
           reinterpret_cast<float *>(dstpB)[x] = clamp(b, 0.0f, 1.0f);  // All the safety we can wish for.
           reinterpret_cast<float *>(dstpG)[x] = clamp(g, 0.0f, 1.0f);  // Probably needed here.
           reinterpret_cast<float *>(dstpR)[x] = clamp(r, 0.0f, 1.0f);
-          if(hasAlpha)
+          if(targetHasAlpha)
             reinterpret_cast<float *>(dstpA)[x] = A;
         }
         dstpG += dst_pitchG;
         dstpB += dst_pitchB;
         dstpR += dst_pitchR;
-        if(hasAlpha)
+        if(targetHasAlpha)
           dstpA += dst_pitchA;
         srcY += src_pitch_y;
         srcU += src_pitch_uv;
@@ -1705,7 +1714,9 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
 
   auto Is420 = [](int pix_type) {
     return pix_type == VideoInfo::CS_YV12 || pix_type == VideoInfo::CS_I420 ||
-      pix_type == VideoInfo::CS_YUV420P16 || pix_type == VideoInfo::CS_YUV420PS;
+      pix_type == VideoInfo::CS_YUV420P10 || pix_type == VideoInfo::CS_YUV420P12 ||
+      pix_type == VideoInfo::CS_YUV420P14 || pix_type == VideoInfo::CS_YUV420P16 ||
+      pix_type == VideoInfo::CS_YUV420PS;
   };
 
   if (!Is420(vi.pixel_type) && !Is420(dst_space))
@@ -1831,6 +1842,13 @@ static inline void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch
   std::fill_n(reinterpret_cast<pixel_type*>(dstp_v), size, val);
 }
 
+template <typename pixel_type>
+static inline void fill_plane(BYTE* dstp, int height, int pitch, pixel_type val)
+{
+  size_t size = height * pitch / sizeof(pixel_type);
+  std::fill_n(reinterpret_cast<pixel_type*>(dstp), size, val);
+}
+
 PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -1862,6 +1880,34 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
     src = Vsource->GetFrame(n, env);
     env->BitBlt(dstp_v, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
   }
+
+  // alpha. if pitch is zero -> no alpha channel
+  const int dst_pitchA = dst->GetPitch(PLANAR_A);
+  BYTE* dstp_a = (dst_pitchA == 0) ? nullptr : dst->GetWritePtr(PLANAR_A);
+  const int heightA = dst->GetHeight(PLANAR_A);
+
+  if (dst_pitchA != 0)
+  {
+    if (src->GetPitch(PLANAR_A) != 0)
+      env->BitBlt(dstp_a, dst_pitchA, src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A),
+        src->GetRowSize(PLANAR_A_ALIGNED), src->GetHeight(PLANAR_A));
+    else {
+      switch (vi.ComponentSize())
+      {
+      case 1:
+        fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, 255);
+        break;
+      case 2:
+        fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, 65535);
+        break;
+      case 4:
+        fill_plane<float>(dstp_a, heightA, dst_pitchA, 1.0f);
+        break;
+      }
+
+    }
+  }
+
   return dst;
 }
 
@@ -1869,7 +1915,14 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   PClip clip = args[0].AsClip();
   VideoInfo vi = clip->GetVideoInfo();
 
-  if (vi.IsRGB()) { // 8 bit only
+  if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+    env->ThrowError("%s: Conversion from Planar RGB(A) is not implemented yet.", filter);
+    //clip = new ConvertPlanarRGBTo444(clip, getMatrix(args[2].AsString(0), env), env);
+    //vi = clip->GetVideoInfo();
+  }
+  else if (vi.IsRGB()) { // 8 bit only, todo
+    if (vi.ComponentSize() != 1)
+      env->ThrowError("%s: Conversion from packed RGB > 8 bit is not implemented yet.", filter);
     clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
     vi = clip->GetVideoInfo();
   }
@@ -1884,34 +1937,53 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   AVSValue outplacement = AVSValue();
 
   if (strcmp(filter, "ConvertToYUV420") == 0) {
-    if (vi.IsYV12() || vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS))
+    if (vi.Is420())
       if (getPlacement(args[3], env) == getPlacement(args[5], env))
         return clip;
     outplacement = args[5];
-    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV12;
-    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV420P16;
-    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV420PS;
+    switch (vi.BitsPerComponent())
+    {
+    case 8: pixel_type = VideoInfo::CS_YV12; break;
+    case 10: pixel_type = VideoInfo::CS_YUV420P10; break;
+    case 12: pixel_type = VideoInfo::CS_YUV420P12; break;
+    case 14: pixel_type = VideoInfo::CS_YUV420P14; break;
+    case 16: pixel_type = VideoInfo::CS_YUV420P16; break;
+    case 32: pixel_type = VideoInfo::CS_YUV420PS; break;
+    }
   }
   else if (strcmp(filter, "ConvertToYUV422") == 0) {
-    if (vi.IsYV16() || vi.IsColorSpace(VideoInfo::CS_YUV422P16) || vi.IsColorSpace(VideoInfo::CS_YUV422PS))
+    if (vi.Is422())
       return clip;
-    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV16;
-    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV422P16;
-    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV422PS;
+    switch (vi.BitsPerComponent())
+    {
+    case 8: pixel_type = VideoInfo::CS_YV16; break;
+    case 10: pixel_type = VideoInfo::CS_YUV422P10; break;
+    case 12: pixel_type = VideoInfo::CS_YUV422P12; break;
+    case 14: pixel_type = VideoInfo::CS_YUV422P14; break;
+    case 16: pixel_type = VideoInfo::CS_YUV422P16; break;
+    case 32: pixel_type = VideoInfo::CS_YUV422PS; break;
+    }
   }
   else if (strcmp(filter, "ConvertToYUV444") == 0) {
-    if (vi.IsYV24() || vi.IsColorSpace(VideoInfo::CS_YUV444P16) || vi.IsColorSpace(VideoInfo::CS_YUV444PS))
+    if (vi.Is444())
       return clip;
-    if (vi.ComponentSize() == 1) pixel_type = VideoInfo::CS_YV24;
-    else if (vi.ComponentSize() == 2) pixel_type = VideoInfo::CS_YUV444P16;
-    else if (vi.ComponentSize() == 4) pixel_type = VideoInfo::CS_YUV444PS;
+    switch (vi.BitsPerComponent())
+    {
+    case 8: pixel_type = VideoInfo::CS_YV24; break;
+    case 10: pixel_type = VideoInfo::CS_YUV444P10; break;
+    case 12: pixel_type = VideoInfo::CS_YUV444P12; break;
+    case 14: pixel_type = VideoInfo::CS_YUV444P14; break;
+    case 16: pixel_type = VideoInfo::CS_YUV444P16; break;
+    case 32: pixel_type = VideoInfo::CS_YUV444PS; break;
+    }
   }
   else if (strcmp(filter, "ConvertToYV411") == 0) {
     if (vi.IsYV411()) return clip;
+    if(vi.ComponentSize()!=1)
+      env->ThrowError("%s: 8 bit only", filter);
     pixel_type = VideoInfo::CS_YV411;
   }
   else env->ThrowError("Convert: unknown filter '%s'.", filter);
-
 
   if (pixel_type == VideoInfo::CS_UNKNOWN)
     env->ThrowError("%s: unsupported bit depth", filter);
