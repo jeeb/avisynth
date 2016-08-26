@@ -81,8 +81,6 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-//  static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
-//  static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   int theMatrix;
