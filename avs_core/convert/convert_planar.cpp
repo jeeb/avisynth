@@ -1554,24 +1554,6 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
   return dst;
 }
 
-#if 0
-AVSValue __cdecl ConvertYUV444ToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-  if (clip->GetVideoInfo().IsRGB())
-    return clip;
-  return new ConvertYUV444ToRGB(clip, getMatrix(args[1].AsString(0), env), 4, env);
-}
-#endif
-
-#if 0
-AVSValue __cdecl ConvertYUV444ToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-  if (clip->GetVideoInfo().IsRGB())
-    return clip;
-  return new ConvertYUV444ToRGB(clip, getMatrix(args[1].AsString(0), env), 3, env);
-}
-#endif
-
 /************************************
  * YUY2 to YV16
  ************************************/
@@ -2043,17 +2025,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   PClip clip = args[0].AsClip();
   VideoInfo vi = clip->GetVideoInfo();
 
-  /*
-  if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
-    env->ThrowError("%s: Conversion from Planar RGB(A) is not implemented yet.", filter);
-    //clip = new ConvertPlanarRGBTo444(clip, getMatrix(args[2].AsString(0), env), env);
-    //vi = clip->GetVideoInfo();
-  }
-  else*/ if (vi.IsRGB()) { // 8 bit only, todo
-    /*
-    if (vi.ComponentSize() != 1)
-      env->ThrowError("%s: Conversion from packed RGB > 8 bit is not implemented yet.", filter);
-      */
+  if (vi.IsRGB()) { // packed or planar
     clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
     vi = clip->GetVideoInfo();
   }
