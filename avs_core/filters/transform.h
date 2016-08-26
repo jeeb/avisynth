@@ -103,6 +103,8 @@ public:
 private:
   /*const*/ int left_bytes, top, align;
   int xsub, ysub;
+  bool isRGBPfamily;
+  bool hasAlpha;
 };
 
 
