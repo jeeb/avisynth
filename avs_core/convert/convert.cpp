@@ -675,61 +675,6 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   return clip;
 }
 
-#if 0
-// merged into Create
-AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env)
-{
-  const bool haveOpts = args[3].Defined() || args[4].Defined();
-  PClip clip = args[0].AsClip();
-  const char* const matrix = args[1].AsString(0);
-  const VideoInfo vi = clip->GetVideoInfo();
-
-  if (vi.IsPlanar()) {
-    AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
-    clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), 4 , env);
-  }
-
-  if (haveOpts)
-    env->ThrowError("ConvertToRGB32: ChromaPlacement and ChromaResample options are not supported.");
-
-  if (vi.IsYUV())
-    return new ConvertToRGB(clip, false, matrix, env);
-
-  if (vi.IsRGB24())
-    return new RGB24to32(clip);
-
-  return clip;
-}
-#endif
-
-#if 0
-// merged into Create
-AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env)
-{
-  const bool haveOpts = args[3].Defined() || args[4].Defined();
-  PClip clip = args[0].AsClip();
-  const char* const matrix = args[1].AsString(0);
-  const VideoInfo& vi = clip->GetVideoInfo();
-
-  if (vi.IsPlanar()) {
-    AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
-    clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), 3 , env);
-  }
-
-  if (haveOpts)
-    env->ThrowError("ConvertToRGB24: ChromaPlacement and ChromaResample options are not supported.");
-
-  if (vi.IsYUV())
-    return new ConvertToRGB(clip, true, matrix, env);
-
-  if (vi.IsRGB32())
-    return new RGB32to24(clip);
-
-  return clip;
-}
-#endif
 
 /**********************************
 *******   Convert to YV12   ******
