@@ -417,7 +417,7 @@ static void resize_v_sseX_planar_16or32(BYTE* dst0, const BYTE* src0, int dst_pi
           src_h_single = loadps(reinterpret_cast<const float*>(src2_ptr+4));
         }
         __m128 coeff = _mm_load1_ps(reinterpret_cast<const float*>(current_coeff_float+i)); // loads 1, fills all 4 floats
-        __m128 dst_l = _mm_mul_ps(src_l_single, coeff); // Multiply by coefficient (SSE4)
+        __m128 dst_l = _mm_mul_ps(src_l_single, coeff); // Multiply by coefficient
         __m128 dst_h = _mm_mul_ps(src_h_single, coeff); // 4*(32bit*32bit=32bit)
         result_l_single = _mm_add_ps(result_l_single, dst_l); // accumulate result.
         result_h_single = _mm_add_ps(result_h_single, dst_h);
