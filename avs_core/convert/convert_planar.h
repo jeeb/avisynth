@@ -105,6 +105,8 @@ private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
   ConversionMatrix matrix;
   int pixel_step;
+  bool hasAlpha;
+  bool isPlanarRGBfamily;
 };
 
 class ConvertYUY2ToYV16 : public GenericVideoFilter
