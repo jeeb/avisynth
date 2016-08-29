@@ -204,8 +204,9 @@ extern "C"
 int AVSC_CC avs_get_pitch_p(const AVS_VideoFrame * p, int plane)
 {
   switch (plane) {
-  case AVS_PLANAR_U: case AVS_PLANAR_V: return p->pitchUV;}
-  return p->pitch;
+  case AVS_PLANAR_U: case AVS_PLANAR_V: return p->pitchUV;
+  case AVS_PLANAR_A: return p->pitchA;}
+  return p->pitch; // Y, G, B, R
 }
 
 extern "C"
@@ -225,8 +226,9 @@ int AVSC_CC avs_get_row_size_p(const AVS_VideoFrame * p, int plane)
     else
       return 0;
 
-  case AVS_PLANAR_Y_ALIGNED:
-       r = (p->row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
+  case AVS_PLANAR_ALIGNED: case AVS_PLANAR_Y_ALIGNED:
+  case AVS_PLANAR_R_ALIGNED: case AVS_PLANAR_G_ALIGNED: case AVS_PLANAR_B_ALIGNED: case AVS_PLANAR_A_ALIGNED:
+    r = (p->row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
        return (r <= p->pitch) ? r : p->row_size;
   }
   return p->row_size;
@@ -239,16 +241,17 @@ int AVSC_CC avs_get_height_p(const AVS_VideoFrame * p, int plane)
   case AVS_PLANAR_U: case AVS_PLANAR_V:
     return (p->pitchUV) ? p->heightUV : 0;
   }
-  return p->height;
+  return p->height; // Y, G, B, R, A
 }
 
 extern "C"
 const BYTE * AVSC_CC avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane)
 {
   switch (plane) {
-    case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
-    case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
-    default:           return p->vfb->data + p->offset;}
+    case AVS_PLANAR_U: case AVS_PLANAR_B: return p->vfb->data + p->offsetU; // G is first. Then B,R order like U,V
+    case AVS_PLANAR_V: case PLANAR_R:     return p->vfb->data + p->offsetV;
+    case PLANAR_A: return p->vfb->data + p->offsetA;
+    default:           return p->vfb->data + p->offset;} // PLANAR Y, PLANAR_G
 }
 
 extern "C"
@@ -265,12 +268,13 @@ extern "C"
 BYTE * AVSC_CC avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane)
 {
   switch (plane) {
-    case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
-    case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
+    case AVS_PLANAR_U: case AVS_PLANAR_B: return p->vfb->data + p->offsetU;
+    case AVS_PLANAR_V: case AVS_PLANAR_R: return p->vfb->data + p->offsetV;
+    case AVS_PLANAR_A: return p->vfb->data + p->offsetA;
     default:           break;
   }
   if (avs_is_writable(p)) {
-    return p->vfb->data + p->offset;
+    return p->vfb->data + p->offset; // Y,G
   }
   return 0;
 }

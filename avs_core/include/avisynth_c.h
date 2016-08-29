@@ -531,7 +531,11 @@ typedef struct AVS_VideoFrame {
   volatile long refcount;
   AVS_VideoFrameBuffer * vfb;
   int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
-  int row_sizeUV, heightUV;
+  int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
+                            // for Planar RGB pitchUV and row_sizeUV = 0, because when no VideoInfo (MakeWriteable)
+                            // the decision on existance of UV is checked by zero pitch
+  // AVS+ extension, avisynth.h: class does not break plugins if appended here
+  int offsetA, pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
@@ -745,7 +749,7 @@ enum {
   AVS_CPUF_SSSE3      = 0x200,   //  Core 2
   AVS_CPUF_SSE4       = 0x400,   //  Penryn, Wolfdale, Yorkfield
   AVS_CPUF_SSE4_1     = 0x400,
-//AVS_CPUF_AVX        = 0x800,   //  Sandy Bridge, Bulldozer
+  AVS_CPUF_AVX        = 0x800,   //  Sandy Bridge, Bulldozer
   AVS_CPUF_SSE4_2    = 0x1000,   //  Nehalem
 //AVS_CPUF_AVX2      = 0x2000,   //  Haswell
 //AVS_CPUF_AVX512    = 0x4000,   //  Knights Landing
