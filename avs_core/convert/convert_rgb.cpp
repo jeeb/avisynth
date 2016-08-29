@@ -422,7 +422,7 @@ static void convert_rgbp_to_rgb_c(const BYTE *(&srcp)[4], BYTE * dstp, int (&src
       pixel_t R = reinterpret_cast<const pixel_t *>(srcp[2])[x];
       pixel_t A;
       if(target_numcomponents==4) // either from A channel or default transparent constant
-        A = hasSrcAlpha ? reinterpret_cast<const pixel_t *>(srcp[3])[x] : (1<<(8*sizeof(pixel_t))) - -1; // 255/65535
+        A = hasSrcAlpha ? reinterpret_cast<const pixel_t *>(srcp[3])[x] : (1<<(8*sizeof(pixel_t))) -1; // 255/65535
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+0] = B;
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+1] = G;
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+2] = R;
