@@ -776,16 +776,17 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
   const int pitch = f->GetPitch();
   const int rowsize = f->GetRowSize();
 
+  const int width = rowsize / pixelsize;
+
   if (input_type == VideoInfo::CS_BGR32 || input_type == VideoInfo::CS_BGR64) {
     if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // RGB32->RGB32, RGB64->RGB64
     {
       if (f->IsWritable()) {
         // we can do it in-place
         BYTE* dstp = f->GetWritePtr();
-
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize; j+=4) {
+            for (int j=0; j<width; j+=4) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = dstp[j + channel];
             }
             dstp += pitch;
@@ -793,7 +794,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         else { // pixelsize==2
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize/sizeof(uint16_t); j+=4) {
+            for (int j=0; j<width; j+=4) {
               uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
               dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = dstp16[j + channel];
             }
@@ -809,7 +810,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize; j+=4) {
+            for (int j=0; j<width; j+=4) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = pf[j + channel];
               dstp[j + 3] = pf[j + 3];
             }
@@ -819,7 +820,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         else { // pixelsize==2
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize/sizeof(uint16_t); j+=4) {
+            for (int j=0; j<width; j+=4) {
               uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
               dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(pf)[j + channel];
               dstp16[j + 3] = pf[j + 3];
@@ -838,7 +839,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       const int dstpitch = dst->GetPitch();
       if(pixelsize==1) {
         for (int i=0; i<height; ++i) {
-          for (int j=0; j<rowsize/4; j++) {
+          for (int j=0; j<width/4; j++) {
             dstp[j*3 + 0] = dstp[j*3 + 1] = dstp[j*3 + 2] = pf[j*4 + channel];
           }
           pf   += pitch;
@@ -847,7 +848,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else { // pixelsize==2
         for (int i=0; i<height; ++i) {
-          for (int j=0; j<rowsize/sizeof(uint16_t)/4; j++) {
+          for (int j=0; j<width/4; j++) {
             uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
             dstp16[j*3 + 0] = dstp16[j*3 + 1] = dstp16[j*3 + 2] = reinterpret_cast<const uint16_t *>(pf)[j*4 + channel];
           }
@@ -886,7 +887,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         PVideoFrame dst = env->NewVideoFrame(vi);
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
-        int dstrowsize = dst->GetRowSize();
+        int dstwidth = dst->GetRowSize() / pixelsize;
 
         // RGB is upside-down
         pf += (height-1) * pitch;
@@ -894,7 +895,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         // copy to luma
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstrowsize; ++j) {
+            for (int j=0; j<dstwidth; ++j) {
               dstp[j] = pf[j*4 + channel];
             }
             pf -= pitch;
@@ -903,7 +904,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         else { // pixelsize==2
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstrowsize/sizeof(uint16_t); ++j) {
+            for (int j=0; j<dstwidth; ++j) {
               reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(pf)[j*4 + channel];
             }
             pf -= pitch;
@@ -935,7 +936,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize; j+=3) {
+            for (int j=0; j<width; j+=3) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = dstp[j + channel];
             }
             dstp += pitch;
@@ -943,7 +944,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         else { // pixelsize==2
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize/sizeof(uint16_t); j+=3) {
+            for (int j=0; j<width; j+=3) {
               uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
               dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = dstp16[j + channel];
             }
@@ -959,7 +960,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize; j+=3) {
+            for (int j=0; j<width; j+=3) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = pf[j + channel];
             }
             pf   += pitch;
@@ -968,7 +969,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         else { // pixelsize==2
           for (int i=0; i<height; ++i) {
-            for (int j=0; j<rowsize/sizeof(uint16_t); j+=3) {
+            for (int j=0; j<width; j+=3) {
               uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
               dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(pf)[j + channel];
             }
@@ -989,7 +990,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
       if(pixelsize==1) {
         for (int i=0; i<height; ++i) {
-          for (int j=0; j<rowsize/3; j++) {
+          for (int j=0; j<width/3; j++) {
             dstp[j*4 + 0] = dstp[j*4 + 1] = dstp[j*4 + 2] = dstp[j*4 + 3] = pf[j*3 + channel];
           }
           pf   += pitch;
@@ -998,7 +999,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else {
         for (int i=0; i<height; ++i) {
-          for (int j=0; j<rowsize/sizeof(uint16_t)/3; j++) {
+          for (int j=0; j<width/3; j++) {
             uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
             dstp16[j*4 + 0] = dstp16[j*4 + 1] = dstp16[j*4 + 2] = dstp16[j*4 + 3] = reinterpret_cast<const uint16_t *>(pf)[j*3 + channel];
           }
@@ -1037,14 +1038,14 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         PVideoFrame dst = env->NewVideoFrame(vi);
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
-        int dstrowsize = dst->GetRowSize();
+        int dstwidth = dst->GetRowSize() / pixelsize;
 
         // RGB is upside-down
         pf += (height-1) * pitch;
 
         if(pixelsize==1) {
           for (i=0; i<height; ++i) {
-            for (j=0; j<dstrowsize; ++j) {
+            for (j=0; j<dstwidth; ++j) {
               dstp[j] = pf[j*3 + channel];
             }
             pf -= pitch;
@@ -1053,7 +1054,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         else {
           for (i=0; i<height; ++i) {
-            for (j=0; j<dstrowsize/sizeof(uint16_t); ++j) {
+            for (j=0; j<dstwidth; ++j) {
               reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(pf)[j*3 + channel];
             }
             pf -= pitch;
