@@ -116,17 +116,22 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsPlanar() && (vi.NumComponents() > 1))
   {
     // Copy Planar
-    const int dst_pitchUV = dst->GetPitch(PLANAR_U);
-    const int row_sizeUV = dst->GetRowSize(PLANAR_U);
+    const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
+    const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+    const int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
 
-    for (const int& plane: { PLANAR_U, PLANAR_V })
-    {
+    // first plane is already processed
+    for (int p = 1; p < vi.NumComponents(); p++) {
+      const int plane = planes[p];
       dstp = dst->GetWritePtr(plane);
+      const int dst_pitch = dst->GetPitch(plane);
+      const int row_size = dst->GetRowSize(plane);
+
       for (const auto& src: frames)
       {
         const int src_height = src->GetHeight(plane);
-        env->BitBlt(dstp, dst_pitchUV, src->GetReadPtr(plane), src->GetPitch(plane), row_sizeUV, src_height);
-        dstp += dst_pitchUV * src_height;
+        env->BitBlt(dstp, dst_pitch, src->GetReadPtr(plane), src->GetPitch(plane), row_size, src_height);
+        dstp += dst_pitch * src_height;
       }
     }
   }
@@ -208,15 +213,22 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
     // Copy Planar
-    const int dst_pitchUV = dst->GetPitch(PLANAR_U);
-    const int heightUV = dst->GetHeight(PLANAR_U);
 
-    for (const int plane: { PLANAR_U, PLANAR_V }) {
+    const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
+    const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+    const int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
+
+    // first plane is already processed
+    for (int p = 1; p < vi.NumComponents(); p++) {
+      const int plane = planes[p];
       dstp = dst->GetWritePtr(plane);
+      const int dst_pitch = dst->GetPitch(plane);
+      const int height = dst->GetHeight(plane);
+
       for (const auto& src: frames)
       {
         const int src_rowsize = src->GetRowSize(plane);
-        env->BitBlt(dstp, dst_pitchUV, src->GetReadPtr(plane), src->GetPitch(plane), src_rowsize, heightUV);
+        env->BitBlt(dstp, dst_pitch, src->GetReadPtr(plane), src->GetPitch(plane), src_rowsize, height);
         dstp += src_rowsize;
       }
     }
@@ -285,7 +297,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
   const int dst_pitchUV = dst->GetPitch(PLANAR_U);
   const int height = dst->GetHeight()/2;
   const int heightUV = dst->GetHeight(PLANAR_U)/2;
-
+  // todo: >8 bits, planar RGB
   if (vi.IsYUV()) {
     const int wg = dst->GetRowSize()/6;
     for (int i=0; i<height; i++){
