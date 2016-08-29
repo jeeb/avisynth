@@ -263,7 +263,7 @@ void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_p
 VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
-  if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
+  if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA()) && (vi.NumComponents() > 1)) {
     const int mod  = 2 << vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int mask = mod - 1;
     if (vi.height & mask)
@@ -285,23 +285,24 @@ VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
 PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
-  int src_pitch = src->GetPitch();
-  int dst_pitch = dst->GetPitch();
-  int row_size = src->GetRowSize();
-  BYTE* dstp = dst->GetWritePtr();
-  const BYTE* srcp = src->GetReadPtr();
 
   int pixelsize = vi.ComponentSize();
 
   if (vi.IsPlanar()) {
-    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), pixelsize, env);
-    if (vi.NumComponents() > 1) {
-      vertical_reduce_core(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U),
-        src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), pixelsize, env);
-      vertical_reduce_core(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V),
-        src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), pixelsize, env);
+    int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
+    for (int p = 0; p < vi.NumComponents(); p++)
+    {
+      int plane = planes[p];
+      vertical_reduce_core(dst->GetWritePtr(plane), src->GetReadPtr(plane), dst->GetPitch(plane), src->GetPitch(plane), dst->GetRowSize(plane), dst->GetHeight(plane), pixelsize, env);
     }
   } else {
+    int src_pitch = src->GetPitch();
+    int dst_pitch = dst->GetPitch();
+    int row_size = src->GetRowSize();
+    BYTE* dstp = dst->GetWritePtr();
+    const BYTE* srcp = src->GetReadPtr();
     vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, vi.height, pixelsize, env);
   }
   return dst;
@@ -367,8 +368,9 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsPlanar()) {
 
     int pixelsize = vi.ComponentSize();
-    int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-
+    int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
     for (int p = 0; p < vi.NumComponents(); p++)
     {
       int plane = planes[p];
@@ -453,6 +455,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       }
     }
   }
+  // todo RGB48/RGB64
   return dst;
 }
 
