@@ -763,7 +763,7 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     env->ThrowError("Show%s supports the following output pixel types: RGB, Y8, Y16, YUY2, or 8/16 bit YUV formats", ShowText[channel]);
   }
   if(target_pixelsize != pixelsize)
-    env->ThrowError("Show%s: source must be %d bit for %s", ShowText[channel], pixelsize*8, pixel_type);
+    env->ThrowError("Show%s: source must be %d bit for %s", ShowText[channel], target_pixelsize*8, pixel_type);
 }
 
 
