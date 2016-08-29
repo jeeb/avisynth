@@ -156,6 +156,7 @@ public:
 private:
   const int channel;
   const int input_type;
+  const int pixelsize;
 };
 
 
