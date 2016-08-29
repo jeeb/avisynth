@@ -427,13 +427,11 @@ static void average_plane_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch
 // for float
 static void average_plane_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height) {
 
-  float *fp1 = reinterpret_cast<float *>(p1);
-  const float *fp2 = reinterpret_cast<const float *>(p2);
   size_t rs = rowsize / sizeof(float);
 
   for (int y = 0; y < height; ++y) {
     for (size_t x = 0; x < rs; ++x) {
-      fp1[x] = (fp1[x] + fp2[x]) / 2.0f;
+      reinterpret_cast<float *>(p1)[x] = (reinterpret_cast<float *>(p1)[x] + reinterpret_cast<const float *>(p2)[x]) / 2.0f;
     }
     p1 += p1_pitch;
     p2 += p2_pitch;
@@ -612,13 +610,11 @@ void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitc
 
 void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight, float invweight) {
 
-  float *fp1 = reinterpret_cast<float *>(p1);
-  const float *fp2 = reinterpret_cast<const float *>(p2);
   size_t rs = rowsize / sizeof(float);
 
   for (int y = 0; y < height; ++y) {
     for (size_t x = 0; x < rs; ++x) {
-      fp1[x] = (fp1[x] * invweight + fp2[x] * weight) / 2.0f;
+      reinterpret_cast<float *>(p1)[x] = (reinterpret_cast<float *>(p1)[x] * invweight + reinterpret_cast<const float *>(p2)[x] * weight) / 2.0f;
     }
     p1 += p1_pitch;
     p2 += p2_pitch;
@@ -729,8 +725,8 @@ MergeChroma::MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnviro
 {
   const VideoInfo& vi2 = clip->GetVideoInfo();
 
-  if (!vi.IsYUV() || !vi2.IsYUV())
-    env->ThrowError("MergeChroma: YUV data only (no RGB); use ConvertToYUY2 or ConvertToYV12");
+  if (!(vi.IsYUV() || vi.IsYUVA()) || !(vi2.IsYUV() || vi2.IsYUVA()))
+    env->ThrowError("MergeChroma: YUV data only (no RGB); use ConvertToYUY2, ConvertToYV12/16/24 or ConvertToYUVxxx");
 
   if (!(vi.IsSameColorspace(vi2)))
     env->ThrowError("MergeChroma: YUV images must have same data type.");
@@ -778,7 +774,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       {
         weighted_merge_chroma_yuy2_c(srcp,chromap,src_pitch,chroma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
       }
-    } else {  // Planar
+    } else {  // Planar YUV
       env->MakeWritable(&src);
       src->GetWritePtr(PLANAR_Y); //Must be requested
 
@@ -794,6 +790,10 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
 
       merge_plane(srcpU, chromapU, src_pitch_uv, chroma_pitch_uv, src_width_u, src_height_uv, weight, pixelsize, env);
       merge_plane(srcpV, chromapV, src_pitch_uv, chroma_pitch_uv, src_width_v, src_height_uv, weight, pixelsize, env);
+
+      if(vi.IsYUVA())
+        merge_plane(src->GetWritePtr(PLANAR_A), chroma->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), chroma->GetPitch(PLANAR_A),
+          src->GetRowSize(PLANAR_A_ALIGNED), src->GetHeight(PLANAR_A), weight, pixelsize, env);
     }
   } else { // weight == 1.0
     if (vi.IsYUY2()) {
@@ -826,6 +826,8 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
         src->GetWritePtr(PLANAR_Y); //Must be requested
         env->BitBlt(src->GetWritePtr(PLANAR_U),src->GetPitch(PLANAR_U),chroma->GetReadPtr(PLANAR_U),chroma->GetPitch(PLANAR_U),chroma->GetRowSize(PLANAR_U),chroma->GetHeight(PLANAR_U));
         env->BitBlt(src->GetWritePtr(PLANAR_V),src->GetPitch(PLANAR_V),chroma->GetReadPtr(PLANAR_V),chroma->GetPitch(PLANAR_V),chroma->GetRowSize(PLANAR_V),chroma->GetHeight(PLANAR_V));
+        if(vi.IsYUVA())
+          env->BitBlt(src->GetWritePtr(PLANAR_A),src->GetPitch(PLANAR_A),chroma->GetReadPtr(PLANAR_A),chroma->GetPitch(PLANAR_A),chroma->GetRowSize(PLANAR_A),chroma->GetHeight(PLANAR_A));
       }
       else { // avoid the cost of 2 chroma blits
         PVideoFrame dst = env->NewVideoFrame(vi);
@@ -833,6 +835,9 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
         env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
         env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),chroma->GetReadPtr(PLANAR_U),chroma->GetPitch(PLANAR_U),chroma->GetRowSize(PLANAR_U),chroma->GetHeight(PLANAR_U));
         env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),chroma->GetReadPtr(PLANAR_V),chroma->GetPitch(PLANAR_V),chroma->GetRowSize(PLANAR_V),chroma->GetHeight(PLANAR_V));
+        if(vi.IsYUVA())
+          env->BitBlt(dst->GetWritePtr(PLANAR_A),dst->GetPitch(PLANAR_A),chroma->GetReadPtr(PLANAR_A),chroma->GetPitch(PLANAR_A),chroma->GetRowSize(PLANAR_A),chroma->GetHeight(PLANAR_A));
+
         return dst;
       }
     }
@@ -857,16 +862,16 @@ MergeLuma::MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironmen
 {
   const VideoInfo& vi2 = clip->GetVideoInfo();
 
-  if (!vi.IsYUV() || !vi2.IsYUV())
-    env->ThrowError("MergeLuma: YUV data only (no RGB); use ConvertToYUY2 or ConvertToYV12");
+  if (!(vi.IsYUV() || vi.IsYUVA()) || !(vi2.IsYUV() || vi2.IsYUVA()))
+    env->ThrowError("MergeLuma: YUV data only (no RGB); use ConvertToYUY2, ConvertToYV12/16/24 or ConvertToYUVxxx");
 
-  pixelsize = vi.BytesFromPixels(1);
+  pixelsize = vi.ComponentSize();
 
   if (!vi.IsSameColorspace(vi2)) {  // Since this is luma we allow all planar formats to be merged.
     if (!(vi.IsPlanar() && vi2.IsPlanar())) {
       env->ThrowError("MergeLuma: YUV data is not same type. YUY2 and planar images doesn't mix.");
     }
-    if (pixelsize != vi2.BytesFromPixels(1)) {
+    if (pixelsize != vi2.ComponentSize()) {
       env->ThrowError("MergeLuma: YUV data bit depth is not same.");
     }
   }
@@ -938,6 +943,7 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
     return src;
   }  // Planar
   if (weight>0.9961f) {
+    // 2nd clip weight is almost 100%: no merge, just copy
     const VideoInfo& vi2 = clip->GetVideoInfo();
     if (luma->IsWritable() && vi.IsSameColorspace(vi2)) {
       if (luma->GetRowSize(PLANAR_U)) {
@@ -945,6 +951,9 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
         env->BitBlt(luma->GetWritePtr(PLANAR_U),luma->GetPitch(PLANAR_U),src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U),src->GetHeight(PLANAR_U));
         env->BitBlt(luma->GetWritePtr(PLANAR_V),luma->GetPitch(PLANAR_V),src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V),src->GetRowSize(PLANAR_V),src->GetHeight(PLANAR_V));
       }
+      if (luma->GetPitch(PLANAR_A)) // copy Alpha if exists
+        env->BitBlt(luma->GetWritePtr(PLANAR_A),luma->GetPitch(PLANAR_A),src->GetReadPtr(PLANAR_A),src->GetPitch(PLANAR_A),src->GetRowSize(PLANAR_A),src->GetHeight(PLANAR_A));
+
       return luma;
     }
     else { // avoid the cost of 2 chroma blits
@@ -955,6 +964,9 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
         env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U),src->GetHeight(PLANAR_U));
         env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V),src->GetRowSize(PLANAR_V),src->GetHeight(PLANAR_V));
       }
+      if (dst->GetPitch(PLANAR_A) && src->GetPitch(PLANAR_A)) // copy Alpha if in both clip exists
+        env->BitBlt(dst->GetWritePtr(PLANAR_A),dst->GetPitch(PLANAR_A),src->GetReadPtr(PLANAR_A),src->GetPitch(PLANAR_A),src->GetRowSize(PLANAR_A),src->GetHeight(PLANAR_A));
+
       return dst;
     }
   } else { // weight <= 0.9961f
@@ -995,7 +1007,7 @@ MergeAll::MergeAll(PClip _child, PClip _clip, float _weight, IScriptEnvironment*
   if (vi.width!=vi2.width || vi.height!=vi2.height)
     env->ThrowError("Merge: Images must have same width and height!");
 
-  pixelsize = vi.BytesFromPixels(1);
+  pixelsize = vi.ComponentSize();
 
   if (weight<0.0f) weight=0.0f;
   if (weight>1.0f) weight=1.0f;
@@ -1020,15 +1032,14 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
   merge_plane(srcp, srcp2, src_pitch, src2->GetPitch(), src_rowsize, src->GetHeight(), weight, pixelsize, env);
 
   if (vi.IsPlanar()) {
-    BYTE* srcpU  = (BYTE*)src->GetWritePtr(PLANAR_U);
-    BYTE* srcpV  = (BYTE*)src->GetWritePtr(PLANAR_V);
-    BYTE* srcp2U = (BYTE*)src2->GetReadPtr(PLANAR_U);
-    BYTE* srcp2V = (BYTE*)src2->GetReadPtr(PLANAR_V);
- 
-    int src_rowsize = src->GetRowSize(PLANAR_U);
-
-    merge_plane(srcpU, srcp2U, src->GetPitch(PLANAR_U), src2->GetPitch(PLANAR_U), src_rowsize, src->GetHeight(PLANAR_U), weight, pixelsize, env);
-    merge_plane(srcpV, srcp2V, src->GetPitch(PLANAR_V), src2->GetPitch(PLANAR_V), src_rowsize, src->GetHeight(PLANAR_V), weight, pixelsize, env);
+    const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
+    const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+    const int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planesYUV : planesRGB;
+    // first plane is already processed
+    for (int p = 1; p < vi.NumComponents(); p++) {
+      const int plane = planes[p];
+      merge_plane(src->GetWritePtr(plane), src2->GetReadPtr(plane), src->GetPitch(plane), src2->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane), weight, pixelsize, env);
+    }
   }
 
   return src;
