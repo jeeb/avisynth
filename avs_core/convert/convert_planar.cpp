@@ -742,9 +742,9 @@ static void convert_planarrgb_to_yuv_int_c(BYTE *(&dstp)[3], int (&dstPitch)[3],
       pixel_t g = reinterpret_cast<const pixel_t *>(srcp[0])[x];
       pixel_t b = reinterpret_cast<const pixel_t *>(srcp[1])[x];
       pixel_t r = reinterpret_cast<const pixel_t *>(srcp[2])[x];
-      int Y = (m.offset_y << 8) + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
-      int U = half + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384)>>15);
-      int V = half + (int)(((sum_t)m.v_b * b + (sum_t)m.v_g * g + (sum_t)m.v_r * r + 16384)>>15);
+      int Y = (sizeof(pixel_t)==1 ? m.offset_y : m.offset_y << 8) + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
+      int U = half + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384) >> 15);
+      int V = half + (int)(((sum_t)m.v_b * b + (sum_t)m.v_g * g + (sum_t)m.v_r * r + 16384) >> 15);
       reinterpret_cast<pixel_t *>(dstp[0])[x] = (pixel_t)clamp(Y, 0, limit);
       reinterpret_cast<pixel_t *>(dstp[1])[x] = (pixel_t)clamp(U, 0, limit);
       reinterpret_cast<pixel_t *>(dstp[2])[x] = (pixel_t)clamp(V, 0, limit);
@@ -906,7 +906,7 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl ConvertRGBToYV24::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  if (clip->GetVideoInfo().IsYV24())
+  if (clip->GetVideoInfo().Is444())
     return clip;
   return new ConvertRGBToYV24(clip, getMatrix(args[1].AsString(0), env), env);
 }
