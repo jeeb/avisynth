@@ -53,64 +53,96 @@ static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironme
 
 
 ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src) {
-  yuy2_input = blit_luma_only = rgb_input = false;
+  yuy2_input = blit_luma_only = packed_rgb_input = planar_rgb_input = false;
 
-  if (vi.IsPlanar()) {
+  int target_pixel_type;
+  switch (vi.BitsPerComponent())
+  {
+  case 8: target_pixel_type = VideoInfo::CS_Y8; break;
+  case 10: target_pixel_type = VideoInfo::CS_Y10; break;
+  case 12: target_pixel_type = VideoInfo::CS_Y12; break;
+  case 14: target_pixel_type = VideoInfo::CS_Y14; break;
+  case 16: target_pixel_type = VideoInfo::CS_Y16; break;
+  case 32: target_pixel_type = VideoInfo::CS_Y32; break;
+  default:
+    env->ThrowError("ConvertToY does not support %d-bit formats.", vi.BitsPerComponent());
+  }
+
+  pixelsize = vi.ComponentSize();
+
+  if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) { // not for Planar RGB
     blit_luma_only = true;
-    switch (vi.ComponentSize())
-    {
-    case 1: vi.pixel_type = VideoInfo::CS_Y8; break;
-    case 2: vi.pixel_type = VideoInfo::CS_Y16; break;
-    case 4: vi.pixel_type = VideoInfo::CS_Y32; break;
-    default:
-      env->ThrowError("ConvertToY does not support %d-byte formats.", vi.ComponentSize());
-    }
+    vi.pixel_type = target_pixel_type;
     return;
   }
 
- if (vi.IsYUY2()) {
+  if (vi.IsYUY2()) {
     yuy2_input = true;
-    vi.pixel_type = VideoInfo::CS_Y8;
+    vi.pixel_type = target_pixel_type;
     return;
   }
 
-  if (vi.IsRGB()) {
-    rgb_input = true;
-    pixel_step = vi.BytesFromPixels(1);
-    vi.pixel_type = VideoInfo::CS_Y8;
+  if (vi.IsRGB()) { // also Planar RGB
+    if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+      planar_rgb_input = true;
+    else
+      packed_rgb_input = true;
+    pixel_step = vi.BytesFromPixels(1); // for packed RGB 3,4,6,8
+    vi.pixel_type = target_pixel_type;
+
     if (in_matrix == Rec601) {
       matrix.b = (int16_t)((219.0/255.0)*0.114*32768.0+0.5);  //B
       matrix.g = (int16_t)((219.0/255.0)*0.587*32768.0+0.5);  //G
       matrix.r = (int16_t)((219.0/255.0)*0.299*32768.0+0.5);  //R
-      matrix.offset_y = 16;
+      matrix.b_f = (float)((219.0/255.0)*0.114);  //B
+      matrix.g_f = (float)((219.0/255.0)*0.587);  //G
+      matrix.r_f = (float)((219.0/255.0)*0.299);  //R
+      matrix.offset_y = pixelsize == 1 ? 16 : 16*256;
+      matrix.offset_y_f = 16.0f / 256.0f;
     } else if (in_matrix == PC_601) {
       matrix.b = (int16_t)(0.114*32768.0+0.5);  //B
       matrix.g = (int16_t)(0.587*32768.0+0.5);  //G
       matrix.r = (int16_t)(0.299*32768.0+0.5);  //R
+      matrix.b_f = 0.114f;  //B
+      matrix.g_f = 0.587f;  //G
+      matrix.r_f = 0.299f;  //R
       matrix.offset_y = 0;
+      matrix.offset_y_f = 0;
     } else if (in_matrix == Rec709) {
       matrix.b = (int16_t)((219.0/255.0)*0.0722*32768.0+0.5);  //B
       matrix.g = (int16_t)((219.0/255.0)*0.7152*32768.0+0.5);  //G
       matrix.r = (int16_t)((219.0/255.0)*0.2126*32768.0+0.5);  //R
-      matrix.offset_y = 16;
+      matrix.b_f = (float)((219.0/255.0)*0.0722);  //B
+      matrix.g_f = (float)((219.0/255.0)*0.7152);  //G
+      matrix.r_f = (float)((219.0/255.0)*0.2126);  //R
+      matrix.offset_y = pixelsize == 1 ? 16 : 16*256;
+      matrix.offset_y_f = 16.0f / 256.0f;
     } else if (in_matrix == PC_709) {
       matrix.b = (int16_t)(0.0722*32768.0+0.5);  //B
       matrix.g = (int16_t)(0.7152*32768.0+0.5);  //G
       matrix.r = (int16_t)(0.2126*32768.0+0.5);  //R
+      matrix.b_f = 0.0722f;  //B
+      matrix.g_f = 0.7152f;  //G
+      matrix.r_f = 0.2126f;  //R
       matrix.offset_y = 0;
+      matrix.offset_y_f = 0;
     } else if (in_matrix == AVERAGE) {
       matrix.b = (int16_t)(32768.0/3 + 0.5);  //B
       matrix.g = (int16_t)(32768.0/3 + 0.5);  //G
       matrix.r = (int16_t)(32768.0/3 + 0.5);  //R
+      matrix.b_f = (float)(1.0/3);  //B
+      matrix.g_f = (float)(1.0/3);  //G
+      matrix.r_f = (float)(1.0/3);  //R
       matrix.offset_y = 0;
+      matrix.offset_y_f = 0;
     } else {
-      env->ThrowError("ConvertToY8: Unknown matrix.");
+      env->ThrowError("ConvertToY: Unknown matrix.");
     }
 
     return;
   }
 
-  env->ThrowError("ConvertToY8: Unknown input format");
+  env->ThrowError("ConvertToY: Unknown input format");
 }
 
 
@@ -346,7 +378,8 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
   const int dst_pitch = dst->GetPitch(PLANAR_Y);
-  int width = dst->GetRowSize(PLANAR_Y);
+  int rowsize = dst->GetRowSize(PLANAR_Y);
+  int width = rowsize / pixelsize;
   int height = dst->GetHeight(PLANAR_Y);
 
   if (yuy2_input) {
@@ -370,20 +403,26 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     return dst;
   }
 
-  if (rgb_input) {
+  if (packed_rgb_input) {
     srcp += src_pitch * (vi.height-1);  // We start at last line
 
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
+    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
       if (pixel_step == 4) {
         convert_rgb32_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
-      } else {
+      } else if(pixel_step == 3) {
         convert_rgb24_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
+      } else if(pixel_step == 8) {
+        //todo
+        //convert_rgb64_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
+      } else if(pixel_step == 6) {
+        // todo
+        //convert_rgb48_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
       }
       return dst;
     }
 
 #ifdef X86_32
-    if (env->GetCPUFlags() & CPUF_MMX) {
+    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX)) {
       if (pixel_step == 4) {
         convert_rgb32_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, width, height, matrix);
       } else {
@@ -393,15 +432,83 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     }
 #endif
 
+    // Slow C
     const int srcMod = src_pitch + width * pixel_step;
-    for (int y=0; y<vi.height; y++) {
-      for (int x=0; x<vi.width; x++) {
-        const int Y = matrix.offset_y + ((matrix.b * srcp[0] + matrix.g * srcp[1] + matrix.r * srcp[2] + 16384) >> 15);
-        dstp[x] = PixelClip(Y);  // All the safety we can wish for.
-        srcp += pixel_step;
+    if(pixelsize==1) {
+      for (int y=0; y<vi.height; y++) {
+        for (int x=0; x<vi.width; x++) {
+          const int Y = matrix.offset_y + ((matrix.b * srcp[0] + matrix.g * srcp[1] + matrix.r * srcp[2] + 16384) >> 15);
+          dstp[x] = PixelClip(Y);  // All the safety we can wish for.
+          srcp += pixel_step; // 3,4
+        }
+        srcp -= srcMod;
+        dstp += dst_pitch;
       }
-      srcp -= srcMod;
-      dstp += dst_pitch;
+    }
+    else { // pixelsize==2
+      for (int y=0; y<vi.height; y++) {
+        for (int x=0; x<vi.width; x++) {
+          const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
+          // int overflows!
+          const int Y = matrix.offset_y + (int)(((__int64)matrix.b * srcp16[0] + (__int64)matrix.g * srcp16[1] + (__int64)matrix.r * srcp16[2] + 16384) >> 15);
+          reinterpret_cast<uint16_t *>(dstp)[x] = clamp(Y,0,65535);  // All the safety we can wish for.
+
+          // __int64 version is a bit faster
+          //const float Y = matrix.offset_y_f + (matrix.b_f * srcp16[0] + matrix.g_f * srcp16[1] + matrix.r_f * srcp16[2]);
+          //reinterpret_cast<uint16_t *>(dstp)[x] = (uint16_t)clamp((int)Y,0,65535);  // All the safety we can wish for.
+          srcp += pixel_step; // 6,8
+        }
+        srcp -= srcMod;
+        dstp += dst_pitch;
+      }
+    }
+  }
+
+  if (planar_rgb_input)
+  {
+    const BYTE *srcpG = src->GetReadPtr(PLANAR_G);
+    const BYTE *srcpB = src->GetReadPtr(PLANAR_B);
+    const BYTE *srcpR = src->GetReadPtr(PLANAR_R);
+    const int pitchG = src->GetPitch(PLANAR_G);
+    const int pitchB = src->GetPitch(PLANAR_B);
+    const int pitchR = src->GetPitch(PLANAR_R);
+    if(pixelsize==1) {
+      for (int y=0; y<vi.height; y++) {
+        for (int x=0; x<vi.width; x++) {
+          const int Y = matrix.offset_y + ((matrix.b * srcpB[x] + matrix.g * srcpG[x] + matrix.r * srcpR[x] + 16384) >> 15);
+          dstp[x] = PixelClip(Y);  // All the safety we can wish for.
+        }
+        srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
+        dstp += dst_pitch;
+      }
+    } else if(pixelsize==2) {
+      for (int y=0; y<vi.height; y++) {
+        for (int x=0; x<vi.width; x++) {
+          // int overflows!
+          const int Y = matrix.offset_y +
+            (((__int64)matrix.b * reinterpret_cast<const uint16_t *>(srcpB)[x] +
+              (__int64)matrix.g * reinterpret_cast<const uint16_t *>(srcpG)[x] +
+              (__int64)matrix.r * reinterpret_cast<const uint16_t *>(srcpR)[x] +
+              16384) >> 15);
+          reinterpret_cast<uint16_t *>(dstp)[x] = (uint16_t)clamp(Y,0,65535);  // All the safety we can wish for.
+        }
+        srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
+        dstp += dst_pitch;
+      }
+    }
+    else if (pixelsize==4) {
+      for (int y=0; y<vi.height; y++) {
+        for (int x=0; x<vi.width; x++) {
+          const float Y = matrix.offset_y_f +
+            (matrix.b_f * reinterpret_cast<const float *>(srcpB)[x] +
+             matrix.g_f * reinterpret_cast<const float *>(srcpG)[x] +
+             matrix.r_f * reinterpret_cast<const float *>(srcpR)[x]
+            );
+          reinterpret_cast<float *>(dstp)[x] = clamp(Y,0.0f,65535.0f);  // All the safety we can wish for.
+        }
+        srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
+        dstp += dst_pitch;
+      }
     }
   }
   return dst;

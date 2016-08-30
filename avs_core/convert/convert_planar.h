@@ -48,10 +48,14 @@ template <typename pixel_t>
 inline void fill_plane(BYTE* dstp, int height, int pitch, pixel_t val);
 
 struct ChannelConversionMatrix {
-  int16_t r;
+  int16_t r;    // for 15bit scaled integer arithmetic
   int16_t g;
   int16_t b;
-  int offset_y;
+  float r_f;    // for float operation
+  float g_f;
+  float b_f;
+  int offset_y; // for 8 or 16 bit
+  float offset_y_f; // for float
 };
 
 class ConvertToY8 : public GenericVideoFilter
@@ -68,8 +72,10 @@ public:
 private:
   bool blit_luma_only;
   bool yuy2_input;
-  bool rgb_input;
+  bool packed_rgb_input;
+  bool planar_rgb_input;
   int pixel_step;
+  int pixelsize;
   ChannelConversionMatrix matrix;
 };
 
