@@ -46,6 +46,7 @@
 #include <type_traits>
 // Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
 #include <smmintrin.h>
+#include <algorithm>
 
 /***************************************
  ********* Templated SSE Loader ********
@@ -560,6 +561,7 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
   }
 }
 
+// make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
 static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* env) {
   int filter_size = AlignNumber(p->filter_size, 8);
   short* new_coeff = (short*) env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
@@ -571,9 +573,9 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* 
   }
 
   memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
-  memset(new_coeff_float, 0, sizeof(float) * p->target_size * filter_size);
+  std::fill_n(new_coeff_float, p->target_size * filter_size, 0.0f);
 
-  // Copy coeff
+  // Copy existing coeff
   short *dst = new_coeff, *src = p->pixel_coefficient;
   float *dst_f = new_coeff_float, *src_f = p->pixel_coefficient_float;
   for (int i = 0; i < p->target_size; i++) {
@@ -602,11 +604,6 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
   coeff_t *current_coeff;
 
-  if (!std::is_floating_point<pixel_t>::value)
-    current_coeff = (coeff_t *)program->pixel_coefficient;
-  else
-    current_coeff = (coeff_t *)program->pixel_coefficient_float;
-
   pixel_t limit = 0;
   if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
     if (sizeof(pixel_t) == 1) limit = 255;
@@ -619,9 +616,14 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   pixel_t* src0 = (pixel_t*)src;
   pixel_t* dst0 = (pixel_t*)dst;
 
-  for (int x = 0; x < width; x++) {
-    int begin = program->pixel_offset[x];
-    for (int y = 0; y < height; y++) {
+  // external loop y is much faster
+  for (int y = 0; y < height; y++) {
+    if (!std::is_floating_point<pixel_t>::value)
+      current_coeff = (coeff_t *)program->pixel_coefficient;
+    else
+      current_coeff = (coeff_t *)program->pixel_coefficient_float;
+    for (int x = 0; x < width; x++) {
+      int begin = program->pixel_offset[x];
       // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
       typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
@@ -633,8 +635,8 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
       (dst0 + y*dst_pitch)[x] = (pixel_t)result;
+      current_coeff += filter_size;
     }
-    current_coeff += filter_size;
   }
 }
 
@@ -1068,6 +1070,7 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, R
   if (pixelsize == 1)
   {
   if (CPU & CPUF_SSSE3) {
+    // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
     resize_h_prepare_coeff_8(program, env);
     if (program->filter_size > 8)
       return resizer_h_ssse3_generic;
