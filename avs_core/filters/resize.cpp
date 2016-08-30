@@ -316,7 +316,7 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
 HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
 : GenericVideoFilter(_child), mybuffer(0)
 {
-  if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
+  if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA()) && (vi.NumComponents() > 1)) {
     const int mod  = 2 << vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int mask = mod - 1;
     if (vi.width & mask)
@@ -329,6 +329,7 @@ HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
   if (vi.IsYUY2() && (vi.width & 3))
     env->ThrowError("HorizontalReduceBy2: YUY2 output image width must be even");
 
+  pixelsize = vi.ComponentSize();
   source_width = vi.width;
   vi.width >>= 1;
 }
@@ -410,52 +411,107 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       srcp += src_gap+8;
 
     }
-  } else if (vi.IsRGB24()) {
+  } else if (vi.IsRGB24() || vi.IsRGB48()) {
     const BYTE* srcp = src->GetReadPtr();
-    for (int y = vi.height; y>0; --y) {
-      for (int x = (source_width-1)>>1; x; --x) {
-        dstp[0] = (srcp[0] + 2*srcp[3] + srcp[6] + 2) >> 2;
-        dstp[1] = (srcp[1] + 2*srcp[4] + srcp[7] + 2) >> 2;
-        dstp[2] = (srcp[2] + 2*srcp[5] + srcp[8] + 2) >> 2;
-        dstp += 3;
-        srcp += 6;
-      }
-      if (source_width&1) {
-        dstp += dst_gap;
-        srcp += src_gap+3;
-      } else {
-        dstp[0] = (srcp[0] + srcp[3] + 1) >> 1;
-        dstp[1] = (srcp[1] + srcp[4] + 1) >> 1;
-        dstp[2] = (srcp[2] + srcp[5] + 1) >> 1;
-        dstp += dst_gap+3;
-        srcp += src_gap+6;
+    if(pixelsize==1) {
+      for (int y = vi.height; y>0; --y) {
+        for (int x = (source_width-1)>>1; x; --x) {
+          dstp[0] = (srcp[0] + 2*srcp[3] + srcp[6] + 2) >> 2;
+          dstp[1] = (srcp[1] + 2*srcp[4] + srcp[7] + 2) >> 2;
+          dstp[2] = (srcp[2] + 2*srcp[5] + srcp[8] + 2) >> 2;
+          dstp += 3;
+          srcp += 6;
+        }
+        if (source_width&1) {
+          dstp += dst_gap;
+          srcp += src_gap+3;
+        } else {
+          dstp[0] = (srcp[0] + srcp[3] + 1) >> 1;
+          dstp[1] = (srcp[1] + srcp[4] + 1) >> 1;
+          dstp[2] = (srcp[2] + srcp[5] + 1) >> 1;
+          dstp += dst_gap+3;
+          srcp += src_gap+6;
+        }
       }
     }
-  } else if (vi.IsRGB32()) {  //rgb32
-    const BYTE* srcp = src->GetReadPtr();
-    for (int y = vi.height; y>0; --y) {
-      for (int x = (source_width-1)>>1; x; --x) {
-        dstp[0] = (srcp[0] + 2*srcp[4] + srcp[8] + 2) >> 2;
-        dstp[1] = (srcp[1] + 2*srcp[5] + srcp[9] + 2) >> 2;
-        dstp[2] = (srcp[2] + 2*srcp[6] + srcp[10] + 2) >> 2;
-        dstp[3] = (srcp[3] + 2*srcp[7] + srcp[11] + 2) >> 2;
-        dstp += 4;
-        srcp += 8;
+    else { // pixelsize==2 RGB48
+      uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
+      const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
+      dst_gap /= sizeof(uint16_t);
+      src_gap /= sizeof(uint16_t);
+      for (int y = vi.height; y>0; --y) {
+        for (int x = (source_width-1)>>1; x; --x) {
+          dstp16[0] = (srcp16[0] + 2*srcp16[3] + srcp16[6] + 2) >> 2;
+          dstp16[1] = (srcp16[1] + 2*srcp16[4] + srcp16[7] + 2) >> 2;
+          dstp16[2] = (srcp16[2] + 2*srcp16[5] + srcp16[8] + 2) >> 2;
+          dstp16 += 3;
+          srcp16 += 6;
+        }
+        if (source_width&1) {
+          dstp16 += dst_gap;
+          srcp16 += src_gap+3;
+        } else {
+          dstp16[0] = (srcp16[0] + srcp16[3] + 1) >> 1;
+          dstp16[1] = (srcp16[1] + srcp16[4] + 1) >> 1;
+          dstp16[2] = (srcp16[2] + srcp16[5] + 1) >> 1;
+          dstp16 += dst_gap+3;
+          srcp16 += src_gap+6;
+        }
       }
-      if (source_width&1) {
-        dstp += dst_gap;
-        srcp += src_gap+4;
-      } else {
-        dstp[0] = (srcp[0] + srcp[4] + 1) >> 1;
-        dstp[1] = (srcp[1] + srcp[5] + 1) >> 1;
-        dstp[2] = (srcp[2] + srcp[6] + 1) >> 1;
-        dstp[3] = (srcp[3] + srcp[7] + 1) >> 1;
-        dstp += dst_gap+4;
-        srcp += src_gap+8;
+    }
+  } else if (vi.IsRGB32() || vi.IsRGB64()) {  //rgb32
+    const BYTE* srcp = src->GetReadPtr();
+    if(pixelsize==1) {
+      for (int y = vi.height; y>0; --y) {
+        for (int x = (source_width-1)>>1; x; --x) {
+          dstp[0] = (srcp[0] + 2*srcp[4] + srcp[8] + 2) >> 2;
+          dstp[1] = (srcp[1] + 2*srcp[5] + srcp[9] + 2) >> 2;
+          dstp[2] = (srcp[2] + 2*srcp[6] + srcp[10] + 2) >> 2;
+          dstp[3] = (srcp[3] + 2*srcp[7] + srcp[11] + 2) >> 2;
+          dstp += 4;
+          srcp += 8;
+        }
+        if (source_width&1) {
+          dstp += dst_gap;
+          srcp += src_gap+4;
+        } else {
+          dstp[0] = (srcp[0] + srcp[4] + 1) >> 1;
+          dstp[1] = (srcp[1] + srcp[5] + 1) >> 1;
+          dstp[2] = (srcp[2] + srcp[6] + 1) >> 1;
+          dstp[3] = (srcp[3] + srcp[7] + 1) >> 1;
+          dstp += dst_gap+4;
+          srcp += src_gap+8;
+        }
+      }
+    }
+    else { // pixelsize==2 rgb64
+      uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
+      const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
+      dst_gap /= sizeof(uint16_t);
+      src_gap /= sizeof(uint16_t);
+      for (int y = vi.height; y>0; --y) {
+        for (int x = (source_width-1)>>1; x; --x) {
+          dstp16[0] = (srcp16[0] + 2*srcp16[4] + srcp16[8] + 2) >> 2;
+          dstp16[1] = (srcp16[1] + 2*srcp16[5] + srcp16[9] + 2) >> 2;
+          dstp16[2] = (srcp16[2] + 2*srcp16[6] + srcp16[10] + 2) >> 2;
+          dstp16[3] = (srcp16[3] + 2*srcp16[7] + srcp16[11] + 2) >> 2;
+          dstp16 += 4;
+          srcp16 += 8;
+        }
+        if (source_width&1) {
+          dstp16 += dst_gap;
+          srcp16 += src_gap+4;
+        } else {
+          dstp16[0] = (srcp16[0] + srcp16[4] + 1) >> 1;
+          dstp16[1] = (srcp16[1] + srcp16[5] + 1) >> 1;
+          dstp16[2] = (srcp16[2] + srcp16[6] + 1) >> 1;
+          dstp16[3] = (srcp16[3] + srcp16[7] + 1) >> 1;
+          dstp16 += dst_gap+4;
+          srcp16 += src_gap+8;
+        }
       }
     }
   }
-  // todo RGB48/RGB64
   return dst;
 }
 
