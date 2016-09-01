@@ -68,7 +68,8 @@ public:
              double gain_u, double offset_u, double gamma_u, double contrast_u,
              double gain_v, double offset_v, double gamma_v, double contrast_v,
              const char* level, const char* opt,
-             bool colorbar, bool analyse, bool autowhite, bool autogain, bool conditional,
+             bool showyuv, bool analyse, bool autowhite, bool autogain, bool conditional,
+             int bits, bool showyuv_fullrange, // avs+
              IScriptEnvironment* env);
 
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -82,7 +83,9 @@ public:
 
 private:
     ColorYUVPlaneConfig configY, configU, configV;
-    bool colorbar, analyse, autowhite, autogain, conditional;
+    int colorbar_bits;
+    bool colorbar_fullrange;
+    bool analyse, autowhite, autogain, conditional;
 };
 
 #endif // __Color_h
