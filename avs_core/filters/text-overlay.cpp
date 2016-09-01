@@ -49,7 +49,8 @@ static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int w
 {
   return CreateFont( size, width, angle, angle, bold ? FW_BOLD : FW_NORMAL,
                      italic, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-                     CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE | DEFAULT_PITCH, name );
+                     CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE | FIXED_PITCH /*FF_DONTCARE | DEFAULT_PITCH*/, name );
+  // avs+: force fixed pitch when font is not found by name
 }
 
 /********************************************************************
@@ -184,7 +185,7 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
               (*frame)->GetWritePtr(PLANAR_U),
               (*frame)->GetWritePtr(PLANAR_V) );
   else if (vi.NumComponents() == 1) // Y8, Y16, Y32
-    ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0, vi.ComponentSize());
+    ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0, vi.BitsPerComponent());
   else if (vi.IsPlanar()) {
       if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
           // color are OK if plane order is sent as G R B
@@ -194,15 +195,15 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
             (*frame)->GetWritePtr(PLANAR_B),
             vi.GetPlaneWidthSubsampling(PLANAR_G),  // no subsampling
             vi.GetPlaneHeightSubsampling(PLANAR_G),
-            vi.ComponentSize() );
+            vi.BitsPerComponent() );
       else
         ApplyPlanar((*frame)->GetWritePtr(), pitch,
-                    (*frame)->GetPitch(PLANAR_U),
-                    (*frame)->GetWritePtr(PLANAR_U),
-                    (*frame)->GetWritePtr(PLANAR_V),
-                    vi.GetPlaneWidthSubsampling(PLANAR_U),
-                    vi.GetPlaneHeightSubsampling(PLANAR_U),
-                    vi.ComponentSize());
+            (*frame)->GetPitch(PLANAR_U),
+            (*frame)->GetWritePtr(PLANAR_U),
+            (*frame)->GetWritePtr(PLANAR_V),
+            vi.GetPlaneWidthSubsampling(PLANAR_U),
+            vi.GetPlaneHeightSubsampling(PLANAR_U),
+            vi.BitsPerComponent());
   }
 }
 
@@ -249,7 +250,7 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
 }
 
 
-void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int pixelsize) {
+void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int bits_per_pixel) {
   const int stepX = 1<<shiftX;
   const int stepY = 1<<shiftY;
 
@@ -264,7 +265,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
 
   // Apply Y
   // different paths for different bitdepth
-  if(pixelsize == 1) {
+  if(bits_per_pixel == 8) {
       for (int y=yb; y<=yt; y+=1) {
           for (int x=xl; x<=xr; x+=1) {
               const int x4 = x<<2;
@@ -277,13 +278,13 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
           alpha += w4;
       }
   }
-  else if (pixelsize == 2) { // uint16_t
+  else if (bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
       for (int y=yb; y<=yt; y+=1) {
           for (int x=xl; x<=xr; x+=1) {
               const int x4 = x<<2;
               const int basealpha = alpha[x4+0];
               if (basealpha != 256) {
-                  reinterpret_cast<uint16_t *>(buf)[x] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x] * basealpha + ((int)alpha[x4 + 3] << 8)) >> 8);
+                  reinterpret_cast<uint16_t *>(buf)[x] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x] * basealpha + ((int)alpha[x4 + 3] << (bits_per_pixel-8))) >> 8);
               }
           }
           buf += pitch;
@@ -317,7 +318,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
   bufV += (pitchUV*yb)>>shiftY;
 
   // different paths for different bitdepth
-  if(pixelsize == 1) {
+  if(bits_per_pixel == 8) {
       for (int y=yb; y<=yt; y+=stepY) {
           for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
               unsigned short* UValpha = alpha + x*4;
@@ -342,7 +343,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
           alpha += UVw4;
       }//end for y
   }
-  else if (pixelsize == 2) { // uint16_t
+  else if (bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
       for (int y=yb; y<=yt; y+=stepY) {
           for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
               unsigned short* UValpha = alpha + x*4;
@@ -358,8 +359,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
                   UValpha += w4;
               }
               if (basealphaUV != skipThresh) {
-                  reinterpret_cast<uint16_t *>(bufU)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufU)[xs] * basealphaUV + (au << 8)) >> shifter);
-                  reinterpret_cast<uint16_t *>(bufV)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufV)[xs] * basealphaUV + (av << 8)) >> shifter);
+                  reinterpret_cast<uint16_t *>(bufU)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufU)[xs] * basealphaUV + (au << (bits_per_pixel-8))) >> shifter);
+                  reinterpret_cast<uint16_t *>(bufV)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufV)[xs] * basealphaUV + (av << (bits_per_pixel-8))) >> shifter);
               }
           }// end for x
           bufU  += pitchUV;
@@ -1509,7 +1510,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     // More flexible way: get text extent
     RECT r;
 
-    if(!font_override)
+    if(false && !font_override)
     {
         // To prevent slowish full MxN rendering, we calculate a dummy
         // 1xN sized vertical and a Mx1 sized horizontal line extent
