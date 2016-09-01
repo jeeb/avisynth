@@ -320,10 +320,14 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
         env2->ThrowError("AdjustFocusV: Could not reserve memory.");
     }
 
+    int pixelsize = vi.ComponentSize();
+
     if (vi.IsPlanar()) {
-        int pixelsize = vi.ComponentSize();
-        const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-        for (int cplane = 0; cplane < 3; cplane++) {
+      const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
+      const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+      const int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
+
+      for (int cplane = 0; cplane < 3; cplane++) {
             int plane = planes[cplane];
             BYTE* dstp = src->GetWritePtr(plane);
             int pitch = src->GetPitch(plane);
@@ -345,8 +349,10 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
         int row_size = vi.RowSize();
         int height = vi.height;
         memcpy(line_buf, dstp, row_size); // First row - map centre as upper
-
-        af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env);
+        if (pixelsize == 1)
+          af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env);
+        else
+          af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, env);
     }
 
     env2->Free(line_buf);
@@ -364,41 +370,50 @@ AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
 // Blur/Sharpen Horizontal RGB32 C++ Code
 // --------------------------------------
 
-static __forceinline void af_horizontal_rgb32_process_line_c(BYTE b_left, BYTE g_left, BYTE r_left, BYTE a_left, BYTE *dstp, size_t width, int center_weight, int outer_weight) {
+template<typename pixel_t, typename weight_t>
+static __forceinline void af_horizontal_rgb32_process_line_c(pixel_t b_left, pixel_t g_left, pixel_t r_left, pixel_t a_left, pixel_t *dstp, size_t width, weight_t center_weight, weight_t outer_weight) {
   size_t x;
   for (x = 0; x < width-1; ++x)
   {
-    BYTE b = ScaledPixelClip(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+4]) * outer_weight);
+    pixel_t b = ScaledPixelClip((weight_t)(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+4]) * outer_weight));
     b_left = dstp[x*4+0];
     dstp[x*4+0] = b;
-    BYTE g = ScaledPixelClip(dstp[x*4+1] * center_weight + (g_left + dstp[x*4+5]) * outer_weight);
+    pixel_t g = ScaledPixelClip((weight_t)(dstp[x*4+1] * center_weight + (g_left + dstp[x*4+5]) * outer_weight));
     g_left = dstp[x*4+1];
     dstp[x*4+1] = g;
-    BYTE r = ScaledPixelClip(dstp[x*4+2] * center_weight + (r_left + dstp[x*4+6]) * outer_weight);
+    pixel_t r = ScaledPixelClip((weight_t)(dstp[x*4+2] * center_weight + (r_left + dstp[x*4+6]) * outer_weight));
     r_left = dstp[x*4+2];
     dstp[x*4+2] = r;
-    BYTE a = ScaledPixelClip(dstp[x*4+3] * center_weight + (a_left + dstp[x*4+7]) * outer_weight);
+    pixel_t a = ScaledPixelClip((weight_t)(dstp[x*4+3] * center_weight + (a_left + dstp[x*4+7]) * outer_weight));
     a_left = dstp[x*4+3];
     dstp[x*4+3] = a;
   }
-  dstp[x*4+0] = ScaledPixelClip(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+0]) * outer_weight);
-  dstp[x*4+1] = ScaledPixelClip(dstp[x*4+1] * center_weight + (g_left + dstp[x*4+1]) * outer_weight);
-  dstp[x*4+2] = ScaledPixelClip(dstp[x*4+2] * center_weight + (r_left + dstp[x*4+2]) * outer_weight);
-  dstp[x*4+3] = ScaledPixelClip(dstp[x*4+3] * center_weight + (a_left + dstp[x*4+3]) * outer_weight);
+  dstp[x*4+0] = ScaledPixelClip((weight_t)(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+0]) * outer_weight));
+  dstp[x*4+1] = ScaledPixelClip((weight_t)(dstp[x*4+1] * center_weight + (g_left + dstp[x*4+1]) * outer_weight));
+  dstp[x*4+2] = ScaledPixelClip((weight_t)(dstp[x*4+2] * center_weight + (r_left + dstp[x*4+2]) * outer_weight));
+  dstp[x*4+3] = ScaledPixelClip((weight_t)(dstp[x*4+3] * center_weight + (a_left + dstp[x*4+3]) * outer_weight));
 }
 
-static void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
-  int center_weight = int(amount*2);
-  int outer_weight = int(32768-amount);
-  for (size_t y = height; y>0; --y)
+template<typename pixel_t>
+static void af_horizontal_rgb32_64_c(BYTE* dstp8, size_t height, size_t pitch8, size_t width, int half_amount) {
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t;
+  // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
+  weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
+  weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
+
+  pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
+  int pitch = pitch8 / sizeof(pixel_t);
+
+  for (int y = height; y>0; --y)
   {
-    BYTE b_left = dstp[0];
-    BYTE g_left = dstp[1];
-    BYTE r_left = dstp[2];
-    BYTE a_left = dstp[3];
-    af_horizontal_rgb32_process_line_c(b_left, g_left, r_left, a_left, dstp, width, center_weight, outer_weight);
+    pixel_t b_left = dstp[0];
+    pixel_t g_left = dstp[1];
+    pixel_t r_left = dstp[2];
+    pixel_t a_left = dstp[3];
+    af_horizontal_rgb32_process_line_c<pixel_t, weight_t>(b_left, g_left, r_left, a_left, dstp, width, center_weight, outer_weight);
     dstp += pitch;
   }
+
 }
 
 
@@ -756,29 +771,35 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
 // Blur/Sharpen Horizontal RGB24 C++ Code
 // --------------------------------------
 
-static void af_horizontal_rgb24_c(BYTE* p, int height, int pitch, int width, int amount) {
-  const int center_weight = amount*2;
-  const int outer_weight = 32768-amount;
+template<typename pixel_t>
+static void af_horizontal_rgb24_48_c(BYTE* dstp8, int height, int pitch8, int width, int half_amount) {
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t;
+  // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
+  weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
+  weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
+
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  int pitch = pitch8 / sizeof(pixel_t);
   for (int y = height; y>0; --y)
   {
-
-    BYTE bb = p[0];
-    BYTE gg = p[1];
-    BYTE rr = p[2];
+    pixel_t bb = dstp[0];
+    pixel_t gg = dstp[1];
+    pixel_t rr = dstp[2];
     int x;
     for (x = 0; x < width-1; ++x)
     {
-      BYTE b = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+3]) * outer_weight);
-      bb = p[x*3+0]; p[x*3+0] = b;
-      BYTE g = ScaledPixelClip(p[x*3+1] * center_weight + (gg + p[x*3+4]) * outer_weight);
-      gg = p[x*3+1]; p[x*3+1] = g;
-      BYTE r = ScaledPixelClip(p[x*3+2] * center_weight + (rr + p[x*3+5]) * outer_weight);
-      rr = p[x*3+2]; p[x*3+2] = r;
+      // ScaledPixelClip has 2 overloads: BYTE/uint16_t (int/int64 i)
+      pixel_t b = ScaledPixelClip((weight_t)(dstp[x*3+0] * center_weight + (bb + dstp[x*3+3]) * outer_weight));
+      bb = dstp[x*3+0]; dstp[x*3+0] = b;
+      pixel_t g = ScaledPixelClip((weight_t)(dstp[x*3+1] * center_weight + (gg + dstp[x*3+4]) * outer_weight));
+      gg = dstp[x*3+1]; dstp[x*3+1] = g;
+      pixel_t r = ScaledPixelClip((weight_t)(dstp[x*3+2] * center_weight + (rr + dstp[x*3+5]) * outer_weight));
+      rr = dstp[x*3+2]; dstp[x*3+2] = r;
     }
-    p[x*3+0] = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+0]) * outer_weight);
-    p[x*3+1] = ScaledPixelClip(p[x*3+1] * center_weight + (gg + p[x*3+1]) * outer_weight);
-    p[x*3+2] = ScaledPixelClip(p[x*3+2] * center_weight + (rr + p[x*3+2]) * outer_weight);
-    p += pitch;
+    dstp[x*3+0] = ScaledPixelClip((weight_t)(dstp[x*3+0] * center_weight + (bb + dstp[x*3+0]) * outer_weight));
+    dstp[x*3+1] = ScaledPixelClip((weight_t)(dstp[x*3+1] * center_weight + (gg + dstp[x*3+1]) * outer_weight));
+    dstp[x*3+2] = ScaledPixelClip((weight_t)(dstp[x*3+2] * center_weight + (rr + dstp[x*3+2]) * outer_weight));
+    dstp += pitch;
   }
 }
 
@@ -802,7 +823,7 @@ static __forceinline void af_horizontal_yv12_process_line_c(pixel_t left, BYTE *
 }
 
 template<typename pixel_t>
-static void af_horizontal_yv12_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, size_t half_amount)
+static void af_horizontal_planar_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, size_t half_amount)
 {
     pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
     size_t pitch = pitch8 / sizeof(pixel_t);
@@ -827,7 +848,7 @@ static __forceinline void af_horizontal_yv12_process_line_float_c(float left, fl
     dstp[x] = dstp[x] * center_weight + (left + dstp[x]) * outer_weight;
 }
 
-static void af_horizontal_yv12_float_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, float amount)
+static void af_horizontal_planar_float_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, float amount)
 {
     float* dstp = reinterpret_cast<float *>(dstp8);
     size_t pitch = pitch8 / sizeof(float);
@@ -841,7 +862,7 @@ static void af_horizontal_yv12_float_c(BYTE* dstp8, size_t height, size_t pitch8
     }
 }
 
-static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
+static void af_horizontal_planar_sse2(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   size_t mod16_width = (width / 16) * 16;
   size_t sse_loop_limit = width == mod16_width ? mod16_width - 16 : mod16_width;
   int center_weight_c = int(amount*2);
@@ -903,7 +924,7 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
 
 #ifdef X86_32
 
-static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
+static void af_horizontal_planar_mmx(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   size_t mod8_width = (width / 8) * 8;
   size_t mmx_loop_limit = width == mod8_width ? mod8_width - 8 : mod8_width;
   int center_weight_c = amount*2;
@@ -965,15 +986,13 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
 #endif
 
 
-static void copy_frame(const PVideoFrame &src, PVideoFrame &dst, IScriptEnvironment *env) {
-  env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
-  // Blit More planes (pitch, rowsize and height should be 0, if none is present)
-  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V),
-    src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U),
-    src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+static void copy_frame(const PVideoFrame &src, PVideoFrame &dst, IScriptEnvironment *env, const int *planes, int plane_count) {
+  for (int p = 0; p < plane_count; p++) {
+    int plane = planes[p];
+    env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane),
+      src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
+  }
 }
-
 
 // ----------------------------------
 // Blur/Sharpen Horizontal GetFrame()
@@ -984,9 +1003,14 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
+  const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
+  const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+  const int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
+
+  int pixelsize = vi.ComponentSize();
+
   if (vi.IsPlanar()) {
-    const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-    copy_frame(src, dst, env); //planar processing is always in-place
+    copy_frame(src, dst, env, planes, vi.NumComponents() ); //planar processing is always in-place
     int pixelsize = vi.ComponentSize();
     for(int cplane=0;cplane<3;cplane++) {
       int plane = planes[cplane];
@@ -995,19 +1019,19 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       int pitch = dst->GetPitch(plane);
       int height = dst->GetHeight(plane);
       if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size >= 16) {
-        af_horizontal_yv12_sse2(q, height, pitch, row_size, half_amount);
+        af_horizontal_planar_sse2(q, height, pitch, row_size, half_amount);
       } else
 #ifdef X86_32
         if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX) && row_size >= 8) {
-          af_horizontal_yv12_mmx(q,height,pitch,row_size,half_amount);
+          af_horizontal_planar_mmx(q,height,pitch,row_size,half_amount);
         } else
 #endif
         {
             switch (pixelsize) {
-            case 1: af_horizontal_yv12_c<uint8_t>(q, height, pitch, row_size, half_amount); break;
-            case 2: af_horizontal_yv12_c<uint16_t>(q, height, pitch, row_size, half_amount); break;
+            case 1: af_horizontal_planar_c<uint8_t>(q, height, pitch, row_size, half_amount); break;
+            case 2: af_horizontal_planar_c<uint16_t>(q, height, pitch, row_size, half_amount); break;
             default: // 4: float
-                    af_horizontal_yv12_float_c(q, height, pitch, row_size, (float)amountd); break;
+                    af_horizontal_planar_float_c(q, height, pitch, row_size, (float)amountd); break;
             }
 
         }
@@ -1016,37 +1040,44 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
     if (vi.IsYUY2()) {
       BYTE* q = dst->GetWritePtr();
       const int pitch = dst->GetPitch();
+      // PF: sse2/mmx versions are not identical to C. Sharpen(1.0, 1.0) has ugly artifacts
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
         af_horizontal_yuy2_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #ifdef X86_32
-      if (env->GetCPUFlags() & CPUF_MMX) {
+      if ((env->GetCPUFlags() & CPUF_MMX)) {
         af_horizontal_yuy2_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #endif
       {
-        copy_frame(src, dst, env); //in-place
+        copy_frame(src, dst, env, planesYUV, 1); //in-place
         af_horizontal_yuy2_c(q,vi.height,pitch,vi.width,half_amount);
       }
     }
-    else if (vi.IsRGB32()) {
-      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
+    else if (vi.IsRGB32() || vi.IsRGB64()) {
+      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
         //this one is NOT in-place
         af_horizontal_rgb32_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #ifdef X86_32
-      if (env->GetCPUFlags() & CPUF_MMX)
+      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX))
       { //so as this one
         af_horizontal_rgb32_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #endif
       {
-        copy_frame(src, dst, env);
-        af_horizontal_rgb32_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
+        copy_frame(src, dst, env, planesYUV, 1);
+        if(pixelsize==1)
+          af_horizontal_rgb32_64_c<uint8_t>(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
+        else
+          af_horizontal_rgb32_64_c<uint16_t>(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
       }
-    } else { //rgb24
-      copy_frame(src, dst, env);
-      af_horizontal_rgb24_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
+    } else if (vi.IsRGB24() || vi.IsRGB48()) {
+      copy_frame(src, dst, env, planesYUV, 1);
+      if(pixelsize==1)
+        af_horizontal_rgb24_48_c<uint8_t>(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
+      else
+        af_horizontal_rgb24_48_c<uint16_t>(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
     }
   }
 
@@ -1127,12 +1158,16 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
 
   child->SetCacheHints(CACHE_WINDOW,kernel);
 
-  if (vi.IsRGB24()) {
-    env->ThrowError("TemporalSoften: RGB24 Not supported, use ConvertToRGB32().");
+  if (vi.IsRGB24() || vi.IsRGB48()) {
+    env->ThrowError("TemporalSoften: RGB24/48 Not supported, use ConvertToRGB32/48().");
   }
 
-  if ((vi.IsRGB32()) && (vi.width&1)) {
-    env->ThrowError("TemporalSoften: RGB32 source must be multiple of 2 in width.");
+  if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+    env->ThrowError("TemporalSoften: Planar RGB Not supported, use ConvertToRGB32/48().");
+  }
+
+  if ((vi.IsRGB32() || vi.IsRGB64()) && (vi.width&1)) {
+    env->ThrowError("TemporalSoften: RGB32/64 source must be multiple of 2 in width.");
   }
 
   if ((vi.IsYUY2()) && (vi.width&3)) {
@@ -1142,19 +1177,21 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   if (scenechange >= 255) {
     scenechange = 0;
   }
-  if (scenechange>0 && vi.IsRGB32()) {
-      env->ThrowError("TemporalSoften: Scenechange not available on RGB32");
+
+  if (scenechange>0 && (vi.IsRGB32() || vi.IsRGB64())) {
+      env->ThrowError("TemporalSoften: Scenechange not available on RGB32/64");
   }
+
+  pixelsize = vi.ComponentSize();
 
   // original scenechange parameter always 0-255
   int factor;
-  if (vi.IsPlanar()) // Y/YUV
+  if (vi.IsPlanar()) // Y/YUV, no Planar RGB here
     factor = 1; // bitdepth independent. sad normalizes
   else
-    factor = vi.BytesFromPixels(1);
+    factor = vi.BytesFromPixels(1) / pixelsize; // /pixelsize: correction for packed 16 bit rgb
   scenechange *= ((vi.width/32)*32)*vi.height*factor; // why /*32?
 
-  pixelsize = vi.ComponentSize();
 
   int c = 0;
   if (vi.IsPlanar()) {
