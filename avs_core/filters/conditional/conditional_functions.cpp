@@ -39,47 +39,72 @@
 #include <avs/minmax.h>
 #include <avs/alignment.h>
 #include <emmintrin.h>
-
+#include <limits>
+#include <algorithm>
 
 extern const AVSFunction Conditional_funtions_filters[] = {
-  {  "AverageLuma",    BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create_y },
-  {  "AverageChromaU", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create_u },
-  {  "AverageChromaV", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create_v },
-//{  "AverageSat","c[offset]i", AverageSat::Create }, Sum(SatLookup[U,V])/N, SatLookup[U,V]=1.4087*sqrt((U-128)**2+(V-128)**2)
+  {  "AverageLuma",    BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_Y },
+  {  "AverageChromaU", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_U },
+  {  "AverageChromaV", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_V },
+  {  "AverageR", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_R },
+  {  "AverageG", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_G },
+  {  "AverageB", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_B },
+  //{  "AverageSat","c[offset]i", AverageSat::Create }, Sum(SatLookup[U,V])/N, SatLookup[U,V]=1.4087*sqrt((U-128)**2+(V-128)**2)
 //{  "AverageHue","c[offset]i", AverageHue::Create }, Sum(HueLookup[U,V])/N, HueLookup[U,V]=40.5845*Atan2(U-128,V-128)
 
-  {  "RGBDifference",     BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_rgb },
-  {  "LumaDifference",    BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_y },
-  {  "ChromaUDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_u },
-  {  "ChromaVDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_v },
-//{  "SatDifference","cc", CompareSat::Create }, Sum(Abs(SatLookup[U1,V1]-SatLookup[U2,V2]))/N
+  {  "RGBDifference",     BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create, (void *)-1 },
+  {  "LumaDifference",    BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create, (void *)PLANAR_Y },
+  {  "ChromaUDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create, (void *)PLANAR_U },
+  {  "ChromaVDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create, (void *)PLANAR_V },
+  {  "RDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create, (void *)PLANAR_R },
+  {  "GDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create, (void *)PLANAR_G },
+  {  "BDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create, (void *)PLANAR_B },
+  //{  "SatDifference","cc", CompareSat::Create }, Sum(Abs(SatLookup[U1,V1]-SatLookup[U2,V2]))/N
 //{  "HueDifference","cc", CompareHue::Create }, Sum(Abs(HueLookup[U1,V1]-HueLookup[U2,V2]))/N
 
-  {  "YDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_y },
-  {  "UDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_u },
-  {  "VDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_v },
-  {  "RGBDifferenceFromPrevious", BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_rgb },
-//{  "SatDifferenceFromPrevious","c", CompareSat::Create_prev },
+  {  "YDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev, (void *)PLANAR_Y },
+  {  "UDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev, (void *)PLANAR_U },
+  {  "VDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev, (void *)PLANAR_V },
+  {  "RGBDifferenceFromPrevious", BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev, (void *)-1 },
+  {  "RDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev, (void *)PLANAR_R },
+  {  "GDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev, (void *)PLANAR_G },
+  {  "BDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev, (void *)PLANAR_B },
+  //{  "SatDifferenceFromPrevious","c", CompareSat::Create_prev },
 //{  "HueDifferenceFromPrevious","c", CompareHue::Create_prev },
 
-  {  "YDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next_y },
-  {  "UDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next_u },
-  {  "VDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next_v },
-  {  "RGBDifferenceToNext", BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next_rgb },
-//{  "SatDifferenceFromNext","c[offset]i", CompareSat::Create_next },
+  {  "YDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)PLANAR_Y },
+  {  "UDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)PLANAR_U },
+  {  "VDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)PLANAR_V },
+  {  "RGBDifferenceToNext", BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)-1 },
+  {  "RDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)PLANAR_R },
+  {  "GDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)PLANAR_G },
+  {  "BDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)PLANAR_B },
+  //{  "SatDifferenceFromNext","c[offset]i", CompareSat::Create_next },
 //{  "HueDifferenceFromNext","c[offset]i", CompareHue::Create_next },
-  {  "YPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max_y },
-  {  "YPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min_y },
-  {  "YPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median_y },
-  {  "UPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max_u },
-  {  "UPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min_u },
-  {  "UPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median_u },
-  {  "VPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_max_v },
-  {  "VPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_min_v },
-  {  "VPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median_v },
-  {  "YPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_minmax_y },
-  {  "UPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_minmax_u },
-  {  "VPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_minmax_v },
+  {  "YPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max, (void *)PLANAR_Y },
+  {  "YPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min, (void *)PLANAR_Y },
+  {  "YPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median, (void *)PLANAR_Y },
+  {  "UPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max, (void *)PLANAR_U },
+  {  "UPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min, (void *)PLANAR_U },
+  {  "UPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median, (void *)PLANAR_U },
+  {  "VPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max, (void *)PLANAR_V }, // AVS+! was before: missing offset parameter
+  {  "VPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min, (void *)PLANAR_V }, // AVS+! was before: missing offset parameter
+  {  "VPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median, (void *)PLANAR_V },
+  {  "RPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max, (void *)PLANAR_R },
+  {  "RPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min, (void *)PLANAR_R },
+  {  "RPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median, (void *)PLANAR_R },
+  {  "GPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max, (void *)PLANAR_G },
+  {  "GPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min, (void *)PLANAR_G },
+  {  "GPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median, (void *)PLANAR_G },
+  {  "BPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max, (void *)PLANAR_B },
+  {  "BPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min, (void *)PLANAR_B },
+  {  "BPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median, (void *)PLANAR_B },
+  {  "YPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_minmax, (void *)PLANAR_Y },
+  {  "UPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_minmax, (void *)PLANAR_U }, // AVS+! was before: missing offset parameter
+  {  "VPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_minmax, (void *)PLANAR_V }, // AVS+! was before: missing offset parameter
+  {  "RPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_minmax, (void *)PLANAR_R },
+  {  "GPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_minmax, (void *)PLANAR_G },
+  {  "BPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_minmax, (void *)PLANAR_B },
 
 //{  "SatMax","c[threshold]f[offset]i", MinMaxPlane::Create_maxsat },  ++accum[SatLookup[U,V]]
 //{  "SatMin","c[threshold]f[offset]i", MinMaxPlane::Create_minsat },
@@ -95,6 +120,11 @@ extern const AVSFunction Conditional_funtions_filters[] = {
 };
 
 
+AVSValue AveragePlane::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return AvgPlane(args[0], user_data, plane, args[1].AsInt(0), env);
+}
+/*
 AVSValue AveragePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return AvgPlane(args[0], user_data, PLANAR_Y, args[1].AsInt(0), env);
 }
@@ -108,22 +138,27 @@ AVSValue AveragePlane::Create_u(AVSValue args, void* user_data, IScriptEnvironme
 AVSValue AveragePlane::Create_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return AvgPlane(args[0], user_data, PLANAR_V, args[1].AsInt(0), env);
 }
+*/
 
 // Average plane
-static size_t get_sum_of_pixels_c(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
-  unsigned int accum = 0;
+template<typename pixel_t>
+static double get_sum_of_pixels_c(const BYTE* srcp8, size_t height, size_t width, size_t pitch) {
+  typedef typename std::conditional < sizeof(pixel_t) == 4, double, __int64>::type sum_t;
+  sum_t accum = 0; // int32 holds sum of maximum 16 Mpixels for 8 bit, and 65536 pixels for uint16_t pixels
+  const pixel_t *srcp = reinterpret_cast<const pixel_t *>(srcp8);
+  pitch /= sizeof(pixel_t);
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x++) {
       accum += srcp[x];
     }
     srcp += pitch;
   }
-  return accum;
+  return (double)accum;
 }
 
-static size_t get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
+static double get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   size_t mod16_width = width / 16 * 16;
-  int result = 0;
+  __int64 result = 0;
   __m128i sum = _mm_setzero_si128();
   __m128i zero = _mm_setzero_si128();
 
@@ -143,13 +178,13 @@ static size_t get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t wid
   __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
   sum = _mm_add_epi32(sum, upper);
   result += _mm_cvtsi128_si32(sum);
-  return result;
+  return (double)result;
 }
 
 #ifdef X86_32
-static size_t get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
+static double get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   size_t mod8_width = width / 8 * 8;
-  int result = 0;
+  __int64 result = 0;
   __m64 sum = _mm_setzero_si64();
   __m64 zero = _mm_setzero_si64();
 
@@ -168,7 +203,7 @@ static size_t get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t wid
   }
   result += _mm_cvtsi64_si32(sum);
   _mm_empty();
-  return result;
+  return (double)result;
 }
 #endif
 
@@ -178,14 +213,12 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, int o
 {
   if (!clip.IsClip())
     env->ThrowError("Average Plane: No clip supplied!");
-  if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
-    env->ThrowError("Average Plane: Requires Integer SSE capable CPU.");
 
   PClip child = clip.AsClip();
   VideoInfo vi = child->GetVideoInfo();
 
   if (!vi.IsPlanar())
-    env->ThrowError("Average Plane: Only planar images (as YV12) supported!");
+    env->ThrowError("Average Plane: Only planar YUV or planar RGB images supported!");
 
   AVSValue cn = env->GetVarDef("current_frame");
   if (!cn.IsInt())
@@ -196,34 +229,54 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, int o
 
   PVideoFrame src = child->GetFrame(n,env);
 
+  int pixelsize = vi.ComponentSize();
+
   const BYTE* srcp = src->GetReadPtr(plane);
   int height = src->GetHeight(plane);
-  int width = src->GetRowSize(plane);
+  int width = src->GetRowSize(plane) / pixelsize;
   int pitch = src->GetPitch(plane);
 
   if (width == 0 || height == 0)
-    env->ThrowError("Average Plane: No chroma planes in Y8!");
+    env->ThrowError("Average Plane: plane does not exist!");
 
-  size_t sum = 0;
+  double sum = 0.0;
   
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
+
+  int total_pixels = width*height;
+  bool sum_in_32bits;
+  if (pixelsize == 4)
+    sum_in_32bits = false;
+  else // worst case
+    sum_in_32bits = ((__int64)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
+
+  if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
     sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
   } else 
 #ifdef X86_32
-  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+  if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
     sum = get_sum_of_pixels_isse(srcp, height, width, pitch);
   } else 
 #endif
   {
-    sum = get_sum_of_pixels_c(srcp, height, width, pitch);
+    if(pixelsize==1)
+      sum = get_sum_of_pixels_c<uint8_t>(srcp, height, width, pitch);
+    else if(pixelsize==2)
+      sum = get_sum_of_pixels_c<uint16_t>(srcp, height, width, pitch);
+    else // pixelsize==4
+      sum = get_sum_of_pixels_c<float>(srcp, height, width, pitch);
   }
 
-  float f = (float)((double)sum / (height * width));
+  float f = (float)(sum / (height * width));
 
   return (AVSValue)f;
 }
 
+AVSValue ComparePlane::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return CmpPlane(args[0],args[1], user_data, plane, env);
+}
 
+/*
 AVSValue ComparePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return CmpPlane(args[0],args[1], user_data, PLANAR_Y, env);
 }
@@ -241,8 +294,14 @@ AVSValue ComparePlane::Create_v(AVSValue args, void* user_data, IScriptEnvironme
 AVSValue ComparePlane::Create_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return CmpPlane(args[0],args[1], user_data, -1 , env);
 }
+*/
 
+AVSValue ComparePlane::Create_prev(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return CmpPlaneSame(args[0], user_data, -1, plane, env);
+}
 
+/*
 AVSValue ComparePlane::Create_prev_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return CmpPlaneSame(args[0], user_data, -1, PLANAR_Y, env);
 }
@@ -258,8 +317,15 @@ AVSValue ComparePlane::Create_prev_v(AVSValue args, void* user_data, IScriptEnvi
 AVSValue ComparePlane::Create_prev_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return CmpPlaneSame(args[0], user_data, -1, -1, env);
 }
+*/
 
 
+AVSValue ComparePlane::Create_next(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return CmpPlaneSame(args[0], user_data, args[1].AsInt(1), plane, env);
+}
+
+/*
 AVSValue ComparePlane::Create_next_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return CmpPlaneSame(args[0], user_data, args[1].AsInt(1), PLANAR_Y, env);
 }
@@ -275,34 +341,46 @@ AVSValue ComparePlane::Create_next_v(AVSValue args, void* user_data, IScriptEnvi
 AVSValue ComparePlane::Create_next_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return CmpPlaneSame(args[0], user_data, args[1].AsInt(1), -1, env);
 }
+*/
 
 
+template<typename pixel_t>
+static double get_sad_c(const BYTE* c_plane8, const BYTE* t_plane8, size_t height, size_t width, size_t c_pitch, size_t t_pitch) {
+  const pixel_t *c_plane = reinterpret_cast<const pixel_t *>(c_plane8);
+  const pixel_t *t_plane = reinterpret_cast<const pixel_t *>(t_plane8);
+  c_pitch /= sizeof(pixel_t);
+  t_pitch /= sizeof(pixel_t);
+  typedef typename std::conditional < sizeof(pixel_t) == 4, double, __int64>::type sum_t;
+  sum_t accum = 0; // int32 holds sum of maximum 16 Mpixels for 8 bit, and 65536 pixels for uint16_t pixels
 
-static size_t get_sad_c(const BYTE* c_plane, const BYTE* tplane, size_t height, size_t width, size_t c_pitch, size_t t_pitch) {
-  size_t accum = 0;
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x++) {
-      accum += abs(tplane[x] - c_plane[x]);
+      accum += abs(t_plane[x] - c_plane[x]);
     }
     c_plane += c_pitch;
-    tplane += t_pitch;
+    t_plane += t_pitch;
   }
-  return accum;
+  return (double)accum;
 
 }
 
-static size_t get_sad_rgb_c(const BYTE* c_plane, const BYTE* tplane, size_t height, size_t width, size_t c_pitch, size_t t_pitch) {
-  size_t accum = 0;
+template<typename pixel_t>
+static double get_sad_rgb_c(const BYTE* c_plane8, const BYTE* t_plane8, size_t height, size_t width, size_t c_pitch, size_t t_pitch) {
+  const pixel_t *c_plane = reinterpret_cast<const pixel_t *>(c_plane8);
+  const pixel_t *t_plane = reinterpret_cast<const pixel_t *>(t_plane8);
+  c_pitch /= sizeof(pixel_t);
+  t_pitch /= sizeof(pixel_t);
+  __int64 accum = 0; // packed rgb: integer type only
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x+=4) {
-      accum += abs(tplane[x] - c_plane[x]);
-      accum += abs(tplane[x+1] - c_plane[x+1]);
-      accum += abs(tplane[x+2] - c_plane[x+2]);
+      accum += abs(t_plane[x] - c_plane[x]);
+      accum += abs(t_plane[x+1] - c_plane[x+1]);
+      accum += abs(t_plane[x+2] - c_plane[x+2]);
     }
     c_plane += c_pitch;
-    tplane += t_pitch;
+    t_plane += t_pitch;
   }
-  return accum;
+  return (double)accum;
 
 }
 
@@ -431,18 +509,19 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
   PClip child2 = clip2.AsClip();
   VideoInfo vi2 = child2->GetVideoInfo();
   if (plane !=-1 ) {
-    if (!vi.IsPlanar())
-      env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
-    if (!vi2.IsPlanar())
-      env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+    if (!vi.IsPlanar() || !vi2.IsPlanar())
+      env->ThrowError("Plane Difference: Only planar YUV or planar RGB images supported!");
   } else {
+    if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+      env->ThrowError("RGB Difference: Planar RGB is not supported here (clip 1)");
+    if(vi2.IsPlanarRGB() || vi2.IsPlanarRGBA())
+      env->ThrowError("RGB Difference: Planar RGB is not supported here (clip 2)");
     if (!vi.IsRGB())
       env->ThrowError("RGB Difference: RGB difference can only be tested on RGB images! (clip 1)");
     if (!vi2.IsRGB())
       env->ThrowError("RGB Difference: RGB difference can only be tested on RGB images! (clip 2)");
     plane = 0;
   }
-
 
   AVSValue cn = env->GetVarDef("current_frame");
   if (!cn.IsInt())
@@ -454,54 +533,75 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
   PVideoFrame src = child->GetFrame(n,env);
   PVideoFrame src2 = child2->GetFrame(n,env);
 
+  int pixelsize = vi.ComponentSize();
+
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
   const int height = src->GetHeight(plane);
-  const int width = src->GetRowSize(plane);
+  const int width = src->GetRowSize(plane) / pixelsize;
   const int pitch = src->GetPitch(plane);
   const int height2 = src2->GetHeight(plane);
-  const int width2 = src2->GetRowSize(plane);
+  const int width2 = src2->GetRowSize(plane) / pixelsize;
   const int pitch2 = src2->GetPitch(plane);
 
+  if(vi.ComponentSize() != vi2.ComponentSize())
+    env->ThrowError("Plane Difference: Bit-depth are not the same!");
+
   if (width == 0 || height == 0)
-    env->ThrowError("Plane Difference: No chroma planes in Y8!");
+    env->ThrowError("Plane Difference: plane does not exist!");
 
   if (height != height2 || width != width2)
     env->ThrowError("Plane Difference: Images are not the same size!");
 
-  size_t sad = 0;
-  if (vi.IsRGB32()) {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+  int total_pixels = width*height;
+  bool sum_in_32bits;
+  if (pixelsize == 4)
+    sum_in_32bits = false;
+  else // worst case
+    sum_in_32bits = ((__int64)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
+
+  double sad = 0.0;
+  if (vi.IsRGB32() || vi.IsRGB64()) {
+    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
       sad = get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_rgb_isse(srcp, srcp2, height, width, pitch, pitch2);
       } else 
 #endif
       {
-        sad = get_sad_rgb_c(srcp, srcp2, height, width, pitch, pitch2);
+        if(pixelsize==1)
+          sad = get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
+        else // pixelsize==2
+          sad = get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
       sad = get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
       } else 
 #endif
       {
-        sad = get_sad_c(srcp, srcp2, height, width, pitch, pitch2);
+        if(pixelsize==1)
+          sad = get_sad_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
+        else if(pixelsize==2)
+          sad = get_sad_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
+        else // pixelsize==4
+          sad = get_sad_c<float>(srcp, srcp2, height, width, pitch, pitch2);
+
       }
   }
 
   float f;
 
-  if (vi.IsRGB32())
-    f = (float)((double)(sad * 4) / (height * width * 3));
+  if (vi.IsRGB32() || vi.IsRGB64())
+    f = (float)((sad * 4) / (height * width * 3));
   else
-    f = (float)((double)sad / (height * width));
+    f = (float)(sad / (height * width));
 
   return (AVSValue)f;
 }
@@ -512,17 +612,15 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
   if (!clip.IsClip())
     env->ThrowError("Plane Difference: No clip supplied!");
 
-  bool ISSE = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
-
   PClip child = clip.AsClip();
   VideoInfo vi = child->GetVideoInfo();
   if (plane ==-1 ) {
-    if (!vi.IsRGB())
-      env->ThrowError("RGB Difference: RGB difference can only be calculated on RGB images");
+    if (!vi.IsRGB() || vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+      env->ThrowError("RGB Difference: RGB difference can only be calculated on packed RGB images");
     plane = 0;
   } else {
     if (!vi.IsPlanar())
-      env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+      env->ThrowError("Plane Difference: Only planar YUV or planar RGB images images supported!");
   }
 
   AVSValue cn = env->GetVarDef("current_frame");
@@ -536,54 +634,92 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
   PVideoFrame src = child->GetFrame(n,env);
   PVideoFrame src2 = child->GetFrame(n2,env);
 
+  int pixelsize = vi.ComponentSize();
+
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
   int height = src->GetHeight(plane);
-  int width = src->GetRowSize(plane);
+  int width = src->GetRowSize(plane) / pixelsize;
   int pitch = src->GetPitch(plane);
   int pitch2 = src2->GetPitch(plane);
 
   if (width == 0 || height == 0)
     env->ThrowError("Plane Difference: No chroma planes in Y8!");
 
-  size_t sad = 0;
-  if (vi.IsRGB32()) {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+  int total_pixels = width*height;
+  bool sum_in_32bits;
+  if (pixelsize == 4)
+    sum_in_32bits = false;
+  else // worst case
+    sum_in_32bits = ((__int64)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
+
+  double sad = 0;
+  if (vi.IsRGB32() || vi.IsRGB64()) {
+    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
       sad = get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_rgb_isse(srcp, srcp2, height, width, pitch, pitch2);
       } else 
 #endif
       {
-        sad = get_sad_rgb_c(srcp, srcp2, height, width, pitch, pitch2);
+        if(pixelsize==1)
+          sad = get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
+        else
+          sad = get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
       sad = get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
       } else 
 #endif
       {
-        sad = get_sad_c(srcp, srcp2, height, width, pitch, pitch2);
+        if(pixelsize==1)
+          sad = get_sad_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
+        else if (pixelsize==2)
+          sad = get_sad_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
+        else // pixelsize==4
+          sad = get_sad_c<float>(srcp, srcp2, height, width, pitch, pitch2);
       }
   }
 
   float f;
 
-  if (vi.IsRGB32())
-    f = (float)((double)(sad * 4) / (height * width * 3));
+  if (vi.IsRGB32() || vi.IsRGB64())
+    f = (float)((sad * 4) / (height * width * 3));
   else
-    f = (float)((double)sad / (height * width));
+    f = (float)(sad / (height * width));
 
   return (AVSValue)f;
 }
 
 
+AVSValue MinMaxPlane::Create_max(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MAX, env);
+}
+
+AVSValue MinMaxPlane::Create_min(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MIN, env);
+}
+
+AVSValue MinMaxPlane::Create_median(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return MinMax(args[0], user_data, 50.0, args[1].AsInt(0), plane, MIN, env);
+}
+
+AVSValue MinMaxPlane::Create_minmax(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MINMAX_DIFFERENCE, env);
+}
+
+/*
 // Y Planes functions
 
 AVSValue MinMaxPlane::Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -636,10 +772,9 @@ AVSValue MinMaxPlane::Create_median_v(AVSValue args, void* user_data, IScriptEnv
 AVSValue MinMaxPlane::Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_V, MINMAX_DIFFERENCE, env);
 }
-
+*/
 
 AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
-  unsigned int accum[256];
 
   if (!clip.IsClip())
     env->ThrowError("MinMax: No clip supplied!");
@@ -649,6 +784,10 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
 
   if (!vi.IsPlanar())
     env->ThrowError("MinMax: Image must be planar");
+
+  int pixelsize = vi.ComponentSize();
+  int buffersize = pixelsize == 1 ? 256 : 65536; // 65536 for float, too
+  uint32_t *accum_buf = new uint32_t[buffersize];
 
   // Get current frame number
   AVSValue cn = env->GetVarDef("current_frame");
@@ -663,23 +802,39 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
 
   const BYTE* srcp = src->GetReadPtr(plane);
   int pitch = src->GetPitch(plane);
-  int w = src->GetRowSize(plane);
+  int w = src->GetRowSize(plane) / pixelsize;
   int h = src->GetHeight(plane);
 
   if (w == 0 || h == 0)
-    env->ThrowError("MinMax: No chroma planes in Y8!");
+    env->ThrowError("MinMax: plane does not exist!");
 
   // Reset accumulators
-  for (int i=0;i<256;i++) {
-    accum[i]=0;
-  }
+  std::fill_n(accum_buf, buffersize, 0);
 
-  // Count each component.
-  for (int y=0;y<h;y++) {
-    for (int x=0;x<w;x++) {
-       accum[srcp[x]]++;
+  // Count each component
+  if(pixelsize==1) {
+    for (int y=0;y<h;y++) {
+      for (int x=0;x<w;x++) {
+         accum_buf[srcp[x]]++;
+      }
+      srcp+=pitch;
     }
-    srcp+=pitch;
+  }
+  else if (pixelsize == 2) {
+    for (int y=0;y<h;y++) {
+      for (int x=0;x<w;x++) {
+        accum_buf[reinterpret_cast<const uint16_t *>(srcp)[x]]++;
+      }
+      srcp+=pitch;
+    }
+  } else { //pixelsize==4 float
+    // for float results are always checked with 16 bit precision only
+    for (int y=0;y<h;y++) {
+      for (int x=0;x<w;x++) {
+        accum_buf[clamp((int)(reinterpret_cast<const float *>(srcp)[x] * 65535.0f), 0, 65535)]++;
+      }
+      srcp+=pitch;
+    }
   }
 
   int pixels = w*h;
@@ -691,18 +846,18 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
   // Find the value we need.
   if (mode == MIN) {
     unsigned int counted=0;
-    for (int i = 0; i< 256;i++) {
-      counted += accum[i];
+    for (int i = 0; i< buffersize;i++) {
+      counted += accum_buf[i];
       if (counted>tpixels)
         return AVSValue(i);
     }
-    return AVSValue(255);
+    return AVSValue(buffersize-1);
   }
 
   if (mode == MAX) {
     unsigned int counted=0;
-    for (int i = 255; i>=0;i--) {
-      counted += accum[i];
+    for (int i = buffersize-1; i>=0;i--) {
+      counted += accum_buf[i];
       if (counted>tpixels)
         return AVSValue(i);
     }
@@ -713,8 +868,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
     unsigned int counted=0;
     int i, t_min = 0;
     // Find min
-    for (i = 0; i < 256;i++) {
-      counted += accum[i];
+    for (i = 0; i < buffersize;i++) {
+      counted += accum_buf[i];
       if (counted>tpixels) {
         t_min=i;
         break;
@@ -723,16 +878,20 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
 
     // Find max
     counted=0;
-    int t_max = 255;
-    for (i = 255; i>=0;i--) {
-      counted += accum[i];
+    int t_max = buffersize-1;
+    for (i = buffersize-1; i>=0;i--) {
+      counted += accum_buf[i];
       if (counted>tpixels) {
         t_max=i;
         break;
       }
     }
 
+    delete[] accum_buf;
+
     return AVSValue(t_max-t_min);  // results <0 will be returned if threshold > 50
   }
+
+  delete[] accum_buf;
   return AVSValue(-1);
 }
