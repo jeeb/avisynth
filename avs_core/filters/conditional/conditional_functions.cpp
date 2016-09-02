@@ -717,28 +717,30 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
 
   unsigned int tpixels = (unsigned int)(pixels*threshold);
 
-  // Find the value we need.
+  int retval;
+
+    // Find the value we need.
   if (mode == MIN) {
     unsigned int counted=0;
+    retval = buffersize - 1;
     for (int i = 0; i< buffersize;i++) {
       counted += accum_buf[i];
-      if (counted>tpixels)
-        return AVSValue(i);
+      if (counted>tpixels) {
+        retval = i;
+        break;
+      }
     }
-    return AVSValue(buffersize-1);
-  }
-
-  if (mode == MAX) {
+  } else if (mode == MAX) {
     unsigned int counted=0;
+    retval = 0;
     for (int i = buffersize-1; i>=0;i--) {
       counted += accum_buf[i];
-      if (counted>tpixels)
-        return AVSValue(i);
+      if (counted>tpixels) {
+        retval = i;
+        break;
+      }
     }
-    return AVSValue(0);
-  }
-
-  if (mode == MINMAX_DIFFERENCE) {
+  } else if (mode == MINMAX_DIFFERENCE) {
     unsigned int counted=0;
     int i, t_min = 0;
     // Find min
@@ -761,11 +763,12 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
       }
     }
 
-    delete[] accum_buf;
-
-    return AVSValue(t_max-t_min);  // results <0 will be returned if threshold > 50
+    retval = t_max - t_min; // results <0 will be returned if threshold > 50
+  }
+  else {
+    retval = -1;
   }
 
   delete[] accum_buf;
-  return AVSValue(-1);
+  return AVSValue(retval);
 }
