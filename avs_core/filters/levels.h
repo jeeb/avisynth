@@ -63,6 +63,10 @@ public:
 private:
   BYTE *map, *mapchroma;
   bool dither;
+  // avs+
+  int pixelsize;
+  int bits_per_pixel; // 8,10..16
+  bool use_lut;
 };
 
 

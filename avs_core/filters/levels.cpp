@@ -41,6 +41,7 @@
 #include <avs/alignment.h>
 #include "../core/internal.h"
 #include <xmmintrin.h>
+#include <algorithm>
 
 #define PI 3.141592653589793
 
@@ -133,31 +134,70 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
 
   gamma = 1/gamma;
 
-  int divisor = in_max - in_min + (in_max == in_min);
+  int divisor;
+  if (in_min == in_max)
+    divisor = 1;
+  else
+    divisor = in_max - in_min;
+
   int scale = 1;
   double bias = 0.0;
 
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent(); // 8,10..16
+
+  if (pixelsize == 4)
+    env->ThrowError("Levels: cannot operate on float video formats");
+  // No lookup for float. todo: slow on-the-fly realtime calculation
+
+  int lookup_size = 1 << bits_per_pixel; // 256, 1024, 4096, 16384, 65536
+  int real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
+  int pixel_max = lookup_size - 1;
+
+  use_lut = bits_per_pixel != 32; // for float: realtime (todo)
+
+  if (!use_lut)
+    dither = false;
+
+  int tv_range_low   = 16 << (bits_per_pixel - 8); // 16
+  int tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
+  int range_luma = tv_range_hi_luma - tv_range_low; // 219
+
+  int tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+  int range_chroma = tv_range_hi_chroma - tv_range_low; // 224
+
+  int middle_chroma = 1 << (bits_per_pixel - 1); // 128
+
   if (dither) {
-    scale = 256;
+    // lut scale settings
+    scale = 256; // lower 256 is dither value
     divisor *= 256;
     in_min *= 256;
-    bias = -127.5;
+    bias = -((1 << bits_per_pixel) - 1) / 2; // -127.5 for 8 bit, scaling because of dithershift
   }
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  size_t num_map = vi.IsYUV() ? 2 : 1;
-  map = static_cast<uint8_t*>(env2->Allocate(256 * scale * num_map, 8, AVS_NORMAL_ALLOC));
-  if (!map)
-    env->ThrowError("Levels: Could not reserve memory.");
-  env->AtExit(free_buffer, map);
+  // one buffer for map and mapchroma
+  map = nullptr;
+  if(use_lut) {
+    auto env2 = static_cast<IScriptEnvironment2*>(env);
+    size_t number_of_maps = vi.IsYUV() || vi.IsYUVA() ? 2 : 1;
+    int bufsize = pixelsize * real_lookup_size * scale * number_of_maps;
+    map = static_cast<uint8_t*>(env2->Allocate(bufsize , 16, AVS_NORMAL_ALLOC));
+    if (!map)
+      env->ThrowError("Levels: Could not reserve memory.");
+    env->AtExit(free_buffer, map);
+    if(bits_per_pixel>=10 && bits_per_pixel<=14)
+      std::fill_n(map, bufsize, 0); // 8 and 16 bit fully overwrites
+  }
 
-  if (vi.IsYUV())
+  if (vi.IsYUV() || vi.IsYUVA())
   {
-    mapchroma = map + 256 * scale;
+    mapchroma = map + pixelsize * real_lookup_size * scale;
 
-    for (int i = 0; i<256*scale; ++i) {
+    for (int i = 0; i<lookup_size*scale; ++i) {
       double p;
 
+      /* old 8 bit-only. Temporarily I left here for sample
       if (coring)
         p = ((bias + i - 16*scale)*(255.0/219.0) - in_min) / divisor;
       else
@@ -177,15 +217,68 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
         mapchroma[i] = (BYTE)clamp((int)q, 16, 240);
       else
         mapchroma[i] = (BYTE)clamp((int)q, 0, 255);
+      */
+
+      int ii;
+      if(dither) {
+        int i_base = dither ? (i & ~0xFF) : i;
+        int i_dithershift = dither ? (i & 0xFF) << (bits_per_pixel - 8) : 0;
+        ii = i_base + i_dithershift; // otherwise dither has no visible effect on 10..16 bit
+      }
+      else {
+        ii = i;
+      }
+
+      if (coring)
+        p = ((bias + ii - tv_range_low *scale)*((double)pixel_max/range_luma) - in_min) / divisor;
+      else
+        p = (bias + ii - in_min) / divisor;
+
+      p = pow(clamp(p, 0.0, 1.0), gamma);
+      p = p * (out_max - out_min) + out_min;
+
+      int q = (int)(((bias + ii - middle_chroma*scale) * (out_max-out_min)) / divisor + middle_chroma + 0.5);
+
+      int luma, chroma;
+      if (coring) {
+        luma = clamp(int(p*((double)range_luma/pixel_max)+tv_range_low + 0.5), tv_range_low, tv_range_hi_luma);
+        chroma = clamp(q, tv_range_low, tv_range_hi_chroma);
+      } else {
+        luma = clamp(int(p+0.5), 0, pixel_max);
+        chroma = clamp(q, 0, pixel_max);
+      }
+
+      if(pixelsize==1) {
+        map[i] = (BYTE)luma;
+        mapchroma[i] = (BYTE)chroma;
+      }
+      else { // pixelsize==2
+        reinterpret_cast<uint16_t *>(map)[i] = (uint16_t)luma;
+        reinterpret_cast<uint16_t *>(mapchroma)[i] = (uint16_t)chroma;
+      }
     }
   }
   else if (vi.IsRGB())
   {
-    for (int i = 0; i<256*scale; ++i) {
-      double p = (bias + i - in_min) / divisor;
+    // no coring option here
+    // lookup for packed and planar RGBs
+    for (int i = 0; i<lookup_size*scale; ++i) {
+      int ii;
+      if(dither) {
+        int i_base = dither ? (i & ~0xFF) : i;
+        int i_dithershift = dither ? (i & 0xFF) << (bits_per_pixel - 8) : 0;
+        ii = i_base + i_dithershift; // otherwise dither has no visible effect on 10..16 bit
+      }
+      else {
+        ii = i;
+      }
+      double p = (bias + ii - in_min) / divisor;
       p = pow(clamp(p, 0.0, 1.0), gamma);
-      p = p * (out_max - out_min) + out_min;
-      map[i] = (BYTE)clamp(int(p+0.5), 0, 255);
+      p = clamp((int)(p * (out_max - out_min) + out_min + 0.5), 0, pixel_max);
+      if(pixelsize==1)
+        map[i] = (BYTE)p; // 0..255
+      else
+        reinterpret_cast<uint16_t *>(map)[i] = (uint16_t)p;
     }
   }
 }
@@ -213,27 +306,88 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
         p += pitch;
       }
     } else if (vi.IsPlanar()) {
-      for (int y = 0; y<vi.height; ++y) {
-        const int _y = (y << 4) & 0xf0;
-        for (int x = 0; x<vi.width; ++x) {
-          p[x] = map[p[x]<<8 | ditherMap[(x&0x0f)|_y]];
+      if(vi.IsYUV() || vi.IsYUVA()) {
+        // planar YUV
+        if(pixelsize==1) {
+          for (int y = 0; y<vi.height; ++y) {
+            const int _y = (y << 4) & 0xf0;
+            for (int x = 0; x<vi.width; ++x) {
+              p[x] = map[p[x]<<8 | ditherMap[(x&0x0f)|_y]];
+            }
+            p += pitch;
+          }
         }
-        p += pitch;
+        else { // pixelsize==2
+          for (int y = 0; y<vi.height; ++y) {
+            const int _y = (y << 4) & 0xf0;
+            for (int x = 0; x<vi.width; ++x) {
+              reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x]<<8 | ditherMap[(x&0x0f)|_y]];
+            }
+            p += pitch;
+          }
+        }
+        const int UVpitch = frame->GetPitch(PLANAR_U);
+        const int w = frame->GetRowSize(PLANAR_U) / pixelsize;
+        const int h = frame->GetHeight(PLANAR_U);
+        p = frame->GetWritePtr(PLANAR_U);
+        BYTE* q = frame->GetWritePtr(PLANAR_V);
+        if(pixelsize==1) {
+          for (int y = 0; y<h; ++y) {
+            const int _y = (y << 4) & 0xf0;
+            for (int x = 0; x<w; ++x) {
+              const int _dither = ditherMap[(x&0x0f)|_y];
+              p[x] = mapchroma[p[x]<<8 | _dither];
+              q[x] = mapchroma[q[x]<<8 | _dither];
+            }
+            p += UVpitch;
+            q += UVpitch;
+          }
+        }
+        else { // pixelsize==2
+          for (int y = 0; y<h; ++y) {
+            const int _y = (y << 4) & 0xf0;
+            for (int x = 0; x<w; ++x) {
+              const int _dither = ditherMap[(x&0x0f)|_y];
+              reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(mapchroma)[reinterpret_cast<uint16_t *>(p)[x]<<8 | _dither];
+              reinterpret_cast<uint16_t *>(q)[x] = reinterpret_cast<uint16_t *>(mapchroma)[reinterpret_cast<uint16_t *>(q)[x]<<8 | _dither];
+            }
+            p += UVpitch;
+            q += UVpitch;
+          }
+        }
       }
-      const int UVpitch = frame->GetPitch(PLANAR_U);
-      const int w = frame->GetRowSize(PLANAR_U);
-      const int h = frame->GetHeight(PLANAR_U);
-      p = frame->GetWritePtr(PLANAR_U);
-      BYTE* q = frame->GetWritePtr(PLANAR_V);
-      for (int y = 0; y<h; ++y) {
-        const int _y = (y << 4) & 0xf0;
-        for (int x = 0; x<w; ++x) {
-          const int _dither = ditherMap[(x&0x0f)|_y];
-          p[x] = mapchroma[p[x]<<8 | _dither];
-          q[x] = mapchroma[q[x]<<8 | _dither];
+      else {
+        // planar RGB
+        BYTE* b = frame->GetWritePtr(PLANAR_B);
+        BYTE* r = frame->GetWritePtr(PLANAR_R);
+        const int pitch_b = frame->GetPitch(PLANAR_B);
+        const int pitch_r = frame->GetPitch(PLANAR_R);
+        if(pixelsize==1) {
+          for (int y = 0; y<vi.height; ++y) {
+            const int _y = (y << 4) & 0xf0;
+            for (int x = 0; x<vi.width; ++x) {
+              p[x] = map[p[x]<<8 | ditherMap[(x&0x0f)|_y]];
+              b[x] = map[b[x]<<8 | ditherMap[(x&0x0f)|_y]];
+              r[x] = map[r[x]<<8 | ditherMap[(x&0x0f)|_y]];
+            }
+            p += pitch;
+            b += pitch_b;
+            r += pitch_r;
+          }
         }
-        p += UVpitch;
-        q += UVpitch;
+        else { // pixelsize==2
+          for (int y = 0; y<vi.height; ++y) {
+            const int _y = (y << 4) & 0xf0;
+            for (int x = 0; x<vi.width; ++x) {
+              reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x]<<8 | ditherMap[(x&0x0f)|_y]];
+              reinterpret_cast<uint16_t *>(b)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(b)[x]<<8 | ditherMap[(x&0x0f)|_y]];
+              reinterpret_cast<uint16_t *>(r)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(r)[x]<<8 | ditherMap[(x&0x0f)|_y]];
+            }
+            p += pitch;
+            b += pitch_b;
+            r += pitch_r;
+          }
+        }
       }
     } else if (vi.IsRGB32()) {
       for (int y = 0; y<vi.height; ++y) {
@@ -258,8 +412,31 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
         }
         p += pitch;
       }
+    } else if (vi.IsRGB64()) {
+      for (int y = 0; y<vi.height; ++y) {
+        const int _y = (y << 4) & 0xf0;
+        for (int x = 0; x<vi.width; ++x) {
+          const int _dither = ditherMap[(x&0x0f)|_y];
+          reinterpret_cast<uint16_t *>(p)[x*4+0] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x*4+0]<<8 | _dither];
+          reinterpret_cast<uint16_t *>(p)[x*4+1] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x*4+1]<<8 | _dither];
+          reinterpret_cast<uint16_t *>(p)[x*4+2] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x*4+2]<<8 | _dither];
+          reinterpret_cast<uint16_t *>(p)[x*4+3] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x*4+3]<<8 | _dither];
+        }
+        p += pitch;
+      }
+    } else if (vi.IsRGB48()) {
+      for (int y = 0; y<vi.height; ++y) {
+        const int _y = (y << 4) & 0xf0;
+        for (int x = 0; x<vi.width; ++x) {
+          const int _dither = ditherMap[(x&0x0f)|_y];
+          reinterpret_cast<uint16_t *>(p)[x*3+0] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x*3+0]<<8 | _dither];
+          reinterpret_cast<uint16_t *>(p)[x*3+1] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x*3+1]<<8 | _dither];
+          reinterpret_cast<uint16_t *>(p)[x*3+2] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x*3+2]<<8 | _dither];
+        }
+        p += pitch;
+      }
     }
-  } else {
+  } else { // no dithering
     if (vi.IsYUY2()) {
       for (int y = 0; y<vi.height; ++y) {
         for (int x = 0; x<vi.width; ++x) {
@@ -269,36 +446,104 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
         p += pitch;
       }
     } else if (vi.IsPlanar()) {
-      for (int y = 0; y<vi.height; ++y) {
-        for (int x = 0; x<vi.width; ++x) {
-          p[x] = map[p[x]];
+      if(vi.IsYUV() || vi.IsYUVA()) {
+        // planar YUV
+        if(pixelsize==1) {
+          for (int y = 0; y<vi.height; ++y) {
+            for (int x = 0; x<vi.width; ++x) {
+              p[x] = map[p[x]];
+            }
+            p += pitch;
+          }
+        } else { // pixelsize==2
+          for (int y = 0; y<vi.height; ++y) {
+            for (int x = 0; x<vi.width; ++x) {
+              reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x]];
+            }
+            p += pitch;
+          }
         }
-        p += pitch;
+        const int UVpitch = frame->GetPitch(PLANAR_U);
+        p = frame->GetWritePtr(PLANAR_U);
+        const int w = frame->GetRowSize(PLANAR_U) / pixelsize;
+        const int h = frame->GetHeight(PLANAR_U);
+        if(pixelsize==1) {
+          for (int y = 0; y<h; ++y) {
+            for (int x = 0; x<w; ++x) {
+              p[x] = mapchroma[p[x]];
+            }
+            p += UVpitch;
+          }
+          p = frame->GetWritePtr(PLANAR_V);
+          for (int y = 0; y<h; ++y) {
+            for (int x = 0; x<w; ++x) {
+              p[x] = mapchroma[p[x]];
+            }
+            p += UVpitch;
+          }
+        } else { // pixelsize==2
+          for (int y = 0; y<h; ++y) {
+            for (int x = 0; x<w; ++x) {
+              reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(mapchroma)[reinterpret_cast<uint16_t *>(p)[x]];
+            }
+            p += UVpitch;
+          }
+          p = frame->GetWritePtr(PLANAR_V);
+          for (int y = 0; y<h; ++y) {
+            for (int x = 0; x<w; ++x) {
+              reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(mapchroma)[reinterpret_cast<uint16_t *>(p)[x]];
+            }
+            p += UVpitch;
+          }
+        }
       }
-      const int UVpitch = frame->GetPitch(PLANAR_U);
-      p = frame->GetWritePtr(PLANAR_U);
-      const int w = frame->GetRowSize(PLANAR_U);
-      const int h = frame->GetHeight(PLANAR_U);
-      for (int y = 0; y<h; ++y) {
-        for (int x = 0; x<w; ++x) {
-          p[x] = mapchroma[p[x]];
+      else {
+        // Planar RGB
+        BYTE* b = frame->GetWritePtr(PLANAR_B);
+        BYTE* r = frame->GetWritePtr(PLANAR_R);
+        const int pitch_b = frame->GetPitch(PLANAR_B);
+        const int pitch_r = frame->GetPitch(PLANAR_R);
+        if(pixelsize==1) {
+          for (int y = 0; y<vi.height; ++y) {
+            for (int x = 0; x<vi.width; ++x) {
+              p[x] = map[p[x]];
+              b[x] = map[b[x]];
+              r[x] = map[r[x]];
+            }
+            p += pitch;
+            b += pitch_b;
+            r += pitch_r;
+          }
+        } else { // pixelsize==2
+          for (int y = 0; y<vi.height; ++y) {
+            for (int x = 0; x<vi.width; ++x) {
+              reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x]];
+              reinterpret_cast<uint16_t *>(b)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(b)[x]];
+              reinterpret_cast<uint16_t *>(r)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(r)[x]];
+            }
+            p += pitch;
+            b += pitch_b;
+            r += pitch_r;
+          }
         }
-        p += UVpitch;
-      }
-      p = frame->GetWritePtr(PLANAR_V);
-      for (int y = 0; y<h; ++y) {
-        for (int x = 0; x<w; ++x) {
-          p[x] = mapchroma[p[x]];
-        }
-        p += UVpitch;
       }
     } else if (vi.IsRGB()) {
-      const int row_size = frame->GetRowSize();
-      for (int y = 0; y<vi.height; ++y) {
-        for (int x = 0; x<row_size; ++x) {
-          p[x] = map[p[x]];
+      // packed RGB
+      const int work_width = frame->GetRowSize() / pixelsize;
+      if(pixelsize==1) {
+        for (int y = 0; y<vi.height; ++y) {
+          for (int x = 0; x<work_width; ++x) {
+            p[x] = map[p[x]];
+          }
+          p += pitch;
         }
-        p += pitch;
+      } else { // pixelsize==2
+        for (int y = 0; y<vi.height; ++y) {
+          for (int x = 0; x<work_width; ++x) {
+            reinterpret_cast<uint16_t *>(p)[x] = reinterpret_cast<uint16_t *>(map)[reinterpret_cast<uint16_t *>(p)[x]];
+          }
+          p += pitch;
+        }
       }
     }
   }
