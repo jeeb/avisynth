@@ -663,6 +663,93 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     }
 }
 
+template<typename pixel_t>
+static void fill_accum_rgb_planar_c(const BYTE *srcpR, const BYTE* srcpG, const BYTE* srcpB, int pitch,
+  unsigned int *accum_r, unsigned int *accum_g, unsigned int *accum_b,
+  int width, int height) {
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        accum_r[reinterpret_cast<const pixel_t *>(srcpR)[x]]++;
+        accum_g[reinterpret_cast<const pixel_t *>(srcpG)[x]]++;
+        accum_b[reinterpret_cast<const pixel_t *>(srcpB)[x]]++;
+      }
+      srcpR += pitch;
+      srcpG += pitch;
+      srcpB += pitch;
+    }
+}
+
+template<typename pixel_t>
+static void fill_accum_rgb_packed_c(const BYTE *srcp, int pitch,
+  unsigned int *accum_r, unsigned int *accum_g, unsigned int *accum_b,
+  int work_width, int height, int pixel_step) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < work_width; x += pixel_step) {
+      accum_r[reinterpret_cast<const pixel_t *>(srcp)[x + 2]]++;
+      accum_g[reinterpret_cast<const pixel_t *>(srcp)[x + 1]]++;
+      accum_b[reinterpret_cast<const pixel_t *>(srcp)[x + 0]]++;
+    }
+    srcp += pitch;
+  }
+}
+
+template<typename pixel_t, int pixel_step, bool dither>
+static void apply_map_rgb_packed_c(BYTE *dstp8, int pitch,
+  BYTE *mapR, BYTE *mapG, BYTE *mapB, BYTE *mapA,
+  int width, int height)
+{
+  int _y = 0;
+  int _dither = 0;
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  pitch /= sizeof(pixel_t);
+
+  for (int y = 0; y < height; y++) {
+    if(dither)
+      _y = (y << 4) & 0xf0;
+    for (int x = 0; x < width; x++) {
+      if (dither)
+        _dither = ditherMap[(x & 0x0f) | _y];
+      dstp[x * pixel_step + 0] = reinterpret_cast<pixel_t *>(mapB)[dither ? dstp[x * pixel_step + 0] << 8 | _dither : dstp[x * pixel_step + 0]];
+      dstp[x * pixel_step + 1] = reinterpret_cast<pixel_t *>(mapG)[dither ? dstp[x * pixel_step + 1] << 8 | _dither : dstp[x * pixel_step + 1]];
+      dstp[x * pixel_step + 2] = reinterpret_cast<pixel_t *>(mapR)[dither ? dstp[x * pixel_step + 2] << 8 | _dither : dstp[x * pixel_step + 2]];
+      if(pixel_step == 4)
+        dstp[x * pixel_step + 3] = reinterpret_cast<pixel_t *>(mapA)[dither ? dstp[x * pixel_step + 3] << 8 | _dither : dstp[x * pixel_step + 3]];
+    }
+    dstp += pitch;
+  }
+}
+
+template<typename pixel_t, bool hasAlpha, bool dither>
+static void apply_map_rgb_planar_c(BYTE *dstpR8, BYTE *dstpG8, BYTE *dstpB8, BYTE *dstpA8, int pitch,
+  BYTE *mapR, BYTE *mapG, BYTE *mapB, BYTE *mapA,
+  int width, int height)
+{
+  int _y = 0;
+  int _dither = 0;
+  pixel_t *dstpR = reinterpret_cast<pixel_t *>(dstpR8);
+  pixel_t *dstpG = reinterpret_cast<pixel_t *>(dstpG8);
+  pixel_t *dstpB = reinterpret_cast<pixel_t *>(dstpB8);
+  pixel_t *dstpA = reinterpret_cast<pixel_t *>(dstpA8);
+  pitch /= sizeof(pixel_t);
+
+  for (int y = 0; y < height; y++) {
+    if(dither)
+      _y = (y << 4) & 0xf0;
+    for (int x = 0; x < width; x++) {
+      if (dither)
+        _dither = ditherMap[(x & 0x0f) | _y];
+      reinterpret_cast<pixel_t *>(dstpG)[x] = reinterpret_cast<pixel_t *>(mapG)[dither ? dstpG[x] << 8 | _dither : dstpG[x]];
+      reinterpret_cast<pixel_t *>(dstpB)[x] = reinterpret_cast<pixel_t *>(mapB)[dither ? dstpB[x] << 8 | _dither : dstpB[x]];
+      reinterpret_cast<pixel_t *>(dstpR)[x] = reinterpret_cast<pixel_t *>(mapR)[dither ? dstpR[x] << 8 | _dither : dstpR[x]];
+      if(hasAlpha)
+        reinterpret_cast<pixel_t *>(dstpA)[x] = reinterpret_cast<pixel_t *>(mapA)[dither ? dstpA[x] << 8 | _dither : dstpA[x]];
+    }
+    dstpG += pitch; dstpB += pitch; dstpR += pitch;
+    if(hasAlpha)
+      dstpA += pitch;
+  }
+}
+
 
 PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -671,184 +758,71 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
     BYTE* p = frame->GetWritePtr();
     const int pitch = frame->GetPitch();
 
+    int w = vi.width;
+    int h = vi.height;
+
     if (dither) {
-        if (vi.IsRGB32()) {
-            for (int y = 0; y < vi.height; ++y) {
-                const int _y = (y << 4) & 0xf0;
-                for (int x = 0; x < vi.width; ++x) {
-                    const int _dither = ditherMap[(x & 0x0f) | _y];
-                    p[x * 4 + 0] = mapB[p[x * 4 + 0] << 8 | _dither];
-                    p[x * 4 + 1] = mapG[p[x * 4 + 1] << 8 | _dither];
-                    p[x * 4 + 2] = mapR[p[x * 4 + 2] << 8 | _dither];
-                    p[x * 4 + 3] = mapA[p[x * 4 + 3] << 8 | _dither];
-                }
-                p += pitch;
-            }
-        }
-        else if (vi.IsRGB24()) {
-            for (int y = 0; y < vi.height; ++y) {
-                const int _y = (y << 4) & 0xf0;
-                for (int x = 0; x < vi.width; ++x) {
-                    const int _dither = ditherMap[(x & 0x0f) | _y];
-                    p[x * 3 + 0] = mapB[p[x * 3 + 0] << 8 | _dither];
-                    p[x * 3 + 1] = mapG[p[x * 3 + 1] << 8 | _dither];
-                    p[x * 3 + 2] = mapR[p[x * 3 + 2] << 8 | _dither];
-                }
-                p += pitch;
-            }
-        }
-        else if (vi.IsRGB64()) {
-          for (int y = 0; y < vi.height; ++y) {
-            const int _y = (y << 4) & 0xf0;
-            for (int x = 0; x < vi.width; ++x) {
-              const int _dither = ditherMap[(x & 0x0f) | _y];
-              uint16_t *p16 = reinterpret_cast<uint16_t *>(p);
-              p16[x * 4 + 0] = reinterpret_cast<uint16_t *>(mapB)[p16[x * 4 + 0] << 8 | _dither];
-              p16[x * 4 + 1] = reinterpret_cast<uint16_t *>(mapG)[p16[x * 4 + 1] << 8 | _dither];
-              p16[x * 4 + 2] = reinterpret_cast<uint16_t *>(mapR)[p16[x * 4 + 2] << 8 | _dither];
-              p16[x * 4 + 3] = reinterpret_cast<uint16_t *>(mapA)[p16[x * 4 + 3] << 8 | _dither];
-            }
-            p += pitch;
-          }
-        }
-        else if (vi.IsRGB48()) {
-          for (int y = 0; y < vi.height; ++y) {
-            const int _y = (y << 4) & 0xf0;
-            for (int x = 0; x < vi.width; ++x) {
-              const int _dither = ditherMap[(x & 0x0f) | _y];
-              uint16_t *p16 = reinterpret_cast<uint16_t *>(p);
-              p16[x * 3 + 0] = reinterpret_cast<uint16_t *>(mapB)[p16[x * 3 + 0] << 8 | _dither];
-              p16[x * 3 + 1] = reinterpret_cast<uint16_t *>(mapG)[p16[x * 3 + 1] << 8 | _dither];
-              p16[x * 3 + 2] = reinterpret_cast<uint16_t *>(mapR)[p16[x * 3 + 2] << 8 | _dither];
-            }
-            p += pitch;
-          }
+      if (vi.IsRGB32())
+        apply_map_rgb_packed_c<uint8_t, 4, true>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else if(vi.IsRGB24())
+        apply_map_rgb_packed_c<uint8_t, 3, true>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else if(vi.IsRGB64())
+        apply_map_rgb_packed_c<uint16_t, 4, true>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else if(vi.IsRGB48())
+        apply_map_rgb_packed_c<uint16_t, 3, true>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else {
+        // Planar RGB
+        bool hasAlpha = vi.IsPlanarRGBA();
+        BYTE *p_g = p;
+        BYTE *p_b = frame->GetWritePtr(PLANAR_B);
+        BYTE *p_r = frame->GetWritePtr(PLANAR_R);
+        BYTE *p_a = frame->GetWritePtr(PLANAR_A);
+        // no float support
+        if(pixelsize==1) {
+          if(hasAlpha)
+            apply_map_rgb_planar_c<uint8_t, true, true>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
+          else
+            apply_map_rgb_planar_c<uint8_t, false, true>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
         }
         else {
-          // Planar RGB
-          bool hasAlpha = vi.IsPlanarRGBA();
-          BYTE *srcpG = p;
-          BYTE *srcpB = frame->GetWritePtr(PLANAR_B);
-          BYTE *srcpR = frame->GetWritePtr(PLANAR_R);
-          BYTE *srcpA = frame->GetWritePtr(PLANAR_A);
-          const int pitchG = pitch;
-          const int pitchB = frame->GetPitch(PLANAR_B);
-          const int pitchR = frame->GetPitch(PLANAR_R);
-          const int pitchA = frame->GetPitch(PLANAR_A);
-          // no float support
-          if(pixelsize==1) {
-            for (int y=0; y<vi.height; y++) {
-              const int _y = (y << 4) & 0xf0;
-              for (int x=0; x<vi.width; x++) {
-                const int _dither = ditherMap[(x & 0x0f) | _y];
-                srcpG[x] = mapG[srcpG[x] << 8 | _dither];
-                srcpB[x] = mapB[srcpB[x] << 8 | _dither];
-                srcpR[x] = mapR[srcpR[x] << 8 | _dither];
-                if(hasAlpha)
-                  srcpA[x] = mapA[srcpA[x]];
-              }
-              srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
-              srcpA += pitchA;
-            }
-          } else if(pixelsize==2) {
-            for (int y=0; y<vi.height; y++) {
-              const int _y = (y << 4) & 0xf0;
-              for (int x=0; x<vi.width; x++) {
-                const int _dither = ditherMap[(x & 0x0f) | _y];
-                reinterpret_cast<uint16_t *>(srcpG)[x] = reinterpret_cast<uint16_t *>(mapG)[reinterpret_cast<uint16_t *>(srcpG)[x] << 8 | _dither];
-                reinterpret_cast<uint16_t *>(srcpB)[x] = reinterpret_cast<uint16_t *>(mapB)[reinterpret_cast<uint16_t *>(srcpB)[x] << 8 | _dither];
-                reinterpret_cast<uint16_t *>(srcpR)[x] = reinterpret_cast<uint16_t *>(mapR)[reinterpret_cast<uint16_t *>(srcpR)[x] << 8 | _dither];
-                if(hasAlpha)
-                  reinterpret_cast<uint16_t *>(srcpA)[x] = reinterpret_cast<uint16_t *>(mapA)[reinterpret_cast<uint16_t *>(srcpA)[x] << 8 | _dither];
-              }
-              srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
-              srcpA += pitchA;
-            }
-          }
+          if(hasAlpha)
+            apply_map_rgb_planar_c<uint16_t, true, true>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
+          else
+            apply_map_rgb_planar_c<uint16_t, false, true>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
         }
+      }
     }
     else {
       // no dither
-        if (vi.IsRGB32()) {
-            for (int y = 0; y < vi.height; ++y) {
-                for (int x = 0; x < vi.width; ++x) {
-                    p[x * 4 + 0] = mapB[p[x * 4]];
-                    p[x * 4 + 1] = mapG[p[x * 4 + 1]];
-                    p[x * 4 + 2] = mapR[p[x * 4 + 2]];
-                    p[x * 4 + 3] = mapA[p[x * 4 + 3]];
-                }
-                p += pitch;
-            }
-        }
-        else if (vi.IsRGB24()) {
-            for (int y = 0; y < vi.height; ++y) {
-                for (int x = 0; x < vi.width; x += 3) {
-                    p[x * 3 + 0] = mapB[p[x]];
-                    p[x * 3 + 1] = mapG[p[x + 1]];
-                    p[x * 3 + 2] = mapR[p[x + 2]];
-                }
-                p += pitch;
-            }
-        } else if (vi.IsRGB64()) {
-          for (int y = 0; y < vi.height; ++y) {
-            for (int x = 0; x < vi.width; ++x) {
-              uint16_t *p16 = reinterpret_cast<uint16_t *>(p);
-              p16[x * 4 + 0] = reinterpret_cast<uint16_t *>(mapB)[p16[x * 4]];
-              p16[x * 4 + 1] = reinterpret_cast<uint16_t *>(mapG)[p16[x * 4 + 1]];
-              p16[x * 4 + 2] = reinterpret_cast<uint16_t *>(mapR)[p16[x * 4 + 2]];
-              p16[x * 4 + 3] = reinterpret_cast<uint16_t *>(mapA)[p16[x * 4 + 3]];
-            }
-            p += pitch;
-          }
-        } else if (vi.IsRGB48()) {
-          for (int y = 0; y < vi.height; ++y) {
-            for (int x = 0; x < vi.width; ++x) {
-              uint16_t *p16 = reinterpret_cast<uint16_t *>(p);
-              p16[x * 3 + 0] = reinterpret_cast<uint16_t *>(mapB)[p16[x * 3]];
-              p16[x * 3 + 1] = reinterpret_cast<uint16_t *>(mapG)[p16[x * 3 + 1]];
-              p16[x * 3 + 2] = reinterpret_cast<uint16_t *>(mapR)[p16[x * 3 + 2]];
-            }
-            p += pitch;
-          }
+      if (vi.IsRGB32())
+        apply_map_rgb_packed_c<uint8_t, 4, false>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else if(vi.IsRGB24())
+        apply_map_rgb_packed_c<uint8_t, 3, false>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else if(vi.IsRGB64())
+        apply_map_rgb_packed_c<uint16_t, 4, false>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else if(vi.IsRGB48())
+        apply_map_rgb_packed_c<uint16_t, 3, false>(p, pitch, mapR, mapG, mapB, mapA, w, h);
+      else {
+          // Planar RGB
+        bool hasAlpha = vi.IsPlanarRGBA();
+        BYTE *p_g = p;
+        BYTE *p_b = frame->GetWritePtr(PLANAR_B);
+        BYTE *p_r = frame->GetWritePtr(PLANAR_R);
+        BYTE *p_a = frame->GetWritePtr(PLANAR_A);
+        // no float support
+        if(pixelsize==1) {
+          if(hasAlpha)
+            apply_map_rgb_planar_c<uint8_t, true, false>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
+          else
+            apply_map_rgb_planar_c<uint8_t, false, false>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
         }
         else {
-          // Planar RGB
-          bool hasAlpha = vi.IsPlanarRGBA();
-          BYTE *srcpG = p;
-          BYTE *srcpB = frame->GetWritePtr(PLANAR_B);
-          BYTE *srcpR = frame->GetWritePtr(PLANAR_R);
-          BYTE *srcpA = frame->GetWritePtr(PLANAR_A);
-          const int pitchG = pitch;
-          const int pitchB = frame->GetPitch(PLANAR_B);
-          const int pitchR = frame->GetPitch(PLANAR_R);
-          const int pitchA = frame->GetPitch(PLANAR_A);
-          // no float support
-          if(pixelsize==1) {
-            for (int y=0; y<vi.height; y++) {
-              for (int x=0; x<vi.width; x++) {
-                srcpG[x] = mapG[srcpG[x]];
-                srcpB[x] = mapB[srcpB[x]];
-                srcpR[x] = mapR[srcpR[x]];
-                if(hasAlpha)
-                  srcpA[x] = mapA[srcpA[x]];
-              }
-              srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
-              srcpA += pitchA;
-            }
-          } else if(pixelsize==2) {
-            for (int y=0; y<vi.height; y++) {
-              for (int x=0; x<vi.width; x++) {
-                reinterpret_cast<uint16_t *>(srcpG)[x] = reinterpret_cast<uint16_t *>(mapG)[reinterpret_cast<uint16_t *>(srcpG)[x]];
-                reinterpret_cast<uint16_t *>(srcpB)[x] = reinterpret_cast<uint16_t *>(mapB)[reinterpret_cast<uint16_t *>(srcpB)[x]];
-                reinterpret_cast<uint16_t *>(srcpR)[x] = reinterpret_cast<uint16_t *>(mapR)[reinterpret_cast<uint16_t *>(srcpR)[x]];
-                if(hasAlpha)
-                  reinterpret_cast<uint16_t *>(srcpA)[x] = reinterpret_cast<uint16_t *>(mapA)[reinterpret_cast<uint16_t *>(srcpA)[x]];
-              }
-              srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
-              srcpA += pitchA;
-            }
-          }
+          if(hasAlpha)
+            apply_map_rgb_planar_c<uint16_t, true, false>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
+          else
+            apply_map_rgb_planar_c<uint16_t, false, false>(p_r, p_g, p_b, p_a, pitch, mapR, mapG, mapB, mapA, w, h);
         }
+      }
     }
 
     if (analyze) {
@@ -868,65 +842,25 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
           accum_b[i] = 0;
         }
 
-        p = frame->GetWritePtr();
         if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
         {
-          const BYTE *p_g = p;
+          const BYTE *p_g = frame->GetReadPtr(PLANAR_G);;
           const BYTE *p_b = frame->GetReadPtr(PLANAR_B);
           const BYTE *p_r = frame->GetReadPtr(PLANAR_R);
-          const int pitchG = pitch;
-          const int pitchB= frame->GetPitch(PLANAR_B);
-          const int pitchR= frame->GetPitch(PLANAR_R);
-          if(pixelsize==1) {
-            for (int y = 0; y < h; y++) {
-              for (int x = 0; x < w; x++) {
-                accum_r[p_r[x]]++;
-                accum_g[p_g[x]]++;
-                accum_b[p_b[x]]++;
-              }
-              p_g += pitchG;
-              p_b += pitchB;
-              p_r += pitchR;
-            }
-          }
-          else {
-            // pixelsize == 2
-            for (int y = 0; y < h; y++) {
-              for (int x = 0; x < w; x++) {
-                accum_r[reinterpret_cast<const uint16_t *>(p_r)[x]]++;
-                accum_g[reinterpret_cast<const uint16_t *>(p_g)[x]]++;
-                accum_b[reinterpret_cast<const uint16_t *>(p_b)[x]]++;
-              }
-              p_g += pitchG;
-              p_b += pitchB;
-              p_r += pitchR;
-            }
-          }
+          if (pixelsize == 1)
+            fill_accum_rgb_planar_c<uint8_t>(p_r, p_g, p_b, pitch, accum_r, accum_g, accum_b, w, h);
+          else
+            fill_accum_rgb_planar_c<uint16_t>(p_r, p_g, p_b, pitch, accum_r, accum_g, accum_b, w, h);
         } else {
           // packed RGB
+          const BYTE *srcp = frame->GetReadPtr();
           const int pixel_step = vi.IsRGB24() || vi.IsRGB48() ? 3 : 4;
-          if(pixelsize==1) {
-            for (int y = 0; y < h; y++) {
-              for (int x = 0; x < w; x += pixel_step) {
-                accum_r[p[x + 2]]++;
-                accum_g[p[x + 1]]++;
-                accum_b[p[x]]++;
-              }
-              p += pitch;
-            }
-          }
-          else { // pixelsize==2
-            for (int y = 0; y < h; y++) {
-              for (int x = 0; x < w; x += pixel_step) {
-                accum_r[reinterpret_cast<uint16_t *>(p)[x + 2]]++;
-                accum_g[reinterpret_cast<uint16_t *>(p)[x + 1]]++;
-                accum_b[reinterpret_cast<uint16_t *>(p)[x]]++;
-              }
-              p += pitch;
-            }
-          }
-        }
 
+          if (pixelsize == 1)
+            fill_accum_rgb_packed_c<uint8_t>(srcp, pitch, accum_r, accum_g, accum_b, w, h, pixel_step);
+          else
+            fill_accum_rgb_packed_c<uint16_t>(srcp, pitch, accum_r, accum_g, accum_b, w, h, pixel_step);
+        }
 
         int pixels = vi.width*vi.height;
         float avg_r = 0, avg_g = 0, avg_b = 0;
@@ -941,7 +875,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
         int At_256 = (pixels + 128) / 256; // When 1/256th of all pixels have been reached, trigger "Loose min/max"
 
 
-        {for (int i = 0; i < lookup_size; i++) {
+        for (int i = 0; i < lookup_size; i++) {
             avg_r += (float)accum_r[i] * (float)i;
             avg_g += (float)accum_g[i] * (float)i;
             avg_b += (float)accum_b[i] * (float)i;
@@ -960,17 +894,17 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
             if (!Ahit_maxr) { Amax_r += accum_r[pixel_max - i]; if (Amax_r > At_256) { Ahit_maxr = true; Amax_r = pixel_max - i; } }
             if (!Ahit_maxg) { Amax_g += accum_g[pixel_max - i]; if (Amax_g > At_256) { Ahit_maxg = true; Amax_g = pixel_max - i; } }
             if (!Ahit_maxb) { Amax_b += accum_b[pixel_max - i]; if (Amax_b > At_256) { Ahit_maxb = true; Amax_b = pixel_max - i; } }
-        }}
+        }
 
         float Favg_r = avg_r / pixels;
         float Favg_g = avg_g / pixels;
         float Favg_b = avg_b / pixels;
 
-        {for (int i = 0; i < lookup_size; i++) {
+        for (int i = 0; i < lookup_size; i++) {
             st_r += (float)accum_r[i] * (float(i - Favg_r)*(i - Favg_r));
             st_g += (float)accum_g[i] * (float(i - Favg_g)*(i - Favg_g));
             st_b += (float)accum_b[i] * (float(i - Favg_b)*(i - Favg_b));
-        }}
+        }
 
         float Fst_r = sqrt(st_r / pixels);
         float Fst_g = sqrt(st_g / pixels);
