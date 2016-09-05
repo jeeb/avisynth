@@ -787,12 +787,69 @@ static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rows
             // test
             if(sourcebits==16)
               dstp[x] = srcp0[x] / 257; // RGB: full range 0..255 <-> 0..65535 (*255 / 65535)
+              // hint for simd code writers:
+              // compilers are smart. Some divisions near 2^n can be performed by tricky multiplication
+              // such as x/257
+              // 32 bit (x) * 0xFF00FF01 = edx_eax
+              // Result of /257 is in: (edx>>8) and &FF !!
+              //   movzx  edx, WORD PTR [esi+ecx*2]
+              //   mov       eax, -16711935                                                ; ff00ff01H
+              //   mul       edx
+              //   shr       edx, 8
+              //   mov       BYTE PTR [ecx+edi], dl
             else if (sourcebits==14)
                 dstp[x] = srcp0[x] * 255 / 16383; // RGB: full range 0..255 <-> 0..16384-1
+            /*
+            movzx	eax, WORD PTR [edi+ecx*2]
+            imul	esi, eax, 255
+            mov	eax, -2147352567			; 80020009H
+            imul	esi
+            add	edx, esi
+            sar	edx, 13					; 0000000dH
+            mov	eax, edx
+            shr	eax, 31					; 0000001fH
+            add	eax, edx
+            mov	BYTE PTR [ecx+ebx], al
+            */
+            /*
+            and w/o mul 255: byte_y = uint16_t_x/16383:
+            movzx	ebx, WORD PTR [esi+ecx*2]
+            mov	eax, 262161				; 00040011H
+            mul	ebx
+            sub	ebx, edx
+            shr	ebx, 1
+            add	ebx, edx
+            shr	ebx, 13					; 0000000dH
+            mov	BYTE PTR [ecx+edi], bl
+            */
             else if (sourcebits==12)
                 dstp[x] = srcp0[x] * 255 / 4095; // RGB: full range 0..255 <-> 0..4096-1
+            /*
+            movzx	eax, WORD PTR [edi+ecx*2]
+            imul	esi, eax, 255
+            mov	eax, -2146959231			; 80080081H
+            imul	esi
+            add	edx, esi
+            sar	edx, 11					; 0000000bH
+            mov	eax, edx
+            shr	eax, 31					; 0000001fH
+            add	eax, edx
+            mov	BYTE PTR [ecx+ebx], al
+            */
             else if (sourcebits==10)
                 dstp[x] = srcp0[x] * 255 / 1023; // RGB: full range 0..255 <-> 0..1024-1
+            /*
+            movzx	eax, WORD PTR [edi+ecx*2]
+            imul	esi, eax, 255
+            mov	eax, -2145384445			; 80200803H
+            imul	esi
+            add	edx, esi
+            sar	edx, 9
+            mov	eax, edx
+            shr	eax, 31					; 0000001fH
+            add	eax, edx
+            mov	BYTE PTR [ecx+ebx], al
+            */
         }
         dstp += dst_pitch;
         srcp0 += src_pitch;
@@ -816,6 +873,37 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     }
     dstp += dst_pitch;
     srcp0 += src_pitch;
+  }
+}
+
+template<uint8_t sourcebits>
+static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
+  src_pitch = src_pitch / sizeof(uint16_t);
+  int src_width = src_rowsize / sizeof(uint16_t);
+  int wmod16 = (src_width / 16) * 16;
+
+  __m128i zero = _mm_setzero_si128();
+  // no dithering, no range conversion, simply shift
+  for(int y=0; y<src_height; y++)
+  {
+    for (int x = 0; x < src_width; x+=16)
+    {
+      __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
+      __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x+8));
+      src_lo = _mm_srli_epi16(src_lo, (sourcebits - 8));
+      src_hi = _mm_srli_epi16(src_hi, (sourcebits - 8));
+      __m128i dst = _mm_packus_epi16(src_lo, src_hi);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), dst);
+    }
+    // rest
+    for (int x = wmod16; x < src_width; x++)
+    {
+      dstp[x] = srcp[x] >> (sourcebits-8);
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch;
   }
 }
 
@@ -880,26 +968,59 @@ static void convert_rgb_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rows
 
 // YUV: bit shift 8 to 10-12-14-16 bits
 template<uint8_t targetbits>
-static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
-  const uint8_t *srcp0 = reinterpret_cast<const uint8_t *>(srcp);
-  uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
+  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
 
-  src_pitch = src_pitch / sizeof(uint8_t);
   dst_pitch = dst_pitch / sizeof(uint16_t);
 
-  int src_width = src_rowsize / sizeof(uint8_t);
+  int src_width = src_rowsize / sizeof(uint8_t); // intentional
 
   for(int y=0; y<src_height; y++)
   {
     for (int x = 0; x < src_width; x++)
     {
-        dstp0[x] = srcp0[x] << (targetbits-8);
+        dstp[x] = srcp[x] << (targetbits-8);
     }
-    dstp0 += dst_pitch;
-    srcp0 += src_pitch;
+    dstp += dst_pitch;
+    srcp += src_pitch;
   }
 }
+
+template<uint8_t targetbits>
+static void convert_8_to_uint16_sse2(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
+
+  dst_pitch = dst_pitch / sizeof(uint16_t);
+
+  int src_width = src_rowsize / sizeof(uint8_t);
+  int wmod16 = (src_width / 16) * 16;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for(int y=0; y<src_height; y++)
+  {
+    for (int x = 0; x < src_width; x+=16)
+    {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 16 bytes
+      __m128i dst_lo = _mm_unpacklo_epi8(src, zero);
+      __m128i dst_hi = _mm_unpackhi_epi8(src, zero);
+      dst_lo = _mm_slli_epi16(dst_lo, (targetbits - 8));
+      dst_hi = _mm_slli_epi16(dst_hi, (targetbits - 8));
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), dst_lo);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x + 8), dst_hi);
+    }
+    // rest
+    for (int x = wmod16; x < src_width; x++)
+    {
+      dstp[x] = srcp[x] << (targetbits-8);
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
 
 // RGB full range: 10-12-14 <=> 16 bits
 template<uint8_t sourcebits, uint8_t targetbits>
@@ -988,6 +1109,7 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
 ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _dither_mode, const int _bitdepth, const int _truerange, IScriptEnvironment* env) :
     GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), source_bitdepth(_bitdepth), truerange(_truerange)
 {
+  bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2); // frames are always 16 bit aligned
 
   if (vi.ComponentSize() == 2) // 16(,14,12,10)->8 bit
   {
@@ -1012,14 +1134,14 @@ ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _
           if(truerange) {
               switch(source_bitdepth)
               {
-              case 10: conv_function = convert_uint16_to_8_c<10>; break;
-              case 12: conv_function = convert_uint16_to_8_c<12>; break;
-              case 14: conv_function = convert_uint16_to_8_c<14>; break;
-              case 16: conv_function = convert_uint16_to_8_c<16>; break;
+              case 10: conv_function = sse2 ? convert_uint16_to_8_sse2<10> : convert_uint16_to_8_c<10>; break;
+              case 12: conv_function = sse2 ? convert_uint16_to_8_sse2<12> : convert_uint16_to_8_c<12>; break;
+              case 14: conv_function = sse2 ? convert_uint16_to_8_sse2<14> : convert_uint16_to_8_c<14>; break;
+              case 16: conv_function = sse2 ? convert_uint16_to_8_sse2<16> : convert_uint16_to_8_c<16>; break;
               default: env->ThrowError("ConvertTo8bit: invalid source bitdepth");
               }
           } else {
-              conv_function = convert_uint16_to_8_c<16>; // always convet from 16 bit scale
+              conv_function = sse2 ? convert_uint16_to_8_sse2<16> : convert_uint16_to_8_c<16>; // always convert from 16 bit scale
           }
       } else
           env->ThrowError("ConvertTo8bit: unsupported color space");
@@ -1130,6 +1252,8 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
 {
     change_only_format = false;
 
+    bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2); // frames are always 16 bit aligned
+
     if (vi.ComponentSize() == 1) // 8->10-12-14-16 bit
     {
         // RGB scaling is not shift by 8 as in YUV but like 0..255->0..65535
@@ -1156,15 +1280,15 @@ ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int
             {
                 switch (target_bitdepth)
                 {
-                case 10: conv_function = convert_8_to_uint16_c<10>; break;
-                case 12: conv_function = convert_8_to_uint16_c<12>; break;
-                case 14: conv_function = convert_8_to_uint16_c<14>; break;
-                case 16: conv_function = convert_8_to_uint16_c<16>; break;
+                case 10: conv_function = sse2 ? convert_8_to_uint16_sse2<10> : convert_8_to_uint16_c<10>; break;
+                case 12: conv_function = sse2 ? convert_8_to_uint16_sse2<12> : convert_8_to_uint16_c<12>; break;
+                case 14: conv_function = sse2 ? convert_8_to_uint16_sse2<14> : convert_8_to_uint16_c<14>; break;
+                case 16: conv_function = sse2 ? convert_8_to_uint16_sse2<16> : convert_8_to_uint16_c<16>; break;
                 default: env->ThrowError("ConvertTo16bit: unsupported bit depth");
                 }
             }
             else {
-                conv_function = convert_8_to_uint16_c<16>; // always 16 bit scale
+                conv_function = sse2 ? convert_8_to_uint16_sse2<16> : convert_8_to_uint16_c<16>; // always 16 bit scale
             }
         }
         else
