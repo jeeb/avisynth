@@ -57,6 +57,10 @@ private:
 
   enum show_e{show_none, show_luma, show_luma_grey, show_chroma, show_chroma_grey};
   const show_e show;
+
+  // avs+
+  int pixelsize;
+  int bits_per_pixel; // 8,10..16
 };
 
 #endif  // __Limiter_H__

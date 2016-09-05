@@ -54,6 +54,47 @@ inline void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch,
   }
 }
 
+static inline __m128i _mm_cmple_epu16 (__m128i x, __m128i y)
+{
+  // Returns 0xFFFF where x <= y:
+  return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
+}
+
+static inline __m128i _mm_blendv_si128 (__m128i x, __m128i y, __m128i mask)
+{
+  // Replace bit in x with bit in y when matching bit in mask is set:
+  return _mm_or_si128(_mm_andnot_si128(mask, x), _mm_and_si128(mask, y));
+}
+
+static inline __m128i _mm_min_epu16 (__m128i x, __m128i y)
+{
+  // Returns x where x <= y, else y:
+  return _mm_blendv_si128(y, x, _mm_cmple_epu16(x, y));
+}
+
+// sse4.1
+static inline __m128i _mm_max_epu16 (__m128i x, __m128i y)
+{
+  // Returns x where x >= y, else y:
+  return _mm_blendv_si128(x, y, _mm_cmple_epu16(x, y));
+}
+
+//min and max values are 16-bit unsigned integers
+inline void limit_plane_uint16_sse2(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height) {
+  __m128i min_vector = _mm_set1_epi16(min_value);
+  __m128i max_vector = _mm_set1_epi16(max_value);
+  BYTE* end_point = ptr + pitch * height;
+
+  while(ptr < end_point) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(ptr));
+    src = _mm_max_epu16(src, min_vector);
+    src = _mm_min_epu16(src, max_vector);
+    _mm_store_si128(reinterpret_cast<__m128i*>(ptr), src);
+    ptr += 16;
+  }
+}
+
+
 #ifdef X86_32
 
 //min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
@@ -97,18 +138,54 @@ Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, in
   if (!vi.IsYUV() && !vi.IsYUVA())
       env->ThrowError("Limiter: Source must be YUV");
 
-  if(show != show_none && !vi.IsYUY2() && !vi.IsYV24() && !vi.IsYV12())
-      env->ThrowError("Limiter: Source must be YV24, YV12 or YUY2 with show option.");
+  if(show != show_none && !vi.IsYUY2() && !vi.Is444() && !vi.Is420())
+      env->ThrowError("Limiter: Source must be YUV(A) 4:4:4, 4:2:0 or YUY2 with show option.");
 
-  if ((min_luma<0)||(min_luma>255))
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent(); // 8,10..16
+  int pixel_max = (1 << bits_per_pixel) - 1; // 255, 1023, 4095, 16383, 65535
+
+  int tv_range_low   = 16 << (bits_per_pixel - 8); // 16
+  int tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
+  int tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+
+  // default min and max values by bitdepths
+  if (min_luma == -9999)
+    min_luma = tv_range_low;
+  if (max_luma == -9999)
+    max_luma = tv_range_hi_luma;
+  if (min_chroma == -9999)
+    min_chroma = tv_range_low;
+  if (max_chroma == -9999)
+    max_chroma = tv_range_hi_chroma;
+
+  if (pixelsize == 4)
+    env->ThrowError("Limiter: cannot operate on float video formats");
+
+  if ((min_luma<0)||(min_luma>pixel_max))
       env->ThrowError("Limiter: Invalid minimum luma");
-  if ((max_luma<0)||(max_luma>255))
+  if ((max_luma<0)||(max_luma>pixel_max))
       env->ThrowError("Limiter: Invalid maximum luma");
-  if ((min_chroma<0)||(min_chroma>255))
+  if ((min_chroma<0)||(min_chroma>pixel_max))
       env->ThrowError("Limiter: Invalid minimum chroma");
-  if ((max_chroma<0)||(max_chroma>255))
+  if ((max_chroma<0)||(max_chroma>pixel_max))
       env->ThrowError("Limiter: Invalid maximum chroma");
 
+}
+
+template<typename pixel_t>
+static void limit_plane_c(BYTE *srcp8, int pitch, int min, int max, int width, int height) {
+  pixel_t *srcp = reinterpret_cast<pixel_t *>(srcp8);
+  pitch /= sizeof(pixel_t);
+  for(int y = 0; y < height; y++) {
+    for(int x = 0; x < width; x++) {
+      if(srcp[x] < min )
+        srcp[x] = (pixel_t)min;
+      else if(srcp[x] > max)
+        srcp[x] = (pixel_t)max;
+    }
+    srcp += pitch;
+  }
 }
 
 PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
@@ -117,7 +194,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   unsigned char* srcp = frame->GetWritePtr();
   int pitch = frame->GetPitch();
   int row_size = frame->GetRowSize();
-  int height = frame->GetHeight();
+  int width = vi.width;
+  int height = vi.height;
 
   if (vi.IsYUY2()) {
 
@@ -229,16 +307,17 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       srcp += pitch;
     }
     return frame;
-  } else if(vi.IsYV12()) {
+    // YUY end
+  } else if(vi.Is420()) {
 
 		if (show == show_luma) {    // Mark clamped pixels red/yellow/green over a colour image
 			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcn = srcp + pitch;
+			unsigned char* srcn = srcp + pitch; // next luma line
 			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < row_size; x+=2) {
+				for (int x = 0; x < width; x+=2) {
 					int uv = 0;
 					if      (srcp[x  ] < min_luma) { srcp[x  ] =  81; uv |= 1;}
 					else if (srcp[x  ] > max_luma) { srcp[x  ] = 145; uv |= 2;}
@@ -251,12 +330,13 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 					switch (uv) {
 						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240
 						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34
+            // this differs from show_luma_grey
 						case 3: srcp[x]=srcp[x+2]=srcn[x]=srcn[x+2]=210;
 						        srcpU[x/2] = 16; srcpV[x/2] = 146; break;       // yellow:Y=210, U=16 and V=146
 						default: break;
 					}
 				}
-				srcp += pitch*2;
+				srcp += pitch*2; // 2x2 pixels at a time (4:2:0 subsampling)
 				srcn += pitch*2;
 				srcpV += pitchUV;
 				srcpU += pitchUV;
@@ -265,12 +345,12 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 		}
 		else if (show == show_luma_grey) {       // Mark clamped pixels coloured over a greyscaled image
 			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcn = srcp + pitch;
+			unsigned char* srcn = srcp + pitch; // next luma line
 			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < row_size; x+=2) {
+				for (int x = 0; x < width; x+=2) {
 					int uv = 0;
 					if      (srcp[x  ] < min_luma) { srcp[x  ] =  81; uv |= 1;}
 					else if (srcp[x  ] > max_luma) { srcp[x  ] = 145; uv |= 2;}
@@ -283,6 +363,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 					switch (uv) {
 						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240
 						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34
+            // this differs from show_luma
 						case 3: srcpU[x/2] = 90; srcpV[x/2] = 134; break;       // puke:  Y=81, U=90 and V=134
 						default: srcpU[x/2] = srcpV[x/2] = 128; break;          // olive: Y=145, U=90 and V=134
 					}
@@ -296,12 +377,12 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 		}
 		else if (show == show_chroma) {   // Mark clamped pixels yellow over a colour image
 			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcn = srcp + pitch;
+			unsigned char* srcn = srcp + pitch; // next luma line
 			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < row_size; x+=2) {
+				for (int x = 0; x < width; x+=2) {
 					if ( (srcpU[x/2] < min_chroma)  // U-
 					  || (srcpU[x/2] > max_chroma)  // U+
 					  || (srcpV[x/2] < min_chroma)  // V-
@@ -317,12 +398,12 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 		}
 		else if (show == show_chroma_grey) {   // Mark clamped pixels coloured over a greyscaled image
 			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcn = srcp + pitch;
+			unsigned char* srcn = srcp + pitch; // next luma line
 			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < row_size; x+=2) {
+				for (int x = 0; x < width; x+=2) {
 					int uv = 0;
 					if      (srcpU[x/2] < min_chroma) uv |= 1; // U-
 					else if (srcpU[x/2] > max_chroma) uv |= 2; // U+
@@ -340,13 +421,14 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 						default: srcpU[x/2] = srcpV[x/2] = 128; break;
 					}
 				}
-				srcp += pitch*2;
+				srcp += pitch*2; // this differs from YV24 (*2)
 				srcn += pitch*2;
 				srcpV += pitchUV;
 				srcpU += pitchUV;
 			}
 			return frame;
 		}
+    // YV12 (4:2:0) end
   } else if(vi.IsYV24()) {
 
 		if (show == show_luma) {    // Mark clamped pixels red/green over a colour image
@@ -354,11 +436,12 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
-			for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < row_size; x+=1) {
+      for (int h=0; h < height; h+=1) {
+				for (int x = 0; x < width; x+=1) {
 					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240
 					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34
-				}
+          // this differs from show_luma_grey (nothing here)
+        }
 				srcp  += pitch;
 				srcpV += pitchUV;
 				srcpU += pitchUV;
@@ -371,9 +454,10 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 			for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < row_size; x+=1) {
+				for (int x = 0; x < width; x+=1) {
 					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240
 					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34
+          // this differs from show_luma
 					else                         {                srcpU[x] =     srcpV[x] = 128; }       // grey
 				}
 				srcp  += pitch;
@@ -388,7 +472,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 			for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < row_size; x+=1) {
+				for (int x = 0; x < width; x+=1) {
 					if ( (srcpU[x] < min_chroma)  // U-
 					  || (srcpU[x] > max_chroma)  // U+
 					  || (srcpV[x] < min_chroma)  // V-
@@ -407,7 +491,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 			for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < row_size; x+=1) {
+				for (int x = 0; x < width; x+=1) {
 					int uv = 0;
 					if      (srcpU[x] < min_chroma) uv |= 1; // U-
 					else if (srcpU[x] > max_chroma) uv |= 2; // U+
@@ -431,11 +515,12 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			}
 			return frame;
 		}
+    // YV24 (4:4:4) end
   }
   if (vi.IsPlanar())
   {
     //todo: separate to functions and use sse2 for aligned planes even if some are unaligned
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) &&
+    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) &&
       IsPtrAligned(frame->GetWritePtr(PLANAR_U), 16) && IsPtrAligned(frame->GetWritePtr(PLANAR_V), 16)) {
         limit_plane_sse2(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
 
@@ -449,7 +534,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     }
 
 #ifdef X86_32
-    if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
     {
       limit_plane_isse(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
       limit_plane_isse(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
@@ -461,38 +546,42 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     }
 #endif
 
-    for(int y = 0; y < height; y++) {
-      for(int x = 0; x < row_size; x++) {
-        if(srcp[x] < min_luma )
-          srcp[x] = (unsigned char)min_luma;
-        else if(srcp[x] > max_luma)
-          srcp[x] = (unsigned char)max_luma;
-      }
-      srcp += pitch;
+    if ((pixelsize==2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) &&
+      IsPtrAligned(frame->GetWritePtr(PLANAR_U), 16) && IsPtrAligned(frame->GetWritePtr(PLANAR_V), 16))
+    {
+      limit_plane_uint16_sse2(srcp, min_luma, max_luma, pitch, height);
+
+      limit_plane_uint16_sse2(frame->GetWritePtr(PLANAR_U), min_chroma, max_chroma,
+        frame->GetPitch(PLANAR_U), frame->GetHeight(PLANAR_U));
+
+      limit_plane_uint16_sse2(frame->GetWritePtr(PLANAR_V), min_chroma, max_chroma,
+        frame->GetPitch(PLANAR_V), frame->GetHeight(PLANAR_V));
+
+      return frame;
     }
 
-    // Prepare for chroma
+    // C
+
+    // luma
+    if(pixelsize == 1)
+      limit_plane_c<uint8_t>(srcp, pitch, min_luma, max_luma, width, height);
+    else if(pixelsize == 2)
+      limit_plane_c<uint16_t>(srcp, pitch, min_luma, max_luma, width, height);
+
+    // chroma if exists
     srcp = frame->GetWritePtr(PLANAR_U);
-    unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-    row_size = frame->GetRowSize(PLANAR_U);
+    width = frame->GetRowSize(PLANAR_U) / pixelsize;
     height = frame->GetHeight(PLANAR_U);
     pitch = frame->GetPitch(PLANAR_U);
     if (!pitch)
       return frame;
-
-    for(int y = 0; y < height; y++) {
-      for(int x = 0; x < row_size; x++) {
-        if(srcp[x] < min_chroma)
-          srcp[x] = (unsigned char)min_chroma;
-        else if(srcp[x] > max_chroma)
-          srcp[x] = (unsigned char)max_chroma;
-        if(srcpV[x] < min_chroma)
-          srcpV[x] = (unsigned char)min_chroma;
-        else if(srcpV[x] > max_chroma)
-          srcpV[x] = (unsigned char)max_chroma;
-      }
-      srcp += pitch;
-      srcpV += pitch;
+    BYTE* srcpV = frame->GetWritePtr(PLANAR_V);
+    if(pixelsize == 1) {
+      limit_plane_c<uint8_t>(srcp, pitch, min_chroma, max_chroma, width, height);
+      limit_plane_c<uint8_t>(srcpV, pitch, min_chroma, max_chroma, width, height);
+    } else if(pixelsize == 2) {
+      limit_plane_c<uint16_t>(srcp, pitch, min_chroma, max_chroma, width, height);
+      limit_plane_c<uint16_t>(srcpV, pitch, min_chroma, max_chroma, width, height);
     }
   }
   return frame;
@@ -516,5 +605,5 @@ AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironm
 			env->ThrowError("Limiter: show must be \"luma\", \"luma_grey\", \"chroma\" or \"chroma_grey\"");
 	}
 
-	return new Limiter(args[0].AsClip(), args[1].AsInt(16), args[2].AsInt(235), args[3].AsInt(16), args[4].AsInt(240), show, env);
+	return new Limiter(args[0].AsClip(), args[1].AsInt(-9999), args[2].AsInt(-9999), args[3].AsInt(-9999), args[4].AsInt(-9999), show, env);
 }
