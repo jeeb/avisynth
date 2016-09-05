@@ -94,10 +94,10 @@ Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, in
   max_chroma(_max_chroma),
   show(show_e(_show))
 {
-  if (!vi.IsYUV())
+  if (!vi.IsYUV() && !vi.IsYUVA())
       env->ThrowError("Limiter: Source must be YUV");
 
-  if(show != show_none && vi.IsYUY2() && vi.IsYV24() && vi.IsYV12())
+  if(show != show_none && !vi.IsYUY2() && !vi.IsYV24() && !vi.IsYV12())
       env->ThrowError("Limiter: Source must be YV24, YV12 or YUY2 with show option.");
 
   if ((min_luma<0)||(min_luma>255))
