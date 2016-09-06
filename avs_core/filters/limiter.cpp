@@ -507,13 +507,12 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     }
     return frame;
     // YUY end
-  } else if(vi.Is420()) {
+  } else if(vi.Is420() && show != show_none) {
+    const int pitchUV = frame->GetPitch(PLANAR_U);
+    unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
+    unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
     if (show == show_luma || show == show_luma_grey) {    // Mark clamped pixels red/yellow/green over a colour image
-      const int pitchUV = frame->GetPitch(PLANAR_U);
-      unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-      unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
       if (pixelsize == 1) {
         if (show == show_luma)
           show_luma_with_grey_opt_yuv420<uint8_t, false>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_luma, max_luma, bits_per_pixel);
@@ -527,144 +526,28 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       }
       return frame;
     }
-#if 0
-		if (show == show_luma) {    // Mark clamped pixels red/yellow/green over a colour image
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcn = srcp + pitch; // next luma line
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
-			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < width; x+=2) {
-					int uv = 0;
-					if      (srcp[x  ] < min_luma) { srcp[x  ] =  81; uv |= 1;}
-					else if (srcp[x  ] > max_luma) { srcp[x  ] = 145; uv |= 2;}
-					if      (srcp[x+1] < min_luma) { srcp[x+1] =  81; uv |= 1;}
-					else if (srcp[x+1] > max_luma) { srcp[x+1] = 145; uv |= 2;}
-					if      (srcn[x  ] < min_luma) { srcn[x  ] =  81; uv |= 1;}
-					else if (srcn[x  ] > max_luma) { srcn[x  ] = 145; uv |= 2;}
-					if      (srcn[x+1] < min_luma) { srcn[x+1] =  81; uv |= 1;}
-					else if (srcn[x+1] > max_luma) { srcn[x+1] = 145; uv |= 2;}
-					switch (uv) {
-						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240
-						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34
-            // this differs from show_luma_grey
-						case 3: srcp[x]=srcp[x+2]=srcn[x]=srcn[x+2]=210;
-						        srcpU[x/2] = 16; srcpV[x/2] = 146; break;       // yellow:Y=210, U=16 and V=146
-						default: break;
-					}
-				}
-				srcp += pitch*2; // 2x2 pixels at a time (4:2:0 subsampling)
-				srcn += pitch*2;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-			return frame;
-		}
-		else if (show == show_luma_grey) {       // Mark clamped pixels coloured over a greyscaled image
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcn = srcp + pitch; // next luma line
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
-			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < width; x+=2) {
-					int uv = 0;
-					if      (srcp[x  ] < min_luma) { srcp[x  ] =  81; uv |= 1;}
-					else if (srcp[x  ] > max_luma) { srcp[x  ] = 145; uv |= 2;}
-					if      (srcp[x+1] < min_luma) { srcp[x+1] =  81; uv |= 1;}
-					else if (srcp[x+1] > max_luma) { srcp[x+1] = 145; uv |= 2;}
-					if      (srcn[x  ] < min_luma) { srcn[x  ] =  81; uv |= 1;}
-					else if (srcn[x  ] > max_luma) { srcn[x  ] = 145; uv |= 2;}
-					if      (srcn[x+1] < min_luma) { srcn[x+1] =  81; uv |= 1;}
-					else if (srcn[x+1] > max_luma) { srcn[x+1] = 145; uv |= 2;}
-					switch (uv) {
-						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240
-						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34
-            // this differs from show_luma
-						case 3: srcpU[x/2] = 90; srcpV[x/2] = 134; break;       // puke:  Y=81, U=90 and V=134 olive: Y=145, U=90 and V=134
-						default: srcpU[x/2] = srcpV[x/2] = 128; break;
-					}
-				}
-				srcp += pitch*2;
-				srcn += pitch*2;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-			return frame;
-		}
-#endif
 		else if (show == show_chroma) {   // Mark clamped pixels yellow over a colour image
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
       if (pixelsize == 1)
         show_chroma_yuv420<uint8_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
       else
         show_chroma_yuv420<uint16_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
-#if 0
-			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < width; x+=2) {
-					if ( (srcpU[x/2] < min_chroma)  // U-
-					  || (srcpU[x/2] > max_chroma)  // U+
-					  || (srcpV[x/2] < min_chroma)  // V-
-					  || (srcpV[x/2] > max_chroma) )// V+
-					{ srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]=210; srcpU[x/2]= 16; srcpV[x/2]=146; }   // yellow:Y=210, U=16 and V=146
-				}
-				srcp += pitch*2;
-				srcn += pitch*2;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-#endif
 			return frame;
 		}
 		else if (show == show_chroma_grey) {   // Mark clamped pixels coloured over a greyscaled image
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
       if (pixelsize == 1)
         show_chroma_grey_yuv420<uint8_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
       else
         show_chroma_grey_yuv420<uint16_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
-
-#if 0
-			for (int h=0; h < height;h+=2) {
-				for (int x = 0; x < width; x+=2) {
-					int uv = 0;
-					if      (srcpU[x/2] < min_chroma) uv |= 1; // U-
-					else if (srcpU[x/2] > max_chroma) uv |= 2; // U+
-					if      (srcpV[x/2] < min_chroma) uv |= 4; // V-
-					else if (srcpV[x/2] > max_chroma) uv |= 8; // V+
-					switch (uv) {
-						case  8: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]= 81; srcpU[x/2]= 91; srcpV[x/2]=240; break;   //   +V Red
-						case  9: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]=146; srcpU[x/2]= 53; srcpV[x/2]=193; break;   // -U+V Orange
-						case  1: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]=210; srcpU[x/2]= 16; srcpV[x/2]=146; break;   // -U   Yellow
-						case  5: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]=153; srcpU[x/2]= 49; srcpV[x/2]= 49; break;   // -U-V Green
-						case  4: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]=170; srcpU[x/2]=165; srcpV[x/2]= 16; break;   //   -V Cyan
-						case  6: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]=105; srcpU[x/2]=203; srcpV[x/2]= 63; break;   // +U-V Teal
-						case  2: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]= 41; srcpU[x/2]=240; srcpV[x/2]=110; break;   // +U   Blue
-						case 10: srcp[x]=srcp[x+1]=srcn[x]=srcn[x+1]=106; srcpU[x/2]=202; srcpV[x/2]=222; break;   // +U+V Magenta
-						default: srcpU[x/2] = srcpV[x/2] = 128; break;
-					}
-				}
-				srcp += pitch*2; // this differs from YV24 (*2)
-				srcn += pitch*2;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-#endif
 			return frame;
 		}
     // YV12 (4:2:0) end
-  } else if(vi.Is444()) {
+  } else if(vi.Is444() && show != show_none) {
+
+    const int pitchUV = frame->GetPitch(PLANAR_U);
+    unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
+    unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
 
 		if (show == show_luma || show == show_luma_grey) {
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
       if (pixelsize == 1) {
         if (show == show_luma)
           show_luma_with_grey_opt_yuv444<uint8_t, false>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_luma, max_luma, bits_per_pixel);
@@ -678,99 +561,18 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       }
       return frame;
     }
-#if 0
-    if (show == show_luma) {
-      // Mark clamped pixels red/green over a colour image
-      for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < width; x+=1) {
-					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240
-					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34
-          // this differs from show_luma_grey (nothing here)
-        }
-				srcp  += pitch;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-			return frame;
-		}
-		else if (show == show_luma_grey) {       // Mark clamped pixels red/green over a greyscaled image
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
-			for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < width; x+=1) {
-					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240
-					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34
-          // this differs from show_luma
-					else                         {                srcpU[x] =     srcpV[x] = 128; }       // grey
-				}
-				srcp  += pitch;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-			return frame;
-		}
-#endif
 		else if (show == show_chroma) {   // Mark clamped pixels yellow over a colour image
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
       if (pixelsize == 1)
         show_chroma_yuv444<uint8_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
       else
         show_chroma_yuv444<uint16_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
-#if 0
-			for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < width; x+=1) {
-					if ( (srcpU[x] < min_chroma)  // U-
-					  || (srcpU[x] > max_chroma)  // U+
-					  || (srcpV[x] < min_chroma)  // V-
-					  || (srcpV[x] > max_chroma) )// V+
-					{ srcp[x]=210; srcpU[x]= 16; srcpV[x]=146; }   // yellow:Y=210, U=16 and V=146
-				}
-				srcp  += pitch;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-#endif
 			return frame;
 		}
 		else if (show == show_chroma_grey) {   // Mark clamped pixels coloured over a greyscaled image
-			const int pitchUV = frame->GetPitch(PLANAR_U);
-			unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
-			unsigned char* srcpU = frame->GetWritePtr(PLANAR_U);
-
       if (pixelsize == 1)
         show_chroma_grey_yuv444<uint8_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
       else
         show_chroma_grey_yuv444<uint16_t>(srcp, srcpU, srcpV, pitch, pitchUV, width, height, min_chroma, max_chroma, bits_per_pixel);
-#if 0
-			for (int h=0; h < height; h+=1) {
-				for (int x = 0; x < width; x+=1) {
-					int uv = 0;
-					if      (srcpU[x] < min_chroma) uv |= 1; // U-
-					else if (srcpU[x] > max_chroma) uv |= 2; // U+
-					if      (srcpV[x] < min_chroma) uv |= 4; // V-
-					else if (srcpV[x] > max_chroma) uv |= 8; // V+
-					switch (uv) {
-						case  8: srcp[x]= 81; srcpU[x]= 91; srcpV[x]=240; break;   //   +V Red
-						case  9: srcp[x]=146; srcpU[x]= 53; srcpV[x]=193; break;   // -U+V Orange
-						case  1: srcp[x]=210; srcpU[x]= 16; srcpV[x]=146; break;   // -U   Yellow
-						case  5: srcp[x]=153; srcpU[x]= 49; srcpV[x]= 49; break;   // -U-V Green
-						case  4: srcp[x]=170; srcpU[x]=165; srcpV[x]= 16; break;   //   -V Cyan
-						case  6: srcp[x]=105; srcpU[x]=203; srcpV[x]= 63; break;   // +U-V Teal
-						case  2: srcp[x]= 41; srcpU[x]=240; srcpV[x]=110; break;   // +U   Blue
-						case 10: srcp[x]=106; srcpU[x]=202; srcpV[x]=222; break;   // +U+V Magenta
-						default:              srcpU[x]=     srcpV[x]=128; break;
-					}
-				}
-				srcp  += pitch;
-				srcpV += pitchUV;
-				srcpU += pitchUV;
-			}
-#endif
 			return frame;
 		}
     // YV24 (4:4:4) end
