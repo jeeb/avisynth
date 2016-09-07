@@ -81,10 +81,20 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   const VideoInfo& vi2 = child2->GetVideoInfo();
   if (vi1.width != vi2.width || vi1.height != vi2.height)
     env->ThrowError("Mask error: image dimensions don't match");
-  if (!vi1.IsRGB32() | !vi2.IsRGB32())
-    env->ThrowError("Mask error: sources must be RGB32");
+  if (! ((vi1.IsRGB32() && vi2.IsRGB32()) ||
+        (vi1.IsRGB64() && vi2.IsRGB64()) ||
+        (vi1.IsPlanarRGBA() && vi2.IsPlanarRGBA()))
+    )
+    env->ThrowError("Mask error: sources must be RGB32, RGB64 or Planar RGBA");
+
+  if(vi1.BitsPerComponent() != vi2.BitsPerComponent())
+    env->ThrowError("Mask error: Components are not of the same bit depths");
 
   vi = vi1;
+
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
+
   mask_frames = vi2.num_frames;
 }
 
@@ -196,7 +206,15 @@ static void mask_mmx(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pi
 
 #endif
 
-static void mask_c(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+
+template<typename pixel_t>
+static void mask_c(BYTE *srcp8, const BYTE *alphap8, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+  pixel_t *srcp = reinterpret_cast<pixel_t *>(srcp8);
+  const pixel_t *alphap = reinterpret_cast<const pixel_t *>(alphap8);
+
+  src_pitch /= sizeof(pixel_t);
+  alpha_pitch /= sizeof(pixel_t);
+
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
       srcp[x*4+3] = (cyb*alphap[x*4+0] + cyg*alphap[x*4+1] + cyr*alphap[x*4+2] + 16384) >> 15;
@@ -206,38 +224,120 @@ static void mask_c(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitc
   }
 }
 
+template<typename pixel_t>
+static void mask_planar_rgb_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height, int cyb, int cyg, int cyr, int bits_per_pixel) {
+  // worst case uint16: 65535 * 19235 + 65535 * 9798 + 65535 * 3736 + 16384 = 65535 * 32769 + 16384 = 2147532799 = 8000BFFF -> int32 fail
+  //                    2147532799 >> 15 = 65537 = 0x10001, needs clamping :( !!!!!
+  // worst case uint16: 65535 * (!!!19234) + 65535 * 9798 + 65535 * 3736 + 16384 = 65535 * 32768 + 16384 = 2147467264 = 7FFFC000 -> int32 OK
+  //                    2147467264 >> 15 = 65535 no need clamping
+  // worst case uint14: 16383*(19235+9798+3736) + 16384 = 16383*32769 + 16384 = 536870911 >> 15 = 16383 -> int is enough, and no clamping needed
+  // worst case uint12: 4095*(19235+9798+3736) + 16384 = 4095*32769 + 16384 = 134205439 >> 15 = 4095 -> int is enough, and no clamping needed
+  // worst case uint10: 1023*(19235+9798+3736) + 16384 = 1023*32769 + 16384 = 33539071 >> 15 = 1023 -> int is enough, and no clamping needed
+  // worst case uint8 : 255*(19235+9798+3736) + 16384 = 255*32769 + 16384 = 8372479 >> 15 = 255 -> int is enough, and no clamping needed
+
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *srcp_r = reinterpret_cast<const pixel_t *>(srcp_r8);
+  const pixel_t *srcp_g = reinterpret_cast<const pixel_t *>(srcp_g8);
+  const pixel_t *srcp_b = reinterpret_cast<const pixel_t *>(srcp_b8);
+  src_pitch /= sizeof(pixel_t);
+  dst_pitch /= sizeof(pixel_t);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; ++x) {
+      dstp[x] = ((cyb*srcp_b[x] + cyg*srcp_g[x] + cyr*srcp_r[x] + 16384) >> 15);
+    }
+    dstp += dst_pitch;
+    srcp_r += src_pitch;
+    srcp_g += src_pitch;
+    srcp_b += src_pitch;
+  }
+}
+
+static void mask_planar_rgb_float_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height, float cyb_f, float cyg_f, float cyr_f) {
+
+  float *dstp = reinterpret_cast<float *>(dstp8);
+  const float *srcp_r = reinterpret_cast<const float *>(srcp_r8);
+  const float *srcp_g = reinterpret_cast<const float *>(srcp_g8);
+  const float *srcp_b = reinterpret_cast<const float *>(srcp_b8);
+  src_pitch /= sizeof(float);
+  dst_pitch /= sizeof(float);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; ++x) {
+      dstp[x] = cyb_f*srcp_b[x] + cyg_f*srcp_g[x] + cyr_f*srcp_r[x];
+    }
+    dstp += dst_pitch;
+    srcp_r += src_pitch;
+    srcp_g += src_pitch;
+    srcp_b += src_pitch;
+  }
+}
+
 PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
   PVideoFrame src2 = child2->GetFrame(min(n,mask_frames-1), env);
 
-
   env->MakeWritable(&src1);
 
-  BYTE* src1p = src1->GetWritePtr();
-  const BYTE* src2p = src2->GetReadPtr();
+  // unfortunately sum is not 32768, correction needed at 16 bit to avoid overflow
+  int cyb = int(0.114*32768+0.5);
+  int cyg = int(0.587*32768+0.5);
+  int cyr = int(0.299*32768+0.5);
 
-  const int src1_pitch = src1->GetPitch();
-  const int src2_pitch = src2->GetPitch();
+  if (bits_per_pixel == 16)
+    cyg = 32768 - (cyr + cyb); // avoid integer overflow and clamping at 16 bits
 
-  const int cyb = int(0.114*32768+0.5);
-  const int cyg = int(0.587*32768+0.5);
-  const int cyr = int(0.299*32768+0.5);
+  if (vi.IsPlanar()) {
+    // planar RGB
+    const float cyb_f = 0.114f;
+    const float cyg_f = 0.587f;
+    const float cyr_f = 0.299f;
 
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16)) 
-  {
-    mask_sse2(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
-  }
-  else
-#ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX) 
-  {
-    mask_mmx(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
-  }
-  else
-#endif
-  {
-    mask_c(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+    BYTE* dstp = src1->GetWritePtr(PLANAR_A); // destination Alpha plane
+
+    const BYTE* srcp_g = src2->GetReadPtr(PLANAR_G);
+    const BYTE* srcp_b = src2->GetReadPtr(PLANAR_B);
+    const BYTE* srcp_r = src2->GetReadPtr(PLANAR_R);
+
+    const int dst_pitch = src1->GetPitch();
+    const int src_pitch = src2->GetPitch();
+
+    // clip1_alpha = greyscale(clip2)
+    if (pixelsize == 1)
+      mask_planar_rgb_c<uint8_t>(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, cyb, cyg, cyr, bits_per_pixel);
+    else if (pixelsize == 2)
+      mask_planar_rgb_c<uint16_t>(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, cyb, cyg, cyr, bits_per_pixel);
+    else
+      mask_planar_rgb_float_c(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, cyb_f, cyg_f, cyr_f);
+  } else {
+    // Packed RGB32/64
+    BYTE* src1p = src1->GetWritePtr();
+    const BYTE* src2p = src2->GetReadPtr();
+
+    const int src1_pitch = src1->GetPitch();
+    const int src2_pitch = src2->GetPitch();
+
+    // clip1_alpha = greyscale(clip2)
+    if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+    {
+      mask_sse2(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+    }
+    else
+  #ifdef X86_32
+    if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
+    {
+      mask_mmx(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+    }
+    else
+  #endif
+    {
+      if (pixelsize == 1) {
+        mask_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+      } else { // if (pixelsize == 2)
+        mask_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+      }
+    }
   }
 
     return src1;

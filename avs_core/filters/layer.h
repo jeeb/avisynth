@@ -74,6 +74,9 @@ private:
   const PClip child1, child2;
   VideoInfo vi;
   int mask_frames;
+  int pixelsize;
+  int bits_per_pixel;
+
 };
 
 
