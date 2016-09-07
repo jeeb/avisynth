@@ -81,7 +81,7 @@ static std::string GetFullPathNameWrap(const std::string &f)
 
 static bool IsParameterTypeSpecifier(char c) {
   switch (c) {
-    case 'b': case 'i': case 'f': case 's': case 'c': case '.': case 'd':
+    case 'b': case 'i': case 'f': case 's': case 'c': case '.':
       return true;
     default:
       return false;
