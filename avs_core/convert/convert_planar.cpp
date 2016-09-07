@@ -450,7 +450,8 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
         for (int x=0; x<vi.width; x++) {
           const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
           // int overflows!
-          const int Y = matrix.offset_y + (int)(((__int64)matrix.b * srcp16[0] + (__int64)matrix.g * srcp16[1] + (__int64)matrix.r * srcp16[2] + 16384) >> 15);
+          // todo: does not overflow if matrix.g is converted to 32768 - (matrix.b + matrix.r!!!) (sum is not 32768!)
+          const int Y = matrix.offset_y + (int)(((__int64)(matrix.b * srcp16[0] + matrix.g * srcp16[1]) + (__int64)matrix.r * srcp16[2] + 16384) >> 15);
           reinterpret_cast<uint16_t *>(dstp)[x] = clamp(Y,0,65535);  // All the safety we can wish for.
 
           // __int64 version is a bit faster
@@ -458,7 +459,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
           //reinterpret_cast<uint16_t *>(dstp)[x] = (uint16_t)clamp((int)Y,0,65535);  // All the safety we can wish for.
           srcp += pixel_step; // 6,8
         }
-        srcp -= srcMod;
+        srcp -= src_pitch;
         dstp += dst_pitch;
       }
     }
@@ -482,15 +483,17 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
         dstp += dst_pitch;
       }
     } else if(pixelsize==2) {
+      int max_pixel_value = (1 << vi.BitsPerComponent()) - 1;
       for (int y=0; y<vi.height; y++) {
         for (int x=0; x<vi.width; x++) {
           // int overflows!
+          // todo: does not overflow if matrix.g is converted to 32768 - (matrix.b + matrix.r!!!) (sum is not 32768!)
           const int Y = matrix.offset_y +
             (((__int64)matrix.b * reinterpret_cast<const uint16_t *>(srcpB)[x] +
               (__int64)matrix.g * reinterpret_cast<const uint16_t *>(srcpG)[x] +
               (__int64)matrix.r * reinterpret_cast<const uint16_t *>(srcpR)[x] +
               16384) >> 15);
-          reinterpret_cast<uint16_t *>(dstp)[x] = (uint16_t)clamp(Y,0,65535);  // All the safety we can wish for.
+          reinterpret_cast<uint16_t *>(dstp)[x] = (uint16_t)clamp(Y,0,max_pixel_value);  // All the safety we can wish for.
         }
         srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
         dstp += dst_pitch;
