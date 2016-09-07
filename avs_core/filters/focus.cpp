@@ -75,11 +75,12 @@ AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
 }
 
 template<typename pixel_t>
-static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const int half_amount) {
+static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const int half_amount, int bits_per_pixel) {
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t;
   // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
   weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
   weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
+  int max_pixel_value = (1 << bits_per_pixel) - 1;
 
   pixel_t * dstp = reinterpret_cast<pixel_t *>(dstp8);
   pixel_t * line_buf = reinterpret_cast<pixel_t *>(line_buf8);
@@ -89,14 +90,20 @@ static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const 
     for (int x = 0; x < width; ++x) {
       pixel_t a;
       // Note: ScaledPixelClip is overloaded. With __int64 parameter and uint16_t result works for 16 bit
-      a = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight));
+      if(sizeof(pixel_t) == 1)
+        a = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight));
+      else
+        a = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight), max_pixel_value);
       line_buf[x] = dstp[x];
       dstp[x] = a;
     }
     dstp += pitch;
   }
   for (int x = 0; x < width; ++x) { // Last row - map centre as lower
+    if(sizeof(pixel_t) == 1)
       dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight));
+    else
+      dstp[x] = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight), max_pixel_value);
   }
 }
 
@@ -269,7 +276,7 @@ static void af_vertical_mmx(BYTE* line_buf, BYTE* dstp, int height, int pitch, i
 #endif
 
 template<typename pixel_t>
-static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t row_size, int half_amount, IScriptEnvironment* env) {
+static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t row_size, int half_amount, int bits_per_pixel, IScriptEnvironment* env) {
   size_t width = row_size / sizeof(pixel_t);
   // only for 8/16 bit, float separated
   // todo: sse2 for 16
@@ -284,12 +291,12 @@ static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_
     af_vertical_mmx(line_buf, dstp, height, pitch, mod8_width, half_amount);
     if (mod8_width != width) {
       //yes, this is bad for caching. MMX shouldn't be used these days anyway
-      af_vertical_c<uint8_t>(line_buf, dstp + mod8_width, height, pitch, width - mod8_width, half_amount);
+      af_vertical_c<uint8_t>(line_buf, dstp + mod8_width, height, pitch, width - mod8_width, half_amount, bits_per_pixel);
     }
   } else
 #endif
   {
-      af_vertical_c<pixel_t>(line_buf, dstp, (int)height, (int)pitch, (int)width, half_amount);
+      af_vertical_c<pixel_t>(line_buf, dstp, (int)height, (int)pitch, (int)width, half_amount, bits_per_pixel);
   }
 }
 
@@ -321,6 +328,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
     }
 
     int pixelsize = vi.ComponentSize();
+    int bits_per_pixel = vi.BitsPerComponent();
 
     if (vi.IsPlanar()) {
       const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
@@ -336,8 +344,8 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
             memcpy(line_buf, dstp, row_size); // First row - map centre as upper
 
             switch (pixelsize) {
-            case 1: af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env); break;
-            case 2: af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, env); break;
+            case 1: af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, bits_per_pixel, env); break;
+            case 2: af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, bits_per_pixel, env); break;
             default: // 4: float
                 af_vertical_process_float(line_buf, dstp, height, pitch, row_size, amountd, env); break;
             }
@@ -350,9 +358,9 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
         int height = vi.height;
         memcpy(line_buf, dstp, row_size); // First row - map centre as upper
         if (pixelsize == 1)
-          af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env);
+          af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, bits_per_pixel, env);
         else
-          af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, env);
+          af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, bits_per_pixel, env);
     }
 
     env2->Free(line_buf);
@@ -822,8 +830,24 @@ static __forceinline void af_horizontal_yv12_process_line_c(pixel_t left, BYTE *
   dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x]) * (weight_t)outer_weight));
 }
 
+static __forceinline void af_horizontal_yv12_process_line_uint16_c(uint16_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight, int bits_per_pixel) {
+  size_t x;
+  typedef uint16_t pixel_t;
+  pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const int max_pixel_value = (1 << bits_per_pixel) - 1; // clamping on 10-12-14-16 bitdepth
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t; // for calling the right ScaledPixelClip()
+  size_t width = row_size / sizeof(pixel_t);
+  for (x = 0; x < width-1; ++x) {
+    pixel_t temp = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x+1]) * (weight_t)outer_weight), max_pixel_value);
+    left = dstp[x];
+    dstp[x] = temp;
+  }
+  // ScaledPixelClip has 2 overloads: BYTE/uint16_t (int/int64 i)
+  dstp[x] = ScaledPixelClipEx((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x]) * (weight_t)outer_weight), max_pixel_value);
+}
+
 template<typename pixel_t>
-static void af_horizontal_planar_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, size_t half_amount)
+static void af_horizontal_planar_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, size_t half_amount, int bits_per_pixel)
 {
     pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
     size_t pitch = pitch8 / sizeof(pixel_t);
@@ -832,7 +856,10 @@ static void af_horizontal_planar_c(BYTE* dstp8, size_t height, size_t pitch8, si
     pixel_t left;
     for (size_t y = height; y>0; --y) {
         left = dstp[0];
-        af_horizontal_yv12_process_line_c<pixel_t>(left, (BYTE *)dstp, row_size, center_weight, outer_weight);
+        if(sizeof(pixel_t) == 1)
+          af_horizontal_yv12_process_line_c<pixel_t>(left, (BYTE *)dstp, row_size, center_weight, outer_weight);
+        else
+          af_horizontal_yv12_process_line_uint16_c(left, (BYTE *)dstp, row_size, center_weight, outer_weight, bits_per_pixel);
         dstp += pitch;
     }
 }
@@ -1012,6 +1039,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsPlanar()) {
     copy_frame(src, dst, env, planes, vi.NumComponents() ); //planar processing is always in-place
     int pixelsize = vi.ComponentSize();
+    int bits_per_pixel = vi.BitsPerComponent();
     for(int cplane=0;cplane<3;cplane++) {
       int plane = planes[cplane];
       int row_size = dst->GetRowSize(plane);
@@ -1028,8 +1056,8 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 #endif
         {
             switch (pixelsize) {
-            case 1: af_horizontal_planar_c<uint8_t>(q, height, pitch, row_size, half_amount); break;
-            case 2: af_horizontal_planar_c<uint16_t>(q, height, pitch, row_size, half_amount); break;
+            case 1: af_horizontal_planar_c<uint8_t>(q, height, pitch, row_size, half_amount, bits_per_pixel); break;
+            case 2: af_horizontal_planar_c<uint16_t>(q, height, pitch, row_size, half_amount, bits_per_pixel); break;
             default: // 4: float
                     af_horizontal_planar_float_c(q, height, pitch, row_size, (float)amountd); break;
             }
@@ -1183,6 +1211,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   }
 
   pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
 
   // original scenechange parameter always 0-255
   int factor;
@@ -1194,7 +1223,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
 
 
   int c = 0;
-  if (vi.IsPlanar()) {
+  if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) {
     if (luma_thresh>0) {planes[c++] = PLANAR_Y; planes[c++] = luma_thresh;}
     if (chroma_thresh>0) { planes[c++] = PLANAR_V;planes[c++] =chroma_thresh; planes[c++] = PLANAR_U;planes[c++] = chroma_thresh;}
   } else if (vi.IsYUY2()) {
@@ -1209,7 +1238,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
 
 //offset is the initial value of x. Used when C routine processes only parts of frames after SSE/MMX paths do their job.
 template<typename pixel_t>
-static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, int offset, size_t rowsize, BYTE _threshold, int div) {
+static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, int offset, size_t rowsize, BYTE _threshold, int div, int bits_per_pixel) {
   pixel_t *c_plane = reinterpret_cast<pixel_t *>(_c_plane);
 
   typedef typename std::conditional < sizeof(pixel_t) == 1, unsigned int, typename std::conditional < sizeof(pixel_t) == 2, unsigned __int64, float>::type >::type sum_t;
@@ -1221,7 +1250,7 @@ static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, i
   if (std::is_floating_point<pixel_t>::value)
     threshold = threshold / 256; // float
   else if (sizeof(pixel_t) == 2)
-    threshold = threshold * 256; // uint16_t
+    threshold = threshold * (1 << (bits_per_pixel - 8)); // uint16_t, 10 bit: *4 16bit: *256
 
   for (size_t x = offset; x < width; ++x) {
     pixel_t current = c_plane[x];
@@ -1403,7 +1432,7 @@ static void accumulate_line_yuy2(BYTE* c_plane, const BYTE** planeP, int planes,
     accumulate_line_yuy2_c(c_plane, planeP, planes, width, threshold_luma, threshold_chroma, div);
 }
 
-static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, BYTE threshold, int div, bool aligned16, int pixelsize, IScriptEnvironment* env) {
+static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, BYTE threshold, int div, bool aligned16, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   // todo: sse for 16bit/float
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && aligned16 && rowsize >= 16) {
     accumulate_line_sse2(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
@@ -1414,14 +1443,14 @@ static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size
     accumulate_line_mmx(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
 
     if (mod8_width != rowsize) {
-      accumulate_line_c<uint8_t>(c_plane, planeP, planes, mod8_width, rowsize - mod8_width, threshold, div);
+      accumulate_line_c<uint8_t>(c_plane, planeP, planes, mod8_width, rowsize - mod8_width, threshold, div, bits_per_pixel);
     }
   } else
 #endif
     switch(pixelsize) {
-    case 1: accumulate_line_c<uint8_t>(c_plane, planeP, planes, 0, rowsize, threshold, div); break;
-    case 2: accumulate_line_c<uint16_t>(c_plane, planeP, planes, 0, rowsize, threshold, div); break;
-    case 4: accumulate_line_c<float>(c_plane, planeP, planes, 0, rowsize, threshold, div); break;
+    case 1: accumulate_line_c<uint8_t>(c_plane, planeP, planes, 0, rowsize, threshold, div, bits_per_pixel); break;
+    case 2: accumulate_line_c<uint16_t>(c_plane, planeP, planes, 0, rowsize, threshold, div, bits_per_pixel); break;
+    case 4: accumulate_line_c<float>(c_plane, planeP, planes, 0, rowsize, threshold, div, bits_per_pixel); break;
     }
 }
 
@@ -1481,13 +1510,13 @@ static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
 #endif
 
 template<typename pixel_t>
-static size_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
+static __int64 calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
   const pixel_t *ptr1 = reinterpret_cast<const pixel_t *>(cur_ptr);
   const pixel_t *ptr2 = reinterpret_cast<const pixel_t *>(other_ptr);
   size_t width = rowsize / sizeof(pixel_t);
 
-  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, size_t>::type sum_t;
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, __int64>::type sum_t;
   sum_t sum = 0;
 
   for (size_t y = 0; y < height; ++y) {
@@ -1498,20 +1527,20 @@ static size_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
     ptr2 += other_pitch / sizeof(pixel_t);
   }
   if (std::is_floating_point<pixel_t>::value)
-    return (size_t)(sum * 256); // float defaulting to 0..1 range
+    return (__int64)(sum * 256); // float defaulting to 0..1 range
   else
-    return (size_t)sum;
+    return (__int64)sum;
 }
 
 // sum of byte-diffs.
-static size_t calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, IScriptEnvironment* env) {
+static __int64 calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, IScriptEnvironment* env) {
   // todo: sse for 16bit/float
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
-    return calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
+    return (__int64)calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #ifdef X86_32
   if ((pixelsize ==1 ) && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && rowsize >= 8) {
-    return calculate_sad_isse(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
+    return (__int64)calculate_sad_isse(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #endif
   switch(pixelsize) {
@@ -1646,7 +1675,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
         if (vi.IsYUY2()) {
           accumulate_line_yuy2(c_plane, planeP, d, rowsize, luma_threshold, chroma_threshold, c_div, aligned16, env);
         } else {
-          accumulate_line(c_plane, planeP, d, rowsize, c_thresh, c_div, aligned16, pixelsize, env);
+          accumulate_line(c_plane, planeP, d, rowsize, c_thresh, c_div, aligned16, pixelsize, bits_per_pixel, env);
         }
         for (int p = 0; p<d; p++)
           planeP[p] += planePitch[p];

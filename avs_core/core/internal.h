@@ -182,6 +182,10 @@ static __inline uint16_t ScaledPixelClip(__int64 i) {
     return (uint16_t)clamp((i + 32768) >> 16, 0LL, 65535LL);
 }
 
+static __inline uint16_t ScaledPixelClipEx(__int64 i, int max_value) {
+  return (uint16_t)clamp((int)((i + 32768) >> 16), 0, max_value);
+}
+
 static __inline bool IsClose(int a, int b, unsigned threshold) 
   { return (unsigned(a-b+threshold) <= threshold*2); }
 
