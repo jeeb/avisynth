@@ -135,6 +135,10 @@ private:
   int mask;
   bool doB, doG, doR, doA;
   bool doY, doU, doV;
+
+  unsigned __int64 mask64;
+  int pixelsize;
+  int bits_per_pixel; // 8,10..16
 };
 
 

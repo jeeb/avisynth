@@ -450,7 +450,7 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
       break;
     case 'A':
     case 'a':
-      doA = true;
+      doA = (vi.NumComponents() > 3);
       break;
     case 'Y':
     case 'y':
@@ -468,6 +468,8 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
       break;
     }
   }
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
   if (vi.IsYUY2()) {
     mask = doY ? 0x00ff00ff : 0;
     mask |= doU ? 0x0000ff00 : 0;
@@ -479,13 +481,35 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
     mask |= doR ? 0x00ff0000 : 0;
     mask |= doA ? 0xff000000 : 0;
   }
+  else if (vi.IsRGB64()) {
+    mask64 = doB ? 0x000000000000ffffull : 0;
+    mask64 |= (doG ? 0x00000000ffff0000ull : 0);
+    mask64 |= (doR ? 0x0000ffff00000000ull : 0);
+    mask64 |= (doA ? 0xffff000000000000ull : 0);
+  }
   else {
     mask = 0xffffffff;
+    mask64 = (1 << bits_per_pixel) - 1;
+    mask64 |= (mask64 << 48) | (mask64 << 32) | (mask64 << 16); // works for 10 bit, too
+    // RGB24/48 is special case no use of this mask
   }
 }
 
 static void invert_frame_sse2(BYTE* frame, int pitch, int width, int height, int mask) {
   __m128i maskv = _mm_set1_epi32(mask);
+
+  BYTE* endp = frame + pitch * height;
+
+  while (frame < endp) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(frame));
+    __m128i inv = _mm_xor_si128(src, maskv);
+    _mm_store_si128(reinterpret_cast<__m128i*>(frame), inv);
+    frame += 16;
+  }
+}
+
+static void invert_frame_uint16_sse2(BYTE* frame, int pitch, int width, int height, uint64_t mask64) {
+  __m128i maskv = _mm_set_epi32((uint32_t)(mask64 >> 32),(uint32_t)mask64,(uint32_t)(mask64 >> 32),(uint32_t)mask64);
 
   BYTE* endp = frame + pitch * height;
 
@@ -560,8 +584,17 @@ static void invert_frame_c(BYTE* frame, int pitch, int width, int height, int ma
   }
 }
 
-static void invert_plane_c(BYTE* frame, int pitch, int width, int height) {
-  int mod4_width = width / 4 * 4;
+static void invert_frame_uint16_c(BYTE* frame, int pitch, int width, int height, uint64_t mask64) {
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width / 8; ++x) {
+      reinterpret_cast<uint64_t *>(frame)[x] = reinterpret_cast<uint64_t *>(frame)[x] ^ mask64;
+    }
+    frame += pitch;
+  }
+}
+
+static void invert_plane_c(BYTE* frame, int pitch, int row_size, int height) {
+  int mod4_width = row_size / 4 * 4;
   for (int y = 0; y < height; ++y) {
     int* intptr = reinterpret_cast<int*>(frame);
 
@@ -569,44 +602,97 @@ static void invert_plane_c(BYTE* frame, int pitch, int width, int height) {
       intptr[x] = intptr[x] ^ 0xFFFFFFFF;
     }
 
-    for (int x = mod4_width; x < width; ++x) {
+    for (int x = mod4_width; x < row_size; ++x) {
       frame[x] = frame[x] ^ 255;
     }
     frame += pitch;
   }
 }
 
-static void invert_frame(BYTE* frame, int pitch, int rowsize, int height, int mask, IScriptEnvironment *env) {
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16)) 
+static void invert_plane_uint16_c(BYTE* frame, int pitch, int row_size, int height, uint64_t mask64) {
+  int mod8_width = row_size / 8 * 8;
+  uint16_t mask16 = mask64 & 0xFFFF; // for planes, all 16 bit parts of 64 bit mask is the same
+  for (int y = 0; y < height; ++y) {
+
+    for (int x = 0; x < mod8_width / 8; ++x) {
+      reinterpret_cast<uint64_t *>(frame)[x] ^= mask64;
+    }
+
+    for (int x = mod8_width; x < row_size; ++x) {
+      reinterpret_cast<uint16_t *>(frame)[x] ^= mask16;
+    }
+    frame += pitch;
+  }
+}
+
+static void invert_plane_float_c(BYTE* frame, int pitch, int row_size, int height) {
+  const int width = row_size / sizeof(float);
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      reinterpret_cast<float *>(frame)[x] = 1.0f - reinterpret_cast<float *>(frame)[x];
+    }
+    frame += pitch;
+  }
+}
+
+static void invert_frame(BYTE* frame, int pitch, int rowsize, int height, int mask, uint64_t mask64, int pixelsize, IScriptEnvironment *env) {
+  if ((pixelsize == 1 || pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16))
   {
-    invert_frame_sse2(frame, pitch, rowsize, height, mask);
+    if(pixelsize == 1)
+      invert_frame_sse2(frame, pitch, rowsize, height, mask);
+    else
+      invert_frame_uint16_sse2(frame, pitch, rowsize, height, mask64);
   }
 #ifdef X86_32
-  else if (env->GetCPUFlags() & CPUF_MMX)
+  else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
   {
     invert_frame_mmx(frame, pitch, rowsize, height, mask);
   }
 #endif
   else 
   {
-    invert_frame_c(frame, pitch, rowsize, height, mask);
+    if(pixelsize == 1)
+      invert_frame_c(frame, pitch, rowsize, height, mask);
+    else
+      invert_frame_uint16_c(frame, pitch, rowsize, height, mask64);
   }
 }
 
-static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, IScriptEnvironment *env) {
+static void invert_frame_uint16(BYTE* frame, int pitch, int rowsize, int height, uint64_t mask64, IScriptEnvironment *env) {
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16)) 
   {
-    invert_frame_sse2(frame, pitch, rowsize, height, 0xffffffff);
+    invert_frame_uint16_sse2(frame, pitch, rowsize, height, mask64);
+  }
+  else
+  {
+    invert_frame_uint16_c(frame, pitch, rowsize, height, mask64);
+  }
+}
+
+
+static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pixelsize, uint64_t mask64,  IScriptEnvironment *env) {
+  if ((pixelsize == 1 || pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16))
+  {
+    if(pixelsize == 1)
+      invert_frame_sse2(frame, pitch, rowsize, height, 0xffffffff);
+    else if(pixelsize == 2)
+      invert_frame_uint16_sse2(frame, pitch, rowsize, height, mask64);
   }
 #ifdef X86_32
-  else if (env->GetCPUFlags() & CPUF_MMX)
+  else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
   {
     invert_plane_mmx(frame, pitch, rowsize, height);
   }
 #endif
   else 
   {
-    invert_plane_c(frame, pitch, rowsize, height);
+    if(pixelsize == 1)
+      invert_plane_c(frame, pitch, rowsize, height);
+    else if (pixelsize == 2)
+      invert_plane_uint16_c(frame, pitch, rowsize, height, mask64);
+    else {
+      invert_plane_float_c(frame, pitch, rowsize, height);
+    }
   }
 }
 
@@ -622,15 +708,30 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
   int height = f->GetHeight();
 
   if (vi.IsPlanar()) {
-    if (doY)
-      invert_plane(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, env);
-    if (doU)
-      invert_plane(f->GetWritePtr(PLANAR_U), f->GetPitch(PLANAR_U), f->GetRowSize(PLANAR_U_ALIGNED), f->GetHeight(PLANAR_U), env);
-    if (doV)
-      invert_plane(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), env);
+    // planar YUV
+    if (vi.IsYUV() || vi.IsYUVA()) {
+      if (doY)
+        invert_plane(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, pixelsize, mask64, env);
+      if (doU)
+        invert_plane(f->GetWritePtr(PLANAR_U), f->GetPitch(PLANAR_U), f->GetRowSize(PLANAR_U_ALIGNED), f->GetHeight(PLANAR_U), pixelsize, mask64, env);
+      if (doV)
+        invert_plane(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), pixelsize, mask64, env);
+    }
+    // planar RGB
+    if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+      if (doG) // first plane, GetWritePtr w/o parameters
+        invert_plane(pf, pitch, f->GetRowSize(PLANAR_G_ALIGNED), height, pixelsize, mask64, env);
+      if (doB)
+        invert_plane(f->GetWritePtr(PLANAR_B), f->GetPitch(PLANAR_B), f->GetRowSize(PLANAR_B_ALIGNED), f->GetHeight(PLANAR_B), pixelsize, mask64, env);
+      if (doR)
+        invert_plane(f->GetWritePtr(PLANAR_R), f->GetPitch(PLANAR_R), f->GetRowSize(PLANAR_R_ALIGNED), f->GetHeight(PLANAR_R), pixelsize, mask64, env);
+    }
+    // alpha
+    if (doA && vi.IsPlanarRGBA() || vi.IsYUVA())
+      invert_plane(f->GetWritePtr(PLANAR_A), f->GetPitch(PLANAR_A), f->GetRowSize(PLANAR_A_ALIGNED), f->GetHeight(PLANAR_A), pixelsize, mask64, env);
   }
-  else if (vi.IsYUY2() || vi.IsRGB32()) {
-    invert_frame(pf, pitch, rowsize, height, mask, env);
+  else if (vi.IsYUY2() || vi.IsRGB32() || vi.IsRGB64()) {
+    invert_frame(pf, pitch, rowsize, height, mask, mask64, pixelsize, env);
   }
   else if (vi.IsRGB24()) {
     int rMask= doR ? 0xff : 0;
@@ -646,6 +747,19 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
       pf += pitch;
     }
   }
+  else if (vi.IsRGB48()) {
+    int rMask= doR ? 0xffff : 0;
+    int gMask= doG ? 0xffff : 0;
+    int bMask= doB ? 0xffff : 0;
+    for (int i=0; i<height; i++) {
+      for (int j=0; j<rowsize/pixelsize; j+=3) {
+        reinterpret_cast<uint16_t *>(pf)[j+0] ^= bMask;
+        reinterpret_cast<uint16_t *>(pf)[j+1] ^= gMask;
+        reinterpret_cast<uint16_t *>(pf)[j+2] ^= rMask;
+      }
+      pf += pitch;
+    }
+  }
 
   return f;
 }
@@ -653,7 +767,7 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Invert(args[0].AsClip(), args[0].AsClip()->GetVideoInfo().IsRGB() ? args[1].AsString("RGBA") : args[1].AsString("YUV"), env);
+  return new Invert(args[0].AsClip(), args[0].AsClip()->GetVideoInfo().IsRGB() ? args[1].AsString("RGBA") : args[1].AsString("YUVA"), env);
 }
 
 
