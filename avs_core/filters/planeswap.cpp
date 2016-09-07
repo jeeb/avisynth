@@ -157,7 +157,7 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsPlanar()) {
     // Abuse subframe to flip the UV plane pointers -- extremely fast but a bit naughty!
     const int uvoffset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_U); // very naughty - don't do this at home!!
-        
+        // todo: check for YUVA??? env-> has no SubFramePlanar with alpha option!
     return env->SubframePlanar(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
                          uvoffset, -uvoffset, src->GetPitch(PLANAR_V));
   }
@@ -245,7 +245,7 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
       env->ThrowError("PlaneToY: clip is not planar RGB!");
 
   if (vi.NumComponents() == 1)
-    env->ThrowError("PlaneToY: There are no chroma channels in Y8/Y16/Y32!");
+    env->ThrowError("PlaneToY: There are no chroma channels in greyscale clip!");
 
   if(YUVmode) {
     vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -254,11 +254,14 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
 
   if (mode == YToY8 || mode == UToY8 || mode == VToY8 || mode == YUY2UToY8 || mode == YUY2VToY8 || RGBmode || Alphamode)
   {
-    switch (vi.BytesFromPixels(1)) // although name is Y8, it means that greyscale stays in the same bitdepth
+    switch (vi.BitsPerComponent()) // although name is Y8, it means that greyscale stays in the same bitdepth
     {
-    case 1: vi.pixel_type = VideoInfo::CS_Y8; break;
-    case 2: vi.pixel_type = VideoInfo::CS_Y16; break;
-    case 4: vi.pixel_type = VideoInfo::CS_Y32; break;
+    case 8: vi.pixel_type = VideoInfo::CS_Y8; break;
+    case 10: vi.pixel_type = VideoInfo::CS_Y10; break;
+    case 12: vi.pixel_type = VideoInfo::CS_Y12; break;
+    case 14: vi.pixel_type = VideoInfo::CS_Y14; break;
+    case 16: vi.pixel_type = VideoInfo::CS_Y16; break;
+    case 32: vi.pixel_type = VideoInfo::CS_Y32; break;
     }
   }
 }
@@ -398,8 +401,9 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     fill_plane<BYTE>(dstp_v, rowsize, height, pitch, 0x80);
   }
   else if (vi.ComponentSize() == 2) {  // 16bit
-    fill_plane<uint16_t>(dstp_u, rowsize, height, pitch, 0x8000);
-    fill_plane<uint16_t>(dstp_v, rowsize, height, pitch, 0x8000);
+    uint16_t grey_val = 1 << (vi.BitsPerComponent() - 1); // 0x8000 for 16 bit
+    fill_plane<uint16_t>(dstp_u, rowsize, height, pitch, grey_val);
+    fill_plane<uint16_t>(dstp_v, rowsize, height, pitch, grey_val);
   }
   else {  // 32bit(float)
     fill_plane<float>(dstp_u, rowsize, height, pitch, 0.5f);
@@ -438,12 +442,16 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
   if (!clipY) {
     if (vi.IsYUY2())
       vi.width *= 2;
-    else if (vi.IsY8())
-      vi.pixel_type = VideoInfo::CS_YV24;
-    else if (vi.IsColorSpace(VideoInfo::CS_Y16))
-      vi.pixel_type = VideoInfo::CS_YUV444P16;
-    else if (vi.IsColorSpace(VideoInfo::CS_Y32))
-      vi.pixel_type = VideoInfo::CS_YUV444PS;
+    else if (vi.IsY()) {
+      switch(vi.BitsPerComponent()) {
+      case 8: vi.pixel_type = VideoInfo::CS_YV24; break;
+      case 10: vi.pixel_type = VideoInfo::CS_YUV444P10; break;
+      case 12: vi.pixel_type = VideoInfo::CS_YUV444P12; break;
+      case 14: vi.pixel_type = VideoInfo::CS_YUV444P14; break;
+      case 16: vi.pixel_type = VideoInfo::CS_YUV444P16; break;
+      case 32: vi.pixel_type = VideoInfo::CS_YUV444PS; break;
+      }
+    }
     else {
       vi.height <<= vi.GetPlaneHeightSubsampling(PLANAR_U);
       vi.width <<= vi.GetPlaneWidthSubsampling(PLANAR_U);
@@ -465,11 +473,14 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
   }
 
   // Autogenerate destination colorformat
-  switch (vi.ComponentSize())
+  switch (vi.BitsPerComponent())
   {
-  case 1: vi.pixel_type = VideoInfo::CS_YV12; break;// CS_Sub_Width_2 and CS_Sub_Height_2 are 0
-  case 2: vi.pixel_type = VideoInfo::CS_YUV420P16; break;
-  case 4: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
+  case 8: vi.pixel_type = VideoInfo::CS_YV12; break;// CS_Sub_Width_2 and CS_Sub_Height_2 are 0
+  case 10: vi.pixel_type = VideoInfo::CS_YUV420P10; break;
+  case 12: vi.pixel_type = VideoInfo::CS_YUV420P12; break;
+  case 14: vi.pixel_type = VideoInfo::CS_YUV420P14; break;
+  case 16: vi.pixel_type = VideoInfo::CS_YUV420P16; break;
+  case 32: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
   }
 
   if (vi3.width == vi.width)
@@ -602,10 +613,12 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
 
   if (vi.ComponentSize() == 1)  // 8bit
     fill_plane<BYTE>(dstp, rowsize, vi.height, pitch, 0x7e);
-  else if (vi.ComponentSize() == 2)  // 16bit
-    fill_plane<uint16_t>(dstp, rowsize, vi.height, pitch, 0x7e00);
-  else  // 32bit(float)
+  else if (vi.ComponentSize() == 2) { // 16bit
+    uint16_t luma_val = 0x7e << (vi.BitsPerComponent() - 8);
+    fill_plane<uint16_t>(dstp, rowsize, vi.height, pitch, luma_val);
+  } else { // 32bit(float)
     fill_plane<float>(dstp, rowsize, vi.height, pitch, 126.0f / 256);
+  }
 
   return dst;
 }
