@@ -2128,7 +2128,7 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
         fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, 255);
         break;
       case 2:
-        fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, 65535);
+        fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, (1 << vi.BitsPerComponent()) - 1);
         break;
       case 4:
         fill_plane<float>(dstp_a, heightA, dst_pitchA, 1.0f);

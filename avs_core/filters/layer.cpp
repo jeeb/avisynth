@@ -494,8 +494,8 @@ AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* 
 ResetMask::ResetMask(PClip _child, IScriptEnvironment* env)
   : GenericVideoFilter(_child)
 {
-  if (!vi.IsRGB32())
-    env->ThrowError("ResetMask: RGB32 data only");
+  if (!(vi.IsRGB32() || vi.IsRGB64() || vi.IsPlanarRGBA() || vi.IsYUVA()))
+    env->ThrowError("ResetMask: format has no alpha channel");
 }
 
 
@@ -504,16 +504,49 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame f = child->GetFrame(n, env);
   env->MakeWritable(&f);
 
+  if (vi.IsPlanarRGBA() || vi.IsYUVA()) {
+    const int dst_pitchA = f->GetPitch(PLANAR_A);
+    BYTE* dstp_a = f->GetWritePtr(PLANAR_A);
+    const int heightA = f->GetHeight(PLANAR_A);
+
+    switch (vi.ComponentSize())
+    {
+    case 1:
+      fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, 255);
+      break;
+    case 2:
+      fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, (1 << vi.BitsPerComponent()) - 1);
+      break;
+    case 4:
+      fill_plane<float>(dstp_a, heightA, dst_pitchA, 1.0f);
+      break;
+    }
+    return f;
+  }
+  // RGB32 and RGB64
+
   BYTE* pf = f->GetWritePtr();
   int pitch = f->GetPitch();
   int rowsize = f->GetRowSize();
   int height = f->GetHeight();
+  int width = vi.width;
 
-  for (int y = 0; y<height; y++) {
-    for (int x = 3; x<rowsize; x += 4) {
-      pf[x] = 255;
+  if(vi.IsRGB32()) {
+    for (int y = 0; y<height; y++) {
+      for (int x = 3; x<rowsize; x += 4) {
+        pf[x] = 255;
+      }
+      pf += pitch;
     }
-    pf += pitch;
+  }
+  else if (vi.IsRGB64()) {
+    rowsize /= sizeof(uint16_t);
+    for (int y = 0; y<height; y++) {
+      for (int x = 3; x<rowsize; x += 4) {
+        reinterpret_cast<uint16_t *>(pf)[x] = 65535;
+      }
+      pf += pitch;
+    }
   }
 
   return f;
