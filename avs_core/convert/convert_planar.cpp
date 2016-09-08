@@ -2098,7 +2098,7 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
         fill_chroma<BYTE>(dstp_u, dstp_v, height, dst_pitch, 0x80);
         break;
       case 2:
-        fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 0x8000);
+        fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 1 << (vi.BitsPerComponent() - 1));
         break;
       case 4:
         fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, 0.5f);

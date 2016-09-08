@@ -38,6 +38,14 @@
 #include <avisynth.h>
 
 
+struct GreyConversionMatrix {
+  int r;    // for 15bit scaled integer arithmetic
+  int g;
+  int b;
+  float r_f;    // for float operation
+  float g_f;
+  float b_f;
+};
 
 class Greyscale : public GenericVideoFilter 
 /**
@@ -55,8 +63,12 @@ public:
   }
 
 private:
+  void BuildGreyMatrix();
+  GreyConversionMatrix greyMatrix;
   int matrix_;
   enum {Rec601 = 0, Rec709, Average };
+  int pixelsize;
+  int bits_per_pixel;
 
 };
 

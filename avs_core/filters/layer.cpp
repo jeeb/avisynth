@@ -280,13 +280,15 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 
   env->MakeWritable(&src1);
 
-  // unfortunately sum is not 32768, correction needed at 16 bit to avoid overflow
-  int cyb = int(0.114*32768+0.5);
-  int cyg = int(0.587*32768+0.5);
-  int cyr = int(0.299*32768+0.5);
-
-  if (bits_per_pixel == 16)
-    cyg = 32768 - (cyr + cyb); // avoid integer overflow and clamping at 16 bits
+  // 15 bit scaled
+  // PF check: int32 overflow in 16 bits
+  // 32769 * 65535 + 16384 = 8000BFFF int32 overflow
+  // 32768 * 65535 + 16384 = 7FFFC000 OK
+  // Let's make correction
+  const int cyb = 3736;  // int(0.114 * 32768 + 0.5); // 3736
+  const int cyg = 19235-1; // int(0.587 * 32768 + 0.5); // 19235
+  const int cyr = 9798;  // int(0.299 * 32768 + 0.5); // 9798
+  // w/o correction: 32769
 
   if (vi.IsPlanar()) {
     // planar RGB
@@ -1133,7 +1135,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           BYTE * dstp_v = dst->GetWritePtr(PLANAR_V);
           switch (pixelsize) {
           case 1: fill_chroma<BYTE>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
-          case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 0x8000); break;
+          case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
           case 4: fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, 0.5f); break;
           }
         }
@@ -1283,7 +1285,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           BYTE * dstp_v = dst->GetWritePtr(PLANAR_V);
           switch (pixelsize) {
           case 1: fill_chroma<uint8_t>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
-          case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 0x8000); break;
+          case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
           case 4: fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, 0.5f); break;
           }
         }
