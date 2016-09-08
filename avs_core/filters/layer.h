@@ -108,7 +108,7 @@ class ResetMask : public GenericVideoFilter
 **/
 {
 public:
-  ResetMask(PClip _child, IScriptEnvironment* env);
+  ResetMask(PClip _child, float _mask_f, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -116,6 +116,10 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+private:
+    float mask_f;
+    int mask;
 };
 
 
@@ -220,7 +224,7 @@ private:
   const PClip child1, child2;
   VideoInfo vi;
   const  char* Op;
-  const int levelB, T;
+  int levelB, ThresholdParam;
   int ydest, xdest, ysrc, xsrc, ofsX, ofsY, ycount, xcount, overlay_frames;
   const bool chroma;
 

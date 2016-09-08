@@ -44,6 +44,7 @@
 #include "../core/internal.h"
 #include <emmintrin.h>
 #include "../convert/convert_planar.h"
+#include <algorithm>
 
 
 /********************************************************************
@@ -53,7 +54,7 @@
 extern const AVSFunction Layer_filters[] = {
   { "Mask",         BUILTIN_FUNC_PREFIX, "cc", Mask::Create },     // clip, mask
   { "ColorKeyMask", BUILTIN_FUNC_PREFIX, "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[B, toleranceG, toleranceR]
-  { "ResetMask",    BUILTIN_FUNC_PREFIX, "c", ResetMask::Create },
+  { "ResetMask",    BUILTIN_FUNC_PREFIX, "c[mask]f", ResetMask::Create },
   { "Invert",       BUILTIN_FUNC_PREFIX, "c[channels]s", Invert::Create },
   { "ShowAlpha",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)3 },
   { "ShowRed",      BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)2 },
@@ -491,11 +492,27 @@ AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* 
  ********************************/
 
 
-ResetMask::ResetMask(PClip _child, IScriptEnvironment* env)
+ResetMask::ResetMask(PClip _child, float _mask_f, IScriptEnvironment* env)
   : GenericVideoFilter(_child)
 {
   if (!(vi.IsRGB32() || vi.IsRGB64() || vi.IsPlanarRGBA() || vi.IsYUVA()))
     env->ThrowError("ResetMask: format has no alpha channel");
+
+  // new: resetmask has parameter. If none->max transparency
+
+  int max_pixel_value = (1 << vi.BitsPerComponent()) - 1;
+  if(_mask_f < 0) {
+    mask_f = 1.0f;
+    mask = max_pixel_value;
+  }
+  else {
+    mask_f = _mask_f;
+    if (mask_f < 0) mask_f = 0;
+    mask = (int)mask_f;
+
+    mask = clamp(mask, 0, max_pixel_value);
+    mask_f = clamp(mask_f, 0.0f, 1.0f);
+  }
 }
 
 
@@ -512,13 +529,13 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
     switch (vi.ComponentSize())
     {
     case 1:
-      fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, 255);
+      fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, mask);
       break;
     case 2:
-      fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, (1 << vi.BitsPerComponent()) - 1);
+      fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, mask);
       break;
     case 4:
-      fill_plane<float>(dstp_a, heightA, dst_pitchA, 1.0f);
+      fill_plane<float>(dstp_a, heightA, dst_pitchA, mask_f);
       break;
     }
     return f;
@@ -534,7 +551,7 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
   if(vi.IsRGB32()) {
     for (int y = 0; y<height; y++) {
       for (int x = 3; x<rowsize; x += 4) {
-        pf[x] = 255;
+        pf[x] = mask;
       }
       pf += pitch;
     }
@@ -543,7 +560,7 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
     rowsize /= sizeof(uint16_t);
     for (int y = 0; y<height; y++) {
       for (int x = 3; x<rowsize; x += 4) {
-        reinterpret_cast<uint16_t *>(pf)[x] = 65535;
+        reinterpret_cast<uint16_t *>(pf)[x] = mask;
       }
       pf += pitch;
     }
@@ -555,7 +572,7 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue ResetMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new ResetMask(args[0].AsClip(), env);
+  return new ResetMask(args[0].AsClip(), (float)args[1].AsFloat(-1.0f), env);
 }
 
 
@@ -1576,7 +1593,7 @@ AVSValue MergeRGB::Create(AVSValue args, void* mode, IScriptEnvironment* env)
 Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y,
               int _t, bool _chroma, IScriptEnvironment* env )
   : child1(_child1), child2(_child2), levelB(_lev), ofsX(_x), ofsY(_y), Op(_op),
-    T(_t), chroma(_chroma)
+    ThresholdParam(_t), chroma(_chroma)
 {
   const VideoInfo& vi1 = child1->GetVideoInfo();
   const VideoInfo& vi2 = child2->GetVideoInfo();
@@ -1584,12 +1601,20 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   if (vi1.pixel_type != vi2.pixel_type)
     env->ThrowError("Layer: image formats don't match");
 
-  if (! (vi1.IsRGB32() | vi1.IsYUY2()) )
-    env->ThrowError("Layer only support RGB32 and YUY2 formats");
+  if (! (vi1.IsRGB32() || vi1.IsYUY2() || vi1.IsRGB64()) )
+    env->ThrowError("Layer only support RGB32, RGB64 and YUY2 formats");
 
   vi = vi1;
 
-  if (vi.IsRGB32()) ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
+  if (levelB == -1) { // default
+    if (vi.IsRGB64())
+      levelB = 65537; // (65535* 65537 +1 ) / 65536 = 65536
+    else
+      levelB = 257;   // (65535* 257   +1 ) / 256   = 256
+  }
+
+
+  if (vi.IsRGB32() || vi.IsRGB64()) ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
   else ofsX = ofsX & 0xFFFFFFFE; //YUV must be aligned on even pixels
 
   xdest=(ofsX < 0)? 0: ofsX;
@@ -1615,10 +1640,15 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   overlay_frames = vi2.num_frames;
 }
 
-
-const int cyb = int(0.114*32768+0.5);
-const int cyg = int(0.587*32768+0.5);
-const int cyr = int(0.299*32768+0.5);
+// 15 bit scaled
+// PF check: int32 overflow in 16 bits
+// 32769 * 65535 + 16384 = 8000BFFF int32 overflow
+// 32768 * 65535 + 16384 = 7FFFC000 OK
+// Let's make correction
+const int cyb = 3736;    // int(0.114 * 32768 + 0.5); // 3736
+const int cyg = 19235-1; // int(0.587 * 32768 + 0.5); // 19235
+const int cyr = 9798;    // int(0.299 * 32768 + 0.5); // 9798
+// w/o correction: 32769
 
 enum
 {
@@ -1913,7 +1943,13 @@ static void layer_yuy2_fast_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
 }
 #endif
 
-static void layer_yuy2_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+template<typename pixel_t>
+static void layer_yuy2_fast_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width*2; ++x) {
       dstp[x] = (dstp[x] + ovrp[x] + 1) / 2;
@@ -2281,31 +2317,53 @@ static void layer_rgb32_mul_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
 }
 #endif
 
-static void layer_rgb32_mul_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+// For Full Strenth: 8 bit Level must be 257, 16 bit must be 65537!
+// in 8 bit:   (255*257+1)/256 = (65535+1)/256 = 256 -> alpha_max = 256
+// in 16 bit:  (65535*65537+1)/65536 = 65536, x=? 7FFFFFFF, x=65537 -> alpha_max = 65536
+
+template<typename pixel_t>
+static void layer_rgb32_mul_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+  const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
+
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
 
-      dstp[x*4]   = dstp[x*4]   + (((((ovrp[x*4]   * dstp[x*4]) >> 8)   - dstp[x*4]  ) * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((((ovrp[x*4+1] * dstp[x*4+1]) >> 8) - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((((ovrp[x*4+2] * dstp[x*4+2]) >> 8) - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((((ovrp[x*4+3] * dstp[x*4+3]) >> 8) - dstp[x*4+3]) * alpha) >> 8);
+      dstp[x*4+0] = (pixel_t)(dstp[x*4+0] + ((((((calc_t)ovrp[x*4+0] * dstp[x*4+0]) >> SHIFT) - dstp[x*4+0]) * alpha) >> SHIFT));
+      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + ((((((calc_t)ovrp[x*4+1] * dstp[x*4+1]) >> SHIFT) - dstp[x*4+1]) * alpha) >> SHIFT));
+      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + ((((((calc_t)ovrp[x*4+2] * dstp[x*4+2]) >> SHIFT) - dstp[x*4+2]) * alpha) >> SHIFT));
+      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + ((((((calc_t)ovrp[x*4+3] * dstp[x*4+3]) >> SHIFT) - dstp[x*4+3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
   }
 }
 
-static void layer_rgb32_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+template<typename pixel_t>
+static void layer_rgb32_mul_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+  const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
+
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
-      int luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
+      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
+      calc_t luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
 
-      dstp[x*4]   = dstp[x*4]   + (((((luma * dstp[x*4]) >> 8)   - dstp[x*4]  ) * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((((luma * dstp[x*4+1]) >> 8) - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((((luma * dstp[x*4+2]) >> 8) - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((((luma * dstp[x*4+3]) >> 8) - dstp[x*4+3]) * alpha) >> 8);
+      dstp[x*4+0] = (pixel_t)(dstp[x*4+0] + (((((luma * dstp[x*4+0]) >> SHIFT) - dstp[x*4+0]) * alpha) >> SHIFT));
+      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((((luma * dstp[x*4+1]) >> SHIFT) - dstp[x*4+1]) * alpha) >> SHIFT));
+      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((((luma * dstp[x*4+2]) >> SHIFT) - dstp[x*4+2]) * alpha) >> SHIFT));
+      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((((luma * dstp[x*4+3]) >> SHIFT) - dstp[x*4+3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2314,7 +2372,7 @@ static void layer_rgb32_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int o
 
 
 template<bool use_chroma>
-static void layer_rgb32_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_rgb32_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   int mod2_width = width / 2 * 2;
 
   __m128i zero = _mm_setzero_si128();
@@ -2375,7 +2433,7 @@ static void layer_rgb32_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
 
 #ifdef X86_32
 template<bool use_chroma>
-static void layer_rgb32_add_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_rgb32_add_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   __m64 zero = _mm_setzero_si64();
   __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
 
@@ -2413,31 +2471,49 @@ static void layer_rgb32_add_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
 }
 #endif
 
-static void layer_rgb32_add_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+template<typename pixel_t>
+static void layer_rgb32_add_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+  const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
+
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
 
-      dstp[x*4]   = dstp[x*4]   + (((ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> 8);
+      dstp[x*4]   = (pixel_t)(dstp[x*4]   + ((((calc_t)ovrp[x*4]   - dstp[x*4])   * alpha) >> SHIFT));
+      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + ((((calc_t)ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> SHIFT));
+      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + ((((calc_t)ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> SHIFT));
+      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + ((((calc_t)ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
   }
 }
 
-static void layer_rgb32_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+template<typename pixel_t>
+static void layer_rgb32_add_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+  const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
+
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
-      int luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
+      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> 8;
+      calc_t luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
 
-      dstp[x*4]   = dstp[x*4]   + (((luma - dstp[x*4])   * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha) >> 8);
+      dstp[x*4]   = (pixel_t)(dstp[x*4]   + (((luma - dstp[x*4])   * alpha) >> SHIFT));
+      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha) >> SHIFT));
+      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha) >> SHIFT));
+      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2455,13 +2531,14 @@ static void layer_rgb32_fast_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, i
 }
 #endif
 
+template<typename pixel_t>
 static void layer_rgb32_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
-  layer_yuy2_fast_c(dstp, ovrp, dst_pitch, overlay_pitch, width*2, height, level);
+  layer_yuy2_fast_c<pixel_t>(dstp, ovrp, dst_pitch, overlay_pitch, width*2, height, level);
 }
 
 
 template<bool use_chroma>
-static void layer_rgb32_subtract_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_rgb32_subtract_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   int mod2_width = width / 2 * 2;
 
   __m128i zero = _mm_setzero_si128();
@@ -2523,7 +2600,7 @@ static void layer_rgb32_subtract_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitc
 
 #ifdef X86_32
 template<bool use_chroma>
-static void layer_rgb32_subtract_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_rgb32_subtract_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   __m64 zero = _mm_setzero_si64();
   __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
   __m64 ff = _mm_set1_pi16(0x00FF);
@@ -2562,31 +2639,53 @@ static void layer_rgb32_subtract_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitc
 }
 #endif
 
-static void layer_rgb32_subtract_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+template<typename pixel_t>
+static void layer_rgb32_subtract_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+  const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
+
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+
+  const calc_t MAX_PIXEL_VALUE = sizeof(pixel_t) == 1 ? 255 : 65535;
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
 
-      dstp[x*4]   = dstp[x*4]   + (((255 - ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((255 - ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((255 - ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((255 - ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> 8);
+      dstp[x*4]   = (pixel_t)(dstp[x*4]   + (((MAX_PIXEL_VALUE - ovrp[x*4]   - dstp[x*4])   * alpha) >> SHIFT));
+      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((MAX_PIXEL_VALUE - ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> SHIFT));
+      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((MAX_PIXEL_VALUE - ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> SHIFT));
+      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((MAX_PIXEL_VALUE - ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
   }
 }
 
-static void layer_rgb32_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+template<typename pixel_t>
+static void layer_rgb32_subtract_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+  const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
+
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+
+  const calc_t MAX_PIXEL_VALUE = sizeof(pixel_t) == 1 ? 255 : 65535;
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
-      int luma = (cyb * (255 - ovrp[x*4]) + cyg * (255 - ovrp[x*4+1]) + cyr * (255 - ovrp[x*4+2])) >> 15;
+      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
+      calc_t luma = (cyb * (MAX_PIXEL_VALUE - ovrp[x*4]) + cyg * (MAX_PIXEL_VALUE - ovrp[x*4+1]) + cyr * (MAX_PIXEL_VALUE - ovrp[x*4+2])) >> 15;
 
-      dstp[x*4]   = dstp[x*4]   + (((luma - dstp[x*4])   * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha) >> 8);
+      dstp[x*4]   = (pixel_t)(dstp[x*4]   + (((luma - dstp[x*4])   * alpha) >> SHIFT));
+      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha) >> SHIFT));
+      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha) >> SHIFT));
+      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2707,11 +2806,21 @@ static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int ds
 }
 #endif
 
-template<int mode>
-static void layer_rgb32_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+template<int mode, typename pixel_t>
+static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  dst_pitch /= sizeof(pixel_t);
+  overlay_pitch /= sizeof(pixel_t);
+  const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
+
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+
+  const calc_t MAX_PIXEL_VALUE = sizeof(pixel_t) == 1 ? 255 : 65535;
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
       int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
       int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
 
@@ -2721,10 +2830,10 @@ static void layer_rgb32_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_p
         alpha = luma_ovr < thresh + luma_src ? alpha : 0;
       }
 
-      dstp[x*4]   = dstp[x*4]   + (((ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> 8);
+      dstp[x*4]   = (pixel_t)(dstp[x*4]   + ((((calc_t)ovrp[x*4]   - dstp[x*4])   * alpha) >> SHIFT));
+      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + ((((calc_t)ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> SHIFT));
+      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + ((((calc_t)ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> SHIFT));
+      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + ((((calc_t)ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2756,7 +2865,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     src1p += (src1_pitch * ydest) + (xdest * 2);
     src2p += (src2_pitch * ysrc) + (xsrc * 2);
 
-    int thresh= ((T & 0xFF) <<16)| (T & 0xFF);
+    int thresh= ((ThresholdParam & 0xFF) <<16)| (ThresholdParam & 0xFF);
 
     if (!lstrcmpi(Op, "Mul"))
     {
@@ -2848,7 +2957,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 #endif
         else
         {
-          layer_yuy2_fast_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_yuy2_fast_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       } 
       else 
@@ -2940,47 +3049,56 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       }
     }
   }
-  else if (vi.IsRGB32())
+  else if (vi.IsRGB32() || vi.IsRGB64())
   {
-    src1p += (src1_pitch * ydest) + (xdest * 4);
-    src2p += (src2_pitch * ysrc) + (xsrc * 4);
+    int rgb_step = vi.BytesFromPixels(1); // 4 or 8
+    int pixelsize = vi.ComponentSize();
 
-    int thresh = T & 0xFF;
+    src1p += (src1_pitch * ydest) + (xdest * rgb_step);
+    src2p += (src2_pitch * ysrc) + (xsrc * rgb_step);
+
+    int thresh = ThresholdParam & (pixelsize == 1 ? 0xFF : 0xFFFF);
 
     if (!lstrcmpi(Op, "Mul"))
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_mul_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_mul_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #endif
         else 
         {
-          layer_rgb32_mul_chroma_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          if(pixelsize == 1)
+            layer_rgb32_mul_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          else
+            layer_rgb32_mul_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       } 
-      else 
+      else // Mul, chroma==false
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_mul_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_mul_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #endif
         else 
         {
-          layer_rgb32_mul_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          if(pixelsize == 1)
+            layer_rgb32_mul_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          else
+            layer_rgb32_mul_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       }
     }
@@ -2988,36 +3106,42 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_add_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_add_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #endif
         else 
         {
-          layer_rgb32_add_chroma_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          if(pixelsize == 1)
+            layer_rgb32_add_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          else
+            layer_rgb32_add_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       } 
-      else 
+      else // Add, chroma == false
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_add_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_add_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #endif
         else 
         {
-          layer_rgb32_add_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          if(pixelsize == 1)
+            layer_rgb32_add_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          else
+            layer_rgb32_add_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       }
     }
@@ -3025,19 +3149,22 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_lighten_darken_sse2<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_lighten_darken_isse<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
 #endif
         else 
         {
-          layer_rgb32_lighten_darken_c<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          if(pixelsize==1)
+            layer_rgb32_lighten_darken_c<LIGHTEN, uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          else
+            layer_rgb32_lighten_darken_c<LIGHTEN, uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         }
       } 
       else 
@@ -3049,19 +3176,22 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_lighten_darken_isse<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
 #endif
         else 
         {
-          layer_rgb32_lighten_darken_c<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          if (pixelsize==1)
+            layer_rgb32_lighten_darken_c<DARKEN, uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          else
+            layer_rgb32_lighten_darken_c<DARKEN, uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         }
       } 
       else 
@@ -3073,19 +3203,22 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
         {
           layer_rgb32_fast_sse2(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_fast_isse(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #endif
         else 
         {
-          layer_rgb32_fast_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          if(pixelsize==1)
+            layer_rgb32_fast_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          else
+            layer_rgb32_fast_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       } 
       else 
@@ -3097,36 +3230,42 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_subtract_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_subtract_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #endif
         else 
         {
-          layer_rgb32_subtract_chroma_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          if(pixelsize==1)
+            layer_rgb32_subtract_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          else
+            layer_rgb32_subtract_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       } 
       else 
       {
-        if (env->GetCPUFlags() & CPUF_SSE2)
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_subtract_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
 #ifdef X86_32 
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_subtract_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #endif
         else 
         {
-          layer_rgb32_subtract_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          if(pixelsize==1)
+            layer_rgb32_subtract_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          else
+            layer_rgb32_subtract_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       }
     }
@@ -3137,7 +3276,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Layer( args[0].AsClip(), args[1].AsClip(), args[2].AsString("Add"), args[3].AsInt(257),
+  return new Layer( args[0].AsClip(), args[1].AsClip(), args[2].AsString("Add"), args[3].AsInt(-1),
                     args[4].AsInt(0), args[5].AsInt(0), args[6].AsInt(0), args[7].AsBool(true), env );
 }
 
