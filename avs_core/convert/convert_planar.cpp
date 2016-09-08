@@ -2159,6 +2159,8 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   int pixel_type = VideoInfo::CS_UNKNOWN;
   AVSValue outplacement = AVSValue();
 
+  bool hasAlpha = vi.NumComponents() == 4;
+
   if (strcmp(filter, "ConvertToYUV420") == 0) {
     if (vi.Is420())
       if (getPlacement(args[3], env) == getPlacement(args[5], env))
@@ -2166,12 +2168,12 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
     outplacement = args[5];
     switch (vi.BitsPerComponent())
     {
-    case 8: pixel_type = VideoInfo::CS_YV12; break;
-    case 10: pixel_type = VideoInfo::CS_YUV420P10; break;
-    case 12: pixel_type = VideoInfo::CS_YUV420P12; break;
-    case 14: pixel_type = VideoInfo::CS_YUV420P14; break;
-    case 16: pixel_type = VideoInfo::CS_YUV420P16; break;
-    case 32: pixel_type = VideoInfo::CS_YUV420PS; break;
+    case 8 : pixel_type = hasAlpha ? VideoInfo::CS_YUVA420 : VideoInfo::CS_YV12; break;
+    case 10: pixel_type = hasAlpha ? VideoInfo::CS_YUVA420P10 : VideoInfo::CS_YUV420P10; break;
+    case 12: pixel_type = hasAlpha ? VideoInfo::CS_YUVA420P12 : VideoInfo::CS_YUV420P12; break;
+    case 14: pixel_type = hasAlpha ? VideoInfo::CS_YUVA420P14 : VideoInfo::CS_YUV420P14; break;
+    case 16: pixel_type = hasAlpha ? VideoInfo::CS_YUVA420P16 : VideoInfo::CS_YUV420P16; break;
+    case 32: pixel_type = hasAlpha ? VideoInfo::CS_YUVA420PS  : VideoInfo::CS_YUV420PS; break;
     }
   }
   else if (strcmp(filter, "ConvertToYUV422") == 0) {
@@ -2179,12 +2181,12 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
       return clip;
     switch (vi.BitsPerComponent())
     {
-    case 8: pixel_type = VideoInfo::CS_YV16; break;
-    case 10: pixel_type = VideoInfo::CS_YUV422P10; break;
-    case 12: pixel_type = VideoInfo::CS_YUV422P12; break;
-    case 14: pixel_type = VideoInfo::CS_YUV422P14; break;
-    case 16: pixel_type = VideoInfo::CS_YUV422P16; break;
-    case 32: pixel_type = VideoInfo::CS_YUV422PS; break;
+    case 8 : pixel_type = hasAlpha ? VideoInfo::CS_YUVA422 : VideoInfo::CS_YV16; break;
+    case 10: pixel_type = hasAlpha ? VideoInfo::CS_YUVA422P10 : VideoInfo::CS_YUV422P10; break;
+    case 12: pixel_type = hasAlpha ? VideoInfo::CS_YUVA422P12 : VideoInfo::CS_YUV422P12; break;
+    case 14: pixel_type = hasAlpha ? VideoInfo::CS_YUVA422P14 : VideoInfo::CS_YUV422P14; break;
+    case 16: pixel_type = hasAlpha ? VideoInfo::CS_YUVA422P16 : VideoInfo::CS_YUV422P16; break;
+    case 32: pixel_type = hasAlpha ? VideoInfo::CS_YUVA422PS  : VideoInfo::CS_YUV422PS; break;
     }
   }
   else if (strcmp(filter, "ConvertToYUV444") == 0) {
@@ -2192,12 +2194,12 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
       return clip;
     switch (vi.BitsPerComponent())
     {
-    case 8: pixel_type = VideoInfo::CS_YV24; break;
-    case 10: pixel_type = VideoInfo::CS_YUV444P10; break;
-    case 12: pixel_type = VideoInfo::CS_YUV444P12; break;
-    case 14: pixel_type = VideoInfo::CS_YUV444P14; break;
-    case 16: pixel_type = VideoInfo::CS_YUV444P16; break;
-    case 32: pixel_type = VideoInfo::CS_YUV444PS; break;
+    case 8 : pixel_type = hasAlpha ? VideoInfo::CS_YUVA444 : VideoInfo::CS_YV24; break;
+    case 10: pixel_type = hasAlpha ? VideoInfo::CS_YUVA444P10 : VideoInfo::CS_YUV444P10; break;
+    case 12: pixel_type = hasAlpha ? VideoInfo::CS_YUVA444P12 : VideoInfo::CS_YUV444P12; break;
+    case 14: pixel_type = hasAlpha ? VideoInfo::CS_YUVA444P14 : VideoInfo::CS_YUV444P14; break;
+    case 16: pixel_type = hasAlpha ? VideoInfo::CS_YUVA444P16 : VideoInfo::CS_YUV444P16; break;
+    case 32: pixel_type = hasAlpha ? VideoInfo::CS_YUVA444PS  : VideoInfo::CS_YUV444PS; break;
     }
   }
   else if (strcmp(filter, "ConvertToYV411") == 0) {
