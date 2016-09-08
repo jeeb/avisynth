@@ -1254,6 +1254,9 @@ const char* const t_YUV422PS="YUV422PS";
 const char* const t_YUV444PS="YUV444PS";
 const char* const t_Y32="Y32";
 
+const char* const t_YUVA420="YUVA420";
+const char* const t_YUVA422="YUVA422";
+const char* const t_YUVA444="YUVA444";
 const char* const t_YUVA420P10="YUVA420P10";
 const char* const t_YUVA422P10="YUVA422P10";
 const char* const t_YUVA444P10="YUVA444P10";
@@ -1393,6 +1396,9 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       else if (vii.IsColorSpace(VideoInfo::CS_YUV444PS)) c_space=t_YUV444PS;
       else if (vii.IsColorSpace(VideoInfo::CS_Y32)) c_space=t_Y32;
 
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420)) c_space=t_YUVA420;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422)) c_space=t_YUVA422;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444)) c_space=t_YUVA444;
       else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P10)) c_space=t_YUVA420P10;
       else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P10)) c_space=t_YUVA422P10;
       else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P10)) c_space=t_YUVA444P10;
