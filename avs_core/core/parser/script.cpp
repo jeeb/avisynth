@@ -47,6 +47,8 @@
 #include "../internal.h"
 #include "../Prefetcher.h"
 #include "../InternalEnvironment.h"
+#include <map>
+
 
 
 /********************************************************************
@@ -821,59 +823,124 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 
 static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->GetVideoInfo(); }
 
-AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env) {
-  switch (VI(args[0]).pixel_type) {
-    case VideoInfo::CS_BGR24 :
-	  return "RGB24";
-    case VideoInfo::CS_BGR32 :
-	  return "RGB32";
-    case VideoInfo::CS_YUY2  :
-	  return "YUY2";
-    case VideoInfo::CS_YV24  :
-	  return "YV24";
-    case VideoInfo::CS_YV16  :
-	  return "YV16";
-    case VideoInfo::CS_YV12  :
-    case VideoInfo::CS_I420  :
-	  return "YV12";
-    case VideoInfo::CS_YUV9  :
-	  return "YUV9";
-    case VideoInfo::CS_YV411 :
-	  return "YV411";
-    case VideoInfo::CS_Y8    :
-	  return "Y8";
-    case VideoInfo::CS_YUV420P10 :    return "YUV420P10";
-    case VideoInfo::CS_YUV422P10 :    return "YUV422P10";
-    case VideoInfo::CS_YUV444P10 :    return "YUV444P10";
-    case VideoInfo::CS_Y10       :    return "Y10";
-    case VideoInfo::CS_YUV420P12 :    return "YUV420P12";
-    case VideoInfo::CS_YUV422P12 :    return "YUV422P12";
-    case VideoInfo::CS_YUV444P12 :    return "YUV444P12";
-    case VideoInfo::CS_Y12       :    return "Y12";
-    case VideoInfo::CS_YUV420P14 :    return "YUV420P14";
-    case VideoInfo::CS_YUV422P14 :    return "YUV422P14";
-    case VideoInfo::CS_YUV444P14 :    return "YUV444P14";
-    case VideoInfo::CS_Y14       :    return "Y14";
-    case VideoInfo::CS_YUV420P16 :    return "YUV420P16";
-    case VideoInfo::CS_YUV422P16 :    return "YUV422P16";
-    case VideoInfo::CS_YUV444P16 :    return "YUV444P16";
-    case VideoInfo::CS_Y16       :    return "Y16";
-    case VideoInfo::CS_YUV420PS  :    return "YUV420PS";
-    case VideoInfo::CS_YUV422PS  :    return "YUV422PS";
-    case VideoInfo::CS_YUV444PS  :    return "YUV444PS";
-    case VideoInfo::CS_Y32       :    return "Y32";
-    case VideoInfo::CS_BGR48     :    return "RGB48";
-    case VideoInfo::CS_BGR64     :    return "RGB64";
-    case VideoInfo::CS_RGBP      :    return "RGBP";
-    case VideoInfo::CS_RGBP10    :    return "RGBP10";
-    case VideoInfo::CS_RGBP12    :    return "RGBP12";
-    case VideoInfo::CS_RGBP14    :    return "RGBP14";
-    case VideoInfo::CS_RGBP16    :    return "RGBP16";
-    case VideoInfo::CS_RGBPS     :    return "RGBPS";
-    default:
-	  break;
+static const std::map<int, std::string> pixel_format_table =
+{ // names for lookup by pixel_type or name
+  {VideoInfo::CS_BGR24, "RGB24"},
+  {VideoInfo::CS_BGR32, "RGB32"},
+  {VideoInfo::CS_YUY2 , "YUY2"},
+  {VideoInfo::CS_YV24 , "YV24"},
+  {VideoInfo::CS_YV16 , "YV16"},
+  {VideoInfo::CS_YV12 , "YV12"},
+  {VideoInfo::CS_I420 , "YV12"},
+  {VideoInfo::CS_YUV9 , "YUV9"},
+  {VideoInfo::CS_YV411, "YV411"},
+  {VideoInfo::CS_Y8   , "Y8"},
+
+  {VideoInfo::CS_YUV420P10, "YUV420P10"},
+  {VideoInfo::CS_YUV422P10, "YUV422P10"},
+  {VideoInfo::CS_YUV444P10, "YUV444P10"},
+  {VideoInfo::CS_Y10      , "Y10"},
+  {VideoInfo::CS_YUV420P12, "YUV420P12"},
+  {VideoInfo::CS_YUV422P12, "YUV422P12"},
+  {VideoInfo::CS_YUV444P12, "YUV444P12"},
+  {VideoInfo::CS_Y12      , "Y12"},
+  {VideoInfo::CS_YUV420P14, "YUV420P14"},
+  {VideoInfo::CS_YUV422P14, "YUV422P14"},
+  {VideoInfo::CS_YUV444P14, "YUV444P14"},
+  {VideoInfo::CS_Y14      , "Y14"},
+  {VideoInfo::CS_YUV420P16, "YUV420P16"},
+  {VideoInfo::CS_YUV422P16, "YUV422P16"},
+  {VideoInfo::CS_YUV444P16, "YUV444P16"},
+  {VideoInfo::CS_Y16      , "Y16"},
+  {VideoInfo::CS_YUV420PS , "YUV420PS"},
+  {VideoInfo::CS_YUV422PS , "YUV422PS"},
+  {VideoInfo::CS_YUV444PS , "YUV444PS"},
+  {VideoInfo::CS_Y32      , "Y32"},
+
+  {VideoInfo::CS_BGR48    , "RGB48"},
+  {VideoInfo::CS_BGR64    , "RGB64"},
+
+  {VideoInfo::CS_RGBP     , "RGBP"},
+  {VideoInfo::CS_RGBP10   , "RGBP10"},
+  {VideoInfo::CS_RGBP12   , "RGBP12"},
+  {VideoInfo::CS_RGBP14   , "RGBP14"},
+  {VideoInfo::CS_RGBP16   , "RGBP16"},
+  {VideoInfo::CS_RGBPS    , "RGBPS"},
+
+  {VideoInfo::CS_YUVA420, "YUVA420"},
+  {VideoInfo::CS_YUVA422, "YUVA422"},
+  {VideoInfo::CS_YUVA444, "YUVA444"},
+  {VideoInfo::CS_YUVA420P10, "YUVA420P10"},
+  {VideoInfo::CS_YUVA422P10, "YUVA422P10"},
+  {VideoInfo::CS_YUVA444P10, "YUVA444P10"},
+  {VideoInfo::CS_YUVA420P12, "YUVA420P12"},
+  {VideoInfo::CS_YUVA422P12, "YUVA422P12"},
+  {VideoInfo::CS_YUVA444P12, "YUVA444P12"},
+  {VideoInfo::CS_YUVA420P14, "YUVA420P14"},
+  {VideoInfo::CS_YUVA422P14, "YUVA422P14"},
+  {VideoInfo::CS_YUVA444P14, "YUVA444P14"},
+  {VideoInfo::CS_YUVA420P16, "YUVA420P16"},
+  {VideoInfo::CS_YUVA422P16, "YUVA422P16"},
+  {VideoInfo::CS_YUVA444P16, "YUVA444P16"},
+  {VideoInfo::CS_YUVA420PS , "YUVA420PS"},
+  {VideoInfo::CS_YUVA422PS , "YUVA422PS"},
+  {VideoInfo::CS_YUVA444PS , "YUVA444PS"},
+
+  {VideoInfo::CS_RGBAP     , "RGBAP"},
+  {VideoInfo::CS_RGBAP10   , "RGBAP10"},
+  {VideoInfo::CS_RGBAP12   , "RGBAP12"},
+  {VideoInfo::CS_RGBAP14   , "RGBAP14"},
+  {VideoInfo::CS_RGBAP16   , "RGBAP16"},
+  {VideoInfo::CS_RGBAPS    , "RGBAPS"},
+};
+
+static const std::multimap<int, std::string> pixel_format_table_ex =
+{ // alternative names for lookup by name (multimap!)
+  {VideoInfo::CS_YV24 , "YUV444"},
+  {VideoInfo::CS_YV16 , "YUV422"},
+  {VideoInfo::CS_YV12 , "YUV420"},
+  {VideoInfo::CS_YV411, "YUV411"},
+  {VideoInfo::CS_RGBP , "RGBP8"},
+  {VideoInfo::CS_RGBAP, "RGBAP8"},
+  {VideoInfo::CS_YV24 , "YUV444P8"},
+  {VideoInfo::CS_YV16 , "YUV422P8"},
+  {VideoInfo::CS_YV12 , "YUV420P8"},
+  {VideoInfo::CS_YV411, "YUV411P8"},
+  {VideoInfo::CS_YUVA420, "YUVA420P8"},
+  {VideoInfo::CS_YUVA422, "YUVA422P8"},
+  {VideoInfo::CS_YUVA444, "YUVA444P8"},
+};
+
+const char *GetPixelTypeName(const int pixel_type)
+{
+  const std::string name = "";
+  auto it = pixel_format_table.find(pixel_type);
+  if (it == pixel_format_table.end())
+    return "";
+  return (it->second).c_str();
+}
+
+const int GetPixelTypeFromName(const char *pixeltypename)
+{
+  std::string name_to_find = pixeltypename;
+  for (auto & c: name_to_find) c = toupper(c); // uppercase input string
+  for (auto it = pixel_format_table.begin(); it != pixel_format_table.end(); it++)
+  {
+    if ((it->second).compare(name_to_find) == 0)
+      return it->first;
   }
-  return "";
+  // find by alternative names e.g. YUV420 or YUV420P8 instead of YV12
+  for (auto it = pixel_format_table_ex.begin(); it != pixel_format_table_ex.end(); it++)
+  {
+    if ((it->second).compare(name_to_find) == 0)
+      return it->first;
+  }
+  return VideoInfo::CS_UNKNOWN;
+}
+
+
+AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env) {
+  return GetPixelTypeName(VI(args[0]).pixel_type);
 }
 
 AVSValue Width(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).width; }

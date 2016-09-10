@@ -93,6 +93,8 @@ public:
 
 
 int RGB2YUV(int rgb);
+const char *GetPixelTypeName(const int pixel_type); // in script.c
+const int GetPixelTypeFromName(const char *pixeltypename); // in script.c
 
 PClip Create_MessageClip(const char* message, int width, int height,
   int pixel_type, bool shrink, int textcolor, int halocolor, int bgcolor,
