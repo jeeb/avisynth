@@ -951,7 +951,36 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     default: env->ThrowError("Show%s: source must be 8 or 16 bit", ShowText[channel]);
     }
     target_pixelsize = pixelsize;
+  } else {
+    int new_pixel_type = GetPixelTypeFromName(pixel_type);
+    if(new_pixel_type == VideoInfo::CS_UNKNOWN)
+      env->ThrowError("Show%s: invalid pixel_type!", ShowText[channel]);
+    vi.pixel_type = new_pixel_type;
+    if(vi.IsPlanarRGB() || vi.IsPlanarRGBA() || (vi.BitsPerComponent() !=8 && vi.BitsPerComponent() != 16) || vi.IsYUVA())
+      env->ThrowError("Show%s supports the following output pixel types: RGB, Y8, Y16, YUY2, or 8/16 bit YUV formats", ShowText[channel]);
+    if (new_pixel_type == VideoInfo::CS_YUY2) {
+      if (vi.width & 1) {
+        env->ThrowError("Show%s: width must be mod 2 for yuy2", ShowText[channel]);
+      }
+    }
+    if (vi.Is420()) {
+      if (vi.width & 1) {
+        env->ThrowError("Show%s: width must be mod 2 for 4:2:0 source", ShowText[channel]);
+      }
+      if (vi.height & 1) {
+        env->ThrowError("Show%s: height must be mod 2 for 4:2:0 source", ShowText[channel]);
+      }
+    }
+    if(vi.Is422()) {
+      if (vi.width & 1) {
+        env->ThrowError("Show%s: width must be mod 2 for 4:2:2 source", ShowText[channel]);
+      }
+    }
+
+    target_pixelsize = vi.ComponentSize();
   }
+
+#if 0
   else if (!lstrcmpi(pixel_type, "rgb32")) {
     target_pixelsize = 1;
     vi.pixel_type = VideoInfo::CS_BGR32;
@@ -1028,6 +1057,7 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
   else {
     env->ThrowError("Show%s supports the following output pixel types: RGB, Y8, Y16, YUY2, or 8/16 bit YUV formats", ShowText[channel]);
   }
+#endif
   if(target_pixelsize != pixelsize)
     env->ThrowError("Show%s: source must be %d bit for %s", ShowText[channel], target_pixelsize*8, pixel_type);
 }
