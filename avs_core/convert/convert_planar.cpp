@@ -841,18 +841,18 @@ static void convert_rgb24_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const 
 
 #endif
 
-template<typename pixel_t>
+template<typename pixel_t, int bits_per_pixel>
 static void convert_planarrgb_to_yuv_int_c(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
-  const pixel_t half = 1 << (8 * sizeof(pixel_t) - 1 );
+  const pixel_t half = 1 << (bits_per_pixel - 1 );
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type sum_t;
-  const int limit = (1 << (8 * sizeof(pixel_t))) - 1;
+  const int limit = (1 << bits_per_pixel) - 1;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       pixel_t g = reinterpret_cast<const pixel_t *>(srcp[0])[x];
       pixel_t b = reinterpret_cast<const pixel_t *>(srcp[1])[x];
       pixel_t r = reinterpret_cast<const pixel_t *>(srcp[2])[x];
-      int Y = (sizeof(pixel_t)==1 ? m.offset_y : m.offset_y << 8) + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
+      int Y = (sizeof(pixel_t)==1 ? m.offset_y : m.offset_y << (bits_per_pixel - 8)) + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
       int U = half + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384) >> 15);
       int V = half + (int)(((sum_t)m.v_b * b + (sum_t)m.v_g * g + (sum_t)m.v_r * r + 16384) >> 15);
       reinterpret_cast<pixel_t *>(dstp[0])[x] = (pixel_t)clamp(Y, 0, limit);
@@ -997,6 +997,7 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
       env->BitBlt(dstA, Apitch, src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), src->GetRowSize(PLANAR_A_ALIGNED), src->GetHeight(PLANAR_A));
     }
     int pixelsize = vi.ComponentSize();
+    int bits_per_pixel = vi.BitsPerComponent();
 
     const BYTE *srcp[3] = { src->GetReadPtr(PLANAR_G), src->GetReadPtr(PLANAR_B), src->GetReadPtr(PLANAR_R) };
     const int srcPitch[3] = { src->GetPitch(PLANAR_G), src->GetPitch(PLANAR_B), src->GetPitch(PLANAR_R) };
@@ -1004,12 +1005,14 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
     BYTE *dstp[3] = { dstY, dstU, dstV };
     int dstPitch[3] = { Ypitch, UVpitch, UVpitch };
 
-    if(pixelsize==1)
-      convert_planarrgb_to_yuv_int_c<uint8_t>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
-    else if (pixelsize==2)
-      convert_planarrgb_to_yuv_int_c<uint16_t>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
-    else // float
-      convert_planarrgb_to_yuv_float_c(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+    switch(bits_per_pixel) {
+    case 8: convert_planarrgb_to_yuv_int_c<uint8_t, 8>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+    case 10: convert_planarrgb_to_yuv_int_c<uint16_t, 10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+    case 12: convert_planarrgb_to_yuv_int_c<uint16_t, 12>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+    case 14: convert_planarrgb_to_yuv_int_c<uint16_t, 14>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+    case 16: convert_planarrgb_to_yuv_int_c<uint16_t, 16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+    case 32: convert_planarrgb_to_yuv_float_c(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+    }
   }
   return dst;
 }
@@ -1605,21 +1608,24 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
         srcV += src_pitch_uv;
       }
     } else if (pixelsize==2) {
+      int bits_per_pixel = vi.BitsPerComponent();
+      int half_pixel_value = 1 << (bits_per_pixel - 1);
+      int max_pixel_value = (1 << bits_per_pixel) - 1;
       for (int y = 0; y < vi.height; y++) {
         for (int x = 0; x < vi.width; x++) {
-          int Y = reinterpret_cast<const uint16_t *>(srcY)[x] + (matrix.offset_y << 8);
-          int U = reinterpret_cast<const uint16_t *>(srcU)[x] - 32768;
-          int V = reinterpret_cast<const uint16_t *>(srcV)[x] - 32768;
+          int Y = reinterpret_cast<const uint16_t *>(srcY)[x] + (matrix.offset_y << (bits_per_pixel - 8));
+          int U = reinterpret_cast<const uint16_t *>(srcU)[x] - half_pixel_value;
+          int V = reinterpret_cast<const uint16_t *>(srcV)[x] - half_pixel_value;
           int A;
           if(targetHasAlpha)
-            A = srcHasAlpha ? reinterpret_cast<const uint16_t *>(srcA)[x] : 65535;
+            A = srcHasAlpha ? reinterpret_cast<const uint16_t *>(srcA)[x] : max_pixel_value;
           // __int64 needed for 16 bit pixels
           int b = (((__int64)matrix.y_b * Y + (__int64)matrix.u_b * U + (__int64)matrix.v_b * V + 4096)>>13);
           int g = (((__int64)matrix.y_g * Y + (__int64)matrix.u_g * U + (__int64)matrix.v_g * V + 4096)>>13);
           int r = (((__int64)matrix.y_r * Y + (__int64)matrix.u_r * U + (__int64)matrix.v_r * V + 4096)>>13);
-          reinterpret_cast<uint16_t *>(dstpB)[x] = clamp(b,0,65535);  // All the safety we can wish for.
-          reinterpret_cast<uint16_t *>(dstpG)[x] = clamp(g,0,65535);  // Probably needed here.
-          reinterpret_cast<uint16_t *>(dstpR)[x] = clamp(r,0,65535);
+          reinterpret_cast<uint16_t *>(dstpB)[x] = clamp(b,0,max_pixel_value);  // All the safety we can wish for.
+          reinterpret_cast<uint16_t *>(dstpG)[x] = clamp(g,0,max_pixel_value);  // Probably needed here.
+          reinterpret_cast<uint16_t *>(dstpR)[x] = clamp(r,0,max_pixel_value);
           if(targetHasAlpha)
             reinterpret_cast<uint16_t *>(dstpA)[x] = A;
         }
