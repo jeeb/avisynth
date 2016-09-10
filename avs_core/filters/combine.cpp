@@ -87,7 +87,7 @@ StackVertical::StackVertical(const std::vector<PClip>& child_array, IScriptEnvir
   }
 
   // reverse the order of the clips in RGB mode because it's upside-down
-  if (vi.IsRGB())
+  if (vi.IsRGB() && !vi.IsPlanarRGB() && !vi.IsPlanarRGBA())
     std::reverse(children.begin(), children.end());
 }
 
