@@ -1224,72 +1224,6 @@ const VideoInfo& FilterInfo::AdjustVi()
 }
 
 
-const char* const t_YV12="YV12";
-const char* const t_YUY2="YUY2";
-const char* const t_RGB32="RGB32";
-const char* const t_RGB24="RGB24";
-const char* const t_YV24="YV24";
-const char* const t_Y8="Y8";
-const char* const t_YV16="YV16";
-const char* const t_Y41P="YUV 411 Planar";
-
-const char* const t_YUV420P10="YUV420P10";
-const char* const t_YUV422P10="YUV422P10";
-const char* const t_YUV444P10="YUV444P10";
-const char* const t_Y10="Y10";
-const char* const t_YUV420P12="YUV420P12";
-const char* const t_YUV422P12="YUV422P12";
-const char* const t_YUV444P12="YUV444P12";
-const char* const t_Y12="Y12";
-const char* const t_YUV420P14="YUV420P14";
-const char* const t_YUV422P14="YUV422P14";
-const char* const t_YUV444P14="YUV444P14";
-const char* const t_Y14="Y14";
-const char* const t_YUV420P16="YUV420P16";
-const char* const t_YUV422P16="YUV422P16";
-const char* const t_YUV444P16="YUV444P16";
-const char* const t_Y16="Y16";
-const char* const t_YUV420PS="YUV420PS";
-const char* const t_YUV422PS="YUV422PS";
-const char* const t_YUV444PS="YUV444PS";
-const char* const t_Y32="Y32";
-
-const char* const t_YUVA420="YUVA420";
-const char* const t_YUVA422="YUVA422";
-const char* const t_YUVA444="YUVA444";
-const char* const t_YUVA420P10="YUVA420P10";
-const char* const t_YUVA422P10="YUVA422P10";
-const char* const t_YUVA444P10="YUVA444P10";
-const char* const t_YUVA420P12="YUVA420P12";
-const char* const t_YUVA422P12="YUVA422P12";
-const char* const t_YUVA444P12="YUVA444P12";
-const char* const t_YUVA420P14="YUVA420P14";
-const char* const t_YUVA422P14="YUVA422P14";
-const char* const t_YUVA444P14="YUVA444P14";
-const char* const t_YUVA420P16="YUVA420P16";
-const char* const t_YUVA422P16="YUVA422P16";
-const char* const t_YUVA444P16="YUVA444P16";
-const char* const t_YUVA420PS="YUVA420PS";
-const char* const t_YUVA422PS="YUVA422PS";
-const char* const t_YUVA444PS="YUVA444PS";
-
-const char* const t_RGB48="RGB48";
-const char* const t_RGB64="RGB64";
-
-const char* const t_RGBP="RGBP";
-const char* const t_RGBP10="RGBP10";
-const char* const t_RGBP12="RGBP12";
-const char* const t_RGBP14="RGBP14";
-const char* const t_RGBP16="RGBP16";
-const char* const t_RGBPS="RGBPS";
-
-const char* const t_RGBAP="RGBAP";
-const char* const t_RGBAP10="RGBAP10";
-const char* const t_RGBAP12="RGBAP12";
-const char* const t_RGBAP14="RGBAP14";
-const char* const t_RGBAP16="RGBAP16";
-const char* const t_RGBAPS="RGBAPS";
-
 const char* const t_INT8="Integer 8 bit";
 const char* const t_INT16="Integer 16 bit";
 const char* const t_INT24="Integer 24 bit";
@@ -1367,71 +1301,9 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     int tlen;
 
     if (vii.HasVideo()) {
-      if      (vii.IsRGB24()) c_space=t_RGB24;
-      else if (vii.IsRGB32()) c_space=t_RGB32;
-      else if (vii.IsYV12())  c_space=t_YV12;
-      else if (vii.IsYUY2())  c_space=t_YUY2;
-      else if (vii.IsYV24())  c_space=t_YV24;
-      else if (vii.IsY8())    c_space=t_Y8;
-      else if (vii.IsYV16())  c_space=t_YV16;
-      else if (vii.IsYV411()) c_space=t_Y41P;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P10)) c_space=t_YUV420P10;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P10)) c_space=t_YUV422P10;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P10)) c_space=t_YUV444P10;
-      else if (vii.IsColorSpace(VideoInfo::CS_Y10)) c_space=t_Y10;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P12)) c_space=t_YUV420P12;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P12)) c_space=t_YUV422P12;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P12)) c_space=t_YUV444P12;
-      else if (vii.IsColorSpace(VideoInfo::CS_Y12)) c_space=t_Y12;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P14)) c_space=t_YUV420P14;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P14)) c_space=t_YUV422P14;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P14)) c_space=t_YUV444P14;
-      else if (vii.IsColorSpace(VideoInfo::CS_Y14)) c_space=t_Y14;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P16)) c_space=t_YUV420P16;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P16)) c_space=t_YUV422P16;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P16)) c_space=t_YUV444P16;
-      else if (vii.IsColorSpace(VideoInfo::CS_Y16)) c_space=t_Y16;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV420PS)) c_space=t_YUV420PS;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV422PS)) c_space=t_YUV422PS;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUV444PS)) c_space=t_YUV444PS;
-      else if (vii.IsColorSpace(VideoInfo::CS_Y32)) c_space=t_Y32;
-
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420)) c_space=t_YUVA420;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422)) c_space=t_YUVA422;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444)) c_space=t_YUVA444;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P10)) c_space=t_YUVA420P10;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P10)) c_space=t_YUVA422P10;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P10)) c_space=t_YUVA444P10;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P12)) c_space=t_YUVA420P12;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P12)) c_space=t_YUVA422P12;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P12)) c_space=t_YUVA444P12;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P14)) c_space=t_YUVA420P14;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P14)) c_space=t_YUVA422P14;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P14)) c_space=t_YUVA444P14;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420P16)) c_space=t_YUVA420P16;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422P16)) c_space=t_YUVA422P16;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444P16)) c_space=t_YUVA444P16;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA420PS)) c_space=t_YUVA420PS;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA422PS)) c_space=t_YUVA422PS;
-      else if (vii.IsColorSpace(VideoInfo::CS_YUVA444PS)) c_space=t_YUVA444PS;
-
-      else if (vii.IsColorSpace(VideoInfo::CS_BGR48)) c_space=t_RGB48;
-      else if (vii.IsColorSpace(VideoInfo::CS_BGR64)) c_space=t_RGB64;
-
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBP)) c_space=t_RGBP;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBP10)) c_space=t_RGBP10;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBP12)) c_space=t_RGBP12;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBP14)) c_space=t_RGBP14;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBP16)) c_space=t_RGBP16;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBPS)) c_space=t_RGBPS;
-
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP)) c_space=t_RGBAP;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP10)) c_space=t_RGBAP10;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP12)) c_space=t_RGBAP12;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP14)) c_space=t_RGBAP14;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBAP16)) c_space=t_RGBAP16;
-      else if (vii.IsColorSpace(VideoInfo::CS_RGBAPS)) c_space=t_RGBAPS;
-
+      c_space = GetPixelTypeName(vii.pixel_type);
+      if (*c_space == '\0')
+        c_space = "Unknown";
       if (vii.IsFieldBased()) {
         if (child->GetParity(n)) {
           s_parity = t_STFF;
