@@ -473,16 +473,34 @@ int VideoFrame::GetRowSize(int plane) const {
     }
     else return 0;
   case PLANAR_ALIGNED: case PLANAR_Y_ALIGNED:
-  case PLANAR_R_ALIGNED: case PLANAR_G_ALIGNED: case PLANAR_B_ALIGNED: case PLANAR_A_ALIGNED:
+  case PLANAR_R_ALIGNED: case PLANAR_G_ALIGNED: case PLANAR_B_ALIGNED:
+    {
     const int r = (row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
     if (r<=pitch)
       return r;
     return row_size;
   }
+  case PLANAR_A:
+    if (pitchA) return row_sizeA; else return 0;
+  case PLANAR_A_ALIGNED:
+    if(pitchA) {
+      const int r = (row_sizeA+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
+      if (r<=pitchA)
+        return r;
+      return row_sizeA;
+    }
+    else return 0;
+  }
   return row_size; // PLANAR_Y, PLANAR_G, PLANAR_B, PLANAR_R
 }
 
-int VideoFrame::GetHeight(int plane) const {  switch (plane) {case PLANAR_U: case PLANAR_V: if (pitchUV) return heightUV; return 0;} return height; }
+int VideoFrame::GetHeight(int plane) const {
+  switch (plane) {
+  case PLANAR_U: case PLANAR_V: if (pitchUV) return heightUV; return 0;
+  case PLANAR_A: if (pitchA) return height; return 0;
+  }
+  return height;
+}
 
 // Generally you should not be using these two
 VideoFrameBuffer* VideoFrame::GetFrameBuffer() const { return vfb; }

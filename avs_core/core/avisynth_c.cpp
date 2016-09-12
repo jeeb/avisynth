@@ -227,9 +227,18 @@ int AVSC_CC avs_get_row_size_p(const AVS_VideoFrame * p, int plane)
       return 0;
 
   case AVS_PLANAR_ALIGNED: case AVS_PLANAR_Y_ALIGNED:
-  case AVS_PLANAR_R_ALIGNED: case AVS_PLANAR_G_ALIGNED: case AVS_PLANAR_B_ALIGNED: case AVS_PLANAR_A_ALIGNED:
+  case AVS_PLANAR_R_ALIGNED: case AVS_PLANAR_G_ALIGNED: case AVS_PLANAR_B_ALIGNED:
     r = (p->row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
        return (r <= p->pitch) ? r : p->row_size;
+  case AVS_PLANAR_A:
+    return (p->pitchA) ? p->row_sizeA : 0;
+  case AVS_PLANAR_A_ALIGNED:
+    if (p->pitchA) {
+      r = (p->row_sizeA + FRAME_ALIGN - 1)&(~(FRAME_ALIGN - 1)); // Aligned rowsize
+      return (r <= p->pitchA) ? r : p->row_sizeA;
+    }
+    else
+      return 0;
   }
   return p->row_size;
 }
@@ -240,6 +249,8 @@ int AVSC_CC avs_get_height_p(const AVS_VideoFrame * p, int plane)
   switch (plane) {
   case AVS_PLANAR_U: case AVS_PLANAR_V:
     return (p->pitchUV) ? p->heightUV : 0;
+  case AVS_PLANAR_A:
+    return (p->pitchA) ? p->height : 0;
   }
   return p->height; // Y, G, B, R, A
 }
