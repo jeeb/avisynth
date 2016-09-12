@@ -681,7 +681,8 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 *******   Convert to YV12   ******
 *********************************/
 
-
+// for YUY2->YV12 only
+// all other sources use ConvertToPlanarGeneric
 ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment* env)
   : GenericVideoFilter(_child),
   interlaced(_interlaced)
