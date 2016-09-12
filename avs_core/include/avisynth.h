@@ -1018,7 +1018,7 @@ public:
 
 private:
 
-  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or 'l'ong
+  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or RFU: 'l'ong ('d'ouble)
   short array_size;
   union {
     IClip* clip;
@@ -1027,7 +1027,11 @@ private:
     float floating_pt;
     const char* string;
     const AVSValue* array;
-//    __int64 longlong;
+    #ifdef X86_64
+    // if ever, only x64 will support. It breaks struct size on 32 bit
+    __int64 longlong; // 8 bytes
+    double double_pt  // 8 bytes
+    #endif
   };
 
   void Assign(const AVSValue* src, bool init);
