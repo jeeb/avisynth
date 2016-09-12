@@ -97,7 +97,7 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
       matrix.b_f = (float)((219.0/255.0)*0.114);  //B
       matrix.g_f = (float)((219.0/255.0)*0.587);  //G
       matrix.r_f = (float)((219.0/255.0)*0.299);  //R
-      matrix.offset_y = pixelsize == 1 ? 16 : 16*256;
+      matrix.offset_y = 16;
       matrix.offset_y_f = 16.0f / 256.0f;
     } else if (in_matrix == PC_601) {
       matrix.b = (int16_t)(0.114*32768.0+0.5);  //B
@@ -115,7 +115,7 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
       matrix.b_f = (float)((219.0/255.0)*0.0722);  //B
       matrix.g_f = (float)((219.0/255.0)*0.7152);  //G
       matrix.r_f = (float)((219.0/255.0)*0.2126);  //R
-      matrix.offset_y = pixelsize == 1 ? 16 : 16*256;
+      matrix.offset_y = 16;
       matrix.offset_y_f = 16.0f / 256.0f;
     } else if (in_matrix == PC_709) {
       matrix.b = (int16_t)(0.0722*32768.0+0.5);  //B
@@ -138,6 +138,9 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
     } else {
       env->ThrowError("ConvertToY: Unknown matrix.");
     }
+    // Anti-Overflow correction
+    if (matrix.g + matrix.r + matrix.b != 32768)
+      matrix.g = 32768 - (matrix.r + matrix.b);
 
     return;
   }
@@ -446,13 +449,13 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
       }
     }
     else { // pixelsize==2
+      int offset_y_bitsperpixel_corrected = matrix.offset_y << (vi.BitsPerComponent() - 8);
       for (int y=0; y<vi.height; y++) {
         for (int x=0; x<vi.width; x++) {
           const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
           // int overflows!
-          // todo: does not overflow if matrix.g is converted to 32768 - (matrix.b + matrix.r!!!) (sum is not 32768!)
-          const int Y = matrix.offset_y + (int)(((__int64)(matrix.b * srcp16[0] + matrix.g * srcp16[1]) + (__int64)matrix.r * srcp16[2] + 16384) >> 15);
-          reinterpret_cast<uint16_t *>(dstp)[x] = clamp(Y,0,65535);  // All the safety we can wish for.
+          const int Y = offset_y_bitsperpixel_corrected + (int)(((__int64)(matrix.b * srcp16[0] + matrix.g * srcp16[1]) + (__int64)matrix.r * srcp16[2] + 16384) >> 15);
+          reinterpret_cast<uint16_t *>(dstp)[x] = clamp(Y,0,65535);  // All the safety we can wish for. packed RGB 65535
 
           // __int64 version is a bit faster
           //const float Y = matrix.offset_y_f + (matrix.b_f * srcp16[0] + matrix.g_f * srcp16[1] + matrix.r_f * srcp16[2]);
@@ -483,12 +486,13 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
         dstp += dst_pitch;
       }
     } else if(pixelsize==2) {
+      int offset_y_bitsperpixel_corrected = matrix.offset_y << (vi.BitsPerComponent() - 8);
       int max_pixel_value = (1 << vi.BitsPerComponent()) - 1;
       for (int y=0; y<vi.height; y++) {
         for (int x=0; x<vi.width; x++) {
           // int overflows!
           // todo: does not overflow if matrix.g is converted to 32768 - (matrix.b + matrix.r!!!) (sum is not 32768!)
-          const int Y = matrix.offset_y +
+          const int Y = offset_y_bitsperpixel_corrected +
             (((__int64)matrix.b * reinterpret_cast<const uint16_t *>(srcpB)[x] +
               (__int64)matrix.g * reinterpret_cast<const uint16_t *>(srcpG)[x] +
               (__int64)matrix.r * reinterpret_cast<const uint16_t *>(srcpR)[x] +
@@ -1476,7 +1480,7 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
 
   dstp += dst_pitch * (vi.height-1);  // We start at last line. Not for Planar RGB
   bool srcHasAlpha = (src_pitch_a != 0);
-  if (pixel_step == 4) {
+  if (pixel_step == 4) { // RGB32
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
         int Y = srcY[x] + matrix.offset_y;
@@ -1497,7 +1501,7 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
       srcV += src_pitch_uv;
       srcA += src_pitch_a;
     }
-  } else if (pixel_step == 3) {
+  } else if (pixel_step == 3) { // RGB24
     const int Dstep = dst_pitch + (vi.width * pixel_step);
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {

@@ -54,7 +54,7 @@ struct ChannelConversionMatrix {
   float r_f;    // for float operation
   float g_f;
   float b_f;
-  int offset_y; // for 8 or 16 bit
+  int offset_y; // always 8 bit
   float offset_y_f; // for float
 };
 
