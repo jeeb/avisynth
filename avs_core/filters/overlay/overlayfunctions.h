@@ -48,74 +48,124 @@ public:
   }
   void setOpacity(int _opacity) { opacity = clamp(_opacity,0,256); inv_opacity = 256-opacity; }
   void setEnv(IScriptEnvironment *_env) { env = _env;}
-  virtual void BlendImage(Image444* base, Image444* overlay) = 0;
-  virtual void BlendImageMask(Image444* base, Image444* overlay, Image444* mask) = 0;
+  void setBitsPerPixel(int _bits_per_pixel) { bits_per_pixel = _bits_per_pixel; }
+  virtual void DoBlendImage(Image444* base, Image444* overlay) = 0;
+  virtual void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) = 0;
 protected:
   int opacity;
   int inv_opacity;
+  int bits_per_pixel;
   IScriptEnvironment *env;
 };
 
 class OL_BlendImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 private:
 };
 
 class OL_AddImage : public OverlayFunction {
-  void BlendImage(Image444* base, Image444* overlay);
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  //template<typename pixel_t>
+  //void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t, bool maskMode>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_SubtractImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_MultiplyImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_BlendLumaImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 private:
 };
 
 class OL_BlendChromaImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 private:
 };
 
 class OL_LightenImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_DarkenImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_SoftLightImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_HardLightImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_DifferenceImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 class OL_ExclusionImage : public OverlayFunction {
+  void DoBlendImage(Image444* base, Image444* overlay);
+  void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 

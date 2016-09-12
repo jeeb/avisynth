@@ -39,7 +39,6 @@
 #include <emmintrin.h>
 #include <avs/alignment.h>
 
-
 //this isn't really faster than mmx
 static void convert_yv12_chroma_to_yv24_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
   int mod8_width = src_width / 8 * 8;
@@ -97,7 +96,12 @@ static void convert_yv12_chroma_to_yv24_mmx(BYTE *dstp, const BYTE *srcp, int ds
 #endif // X86_32
 
 
-static void convert_yv12_chroma_to_yv24_c(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
+template<typename pixel_t>
+static void convert_yv12_chroma_to_yv24_c(BYTE *dstp8, const BYTE *srcp8, int dst_pitch, int src_pitch, int src_width, int src_height) {
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *srcp = reinterpret_cast<const pixel_t *>(srcp8);
+  dst_pitch /= sizeof(pixel_t);
+  src_pitch /= sizeof(pixel_t);
   for (int y = 0; y < src_height; ++y) {
     for (int x = 0; x < src_width; ++x) {
       dstp[x*2]             = srcp[x];
@@ -110,9 +114,61 @@ static void convert_yv12_chroma_to_yv24_c(BYTE *dstp, const BYTE *srcp, int dst_
   }
 }
 
-void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env)
+//void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
+void Convert444FromYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
 {
+  env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
+  const BYTE* srcU = src->GetReadPtr(PLANAR_U);
+  const BYTE* srcV = src->GetReadPtr(PLANAR_V);
+
+  int srcUVpitch = src->GetPitch(PLANAR_U);
+
+  BYTE* dstU = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstV = dst->GetWritePtr(PLANAR_V);
+
+  int dstUVpitch = dst->GetPitch(PLANAR_U);
+
+  int width = src->GetRowSize(PLANAR_U) / pixelsize;
+  int height = src->GetHeight(PLANAR_U);
+
+  if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16))
+  {
+    convert_yv12_chroma_to_yv24_sse2(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+    convert_yv12_chroma_to_yv24_sse2(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+  }
+  else
+#ifdef X86_32
+    if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
+    {
+      convert_yv12_chroma_to_yv24_mmx(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+      convert_yv12_chroma_to_yv24_mmx(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+    }
+    else
+#endif
+    {
+      if (pixelsize == 1) {
+        convert_yv12_chroma_to_yv24_c<uint8_t>(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+        convert_yv12_chroma_to_yv24_c<uint8_t>(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+      } else if(pixelsize == 2) {
+        convert_yv12_chroma_to_yv24_c<uint16_t>(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+        convert_yv12_chroma_to_yv24_c<uint16_t>(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+      }
+      else {
+        convert_yv12_chroma_to_yv24_c<float>(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+        convert_yv12_chroma_to_yv24_c<float>(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+      }
+    }
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A),
+    src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), dst->GetRowSize(PLANAR_A), dst->GetHeight(PLANAR_A));
+
+
+}
+
+#if 0
+void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
+{
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -148,42 +204,99 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
   }
 }
 
-void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 }
+#endif
 
-
-void Convert444FromYV24::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
-  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
+#if 0
+void CopyToImage444(PVideoFrame src, Image444* dst, IScriptEnvironment* env)
+{
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
-  env->BitBlt(dst->GetPtr(PLANAR_U), dst->pitch,
+  env->BitBlt(dst->GetPtr(PLANAR_U), dst->GetPitch(PLANAR_U),
     src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-  env->BitBlt(dst->GetPtr(PLANAR_V), dst->pitch,
+  env->BitBlt(dst->GetPtr(PLANAR_V), dst->GetPitch(PLANAR_V),
     src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  //env->BitBlt(dst->GetPtr(PLANAR_A), dst->GetPitch(PLANAR_A),
+  //  src->GetReadPtr(PLANAR_A),src->GetPitch(PLANAR_A), src->GetRowSize(PLANAR_A), src->GetHeight(PLANAR_A));
+}
+
+void CopyToImage444LumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env)
+{
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+    src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
+}
+#endif
+
+#if 0
+// we are using only Convert444FromYV24, other conversions will be treated in Avisynth's standard ConvertToYUV444
+void Convert444FromYV24::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+    src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
+  env->BitBlt(dst->GetPtr(PLANAR_U), dst->GetPitch(PLANAR_U),
+    src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+  env->BitBlt(dst->GetPtr(PLANAR_V), dst->GetPitch(PLANAR_V),
+    src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  env->BitBlt(dst->GetPtr(PLANAR_A), dst->GetPitch(PLANAR_A),
+    src->GetReadPtr(PLANAR_A),src->GetPitch(PLANAR_A), src->GetRowSize(PLANAR_A), src->GetHeight(PLANAR_A));
 }
 
 void Convert444FromYV24::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
-  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
 }
+#endif
 
-void Convert444FromY8::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+#if 0
+void Convert444FromY8::ConvertImage(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   memset((void *)dst->GetPtr(PLANAR_U), 0x80, dst->pitch * dst->h());
   memset((void *)dst->GetPtr(PLANAR_V), 0x80, dst->pitch * dst->h());
 }
 
-void Convert444FromY8::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+void Convert444FromY8::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
 }
-
+#endif
 /***** YUY2 -> YUV 4:4:4   ******/
 
+void Convert444FromYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
 
-void Convert444FromYUY2::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+  const BYTE* srcP = src->GetReadPtr();
+  int srcPitch = src->GetPitch();
+
+  BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
+  BYTE* dstU = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstV = dst->GetWritePtr(PLANAR_V);
+
+  int dstPitch = dst->GetPitch();
+
+  int w = src->GetRowSize() / 2;
+  int h = src->GetHeight();
+
+  for (int y=0; y<h; y++) {
+    for (int x=0; x<w; x+=2) {
+      int x2 = x<<1;
+      dstY[x]   = srcP[x2];
+      dstU[x]   = dstU[x+1] = srcP[x2+1];
+      dstV[x]   = dstV[x+1] = srcP[x2+3];
+      dstY[x+1] = srcP[x2+2];
+    }
+    srcP+=srcPitch;
+
+    dstY+=dstPitch;
+    dstU+=dstPitch;
+    dstV+=dstPitch;
+  }
+}
+
+
+#if 0
+void Convert444FromYUY2::ConvertImage(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
 
   const BYTE* srcP = src->GetReadPtr();
   int srcPitch = src->GetPitch();
@@ -214,7 +327,7 @@ void Convert444FromYUY2::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
 }
 
 
-void Convert444FromYUY2::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+void Convert444FromYUY2::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
 
   const BYTE* srcP = src->GetReadPtr();
   int srcPitch = src->GetPitch();
@@ -236,7 +349,44 @@ void Convert444FromYUY2::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IS
     dstY+=dstPitch;
   }
 }
+#endif
 
+#if 0
+// original format, source, target,
+PVideoFrame Convert444ToOriginal(VideoInfo *vi, Image444 *src, PVideoFrame dst, bool rgb_full_range, IScriptEnvironment *env)
+{
+  if(vi->Is444()) {
+    // always!
+    env->MakeWritable(&dst);
+
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+      src->GetPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), dst->GetRowSize(PLANAR_Y), dst->GetHeight(PLANAR_Y));
+    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U),
+      src->GetPtr(PLANAR_U), src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U));
+    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
+      src->GetPtr(PLANAR_V), src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V));
+    //env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A),
+    //  src->GetPtr(PLANAR_A), src->GetPitch(PLANAR_A), dst->GetRowSize(PLANAR_A), dst->GetHeight(PLANAR_A));
+
+    return dst;
+  }
+  /*
+  if (vi->IsY()) {
+    env->MakeWritable(&dst);
+
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+      src->GetPtr(PLANAR_Y), src->pitch, dst->GetRowSize(PLANAR_Y), dst->GetHeight(PLANAR_Y));
+    return dst;
+  }
+  */
+  env->ThrowError("Overlay: Output Colorspace is not 444, must be a bug");
+  // invoke Avisynth's converters
+  // ...
+  return dst;
+}
+#endif
+
+#if 0
 /****** YUV 4:4:4 -> YUV 4:4:4   - Perhaps the easiest job in the world ;)  *****/
 PVideoFrame Convert444ToYV24::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
   env->MakeWritable(&dst);
@@ -247,16 +397,22 @@ PVideoFrame Convert444ToYV24::ConvertImage(Image444* src, PVideoFrame dst, IScri
     src->GetPtr(PLANAR_U), src->pitch, dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U));
   env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
     src->GetPtr(PLANAR_V), src->pitch, dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V));
+  env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A),
+    src->GetPtr(PLANAR_A), src->pitch, dst->GetRowSize(PLANAR_A), dst->GetHeight(PLANAR_A));
   return dst;
 }
+#endif
 
-PVideoFrame Convert444ToY8::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
+#if 0
+PVideoFrame Convert444ToY8::ConvertImage(Image444* src, PVideoFrame dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   env->MakeWritable(&dst);
 
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
     src->GetPtr(PLANAR_Y), src->pitch, dst->GetRowSize(PLANAR_Y), dst->GetHeight());
   return dst;
 }
+#endif
+
 
 static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask) {
   __m128i avg1 = _mm_avg_epu8(src_line0_p0, src_line1_p0);
@@ -377,17 +533,79 @@ static void convert_yv24_chroma_to_yv12_isse(BYTE *dstp, const BYTE *srcp, int d
 
 #endif // X86_32
 
-static void convert_yv24_chroma_to_yv12_c(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_hegiht) {
-  for (int y=0; y < dst_hegiht; y++) {
+template<typename pixel_t>
+static void convert_yv24_chroma_to_yv12_c(BYTE *dstp8, const BYTE *srcp8, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
+  const pixel_t *srcp = reinterpret_cast<const pixel_t *>(srcp8);
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  dst_pitch /= sizeof(pixel_t);
+  src_pitch /= sizeof(pixel_t);
+  for (int y=0; y < dst_height; y++) {
     for (int x=0; x < dst_width; x++) {
-      dstp[x] = (srcp[x*2] + srcp[x*2+1] + srcp[x*2+src_pitch] + srcp[x*2+src_pitch+1] + 2)>>2;
+      dstp[x] = (srcp[x*2] + srcp[x*2+1] + srcp[x*2+src_pitch] + srcp[x*2+src_pitch+1] + 2) / 4; //  >> 2
     }
     srcp+=src_pitch*2;
     dstp+=dst_pitch;
   }
 }
 
-PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env)
+void Convert444ToYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
+{
+//  env->MakeWritable(&dst); already writeable
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+    src->GetReadPtr(PLANAR_Y), src->GetPitch(), dst->GetRowSize(PLANAR_Y), dst->GetHeight());
+
+  const BYTE* srcU = src->GetReadPtr(PLANAR_U);
+  const BYTE* srcV = src->GetReadPtr(PLANAR_V);
+
+  int srcUVpitch = src->GetPitch(PLANAR_U);
+
+  BYTE* dstU = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstV = dst->GetWritePtr(PLANAR_V);
+
+  int dstUVpitch = dst->GetPitch(PLANAR_U);
+
+  int w = dst->GetRowSize(PLANAR_U);
+  int h = dst->GetHeight(PLANAR_U);
+
+  if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16))
+  {
+    convert_yv24_chroma_to_yv12_sse2(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+    convert_yv24_chroma_to_yv12_sse2(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+  }
+  else {
+#ifdef X86_32
+    if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+    {
+      convert_yv24_chroma_to_yv12_isse(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+      convert_yv24_chroma_to_yv12_isse(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+    }
+    else {
+#endif
+    {
+      if(pixelsize==1) {
+        convert_yv24_chroma_to_yv12_c<uint8_t>(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+        convert_yv24_chroma_to_yv12_c<uint8_t>(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+      }
+      else if (pixelsize == 2) {
+        convert_yv24_chroma_to_yv12_c<uint16_t>(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+        convert_yv24_chroma_to_yv12_c<uint16_t>(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+      }
+      else // if (pixelsize == 4)
+        convert_yv24_chroma_to_yv12_c<float>(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+        convert_yv24_chroma_to_yv12_c<float>(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+      }
+    }
+  }
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A),
+    src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), dst->GetRowSize(PLANAR_A), dst->GetHeight(PLANAR_A));
+
+//return dst;
+}
+
+#if 0
+PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
 {
   env->MakeWritable(&dst);
 
@@ -427,11 +645,42 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
   }
   return dst;
 }
-
-
+#endif // if 0
 /*****   YUV 4:4:4 -> YUY2   *******/
 
-PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
+void Convert444ToYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
+
+  const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
+  const BYTE* srcU = src->GetReadPtr(PLANAR_U);
+  const BYTE* srcV = src->GetReadPtr(PLANAR_V);
+
+  int srcPitch = src->GetPitch();
+
+  BYTE* dstP = dst->GetWritePtr();
+
+  int dstPitch = dst->GetPitch();
+
+  int w = src->GetRowSize() / pixelsize;
+  int h = src->GetHeight();
+
+  for (int y=0; y<h; y++) {
+    for (int x=0; x<w; x+=2) {
+      int x2 = x<<1;
+      dstP[x2]   = srcY[x];
+      dstP[x2+1] = (srcU[x] + srcU[x+1] + 1)>>1;
+      dstP[x2+2] = srcY[x+1];
+      dstP[x2+3] = (srcV[x] + srcV[x+1] + 1)>>1;
+    }
+    srcY+=srcPitch;
+    srcU+=srcPitch;
+    srcV+=srcPitch;
+    dstP+=dstPitch;
+  }
+//  return dst;
+}
+
+#if 0
+PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   env->MakeWritable(&dst);
 
   const BYTE* srcY = src->GetPtr(PLANAR_Y);
@@ -462,6 +711,7 @@ PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScri
   }
   return dst;
 }
+#endif
 
 /*****   YUV 4:4:4 -> RGB24/32   *******/
 
@@ -469,7 +719,8 @@ PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScri
 #define Kg 0.587
 #define Kb 0.114
 
-PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
+#if 0
+PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   const int crv = int(2*(1-Kr)       * 255.0/224.0 * 65536+0.5);
   const int cgv = int(2*(1-Kr)*Kr/Kg * 255.0/224.0 * 65536+0.5);
   const int cgu = int(2*(1-Kb)*Kb/Kg * 255.0/224.0 * 65536+0.5);
@@ -511,8 +762,11 @@ PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScrip
   }
   return dst;
 }
+#endif
 
-PVideoFrame Convert444NonCCIRToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
+#if 0
+
+PVideoFrame Convert444NonCCIRToRGB::ConvertImage(Image444* src, PVideoFrame dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   const int crv = int(2*(1-Kr)       * 65536+0.5);
   const int cgv = int(2*(1-Kr)*Kr/Kg * 65536+0.5);
   const int cgu = int(2*(1-Kb)*Kb/Kg * 65536+0.5);
@@ -554,11 +808,11 @@ PVideoFrame Convert444NonCCIRToRGB::ConvertImage(Image444* src, PVideoFrame dst,
   }
   return dst;
 }
+#endif
 
-
+#if 0
 /******* RGB 24/32 -> YUV444   *******/
-
-void Convert444FromRGB::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+void Convert444FromRGB::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
 
   const BYTE* srcP = src->GetReadPtr();
   int srcPitch = src->GetPitch();
@@ -584,7 +838,7 @@ void Convert444FromRGB::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, ISc
   }
 }
 
-void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   const int cyr = int(Kr * 219/255 * 65536 + 0.5);
   const int cyg = int(Kg * 219/255 * 65536 + 0.5);
   const int cyb = int(Kb * 219/255 * 65536 + 0.5);
@@ -634,7 +888,7 @@ void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvi
   }
 }
 
-void Convert444NonCCIRFromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+void Convert444NonCCIRFromRGB::ConvertImage(PVideoFrame src, Image444* dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   const int cyb = int(Kb * 65536 + 0.5);
   const int cyg = int(Kg * 65536 + 0.5);
   const int cyr = int(Kr * 65536 + 0.5);
@@ -679,4 +933,5 @@ void Convert444NonCCIRFromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScr
     dstV+=dstPitch;
   }
 }
+#endif
 

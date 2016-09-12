@@ -40,79 +40,137 @@
 #include <avisynth.h>
 #include <avs/minmax.h>
 
+#define USE_ORIG_FRAME
+
 class Image444 {
 private:
   IScriptEnvironment2 * Env;
+
+  PVideoFrame &frame;
+
   BYTE* Y_plane;
   BYTE* U_plane;
   BYTE* V_plane;
+  BYTE* A_plane;
 
   BYTE* fake_Y_plane;
   BYTE* fake_U_plane;
   BYTE* fake_V_plane;
+  BYTE* fake_A_plane;
 
   int fake_w;
   int fake_h;
   const int _w;
   const int _h;
+  const int _bits_per_pixel;
+  const bool hasAlpha;
 
   bool return_original;
 
 
 public:
   int pitch;
+  int pitchUV;
+  int pitchA;
 
-  Image444(IScriptEnvironment* env) : Env(static_cast<IScriptEnvironment2*>(env)), _w(0), _h(0) {}
+  //Image444(IScriptEnvironment* env) : Env(static_cast<IScriptEnvironment2*>(env)), _w(0), _h(0), _bits_per_pixel(8), hasAlpha(false) {}
 
-  Image444(Image444* img, IScriptEnvironment* env) : Env(static_cast<IScriptEnvironment2*>(env)), _w(img->w()), _h(img->h()), pitch(img->pitch) {
+  /*Image444(Image444* img, IScriptEnvironment* env) : Env(static_cast<IScriptEnvironment2*>(env)),
+    _w(img->w()), _h(img->h()), pitch(img->pitch), pitchUV(img->pitchUV), pitchA(img->pitchA), _bits_per_pixel(img->_bits_per_pixel), hasAlpha(img->hasAlpha) {
     Y_plane = img->GetPtr(PLANAR_Y);
     U_plane = img->GetPtr(PLANAR_U);
     V_plane = img->GetPtr(PLANAR_V);
+    A_plane = img->GetPtr(PLANAR_A);
     ResetFake();
   }
+  */
 
-  Image444(int _inw, int _inh, IScriptEnvironment* env) : Env(static_cast<IScriptEnvironment2*>(env)), _w(_inw), _h(_inh) {
-    pitch = (_w+15)&(~15);
+  Image444(
+#ifdef USE_ORIG_FRAME
+    PVideoFrame &_frame,
+#endif
+    int _inw, int _inh, int _in_bits_per_pixel, bool _hasAlpha, IScriptEnvironment* env) :
+    Env(static_cast<IScriptEnvironment2*>(env)),
+#ifdef USE_ORIG_FRAME
+    frame(_frame),
+#endif
+    _w(_inw), _h(_inh), _bits_per_pixel(_in_bits_per_pixel), hasAlpha(_hasAlpha) {
 
-    Y_plane = (BYTE*)Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC); 
+    int pixelsize;
+    if (_bits_per_pixel == 8) pixelsize = 1;
+    else if (_bits_per_pixel <= 16) pixelsize = 2;
+    else pixelsize = 4;
+
+
+#ifdef USE_ORIG_FRAME
+    pitch = frame->GetPitch(PLANAR_Y);
+    pitchUV = frame->GetPitch(PLANAR_U);
+    pitchA = frame->GetPitch(PLANAR_A);
+
+    Y_plane = (BYTE*) frame->GetReadPtr(PLANAR_Y);
+    U_plane = (BYTE*) frame->GetReadPtr(PLANAR_U);
+    V_plane = (BYTE*) frame->GetReadPtr(PLANAR_V);
+    A_plane = (BYTE*) frame->GetReadPtr(PLANAR_A);
+#else
+    const int INTERNAL_ALIGN = 16;
+    pitch = (_w * pixelsize +(INTERNAL_ALIGN-1))&(~(INTERNAL_ALIGN-1));
+    pitchA = hasAlpha ? pitch : 0;
+
+    Y_plane = (BYTE*) Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC);
     U_plane = (BYTE*) Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC);
     V_plane = (BYTE*) Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC);
-	  if (!Y_plane || !U_plane || !V_plane) {
+    A_plane = hasAlpha ? (BYTE*) Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC) : nullptr;
+    if (!Y_plane || !U_plane || !V_plane || (hasAlpha && !A_plane)) {
 	  	Env->Free(Y_plane);
 	  	Env->Free(U_plane);
 	  	Env->Free(V_plane);
-	  	Env->ThrowError("Image444: Could not reserve memory.");
+      Env->Free(A_plane);
+      Env->ThrowError("Image444: Could not reserve memory.");
 	  }
+#endif
 
     ResetFake();
   }
 
-  Image444(BYTE* Y, BYTE* U, BYTE* V, int _inw, int _inh, int _pitch, IScriptEnvironment* env) : Env(static_cast<IScriptEnvironment2*>(env)), _w(_inw), _h(_inh) {
+  /*
+  Image444(BYTE* Y, BYTE* U, BYTE* V, BYTE *A, int _inw, int _inh, int _pitch, int _pitchUV, int _pitchA, int _in_bits_per_pixel, bool _hasAlpha, IScriptEnvironment* env) :
+    Env(static_cast<IScriptEnvironment2*>(env)), _w(_inw), _h(_inh), _bits_per_pixel(_in_bits_per_pixel), hasAlpha(_hasAlpha) {
     if (!(_w && _h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }
     Y_plane = Y;
     U_plane = U;
     V_plane = V;
+    A_plane = A;
     pitch = _pitch;
+    pitchUV = _pitchUV;
+    pitchA = _pitchA;
     ResetFake();
   }
+  */
 
   void free_chroma() {
+#ifndef USE_ORIG_FRAME
     Env->Free(U_plane);
     Env->Free(V_plane);
+#endif
   }
 
   void free_luma() {
+#ifndef USE_ORIG_FRAME
     Env->Free(Y_plane);
+    Env->Free(A_plane);
+#endif
   }
 
   void free_all() {
+#ifndef USE_ORIG_FRAME
     if (!(_w && _h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }
     free_luma();
     free_chroma();
+#endif
   }
 
   __inline int w() { return (return_original) ? _w : fake_w; }
@@ -129,6 +187,8 @@ public:
         return (return_original) ? U_plane : fake_U_plane;
       case PLANAR_V:
         return (return_original) ? V_plane : fake_V_plane;
+      case PLANAR_A:
+        return (return_original) ? A_plane : fake_A_plane;
     }
     return Y_plane;
   }
@@ -147,17 +207,44 @@ public:
       case PLANAR_V:
         fake_Y_plane = V_plane = ptr;
         break;
+      case PLANAR_A:
+        fake_A_plane = A_plane = ptr;
+        break;
     }
+  }
+
+  int GetPitch(int plane) {
+    if (!(_w && _h)) {
+      _RPT0(1,"Image444: Height or Width is 0");
+    }
+    switch (plane) {
+    case PLANAR_Y:
+      return pitch;
+    case PLANAR_U:
+    case PLANAR_V:
+      return pitchUV;
+    case PLANAR_A:
+      return pitchA;
+    }
+    return pitch;
   }
 
   void SubFrame(int x, int y, int new_w, int new_h) {
     new_w = min(new_w, w()-x);
     new_h = min(new_h, h()-y);
 
-    fake_Y_plane = GetPtr(PLANAR_Y) + x + (y*pitch);
-    fake_U_plane = GetPtr(PLANAR_U) + x + (y*pitch);
-    fake_V_plane = GetPtr(PLANAR_V) + x + (y*pitch);
-    
+    int pixelsize;
+    switch(_bits_per_pixel) {
+    case 8: pixelsize = 1; break;
+    case 32: pixelsize = 4; break;
+    default: pixelsize = 2;
+    }
+
+    fake_Y_plane = GetPtr(PLANAR_Y) + x*pixelsize + (y*pitch);
+    fake_U_plane = GetPtr(PLANAR_U) + x*pixelsize + (y*pitchUV);
+    fake_V_plane = GetPtr(PLANAR_V) + x*pixelsize + (y*pitchUV);
+    fake_A_plane = pitchA > 0 ? GetPtr(PLANAR_A) + x*pixelsize + (y*pitchA) : nullptr;
+
     fake_w = new_w;
     fake_h = new_h;
   }
@@ -178,6 +265,7 @@ public:
     fake_Y_plane = Y_plane;
     fake_U_plane = U_plane;
     fake_V_plane = V_plane;
+    fake_A_plane = A_plane;
     fake_w = _w;
     fake_h = _h;
   }

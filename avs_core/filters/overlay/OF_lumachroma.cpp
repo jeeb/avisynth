@@ -37,7 +37,45 @@
 #include "overlayfunctions.h"
 #include <emmintrin.h>
 
+#include <stdint.h>
 
+void OL_BlendLumaImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+  if (bits_per_pixel == 8)
+    BlendImageMask<uint8_t>(base, overlay, mask);
+  //else if(bits_per_pixel == 32)
+  //  BlendImageMask<float>(base, overlay, mask);
+  else if(bits_per_pixel == 16)
+    BlendImageMask<uint16_t>(base, overlay, mask);
+}
+
+void OL_BlendLumaImage::DoBlendImage(Image444* base, Image444* overlay) {
+  if (bits_per_pixel == 8)
+    BlendImage<uint8_t>(base, overlay);
+  //else if(bits_per_pixel == 32)
+  //  BlendImage<float>(base, overlay);
+  else if(bits_per_pixel == 16)
+    BlendImage<uint16_t>(base, overlay);
+}
+
+void OL_BlendChromaImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+  if (bits_per_pixel == 8)
+    BlendImageMask<uint8_t>(base, overlay, mask);
+  //else if(bits_per_pixel == 32)
+  //  BlendImageMask<float>(base, overlay, mask);
+  else if(bits_per_pixel == 16)
+    BlendImageMask<uint16_t>(base, overlay, mask);
+}
+
+void OL_BlendChromaImage::DoBlendImage(Image444* base, Image444* overlay) {
+  if (bits_per_pixel == 8)
+    BlendImage<uint8_t>(base, overlay);
+  //else if(bits_per_pixel == 32)
+  //  BlendImage<float>(base, overlay);
+  else if(bits_per_pixel == 16)
+    BlendImage<uint16_t>(base, overlay);
+}
+
+template<typename pixel_t>
 void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
 
@@ -78,6 +116,7 @@ void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image4
 }
 
 
+template<typename pixel_t>
 void OL_BlendLumaImage::BlendImage(Image444* base, Image444* overlay) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
 
@@ -106,6 +145,7 @@ void OL_BlendLumaImage::BlendImage(Image444* base, Image444* overlay) {
 
 
 
+template<typename pixel_t>
 void OL_BlendChromaImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);
@@ -154,6 +194,7 @@ void OL_BlendChromaImage::BlendImageMask(Image444* base, Image444* overlay, Imag
   }
 }
 
+template<typename pixel_t>
 void OL_BlendChromaImage::BlendImage(Image444* base, Image444* overlay) {
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);

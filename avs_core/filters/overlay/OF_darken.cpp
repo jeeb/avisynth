@@ -36,6 +36,28 @@
 
 #include "overlayfunctions.h"
 
+#include <stdint.h>
+
+void OL_DarkenImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+  if (bits_per_pixel == 8)
+    BlendImageMask<uint8_t>(base, overlay, mask);
+  //else if(bits_per_pixel == 32)
+  //  BlendImageMask<float>(base, overlay, mask);
+  else if(bits_per_pixel == 16)
+    BlendImageMask<uint16_t>(base, overlay, mask);
+}
+
+void OL_DarkenImage::DoBlendImage(Image444* base, Image444* overlay) {
+  if (bits_per_pixel == 8)
+    BlendImage<uint8_t>(base, overlay);
+  //else if(bits_per_pixel == 32)
+  //  BlendImage<float>(base, overlay);
+  else if(bits_per_pixel == 16)
+    BlendImage<uint16_t>(base, overlay);
+}
+
+
+template<typename pixel_t>
 void OL_DarkenImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);
@@ -100,6 +122,7 @@ void OL_DarkenImage::BlendImageMask(Image444* base, Image444* overlay, Image444*
   
 }
 
+template<typename pixel_t>
 void OL_DarkenImage::BlendImage(Image444* base, Image444* overlay) {
         
   BYTE* baseY = base->GetPtr(PLANAR_Y);

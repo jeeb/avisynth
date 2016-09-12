@@ -40,12 +40,20 @@
 #include <avisynth.h>
 #include "imghelpers.h"
 
+void Convert444FromYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env);
+void Convert444FromYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env);
+void Convert444ToYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env);
+void Convert444ToYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env);
+
+#if 0
 class ConvertTo444 {
   private:
-    VideoInfo* inputVi;    
+    VideoInfo* inputVi;
+    int pixelsize;
+    int bits_per_pixel;
 
   public:
-    ConvertTo444() {inputVi = 0; }
+    ConvertTo444() { inputVi = 0; }
     virtual void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env) {
       env->ThrowError("Overlay: Unable to convert input image.");
     }
@@ -54,43 +62,62 @@ class ConvertTo444 {
     }
     void SetVideoInfo(VideoInfo* in_vi) {
       inputVi = in_vi;
+      pixelsize = inputVi->ComponentSize();
+      bits_per_pixel = inputVi->BitsPerComponent();
     }
 };
+#endif
 
+#if 0
 class ConvertFrom444 {
   public:
-    ConvertFrom444() {}
-    virtual PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env) {
+    ConvertFrom444() { }
+    virtual PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
       env->ThrowError("Overlay: Unable to convert output image.");
       return 0;
     }
 };
 
+// avs+ we are using this
+// simple Blts
+void CopyToImage444(PVideoFrame src, Image444* dst, IScriptEnvironment* env);
+void CopyToImage444LumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env);
+// Simple BLTs for YUV444 and Y, or else invoke Avisynth's converters
+PVideoFrame Convert444ToOriginal(VideoInfo *vi, Image444 *src, PVideoFrame dst, bool rgb_full_range, IScriptEnvironment *env);
 
+#if 0
 class Convert444FromYV24 : public ConvertTo444 {
 public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
   void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
+#endif
 
+#if 0
 class Convert444FromY8 : public ConvertTo444 {
 public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
   void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
+#endif
 
+#if 0
 class Convert444FromYV12 : public ConvertTo444 {
 public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
   void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
+#endif
 
+#if 0
 class Convert444FromYUY2 : public ConvertTo444 {
 public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
   void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
+#endif
 
+#if 0
 class Convert444FromRGB : public ConvertTo444 {
 private:
 
@@ -105,7 +132,9 @@ private:
 public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
+#endif
 
+#if 0
 class Convert444ToYV24 : public ConvertFrom444 {
 public:
   PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
@@ -135,5 +164,7 @@ class Convert444NonCCIRToRGB : public ConvertFrom444 {
 public:
   PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
 };
+#endif
+#endif
 
 #endif //444Convert
