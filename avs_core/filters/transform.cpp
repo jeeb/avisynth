@@ -387,15 +387,15 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
 }
 
 template<typename pixel_t>
-static inline pixel_t GetHbdColorFromByte(uint8_t color)
+static inline pixel_t GetHbdColorFromByte(uint8_t color, bool fullscale, int bits_per_pixel)
 {
   if (sizeof(pixel_t) == 1) return color;
-  else if (sizeof(pixel_t) == 2) return (pixel_t)color * 256;
+  else if (sizeof(pixel_t) == 2) return (pixel_t)(fullscale ? (color * ((1 << bits_per_pixel)-1)) / 255 : (int)color << (bits_per_pixel - 8));
   else return (pixel_t)color / 256; // float, scale to [0..1) 128=0.5f
 }
 
 template<typename pixel_t>
-static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi, int top, int bot, int left, int right, int rgbcolor, bool isYUV)
+static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi, int top, int bot, int left, int right, int rgbcolor, bool isYUV, int bits_per_pixel)
 {
   const unsigned int colr = isYUV ? RGB2YUV(rgbcolor) : rgbcolor;
   const unsigned char YBlack=(unsigned char)((colr >> 16) & 0xff);
@@ -426,7 +426,7 @@ static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi,
     const int final_black = (bot >> ysub) * dst_pitch + vi.BytesFromPixels(right >> xsub) +
                              (dst_pitch - dst->GetRowSize(plane));
 
-    pixel_t current_color = GetHbdColorFromByte<pixel_t>(colors[p]);
+    pixel_t current_color = GetHbdColorFromByte<pixel_t>(colors[p], !isYUV, bits_per_pixel);
 
     BYTE *dstp = dst->GetWritePtr(plane);
     // copy original
@@ -455,12 +455,13 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (vi.IsPlanar()) {
+    int bits_per_pixel = vi.BitsPerComponent();
     bool isYUV = vi.IsYUV() || vi.IsYUVA();
     switch(vi.ComponentSize()) {
-    case 1: addborders_planar<uint8_t>(dst, src, vi, top, bot, left, right, clr, isYUV); break;
-    case 2: addborders_planar<uint16_t>(dst, src, vi, top, bot, left, right,  clr, isYUV); break;
+    case 1: addborders_planar<uint8_t>(dst, src, vi, top, bot, left, right, clr, isYUV, bits_per_pixel); break;
+    case 2: addborders_planar<uint16_t>(dst, src, vi, top, bot, left, right,  clr, isYUV, bits_per_pixel); break;
     default: //case 4: 
-      addborders_planar<float>(dst, src, vi, top, bot, left, right, clr, isYUV); break;
+      addborders_planar<float>(dst, src, vi, top, bot, left, right, clr, isYUV, bits_per_pixel); break;
     }
     return dst;
   } 
@@ -549,10 +550,10 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
       *(unsigned __int32*)(dstp+i) = clr;
     }
   } else if (vi.IsRGB48()) {
-    const uint16_t  clr0 = GetHbdColorFromByte<uint16_t>(clr & 0xFF);
+    const uint16_t  clr0 = GetHbdColorFromByte<uint16_t>(clr & 0xFF, true, 16);
     uint32_t clr1 =
-      ((uint32_t)GetHbdColorFromByte<uint16_t>((clr >> 16) & 0xFF) << (8 * 2)) +
-      ((uint32_t)GetHbdColorFromByte<uint16_t>((clr >> 8) & 0xFF));
+      ((uint32_t)GetHbdColorFromByte<uint16_t>((clr >> 16) & 0xFF, true, 16) << (8 * 2)) +
+      ((uint32_t)GetHbdColorFromByte<uint16_t>((clr >> 8) & 0xFF, true, 16));
     const int leftbytes = vi.BytesFromPixels(left);
     const int leftrow = src_row_size + leftbytes;
     const int rightbytes = vi.BytesFromPixels(right);
@@ -590,10 +591,10 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
 
     uint64_t clr64 =
-      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr >> 24) & 0xFF) << (24 * 2)) +
-      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr >> 16) & 0xFF) << (16 * 2)) +
-      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr >> 8) & 0xFF) << (8 * 2)) +
-      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr) & 0xFF));
+      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr >> 24) & 0xFF, true, 16) << (24 * 2)) +
+      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr >> 16) & 0xFF, true, 16) << (16 * 2)) +
+      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr >> 8) & 0xFF, true, 16) << (8 * 2)) +
+      ((uint64_t)GetHbdColorFromByte<uint16_t>((clr) & 0xFF, true, 16));
 
     for (int i = 0; i<initial_black; i += 8) {
       *(uint64_t*)(dstp+i) = clr64;
@@ -651,26 +652,26 @@ PVideoFrame __stdcall FillBorder::GetFrame(int n, IScriptEnvironment* env) {
   int h=src->GetHeight(PLANAR_Y);
 
   Ydata = &Ydata[src->GetRowSize(PLANAR_Y)-1];
-  {for (int y=0; y<h; y++) {
+  for (int y=0; y<h; y++) {
     for (int x=1; x<=fillp; x++) {
       Ydata[x]=Ydata[0];
     }
     Ydata+=src->GetPitch(PLANAR_Y);
-  }}
+  }
 
   fillp=src->GetRowSize(PLANAR_U_ALIGNED) - src->GetRowSize(PLANAR_U);
   Udata = &Udata[src->GetRowSize(PLANAR_U)-1];
   Vdata = &Vdata[src->GetRowSize(PLANAR_V)-1];
   h=src->GetHeight(PLANAR_U);
 
-  {for (int y=0; y<h; y++) {
+  for (int y=0; y<h; y++) {
     for (int x=1; x<=fillp; x++) {
       Udata[x]=Udata[0];
       Vdata[x]=Vdata[0];
     }
     Udata+=src->GetPitch(PLANAR_U);
     Vdata+=src->GetPitch(PLANAR_V);
-  }}
+  }
   return src;
 }
  
