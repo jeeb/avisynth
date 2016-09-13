@@ -89,12 +89,14 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
 
   PVideoFrame frame = env->NewVideoFrame(vi);
 
-  // RGB 8->16 bit: not << 8 like YUV but 0..255 -> 0..65535
-  auto rgbcolor8to16 = [](uint8_t color8) { return (uint16_t)color8 * 257; };
+  // RGB 8->16 bit: not << 8 like YUV but 0..255 -> 0..65535 or 0..1023 for 10 bit
+  int pixelsize = vi.ComponentSize();
+  int bits_per_pixel = vi.BitsPerComponent();
+  int max_pixel_value = (1 << bits_per_pixel) - 1;
+  auto rgbcolor8to16 = [](uint8_t color8, int max_pixel_value) { return (uint16_t)(color8 * max_pixel_value / 255); };
+
 
   if (vi.IsPlanar()) {
-
-    int pixelsize = vi.ComponentSize();
 
     int color_yuv = (mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
 
@@ -120,6 +122,8 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
           case PLANAR_U: Cval.i = (color_yuv >> 8) & 0xff; break;
           case PLANAR_V: Cval.i = color_yuv & 0xff; break;
           }
+          if(bits_per_pixel != 32)
+            Cval.i = Cval.i << (bits_per_pixel - 8);
       } else {
           // planar RGB
           switch(plane) {
@@ -128,6 +132,8 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
           case PLANAR_G: Cval.i = (color >> 8) & 0xff; break;
           case PLANAR_B: Cval.i = color & 0xff; break;
           }
+          if(bits_per_pixel != 32)
+            Cval.i = rgbcolor8to16(Cval.i, max_pixel_value);
       }
 
 
@@ -136,7 +142,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
 
       switch(pixelsize) {
       case 1: Cval.i |= (Cval.i << 8) | (Cval.i << 16) | (Cval.i << 24); break; // 4 pixels at a time
-      case 2: Cval.i = (Cval.i << 8) | (Cval.i << 24); break; // 2 pixels at a time
+      case 2: Cval.i |= (Cval.i << 16); break; // 2 pixels at a time
       default: // case 4:
         Cval.f = float(Cval.i) / 256.0f; // 32 bit float 128=0.5
       }
@@ -170,9 +176,9 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = color;
   } else if (vi.IsRGB48()) {
-      const uint16_t clr0  = rgbcolor8to16(color & 0xFF);
-      uint16_t r = rgbcolor8to16((color >> 16) & 0xFF);
-      uint16_t g = rgbcolor8to16((color >> 8 ) & 0xFF);
+      const uint16_t clr0  = rgbcolor8to16(color & 0xFF, max_pixel_value);
+      uint16_t r = rgbcolor8to16((color >> 16) & 0xFF, max_pixel_value);
+      uint16_t g = rgbcolor8to16((color >> 8 ) & 0xFF, max_pixel_value);
       const uint32_t clr1 = (r << 16) + (g);
       const int gr = frame->GetRowSize() / sizeof(uint16_t);
       const int gp = frame->GetPitch() / sizeof(uint16_t);
@@ -185,10 +191,10 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
           p16 += gp;
       }
   } else if (vi.IsRGB64()) {
-      uint64_t r = rgbcolor8to16((color >> 16) & 0xFF);
-      uint64_t g = rgbcolor8to16((color >> 8 ) & 0xFF);
-      uint64_t b = rgbcolor8to16((color      ) & 0xFF);
-      uint64_t a = rgbcolor8to16((color >> 24) & 0xFF);
+      uint64_t r = rgbcolor8to16((color >> 16) & 0xFF, max_pixel_value);
+      uint64_t g = rgbcolor8to16((color >> 8 ) & 0xFF, max_pixel_value);
+      uint64_t b = rgbcolor8to16((color      ) & 0xFF, max_pixel_value);
+      uint64_t a = rgbcolor8to16((color >> 24) & 0xFF, max_pixel_value);
       uint64_t color64 = (a << 48) + (r << 32) + (g << 16) + (b);
       std::fill_n(reinterpret_cast<uint64_t*>(p), size / sizeof(uint64_t), color64);
   }
