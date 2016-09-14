@@ -43,6 +43,7 @@
 #define __Layer_H__
 
 #include <avisynth.h>
+#include <stdint.h>
 
 
 /********************************************************************
@@ -98,6 +99,12 @@ public:
 
 private:
   const int color, tolB, tolG, tolR;
+  uint64_t color64;
+  int tolB16, tolG16, tolR16;
+  int pixelsize;
+  int bits_per_pixel;
+  int max_pixel_value;
+
 };
 
 

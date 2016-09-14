@@ -360,8 +360,22 @@ AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
 ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _tolR, IScriptEnvironment *env)
   : GenericVideoFilter(_child), color(_color & 0xffffff), tolB(_tolB & 0xff), tolG(_tolG & 0xff), tolR(_tolR & 0xff)
 {
-  if (!vi.IsRGB32())
-    env->ThrowError("ColorKeyMask: requires RGB32 input");
+  if (!vi.IsRGB32() && !vi.IsRGB64() && !vi.IsPlanarRGBA())
+    env->ThrowError("ColorKeyMask: requires RGB32, RGB64 or Planar RGBA input");
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
+  max_pixel_value = (1 << bits_per_pixel) - 1;
+
+  auto rgbcolor8to16 = [](uint8_t color8, int max_pixel_value) { return (uint16_t)(color8 * max_pixel_value / 255); };
+
+  uint64_t r = rgbcolor8to16((color >> 16) & 0xFF, max_pixel_value);
+  uint64_t g = rgbcolor8to16((color >> 8 ) & 0xFF, max_pixel_value);
+  uint64_t b = rgbcolor8to16((color      ) & 0xFF, max_pixel_value);
+  uint64_t a = rgbcolor8to16((color >> 24) & 0xFF, max_pixel_value);
+  color64 = (a << 48) + (r << 32) + (g << 16) + (b);
+  tolR16 = rgbcolor8to16(tolR & 0xFF, max_pixel_value); // scale tolerance
+  tolG16 = rgbcolor8to16(tolG & 0xFF, max_pixel_value);
+  tolB16 = rgbcolor8to16(tolB & 0xFF, max_pixel_value);
 }
 
 static void colorkeymask_sse2(BYTE* pf, int pitch, int color, int height, int width, int tolB, int tolG, int tolR) {
@@ -434,11 +448,11 @@ static void colorkeymask_mmx(BYTE* pf, int pitch, int color, int height, int wid
 
 #endif
 
-static void colorkeymask_c(BYTE* pf, int pitch, int color, int height, int rowsize, int tolB, int tolG, int tolR) {
-  const int R = (color >> 16) & 0xff;
-  const int G = (color >> 8) & 0xff;
-  const int B = color & 0xff;
-
+template<typename pixel_t>
+static void colorkeymask_c(BYTE* pf8, int pitch, int R, int G, int B, int height, int rowsize, int tolB, int tolG, int tolR) {
+  pixel_t *pf = reinterpret_cast<pixel_t *>(pf8);
+  rowsize /= sizeof(pixel_t);
+  pitch /= sizeof(pixel_t);
   for (int y = 0; y< height; y++) {
     for (int x = 0; x < rowsize; x+=4) {
       if (IsClose(pf[x],B,tolB) && IsClose(pf[x+1],G,tolG) && IsClose(pf[x+2],R,tolR))
@@ -447,6 +461,45 @@ static void colorkeymask_c(BYTE* pf, int pitch, int color, int height, int rowsi
     pf += pitch;
   }
 }
+
+template<typename pixel_t>
+static void colorkeymask_planar_c(const BYTE* pfR8, const BYTE* pfG8, const BYTE* pfB8, BYTE* pfA8, int pitch, int R, int G, int B, int height, int width, int tolB, int tolG, int tolR) {
+  const pixel_t *pfR = reinterpret_cast<const pixel_t *>(pfR8);
+  const pixel_t *pfG = reinterpret_cast<const pixel_t *>(pfG8);
+  const pixel_t *pfB = reinterpret_cast<const pixel_t *>(pfB8);
+  pixel_t *pfA = reinterpret_cast<pixel_t *>(pfA8);
+  pitch /= sizeof(pixel_t);
+  for (int y = 0; y< height; y++) {
+    for (int x = 0; x < width; x++) {
+      if (IsClose(pfB[x],B,tolB) && IsClose(pfG[x],G,tolG) && IsClose(pfR[x],R,tolR))
+        pfA[x]=0;
+    }
+    pfR += pitch;
+    pfG += pitch;
+    pfB += pitch;
+    pfA += pitch;
+  }
+}
+
+static void colorkeymask_planar_float_c(const BYTE* pfR8, const BYTE* pfG8, const BYTE* pfB8, BYTE* pfA8, int pitch, float R, float G, float B, int height, int width, float tolB, float tolG, float tolR) {
+  typedef float pixel_t;
+  const pixel_t *pfR = reinterpret_cast<const pixel_t *>(pfR8);
+  const pixel_t *pfG = reinterpret_cast<const pixel_t *>(pfG8);
+  const pixel_t *pfB = reinterpret_cast<const pixel_t *>(pfB8);
+  pixel_t *pfA = reinterpret_cast<pixel_t *>(pfA8);
+  pitch /= sizeof(pixel_t);
+  for (int y = 0; y< height; y++) {
+    for (int x = 0; x < width; x++) {
+      if (IsCloseFloat(pfB[x],B,tolB) && IsCloseFloat(pfG[x],G,tolG) && IsCloseFloat(pfR[x],R,tolR))
+        pfA[x]=0;
+    }
+    pfR += pitch;
+    pfG += pitch;
+    pfB += pitch;
+    pfA += pitch;
+  }
+}
+
 
 PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
 {
@@ -457,21 +510,59 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
   const int pitch = frame->GetPitch();
   const int rowsize = frame->GetRowSize();
 
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(pf, 16))
-  {
-    colorkeymask_sse2(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
+  if(vi.IsPlanarRGBA()) {
+    const BYTE* pf_g = frame->GetReadPtr(PLANAR_G);
+    const BYTE* pf_b = frame->GetReadPtr(PLANAR_B);
+    const BYTE* pf_r = frame->GetReadPtr(PLANAR_R);
+    BYTE* pf_a = frame->GetWritePtr(PLANAR_A);
+
+    const int pitch = frame->GetPitch();
+    const int width = vi.width;
+
+    if(pixelsize == 1) {
+      const int R = (color >> 16) & 0xff;
+      const int G = (color >> 8) & 0xff;
+      const int B = color & 0xff;
+      colorkeymask_planar_c<uint8_t>(pf_r, pf_g, pf_b, pf_a, pitch, R, G, B, vi.height, width, tolB, tolG, tolR);
+    } else if (pixelsize == 2) {
+      const int R = (color64 >> 32) & 0xffff;
+      const int G = (color64 >> 16) & 0xffff;
+      const int B = color64 & 0xffff;
+      colorkeymask_planar_c<uint16_t>(pf_r, pf_g, pf_b, pf_a, pitch, R, G, B, vi.height, width, tolB16, tolG16, tolR16);
+    } else { // float
+      const float R = ((color >> 16) & 0xff) / 255.0f;
+      const float G = ((color >> 8) & 0xff) / 255.0f;
+      const float B = (color & 0xff) / 255.0f;
+      colorkeymask_planar_float_c(pf_r, pf_g, pf_b, pf_a, pitch, R, G, B, vi.height, width, tolB / 255.0f, tolG / 255.0f, tolR / 255.0f);
+    }
+  } else {
+    // RGB32, RGB64
+    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(pf, 16))
+    {
+      colorkeymask_sse2(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
+    }
+    else
+  #ifdef X86_32
+    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX))
+    {
+      colorkeymask_mmx(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
+    }
+    else
+  #endif
+    {
+      if(pixelsize == 1) {
+        const int R = (color >> 16) & 0xff;
+        const int G = (color >> 8) & 0xff;
+        const int B = color & 0xff;
+        colorkeymask_c<uint8_t>(pf, pitch, R, G, B, vi.height, rowsize, tolB, tolG, tolR);
+      } else {
+        const int R = (color64 >> 32) & 0xffff;
+        const int G = (color64 >> 16) & 0xffff;
+        const int B = color64 & 0xffff;
+        colorkeymask_c<uint16_t>(pf, pitch, R, G, B, vi.height, rowsize, tolB16, tolG16, tolR16);
+      }
+    }
   }
-  else
-#ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX)
-  {
-    colorkeymask_mmx(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
-  }
-  else
-#endif
-  {
-    colorkeymask_c(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
-  } 
 
   return frame;
 }

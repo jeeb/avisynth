@@ -191,6 +191,8 @@ static __inline uint16_t ScaledPixelClipEx(__int64 i, int max_value) {
 static __inline bool IsClose(int a, int b, unsigned threshold) 
   { return (unsigned(a-b+threshold) <= threshold*2); }
 
+static __inline bool IsCloseFloat(float a, float b, float threshold)
+{ return (a-b+threshold <= threshold*2); }
 
 
 
