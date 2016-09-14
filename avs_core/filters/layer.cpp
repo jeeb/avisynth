@@ -3316,7 +3316,7 @@ AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)
  *******   Subtract Filter   ******
  *********************************/
 bool Subtract::DiffFlag = false;
-BYTE Subtract::Diff[513];
+BYTE Subtract::LUT_Diff8[513];
 
 Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
   : child1(_child1), child2(_child2)
@@ -3334,9 +3334,34 @@ Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
   vi.num_frames = max(vi1.num_frames, vi2.num_frames);
   vi.num_audio_samples = max(vi1.num_audio_samples, vi2.num_audio_samples);
 
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
+
   if (!DiffFlag) { // Init the global Diff table
     DiffFlag = true;
-    for (int i=0; i<=512; i++) Diff[i] = max(0,min(255,i-129));
+    for (int i=0; i<=512; i++) LUT_Diff8[i] = max(0,min(255,i-129));
+    // 0 ..  129  130 131   ... 255 256 257 258     384 ... 512
+    // 0 ..   0    1   2  3 ... 126 127 128 129 ... 255 ... 255
+  }
+}
+
+template<typename pixel_t, int midpixel>
+static void subtract_plane(BYTE *src1p, const BYTE *src2p, int src1_pitch, int src2_pitch, int width, int height, int bits_per_pixel)
+{
+  typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type limits_t;
+
+  const limits_t limit = sizeof(pixel_t) == 1 ? 255 : sizeof(pixel_t) == 2 ? ((1 << bits_per_pixel) - 1) : (limits_t)1.0f;
+  const limits_t equal_luma = sizeof(pixel_t) == 1 ? midpixel : sizeof(pixel_t) == 2 ? (midpixel << (bits_per_pixel - 8)) : (limits_t)(midpixel / 256.0f);
+  for (int y=0; y<height; y++) {
+    for (int x=0; x<width; x++) {
+      reinterpret_cast<pixel_t *>(src1p)[x] =
+        (pixel_t)clamp(
+        (limits_t)(reinterpret_cast<pixel_t *>(src1p)[x] - reinterpret_cast<const pixel_t *>(src2p)[x] + equal_luma), // 126: luma of equality
+          (limits_t)0,
+          limit);
+    }
+    src1p += src1_pitch;
+    src2p += src2_pitch;
   }
 }
 
@@ -3350,55 +3375,111 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
   BYTE* src1p = src1->GetWritePtr();
   const BYTE* src2p = src2->GetReadPtr();
   int row_size = src1->GetRowSize();
+  int src1_pitch = src1->GetPitch();
+  int src2_pitch = src2->GetPitch();
 
-  if (vi.IsPlanar()) {
-    for (int y=0; y<vi.height; y++) {
-      for (int x=0; x<row_size; x++) {
-        src1p[x] = Diff[src1p[x] - src2p[x] + 126 + 129];
+  int width = row_size / pixelsize;
+  int height = vi.height;
+
+  if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) {
+    // alpha
+    if (pixelsize == 1) {
+      //subtract_plane<uint8_t, 126>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+      // LUT is a bit faster than clamp version
+      for (int y=0; y<vi.height; y++) {
+        for (int x=0; x<row_size; x++) {
+          src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 126 + 129];
+        }
+        src1p += src1->GetPitch();
+        src2p += src2->GetPitch();
       }
-      src1p += src1->GetPitch();
-      src2p += src2->GetPitch();
-    }
+    } else if (pixelsize==2)
+      subtract_plane<uint16_t, 126>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+    else //if (pixelsize==4)
+      subtract_plane<float, 126>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
 
+    // chroma
     row_size=src1->GetRowSize(PLANAR_U);
     if (row_size) {
+      width = row_size / pixelsize;
+      height = src1->GetHeight(PLANAR_U);
+      src1_pitch = src1->GetPitch(PLANAR_U);
+      src2_pitch = src2->GetPitch(PLANAR_U);
+      // U_plane exists
       BYTE* src1p = src1->GetWritePtr(PLANAR_U);
       const BYTE* src2p = src2->GetReadPtr(PLANAR_U);
       BYTE* src1pV = src1->GetWritePtr(PLANAR_V);
       const BYTE* src2pV = src2->GetReadPtr(PLANAR_V);
 
-      for (int y=0; y<src1->GetHeight(PLANAR_U); y++) {
-        for (int x=0; x<row_size; x++) {
-          src1p[x] = Diff[src1p[x] - src2p[x] + 128 + 129];
-          src1pV[x] = Diff[src1pV[x] - src2pV[x] + 128 + 129];
+      if (pixelsize == 1) {
+        //subtract_plane<uint8_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        //subtract_plane<uint8_t, 128>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+
+        // LUT is a bit faster than clamp version
+        for (int y=0; y<height; y++) {
+          for (int x=0; x<width; x++) {
+            src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 128 + 129];
+            src1pV[x] = LUT_Diff8[src1pV[x] - src2pV[x] + 128 + 129];
+          }
+          src1p += src1_pitch;
+          src2p += src2_pitch;
+          src1pV += src1_pitch;
+          src2pV += src2_pitch;
         }
-        src1p += src1->GetPitch(PLANAR_U);
-        src2p += src2->GetPitch(PLANAR_U);
-        src1pV += src1->GetPitch(PLANAR_V);
-        src2pV += src2->GetPitch(PLANAR_V);
+      } else if (pixelsize==2) {
+        subtract_plane<uint16_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        subtract_plane<uint16_t, 128>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+      } else { //if (pixelsize==4)
+        subtract_plane<float, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        subtract_plane<float, 128>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       }
     }
     return src1;
-  } // End planar
+  } // End planar YUV
 
   // For YUY2, 50% gray is about (126,128,128) instead of (128,128,128).  Grr...
   if (vi.IsYUY2()) {
     for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<row_size; x+=2) {
-        src1p[x] = Diff[src1p[x] - src2p[x] + 126 + 129];
-        src1p[x+1] = Diff[src1p[x+1] - src2p[x+1] + 128 + 129];
+        src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 126 + 129];
+        src1p[x+1] = LUT_Diff8[src1p[x+1] - src2p[x+1] + 128 + 129];
       }
       src1p += src1->GetPitch();
       src2p += src2->GetPitch();
     }
   }
   else { // RGB
-    for (int y=0; y<vi.height; ++y) {
-      for (int x=0; x<row_size; ++x)
-        src1p[x] = Diff[src1p[x] - src2p[x] + 128 + 129];
+    if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+      const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
 
-      src1p += src1->GetPitch();
-      src2p += src2->GetPitch();
+      // do not diff Alpha
+      for (int p = 0; p < 3; p++) {
+        const int plane = planesRGB[p];
+        src1p = src1->GetWritePtr(plane);
+        src2p = src2->GetReadPtr(plane);
+        src1_pitch = src1->GetPitch(plane);
+        src2_pitch = src2->GetPitch(plane);
+        if(pixelsize==1)
+          subtract_plane<uint8_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        else if(pixelsize==2)
+          subtract_plane<uint16_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        else
+          subtract_plane<float, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+      }
+    } else { // packed RGB
+      if(pixelsize == 1) {
+        for (int y=0; y<vi.height; ++y) {
+          for (int x=0; x<row_size; ++x)
+            src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 128 + 129];
+
+          src1p += src1->GetPitch();
+          src2p += src2->GetPitch();
+        }
+      }
+      else { // pixelsize == 2: RGB48, RGB64
+        // width is getrowsize based here: ok.
+        subtract_plane<uint16_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+      }
     }
   }
   return src1;

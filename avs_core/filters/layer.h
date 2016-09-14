@@ -260,7 +260,9 @@ private:
 
 // Common to all instances
   static bool DiffFlag;
-  static BYTE Diff[513];
+  static BYTE LUT_Diff8[513];
+  int pixelsize;
+  int bits_per_pixel;
 
 };
 
