@@ -107,7 +107,7 @@ class Tweak : public GenericVideoFilter
 public:
   Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
     double _startHue, double _endHue, double _maxSat, double _minSat, double _interp,
-    bool _dither, bool _realcalc, IScriptEnvironment* env);
+    bool _dither, bool _realcalc, double _dither_strength, IScriptEnvironment* env);
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -118,15 +118,49 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
+  template<typename pixel_t, bool bpp10_14, bool dither>
+  void tweak_calc_luma(BYTE *srcp, int src_pitch, float minY, float maxY, int width, int height);
+
+  template<typename pixel_t, bool dither>
+  void tweak_calc_chroma(BYTE *srcpU, BYTE *srcpV, int src_pitch, int width, int height, float minUV, float maxUV);
+
     int Sin, Cos;
     int Sat, Bright, Cont;
     bool coring, sse, dither;
     
-    bool realcalc; // no lookup, realtime calculation, always for 16/32 bits
+    const bool realcalc; // no lookup, realtime calculation, always for 16/32 bits
     double dhue, dsat, dbright, dcont, dstartHue, dendHue, dmaxSat, dminSat, dinterp;
 
     BYTE *map;
     uint16_t *mapUV;
+    // avs+
+    bool realcalc_luma;
+    bool realcalc_chroma;
+
+    int pixelsize;
+    int bits_per_pixel; // 8,10..16
+    int max_pixel_value;
+    int lut_size;
+    int real_lookup_size;
+
+    int tv_range_low;
+    int tv_range_hi_luma;
+    int range_luma;
+
+    int tv_range_hi_chroma;
+    int range_chroma;
+
+    int middle_chroma;
+
+    int scale_dither_luma;
+    int divisor_dither_luma;
+    float bias_dither_luma;
+
+    int scale_dither_chroma;
+    int divisor_dither_chroma;
+    float bias_dither_chroma;
+
+    float dither_strength;
 };
 
 
