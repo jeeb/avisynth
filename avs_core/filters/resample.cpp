@@ -102,20 +102,20 @@ static __forceinline __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
  ***** Vertical Resizer Assembly *******
  ***************************************/
 
-template<typename pixel_size>
+template<typename pixel_t>
 static void resize_v_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
 {
   int filter_size = program->filter_size;
 
-  pixel_size* src0 = (pixel_size *)src;
-  pixel_size* dst0 = (pixel_size *)dst;
-  dst_pitch = dst_pitch / sizeof(pixel_size);
+  pixel_t* src0 = (pixel_t *)src;
+  pixel_t* dst0 = (pixel_t *)dst;
+  dst_pitch = dst_pitch / sizeof(pixel_t);
 
   for (int y = 0; y < target_height; y++) {
     int offset = program->pixel_offset[y];
-    const pixel_size* src_ptr = src0 + pitch_table[offset]/sizeof(pixel_size);
+    const pixel_t* src_ptr = src0 + pitch_table[offset]/sizeof(pixel_t);
 
-    memcpy(dst0, src_ptr, width*sizeof(pixel_size));
+    memcpy(dst0, src_ptr, width*sizeof(pixel_t));
 
     dst0 += dst_pitch;
   }

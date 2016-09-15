@@ -113,13 +113,13 @@ AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* 
  *******   Flip Horizontal   ******
  ********************************/
 
-template<typename pixel_size>
+template<typename pixel_t>
 static void flip_horizontal_plane_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height) {
-  width = width / sizeof(pixel_size); // width is called with GetRowSize value
-  srcp += (width-1) * sizeof(pixel_size);
+  width = width / sizeof(pixel_t); // width is called with GetRowSize value
+  srcp += (width-1) * sizeof(pixel_t);
   for (int y = 0; y < height; y++) { // Loop planar luma.
     for (int x = 0; x < width; x++) {
-      (reinterpret_cast<pixel_size *>(dstp))[x] = (reinterpret_cast<const pixel_size *>(srcp))[-x];
+      (reinterpret_cast<pixel_t *>(dstp))[x] = (reinterpret_cast<const pixel_t *>(srcp))[-x];
     }
     srcp += src_pitch;
     dstp += dst_pitch;
