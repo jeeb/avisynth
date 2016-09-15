@@ -131,6 +131,8 @@ private:
     const bool realcalc; // no lookup, realtime calculation, always for 16/32 bits
     double dhue, dsat, dbright, dcont, dstartHue, dendHue, dmaxSat, dminSat, dinterp;
 
+    bool allPixels;
+
     BYTE *map;
     uint16_t *mapUV;
     // avs+
@@ -167,7 +169,7 @@ private:
 class MaskHS : public GenericVideoFilter
 {
 public:
-  MaskHS( PClip _child, double _startHue, double _endHue, double _maxSat, double _minSat, bool _coring, IScriptEnvironment* env );
+  MaskHS( PClip _child, double _startHue, double _endHue, double _maxSat, double _minSat, bool _coring, bool _realcalc, IScriptEnvironment* env );
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -178,7 +180,35 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
-    BYTE mapY[256*256];
+  const double dstartHue, dendHue, dmaxSat, dminSat;
+  const bool coring;
+  const bool realcalc;
+
+  double minSat, maxSat; // corrected values
+
+  uint8_t *mapUV;
+  // avs+
+  bool realcalc_luma;
+  bool realcalc_chroma;
+
+  int pixelsize;
+  int bits_per_pixel; // 8,10..16
+  int max_pixel_value;
+  int lut_size;
+  int real_lookup_size;
+
+  int tv_range_low;
+  int tv_range_hi_luma;
+  int range_luma;
+
+  int tv_range_hi_chroma;
+  int range_chroma;
+
+  int middle_chroma;
+
+  int actual_chroma_range_low;
+  int actual_chroma_range_high;
+
 };
 
 #endif  // __Levels_H__

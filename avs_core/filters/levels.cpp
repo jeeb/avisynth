@@ -54,7 +54,7 @@ extern const AVSFunction Levels_filters[] = {
   { "Levels",    BUILTIN_FUNC_PREFIX, "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
   { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
   { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b[realcalc]b[dither_strength]f", Tweak::Create },
-  { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
+  { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b[realcalc]b", MaskHS::Create },
   { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
   { 0 }
 };
@@ -1137,7 +1137,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
 
   // Flag to skip special processing if doing all pixels
   // If defaults, don't check for ranges, just do all
-  const bool allPixels = (_startHue == 0.0 && _endHue == 360.0 && _maxSat == 150.0 && _minSat == 0.0);
+  allPixels = (_startHue == 0.0 && _endHue == 360.0 && _maxSat == 150.0 && _minSat == 0.0);
 
 // The new "mapping" C code is faster than the iSSE code on my 3GHz P4HT - Make it optional
   if (sse && (!allPixels || coring || dither || !vi.IsYUY2()))
@@ -1248,8 +1248,10 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
       env->ThrowError("Tweak: Could not reserve memory.");
     env->AtExit(free_buffer, mapUV);
 
-    int range_low = tv_range_low;
-    int range_high = tv_range_hi_chroma;
+    int range_low = coring ? tv_range_low : 0;
+    int range_high = coring ? tv_range_hi_chroma : max_pixel_value;
+
+    double uv_range_corr = 1.0 / (1 << (bits_per_pixel - 8));
 
     if (dither) {
       // lut chroma, dither
@@ -1260,7 +1262,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
           for (int v = 0; v < lut_size; v++) {
             const double destv = (((v << 4) + d*dither_strength) + bias_dither_chroma) / scale_dither_chroma - middle_chroma;
             int iSat = Sat;
-            if (allPixels || ProcessPixel(destv, destu, _startHue, _endHue, maxSat, minSat, p, iSat)) {
+            if (allPixels || ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, _startHue, _endHue, maxSat, minSat, p, iSat)) {
               int du = (int)((destu*COS + destv*SIN) * iSat + 0x100) >> 9; // back from the extra 9 bits Sat precision
               int dv = (int)((destv*COS - destu*SIN) * iSat + 0x100) >> 9;
               du = clamp(du + middle_chroma, range_low, range_high);
@@ -1287,7 +1289,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
         for (int v = 0; v < lut_size; v++) {
           const double destv = v - middle_chroma;
           int iSat = Sat;
-          if (allPixels || ProcessPixel(destv, destu, _startHue, _endHue, maxSat, minSat, p, iSat)) {
+          if (allPixels || ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, _startHue, _endHue, maxSat, minSat, p, iSat)) {
             int du = int((destu*COS + destv*SIN) * iSat) >> 9; // back from the extra 9 bits Sat precision
             int dv = int((destv*COS - destu*SIN) * iSat) >> 9;
             du = clamp(du + middle_chroma, range_low, range_high);
@@ -1332,29 +1334,43 @@ void Tweak::tweak_calc_chroma(BYTE *srcpu, BYTE *srcpv, int src_pitch, int width
   // no lut, realcalc, float internals
   const float pixel_range = sizeof(pixel_t) == 4 ? 1.0f : (float)(max_pixel_value + 1);
 
+  double uv_range_corr = 255.0;
+
   for (int y = 0; y < height; ++y) {
     const int _y = (y << 2) & 0xC;
     for (int x = 0; x < width; ++x) {
       if (dither)
         ditherval = ((float(ditherMap4[(x & 0x3) | _y]) * dither_strength + bias_dither_chroma) / scale_dither_chroma); // +/-0.5 on 0..255 range
-      u = sizeof(pixel_t) == 4 ? (reinterpret_cast<pixel_t *>(srcpu)[x] - 0.5f) : (reinterpret_cast<pixel_t *>(srcpu)[x] - middle_chroma);
-      v = sizeof(pixel_t) == 4 ? (reinterpret_cast<pixel_t *>(srcpv)[x] - 0.5f) : (reinterpret_cast<pixel_t *>(srcpv)[x] - middle_chroma);
+      pixel_t orig_u = reinterpret_cast<pixel_t *>(srcpu)[x];
+      pixel_t orig_v = reinterpret_cast<pixel_t *>(srcpv)[x] ;
+      u = sizeof(pixel_t) == 4 ? (orig_u - 0.5f) : (orig_u - middle_chroma);
+      v = sizeof(pixel_t) == 4 ? (orig_v - 0.5f) : (orig_v - middle_chroma);
 
       u = (u + (dither ? ditherval : 0)) / (sizeof(pixel_t) == 4 ? 1.0f : pixel_range); // going from 0..1 to +/-0.5
       v = (v + (dither ? ditherval : 0)) / (sizeof(pixel_t) == 4 ? 1.0f : pixel_range);
 
       double dWorkSat = dsat; // init from original param
-      ProcessPixelUnscaled(v, u, dstartHue, dendHue, maxSat, minSat, p, dWorkSat);
+      if(allPixels || ProcessPixelUnscaled(v * uv_range_corr, u * uv_range_corr, dstartHue, dendHue, maxSat, minSat, p, dWorkSat))
+      {
+        float du = ((u*cosHue + v*sinHue) * (float)dWorkSat) + 0.5f; // back to 0..1
+        float dv = ((v*cosHue - u*sinHue) * (float)dWorkSat) + 0.5f;
 
-      float du = ((u*cosHue + v*sinHue) * (float)dWorkSat) + 0.5f; // back to 0..1
-      float dv = ((v*cosHue - u*sinHue) * (float)dWorkSat) + 0.5f;
-
-      if(sizeof(pixel_t) == 4) {
-        reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp(du, minUV, maxUV);
-        reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp(dv, minUV, maxUV);
-      } else {
-        reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp((int)(du * pixel_range), minUVi, maxUVi);
-        reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp((int)(dv * pixel_range), minUVi, maxUVi);
+        if(sizeof(pixel_t) == 4) {
+          reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp(du, minUV, maxUV);
+          reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp(dv, minUV, maxUV);
+        } else {
+          reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp((int)(du * pixel_range), minUVi, maxUVi);
+          reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp((int)(dv * pixel_range), minUVi, maxUVi);
+        }
+      }
+      else {
+        if(sizeof(pixel_t) == 4) {
+          reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp((float)orig_u, minUV, maxUV);
+          reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp((float)orig_v, minUV, maxUV);
+        } else {
+          reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp((int)(orig_u), minUVi, maxUVi);
+          reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp((int)(orig_v), minUVi, maxUVi);
+        }
       }
     }
     srcpu += src_pitch;
@@ -1631,9 +1647,9 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 ******   MaskHS   *****
 **********************/
 
-MaskHS::MaskHS(PClip _child, double startHue, double endHue, double _maxSat, double _minSat, bool coring,
+MaskHS::MaskHS(PClip _child, double _startHue, double _endHue, double _maxSat, double _minSat, bool _coring, bool _realcalc,
     IScriptEnvironment* env)
-    : GenericVideoFilter(_child)
+    : GenericVideoFilter(_child), dstartHue(_startHue), dendHue(_endHue), dmaxSat(_maxSat), dminSat(_minSat), coring(_coring), realcalc(_realcalc)
 {
     if (vi.IsRGB())
         env->ThrowError("MaskHS: YUV data only (no RGB)");
@@ -1642,50 +1658,100 @@ MaskHS::MaskHS(PClip _child, double startHue, double endHue, double _maxSat, dou
         env->ThrowError("MaskHS: clip must contain chroma.");
     }
 
-    if (startHue < 0.0 || startHue >= 360.0)
+    if (dstartHue < 0.0 || dstartHue >= 360.0)
         env->ThrowError("MaskHS: startHue must be greater than or equal to 0.0 and less than 360.0");
 
-    if (endHue <= 0.0 || endHue > 360.0)
+    if (dendHue <= 0.0 || dendHue > 360.0)
         env->ThrowError("MaskHS: endHue must be greater than 0.0 and less than or equal to 360.0");
 
-    if (_minSat >= _maxSat)
+    if (dminSat >= dmaxSat)
         env->ThrowError("MaskHS: MinSat must be less than MaxSat");
 
-    if (_minSat < 0.0 || _minSat >= 150.0)
+    if (dminSat < 0.0 || dminSat >= 150.0)
         env->ThrowError("MaskHS: minSat must be greater than or equal to 0 and less than 150.");
 
-    if (_maxSat <= 0.0 || _maxSat > 150.0)
+    if (dmaxSat <= 0.0 || dmaxSat > 150.0)
         env->ThrowError("MaskHS: maxSat must be greater than 0 and less than or equal to 150.");
 
+    pixelsize = vi.ComponentSize();
+    bits_per_pixel = vi.BitsPerComponent();
+    max_pixel_value = (1 << bits_per_pixel) - 1;
+    lut_size = 1 << bits_per_pixel;
 
-    const BYTE maxY = coring ? 235 : 255;
-    const BYTE minY = coring ? 16 : 0;
+    if(bits_per_pixel < 32) {
+      tv_range_low   = 16 << (bits_per_pixel - 8); // 16
+      tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
+      range_luma = tv_range_hi_luma - tv_range_low; // 219
+
+      tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+      range_chroma = tv_range_hi_chroma - tv_range_low; // 224
+    }
+    else { // float: range is 0..255 scaled later
+      tv_range_low   = 16; // 16
+      tv_range_hi_luma   = 235; // 16-235
+      range_luma = tv_range_hi_luma - tv_range_low; // 219
+
+      tv_range_hi_chroma = 240; // 16-240
+      range_chroma = tv_range_hi_chroma - tv_range_low; // 224
+
+      max_pixel_value = 255;
+    }
+    actual_chroma_range_low = coring ? tv_range_low : 0;
+    actual_chroma_range_high = coring ? tv_range_hi_chroma : max_pixel_value;
+
+    middle_chroma = 1 << (bits_per_pixel - 1); // 128
+
+    realcalc_chroma = realcalc;
+    if (vi.IsPlanar() && (bits_per_pixel > 12)) // max bitdepth is 12 for lut
+      realcalc_chroma = true;
 
     // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
     // 150% (=180) - 100% (=119) overshoot
-    const double minSat = 1.19 * _minSat;
-    const double maxSat = 1.19 * _maxSat;
+    minSat = 1.19 * dminSat;
+    maxSat = 1.19 * dmaxSat;
 
-    // apply mask
-    for (int u = 0; u < 256; u++) {
-        const double destu = u - 128;
-        for (int v = 0; v < 256; v++) {
-            const double destv = v - 128;
-            int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
-            if (ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, 0.0, iSat)) {
-                mapY[(u << 8) | v] = maxY;
-            }
-            else {
-                mapY[(u << 8) | v] = minY;
-            }
-        }
-    }
+    if (!(realcalc_chroma && vi.IsPlanar()))
+    { // fill lookup tables for UV
+      size_t map_size = pixelsize * lut_size * lut_size;
+      // for  8 bit : 1 * 256 * 256 = 65536 byte
+      // for 10 bit : 2 * 1024 * 1024 = 2 MByte
+      // for 12 bit : 2 * 4096 * 4096 = 32 MByte
+      auto env2 = static_cast<IScriptEnvironment2*>(env);
+
+      mapUV = static_cast<uint8_t*>(env2->Allocate(map_size, 8, AVS_NORMAL_ALLOC)); // uint16_t for (U+V bytes), casted to uint32_t for (U+V words in non-8 bit)
+      if (!mapUV)
+        env->ThrowError("Tweak: Could not reserve memory.");
+      env->AtExit(free_buffer, mapUV);
+
+      // apply mask
+      double uv_range_corr = 1.0 / (1 << (bits_per_pixel - 8)); // no float here
+      for (int u = 0; u < lut_size; u++) {
+          const double destu = (u - middle_chroma) * uv_range_corr; // processpixel's minSat and maxSat is for 256 range
+          int ushift = u << bits_per_pixel;
+          for (int v = 0; v < lut_size; v++) {
+              const double destv = (v - middle_chroma) * uv_range_corr;
+              int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
+              bool low = ProcessPixel(destv, destu, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+              if(pixelsize==1)
+                  mapUV[ushift | v] = low ? actual_chroma_range_low : actual_chroma_range_high;
+              else
+                  reinterpret_cast<uint16_t *>(mapUV)[ushift | v] = low ? actual_chroma_range_low : actual_chroma_range_high;
+          }
+      }
+    } // end of lut calculation
     // #define MaskPointResizing
 #ifndef MaskPointResizing
     vi.width >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
     vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
 #endif
-    vi.pixel_type = VideoInfo::CS_Y8;
+    switch(bits_per_pixel) {
+    case 8: vi.pixel_type = VideoInfo::CS_Y8; break;
+    case 10: vi.pixel_type = VideoInfo::CS_Y10; break;
+    case 12: vi.pixel_type = VideoInfo::CS_Y12; break;
+    case 14: vi.pixel_type = VideoInfo::CS_Y14; break;
+    case 16: vi.pixel_type = VideoInfo::CS_Y16; break;
+    case 32: vi.pixel_type = VideoInfo::CS_Y32; break;
+    }
 }
 
 
@@ -1709,7 +1775,7 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < row_size; x++) {
-                dstp[x] = mapY[((srcp[x * 4 + 1]) << 8) | srcp[x * 4 + 3]];
+                dstp[x] = mapUV[((srcp[x * 4 + 1]) << 8) | srcp[x * 4 + 3]];
             }
             srcp += src_pitch;
             dstp += dst_pitch;
@@ -1732,17 +1798,81 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
         const int srcu_pitch = src->GetPitch(PLANAR_U);
         const uint8_t* srcpu = src->GetReadPtr(PLANAR_U);
         const uint8_t* srcpv = src->GetReadPtr(PLANAR_V);
-        const int row_sizeu = src->GetRowSize(PLANAR_U);
+        const int width = src->GetRowSize(PLANAR_U) / pixelsize;
         const int heightu = src->GetHeight(PLANAR_U);
 
 #ifndef MaskPointResizing
-        for (int y = 0; y < heightu; ++y) {
-            for (int x = 0; x < row_sizeu; ++x) {
-                dstp[x] = mapY[((srcpu[x]) << 8) | srcpv[x]];
+        if(realcalc_chroma) {
+          double uv_range_corr = (pixelsize == 4) ? 255.0 : 1.0 / (1 << (bits_per_pixel - 8));
+          if(pixelsize == 1) {
+            for (int y = 0; y < heightu; ++y) {
+              for (int x = 0; x < width; ++x) {
+                const double destu = srcpu[x] - middle_chroma;
+                const double destv = srcpv[x] - middle_chroma;
+                int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
+                bool low = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+                dstp[x] = low ? actual_chroma_range_low : actual_chroma_range_high;
+              }
+              dstp += dst_pitch;
+              srcpu += srcu_pitch;
+              srcpv += srcu_pitch;
             }
-            dstp += dst_pitch;
-            srcpu += srcu_pitch;
-            srcpv += srcu_pitch;
+          }
+          else if (pixelsize == 2) {
+            double range_corr = 1 << (bits_per_pixel - 8);
+            for (int y = 0; y < heightu; ++y) {
+              for (int x = 0; x < width; ++x) {
+                const double destu = (reinterpret_cast<const uint16_t *>(srcpu)[x] - middle_chroma);
+                const double destv = (reinterpret_cast<const uint16_t *>(srcpv)[x] - middle_chroma);
+                int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
+                bool low = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+                reinterpret_cast<uint16_t *>(dstp)[x] = low ? actual_chroma_range_low : actual_chroma_range_high;
+              }
+              dstp += dst_pitch;
+              srcpu += srcu_pitch;
+              srcpv += srcu_pitch;
+            }
+          } else { // pixelsize == 4
+            const float middle_chroma_f = 0.5f;
+            const float actual_chroma_range_low_f = actual_chroma_range_low / 255.0f;
+            const float actual_chroma_range_high_f = actual_chroma_range_high / 255.0f;
+            for (int y = 0; y < heightu; ++y) {
+              for (int x = 0; x < width; ++x) {
+                const double destu = (reinterpret_cast<const float *>(srcpu)[x] - middle_chroma_f);
+                const double destv = (reinterpret_cast<const float *>(srcpv)[x] - middle_chroma_f);
+                int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
+                bool low = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+                reinterpret_cast<float *>(dstp)[x] = low ? actual_chroma_range_low_f : actual_chroma_range_high_f;
+              }
+              dstp += dst_pitch;
+              srcpu += srcu_pitch;
+              srcpv += srcu_pitch;
+            }
+          }
+
+        } else {
+          // use LUT
+          if(pixelsize==1) {
+            for (int y = 0; y < heightu; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    dstp[x] = mapUV[((srcpu[x]) << 8) | srcpv[x]];
+                }
+                dstp += dst_pitch;
+                srcpu += srcu_pitch;
+                srcpv += srcu_pitch;
+            }
+          }
+          else if (pixelsize == 2) {
+            for (int y = 0; y < heightu; ++y) {
+              for (int x = 0; x < width; ++x) {
+                reinterpret_cast<uint16_t *>(dstp)[x] =
+                  reinterpret_cast<uint16_t *>(mapUV)[((reinterpret_cast<const uint16_t *>(srcpu)[x]) << bits_per_pixel) | reinterpret_cast<const uint16_t *>(srcpv)[x]];
+              }
+              dstp += dst_pitch;
+              srcpu += srcu_pitch;
+              srcpv += srcu_pitch;
+            }
+          } // no lut for float (and for 14-16 bit)
         }
 #else
         const int swidth = child->GetVideoInfo().GetPlaneWidthSubsampling(PLANAR_U);
@@ -1783,6 +1913,7 @@ AVSValue __cdecl MaskHS::Create(AVSValue args, void* user_data, IScriptEnvironme
         args[3].AsDblDef(150.0),    // maxSat
         args[4].AsDblDef(0.0),    // minSat
         args[5].AsBool(false),      // coring
-        env);
+        args[6].AsBool(false),      // realcalc
+      env);
 }
 
