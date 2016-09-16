@@ -59,7 +59,7 @@ public:
 	ModeAudioLevels
   };
 
-  Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironment* env);
+  Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   PVideoFrame DrawModeClassic    (int n, IScriptEnvironment* env);
   PVideoFrame DrawModeLevels     (int n, IScriptEnvironment* env);
@@ -80,6 +80,9 @@ private:
   int deg15c[24], deg15s[24];
   PClip aud_clip;
   AVSValue option;
+  int pixelsize;
+  int bits_per_pixel;
+  int show_bits; // e.g. levels for 10 bits
 };
 
 

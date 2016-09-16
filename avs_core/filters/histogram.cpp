@@ -52,7 +52,7 @@
 ********************************************************************/
 
 extern const AVSFunction Histogram_filters[] = {
-  { "Histogram", BUILTIN_FUNC_PREFIX, "c[mode]s[].", Histogram::Create },   // src clip
+  { "Histogram", BUILTIN_FUNC_PREFIX, "c[mode]s[].[bits]i", Histogram::Create },   // src clip, avs+ new bits parameter
   { 0 }
 };
 
@@ -63,14 +63,23 @@ extern const AVSFunction Histogram_filters[] = {
  *******   Histogram Filter   ******
  **********************************/
 
-Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), mode(_mode), option(_option)
+Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), mode(_mode), option(_option), show_bits(_show_bits)
 {
   bool optionValid = false;
 
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
+
+  if(show_bits < 8 || show_bits>10)
+    env->ThrowError("Histogram: bits parameter can only be 8 or 10");
+
+  if(show_bits > bits_per_pixel)
+    show_bits = bits_per_pixel; // cannot show 10 bit levels for a 8 bit clip
+
   if (mode == ModeClassic) {
-    if (!vi.IsYUV())
-      env->ThrowError("Histogram: YUV data only");
+    if (!vi.IsYUV() && !vi.IsYUVA())
+      env->ThrowError("Histogram: YUV(A) data only");
     vi.width += 256;
   }
 
@@ -78,26 +87,29 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironm
     if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Levels mode only available in PLANAR.");
     }
-    if (vi.IsY8()) {
-      env->ThrowError("Histogram: Levels mode not available in Y8.");
+    if (vi.IsY()) {
+      env->ThrowError("Histogram: Levels mode not available in greyscale.");
     }
     optionValid = option.IsFloat();
     const double factor = option.AsDblDef(100.0); // Population limit % factor
     if (factor < 0.0 || factor > 100.0) {
       env->ThrowError("Histogram: Levels population clamping must be between 0 and 100%");
     }
-    vi.width += 256;
+    // put diagram on the right side
+    vi.width += (1 << show_bits); // 256 for 8 bit
     vi.height = max(256, vi.height);
   }
+
 
   if (mode == ModeColor) {
     if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Color mode only available in PLANAR.");
     }
-    if (vi.IsY8()) {
-      env->ThrowError("Histogram: Color mode not available in Y8.");
+    if (vi.IsY()) {
+      env->ThrowError("Histogram: Color mode not available in greyscale.");
     }
-    vi.width += 256;
+    // put diagram on the right side
+    vi.width += (1 << show_bits); // 256 for 8 bit
     vi.height = max(256,vi.height);
   }
 
@@ -105,21 +117,23 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironm
     if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Color2 mode only available in PLANAR.");
     }
-    if (vi.IsY8()) {
-      env->ThrowError("Histogram: Color2 mode not available in Y8.");
+    if (vi.IsY()) {
+      env->ThrowError("Histogram: Color2 mode not available in greyscale.");
     }
 
-    vi.width += 256;
-    vi.height = max(256,vi.height);
-
+    // put circle on the right side
+    vi.width += (1 << show_bits); // 256 for 8 bit
+    vi.height = max((1 << show_bits),vi.height); // yes, height can change
+    int half = 1 << (show_bits - 1); // 127
+    int R = half - 1; // 126
     for (int y=0; y<24; y++) { // just inside the big circle
-      deg15c[y] = (int) ( 126.0*cos(y*PI/12.) + 0.5) + 127;
-      deg15s[y] = (int) (-126.0*sin(y*PI/12.) + 0.5) + 127;
+      deg15c[y] = (int) ( R*cos(y*PI/12.) + 0.5) + half;
+      deg15s[y] = (int) (-R*sin(y*PI/12.) + 0.5) + half;
     }
   }
 
-  if (mode == ModeLuma && !vi.IsYUV()) {
-      env->ThrowError("Histogram: Luma mode only available in YUV.");
+  if (mode == ModeLuma && !vi.IsYUV() && !vi.IsYUVA()) {
+      env->ThrowError("Histogram: Luma mode only available in YUV(A).");
   }
 
   if ((mode == ModeStereoY8)||(mode == ModeStereo)||(mode == ModeOverlay)) {
@@ -770,94 +784,250 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
 
+  int show_size = 1 << show_bits;
+
+  // of source
+  int src_width = src->GetRowSize() / pixelsize;
+  int src_height = src->GetHeight();
+
+  bool RGB = vi.IsRGB();
+  int plane_default_black[3] = {
+    RGB ? 0 : (16 << (bits_per_pixel - 8)),
+    RGB ? 0 : (128 << (bits_per_pixel - 8)),
+    RGB ? 0 : (128 << (bits_per_pixel - 8))
+  };
+
+  const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
+  const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+  const int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
+
   if (src->GetHeight() < dst->GetHeight()) {
+
     const int fillSize = (dst->GetHeight()-src->GetHeight()) * dst->GetPitch();
     const int fillStart = src->GetHeight() * dst->GetPitch();
-    memset(p+fillStart, 16, fillSize);
 
-    const int fillSizeU = (dst->GetHeight(PLANAR_U)-src->GetHeight(PLANAR_U)) * dst->GetPitch(PLANAR_U);
-    const int fillStartU = src->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-    memset(dst->GetWritePtr(PLANAR_U)+fillStartU, 128, fillSizeU);
-    memset(dst->GetWritePtr(PLANAR_V)+fillStartU, 128, fillSizeU);
+    switch(pixelsize) {
+    case 1: memset(p + fillStart, plane_default_black[0], fillSize); break;
+    case 2: std::fill_n((uint16_t *)(p + fillStart), fillSize / sizeof(uint16_t), plane_default_black[0]); break;
+    case 4: std::fill_n((float *)(p + fillStart), fillSize / sizeof(float), (float)plane_default_black[0] / 255.0f); break;
+    }
+
+    // first plane is already processed
+    // dont't touch Alpha
+    for (int p = 1; p < 3; p++) {
+      const int plane = planes[p];
+      BYTE *dstp = dst->GetWritePtr(plane);
+
+      const int fillSize = (dst->GetHeight(plane)-src->GetHeight(plane)) * dst->GetPitch(plane);
+      const int fillStart = src->GetHeight(plane) * dst->GetPitch(plane);
+      int chroma_fill = plane_default_black[p];
+      switch(pixelsize) {
+      case 1: memset(dstp+fillStart, RGB ? 0 : chroma_fill, fillSize); break;
+      case 2: std::fill_n((uint16_t *)(dstp + fillStart), fillSize / sizeof(uint16_t), chroma_fill); break;
+      case 4: std::fill_n((float *)(dstp + fillStart), fillSize / sizeof(float), RGB ? 0.0f : 0.5f); break;
+      }
+    }
   }
 
+  // counters
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  int bufsize = sizeof(uint32_t)*show_size;
+  uint32_t *histPlane1 = static_cast<uint32_t*>(env2->Allocate(bufsize * 3, 16, AVS_NORMAL_ALLOC));
+  uint32_t *histPlanes[3] = { histPlane1, histPlane1 + show_size, histPlane1 + 2 * show_size };
+  if (!histPlane1)
+    env->ThrowError("Histogram: Could not reserve memory.");
+  std::fill_n(histPlane1, show_size*3, 0);
+
+  // copy planes
+  // luma or G
   env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   if (vi.IsPlanar()) {
-    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-
-    int histY[256] = { 0 };
-    int histU[256] = { 0 };
-    int histV[256] = { 0 };
-
-    const BYTE* pY = src->GetReadPtr(PLANAR_Y);
-    const BYTE* pU = src->GetReadPtr(PLANAR_U);
-    const BYTE* pV = src->GetReadPtr(PLANAR_V);
-
-    const int wy = src->GetRowSize(PLANAR_Y);
-    const int hy = src->GetHeight(PLANAR_Y);
-    const int wu = src->GetRowSize(PLANAR_U);
-    const int hu = src->GetHeight(PLANAR_U);
-    const int pitU = src->GetPitch(PLANAR_U);
-    const int pitY = src->GetPitch(PLANAR_Y);
-
-    // luma
-    for (int y = 0; y < hy; y++) {
-      for (int x = 0; x < wy; x++) {
-        histY[pY[y*pitY+x]]++;
-      }
+    // copy rest planes
+    for (int p = 1; p < vi.NumComponents(); p++) {
+      const int plane = planes[p];
+      env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
     }
 
-    // chroma
-    for (int y = 0; y < hu; y++) {
-      for (int x = 0; x < wu; x++) {
-        histU[pU[y*pitU+x]]++;
-        histV[pV[y*pitU+x]]++;
-      }
-    }
+    // accumulate population
+    for (int p = 0; p < 3; p++) {
+      const int plane = planes[p];
+      const BYTE* srcp = src->GetReadPtr(plane);
 
-    unsigned char* pdstb = dst->GetWritePtr(PLANAR_Y);
-    pdstb += wy;
+      const int w = src->GetRowSize(plane) / pixelsize;
+      const int h = src->GetHeight(plane);
+      const int pitch = src->GetPitch(plane) / pixelsize;
 
-    const int dstPitch = dst->GetPitch(PLANAR_Y);
+      // accumulator of current plane
+      // size: show_size (256 or 1024)
+      uint32_t *hist = histPlanes[p];
 
-    // Clear Y
-    for (int y = 0; y<dst->GetHeight(); y++) {
-      memset(&pdstb[y*dstPitch], 16, 256);
-    }
+      if(pixelsize==1) {
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            hist[srcp[y*pitch + x]]++;
+          }
+        }
+      }
+      else if (pixelsize == 2) {
+        const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
+        int shift = bits_per_pixel - show_bits;
+        int max_pixel_value = show_size - 1;
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            hist[min(srcp16[x] >> shift, max_pixel_value)]++;
+          }
+          srcp16 += pitch;
+        }
+      }
+      else {
+        // float
+        const float *srcp32 = reinterpret_cast<const float *>(srcp);
+        const float multiplier = (float)(show_size - 1);
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier)]++;
+          }
+          srcp32 += pitch;
+        }
+      }
+    } // accumulate end
 
-    // Draw Unsafe zone (Y-graph)
-    for (int y = 0; y<=64; y++) {
-      int x = 0;
-      for (; x<16; x++) {
-        pdstb[dstPitch*y+x] = 32;
-      }
-      x += 220;
-      for (; x<256; x++) {
-        pdstb[dstPitch*y+x] = 32;
-      }
-    }
+    int width = src->GetRowSize() / pixelsize;
+    int pos_shift = (show_bits - 8);
+    int show_middle_pos = (128 << pos_shift);
+    // draw planes
+    for (int p = 0; p < 3; p++) {
+      const int plane = planes[p];
+      const BYTE* srcp = src->GetReadPtr(plane);
 
-    // Draw Unsafe zone (UV-graph)
+      //const int w = src->GetRowSize(plane) / pixelsize;
+      //const int h = src->GetHeight(plane);
+      //const int pitch = src->GetPitch(plane) / pixelsize;
 
-    // x=0-16, R=G=255, B=0; x=128, R=G=B=0; x=240-255, R=G=0, B=255
-    // Draw upper gradient
-    for (int y = 64+16; y<=128+16; y++) {
-      int x = 0;
-      for (; x<15; x++) {
-        pdstb[dstPitch*y+x] = 210/2;
-      }
-      for (; x<=128; x++) {
-        pdstb[dstPitch*y + x] = (unsigned char)(((128 - x) * 15) >> 3); // *1.875
-      }
-      for (; x<=240; x++) {
-        pdstb[dstPitch*y + x] = (unsigned char)(((x - 128) * 24001) >> 16); // *0.366
-      }
-      for (; x<256; x++) {
-        pdstb[dstPitch*y+x] = 41/2;
-      }
-    }
+      int swidth = vi.GetPlaneWidthSubsampling(plane);
+      int sheight = vi.GetPlaneHeightSubsampling(plane);
 
+      // Draw Unsafe zone (UV-graph)
+
+
+      unsigned char* pdstb = dst->GetWritePtr(plane);
+      pdstb += width*pixelsize; // next to the source image
+
+      const int dstPitch = dst->GetPitch(plane);
+
+      // Clear Y/U/V or B, R G
+      BYTE *ptr = pdstb;
+      int color = plane_default_black[p];
+      for (int y = 0; y < dst->GetHeight(); y++) {
+        switch (pixelsize) {
+        case 1: memset(ptr, color, show_size >> swidth); break;
+        case 2: std::fill_n((uint16_t *)(ptr), show_size >> swidth, color); break;
+        case 4: std::fill_n((float *)(ptr), show_size >> swidth, (float)color / 255); break;
+        }
+        ptr += dstPitch;
+      }
+
+      // Draw Unsafe zone (Y-graph)
+      int color_unsafeZones[3] = { 32, 16, 160 };
+
+      int color_usz = color_unsafeZones[p];
+      int color_i = color_usz << (bits_per_pixel - 8);
+      float color_f = color / 255.0f;
+      ptr = pdstb + 0 * dstPitch;;
+      for (int y = 0; y <= 64 >> sheight; y++) {
+        int x = 0;
+        for (; x < (16 << pos_shift) >> swidth; x++) {
+          if (pixelsize == 1)
+            ptr[x] = color_i;
+          else if (pixelsize == 2)
+            reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
+          else
+            reinterpret_cast<float *>(ptr)[x] = color_f;
+        }
+        for (x = (236 << pos_shift) >> swidth; x < (show_size >> swidth); x++) {
+          if (pixelsize == 1)
+            ptr[x] = color_i;
+          else if (pixelsize == 2)
+            reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
+          else
+            reinterpret_cast<float *>(ptr)[x] = color_f;
+        }
+        ptr += dstPitch;
+      }
+
+
+      for (int gradient_upper_lower = 0; gradient_upper_lower < 2; gradient_upper_lower++)
+      {
+        // Draw upper and lower gradient
+      // upper: x=0-16, R=G=255, B=0; x=128, R=G=B=0; x=240-255, R=G=0, B=255
+      // lower: x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
+        int color1_upper_lower_gradient[2][3] = { { 210 / 2, 16 + 112 / 2, 128 },{ 170 / 2, 128, 16 + 112 / 2 } };
+        int color = color1_upper_lower_gradient[gradient_upper_lower][p];
+        int color_i = color << (bits_per_pixel - 8);
+        float color_f = color / 255.0f;
+
+        int color2_upper_lower_gradient[2][3] = { { 41 / 2, 240 - 112 / 2, 128 },{ 81 / 2, 128, 240 - 112 / 2 } };
+        int color2 = color2_upper_lower_gradient[gradient_upper_lower][p];
+        int color2_i = color2 << (bits_per_pixel - 8);
+        float color2_f = color2 / 255.0f;
+
+        // upper only for planar U and Y
+        if (plane == PLANAR_V && gradient_upper_lower == 0)
+          continue;
+        // lower only for planar V and Y
+        if (plane == PLANAR_U && gradient_upper_lower == 1)
+          continue;
+        int StartY = gradient_upper_lower == 0 ? 64 + 16 : 128 + 32;
+        ptr = pdstb + ((StartY) >> sheight) * dstPitch;
+        for (int y = (StartY) >> sheight; y <= (StartY + 64) >> sheight; y++) {
+          int x = 0;
+
+          for (; x < ((16 << pos_shift) >> swidth) - 1; x++) { // 0..15, 0..63
+            if (pixelsize == 1)      ptr[x] = color_i;
+            else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
+            else                  reinterpret_cast<float *>(ptr)[x] = color_f;
+          }
+
+          if (plane == PLANAR_Y) {
+            for (; x <= show_middle_pos; x++) {
+              int color3 =
+                (gradient_upper_lower == 0) ?
+                (((show_middle_pos - x) * 15) >> 3) >> pos_shift : // *1.875
+                ((show_middle_pos - x) * 99515) >> 16 >> pos_shift; // *1.518
+              int color3_i = color3 << (bits_per_pixel - 8);
+              float color3_f = color3 / 255.0f;
+              if (pixelsize == 1)      ptr[x] = color3_i;
+              else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color3_i;
+              else                  reinterpret_cast<float *>(ptr)[x] = color3_f;
+            }
+          }
+
+          for (; x <= (240 << pos_shift) >> swidth; x++) {
+            int color4 = (plane == PLANAR_Y) ?
+                (
+                (gradient_upper_lower == 0) ?
+                ((x - show_middle_pos) * 24001) >> 16 >> pos_shift :  // *0.366
+                ((x - show_middle_pos) * 47397) >> 16 >> pos_shift // *0.723
+                )
+              :
+              (x << swidth) >> pos_shift;
+            int color4_i = color4 << (bits_per_pixel - 8);
+            float color4_f = color4 / 255.0f;
+            if (pixelsize == 1)      ptr[x] = color4_i;
+            else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color4_i;
+            else                  reinterpret_cast<float *>(ptr)[x] = color4_f;
+          }
+
+          for (; x<(show_size >> swidth); x++) {
+            if (pixelsize == 1)       ptr[x] = color2_i;
+            else if (pixelsize == 2)  reinterpret_cast<uint16_t *>(ptr)[x] = color2_i;
+            else                   reinterpret_cast<float *>(ptr)[x] = color2_f;
+          }
+          ptr += dstPitch;
+        } // for y gradient draw
+      } // gradient for upper lower
+    } // planes for
+    /*
     // x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
     //  Draw lower gradient
     for (int y = 128+32; y<=128+64+32; y++) {
@@ -875,35 +1045,80 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         pdstb[dstPitch*y+x] = 81/2;
       }
     }
-
+    */
     // Draw dotted centerline
+    int color = 128;
+    int color_i = color << (bits_per_pixel - 8);
+    float color_f = 0.5f;
+
+    const int dstPitch = dst->GetPitch(PLANAR_Y);
+
+    unsigned char* pdstb = dst->GetWritePtr(PLANAR_Y);
+    pdstb += width*pixelsize; // next to the original clip
+    BYTE *ptr = pdstb;
+
     for (int y = 0; y<=256-32; y++) {
-      if ((y&3)>1)
-        pdstb[dstPitch*y+128] = 128;
-    }
+      if ((y&3)>1) {
+        if(pixelsize==1)       ptr[show_middle_pos] = color_i;
+        else if(pixelsize==2)  reinterpret_cast<uint16_t *>(ptr)[show_middle_pos] = color_i;
+        else                   reinterpret_cast<float *>(ptr)[show_middle_pos] = color_f;
 
-    // Draw Y histograms
-    const int clampval = (int)((hy*wy)*option.AsDblDef(100.0)/100.0); // Population limit % factor
-    int maxval = 0;
-    for (int i = 0; i<256; i++) {
-      if (histY[i] > clampval) histY[i] = clampval;
-      maxval = max(histY[i], maxval);
-    }
-
-    float scale = float(64.0 / maxval);
-
-    for (int x = 0; x<256; x++) {
-      float scaled_h = (float)histY[x] * scale;
-      int h = 64 -  min((int)scaled_h, 64)+1;
-      int left = (int)(220.0f*(scaled_h-(float)((int)scaled_h)));
-
-      for (int y = 64+1; y > h; y--) {
-        pdstb[x+y*dstPitch] = 235;
       }
-      pdstb[x + h*dstPitch] = (unsigned char)(16 + left);
+      ptr += dstPitch;
     }
 
-    const int clampvalUV = (int)((hu*wu)*option.AsDblDef(100.0)/100.0); // Population limit % factor
+    for (int n = 0; n < 3; n++) {
+      // Draw Y histograms
+      const uint32_t clampval = (int)((src_width*src_height)*option.AsDblDef(100.0) / 100.0); // Population limit % factor
+      uint32_t maxval = 0;
+      uint32_t *hist;
+
+      hist = histPlanes[n];
+      for (int i = 0; i < show_size; i++) {
+        if (hist[i] > clampval) hist[i] = clampval;
+        maxval = max(hist[i], maxval);
+      }
+
+      float scale = float(64.0 / maxval);
+
+      int color = 235;
+      int color_i = color << (bits_per_pixel - 8); // igazából max_luma
+      float color_f = 0.5f;
+
+      int Y_pos;
+      switch (n) {
+      case 0: Y_pos = 64; break;
+      case 1: Y_pos = 128 + 16; break;
+      case 2: Y_pos = 192 + 32; break;
+      }
+
+      for (int x = 0; x < show_size; x++) {
+        float scaled_h = (float)hist[x] * scale;
+        int h = Y_pos - min((int)scaled_h, 64) + 1;
+        int left = (int)(220.0f*(scaled_h - (float)((int)scaled_h))); // color, scaled later
+
+        ptr = pdstb + (Y_pos + 1) * dstPitch;
+        for (int y = Y_pos + 1; y > h; y--) {
+          //pdstb[x + y*dstPitch] = 235;
+          if (pixelsize == 1)       ptr[x] = color_i;
+          else if (pixelsize == 2)  reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
+          else                   reinterpret_cast<float *>(ptr)[x] = color_f;
+          ptr -= dstPitch;
+        }
+        int color_top = (16 + left);
+        int color_top_i = color_top << (bits_per_pixel - 8); // igazából max_luma
+        float color_top_f = color_top / 255.0f;
+
+        ptr = pdstb + h*dstPitch;
+        if (pixelsize == 1)       ptr[x] = color_top_i;
+        else if (pixelsize == 2)  reinterpret_cast<uint16_t *>(ptr)[x] = color_top_i;
+        else                   reinterpret_cast<float *>(ptr)[x] = color_top_f;
+
+        //pdstb[x + h*dstPitch] = color_i;
+      }
+    }
+/*
+    const int clampvalUV = (int)((src_height*src_width)*option.AsDblDef(100.0)/100.0); // Population limit % factor
 
     // Draw U
     maxval = 0;
@@ -943,12 +1158,13 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       }
       pdstb[x + h*dstPitch] = (unsigned char)(16 + left);
     }
-
+*/
+    /*
     // Draw chroma
     unsigned char* pdstbU = dst->GetWritePtr(PLANAR_U);
     unsigned char* pdstbV = dst->GetWritePtr(PLANAR_V);
-    pdstbU += wu;
-    pdstbV += wu;
+    pdstbU += src_width*pixelsize;
+    pdstbV += src_width*pixelsize;
 
     // Clear chroma
     int dstPitchUV = dst->GetPitch(PLANAR_U);
@@ -1002,7 +1218,10 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         pdstbV[dstPitchUV*y+x] = 240-112/2;
       }
     }
+    */
   }
+
+  env2->Free(histPlane1);
 
   return dst;
 }
@@ -1144,5 +1363,5 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
   if (!lstrcmpi(st_m, "audiolevels"))
     mode = ModeAudioLevels;
 
-  return new Histogram(args[0].AsClip(), mode, args[2], env);
+  return new Histogram(args[0].AsClip(), mode, args[2], args[3].AsInt(8), env);
 }
