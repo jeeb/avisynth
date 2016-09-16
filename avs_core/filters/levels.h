@@ -97,6 +97,9 @@ private:
   int pixelsize;
   int bits_per_pixel; // 8,10..16
   bool use_lut;
+
+  unsigned int *accum_r, *accum_g, *accum_b;
+
 };
 
 

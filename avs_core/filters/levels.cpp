@@ -833,8 +833,15 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
         int real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
         int pixel_max = lookup_size - 1;
 
-        // worst case
-        unsigned int accum_r[65536], accum_g[65536], accum_b[65536];
+        // worst case: 65536 for even 10 bits, too. Possible garbage
+        auto env2 = static_cast<IScriptEnvironment2*>(env);
+        int bufsize = real_lookup_size * sizeof(uint32_t);
+        // allocate 3x bufsize for R. G and B will share it
+        accum_r = static_cast<uint32_t*>(env2->Allocate(bufsize*3 , 16, AVS_NORMAL_ALLOC));
+        accum_g = accum_r + real_lookup_size;
+        accum_b = accum_g + real_lookup_size;
+        if (!accum_r)
+          env->ThrowError("RGBAdjust: Could not reserve memory.");
 
         for (int i = 0; i < lookup_size; i++) {
           accum_r[i] = 0;
@@ -929,6 +936,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
             Amax_r, Amax_g, Amax_b
         );
         env->ApplyMessage(&frame, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
+        env2->Free(accum_r);
     }
     return frame;
 }
@@ -1120,7 +1128,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   if (pixelsize == 4)
     dither_strength /= 256.0f;
   else
-    dither_strength = (1 << (bits_per_pixel - 8)) * dither_strength; // base: 8-bit lookup
+    dither_strength = /*(1 << (bits_per_pixel - 8)) * */ dither_strength; // base: 8-bit lookup
     // make dither_strength = 4.0 for 10 bits, 256.0 for 16 bits in order to have same dither range as for 8 bit
     // when 1.0 (default) is given as parameter
 
@@ -1128,7 +1136,17 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
     // lut scale settings
     scale_dither_luma = 256; // lower 256 is dither value
     divisor_dither_luma *= 256;
-    bias_dither_luma = -(256.0f * dither_strength - 1) / 2; // -127.5;
+    bias_dither_luma = -(256.0f * dither_strength - 1) / 2;
+    // original bias: -127.5 or -(256.0f * dither_strength - 1) / 2;
+    // dither strength =1 = (1 << (8-8))
+    // dither min: int( (0*1-127.5)/256+0.5) = -0.498046875 + 0.5 = 0,001953125
+    // dither max: int( (255*1-127.5)/256+0.5) = 0,998046875
+
+    // 16 bit: 32767,5
+    // dither strength =256 = (1 << (16-8))
+    // dither min: int( (0*256-32767,5)/256+0.5)   = -127,498046875
+    // dither max: int( (255*256-32767,5)/256+0.5) = 127,501953125
+
 
     scale_dither_chroma = 16; // lower 16 is dither value
     divisor_dither_chroma *= 16;
