@@ -141,7 +141,9 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
     divisor = in_max - in_min;
 
   int scale = 1;
-  double bias = 0.0;
+  //double bias = 0.0;
+
+  dither_strength = 1.0f; // later: from parameter as Tweak
 
   pixelsize = vi.ComponentSize();
   bits_per_pixel = vi.BitsPerComponent(); // 8,10..16
@@ -151,29 +153,37 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
   // No lookup for float. todo: slow on-the-fly realtime calculation
 
   int lookup_size = 1 << bits_per_pixel; // 256, 1024, 4096, 16384, 65536
-  int real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
-  int pixel_max = lookup_size - 1;
+  real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
+  int max_pixel_value = (1 << bits_per_pixel) - 1;
 
   use_lut = bits_per_pixel != 32; // for float: realtime (todo)
 
   if (!use_lut)
     dither = false;
 
-  int tv_range_low   = 16 << (bits_per_pixel - 8); // 16
-  int tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
-  int range_luma = tv_range_hi_luma - tv_range_low; // 219
+  tv_range_low   = 16 << (bits_per_pixel - 8); // 16
+  tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
+  range_luma = tv_range_hi_luma - tv_range_low; // 219
 
-  int tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
-  int range_chroma = tv_range_hi_chroma - tv_range_low; // 224
+  tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+  range_chroma = tv_range_hi_chroma - tv_range_low; // 224
 
-  int middle_chroma = 1 << (bits_per_pixel - 1); // 128
+  middle_chroma = 1 << (bits_per_pixel - 1); // 128
+
+  if (pixelsize == 4)
+    dither_strength /= 65536.0f; // same dither range as for a 16 bit clip
 
   if (dither) {
     // lut scale settings
+    // same 256*dither for chroma and luma
     scale = 256; // lower 256 is dither value
     divisor *= 256;
     in_min *= 256;
-    bias = -((1 << bits_per_pixel) - 1) / 2; // -127.5 for 8 bit, scaling because of dithershift
+    bias_dither = -(256.0f * dither_strength - 1) / 2; // -127.5 for 8 bit, scaling because of dithershift
+  }
+  else {
+    scale = 1;
+    bias_dither = 0.0f;
   }
 
   // one buffer for map and mapchroma
@@ -186,13 +196,13 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
     if (!map)
       env->ThrowError("Levels: Could not reserve memory.");
     env->AtExit(free_buffer, map);
-    if(bits_per_pixel>=10 && bits_per_pixel<=14)
-      std::fill_n(map, bufsize, 0); // 8 and 16 bit fully overwrites
+    if(bits_per_pixel>8 && bits_per_pixel<16) // make lut table safe for 10-14 bit garbage
+      std::fill_n(map, bufsize, 0); // 8 and 16 bit is safe
   }
 
   if (vi.IsYUV() || vi.IsYUVA())
   {
-    mapchroma = map + pixelsize * real_lookup_size * scale;
+    mapchroma = map + pixelsize * real_lookup_size * scale; // pointer offset
 
     for (int i = 0; i<lookup_size*scale; ++i) {
       double p;
@@ -221,31 +231,29 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
 
       int ii;
       if(dither) {
-        int i_base = i & ~0xFF;
-        int i_dithershift = (i & 0xFF) << (bits_per_pixel - 8);
-        ii = i_base + i_dithershift; // otherwise dither has no visible effect on 10..16 bit
+        ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
       }
       else {
         ii = i;
       }
 
       if (coring)
-        p = ((bias + ii - tv_range_low *scale)*((double)pixel_max/range_luma) - in_min) / divisor;
+        p = ((bias_dither + ii - tv_range_low *scale)*((double)max_pixel_value/range_luma) - in_min) / divisor;
       else
-        p = (bias + ii - in_min) / divisor;
+        p = (bias_dither + ii - in_min) / divisor;
 
       p = pow(clamp(p, 0.0, 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
 
-      int q = (int)(((bias + ii - middle_chroma*scale) * (out_max-out_min)) / divisor + middle_chroma + 0.5);
+      int q = (int)(((bias_dither + ii - middle_chroma*scale) * (out_max-out_min)) / divisor + middle_chroma + 0.5);
 
       int luma, chroma;
       if (coring) {
-        luma = clamp(int(p*((double)range_luma/pixel_max)+tv_range_low + 0.5), tv_range_low, tv_range_hi_luma);
+        luma = clamp(int(p*((double)range_luma/max_pixel_value)+tv_range_low + 0.5), tv_range_low, tv_range_hi_luma);
         chroma = clamp(q, tv_range_low, tv_range_hi_chroma);
       } else {
-        luma = clamp(int(p+0.5), 0, pixel_max);
-        chroma = clamp(q, 0, pixel_max);
+        luma = clamp(int(p+0.5), 0, max_pixel_value);
+        chroma = clamp(q, 0, max_pixel_value);
       }
 
       if(pixelsize==1) {
@@ -265,20 +273,19 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
     for (int i = 0; i<lookup_size*scale; ++i) {
       int ii;
       if(dither) {
-        int i_base = dither ? (i & ~0xFF) : i;
-        int i_dithershift = dither ? (i & 0xFF) << (bits_per_pixel - 8) : 0;
-        ii = i_base + i_dithershift; // otherwise dither has no visible effect on 10..16 bit
+        ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
       }
       else {
         ii = i;
       }
-      double p = (bias + ii - in_min) / divisor;
+      double p = (bias_dither + ii - in_min) / divisor;
       p = pow(clamp(p, 0.0, 1.0), gamma);
-      p = clamp((int)(p * (out_max - out_min) + out_min + 0.5), 0, pixel_max);
+      p = clamp((int)(p * (out_max - out_min) + out_min + 0.5), 0, max_pixel_value);
       if(pixelsize==1)
         map[i] = (BYTE)p; // 0..255
-      else
+      else if(pixelsize==2)
         reinterpret_cast<uint16_t *>(map)[i] = (uint16_t)p;
+      // no lookup for float
     }
   }
 }
@@ -590,8 +597,9 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     // No lookup for float. todo: slow on-the-fly realtime calculation
 
     int lookup_size = 1 << bits_per_pixel; // 256, 1024, 4096, 16384, 65536
-    int real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
-    int pixel_max = lookup_size - 1;
+    real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
+    max_pixel_value = (1 << bits_per_pixel) - 1;
+    dither_strength = 1.0f; // fixed
 
     use_lut = bits_per_pixel != 32; // for float: realtime (todo)
 
@@ -611,36 +619,32 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
       if (!mapR)
           env->ThrowError("RGBAdjust: Could not reserve memory.");
       env->AtExit(free_buffer, mapR);
-      if(bits_per_pixel>=10 && bits_per_pixel<=14)
+      if(bits_per_pixel>8 && bits_per_pixel<16) // make lut table safe for 10-14 bit garbage
         std::fill_n(mapR, one_bufsize * number_of_maps, 0); // 8 and 16 bit fully overwrites
       mapG = mapR + one_bufsize;
       mapB = mapG + one_bufsize;
       mapA = number_of_maps == 4 ? mapB + one_bufsize : nullptr;
 
-      void(*set_map)(BYTE*, int, int, const double, const double, const double);
+      void(*set_map)(BYTE*, int, int, float, const double, const double, const double);
       if (dither) {
-          set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, const double c0, const double c1, const double c2) {
-              double bias = -((1 << bits_per_pixel) - 1) / 2; // -127.5 for 8 bit, scaling because of dithershift
+          set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, float dither_strength, const double c0, const double c1, const double c2) {
+              double bias_dither = -(256.0f * dither_strength - 1) / 2; // -127.5 for 8 bit, scaling because of dithershift
               double pixel_max = (1 << bits_per_pixel) - 1;
               if(bits_per_pixel == 8) {
                 for (int i = 0; i < lookup_size * 256; ++i) {
-                  int i_base = i & ~0xFF;
-                  int i_dithershift = (i & 0xFF) << (bits_per_pixel - 8);
-                  int ii = ii = i_base + i_dithershift; // otherwise dither has no visible effect on 10..16 bit
-                  map[i] = BYTE(pow(clamp((c0 * 256 + ii * c1 - bias) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
+                  int ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
+                  map[i] = BYTE(pow(clamp((c0 * 256 + ii * c1 - bias_dither) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
                 }
               }
               else {
                 for (int i = 0; i < lookup_size * 256; ++i) {
-                  int i_base = i & ~0xFF;
-                  int i_dithershift = (i & 0xFF) << (bits_per_pixel - 8);
-                  int ii = ii = i_base + i_dithershift; // otherwise dither has no visible effect on 10..16 bit
-                  reinterpret_cast<uint16_t *>(map)[i] = uint16_t(pow(clamp((c0 * 256 + ii * c1 - bias) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
+                  int ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
+                  reinterpret_cast<uint16_t *>(map)[i] = uint16_t(pow(clamp((c0 * 256 + ii * c1 - bias_dither) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
                 }
               }
           };
       } else {
-          set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, const double c0, const double c1, const double c2) {
+          set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, float dither_strength, const double c0, const double c1, const double c2) {
             double pixel_max = (1 << bits_per_pixel) - 1;
             if(bits_per_pixel==8) {
               for (int i = 0; i < lookup_size; ++i) { // fix of bug introduced in an earlier refactor was: i < 256 * 256
@@ -655,11 +659,11 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
           };
       }
 
-      set_map(mapR, lookup_size, bits_per_pixel, rb, r, rg);
-      set_map(mapG, lookup_size, bits_per_pixel, gb, g, gg);
-      set_map(mapB, lookup_size, bits_per_pixel, bb, b, bg);
+      set_map(mapR, lookup_size, bits_per_pixel, dither_strength, rb, r, rg);
+      set_map(mapG, lookup_size, bits_per_pixel, dither_strength, gb, g, gg);
+      set_map(mapB, lookup_size, bits_per_pixel, dither_strength, bb, b, bg);
       if (number_of_maps == 4)
-          set_map(mapA, lookup_size, bits_per_pixel, ab, a, ag);
+          set_map(mapA, lookup_size, bits_per_pixel, dither_strength, ab, a, ag);
     }
 }
 
@@ -1126,11 +1130,9 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   bias_dither_chroma = 0.0;
 
   if (pixelsize == 4)
-    dither_strength /= 256.0f;
-  else
-    dither_strength = /*(1 << (bits_per_pixel - 8)) * */ dither_strength; // base: 8-bit lookup
-    // make dither_strength = 4.0 for 10 bits, 256.0 for 16 bits in order to have same dither range as for 8 bit
-    // when 1.0 (default) is given as parameter
+    dither_strength /= 65536.0f; // same dither range as for a 16 bit clip
+  // Set dither_strength = 4.0 for 10 bits or 256.0 for 16 bits in order to have same dither range as for 8 bits
+  // Otherwise dithering is always +/- 0.5 at all bit-depth
 
   if (dither) {
     // lut scale settings
@@ -1201,7 +1203,10 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   realcalc_chroma = realcalc;
   if (vi.IsPlanar() && (bits_per_pixel > 10))
     realcalc_chroma = true;
+  if (vi.IsPlanar() && (bits_per_pixel == 32))
+    realcalc_luma = true;
   // 8/10bit: chroma lut OK. 12+ bits: force no lookup tables.
+  // 8-16bit: luma lut OK. float: force no lookup tables.
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 

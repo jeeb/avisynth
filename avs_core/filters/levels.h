@@ -67,6 +67,23 @@ private:
   int pixelsize;
   int bits_per_pixel; // 8,10..16
   bool use_lut;
+
+  int max_pixel_value;
+  int lut_size;
+  int real_lookup_size;
+
+  int tv_range_low;
+  int tv_range_hi_luma;
+  int range_luma;
+
+  int tv_range_hi_chroma;
+  int range_chroma;
+
+  int middle_chroma;
+
+  float bias_dither;
+
+  float dither_strength;
 };
 
 
@@ -97,6 +114,17 @@ private:
   int pixelsize;
   int bits_per_pixel; // 8,10..16
   bool use_lut;
+
+  int max_pixel_value;
+  int lut_size;
+  int real_lookup_size;
+
+  int tv_range_low;
+  int tv_range_hi_luma;
+  int range_luma;
+
+  float dither_strength;
+  float bias_dither;
 
   unsigned int *accum_r, *accum_g, *accum_b;
 
