@@ -71,11 +71,8 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
   pixelsize = vi.ComponentSize();
   bits_per_pixel = vi.BitsPerComponent();
 
-  if(show_bits < 8 || show_bits>10)
-    env->ThrowError("Histogram: bits parameter can only be 8 or 10");
-
-  if(show_bits > bits_per_pixel)
-    show_bits = bits_per_pixel; // cannot show 10 bit levels for a 8 bit clip
+  if(show_bits < 8 || show_bits>12)
+    env->ThrowError("Histogram: bits parameter can only be 8, 9 .. 12");
 
   if (mode == ModeClassic) {
     if (!vi.IsYUV() && !vi.IsYUVA())
@@ -782,7 +779,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
 PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
-  BYTE* p = dst->GetWritePtr();
+  BYTE* dstp = dst->GetWritePtr();
 
   int show_size = 1 << show_bits;
 
@@ -791,10 +788,11 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   int src_height = src->GetHeight();
 
   bool RGB = vi.IsRGB();
+  int color_shift = (bits_per_pixel == 32) ? 0 : (bits_per_pixel - 8);
   int plane_default_black[3] = {
-    RGB ? 0 : (16 << (bits_per_pixel - 8)),
-    RGB ? 0 : (128 << (bits_per_pixel - 8)),
-    RGB ? 0 : (128 << (bits_per_pixel - 8))
+    RGB ? 0 : (16 << color_shift),
+    RGB ? 0 : (128 << color_shift),
+    RGB ? 0 : (128 << color_shift)
   };
 
   const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
@@ -807,24 +805,24 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     const int fillStart = src->GetHeight() * dst->GetPitch();
 
     switch(pixelsize) {
-    case 1: memset(p + fillStart, plane_default_black[0], fillSize); break;
-    case 2: std::fill_n((uint16_t *)(p + fillStart), fillSize / sizeof(uint16_t), plane_default_black[0]); break;
-    case 4: std::fill_n((float *)(p + fillStart), fillSize / sizeof(float), (float)plane_default_black[0] / 255.0f); break;
+    case 1: memset(dstp + fillStart, plane_default_black[0], fillSize); break;
+    case 2: std::fill_n((uint16_t *)(dstp + fillStart), fillSize / sizeof(uint16_t), plane_default_black[0]); break;
+    case 4: std::fill_n((float *)(dstp + fillStart), fillSize / sizeof(float), (float)plane_default_black[0] / 255.0f); break;
     }
 
     // first plane is already processed
     // dont't touch Alpha
     for (int p = 1; p < 3; p++) {
       const int plane = planes[p];
-      BYTE *dstp = dst->GetWritePtr(plane);
+      BYTE *ptr = dst->GetWritePtr(plane);
 
       const int fillSize = (dst->GetHeight(plane)-src->GetHeight(plane)) * dst->GetPitch(plane);
       const int fillStart = src->GetHeight(plane) * dst->GetPitch(plane);
       int chroma_fill = plane_default_black[p];
       switch(pixelsize) {
-      case 1: memset(dstp+fillStart, RGB ? 0 : chroma_fill, fillSize); break;
-      case 2: std::fill_n((uint16_t *)(dstp + fillStart), fillSize / sizeof(uint16_t), chroma_fill); break;
-      case 4: std::fill_n((float *)(dstp + fillStart), fillSize / sizeof(float), RGB ? 0.0f : 0.5f); break;
+      case 1: memset(ptr+fillStart, RGB ? 0 : chroma_fill, fillSize); break;
+      case 2: std::fill_n((uint16_t *)(ptr + fillStart), fillSize / sizeof(uint16_t), chroma_fill); break;
+      case 4: std::fill_n((float *)(ptr + fillStart), fillSize / sizeof(float), RGB ? 0.0f : 0.5f); break;
       }
     }
   }
@@ -840,7 +838,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
   // copy planes
   // luma or G
-  env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  env->BitBlt(dstp, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   if (vi.IsPlanar()) {
     // copy rest planes
     for (int p = 1; p < vi.NumComponents(); p++) {
@@ -862,21 +860,38 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       uint32_t *hist = histPlanes[p];
 
       if(pixelsize==1) {
+        const uint8_t *srcp8 = reinterpret_cast<const uint8_t *>(srcp);
+        int invshift = show_bits - bits_per_pixel;
+        // 8 bit clip into 8,9,... bit histogram
         for (int y = 0; y < h; y++) {
           for (int x = 0; x < w; x++) {
-            hist[srcp[y*pitch + x]]++;
+            hist[(int)srcp8[x] << invshift]++;
+            //hist[srcp[y*pitch + x]]++;
           }
+          srcp8 += pitch;
         }
       }
       else if (pixelsize == 2) {
         const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
         int shift = bits_per_pixel - show_bits;
         int max_pixel_value = show_size - 1;
-        for (int y = 0; y < h; y++) {
-          for (int x = 0; x < w; x++) {
-            hist[min(srcp16[x] >> shift, max_pixel_value)]++;
+        if (shift < 0) {
+          // 10 bit clip into 11 bit histogram
+          int invshift = -shift;
+          for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+              hist[srcp16[x] << invshift]++;
+            }
+            srcp16 += pitch;
           }
-          srcp16 += pitch;
+        } else {
+          // e.g.10 bit clip into 8-9-10 bit histogram
+          for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+              hist[min(srcp16[x] >> shift, max_pixel_value)]++;
+            }
+            srcp16 += pitch;
+          }
         }
       }
       else {
@@ -911,14 +926,14 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
 
       unsigned char* pdstb = dst->GetWritePtr(plane);
-      pdstb += width*pixelsize; // next to the source image
+      pdstb += (width*pixelsize) >> swidth; // next to the source image
 
       const int dstPitch = dst->GetPitch(plane);
 
       // Clear Y/U/V or B, R G
       BYTE *ptr = pdstb;
       int color = plane_default_black[p];
-      for (int y = 0; y < dst->GetHeight(); y++) {
+      for (int y = 0; y < dst->GetHeight() >> sheight; y++) {
         switch (pixelsize) {
         case 1: memset(ptr, color, show_size >> swidth); break;
         case 2: std::fill_n((uint16_t *)(ptr), show_size >> swidth, color); break;
@@ -931,7 +946,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       int color_unsafeZones[3] = { 32, 16, 160 };
 
       int color_usz = color_unsafeZones[p];
-      int color_i = color_usz << (bits_per_pixel - 8);
+      int color_i = color_usz << color_shift;
       float color_f = color / 255.0f;
       ptr = pdstb + 0 * dstPitch;;
       for (int y = 0; y <= 64 >> sheight; y++) {
@@ -963,12 +978,12 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       // lower: x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
         int color1_upper_lower_gradient[2][3] = { { 210 / 2, 16 + 112 / 2, 128 },{ 170 / 2, 128, 16 + 112 / 2 } };
         int color = color1_upper_lower_gradient[gradient_upper_lower][p];
-        int color_i = color << (bits_per_pixel - 8);
+        int color_i = color << color_shift;
         float color_f = color / 255.0f;
 
         int color2_upper_lower_gradient[2][3] = { { 41 / 2, 240 - 112 / 2, 128 },{ 81 / 2, 128, 240 - 112 / 2 } };
         int color2 = color2_upper_lower_gradient[gradient_upper_lower][p];
-        int color2_i = color2 << (bits_per_pixel - 8);
+        int color2_i = color2 << color_shift;
         float color2_f = color2 / 255.0f;
 
         // upper only for planar U and Y
@@ -994,11 +1009,11 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
                 (gradient_upper_lower == 0) ?
                 (((show_middle_pos - x) * 15) >> 3) >> pos_shift : // *1.875
                 ((show_middle_pos - x) * 99515) >> 16 >> pos_shift; // *1.518
-              int color3_i = color3 << (bits_per_pixel - 8);
+              int color3_i = color3 << color_shift;
               float color3_f = color3 / 255.0f;
               if (pixelsize == 1)      ptr[x] = color3_i;
               else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color3_i;
-              else                  reinterpret_cast<float *>(ptr)[x] = color3_f;
+              else                     reinterpret_cast<float *>(ptr)[x] = color3_f;
             }
           }
 
@@ -1011,7 +1026,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
                 )
               :
               (x << swidth) >> pos_shift;
-            int color4_i = color4 << (bits_per_pixel - 8);
+            int color4_i = color4 << color_shift;
             float color4_f = color4 / 255.0f;
             if (pixelsize == 1)      ptr[x] = color4_i;
             else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color4_i;
@@ -1048,13 +1063,13 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     */
     // Draw dotted centerline
     int color = 128;
-    int color_i = color << (bits_per_pixel - 8);
+    int color_i = color << color_shift;
     float color_f = 0.5f;
 
     const int dstPitch = dst->GetPitch(PLANAR_Y);
 
     unsigned char* pdstb = dst->GetWritePtr(PLANAR_Y);
-    pdstb += width*pixelsize; // next to the original clip
+    pdstb += (width*pixelsize); // next to the original clip, Y plane: no ">> swidth" needed
     BYTE *ptr = pdstb;
 
     for (int y = 0; y<=256-32; y++) {
@@ -1082,8 +1097,8 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       float scale = float(64.0 / maxval);
 
       int color = 235;
-      int color_i = color << (bits_per_pixel - 8); // igazából max_luma
-      float color_f = 0.5f;
+      int color_i = color << color_shift; // igazából max_luma
+      float color_f = color / 255.0f;
 
       int Y_pos;
       switch (n) {
@@ -1106,7 +1121,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
           ptr -= dstPitch;
         }
         int color_top = (16 + left);
-        int color_top_i = color_top << (bits_per_pixel - 8); // igazából max_luma
+        int color_top_i = color_top << color_shift; // igazából max_luma
         float color_top_f = color_top / 255.0f;
 
         ptr = pdstb + h*dstPitch;
