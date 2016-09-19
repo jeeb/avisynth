@@ -198,10 +198,10 @@ private:
 // todo: separate file?
 typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range);
 
-class ConvertTo8bit : public GenericVideoFilter
+class ConvertBits : public GenericVideoFilter
 {
 public:
-  ConvertTo8bit(PClip _child, const float _float_range, const int _dither_mode, const int _source_bitdepth, const int _truerange, IScriptEnvironment* env);
+  ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -211,54 +211,14 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 private:
   BitDepthConvFuncPtr conv_function;
+  BitDepthConvFuncPtr conv_function_a;
   float float_range;
   int dither_mode;
   int pixelsize;
-  int source_bitdepth;
-  int truerange;
-};
-
-class ConvertTo16bit : public GenericVideoFilter
-{
-public:
-  ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, const int _source_bitdepth, const int _target_bitdepth, bool _truerange, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
-private:
-  BitDepthConvFuncPtr conv_function;
-  float float_range;
-  int dither_mode;
-  int pixelsize;
-  int source_bitdepth; // effective 10/12/14/16 bits within the 2 byte container
-  int target_bitdepth; // effective 10/12/14/16 bits within the 2 byte container
+  int bits_per_pixel;
+  int target_bitdepth;
   bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
-  bool change_only_format; // if 16->10 bit affects only pixel_type
+  bool format_change_only;
 };
-
-class ConvertToFloat : public GenericVideoFilter
-{
-public:
-  ConvertToFloat(PClip _child, const float _float_range, const int _source_bitdepth, bool _truerange, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
-private:
-  BitDepthConvFuncPtr conv_function;
-  float float_range;
-  int source_bitdepth; // effective 10/12/14/16 bits within the 2 byte container
-  bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
-  int pixelsize;
-};
-
-
 
 #endif
