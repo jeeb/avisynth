@@ -49,7 +49,7 @@
  ************************************/
 
 extern const AVSFunction Greyscale_filters[] = {
-  { "Greyscale", BUILTIN_FUNC_PREFIX, "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
+  { "Greyscale", BUILTIN_FUNC_PREFIX, "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average" or "rec2020"
   { "Grayscale", BUILTIN_FUNC_PREFIX, "c[matrix]s", Greyscale::Create },
   { 0 }
 };
@@ -67,8 +67,10 @@ Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
       matrix_ = Average;
     else if (!lstrcmpi(matrix, "rec601"))
       matrix_ = Rec601;
+    else if (!lstrcmpi(matrix, "rec2020"))
+      matrix_ = Rec2020;
     else
-      env->ThrowError("GreyScale: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\" or \"Average\")");
+      env->ThrowError("GreyScale: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"Rec2020\" or \"Average\")");
   }
   BuildGreyMatrix();
   pixelsize = vi.ComponentSize();
@@ -301,6 +303,8 @@ static void greyscale_planar_rgb_float_c(BYTE *srcp_r8, BYTE *srcp_g8, BYTE *src
 }
 
 void Greyscale::BuildGreyMatrix() {
+#if 0
+  // not used, kept for sample
   // 16 bit scaled
   const int cyavb_sc16 = 21845;   // const int cyav = int(0.333333*65536+0.5);
   const int cyavg_sc16 = 21845;
@@ -316,13 +320,14 @@ void Greyscale::BuildGreyMatrix() {
   const int cyr601_sc16 = 19595; // int(0.299*65536+0.5); // 19595
                                  // sum: 65536 OK
 
+
   const int cyb709_sc16 = 4732; // int(0.0722 * 65536 + 0.5); //  4732
   const int cyg709_sc16 = 46871; // int(0.7152 * 65536 + 0.5); // 46871
   const int cyr709_sc16 = 13933; // int(0.2126 * 65536 + 0.5); // 13933
                                  //  Sum: 65536 OK
                                  // This is the correct brigtness calculations (standardized in Rec. 709)
-
-                                 // 15 bit scaled
+#endif
+  // 15 bit scaled
                                  // PF check: int32 overflow in 16 bits
                                  // 32769 * 65535 + 16384 = 8000BFFF int32 overflow
                                  // 32768 * 65535 + 16384 = 7FFFC000 OK
@@ -355,9 +360,22 @@ void Greyscale::BuildGreyMatrix() {
   const float cyg709_f = 0.7152f;
   const float cyr709_f = 0.2126f;
 
+  // --- Rec2020
+  const int cyb2020_sc15 = 1943;  // int(0.0593 * 32768 + 0.5); // 1943
+  const int cyg2020_sc15 = 22217; // int(0.6780 * 32768 + 0.5); // 22217
+  const int cyr2020_sc15 = 8608;  // int(0.2627 * 32768 + 0.5); // 8608
+                                 // sum: 32768 OK
+  const float cyb2020_f = 0.0593f;
+  const float cyg2020_f = 0.6780f;
+  const float cyr2020_f = 0.2627f;
+
+
   if(matrix_ == Rec709) {
     greyMatrix.b   = cyb709_sc15; greyMatrix.g   = cyg709_sc15; greyMatrix.r   = cyr709_sc15;
     greyMatrix.b_f = cyb709_f;    greyMatrix.g_f = cyg709_f;    greyMatrix.r_f = cyr709_f;
+  } else if(matrix_ == Rec2020) {
+    greyMatrix.b   = cyb2020_sc15; greyMatrix.g   = cyg2020_sc15; greyMatrix.r   = cyr2020_sc15;
+    greyMatrix.b_f = cyb2020_f;    greyMatrix.g_f = cyg2020_f;    greyMatrix.r_f = cyr2020_f;
   } else if (matrix_ == Average) {
     greyMatrix.b   = cybav_sc15;  greyMatrix.g   = cygav_sc15;  greyMatrix.r   = cyrav_sc15;
     greyMatrix.b_f = cybav_f;     greyMatrix.g_f = cygav_f;     greyMatrix.r_f = cyrav_f;

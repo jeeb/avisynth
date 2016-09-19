@@ -49,7 +49,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
+extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", "rec709", "PC.601" or "PC.709" or "rec2020"
   { "ConvertToRGB",   BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)0 },
   { "ConvertToRGB24", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)24 },
   { "ConvertToRGB32", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)32 },
@@ -76,6 +76,7 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { 0 }
 };
 
+// for YUY2
 static const int crv_rec601 = int(1.596*65536+0.5);
 static const int cgv_rec601 = int(0.813*65536+0.5);
 static const int cgu_rec601 = int(0.391*65536+0.5);
@@ -99,6 +100,7 @@ static const int cbu_pc709 = int(1.863*65536+0.5);
 static const int cy_rec = int((255.0/219.0)*65536+0.5);
 static const int cy_pc = 65536;
 
+// still YUY2 only
 static const int crv_values[4] = { crv_rec601, crv_rec709, crv_pc601, crv_pc709 };
 static const int cgv_values[4] = { cgv_rec601, cgv_rec709, cgv_pc601, cgv_pc709 };
 static const int cgu_values[4] = { cgu_rec601, cgu_rec709, cgu_pc601, cgu_pc709 };
@@ -122,6 +124,8 @@ int getMatrix( const char* matrix, IScriptEnvironment* env) {
       return PC_709;
     if (!lstrcmpi(matrix, "AVERAGE"))
       return AVERAGE;
+    if (!lstrcmpi(matrix, "rec2020"))
+      return Rec2020;
     env->ThrowError("Convert: Unknown colormatrix");
   }
   return Rec601; // Default colorspace conversion for AviSynth
@@ -138,6 +142,7 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
                            : GenericVideoFilter(_child)
 {
   theMatrix = Rec601;
+  // no rec2020 here
   if (matrix) {
     if (!lstrcmpi(matrix, "rec709"))
       theMatrix = Rec709;
@@ -938,7 +943,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   }
 }
 
-// rgb: full scale. Difference to YUV: *257 instead of << 8 (full 16 bit sample)
+// rgb/alpha: full scale. Difference to YUV: *257 instead of << 8 (full 16 bit sample)
 template<uint8_t targetbits>
 static void convert_rgb_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {

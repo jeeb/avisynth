@@ -117,6 +117,15 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
       matrix.r_f = (float)((219.0/255.0)*0.2126);  //R
       matrix.offset_y = 16;
       matrix.offset_y_f = 16.0f / 256.0f;
+    } else if (in_matrix == Rec2020) {
+      matrix.b = (int16_t)((219.0/255.0)*0.0593*32768.0+0.5);  //B
+      matrix.g = (int16_t)((219.0/255.0)*0.6780*32768.0+0.5);  //G
+      matrix.r = (int16_t)((219.0/255.0)*0.2627*32768.0+0.5);  //R
+      matrix.b_f = (float)((219.0/255.0)*0.0593);  //B
+      matrix.g_f = (float)((219.0/255.0)*0.6780);  //G
+      matrix.r_f = (float)((219.0/255.0)*0.2627);  //R
+      matrix.offset_y = 16;
+      matrix.offset_y_f = 16.0f / 256.0f;
     } else if (in_matrix == PC_709) {
       matrix.b = (int16_t)(0.0722*32768.0+0.5);  //B
       matrix.g = (int16_t)(0.7152*32768.0+0.5);  //G
@@ -592,6 +601,9 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
   else if (in_matrix == AVERAGE) {
 
     BuildMatrix(1.0/3, /* 1.0/3 */ 1.0/3, 255, 127,  0, shift);
+  }
+  else if (in_matrix == Rec2020) {
+    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, 219, 112, 16, shift);
   }
   else {
     env->ThrowError("ConvertRGBToYV24: Unknown matrix.");
@@ -1093,6 +1105,9 @@ ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, int in_matrix, int _pixel_step
   else if (in_matrix == PC_709) {
 
     BuildMatrix(0.2126, /* 0.7152 */ 0.0722, 255, 127,  0, shift);
+  }
+  else if (in_matrix == Rec2020) {
+    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, 219, 112, 16, shift);
   }
   else if (in_matrix == AVERAGE) {
 

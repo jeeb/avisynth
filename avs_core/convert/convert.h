@@ -37,7 +37,7 @@
 
 #include "../core/internal.h"
 
-enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
+enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4, Rec2020=5 };
 int getMatrix( const char* matrix, IScriptEnvironment* env);
 
 /*****************************************************
@@ -66,7 +66,7 @@ inline int RGB2YUV(int rgb)
  *******   Colorspace GenericVideoFilter Classes   ******
  *******************************************************/
 
-
+// YUY2 only
 class ConvertToRGB : public GenericVideoFilter 
 /**
   * Class to handle conversion to RGB & RGBA
@@ -84,9 +84,10 @@ public:
 
 private:
   int theMatrix;
-  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	
+  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3};
 };
 
+// YUY2 only
 class ConvertToYV12 : public GenericVideoFilter 
 /**
   * Class for conversions to YV12

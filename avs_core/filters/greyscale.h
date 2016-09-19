@@ -66,7 +66,7 @@ private:
   void BuildGreyMatrix();
   GreyConversionMatrix greyMatrix;
   int matrix_;
-  enum {Rec601 = 0, Rec709, Average };
+  enum {Rec601 = 0, Rec709, Average, Rec2020 };
   int pixelsize;
   int bits_per_pixel;
 
