@@ -1856,17 +1856,19 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   if(dither_defined && dither_type != 0 && dither_type != -1)
     env->ThrowError("ConvertBits: invalid dither type parameter. Only -1 (disabled) or 0 (ordered dither) is allowed");
 
-  if(source_bitdepth - dither_bitdepth > 8)
-    env->ThrowError("ConvertBits: ditherbits cannot differ with more than 8 bits from source");
+  if(dither_defined) {
+    if(source_bitdepth - dither_bitdepth > 8)
+      env->ThrowError("ConvertBits: ditherbits cannot differ with more than 8 bits from source");
 
-  if(source_bitdepth < target_bitdepth && dither_defined)
-    env->ThrowError("ConvertBits: dithering is allowed only for scale down");
+    if(source_bitdepth < target_bitdepth)
+      env->ThrowError("ConvertBits: dithering is allowed only for scale down");
 
-  if(target_bitdepth!=8 && dither_defined)
-    env->ThrowError("ConvertBits: dithering is allowed only for 8 bit targets");
+    if(target_bitdepth!=8)
+      env->ThrowError("ConvertBits: dithering is allowed only for 8 bit targets");
+  }
 
   // no change -> return unmodified if no dithering required
-  if(source_bitdepth == target_bitdepth && dither_type < 0) // 10->10 .. 16->16
+  if(source_bitdepth == target_bitdepth /*&& dither_type < 0*/) // 10->10 .. 16->16
     return clip;
 
   // YUY2 conversion is limited
