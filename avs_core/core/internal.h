@@ -57,6 +57,7 @@ enum MANAGE_CACHE_KEYS
 
 #include <avisynth.h>
 #include "parser/script.h" // TODO we only need ScriptFunction from here
+#include <emmintrin.h>
 
 class AVSFunction {
 
@@ -194,6 +195,32 @@ static __inline bool IsClose(int a, int b, unsigned threshold)
 static __inline bool IsCloseFloat(float a, float b, float threshold)
 { return (a-b+threshold <= threshold*2); }
 
+// useful SIMD helpers
 
+// sse2 replacement of _mm_mullo_epi32 in SSE4.1
+// use it after speed test, may have too much overhead and C is faster
+__forceinline __m128i _MM_MULLO_EPI32(const __m128i &a, const __m128i &b)
+{
+  // for SSE 4.1: return _mm_mullo_epi32(a, b);
+  __m128i tmp1 = _mm_mul_epu32(a,b); // mul 2,0
+  __m128i tmp2 = _mm_mul_epu32( _mm_srli_si128(a,4), _mm_srli_si128(b,4)); // mul 3,1
+  // shuffle results to [63..0] and pack. a2->a1, a0->a0
+  return _mm_unpacklo_epi32(_mm_shuffle_epi32(tmp1, _MM_SHUFFLE (0,0,2,0)), _mm_shuffle_epi32(tmp2, _MM_SHUFFLE (0,0,2,0)));
+}
+
+// fake _mm_packus_epi32 (orig is SSE4.1 only)
+__forceinline __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
+{
+  a = _mm_slli_epi32 (a, 16);
+  a = _mm_srai_epi32 (a, 16);
+  b = _mm_slli_epi32 (b, 16);
+  b = _mm_srai_epi32 (b, 16);
+  a = _mm_packs_epi32 (a, b);
+  return a;
+}
+
+// unsigned short div 255
+#define SSE2_DIV255_U16(x) _mm_srli_epi16(_mm_mulhi_epu16(x, _mm_set1_epi16((short)0x8081)), 7)
+#define AVX2_DIV255_U16(x) _mm256_srli_epi16(_mm256_mulhi_epu16(x, _mm256_set1_epi16((short)0x8081)), 7)
 
 #endif  // __Internal_H__

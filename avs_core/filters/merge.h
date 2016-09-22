@@ -66,6 +66,7 @@ private:
   PClip clip;
   float weight;
   int pixelsize;
+  int bits_per_pixel;
 };
 
 
@@ -88,6 +89,7 @@ private:
   PClip clip;
   float weight;
   int pixelsize;
+  int bits_per_pixel;
 };
 
 
@@ -110,11 +112,18 @@ private:
   PClip clip;
   float weight;
   int pixelsize;
+  int bits_per_pixel;
 };
 
 typedef void(*MergeFuncPtr) (BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight);
 
+template<bool sse41, bool lessthat16bit>
 void weighted_merge_planar_uint16_sse41(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height, int weight, int invweight);
+// instantiate to let them access from other modules
+template void weighted_merge_planar_uint16_sse41<true, false>(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight);
+template void weighted_merge_planar_uint16_sse41<false, true>(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight);
+// other two cases are slower
+
 void weighted_merge_planar_sse2(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
 void weighted_merge_planar_mmx(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
 template<typename pixel_t>

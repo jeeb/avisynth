@@ -87,16 +87,6 @@ __forceinline __m128 simd_loadps_unaligned(const float* adr)
   return _mm_loadu_ps(adr);
 }
 
-// fake _mm_packus_epi32 (orig is SSE4.1 only)
-static __forceinline __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
-{
-  a = _mm_slli_epi32 (a, 16);
-  a = _mm_srai_epi32 (a, 16);
-  b = _mm_slli_epi32 (b, 16);
-  b = _mm_srai_epi32 (b, 16);
-  a = _mm_packs_epi32 (a, b);
-  return a;
-}
 
 /***************************************
  ***** Vertical Resizer Assembly *******

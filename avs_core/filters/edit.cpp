@@ -627,13 +627,14 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScri
     if (!(vi.IsSameColorspace(vi2)))
       env->ThrowError("Dissolve: video formats don't match");
 
-    pixelsize = vi.BytesFromPixels(1); // AVS16
+    pixelsize = vi.ComponentSize(); // AVS16
+    bits_per_pixel = vi.BitsPerComponent();
 
-	video_fade_start = vi.num_frames - overlap;
-	video_fade_end = vi.num_frames - 1;
+    video_fade_start = vi.num_frames - overlap;
+    video_fade_end = vi.num_frames - 1;
 
-	audio_fade_start = vi.AudioSamplesFromFrames(video_fade_start);
-	audio_fade_end = vi.AudioSamplesFromFrames(video_fade_end+1)-1;
+    audio_fade_start = vi.AudioSamplesFromFrames(video_fade_start);
+    audio_fade_end = vi.AudioSamplesFromFrames(video_fade_end+1)-1;
   }
   else {
 	video_fade_start = 0;
@@ -683,8 +684,18 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
     // similar to merge.cpp
     if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4_1)) {
-      // uint16: sse 4.1
-      weighted_merge_planar = &weighted_merge_planar_uint16_sse41;
+#if 0
+      in SSE4 lessthan16bit arithmetic is slower than the general path
+        if(bits_per_pixel < 16)
+          weighted_merge_planar = &weighted_merge_planar_uint16_sse41<true, true>;
+        else
+#endif
+        weighted_merge_planar = &weighted_merge_planar_uint16_sse41<true, false>;
+    }
+    else if ((pixelsize == 2) && (bits_per_pixel<16) && (env->GetCPUFlags() & CPUF_SSE2)) {
+      // using lessthan16bit signed short multiply routines
+      weighted_merge_planar = &weighted_merge_planar_uint16_sse41<false, true>;
+      // no SSE2 for 16 bit unsigned <false,false>: slooow!
     }
     else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2)) {
       // uint8: sse2

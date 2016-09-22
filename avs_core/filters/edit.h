@@ -171,6 +171,7 @@ private:
   BYTE* audbuffer;
   size_t audbufsize;
   int pixelsize;
+  int bits_per_pixel;
   void EnsureBuffer(int minsize);
 };
 
