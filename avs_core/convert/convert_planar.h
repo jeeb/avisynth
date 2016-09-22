@@ -217,6 +217,7 @@ private:
   int pixelsize;
   int bits_per_pixel;
   int target_bitdepth;
+  int dither_bitdepth;
   bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
   bool format_change_only;
 };
