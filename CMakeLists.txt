@@ -16,7 +16,7 @@ if(CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING "Reset the configurations to what we need" FORCE)
 endif()
 
-IF( MSVC_IDE )  # Check for Visual Studio
+IF( MSVC )  # Check for Visual Studio
 
   #1800      = VS 12.0 (v120 toolset)
   #1900      = VS 14.0 (v140 toolset)

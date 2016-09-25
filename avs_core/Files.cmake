@@ -39,7 +39,7 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "filters/exprfilter/*.h"
 )
 
-IF( MSVC_IDE )
+IF( MSVC )
     # Export definitions in general are not needed on x64 and only cause warnings,
     # unfortunately we still must need a .def file for some COM functions.
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
