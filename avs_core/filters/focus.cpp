@@ -1455,9 +1455,9 @@ static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size
 }
 
 
-static int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height)
+static int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
-  size_t mod16_width = width / 16 * 16;
+  size_t mod16_width = rowsize / 16 * 16;
   int result = 0;
   __m128i sum = _mm_setzero_si128();
   for (size_t y = 0; y < height; ++y) {
@@ -1467,8 +1467,8 @@ static int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
       __m128i sad = _mm_sad_epu8(cur, other);
       sum = _mm_add_epi32(sum, sad);
     }
-    if (mod16_width != width) {
-      for (size_t x = mod16_width; x < width; ++x) {
+    if (mod16_width != rowsize) {
+      for (size_t x = mod16_width; x < rowsize; ++x) {
         result += std::abs(cur_ptr[x] - other_ptr[x]);
       }
     }
@@ -1481,10 +1481,71 @@ static int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
   return result;
 }
 
-#ifdef X86_32
-static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height)
+template<typename pixel_t>
+__int64 calculate_sad16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
-  size_t mod8_width = width / 8 * 8;
+  size_t mod16_width = rowsize / 16 * 16;
+
+  __m128i zero = _mm_setzero_si128();
+  __int64 totalsum = 0; // fullframe SAD exceeds int32 at 8+ bit
+
+  for ( size_t y = 0; y < height; y++ )
+  {
+    __m128i sum = _mm_setzero_si128(); // for one row int is enough
+    for ( size_t x = 0; x < rowsize; x+=16 )
+    {
+      __m128i src1, src2;
+      src1 = _mm_load_si128((__m128i *) (cur_ptr + x));   // 16 bytes or 8 words
+      src2 = _mm_load_si128((__m128i *) (other_ptr + x));
+      if(sizeof(pixel_t) == 1) {
+        // this is uint_16 specific, but leave here for sample
+        sum = _mm_add_epi32(sum, _mm_sad_epu8(src1, src2)); // sum0_32, 0, sum1_32, 0
+      }
+      else if (sizeof(pixel_t) == 2) {
+        __m128i greater_t = _mm_subs_epu16(src1, src2); // unsigned sub with saturation
+        __m128i smaller_t = _mm_subs_epu16(src2, src1);
+        __m128i absdiff = _mm_or_si128(greater_t, smaller_t); //abs(s1-s2)  == (satsub(s1,s2) | satsub(s2,s1))
+        // 8 x uint16 absolute differences
+        sum = _mm_add_epi32(sum, _mm_unpacklo_epi16(absdiff, zero));
+        sum = _mm_add_epi32(sum, _mm_unpackhi_epi16(absdiff, zero));
+        // sum0_32, sum1_32, sum2_32, sum3_32
+      }
+    }
+    // summing up partial sums
+    if(sizeof(pixel_t) == 2) {
+      // at 16 bits: we have 4 integers for sum: a0 a1 a2 a3
+      __m128i a0_a1 = _mm_unpacklo_epi32(sum, zero); // a0 0 a1 0
+      __m128i a2_a3 = _mm_unpackhi_epi32(sum, zero); // a2 0 a3 0
+      sum = _mm_add_epi32( a0_a1, a2_a3 ); // a0+a2, 0, a1+a3, 0
+      /* SSSE3: told to be not too fast
+      sum = _mm_hadd_epi32(sum, zero);  // A1+A2, B1+B2, 0+0, 0+0
+      sum = _mm_hadd_epi32(sum, zero);  // A1+A2+B1+B2, 0+0+0+0, 0+0+0+0, 0+0+0+0
+      */
+    }
+    // sum here: two 32 bit partial result: sum1 0 sum2 0
+    __m128i sum_hi = _mm_unpackhi_epi64(sum, zero);
+    sum = _mm_add_epi32(sum, sum_hi);
+    int rowsum = _mm_cvtsi128_si32(sum);
+
+    // rest
+    if (mod16_width != rowsize) {
+      for (size_t x = mod16_width / sizeof(pixel_t); x < rowsize / sizeof(pixel_t); ++x) {
+        rowsum += std::abs(reinterpret_cast<const pixel_t *>(cur_ptr)[x] - reinterpret_cast<const pixel_t *>(other_ptr)[x]);
+      }
+    }
+
+    totalsum += rowsum;
+
+    cur_ptr += cur_pitch;
+    other_ptr += other_pitch;
+  }
+  return totalsum;
+}
+
+#ifdef X86_32
+static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
+{
+  size_t mod8_width = rowsize / 8 * 8;
   int result = 0;
   __m64 sum = _mm_setzero_si64();
   for (size_t y = 0; y < height; ++y) {
@@ -1494,8 +1555,8 @@ static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
       __m64 sad = _mm_sad_pu8(cur, other);
       sum = _mm_add_pi32(sum, sad);
     }
-    if (mod8_width != width) {
-      for (size_t x = mod8_width; x < width; ++x) {
+    if (mod8_width != rowsize) {
+      for (size_t x = mod8_width; x < rowsize; ++x) {
         result += std::abs(cur_ptr[x] - other_ptr[x]);
       }
     }
@@ -1515,25 +1576,32 @@ static __int64 calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int c
   const pixel_t *ptr1 = reinterpret_cast<const pixel_t *>(cur_ptr);
   const pixel_t *ptr2 = reinterpret_cast<const pixel_t *>(other_ptr);
   size_t width = rowsize / sizeof(pixel_t);
+  cur_pitch /= sizeof(pixel_t);
+  other_pitch /= sizeof(pixel_t);
 
-  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, __int64>::type sum_t;
+  // for fullframe float may loose precision
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, double, __int64>::type sum_t;
+  // for one row int is enough and faster than int64
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, int>::type sumrow_t;
   sum_t sum = 0;
 
   for (size_t y = 0; y < height; ++y) {
+    sumrow_t sumrow = 0;
     for (size_t x = 0; x < width; ++x) {
-      sum += std::abs(ptr1[x] - ptr2[x]);
+      sumrow += std::abs(ptr1[x] - ptr2[x]);
     }
+    sum += sumrow;
     ptr1 += cur_pitch / sizeof(pixel_t);
     ptr2 += other_pitch / sizeof(pixel_t);
   }
   if (std::is_floating_point<pixel_t>::value)
-    return (__int64)(sum * 256); // float defaulting to 0..1 range
+    return (__int64)(sum * 256); // scale 0..1 based sum to 8 bit range
   else
-    return (__int64)sum;
+    return (__int64)sum; // for int, scaling to 8 bit range is done outside
 }
 
 // sum of byte-diffs.
-static __int64 calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, IScriptEnvironment* env) {
+static __int64 calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   // todo: sse for 16bit/float
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
     return (__int64)calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
@@ -1543,14 +1611,17 @@ static __int64 calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur
     return (__int64)calculate_sad_isse(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #endif
+  // sse2 uint16_t
+  if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
+    return calculate_sad16_sse2<uint16_t>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height) >> (bits_per_pixel-8);
+  }
+
   switch(pixelsize) {
   case 1: return calculate_sad_c<uint8_t>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
-  case 2: return calculate_sad_c<uint16_t>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height) / 256;
+  case 2: return calculate_sad_c<uint16_t>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height) >> (bits_per_pixel-8); // scale back to 8 bit range;
   default: // case 4
     return calculate_sad_c<float>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
-
-
 }
 
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
@@ -1617,7 +1688,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       bool skiprest = false;
       for (int i = radius-1; i>=0; i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
-          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, pixelsize, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, pixelsize, bits_per_pixel, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
@@ -1632,7 +1703,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       skiprest = false;
       for (int i = radius; i < 2*radius; i++) { // Check forward frames
         if ((!skiprest)  && (!planeDisabled[i])) {   // Disable this frame on next plane (so that Y can affect UV)
-          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, pixelsize, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, pixelsize, bits_per_pixel, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
