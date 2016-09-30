@@ -135,6 +135,7 @@ public:
   void operator=(char **s)  { type = T_STR;    u.s = s; }
   void operator=(__int64 l) { type = T_LONG;   u.l = l; } // not used, only integer exists in avs
   void operator=(double d)  { type = T_DOUBLE; u.d = d; }
+  void operator=(float f)   { type = T_DOUBLE; u.d = (double)f; }
 };
 
 class CScriptValueStringHelper {
@@ -378,7 +379,7 @@ public:
 
 class FilterStateInfo {
 public:
-  long  lCurrentFrame;         // current output frame
+  long  lCurrentFrame;         // current sequence frame (previously called output frame)
   long  lMicrosecsPerFrame;    // microseconds per output frame
   long  lCurrentSourceFrame;   // current source frame
   long  lMicrosecsPerSrcFrame; // microseconds per source frame
@@ -744,11 +745,11 @@ public:
   void InvokeSyliaConfigFunction(FilterDefinition* fd, AVSValue args, IScriptEnvironment* env) {
     if (fd->script_obj && fd->script_obj->func_list && args.ArraySize() > 1) {
       for (ScriptFunctionDef* i = fd->script_obj->func_list; i->arg_list; i++) {
-        const char* p = i->arg_list;
+        const char* p = i->arg_list; // p: original virtualdub param list e.g. 0ddddddddd
         int j;
         for (j=1; j<args.ArraySize(); j++) {
           if (p[j] == 'i' && args[j].IsInt()) continue;
-          //else if (p[j] == 'l' && args[j].IsInt()) continue;  // n/a only Int in avs
+          else if (p[j] == 'l' && args[j].IsInt()) continue;    // param long is only Int in avs
           else if (p[j] == 'd' && args[j].IsFloat()) continue;  // 160420 type double support
           else if (p[j] == 's' && args[j].IsString()) continue;
           else if (p[j] == '.' && args[j].IsArray()) continue;
@@ -813,10 +814,27 @@ FilterDefinition *VDcall FilterAdd(FilterModule *fm, FilterDefinition *pfd, int 
     fd->next  = NULL;
   }
 
+  const int MAX_PARAMS = 64;
+  char converted_paramlist[MAX_PARAMS+1];
+
   fm->env->AddFunction(fm->avisynth_function_name, "c", VirtualdubFilterProxy::Create, fdl);
   if (fd->script_obj && fd->script_obj->func_list) {
     for (ScriptFunctionDef* i = fd->script_obj->func_list; i->arg_list; i++) {
-      const char* params = fm->env->Sprintf("c%s%s", i->arg_list+1, strchr(i->arg_list+1, '.') ? "*" : "");
+      // avisynth does not know 'd'ouble or 'l'ong
+      // let's fake them to 'f'loat and 'i'nt for avisynth
+      char *p_src = i->arg_list + 1;
+      char *p_target = converted_paramlist;
+      char ch;
+      while(ch = *p_src++ && (p_target-converted_paramlist)<MAX_PARAMS) {
+        if (ch == 'd') ch = 'f';
+        else if (ch == 'l') ch = 'i';
+        *p_target++ = ch;
+      }
+      *p_target = '\0';
+
+      const char* params = fm->env->Sprintf("c%s%s", converted_paramlist, strchr(i->arg_list+1, '.') ? "*" : "");
+      // put * if . found
+
       fm->env->AddFunction(fm->avisynth_function_name, params, VirtualdubFilterProxy::Create, fdl);
     }
   }
