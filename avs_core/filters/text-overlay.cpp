@@ -1245,12 +1245,12 @@ std::string GetCpuMsg(IScriptEnvironment * env)
   int flags = env->GetCPUFlags();
   std::stringstream ss;
 
-  if (flags & CPUF_FPU)
-    ss << "x87  ";
+  //if (flags & CPUF_FPU)
+  //  ss << "x87 ";
   if (flags & CPUF_MMX)
-    ss << "MMX  ";
+    ss << "MMX ";
   if (flags & CPUF_INTEGER_SSE)
-    ss << "ISSE  ";
+    ss << "ISSE ";
 
   if (flags & CPUF_SSE4_2)
     ss << "SSE4.2 ";
@@ -1261,13 +1261,19 @@ std::string GetCpuMsg(IScriptEnvironment * env)
   else if (flags & CPUF_SSE2)
     ss << "SSE2 ";
   else if (flags & CPUF_SSE)
-    ss << "SSE  ";
+    ss << "SSE ";
 
   if (flags & CPUF_SSSE3)
     ss << "SSSE3 ";
 
   if (flags & CPUF_AVX)
       ss << "AVX ";
+  if (flags & CPUF_AVX2)
+    ss << "AVX2 ";
+  if (flags & CPUF_FMA3)
+    ss << "FMA3 ";
+  if (flags & CPUF_F16C)
+    ss << "F16C ";
 
   if (flags & CPUF_3DNOW_EXT)
     ss << "3DNOW_EXT";

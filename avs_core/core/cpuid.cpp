@@ -45,15 +45,29 @@ static int CPUCheckForExtensions()
     result |= CPUF_SSE4_1;
   if (IS_BIT_SET(cpuinfo[2], 20))
     result |= CPUF_SSE4_2;
-
+  if (IS_BIT_SET(cpuinfo[2], 12))
+    result |= CPUF_FMA3;
+  if (IS_BIT_SET(cpuinfo[2], 22))
+    result |= CPUF_MOVBE;
+  if (IS_BIT_SET(cpuinfo[2], 23))
+    result |= CPUF_POPCNT;
+  if (IS_BIT_SET(cpuinfo[2], 25))
+    result |= CPUF_AES;
+  if (IS_BIT_SET(cpuinfo[2], 29))
+    result |= CPUF_F16C;
   // AVX
 #if (_MSC_FULL_VER >= 160040219)    // We require VC++2010 SP1 at least
   bool xgetbv_supported = IS_BIT_SET(cpuinfo[2], 27);
   bool avx_supported = IS_BIT_SET(cpuinfo[2], 28);
   if (xgetbv_supported && avx_supported)
   {
-    if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 0x6ull) == 0x6ull)
-      result |= CPUF_AVX;   
+    if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 0x6ull) == 0x6ull) {
+      result |= CPUF_AVX;
+      __cpuid(cpuinfo, 7);
+      if (IS_BIT_SET(cpuinfo[1], 5))
+        result |= CPUF_AVX2;
+    }
+
   }
 #endif
 
