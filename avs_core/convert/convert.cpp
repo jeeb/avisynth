@@ -43,6 +43,8 @@
 #include <avs/minmax.h>
 #include <emmintrin.h>
 #include <immintrin.h>
+#include <tuple>
+#include <map>
 
 
 
@@ -74,6 +76,8 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)16 },
   { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)32 },
   { "ConvertBits",    BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)0 },
+  { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask]f", AddAlphaPlane::Create},
+  { "RemoveAlphaPlane",  BUILTIN_FUNC_PREFIX, "c", RemoveAlphaPlane::Create},
   { 0 }
 };
 
@@ -1437,6 +1441,70 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   }
 }
 
+BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdepth, int dither_mode, int dither_bitdepth, int rgb_step, int cpu)
+{
+  std::map<std::tuple<bool, int, int, int, int, int>, BitDepthConvFuncPtr> func_copy;
+  using std::make_tuple;
+  /*
+  conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<10, -1, 8, 1> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<10, 0, 8, 1> : convert_rgb_uint16_to_8_c<10, -1, 8, 1>);
+  conv_function_full_scale_no_dither = sse2 ? convert_rgb_uint16_to_8_c<10, -1, 8, 1> : convert_rgb_uint16_to_8_c<10, -1, 8, 1>;
+  conv_function_shifted_scale = (sse2 && dither_mode<0) ? convert_uint16_to_8_sse2<10> : (dither_mode>=0 ? convert_uint16_to_8_c<10, 0, 8> : convert_uint16_to_8_c<10, -1, 8>);
+  */
+  const int DITHER_BITDEPTH = 8; // only 8 bit supported
+
+  // full scale
+
+  // no dither, C
+  func_copy[make_tuple(true, 10, -1, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<10, -1, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 12, -1, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<12, -1, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 14, -1, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<14, -1, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 16, -1, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_BITDEPTH, 1>;
+  // for RGB48 and RGB64 source
+  func_copy[make_tuple(true, 16, -1, DITHER_BITDEPTH, 3, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_BITDEPTH, 1>; // dither rgb_step param is n/a
+  func_copy[make_tuple(true, 16, -1, DITHER_BITDEPTH, 4, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_BITDEPTH, 1>; // dither rgb_step param is n/a
+  // full scale, no dither, SSE2
+  /* no sse2 yet
+  func_copy[make_tuple(true, 10, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, -1, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 12, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, -1, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 14, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<14, -1, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 16, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, -1, DITHER_BITDEPTH, 1>;
+  */
+  // for RGB48 and RGB64 source
+  func_copy[make_tuple(true, 16, -1, DITHER_BITDEPTH, 3, CPUF_SSE2)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_BITDEPTH, 1>; // dither rgb_step param is n/a
+  func_copy[make_tuple(true, 16, -1, DITHER_BITDEPTH, 4, CPUF_SSE2)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_BITDEPTH, 1>; // dither rgb_step param is n/a
+  // full scale, dither, C
+  func_copy[make_tuple(true, 10, 0, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 12, 0, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<12, 0, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 14, 0, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<14, 0, DITHER_BITDEPTH, 1>;
+  func_copy[make_tuple(true, 16, 0, DITHER_BITDEPTH, 1, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_BITDEPTH, 1>;
+  // for RGB48 and RGB64 source
+  func_copy[make_tuple(true, 16, 0, DITHER_BITDEPTH, 3, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_BITDEPTH, 3>; // dither rgb_step param is filled
+  func_copy[make_tuple(true, 16, 0, DITHER_BITDEPTH, 4, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_BITDEPTH, 4>; // dither rgb_step param is filled
+
+  // shifted scale
+
+  // no dither, C
+  func_copy[make_tuple(false, 10, -1, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<10, -1, DITHER_BITDEPTH>;
+  func_copy[make_tuple(false, 12, -1, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<12, -1, DITHER_BITDEPTH>;
+  func_copy[make_tuple(false, 14, -1, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<14, -1, DITHER_BITDEPTH>;
+  func_copy[make_tuple(false, 16, -1, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<16, -1, DITHER_BITDEPTH>;
+  // no dither, SSE2
+  func_copy[make_tuple(false, 10, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<10>;
+  func_copy[make_tuple(false, 12, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<12>;
+  func_copy[make_tuple(false, 14, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<14>;
+  func_copy[make_tuple(false, 16, -1, DITHER_BITDEPTH, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<16>;
+  // dither, C
+  func_copy[make_tuple(false, 10, 0, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_BITDEPTH>;
+  func_copy[make_tuple(false, 12, 0, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<12, 0, DITHER_BITDEPTH>;
+  func_copy[make_tuple(false, 14, 0, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<14, 0, DITHER_BITDEPTH>;
+  func_copy[make_tuple(false, 16, 0, DITHER_BITDEPTH, 1, 0)] = convert_uint16_to_8_c<16, 0, DITHER_BITDEPTH>;
+
+  BitDepthConvFuncPtr result = func_copy[make_tuple(full_scale, source_bitdepth, dither_mode, dither_bitdepth, rgb_step, cpu)];
+  if (result == nullptr)
+    result = func_copy[make_tuple(full_scale, source_bitdepth, dither_mode, dither_bitdepth, rgb_step, 0)]; // fallback to C
+  return result;
+}
+
 
 ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, IScriptEnvironment* env) :
   GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange)
@@ -1721,42 +1789,21 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
 
       // fill conv_function_full_scale and conv_function_shifted_scale
       if (truerange) {
-        switch (bits_per_pixel)
-        {
-        case 10:
-          // no convert_rgb_uint16_to_8_c yet, choosing logic is left here for sample
-          conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<10, -1, 8, 1> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<10, 0, 8, 1> : convert_rgb_uint16_to_8_c<10, -1, 8, 1>);
-          conv_function_full_scale_no_dither = sse2 ? convert_rgb_uint16_to_8_c<10, -1, 8, 1> : convert_rgb_uint16_to_8_c<10, -1, 8, 1>;
-          conv_function_shifted_scale = (sse2 && dither_mode<0) ? convert_uint16_to_8_sse2<10> : (dither_mode>=0 ? convert_uint16_to_8_c<10, 0, 8> : convert_uint16_to_8_c<10, -1, 8>);
-          break;
-        case 12:
-          conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<12, -1, 8, 1> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<12, 0, 8, 1> : convert_rgb_uint16_to_8_c<12, -1, 8, 1>);
-          conv_function_full_scale_no_dither = sse2 ? convert_rgb_uint16_to_8_c<12, -1, 8, 1> : convert_rgb_uint16_to_8_c<12, -1, 8, 1>;
-          conv_function_shifted_scale = (sse2 && dither_mode<0) ? convert_uint16_to_8_sse2<12> : (dither_mode>=0 ? convert_uint16_to_8_c<12, 0, 8> : convert_uint16_to_8_c<12, -1, 8>);
-          break;
-        case 14:
-          conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<14, -1, 8, 1> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<14, 0, 8, 1> : convert_rgb_uint16_to_8_c<14, -1, 8, 1>);
-          conv_function_full_scale_no_dither = sse2 ? convert_rgb_uint16_to_8_c<14, -1, 8, 1> : convert_rgb_uint16_to_8_c<14, -1, 8, 1>;
-          conv_function_shifted_scale = (sse2 && dither_mode<0) ? convert_uint16_to_8_sse2<14> : (dither_mode>=0 ? convert_uint16_to_8_c<14, 0, 8> : convert_uint16_to_8_c<14, -1, 8>);
-          break;
-        case 16:
-          conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<16, -1, 8, 1> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<16, 0, 8, 1> : convert_rgb_uint16_to_8_c<16, -1, 8, 1>);
-          conv_function_full_scale_no_dither = sse2 ? convert_rgb_uint16_to_8_c<16, -1, 8, 1> : convert_rgb_uint16_to_8_c<16, -1, 8, 1>;
-          conv_function_shifted_scale = (sse2 && dither_mode<0) ? convert_uint16_to_8_sse2<16> : (dither_mode>=0 ? convert_uint16_to_8_c<16, 0, 8> : convert_uint16_to_8_c<16, -1, 8>);
-          break;
-        default: env->ThrowError("ConvertTo8bit: invalid source bitdepth");
-        }
+        conv_function_full_scale = get_convert_to_8_function(true, bits_per_pixel, dither_mode, 8, 1, CPUF_SSE2);
+        conv_function_full_scale_no_dither = get_convert_to_8_function(true, bits_per_pixel, -1, 8, 1, CPUF_SSE2); // force dither_mode==-1
+        conv_function_shifted_scale = get_convert_to_8_function(false, bits_per_pixel, dither_mode, 8, 1, CPUF_SSE2);
       }
       else {
-        if(vi.IsRGB48()) { // packed RGB: specify rgb_step for dither table access
-          conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<16, -1, 8, 3> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<16, 0, 8, 3> : convert_rgb_uint16_to_8_c<16, -1, 8, 3>);
-        } else if(vi.IsRGB64()) {
-          conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<16, -1, 8, 4> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<16, 0, 8, 4> : convert_rgb_uint16_to_8_c<16, -1, 8, 4>);
-        } else {
-          conv_function_full_scale = (sse2 && dither_mode<0) ? convert_rgb_uint16_to_8_c<16, -1, 8, 1> : (dither_mode>=0 ? convert_rgb_uint16_to_8_c<16, 0, 8, 1> : convert_rgb_uint16_to_8_c<16, -1, 8, 1>);
-        }
-        conv_function_full_scale_no_dither = sse2 ? convert_rgb_uint16_to_8_c<16, -1, 8, 1> : convert_rgb_uint16_to_8_c<16, -1, 8, 1>;
-        conv_function_shifted_scale = (sse2 && dither_mode<0) ? convert_uint16_to_8_sse2<16> :  (dither_mode>=0 ? convert_uint16_to_8_c<16, 0, 8> : convert_uint16_to_8_c<16, -1, 8>);
+        conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, 8, 1, CPUF_SSE2);
+        conv_function_full_scale_no_dither = get_convert_to_8_function(true, 16, -1, 8, 1, CPUF_SSE2);
+        conv_function_shifted_scale = get_convert_to_8_function(false, 16, dither_mode, 8, 1, CPUF_SSE2);
+      }
+
+      // override for RGB48 and 64 (internal rgb_step may differ when dithering is used
+      if(vi.IsRGB48()) { // packed RGB: specify rgb_step for dither table access
+        conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, 8, 3, CPUF_SSE2);
+      } else if(vi.IsRGB64()) {
+        conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, 8, 4, CPUF_SSE2);
       }
 
       // packed RGB scaling is full_scale 0..65535->0..255
@@ -1941,4 +1988,196 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
       src->GetPitch(), dst->GetPitch(), float_range /*, dither_mode */);
   }
   return dst;
+}
+
+AVSValue AddAlphaPlane::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  bool isMaskDefined = args[1].Defined();
+  // if mask is not defined and videoformat has Alpha then we return
+  const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
+  if (!isMaskDefined && (vi.IsPlanarRGBA() || vi.IsYUVA() || vi.IsRGB32() || vi.IsRGB64()))
+    return args[0].AsClip();
+  if (vi.IsRGB24()) {
+    AVSValue new_args[1] = { args[0].AsClip() };
+    PClip child = env->Invoke("ConvertToRGB32", AVSValue(new_args, 1)).AsClip();
+    return new AddAlphaPlane(child, (float)args[1].AsFloat(-1.0f), isMaskDefined, env);
+  } else if(vi.IsRGB48()) {
+    AVSValue new_args[1] = { args[0].AsClip() };
+    PClip child = env->Invoke("ConvertToRGB64", AVSValue(new_args, 1)).AsClip();
+    return new AddAlphaPlane(child, (float)args[1].AsFloat(-1.0f), isMaskDefined, env);
+  }
+  return new AddAlphaPlane(args[0].AsClip(), (float)args[1].AsFloat(-1.0f), isMaskDefined, env);
+}
+
+AddAlphaPlane::AddAlphaPlane(PClip _child, float _mask_f, bool isMaskDefined, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+{
+  if(vi.IsYUY2())
+    env->ThrowError("AddAlphaPlane: YUY2 is not allowed");
+  if(vi.IsY())
+    env->ThrowError("AddAlphaPlane: greyscale source is not allowed");
+  if(vi.IsYUV() && !vi.Is420() && !vi.Is422() && !vi.Is444()) // e.g. 410
+    env->ThrowError("AddAlphaPlane: format not supported");
+  if(!vi.IsYUV() && !vi.IsYUVA() && !vi.IsRGB())
+    env->ThrowError("AddAlphaPlane: format not supported");
+
+  pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
+
+  if (vi.IsYUV()) {
+    int pixel_type = vi.pixel_type;
+    if (vi.IsYV12())
+      pixel_type = VideoInfo::CS_YV12;
+    int new_pixel_type = (pixel_type & ~VideoInfo::CS_YUV) | VideoInfo::CS_YUVA;
+    vi.pixel_type = new_pixel_type;
+  } else if(vi.IsPlanarRGB()) {
+    int pixel_type = vi.pixel_type;
+    int new_pixel_type = (pixel_type & ~VideoInfo::CS_RGB_TYPE) | VideoInfo::CS_RGBA_TYPE;
+    vi.pixel_type = new_pixel_type;
+  }
+  // RGB24 and RGB48 already converted to 32/64
+  // RGB32, RGB64, YUVA and RGBA: no change
+
+  // mask parameter. If none->max transparency
+
+  int max_pixel_value = (1 << bits_per_pixel) - 1;
+  if(!isMaskDefined || _mask_f < 0) {
+    mask_f = 1.0f;
+    mask = max_pixel_value;
+  }
+  else {
+    mask_f = _mask_f;
+    if (mask_f < 0) mask_f = 0;
+    mask = (int)mask_f;
+
+    mask = clamp(mask, 0, max_pixel_value);
+    mask_f = clamp(mask_f, 0.0f, 1.0f);
+  }
+}
+
+PVideoFrame AddAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  if(vi.IsPlanar())
+  {
+    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+    // copy existing 3 planes
+    for (int p = 0; p < 3; ++p) {
+      const int plane = planes[p];
+      env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane),
+           src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
+    }
+  } else {
+    // Packed RGB, already converted to RGB32 or RGB64
+    env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(),
+      src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  }
+
+  if (vi.IsPlanarRGBA() || vi.IsYUVA()) {
+    const int dst_pitchA = dst->GetPitch(PLANAR_A);
+    BYTE* dstp_a = dst->GetWritePtr(PLANAR_A);
+    const int heightA = dst->GetHeight(PLANAR_A);
+
+    switch (vi.ComponentSize())
+    {
+    case 1:
+      fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, mask);
+      break;
+    case 2:
+      fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, mask);
+      break;
+    case 4:
+      fill_plane<float>(dstp_a, heightA, dst_pitchA, mask_f);
+      break;
+    }
+    return dst;
+  }
+  // RGB32 and RGB64
+
+  BYTE* pf = dst->GetWritePtr();
+  int pitch = dst->GetPitch();
+  int rowsize = dst->GetRowSize();
+  int height = dst->GetHeight();
+  int width = vi.width;
+
+  if(vi.IsRGB32()) {
+    for (int y = 0; y<height; y++) {
+      for (int x = 3; x<rowsize; x += 4) {
+        pf[x] = mask;
+      }
+      pf += pitch;
+    }
+  }
+  else if (vi.IsRGB64()) {
+    rowsize /= sizeof(uint16_t);
+    for (int y = 0; y<height; y++) {
+      for (int x = 3; x<rowsize; x += 4) {
+        reinterpret_cast<uint16_t *>(pf)[x] = mask;
+      }
+      pf += pitch;
+    }
+  }
+
+  return dst;
+}
+
+AVSValue RemoveAlphaPlane::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  // if videoformat has no Alpha then we return
+  const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
+  if(vi.IsPlanar() && (vi.IsYUV() || vi.IsPlanarRGB())) // planar and no alpha
+    return args[0].AsClip();
+  if(vi.IsRGB24() || vi.IsRGB48()) // packed RGB and no alpha
+    return args[0].AsClip();
+  if (vi.IsRGB32()) {
+    AVSValue new_args[1] = { args[0].AsClip() };
+    return env->Invoke("ConvertToRGB24", AVSValue(new_args, 1)).AsClip();
+  }
+  if (vi.IsRGB64()) {
+    AVSValue new_args[1] = { args[0].AsClip() };
+    return env->Invoke("ConvertToRGB48", AVSValue(new_args, 1)).AsClip();
+  }
+  return new RemoveAlphaPlane(args[0].AsClip(), env);
+}
+
+RemoveAlphaPlane::RemoveAlphaPlane(PClip _child, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+{
+  if(vi.IsYUY2())
+    env->ThrowError("RemoveAlphaPlane: YUY2 is not allowed");
+  if(vi.IsY())
+    env->ThrowError("RemoveAlphaPlane: greyscale source is not allowed");
+
+  if (vi.IsYUVA()) {
+    int pixel_type = vi.pixel_type;
+    int new_pixel_type = (pixel_type & ~VideoInfo::CS_YUVA) | VideoInfo::CS_YUV;
+    vi.pixel_type = new_pixel_type;
+  } else if(vi.IsPlanarRGBA()) {
+    int pixel_type = vi.pixel_type;
+    int new_pixel_type = (pixel_type & ~VideoInfo::CS_RGBA_TYPE) | VideoInfo::CS_RGB_TYPE;
+    vi.pixel_type = new_pixel_type;
+  }
+}
+
+PVideoFrame RemoveAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  if(vi.IsPlanar())
+  {
+    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+    // copy 3 planes w/o alpha
+    for (int p = 0; p < 3; ++p) {
+      const int plane = planes[p];
+      env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane),
+        src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
+    }
+  }
+  return dst;
+  // Packed RGB: already handled in ::Create through Invoke 32->24 or 64->48 conversion
 }

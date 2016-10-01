@@ -222,4 +222,36 @@ private:
   bool format_change_only;
 };
 
+class AddAlphaPlane : public GenericVideoFilter
+{
+public:
+  AddAlphaPlane(PClip _child, float _mask_f, bool isMaskDefined, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+private:
+  int mask;
+  float mask_f;
+  int pixelsize;
+  int bits_per_pixel;
+};
+
+class RemoveAlphaPlane : public GenericVideoFilter
+{
+public:
+  RemoveAlphaPlane(PClip _child, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+private:
+};
+
 #endif
