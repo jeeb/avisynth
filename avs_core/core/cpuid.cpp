@@ -56,7 +56,6 @@ static int CPUCheckForExtensions()
   if (IS_BIT_SET(cpuinfo[2], 29))
     result |= CPUF_F16C;
   // AVX
-#if (_MSC_FULL_VER >= 160040219)    // We require VC++2010 SP1 at least
   bool xgetbv_supported = IS_BIT_SET(cpuinfo[2], 27);
   bool avx_supported = IS_BIT_SET(cpuinfo[2], 28);
   if (xgetbv_supported && avx_supported)
@@ -69,7 +68,6 @@ static int CPUCheckForExtensions()
     }
 
   }
-#endif
 
   // 3DNow!, 3DNow!, and ISSE
   __cpuid(cpuinfo, 0x80000000);   
