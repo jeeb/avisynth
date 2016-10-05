@@ -1414,6 +1414,51 @@ static void convert_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_row
     }
 }
 
+template<bool expandrange, uint8_t shiftbits>
+static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  // remark: Compiler with SSE2 option generates the same effective code like this in C
+  // Drawback of SSE2: a future avx2 target gives more efficient code than inline SSE2 (256 bit registers)
+  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
+  src_pitch = src_pitch / sizeof(uint16_t);
+  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
+  dst_pitch = dst_pitch / sizeof(uint16_t);
+  int src_width = src_rowsize / sizeof(uint16_t);
+  int wmod = (src_width / 16) * 16;
+
+  __m128i shift = _mm_set_epi32(0,0,0,shiftbits);
+
+  // no dithering, no range conversion, simply shift
+  for(int y=0; y<src_height; y++)
+  {
+    for (int x = 0; x < src_width; x+=16)
+    {
+      __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
+      __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8)); // 8* uint16
+      if(expandrange) {
+        src_lo = _mm_sll_epi16(src_lo, shift);
+        src_hi = _mm_sll_epi16(src_hi, shift);
+      } else {
+        src_lo = _mm_srl_epi16(src_lo, shift);
+        src_hi = _mm_srl_epi16(src_hi, shift);
+      }
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), src_lo);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x+8), src_hi);
+    }
+    // rest
+    for (int x = wmod; x < src_width; x++)
+    {
+      if(expandrange)
+        dstp[x] = srcp[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
+      else
+        dstp[x] = srcp[x] >> shiftbits;  // reduce range
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+
 // 8 bit to float, 16/14/12/10 bits to float
 template<typename pixel_t, uint8_t sourcebits>
 static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
@@ -1426,7 +1471,8 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
 
   int src_width = src_rowsize / sizeof(pixel_t);
 
-  float max_src_pixelvalue = (float)((1<<sourcebits) - 1); // 255, 1023, 4095, 16383, 65535.0
+  const float max_src_pixelvalue = (float)((1<<sourcebits) - 1); // 255, 1023, 4095, 16383, 65535.0
+  const float factor = 1 / max_src_pixelvalue * float_range;
 
   // 0..255,65535 -> 0..float_range
 
@@ -1434,11 +1480,49 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   {
     for (int x = 0; x < src_width; x++)
     {
-      dstp0[x] = srcp0[x] / max_src_pixelvalue * float_range; //  or lookup
+      dstp0[x] = srcp0[x] * factor;
     }
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
   }
+  // seems we better stuck with C in the future on such a simple loops
+  // if we could put it in a separate file
+  // VS2015 AVX2 code for this:
+  // takes (8 uint16_t -> 8*float(256 bit) at a time) * unroll_by_2
+  // then makes singles with unrolled_by_4 until it can, then do the rest.
+  /*
+  AVX2 by VS2015: (8*uint16->8*float)xUnrollBy2
+  $LL7@convert_ui:
+    vpmovzxwd ymm0, XMMWORD PTR [esi+ecx*2]
+    vcvtdq2ps ymm0, ymm0
+    vmulps	ymm0, ymm0, ymm2
+    vmovups	YMMWORD PTR [edi+ecx*4], ymm0
+    vpmovzxwd ymm0, XMMWORD PTR [esi+ecx*2+16]
+    vcvtdq2ps ymm0, ymm0
+    vmulps	ymm0, ymm0, ymm2
+    vmovups	YMMWORD PTR [edi+ecx*4+32], ymm0
+    add	ecx, 16					; 00000010H
+    cmp	ecx, ebx
+    jl	SHORT $LL7@convert_ui
+
+  SSE2 by VS2015 (4*uint16->4*float)xUnrollBy2
+    $LL7@convert_ui:
+    movq	xmm1, QWORD PTR [ebp+ecx*2]
+    xorps	xmm0, xmm0
+    punpcklwd xmm1, xmm0
+    cvtdq2ps xmm0, xmm1
+    mulps	xmm0, xmm3
+    movups	XMMWORD PTR [ebx+ecx*4], xmm0
+    movq	xmm1, QWORD PTR [ebp+ecx*2+8]
+    xorps	xmm0, xmm0
+    punpcklwd xmm1, xmm0
+    cvtdq2ps xmm0, xmm1
+    mulps	xmm0, xmm3
+    movups	XMMWORD PTR [ebx+ecx*4+16], xmm0
+    add	ecx, 8
+    cmp	ecx, esi
+    jl	SHORT $LL7@convert_ui
+  */
 }
 
 BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdepth, int dither_mode, int dither_bitdepth, int rgb_step, int cpu)
@@ -1690,16 +1774,16 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
         if (bits_per_pixel > target_bitdepth) // reduce range 16->14/12/10 14->12/10 12->10. template: bitshift
           switch (bits_per_pixel - target_bitdepth)
           {
-          case 2: conv_function_shifted_scale = convert_uint16_to_uint16_c<false, 2>; break;
-          case 4: conv_function_shifted_scale = convert_uint16_to_uint16_c<false, 4>; break;
-          case 6: conv_function_shifted_scale = convert_uint16_to_uint16_c<false, 6>; break;
+          case 2: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<false, 2> : convert_uint16_to_uint16_c<false, 2>; break;
+          case 4: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<false, 4> : convert_uint16_to_uint16_c<false, 4>; break;
+          case 6: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<false, 6> : convert_uint16_to_uint16_c<false, 6>; break;
           }
         else // expand range
           switch (target_bitdepth - bits_per_pixel)
           {
-          case 2: conv_function_shifted_scale = convert_uint16_to_uint16_c<true, 2>; break;
-          case 4: conv_function_shifted_scale = convert_uint16_to_uint16_c<true, 4>; break;
-          case 6: conv_function_shifted_scale = convert_uint16_to_uint16_c<true, 6>; break;
+          case 2: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<true, 2> : convert_uint16_to_uint16_c<true, 2>; break;
+          case 4: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<true, 4> : convert_uint16_to_uint16_c<true, 4>; break;
+          case 6: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<true, 6> : convert_uint16_to_uint16_c<true, 6>; break;
           }
       }
       else {
