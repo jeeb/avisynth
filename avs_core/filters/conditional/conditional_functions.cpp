@@ -491,7 +491,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
   double sad = 0.0;
   if (vi.IsRGB32() || vi.IsRGB64()) {
     if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
+      sad = (double)get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
@@ -506,7 +506,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
       }
   } else {
     if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
+      sad = (double)get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
@@ -584,7 +584,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
   double sad = 0;
   if (vi.IsRGB32() || vi.IsRGB64()) {
     if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
+      sad = (double)get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
@@ -599,7 +599,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
       }
   } else {
     if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
+      sad = (double)get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
