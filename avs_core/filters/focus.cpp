@@ -1250,7 +1250,7 @@ static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, i
   if (std::is_floating_point<pixel_t>::value)
     threshold = threshold / 256; // float
   else if (sizeof(pixel_t) == 2)
-    threshold = threshold * (1 << (bits_per_pixel - 8)); // uint16_t, 10 bit: *4 16bit: *256
+    threshold = threshold * (uint16_t)(1 << (bits_per_pixel - 8)); // uint16_t, 10 bit: *4 16bit: *256
 
   for (size_t x = offset; x < width; ++x) {
     pixel_t current = c_plane[x];
