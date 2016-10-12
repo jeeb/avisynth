@@ -1056,7 +1056,7 @@ private:
     #ifdef X86_64
     // if ever, only x64 will support. It breaks struct size on 32 bit
     __int64 longlong; // 8 bytes
-    double double_pt  // 8 bytes
+    double double_pt; // 8 bytes
     #endif
   };
 
