@@ -2622,7 +2622,10 @@ success:;
     // Determine MT-mode, as if this instance had not called Invoke()
     // in its constructor. Note that this is not necessary the final
     // MT-mode.
-    if (fret.IsClip())
+    // PF 161012 hack(?) don't call if prefetch. If effective mt mode is MT_MULTI, then
+    // Prefetch create gets called again
+    // Prefetch is activated above in: fret = funcCtor->InstantiateFilter();
+    if (fret.IsClip() && strcmp(f->name, "Prefetch"))
     {
         const PClip &clip = fret.AsClip();
 
