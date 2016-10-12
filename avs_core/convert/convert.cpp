@@ -46,7 +46,8 @@
 #include <tuple>
 #include <map>
 
-
+#include "convert_avx.h"
+#include "convert_avx2.h"
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -1599,6 +1600,8 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
   format_change_only = false;
 
   bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2); // frames are always 16 bit aligned
+  bool avx =  !!(env->GetCPUFlags() & CPUF_AVX);
+  bool avx2 =  !!(env->GetCPUFlags() & CPUF_AVX2);
 
   BitDepthConvFuncPtr conv_function_full_scale;
   BitDepthConvFuncPtr conv_function_full_scale_no_dither;
@@ -1774,16 +1777,16 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
         if (bits_per_pixel > target_bitdepth) // reduce range 16->14/12/10 14->12/10 12->10. template: bitshift
           switch (bits_per_pixel - target_bitdepth)
           {
-          case 2: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<false, 2> : convert_uint16_to_uint16_c<false, 2>; break;
-          case 4: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<false, 4> : convert_uint16_to_uint16_c<false, 4>; break;
-          case 6: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<false, 6> : convert_uint16_to_uint16_c<false, 6>; break;
+          case 2: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<false, 2> : avx ? convert_uint16_to_uint16_c_avx<false, 2> : (sse2 ? convert_uint16_to_uint16_sse2<false, 2> : convert_uint16_to_uint16_c<false, 2>); break;
+          case 4: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<false, 4> : avx ? convert_uint16_to_uint16_c_avx<false, 4> : (sse2 ? convert_uint16_to_uint16_sse2<false, 4> : convert_uint16_to_uint16_c<false, 4>); break;
+          case 6: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<false, 6> : avx ? convert_uint16_to_uint16_c_avx<false, 6> : (sse2 ? convert_uint16_to_uint16_sse2<false, 6> : convert_uint16_to_uint16_c<false, 6>); break;
           }
         else // expand range
           switch (target_bitdepth - bits_per_pixel)
           {
-          case 2: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<true, 2> : convert_uint16_to_uint16_c<true, 2>; break;
-          case 4: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<true, 4> : convert_uint16_to_uint16_c<true, 4>; break;
-          case 6: conv_function_shifted_scale = sse2 ? convert_uint16_to_uint16_sse2<true, 6> : convert_uint16_to_uint16_c<true, 6>; break;
+          case 2: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<true, 2> : avx ? convert_uint16_to_uint16_c_avx<true, 2> : (sse2 ? convert_uint16_to_uint16_sse2<true, 2> : convert_uint16_to_uint16_c<true, 2>); break;
+          case 4: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<true, 4> : avx ? convert_uint16_to_uint16_c_avx<true, 4> : (sse2 ? convert_uint16_to_uint16_sse2<true, 4> : convert_uint16_to_uint16_c<true, 4>); break;
+          case 6: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<true, 6> : avx ? convert_uint16_to_uint16_c_avx<true, 6> : (sse2 ? convert_uint16_to_uint16_sse2<true, 6> : convert_uint16_to_uint16_c<true, 6>); break;
           }
       }
       else {
@@ -1815,14 +1818,14 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
       if (truerange) {
         switch (target_bitdepth)
         {
-        case 10: conv_function = convert_32_to_uintN_c<uint16_t, 10>; break;
-        case 12: conv_function = convert_32_to_uintN_c<uint16_t, 12>; break;
-        case 14: conv_function = convert_32_to_uintN_c<uint16_t, 14>; break;
-        case 16: conv_function = convert_32_to_uintN_c<uint16_t, 16>; break;
+        case 10: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 10> : avx ? convert_32_to_uintN_c_avx<uint16_t, 10> : convert_32_to_uintN_c<uint16_t, 10>; break;
+        case 12: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 12> : avx ? convert_32_to_uintN_c_avx<uint16_t, 12> : convert_32_to_uintN_c<uint16_t, 12>; break;
+        case 14: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 14> : avx ? convert_32_to_uintN_c_avx<uint16_t, 14> : convert_32_to_uintN_c<uint16_t, 14>; break;
+        case 16: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16> : convert_32_to_uintN_c<uint16_t, 16>; break;
         }
       }
       else {
-        conv_function = convert_32_to_uintN_c<uint16_t, 16>;
+        conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16> : convert_32_to_uintN_c<uint16_t, 16>;
       }
       conv_function_a = conv_function;
     }
@@ -1909,7 +1912,7 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
     else if (vi.ComponentSize() == 4) // 32->8 bit
     {
       // full scale
-      conv_function = convert_32_to_uintN_c<uint8_t, 8>;
+      conv_function = avx ? convert_32_to_uintN_c_avx<uint8_t, 8> : convert_32_to_uintN_c<uint8_t, 8>;
       conv_function_a = conv_function;
     }
     else
