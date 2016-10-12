@@ -580,7 +580,7 @@ void Convert444ToYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bit
       convert_yv24_chroma_to_yv12_isse(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
       convert_yv24_chroma_to_yv12_isse(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
     }
-    else {
+    else
 #endif
     {
       if(pixelsize==1) {
@@ -591,7 +591,7 @@ void Convert444ToYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bit
         convert_yv24_chroma_to_yv12_c<uint16_t>(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
         convert_yv24_chroma_to_yv12_c<uint16_t>(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
       }
-      else // if (pixelsize == 4)
+      else { // if (pixelsize == 4)
         convert_yv24_chroma_to_yv12_c<float>(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
         convert_yv24_chroma_to_yv12_c<float>(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
       }
