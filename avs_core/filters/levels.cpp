@@ -190,7 +190,7 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
   map = nullptr;
   if(use_lut) {
     auto env2 = static_cast<IScriptEnvironment2*>(env);
-    size_t number_of_maps = vi.IsYUV() || vi.IsYUVA() ? 2 : 1;
+    int number_of_maps = vi.IsYUV() || vi.IsYUVA() ? 2 : 1;
     int bufsize = pixelsize * real_lookup_size * scale * number_of_maps;
     map = static_cast<uint8_t*>(env2->Allocate(bufsize , 16, AVS_NORMAL_ALLOC));
     if (!map)

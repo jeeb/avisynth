@@ -1951,7 +1951,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   const VideoInfo &vi = clip->GetVideoInfo();
 
-  intptr_t create_param = (int)reinterpret_cast<intptr_t>(user_data);
+  int create_param = (int)reinterpret_cast<intptr_t>(user_data);
 
   // float range parameter
   float float_range = (float)args[4].AsFloat(1.0f);

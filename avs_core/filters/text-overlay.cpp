@@ -1394,6 +1394,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     // More flexible way: get text extent
     RECT r;
 
+#if 0
     if(false && !font_override)
     {
         // To prevent slowish full MxN rendering, we calculate a dummy
@@ -1422,7 +1423,9 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
         DrawText(hdcAntialias, s_horiz.c_str(), -1, &r0_h, DT_CALCRECT);
         // and use the width and height dimensions from the two results
         r = { 32, 16, min(32+(int)r0_h.right,vi.width * 8-1), min(16+int(r0_v.bottom), vi.height*8-1) }; // do not crop if larger font is used
-    } else {
+    } else
+#endif
+    {
         // font was overridden, may not be fixed type
         RECT r0 = { 0, 0, 100, 100 }; // do not crop if larger font is used
         DrawText(hdcAntialias, text, -1, &r0, DT_CALCRECT);

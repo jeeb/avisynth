@@ -410,9 +410,9 @@ static void af_horizontal_rgb32_64_c(BYTE* dstp8, size_t height, size_t pitch8, 
   weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
 
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
-  int pitch = pitch8 / sizeof(pixel_t);
+  size_t pitch = pitch8 / sizeof(pixel_t);
 
-  for (int y = height; y>0; --y)
+  for (size_t y = height; y>0; --y)
   {
     pixel_t b_left = dstp[0];
     pixel_t g_left = dstp[1];
