@@ -42,6 +42,21 @@
 #include "imghelpers.h"
 #include "blend_common.h"
 
+enum {
+  OF_Blend = 0,
+  OF_Add,
+  OF_Subtract,
+  OF_Multiply,
+  OF_Chroma,
+  OF_Luma,
+  OF_Lighten,
+  OF_Darken,
+  OF_SoftLight,
+  OF_HardLight,
+  OF_Difference,
+  OF_Exclusion
+};
+
 class OverlayFunction {
 public:
   OverlayFunction() {
@@ -49,12 +64,14 @@ public:
   void setOpacity(int _opacity) { opacity = clamp(_opacity,0,256); inv_opacity = 256-opacity; }
   void setEnv(IScriptEnvironment *_env) { env = _env;}
   void setBitsPerPixel(int _bits_per_pixel) { bits_per_pixel = _bits_per_pixel; }
+  void setMode(int _of_mode) { of_mode = _of_mode; }
   virtual void DoBlendImage(Image444* base, Image444* overlay) = 0;
   virtual void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) = 0;
 protected:
   int opacity;
   int inv_opacity;
   int bits_per_pixel;
+  int of_mode; // add/subtract, etc
   IScriptEnvironment *env;
 };
 
@@ -68,15 +85,18 @@ class OL_BlendImage : public OverlayFunction {
 private:
 };
 
+// common add/subtract
 class OL_AddImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);
   void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
   //template<typename pixel_t>
   //void BlendImage(Image444* base, Image444* overlay);
-  template<typename pixel_t, bool maskMode>
+  template<typename pixel_t, bool maskMode, bool of_add>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
+#if 0
+// common with Add
 class OL_SubtractImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);
   void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
@@ -85,6 +105,7 @@ class OL_SubtractImage : public OverlayFunction {
   template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
+#endif
 
 class OL_MultiplyImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);

@@ -482,9 +482,10 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
         ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
     }
 
-    OverlayFunction* func = SelectFunction(name, env);
+    OverlayFunction* func = SelectFunction(name, of_mode, env);
 
     // Process the image
+    func->setMode(of_mode);
     func->setBitsPerPixel(bits_per_pixel);
     func->setOpacity(opacity + op_offset);
     func->setEnv(env);
@@ -560,43 +561,68 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
  *************************/
 
 
-OverlayFunction* Overlay::SelectFunction(const char* name, IScriptEnvironment* env) {
+OverlayFunction* Overlay::SelectFunction(const char* name, int &of_mode, IScriptEnvironment* env) {
 
-  if (!lstrcmpi(name, "Blend"))
+  if (!lstrcmpi(name, "Blend")) {
+    of_mode = OF_Blend;
     return new OL_BlendImage();
+  }
 
-  if (!lstrcmpi(name, "Add"))
+  if (!lstrcmpi(name, "Add")) {
+    of_mode = OF_Add;
     return new OL_AddImage();
+  }
 
-  if (!lstrcmpi(name, "Subtract"))
-    return new OL_SubtractImage();
+  if (!lstrcmpi(name, "Subtract")) {
+    of_mode = OF_Subtract;
+    //return new OL_SubtractImage();
+    return new OL_AddImage(); // common with Add
+  }
 
-  if (!lstrcmpi(name, "Multiply"))
+  if (!lstrcmpi(name, "Multiply")) {
+    of_mode = OF_Multiply;
     return new OL_MultiplyImage();
+  }
 
-  if (!lstrcmpi(name, "Chroma"))
+  if (!lstrcmpi(name, "Chroma")) {
+    of_mode = OF_Chroma;
     return new OL_BlendChromaImage();
+  }
 
-  if (!lstrcmpi(name, "Luma"))
+  if (!lstrcmpi(name, "Luma")) {
+    of_mode = OF_Luma;
     return new OL_BlendLumaImage();
+  }
 
-  if (!lstrcmpi(name, "Lighten"))
+  if (!lstrcmpi(name, "Lighten")) {
+    of_mode = OF_Lighten;
     return new OL_LightenImage();
+  }
 
-  if (!lstrcmpi(name, "Darken"))
+  if (!lstrcmpi(name, "Darken")) {
+    of_mode = OF_Darken;
     return new OL_DarkenImage();
+  }
 
-  if (!lstrcmpi(name, "SoftLight"))
+  if (!lstrcmpi(name, "SoftLight")) {
+    of_mode = OF_SoftLight;
     return new OL_SoftLightImage();
+  }
 
-  if (!lstrcmpi(name, "HardLight"))
+  if (!lstrcmpi(name, "HardLight")) {
+    of_mode = OF_HardLight;
     return new OL_HardLightImage();
+  }
 
-  if (!lstrcmpi(name, "Difference"))
+  if (!lstrcmpi(name, "Difference")) {
+    of_mode = OF_Difference;
     return new OL_DifferenceImage();
+  }
 
-  if (!lstrcmpi(name, "Exclusion"))
+  if (!lstrcmpi(name, "Exclusion")) {
+    of_mode = OF_Exclusion;
     return new OL_ExclusionImage();
+  }
 
   env->ThrowError("Overlay: Invalid 'Mode' specified.");
   return 0;

@@ -39,6 +39,8 @@
 
 #include <stdint.h>
 
+#if 0
+// Common with OF_Add
 void OL_SubtractImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
@@ -202,4 +204,5 @@ void OL_SubtractImage::BlendImage(Image444* base, Image444* overlay) {
     }
   }
 }
+#endif
 

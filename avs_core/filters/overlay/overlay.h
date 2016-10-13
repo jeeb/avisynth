@@ -60,7 +60,7 @@ public:
   }
 
 private:
-  static OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
+  static OverlayFunction* SelectFunction(const char* name, int &of_mode, IScriptEnvironment* env);
 #if 0
   ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
   static ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env, bool full_range);
@@ -97,6 +97,8 @@ private:
 
   int pixelsize;
   int bits_per_pixel;
+  int of_mode;
+
 };
 
 
