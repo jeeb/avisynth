@@ -136,6 +136,7 @@ class OL_BlendChromaImage : public OverlayFunction {
 private:
 };
 
+#if 0
 class OL_LightenImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);
   void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
@@ -144,13 +145,15 @@ class OL_LightenImage : public OverlayFunction {
   template<typename pixel_t>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
+#endif
 
+// common darken/lighten
 class OL_DarkenImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);
   void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
-  template<typename pixel_t>
-  void BlendImage(Image444* base, Image444* overlay);
-  template<typename pixel_t>
+  //template<typename pixel_t>
+  //void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t, bool maskMode, bool of_darken>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 

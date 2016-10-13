@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#if 0
 void OL_LightenImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
@@ -147,7 +148,7 @@ void OL_LightenImage::BlendImage(Image444* base, Image444* overlay) {
     } else
 #endif
     {
-      overlay_lighten_c(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
+      overlay_lighten_c<uint8_t>(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
     }
   } else {
     for (int y = 0; y < h; y++) {
@@ -168,4 +169,4 @@ void OL_LightenImage::BlendImage(Image444* base, Image444* overlay) {
     }
   }
 }
-
+#endif

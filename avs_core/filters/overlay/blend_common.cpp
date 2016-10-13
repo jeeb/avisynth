@@ -41,6 +41,7 @@
 
 // Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
 #include <smmintrin.h>
+#include <stdint.h>
 
 /*******************************
  ********* Masked Blend ********
@@ -88,7 +89,8 @@ __forceinline static __m128i overlay_merge_mask_sse2(const __m128i& p1, const __
  ********* Blend Opaque *********
  ** Use for Lighten and Darken **
  ********************************/
-__forceinline BYTE overlay_blend_opaque_c_core(const BYTE p1, const BYTE p2, const BYTE mask) {
+template<typename pixel_t>
+__forceinline pixel_t overlay_blend_opaque_c_core(const pixel_t p1, const pixel_t p2, const pixel_t mask) {
   return (mask) ? p2 : p1;
 }
 
@@ -481,16 +483,29 @@ typedef __m128i (OverlaySseCompare)(const __m128i&, const __m128i&, const __m128
 #ifdef X86_32
 typedef   __m64 (OverlayMmxCompare)(const __m64&, const __m64&, const __m64&);
 #endif
-typedef     int (OverlayCCompare)(BYTE, BYTE);
 
-template<OverlayCCompare compare>
-__forceinline void overlay_darklighten_c(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+typedef int (OverlayCCompare)(BYTE, BYTE);
+
+template<typename pixel_t, bool darken /* OverlayCCompare<pixel_t> compare*/>
+__forceinline void overlay_darklighten_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
+  pixel_t* p1Y = reinterpret_cast<pixel_t *>(p1Y_8);
+  pixel_t* p1U = reinterpret_cast<pixel_t *>(p1U_8);
+  pixel_t* p1V = reinterpret_cast<pixel_t *>(p1V_8);
+
+  const pixel_t* p2Y = reinterpret_cast<const pixel_t *>(p2Y_8);
+  const pixel_t* p2U = reinterpret_cast<const pixel_t *>(p2U_8);
+  const pixel_t* p2V = reinterpret_cast<const pixel_t *>(p2V_8);
+
+  // pitches are already scaled
+  //p1_pitch /= sizeof(pixel_t);
+  //p2_pitch /= sizeof(pixel_t);
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      int mask = compare(p1Y[x], p2Y[x]);
-      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
-      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
-      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+      int mask = darken ? (p2Y[x] <= p1Y[x]) : (p2Y[x] >= p1Y[x]); // compare(p1Y[x], p2Y[x]);
+      p1Y[x] = overlay_blend_opaque_c_core<pixel_t>(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core<pixel_t>(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core<pixel_t>(p1V[x], p2V[x], mask);
     }
 
     p1Y += p1_pitch;
@@ -541,9 +556,9 @@ __forceinline void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, cons
     // Leftover value
     for (int x = wMod8; x < width; x++) {
       int mask = compare_c(p1Y[x], p2Y[x]);
-      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
-      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
-      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+      p1Y[x] = overlay_blend_opaque_c_core<uint8_t>(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core<uint8_t>(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core<uint8_t>(p1V[x], p2V[x], mask);
     }
 
     p1Y += p1_pitch;
@@ -596,9 +611,9 @@ __forceinline void overlay_darklighten_sse(BYTE *p1Y, BYTE *p1U, BYTE *p1V, cons
     // Leftover value
     for (int x = wMod16; x < width; x++) {
       int mask = compare_c(p1Y[x], p2Y[x]);
-      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
-      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
-      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+      p1Y[x] = overlay_blend_opaque_c_core<uint8_t>(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core<uint8_t>(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core<uint8_t>(p1V[x], p2V[x], mask);
     }
 
     p1Y += p1_pitch;
@@ -628,7 +643,8 @@ __forceinline __m128i overlay_darken_sse_cmp(const __m128i& p1, const __m128i& p
   return _mm_cmpeq_epi8(diff, zero);
 }
 
-__forceinline int overlay_lighten_c_cmp(BYTE p1, BYTE p2) {
+template<typename pixel_t>
+__forceinline int overlay_lighten_c_cmp(pixel_t p1, pixel_t p2) {
   return p2 >= p1;
 }
 
@@ -645,12 +661,23 @@ __forceinline __m128i overlay_lighten_sse_cmp(const __m128i& p1, const __m128i& 
 }
 
 // Exported function
-void overlay_darken_c(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_c<overlay_darken_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+template<typename pixel_t>
+void overlay_darken_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
+  overlay_darklighten_c<pixel_t, true /*overlay_darken_c_cmp */>(p1Y_8, p1U_8, p1V_8, p2Y_8, p2U_8, p2V_8, p1_pitch, p2_pitch, width, height);
 }
-void overlay_lighten_c(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_c<overlay_lighten_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+// instantiate
+template void overlay_darken_c<uint8_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
+template void overlay_darken_c<uint16_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
+
+template<typename pixel_t>
+void overlay_lighten_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
+  overlay_darklighten_c<pixel_t, false /*overlay_lighten_c_cmp*/>(p1Y_8, p1U_8, p1V_8, p2Y_8, p2U_8, p2V_8, p1_pitch, p2_pitch, width, height);
 }
+
+// instantiate
+template void overlay_lighten_c<uint8_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
+template void overlay_lighten_c<uint16_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
+
 
 #ifdef X86_32
 void overlay_darken_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {

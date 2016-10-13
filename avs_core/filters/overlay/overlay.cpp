@@ -596,7 +596,8 @@ OverlayFunction* Overlay::SelectFunction(const char* name, int &of_mode, IScript
 
   if (!lstrcmpi(name, "Lighten")) {
     of_mode = OF_Lighten;
-    return new OL_LightenImage();
+    //return new OL_LightenImage();
+    return new OL_DarkenImage(); // common with Darken
   }
 
   if (!lstrcmpi(name, "Darken")) {
