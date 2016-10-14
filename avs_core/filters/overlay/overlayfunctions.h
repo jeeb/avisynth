@@ -162,18 +162,21 @@ class OL_SoftLightImage : public OverlayFunction {
   void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
   template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
-  template<typename pixel_t>
+  template<typename pixel_t, bool maskMode, bool hardLight>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
+#if 0
+// common with OL_HardLightImage
 class OL_HardLightImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);
   void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
   template<typename pixel_t>
   void BlendImage(Image444* base, Image444* overlay);
-  template<typename pixel_t>
+  template<typename pixel_t, bool maskMode>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
+#endif
 
 class OL_DifferenceImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);

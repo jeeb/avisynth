@@ -612,7 +612,8 @@ OverlayFunction* Overlay::SelectFunction(const char* name, int &of_mode, IScript
 
   if (!lstrcmpi(name, "HardLight")) {
     of_mode = OF_HardLight;
-    return new OL_HardLightImage();
+    //return new OL_HardLightImage();
+    return new OL_SoftLightImage(); // Common with SoftLight
   }
 
   if (!lstrcmpi(name, "Difference")) {
