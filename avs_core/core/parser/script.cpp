@@ -248,6 +248,7 @@ extern const AVSFunction Script_functions[] = {
   { "IsYUVA",       BUILTIN_FUNC_PREFIX, "c", IsYUVA },
   { "IsPlanarRGB",  BUILTIN_FUNC_PREFIX, "c", IsPlanarRGB },
   { "IsPlanarRGBA", BUILTIN_FUNC_PREFIX, "c", IsPlanarRGBA },
+  { "ColorSpaceNameToPixelType",  BUILTIN_FUNC_PREFIX, "s", ColorSpaceNameToPixelType },
 
   { 0 }
 };
@@ -941,6 +942,11 @@ const int GetPixelTypeFromName(const char *pixeltypename)
 
 AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env) {
   return GetPixelTypeName(VI(args[0]).pixel_type);
+}
+
+// AVS+
+AVSValue ColorSpaceNameToPixelType (AVSValue args, void*, IScriptEnvironment* env) {
+  return GetPixelTypeFromName(args[0].AsString());
 }
 
 AVSValue Width(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).width; }

@@ -252,5 +252,6 @@ AVSValue BitsPerComponent(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ColorSpaceNameToPixelType(AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__
