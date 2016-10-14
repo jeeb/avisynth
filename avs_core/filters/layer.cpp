@@ -56,10 +56,13 @@ extern const AVSFunction Layer_filters[] = {
   { "ColorKeyMask", BUILTIN_FUNC_PREFIX, "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[B, toleranceG, toleranceR]
   { "ResetMask",    BUILTIN_FUNC_PREFIX, "c[mask]f", ResetMask::Create },
   { "Invert",       BUILTIN_FUNC_PREFIX, "c[channels]s", Invert::Create },
-  { "ShowAlpha",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)3 },
+  { "ShowAlpha",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)3 }, // AVS+ also for YUVA, PRGBA
   { "ShowRed",      BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)2 },
   { "ShowGreen",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)1 },
   { "ShowBlue",     BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)0 },
+  { "ShowY",        BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)4 }, // AVS+
+  { "ShowU",        BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)5 }, // AVS+
+  { "ShowV",        BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)6 }, // AVS+
   { "MergeRGB",     BUILTIN_FUNC_PREFIX, "ccc[pixel_type]s", MergeRGB::Create, (void*)0 },
   { "MergeARGB",    BUILTIN_FUNC_PREFIX, "cccc",             MergeRGB::Create, (void*)1 },
   { "Layer",        BUILTIN_FUNC_PREFIX, "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
@@ -1020,55 +1023,92 @@ AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), channel(_channel), input_type(_child->GetVideoInfo().pixel_type), pixelsize(_child->GetVideoInfo().ComponentSize())
+  : GenericVideoFilter(_child), channel(_channel), input_type(_child->GetVideoInfo().pixel_type),
+    pixelsize(_child->GetVideoInfo().ComponentSize()), bits_per_pixel(_child->GetVideoInfo().BitsPerComponent())
 {
-  static const char * const ShowText[4] = {"Blue", "Green", "Red", "Alpha"};
+  static const char * const ShowText[7] = {"Blue", "Green", "Red", "Alpha", "Y", "U", "V"};
 
-  if ((channel == 3) && !vi.IsRGB32() && !vi.IsRGB64())
-    env->ThrowError("ShowAlpha: RGB32, RGB64 data only");
+  input_type_is_planar_rgb = vi.IsPlanarRGB();
+  input_type_is_planar_rgba = vi.IsPlanarRGBA();
+  input_type_is_yuva = vi.IsYUVA();
+  input_type_is_yuv = vi.IsYUV() && vi.IsPlanar();
 
-  if ((channel < 3) && !vi.IsRGB())
-    env->ThrowError("Show%s: RGB data only", ShowText[channel]);
+  if(vi.IsYUY2())
+    env->ThrowError("Show%s: YUY2 not supported", ShowText[channel]);
 
-  if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+  int orig_channel = channel;
+
+  // A channel
+  if ((channel == 3) && !vi.IsRGB32() && !vi.IsRGB64() && !vi.IsPlanarRGBA() && !vi.IsYUVA())
+    env->ThrowError("ShowAlpha: RGB32, RGB64, Planar RGBA or YUVA data only");
+
+  // R, G, B channel
+  if ((channel >=0) && (channel <= 2) && !vi.IsRGB())
+    env->ThrowError("Show%s: plane is valid only with RGB or planar RGB(A) source", ShowText[channel]);
+
+  // Y, U, V channel (4,5,6)
+  if ((channel >=4) && (channel <= 6)) {
+    if (!vi.IsYUV() && !vi.IsYUVA())
+      env->ThrowError("Show%s: plane is valid only with YUV(A) source", ShowText[channel]);
+    if(channel != 4 && vi.IsY())
+      env->ThrowError("Show%s: invalid plane for greyscale source", ShowText[channel]);
+    channel -= 4; // map to 0,1,2
+  }
+
+  /*if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
     env->ThrowError("Show%s: Planar RGB source is not supported", ShowText[channel]);
+    */
 
   int target_pixelsize;
+  int target_bits_per_pixel;
 
-  if (!lstrcmpi(pixel_type, "rgb")) {
+  if(input_type_is_yuv || input_type_is_yuva)
+  {
+    if(channel == 1 || channel == 2) // U or V: target can be smaller than Y
+    {
+      vi.width >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
+      vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
+    }
+  }
+
+  if (!lstrcmpi(pixel_type, "rgb")) { // target is packed RGB
     switch(pixelsize) {
     case 1: vi.pixel_type = VideoInfo::CS_BGR32; break; // bit-depth adaptive
     case 2: vi.pixel_type = VideoInfo::CS_BGR64; break;
-    default: env->ThrowError("Show%s: source must be 8 or 16 bit", ShowText[channel]);
+    default: env->ThrowError("Show%s: source must be 8 or 16 bit", ShowText[orig_channel]);
     }
     target_pixelsize = pixelsize;
+    target_bits_per_pixel = bits_per_pixel;
   } else {
     int new_pixel_type = GetPixelTypeFromName(pixel_type);
     if(new_pixel_type == VideoInfo::CS_UNKNOWN)
-      env->ThrowError("Show%s: invalid pixel_type!", ShowText[channel]);
+      env->ThrowError("Show%s: invalid pixel_type!", ShowText[orig_channel]);
+    // new output format
     vi.pixel_type = new_pixel_type;
-    if(vi.IsPlanarRGB() || vi.IsPlanarRGBA() || (vi.BitsPerComponent() !=8 && vi.BitsPerComponent() != 16) || vi.IsYUVA())
-      env->ThrowError("Show%s supports the following output pixel types: RGB, Y8, Y16, YUY2, or 8/16 bit YUV formats", ShowText[channel]);
+    //if(vi.IsPlanarRGB() || vi.IsPlanarRGBA() || vi.IsYUVA())
+    //  env->ThrowError("Show%s supports the following output pixel types: RGB, Y8..Y16, YUY2, or YUV formats", ShowText[channel]);
+
     if (new_pixel_type == VideoInfo::CS_YUY2) {
       if (vi.width & 1) {
-        env->ThrowError("Show%s: width must be mod 2 for yuy2", ShowText[channel]);
+        env->ThrowError("Show%s: width must be mod 2 for yuy2", ShowText[orig_channel]);
       }
     }
     if (vi.Is420()) {
       if (vi.width & 1) {
-        env->ThrowError("Show%s: width must be mod 2 for 4:2:0 source", ShowText[channel]);
+        env->ThrowError("Show%s: width must be mod 2 for 4:2:0 target", ShowText[orig_channel]);
       }
       if (vi.height & 1) {
-        env->ThrowError("Show%s: height must be mod 2 for 4:2:0 source", ShowText[channel]);
+        env->ThrowError("Show%s: height must be mod 2 for 4:2:0 target", ShowText[orig_channel]);
       }
     }
     if(vi.Is422()) {
       if (vi.width & 1) {
-        env->ThrowError("Show%s: width must be mod 2 for 4:2:2 source", ShowText[channel]);
+        env->ThrowError("Show%s: width must be mod 2 for 4:2:2 target", ShowText[orig_channel]);
       }
     }
 
     target_pixelsize = vi.ComponentSize();
+    target_bits_per_pixel = vi.BitsPerComponent();
   }
 
 #if 0
@@ -1149,8 +1189,8 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     env->ThrowError("Show%s supports the following output pixel types: RGB, Y8, Y16, YUY2, or 8/16 bit YUV formats", ShowText[channel]);
   }
 #endif
-  if(target_pixelsize != pixelsize)
-    env->ThrowError("Show%s: source must be %d bit for %s", ShowText[channel], target_pixelsize*8, pixel_type);
+  if(target_bits_per_pixel != bits_per_pixel)
+    env->ThrowError("Show%s: source bit depth must be %d for %s", ShowText[channel], target_bits_per_pixel, pixel_type);
 }
 
 
@@ -1210,7 +1250,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
             for (int j=0; j<width; j+=4) {
               uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
               dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(pf)[j + channel];
-              dstp16[j + 3] = pf[j + 3];
+              dstp16[j + 3] = reinterpret_cast<const uint16_t *>(pf)[j + 3];
             }
             pf   += pitch;
             dstp += dstpitch;
@@ -1276,7 +1316,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
-        // RGB is upside-down
+        // packed RGB is upside-down
         pf += (height-1) * pitch;
 
         // copy to luma
@@ -1312,9 +1352,48 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         return dst;
       }
+      else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+      {  // RGB32/64 -> Planar RGB 8/16 bit
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
+        BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
+        BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
+        int dstpitch = dst->GetPitch();
+        int dstwidth = dst->GetRowSize() / pixelsize;
+
+        // packed RGB is upside-down
+        pf += (height-1) * pitch;
+
+        // copy to luma
+        if(pixelsize==1) {
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              dstp_g[j] = dstp_b[j] = dstp_r[j] = pf[j*4 + channel];
+            }
+            pf -= pitch;
+            dstp_g += dstpitch;
+            dstp_b += dstpitch;
+            dstp_r += dstpitch;
+          }
+        }
+        else { // pixelsize==2
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              reinterpret_cast<uint16_t *>(dstp_g)[j] =
+                reinterpret_cast<uint16_t *>(dstp_b)[j] =
+                  reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(pf)[j*4 + channel];
+            }
+            pf -= pitch;
+            dstp_g += dstpitch;
+            dstp_b += dstpitch;
+            dstp_r += dstpitch;
+          }
+        }
+      }
     }
-  }
-  else if (input_type == VideoInfo::CS_BGR24 || input_type == VideoInfo::CS_BGR48) {
+  } // end of RGB32/64 source
+  else if (input_type == VideoInfo::CS_BGR24 || input_type == VideoInfo::CS_BGR48)
+  {
     if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // RGB24->RGB24, RGB48->RGB48
     {
       if (f->IsWritable()) {
@@ -1462,8 +1541,234 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         }
         return dst;
       }
+      else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+      {  // RGB24/48 -> Planar RGB 8/16 bit
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
+        BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
+        BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
+        int dstpitch = dst->GetPitch();
+        int dstwidth = dst->GetRowSize() / pixelsize;
+        // packed RGB is upside-down
+        pf += (height-1) * pitch;
+
+        // copy to luma
+        if(pixelsize==1) {
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              dstp_g[j] = dstp_b[j] = dstp_r[j] = pf[j*3 + channel];
+            }
+            pf -= pitch;
+            dstp_g += dstpitch;
+            dstp_b += dstpitch;
+            dstp_r += dstpitch;
+          }
+        }
+        else { // pixelsize==2
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              reinterpret_cast<uint16_t *>(dstp_g)[j] =
+                reinterpret_cast<uint16_t *>(dstp_b)[j] =
+                reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(pf)[j*3 + channel];
+            }
+            pf -= pitch;
+            dstp_g += dstpitch;
+            dstp_b += dstpitch;
+            dstp_r += dstpitch;
+          }
+        }
+        return dst;
+      }
     }
-  }
+  } // end of RGB24/48 source
+  else if (input_type_is_planar_rgb || input_type_is_planar_rgba || input_type_is_yuv || input_type_is_yuva) {
+    // planar source
+    const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
+    const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+    const int *planes = (input_type_is_planar_rgb || input_type_is_planar_rgba) ? planesRGB : planesYUV;
+    const int plane = planes[channel];
+
+    bool hasAlpha = input_type_is_planar_rgba || input_type_is_yuva;
+    const BYTE* srcp = f->GetReadPtr(plane); // source plane
+    const BYTE* srcp_a = hasAlpha ? f->GetReadPtr(PLANAR_A) : nullptr;
+
+    const int width = f->GetRowSize(plane) / pixelsize;
+    const int height = f->GetHeight(plane);
+    const int pitch = f->GetPitch(plane);
+
+    if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // PRGB/YUVA->RGB32/RGB64
+    {
+      { // Planar RGBA/YUVA  ->RGB32/64
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        BYTE * dstp = dst->GetWritePtr();
+        const int dstpitch = dst->GetPitch();
+        // RGB is upside-down
+        dstp += (height-1) * dstpitch;
+
+        if(pixelsize==1) {
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<width; j++) {
+              dstp[j*4 + 0] = dstp[j*4 + 1] = dstp[j*4 + 2] = srcp[j];
+              dstp[j*4 + 3] = srcp_a[j];
+            }
+            srcp   += pitch;
+            srcp_a += pitch;
+            dstp -= dstpitch;
+          }
+        }
+        else { // pixelsize==2
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<width; j++) {
+              uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
+              dstp16[j*4 + 0] = dstp16[j*4 + 1] = dstp16[j*4 + 2] = reinterpret_cast<const uint16_t *>(srcp)[j];
+              dstp16[j*4 + 3] = reinterpret_cast<const uint16_t *>(srcp_a)[j];
+            }
+            srcp   += pitch;
+            srcp_a += pitch;
+            dstp -= dstpitch;
+          }
+        }
+        return dst;
+      }
+    }
+    else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // PRGB(A)/YUVA->RGB24, PRGB(A)16/YUVA16->RGB48
+    {
+      PVideoFrame dst = env->NewVideoFrame(vi);
+      BYTE * dstp = dst->GetWritePtr();
+      const int dstpitch = dst->GetPitch();
+      // RGB is upside-down
+      dstp += (height-1) * dstpitch;
+
+      if(pixelsize==1) {
+        for (int i=0; i<height; ++i) {
+          for (int j=0; j<width; j++) {
+            dstp[j*3 + 0] = dstp[j*3 + 1] = dstp[j*3 + 2] = srcp[j];
+          }
+          srcp   += pitch;
+          dstp -= dstpitch;
+        }
+      }
+      else { // pixelsize==2
+        for (int i=0; i<height; ++i) {
+          for (int j=0; j<width; j++) {
+            uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
+            dstp16[j*3 + 0] = dstp16[j*3 + 1] = dstp16[j*3 + 2] = reinterpret_cast<const uint16_t *>(srcp)[j];
+          }
+          srcp += pitch;
+          dstp -= dstpitch;
+        }
+
+      }
+      return dst;
+    }
+    else if (vi.pixel_type == VideoInfo::CS_YUY2) // // PRGB(A)/YUVA->YUY2
+    {
+      PVideoFrame dst = env->NewVideoFrame(vi);
+      BYTE * dstp = dst->GetWritePtr();
+      const int dstpitch = dst->GetPitch();
+      const int dstrowsize = dst->GetRowSize();
+
+      for (int i=0; i<height; ++i) {
+        for (int j=0; j<width; j++) {
+          dstp[j*2 + 0] = srcp[j];
+          dstp[j*2 + 1] = 128;
+        }
+        srcp += pitch;
+        dstp += dstpitch;
+      }
+      return dst;
+    }
+    else
+    { // PRGB(A)/YUVA->YV12/16/24/Y8 + 16bit
+      // 444, 422 support + 16 bits
+      if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
+      {
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        BYTE * dstp = dst->GetWritePtr();
+        int dstpitch = dst->GetPitch();
+        int dstwidth = dst->GetRowSize() / pixelsize;
+
+        // copy to luma
+        if(pixelsize==1) {
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              dstp[j] = srcp[j];
+            }
+            srcp += pitch;
+            dstp += dstpitch;
+          }
+        }
+        else if (pixelsize == 2 ) { // pixelsize==2
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(srcp)[j];
+            }
+            srcp += pitch;
+            dstp += dstpitch;
+          }
+        }
+        else { // pixelsize == 4
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              reinterpret_cast<float *>(dstp)[j] = reinterpret_cast<const float *>(srcp)[j];
+            }
+            srcp += pitch;
+            dstp += dstpitch;
+          }
+        }
+        if (!vi.IsY())
+        {
+          dstpitch = dst->GetPitch(PLANAR_U);
+          int dstheight = dst->GetHeight(PLANAR_U);
+          BYTE * dstp_u = dst->GetWritePtr(PLANAR_U);
+          BYTE * dstp_v = dst->GetWritePtr(PLANAR_V);
+          switch (pixelsize) {
+          case 1: fill_chroma<BYTE>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
+          case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
+          case 4: fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, 0.5f); break;
+          }
+        }
+        return dst;
+      }
+      else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+      {  // PRGB(A)/YUVA -> Planar RGB
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
+        BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
+        BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
+        int dstpitch = dst->GetPitch();
+        int dstwidth = dst->GetRowSize() / pixelsize;
+
+        // copy to luma
+        if(pixelsize==1) {
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j];
+            }
+            srcp += pitch;
+            dstp_g += dstpitch;
+            dstp_b += dstpitch;
+            dstp_r += dstpitch;
+          }
+        }
+        else { // pixelsize==2
+          for (int i=0; i<height; ++i) {
+            for (int j=0; j<dstwidth; ++j) {
+              reinterpret_cast<uint16_t *>(dstp_g)[j] =
+                reinterpret_cast<uint16_t *>(dstp_b)[j] =
+                reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(srcp)[j];
+            }
+            srcp += pitch;
+            dstp_g += dstpitch;
+            dstp_b += dstpitch;
+            dstp_r += dstpitch;
+          }
+        }
+        return dst;
+      }
+    }
+  } // planar RGB(A) or YUVA source
+
   env->ThrowError("ShowChannel: unexpected end of function");
   return f;
 }

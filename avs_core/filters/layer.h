@@ -172,9 +172,14 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void* channel, IScriptEnvironment* env);
 private:
-  const int channel;
+  int channel;
   const int input_type;
   const int pixelsize;
+  const int bits_per_pixel;
+  bool input_type_is_planar_rgb;
+  bool input_type_is_planar_rgba;
+  bool input_type_is_yuv;
+  bool input_type_is_yuva;
 };
 
 
