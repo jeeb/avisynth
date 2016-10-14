@@ -42,6 +42,7 @@
 #include <avs/minmax.h>
 #include <cstdio>
 #include <cmath>
+#include <stdint.h>
 
 
 #define PI        3.141592653589793
@@ -74,10 +75,18 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
   if(show_bits < 8 || show_bits>12)
     env->ThrowError("Histogram: bits parameter can only be 8, 9 .. 12");
 
+  // until all histogram is ported
+  bool non8bit = show_bits != 8 || bits_per_pixel != 8;
+
+  if (non8bit && mode != ModeClassic && mode != ModeLevels)
+  {
+    env->ThrowError("Histogram: histogram type is available only for 8 bit formats and parameters");
+  }
+
   if (mode == ModeClassic) {
     if (!vi.IsYUV() && !vi.IsYUVA())
       env->ThrowError("Histogram: YUV(A) data only");
-    vi.width += 256;
+    vi.width += (1 << show_bits);
   }
 
   if (mode == ModeLevels) {
@@ -97,7 +106,6 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
     vi.height = max(256, vi.height);
   }
 
-
   if (mode == ModeColor) {
     if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Color mode only available in PLANAR.");
@@ -107,7 +115,7 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
     }
     // put diagram on the right side
     vi.width += (1 << show_bits); // 256 for 8 bit
-    vi.height = max(256,vi.height);
+    vi.height = max(1 << show_bits,vi.height);
   }
 
   if (mode == ModeColor2) {
@@ -1244,24 +1252,56 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
 PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 {
-  static BYTE exptab[256];
+  static uint16_t exptab[1<<12]; // max bits=12
   static bool init = false;
   static int E167;
+
+
+  int show_size = 1 << show_bits;
+
+  int lookup_size = 1 << show_bits; // 256, 1024, 4096, 16384, 65536
+
+  int hist_max_pixel_value = (1 << show_bits) - 1;
+  int hist_tv_range_low   = 16 << (show_bits - 8); // 16
+  int hist_tv_range_hi_luma   = ((235+1) << (show_bits - 8)) - 1; // 16-235
+  int hist_range_luma = hist_tv_range_hi_luma - hist_tv_range_low; // 219
+  int hist_mid_range_luma = (hist_range_luma + 1) / 2; // 124
+  int hist_tv_range_hi_chroma = ((240+1) << (show_bits - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+  int hist_range_chroma = hist_tv_range_hi_chroma - hist_tv_range_low; // 224
+
+  int internal_bits_per_pixel = (pixelsize == 4) ? 16 : bits_per_pixel; // hack for float
+
+  int max_pixel_value = (1 << internal_bits_per_pixel) - 1;
+  int tv_range_low   = 16 << (internal_bits_per_pixel - 8); // 16
+  int tv_range_hi_luma   = ((235+1) << (internal_bits_per_pixel - 8)) - 1; // 16-235
+  int range_luma = tv_range_hi_luma - tv_range_low; // 219
+  int mid_range_luma = (internal_bits_per_pixel + 1) / 2; // 124
+  int tv_range_hi_chroma = ((240+1) << (internal_bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+  int range_chroma = tv_range_hi_chroma - tv_range_low; // 224
+  int middle_chroma = 1 << (internal_bits_per_pixel - 1); // 128
 
   if (!init) {
     init = true;
 
-    const double K = log(0.5/219)/255; // approx -1/42
-
-    exptab[0] = 16;
-    for (int i = 1; i<255; i++) {
-      exptab[i] = BYTE(16.5 + 219 * (1-exp(i*K)));
-      if (exptab[i] <= 235-68) E167 = i;
+    const double K = log(0.5/hist_range_luma)/hist_max_pixel_value; // approx -1/42
+    const int limit68 = 68 << (internal_bits_per_pixel - 8);
+    // exptab: pixel values for final drawing
+    exptab[0] = tv_range_low;
+    for (int i = 1; i<show_size; i++) {
+      exptab[i] = uint16_t(tv_range_low + 0.5 + range_luma * (1-exp(i*K))); // 16.5 + 219*
+      if (exptab[i] <= tv_range_hi_luma - limit68)
+        E167 = i; // index of last value less than...
+      /*
+      if (internal_bits_per_pixel < show_bits)
+        exptab[i] >>= (show_bits - internal_bits_per_pixel); // scale intensity down
+      else
+        exptab[i] <<= (internal_bits_per_pixel - show_bits); // scale intensity up
+        */
     }
-    exptab[255] = 235;
+    exptab[hist_max_pixel_value] = tv_range_hi_luma;
   }
 
-  const int w = vi.width-256;
+  const int w = vi.width-show_size; // -256
 
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -1273,16 +1313,69 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 
     // luma
     for (int y = 0; y<src->GetHeight(PLANAR_Y); ++y) {
-      int hist[256] = { 0 };
-      for (int x = 0; x<w; ++x) {
-        hist[p[x]]++;
+      int hist[1<<12] = { 0 }; // allocate max 12 bit res. todo
+
+      // accumulate line population
+      if(pixelsize==1) {
+        // 8 bit clip into 8,9,... bit histogram
+        int invshift = show_bits - 8;
+        for (int x = 0; x<w; ++x) {
+          hist[(int)p[x] << invshift]++;
+        }
       }
-      BYTE* const q = p + w;
-      for (int x = 0; x<256; ++x) {
-        if (x<16 || x==124 || x>235) {
-          q[x] = exptab[min(E167, hist[x])] + 68;
+      else if (pixelsize == 2) {
+        const uint16_t *srcp16 = reinterpret_cast<uint16_t *>(p);
+        int shift = bits_per_pixel - show_bits;
+        int max_pixel_value = show_size - 1;
+        if (shift < 0) {
+          // 10 bit clip into 11 bit histogram
+          int invshift = -shift;
+          for (int x = 0; x < w; x++) {
+            hist[srcp16[x] << invshift]++;
+          }
         } else {
-          q[x] = exptab[min(255, hist[x])];
+          // e.g.10 bit clip into 8-9-10 bit histogram
+          for (int x = 0; x < w; x++) {
+            hist[min(srcp16[x] >> shift, max_pixel_value)]++;
+          }
+        }
+      }
+      else // pixelsize == 4
+      {
+        // float
+        const float *srcp32 = reinterpret_cast<const float *>(p);
+        const float multiplier = (float)(show_size - 1);
+        for (int x = 0; x < w; x++) {
+          hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier)]++;
+        }
+      }
+      // accumulate end
+      BYTE* const q = p + w * pixelsize; // write to frame
+      if(pixelsize==1) {
+        for (int x = 0; x<show_size; ++x) {
+          if (x<hist_tv_range_low || x==hist_mid_range_luma || x>hist_tv_range_hi_luma) {
+            q[x] = (BYTE)exptab[min(E167, hist[x])] + 68;
+          } else {
+            q[x] = (BYTE)exptab[min(255, hist[x])];
+          }
+        }
+      } else if (pixelsize == 2) {
+        uint16_t *dstp16 = reinterpret_cast<uint16_t *>(q);
+        for (int x = 0; x<show_size; ++x) {
+          if (x<hist_tv_range_low || x==hist_mid_range_luma || x>hist_tv_range_hi_luma) {
+            dstp16[x] = exptab[min(E167, hist[x])] + (68 << (bits_per_pixel - 8));
+          } else {
+            dstp16[x] = exptab[min(hist_max_pixel_value, hist[x])];
+          }
+        }
+      } else { // pixelsize == 4
+        float *dstp32 = reinterpret_cast<float *>(q);
+        for (int x = 0; x<show_size; ++x) {
+          if (x<hist_tv_range_low || x==hist_mid_range_luma || x>hist_tv_range_hi_luma) {
+            dstp32[x] = (exptab[min(E167, hist[x])] + (68 << (internal_bits_per_pixel - 8))) / 65536.0f;
+          } else {
+            dstp32[x] = exptab[min(hist_max_pixel_value, hist[x])] / 65536.0f;
+          }
         }
       }
       p += dst->GetPitch();
@@ -1293,21 +1386,56 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       const int subs = vi.GetPlaneWidthSubsampling(PLANAR_U);
       const int fact = 1<<subs;
 
-      BYTE* p2 = dst->GetWritePtr(PLANAR_U) + (w >> subs);
-      BYTE* p3 = dst->GetWritePtr(PLANAR_V) + (w >> subs);
+      BYTE* p2 = dst->GetWritePtr(PLANAR_U) + ((w*pixelsize) >> subs);
+      BYTE* p3 = dst->GetWritePtr(PLANAR_V) + ((w*pixelsize) >> subs);
+
+      const uint16_t chroma160 = 160 << (internal_bits_per_pixel - 8);
+      const float tv_range_low_f = 16 / 256.0f;
+      const float chroma160_f = 160 / 256.0f;
+      const float middle_chroma_f = 0.5f;
 
       for (int y2 = 0; y2<src->GetHeight(PLANAR_U); ++y2) {
-        for (int x = 0; x<256; x += fact) {
-          if (x<16 || x>235) {
-            p2[x >> subs] = 16;
-            p3[x >> subs] = 160;
-          } else if (x==124) {
-            p2[x >> subs] = 160;
-            p3[x >> subs] = 16;
-          } else {
-            p2[x >> subs] = 128;
-            p3[x >> subs] = 128;
+        if(pixelsize==1) {
+          for (int x = 0; x<show_size; x += fact) {
+            if (x<hist_tv_range_low || x>hist_tv_range_hi_luma) {
+              p2[x >> subs] = 16;
+              p3[x >> subs] = 160;
+            } else if (x==hist_mid_range_luma) {
+              p2[x >> subs] = 160;
+              p3[x >> subs] = 16;
+            } else {
+              p2[x >> subs] = 128;
+              p3[x >> subs] = 128;
+            }
           }
+        }
+        else if (pixelsize == 2) {
+          for (int x = 0; x<show_size; x += fact) {
+            if (x<hist_tv_range_low || x>hist_tv_range_hi_luma) {
+              reinterpret_cast<uint16_t *>(p2)[x >> subs] = tv_range_low;
+              reinterpret_cast<uint16_t *>(p3)[x >> subs] = chroma160;
+            } else if (x==hist_mid_range_luma) {
+              reinterpret_cast<uint16_t *>(p2)[x >> subs] = chroma160;
+              reinterpret_cast<uint16_t *>(p3)[x >> subs] = tv_range_low;
+            } else {
+              reinterpret_cast<uint16_t *>(p2)[x >> subs] = middle_chroma;
+              reinterpret_cast<uint16_t *>(p3)[x >> subs] = middle_chroma;
+            }
+          }
+        } else { // pixelsize==4
+          for (int x = 0; x<show_size; x += fact) {
+            if (x<hist_tv_range_low || x>hist_tv_range_hi_luma) {
+              reinterpret_cast<float *>(p2)[x >> subs] = tv_range_low_f;
+              reinterpret_cast<float *>(p3)[x >> subs] = chroma160_f;
+            } else if (x==hist_mid_range_luma) {
+              reinterpret_cast<float *>(p2)[x >> subs] = chroma160_f;
+              reinterpret_cast<float *>(p3)[x >> subs] = tv_range_low_f;
+            } else {
+              reinterpret_cast<float *>(p2)[x >> subs] = middle_chroma_f;
+              reinterpret_cast<float *>(p3)[x >> subs] = middle_chroma_f;
+            }
+          }
+
         }
         p2 += dst->GetPitch(PLANAR_U);
         p3 += dst->GetPitch(PLANAR_V);
@@ -1322,19 +1450,19 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       BYTE* const q = p + w*2;
       for (int x = 0; x<256; x += 2) {
         if (x<16 || x>235) {
-          q[x*2+0] = exptab[min(E167, hist[x])] + 68;
+          q[x*2+0] = (BYTE)exptab[min(E167, hist[x])] + 68;
           q[x*2+1] = 16;
-          q[x*2+2] = exptab[min(E167, hist[x+1])] + 68;
+          q[x*2+2] = (BYTE)exptab[min(E167, hist[x+1])] + 68;
           q[x*2+3] = 160;
         } else if (x==124) {
-          q[x*2+0] = exptab[min(E167, hist[x])] + 68;
+          q[x*2+0] = (BYTE)exptab[min(E167, hist[x])] + 68;
           q[x*2+1] = 160;
-          q[x*2+2] = exptab[min(255, hist[x+1])];
+          q[x*2+2] = (BYTE)exptab[min(255, hist[x+1])];
           q[x*2+3] = 16;
         } else {
-          q[x*2+0] = exptab[min(255, hist[x])];
+          q[x*2+0] = (BYTE)exptab[min(255, hist[x])];
           q[x*2+1] = 128;
-          q[x*2+2] = exptab[min(255, hist[x+1])];
+          q[x*2+2] = (BYTE)exptab[min(255, hist[x+1])];
           q[x*2+3] = 128;
         }
       }
