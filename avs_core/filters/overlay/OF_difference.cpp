@@ -115,9 +115,9 @@ void OL_DifferenceImage::BlendImageMask(Image444* base, Image444* overlay, Image
           V = ((V*(over32 - multiplier)) + (half_pixel_value*(       multiplier)))>>SHIFT;
           Y = 0;
         }    
+        baseY[x] = (pixel_t)Y;
         baseU[x] = (pixel_t)clamp(U, 0, max_pixel_value);
         baseV[x] = (pixel_t)clamp(V, 0, max_pixel_value);
-        baseY[x] = (pixel_t)Y;
       }
       baseY += basepitch;
       baseU += basepitch;
@@ -163,9 +163,9 @@ void OL_DifferenceImage::BlendImageMask(Image444* base, Image444* overlay, Image
           V = ((V*(over32 - multiplier)) + (half_pixel_value*(       multiplier)))>>SHIFT;
           Y = 0;
         }    
+        baseY[x] = (pixel_t)Y;
         baseU[x] = (pixel_t)clamp(U, 0, max_pixel_value);
         baseV[x] = (pixel_t)clamp(V, 0, max_pixel_value);
-        baseY[x] = (pixel_t)Y;
       }
       baseY += basepitch;
       baseU += basepitch;
