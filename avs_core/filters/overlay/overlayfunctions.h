@@ -187,9 +187,9 @@ class OL_DifferenceImage : public OverlayFunction {
 class OL_ExclusionImage : public OverlayFunction {
   void DoBlendImage(Image444* base, Image444* overlay);
   void DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask);
-  template<typename pixel_t>
-  void BlendImage(Image444* base, Image444* overlay);
-  template<typename pixel_t>
+  // template<typename pixel_t>
+  // void BlendImage(Image444* base, Image444* overlay);
+  template<typename pixel_t, bool maskMode>
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
