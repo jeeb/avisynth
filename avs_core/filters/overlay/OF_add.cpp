@@ -161,7 +161,7 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
 */
 template<typename pixel_t, bool maskMode, bool of_add>
 void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
-        
+
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
   pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
@@ -210,7 +210,7 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
           Y = baseY[x] - (maskMode ? (((result_t)ovY[x] * maskY[x]) >> MASK_CORR_SHIFT) : ovY[x]);
           U = baseU[x] - (int)(maskMode ? ((((result_t)half_pixel_value*(pixel_range - maskU[x])) + ((result_t)maskU[x] * ovU[x])) >> MASK_CORR_SHIFT) : ovU[x]) + half_pixel_value;
           V = baseV[x] - (int)(maskMode ? ((((result_t)half_pixel_value*(pixel_range - maskV[x])) + ((result_t)maskV[x] * ovV[x])) >> MASK_CORR_SHIFT) : ovV[x]) + half_pixel_value;
-          if (Y<0) {  // Apply overbrightness to UV
+          if (Y<0) {  // Apply superdark to UV
             int multiplier = min(-Y,over32);  // 0 to 32
             U = ((U*(over32 - multiplier)) + (half_pixel_value*(       multiplier)))>>SHIFT;
             V = ((V*(over32 - multiplier)) + (half_pixel_value*(       multiplier)))>>SHIFT;
