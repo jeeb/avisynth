@@ -37,6 +37,7 @@
 #include "overlayfunctions.h"
 
 #include <stdint.h>
+#include <type_traits>
 
 void OL_MultiplyImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   if (bits_per_pixel == 8)
@@ -59,81 +60,96 @@ void OL_MultiplyImage::DoBlendImage(Image444* base, Image444* overlay) {
 
 template<typename pixel_t>
 void OL_MultiplyImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
-  BYTE* baseY = base->GetPtr(PLANAR_Y);
-  BYTE* baseU = base->GetPtr(PLANAR_U);
-  BYTE* baseV = base->GetPtr(PLANAR_V);
+  pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
+  pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
+  pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
 
-  BYTE* ovY = overlay->GetPtr(PLANAR_Y);
-  BYTE* ovU = overlay->GetPtr(PLANAR_U);
-  BYTE* ovV = overlay->GetPtr(PLANAR_V);
+  pixel_t* ovY = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_Y));
+  pixel_t* ovU = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_U));
+  pixel_t* ovV = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_V));
 
-  BYTE* maskY = mask->GetPtr(PLANAR_Y);
-  BYTE* maskU = mask->GetPtr(PLANAR_U);
-  BYTE* maskV = mask->GetPtr(PLANAR_V);
+  pixel_t* maskY = reinterpret_cast<pixel_t *>(mask->GetPtr(PLANAR_Y));
+  pixel_t* maskU = reinterpret_cast<pixel_t *>(mask->GetPtr(PLANAR_U));
+  pixel_t* maskV = reinterpret_cast<pixel_t *>(mask->GetPtr(PLANAR_V));
+
+  const int half_pixel_value_rounding = (sizeof(pixel_t) == 1) ? 128 : (1 << (bits_per_pixel - 1));
+  const int max_pixel_value = (sizeof(pixel_t) == 1) ? 255 : (1 << bits_per_pixel) - 1;
+  const int pixel_range = max_pixel_value + 1;
+  const int MASK_CORR_SHIFT = (sizeof(pixel_t) == 1) ? 8 : bits_per_pixel;
+  const int OPACITY_SHIFT  = 8; // opacity always max 0..256
+  const int basepitch = (base->pitch) / sizeof(pixel_t);
+  const int overlaypitch = (overlay->pitch) / sizeof(pixel_t);
+  const int maskpitch = (mask->pitch) / sizeof(pixel_t);
+
+  // avoid "uint16*uint16 can't get into int32" overflows
+  typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
+
   int w = base->w();
   int h = base->h();
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int op = maskY[x];
-        int invop = 256 - op;
-        int Y = (baseY[x] * (256*invop + (ovY[x] * op))) >> 16;
+        result_t invop = pixel_range - op;
+        result_t ovYx = ovY[x];
+        int Y = (int)((baseY[x] * (pixel_range*invop + (ovYx * op))) >> (MASK_CORR_SHIFT*2));
 
         op = maskU[x];
-        invop = 256 - op;
-        int U = ((baseU[x] * invop * 256)  + (op * (baseU[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+        invop = pixel_range - op;
+        int U = (int)(((baseU[x] * invop * pixel_range)  + (op * (baseU[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
 
         op = maskV[x];
-        invop = 256-op;
-        int V = ((baseV[x] * invop * 256)  + (op * (baseV[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+        invop = pixel_range-op;
+        int V = (int)(((baseV[x] * invop * pixel_range)  + (op * (baseV[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
 
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
-        baseY[x] = (BYTE)Y;
+        baseU[x] = (pixel_t)U;
+        baseV[x] = (pixel_t)V;
+        baseY[x] = (pixel_t)Y;
       }
-      maskY += mask->pitch;
-      maskU += mask->pitch;
-      maskV += mask->pitch;
+      maskY += maskpitch;
+      maskU += maskpitch;
+      maskV += maskpitch;
 
-      baseY += base->pitch;
-      baseU += base->pitch;
-      baseV += base->pitch;
+      baseY += basepitch;
+      baseU += basepitch;
+      baseV += basepitch;
 
-      ovY += overlay->pitch;
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
+      ovY += overlaypitch;
+      ovU += overlaypitch;
+      ovV += overlaypitch;
 
     }
   } else {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        int op = (maskY[x]*opacity)>>8;
-        int invop = 256 - op;
-        int Y = (baseY[x] * (256*invop + (ovY[x] * op))) >> 16;
+        int op = (maskY[x]*opacity)>>OPACITY_SHIFT;
+        result_t invop = pixel_range - op;
+        result_t ovYx = ovY[x];
+        int Y = (int)((baseY[x] * (pixel_range*invop + (ovYx * op))) >> (MASK_CORR_SHIFT*2));
 
-        op = (maskU[x]*opacity)>>8;
-        invop = 256 - op;
-        int U = ((baseU[x] * invop * 256)  + (op * (baseU[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+        op = (maskU[x]*opacity)>>OPACITY_SHIFT;
+        invop = pixel_range - op;
+        int U = (int)(((baseU[x] * invop * pixel_range)  + (op * (baseU[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
 
-        op = (maskV[x]*opacity)>>8;
-        invop = 256-op;
-        int V = ((baseV[x] * invop * 256)  + (op * (baseV[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+        op = (maskV[x]*opacity)>>OPACITY_SHIFT;
+        invop = pixel_range-op;
+        int V = (int)(((baseV[x] * invop * pixel_range)  + (op * (baseV[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
 
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
-        baseY[x] = (BYTE)Y;
+        baseU[x] = (pixel_t)U;
+        baseV[x] = (pixel_t)V;
+        baseY[x] = (pixel_t)Y;
       }
-      baseY += base->pitch;
-      baseU += base->pitch;
-      baseV += base->pitch;
+      baseY += basepitch;
+      baseU += basepitch;
+      baseV += basepitch;
 
-      ovY += overlay->pitch;
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
+      ovY += overlaypitch;
+      ovU += overlaypitch;
+      ovV += overlaypitch;
 
-      maskY += mask->pitch;
-      maskU += mask->pitch;
-      maskV += mask->pitch;
+      maskY += maskpitch;
+      maskU += maskpitch;
+      maskV += maskpitch;
     }
   }
   
@@ -142,54 +158,69 @@ void OL_MultiplyImage::BlendImageMask(Image444* base, Image444* overlay, Image44
 template<typename pixel_t>
 void OL_MultiplyImage::BlendImage(Image444* base, Image444* overlay) {
         
-  BYTE* baseY = base->GetPtr(PLANAR_Y);
-  BYTE* baseU = base->GetPtr(PLANAR_U);
-  BYTE* baseV = base->GetPtr(PLANAR_V);
+  pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
+  pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
+  pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
 
-  BYTE* ovY = overlay->GetPtr(PLANAR_Y);
-  BYTE* ovU = overlay->GetPtr(PLANAR_U);
-  BYTE* ovV = overlay->GetPtr(PLANAR_V);
-  
+  pixel_t* ovY = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_Y));
+  pixel_t* ovU = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_U));
+  pixel_t* ovV = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_V));
+
+  const int half_pixel_value_rounding = (sizeof(pixel_t) == 1) ? 128 : (1 << (bits_per_pixel - 1));
+  const int max_pixel_value = (sizeof(pixel_t) == 1) ? 255 : (1 << bits_per_pixel) - 1;
+  const int pixel_range = max_pixel_value + 1;
+  const int MASK_CORR_SHIFT = (sizeof(pixel_t) == 1) ? 8 : bits_per_pixel;
+  const int OPACITY_SHIFT  = 8; // opacity always max 0..256
+  const int basepitch = (base->pitch) / sizeof(pixel_t);
+  const int overlaypitch = (overlay->pitch) / sizeof(pixel_t);
+
+  // avoid "uint16*uint16 can't get into int32" overflows
+  typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
+
   int w = base->w();
   int h = base->h();
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        int Y = (baseY[x] * ovY[x])>>8;
-        int U = (baseU[x] * ovY[x] + 128 * (256-ovY[x]) ) >> 8;
-        int V = (baseV[x] * ovY[x] + 128 * (256-ovY[x]) ) >> 8;
-        baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
+        result_t ovYx = ovY[x];
+        int Y = (int)((baseY[x] * ovYx) >> MASK_CORR_SHIFT);
+        int U = (int)((baseU[x] * ovYx + half_pixel_value_rounding * (pixel_range - ovYx)) >> MASK_CORR_SHIFT);
+        int V = (int)((baseV[x] * ovYx + half_pixel_value_rounding * (pixel_range - ovYx)) >> MASK_CORR_SHIFT);
+        baseY[x] = (pixel_t)Y;
+        baseU[x] = (pixel_t)U;
+        baseV[x] = (pixel_t)V;
       }
-      baseY += base->pitch;
-      baseU += base->pitch;
-      baseV += base->pitch;
+      baseY += basepitch;
+      baseU += basepitch;
+      baseV += basepitch;
 
-      ovY += overlay->pitch;
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
+      ovY += overlaypitch;
+      ovU += overlaypitch;
+      ovV += overlaypitch;
 
     }
   } else {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
+        result_t ovYx = ovY[x];
+        result_t baseYx = baseY[x];
+        int Y = (int)((baseYx * (pixel_range*inv_opacity + (ovYx * opacity))) >> (MASK_CORR_SHIFT+OPACITY_SHIFT));
+        result_t baseUx = baseU[x];
+        int U = (int)(((baseUx * inv_opacity * pixel_range)  + (opacity * (baseUx * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT+OPACITY_SHIFT));
+        result_t baseVx = baseV[x];
+        int V = (int)(((baseVx * inv_opacity * pixel_range)  + (opacity * (baseVx * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT+OPACITY_SHIFT));
 
-        int Y = (baseY[x] * (256*inv_opacity + (ovY[x] * opacity))) >> 16;        
-        int U = ((baseU[x] * inv_opacity * 256)  + (opacity * (baseU[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
-        int V = ((baseV[x] * inv_opacity * 256)  + (opacity * (baseV[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
-
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
-        baseY[x] = (BYTE)Y;
+        baseU[x] = (pixel_t)U;
+        baseV[x] = (pixel_t)V;
+        baseY[x] = (pixel_t)Y;
       }
-      baseY += base->pitch;
-      baseU += base->pitch;
-      baseV += base->pitch;
+      baseY += basepitch;
+      baseU += basepitch;
+      baseV += basepitch;
 
-      ovY += overlay->pitch;
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
+      ovY += overlaypitch;
+      ovU += overlaypitch;
+      ovV += overlaypitch;
     }
   }
 }
