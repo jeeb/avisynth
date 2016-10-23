@@ -296,6 +296,10 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
     vi.pixel_type = VideoInfo::CS_BGR32;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
     vi.pixel_type = VideoInfo::CS_BGR24;
+  } else if (pbiSrc->biCompression == '\100ARB') { // BRA@ ie. BRA[64]
+      vi.pixel_type = VideoInfo::CS_BGR64;
+  } else if (pbiSrc->biCompression == '\060RGB') { // BGR0 ie. BGR[48]
+      vi.pixel_type = VideoInfo::CS_BGR48;
   } else if (pbiSrc->biCompression == 'YERG') {
     vi.pixel_type = VideoInfo::CS_Y8;
   } else if (pbiSrc->biCompression == '008Y') {
@@ -409,20 +413,22 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           bool fYUY2  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YUY2" ) == 0;
           bool fRGB32 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB32") == 0;
           bool fRGB24 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB24") == 0;
+          bool fRGB48 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB48") == 0;
+          bool fRGB64 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB64") == 0;
 
           if (lstrcmpi(pixel_type, "AUTO") == 0) {
-            fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = true;
+            fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = fRGB48 = fRGB64 = true;
             forcedType = false;
           }
           else if (lstrcmpi(pixel_type, "FULL") == 0) {
-            fY8 = fYV12 = fYV16 = fYV24 = fYV411 = fYUY2 = fRGB32 = fRGB24 = true;
+            fY8 = fYV12 = fYV16 = fYV24 = fYV411 = fYUY2 = fRGB32 = fRGB24 = fRGB48 = fRGB64 = true;
             forcedType = false;
           }
 
-          if (!(fY8 || fYV12 || fYV16 || fYV24 || fYV411 || fYUY2 || fRGB32 || fRGB24))
-            env->ThrowError("AVISource: requested format must be one of YV24, YV16, YV12, YV411, YUY2, Y8, RGB32, RGB24, AUTO or FULL");
+          if (!(fY8 || fYV12 || fYV16 || fYV24 || fYV411 || fYUY2 || fRGB32 || fRGB24 || fRGB48 || fRGB64))
+            env->ThrowError("AVISource: requested format must be one of YV24, YV16, YV12, YV411, YUY2, Y8, RGB32, RGB24, RGB48, RGB64, AUTO or FULL");
 
-          // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24 in turn
+          // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24, RGB48, RGB64 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
           biDst.biSize = sizeof(BITMAPINFOHEADER);
           biDst.biWidth = vi.width;
@@ -528,6 +534,34 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             } else if (forcedType) {
                env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
             }
+          }
+
+          // RGB48
+          if (fRGB48 && bOpen) {
+              vi.pixel_type = VideoInfo::CS_BGR48;
+              biDst.biSizeImage = vi.BMPSize();
+              biDst.biCompression = '\060RGB'; // BGR0 ie. BGR[48]
+              biDst.biBitCount = 48;
+              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                  _RPT0(0,"AVISource: Opening as BGR0 (BGR[48]).\n");
+                  bOpen = false;  // Skip further attempts
+              } else if (forcedType) {
+                  env->ThrowError("AVISource: the video decompressor couldn't produce RGB48 output");
+              }
+          }
+
+          // RGB64
+          if (fRGB64 && bOpen) {
+              vi.pixel_type = VideoInfo::CS_BGR64;
+              biDst.biSizeImage = vi.BMPSize();
+              biDst.biCompression = '\100ARB'; // BRA@ ie. BRA[64]
+              biDst.biBitCount = 64;
+              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                  _RPT0(0,"AVISource: Opening as BRA@ (BRA[64]).\n");
+                  bOpen = false;  // Skip further attempts
+              } else if (forcedType) {
+                  env->ThrowError("AVISource: the video decompressor couldn't produce RGB64 output");
+              }
           }
 
           // Y8

@@ -141,6 +141,8 @@ const GUID MEDIASUBTYPE_I420 = {FourCC('I420'), 0x0000, 0x0010, {0x80, 0x00, 0x0
 // Already defined by platform headers: const GUID MEDIASUBTYPE_NV12 = {FourCC('NV12'), 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 const GUID MEDIASUBTYPE_YV16 = {FourCC('YV16'), 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 const GUID MEDIASUBTYPE_YV24 = {FourCC('YV24'), 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+const GUID MEDIASUBTYPE_BRA64 = { FourCC('BRA\100'), 0x0000, 0x0010,{ 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 } }; // BRA@ ie. BRA[64]
+const GUID MEDIASUBTYPE_BGR48 = { FourCC('BGR\060'), 0x0000, 0x0010,{ 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 } }; // BGR0 ie. BGR[48]
 
 
 // Format a GUID for printing
@@ -289,6 +291,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       if (media & mediaARGB)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_ARGB32);
       if (media & mediaRGB32)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_RGB32);
       if (media & mediaRGB24)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_RGB24);
+      if (media & mediaRGB64)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_BRA64);
+      if (media & mediaRGB48)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_BGR48);
       no_my_media_types = i;
       if (media == mediaNONE) media = mediaAUTO;
     }
@@ -1322,6 +1326,20 @@ pbFormat:
           return S_FALSE;
         }
         pixel_type = VideoInfo::CS_BGR32;
+
+      } else if (pmt->subtype == MEDIASUBTYPE_BGR48) {
+          if (!(media & mediaRGB48)) {
+              dssRPT0(dssNEG,  "*** Video: Subtype denied - BGR[48]\n");
+              return S_FALSE;
+          }
+          pixel_type = VideoInfo::CS_BGR48;
+
+      } else if (pmt->subtype == MEDIASUBTYPE_BRA64) {
+          if (!(media & mediaRGB64)) {
+              dssRPT0(dssNEG,  "*** Video: Subtype denied - BRA[64]\n");
+              return S_FALSE;
+          }
+          pixel_type = VideoInfo::CS_BGR64;
 
       } else {
         dssRPT2(dssNEG,  "*** Video: Subtype rejected - '%s' %s\n", PrintFourCC(pmt->subtype.Data1), PrintGUID(&pmt->subtype));
@@ -2584,6 +2602,8 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     else if (!lstrcmpi(pixel_type, "AYUV"))  { _media = GetSample::mediaAYUV; }
     else if (!lstrcmpi(pixel_type, "RGB24")) { _media = GetSample::mediaRGB24; }
     else if (!lstrcmpi(pixel_type, "RGB32")) { _media = GetSample::mediaRGB32 | GetSample::mediaARGB; }
+    else if (!lstrcmpi(pixel_type, "RGB48")) { _media = GetSample::mediaRGB48; }
+    else if (!lstrcmpi(pixel_type, "RGB64")) { _media = GetSample::mediaRGB64; }
     else if (!lstrcmpi(pixel_type, "ARGB"))  { _media = GetSample::mediaARGB; }
     else if (!lstrcmpi(pixel_type, "RGB"))   { _media = GetSample::mediaRGB; }
     else if (!lstrcmpi(pixel_type, "YUV"))   { _media = GetSample::mediaYUV; }
@@ -2594,7 +2614,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     else if (!lstrcmpi(pixel_type, "YUVEX")) { _media = GetSample::mediaYUVex; }
     else if (!lstrcmpi(pixel_type, "FULL"))  { _media = GetSample::mediaFULL; }
     else {
-      env->ThrowError("DirectShowSource: pixel_type must be \"RGB24\", \"RGB32\", \"ARGB\", "
+      env->ThrowError("DirectShowSource: pixel_type must be \"RGB24\", \"RGB32\", \"ARGB\", \"RGB48\", \"RGB64\", "
                       "\"YUY2\", \"YV12\", \"I420\", \"YV16\", \"YV24\", \"AYUV\", \"Y41P\", "
                       "\"Y411\", \"NV12\", \"RGB\", \"YUV\" , \"YUVex\", \"AUTO\"  or \"FULL\"");
     }
