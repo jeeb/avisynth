@@ -61,14 +61,15 @@
   - Edit Project Properties|VC++ Directories|Include Paths
     Add to the beginning
     c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\;
-    c:\Program Files\Microsoft SDKs\Windows\v7.0\Include\;
+    c:\Program Files\Microsoft SDKs\Windows\v7.0\Include\; or put behind $(VC_IncludePath) if windows.h not found
   - Edit Project Properties|VC++ Directories|Library Directories
     For x86 target add 
       c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
     For x64 target add 
       c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
     For XP target add (to find winmm.lib)
-      c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\;
+      c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\; (for 32 bit build)
+      c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\x64\; (for 64 bit build)
   - Edit Project Properties|Linker|Input|Additional Dependencies
     Add strmbase.lib to the list
   - For XP compatibility
