@@ -550,8 +550,6 @@ static void convert_yv24_chroma_to_yv12_c(BYTE *dstp8, const BYTE *srcp8, int ds
 
 void Convert444ToYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
 {
-//  env->MakeWritable(&dst); already writeable
-
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
     src->GetReadPtr(PLANAR_Y), src->GetPitch(), dst->GetRowSize(PLANAR_Y), dst->GetHeight());
 

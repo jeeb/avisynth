@@ -522,18 +522,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
 #endif
   }
 
-  // here img->frame is 444
-  // apply fast conversion
-  if((pixelsize==1) && outputVi->Is420())
-  {
-    PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
-    Convert444ToYV12(frame, outputFrame, pixelsize, bits_per_pixel, env);
-  } else if(outputVi->IsYUY2()) {
-    PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
-    Convert444ToYUY2(frame, outputFrame, pixelsize, bits_per_pixel, env);
-  }
-  // all other cases return 4:4:4
-
   // Cleanup
   if (mask) {
     if (!greymask) {
@@ -548,6 +536,20 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     img->free_all();
     delete img;
   }
+
+  // here img->frame is 444
+  // apply fast conversion
+  if((pixelsize==1) && outputVi->Is420())
+  {
+    PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
+    Convert444ToYV12(frame, outputFrame, pixelsize, bits_per_pixel, env);
+    return outputFrame;
+  } else if(outputVi->IsYUY2()) {
+    PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
+    Convert444ToYUY2(frame, outputFrame, pixelsize, bits_per_pixel, env);
+    return outputFrame;
+  }
+  // all other cases return 4:4:4
 #ifndef USE_ORIG_FRAME
   return frameOutput;
 #else
