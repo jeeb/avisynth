@@ -596,8 +596,8 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
           DecompressBegin(pbiSrc, &biDst);
         }
-        // Flip DIB formats if negative height
-        if ((pbiSrc->biHeight < 0) && (vi.IsRGB() || vi.IsY8()))
+        // Flip DIB formats if negative height (FIXME: Y8 too?). Flip RGB48/64 always.
+        if ((pbiSrc->biHeight < 0 && (vi.IsRGB24() || vi.IsRGB32() || vi.IsY8())) || vi.IsRGB48() || vi.IsRGB64())
           bInvertFrames = true;
       }
       else {
