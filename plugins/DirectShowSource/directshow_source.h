@@ -253,6 +253,7 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   bool end_of_stream, flushing, seeking;
   IUnknown *m_pPos;  // Pointer to the CPosPassThru object.
   VideoInfo vi;
+  bool m_bInvertFrames; // Data in av_buffer is flipped vertically compared to the expected orientation of vi.pixel_type
   bool lockvi; // Format negotiation is allowed until DSS is fully created
 
   HANDLE evtDoneWithSample, evtNewSampleReady;
@@ -389,7 +390,8 @@ public:
   HRESULT __stdcall ReceiveCanBlock();
 
 private:
-  HRESULT InternalQueryAccept(const AM_MEDIA_TYPE* pmt, VideoInfo &vi);
+  /// \param bInvertFrames[out] If true, the image is flipped vertically compared to the expected orientation of vi.pixel_type
+  HRESULT InternalQueryAccept(const AM_MEDIA_TYPE* pmt, VideoInfo &vi, bool &bInvertFrames);
 
 };
 
