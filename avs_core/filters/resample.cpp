@@ -34,6 +34,7 @@
 
 #include "resample.h"
 #include "resample_avx.h"
+#include "resample_avx2.h"
 #include <avs/config.h>
 #include "../core/internal.h"
 
@@ -383,10 +384,13 @@ static void resize_v_sseX_planar_16or32(BYTE* dst0, const BYTE* src0, int dst_pi
   src_pitch = src_pitch / sizeof(pixel_t);
 
   __m128 clamp_limit;
+  __m128i clamp_limit_i16;
   float limit;
   if (sizeof(pixel_t) == 2) {
-    limit = (float)(((int)1 << bits_per_pixel) - 1);
+    int max_pixel_value = ((int)1 << bits_per_pixel) - 1;
+    limit = (float)max_pixel_value;
     clamp_limit = _mm_set1_ps(limit); // clamp limit
+    clamp_limit_i16 = _mm_set1_epi16(max_pixel_value); // clamp limit
   }
 
   for (int y = 0; y < target_height; y++) {
@@ -428,16 +432,22 @@ static void resize_v_sseX_planar_16or32(BYTE* dst0, const BYTE* src0, int dst_pi
       if(sizeof(pixel_t)==2) // word
       {
         // clamp!
-        result_l_single = _mm_min_ps(result_l_single, clamp_limit); // mainly for 10-14 bit
-        result_h_single = _mm_min_ps(result_h_single, clamp_limit); // mainly for 10-14 bit
+        if (!sse41) { // for sse41: later
+          result_l_single = _mm_min_ps(result_l_single, clamp_limit); // mainly for 10-14 bit
+          result_h_single = _mm_min_ps(result_h_single, clamp_limit); // mainly for 10-14 bit
+        }
         // result = _mm_max_ps(result, zero); low limit through pack_us
         // Converts the four single-precision, floating-point values of a to signed 32-bit integer values.
         __m128i result_l  = _mm_cvtps_epi32(result_l_single);
         __m128i result_h  = _mm_cvtps_epi32(result_h_single);
-        // Pack and store
+        //result_l = _mm_min_epi32(result_l, clamp_limit_i32); // mainly for 10-14 bit
+        //result_h = _mm_min_epi32(result_h, clamp_limit_i32); // mainly for 10-14 bit
+                                                                    // Pack and store
         // SIMD Extensions 4 (SSE4) packus or simulation
         __m128i result = sse41 ? _mm_packus_epi32(result_l, result_h) : (_MM_PACKUS_EPI32(result_l, result_h)) ; // 4*32+4*32 = 8*16
-        _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), result);
+        if (sse41)
+          result = _mm_min_epu16(result, clamp_limit_i16); // unsigned clamp here
+        _mm_stream_si128(reinterpret_cast<__m128i*>(dst+x), result);
       }
       else { // float
         _mm_store_ps(reinterpret_cast<float*>(dst+x), result_l_single);
@@ -1257,8 +1267,17 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
   else if (pixelsize == 2) {
     if (CPU & CPUF_SSSE3) {
       resize_h_prepare_coeff_8(program, env);
+      if (CPU & CPUF_AVX2) {
+        if(bits_per_pixel < 16)
+          return resizer_h_avx2_generic_int16_float<true, uint16_t>;
+        else
+          return resizer_h_avx2_generic_int16_float<false, uint16_t>;
+      }
       if (CPU & CPUF_AVX) {
-        return resizer_h_avx_generic_int16_float<uint16_t>;
+        if(bits_per_pixel < 16)
+          return resizer_h_avx_generic_int16_float<true, uint16_t>;
+        else
+          return resizer_h_avx_generic_int16_float<false, uint16_t>;
       }
       if (CPU & CPUF_SSE4_1)
         return resizer_h_ssse3_generic_int16_float<uint16_t, true>;
@@ -1270,8 +1289,11 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
     if (CPU & CPUF_SSSE3) {
       resize_h_prepare_coeff_8(program, env);
       //if (program->filter_size > 8)
+      if (CPU & CPUF_AVX2) {
+        return resizer_h_avx2_generic_int16_float<false, float>;
+      }
       if (CPU & CPUF_AVX) {
-        return resizer_h_avx_generic_int16_float<float>;
+        return resizer_h_avx_generic_int16_float<false, float>;
       }
       if (CPU & CPUF_SSE4_1)
         return resizer_h_ssse3_generic_int16_float<float, true>;
@@ -1497,7 +1519,19 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, i
       }
     }
     else if (pixelsize == 2) {
-      if (CPU & CPUF_SSE4_1) {
+      if (aligned && (CPU & CPUF_AVX2)) {
+        if(bits_per_pixel<16)
+          return resize_v_avx2_planar_16or32<true, uint16_t>;
+        else
+          return resize_v_avx2_planar_16or32<false, uint16_t>;
+      }
+      if (aligned && (CPU & CPUF_AVX)) {
+        if(bits_per_pixel<16)
+          return resize_v_avx_planar_16or32<true, uint16_t>;
+        else
+          return resize_v_avx_planar_16or32<false, uint16_t>;
+      }
+      else if (CPU & CPUF_SSE4_1) {
         if (aligned) {
           return resize_v_sseX_planar_16or32<simd_load_streaming, simd_loadps_aligned, true, uint16_t>;
         }
@@ -1521,7 +1555,13 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, i
     }
     else { // pixelsize== 4
       // no special integer loading difference, no special sse4 case
-      if (CPU & CPUF_SSE2) {
+      if (aligned && (CPU & CPUF_AVX2)) {
+        return resize_v_avx2_planar_16or32<false, float>; // non avx2
+      }
+      if (aligned && (CPU & CPUF_AVX)) {
+        return resize_v_avx_planar_16or32<false, float>; // non avx2
+      }
+      else if (CPU & CPUF_SSE2) {
         if (aligned) {
           return resize_v_sseX_planar_16or32<simd_load_aligned, simd_loadps_aligned, false, float>;
         }

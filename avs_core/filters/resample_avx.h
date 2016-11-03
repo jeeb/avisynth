@@ -38,11 +38,10 @@
 #include <avisynth.h>
 #include "resample_functions.h"
 
-template<typename pixel_t>
+template<bool lessthan16bit, typename pixel_t, bool avx2 = false>
 void resizer_h_avx_generic_int16_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel);
 
-template<typename pixel_t, bool hasSSE41>
-void resizer_h_ssse3_as_avx_generic_int16_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel);
-
+template<bool lessthan16bit, typename pixel_t, bool avx2 = false>
+void resize_v_avx_planar_16or32(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage);
 
 #endif // __Resample_AVX_H__
