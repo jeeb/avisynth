@@ -51,6 +51,7 @@
 template<typename pixel_t, uint8_t targetbits>
 void convert_32_to_uintN_c_avx(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
+  _mm256_zeroupper();
   const float *srcp0 = reinterpret_cast<const float *>(srcp);
   pixel_t *dstp0 = reinterpret_cast<pixel_t *>(dstp);
 
@@ -88,7 +89,8 @@ template void convert_32_to_uintN_c_avx<uint16_t, 16>(const BYTE *srcp, BYTE *ds
 template<bool expandrange, uint8_t shiftbits>
 void convert_uint16_to_uint16_c_avx(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
-    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
+  _mm256_zeroupper();
+  const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
     uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
 
     src_pitch = src_pitch / sizeof(uint16_t);

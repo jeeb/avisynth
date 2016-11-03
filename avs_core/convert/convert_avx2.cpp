@@ -51,6 +51,7 @@
 template<typename pixel_t, uint8_t targetbits>
 void convert_32_to_uintN_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
+  _mm256_zeroupper();
   const float *srcp0 = reinterpret_cast<const float *>(srcp);
   pixel_t *dstp0 = reinterpret_cast<pixel_t *>(dstp);
 
@@ -73,6 +74,7 @@ void convert_32_to_uintN_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, i
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
   }
+  _mm256_zeroupper();
 }
 
 template void convert_32_to_uintN_c_avx2<uint8_t, 8>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range);
@@ -86,6 +88,7 @@ template void convert_32_to_uintN_c_avx2<uint16_t, 16>(const BYTE *srcp, BYTE *d
 template<bool expandrange, uint8_t shiftbits>
 void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
+    _mm256_zeroupper();
     const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
     uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
 
@@ -106,7 +109,7 @@ void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsi
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
     }
-    // Anti-sse2-avx penalty vzeroupper (_mm256_zeroupper()) is automatically placed here if ymm registers are used
+    _mm256_zeroupper();
 }
 
 // instantiate them
