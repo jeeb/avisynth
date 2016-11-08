@@ -35,6 +35,7 @@
 
 #include "limiter.h"
 #include <emmintrin.h>
+#include <smmintrin.h> // for sse41
 #include <avs/alignment.h>
 #include <avs/win.h>
 
