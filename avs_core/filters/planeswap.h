@@ -82,6 +82,7 @@ public:
   static AVSValue __cdecl CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateUToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateVToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateAnyToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreatePlaneToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
 
   enum {UToY=1, VToY, UToY8, VToY8, YUY2UToY8, YUY2VToY8, AToY8, RToY8, GToY8, BToY8, YToY8};
@@ -97,7 +98,7 @@ class SwapYToUV : public GenericVideoFilter
  **/
 {
 public:
-  SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment* env);  
+  SwapYToUV(PClip _child, PClip _clip, PClip _clipY, PClip _clipA, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -106,12 +107,39 @@ public:
 
   static AVSValue __cdecl CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYToYUVA(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 
 private:
-  PClip clip, clipY;
+  PClip clip, clipY, clipA;
   int mode;
   int test;
+};
+
+class CombinePlanes : public GenericVideoFilter
+  /**
+  * SwapYToYUVs planar channels
+  **/
+{
+public:
+  CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _clip4, PClip _sample, const char *_target_planes_str, const char *_source_planes_str, const char *_pixel_type, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static AVSValue __cdecl CreateCombinePlanes(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+
+private:
+  PClip clips[4];
+  int pixelsize;
+  int bits_per_pixel;
+  int planecount;
+  char planes[4];
+  int source_planes[4];
+  int target_planes[4];
 };
 
 #endif  // __Planeswap_H__

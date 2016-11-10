@@ -56,9 +56,18 @@ extern const AVSFunction Swap_filters[] = {
   {  "VToY",   BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY },
   {  "UToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY8 },
   {  "VToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 },
+  {  "AToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::AToY8 },
+  {  "RToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::RToY8 },
+  {  "GToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::GToY8 },
+  {  "BToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::BToY8 },
   {  "YToUV",  BUILTIN_FUNC_PREFIX, "cc", SwapYToUV::CreateYToUV },
   {  "YToUV",  BUILTIN_FUNC_PREFIX, "ccc", SwapYToUV::CreateYToYUV },
+  {  "YToUV",  BUILTIN_FUNC_PREFIX, "cccc", SwapYToUV::CreateYToYUVA }, // avs+ alpha planes
   {  "PlaneToY",  BUILTIN_FUNC_PREFIX, "c[plane]s", SwapUVToY::CreatePlaneToY8 },
+  {  "CombinePlanes",  BUILTIN_FUNC_PREFIX, "c[planes]s[source_planes]s[pixel_type]s[sample_clip]c", CombinePlanes::CreateCombinePlanes, (void *)1},
+  {  "CombinePlanes",  BUILTIN_FUNC_PREFIX, "cc[planes]s[source_planes]s[pixel_type]s[sample_clip]c", CombinePlanes::CreateCombinePlanes, (void *)2},
+  {  "CombinePlanes",  BUILTIN_FUNC_PREFIX, "ccc[planes]s[source_planes]s[pixel_type]s[sample_clip]c", CombinePlanes::CreateCombinePlanes, (void *)3},
+  {  "CombinePlanes",  BUILTIN_FUNC_PREFIX, "cccc[planes]s[source_planes]s[pixel_type]s[sample_clip]c", CombinePlanes::CreateCombinePlanes, (void *)4},
   { 0 }
 };
 
@@ -204,6 +213,12 @@ AVSValue __cdecl SwapUVToY::CreateVToY8(AVSValue args, void* user_data, IScriptE
 {
   PClip clip = args[0].AsClip();
   return new SwapUVToY(clip, (clip->GetVideoInfo().IsYUY2()) ? YUY2VToY8 : VToY8, env);
+}
+
+AVSValue __cdecl SwapUVToY::CreateAnyToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  int mode = (int)(intptr_t)(user_data);
+  return new SwapUVToY(args[0].AsClip(), mode, env);
 }
 
 AVSValue __cdecl SwapUVToY::CreatePlaneToY8(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -416,20 +431,28 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl SwapYToUV::CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), NULL , env);
+  return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), NULL , NULL, env);
 }
 
 AVSValue __cdecl SwapYToUV::CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), env);
+  return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), NULL, env);
 }
 
-
-SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), clip(_clip), clipY(_clipY)
+AVSValue __cdecl SwapYToUV::CreateYToYUVA(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  if (!vi.IsYUV())
-    env->ThrowError("YToUV: Only YUV data accepted");
+  return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3].AsClip(), env);
+}
+
+SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, PClip _clipA, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), clip(_clip), clipY(_clipY), clipA(_clipA)
+{
+  if(!(vi.IsYUVA() || vi.IsY()) && clipA)
+    env->ThrowError("YToUV: Only Y or YUVA data accepted when alpha clip is provided"); // Y, YUV and YUY2
+  if (!vi.IsYUV() && !vi.IsYUVA())
+  {
+    env->ThrowError("YToUV: Only YUV or YUVA data accepted"); // Y, YUV and YUY2
+  }
 
   const VideoInfo& vi2 = clip->GetVideoInfo();
   if (vi.height != vi2.height)
@@ -439,6 +462,7 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
   if (vi.IsYUY2() != vi2.IsYUY2()) 
     env->ThrowError("YToUV: YUY2 Clips must have same colorspace (U & V mismatch) !");
 
+  // no third parameter: no Y clip
   if (!clipY) {
     if (vi.IsYUY2())
       vi.width *= 2;
@@ -459,6 +483,7 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
     return;
   }
 
+  // Y clip parameter exists, Y channel will be copied from that
   const VideoInfo& vi3 = clipY->GetVideoInfo();
   if (vi.IsYUY2() != vi3.IsYUY2()) 
     env->ThrowError("YToUV: YUY2 Clips must have same colorspace (UV & Y mismatch) !");
@@ -472,24 +497,34 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
     return;
   }
 
-  // Autogenerate destination colorformat
-  switch (vi.BitsPerComponent())
-  {
-  case 8: vi.pixel_type = VideoInfo::CS_YV12; break;// CS_Sub_Width_2 and CS_Sub_Height_2 are 0
-  case 10: vi.pixel_type = VideoInfo::CS_YUV420P10; break;
-  case 12: vi.pixel_type = VideoInfo::CS_YUV420P12; break;
-  case 14: vi.pixel_type = VideoInfo::CS_YUV420P14; break;
-  case 16: vi.pixel_type = VideoInfo::CS_YUV420P16; break;
-  case 32: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
+  if (clipA) {
+    if(vi.IsYUY2())
+      env->ThrowError("YToUV: YUY2 not supported with alpha clip");
+    const VideoInfo& vi4 = clipA->GetVideoInfo();
+    if (vi4.width != vi3.width || vi4.height != vi3.height) // Y width == A width
+      env->ThrowError("YToUV: different Y and A clip dimensions");
+    if(vi4.BitsPerComponent() != vi3.BitsPerComponent())
+      env->ThrowError("YToUV: different Y and A clip bit depth");
   }
 
-  if (vi3.width == vi.width)
+  // Autogenerate destination colorformat
+  switch (vi.BitsPerComponent())
+  { // CS_Sub_Width_2 and CS_Sub_Height_2 are 0, vi bitfield can or'd if change needed
+  case  8: vi.pixel_type = clipA ? VideoInfo::CS_YUVA420 : vi.pixel_type = VideoInfo::CS_YV12; break;
+  case 10: vi.pixel_type = clipA ? VideoInfo::CS_YUVA420P10 : vi.pixel_type = VideoInfo::CS_YUV420P10; break;
+  case 12: vi.pixel_type = clipA ? VideoInfo::CS_YUVA420P12 : vi.pixel_type = VideoInfo::CS_YUV420P12; break;
+  case 14: vi.pixel_type = clipA ? VideoInfo::CS_YUVA420P14 : VideoInfo::CS_YUV420P14; break;
+  case 16: vi.pixel_type = clipA ? VideoInfo::CS_YUVA420P16 : VideoInfo::CS_YUV420P16; break;
+  case 32: vi.pixel_type = clipA ? VideoInfo::CS_YUVA420PS : VideoInfo::CS_YUV420PS; break;
+  }
+
+  if (vi3.width == vi.width) // Y width == U width -> subsampling 1:1
     vi.pixel_type |= VideoInfo::CS_Sub_Width_1;
-  else if (vi3.width == vi.width * 2)
-    vi.width *= 2;
-  else if (vi3.width == vi.width * 4) {
+  else if (vi3.width == vi.width * 2) // Y width == U width*2 -> horiz. subsampling 2
+    vi.width *= 2; // YV12 subsampling CS_Sub_Width_2 is o.k.
+  else if (vi3.width == vi.width * 4) { // Y width == U width*4 -> horiz. subsampling 4
     vi.pixel_type |= VideoInfo::CS_Sub_Width_4;
-    vi.width *= 4;
+    vi.width *= 4; // final clip width is 3x of the U channel width
   }
   else
     env->ThrowError("YToUV: Video width ratio does not match any internal colorspace.");
@@ -599,6 +634,14 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
               src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
 
+  if (clipA) {
+    int source_plane = (clipA->GetVideoInfo().IsPlanarRGBA() ||
+      clipA->GetVideoInfo().IsYUVA()) ? PLANAR_A : PLANAR_Y;
+    src = clipA->GetFrame(n, env);
+    env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A),
+      src->GetReadPtr(source_plane), src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
+  }
+
   if (clipY) {
     src = clipY->GetFrame(n, env);
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
@@ -606,6 +649,7 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
     return dst;
   }
 
+  // if no Y script was given, fill Y plane with neutral value
   // Luma = 126 (0x7e)
   BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
   int rowsize = dst->GetRowSize(PLANAR_Y);
@@ -623,3 +667,173 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
+// AVS+: Combine planes free-style for all planar formats
+AVSValue __cdecl CombinePlanes::CreateCombinePlanes(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  int mode = (int)(intptr_t)(user_data);
+  int target_planes_param = 0 + mode;
+  int source_planes_param = 1 + mode;
+  int pixel_type_param = 2 + mode;
+  int sample_clip_param = 3 + mode;
+
+  bool hasSampleClip = args[sample_clip_param].Defined();
+  return new CombinePlanes(args[0].AsClip(),
+    mode >= 2 ? args[1].AsClip() : nullptr,
+    mode >= 3 ? args[2].AsClip() : nullptr,
+    mode >= 4 ? args[3].AsClip() : nullptr,
+    hasSampleClip ? args[sample_clip_param].AsClip() : nullptr,
+    args[target_planes_param].AsString(""),
+    args[source_planes_param].AsString(""),
+    args[pixel_type_param].AsString(""),
+    env);
+}
+
+CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _clip4, PClip _sample,
+  const char *_target_planes_str, const char *_source_planes_str, const char *_pixel_type, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+{
+  clips[0] = _child;
+  clips[1] = _clip2;
+  clips[2] = _clip3;
+  clips[3] = _clip4;
+  // planes(_planes), pixel_type(pixel_type)
+  // getting target video format
+  VideoInfo vi_default;
+  memset(&vi_default, 0, sizeof(VideoInfo));
+
+  if (_sample) {
+    vi_default = _sample->GetVideoInfo();
+  } else { // no sample video: format from first clip
+    vi_default = child->GetVideoInfo();
+  }
+  // 1.) sample clip 2.) first clip 3.) pixel_type override
+  if (*_pixel_type) {
+    int i_pixel_type = GetPixelTypeFromName(_pixel_type);
+    if (i_pixel_type == VideoInfo::CS_UNKNOWN)
+      env->ThrowError("CombinePlanes: unknown pixel_type %s", _pixel_type);
+    vi_default.pixel_type = i_pixel_type;
+  }
+
+  vi = vi_default;
+
+  if(!vi_default.IsPlanar())
+    env->ThrowError("CombinePlanes: target format must be planar!");
+
+  int source_plane_count = strlen(_source_planes_str); // no check here, can be 0
+  int target_plane_count = strlen(_target_planes_str);
+  if(target_plane_count == 0)
+    env->ThrowError("CombinePlanes: no target planes given!");
+  if(target_plane_count > vi_default.NumComponents())
+    env->ThrowError("CombinePlanes: too many target planes (%d)! Target video plane count is %d!", target_plane_count, vi_default.NumComponents());
+  int clip_count = clips[3] ? 4 : clips[2] ? 3 : clips[1] ? 2 : 1;
+  if(target_plane_count < clip_count)
+    env->ThrowError("CombinePlanes: more clips than planes", target_plane_count, vi_default.NumComponents());
+
+  if(source_plane_count != 0 && source_plane_count != target_plane_count)
+    env->ThrowError("CombinePlanes: source plane count must match with target plane count if provided!");
+
+  // useful for later check
+  bool targetIsYUV = vi_default.IsYUV() || vi_default.IsYUVA();
+  bool targetHasAlpha = vi_default.IsYUVA() || vi_default.IsPlanarRGBA();
+  bool targetIsY = vi_default.IsY();
+
+  // class variables
+  bits_per_pixel = vi_default.BitsPerComponent();
+  pixelsize = vi_default.ComponentSize();
+  planecount = target_plane_count;
+
+  // if source plane is given, use it otherwise assume these
+  const char * rgb_source_planes_str_def = "RGBA";
+  const char * yuv_source_planes_str_def = "YUVA";
+
+  int last_clip_index = 0;
+  for (int i = 0; i < target_plane_count; i++) {
+    char ch = toupper(_target_planes_str[i]);
+    bool isRGB = ch == 'R' || ch == 'G' || ch == 'B';
+    bool isYUV = ch == 'Y' || ch == 'U' || ch == 'V';
+    bool isAlpha = ch == 'A';
+    if(!isRGB && !isYUV && !isAlpha)
+      env->ThrowError("CombinePlanes: invalid plane definifion :%s", planes);
+    if((targetIsYUV && isRGB) || (!targetIsYUV && isYUV) || (!targetHasAlpha && isAlpha) || (targetIsY && ch!='Y'))
+      env->ThrowError("CombinePlanes: target has no such plane %c", ch);
+
+    int current_target_plane;
+    switch (ch) {
+    case 'R': current_target_plane = PLANAR_R; break;
+    case 'G': current_target_plane = PLANAR_G; break;
+    case 'B': current_target_plane = PLANAR_B; break;
+    case 'A': current_target_plane = PLANAR_A; break;
+    case 'Y': current_target_plane = PLANAR_Y; break;
+    case 'U': current_target_plane = PLANAR_U; break;
+    case 'V': current_target_plane = PLANAR_V; break;
+    }
+    target_planes[i] = current_target_plane;
+    int target_plane_width = vi_default.width >> vi_default.GetPlaneWidthSubsampling(current_target_plane);
+    int target_plane_height = vi_default.height >> vi_default.GetPlaneWidthSubsampling(current_target_plane);
+
+    if (clips[i]) // source clip count can be less than target planes count
+      last_clip_index = i; // last defined clip is used for the others
+
+    // check source clips and optinally their plane order
+    VideoInfo src_vi = clips[last_clip_index]->GetVideoInfo();
+
+    if(src_vi.BitsPerComponent() != bits_per_pixel)
+      env->ThrowError("CombinePlanes: source bit depth is different from %d", bits_per_pixel);
+
+    bool sourceIsYUV = src_vi.IsYUV() || src_vi.IsYUVA();
+    bool sourceHasAlpha = src_vi.IsYUVA() || src_vi.IsPlanarRGBA();
+    bool sourceIsY = src_vi.IsY();
+    // check source
+    // source_plane_count is either 0 or == target_plane_count
+    {
+      char ch;
+      if (source_plane_count > 0) // optinal! defaults are filled
+        ch = toupper(_source_planes_str[i]);
+      else if (sourceIsYUV)
+        ch = toupper(yuv_source_planes_str_def[i]);
+      else // rgb
+        ch = toupper(rgb_source_planes_str_def[i]);
+      bool isRGB = ch == 'R' || ch == 'G' || ch == 'B';
+      bool isYUV = ch == 'Y' || ch == 'U' || ch == 'V';
+      bool isAlpha = ch == 'A';
+      if(!isRGB && !isYUV && !isAlpha)
+        env->ThrowError("CombinePlanes: invalid source plane definifion :%s", planes);
+      if((sourceIsYUV && isRGB) || (!sourceIsYUV && isYUV) || (!sourceHasAlpha && isAlpha) || (sourceIsY && ch!='Y'))
+        env->ThrowError("CombinePlanes: source has no such plane %c", ch);
+      // todo lambda
+      int current_source_plane;
+      switch (ch) {
+      case 'R': current_source_plane = PLANAR_R; break;
+      case 'G': current_source_plane = PLANAR_G; break;
+      case 'B': current_source_plane = PLANAR_B; break;
+      case 'A': current_source_plane = PLANAR_A; break;
+      case 'Y': current_source_plane = PLANAR_Y; break;
+      case 'U': current_source_plane = PLANAR_U; break;
+      case 'V': current_source_plane = PLANAR_V; break;
+      }
+      source_planes[i] = current_source_plane;
+      // check dimensions
+      int source_plane_width = src_vi.width >> src_vi.GetPlaneWidthSubsampling(current_source_plane);
+      int source_plane_height = src_vi.height >> src_vi.GetPlaneWidthSubsampling(current_source_plane);
+      if(source_plane_width != target_plane_width || source_plane_height != target_plane_height)
+        env->ThrowError("CombinePlanes: source and target plane dimensions are different");
+    }
+  }
+}
+
+
+PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame dst = env->NewVideoFrame(vi);
+
+  int last_clip_index = 0;
+  PVideoFrame src;
+  for (int i = 0; i < planecount; i++) {
+    if (clips[i]) // source clips can be less than defined planes
+      src = clips[i]->GetFrame(n, env); // last defined clip is used for the others
+    int target_plane = target_planes[i];
+    int source_plane = source_planes[i];
+    env->BitBlt(dst->GetWritePtr(target_plane), dst->GetPitch(target_plane),
+      src->GetReadPtr(source_plane), src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
+  }
+  return dst;
+}
