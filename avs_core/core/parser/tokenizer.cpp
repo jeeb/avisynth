@@ -208,6 +208,10 @@ void Tokenizer::NextToken() {
     case '}':
     case '(':
     case ')':
+#ifndef OLD_ARRAYS
+    case '[': // array definition
+    case ']':
+#endif
     case ',':
     case '?':
     case ':':
@@ -383,6 +387,9 @@ static const char* GetTypeName(char type)
     case 'i': return "integer";
     case 'o': return "operator";
     case 's': return "string";
+#ifndef OLD_ARRAYS
+    case 'A': return "array2"; // PF Arrays
+#endif
     default: return "unknown";
   }
 }

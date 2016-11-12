@@ -81,7 +81,11 @@ static std::string GetFullPathNameWrap(const std::string &f)
 
 static bool IsParameterTypeSpecifier(char c) {
   switch (c) {
-    case 'b': case 'i': case 'f': case 's': case 'c': case '.':
+    // pf avs+ 161028
+  case 'b': case 'i': case 'f': case 's': case 'c': case '.':
+#ifndef OLD_ARRAYS
+  case 'a': // PF Arrays
+#endif
       return true;
     default:
       return false;
@@ -91,6 +95,9 @@ static bool IsParameterTypeSpecifier(char c) {
 static bool IsParameterTypeModifier(char c) {
   switch (c) {
     case '+': case '*':
+#ifndef OLD_ARRAYS
+    case '#': // PF Arrays check 161112 maybe + works, too
+#endif
       return true;
     default:
       return false;
@@ -240,6 +247,10 @@ bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
     case 'f': return arg.IsFloat() && (!strict || !arg.IsInt());
     case 's': return arg.IsString();
     case 'c': return arg.IsClip();
+#ifndef OLD_ARRAYS
+    case 'a': return arg.IsArray(); // PF 161028 AVS+ test
+    //case 'A': return arg.IsArray(); // PF 161028 AVS+ test todo back to 'a'
+#endif
     default:  return false;
   }
 }
@@ -248,6 +259,20 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
 
   bool optional = false;
 
+  /*
+  { "StackHorizontal", BUILTIN_FUNC_PREFIX, "cc+", StackHorizontal::Create },
+  { "Spline", BUILTIN_FUNC_PREFIX, "[x]ff+[cubic]b", Spline },
+  { "Select",   BUILTIN_FUNC_PREFIX, "i.+", Select },
+  { "Array", BUILTIN_FUNC_PREFIX, ".#", ArrayCreate },  // # instead of +: creates script array
+
+  { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "Ai", ArrayGet },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "As", ArrayGet },
+  { "ArraySize", BUILTIN_FUNC_PREFIX, "A", ArraySize },
+  */
+  // originally arguments are provided in a flattened way (flattened=array elements extracted)
+  //            e.g.    string array is provided here string,string,string
+  // New:       arguments are not flattened
   size_t i = 0;
   while (i < num_args) {
 
@@ -277,7 +302,11 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
     }
 
     switch (*param_types) {
+      // AVS+ param type array: a or A, to be decided
       case 'b': case 'i': case 'f': case 's': case 'c':
+#ifndef OLD_ARRAYS
+      case 'a': /*case 'A':*/ // PF Arrays
+#endif
         if (   (!optional || args[i].Defined())
             && !SingleTypeMatch(*param_types, args[i], strict))
           return false;
@@ -287,6 +316,24 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
         ++i;
         break;
       case '+': case '*':
+#ifndef OLD_ARRAYS
+      case '#': // PF: '#' like +, but creates script Arrays
+#endif
+#ifndef OLD_ARRAYS
+        if (param_types[-1] != '.' && args[i].IsArray()) { // PF new Arrays
+          // all elements in the array should match with the type char preceding '+*#'
+          // only one array level is enough
+          for (int j = 0; j < args[i].ArraySize(); j++)
+          {
+            if (!SingleTypeMatch(param_types[-1], args[i][j], strict))
+              return false;
+          }
+          // we're done with the + or *
+          ++param_types;
+          ++i;
+        }
+        else
+#endif
         if (!SingleTypeMatch(param_types[-1], args[i], strict)) {
           // we're done with the + or *
           ++param_types;
@@ -305,7 +352,11 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
   // (b) remaining params are named i.e. optional.
   // (c) we're at a '+' or '*' and any remaining params are optional.
 
-  if (*param_types == '+'  || *param_types == '*')
+  if (*param_types == '+'  || *param_types == '*'
+#ifndef OLD_ARRAYS
+    || *param_types == '#'
+#endif
+    ) // PF Arrays #
     param_types += 1;
 
   if (*param_types == '\0' || *param_types == '[')

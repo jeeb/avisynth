@@ -80,8 +80,11 @@ private:
   PExpression ParseMultiplication(bool negationOnHold);
   PExpression ParseUnary(void);
   PExpression ParseOOP(void);
-
+#ifndef OLD_ARRAYS
+  PExpression ParseFunction(PExpression context, char context_char);
+#else
   PExpression ParseFunction(PExpression context);
+#endif
   PExpression ParseAtom(void);
 
   PExpression ParseIf(void);

@@ -254,4 +254,11 @@ AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ColorSpaceNameToPixelType(AVSValue args, void*, IScriptEnvironment* env);
 
+#ifndef OLD_ARRAYS
+AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ArraySize(AVSValue args, void*, IScriptEnvironment* env);
+#endif
+
 #endif  // __Script_H__

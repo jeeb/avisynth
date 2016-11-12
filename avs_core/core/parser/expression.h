@@ -37,6 +37,9 @@
 
 #include <avisynth.h>
 
+#ifndef OLD_ARRAYS
+#include <vector>
+#endif
 
 /********************************************************************
 ********************************************************************/
@@ -104,6 +107,9 @@ private:
 class ExpConstant : public Expression 
 {
 public:
+#ifndef OLD_ARRAYS
+  ExpConstant(std::vector<AVSValue>* v) : val(v->data(), v->size()) {} // array of AVSValue*
+#endif
   ExpConstant(AVSValue v) : val(v) {}
   ExpConstant(int i) : val(i) {}
   ExpConstant(float f) : val(f) {}

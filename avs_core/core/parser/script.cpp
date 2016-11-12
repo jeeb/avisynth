@@ -250,6 +250,19 @@ extern const AVSFunction Script_functions[] = {
   { "IsPlanarRGBA", BUILTIN_FUNC_PREFIX, "c", IsPlanarRGBA },
   { "ColorSpaceNameToPixelType",  BUILTIN_FUNC_PREFIX, "s", ColorSpaceNameToPixelType },
 
+#ifndef OLD_ARRAYS
+  { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
+  { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a[tag]s", ArrayGet },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a[index]i", ArrayGet },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a[index].+", ArrayGet }, // multidimensional
+  { "ArraySize", BUILTIN_FUNC_PREFIX, "a", ArraySize },
+  /*
+  { "ArrayAdd",  BUILTIN_FUNC_PREFIX, ".i*", ArrayAdd },
+  { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
+  { "ArrayIns",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
+  */
+#endif
   { 0 }
 };
 
@@ -1200,3 +1213,74 @@ AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[
 AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGB(); }
 AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA(); }
 
+#ifndef OLD_ARRAYS
+
+AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env)
+{
+  // empty array comes as an array with one non-defined element (AVSValue.type=='v')
+  if (args[0].IsArray() && args[0].ArraySize()==1 && !args[0][0].Defined())
+    return AVSValue(nullptr, 0); // special case: zero length array
+  else
+    return args[0];
+}
+
+AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsArray(); }
+
+AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const int size = args[0].ArraySize();
+  if (args[1].IsInt()) {
+    int index = args[1].AsInt();
+    if (index < 0 || index >= size)
+      env->ThrowError("Array index out of range");
+    return (args[0][index]);
+  }
+  else if (args[1].IsString()) {
+    // associative search
+    // { {"a", element1}, { "b", element2 }, etc..}
+    const char *tag = args[1].AsString();
+    for (int i = 0; i < size; i++)
+    {
+      AVSValue currentTagValue = args[0][i]; // two elements e.g. { "b", element2 }
+      if(!currentTagValue.IsArray())
+        env->ThrowError("Array must contain array[string, any] for lookup");
+      if(currentTagValue.ArraySize() < 2)
+        env->ThrowError("Internal array must have at least two elements (tag, value)");
+      AVSValue currentTag = currentTagValue[0];
+      if (currentTag.IsString() && !lstrcmpi(currentTag.AsString(), tag))
+      {
+        return currentTagValue[1];
+      }
+    }
+    return AVSValue(); // undefined
+  }
+  else if (args[1].IsArray()) {
+    AVSValue indexes = args[1];
+    AVSValue currentValue = args[0];
+    int index_count = indexes.ArraySize(); // array of parameters. a[1,2] -> [1,2]
+    if(index_count == 0)
+      env->ThrowError("ArrayGet: no index specified");
+    for (int i = 0; i < index_count; i++)
+    {
+      if(!indexes[i].IsInt())
+        env->ThrowError("Invalid compound array index: must be integer");
+      if(!currentValue.IsArray())
+        env->ThrowError("ArrayGet: not an array. Problematic index count: %d", i+1);
+      int currentIndex = indexes[i].AsInt();
+      if(currentIndex < 0 || currentIndex >= currentValue.ArraySize())
+        env->ThrowError("Array index out of range. Problematic index count: %d", i+1);
+      currentValue = currentValue[currentIndex];
+    }
+    return currentValue;
+  }
+  env->ThrowError("Invalid array index, must be integer or string, or comma separated integers");
+  return AVSValue(); // undefined
+}
+
+AVSValue ArraySize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  if (!args[0].IsArray())
+    env->ThrowError("Parameter must be array");
+  return args[0].ArraySize();
+}
+#endif
