@@ -83,7 +83,7 @@ public:
 };
 
 
-static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IScriptEnvironment* env) {
+static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, const int *colors, const float *colors_f, bool color_is_array, IScriptEnvironment* env) {
 
   if (!vi.HasVideo()) return 0;
 
@@ -115,40 +115,64 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
     for (int p = 0; p < vi.NumComponents(); p++)
     {
       int plane = planes[p];
-      if (isyuvlike) {
-          switch(plane) {
+      if (color_is_array) {
+        // works from colors or colors_f: as-is
+        BYTE *dstp = frame->GetWritePtr(plane);
+        int size = frame->GetPitch(plane) * frame->GetHeight(plane);
+        int c;
+        switch (pixelsize) {
+        case 1: c = clamp(colors[p], 0, 0xFF);
+                Cval.i = c | (c << 8) | (c << 16) | (c << 24);
+                break; // 4 pixels at a time
+        case 2: c = clamp(colors[p], 0, (1 << vi.BitsPerComponent()) - 1);
+                Cval.i = c | (c << 16);
+                break; // 2 pixels at a time
+        default: // case 4:
+                Cval.f = colors_f[p];
+                break;
+        }
+
+        for (int i = 0; i < size; i += 4)
+          *(uint32_t*)(dstp + i) = Cval.i;
+      }
+      else {
+        // (8)-8-8-8 bit color from int parameter
+        if (isyuvlike) {
+          switch (plane) {
           case PLANAR_A: Cval.i = (color >> 24) & 0xff; break;
           case PLANAR_Y: Cval.i = (color_yuv >> 16) & 0xff; break;
           case PLANAR_U: Cval.i = (color_yuv >> 8) & 0xff; break;
           case PLANAR_V: Cval.i = color_yuv & 0xff; break;
           }
-          if(bits_per_pixel != 32)
+          if (bits_per_pixel != 32)
             Cval.i = Cval.i << (bits_per_pixel - 8);
-      } else {
-          // planar RGB
-          switch(plane) {
+        }
+        else {
+         // planar RGB
+          switch (plane) {
           case PLANAR_A: Cval.i = (color >> 24) & 0xff; break;
           case PLANAR_R: Cval.i = (color >> 16) & 0xff; break;
           case PLANAR_G: Cval.i = (color >> 8) & 0xff; break;
           case PLANAR_B: Cval.i = color & 0xff; break;
           }
-          if(bits_per_pixel != 32)
+          if (bits_per_pixel != 32)
             Cval.i = rgbcolor8to16(Cval.i, max_pixel_value);
+        }
+
+
+        BYTE *dstp = frame->GetWritePtr(plane);
+        int size = frame->GetPitch(plane) * frame->GetHeight(plane);
+
+        switch (pixelsize) {
+        case 1: Cval.i |= (Cval.i << 8) | (Cval.i << 16) | (Cval.i << 24); break; // 4 pixels at a time
+        case 2: Cval.i |= (Cval.i << 16); break; // 2 pixels at a time
+        default: // case 4:
+          Cval.f = float(Cval.i) / 256.0f; // 32 bit float 128=0.5
+        }
+
+        for (int i = 0; i < size; i += 4)
+          *(uint32_t*)(dstp + i) = Cval.i;
       }
-
-
-      BYTE *dstp = frame->GetWritePtr(plane);
-      int size = frame->GetPitch(plane) * frame->GetHeight(plane);
-
-      switch(pixelsize) {
-      case 1: Cval.i |= (Cval.i << 8) | (Cval.i << 16) | (Cval.i << 24); break; // 4 pixels at a time
-      case 2: Cval.i |= (Cval.i << 16); break; // 2 pixels at a time
-      default: // case 4:
-        Cval.f = float(Cval.i) / 256.0f; // 32 bit float 128=0.5
-      }
-
-      for (int i = 0; i < size; i += 4)
-        *(uint32_t*)(dstp + i) = Cval.i;
     }
     return frame;
   }
@@ -349,7 +373,33 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       env->ThrowError("BlankClip: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
-  return new StaticImage(vi, CreateBlankFrame(vi, color, mode, env), parity);
+  int colors[4] = { 0 };
+  float colors_f[4] = { 0.0 };
+  bool color_is_array = false;
+#ifndef OLD_ARRAYS
+  if (args[13].Defined()) // colors
+  {
+    if (!args[13].IsArray())
+      env->ThrowError("BlankClip: colors must be an array");
+    int color_count = args[13].ArraySize();
+    if(vi.NumComponents() != color_count)
+      env->ThrowError("BlankClip: color count %d does not match to component count %d", color_count, vi.NumComponents());
+    int pixelsize = vi.ComponentSize();
+    int bits_per_pixel = vi.BitsPerComponent();
+    for (int i = 0; i < color_count; i++) {
+      if (pixelsize == 4)
+        colors_f[i] = args[13][i].AsFloatf(0.0);
+      else {
+        colors[i] = args[13][i].AsInt(0);
+        if(colors[i] >= (1<<bits_per_pixel) || colors<0)
+          env->ThrowError("BlankClip: invalid color value (%d) for %d bits video format", colors[i], bits_per_pixel);
+      }
+    }
+    color_is_array = true;
+  }
+#endif
+
+  return new StaticImage(vi, CreateBlankFrame(vi, color, mode, colors, colors_f, color_is_array, env), parity);
 }
 
 
@@ -387,7 +437,7 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   vi.fps_denominator = 1;
   vi.num_frames = 240;
 
-  PVideoFrame frame = CreateBlankFrame(vi, bgcolor, COLOR_MODE_RGB, env);
+  PVideoFrame frame = CreateBlankFrame(vi, bgcolor, COLOR_MODE_RGB, nullptr, nullptr, false, env);
   env->ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor);
   return new StaticImage(vi, frame, false);
 };
@@ -1153,8 +1203,13 @@ extern const AVSFunction Source_filters[] = {
                      "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",
                      Create_SegmentedSource, (void*)1 },
 // args             0         1       2        3            4     5                 6            7        8             9       10          11     12
+#ifdef OLD_ARRAYS
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
+#else
+  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c[colors]a", Create_BlankClip },
+  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c[colors]a", Create_BlankClip },
+#endif
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "MessageClip", BUILTIN_FUNC_PREFIX, "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
