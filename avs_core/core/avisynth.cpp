@@ -2382,12 +2382,17 @@ bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAl
    If 'dst' is NULL, will still return the number of elements
    that would have been written to 'dst', but will not actually write to 'dst'.
 */
-static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, const char* const* arg_names = NULL) {
-  if (src.IsArray()) {
+static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, int level, const char* const* arg_names = NULL) {
+  // level is starting from zero
+  if (src.IsArray()
+#ifndef OLD_ARRAYS
+    && level == 0
+#endif
+    ) { // flatten for the first arg level
     const int array_size = src.ArraySize();
     for (int i=0; i<array_size; ++i) {
       if (!arg_names || arg_names[i] == 0)
-        index = Flatten(src[i], dst, index);
+        index = Flatten(src[i], dst, index, level+1);
     }
   } else {
     if (dst != NULL)
@@ -2415,10 +2420,12 @@ const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSV
       // then, look for a built-in function
       for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
         for (const AVSFunction* j = builtin_functions[i]; !j->empty(); ++j)
+        {
           if (streqi(j->name, search_name) &&
-              AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, this) &&
-              AVSFunction::ArgNameMatch(j->param_types, args_names_count, arg_names))
+            AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, this) &&
+            AVSFunction::ArgNameMatch(j->param_types, args_names_count, arg_names))
             return j;
+        }
     }
     // Try again without arg name matching
     oanc = args_names_count;
@@ -2466,19 +2473,21 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
   // get how many args we will need to store
-  size_t args2_count = Flatten(args, NULL, 0, arg_names);
+  size_t args2_count = Flatten(args, NULL, 0, 0, arg_names);
   if (args2_count > ScriptParser::max_args)
     ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
 
   // flatten unnamed args
   std::vector<AVSValue> args2(args2_count, AVSValue());
-  Flatten(args, args2.data(), 0, arg_names);
+  Flatten(args, args2.data(), 0, 0, arg_names);
 
   bool foundClipArgument = false;
   for (auto &argx : args2)
   {
-      assert(!argx.IsArray());
-
+#ifdef OLD_ARRAYS
+    assert(!argx.IsArray()); // todo: we can have arrays 161106
+#endif
+    // todo PF 161112 new arrays: recursive look into arrays whether they contain clips
       if (argx.IsClip())
       {
           foundClipArgument = true;
@@ -2518,7 +2527,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
       p = strchr(p+1, ']');
       if (!p) break;
       p++;
-    } else if ((p[1] == '*') || (p[1] == '+')) {
+    } else if ((p[1] == '*') || (p[1] == '+') || (p[1] == '#')) { // PF Arrays: marked with # instead of '+' results in 'A' array2 type
       size_t start = src_index;
       while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[src_index], strict)))
         src_index++;
@@ -2548,7 +2557,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
     if (arg_names[i]) {
       size_t named_arg_index = 0;
       for (const char* p = f->param_types; *p; ++p) {
-        if (*p == '*' || *p == '+') {
+        if (*p == '*' || *p == '+' || *p == '#') { // PF Arrays: marked with # instead of '+' results in 'A' array2 type)
           continue;   // without incrementing named_arg_index
         } else if (*p == '[') {
           p += 1;
@@ -2558,9 +2567,14 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
             // we have a match
             if (args3[named_arg_index].Defined()) {
               ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
-            } else if (args[i].IsArray()) {
+            }
+#ifdef OLD_ARRAYS
+            //PF 161028 AVS+ arrays as named arguments
+              else if (args[i].IsArray()) {
               ThrowError("Script error: can't pass an array as a named argument");
-            } else if (args[i].Defined() && !AVSFunction::SingleTypeMatch(q[1], args[i], false)) {
+            }
+#endif
+              else if (args[i].Defined() && !AVSFunction::SingleTypeMatch(q[1], args[i], false)) {
               ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
             } else {
               args3[named_arg_index] = args[i];
