@@ -56,10 +56,13 @@ extern const AVSFunction Swap_filters[] = {
   {  "VToY",   BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY },
   {  "UToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY8 },
   {  "VToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 },
-  {  "AToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::AToY8 },
-  {  "RToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::RToY8 },
-  {  "GToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::GToY8 },
-  {  "BToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::BToY8 },
+  {  "ExtractY",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::YToY8 },
+  {  "ExtractU",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY8 }, // differs, YUY2 checks inside
+  {  "ExtractV",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 }, // differs, YUY2 checks inside
+  {  "ExtractA",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::AToY8 },
+  {  "ExtractR",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::RToY8 },
+  {  "ExtractG",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::GToY8 },
+  {  "ExtractB",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::BToY8 },
   {  "YToUV",  BUILTIN_FUNC_PREFIX, "cc", SwapYToUV::CreateYToUV },
   {  "YToUV",  BUILTIN_FUNC_PREFIX, "ccc", SwapYToUV::CreateYToYUV },
   {  "YToUV",  BUILTIN_FUNC_PREFIX, "cccc", SwapYToUV::CreateYToYUVA }, // avs+ alpha planes
