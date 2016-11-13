@@ -2527,7 +2527,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
       p = strchr(p+1, ']');
       if (!p) break;
       p++;
-    } else if ((p[1] == '*') || (p[1] == '+') || (p[1] == '#')) { // PF Arrays: marked with # instead of '+' results in 'A' array2 type
+    } else if ((p[1] == '*') || (p[1] == '+')) {
       size_t start = src_index;
       while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[src_index], strict)))
         src_index++;
@@ -2557,7 +2557,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
     if (arg_names[i]) {
       size_t named_arg_index = 0;
       for (const char* p = f->param_types; *p; ++p) {
-        if (*p == '*' || *p == '+' || *p == '#') { // PF Arrays: marked with # instead of '+' results in 'A' array2 type)
+        if (*p == '*' || *p == '+') {
           continue;   // without incrementing named_arg_index
         } else if (*p == '[') {
           p += 1;
@@ -2566,6 +2566,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
           if (strlen(arg_names[i]) == size_t(q-p) && !_strnicmp(arg_names[i], p, q-p)) {
             // we have a match
             if (args3[named_arg_index].Defined()) {
+              // so named args give can't have .+ specifier
               ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
             }
 #ifdef OLD_ARRAYS

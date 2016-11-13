@@ -253,9 +253,9 @@ extern const AVSFunction Script_functions[] = {
 #ifndef OLD_ARRAYS
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
-  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a[tag]s", ArrayGet },
-  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a[index]i", ArrayGet },
-  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a[index].+", ArrayGet }, // multidimensional
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "as", ArrayGet },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "ai", ArrayGet },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a.+", ArrayGet }, // multidimensional
   { "ArraySize", BUILTIN_FUNC_PREFIX, "a", ArraySize },
   /*
   { "ArrayAdd",  BUILTIN_FUNC_PREFIX, ".i*", ArrayAdd },

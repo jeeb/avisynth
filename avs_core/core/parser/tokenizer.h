@@ -59,7 +59,7 @@ public:
   inline bool IsInt() const { return type == 'i'; }
   inline bool IsFloat() const { return type == 'f'; }
   inline bool IsString() const { return type == 's'; }
-#ifndef OLD_ARRAYS
+#ifdef ARRAYS_AT_TOKENIZER_LEVEL
   inline bool IsArray() const { return type == 'a'; }
 #endif
   inline bool IsNewline() const { return type == 'n'; }
@@ -74,7 +74,7 @@ public:
   int AsInt() const { AssertType('i'); return integer; }
   float AsFloat() const { AssertType('f'); return floating_pt; }
   const char* AsString() const { AssertType('s'); return string; }
-#ifndef OLD_ARRAYS
+#ifdef ARRAYS_AT_TOKENIZER_LEVEL
   std::vector<AVSValue>* AsArray() const { AssertType('a'); return array2; }
 #endif
 
@@ -100,7 +100,7 @@ private:
     int op;   // '+', '++', '.', ',', '(', ')', 0=eoln
     int integer;
     float floating_pt;
-#ifndef OLD_ARRAYS
+#ifdef ARRAYS_AT_TOKENIZER_LEVEL
     std::vector<AVSValue>* array2;
 #endif
   };

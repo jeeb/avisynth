@@ -120,7 +120,7 @@ void ScriptParser::ParseFunctionDefinition(void)
         else if (tokenizer.IsIdentifier("string")) type = 's';
         else if (tokenizer.IsIdentifier("clip")) type = 'c';
 #ifndef OLD_ARRAYS
-        else if (tokenizer.IsIdentifier("array")) type = 'a'; // AVS+ 161028
+        else if (tokenizer.IsIdentifier("array")) type = 'a'; // AVS+ 161028 array type in user defined functions
 #endif
         else env->ThrowError("Script error: expected \"val\", \"bool\", \"int\", \"float\", \"string\", \"array\", or \"clip\"");
         tokenizer.NextToken();
@@ -675,7 +675,7 @@ PExpression ScriptParser::ParseAtom(void)
     tokenizer.NextToken();
     return new ExpConstant(result);
   }
-#ifndef OLD_ARRAYS
+#ifdef ARRAYS_AT_TOKENIZER_LEVEL
   else if (tokenizer.IsArray()) {
     std::vector<AVSValue>* result = tokenizer.AsArray(); // PF tokenizer returns new array
     tokenizer.NextToken();
