@@ -254,7 +254,6 @@ extern const AVSFunction Script_functions[] = {
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, "as", ArrayGet },
-  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "ai", ArrayGet },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a.+", ArrayGet }, // multidimensional
   { "ArraySize", BUILTIN_FUNC_PREFIX, "a", ArraySize },
   /*
@@ -1229,13 +1228,7 @@ AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env) { return args[0]
 AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env)
 {
   const int size = args[0].ArraySize();
-  if (args[1].IsInt()) {
-    int index = args[1].AsInt();
-    if (index < 0 || index >= size)
-      env->ThrowError("Array index out of range");
-    return (args[0][index]);
-  }
-  else if (args[1].IsString()) {
+  if (args[1].IsString()) {
     // associative search
     // { {"a", element1}, { "b", element2 }, etc..}
     const char *tag = args[1].AsString();
