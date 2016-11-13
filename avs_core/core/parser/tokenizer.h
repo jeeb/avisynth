@@ -97,10 +97,11 @@ private:
   {
     const char* identifier;
     const char* string;
-    int op;   // '+', '++', '.', ',', '(', ')', 0=eoln
+    int op;   // '+', '++', '.', ',', '(', ')','[', ']', 0=eoln
     int integer;
     float floating_pt;
 #ifdef ARRAYS_AT_TOKENIZER_LEVEL
+    // not used now, finally arrays are implemented with helper script functions
     std::vector<AVSValue>* array2;
 #endif
   };
