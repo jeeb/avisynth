@@ -241,6 +241,9 @@ AVSValue __cdecl SwapUVToY::CreatePlaneToY8(AVSValue args, void* user_data, IScr
     if (clip->GetVideoInfo().IsYUY2() && mode == YToY8)
         env->ThrowError("PlaneToY: Y plane not allowed for YUY2!");
 
+    if (clip->GetVideoInfo().IsY() && mode == YToY8)
+      return clip;
+
     return new SwapUVToY(clip, mode, env);
 }
 
@@ -262,7 +265,7 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   if (!vi.IsPlanarRGB() && !vi.IsPlanarRGBA() && RGBmode )
       env->ThrowError("PlaneToY: clip is not planar RGB!");
 
-  if (vi.NumComponents() == 1 )
+  if (vi.NumComponents() == 1)
     env->ThrowError("PlaneToY: There are no chroma channels in greyscale clip!");
 
   if(YUVmode && (mode!=YToY8)){
