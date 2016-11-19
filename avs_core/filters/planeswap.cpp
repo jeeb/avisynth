@@ -262,10 +262,10 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   if (!vi.IsPlanarRGB() && !vi.IsPlanarRGBA() && RGBmode )
       env->ThrowError("PlaneToY: clip is not planar RGB!");
 
-  if (vi.NumComponents() == 1)
+  if (vi.NumComponents() == 1 )
     env->ThrowError("PlaneToY: There are no chroma channels in greyscale clip!");
 
-  if(YUVmode) {
+  if(YUVmode && (mode!=YToY8)){
     vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
     vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
   }
