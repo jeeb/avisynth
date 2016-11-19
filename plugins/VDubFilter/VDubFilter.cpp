@@ -825,7 +825,7 @@ FilterDefinition *VDcall FilterAdd(FilterModule *fm, FilterDefinition *pfd, int 
       char *p_src = i->arg_list + 1;
       char *p_target = converted_paramlist;
       char ch;
-      while(ch = *p_src++ && (p_target-converted_paramlist)<MAX_PARAMS) {
+      while((ch = *p_src++) && (p_target-converted_paramlist)<MAX_PARAMS) {
         if (ch == 'd') ch = 'f';
         else if (ch == 'l') ch = 'i';
         *p_target++ = ch;
