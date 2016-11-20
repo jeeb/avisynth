@@ -577,7 +577,7 @@ static void turn_180_yuy2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src
 }
 
 
-Turn::Turn(PClip c, int direction, IScriptEnvironment* env) : GenericVideoFilter(c), u_source(nullptr), v_source(nullptr)
+Turn::Turn(PClip c, int direction, IScriptEnvironment* env) : GenericVideoFilter(c), u_or_b_source(nullptr), v_or_r_source(nullptr)
 {
     if (vi.pixel_type & VideoInfo::CS_INTERLEAVED) {
         num_planes = 1;
@@ -587,7 +587,7 @@ Turn::Turn(PClip c, int direction, IScriptEnvironment* env) : GenericVideoFilter
         num_planes = 3;
     }
 
-    splanes[0] = 0;
+    splanes[0] = vi.IsRGB() ? PLANAR_G : PLANAR_Y;
     splanes[1] = vi.IsRGB() ? PLANAR_B : PLANAR_U;
     splanes[2] = vi.IsRGB() ? PLANAR_R : PLANAR_V;
     splanes[3] = PLANAR_A;
@@ -599,8 +599,8 @@ Turn::Turn(PClip c, int direction, IScriptEnvironment* env) : GenericVideoFilter
             env->ThrowError("Turn: YUY2 data must have mod2 height.");
         }
         if (num_planes > 1) {
-            int mod_h = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
-            int mod_v = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
+            int mod_h = vi.IsRGB() ? 1 : (1 << vi.GetPlaneWidthSubsampling(PLANAR_U));
+            int mod_v = vi.IsRGB() ? 1 : (1 << vi.GetPlaneHeightSubsampling(PLANAR_U));
             if (mod_h != mod_v)
             {
                 if (vi.width % mod_h)
@@ -628,16 +628,18 @@ void Turn::SetUVSource(int mod_h, int mod_v, IScriptEnvironment* env)
     MitchellNetravaliFilter filter(1.0 / 3, 1.0 / 3);
     AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
 
-    u_source = new SwapUVToY(child, SwapUVToY::UToY8, env); // Y16 and Y32 capable
-    v_source = new SwapUVToY(child, SwapUVToY::VToY8, env);
+    bool isRGB = vi.IsRGB(); // can be planar
 
-    const VideoInfo& vi_u = u_source->GetVideoInfo();
+    u_or_b_source = new SwapUVToY(child, isRGB ? SwapUVToY::BToY8 : SwapUVToY::UToY8, env); // Y16 and Y32 capable
+    v_or_r_source = new SwapUVToY(child, isRGB ? SwapUVToY::RToY8 : SwapUVToY::VToY8, env);
+
+    const VideoInfo& vi_u = u_or_b_source->GetVideoInfo();
 
     const int uv_height = vi_u.height * mod_v / mod_h;
     const int uv_width  = vi_u.width  * mod_h / mod_v;
 
-    u_source = FilteredResize::CreateResize(u_source, uv_width, uv_height, subs, &filter, env);
-    v_source = FilteredResize::CreateResize(v_source, uv_width, uv_height, subs, &filter, env);
+    u_or_b_source = FilteredResize::CreateResize(u_or_b_source, uv_width, uv_height, subs, &filter, env);
+    v_or_r_source = FilteredResize::CreateResize(v_or_r_source, uv_width, uv_height, subs, &filter, env);
 
     splanes[1] = 0;
     splanes[2] = 0;
@@ -747,8 +749,8 @@ PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
 
     PVideoFrame srcs[4] = {
         src,
-        u_source ? u_source->GetFrame(n, env) : src,
-        v_source ? v_source->GetFrame(n, env) : src,
+        u_or_b_source ? u_or_b_source->GetFrame(n, env) : src,
+        v_or_r_source ? v_or_r_source->GetFrame(n, env) : src,
         src,
     };
 

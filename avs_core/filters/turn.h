@@ -42,8 +42,8 @@ typedef void (*TurnFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsize, int s
 class Turn : public GenericVideoFilter {
 
     TurnFuncPtr turn_function;
-    PClip u_source;
-    PClip v_source;
+    PClip u_or_b_source;
+    PClip v_or_r_source;
 
     int num_planes;
     int splanes[4];
