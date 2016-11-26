@@ -479,6 +479,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
 
   if (planar_rgb_input)
   {
+    // todo: SSE2, like convert_planarrgb_to_yuv_uint8_14_sse2 and convert_planarrgb_to_yuv_uint16_float_sse2
     const BYTE *srcpG = src->GetReadPtr(PLANAR_G);
     const BYTE *srcpB = src->GetReadPtr(PLANAR_B);
     const BYTE *srcpR = src->GetReadPtr(PLANAR_R);
@@ -1740,6 +1741,7 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
   }*/
 
   // todo: SSE for not only 8 bit RGB
+  // packed RGB24 and RGB32
   if ((env->GetCPUFlags() & CPUF_SSE2) && (pixel_step==3 || pixel_step==4)) {
     //we load using movq so no need to check for alignment
     if (pixel_step == 4) {
@@ -1756,6 +1758,7 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
   }
 
 #ifdef X86_32
+  // packed RGB24 and RGB32
   if ((env->GetCPUFlags() & CPUF_MMX) && (pixel_step==3 || pixel_step==4)) {
     if (pixel_step == 4) {
       convert_yv24_to_rgb_mmx<4>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, matrix);
@@ -1872,7 +1875,8 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
 
     int pixelsize = vi.ComponentSize();
 
-    // todo: template for integers, maybe sse
+    // todo: template for integers
+    // todo: SSE2
     if(pixelsize==1)
     {
       for (int y = 0; y < vi.height; y++) {
