@@ -1460,7 +1460,8 @@ static void convert_yuv_to_planarrgb_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
   const int rowsize = width * sizeof(pixel_t);
   int wmod = (rowsize / 8) * 8;
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < wmod; x += 8 * sizeof(pixel_t)) {
+    // if not mod16 then still no trouble, process non-visible pixels, we have 32 byte aligned in avs+
+    for (int x = 0; x < rowsize; x += 8 * sizeof(pixel_t)) {
       __m128i res1, res2;
       __m128i m_uy, m_vR; // bg=uy rR=vR, g=y b=u r=v R=rounding
       __m128i uy0123, uy4567;
@@ -1513,7 +1514,7 @@ static void convert_yuv_to_planarrgb_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
         _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[0]+x), g);
       }
       else {
-        g = _mm_min_epi16(g, limit); // clamp 10,12,14 bit
+        g = _mm_max_epi16(_mm_min_epi16(g, limit), zero); // clamp 10,12,14 bit
         _mm_store_si128(reinterpret_cast<__m128i *>(dstp[0]+x), g);
       }
       // *B* ----------------
@@ -1538,7 +1539,7 @@ static void convert_yuv_to_planarrgb_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
         _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1]+x), b);
       }
       else {
-        b = _mm_min_epi16(b, limit); // clamp 10,12,14 bit
+        b = _mm_max_epi16(_mm_min_epi16(b, limit), zero); // clamp 10,12,14 bit
         _mm_store_si128(reinterpret_cast<__m128i *>(dstp[1]+x), b);
       }
       // *R* ----------------
@@ -1563,7 +1564,7 @@ static void convert_yuv_to_planarrgb_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
         _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2]+x), r);
       }
       else {
-        r = _mm_min_epi16(r, limit); // clamp 10,12,14 bit
+        r = _mm_max_epi16(_mm_min_epi16(r, limit), zero); // clamp 10,12,14 bit
         _mm_store_si128(reinterpret_cast<__m128i *>(dstp[2]+x), r);
       }
     }
