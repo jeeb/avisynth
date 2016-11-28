@@ -343,6 +343,74 @@ PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _sourceHasAlpha, bool
     (targetHasAlpha ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16);
 }
 
+template<typename pixel_t, int src_numcomponents, bool targetHasAlpha>
+// minimum width: 32 bytes (8 RGBA pixels for 8 bits, 4 RGBA pixels for 16 bits)
+static void convert_rgba_to_rgbp_sse2(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], size_t width, size_t height) {
+  const bool sourceHasAlpha = (src_numcomponents == 4);
+  const int rowsize = width * sizeof(pixel_t) * src_numcomponents;
+  const int pixels_at_a_time = (sizeof(pixel_t) == 1) ? 8 : 4;
+  const int wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
+  for (size_t y = height; y > 0; --y) {
+    __m128i BGRA_lo, BGRA_hi;
+    for (int x = 0; x < wmod; x+=pixels_at_a_time) {
+      BGRA_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time));    // 8bit: *4 pixels 16bit:*2 pixels
+      BGRA_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time + 16));
+      __m128i pack_lo, pack_hi, eightbytes_of_pixels;
+      if (sizeof(pixel_t) == 1) {
+        __m128i mask = _mm_set_epi8(15, 11, 7, 3,14,10, 6, 2,13, 9, 5, 1, 12, 8, 4, 0);
+        pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBBBGGGGRRRRAAAA
+        pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBBBGGGGRRRRAAAA
+      }
+      else if (sizeof(pixel_t) == 2) {
+        BGRA_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time));    // 8bit: *4 pixels 16bit:*2 pixels
+        BGRA_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time + 16));
+        __m128i mask = _mm_set_epi8(15, 14, 7, 6, 13, 12, 5, 4, 11, 10, 3, 2, 9, 8, 1, 0);
+        pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBGGRRAA
+        pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBGGRRAA
+      }
+      eightbytes_of_pixels = _mm_unpacklo_epi32(pack_lo, pack_hi);  // BBBB_lo BBBB_hi GGGG_lo GGGG_hi
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + x * sizeof(pixel_t)), eightbytes_of_pixels); // B
+      _mm_storeh_pd(reinterpret_cast<double *>(dstp[0] + x * sizeof(pixel_t)), _mm_castsi128_pd(eightbytes_of_pixels)); // G
+      eightbytes_of_pixels = _mm_unpackhi_epi32(pack_lo, pack_hi);
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + x * sizeof(pixel_t)), eightbytes_of_pixels); // R
+      if(targetHasAlpha)
+        _mm_storeh_pd(reinterpret_cast<double *>(dstp[3] + x * sizeof(pixel_t)), _mm_castsi128_pd(eightbytes_of_pixels)); // A
+    }
+    // rest, unaligned but simd
+    if (wmod != width) {
+      // width = 17: 0..7 8..15, 16
+      // last_start = 1 (9..16 8 pixels)  width - pixels_at_a_time
+      int last_start = (width - pixels_at_a_time);
+      BGRA_lo = _mm_loadu_si128(reinterpret_cast<const __m128i *>(srcp + last_start * 32 / pixels_at_a_time));
+      BGRA_hi = _mm_loadu_si128(reinterpret_cast<const __m128i *>(srcp + last_start * 32 / pixels_at_a_time + 16));
+      __m128i pack_lo, pack_hi, eightbytes_of_pixels;
+      if (sizeof(pixel_t) == 1) {
+        __m128i mask = _mm_set_epi8(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
+        pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBBBGGGGRRRRAAAA
+        pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBBBGGGGRRRRAAAA
+      }
+      else if (sizeof(pixel_t) == 2) {
+        __m128i mask = _mm_set_epi8(15, 14, 7, 6, 13, 12, 5, 4, 11, 10, 3, 2, 9, 8, 1, 0);
+        pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBGGRRAA
+        pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBGGRRAA
+      }
+      eightbytes_of_pixels = _mm_unpacklo_epi32(pack_lo, pack_hi);  // BBBB_lo BBBB_hi GGGG_lo GGGG_hi
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + last_start * sizeof(pixel_t)), eightbytes_of_pixels); // B
+      _mm_storeh_pd(reinterpret_cast<double *>(dstp[0] + last_start * sizeof(pixel_t)), _mm_castsi128_pd(eightbytes_of_pixels)); // G
+      eightbytes_of_pixels = _mm_unpackhi_epi32(pack_lo, pack_hi);
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + last_start * sizeof(pixel_t)), eightbytes_of_pixels); // R
+      if (targetHasAlpha)
+        _mm_storeh_pd(reinterpret_cast<double *>(dstp[3] + last_start * sizeof(pixel_t)), _mm_castsi128_pd(eightbytes_of_pixels)); // A
+    }
+    srcp -= src_pitch; // source packed RGB is upside down
+    dstp[0] += dst_pitch[0];
+    dstp[1] += dst_pitch[1];
+    dstp[2] += dst_pitch[2];
+    if (targetHasAlpha)
+      dstp[3] += dst_pitch[3];
+  }
+}
+
 template<typename pixel_t, int src_numcomponents>
 static void convert_rgb_to_rgbp_c(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], size_t width, size_t height) {
   bool targetHasAlpha = (dst_pitch[3] != 0);
@@ -385,19 +453,42 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
 
   srcp += src_pitch * (vi.height - 1); // start from bottom: packed RGB is upside down
 
-  // todo sse
+  const bool targetHasAlpha = vi.IsPlanarRGBA();
+  // todo sse 24/48 bit
   if(pixelsize==1)
   {
     // targetHasAlpha decision in convert function
-    if(sourceHasAlpha)
-      convert_rgb_to_rgbp_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-    else // RGBA
+    if (sourceHasAlpha) {
+      // RGB32->RGBP8
+      if ((env->GetCPUFlags() & CPUF_SSE2) && vi.width >= 8) {
+        if (targetHasAlpha)
+          convert_rgba_to_rgbp_sse2<uint8_t, 4, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+        else
+          convert_rgba_to_rgbp_sse2<uint8_t, 4, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+      }
+      else
+        convert_rgb_to_rgbp_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    }
+    else {
+      // RGB24->RGBP8
       convert_rgb_to_rgbp_c<uint8_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    }
   } else {
     if(sourceHasAlpha)
-      convert_rgb_to_rgbp_c<uint16_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-    else // RGBA
-      convert_rgb_to_rgbp_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+      // RGB32->RGBP16, RGBAP16
+      if ((env->GetCPUFlags() & CPUF_SSE2) && vi.width >= 4) {
+        if (targetHasAlpha)
+          convert_rgba_to_rgbp_sse2<uint16_t, 4, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+        else
+          convert_rgba_to_rgbp_sse2<uint16_t, 4, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+      }
+      else {
+        convert_rgb_to_rgbp_c<uint16_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+      }
+      else {
+        // RGB48->RGBP16
+        convert_rgb_to_rgbp_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+      }
   }
   return dst;
 }
