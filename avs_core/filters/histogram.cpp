@@ -1096,7 +1096,8 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
 
       for (int n = 0; n < 3; n++) {
-        // Draw Y histograms
+
+        // Draw histograms
         const uint32_t clampval = (int)((src_width*src_height)*option.AsDblDef(100.0) / 100.0); // Population limit % factor
         uint32_t maxval = 0;
         uint32_t *hist;
@@ -1114,10 +1115,10 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         float color_f = color / 255.0f;
 
         int Y_pos;
-        switch (n) {
-        case 0: Y_pos = 64; break;
-        case 1: Y_pos = 128 + 16; break;
-        case 2: Y_pos = 192 + 32; break;
+        switch (n) { // n: YUV 012, GBR 012
+        case 0: Y_pos = RGB ? 128 + 16 :  64 + 0; break;  // Y or G
+        case 1: Y_pos = RGB ? 192 + 32 : 128 + 16; break; // U or B
+        case 2: Y_pos = RGB ?  64 +  0 : 192 + 32; break; // V or R
         }
 
         for (int x = 0; x < show_size; x++) {
