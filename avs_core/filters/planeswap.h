@@ -80,6 +80,7 @@ public:
 
   static AVSValue __cdecl CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateUToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateVToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateAnyToY8(AVSValue args, void* user_data, IScriptEnvironment* env);

@@ -44,6 +44,9 @@
 #include <tmmintrin.h>
 #include <algorithm>
 #include <avs/alignment.h>
+#include "../convert/convert_planar.h"
+#include "../convert/convert_rgb.h"
+#include "../convert/convert.h"
 
 
 /********************************************************************
@@ -56,7 +59,7 @@ extern const AVSFunction Swap_filters[] = {
   {  "VToY",   BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY },
   {  "UToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY8 },
   {  "VToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 },
-  {  "ExtractY",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::YToY8 },
+  {  "ExtractY",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateYToY8 }, // differs, YUY2 checks inside
   {  "ExtractU",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY8 }, // differs, YUY2 checks inside
   {  "ExtractV",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 }, // differs, YUY2 checks inside
   {  "ExtractA",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateAnyToY8, (void *)SwapUVToY::AToY8 },
@@ -207,6 +210,15 @@ AVSValue __cdecl SwapUVToY::CreateUToY8(AVSValue args, void* user_data, IScriptE
   return new SwapUVToY(clip, (clip->GetVideoInfo().IsYUY2()) ? YUY2UToY8 : UToY8, env);
 }
 
+AVSValue __cdecl SwapUVToY::CreateYToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  PClip clip = args[0].AsClip();
+  if(clip->GetVideoInfo().IsYUY2())
+    return new ConvertToY8(clip, Rec601 /*n/a*/, env);
+  else
+    return new SwapUVToY(clip, YToY8, env);
+}
+
 AVSValue __cdecl SwapUVToY::CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   return new SwapUVToY(args[0].AsClip(), VToY, env);
@@ -221,30 +233,45 @@ AVSValue __cdecl SwapUVToY::CreateVToY8(AVSValue args, void* user_data, IScriptE
 AVSValue __cdecl SwapUVToY::CreateAnyToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   int mode = (int)(intptr_t)(user_data);
-  return new SwapUVToY(args[0].AsClip(), mode, env);
+  PClip clip = args[0].AsClip();
+  const VideoInfo& vi_input = clip->GetVideoInfo();
+
+  // 161205: Packed RGB PlaneToY("R"),g,b,a or ExtractR,G,B,A
+  // A generic way for using these PlaneToY() or Extract... functions for packed RGB types
+  // We convert them to planar RGB (R,G,B plane reqest) or planar RGBA (only if A plane requested)
+  if (vi_input.IsRGB() && !vi_input.IsPlanarRGB() && !vi_input.IsPlanarRGBA()) {
+    if (mode == AToY8 || mode == RToY8 || mode == GToY8 || mode == BToY8) {
+      clip = new PackedRGBtoPlanarRGB(clip, vi_input.IsRGB32() || vi_input.IsRGB64(), mode == AToY8);
+    }
+  }
+
+  if(clip->GetVideoInfo().IsYUY2())
+    return new ConvertToY8(clip, Rec601 /*n/a*/, env);
+
+  if (clip->GetVideoInfo().IsY() && mode == YToY8)
+    return clip;
+
+  return new SwapUVToY(clip, mode, env);
 }
 
 AVSValue __cdecl SwapUVToY::CreatePlaneToY8(AVSValue args, void* user_data, IScriptEnvironment* env) {
     PClip clip = args[0].AsClip();
+
+    const VideoInfo& vi_input = clip->GetVideoInfo();
+
     const char* plane = args[1].AsString("");
     int mode = 0;
     // enum {UToY=1, VToY, UToY8, VToY8, YUY2UToY8, YUY2VToY8, AToY8, RToY8, GToY8, BToY8, YToY8};
     if (!lstrcmpi(plane, "Y")) mode = YToY8;
-    else if (!lstrcmpi(plane, "U")) mode = clip->GetVideoInfo().IsYUY2() ? YUY2UToY8 : UToY8;
-    else if (!lstrcmpi(plane, "V")) mode = clip->GetVideoInfo().IsYUY2() ? YUY2VToY8 : VToY8;
+    else if (!lstrcmpi(plane, "U")) mode = vi_input.IsYUY2() ? YUY2UToY8 : UToY8;
+    else if (!lstrcmpi(plane, "V")) mode = vi_input.IsYUY2() ? YUY2VToY8 : VToY8;
     else if (!lstrcmpi(plane, "A")) mode = AToY8;
     else if (!lstrcmpi(plane, "R")) mode = RToY8;
     else if (!lstrcmpi(plane, "G")) mode = GToY8;
     else if (!lstrcmpi(plane, "B")) mode = BToY8;
     else env->ThrowError("PlaneToY: Invalid plane!");
 
-    if (clip->GetVideoInfo().IsYUY2() && mode == YToY8)
-        env->ThrowError("PlaneToY: Y plane not allowed for YUY2!");
-
-    if (clip->GetVideoInfo().IsY() && mode == YToY8)
-      return clip;
-
-    return new SwapUVToY(clip, mode, env);
+    return CreateAnyToY8(args, (void* )(intptr_t)mode, env);
 }
 
 
@@ -725,8 +752,8 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
   if(!vi_default.IsPlanar())
     env->ThrowError("CombinePlanes: target format must be planar!");
 
-  int source_plane_count = strlen(_source_planes_str); // no check here, can be 0
-  int target_plane_count = strlen(_target_planes_str);
+  int source_plane_count = (int)strlen(_source_planes_str); // no check here, can be 0
+  int target_plane_count = (int)strlen(_target_planes_str);
   if(target_plane_count == 0)
     env->ThrowError("CombinePlanes: no target planes given!");
   if(target_plane_count > vi_default.NumComponents())
