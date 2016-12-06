@@ -1086,6 +1086,14 @@ public:
   int             AsInt2(int def) const;
   double          AsFloat2(float def) const;
   const char*     AsString2(const char* def) const;
+
+#ifndef OLD_AVSVALUE
+  void            MarkArrayAsC(bool c);
+  void            CONSTRUCTOR10(const AVSValue& v, bool c_arrays);
+  AVSValue(const AVSValue& v, bool c_arrays);
+#endif
+  void            Assign2(const AVSValue* src, bool init, bool c_arrays);
+
 #endif
 }; // end class AVSValue
 
