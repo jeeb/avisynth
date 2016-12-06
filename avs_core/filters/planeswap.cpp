@@ -245,7 +245,7 @@ AVSValue __cdecl SwapUVToY::CreateAnyToY8(AVSValue args, void* user_data, IScrip
     }
   }
 
-  if(clip->GetVideoInfo().IsYUY2())
+  if(clip->GetVideoInfo().IsYUY2() && mode == YToY8)
     return new ConvertToY8(clip, Rec601 /*n/a*/, env);
 
   if (clip->GetVideoInfo().IsY() && mode == YToY8)
