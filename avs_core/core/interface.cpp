@@ -683,13 +683,26 @@ void AVSValue::CONSTRUCTOR8(const AVSValue* a, int size)
 AVSValue::AVSValue(const AVSValue& v)                    { CONSTRUCTOR9(v); }
 void AVSValue::CONSTRUCTOR9(const AVSValue& v)           { Assign(&v, true); }
 
+#ifndef OLD_AVSVALUE
+AVSValue::AVSValue(const AVSValue& v, bool c_arrays) { CONSTRUCTOR10(v, c_arrays); }
+void AVSValue::CONSTRUCTOR10(const AVSValue& v, bool c_arrays)  { Assign2(&v, true, c_arrays); }
+#endif
+
+#ifdef OLD_AVSVALUE
+AVSValue::~AVSValue()                                    { DESTRUCTOR(); }
+void AVSValue::DESTRUCTOR()
+{
+  if (IsClip() && clip)
+    clip->Release();
+}
+#else
 AVSValue::~AVSValue()                                    { DESTRUCTOR(); }
 void AVSValue::DESTRUCTOR()
 {
   if (IsClip() && clip)
     clip->Release();
 #ifndef OLD_AVSVALUE
-  if (IsArray()) {
+  if (IsArray() && array_size>=0) { // array_size < 0: marked as C array internally, don't free elements
     if (array) {
       delete[] array; // calls AVSValue destructors for all elements
       array = nullptr;
@@ -698,6 +711,14 @@ void AVSValue::DESTRUCTOR()
   }
 #endif
 }
+
+void AVSValue::MarkArrayAsC(bool c)
+{
+  if ((array_size > 0 && c) || (array_size < 0 && !c))
+    array_size = -array_size;
+}
+
+#endif
 
 AVSValue& AVSValue::operator=(const AVSValue& v)         { return OPERATOR_ASSIGN(v); }
 AVSValue& AVSValue::OPERATOR_ASSIGN(const AVSValue& v)   { Assign(&v, false); return *this; }
@@ -760,7 +781,13 @@ const AVSValue& AVSValue::OPERATOR_INDEX(int index) const {
   return (IsArray() && index>=0 && index<array_size) ? array[index] : *this;
 }
 
+// this Assign copies array elements for new AVSVALUE handling
+// For C interface, we use Assign2 through CONSTRUCTOR10
 void AVSValue::Assign(const AVSValue* src, bool init) {
+  Assign2(src, init, false);
+}
+
+void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
   if (src->IsClip() && src->clip)
     src->clip->AddRef();
 #ifdef OLD_AVSVALUE
@@ -771,6 +798,16 @@ void AVSValue::Assign(const AVSValue* src, bool init) {
   this->array_size = src->array_size;
   this->clip = src->clip; // "clip" is the largest member of the union, making sure we copy everything
 #else
+  if (c_arrays) {
+    // don't free array members!
+    if (!init && IsClip() && clip)
+      clip->Release();
+
+    this->type = src->type;
+    this->array_size = src->array_size;
+    this->clip = src->clip; // "clip" is the largest member of the union, making sure we copy everything
+    return;
+  }
   bool shouldRelease = !init && IsClip() && clip;
   IClip *prev_clip_pointer = (IClip*)((void*)clip); // release at the end
 

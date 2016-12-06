@@ -503,13 +503,18 @@ void AVSC_CC avs_set_to_clip(AVS_Value * v, AVS_Clip * c)
 extern "C"
 void AVSC_CC avs_copy_value(AVS_Value * dest, AVS_Value src)
 {
-	new(dest) AVSValue(*(const AVSValue *)&src);
+  // true: don't copy array elements recursively
+	new(dest) AVSValue(*(const AVSValue *)&src, true);
 }
 
 extern "C"
 void AVSC_CC avs_release_value(AVS_Value v)
 {
-	((AVSValue *)&v)->~AVSValue();
+  if (((AVSValue *)&v)->IsArray()) {
+    // signing for destructor: don't free array elements
+    ((AVSValue *)&v)->MarkArrayAsC(true);
+  }
+  ((AVSValue *)&v)->~AVSValue();
 }
 
 //////////////////////////////////////////////////////////////////
