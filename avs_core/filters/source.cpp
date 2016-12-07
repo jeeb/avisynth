@@ -396,25 +396,28 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   float colors_f[4] = { 0.0 };
   bool color_is_array = false;
 #ifndef OLD_ARRAYS
-  if (args[13].Defined()) // colors
-  {
-    if (!args[13].IsArray())
-      env->ThrowError("BlankClip: colors must be an array");
-    int color_count = args[13].ArraySize();
-    if(vi.NumComponents() != color_count)
-      env->ThrowError("BlankClip: color count %d does not match to component count %d", color_count, vi.NumComponents());
-    int pixelsize = vi.ComponentSize();
-    int bits_per_pixel = vi.BitsPerComponent();
-    for (int i = 0; i < color_count; i++) {
-      if (pixelsize == 4)
-        colors_f[i] = args[13][i].AsFloatf(0.0);
-      else {
-        colors[i] = args[13][i].AsInt(0);
-        if(colors[i] >= (1<<bits_per_pixel) || colors<0)
-          env->ThrowError("BlankClip: invalid color value (%d) for %d bits video format", colors[i], bits_per_pixel);
+  if (args.ArraySize() >= 14) {
+    // new colors parameter
+    if (args[13].Defined()) // colors
+    {
+      if (!args[13].IsArray())
+        env->ThrowError("BlankClip: colors must be an array");
+      int color_count = args[13].ArraySize();
+      if (vi.NumComponents() != color_count)
+        env->ThrowError("BlankClip: color count %d does not match to component count %d", color_count, vi.NumComponents());
+      int pixelsize = vi.ComponentSize();
+      int bits_per_pixel = vi.BitsPerComponent();
+      for (int i = 0; i < color_count; i++) {
+        if (pixelsize == 4)
+          colors_f[i] = args[13][i].AsFloatf(0.0);
+        else {
+          colors[i] = args[13][i].AsInt(0);
+          if (colors[i] >= (1 << bits_per_pixel) || colors < 0)
+            env->ThrowError("BlankClip: invalid color value (%d) for %d bits video format", colors[i], bits_per_pixel);
+        }
       }
+      color_is_array = true;
     }
-    color_is_array = true;
   }
 #endif
 
