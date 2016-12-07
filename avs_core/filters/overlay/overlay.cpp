@@ -329,6 +329,10 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     //internal_working_format = child2.AsClip()->GetVideoInfo().pixel_type;
   }
   // Fetch current frame and convert it to internal format
+#ifdef USE_ORIG_FRAME
+  env->MakeWritable(&frame); // == PVideoFrame &img->frame
+#endif
+
   Image444* img = new Image444(frame, vi.width, vi.height, bits_per_pixel, child->GetVideoInfo().IsYUVA() || child->GetVideoInfo().IsPlanarRGBA(), env);
 #ifndef USE_ORIG_FRAME
   CopyToImage444(frame, img, env);
@@ -490,10 +494,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     func->setOpacity(opacity + op_offset);
     func->setEnv(env);
 
-#ifdef USE_ORIG_FRAME
-    env->MakeWritable(&frame); // == PVideoFrame &img->frame
-#else
-#endif
     if (!mask) {
       func->DoBlendImage(img, overlayImg);
     } else {
