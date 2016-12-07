@@ -40,6 +40,7 @@
 
 
 #include "merge.h"
+#include "merge_avx2.h"
 #include "../core/internal.h"
 #include <emmintrin.h>
 #include <smmintrin.h>
@@ -684,7 +685,13 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
     //average of two planes
     if (pixelsize != 4) // 1 or 2
     {
-      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16)) {
+      if ((env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(srcp, 32) && IsPtrAligned(otherp, 32)) {
+        if(pixelsize==1)
+          average_plane_avx2<uint8_t>(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
+        else // pixel_size==2
+          average_plane_avx2<uint16_t>(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
+      }
+      else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16)) {
         if(pixelsize==1)
           average_plane_sse2<uint8_t>(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
         else // pixel_size==2
@@ -722,9 +729,16 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
     {
       MergeFuncPtr weighted_merge_planar;
 
+      if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(srcp, 32) && IsPtrAligned(otherp, 32)) {
+        // for lessthan16bit: slower, using generic 16 bit version.
+        // using lessthan16bit signed short multiply routines
+        // if (bits_per_pixel < 16)
+        //   weighted_merge_planar = &weighted_merge_planar_uint16_avx2<true>;
+        weighted_merge_planar = &weighted_merge_planar_uint16_avx2<false>;
+      }
       if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4_1)) {
         #if 0
-        in SSE4 lessthan16bit arithmetic is slower
+        in SSE4 lessthan16bit signed int arithmetic is slower
         if(bits_per_pixel < 16)
           weighted_merge_planar = &weighted_merge_planar_uint16_sse41<true, true>;
         else
@@ -735,6 +749,11 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
         // using lessthan16bit signed short multiply routines
         weighted_merge_planar = &weighted_merge_planar_uint16_sse41<false, true>;
         // no SSE2 for 16 bit unsigned <false,false>: slooow!
+      }
+      else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(srcp, 32) && IsPtrAligned(otherp, 32))
+      {
+        // uint8:
+        weighted_merge_planar = &weighted_merge_planar_avx2;
       }
       else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
       {
