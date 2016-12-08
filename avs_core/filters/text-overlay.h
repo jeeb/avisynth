@@ -62,6 +62,8 @@ public:
 
 private:
   void ApplyYV12(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU);
+  template<int shiftX, int shiftY, int bits_per_pixel>
+  void ApplyPlanar_core(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU);
   void ApplyPlanar(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU, int shiftX, int shiftY, int pixelsize);
   void ApplyYUY2(BYTE* buf, int pitch);
   void ApplyRGB24_48(BYTE* buf, int pitch, int pixelsize);

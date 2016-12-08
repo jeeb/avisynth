@@ -250,7 +250,9 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
 }
 
 
-void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int bits_per_pixel) {
+template<int shiftX, int shiftY, int bits_per_pixel>
+void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV)
+{
   const int stepX = 1<<shiftX;
   const int stepY = 1<<shiftY;
 
@@ -265,6 +267,246 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
 
   // Apply Y
   // different paths for different bitdepth
+  // todo PF 161208 shiftX shiftY bits_per_pixel templates
+  // perpaps int->byte, short (faster??)
+  if(bits_per_pixel == 8) {
+    for (int y=yb; y<=yt; y+=1) {
+      for (int x=xl; x<=xr; x+=1) {
+        const int x4 = x<<2;
+        const int basealpha = alpha[x4+0];
+        if (basealpha != 256) {
+          buf[x] = BYTE((buf[x] * basealpha + alpha[x4 + 3]) >> 8);
+        }
+      }
+      buf += pitch;
+      alpha += w4;
+    }
+  }
+  else if (bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
+    for (int y=yb; y<=yt; y+=1) {
+      for (int x=xl; x<=xr; x+=1) {
+        const int x4 = x<<2;
+        const int basealpha = alpha[x4+0];
+        if (basealpha != 256) {
+          reinterpret_cast<uint16_t *>(buf)[x] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x] * basealpha + ((int)alpha[x4 + 3] << (bits_per_pixel-8))) >> 8);
+        }
+      }
+      buf += pitch;
+      alpha += w4;
+    }
+  }
+  else if (bits_per_pixel == 32) { // float assume 0..1.0 scale
+    for (int y=yb; y<=yt; y+=1) {
+      for (int x=xl; x<=xr; x+=1) {
+        const int x4 = x<<2;
+        const int basealpha = alpha[x4+0];
+        if (basealpha != 256) {
+          reinterpret_cast<float *>(buf)[x] = reinterpret_cast<float *>(buf)[x] * basealpha / 256.0f + alpha[x4 + 3] / 65536.0f;
+        }
+      }
+      buf += pitch;
+      alpha += w4;
+    }
+  }
+
+  if (!bufU) return;
+
+  // This will not be fast, but it will be generic.
+  const int skipThresh = 256 << (shiftX+shiftY);
+  const int shifter = 8+shiftX+shiftY;
+  const int UVw4 = w<<(2+shiftY);
+  const int xlshiftX = xl>>shiftX;
+
+  alpha = alpha_calcs + yb*w4;
+  bufU += (pitchUV*yb)>>shiftY;
+  bufV += (pitchUV*yb)>>shiftY;
+
+  // different paths for different bitdepth
+  if(bits_per_pixel == 8) {
+    for (int y=yb; y<=yt; y+=stepY) {
+      for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
+        unsigned short* UValpha = alpha + x*4;
+        int basealphaUV = 0;
+        int au = 0;
+        int av = 0;
+        for (int i = 0; i<stepY; i++) {
+          for (int j = 0; j<stepX; j++) {
+            basealphaUV += UValpha[0 + j*4];
+            av          += UValpha[1 + j*4];
+            au          += UValpha[2 + j*4];
+          }
+          UValpha += w4;
+        }
+        if (basealphaUV != skipThresh) {
+          bufU[xs] = BYTE((bufU[xs] * basealphaUV + au) >> shifter);
+          bufV[xs] = BYTE((bufV[xs] * basealphaUV + av) >> shifter);
+        }
+      }// end for x
+      bufU  += pitchUV;
+      bufV  += pitchUV;
+      alpha += UVw4;
+    }//end for y
+  }
+  else if (bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
+    for (int y=yb; y<=yt; y+=stepY) {
+      for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
+        unsigned short* UValpha = alpha + x*4;
+        int basealphaUV = 0;
+        int au = 0;
+        int av = 0;
+        for (int i = 0; i<stepY; i++) {
+          for (int j = 0; j<stepX; j++) {
+            basealphaUV += UValpha[0 + j*4];
+            av          += UValpha[1 + j*4];
+            au          += UValpha[2 + j*4];
+          }
+          UValpha += w4;
+        }
+        if (basealphaUV != skipThresh) {
+          reinterpret_cast<uint16_t *>(bufU)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufU)[xs] * basealphaUV + (au << (bits_per_pixel-8))) >> shifter);
+          reinterpret_cast<uint16_t *>(bufV)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufV)[xs] * basealphaUV + (av << (bits_per_pixel-8))) >> shifter);
+        }
+      }// end for x
+      bufU  += pitchUV;
+      bufV  += pitchUV;
+      alpha += UVw4;
+    }//end for y
+  }
+  else if (bits_per_pixel == 32) { // float. assume 0..1.0 scale
+    const float shifter_inv_f = 1.0f / (1 << shifter);
+    const float a_factor = shifter_inv_f / 256.0f;
+    for (int y=yb; y<=yt; y+=stepY) {
+      for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
+        unsigned short* UValpha = alpha + x*4;
+        int basealphaUV = 0;
+        int au = 0;
+        int av = 0;
+        for (int i = 0; i<stepY; i++) {
+          for (int j = 0; j<stepX; j++) {
+            basealphaUV += UValpha[0 + j*4];
+            av          += UValpha[1 + j*4];
+            au          += UValpha[2 + j*4];
+          }
+          UValpha += w4;
+        }
+        if (basealphaUV != skipThresh) {
+          const float basealphaUV_f = (float)basealphaUV * shifter_inv_f;
+          reinterpret_cast<float *>(bufU)[xs] = reinterpret_cast<float *>(bufU)[xs] * basealphaUV_f + au * a_factor;
+          reinterpret_cast<float *>(bufV)[xs] = reinterpret_cast<float *>(bufV)[xs] * basealphaUV_f + av * a_factor;
+        }
+      }// end for x
+      bufU  += pitchUV;
+      bufV  += pitchUV;
+      alpha += UVw4;
+    }//end for y
+  }
+}
+
+void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int bits_per_pixel) {
+  const int stepX = 1 << shiftX;
+  const int stepY = 1 << shiftY;
+
+  switch (bits_per_pixel) {
+  case 8:
+    if (shiftX == 0 && shiftY == 0) {
+      ApplyPlanar_core<0, 0, 8>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      return;
+    }
+    else if (shiftX == 0 && shiftY == 1) {
+      ApplyPlanar_core<0, 1, 8>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      return;
+    }
+    else if (shiftX == 1 && shiftY == 1) {
+      ApplyPlanar_core<1, 1, 8>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      return;
+    }
+    break;
+  case 10:
+    if (shiftX == 0 && shiftY == 0) {
+      ApplyPlanar_core<0, 0, 10>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      return;
+    }
+    else if (shiftX == 0 && shiftY == 1) {
+      ApplyPlanar_core<0, 1, 10>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      return;
+    }
+    else if (shiftX == 1 && shiftY == 1) {
+      ApplyPlanar_core<1, 1, 10>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      return;
+    }
+    break;
+  case 12:
+    if (shiftX == 0 && shiftY == 0) {
+      ApplyPlanar_core<0, 0, 12>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      return;
+    }
+    else if (shiftX == 0 && shiftY == 1) {
+      ApplyPlanar_core<0, 1, 12>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      return;
+    }
+    else if (shiftX == 1 && shiftY == 1) {
+      ApplyPlanar_core<1, 1, 12>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      return;
+    }
+    break;
+  case 14:
+    if (shiftX == 0 && shiftY == 0) {
+      ApplyPlanar_core<0, 0, 14>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      return;
+    }
+    else if (shiftX == 0 && shiftY == 1) {
+      ApplyPlanar_core<0, 1, 14>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      return;
+    }
+    else if (shiftX == 1 && shiftY == 1) {
+      ApplyPlanar_core<1, 1, 14>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      return;
+    }
+    break;
+  case 16:
+    if (shiftX == 0 && shiftY == 0) {
+      ApplyPlanar_core<0, 0, 16>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      return;
+    }
+    else if (shiftX == 0 && shiftY == 1) {
+      ApplyPlanar_core<0, 1, 16>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      return;
+    }
+    else if (shiftX == 1 && shiftY == 1) {
+      ApplyPlanar_core<1, 1, 16>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      return;
+    }
+    break;
+  case 32:
+    if (shiftX == 0 && shiftY == 0) {
+      ApplyPlanar_core<0, 0, 32>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      return;
+    }
+    else if (shiftX == 0 && shiftY == 1) {
+      ApplyPlanar_core<0, 1, 32>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      return;
+    }
+    else if (shiftX == 1 && shiftY == 1) {
+      ApplyPlanar_core<1, 1, 32>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      return;
+    }
+    break;
+  }
+  // keep old path for for any nonstandard surprise
+
+  if (dirty) {
+    GetAlphaRect();
+    xl &= -stepX; xr |= stepX-1;
+    yb &= -stepY; yt |= stepY-1;
+  }
+  const int w4 = w*4;
+  unsigned short* alpha = alpha_calcs + yb*w4;
+  buf += pitch*yb;
+
+  // Apply Y
+  // different paths for different bitdepth
+  // todo PF 161208 shiftX shiftY bits_per_pixel templates
+  // perpaps int->byte, short (faster??)
   if(bits_per_pixel == 8) {
       for (int y=yb; y<=yt; y+=1) {
           for (int x=xl; x<=xr; x+=1) {
@@ -574,10 +816,29 @@ void Antialiaser::GetAlphaRect()
           tmp |= *reinterpret_cast<int*>(src + srcpitch*i - 1);
         }
       } else {
+#if 0
 #pragma unroll
+
         for (int i = -12; i < 20; ++i) {
           tmp |= *reinterpret_cast<int*>(src + srcpitch*i - 1);
         }
+#else
+        BYTE *tmpsrc = src + srcpitch*(-12) - 1;
+#pragma unroll
+        // PF 161208 speedup test manual unroll, no pragma in VS
+        for (int i = -12; i < 20; i+=8) { // 0..31
+          tmp |= *reinterpret_cast<int*>(tmpsrc) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*1) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*2) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*3) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*4) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*5) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*6) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*7)
+            ;
+          tmpsrc += srcpitch*8;
+        }
+#endif
       }
 
       tmp &= 0x00FFFFFF;
@@ -686,6 +947,20 @@ void Antialiaser::GetAlphaRect()
               BYTE hmasks[8], mask;
 
               mask = cenmask;
+#if 1
+              { // PF 161208 speedup test get first two bytes as word
+                int index = srcpitch*(0 + 8);
+                for (i = 0; i < 8; i++) {
+                  // Check the 3 cells above
+                  const uint16_t ab = *reinterpret_cast<uint16_t *>(src + index - 1);
+                  mask |= bitexr[ab & 0xFF];
+                  mask |= -!!(ab >> 8);
+                  mask |= bitexl[src[index + 1]];
+                  hmasks[i] = mask;
+                  index += srcpitch;
+                }
+              }
+#else
               for(i=0; i<8; i++) {
                 // Check the 3 cells above
                 mask |= bitexr[ src[srcpitch*(i+8)-1] ];
@@ -693,16 +968,33 @@ void Antialiaser::GetAlphaRect()
                 mask |= bitexl[ src[srcpitch*(i+8)+1] ];
                 hmasks[i] = mask;
               }
+#endif
 
               mask = cenmask;
-              for(i=7; i>=0; i--) {
+#if 1
+              { // PF 161208 speedup test get first two bytes as word
+                int index = srcpitch*(7 - 8);
+                for (i = 7; i >= 0; i--) {
+                  // Check the 3 cells below
+                  const uint16_t ab = *reinterpret_cast<uint16_t *>(src + index - 1);
+                  mask |= bitexr[ab & 0xFF];
+                  mask |= -!!(ab >> 8);
+                  mask |= bitexl[src[index + 1]];
+                  alpha2 += bitcnt[hmasks[i] | mask];
+                  index -= srcpitch;
+                }
+              }
+#else
+              for (i = 7; i >= 0; i--) {
                 // Check the 3 cells below
-                mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-                mask |=    - !! src[srcpitch*(i-8)  ];
-                mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+                mask |= bitexr[src[srcpitch*(i - 8) - 1]];
+                mask |= -!!src[srcpitch*(i - 8)];
+                mask |= bitexl[src[srcpitch*(i - 8) + 1]];
 
                 alpha2 += bitcnt[hmasks[i] | mask];
               }
+            }
+#endif
               alpha2 *=2;
             }
           }
