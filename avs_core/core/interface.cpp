@@ -703,7 +703,7 @@ void AVSValue::DESTRUCTOR()
     clip->Release();
 #ifndef OLD_AVSVALUE
   if (IsArray() && array_size>=0) { // array_size < 0: marked as C array internally, don't free elements
-    if (array) {
+    if (array_size>0 && array) {
       delete[] array; // calls AVSValue destructors for all elements
       array = nullptr;
     }
@@ -712,9 +712,10 @@ void AVSValue::DESTRUCTOR()
 #endif
 }
 
-void AVSValue::MarkArrayAsC(bool c)
+void AVSValue::MarkArrayAsC()
 {
-  if ((array_size > 0 && c) || (array_size < 0 && !c))
+  // negative value signs to destructor
+  if(array_size > 0)
     array_size = -array_size;
 }
 

@@ -512,7 +512,7 @@ void AVSC_CC avs_release_value(AVS_Value v)
 {
   if (((AVSValue *)&v)->IsArray()) {
     // signing for destructor: don't free array elements
-    ((AVSValue *)&v)->MarkArrayAsC(true);
+    ((AVSValue *)&v)->MarkArrayAsC();
   }
   ((AVSValue *)&v)->~AVSValue();
 }
@@ -652,7 +652,7 @@ AVS_Value AVSC_CC avs_invoke(AVS_ScriptEnvironment * p, const char * name, AVS_V
 	AVS_Value v = {0,0};
 	p->error = 0;
 	try {
-		AVSValue v0 = p->env->Invoke(name, *(AVSValue *)&args, arg_names);
+    AVSValue v0 = p->env->Invoke(name, *(AVSValue *)&args, arg_names);
 		new ((AVSValue *)&v) AVSValue(v0);
 	} catch (const IScriptEnvironment::NotFound&) {
     p->error = "Function Not Found";
