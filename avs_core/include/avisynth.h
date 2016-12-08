@@ -1088,7 +1088,7 @@ public:
   const char*     AsString2(const char* def) const;
 
 #ifndef OLD_AVSVALUE
-  void            MarkArrayAsC(bool c);
+  void            MarkArrayAsC();
   void            CONSTRUCTOR10(const AVSValue& v, bool c_arrays);
   AVSValue(const AVSValue& v, bool c_arrays);
 #endif
