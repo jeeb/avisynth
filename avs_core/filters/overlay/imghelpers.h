@@ -64,6 +64,7 @@ private:
   const int _h;
   const int _bits_per_pixel;
   const bool hasAlpha;
+  const bool grey;
 
   bool return_original;
 
@@ -89,12 +90,12 @@ public:
 #ifdef USE_ORIG_FRAME
     PVideoFrame &_frame,
 #endif
-    int _inw, int _inh, int _in_bits_per_pixel, bool _hasAlpha, IScriptEnvironment* env) :
+    int _inw, int _inh, int _in_bits_per_pixel, bool _hasAlpha, bool _grey, IScriptEnvironment* env) :
     Env(static_cast<IScriptEnvironment2*>(env)),
 #ifdef USE_ORIG_FRAME
     frame(_frame),
 #endif
-    _w(_inw), _h(_inh), _bits_per_pixel(_in_bits_per_pixel), hasAlpha(_hasAlpha) {
+    _w(_inw), _h(_inh), _bits_per_pixel(_in_bits_per_pixel), hasAlpha(_hasAlpha), grey(_grey) {
 
     int pixelsize;
     if (_bits_per_pixel == 8) pixelsize = 1;
@@ -104,12 +105,12 @@ public:
 
 #ifdef USE_ORIG_FRAME
     pitch = frame->GetPitch(PLANAR_Y);
-    pitchUV = frame->GetPitch(PLANAR_U);
+    pitchUV = grey ? frame->GetPitch(PLANAR_Y) : frame->GetPitch(PLANAR_U);
     pitchA = frame->GetPitch(PLANAR_A);
 
     Y_plane = (BYTE*) frame->GetReadPtr(PLANAR_Y);
-    U_plane = (BYTE*) frame->GetReadPtr(PLANAR_U);
-    V_plane = (BYTE*) frame->GetReadPtr(PLANAR_V);
+    U_plane = grey ? (BYTE*) frame->GetReadPtr(PLANAR_Y) : (BYTE*) frame->GetReadPtr(PLANAR_U);
+    V_plane = grey ? (BYTE*) frame->GetReadPtr(PLANAR_Y) : (BYTE*) frame->GetReadPtr(PLANAR_V);
     A_plane = (BYTE*) frame->GetReadPtr(PLANAR_A);
 #else
     const int INTERNAL_ALIGN = 16;

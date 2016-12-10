@@ -333,7 +333,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   env->MakeWritable(&frame); // == PVideoFrame &img->frame
 #endif
 
-  Image444* img = new Image444(frame, vi.width, vi.height, bits_per_pixel, child->GetVideoInfo().IsYUVA() || child->GetVideoInfo().IsPlanarRGBA(), env);
+  Image444* img = new Image444(frame, vi.width, vi.height, bits_per_pixel, child->GetVideoInfo().IsYUVA() || child->GetVideoInfo().IsPlanarRGBA(), false, env);
 #ifndef USE_ORIG_FRAME
   CopyToImage444(frame, img, env);
 #endif
@@ -378,7 +378,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     Oframe = overlay2.AsClip()->GetFrame(n, env);
   }
   // Fetch current overlay and convert it to internal format
-  Image444* overlayImg = new Image444(Oframe, overlayVi.width, overlayVi.height, bits_per_pixel, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), env);
+  Image444* overlayImg = new Image444(Oframe, overlayVi.width, overlayVi.height, bits_per_pixel, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), false, env);
   #ifndef USE_ORIG_FRAME
     CopyToImage444(Oframe, overlayImg, env);
   #endif
@@ -460,7 +460,8 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
         }
         Mframe = mask2.AsClip()->GetFrame(n, env);
       }
-      maskImg = new Image444(Mframe, maskVi.width, maskVi.height, bits_per_pixel, mask->GetVideoInfo().IsYUVA() || mask->GetVideoInfo().IsPlanarRGBA(), env);
+      maskImg = new Image444(Mframe, maskVi.width, maskVi.height, bits_per_pixel, mask->GetVideoInfo().IsYUVA() || mask->GetVideoInfo().IsPlanarRGBA(), greymask, env);
+
       if (greymask) {
 #ifndef USE_ORIG_FRAME
         maskImg->free_chroma();
@@ -481,9 +482,10 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       else
         maskConv->ConvertImage(Mframe, maskImg, env);
 #endif
+      img->ReturnOriginal(true);
+      ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
 
-        img->ReturnOriginal(true);
-        ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
+
     }
 
     OverlayFunction* func = SelectFunction(name, of_mode, env);
