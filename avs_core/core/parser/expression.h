@@ -37,7 +37,7 @@
 
 #include <avisynth.h>
 
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
 #include <vector>
 #endif
 
@@ -107,7 +107,7 @@ private:
 class ExpConstant : public Expression 
 {
 public:
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
   ExpConstant(std::vector<AVSValue>* v) : val(v->data(), (int)(v->size())) {} // array of AVSValue*
 #endif
   ExpConstant(AVSValue v) : val(v) {}

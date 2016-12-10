@@ -81,10 +81,9 @@ static std::string GetFullPathNameWrap(const std::string &f)
 
 static bool IsParameterTypeSpecifier(char c) {
   switch (c) {
-    // pf avs+ 161028
   case 'b': case 'i': case 'f': case 's': case 'c': case '.':
-#ifndef OLD_ARRAYS
-  case 'a': // PF Arrays
+#ifdef NEW_AVSVALUE
+  case 'a': // Arrays as function parameters
 #endif
       return true;
     default:
@@ -244,7 +243,7 @@ bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
     case 'f': return arg.IsFloat() && (!strict || !arg.IsInt());
     case 's': return arg.IsString();
     case 'c': return arg.IsClip();
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
     case 'a': return arg.IsArray(); // PF 161028 AVS+ script arrays
 #endif
     default:  return false;
@@ -298,7 +297,7 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
 
     switch (*param_types) {
       case 'b': case 'i': case 'f': case 's': case 'c':
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
       case 'a': // PF Arrays
 #endif
         if (   (!optional || args[i].Defined())
@@ -310,7 +309,7 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
         ++i;
         break;
       case '+': case '*':
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
         if (param_types[-1] != '.' && args[i].IsArray()) { // PF new Arrays
           // all elements in the array should match with the type char preceding '+*'
           // only one array level is enough

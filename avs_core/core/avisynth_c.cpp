@@ -510,10 +510,12 @@ void AVSC_CC avs_copy_value(AVS_Value * dest, AVS_Value src)
 extern "C"
 void AVSC_CC avs_release_value(AVS_Value v)
 {
+#ifdef NEW_AVSVALUE
   if (((AVSValue *)&v)->IsArray()) {
     // signing for destructor: don't free array elements
     ((AVSValue *)&v)->MarkArrayAsC();
-  }
+}
+#endif
   ((AVSValue *)&v)->~AVSValue();
 }
 

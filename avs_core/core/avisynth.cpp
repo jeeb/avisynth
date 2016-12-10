@@ -2385,7 +2385,7 @@ bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAl
 static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, int level, const char* const* arg_names = NULL) {
   // level is starting from zero
   if (src.IsArray()
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
     && level == 0
 #endif
     ) { // flatten for the first arg level
@@ -2451,7 +2451,19 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   {
     throw NotFound();
   }
-
+#ifdef NEW_AVSVALUE
+  // args parameter is an array, and on exiting from here its destructor is called.
+  // But if this AVSValue was created by a v2.5 caller plugin (baked code in avisynth.h)
+  // we can't use the smart way and free up the array elements, because the child AVSValue's are
+  // owned by the plugin itself.
+  // Unfortunately at this point we do not know who is calling Invoke.
+  // If AVSValue was created by a v2.5 interface, we get and exception when trying to free up
+  // childs.
+  if (!stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
+  {
+//    const_cast<AVSValue *>(&args)->MarkArrayAsC();
+  }
+#endif
   return result;
 }
 
@@ -2484,7 +2496,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   bool foundClipArgument = false;
   for (auto &argx : args2)
   {
-#ifdef OLD_ARRAYS
+#ifndef NEW_AVSVALUE
     assert(!argx.IsArray()); // todo: we can have arrays 161106
 #endif
     // todo PF 161112 new arrays: recursive look into arrays whether they contain clips
@@ -2569,7 +2581,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
               // so named args give can't have .+ specifier
               ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
             }
-#ifdef OLD_ARRAYS
+#ifndef NEW_AVSVALUE
             //PF 161028 AVS+ arrays as named arguments
               else if (args[i].IsArray()) {
               ThrowError("Script error: can't pass an array as a named argument");

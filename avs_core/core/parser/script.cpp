@@ -250,7 +250,7 @@ extern const AVSFunction Script_functions[] = {
   { "IsPlanarRGBA", BUILTIN_FUNC_PREFIX, "c", IsPlanarRGBA },
   { "ColorSpaceNameToPixelType",  BUILTIN_FUNC_PREFIX, "s", ColorSpaceNameToPixelType },
 
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, "as", ArrayGet },
@@ -1212,7 +1212,7 @@ AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[
 AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGB(); }
 AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA(); }
 
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
 
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env)
 {

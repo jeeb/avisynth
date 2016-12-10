@@ -665,7 +665,7 @@ void AVSValue::CONSTRUCTOR8(const AVSValue* a, int size)
 {
   type = 'a';
   array_size = (short)size;
-#ifdef OLD_AVSVALUE
+#ifndef NEW_AVSVALUE
   array = a;
 #else
   if (a == nullptr || size == 0) {
@@ -683,12 +683,12 @@ void AVSValue::CONSTRUCTOR8(const AVSValue* a, int size)
 AVSValue::AVSValue(const AVSValue& v)                    { CONSTRUCTOR9(v); }
 void AVSValue::CONSTRUCTOR9(const AVSValue& v)           { Assign(&v, true); }
 
-#ifndef OLD_AVSVALUE
+#ifdef NEW_AVSVALUE
 AVSValue::AVSValue(const AVSValue& v, bool c_arrays) { CONSTRUCTOR10(v, c_arrays); }
 void AVSValue::CONSTRUCTOR10(const AVSValue& v, bool c_arrays)  { Assign2(&v, true, c_arrays); }
 #endif
 
-#ifdef OLD_AVSVALUE
+#ifndef NEW_AVSVALUE
 AVSValue::~AVSValue()                                    { DESTRUCTOR(); }
 void AVSValue::DESTRUCTOR()
 {
@@ -701,15 +701,11 @@ void AVSValue::DESTRUCTOR()
 {
   if (IsClip() && clip)
     clip->Release();
-#ifndef OLD_AVSVALUE
-  if (IsArray() && array_size>=0) { // array_size < 0: marked as C array internally, don't free elements
-    if (array_size>0 && array) {
-      delete[] array; // calls AVSValue destructors for all elements
-      array = nullptr;
-    }
-    array_size = 0;
+  if (IsArray() && array_size>0) {
+    // array_size < 0: marked as C array internally, don't free elements
+    delete[] array; // calls AVSValue destructors for all elements
+    array = nullptr;
   }
-#endif
 }
 
 void AVSValue::MarkArrayAsC()
@@ -782,6 +778,18 @@ const AVSValue& AVSValue::OPERATOR_INDEX(int index) const {
   return (IsArray() && index>=0 && index<array_size) ? array[index] : *this;
 }
 
+#ifndef NEW_AVSVALUE
+void AVSValue::Assign(const AVSValue* src, bool init) {
+  if (src->IsClip() && src->clip)
+    src->clip->AddRef();
+  if (!init && IsClip() && clip)
+    clip->Release();
+
+  this->type = src->type;
+  this->array_size = src->array_size;
+  this->clip = src->clip; // "clip" is the largest member of the union, making sure we copy everything
+}
+#else
 // this Assign copies array elements for new AVSVALUE handling
 // For C interface, we use Assign2 through CONSTRUCTOR10
 void AVSValue::Assign(const AVSValue* src, bool init) {
@@ -791,14 +799,6 @@ void AVSValue::Assign(const AVSValue* src, bool init) {
 void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
   if (src->IsClip() && src->clip)
     src->clip->AddRef();
-#ifdef OLD_AVSVALUE
-  if (!init && IsClip() && clip)
-    clip->Release();
-
-  this->type = src->type;
-  this->array_size = src->array_size;
-  this->clip = src->clip; // "clip" is the largest member of the union, making sure we copy everything
-#else
   if (c_arrays) {
     // don't free array members!
     if (!init && IsClip() && clip)
@@ -836,13 +836,7 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
   if (prevIsArray && !init)
   {
     // same as in destructor
-    /*
-    for (int i = 0; i < array_size; i++)
-    {
-      array[i].~AVSValue(); // destruct AVSValue
-    }
-    */
-    if (array && array_size>0) {
+    if (array_size>0) {
       delete[] array; // calls destructor of AVSValue elements
       array = nullptr;
     }
@@ -866,8 +860,8 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
   }
   if (shouldRelease)
     prev_clip_pointer->Release();
-#endif
 }
+#endif
 
 // end class AVSValue
 

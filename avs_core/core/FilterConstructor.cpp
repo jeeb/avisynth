@@ -3,7 +3,7 @@
 FilterConstructor::FilterConstructor(IScriptEnvironment2 * env, const AVSFunction *func, std::vector<AVSValue>* argStorage, std::vector<AVSValue>* ctorArgs) :
   Env(env),
   Func(func),
-#ifdef OLD_AVSVALUE
+#ifndef NEW_AVSVALUE
   ArgStorage(std::move(*argStorage)),
   CtorArgs(std::move(*ctorArgs))
 #else

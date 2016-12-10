@@ -395,7 +395,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   int colors[4] = { 0 };
   float colors_f[4] = { 0.0 };
   bool color_is_array = false;
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
   if (args.ArraySize() >= 14) {
     // new colors parameter
     if (args[13].Defined()) // colors
@@ -1227,7 +1227,7 @@ extern const AVSFunction Source_filters[] = {
 // args             0         1       2        3            4     5                 6            7        8             9       10          11     12
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
-#ifndef OLD_ARRAYS
+#ifdef NEW_AVSVALUE
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c[colors]a", Create_BlankClip },
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c[colors]a", Create_BlankClip },
 #endif
