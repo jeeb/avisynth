@@ -2514,7 +2514,7 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   };
 
   if (!Is420(vi.pixel_type) && !Is420(dst_space))
-    interlaced = false;  // Ignore, if YV12/YUV420P16/YUV420PS is not involved.
+    if (interlaced) env->ThrowError("Convert: Interlaced only available with 4:2:0 color spaces.");
 
   // Describe input pixel positioning
   float xdInU = 0.0f, txdInU = 0.0f, bxdInU = 0.0f;
@@ -2525,8 +2525,8 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   if (Is420(vi.pixel_type)) {
     switch (getPlacement(InPlacement, env)) {
       case PLACEMENT_DV:
-        ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.5f;
-        ydInV = 1.0f, tydInV = 0.5f, bydInV = 1.0f;
+        ydInU = 1.0f, tydInU = 1.0f, bydInU = 1.0f; // Cb
+        ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f; // Cr
         break;
       case PLACEMENT_MPEG1:
         xdInU = 0.5f, txdInU = 0.5f, bxdInU = 0.5f;
@@ -2558,8 +2558,8 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   if (Is420(vi.pixel_type)) {
     switch (getPlacement(OutPlacement, env)) {
       case PLACEMENT_DV:
-        ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.5f;
-        ydOutV = 1.0f, tydOutV = 0.5f, bydOutV = 1.0f;
+        ydOutU = 1.0f, tydOutU = 1.0f, bydOutU = 1.0f; // Cb
+        ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f; // Cr
         break;
       case PLACEMENT_MPEG1:
         xdOutU = 0.5f, txdOutU = 0.5f, bxdOutU = 0.5f;
