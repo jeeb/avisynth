@@ -261,7 +261,8 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
   if ( (!height) || (!row_size) ) return;
 
 #if defined(X86_32) && defined(MSVC)
-  if (GetCPUFlags() & CPUF_INTEGER_SSE)
+  const int cpuf = GetCPUFlags();
+  if ((cpuf & CPUF_INTEGER_SSE) && !(cpuf & CPUF_AVX))
   {
     if (height == 1 || (src_pitch == dst_pitch && dst_pitch == row_size)) {
       memcpy_amd(dstp, srcp, row_size*height);
