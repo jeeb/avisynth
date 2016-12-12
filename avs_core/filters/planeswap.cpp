@@ -734,17 +734,66 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
   VideoInfo vi_default;
   memset(&vi_default, 0, sizeof(VideoInfo));
 
+  bool videoFormatOverridden = false;
+
   if (_sample) {
     vi_default = _sample->GetVideoInfo();
-  } else { // no sample video: format from first clip
+    videoFormatOverridden = true;
+  }
+  else { // no sample video: format from first clip
     vi_default = child->GetVideoInfo();
   }
   // 1.) sample clip 2.) first clip 3.) pixel_type override
+  // 4.) when input clips are greyscale, automatically use YUV(A)/RGB(A) depending on "planes" string
   if (*_pixel_type) {
     int i_pixel_type = GetPixelTypeFromName(_pixel_type);
     if (i_pixel_type == VideoInfo::CS_UNKNOWN)
       env->ThrowError("CombinePlanes: unknown pixel_type %s", _pixel_type);
     vi_default.pixel_type = i_pixel_type;
+    videoFormatOverridden = true;
+  }
+
+  int source_plane_count = (int)strlen(_source_planes_str); // no check here, can be 0
+  int target_plane_count = (int)strlen(_target_planes_str);
+  if (target_plane_count == 0)
+    env->ThrowError("CombinePlanes: no target planes given!");
+  int clip_count = clips[3] ? 4 : clips[2] ? 3 : clips[1] ? 2 : 1;
+  if (target_plane_count < clip_count)
+    env->ThrowError("CombinePlanes: more clips specified than target planes");
+
+  // If no video format was forced and no input planes were given
+  // and all the source clips are Y, then
+  // we give it a try of easy greyscale->RGB(A) or YUV(A) conversion
+  // depending on the _target_planes_str
+  bool allIsGrey = true;
+  for (int i = 0; i < clip_count; i++) {
+    if (!clips[i]->GetVideoInfo().IsY()) {
+      allIsGrey = false;
+      break;
+    }
+  }
+
+  if (!videoFormatOverridden && source_plane_count == 0) {
+    if (allIsGrey) {
+      // special case. Figure out RGB(A) or YUV(A) or Y
+      bool allIsYUV = true;
+      bool allIsRGB = true;
+      for (int i = 0; i < target_plane_count; i++) {
+        char ch = toupper(_target_planes_str[i]);
+        if (ch == 'R' || ch == 'G' || ch == 'B') allIsYUV = false;
+        if (ch == 'Y' || ch == 'U' || ch == 'V') allIsRGB = false;
+      }
+      if (allIsYUV || allIsRGB) {
+        int new_pixel_type;
+        if (allIsRGB)
+          new_pixel_type = target_plane_count == 4 ? VideoInfo::CS_GENERIC_RGBAP : VideoInfo::CS_GENERIC_RGBP;
+        else // if (allIsYUV)
+          new_pixel_type = target_plane_count == 4 ? VideoInfo::CS_GENERIC_YUVA444 : VideoInfo::CS_GENERIC_YUV444;
+        int bits_mask = clips[0]->GetVideoInfo().pixel_type & VideoInfo::CS_Sample_Bits_Mask;
+        new_pixel_type |= bits_mask; // copy bit-depth from the first clip
+        vi_default.pixel_type = new_pixel_type;
+      }
+    }
   }
 
   vi = vi_default;
@@ -752,15 +801,8 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
   if(!vi_default.IsPlanar())
     env->ThrowError("CombinePlanes: target format must be planar!");
 
-  int source_plane_count = (int)strlen(_source_planes_str); // no check here, can be 0
-  int target_plane_count = (int)strlen(_target_planes_str);
-  if(target_plane_count == 0)
-    env->ThrowError("CombinePlanes: no target planes given!");
   if(target_plane_count > vi_default.NumComponents())
     env->ThrowError("CombinePlanes: too many target planes (%d)! Target video plane count is %d!", target_plane_count, vi_default.NumComponents());
-  int clip_count = clips[3] ? 4 : clips[2] ? 3 : clips[1] ? 2 : 1;
-  if(target_plane_count < clip_count)
-    env->ThrowError("CombinePlanes: more clips than planes", target_plane_count, vi_default.NumComponents());
 
   if(source_plane_count != 0 && source_plane_count != target_plane_count)
     env->ThrowError("CombinePlanes: source plane count must match with target plane count if provided!");
@@ -777,7 +819,7 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
 
   // if source plane is given, use it otherwise assume these
   const char * rgb_source_planes_str_def = "RGBA";
-  const char * yuv_source_planes_str_def = "YUVA";
+  const char * yuv_source_planes_str_def = allIsGrey ? "YYYY" : "YUVA";
 
   int last_clip_index = 0;
   for (int i = 0; i < target_plane_count; i++) {
