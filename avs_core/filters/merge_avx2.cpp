@@ -60,8 +60,8 @@ void average_plane_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, in
 
   for(int y = 0; y < height; y++) {
     for(int x = 0; x < mod32_width; x+=32) {
-      __m256i src1  = _mm256_stream_load_si256(reinterpret_cast<const __m256i*>(p1+x));
-      __m256i src2  = _mm256_stream_load_si256(reinterpret_cast<const __m256i*>(p2+x));
+      __m256i src1  = _mm256_stream_load_si256(reinterpret_cast<__m256i*>(p1+x));
+      __m256i src2  = _mm256_stream_load_si256(const_cast<__m256i*>(reinterpret_cast<const __m256i*>(p2+x)));
       __m256i dst;
       if(sizeof(pixel_t)==1)
         dst  = _mm256_avg_epu8(src1, src2); // 16 pixels
@@ -72,8 +72,8 @@ void average_plane_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, in
     }
 
     for(int x = mod32_width; x < mod16_width; x+=16) {
-      __m128i src1  = _mm_stream_load_si128(reinterpret_cast<const __m128i*>(p1+x));
-      __m128i src2  = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x));
+      __m128i src1  = _mm_stream_load_si128(reinterpret_cast<__m128i*>(p1+x));
+      __m128i src2  = _mm_stream_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2+x)));
       __m128i dst;
       if(sizeof(pixel_t)==1)
         dst  = _mm_avg_epu8(src1, src2); // 8 pixels
@@ -126,8 +126,8 @@ void weighted_merge_planar_uint16_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, i
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod32; x += 32) {
       __m256i px1, px2;
-      px1 = _mm256_stream_load_si256(reinterpret_cast<__m256i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
-      px2 = _mm256_stream_load_si256(const_cast<__m256i*>(reinterpret_cast<const __m256i*>(p2 + x))); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
+      px1 = _mm256_stream_load_si256(reinterpret_cast<const __m256i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
+      px2 = _mm256_stream_load_si256(reinterpret_cast<const __m256i*>(p2 + x)); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
       __m256i p1_0123, p1_4567;
       __m256i p2_0123, p2_4567;
 
