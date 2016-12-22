@@ -723,6 +723,7 @@ public:
   virtual void __stdcall LogMsg_valist(int level, const char* fmt, va_list va);
   virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...);
   virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va);
+  virtual void __stdcall VThrowError(const char* fmt, va_list va);
 
 private:
 
@@ -2829,12 +2830,17 @@ char* ScriptEnvironment::Sprintf(const char* fmt, ...) {
 
 void ScriptEnvironment::ThrowError(const char* fmt, ...)
 {
+  va_list val;
+  va_start(val, fmt);
+  VThrowError(fmt, val);
+  va_end(val);
+}
+
+void ScriptEnvironment::VThrowError(const char* fmt, va_list va)
+{
   std::string msg;
   try {
-    va_list val;
-    va_start(val, fmt);
-    msg = FormatString(fmt, val);
-    va_end(val);
+    msg = FormatString(fmt, va);
   } catch (...) {
     msg = "Exception while processing ScriptEnvironment::ThrowError().";
   }

@@ -196,8 +196,13 @@ public:
   {
     va_list val;
     va_start(val, fmt);
-    core->ThrowError(fmt, val);
+    core->VThrowError(fmt, val);
     va_end(val);
+  }
+
+  virtual void __stdcall VThrowError(const char* fmt, va_list va)
+  {
+    core->VThrowError(fmt, va);
   }
 
   void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data=0)
