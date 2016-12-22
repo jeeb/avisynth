@@ -826,17 +826,17 @@ void Antialiaser::GetAlphaRect()
         BYTE *tmpsrc = src + srcpitch*(-12) - 1;
 #pragma unroll
         // PF 161208 speedup test manual unroll, no pragma in VS
-        for (int i = -12; i < 20; i+=8) { // 0..31
+        for (int i = -12; i < 20; i+=4) { // 0..31
           tmp |= *reinterpret_cast<int*>(tmpsrc) |
             *reinterpret_cast<int*>(tmpsrc+srcpitch*1) |
             *reinterpret_cast<int*>(tmpsrc+srcpitch*2) |
-            *reinterpret_cast<int*>(tmpsrc+srcpitch*3) |
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*3)/* |
             *reinterpret_cast<int*>(tmpsrc+srcpitch*4) |
             *reinterpret_cast<int*>(tmpsrc+srcpitch*5) |
             *reinterpret_cast<int*>(tmpsrc+srcpitch*6) |
-            *reinterpret_cast<int*>(tmpsrc+srcpitch*7)
+            *reinterpret_cast<int*>(tmpsrc+srcpitch*7)*/
             ;
-          tmpsrc += srcpitch*8;
+          tmpsrc += srcpitch*4;
         }
 #endif
       }
@@ -950,7 +950,7 @@ void Antialiaser::GetAlphaRect()
 #if 1
               { // PF 161208 speedup test get first two bytes as word
                 int index = srcpitch*(0 + 8);
-                for (i = 0; i < 8; i++) {
+                for (int i = 0; i < 8; i++) {
                   // Check the 3 cells above
                   const uint16_t ab = *reinterpret_cast<uint16_t *>(src + index - 1);
                   mask |= bitexr[ab & 0xFF];
@@ -974,7 +974,7 @@ void Antialiaser::GetAlphaRect()
 #if 1
               { // PF 161208 speedup test get first two bytes as word
                 int index = srcpitch*(7 - 8);
-                for (i = 7; i >= 0; i--) {
+                for (int i = 7; i >= 0; i--) {
                   // Check the 3 cells below
                   const uint16_t ab = *reinterpret_cast<uint16_t *>(src + index - 1);
                   mask |= bitexr[ab & 0xFF];
