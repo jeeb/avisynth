@@ -36,6 +36,7 @@
 #include "strings.h"
 #include <avisynth.h>
 #include <unordered_map>
+#include <mutex>
 
 struct iequal_to_ascii
 {
@@ -70,6 +71,9 @@ private:
   typedef std::unordered_map<const char*, AVSValue, ihash_ascii, iequal_to_ascii> ValueMap;
   ValueMap variables;
 
+  // avoid write/read concurrency of global variables in runtime scripts in MT
+  mutable std::mutex var_mutex;
+
 public:
   VarTable(VarTable* _dynamic_parent, VarTable* _lexical_parent) :
     dynamic_parent(_dynamic_parent), lexical_parent(_lexical_parent),
@@ -88,6 +92,7 @@ public:
   // This method will not modify the *val argument if it returns false.
   bool Get(const char* name, AVSValue *val) const
   {
+    std::lock_guard<std::mutex> lock(var_mutex); // avoid concurrency for global variables
     ValueMap::const_iterator v = variables.find(name);
     if (v != variables.end())
     {
@@ -103,6 +108,7 @@ public:
 
   bool Set(const char* name, const AVSValue& val)
   {
+    std::lock_guard<std::mutex> lock(var_mutex); // avoid concurrency for global variables
     std::pair<ValueMap::iterator, bool> ret = variables.insert(ValueMap::value_type(name, val));
     ret.first->second = val;
     return ret.second;

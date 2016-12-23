@@ -14,6 +14,8 @@ private:
   InternalEnvironment *core;
   const size_t thread_id;
   VarTable* global_var_table;
+  // PF 121223 why do we need thread-local global variables?
+  // comment remains here until it gets cleared, anyway, I make it of no use
   VarTable* var_table;
   BufferPool BufferPool;
 
@@ -64,7 +66,10 @@ public:
 
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val)
   {
-    return global_var_table->Set(name, val);
+//    return global_var_table->Set(name, val);
+    return core->SetGlobalVar(name, val);
+    // PF 121223 use real global table, runtime scripts can write globals from different threads
+    // so we don't use the TLS global_var_table
   }
 
   void __stdcall PushContext(int level=0)
