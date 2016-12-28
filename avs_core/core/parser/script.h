@@ -253,6 +253,9 @@ AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ColorSpaceNameToPixelType(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue NumComponents(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue HasAlpha(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment* env);
 
 #ifdef NEW_AVSVALUE
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);

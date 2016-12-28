@@ -249,6 +249,9 @@ extern const AVSFunction Script_functions[] = {
   { "IsPlanarRGB",  BUILTIN_FUNC_PREFIX, "c", IsPlanarRGB },
   { "IsPlanarRGBA", BUILTIN_FUNC_PREFIX, "c", IsPlanarRGBA },
   { "ColorSpaceNameToPixelType",  BUILTIN_FUNC_PREFIX, "s", ColorSpaceNameToPixelType },
+  { "NumComponents", BUILTIN_FUNC_PREFIX, "c", NumComponents }, // r2348+
+  { "HasAlpha", BUILTIN_FUNC_PREFIX, "c", HasAlpha }, // r2348+
+  { "IsPackedRGB", BUILTIN_FUNC_PREFIX, "c", IsPackedRGB }, // r2348+
 
 #ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
@@ -1211,6 +1214,9 @@ AVSValue BitsPerComponent(AVSValue args, void*, IScriptEnvironment* env) { retur
 AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUVA(); }
 AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGB(); }
 AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA(); }
+AVSValue NumComponents(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).NumComponents(); }
+AVSValue HasAlpha(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA() || VI(args[0]).IsYUVA() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB64(); }
+AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB48() || VI(args[0]).IsRGB64(); }
 
 #ifdef NEW_AVSVALUE
 
