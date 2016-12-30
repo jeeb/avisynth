@@ -257,6 +257,8 @@ AVSValue NumComponents(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue HasAlpha(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env); // avs+ 161230
+
 #ifdef NEW_AVSVALUE
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env);

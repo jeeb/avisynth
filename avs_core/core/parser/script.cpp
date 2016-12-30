@@ -131,6 +131,7 @@ extern const AVSFunction Script_functions[] = {
   { "rightstr", BUILTIN_FUNC_PREFIX, "si",RightStr},
   { "findstr",  BUILTIN_FUNC_PREFIX, "ss",FindStr},
   { "fillstr",  BUILTIN_FUNC_PREFIX, "i[]s",FillStr},
+  { "replacestr", BUILTIN_FUNC_PREFIX, "sss",ReplaceStr}, // avs+ 161230
 
   { "strcmp",   BUILTIN_FUNC_PREFIX, "ss",StrCmp},
   { "strcmpi",  BUILTIN_FUNC_PREFIX, "ss",StrCmpi},
@@ -623,6 +624,51 @@ AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
    delete[] result;
    return ret;
  }
+
+AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
+  char const * const original = args[0].AsString();
+  char const * const pattern = args[1].AsString();
+  char const * const replacement = args[2].AsString();
+
+  const size_t replace_len = strlen(replacement);
+  const size_t pattern_len = strlen(pattern);
+  const size_t orig_len = strlen(original);
+
+  size_t pattern_count = 0;
+  const char * orig_ptr;
+  const char * pattern_location;
+
+  // find how many times the pattern occurs in the original string
+  for (orig_ptr = original; pattern_location = strstr(orig_ptr, pattern); orig_ptr = pattern_location + pattern_len)
+  {
+    pattern_count++;
+  }
+
+  // allocate memory for the new string
+  size_t const retlen = orig_len + pattern_count * (replace_len - pattern_len);
+  char *result = new(std::nothrow) char[sizeof(char) * (retlen + 1)];
+  if (!result) env->ThrowError("ReplaceStr: malloc failure!");
+  *result = 0;
+
+  // copy the original string,
+  // replacing all the instances of the pattern
+  char * result_ptr = result;
+  for (orig_ptr = original; pattern_location = strstr(orig_ptr, pattern); orig_ptr = pattern_location + pattern_len)
+  {
+    const size_t skiplen = pattern_location - orig_ptr;
+    // copy the section until the occurence of the pattern
+    strncpy(result_ptr, orig_ptr, skiplen);
+    result_ptr += skiplen;
+    // copy the replacement
+    strncpy(result_ptr, replacement, replace_len);
+    result_ptr += replace_len;
+  }
+  // copy rest
+  strcpy(result_ptr, orig_ptr);
+  AVSValue ret = env->SaveString(result);
+  delete[] result;
+  return ret;
+}
 
 AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env)
 {
