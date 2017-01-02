@@ -184,7 +184,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
       char buf[256];
-      _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)cache_handle.first->value->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)result, (void *)result->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count());
       _RPT0(0, buf);
       assert(result != NULL);
 #endif
