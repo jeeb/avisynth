@@ -671,8 +671,14 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
   int n = cn.AsInt();
   n = min(max(n+offset,0),vi.num_frames-1);
 
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT3(0, "Inside MinMax getFrame cn=%d n=%d thread=%d\r", cn.AsInt(), n, GetCurrentThreadId());
+#endif
   // Prepare the source
   PVideoFrame src = child->GetFrame(n, env);
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT2(0, "After MinMax getFrame cn=%d n=%d\r", cn.AsInt(), n, GetCurrentThreadId());
+#endif
 
   const BYTE* srcp = src->GetReadPtr(plane);
   int pitch = src->GetPitch(plane);
@@ -770,5 +776,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
   }
 
   delete[] accum_buf;
+  _RPT2(0, "End of MinMax cn=%d n=%d\r", cn.AsInt(), n);
+
   return AVSValue(retval);
 }

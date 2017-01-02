@@ -1612,6 +1612,9 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
 VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 {
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT1(0, "ScScriptEnvironment::GetNewFrame memory mutex lock: %p\n", (void *)&memory_mutex);
+#endif
 
   /* -----------------------------------------------------------
    *   Try to return an unused but already allocated instance
@@ -2199,6 +2202,9 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT1(0, "ScScriptEnvironment::SubFrame memory mutext lock: %p\n", (void *)&memory_mutex);
+#endif
   // automatically inserts if not exists!
   assert(NULL != subframe);
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
@@ -2217,6 +2223,9 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT1(0, "ScScriptEnvironment::SubFramePlanar memory mutext lock: %p\n", (void *)&memory_mutex);
+#endif
   // automatically inserts if not exists!
   assert(subframe != NULL);
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
@@ -2236,6 +2245,9 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 
     std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
                                                          // automatically inserts if not exists!
+#ifdef DEBUG_GSCRIPTCLIP_MT
+    _RPT1(0, "ScScriptEnvironment::SubFramePlanar(2) memory mutext lock: %p\n", (void *)&memory_mutex);
+#endif
     assert(subframe != NULL);
     FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
 
@@ -2247,8 +2259,13 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 // ScriptEnvironment class without extending the IScriptEnvironment
 // definition.
 
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT3(0, "ScriptEnvironment::ManageCache %d memory mutex try to lock: %p thread %d\n", key, (void *)&memory_mutex, GetCurrentThreadId());
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
+  _RPT2(0, "ScriptEnvironment::ManageCache memory mutex lock ok: %p thread %d\n", (void *)&memory_mutex, GetCurrentThreadId());
+#else
   std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
-
+#endif
   switch((MANAGE_CACHE_KEYS)key)
   {
   // Called by Cache instances upon creation
@@ -2317,8 +2334,12 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
   case MC_NodCache:
   {
     Cache* cache = reinterpret_cast<Cache*>(data);
-    if (cache == FrontCache)
+    if (cache == FrontCache) {
+#ifdef DEBUG_GSCRIPTCLIP_MT
+      env_lock.unlock();
+#endif
       return 0;
+    }
 
     CacheRegistry.move_to_back(cache);
     break;
@@ -2352,6 +2373,9 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     break;
   }
   } // switch
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT2(0, "ScriptEnvironment::ManageCache memory mutex will unlock on release: %p thread=%d\n", (void *)&memory_mutex, GetCurrentThreadId());
+#endif
   return 0;
 }
 
@@ -2470,7 +2494,13 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
 
 bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names)
 {
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT3(0, "ScriptEnvironment::Invoke %s try memory lock %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
+  _RPT3(0, "ScriptEnvironment::Invoke %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#else
   std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
+#endif
 
   bool strict = false;
   const AVSFunction *f;
@@ -2511,7 +2541,10 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 
           if (!data->CreatedByInvoke)
           {
-              mthelper.AddChainedFilter(clip, this->DefaultMtMode);
+#ifdef DEBUG_GSCRIPTCLIP_MT
+            _RPT3(0, "ScriptEnvironment::Invoke.AddChainedFilter %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#endif
+            mthelper.AddChainedFilter(clip, this->DefaultMtMode);
           }
 
           // Wrap this input parameter into a guard exit, which is used when
@@ -2612,7 +2645,7 @@ success:;
 
   // ... and we're finally ready to make the call
   std::unique_ptr<const FilterConstructor> funcCtor = std::make_unique<const FilterConstructor>(this, f, &args2, &args3);
-  _RPT1(0, "ScriptEnvironment::Invoke %s\r\n", name); // P.F.
+  _RPT1(0, "ScriptEnvironment::Invoke after funcCtor make unique %s\r\n", name);
 
   if (funcCtor->IsScriptFunction())
   {
@@ -2623,6 +2656,25 @@ success:;
       LogMsgOnce(ticket, LOGLEVEL_WARNING, "An MT-mode is set for %s() but it is a script function. You can only set the MT-mode for binary filters, for scripted functions it will be ignored.", f->name);
     }
 
+#ifdef DEBUG_GSCRIPTCLIP_MT
+#ifdef _DEBUG
+    _RPT1(0, "ScriptEnvironment::Invoke.IsScriptFunction before funcCtor->InstantiateFilter %s\r\n", name); // P.F.
+#endif
+    /*
+    if(funcCtor->IsRuntimeScriptFunction())
+      env_lock.unlock();
+    */
+    /*
+      if this is here, we get heap corruption (var table pop context?)
+      if this is not here, and the filter is runtime filter, such as YPlaneMax, then inside
+      YPlaneMax the child->GetFrame will go into deadlock, as the memory mutex is still held,
+      but the GetFrame goes through the cache, and the ManageCache (Nop) call can't get this
+      very same memory mutex since our Invoke (see above) still holds it.
+      Because there the ManageCache may use another (core?) thread id
+      and cannot obtain the lock :(((
+      YPlaneMax (MinMax) calls child->GetFrame, that can Invoke srestore_inside1 again but from a different thread.
+      */
+#endif
     *result = funcCtor->InstantiateFilter();
 #ifdef _DEBUG
     _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
@@ -2630,21 +2682,40 @@ success:;
   }
   else
   {
+#ifdef DEBUG_GSCRIPTCLIP_MT
+    _RPT3(0, "ScriptEnvironment::Invoke.WasNotScriptFunction %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#endif
 #ifdef _DEBUG
     Cache *PrevFrontCache = FrontCache;
 #endif
 
     AVSValue fret;
-    invoke_stack.push(&mthelper);
-    try
+
+#ifdef DEBUG_GSCRIPTCLIP_MT
+    if (funcCtor->IsRuntimeScriptFunction()) {
+      _RPT3(0, "ScriptEnvironment::Invoke.IsRuntimeScriptFunction funcCtor->InstantiateFilter() %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+      env_lock.unlock();
+      fret = funcCtor->InstantiateFilter();
+      if(!fret.IsClip())
+        _RPT3(0, "ScriptEnvironment::Invoke: Fret is not clip. %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+    }
+    else
+#endif
     {
+      invoke_stack.push(&mthelper);
+      try
+      {
+#ifdef DEBUG_GSCRIPTCLIP_MT
+        _RPT3(0, "ScriptEnvironment::Invoke.funcCtor->InstantiateFilter() %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#endif
         fret = funcCtor->InstantiateFilter();
         invoke_stack.pop();
-    }
-    catch(...)
-    {
+      }
+      catch (...)
+      {
         invoke_stack.pop();
         throw;
+      }
     }
 
     // Determine MT-mode, as if this instance had not called Invoke()
@@ -2663,7 +2734,10 @@ success:;
 
         if (chainedCtor)
         {
-            // Propagate information about our children's MT-safety
+#ifdef DEBUG_GSCRIPTCLIP_MT
+          _RPT3(0, "ScriptEnvironment::Invoke.chainedCtor %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#endif
+          // Propagate information about our children's MT-safety
             // to our parent.
             invoke_stack.top()->Accumulate(mthelper);
 
@@ -2699,7 +2773,10 @@ success:;
             {
                 for (auto &ge : GuardExits)
                 {
-                    ge->Activate(guard);
+#ifdef DEBUG_GSCRIPTCLIP_MT
+                  _RPT3(0, "ScriptEnvironment::Invoke.ActivateGuard %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#endif
+                  ge->Activate(guard);
                 }
             }
 
@@ -2760,6 +2837,9 @@ success:;
     }
 #endif
   }
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  _RPT3(0, "ScriptEnvironment::Invoke %s memory mutex unlock soon: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#endif
 
   return true;
 }

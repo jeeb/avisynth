@@ -228,12 +228,50 @@ bool AVSFunction::empty() const
 
 bool AVSFunction::IsScriptFunction() const
 {
-    return ( (apply == &(ScriptFunction::Execute))
+#ifdef DEBUG_GSCRIPTCLIP_MT
+  /*
+  if (!strcmp(this->name, "YPlaneMax"))
+    return true;
+  if (!strcmp(this->name, "YPlaneMin"))
+    return true;
+  if (!strcmp(this->name, "LumaDifference"))
+    return true;
+    */
+/*
+  if (!stricmp(this->name, "yplanemax"))
+    return true;
+  if (!stricmp(this->name, "yplanemin"))
+    return true;
+  if (!stricmp(this->name, "lumadifference"))
+    return true;
+  */
+  //if (!stricmp(this->name, "srestore_inside_1"))
+  //  return true;
+#endif
+  return ( (apply == &(ScriptFunction::Execute))
 		  || (apply == &Eval)
           || (apply == &EvalOop)
           || (apply == &Import)
         );
 }
+
+#ifdef DEBUG_GSCRIPTCLIP_MT
+bool AVSFunction::IsRuntimeScriptFunction() const
+{
+
+  if (!strcmp(this->name, "YPlaneMax"))
+  return true;
+  if (!strcmp(this->name, "YPlaneMin"))
+  return true;
+  if (!strcmp(this->name, "LumaDifference"))
+  return true;
+
+  //if (!stricmp(this->name, "srestore_inside_1"))
+  //  return true;
+
+  return (apply == &(ScriptFunction::Execute));
+}
+#endif
 
 bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
   switch (type) {
