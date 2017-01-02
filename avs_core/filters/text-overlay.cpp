@@ -1532,46 +1532,73 @@ const char* const t_STFF="Top Field (Separated)      ";
 const char* const t_SBFF="Bottom Field (Separated)   ";
 
 
-std::string GetCpuMsg(IScriptEnvironment * env)
+std::string GetCpuMsg(IScriptEnvironment * env, bool avx512)
 {
   int flags = env->GetCPUFlags();
   std::stringstream ss;
 
-  //if (flags & CPUF_FPU)
-  //  ss << "x87 ";
-  if (flags & CPUF_MMX)
-    ss << "MMX ";
-  if (flags & CPUF_INTEGER_SSE)
-    ss << "ISSE ";
+  if (!avx512) {
+  // don't display old capabilities when at least AVX is used
+    if (!(flags & CPUF_AVX)) {
+    //if (flags & CPUF_FPU)
+    //  ss << "x87 ";
+      if (flags & CPUF_MMX)
+        ss << "MMX ";
+      if (flags & CPUF_INTEGER_SSE)
+        ss << "ISSE ";
 
-  if (flags & CPUF_SSE4_2)
-    ss << "SSE4.2 ";
-  else if (flags & CPUF_SSE4_1)
-    ss << "SSE4.1 ";
-  else if (flags & CPUF_SSE3)
-    ss << "SSE3 ";
-  else if (flags & CPUF_SSE2)
-    ss << "SSE2 ";
-  else if (flags & CPUF_SSE)
-    ss << "SSE ";
+      if (flags & CPUF_3DNOW_EXT)
+        ss << "3DNOW_EXT";
+      else if (flags & CPUF_3DNOW)
+        ss << "3DNOW ";
+    }
 
-  if (flags & CPUF_SSSE3)
-    ss << "SSSE3 ";
+    // from SSE..SSE4.2 display the highest
+    if (flags & CPUF_SSE4_2)
+      ss << "SSE4.2 ";
+    else if (flags & CPUF_SSE4_1)
+      ss << "SSE4.1 ";
+    else if (flags & CPUF_SSE3)
+      ss << "SSE3 ";
+    else if (flags & CPUF_SSE2)
+      ss << "SSE2 ";
+    else if (flags & CPUF_SSE)
+      ss << "SSE ";
 
-  if (flags & CPUF_AVX)
+    if (flags & CPUF_SSSE3)
+      ss << "SSSE3 ";
+
+    if (flags & CPUF_AVX)
       ss << "AVX ";
-  if (flags & CPUF_AVX2)
-    ss << "AVX2 ";
-  if (flags & CPUF_FMA3)
-    ss << "FMA3 ";
-  if (flags & CPUF_F16C)
-    ss << "F16C ";
-
-  if (flags & CPUF_3DNOW_EXT)
-    ss << "3DNOW_EXT";
-  else if (flags & CPUF_3DNOW)
-    ss << "3DNOW ";
-
+    if (flags & CPUF_AVX2)
+      ss << "AVX2 ";
+    if (flags & CPUF_FMA3)
+      ss << "FMA3 ";
+    if (flags & CPUF_FMA4)
+      ss << "FMA4 ";
+    if (flags & CPUF_F16C)
+      ss << "F16C ";
+  }
+  else {
+    if (flags & CPUF_AVX512F)
+      ss << "AVX512F ";
+    if (flags & CPUF_AVX512DQ)
+      ss << "AVX512DQ ";
+    if (flags & CPUF_AVX512PF)
+      ss << "AVX512PF ";
+    if (flags & CPUF_AVX512ER)
+      ss << "AVX512ER ";
+    if (flags & CPUF_AVX512CD)
+      ss << "AVX512CD ";
+    if (flags & CPUF_AVX512BW)
+      ss << "AVX512BW ";
+    if (flags & CPUF_AVX512VL)
+      ss << "AVX512VL ";
+    if (flags & CPUF_AVX512IFMA)
+      ss << "AVX512IFMA ";
+    if (flags & CPUF_AVX512VBMI)
+      ss << "AVX512VBMI ";
+  }
   return ss.str();
 }
 
@@ -1605,13 +1632,16 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       if (vii.IsFieldBased()) {
         if (child->GetParity(n)) {
           s_parity = t_STFF;
-        } else {
+        }
+        else {
           s_parity = t_SBFF;
         }
-      } else {
+      }
+      else {
         if (child->GetParity(n)) {
           s_parity = vii.IsTFF() ? t_ATFF : t_TFF;
-        } else {
+        }
+        else {
           s_parity = vii.IsBFF() ? t_ABFF : t_BFF;
         }
       }
@@ -1621,27 +1651,27 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       tlen = _snprintf(text, sizeof(text),
         "Frame: %8u of %-8u\n"                                //  28
         "Time: %02d:%02d:%02d.%03d of %02d:%02d:%02d.%03d\n"  //  35
-        "ColorSpace: %s\n"                                    //  18=13+5
-        "Bits per component: %2u\n"                           //  22
-        "Width:%4u pixels, Height:%4u pixels.\n"              //  39
+        "ColorSpace: %s, BitsPerComponent: %u\n"              //  18=13+5
+//        "Bits per component: %2u\n"                           //  22
+        "Width:%4u pixels, Height:%4u pixels\n"              //  39
         "Frames per second: %7.4f (%u/%u)\n"                  //  51=31+20
         "FieldBased (Separated) Video: %s\n"                  //  35=32+3
         "Parity: %s\n"                                        //  35=9+26
         "Video Pitch: %5u bytes.\n"                           //  25
         "Has Audio: %s\n"                                     //  15=12+3
 //        "123456789012345678901234567890123456789012345678901234567890\n"         // test
-        , n, vii.num_frames
-        , (cPosInMsecs/(60*60*1000)), (cPosInMsecs/(60*1000))%60 ,(cPosInMsecs/1000)%60, cPosInMsecs%1000,
-          (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000
-        , c_space
-        , vii.BitsPerComponent()
-        , vii.width, vii.height
-        , (float)vii.fps_numerator/(float)vii.fps_denominator, vii.fps_numerator, vii.fps_denominator
-        , vii.IsFieldBased() ? t_YES : t_NO
-        , s_parity
-        , frame->GetPitch()
-        , vii.HasAudio() ? t_YES : t_NO
-      );
+, n, vii.num_frames
+, (cPosInMsecs / (60 * 60 * 1000)), (cPosInMsecs / (60 * 1000)) % 60, (cPosInMsecs / 1000) % 60, cPosInMsecs % 1000,
+(vLenInMsecs / (60 * 60 * 1000)), (vLenInMsecs / (60 * 1000)) % 60, (vLenInMsecs / 1000) % 60, vLenInMsecs % 1000
+, c_space
+, vii.BitsPerComponent()
+, vii.width, vii.height
+, (float)vii.fps_numerator / (float)vii.fps_denominator, vii.fps_numerator, vii.fps_denominator
+, vii.IsFieldBased() ? t_YES : t_NO
+, s_parity
+, frame->GetPitch()
+, vii.HasAudio() ? t_YES : t_NO
+);
     }
     else {
       tlen = _snprintf(text, sizeof(text),
@@ -1653,34 +1683,42 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       );
     }
     if (vii.HasAudio()) {
-      if      (vii.SampleType()==SAMPLE_INT8)  s_type=t_INT8;
-      else if (vii.SampleType()==SAMPLE_INT16) s_type=t_INT16;
-      else if (vii.SampleType()==SAMPLE_INT24) s_type=t_INT24;
-      else if (vii.SampleType()==SAMPLE_INT32) s_type=t_INT32;
-      else if (vii.SampleType()==SAMPLE_FLOAT) s_type=t_FLOAT32;
+      if (vii.SampleType() == SAMPLE_INT8)  s_type = t_INT8;
+      else if (vii.SampleType() == SAMPLE_INT16) s_type = t_INT16;
+      else if (vii.SampleType() == SAMPLE_INT24) s_type = t_INT24;
+      else if (vii.SampleType() == SAMPLE_INT32) s_type = t_INT32;
+      else if (vii.SampleType() == SAMPLE_FLOAT) s_type = t_FLOAT32;
 
       int aLenInMsecs = (int)(1000.0 * (double)vii.num_audio_samples / (double)vii.audio_samples_per_second);
-	  tlen += _snprintf(text+tlen, sizeof(text)-tlen,
-		"Audio Channels: %-8u\n"                              //  25
-		"Sample Type: %s\n"                                   //  28=14+14
-		"Samples Per Second: %5d\n"                           //  26
-		"Audio length: %I64u samples. %02d:%02d:%02d.%03d\n"  //  57=37+20
-		, vii.AudioChannels()
-		, s_type
-		, vii.audio_samples_per_second
-		, vii.num_audio_samples,
-		  (aLenInMsecs/(60*60*1000)), (aLenInMsecs/(60*1000))%60, (aLenInMsecs/1000)%60, aLenInMsecs%1000
-	  );
+      tlen += _snprintf(text + tlen, sizeof(text) - tlen,
+        "Audio Channels: %-8u\n"                              //  25
+        "Sample Type: %s\n"                                   //  28=14+14
+        "Samples Per Second: %5d\n"                           //  26
+        "Audio length: %I64u samples. %02d:%02d:%02d.%03d\n"  //  57=37+20
+        , vii.AudioChannels()
+        , s_type
+        , vii.audio_samples_per_second
+        , vii.num_audio_samples,
+        (aLenInMsecs / (60 * 60 * 1000)), (aLenInMsecs / (60 * 1000)) % 60, (aLenInMsecs / 1000) % 60, aLenInMsecs % 1000
+      );
     }
-	else {
-	  strcpy(text+tlen,"\n");
-	  tlen += 1;
-	}
-    tlen += _snprintf(text+tlen, sizeof(text)-tlen,
-      "CPU detected: %s\n"                                  // 60=15+45 max line length=60(?)
-      , GetCpuMsg(env).c_str()                              // 442
+    else {
+      strcpy(text + tlen, "\n");
+      tlen += 1;
+    }
+    // CPU capabilities w/o AVX512
+    tlen += _snprintf(text + tlen, sizeof(text) - tlen,
+      "CPU: %s\n"
+      , GetCpuMsg(env, false).c_str()
     );
-
+    // AVX512 flags in new line (too long)
+    std::string avx512 = GetCpuMsg(env, true);
+    if (avx512.length() > 0) {
+      tlen += _snprintf(text + tlen, sizeof(text) - tlen,
+        "     %s\n"
+        , avx512.c_str()
+      );
+    }
 
     // So far RECT dimensions were hardcoded: RECT r = { 32, 16, min(3440,vi.width * 8), 900*2 };
     // More flexible way: get text extent
