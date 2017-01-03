@@ -34,6 +34,7 @@
 // NOTE: this is a partial update of the Avisynth C interface to recognize
 // new color spaces added in Avisynth 2.60. By no means is this document
 // completely Avisynth 2.60 compliant.
+// 170103: added new CPU constants (FMA4, AVX512xx)
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -755,16 +756,20 @@ enum {
   AVS_CPUF_AVX2      = 0x2000,   //  Haswell
   AVS_CPUF_FMA3      = 0x4000,
   AVS_CPUF_F16C      = 0x8000,
-  AVS_CPUF_MOVBE    = 0x10000,   // Big Endian Move
-  AVS_CPUF_POPCNT   = 0x20000,
-  AVS_CPUF_AES      = 0x40000,
-  // AVS_CPUF_AVX512F      = 0x80000,   // AVX-512 Foundation.
-  // AVS_CPUF_AVX512DQ     = 0x100000,  // AVX-512 DQ (Double/Quad granular) Instructions
-  // AVS_CPUF_AVX512PF     = 0x200000,  // AVX-512 Prefetch
-  // AVS_CPUF_AVX512ER     = 0x400000,  // AVX-512 Exponential and Reciprocal
-  // AVS_CPUF_AVX512CD     = 0x800000,  // AVX-512 Conflict Detection
-  // AVS_CPUF_AVX512BW     = 0x1000000, // AVX-512 BW (Byte/Word granular) Instructions
-  // AVS_CPUF_AVX512VL     = 0x2000000, // AVX-512 VL (128/256 Vector Length) Extensions
+  AVS_CPUF_MOVBE     = 0x10000,   // Big Endian Move
+  AVS_CPUF_POPCNT    = 0x20000,
+  AVS_CPUF_AES       = 0x40000,
+  AVS_CPUF_FMA4      = 0x80000,
+
+  AVS_CPUF_AVX512F    = 0x100000,  // AVX-512 Foundation.
+  AVS_CPUF_AVX512DQ   = 0x200000,  // AVX-512 DQ (Double/Quad granular) Instructions
+  AVS_CPUF_AVX512PF   = 0x400000,  // AVX-512 Prefetch
+  AVS_CPUF_AVX512ER   = 0x800000,  // AVX-512 Exponential and Reciprocal
+  AVS_CPUF_AVX512CD   = 0x1000000, // AVX-512 Conflict Detection
+  AVS_CPUF_AVX512BW   = 0x2000000, // AVX-512 BW (Byte/Word granular) Instructions
+  AVS_CPUF_AVX512VL   = 0x4000000, // AVX-512 VL (128/256 Vector Length) Extensions
+  AVS_CPUF_AVX512IFMA = 0x8000000, // AVX-512 IFMA integer 52 bit
+  AVS_CPUF_AVX512VBMI = 0x10000000 // AVX-512 VBMI
 };
 
 
