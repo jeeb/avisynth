@@ -72,7 +72,7 @@ private:
   VideoInfo maskVi;
   VideoInfo* inputVi;
   VideoInfo* outputVi;
-  VideoInfo* vi444;
+  VideoInfo* viInternalWorkingFormat;
 
   // AVS+: these are obsolate
 #if 0
@@ -92,6 +92,7 @@ private:
   bool full_range;
   int offset_x, offset_y;
   int inputCS;
+  bool use444; // conversionless support
 
   const char* name; // Blend parameter
 
