@@ -39,7 +39,7 @@
 #include <stdint.h>
 
 #if 0
-void OL_LightenImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_LightenImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
   //else if(bits_per_pixel == 32)
@@ -48,7 +48,7 @@ void OL_LightenImage::DoBlendImageMask(Image444* base, Image444* overlay, Image4
     BlendImageMask<uint16_t>(base, overlay, mask);
 }
 
-void OL_LightenImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_LightenImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if (bits_per_pixel == 8)
     BlendImage<uint8_t>(base, overlay);
   //else if(bits_per_pixel == 32)
@@ -59,7 +59,7 @@ void OL_LightenImage::DoBlendImage(Image444* base, Image444* overlay) {
 
 
 template<typename pixel_t>
-void OL_LightenImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_LightenImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);
@@ -124,7 +124,7 @@ void OL_LightenImage::BlendImageMask(Image444* base, Image444* overlay, Image444
 }
 
 template<typename pixel_t>
-void OL_LightenImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_LightenImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
         
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);

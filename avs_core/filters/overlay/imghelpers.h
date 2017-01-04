@@ -42,7 +42,7 @@
 #include <avs/alignment.h>
 #include "444convert.h"
 
-class Image444 {
+class ImageOverlayInternal {
 private:
   IScriptEnvironment2 * Env;
 
@@ -75,7 +75,7 @@ public:
   int pitchUV;
   int pitchA;
 
-  Image444(
+  ImageOverlayInternal(
     PVideoFrame &_frame,
     int _inw, int _inh, VideoInfo &_workingVI, bool _hasAlpha, bool _grey, VideoInfo &_originalVI, IScriptEnvironment* env) :
     Env(static_cast<IScriptEnvironment2*>(env)),
@@ -269,7 +269,7 @@ public:
     fake_h = _h;
   }
 
-  ~Image444() {
+  ~ImageOverlayInternal() {
     if(maskChroma)
       Env->Free(maskChroma);
   }

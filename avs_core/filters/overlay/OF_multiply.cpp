@@ -39,7 +39,7 @@
 #include <stdint.h>
 #include <type_traits>
 
-void OL_MultiplyImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_MultiplyImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
   else if(bits_per_pixel <= 16)
@@ -49,7 +49,7 @@ void OL_MultiplyImage::DoBlendImageMask(Image444* base, Image444* overlay, Image
 
 }
 
-void OL_MultiplyImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_MultiplyImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if (bits_per_pixel == 8)
     BlendImage<uint8_t>(base, overlay);
   else if(bits_per_pixel <= 16)
@@ -59,7 +59,7 @@ void OL_MultiplyImage::DoBlendImage(Image444* base, Image444* overlay) {
 }
 
 template<typename pixel_t>
-void OL_MultiplyImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_MultiplyImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
   pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
@@ -156,7 +156,7 @@ void OL_MultiplyImage::BlendImageMask(Image444* base, Image444* overlay, Image44
 }
 
 template<typename pixel_t>
-void OL_MultiplyImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_MultiplyImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
         
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));

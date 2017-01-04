@@ -39,7 +39,7 @@
 #include <stdint.h>
 #include <type_traits>
 
-void OL_DarkenImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_DarkenImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if(of_mode == OF_Darken) {
     if (bits_per_pixel == 8)
       BlendImageMask<uint8_t, true, true>(base, overlay, mask);
@@ -59,7 +59,7 @@ void OL_DarkenImage::DoBlendImageMask(Image444* base, Image444* overlay, Image44
   }
 }
 
-void OL_DarkenImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_DarkenImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if(of_mode == OF_Darken) {
     if (bits_per_pixel == 8)
       BlendImageMask<uint8_t, false, true>(base, overlay, nullptr);
@@ -81,7 +81,7 @@ void OL_DarkenImage::DoBlendImage(Image444* base, Image444* overlay) {
 
 
 template<typename pixel_t, bool maskMode, bool of_darken>
-void OL_DarkenImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_DarkenImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
 
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
@@ -218,7 +218,7 @@ void OL_DarkenImage::BlendImageMask(Image444* base, Image444* overlay, Image444*
 
 #if 0
 template<typename pixel_t>
-void OL_DarkenImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_DarkenImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
         
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);

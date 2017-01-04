@@ -39,7 +39,7 @@
 
 #include <stdint.h>
 
-void OL_BlendLumaImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_BlendLumaImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
   else if(bits_per_pixel <= 16)
@@ -48,7 +48,7 @@ void OL_BlendLumaImage::DoBlendImageMask(Image444* base, Image444* overlay, Imag
   //  BlendImageMask<float>(base, overlay, mask);
 }
 
-void OL_BlendLumaImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_BlendLumaImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if (bits_per_pixel == 8)
     BlendImage<uint8_t>(base, overlay);
   else if(bits_per_pixel <= 16)
@@ -57,7 +57,7 @@ void OL_BlendLumaImage::DoBlendImage(Image444* base, Image444* overlay) {
   //  BlendImage<float>(base, overlay);
 }
 
-void OL_BlendChromaImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_BlendChromaImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
   else if(bits_per_pixel <= 16)
@@ -66,7 +66,7 @@ void OL_BlendChromaImage::DoBlendImageMask(Image444* base, Image444* overlay, Im
   //  BlendImageMask<float>(base, overlay, mask);
 }
 
-void OL_BlendChromaImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_BlendChromaImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if (bits_per_pixel == 8)
     BlendImage<uint8_t>(base, overlay);
   else if(bits_per_pixel <= 16)
@@ -76,7 +76,7 @@ void OL_BlendChromaImage::DoBlendImage(Image444* base, Image444* overlay) {
 }
 
 template<typename pixel_t>
-void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_BlendLumaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
 
   BYTE* ovY = overlay->GetPtr(PLANAR_Y);
@@ -151,7 +151,7 @@ void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image4
 
 
 template<typename pixel_t>
-void OL_BlendLumaImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_BlendLumaImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
 
   BYTE* ovY = overlay->GetPtr(PLANAR_Y);
@@ -198,7 +198,7 @@ void OL_BlendLumaImage::BlendImage(Image444* base, Image444* overlay) {
 
 
 template<typename pixel_t>
-void OL_BlendChromaImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_BlendChromaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);
 
@@ -289,7 +289,7 @@ void OL_BlendChromaImage::BlendImageMask(Image444* base, Image444* overlay, Imag
 }
 
 template<typename pixel_t>
-void OL_BlendChromaImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_BlendChromaImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);
 

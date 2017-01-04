@@ -40,7 +40,7 @@
 
 #include <stdint.h>
 
-void OL_DifferenceImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_DifferenceImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t, true>(base, overlay, mask);
   else if(bits_per_pixel <= 16)
@@ -49,7 +49,7 @@ void OL_DifferenceImage::DoBlendImageMask(Image444* base, Image444* overlay, Ima
   //  BlendImageMask<float>(base, overlay, mask);
 }
 
-void OL_DifferenceImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_DifferenceImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t, false>(base, overlay, nullptr);
   else if(bits_per_pixel <= 16)
@@ -60,7 +60,7 @@ void OL_DifferenceImage::DoBlendImage(Image444* base, Image444* overlay) {
 
 
 template<typename pixel_t, bool maskMode>
-void OL_DifferenceImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_DifferenceImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
   pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
@@ -186,7 +186,7 @@ void OL_DifferenceImage::BlendImageMask(Image444* base, Image444* overlay, Image
 
 #if 0
 template<typename pixel_t>
-void OL_DifferenceImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_DifferenceImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);

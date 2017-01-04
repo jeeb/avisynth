@@ -65,7 +65,7 @@ private:
   ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
   static ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env, bool full_range);
 #endif
-  static void ClipFrames(Image444* input, Image444* overlay, int x, int y);
+  static void ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* overlay, int x, int y);
   static void FetchConditionals(IScriptEnvironment* env, int*, int*, int*, bool);
 
   VideoInfo overlayVi;

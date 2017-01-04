@@ -41,7 +41,7 @@
 
 #if 0
 // Common with OF_Add
-void OL_SubtractImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_SubtractImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
   //else if(bits_per_pixel == 32)
@@ -50,7 +50,7 @@ void OL_SubtractImage::DoBlendImageMask(Image444* base, Image444* overlay, Image
     BlendImageMask<uint16_t>(base, overlay, mask);
 }
 
-void OL_SubtractImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_SubtractImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if (bits_per_pixel == 8)
     BlendImage<uint8_t>(base, overlay);
   //else if(bits_per_pixel == 32)
@@ -60,7 +60,7 @@ void OL_SubtractImage::DoBlendImage(Image444* base, Image444* overlay) {
 }
 
 template<typename pixel_t>
-void OL_SubtractImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_SubtractImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);
@@ -140,7 +140,7 @@ void OL_SubtractImage::BlendImageMask(Image444* base, Image444* overlay, Image44
 }
 
 template<typename pixel_t>
-void OL_SubtractImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_SubtractImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
         
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);

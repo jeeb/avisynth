@@ -39,7 +39,7 @@
 #include <stdint.h>
 #include <type_traits>
 
-void OL_AddImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_AddImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if(of_mode == OF_Add) {
     if (bits_per_pixel == 8)
       BlendImageMask<uint8_t, true, true>(base, overlay, mask);
@@ -59,7 +59,7 @@ void OL_AddImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* 
   }
 }
 
-void OL_AddImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_AddImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if(of_mode == OF_Add) {
     if (bits_per_pixel == 8)
       BlendImageMask<uint8_t, false, true>(base, overlay, nullptr);
@@ -160,7 +160,7 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
 }
 */
 template<typename pixel_t, bool maskMode, bool of_add>
-void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_AddImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
 
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));

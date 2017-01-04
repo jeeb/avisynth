@@ -263,13 +263,13 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // Fetch current frame and convert it to internal format
   env->MakeWritable(&frame);
 
-  Image444* img = new Image444(frame, vi.width, vi.height, *viInternalWorkingFormat, child->GetVideoInfo().IsYUVA() || child->GetVideoInfo().IsPlanarRGBA(), false, *viInternalWorkingFormat, env);
+  ImageOverlayInternal* img = new ImageOverlayInternal(frame, vi.width, vi.height, *viInternalWorkingFormat, child->GetVideoInfo().IsYUVA() || child->GetVideoInfo().IsPlanarRGBA(), false, *viInternalWorkingFormat, env);
 
   // always use avisynth converters
   PVideoFrame Oframe;
   AVSValue overlay2;
 
-  Image444* maskImg = NULL;
+  ImageOverlayInternal* maskImg = NULL;
 
   if(overlayVi.Is444() || overlayVi.pixel_type == viInternalWorkingFormat->pixel_type)
     // don't convert is input and overlay is the same formats
@@ -302,7 +302,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     Oframe = overlay2.AsClip()->GetFrame(n, env);
   }
   // Fetch current overlay and convert it to internal format
-  Image444* overlayImg = new Image444(Oframe, overlayVi.width, overlayVi.height, *viInternalWorkingFormat, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), false, *viInternalWorkingFormat, env);
+  ImageOverlayInternal* overlayImg = new ImageOverlayInternal(Oframe, overlayVi.width, overlayVi.height, *viInternalWorkingFormat, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), false, *viInternalWorkingFormat, env);
 
   // Clip overlay to original image
   ClipFrames(img, overlayImg, offset_x + con_x_offset, offset_y + con_y_offset);
@@ -368,7 +368,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
         Mframe = mask2.AsClip()->GetFrame(n, env);
       }
       // MFrame here is either internalWorkingFormat or Y or 4:4:4
-      maskImg = new Image444(Mframe, maskVi.width, maskVi.height, *viInternalWorkingFormat, mask->GetVideoInfo().IsYUVA() || mask->GetVideoInfo().IsPlanarRGBA(), greymask, maskVi, env);
+      maskImg = new ImageOverlayInternal(Mframe, maskVi.width, maskVi.height, *viInternalWorkingFormat, mask->GetVideoInfo().IsYUVA() || mask->GetVideoInfo().IsPlanarRGBA(), greymask, maskVi, env);
 
       if (greymask) {
         // mask is always 444. Be smart later when use444 is false and original is 420 or 422
@@ -511,7 +511,7 @@ OverlayFunction* Overlay::SelectFunction(const char* name, int &of_mode, IScript
   return 0;
 }
 
-void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
+void Overlay::ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* overlay, int x, int y) {
 
   input->ResetFake();
   overlay->ResetFake();

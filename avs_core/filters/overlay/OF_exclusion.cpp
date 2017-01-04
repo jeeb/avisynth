@@ -40,7 +40,7 @@
 #include <stdint.h>
 #include <type_traits>
 
-void OL_ExclusionImage::DoBlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_ExclusionImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t, true>(base, overlay, mask);
   else if(bits_per_pixel <= 16)
@@ -49,7 +49,7 @@ void OL_ExclusionImage::DoBlendImageMask(Image444* base, Image444* overlay, Imag
   //  BlendImageMask<float>(base, overlay, mask);
 }
 
-void OL_ExclusionImage::DoBlendImage(Image444* base, Image444* overlay) {
+void OL_ExclusionImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t, false>(base, overlay, nullptr);
   else if(bits_per_pixel <= 16)
@@ -60,7 +60,7 @@ void OL_ExclusionImage::DoBlendImage(Image444* base, Image444* overlay) {
 
 
 template<typename pixel_t, bool maskMode>
-void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
+void OL_ExclusionImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
   pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
@@ -189,7 +189,7 @@ void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image4
 
 #if 0
 template<typename pixel_t>
-void OL_ExclusionImage::BlendImage(Image444* base, Image444* overlay) {
+void OL_ExclusionImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
   BYTE* baseU = base->GetPtr(PLANAR_U);
   BYTE* baseV = base->GetPtr(PLANAR_V);
