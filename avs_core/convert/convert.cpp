@@ -2152,15 +2152,13 @@ AddAlphaPlane::AddAlphaPlane(PClip _child, PClip _alphaClip, float _mask_f, bool
 
   if (!alphaClip) {
     int max_pixel_value = (1 << bits_per_pixel) - 1; // n/a for float
-    if (!isMaskDefined || _mask_f < 0) {
+    if (!isMaskDefined) {
       mask_f = 1.0f;
       mask = max_pixel_value;
     }
     else {
       mask_f = _mask_f;
-      if (mask_f < 0) mask_f = 0;
-      mask = (int)mask_f;
-
+      mask = (mask_f < 0) ? 0 : (mask_f > max_pixel_value) ? max_pixel_value : (int)mask_f;
       mask = clamp(mask, 0, max_pixel_value);
       // no clamp for float
     }
