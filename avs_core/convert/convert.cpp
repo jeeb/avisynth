@@ -78,6 +78,7 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)32 },
   { "ConvertBits",    BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)0 },
   { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask]f", AddAlphaPlane::Create},
+  { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask]c", AddAlphaPlane::Create},
   { "RemoveAlphaPlane",  BUILTIN_FUNC_PREFIX, "c", RemoveAlphaPlane::Create},
   { 0 }
 };
@@ -2080,31 +2081,53 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
 AVSValue AddAlphaPlane::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   bool isMaskDefined = args[1].Defined();
+  bool maskIsClip = false;
   // if mask is not defined and videoformat has Alpha then we return
   const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
   if (!isMaskDefined && (vi.IsPlanarRGBA() || vi.IsYUVA() || vi.IsRGB32() || vi.IsRGB64()))
     return args[0].AsClip();
+  PClip alphaClip = nullptr;
+  if (isMaskDefined && args[1].IsClip()) {
+    const VideoInfo& viAlphaClip = args[1].AsClip()->GetVideoInfo();
+    maskIsClip = true;
+    if(viAlphaClip.BitsPerComponent() != vi.BitsPerComponent())
+      env->ThrowError("AddAlphaPlane: alpha clip is of different bit depth");
+    if(viAlphaClip.width != vi.width || viAlphaClip.height != vi.height )
+      env->ThrowError("AddAlphaPlane: alpha clip is of different size");
+    if (viAlphaClip.IsY())
+      alphaClip = args[1].AsClip();
+    else if (viAlphaClip.NumComponents() == 4) {
+      AVSValue new_args[1] = { args[1].AsClip() };
+      alphaClip = env->Invoke("ExtractA", AVSValue(new_args, 1)).AsClip();
+    } else {
+      env->ThrowError("AddAlphaPlane: alpha clip should be greyscale or should have alpha plane");
+    }
+    // alphaClip is always greyscale here
+  }
+  float maskAsFloat = -1.0f;
+  if (!maskIsClip)
+    maskAsFloat = (float)args[1].AsFloat(-1.0f);
   if (vi.IsRGB24()) {
     AVSValue new_args[1] = { args[0].AsClip() };
     PClip child = env->Invoke("ConvertToRGB32", AVSValue(new_args, 1)).AsClip();
-    return new AddAlphaPlane(child, (float)args[1].AsFloat(-1.0f), isMaskDefined, env);
+    return new AddAlphaPlane(child, alphaClip, maskAsFloat, isMaskDefined, env);
   } else if(vi.IsRGB48()) {
     AVSValue new_args[1] = { args[0].AsClip() };
     PClip child = env->Invoke("ConvertToRGB64", AVSValue(new_args, 1)).AsClip();
-    return new AddAlphaPlane(child, (float)args[1].AsFloat(-1.0f), isMaskDefined, env);
+    return new AddAlphaPlane(child, alphaClip, maskAsFloat, isMaskDefined, env);
   }
-  return new AddAlphaPlane(args[0].AsClip(), (float)args[1].AsFloat(-1.0f), isMaskDefined, env);
+  return new AddAlphaPlane(args[0].AsClip(), alphaClip, maskAsFloat, isMaskDefined, env);
 }
 
-AddAlphaPlane::AddAlphaPlane(PClip _child, float _mask_f, bool isMaskDefined, IScriptEnvironment* env)
-  : GenericVideoFilter(_child)
+AddAlphaPlane::AddAlphaPlane(PClip _child, PClip _alphaClip, float _mask_f, bool isMaskDefined, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), alphaClip(_alphaClip)
 {
   if(vi.IsYUY2())
     env->ThrowError("AddAlphaPlane: YUY2 is not allowed");
   if(vi.IsY())
     env->ThrowError("AddAlphaPlane: greyscale source is not allowed");
   if(vi.IsYUV() && !vi.Is420() && !vi.Is422() && !vi.Is444()) // e.g. 410
-    env->ThrowError("AddAlphaPlane: format not supported");
+    env->ThrowError("AddAlphaPlane: YUV format not supported, must be 420, 422 or 444");
   if(!vi.IsYUV() && !vi.IsYUVA() && !vi.IsRGB())
     env->ThrowError("AddAlphaPlane: format not supported");
 
@@ -2127,18 +2150,20 @@ AddAlphaPlane::AddAlphaPlane(PClip _child, float _mask_f, bool isMaskDefined, IS
 
   // mask parameter. If none->max transparency
 
-  int max_pixel_value = (1 << bits_per_pixel) - 1;
-  if(!isMaskDefined || _mask_f < 0) {
-    mask_f = 1.0f;
-    mask = max_pixel_value;
-  }
-  else {
-    mask_f = _mask_f;
-    if (mask_f < 0) mask_f = 0;
-    mask = (int)mask_f;
+  if (!alphaClip) {
+    int max_pixel_value = (1 << bits_per_pixel) - 1; // n/a for float
+    if (!isMaskDefined || _mask_f < 0) {
+      mask_f = 1.0f;
+      mask = max_pixel_value;
+    }
+    else {
+      mask_f = _mask_f;
+      if (mask_f < 0) mask_f = 0;
+      mask = (int)mask_f;
 
-    mask = clamp(mask, 0, max_pixel_value);
-    mask_f = clamp(mask_f, 0.0f, 1.0f);
+      mask = clamp(mask, 0, max_pixel_value);
+      // no clamp for float
+    }
   }
 }
 
@@ -2164,21 +2189,29 @@ PVideoFrame AddAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
   }
 
   if (vi.IsPlanarRGBA() || vi.IsYUVA()) {
-    const int dst_pitchA = dst->GetPitch(PLANAR_A);
-    BYTE* dstp_a = dst->GetWritePtr(PLANAR_A);
-    const int heightA = dst->GetHeight(PLANAR_A);
+    if (alphaClip) {
+      PVideoFrame srcAlpha = alphaClip->GetFrame(n, env);
+      env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A), srcAlpha->GetReadPtr(PLANAR_Y),
+        srcAlpha->GetPitch(PLANAR_Y), srcAlpha->GetRowSize(PLANAR_Y), srcAlpha->GetHeight(PLANAR_Y));
+    }
+    else {
+      // default constant
+      const int dst_pitchA = dst->GetPitch(PLANAR_A);
+      BYTE* dstp_a = dst->GetWritePtr(PLANAR_A);
+      const int heightA = dst->GetHeight(PLANAR_A);
 
-    switch (vi.ComponentSize())
-    {
-    case 1:
-      fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, mask);
-      break;
-    case 2:
-      fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, mask);
-      break;
-    case 4:
-      fill_plane<float>(dstp_a, heightA, dst_pitchA, mask_f);
-      break;
+      switch (vi.ComponentSize())
+      {
+      case 1:
+        fill_plane<BYTE>(dstp_a, heightA, dst_pitchA, mask);
+        break;
+      case 2:
+        fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, mask);
+        break;
+      case 4:
+        fill_plane<float>(dstp_a, heightA, dst_pitchA, mask_f);
+        break;
+      }
     }
     return dst;
   }
@@ -2190,21 +2223,52 @@ PVideoFrame AddAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
   int height = dst->GetHeight();
   int width = vi.width;
 
-  if(vi.IsRGB32()) {
-    for (int y = 0; y<height; y++) {
-      for (int x = 3; x<rowsize; x += 4) {
-        pf[x] = mask;
+  if (alphaClip) {
+    // fill by alpha clip already converted to grey-only
+    PVideoFrame srcAlpha = alphaClip->GetFrame(n, env);
+    const BYTE* srcp_a = srcAlpha->GetReadPtr(PLANAR_Y);
+    size_t pitch_a = srcAlpha->GetPitch(PLANAR_Y);
+
+    pf += pitch * (vi.height - 1); // start from bottom: packed RGB is upside down
+
+    if (vi.IsRGB32()) {
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x ++) {
+          pf[x*4+3] = srcp_a[x];
+        }
+        pf -= pitch; // packed RGB is upside down
+        srcp_a += pitch_a;
       }
-      pf += pitch;
+    }
+    else if (vi.IsRGB64()) {
+      rowsize /= sizeof(uint16_t);
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x ++) {
+          reinterpret_cast<uint16_t *>(pf)[x*4+3] = reinterpret_cast<const uint16_t *>(srcp_a)[x];
+        }
+        pf -= pitch; // packed RGB is upside down
+        srcp_a += pitch_a;
+      }
     }
   }
-  else if (vi.IsRGB64()) {
-    rowsize /= sizeof(uint16_t);
-    for (int y = 0; y<height; y++) {
-      for (int x = 3; x<rowsize; x += 4) {
-        reinterpret_cast<uint16_t *>(pf)[x] = mask;
+  else {
+    // fill with constant
+    if (vi.IsRGB32()) {
+      for (int y = 0; y < height; y++) {
+        for (int x = 3; x < rowsize; x += 4) {
+          pf[x] = mask;
+        }
+        pf += pitch;
       }
-      pf += pitch;
+    }
+    else if (vi.IsRGB64()) {
+      rowsize /= sizeof(uint16_t);
+      for (int y = 0; y < height; y++) {
+        for (int x = 3; x < rowsize; x += 4) {
+          reinterpret_cast<uint16_t *>(pf)[x] = mask;
+        }
+        pf += pitch;
+      }
     }
   }
 

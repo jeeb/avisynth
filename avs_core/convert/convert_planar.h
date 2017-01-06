@@ -225,7 +225,7 @@ private:
 class AddAlphaPlane : public GenericVideoFilter
 {
 public:
-  AddAlphaPlane(PClip _child, float _mask_f, bool isMaskDefined, IScriptEnvironment* env);
+  AddAlphaPlane(PClip _child, PClip _maskClip, float _mask_f, bool isMaskDefined, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -236,6 +236,7 @@ public:
 private:
   int mask;
   float mask_f;
+  PClip alphaClip;
   int pixelsize;
   int bits_per_pixel;
 };
