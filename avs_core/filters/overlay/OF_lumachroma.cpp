@@ -90,7 +90,7 @@ void OL_BlendLumaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayI
 
   if (opacity == 256) {
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-      overlay_blend_sse2_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_sse2_plane_masked<uint8_t,8>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
     } else
 #ifdef X86_32
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {
@@ -215,8 +215,8 @@ void OL_BlendChromaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverla
 
   if (opacity == 256) {
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-      overlay_blend_sse2_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-      overlay_blend_sse2_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_sse2_plane_masked<uint8_t,8>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_sse2_plane_masked<uint8_t,8>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
     } else
 #ifdef X86_32
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {
