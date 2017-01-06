@@ -362,6 +362,7 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128
 
 template<typename pixel_t, bool hasSSE4>
 static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
+  dst_width *= sizeof(pixel_t);
   int mod16_width = dst_width / 16 * 16;
 
 #pragma warning(push)
@@ -523,6 +524,7 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128
 
 template<typename pixel_t, bool hasSSE4>
 static void convert_yv24_chroma_to_yv16_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
+  dst_width *= sizeof(pixel_t);
   int mod16_width = dst_width / 16 * 16;
 
 #pragma warning(push)
