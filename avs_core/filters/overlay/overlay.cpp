@@ -222,9 +222,10 @@ Overlay::~Overlay() {
 PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
 
   int op_offset;
+  float op_offset_f;
   int con_x_offset;
   int con_y_offset;
-  FetchConditionals(env, &op_offset, &con_x_offset, &con_y_offset, ignore_conditional);
+  FetchConditionals(env, &op_offset, &op_offset_f, &con_x_offset, &con_y_offset, ignore_conditional);
 
   // always use avisynth converters
   AVSValue child2;
@@ -387,7 +388,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     // Process the image
     func->setMode(of_mode);
     func->setBitsPerPixel(bits_per_pixel);
-    func->setOpacity(opacity + op_offset);
+    func->setOpacity(opacity + op_offset, opacity_f + op_offset_f);
     func->setEnv(env);
 
     if (!mask) {
@@ -555,14 +556,16 @@ void Overlay::ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* over
 
 }
 
-void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, int* con_x_offset, int* con_y_offset, bool ignore_conditional) {
+void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, float* op_offset_f, int* con_x_offset, int* con_y_offset, bool ignore_conditional) {
   *op_offset = 0;
+  *op_offset_f = 0.0f;
   *con_x_offset = 0;
   *con_y_offset = 0;
 
   if (!ignore_conditional) {
     IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
     *op_offset    = (int)(env2->GetVar("OL_opacity_offset", 0.0)*256);
+    *op_offset_f  = (float)(env2->GetVar("OL_opacity_offset", 0.0));
     *con_x_offset = (int)(env2->GetVar("OL_x_offset"      , 0.0));
     *con_y_offset = (int)(env2->GetVar("OL_y_offset"      , 0.0));
   }

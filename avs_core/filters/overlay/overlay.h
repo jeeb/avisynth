@@ -66,7 +66,7 @@ private:
   static ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env, bool full_range);
 #endif
   static void ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* overlay, int x, int y);
-  static void FetchConditionals(IScriptEnvironment* env, int*, int*, int*, bool);
+  static void FetchConditionals(IScriptEnvironment* env, int*, float *, int*, int*, bool);
 
   VideoInfo overlayVi;
   VideoInfo maskVi;
