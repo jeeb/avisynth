@@ -141,6 +141,10 @@ private:
 
   bool VDubPlanarHack;
   bool AVIPadScanlines;
+  bool Enable_V210;
+  bool Enable_b64a;
+  bool Enable_Y3_10_10;
+  bool Enable_Y3_10_16;
 
   int ImageSize();
 
@@ -558,6 +562,10 @@ CAVIFileSynth::CAVIFileSynth(const CLSID& rclsid) {
 
   VDubPlanarHack = false;
   AVIPadScanlines = false;
+  Enable_V210 = false;
+  Enable_b64a = false;
+  Enable_Y3_10_10 = false;
+  Enable_Y3_10_16 = false;
 
   InitializeCriticalSection(&cs_filter_graph);
 }
@@ -677,6 +685,15 @@ bool CAVIFileSynth::DelayInit2() {
 
         // Option to have scanlines mod4 padded in all pixel formats
         AVIPadScanlines = env->GetVar(VARNAME_AVIPadScanlines, false);
+
+        // AVS+ Enable_V210 instead of P210
+        Enable_V210 = env->GetVar(VARNAME_Enable_V210, false);
+        // AVS+ y3[10][10] instead of P210
+        Enable_Y3_10_10 = env->GetVar(VARNAME_Enable_Y3_10_10, false);
+        // AVS+ y3[10][16] instead of P216
+        Enable_Y3_10_16 = env->GetVar(VARNAME_Enable_Y3_10_16, false);
+        // AVS+ Enable_V210 instead of BRA[64]
+        Enable_b64a = env->GetVar(VARNAME_Enable_b64a, false);
 
       }
       catch (const AvisynthError &error) {
@@ -974,7 +991,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
   } else {
     const int image_size = parent->ImageSize();
     asi.fccHandler = 'UNKN';
-    if (vi->IsRGB())
+    if (vi->IsRGB() && !vi->IsPlanar() && vi->BitsPerComponent()==8)
       asi.fccHandler = ' BID';
     else if (vi->IsYUY2())
       asi.fccHandler = '2YUY';
@@ -988,9 +1005,40 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       asi.fccHandler = '61VY';
     else if (vi->IsYV411())
       asi.fccHandler = 'B14Y';
+    // avs+
+    else if (vi->IsRGB64() && parent->Enable_b64a)
+      asi.fccHandler = 'a46b'; // b64a = packed rgba 4*16-bit
+    else if (vi->IsRGB64())
+      asi.fccHandler = '\100ARB'; // BRA@ ie. BRA[64]
+    else if (vi->IsRGB48())
+      asi.fccHandler = '\060RGB'; // BGR0 ie. BGR[48]
+    else if (vi->pixel_type == VideoInfo::CS_YUV420P10)
+      asi.fccHandler = '010P';
+    else if (vi->pixel_type == VideoInfo::CS_YUV420P16)
+      asi.fccHandler = '610P';
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210)
+      asi.fccHandler = '012v';
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_Y3_10_10)
+      asi.fccHandler = '\012\0123Y'; // Y3[10][10] (AV_PIX_FMT_YUV422P10) = planar YUV 422*10-bit
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P10)
+      asi.fccHandler = '012P';
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P16 && parent->Enable_Y3_10_16)
+      asi.fccHandler = '\020\0123Y'; // Y3[10][16] (AV_PIX_FMT_YUV422P16) = planar YUV 422*16-bit
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P16)
+      asi.fccHandler = '612P';
+    else if (vi->pixel_type == VideoInfo::CS_RGBP) // 8 bit planar RGB??
+      asi.fccHandler = '8BPS';
     else {
       _ASSERT(FALSE);
     }
+    /*
+    b64a = packed rgba 4*16-bit
+    BRA[64] (AV_PIX_FMT_BGRA64) = packed rgba 4*16-bit
+    P210 = interleaved YUV 422*10-bit
+    P216 = interleaved YUV 422*16-bit
+    Y3[10][10] (AV_PIX_FMT_YUV422P10) = planar YUV 422*10-bit
+    Y3[10][16] (AV_PIX_FMT_YUV422P16) = planar YUV 422*16-bit
+    */
 
     asi.dwScale = vi->fps_denominator;
     asi.dwRate = vi->fps_numerator;
@@ -1026,18 +1074,32 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::FindSample(LONG lPos, LONG lFlags) {
 
 int CAVIFileSynth::ImageSize() {
   int image_size;
-
-  if (vi->IsRGB() || vi->IsYUY2() || vi->IsY8() || vi->IsColorSpace(VideoInfo::CS_Y16) || vi->IsColorSpace(VideoInfo::CS_Y32) || AVIPadScanlines) {
+  if (vi->pixel_type == VideoInfo::CS_YUV422P10 && Enable_V210)
+  {
+    image_size = ((16 * ((vi->width + 5) / 6) + 127) & ~127);
+    image_size *= vi->height;
+  }
+  else if ((vi->IsRGB() && !vi->IsPlanar()) || vi->IsYUY2() || vi->IsY() || AVIPadScanlines) {
+    // incl. all packed RGBs
     image_size = vi->BMPSize();
   }
   else { // Packed size
-    image_size = vi->RowSize(PLANAR_U);
-    if (image_size) {
-      image_size  *= vi->height;
-      image_size >>= vi->GetPlaneHeightSubsampling(PLANAR_U);
-      image_size  *= 2;
+    if (vi->IsPlanar() && vi->IsRGB()) {
+      image_size = (vi->RowSize(PLANAR_G) * vi->height);
+      if (vi->IsPlanarRGBA()) // not supported yet, but for the sake of completeness
+        image_size *= 4;
+      else
+        image_size *= 3;
     }
-    image_size += vi->RowSize(PLANAR_Y) * vi->height;
+    else {
+      image_size = vi->RowSize(PLANAR_U);
+      if (image_size) {
+        image_size *= vi->height;
+        image_size >>= vi->GetPlaneHeightSubsampling(PLANAR_U);
+        image_size *= 2;
+      }
+      image_size += vi->RowSize(PLANAR_Y) * vi->height;
+    }
   }
   return image_size;
 }
@@ -1057,37 +1119,145 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   int out_pitchUV;
 
   // BMP scanlines are dword-aligned
-  if (vi.IsRGB() || vi.IsYUY2() || vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32) || parent->AVIPadScanlines) {
+  if ((vi.IsRGB() && !vi.IsPlanar()) || vi.IsYUY2() || vi.IsY() || parent->AVIPadScanlines) {
     out_pitch = (row_size+3) & ~3;
-    out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & ~3;
+    out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & ~3; // 0 for packed RGB
   }
   // Planar scanlines are packed
   else {
     out_pitch = row_size;
-    out_pitchUV = frame->GetRowSize(PLANAR_U);
+    if(vi.IsRGB())
+      out_pitchUV = frame->GetRowSize(PLANAR_B); // G=B=R
+    else
+      out_pitchUV = frame->GetRowSize(PLANAR_U);
   }
 
-  // Set default VFW output plane order.
-  int plane1 = PLANAR_V;
-  int plane2 = PLANAR_U;
+  int plane1;
+  int plane2;
 
   // Old VDub wants YUV for YV24 and YV16 and YVU for YV12.
   if (parent->VDubPlanarHack && !vi.IsYV12()) {
     plane1 = PLANAR_U;
     plane2 = PLANAR_V;
   }
+  else {
+    if (vi.IsRGB() && vi.IsPlanar())
+    {
+      // (PLANAR_G)
+      plane1 = PLANAR_B;
+      plane2 = PLANAR_R;
+    }
+    else {
+ // Set default VFW output plane order.
+      plane1 = PLANAR_V;
+      plane2 = PLANAR_U;
+    }
+  }
 
-  parent->env->BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+  // thx vs
+  bool semi_packed_p10 = (vi.pixel_type == VideoInfo::CS_YUV420P10) || (vi.pixel_type == VideoInfo::CS_YUV422P10) ;
+  bool semi_packed_p16 = (vi.pixel_type == VideoInfo::CS_YUV420P16) || (vi.pixel_type == VideoInfo::CS_YUV422P16) ;
 
-  parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height),
-    out_pitchUV,             frame->GetReadPtr(plane1),
-    frame->GetPitch(plane1), frame->GetRowSize(plane1),
-    frame->GetHeight(plane1) );
+  if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
+    int width = frame->GetRowSize(PLANAR_Y) / vi.ComponentSize();
+    int ppitch_y = frame->GetPitch(PLANAR_Y) / 2;
+    int ppitch_uv = frame->GetPitch(PLANAR_U) / 2;
+    const uint16_t *yptr = (const uint16_t *)frame->GetReadPtr(PLANAR_Y);
+    const uint16_t *uptr = (const uint16_t *)frame->GetReadPtr(PLANAR_U);
+    const uint16_t *vptr = (const uint16_t *)frame->GetReadPtr(PLANAR_V);
+    uint32_t *outbuf = (uint32_t *)lpBuffer;
+    out_pitch = ((16*((width + 5) / 6) + 127) & ~127)/4;
+    for (int y = 0; y < height; y++) {
+      const uint16_t *yline = yptr;
+      const uint16_t *uline = uptr;
+      const uint16_t *vline = vptr;
+      uint32_t *out_line = outbuf;
+      for (int x = 0; x < width + 5; x += 6) {
+        out_line[0] = (uline[0] | (yline[0] << 10) | (vline[0] << 20));
+        out_line[1] = (yline[1] | (uline[1] << 10) | (yline[2] << 20));
+        out_line[2] = (vline[1] | (yline[3] << 10) | (uline[2] << 20));
+        out_line[3] = (yline[4] | (vline[2] << 10) | (yline[5] << 20));
+        out_line += 4;
+        yline += 6;
+        uline += 3;
+        vline += 3;
+      }
+      outbuf += out_pitch;
+      yptr += ppitch_y;
+      uptr += ppitch_uv;
+      vptr += ppitch_uv;
+    }
+  } else if (semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) {
+    int pwidth = frame->GetRowSize(PLANAR_Y) / vi.ComponentSize();
+    int ppitch = frame->GetPitch(PLANAR_Y) / 2;
+    uint16_t *outbuf = (uint16_t *)lpBuffer;
+    const uint16_t *yptr = (const uint16_t *)frame->GetReadPtr(PLANAR_Y);
 
-  parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
-    out_pitchUV,             frame->GetReadPtr(plane2),
-    frame->GetPitch(plane2), frame->GetRowSize(plane2),
-    frame->GetHeight(plane2) );
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < pwidth; x++) {
+        outbuf[x] = yptr[x] << 6;
+      }
+      outbuf += out_pitch/2;
+      yptr += ppitch;
+    }
+  }
+  else {
+    if (vi.IsRGB48() || vi.IsRGB64())
+    {
+      // avisynth: upside down, output: back to normal
+      parent->env->BitBlt((BYTE*)lpBuffer+out_pitch*(height-1), -out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+    }
+    else {
+      parent->env->BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+    }
+  }
+
+  if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
+    // intentionally empty
+  } else if ((semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
+             (semi_packed_p16 && !parent->Enable_Y3_10_16)) {
+    int pheight = frame->GetHeight(PLANAR_U);
+    int pwidth = frame->GetRowSize(PLANAR_U) / vi.ComponentSize();
+    int ppitch = frame->GetPitch(PLANAR_U) / 2;
+    BYTE *outadj = (BYTE*)lpBuffer + out_pitch*height;
+    uint16_t *outbuf = (uint16_t *)outadj;
+    const uint16_t *uptr = (const uint16_t *)frame->GetReadPtr(PLANAR_U);
+    const uint16_t *vptr = (const uint16_t *)frame->GetReadPtr(PLANAR_V);
+
+    if (semi_packed_p16) {
+      for (int y = 0; y < pheight; y++) {
+        for (int x = 0; x < pwidth; x++) {
+          outbuf[2*x] = uptr[x];
+          outbuf[2*x + 1] = vptr[x];
+        }
+        outbuf += out_pitchUV;
+        uptr += ppitch;
+        vptr += ppitch;
+      }
+    } else {
+      for (int y = 0; y < pheight; y++) {
+        for (int x = 0; x < pwidth; x++) {
+          outbuf[2*x] = uptr[x] << 6;
+          outbuf[2*x + 1] = vptr[x] << 6;
+        }
+        outbuf += out_pitchUV;
+        uptr += ppitch;
+        vptr += ppitch;
+      }
+    }
+  }
+  else {
+    parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height),
+      out_pitchUV, frame->GetReadPtr(plane1),
+      frame->GetPitch(plane1), frame->GetRowSize(plane1),
+      frame->GetHeight(plane1));
+
+    parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
+      out_pitchUV, frame->GetReadPtr(plane2),
+      frame->GetPitch(plane2), frame->GetRowSize(plane2),
+      frame->GetHeight(plane2));
+  }
+  // no alpha?
 }
 
 
@@ -1293,8 +1463,10 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
     bi.biHeight = vi->height;
     bi.biPlanes = 1;
     bi.biBitCount = (WORD)vi->BitsPerPixel();
+    if (vi->pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210)
+      bi.biBitCount = 20;
 
-    if (vi->IsRGB())
+    if (vi->IsRGB() && !vi->IsPlanar() && vi->BitsPerComponent() == 8)
       bi.biCompression = BI_RGB;
     else if (vi->IsYUY2())
       bi.biCompression = '2YUY';
@@ -1308,6 +1480,29 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       bi.biCompression = '61VY';
     else if (vi->IsYV411())
       bi.biCompression = 'B14Y';
+    // avs+
+    else if (vi->IsRGB64() && parent->Enable_b64a)
+      bi.biCompression = 'a46b'; // b64a = packed rgba 4*16-bit
+    else if (vi->IsRGB64())
+      bi.biCompression = '\100ARB'; // BRA@ ie. BRA[64]
+    else if (vi->IsRGB48())
+      bi.biCompression = '\060RGB'; // BGR0 ie. BGR[48]
+    else if (vi->pixel_type == VideoInfo::CS_YUV420P10)
+      bi.biCompression = '010P';
+    else if (vi->pixel_type == VideoInfo::CS_YUV420P16)
+      bi.biCompression = '610P';
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_Y3_10_10)
+      bi.biCompression = '\012\0123Y'; // Y3[10][10] (AV_PIX_FMT_YUV422P10) = planar YUV 422*10-bit
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210)
+      bi.biCompression = '012v';
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P10)
+      bi.biCompression = '012P';
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P16 && parent->Enable_Y3_10_16)
+      bi.biCompression = '\020\0123Y'; // Y3[10][16] (AV_PIX_FMT_YUV422P16) = planar YUV 422*16-bit
+    else if (vi->pixel_type == VideoInfo::CS_YUV422P16)
+      bi.biCompression = '612P';
+    else if (vi->pixel_type == VideoInfo::CS_RGBP)
+      bi.biCompression = '8BPS';    // SPB8?
     else {
       _ASSERT(FALSE);
     }
