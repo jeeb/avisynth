@@ -115,11 +115,14 @@ void OL_BlendLumaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayI
       case 16:
         overlay_blend_c_plane_masked<uint16_t,16>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
         break;
+      case 32:
+        overlay_blend_c_plane_masked_f(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+        break;
       }
     }
   } else {
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-      overlay_blend_sse2_plane_masked_opacity(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_masked_opacity<uint8_t,8>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity, opacity_f);
     } else
 #ifdef X86_32
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {
@@ -144,6 +147,9 @@ void OL_BlendLumaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayI
       case 16:
         overlay_blend_c_plane_masked_opacity<uint16_t,16>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
         break;
+      case 32:
+        overlay_blend_c_plane_masked_opacity_f(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity_f);
+        break;
       }
     }
   }
@@ -165,7 +171,7 @@ void OL_BlendLumaImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInter
     env->BitBlt(baseY, base->pitch, ovY, overlay->pitch, w*pixelsize, h);
   } else {
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-      overlay_blend_sse2_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_opacity<uint8_t,8>(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity,opacity_f);
     } else
 #ifdef X86_32
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {
@@ -247,12 +253,16 @@ void OL_BlendChromaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverla
         overlay_blend_c_plane_masked<uint16_t,16>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
         overlay_blend_c_plane_masked<uint16_t,16>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
         break;
+      case 32:
+        overlay_blend_c_plane_masked_f(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+        overlay_blend_c_plane_masked_f(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+        break;
       }
     }
   } else {
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-      overlay_blend_sse2_plane_masked_opacity(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-      overlay_blend_sse2_plane_masked_opacity(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_masked_opacity<uint8_t,8>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity, opacity_f);
+      overlay_blend_sse2_plane_masked_opacity<uint8_t,8>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity, opacity_f);
     } else
 #ifdef X86_32
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {
@@ -283,6 +293,10 @@ void OL_BlendChromaImage::BlendImageMask(ImageOverlayInternal* base, ImageOverla
         overlay_blend_c_plane_masked_opacity<uint16_t,16>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
         overlay_blend_c_plane_masked_opacity<uint16_t,16>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
         break;
+      case 32:
+        overlay_blend_c_plane_masked_opacity_f(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity_f);
+        overlay_blend_c_plane_masked_opacity_f(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity_f);
+        break;
       }
     }
   }
@@ -306,8 +320,8 @@ void OL_BlendChromaImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInt
     env->BitBlt(baseV, base->pitch, ovV, overlay->pitch, w*pixelsize, h);
   } else {
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-      overlay_blend_sse2_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-      overlay_blend_sse2_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_opacity<uint8_t,8>(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity, opacity_f);
+      overlay_blend_sse2_plane_opacity<uint8_t,8>(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity, opacity_f);
     } else
 #ifdef X86_32
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {

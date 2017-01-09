@@ -53,35 +53,22 @@ void OL_BlendImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInterna
     BlendImage<uint8_t>(base, overlay);
   else if(bits_per_pixel <= 16)
     BlendImage<uint16_t>(base, overlay);
-  //else if(bits_per_pixel == 32)
-  //  BlendImage<float>(base, overlay);
+  else if(bits_per_pixel == 32)
+    BlendImage<float>(base, overlay);
 }
 
 
 template<typename pixel_t>
 void OL_BlendImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
-  /*
-  BYTE* baseY = base->GetPtr(PLANAR_Y);
-  BYTE* baseU = base->GetPtr(PLANAR_U);
-  BYTE* baseV = base->GetPtr(PLANAR_V);
-
-  BYTE* ovY = overlay->GetPtr(PLANAR_Y);
-  BYTE* ovU = overlay->GetPtr(PLANAR_U);
-  BYTE* ovV = overlay->GetPtr(PLANAR_V);
-  
-  BYTE* maskY = mask->GetPtr(PLANAR_Y);
-  BYTE* maskU = mask->GetPtr(PLANAR_U);
-  BYTE* maskV = mask->GetPtr(PLANAR_V);
-  */
   int w = base->w();
   int h = base->h();
 
   const int pixelsize = sizeof(pixel_t);
 
-  if ((opacity == 256 && pixelsize!=4) || (opacity_f == 1.0f && pixelsize == 4)) {
+  if ((opacity == 256 && pixelsize != 4) || (opacity_f == 1.0f && pixelsize == 4)) {
     if (pixelsize == 4 && (env->GetCPUFlags() & CPUF_SSE2)) {
       for (int p = 0; p < 3; p++) {
-        overlay_blend_sse2_plane_masked<float, 1>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+        overlay_blend_sse2_plane_masked<float, 8>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
           base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
           (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
       }
@@ -121,97 +108,92 @@ void OL_BlendImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInter
     }
     else
 #ifdef X86_32
-    if (pixelsize==1 && (env->GetCPUFlags() & CPUF_MMX)) {
-      for (int p = 0; p < 3; p++) {
-        overlay_blend_mmx_plane_masked(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
-          base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+      if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {
+        for (int p = 0; p < 3; p++) {
+          overlay_blend_mmx_plane_masked(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+        }
+        _mm_empty();
       }
-      /*
-      overlay_blend_mmx_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-      overlay_blend_mmx_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-      overlay_blend_mmx_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-      */
-      _mm_empty();
-    } else
+      else
 #endif
-    {
-      for (int p = 0; p < 3; p++) {
-        switch (bits_per_pixel) {
-        case 8:
-          overlay_blend_c_plane_masked<uint8_t, 8>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
-            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
-          break;
-        case 10:
-          overlay_blend_c_plane_masked<uint16_t, 10>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
-            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
-          break;
-        case 12:
-          overlay_blend_c_plane_masked<uint16_t, 12>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
-            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
-          break;
-        case 14:
-          overlay_blend_c_plane_masked<uint16_t, 14>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
-            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
-          break;
-        case 16:
-          overlay_blend_c_plane_masked<uint16_t, 16>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
-            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
-          break;
-        case 32:
-          overlay_blend_c_plane_masked_f(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
-            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
-          break;
+      {
+        for (int p = 0; p < 3; p++) {
+          switch (bits_per_pixel) {
+          case 8:
+            overlay_blend_c_plane_masked<uint8_t, 8>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+              base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+              (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+            break;
+          case 10:
+            overlay_blend_c_plane_masked<uint16_t, 10>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+              base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+              (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+            break;
+          case 12:
+            overlay_blend_c_plane_masked<uint16_t, 12>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+              base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+              (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+            break;
+          case 14:
+            overlay_blend_c_plane_masked<uint16_t, 14>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+              base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+              (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+            break;
+          case 16:
+            overlay_blend_c_plane_masked<uint16_t, 16>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+              base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+              (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+            break;
+          case 32:
+            overlay_blend_c_plane_masked_f(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+              base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+              (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p]);
+            break;
+          }
         }
       }
-      /*
-      switch (bits_per_pixel) {
-      case 8:
-        overlay_blend_c_plane_masked<uint8_t, 8>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint8_t, 8>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint8_t, 8>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-        break;
-      case 10:
-        overlay_blend_c_plane_masked<uint16_t,10>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,10>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,10>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-        break;
-      case 12:
-        overlay_blend_c_plane_masked<uint16_t,12>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,12>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,12>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-        break;
-      case 14:
-        overlay_blend_c_plane_masked<uint16_t,14>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,14>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,14>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-        break;
-      case 16:
-        overlay_blend_c_plane_masked<uint16_t,16>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,16>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-        overlay_blend_c_plane_masked<uint16_t,16>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-        break;
-      }
-      */
-    }
-  } else {
-    if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2)) {
+  }
+  else {
+    if (pixelsize == 4 && (env->GetCPUFlags() & CPUF_SSE2)) {
       for (int p = 0; p < 3; p++) {
-        overlay_blend_sse2_plane_masked_opacity(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+        overlay_blend_sse2_plane_masked_opacity<float, 8>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
           base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
-          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity);
+          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
       }
-      /*
-      overlay_blend_sse2_plane_masked_opacity(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-      overlay_blend_sse2_plane_masked_opacity(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-      overlay_blend_sse2_plane_masked_opacity(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-      */
+    }
+    else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE4_1)) {
+      for (int p = 0; p < 3; p++) {
+        switch (bits_per_pixel)
+        {
+        case 10: overlay_blend_sse2_plane_masked_opacity<uint16_t, 10>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+          base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+        case 12: overlay_blend_sse2_plane_masked_opacity<uint16_t, 12>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+          base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+        case 14: overlay_blend_sse2_plane_masked_opacity<uint16_t, 14>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+          base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+        case 16: overlay_blend_sse2_plane_masked_opacity<uint16_t, 16>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+          base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+
+        }
+      }
+    }
+    else if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2)) {
+      for (int p = 0; p < 3; p++) {
+        overlay_blend_sse2_plane_masked_opacity<uint8_t,8>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+          base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+          (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+      }
     } else
 #ifdef X86_32
     if (pixelsize==1 && (env->GetCPUFlags() & CPUF_MMX)) {
@@ -220,11 +202,6 @@ void OL_BlendImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInter
           base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
           (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity);
       }
-      /*
-      overlay_blend_mmx_plane_masked_opacity(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-      overlay_blend_mmx_plane_masked_opacity(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-      overlay_blend_mmx_plane_masked_opacity(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-      */
       _mm_empty();
     } else
 #endif
@@ -256,52 +233,19 @@ void OL_BlendImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInter
             base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
             (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity);
           break;
+        case 32:
+          overlay_blend_c_plane_masked_opacity_f(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), mask->GetPtrByIndex(p),
+            base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), mask->GetPitchByIndex(p),
+            (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity_f);
+          break;
         }
       }
-      /*
-      switch (bits_per_pixel) {
-      case 8:
-        overlay_blend_c_plane_masked_opacity<uint8_t, 8>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint8_t, 8>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint8_t, 8>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        break;
-      case 10:
-        overlay_blend_c_plane_masked_opacity<uint16_t,10>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,10>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,10>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        break;
-      case 12:
-        overlay_blend_c_plane_masked_opacity<uint16_t,12>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,12>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,12>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        break;
-      case 14:
-        overlay_blend_c_plane_masked_opacity<uint16_t,14>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,14>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,14>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        break;
-      case 16:
-        overlay_blend_c_plane_masked_opacity<uint16_t,16>(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,16>(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        overlay_blend_c_plane_masked_opacity<uint16_t,16>(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
-        break;
-      }
-      */
     }
   }
 }
 
 template<typename pixel_t>
 void OL_BlendImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
-  /*
-  BYTE* baseY = base->GetPtr(PLANAR_Y);
-  BYTE* baseU = base->GetPtr(PLANAR_U);
-  BYTE* baseV = base->GetPtr(PLANAR_V);
-
-  BYTE* ovY = overlay->GetPtr(PLANAR_Y);
-  BYTE* ovU = overlay->GetPtr(PLANAR_U);
-  BYTE* ovV = overlay->GetPtr(PLANAR_V);
-  */
   int w = base->w();
   int h = base->h();
 
@@ -311,32 +255,41 @@ void OL_BlendImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal*
     for (int p = 0; p < 3; p++) {
       env->BitBlt(base->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPtrByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p])*pixelsize, h >> base->ySubSamplingShifts[p]);
     }
-    /*
-    env->BitBlt(baseY, base->pitch, ovY, overlay->pitch, w*pixelsize, h);
-    env->BitBlt(baseU, base->pitch, ovU, overlay->pitch, w*pixelsize, h);
-    env->BitBlt(baseV, base->pitch, ovV, overlay->pitch, w*pixelsize, h);
-    */
   } else {
-    if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2)) {
+    if (pixelsize == 4 && (env->GetCPUFlags() & CPUF_SSE2)) {
       for (int p = 0; p < 3; p++) {
-        overlay_blend_sse2_plane_opacity(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity);
+        overlay_blend_sse2_plane_opacity<float, 8>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
       }
-      /*
-      overlay_blend_sse2_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-      overlay_blend_sse2_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-      overlay_blend_sse2_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
-      */
-    } else
+    }
+    else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE4_1)) {
+      for (int p = 0; p < 3; p++) {
+        switch (bits_per_pixel) {
+        case 10:
+          overlay_blend_sse2_plane_opacity<uint16_t, 10>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+        case 12:
+          overlay_blend_sse2_plane_opacity<uint16_t, 12>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+        case 14:
+          overlay_blend_sse2_plane_opacity<uint16_t, 14>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+        case 16:
+          overlay_blend_sse2_plane_opacity<uint16_t, 16>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+          break;
+        }
+      }
+    }
+    else if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_SSE2)) {
+      for (int p = 0; p < 3; p++) {
+        overlay_blend_sse2_plane_opacity<uint8_t, 8>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity, opacity_f);
+      }
+    }
+    else
 #ifdef X86_32
     if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX)) {
       for (int p = 0; p < 3; p++) {
         overlay_blend_mmx_plane_opacity(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity);
       }
-      /*
-      overlay_blend_mmx_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-      overlay_blend_mmx_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-      overlay_blend_mmx_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
-      */
       _mm_empty();
     } else
 #endif
@@ -358,37 +311,11 @@ void OL_BlendImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal*
         case 16:
           overlay_blend_c_plane_opacity<uint16_t, 16>(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity);
           break;
+        case 32:
+          overlay_blend_c_plane_opacity_f(base->GetPtrByIndex(p), overlay->GetPtrByIndex(p), base->GetPitchByIndex(p), overlay->GetPitchByIndex(p), (w >> base->xSubSamplingShifts[p]), h >> base->ySubSamplingShifts[p], opacity_f);
+          break;
         }
       }
-      /*
-      switch (bits_per_pixel) {
-      case 8:
-        overlay_blend_c_plane_opacity<uint8_t, 8>(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint8_t, 8>(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint8_t, 8>(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
-        break;
-      case 10:
-        overlay_blend_c_plane_opacity<uint16_t,10>(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,10>(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,10>(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
-        break;
-      case 12:
-        overlay_blend_c_plane_opacity<uint16_t,12>(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,12>(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,12>(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
-        break;
-      case 14:
-        overlay_blend_c_plane_opacity<uint16_t,14>(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,14>(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,14>(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
-        break;
-      case 16:
-        overlay_blend_c_plane_opacity<uint16_t,16>(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,16>(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-        overlay_blend_c_plane_opacity<uint16_t,16>(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
-        break;
-      }
-      */
     }
   }
 }
