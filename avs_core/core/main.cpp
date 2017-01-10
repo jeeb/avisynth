@@ -1013,6 +1013,8 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       vi_final.pixel_type = VideoInfo::CS_YUV420P16;
     else if (vi->pixel_type == VideoInfo::CS_YUV422P12 || vi->pixel_type == VideoInfo::CS_YUV422P14 || vi->pixel_type == VideoInfo::CS_YUV422PS)
       vi_final.pixel_type = VideoInfo::CS_YUV422P16;
+    else if (vi->pixel_type == VideoInfo::CS_YUV444P10 || vi->pixel_type == VideoInfo::CS_YUV444P12 || vi->pixel_type == VideoInfo::CS_YUV444P14 || vi->pixel_type == VideoInfo::CS_YUV444PS)
+      vi_final.pixel_type = VideoInfo::CS_YUV444P16;
     // -- pixel_type change end
 
     const int image_size = parent->ImageSize(&vi_final);
@@ -1053,6 +1055,8 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       asi.fccHandler = MAKEFOURCC('Y', '3', 10, 16); // Y3[10][16] (AV_PIX_FMT_YUV422P16) = planar YUV 422*16-bit
     else if (vi_final.pixel_type == VideoInfo::CS_YUV422P16)
       asi.fccHandler = MAKEFOURCC('P','2','1','6');
+    else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16)
+      asi.fccHandler = MAKEFOURCC('Y','4','1','6');
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP) // 8 bit planar RGB??
       asi.fccHandler = MAKEFOURCC('8','B','P','S');
     // MagicYUV implements these (planar rgb/rgba 10,12,14,16) G3[0][10], G4[0][10], G3[0][12], G4[0][12], G3[0][14], G4[0][14], G3[0][16], G4[0][16]
@@ -1145,12 +1149,16 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   VideoInfo vi = parent->filter_graph->GetVideoInfo();
   PVideoFrame frame;
 
-  if ((vi.Is420() || vi.Is422()) && (vi.BitsPerComponent() == 12 || vi.BitsPerComponent() == 14 || vi.BitsPerComponent()==32))
+  if (((vi.Is420() || vi.Is422()) && (vi.BitsPerComponent() == 12 || vi.BitsPerComponent() == 14 || vi.BitsPerComponent() == 32)) ||
+    (vi.Is444() && (vi.BitsPerComponent() > 8 && vi.BitsPerComponent() != 16)))
   {
     // silent mapping of 12/14bit/float YUV420/422 formats to 16 bits
     AVSValue new_args[2] = { parent->filter_graph, 16 };
     PClip newClip = parent->env->Invoke("ConvertBits", AVSValue(new_args, 2)).AsClip();
-  } else if (parent->Enable_PlanarToPackedRGB && (vi.IsPlanarRGB() || vi.IsPlanarRGBA())) {
+    frame = newClip->GetFrame(n, parent->env);
+    vi = newClip->GetVideoInfo();
+  }
+  else if (parent->Enable_PlanarToPackedRGB && (vi.IsPlanarRGB() || vi.IsPlanarRGBA())) {
     PClip newClip;
     // convert Planar RGB to RGB24/32/RGB64
     if (vi.BitsPerComponent() == 8) // 8 bit: ConvertToRGB24/32
@@ -1388,6 +1396,8 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     vi_final.pixel_type = VideoInfo::CS_YUV420P16;
   else if (vi->pixel_type == VideoInfo::CS_YUV422P12 || vi->pixel_type == VideoInfo::CS_YUV422P14 || vi->pixel_type == VideoInfo::CS_YUV422PS)
     vi_final.pixel_type = VideoInfo::CS_YUV422P16;
+  else if (vi->pixel_type == VideoInfo::CS_YUV444P10 || vi->pixel_type == VideoInfo::CS_YUV444P12 || vi->pixel_type == VideoInfo::CS_YUV444P14 || vi->pixel_type == VideoInfo::CS_YUV444PS)
+    vi_final.pixel_type = VideoInfo::CS_YUV444P16;
   // -- pixel_type change end
 
   if (fAudio) {
@@ -1571,6 +1581,8 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       vi_final.pixel_type = VideoInfo::CS_YUV420P16;
     else if (vi->pixel_type == VideoInfo::CS_YUV422P12 || vi->pixel_type == VideoInfo::CS_YUV422P14 || vi->pixel_type == VideoInfo::CS_YUV422PS)
       vi_final.pixel_type = VideoInfo::CS_YUV422P16;
+    else if (vi->pixel_type == VideoInfo::CS_YUV444P10 || vi->pixel_type == VideoInfo::CS_YUV444P12 || vi->pixel_type == VideoInfo::CS_YUV444P14 || vi->pixel_type == VideoInfo::CS_YUV444PS)
+      vi_final.pixel_type = VideoInfo::CS_YUV444P16;
     // -- pixel_type change end
 
     BITMAPINFOHEADER bi;
@@ -1619,6 +1631,8 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       bi.biCompression = MAKEFOURCC('Y', '3', 10, 16); // Y3[10][16] (AV_PIX_FMT_YUV422P16) = planar YUV 422*16-bit
     else if (vi_final.pixel_type == VideoInfo::CS_YUV422P16)
       bi.biCompression = MAKEFOURCC('P','2','1','6');
+    else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16)
+      bi.biCompression = MAKEFOURCC('Y','4','1','6');
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP)
       bi.biCompression = MAKEFOURCC('8','B','P','S');
     // MagicYUV implements these (planar rgb/rgba 10,12,14,16) G3[0][10], G4[0][10], G3[0][12], G4[0][12], G3[0][14], G4[0][14], G3[0][16], G4[0][16]
