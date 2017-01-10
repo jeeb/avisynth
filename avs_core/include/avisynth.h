@@ -1304,10 +1304,11 @@ AVSC_API(IScriptEnvironment*, CreateScriptEnvironment)(int version = AVISYNTH_IN
 #define VARNAME_AVIPadScanlines   "OPT_AVIPadScanlines"   // Have scanlines mod4 padded in all pixel formats
 #define VARNAME_UseWaveExtensible "OPT_UseWaveExtensible" // Use WAVEFORMATEXTENSIBLE when describing audio to Windows
 #define VARNAME_dwChannelMask     "OPT_dwChannelMask"     // Integer audio channel mask. See description of WAVEFORMATEXTENSIBLE for more info.
-#define VARNAME_Enable_V210       "OPT_Enable_V210"       // AVS+ use V210 instead of P210
-#define VARNAME_Enable_Y3_10_10   "OPT_Enable_Y3_10_10"   // AVS+ use Y3[10][10] instead of P210
-#define VARNAME_Enable_Y3_10_16   "OPT_Enable_Y3_10_16"   // AVS+ use Y3[10][16] instead of P216
-#define VARNAME_Enable_b64a       "OPT_Enable_b64a"       // AVS+ use b64a instead of BRA[64]
+#define VARNAME_Enable_V210       "OPT_Enable_V210"       // AVS+ use V210 instead of P210 (VfW)
+#define VARNAME_Enable_Y3_10_10   "OPT_Enable_Y3_10_10"   // AVS+ use Y3[10][10] instead of P210 (VfW)
+#define VARNAME_Enable_Y3_10_16   "OPT_Enable_Y3_10_16"   // AVS+ use Y3[10][16] instead of P216 (VfW)
+#define VARNAME_Enable_b64a       "OPT_Enable_b64a"       // AVS+ use b64a instead of BRA[64] (VfW)
+#define VARNAME_Enable_PlanarToPackedRGB "OPT_Enable_PlanarToPackedRGB" // AVS+ convert Planar RGB to packed RGB (VfW)
 
 // C exports
 #include <avs/capi.h>
