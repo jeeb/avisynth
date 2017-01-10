@@ -1040,7 +1040,7 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   }
 }
 
-// todo: dither
+// todo: dither sse2
 template<uint8_t sourcebits>
 static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
@@ -1357,8 +1357,58 @@ static void convert_8_to_uint16_sse2(const BYTE *srcp, BYTE *dstp8, int src_rows
   }
 }
 
+// RGB full range: 10-12-14-16 <=> 10-12-14-16 bits
+template<uint8_t sourcebits, uint8_t targetbits, bool hasSSE4>
+static void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
+  src_pitch = src_pitch / sizeof(uint16_t);
+  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
+  dst_pitch = dst_pitch / sizeof(uint16_t);
+  int src_width = src_rowsize / sizeof(uint16_t);
+  int wmod = (src_width / 8) * 8;
 
-// RGB full range: 10-12-14 <=> 16 bits
+  const uint16_t source_max = (1 << sourcebits) - 1;
+  const uint16_t target_max = (1 << targetbits) - 1;
+
+  __m128 factor = _mm_set1_ps((float)target_max / source_max);
+  __m128i max_pixel_value = _mm_set1_epi16(target_max);
+  __m128i zero = _mm_setzero_si128();
+
+  for(int y=0; y<src_height; y++)
+  {
+    for (int x = 0; x < src_width; x+=8)
+    {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
+
+      __m128i src_lo = _mm_unpacklo_epi16(src, zero);
+      __m128i src_hi = _mm_unpackhi_epi16(src, zero);
+
+      __m128 result_lo = _mm_mul_ps(_mm_cvtepi32_ps(src_lo), factor);
+      __m128 result_hi = _mm_mul_ps(_mm_cvtepi32_ps(src_hi), factor);
+
+      __m128i result;
+      if(hasSSE4)
+        result = _mm_packus_epi32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
+      else
+        result = _MM_PACKUS_EPI32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
+      if (targetbits < 16) {
+        result = _mm_min_epu16(result, max_pixel_value);
+      }
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
+    }
+    // rest
+    for (int x = wmod; x < src_width; x++)
+    {
+      dstp[x] = (uint16_t)((int64_t)srcp[x] * target_max / source_max); // expand range
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+
+// RGB full range: 10-12-14-16 <=> 10-12-14-16 bits
 template<uint8_t sourcebits, uint8_t targetbits>
 static void convert_rgb_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {
@@ -1378,11 +1428,7 @@ static void convert_rgb_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src
         for (int x = 0; x < src_width; x++)
         {
             // int64: avoid unsigned * unsigned = signed arithmetic overflow
-            if(sourcebits<targetbits) {
-                dstp0[x] = (uint16_t)((int64_t)srcp0[x] * target_max / source_max); // expand range
-            } else {
-                dstp0[x] = (uint16_t)((int64_t)srcp0[x] * source_max / target_max); // reduce range
-            }
+            dstp0[x] = (uint16_t)((int64_t)srcp0[x] * target_max / source_max);
         }
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
@@ -1600,7 +1646,8 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
   bits_per_pixel = vi.BitsPerComponent();
   format_change_only = false;
 
-  bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2); // frames are always 16 bit aligned
+  bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+  bool sse4 = !!(env->GetCPUFlags() & CPUF_SSE4_1);
   bool avx =  !!(env->GetCPUFlags() & CPUF_AVX);
   bool avx2 =  !!(env->GetCPUFlags() & CPUF_AVX2);
 
@@ -1726,25 +1773,25 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
           if (bits_per_pixel == 16) // 16->10/12/14 keep full range
             switch (target_bitdepth)
             {
-            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<16, 10>;
+            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<16, 10, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<16, 10, false> : convert_rgb_uint16_to_uint16_c<16, 10>;
               break;
-            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<16, 12>;
+            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<16, 12, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<16, 12, false> : convert_rgb_uint16_to_uint16_c<16, 12>;
               break;
-            case 14: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<16, 14>;
+            case 14: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<16, 14, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<16, 14, false> : convert_rgb_uint16_to_uint16_c<16, 14>;
               break;
             }
           else if (bits_per_pixel == 14) // 14->10/12 keep full range
             switch (target_bitdepth)
             {
-            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<14, 10>;
+            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<14, 10, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<14, 10, false> : convert_rgb_uint16_to_uint16_c<14, 10>;
               break;
-            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<14, 12>;
+            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<14, 12, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<14, 12, false> : convert_rgb_uint16_to_uint16_c<14, 12>;
               break;
             }
           else if (bits_per_pixel == 12) // 12->10 keep full range
             switch (target_bitdepth)
             {
-            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<12, 10>;
+            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<12, 10, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<12, 10, false> : convert_rgb_uint16_to_uint16_c<12, 10>;
               break;
             }
         }
@@ -1752,25 +1799,25 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
           if (target_bitdepth == 16) // 10/12/14->16 keep full range
             switch (bits_per_pixel)
             {
-            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<10, 16>;
+            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<10, 16, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<10, 16, false> : convert_rgb_uint16_to_uint16_c<10, 16>;
               break;
-            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<12, 16>;
+            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<12, 16, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<12, 16, false> : convert_rgb_uint16_to_uint16_c<12, 16>;
               break;
-            case 14: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<14, 16>;
+            case 14: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<14, 16, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<14, 16, false> : convert_rgb_uint16_to_uint16_c<14, 16>;
               break;
             }
           else if (target_bitdepth == 14) // 10/12->14 keep full range
             switch (bits_per_pixel)
             {
-            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<10, 14>;
+            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<10, 14, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<10, 14, false> : convert_rgb_uint16_to_uint16_c<10, 14>;
               break;
-            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<12, 14>;
+            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<12, 14, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<12, 14, false> : convert_rgb_uint16_to_uint16_c<12, 14>;
               break;
             }
           else if (target_bitdepth == 12) // 10->12 keep full range
             switch (bits_per_pixel)
             {
-            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<10, 12>;
+            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse2<10, 12, true> : sse2 ? convert_rgb_uint16_to_uint16_sse2<10, 12, false> : convert_rgb_uint16_to_uint16_c<10, 12>;
               break;
             }
         }
