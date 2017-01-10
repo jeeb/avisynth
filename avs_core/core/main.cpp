@@ -1218,7 +1218,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
       const uint16_t *vline = vptr;
       const uint16_t *aline = aptr;
       uint16_t *out_line = outbuf;
-      for (int x = 0; x < width-1; x++) {
+      for (int x = 0; x < width; x++) {
         out_line[x*4+0] = uline[x];
         out_line[x*4+1] = yline[x];
         out_line[x*4+2] = vline[x];
