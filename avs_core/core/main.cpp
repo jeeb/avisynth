@@ -1258,7 +1258,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   int plane2;
 
   // Old VDub wants YUV for YV24 and YV16 and YVU for YV12.
-  if (parent->VDubPlanarHack && !vi.IsYV12()) {
+  if (parent->VDubPlanarHack && !vi.IsYV12() && !vi.IsRGB() && vi.BitsPerComponent() == 8) {
     plane1 = PLANAR_U;
     plane2 = PLANAR_V;
   }
