@@ -113,10 +113,10 @@ static long gRefCnt=0;
 
 
 extern "C" const GUID CLSID_CAVIFileSynth   // {E6D6B700-124D-11D4-86F3-DB80AFD98778}
-  = {0xe6d6b700, 0x124d, 0x11d4, {0x86, 0xf3, 0xdb, 0x80, 0xaf, 0xd9, 0x87, 0x78}};
+= {0xe6d6b700, 0x124d, 0x11d4, {0x86, 0xf3, 0xdb, 0x80, 0xaf, 0xd9, 0x87, 0x78}};
 
 extern "C" const GUID IID_IAvisynthClipInfo   // {E6D6B708-124D-11D4-86F3-DB80AFD98778}
-  = {0xe6d6b708, 0x124d, 0x11d4, {0x86, 0xf3, 0xdb, 0x80, 0xaf, 0xd9, 0x87, 0x78}};
+= {0xe6d6b708, 0x124d, 0x11d4, {0x86, 0xf3, 0xdb, 0x80, 0xaf, 0xd9, 0x87, 0x78}};
 
 
 struct IAvisynthClipInfo : IUnknown {
@@ -201,7 +201,7 @@ public:
   STDMETHODIMP WriteData(DWORD fcc, LPVOID lpBuffer, LONG cbBuffer);          // 6
   STDMETHODIMP DeleteStream(DWORD fccType, LONG lParam);                      // 9
 
-  //////////// IAvisynthClipInfo
+                                                                              //////////// IAvisynthClipInfo
 
   int __stdcall GetError(const char** ppszMessage);
   bool __stdcall GetParity(int n);
@@ -528,9 +528,9 @@ STDMETHODIMP CAVIFileSynth::EndRecord() {
 }
 
 STDMETHODIMP CAVIFileSynth::Save(LPCSTR szFile, AVICOMPRESSOPTIONS FAR *lpOptions,
-                                 AVISAVECALLBACK lpfnCallback) {
-                                   _RPT1(0,"%p->CAVIFileSynth::Save()\n", this);
-                                   return AVIERR_READONLY;
+  AVISAVECALLBACK lpfnCallback) {
+  _RPT1(0,"%p->CAVIFileSynth::Save()\n", this);
+  return AVIERR_READONLY;
 }
 
 STDMETHODIMP CAVIFileSynth::ReadData(DWORD fcc, LPVOID lp, LONG *lpcb) {
@@ -1015,6 +1015,8 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       vi_final.pixel_type = VideoInfo::CS_YUV422P16;
     else if (vi->pixel_type == VideoInfo::CS_YUV444P10 || vi->pixel_type == VideoInfo::CS_YUV444P12 || vi->pixel_type == VideoInfo::CS_YUV444P14 || vi->pixel_type == VideoInfo::CS_YUV444PS)
       vi_final.pixel_type = VideoInfo::CS_YUV444P16;
+    else if (vi->pixel_type == VideoInfo::CS_YUVA444P10 || vi->pixel_type == VideoInfo::CS_YUVA444P12 || vi->pixel_type == VideoInfo::CS_YUVA444P14 || vi->pixel_type == VideoInfo::CS_YUVA444PS)
+      vi_final.pixel_type = VideoInfo::CS_YUVA444P16;
     // -- pixel_type change end
 
     const int image_size = parent->ImageSize(&vi_final);
@@ -1055,7 +1057,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       asi.fccHandler = MAKEFOURCC('Y', '3', 10, 16); // Y3[10][16] (AV_PIX_FMT_YUV422P16) = planar YUV 422*16-bit
     else if (vi_final.pixel_type == VideoInfo::CS_YUV422P16)
       asi.fccHandler = MAKEFOURCC('P','2','1','6');
-    else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16)
+    else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16 || vi_final.pixel_type == VideoInfo::CS_YUVA444P16)
       asi.fccHandler = MAKEFOURCC('Y','4','1','6');
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP) // 8 bit planar RGB??
       asi.fccHandler = MAKEFOURCC('8','B','P','S');
@@ -1114,7 +1116,11 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::FindSample(LONG lPos, LONG lFlags) {
 
 int CAVIFileSynth::ImageSize(const VideoInfo *vi) {
   int image_size;
-  if (vi->pixel_type == VideoInfo::CS_YUV422P10 && Enable_V210)
+  if (vi->pixel_type == VideoInfo::CS_YUV444P16 || vi->pixel_type == VideoInfo::CS_YUVA444P16)
+  { // Y416 packed 4444 U,Y,V,A
+    image_size = vi->width * vi->height * 4 * sizeof(uint16_t);
+  }
+  else if (vi->pixel_type == VideoInfo::CS_YUV422P10 && Enable_V210)
   {
     image_size = ((16 * ((vi->width + 5) / 6) + 127) & ~127);
     image_size *= vi->height;
@@ -1192,6 +1198,41 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   if (!frame)
     parent->env->ThrowError("Avisynth error: generated video frame was nil (this is a bug)");
 
+  // Y416 packed U,Y,V,A
+  if (vi.pixel_type == VideoInfo::CS_YUV444P16 || vi.pixel_type == VideoInfo::CS_YUVA444P16) {
+    int width = vi.width;
+    int height = vi.height;
+    int ppitch_y = frame->GetPitch(PLANAR_Y) / sizeof(uint16_t);
+    int ppitch_uv = frame->GetPitch(PLANAR_U) / sizeof(uint16_t);
+    int ppitch_a = frame->GetPitch(PLANAR_A) / sizeof(uint16_t);
+    bool hasAlpha = (vi.NumComponents() == 4);
+    const uint16_t *yptr = (const uint16_t *)frame->GetReadPtr(PLANAR_Y);
+    const uint16_t *uptr = (const uint16_t *)frame->GetReadPtr(PLANAR_U);
+    const uint16_t *vptr = (const uint16_t *)frame->GetReadPtr(PLANAR_V);
+    const uint16_t *aptr = (const uint16_t *)frame->GetReadPtr(PLANAR_A);
+    uint16_t *outbuf = (uint16_t *)lpBuffer;
+    int out_pitch = width * 4;
+    for (int y = 0; y < height; y++) {
+      const uint16_t *yline = yptr;
+      const uint16_t *uline = uptr;
+      const uint16_t *vline = vptr;
+      const uint16_t *aline = aptr;
+      uint16_t *out_line = outbuf;
+      for (int x = 0; x < width-1; x++) {
+        out_line[x*4+0] = uline[x];
+        out_line[x*4+1] = yline[x];
+        out_line[x*4+2] = vline[x];
+        out_line[x*4+3] = hasAlpha ? aline[x] : 0xFFFF;
+      }
+      outbuf += out_pitch;
+      yptr += ppitch_y;
+      uptr += ppitch_uv;
+      vptr += ppitch_uv;
+      aptr += ppitch_a;
+    }
+    return;
+  }
+
   const int pitch    = frame->GetPitch();
   const int row_size = frame->GetRowSize();
   const int height   = frame->GetHeight();
@@ -1229,7 +1270,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
       plane2 = PLANAR_R;
     }
     else {
- // Set default VFW output plane order.
+      // Set default VFW output plane order.
       plane1 = PLANAR_V;
       plane2 = PLANAR_U;
     }
@@ -1296,7 +1337,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
     // intentionally empty
   } else if ((semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
-             (semi_packed_p16 && !parent->Enable_Y3_10_16)) {
+    (semi_packed_p16 && !parent->Enable_Y3_10_16)) {
     int pheight = frame->GetHeight(PLANAR_U);
     int pwidth = frame->GetRowSize(PLANAR_U) / vi.ComponentSize();
     int ppitch = frame->GetPitch(PLANAR_U) / 2;
@@ -1398,6 +1439,8 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     vi_final.pixel_type = VideoInfo::CS_YUV422P16;
   else if (vi->pixel_type == VideoInfo::CS_YUV444P10 || vi->pixel_type == VideoInfo::CS_YUV444P12 || vi->pixel_type == VideoInfo::CS_YUV444P14 || vi->pixel_type == VideoInfo::CS_YUV444PS)
     vi_final.pixel_type = VideoInfo::CS_YUV444P16;
+  else if (vi->pixel_type == VideoInfo::CS_YUVA444P10 || vi->pixel_type == VideoInfo::CS_YUVA444P12 || vi->pixel_type == VideoInfo::CS_YUVA444P14 || vi->pixel_type == VideoInfo::CS_YUVA444PS)
+    vi_final.pixel_type = VideoInfo::CS_YUVA444P16;
   // -- pixel_type change end
 
   if (fAudio) {
@@ -1537,7 +1580,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         0x0063F, // 7.1 Lf Rf Cf Sw Lr Rr -- -- -- Ls Rs
       };
       wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 8 ? SpeakerMasks[vi->AudioChannels()]
-      : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
+        : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
         : SPEAKER_ALL;
 
       unsigned int userChannelMask = (unsigned)(parent->env->GetVar(VARNAME_dwChannelMask, 0));
@@ -1583,6 +1626,8 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       vi_final.pixel_type = VideoInfo::CS_YUV422P16;
     else if (vi->pixel_type == VideoInfo::CS_YUV444P10 || vi->pixel_type == VideoInfo::CS_YUV444P12 || vi->pixel_type == VideoInfo::CS_YUV444P14 || vi->pixel_type == VideoInfo::CS_YUV444PS)
       vi_final.pixel_type = VideoInfo::CS_YUV444P16;
+    else if (vi->pixel_type == VideoInfo::CS_YUVA444P10 || vi->pixel_type == VideoInfo::CS_YUVA444P12 || vi->pixel_type == VideoInfo::CS_YUVA444P14 || vi->pixel_type == VideoInfo::CS_YUVA444PS)
+      vi_final.pixel_type = VideoInfo::CS_YUVA444P16;
     // -- pixel_type change end
 
     BITMAPINFOHEADER bi;
@@ -1631,7 +1676,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       bi.biCompression = MAKEFOURCC('Y', '3', 10, 16); // Y3[10][16] (AV_PIX_FMT_YUV422P16) = planar YUV 422*16-bit
     else if (vi_final.pixel_type == VideoInfo::CS_YUV422P16)
       bi.biCompression = MAKEFOURCC('P','2','1','6');
-    else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16)
+    else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16 || vi_final.pixel_type == VideoInfo::CS_YUVA444P16)
       bi.biCompression = MAKEFOURCC('Y','4','1','6');
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP)
       bi.biCompression = MAKEFOURCC('8','B','P','S');
@@ -1664,11 +1709,11 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 }
 
 STDMETHODIMP CAVIStreamSynth::Write(LONG lStart, LONG lSamples, LPVOID lpBuffer,
-                                    LONG cbBuffer, DWORD dwFlags, LONG FAR *plSampWritten,
-                                    LONG FAR *plBytesWritten) {
+  LONG cbBuffer, DWORD dwFlags, LONG FAR *plSampWritten,
+  LONG FAR *plBytesWritten) {
 
-                                      _RPT1(0,"%p->CAVIStreamSynth::Write()\n", this);
+  _RPT1(0,"%p->CAVIStreamSynth::Write()\n", this);
 
-                                      return AVIERR_READONLY;
+  return AVIERR_READONLY;
 }
 
