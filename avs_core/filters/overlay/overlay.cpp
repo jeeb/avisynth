@@ -148,7 +148,7 @@ GenericVideoFilter(_child) {
       env->ThrowError("Overlay: use444=false is allowed only for 4:2:0, 4:2:2 or Planar RGB(A) video formats");
     if (output_pixel_format_override && outputVi->pixel_type != vi.pixel_type)
       env->ThrowError("Overlay: use444=false is allowed only when no output pixel format is specified");
-    if (_stricmp(name, "Blend") != 0)
+    if (_stricmp(name, "Blend") != 0 && _stricmp(name, "Luma") != 0 && _stricmp(name, "Chroma") != 0)
       env->ThrowError("Overlay: cannot specify use444=false for this overlay mode %s", name);
     if (vi.pixel_type != overlayVi.pixel_type)
       env->ThrowError("Overlay: for use444=false input and overlay formats have to be the same");
@@ -468,12 +468,14 @@ OverlayFunction* Overlay::SelectFunction(const char* name, int &of_mode, IScript
 
   if (!lstrcmpi(name, "Chroma")) {
     of_mode = OF_Chroma;
-    return new OL_BlendChromaImage();
+    return new OL_BlendImage(); // Common with BlendImage. plane range differs of_mode checked inside
+    //return new OL_BlendChromaImage();
   }
 
   if (!lstrcmpi(name, "Luma")) {
     of_mode = OF_Luma;
-    return new OL_BlendLumaImage();
+    //return new OL_BlendLumaImage();
+    return new OL_BlendImage(); // Common with BlendImage. plane range differs of_mode checked inside
   }
 
   if (!lstrcmpi(name, "Lighten")) {
