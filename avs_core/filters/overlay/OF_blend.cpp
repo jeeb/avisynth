@@ -349,7 +349,3 @@ void OL_BlendImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal*
     }
   }
 }
-
-
-
-

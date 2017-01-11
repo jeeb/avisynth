@@ -595,14 +595,6 @@ AVSValue __cdecl Overlay::Create(AVSValue args, void*, IScriptEnvironment* env) 
    if(Result->outputVi->Is420()) {
      AVSValue new_args[2] = { Result, false};
      return env->Invoke("ConvertToYUV420", AVSValue(new_args, 2)).AsClip();
-     // old overlay 444->YV12 direct converter is much faster than avisynth's internal converter
-     // because it simply averages chroma and put it back directly
-     // Avisynth's version is generic, uses generic resamplers for chroma
-     /*
-     AVSValue new_args[5] = { Result, "bicubic"};
-     static const char* const arg_names[2] = { 0, "chromaresample" };
-     return env->Invoke("ConvertToYUV420", AVSValue(new_args, 2), arg_names).AsClip();
-     */
    }
    if(Result->outputVi->IsYUY2()) {
      AVSValue new_args[2] = { Result, false};
