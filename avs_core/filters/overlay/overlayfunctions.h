@@ -118,6 +118,8 @@ class OL_MultiplyImage : public OverlayFunction {
   void BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask);
 };
 
+#if 0
+// made common with OF_Blend
 class OL_BlendLumaImage : public OverlayFunction {
   void DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay);
   void DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask);
@@ -127,7 +129,10 @@ class OL_BlendLumaImage : public OverlayFunction {
   void BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask);
 private:
 };
+#endif
 
+#if 0
+// made common with OF_Blend
 class OL_BlendChromaImage : public OverlayFunction {
   void DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay);
   void DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask);
@@ -137,6 +142,7 @@ class OL_BlendChromaImage : public OverlayFunction {
   void BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask);
 private:
 };
+#endif
 
 #if 0
 class OL_LightenImage : public OverlayFunction {
