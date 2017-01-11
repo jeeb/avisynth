@@ -1270,9 +1270,15 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
       plane2 = PLANAR_R;
     }
     else {
+      if (vi.BitsPerComponent() == 8) {
       // Set default VFW output plane order.
-      plane1 = PLANAR_V;
-      plane2 = PLANAR_U;
+        plane1 = PLANAR_V;
+        plane2 = PLANAR_U;
+      }
+      else {
+        plane1 = PLANAR_U;
+        plane2 = PLANAR_V;
+      }
     }
   }
 
