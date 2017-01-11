@@ -910,10 +910,13 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
         __m128i unpacked_p2_l = _mm_unpacklo_epi16(p2_l, zero);
         __m128i unpacked_p2_h = _mm_unpacklo_epi16(p2_h, zero);
 
+        __m128i unpacked_mask_l = _mm_unpacklo_epi16(mask_l, zero);
+        __m128i unpacked_mask_h = _mm_unpacklo_epi16(mask_h, zero);
+
         // for uint16, this is SSE4
         // maybe _MM_MULLO_EPI32 and _MM_PACKUS_EPI32 could be used, but sometimes C is faster
-        __m128i unpacked_mask_l = overlay_merge_mask_sse2<pixel_t, bits_per_pixel>(unpacked_mask_l, opacity_mask);
-        __m128i unpacked_mask_h = overlay_merge_mask_sse2<pixel_t, bits_per_pixel>(unpacked_mask_h, opacity_mask);
+        unpacked_mask_l = overlay_merge_mask_sse2<pixel_t, bits_per_pixel>(unpacked_mask_l, opacity_mask);
+        unpacked_mask_h = overlay_merge_mask_sse2<pixel_t, bits_per_pixel>(unpacked_mask_h, opacity_mask);
 
         __m128i result_l = overlay_blend_sse2_core<pixel_t, bits_per_pixel>(unpacked_p1_l, unpacked_p2_l, unpacked_mask_l, v128);
         __m128i result_h = overlay_blend_sse2_core<pixel_t, bits_per_pixel>(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
