@@ -96,8 +96,11 @@ public:
   }
 
 private:
-// YV12:
-    int planes[8];
+    typedef struct {
+      int planeId;
+      int threshold;
+    } planeInfo;
+    planeInfo planes[4];
     int scenechange;
     int pixelsize;
     int bits_per_pixel;
