@@ -65,6 +65,7 @@ public:
     virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...) = 0;
     virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va) = 0;
     virtual void __stdcall VThrowError(const char* fmt, va_list va) = 0;
+    virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 };
 
 #endif // _AVS_SCRIPTENVIRONMENT_H_INCLUDED

@@ -2,7 +2,7 @@
 // Avisynth v2.6.  Copyright 2006 Klaus Post.
 // Avisynth v2.6.  Copyright 2009 Ian Brabham.
 // Avisynth+ project
-// Last modification date: 20161005
+// Last modification date: 20170117
 
 // http://www.avisynth.org
 
@@ -1289,6 +1289,9 @@ public:
   using IScriptEnvironment::Invoke;
   using IScriptEnvironment::AddFunction;
   using IScriptEnvironment::GetVar;
+
+  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 
 }; // end class IScriptEnvironment2
 

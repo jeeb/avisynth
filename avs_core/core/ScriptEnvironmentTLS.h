@@ -210,6 +210,11 @@ public:
     core->VThrowError(fmt, va);
   }
 
+  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA)
+  {
+    return core->SubframePlanarA(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
+  }
+
   void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data=0)
   {
     core->AddFunction(name, params, apply, user_data);
