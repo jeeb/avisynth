@@ -1721,8 +1721,8 @@ static __forceinline __m128i convert_yuv_to_rgb_sse2_core(const __m128i &px01, c
 }
 
 //todo: consider rewriting
-template<int rgb_pixel_step, int instruction_set>
-static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t width, size_t height, const ConversionMatrix &matrix) {
+template<int rgb_pixel_step, int instruction_set, bool hasAlpha>
+static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, const BYTE*srcA, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t src_pitch_a, size_t width, size_t height, const ConversionMatrix &matrix) {
   dstp += dst_pitch * (height-1);  // We start at last line
 
   size_t mod8_width = rgb_pixel_step == 3 ? width / 8 * 8 : width;
@@ -1744,6 +1744,9 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
       __m128i src_y = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcY+x)); //0 0 0 0 0 0 0 0 Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
       __m128i src_u = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcU+x)); //0 0 0 0 0 0 0 0 U7 U6 U5 U4 U3 U2 U1 U0
       __m128i src_v = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcV+x)); //0 0 0 0 0 0 0 0 V7 V6 V5 V4 V3 V2 V1 V0
+      __m128i src_a;
+      if(hasAlpha)
+        src_a = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcA+x)); //0 0 0 0 0 0 0 0 V7 V6 V5 V4 V3 V2 V1 V0
       
       __m128i t1 = _mm_unpacklo_epi8(src_y, src_u); //U7 Y7 U6 Y6 U5 Y5 U4 Y4 U3 Y3 U2 Y2 U1 Y1 U0 Y0
       __m128i t2 = _mm_unpacklo_epi8(src_v, zero);  //00 V7 00 V6 00 V5 00 V4 00 V3 00 V2 00 V1 00 V0
@@ -1766,8 +1769,13 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
       __m128i result_r = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_r, round_mask); //00 00 00 00 00 00 00 00 r7 r6 r5 r4 r3 r2 r1 r0
 
       __m128i result_bg = _mm_unpacklo_epi8(result_b, result_g); //g7 b7 g6 b6 g5 b5 g4 b4 g3 b3 g2 b2 g1 b1 g0 b0
-      __m128i ff = _mm_cmpeq_epi32(result_r, result_r);
-      __m128i result_ra = _mm_unpacklo_epi8(result_r, ff);       //a7 r7 a6 r6 a5 r5 a4 r4 a3 r3 a2 r2 a1 r1 a0 r0
+      __m128i alpha;
+      if(hasAlpha)
+        alpha = src_a; // FF FF FF FF ... default alpha transparent
+      else
+        alpha = _mm_cmpeq_epi32(result_r, result_r); // FF FF FF FF ... default alpha transparent
+
+      __m128i result_ra = _mm_unpacklo_epi8(result_r, alpha);       //a7 r7 a6 r6 a5 r5 a4 r4 a3 r3 a2 r2 a1 r1 a0 r0
 
       __m128i result_lo = _mm_unpacklo_epi16(result_bg, result_ra);
       __m128i result_hi = _mm_unpackhi_epi16(result_bg, result_ra);
@@ -1827,6 +1835,8 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
     srcY += src_pitch_y;
     srcU += src_pitch_uv;
     srcV += src_pitch_uv;
+    if(hasAlpha)
+      srcA += src_pitch_a;
   }
 }
 
@@ -1990,13 +2000,15 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
   if ((env->GetCPUFlags() & CPUF_SSE2) && (pixel_step==3 || pixel_step==4)) {
     //we load using movq so no need to check for alignment
     if (pixel_step == 4) {
-        // todo: move alpha channel from YUVA
-      convert_yv24_to_rgb_ssex<4, CPUF_SSE2>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, matrix);
+      if(src_pitch_a) // move alpha channel from YUVA
+        convert_yv24_to_rgb_ssex<4, CPUF_SSE2, true>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+      else
+        convert_yv24_to_rgb_ssex<4, CPUF_SSE2, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
     } else {
       if (env->GetCPUFlags() & CPUF_SSSE3) {
-        convert_yv24_to_rgb_ssex<3, CPUF_SSSE3>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, matrix);
+        convert_yv24_to_rgb_ssex<3, CPUF_SSSE3, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
       } else {
-        convert_yv24_to_rgb_ssex<3, CPUF_SSE2>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, matrix);
+        convert_yv24_to_rgb_ssex<3, CPUF_SSE2, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
       }
     }
     return dst;
@@ -2004,7 +2016,7 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
 
 #ifdef X86_32
   // packed RGB24 and RGB32
-  if ((env->GetCPUFlags() & CPUF_MMX) && (pixel_step==3 || pixel_step==4)) {
+  if ((src_pitch_a==0) && (env->GetCPUFlags() & CPUF_MMX) && (pixel_step==3 || pixel_step==4)) {
     if (pixel_step == 4) {
       convert_yv24_to_rgb_mmx<4>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, matrix);
     } else {
