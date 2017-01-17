@@ -796,22 +796,32 @@ DoubleWeaveFields::DoubleWeaveFields(PClip _child)
 }
 
 
-void copy_field(const PVideoFrame& dst, const PVideoFrame& src, bool yuv, bool parity, IScriptEnvironment* env)
+void copy_field(const PVideoFrame& dst, const PVideoFrame& src, bool yuv, bool planarRGB, bool parity, IScriptEnvironment* env)
 {
-  const int add_pitch = dst->GetPitch() * (parity ^ yuv);
-  const int add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ yuv);
+  bool noTopBottom = yuv || planarRGB;
+
+  int plane1 = planarRGB ? PLANAR_B : PLANAR_U;
+  int plane2 = planarRGB ? PLANAR_R : PLANAR_V;
+
+  const int add_pitch = dst->GetPitch() * (parity ^ noTopBottom);
+  const int add_pitchUV = dst->GetPitch(plane1) * (parity ^ noTopBottom);
+  const int add_pitchA = dst->GetPitch(PLANAR_A) * (parity ^ noTopBottom);
 
   env->BitBlt(dst->GetWritePtr()         + add_pitch, dst->GetPitch()*2,
     src->GetReadPtr(), src->GetPitch(),
     src->GetRowSize(), src->GetHeight());
 
-  env->BitBlt(dst->GetWritePtr(PLANAR_U) + add_pitchUV, dst->GetPitch(PLANAR_U)*2,
-    src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U),
-    src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+  env->BitBlt(dst->GetWritePtr(plane1) + add_pitchUV, dst->GetPitch(plane1)*2,
+    src->GetReadPtr(plane1), src->GetPitch(plane1),
+    src->GetRowSize(plane1), src->GetHeight(plane1));
 
-  env->BitBlt(dst->GetWritePtr(PLANAR_V) + add_pitchUV, dst->GetPitch(PLANAR_V)*2,
-    src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V),
-    src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  env->BitBlt(dst->GetWritePtr(plane2) + add_pitchUV, dst->GetPitch(plane2)*2,
+    src->GetReadPtr(plane2), src->GetPitch(plane2),
+    src->GetRowSize(plane2), src->GetHeight(plane2));
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_A) + add_pitchA, dst->GetPitch(PLANAR_A)*2,
+    src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A),
+    src->GetRowSize(PLANAR_A), src->GetHeight(PLANAR_A));
 }
 
 
@@ -824,8 +834,8 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
 
   const bool parity = child->GetParity(n);
 
-  copy_field(result, a, vi.IsYUV(), parity, env);
-  copy_field(result, b, vi.IsYUV(), !parity, env);
+  copy_field(result, a, vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), parity, env);
+  copy_field(result, b, vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), !parity, env);
 
   return result;
 }
@@ -846,25 +856,36 @@ DoubleWeaveFrames::DoubleWeaveFrames(PClip _child)
   vi.MulDivFPS(2, 1);
 }
 
-void copy_alternate_lines(const PVideoFrame& dst, const PVideoFrame& src, bool yuv, bool parity, IScriptEnvironment* env)
+void copy_alternate_lines(const PVideoFrame& dst, const PVideoFrame& src, bool yuv, bool planarRGB, bool parity, IScriptEnvironment* env)
 {
-  const int src_add_pitch = src->GetPitch()         * (parity ^ yuv);
-  const int src_add_pitchUV = src->GetPitch(PLANAR_U) * (parity ^ yuv);
+  bool noTopBottom = yuv || planarRGB;
 
-  const int dst_add_pitch = dst->GetPitch()         * (parity ^ yuv);
-  const int dst_add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ yuv);
+  int plane1 = planarRGB ? PLANAR_B : PLANAR_U;
+  int plane2 = planarRGB ? PLANAR_R : PLANAR_V;
+
+  const int src_add_pitch = src->GetPitch()         * (parity ^ noTopBottom);
+  const int src_add_pitchUV = src->GetPitch(plane1) * (parity ^ noTopBottom);
+  const int src_add_pitchA = src->GetPitch(PLANAR_A) * (parity ^ noTopBottom);
+
+  const int dst_add_pitch = dst->GetPitch()         * (parity ^ noTopBottom);
+  const int dst_add_pitchUV = dst->GetPitch(plane1) * (parity ^ noTopBottom);
+  const int dst_add_pitchA = dst->GetPitch(PLANAR_A) * (parity ^ noTopBottom);
 
   env->BitBlt(dst->GetWritePtr()         + dst_add_pitch, dst->GetPitch()*2,
     src->GetReadPtr()          + src_add_pitch, src->GetPitch()*2,
     src->GetRowSize(), src->GetHeight()>>1);
 
-  env->BitBlt(dst->GetWritePtr(PLANAR_U) + dst_add_pitchUV, dst->GetPitch(PLANAR_U)*2,
-    src->GetReadPtr(PLANAR_U)  + src_add_pitchUV, src->GetPitch(PLANAR_U)*2,
-    src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U)>>1);
+  env->BitBlt(dst->GetWritePtr(plane1) + dst_add_pitchUV, dst->GetPitch(plane1)*2,
+    src->GetReadPtr(plane1)  + src_add_pitchUV, src->GetPitch(plane1)*2,
+    src->GetRowSize(plane1), src->GetHeight(plane1)>>1);
 
-  env->BitBlt(dst->GetWritePtr(PLANAR_V) + dst_add_pitchUV, dst->GetPitch(PLANAR_V)*2,
-    src->GetReadPtr(PLANAR_V)  + src_add_pitchUV, src->GetPitch(PLANAR_V)*2,
-    src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V)>>1);
+  env->BitBlt(dst->GetWritePtr(plane2) + dst_add_pitchUV, dst->GetPitch(plane2)*2,
+    src->GetReadPtr(plane2)  + src_add_pitchUV, src->GetPitch(plane2)*2,
+    src->GetRowSize(plane2), src->GetHeight(plane2)>>1);
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_A) + dst_add_pitchA, dst->GetPitch(PLANAR_A)*2,
+    src->GetReadPtr(PLANAR_A)  + src_add_pitchA, src->GetPitch(PLANAR_A)*2,
+    src->GetRowSize(PLANAR_A), src->GetHeight(PLANAR_A)>>1);
 }
 
 
@@ -880,17 +901,17 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     bool parity = this->GetParity(n);
 
     if (a->IsWritable()) {
-      copy_alternate_lines(a, b, vi.IsYUV(), !parity, env);
+      copy_alternate_lines(a, b,  vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), !parity, env);
       return a;
     } 
     else if (b->IsWritable()) {
-      copy_alternate_lines(b, a, vi.IsYUV(), parity, env);
+      copy_alternate_lines(b, a,  vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), parity, env);
       return b;
     } 
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
-      copy_alternate_lines(result, a, vi.IsYUV(), parity, env);
-      copy_alternate_lines(result, b, vi.IsYUV(), !parity, env);
+      copy_alternate_lines(result, a, vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), parity, env);
+      copy_alternate_lines(result, b, vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), !parity, env);
       return result;
     }
   }
