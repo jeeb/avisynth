@@ -598,7 +598,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   const bool haveOpts = args[3].Defined() || args[4].Defined();
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
-  const VideoInfo& vi = clip->GetVideoInfo();
+  VideoInfo vi = clip->GetVideoInfo();
 
   // todo bitdepth conversion on-the-fly
 
@@ -620,6 +620,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
     if(target_rgbtype==0 && vi.ComponentSize()==4)
         env->ThrowError("ConvertToRGB: conversion is allowed only from 8 or 16 bit colorspaces");
     int rgbtype_param;
+    bool reallyConvert = true;
     switch (target_rgbtype)
     {
     case -1: case -2:
@@ -630,12 +631,29 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
         rgbtype_param = 3; break; // RGB24
     case 32:
         rgbtype_param = 4; break; // RGB32
-    case 48:
-        rgbtype_param = 6; break; // RGB48
-    case 64:
-        rgbtype_param = 8; break; // RGB64
+    case 48: {
+            // instead of C code of YUV444P16->RGB48
+            // we convert to PlanarRGB then to RGB48 (both is fast)
+          AVSValue new_args2[5] = { clip, args[1], args[2], args[3], args[4] };
+          clip = ConvertToRGB::Create(AVSValue(new_args2, 5), (void *)-1, env).AsClip();
+          vi = clip->GetVideoInfo();
+          reallyConvert = false;
+          rgbtype_param = 6; // old option RGB48 target, slow C
+        }
+        break; // RGB48
+    case 64: {
+        // instead of C code of YUV(A)444P16->RGB64
+        // we convert to PlanarRGB(A) then to RGB64 (both is fast)
+        AVSValue new_args2[5] = { clip, args[1], args[2], args[3], args[4] };
+        clip = ConvertToRGB::Create(AVSValue(new_args2, 5), vi.IsYUVA() ? (void *)-2 : (void *)-1, env).AsClip();
+        vi = clip->GetVideoInfo();
+        reallyConvert = false;
+        rgbtype_param = 8; // old option RGB64 target, slow C
+      }
+      break; // RGB64
     }
-    return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), rgbtype_param , env);
+    if(reallyConvert)
+      return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), rgbtype_param , env);
   }
 
   if (haveOpts)
