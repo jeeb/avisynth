@@ -1725,7 +1725,7 @@ template<int rgb_pixel_step, int instruction_set, bool hasAlpha>
 static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, const BYTE*srcA, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t src_pitch_a, size_t width, size_t height, const ConversionMatrix &matrix) {
   dstp += dst_pitch * (height-1);  // We start at last line
 
-  size_t mod8_width = rgb_pixel_step == 3 ? width / 8 * 8 : width;
+  size_t mod8_width = rgb_pixel_step == 3 ? width / 8 * 8 : width; // for rgb32 target we may process pixels beyond width, but we have 32bit alignment at target
 
   __m128i matrix_b = _mm_set_epi16(0, matrix.v_b, matrix.u_b, matrix.y_b, 0, matrix.v_b, matrix.u_b, matrix.y_b);
   __m128i matrix_g = _mm_set_epi16(0, matrix.v_g, matrix.u_g, matrix.y_g, 0, matrix.v_g, matrix.u_g, matrix.y_g);
@@ -1746,8 +1746,8 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
       __m128i src_v = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcV+x)); //0 0 0 0 0 0 0 0 V7 V6 V5 V4 V3 V2 V1 V0
       __m128i src_a;
       if(hasAlpha)
-        src_a = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcA+x)); //0 0 0 0 0 0 0 0 V7 V6 V5 V4 V3 V2 V1 V0
-      
+        src_a = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcA+x)); //0 0 0 0 0 0 0 0 A7 A6 A5 A4 A3 A2 A1 A0
+
       __m128i t1 = _mm_unpacklo_epi8(src_y, src_u); //U7 Y7 U6 Y6 U5 Y5 U4 Y4 U3 Y3 U2 Y2 U1 Y1 U0 Y0
       __m128i t2 = _mm_unpacklo_epi8(src_v, zero);  //00 V7 00 V6 00 V5 00 V4 00 V3 00 V2 00 V1 00 V0
 
@@ -1771,7 +1771,7 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
       __m128i result_bg = _mm_unpacklo_epi8(result_b, result_g); //g7 b7 g6 b6 g5 b5 g4 b4 g3 b3 g2 b2 g1 b1 g0 b0
       __m128i alpha;
       if(hasAlpha)
-        alpha = src_a; // FF FF FF FF ... default alpha transparent
+        alpha = src_a; // a7 .. a0
       else
         alpha = _mm_cmpeq_epi32(result_r, result_r); // FF FF FF FF ... default alpha transparent
 
@@ -1816,6 +1816,7 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
     }
 
     if (rgb_pixel_step == 3) {
+      // for rgb32 (pixel_step == 4) we processed full width and more, including padded 8 bytes
       for (size_t x = mod8_width; x < width; ++x) {
         int Y = srcY[x] + matrix.offset_y;
         int U = srcU[x] - 128;
@@ -1826,7 +1827,7 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
         dstp[x*rgb_pixel_step + 0] = PixelClip(b);
         dstp[x*rgb_pixel_step + 1] = PixelClip(g);
         dstp[x*rgb_pixel_step + 2] = PixelClip(r);
-        if (rgb_pixel_step == 4) {
+        if (rgb_pixel_step == 4) { // n/a
           dstp[x * 4 + 3] = 255;
         }
       }
