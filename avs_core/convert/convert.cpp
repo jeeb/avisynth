@@ -77,8 +77,7 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)16 },
   { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)32 },
   { "ConvertBits",    BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)0 },
-  { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask]f", AddAlphaPlane::Create},
-  { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask]c", AddAlphaPlane::Create},
+  { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask].", AddAlphaPlane::Create},
   { "RemoveAlphaPlane",  BUILTIN_FUNC_PREFIX, "c", RemoveAlphaPlane::Create},
   { 0 }
 };
@@ -2130,6 +2129,8 @@ AVSValue AddAlphaPlane::Create(AVSValue args, void*, IScriptEnvironment* env)
   bool isMaskDefined = args[1].Defined();
   bool maskIsClip = false;
   // if mask is not defined and videoformat has Alpha then we return
+  if(isMaskDefined && !args[1].IsClip() && !args[1].IsFloat())
+    env->ThrowError("AddAlphaPlane: mask parameter should be clip or number");
   const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
   if (!isMaskDefined && (vi.IsPlanarRGBA() || vi.IsYUVA() || vi.IsRGB32() || vi.IsRGB64()))
     return args[0].AsClip();
