@@ -491,27 +491,39 @@ SeparateRows::SeparateRows(PClip _child, int _interval, IScriptEnvironment* env)
   if (vi.num_frames < 0)
     env->ThrowError("SeparateRows: Maximum number of frames exceeded.");
 
-  if (vi.IsYV12() && vi.height & 1)
-    env->ThrowError("SeparateRows: YV12 output height must be even.");
+  if (vi.Is420() && vi.height & 1)
+    env->ThrowError("SeparateRows: YUV420 output height must be even.");
 }
 
 
 PVideoFrame SeparateRows::GetFrame(int n, IScriptEnvironment* env) 
 {
-  const int m = vi.IsRGB() ? interval-1 - n%interval : n%interval; // RGB upside-down
+  const int m = (vi.IsRGB() && !vi.IsPlanar())? interval-1 - n%interval : n%interval; // RGB upside-down
   const int f = n/interval;
 
   PVideoFrame frame = child->GetFrame(f, env);
 
-  if (vi.IsPlanar() && !vi.IsY8()) {
-    const int Ypitch   = frame->GetPitch(PLANAR_Y);
-    const int UVpitch  = frame->GetPitch(PLANAR_U);
+  if (vi.IsPlanar() && !vi.IsY()) {
+    int plane0 = vi.IsRGB() ? PLANAR_G : PLANAR_Y;
+    int plane1 = vi.IsRGB() ? PLANAR_B : PLANAR_U;
+    const int Ypitch   = frame->GetPitch(plane0);
+    const int UVpitch  = frame->GetPitch(plane1);
     const int Yoffset  = Ypitch  * m;
     const int UVoffset = UVpitch * m;
 
-    return env->SubframePlanar(frame, Yoffset, Ypitch * interval,
-                               frame->GetRowSize(PLANAR_Y), vi.height,
-                               UVoffset, UVoffset, UVpitch * interval);
+    if (vi.NumComponents() == 4) {
+      int Aoffset = frame->GetPitch(PLANAR_A) * m;
+      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+
+      return env2->SubframePlanarA(frame, Yoffset, Ypitch * interval,
+        frame->GetRowSize(plane0), vi.height,
+        UVoffset, UVoffset, UVpitch * interval, Aoffset);
+    }
+    else {
+      return env->SubframePlanar(frame, Yoffset, Ypitch * interval,
+        frame->GetRowSize(plane0), vi.height,
+        UVoffset, UVoffset, UVpitch * interval);
+    }
   }
   const int pitch = frame->GetPitch();
   return env->Subframe(frame, pitch * m, pitch * interval, frame->GetRowSize(), vi.height);  
@@ -619,8 +631,8 @@ SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
 {
   if (vi.height & 1)
     env->ThrowError("SeparateFields: height must be even");
-  if (vi.IsYV12() && vi.height & 3)
-    env->ThrowError("SeparateFields: YV12 height must be multiple of 4");
+  if (vi.Is420() && vi.height & 3)
+    env->ThrowError("SeparateFields: YUV420 height must be multiple of 4");
   vi.height >>= 1;
   vi.MulDivFPS(2, 1);
   vi.num_frames *= 2;
@@ -637,10 +649,25 @@ PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n>>1, env);
   if (vi.IsPlanar()) {
     const bool topfield = GetParity(n);
-    const int UVoffset = !topfield ? frame->GetPitch(PLANAR_U) : 0;
-    const int Yoffset = !topfield ? frame->GetPitch(PLANAR_Y) : 0;
-    return env->SubframePlanar(frame,Yoffset, frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1,
-                               UVoffset, UVoffset, frame->GetPitch(PLANAR_U)*2);
+
+    int plane0 = vi.IsRGB() ? PLANAR_G : PLANAR_Y;
+    int plane1 = vi.IsRGB() ? PLANAR_B : PLANAR_U;
+    const int Ypitch   = frame->GetPitch(plane0);
+    const int UVpitch  = frame->GetPitch(plane1);
+    const int UVoffset = !topfield ? UVpitch : 0;
+    const int Yoffset = !topfield ? Ypitch : 0;
+
+    if (vi.NumComponents() == 4) {
+      int Aoffset = !topfield ? frame->GetPitch(PLANAR_A) : 0;
+      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+
+      return env2->SubframePlanarA(frame, Yoffset, frame->GetPitch() * 2, frame->GetRowSize(), frame->GetHeight() >> 1,
+        UVoffset, UVoffset, frame->GetPitch(PLANAR_U) * 2, Aoffset);
+    }
+    else {
+      return env->SubframePlanar(frame, Yoffset, frame->GetPitch() * 2, frame->GetRowSize(), frame->GetHeight() >> 1,
+        UVoffset, UVoffset, frame->GetPitch(PLANAR_U) * 2);
+    }
   }
   return env->Subframe(frame,(GetParity(n) ^ vi.IsYUY2()) ? frame->GetPitch() : 0,
                          frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1);  
