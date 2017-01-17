@@ -563,6 +563,7 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
     case 32: vi.pixel_type = hasAlpha ? VideoInfo::CS_YUVA444PS  : VideoInfo::CS_YUV444PS; break;
     }
   } else { // packed RGB24/32/48/64
+    // for compatibility reasons target is not YUVA even if original has alpha, such as RGB32
     pixel_step = vi.BytesFromPixels(1); // 3,4 for packed 8 bit, 6,8 for
     switch(vi.ComponentSize())
     {
@@ -2759,6 +2760,13 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   VideoInfo vi = clip->GetVideoInfo();
 
   if (vi.IsRGB()) { // packed or planar
+    if (vi.IsRGB48() || vi.IsRGB64()) {
+      // we convert to intermediate PlanarRGB, RGB48/64->YUV444 is slow C, planarRGB  is fast
+      AVSValue new_args[5] = { clip, AVSValue(), AVSValue(), AVSValue(), AVSValue() };
+      clip = ConvertToRGB::Create(AVSValue(new_args, 5), (void *)-1, env).AsClip();
+      vi = clip->GetVideoInfo();
+    }
+
     clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
     vi = clip->GetVideoInfo();
   }
