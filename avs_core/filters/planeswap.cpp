@@ -161,8 +161,8 @@ AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnv
 
 SwapUV::SwapUV(PClip _child, IScriptEnvironment* env) : GenericVideoFilter(_child)
 {
-  if (!vi.IsYUV())
-    env->ThrowError("SwapUV: YUV data only!");
+  if (!vi.IsYUV() && !vi.IsYUVA())
+    env->ThrowError("SwapUV: YUV or YUVA data only!");
 }
 
 PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
@@ -172,9 +172,15 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsPlanar()) {
     // Abuse subframe to flip the UV plane pointers -- extremely fast but a bit naughty!
     const int uvoffset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_U); // very naughty - don't do this at home!!
-        // todo: check for YUVA??? env-> has no SubFramePlanar with alpha option!
-    return env->SubframePlanar(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
-                         uvoffset, -uvoffset, src->GetPitch(PLANAR_V));
+    if (vi.NumComponents() == 4) {
+      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+      return env2->SubframePlanarA(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
+        uvoffset, -uvoffset, src->GetPitch(PLANAR_V), 0);
+    }
+    else {
+      return env->SubframePlanar(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
+        uvoffset, -uvoffset, src->GetPitch(PLANAR_V));
+    }
   }
 
   // YUY2
