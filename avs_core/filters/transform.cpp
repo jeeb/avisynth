@@ -297,32 +297,32 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
 
-  int planeYG = isRGBPfamily ? PLANAR_G : PLANAR_Y;
-  int planeUB = isRGBPfamily ? PLANAR_B : PLANAR_U;
-  int planeVR = isRGBPfamily ? PLANAR_R : PLANAR_V;
+  int plane0 = isRGBPfamily ? PLANAR_G : PLANAR_Y;
+  int plane1 = isRGBPfamily ? PLANAR_B : PLANAR_U;
+  int plane2 = isRGBPfamily ? PLANAR_R : PLANAR_V;
 
-  const BYTE* srcpYG = frame->GetReadPtr(planeYG) + top *  frame->GetPitch(planeYG) + left_bytes;
-  const BYTE* srcpUB = frame->GetReadPtr(planeUB) + (top>>ysub) *  frame->GetPitch(planeUB) + (left_bytes>>xsub);
-  const BYTE* srcpVR = frame->GetReadPtr(planeVR) + (top>>ysub) *  frame->GetPitch(planeVR) + (left_bytes>>xsub);
+  const BYTE* srcp0 = frame->GetReadPtr(plane0) + top *  frame->GetPitch(plane0) + left_bytes;
+  const BYTE* srcp1 = frame->GetReadPtr(plane1) + (top>>ysub) *  frame->GetPitch(plane1) + (left_bytes>>xsub);
+  const BYTE* srcp2 = frame->GetReadPtr(plane2) + (top>>ysub) *  frame->GetPitch(plane2) + (left_bytes>>xsub);
 
   size_t _align;
 
-  if (frame->GetPitch(planeUB) && (!vi.IsYV12() || env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest)))
-    _align = this->align & ((size_t)srcpYG|(size_t)srcpUB|(size_t)srcpVR);
+  if (frame->GetPitch(plane1) && (!vi.IsYV12() || env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest)))
+    _align = this->align & ((size_t)srcp0|(size_t)srcp1|(size_t)srcp2);
   else
-    _align = this->align & (size_t)srcpYG;
+    _align = this->align & (size_t)srcp0;
 
-  if (0 != _align || hasAlpha) { // no env->SubframePlanar with extra planar parameter
+  if (0 != _align) {
     PVideoFrame dst = env->NewVideoFrame(vi, (int)align+1);
 
-    env->BitBlt(dst->GetWritePtr(planeYG), dst->GetPitch(planeYG), srcpYG,
-      frame->GetPitch(planeYG), dst->GetRowSize(planeYG), dst->GetHeight(planeYG));
+    env->BitBlt(dst->GetWritePtr(plane0), dst->GetPitch(plane0), srcp0,
+      frame->GetPitch(plane0), dst->GetRowSize(plane0), dst->GetHeight(plane0));
 
-    env->BitBlt(dst->GetWritePtr(planeUB), dst->GetPitch(planeUB), srcpUB,
-      frame->GetPitch(planeUB), dst->GetRowSize(planeUB), dst->GetHeight(planeUB));
+    env->BitBlt(dst->GetWritePtr(plane1), dst->GetPitch(plane1), srcp1,
+      frame->GetPitch(plane1), dst->GetRowSize(plane1), dst->GetHeight(plane1));
 
-    env->BitBlt(dst->GetWritePtr(planeVR), dst->GetPitch(planeVR), srcpVR,
-      frame->GetPitch(planeVR), dst->GetRowSize(planeVR), dst->GetHeight(planeVR));
+    env->BitBlt(dst->GetWritePtr(plane2), dst->GetPitch(plane2), srcp2,
+      frame->GetPitch(plane2), dst->GetRowSize(plane2), dst->GetHeight(plane2));
 
     if(hasAlpha)
       env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A), frame->GetReadPtr(PLANAR_A) + top *  frame->GetPitch(PLANAR_A) + left_bytes,
@@ -331,13 +331,23 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
     return dst;
   }
 
-  if (!frame->GetPitch(planeUB))
+  if (!frame->GetPitch(plane1))
     return env->Subframe(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else {
+    if (hasAlpha) {
+      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+
+      return env2->SubframePlanarA(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height,
+        (top >> ysub) * frame->GetPitch(plane1) + (left_bytes >> xsub),
+        (top >> ysub) * frame->GetPitch(plane2) + (left_bytes >> xsub),
+        frame->GetPitch(plane1), top * frame->GetPitch(PLANAR_A) + left_bytes);
+    }
+    else {
       return env->SubframePlanar(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height,
-        (top>>ysub) * frame->GetPitch(planeUB) + (left_bytes>>xsub),
-        (top>>ysub) * frame->GetPitch(planeVR) + (left_bytes>>xsub),
-        frame->GetPitch(planeUB));
+        (top >> ysub) * frame->GetPitch(plane1) + (left_bytes >> xsub),
+        (top >> ysub) * frame->GetPitch(plane2) + (left_bytes >> xsub),
+        frame->GetPitch(plane1));
+    }
   }
 }
 
