@@ -1263,7 +1263,7 @@ static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, i
 
   threshold_t threshold = _threshold; // parameter 0..255
   if (std::is_floating_point<pixel_t>::value)
-    threshold = threshold / 255.0f; // float
+    threshold = (threshold_t)(threshold / 255.0f); // float
   else if (sizeof(pixel_t) == 2) {
     threshold = threshold * (uint16_t)(1 << (bits_per_pixel - 8)); // uint16_t, 10 bit: *4 16bit: *256
   }
@@ -1335,19 +1335,28 @@ static __forceinline __m128i ts_multiply_repack_sse2(const __m128i &src, const _
   return _mm_packus_epi16(acc, zero);
 }
 
-
 // fast: maxThreshold (255) simple accumulate for average
-template<bool maxThreshold>
+template<bool maxThreshold, bool hasSSSE3>
 static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div) {
-  __m128i halfdiv_vector = _mm_set1_epi32(16384);
-  __m128i div_vector = _mm_set1_epi16(div);
+
+  // threshold: 8 bits: 2 bytes in a word. for YUY2: luma<<8 | chroma
+  // 16 bits: 16 bit value (orig threshold scaled by bits_per_pixel)
+  __m128i halfdiv_vector, div_vector;
+  if (hasSSSE3) {
+    halfdiv_vector = _mm_set1_epi32(16384); // for mulhrs
+    div_vector = _mm_set1_epi16(div);
+  }
+  else {
+    halfdiv_vector = _mm_set1_epi16(1); // High16(0x10000)
+    div_vector = _mm_set1_epi16(65536 / (planes + 1)); // mulhi
+  }
+  __m128i thresh = _mm_set1_epi16(threshold);
 
   for (size_t x = 0; x < width; x+=16) {
     __m128i current = _mm_load_si128(reinterpret_cast<const __m128i*>(c_plane+x));
     __m128i zero = _mm_setzero_si128();
-    __m128i low = _mm_unpacklo_epi8(current, zero);
-    __m128i high = _mm_unpackhi_epi8(current, zero);
-    __m128i thresh = _mm_set1_epi16(threshold);
+     __m128i low = _mm_unpacklo_epi8(current, zero);
+     __m128i high = _mm_unpackhi_epi8(current, zero);
 
     for (int plane = planes - 1; plane >= 0; --plane) {
       __m128i p = _mm_load_si128(reinterpret_cast<const __m128i*>(planeP[plane] + x));
@@ -1375,6 +1384,25 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
       high = _mm_adds_epu16(high, add_high);
     }
 
+    __m128i acc;
+    if (hasSSSE3) {
+      // SSSE3: _mm_mulhrs_epi16: r0 := INT16(((a0 * b0) + 0x4000) >> 15)
+      low = _mm_mulhrs_epi16(low, div_vector);
+      high = _mm_mulhrs_epi16(high, div_vector);
+    }
+    else {
+      // (x*2 * 65536/N + 65536) / 65536 / 2
+      // Hi16(x*2 * 65536/N + 1) >> 1
+      low = _mm_mulhi_epu16(_mm_slli_epi16(low, 1), div_vector);
+      low = _mm_adds_epu16(low, halfdiv_vector);
+      low = _mm_srli_epi16(low, 1);
+      high = _mm_mulhi_epu16(_mm_slli_epi16(high, 1), div_vector);
+      high = _mm_adds_epu16(high, halfdiv_vector);
+      high = _mm_srli_epi16(high, 1);
+    }
+    acc = _mm_packus_epi16(low, high);
+
+    /* old, slowish
     __m128i low_low   = ts_multiply_repack_sse2(_mm_unpacklo_epi16(low, zero), div_vector, halfdiv_vector, zero);
     __m128i low_high  = ts_multiply_repack_sse2(_mm_unpackhi_epi16(low, zero), div_vector, halfdiv_vector, zero);
     __m128i high_low  = ts_multiply_repack_sse2(_mm_unpacklo_epi16(high, zero), div_vector, halfdiv_vector, zero);
@@ -1382,8 +1410,69 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
 
     low = _mm_unpacklo_epi32(low_low, low_high);
     high = _mm_unpacklo_epi32(high_low, high_high);
-
     __m128i acc = _mm_unpacklo_epi64(low, high);
+    */
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
+  }
+}
+
+
+// fast: maxThreshold (255) simple accumulate for average
+template<bool maxThreshold, bool hasSSE4, bool lessThan16bit>
+static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div, int bits_per_pixel) {
+  // threshold:
+  // 16 bits: 16 bit value (orig threshold scaled by bits_per_pixel)
+ // thresh;
+  int max_pixel_value = (1 << bits_per_pixel) - 1;
+  __m128i limit = _mm_set1_epi16(max_pixel_value); //used for clamping when 10-14 bits
+  // halfdiv_vector = _mm_set1_epi32(1); // n/a
+  __m128 div_vector = _mm_set1_ps(1.0f / (planes + 1));
+  __m128i thresh = _mm_set1_epi16(threshold);
+
+
+  for (size_t x = 0; x < width; x+=16) {
+    __m128i current = _mm_load_si128(reinterpret_cast<const __m128i*>(c_plane+x));
+    __m128i zero = _mm_setzero_si128();
+    __m128i low, high;
+    low = _mm_unpacklo_epi16(current, zero);
+    high = _mm_unpackhi_epi16(current, zero);
+
+    for (int plane = planes - 1; plane >= 0; --plane) {
+      __m128i p = _mm_load_si128(reinterpret_cast<const __m128i*>(planeP[plane] + x));
+
+      __m128i add_low, add_high;
+      if (maxThreshold) {
+        // fast: simple accumulate for average
+        add_low = _mm_unpacklo_epi16(p, zero);
+        add_high = _mm_unpackhi_epi16(p, zero);
+      } else {
+        __m128i p_greater_t = _mm_subs_epu16(p, thresh);
+        __m128i c_greater_t = _mm_subs_epu16(current, thresh);
+        __m128i over_thresh = _mm_or_si128(p_greater_t, c_greater_t); //abs(p-c) - t == (satsub(p,c) | satsub(c,p)) - t =kinda= satsub(p,t) | satsub(c,t)
+
+        __m128i leq_thresh = _mm_cmpeq_epi16(over_thresh, zero); //abs diff lower or equal to threshold
+
+        __m128i andop = _mm_and_si128(leq_thresh, p);
+        __m128i andnop = _mm_andnot_si128(leq_thresh, current);
+        __m128i blended = _mm_or_si128(andop, andnop); //abs(p-c) <= thresh ? p : c
+
+        add_low = _mm_unpacklo_epi16(blended, zero);
+        add_high = _mm_unpackhi_epi16(blended, zero);
+      }
+      low = _mm_add_epi32(low, add_low);
+      high = _mm_add_epi32(high, add_high);
+    }
+
+    __m128i acc;
+    low = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(low), div_vector));
+    high = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(high), div_vector));
+    if (hasSSE4)
+      acc = _mm_packus_epi32(low, high); // sse4
+    else
+      acc = _MM_PACKUS_EPI32(low, high);
+    if (lessThan16bit)
+      acc = _mm_min_epu16(acc, limit);
 
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
   }
@@ -1451,7 +1540,7 @@ static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, 
 
 static void accumulate_line_yuy2(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, BYTE threshold_luma, BYTE threshold_chroma, int div, bool aligned16, IScriptEnvironment* env) {
   if ((env->GetCPUFlags() & CPUF_SSE2) && aligned16 && width >= 16) {
-    accumulate_line_sse2<false>(c_plane, planeP, planes, width, threshold_luma | (threshold_chroma << 8), div);
+    accumulate_line_sse2<false, false>(c_plane, planeP, planes, width, threshold_luma | (threshold_chroma << 8), div);
   } else
 #ifdef X86_32
   if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
@@ -1462,15 +1551,50 @@ static void accumulate_line_yuy2(BYTE* c_plane, const BYTE** planeP, int planes,
 }
 
 static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, BYTE threshold, int div, bool aligned16, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
+  // todo SSE2 float
   // threshold == 255: simple average
-  // todo: sse for 16bit/float
   bool maxThreshold = (threshold == 255);
-  if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && aligned16 && rowsize >= 16) {
-    if(maxThreshold)
-      accumulate_line_sse2<true>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+  if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4) && aligned16 && rowsize >= 16) {
+    // <maxThreshold, hasSSE4, lessThan16bit>
+    if(maxThreshold) {
+      if(bits_per_pixel < 16)
+        accumulate_line_16_sse2<true, true, true>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+      else
+        accumulate_line_16_sse2<true, true, false>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+    }
+    else {
+      if (bits_per_pixel < 16)
+        accumulate_line_16_sse2<false, true, true>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+      else
+        accumulate_line_16_sse2<false, true, false>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+    }
+  } else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && aligned16 && rowsize >= 16) {
+    // <maxThreshold, hasSSE4, lessThan16bit>
+    if(maxThreshold) {
+      if(bits_per_pixel < 16)
+        accumulate_line_16_sse2<true, false, true>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+      else
+        accumulate_line_16_sse2<true, false, false>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+    }
+    else {
+      if (bits_per_pixel < 16)
+        accumulate_line_16_sse2<false, false, true>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+      else
+        accumulate_line_16_sse2<false, false, false>(c_plane, planeP, planes, rowsize, threshold << bits_per_pixel, div, bits_per_pixel);
+    }
+  }
+  else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSSE3) && aligned16 && rowsize >= 16) {
+    if (maxThreshold) // <maxThreshold, hasSSSE3
+      accumulate_line_sse2<true, true>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
     else
-      accumulate_line_sse2<false>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
-  } else
+      accumulate_line_sse2<false, true>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+  } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && aligned16 && rowsize >= 16) {
+    if (maxThreshold)
+      accumulate_line_sse2<true, false>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+    else
+      accumulate_line_sse2<false, false>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+  }
+  else
 #ifdef X86_32
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX) && rowsize >= 8) {
     size_t mod8_width = rowsize / 8 * 8;
