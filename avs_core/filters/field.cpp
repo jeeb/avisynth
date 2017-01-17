@@ -582,25 +582,28 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
     }
   }
   else {
-    BYTE *dstpU = dst->GetWritePtr(PLANAR_U);
-    BYTE *dstpV = dst->GetWritePtr(PLANAR_V);
+    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+    bool isYUY2 = vi.IsYUY2();
+    int dstpitch[4];
+    BYTE *dstp[4];
+    for (int p = 0; p < (isYUY2 ? 1 : vi.NumComponents()); ++p) {
+      int plane = planes[p];
+      dstpitch[p] = dst->GetPitch(plane);
+      dstp[p] = dst->GetWritePtr(plane);
+    }
+
     const int dstpitchUV = dst->GetPitch(PLANAR_U);
     for (int i=b; i<e; i++) {
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);
-      env->BitBlt(dstp, dstpitch * period,
-              src->GetReadPtr(), src->GetPitch(),
-              src->GetRowSize(), src->GetHeight() );
-      dstp += dstpitch;
-      if (dstpitchUV) {
-        env->BitBlt(dstpU, dstpitchUV * period,
-                src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U),
-                src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U) );
-        env->BitBlt(dstpV, dstpitchUV * period,
-                src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V),
-                src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V) );
-        dstpU += dstpitchUV;
-        dstpV += dstpitchUV;
+      for (int p = 0; p < (isYUY2 ? 1 : vi.NumComponents()); ++p) {
+        int plane = planes[p];
+        env->BitBlt(dstp[p], dstpitch[p] * period,
+          src->GetReadPtr(plane), src->GetPitch(plane),
+          src->GetRowSize(plane), src->GetHeight(plane) );
+        dstp[p] += dstpitch[p];
       }
     }
   }
