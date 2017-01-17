@@ -2122,9 +2122,32 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
     BYTE *dstpG = dst->GetWritePtr(PLANAR_G);
     BYTE *dstpB = dst->GetWritePtr(PLANAR_B);
     BYTE *dstpR = dst->GetWritePtr(PLANAR_R);
+
+    // copy or fill alpha
     BYTE *dstpA;
-    if(targetHasAlpha)
+    if (targetHasAlpha) {
       dstpA = dst->GetWritePtr(PLANAR_A);
+      int heightA = dst->GetHeight(PLANAR_A);
+      int dst_pitchA = dst->GetPitch(PLANAR_A);
+        // simple copy
+      if(src->GetRowSize(PLANAR_A)) // vi.IsYUVA() no-no! vi is already the target video type
+        env->BitBlt(dstpA, dst_pitchA, src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), src->GetRowSize(PLANAR_A_ALIGNED), src->GetHeight(PLANAR_A));
+      else {
+        // fill default transparency
+        switch (vi.ComponentSize())
+        {
+        case 1:
+          fill_plane<BYTE>(dstpA, heightA, dst_pitchA, 255);
+          break;
+        case 2:
+          fill_plane<uint16_t>(dstpA, heightA, dst_pitchA, (1 << vi.BitsPerComponent()) - 1);
+          break;
+        case 4:
+          fill_plane<float>(dstpA, heightA, dst_pitchA, 1.0f);
+          break;
+        }
+      }
+    }
 
     int dst_pitchG = dst->GetPitch(PLANAR_G);
     int dst_pitchB = dst->GetPitch(PLANAR_B);
@@ -2523,7 +2546,11 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
     return pix_type == VideoInfo::CS_YV12 || pix_type == VideoInfo::CS_I420 ||
       pix_type == VideoInfo::CS_YUV420P10 || pix_type == VideoInfo::CS_YUV420P12 ||
       pix_type == VideoInfo::CS_YUV420P14 || pix_type == VideoInfo::CS_YUV420P16 ||
-      pix_type == VideoInfo::CS_YUV420PS;
+      pix_type == VideoInfo::CS_YUV420PS ||
+      pix_type == VideoInfo::CS_YUVA420 ||
+      pix_type == VideoInfo::CS_YUVA420P10 || pix_type == VideoInfo::CS_YUVA420P12 ||
+      pix_type == VideoInfo::CS_YUVA420P14 || pix_type == VideoInfo::CS_YUVA420P16 ||
+      pix_type == VideoInfo::CS_YUVA420PS;
   };
 
   if (!Is420(vi.pixel_type) && !Is420(dst_space))
@@ -2673,31 +2700,6 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
               src->GetRowSize(PLANAR_Y_ALIGNED), src->GetHeight(PLANAR_Y));
 
-  BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
-  BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
-  const int height = dst->GetHeight(PLANAR_U);
-  const int dst_pitch = dst->GetPitch(PLANAR_U);
-
-  if (Yinput) {
-    switch (vi.ComponentSize())
-    {
-      case 1:
-        fill_chroma<BYTE>(dstp_u, dstp_v, height, dst_pitch, 0x80);
-        break;
-      case 2:
-        fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 1 << (vi.BitsPerComponent() - 1));
-        break;
-      case 4:
-        fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, 0.5f);
-        break;
-    }
-  } else {
-    src = Usource->GetFrame(n, env);
-    env->BitBlt(dstp_u, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
-    src = Vsource->GetFrame(n, env);
-    env->BitBlt(dstp_v, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
-  }
-
   // alpha. if pitch is zero -> no alpha channel
   const int dst_pitchA = dst->GetPitch(PLANAR_A);
   BYTE* dstp_a = (dst_pitchA == 0) ? nullptr : dst->GetWritePtr(PLANAR_A);
@@ -2721,8 +2723,32 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
         fill_plane<float>(dstp_a, heightA, dst_pitchA, 1.0f);
         break;
       }
-
     }
+  }
+
+  BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
+  const int height = dst->GetHeight(PLANAR_U);
+  const int dst_pitch = dst->GetPitch(PLANAR_U);
+
+  if (Yinput) {
+    switch (vi.ComponentSize())
+    {
+      case 1:
+        fill_chroma<BYTE>(dstp_u, dstp_v, height, dst_pitch, 0x80);
+        break;
+      case 2:
+        fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 1 << (vi.BitsPerComponent() - 1));
+        break;
+      case 4:
+        fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, 0.5f);
+        break;
+    }
+  } else {
+    src = Usource->GetFrame(n, env);
+    env->BitBlt(dstp_u, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
+    src = Vsource->GetFrame(n, env);
+    env->BitBlt(dstp_v, dst_pitch, src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y_ALIGNED), height);
   }
 
   return dst;
