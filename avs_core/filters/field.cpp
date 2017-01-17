@@ -97,10 +97,10 @@ SeparateColumns::SeparateColumns(PClip _child, int _interval, IScriptEnvironment
 
   if (vi.IsYUY2() && vi.width & 1)
     env->ThrowError("SeparateColumns: YUY2 output width must be even.");
-  if (vi.IsYV12() && vi.width & 1)
-    env->ThrowError("SeparateColumns: YV12 output width must be even.");
-  if (vi.IsYV16() && vi.width & 1)
-    env->ThrowError("SeparateColumns: YV16 output width must be even.");
+  if (vi.Is420() && vi.width & 1)
+    env->ThrowError("SeparateColumns: YUV420 output width must be even.");
+  if (vi.Is422() && vi.width & 1)
+    env->ThrowError("SeparateColumns: YUV422 output width must be even.");
   if (vi.IsYV411() && vi.width & 3)
     env->ThrowError("SeparateColumns: YV411 output width must be mod 4.");
 }
@@ -115,48 +115,47 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (vi.IsPlanar()) {
-    const int srcpitchY = src->GetPitch(PLANAR_Y);
-    const int dstpitchY = dst->GetPitch(PLANAR_Y);
-    const int heightY = dst->GetHeight(PLANAR_Y);
-    const int rowsizeY = dst->GetRowSize(PLANAR_Y);
+    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+    for (int p = 0; p < vi.NumComponents(); ++p) {
+      int plane = planes[p];
+      const int srcpitch = src->GetPitch(plane);
+      const int dstpitch = dst->GetPitch(plane);
+      const int height = dst->GetHeight(plane);
+      const int rowsize_pixels = dst->GetRowSize(plane) / vi.ComponentSize();
 
-    const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
-    BYTE* dstpY = dst->GetWritePtr(PLANAR_Y);
+      const BYTE* srcp = src->GetReadPtr(plane);
+      BYTE* dstp = dst->GetWritePtr(plane);
 
-    for (int yY=0; yY<heightY; yY+=1) {
-      for (int i=m, j=0; j<rowsizeY; i+=interval, j+=1) {
-        dstpY[j] = srcpY[i];
-      }
-      srcpY += srcpitchY;
-      dstpY += dstpitchY;
-    }
-
-    const int srcpitchUV = src->GetPitch(PLANAR_U);
-    const int dstpitchUV = dst->GetPitch(PLANAR_U);
-    const int heightUV = dst->GetHeight(PLANAR_U);
-    const int rowsizeUV = dst->GetRowSize(PLANAR_U);
-
-    if (dstpitchUV) {
-      const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
-      BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
-
-      for (int yV=0; yV<heightUV; yV+=1) {
-        for (int i=m, j=0; j<rowsizeUV; i+=interval, j+=1) {
-          dstpV[j] = srcpV[i];
+      switch (vi.ComponentSize()) {
+      case 1:
+        for (int y = 0; y < height; y++) {
+          for (int i = m, j = 0; j < rowsize_pixels; i += interval, j += 1) {
+            dstp[j] = srcp[i];
+          }
+          srcp += srcpitch;
+          dstp += dstpitch;
         }
-        srcpV += srcpitchUV;
-        dstpV += dstpitchUV;
-      }
-
-      const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
-      BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
-
-      for (int yU=0; yU<heightUV; yU+=1) {
-        for (int i=m, j=0; j<rowsizeUV; i+=interval, j+=1) {
-          dstpU[j] = srcpU[i];
+        break;
+      case 2:
+        for (int y = 0; y < height; y++) {
+          for (int i = m, j = 0; j < rowsize_pixels; i += interval, j += 1) {
+            reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(srcp)[i];
+          }
+          srcp += srcpitch;
+          dstp += dstpitch;
         }
-        srcpU += srcpitchUV;
-        dstpU += dstpitchUV;
+        break;
+      case 4:
+        for (int y = 0; y < height; y++) {
+          for (int i = m, j = 0; j < rowsize_pixels; i += interval, j += 1) {
+            reinterpret_cast<float *>(dstp)[j] = reinterpret_cast<const float *>(srcp)[i];
+          }
+          srcp += srcpitch;
+          dstp += dstpitch;
+        }
+        break;
       }
     }
   }
@@ -186,26 +185,41 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
       dstp += dstpitch;
     }
   }
-  else if (vi.IsRGB24()) {
+  else if (vi.IsRGB24() || vi.IsRGB48()) {
     const int srcpitch = src->GetPitch();
     const int dstpitch = dst->GetPitch();
     const int height = dst->GetHeight();
-    const int rowsize = dst->GetRowSize();
+    const int rowsize_pixels = dst->GetRowSize() / vi.ComponentSize();
 
     const BYTE* srcp = src->GetReadPtr();
     BYTE* dstp = dst->GetWritePtr();
 
-    const int m3 = m*3;
-    const int interval3 = interval*3;
+    const int m3 = m * 3;
+    const int interval3 = interval * 3;
 
-    for (int y=0; y<height; y+=1) {
-      for (int i=m3, j=0; j<rowsize; i+=interval3, j+=3) {
-        dstp[j+0] = srcp[i+0];
-        dstp[j+1] = srcp[i+1];
-        dstp[j+2] = srcp[i+2];
+    if (vi.IsRGB24())
+    {
+      for (int y = 0; y < height; y += 1) {
+        for (int i = m3, j = 0; j < rowsize_pixels; i += interval3, j += 3) {
+          dstp[j + 0] = srcp[i + 0];
+          dstp[j + 1] = srcp[i + 1];
+          dstp[j + 2] = srcp[i + 2];
+        }
+        srcp += srcpitch;
+        dstp += dstpitch;
       }
-      srcp += srcpitch;
-      dstp += dstpitch;
+    }
+    else {
+      // RGB48
+      for (int y = 0; y < height; y += 1) {
+        for (int i = m3, j = 0; j < rowsize_pixels; i += interval3, j += 3) {
+          reinterpret_cast<uint16_t *>(dstp)[j + 0] = reinterpret_cast<const uint16_t *>(srcp)[i + 0];
+          reinterpret_cast<uint16_t *>(dstp)[j + 1] = reinterpret_cast<const uint16_t *>(srcp)[i + 1];
+          reinterpret_cast<uint16_t *>(dstp)[j + 2] = reinterpret_cast<const uint16_t *>(srcp)[i + 2];
+        }
+        srcp += srcpitch;
+        dstp += dstpitch;
+      }
     }
   }
   else if (vi.IsRGB32()) {
@@ -223,6 +237,23 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
       }
       srcp4 += srcpitch4;
       dstp4 += dstpitch4;
+    }
+  }
+  else if (vi.IsRGB64()) {
+    const int srcpitch8 = src->GetPitch()>>3;
+    const int dstpitch8 = dst->GetPitch()>>3;
+    const int height = dst->GetHeight();
+    const int rowsize8 = dst->GetRowSize()>>3;
+
+    const uint64_t* srcp8 = (const uint64_t*)src->GetReadPtr();
+    uint64_t* dstp8 = (uint64_t*)dst->GetWritePtr();
+
+    for (int y=0; y<height; y+=1) {
+      for (int i=m, j=0; j<rowsize8; i+=interval, j+=1) {
+        dstp8[j] = srcp8[i];
+      }
+      srcp8 += srcpitch8;
+      dstp8 += dstpitch8;
     }
   }
   return dst;
@@ -485,7 +516,7 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
   BYTE *dstp = dst->GetWritePtr();
   const int dstpitch = dst->GetPitch();
 
-  if (vi.IsRGB()) { // RGB upsidedown
+  if (vi.IsRGB() && !vi.IsPlanar()) { // RGB upsidedown
     dstp += dstpitch * period;
     for (int i=b; i<e; i++) {
       dstp -= dstpitch;
