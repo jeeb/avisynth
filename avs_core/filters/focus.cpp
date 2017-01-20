@@ -1627,16 +1627,28 @@ static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size
     }
 }
 
-
-static int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
+// may also used from conditionalfunctions
+// packed rgb template masks out alpha plane for RGB32
+template<bool packedRGB3264>
+int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
   size_t mod16_width = rowsize / 16 * 16;
   int result = 0;
   __m128i sum = _mm_setzero_si128();
+
+  __m128i rgb_mask;
+  if (packedRGB3264) {
+    rgb_mask = _mm_set1_epi32(0x00FFFFFF);
+  }
+
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < mod16_width; x+=16) {
       __m128i cur = _mm_load_si128(reinterpret_cast<const __m128i*>(cur_ptr + x));
       __m128i other = _mm_load_si128(reinterpret_cast<const __m128i*>(other_ptr + x));
+      if (packedRGB3264) {
+        cur = _mm_and_si128(cur, rgb_mask);  // mask out A channel
+        other = _mm_and_si128(other, rgb_mask);
+      }
       __m128i sad = _mm_sad_epu8(cur, other);
       sum = _mm_add_epi32(sum, sad);
     }
@@ -1654,13 +1666,29 @@ static int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
   return result;
 }
 
-template<typename pixel_t>
-__int64 calculate_sad16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
+// instantiate
+template int calculate_sad_sse2<false>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template int calculate_sad_sse2<true>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+
+
+// works for uint8_t, but there is a specific, bit faster function above
+// also used from conditionalfunctions
+// packed rgb template masks out alpha plane for RGB32/RGB64
+template<typename pixel_t, bool packedRGB3264>
+__int64 calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
   size_t mod16_width = rowsize / 16 * 16;
 
   __m128i zero = _mm_setzero_si128();
   __int64 totalsum = 0; // fullframe SAD exceeds int32 at 8+ bit
+
+  __m128i rgb_mask;
+  if (packedRGB3264) {
+    if (sizeof(pixel_t) == 1)
+      rgb_mask = _mm_set1_epi32(0x00FFFFFF);
+    else
+      rgb_mask = _mm_set_epi32(0x0000FFFF,0xFFFFFFFF,0x0000FFFF,0xFFFFFFFF);
+  }
 
   for ( size_t y = 0; y < height; y++ )
   {
@@ -1670,6 +1698,10 @@ __int64 calculate_sad16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur
       __m128i src1, src2;
       src1 = _mm_load_si128((__m128i *) (cur_ptr + x));   // 16 bytes or 8 words
       src2 = _mm_load_si128((__m128i *) (other_ptr + x));
+      if (packedRGB3264) {
+        src1 = _mm_and_si128(src1, rgb_mask); // mask out A channel
+        src2 = _mm_and_si128(src2, rgb_mask);
+      }
       if(sizeof(pixel_t) == 1) {
         // this is uint_16 specific, but leave here for sample
         sum = _mm_add_epi32(sum, _mm_sad_epu8(src1, src2)); // sum0_32, 0, sum1_32, 0
@@ -1695,8 +1727,10 @@ __int64 calculate_sad16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur
       sum = _mm_hadd_epi32(sum, zero);  // A1+A2+B1+B2, 0+0+0+0, 0+0+0+0, 0+0+0+0
       */
     }
+
     // sum here: two 32 bit partial result: sum1 0 sum2 0
     __m128i sum_hi = _mm_unpackhi_epi64(sum, zero);
+    // or: __m128i sum_hi = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
     sum = _mm_add_epi32(sum, sum_hi);
     int rowsum = _mm_cvtsi128_si32(sum);
 
@@ -1714,6 +1748,13 @@ __int64 calculate_sad16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur
   }
   return totalsum;
 }
+
+// instantiate
+template __int64 calculate_sad_8_or_16_sse2<uint8_t, false>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template __int64 calculate_sad_8_or_16_sse2<uint8_t, true>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template __int64 calculate_sad_8_or_16_sse2<uint16_t, false>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template __int64 calculate_sad_8_or_16_sse2<uint16_t, true>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+
 
 #ifdef X86_32
 static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
@@ -1777,7 +1818,7 @@ static __int64 calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int c
 static __int64 calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   // todo: sse for 16bit/float
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
-    return (__int64)calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
+    return (__int64)calculate_sad_sse2<false>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #ifdef X86_32
   if ((pixelsize ==1 ) && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && rowsize >= 8) {
@@ -1786,7 +1827,7 @@ static __int64 calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur
 #endif
   // sse2 uint16_t
   if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
-    return calculate_sad16_sse2<uint16_t>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height) >> (bits_per_pixel-8);
+    return calculate_sad_8_or_16_sse2<uint16_t, false>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height) >> (bits_per_pixel-8);
   }
 
   switch(pixelsize) {
