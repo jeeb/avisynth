@@ -41,6 +41,7 @@
 #include <emmintrin.h>
 #include <limits>
 #include <algorithm>
+#include "filters/focus.h" // sad
 
 extern const AVSFunction Conditional_funtions_filters[] = {
   {  "AverageLuma",    BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_Y },
@@ -141,6 +142,7 @@ static double get_sum_of_pixels_c(const BYTE* srcp8, size_t height, size_t width
   return (double)accum;
 }
 
+// sum: sad with zero
 static double get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   size_t mod16_width = width / 16 * 16;
   __int64 result = 0;
@@ -312,6 +314,8 @@ static double get_sad_rgb_c(const BYTE* c_plane8, const BYTE* t_plane8, size_t h
 
 }
 
+#if 0
+// duplicate code, let's use sad from focus.cpp, which is good for big sads (int64)
 static size_t get_sad_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
   size_t mod16_width = width / 16 * 16;
   size_t result = 0;
@@ -336,12 +340,23 @@ static size_t get_sad_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t he
   result += _mm_cvtsi128_si32(sum);
   return result;
 }
+#endif
 
+#if 0
+// duplicate code, let's use sad from focus.cpp, which is good for big sads (int64)
+// for RGB32/64
+template<typename pixel_t>
 static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
+  // width is rowsize here
   size_t mod16_width = width / 16 * 16;
   size_t result = 0;
+  __m128i zero = _mm_setzero_si128();
   __m128i sum = _mm_setzero_si128();
-  __m128i rgb_mask = _mm_set1_epi32(0x00FFFFFF);
+  __m128i rgb_mask;
+  if(sizeof(pixel_t) == 1)
+    rgb_mask = _mm_set1_epi32(0x00FFFFFF);
+  else
+    rgb_mask = _mm_set_epi32(0x0000FFFF,0xFFFFFFFF,0x0000FFFF,0xFFFFFFFF);
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < mod16_width; x+=16) {
@@ -349,8 +364,19 @@ static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_
       __m128i other = _mm_load_si128(reinterpret_cast<const __m128i*>(other_ptr + x));
       src = _mm_and_si128(src, rgb_mask);
       other = _mm_and_si128(other, rgb_mask);
-      __m128i sad = _mm_sad_epu8(src, other);
-      sum = _mm_add_epi32(sum, sad);
+      if (sizeof(pixel_t) == 1) {
+        __m128i sad = _mm_sad_epu8(src, other); // Sads in lo64/hi64
+        sum = _mm_add_epi32(sum, sad);
+      }
+      else {
+        __m128i greater_t = _mm_subs_epu16(src, other); // unsigned sub with saturation
+        __m128i smaller_t = _mm_subs_epu16(other, src);
+        __m128i absdiff = _mm_or_si128(greater_t, smaller_t); //abs(s1-s2)  == (satsub(s1,s2) | satsub(s2,s1))
+                                                              // 8 x uint16 absolute differences
+        sum = _mm_add_epi32(sum, _mm_unpacklo_epi16(absdiff, zero));
+        sum = _mm_add_epi32(sum, _mm_unpackhi_epi16(absdiff, zero));
+        // sum0_32, sum1_32, sum2_32, sum3_32
+      }
     }
 
     for (size_t x = mod16_width; x < width; ++x) {
@@ -360,11 +386,24 @@ static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_
     src_ptr += src_pitch;
     other_ptr += other_pitch;
   }
+  // summing up partial sums,
+  if(sizeof(pixel_t) == 2) {
+    // at 16 bits: we have 4 integers for sum: a0 a1 a2 a3
+    __m128i a0_a1 = _mm_unpacklo_epi32(sum, zero); // a0 0 a1 0
+    __m128i a2_a3 = _mm_unpackhi_epi32(sum, zero); // a2 0 a3 0
+    sum = _mm_add_epi32( a0_a1, a2_a3 ); // a0+a2, 0, a1+a3, 0
+                                         /* SSSE3: told to be not too fast
+                                         sum = _mm_hadd_epi32(sum, zero);  // A1+A2, B1+B2, 0+0, 0+0
+                                         sum = _mm_hadd_epi32(sum, zero);  // A1+A2+B1+B2, 0+0+0+0, 0+0+0+0, 0+0+0+0
+                                         */
+  }
+
   __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
   sum = _mm_add_epi32(sum, upper);
   result += _mm_cvtsi128_si32(sum);
   return result;
 }
+#endif
 
 #ifdef X86_32
 
@@ -462,14 +501,17 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
   PVideoFrame src2 = child2->GetFrame(n,env);
 
   int pixelsize = vi.ComponentSize();
+  int bits_per_pixel = vi.BitsPerComponent();
 
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
   const int height = src->GetHeight(plane);
-  const int width = src->GetRowSize(plane) / pixelsize;
+  const int rowsize = src->GetRowSize(plane);
+  const int width = rowsize / pixelsize;
   const int pitch = src->GetPitch(plane);
   const int height2 = src2->GetHeight(plane);
-  const int width2 = src2->GetRowSize(plane) / pixelsize;
+  const int rowsize2 = src2->GetRowSize(plane);
+  const int width2 = rowsize2 / pixelsize;
   const int pitch2 = src2->GetPitch(plane);
 
   if(vi.ComponentSize() != vi2.ComponentSize())
@@ -485,32 +527,40 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
   bool sum_in_32bits;
   if (pixelsize == 4)
     sum_in_32bits = false;
-  else // worst case
-    sum_in_32bits = ((__int64)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
+  else // worst case check
+    sum_in_32bits = ((__int64)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
 
   double sad = 0.0;
+
+  // for c: width, for sse: rowsize
   if (vi.IsRGB32() || vi.IsRGB64()) {
-    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = (double)get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      // int64 internally, no sum_in_32bits
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,true>(srcp, srcp2, pitch, pitch2, width*pixelsize, height); // in focus. 21.68/21.39
+    } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-        sad = get_sad_rgb_isse(srcp, srcp2, height, width, pitch, pitch2);
+        sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
       } else 
 #endif
       {
-        if(pixelsize==1)
-          sad = get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
+        if (pixelsize == 1)
+          sad = (double)get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
         else // pixelsize==2
-          sad = get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
+          sad = (double)get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
-    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = (double)get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    if ((pixelsize==2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else
+      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-        sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
+        sad = get_sad_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
       } else 
 #endif
       {
@@ -520,14 +570,13 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
           sad = get_sad_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
         else // pixelsize==4
           sad = get_sad_c<float>(srcp, srcp2, height, width, pitch, pitch2);
-
       }
   }
 
   float f;
 
   if (vi.IsRGB32() || vi.IsRGB64())
-    f = (float)((sad * 4) / (height * width * 3));
+    f = (float)((sad * 4) / (height * width * 3)); // why * 4/3? alpha plane was masked out, anyway
   else
     f = (float)(sad / (height * width));
 
@@ -563,32 +612,38 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
   PVideoFrame src2 = child->GetFrame(n2,env);
 
   int pixelsize = vi.ComponentSize();
+  int bits_per_pixel = vi.BitsPerComponent();
 
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
   int height = src->GetHeight(plane);
-  int width = src->GetRowSize(plane) / pixelsize;
+  int rowsize = src->GetRowSize(plane);
+  int width = rowsize / pixelsize;
   int pitch = src->GetPitch(plane);
   int pitch2 = src2->GetPitch(plane);
 
   if (width == 0 || height == 0)
-    env->ThrowError("Plane Difference: No chroma planes in Y8!");
+    env->ThrowError("Plane Difference: No chroma planes in greyscale clip!");
 
   int total_pixels = width*height;
   bool sum_in_32bits;
   if (pixelsize == 4)
     sum_in_32bits = false;
-  else // worst case
-    sum_in_32bits = ((__int64)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
+  else // worst case check
+    sum_in_32bits = ((__int64)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
 
   double sad = 0;
+  // for c: width, for sse: rowsize
   if (vi.IsRGB32() || vi.IsRGB64()) {
-    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = (double)get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      // int64 internally, no sum_in_32bits
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus. 21.68/21.39
+    } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-        sad = get_sad_rgb_isse(srcp, srcp2, height, width, pitch, pitch2);
+        sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
       } else 
 #endif
       {
@@ -598,8 +653,10 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
           sad = get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
-    if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
-      sad = (double)get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    if ((pixelsize==2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
     } else
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
@@ -660,7 +717,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
     env->ThrowError("MinMax: Image must be planar");
 
   int pixelsize = vi.ComponentSize();
-  int buffersize = pixelsize == 1 ? 256 : 65536; // 65536 for float, too
+  int buffersize = pixelsize == 1 ? 256 : 65536; // 65536 for float, too, reason for 10-14 bits: avoid overflow
+  int real_buffersize = pixelsize == 4 ? 65536 : (1 << vi.BitsPerComponent());
   uint32_t *accum_buf = new uint32_t[buffersize];
 
   // Get current frame number
@@ -709,6 +767,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
     }
   } else { //pixelsize==4 float
     // for float results are always checked with 16 bit precision only
+    // or else we cannot populate non-digital steps with this standard method
     for (int y=0;y<h;y++) {
       for (int x=0;x<w;x++) {
         accum_buf[clamp((int)(reinterpret_cast<const float *>(srcp)[x] * 65535.0f), 0, 65535)]++;
@@ -728,8 +787,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
     // Find the value we need.
   if (mode == MIN) {
     unsigned int counted=0;
-    retval = buffersize - 1;
-    for (int i = 0; i< buffersize;i++) {
+    retval = real_buffersize - 1;
+    for (int i = 0; i< real_buffersize;i++) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         retval = i;
@@ -739,7 +798,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
   } else if (mode == MAX) {
     unsigned int counted=0;
     retval = 0;
-    for (int i = buffersize-1; i>=0;i--) {
+    for (int i = real_buffersize-1; i>=0;i--) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         retval = i;
@@ -750,7 +809,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
     unsigned int counted=0;
     int i, t_min = 0;
     // Find min
-    for (i = 0; i < buffersize;i++) {
+    for (i = 0; i < real_buffersize;i++) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         t_min=i;
@@ -760,8 +819,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
 
     // Find max
     counted=0;
-    int t_max = buffersize-1;
-    for (i = buffersize-1; i>=0;i--) {
+    int t_max = real_buffersize-1;
+    for (i = real_buffersize-1; i>=0;i--) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         t_max=i;
@@ -778,5 +837,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
   delete[] accum_buf;
   _RPT2(0, "End of MinMax cn=%d n=%d\r", cn.AsInt(), n);
 
-  return AVSValue(retval);
+  if (pixelsize == 4)
+    return AVSValue((double)retval / (real_buffersize-1)); // convert back to float, /65535
+  else
+    return AVSValue(retval);
 }
