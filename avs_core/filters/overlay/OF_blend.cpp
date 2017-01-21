@@ -69,13 +69,15 @@ void OL_BlendImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInter
 
   if(of_mode == OF_Blend) {
     planeindex_from = 0;
-    planeindex_to = 2;
+    planeindex_to = greyscale ? 0 : 2;
   }
   else if (of_mode == OF_Luma) {
     planeindex_from = 0;
     planeindex_to = 0;
   }
   else if (of_mode == OF_Chroma) {
+    if (greyscale)
+      return;
     planeindex_from = 1;
     planeindex_to = 2;
   }
@@ -270,13 +272,15 @@ void OL_BlendImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal*
 
   if(of_mode == OF_Blend) {
     planeindex_from = 0;
-    planeindex_to = 2;
+    planeindex_to = greyscale ? 0 : 2;
   }
   else if (of_mode == OF_Luma) {
     planeindex_from = 0;
     planeindex_to = 0;
   }
   else if (of_mode == OF_Chroma) {
+    if (greyscale)
+      return;
     planeindex_from = 1;
     planeindex_to = 2;
   }
