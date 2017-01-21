@@ -61,10 +61,6 @@ public:
 
 private:
   static OverlayFunction* SelectFunction(const char* name, int &of_mode, IScriptEnvironment* env);
-#if 0
-  ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
-  static ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env, bool full_range);
-#endif
   static void ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* overlay, int x, int y);
   static void FetchConditionals(IScriptEnvironment* env, int*, float *, int*, int*, bool);
 
@@ -73,15 +69,7 @@ private:
   VideoInfo* inputVi;
   VideoInfo* outputVi;
   VideoInfo* viInternalWorkingFormat;
-
-  // AVS+: these are obsolate
-#if 0
-  ConvertFrom444* outputConv;
-
-  ConvertTo444* inputConv;
-  ConvertTo444* overlayConv;
-  ConvertTo444* maskConv;
-#endif
+  VideoInfo* viInternalOverlayWorkingFormat; // different size
 
   PClip overlay;
   PClip mask;
@@ -91,7 +79,6 @@ private:
   bool ignore_conditional;
   bool full_range;
   int offset_x, offset_y;
-  int inputCS;
   bool use444; // conversionless support
 
   const char* name; // Blend parameter
