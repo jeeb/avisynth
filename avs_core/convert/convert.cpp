@@ -687,9 +687,16 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   // YUY2
   if (vi.IsYUV()) // at this point IsYUV means YUY2 (non-planar)
   {
-    if (target_rgbtype==48 || target_rgbtype==64 || target_rgbtype < 0)
-        env->ThrowError("ConvertToRGB: conversion from YUY2 is allowed only to 8 bit packed RGB");
-    return new ConvertToRGB(clip, target_rgbtype==24, matrix, env);
+    if (target_rgbtype == 48 || target_rgbtype == 64)
+      env->ThrowError("ConvertToRGB: conversion from YUY2 is allowed only to 8 bits");
+    if (target_rgbtype < 0) {
+      bool toIntermediateRGB24 = target_rgbtype == -1;
+      clip = new ConvertToRGB(clip, toIntermediateRGB24, matrix, env); // YUY2->RGB24/32
+      bool hasAlpha = !toIntermediateRGB24;
+      return new PackedRGBtoPlanarRGB(clip, hasAlpha, hasAlpha);
+    }
+    else
+      return new ConvertToRGB(clip, target_rgbtype == 24, matrix, env);
   }
 
   // conversions from packed RGB
