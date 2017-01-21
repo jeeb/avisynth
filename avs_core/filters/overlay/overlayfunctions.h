@@ -65,6 +65,8 @@ public:
   void setEnv(IScriptEnvironment *_env) { env = _env;}
   void setBitsPerPixel(int _bits_per_pixel) { bits_per_pixel = _bits_per_pixel; }
   void setMode(int _of_mode) { of_mode = _of_mode; }
+  void setColorSpaceInfo(bool _rgb, bool _greyscale) { rgb = _rgb, greyscale = _greyscale; }
+
   virtual void DoBlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) = 0;
   virtual void DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) = 0;
 protected:
@@ -74,6 +76,8 @@ protected:
   float inv_opacity_f;
   int bits_per_pixel;
   int of_mode; // add/subtract, etc
+  bool rgb; // add/subtract... overshoot mode is different
+  bool greyscale; // having only one plane
   IScriptEnvironment *env;
 };
 
