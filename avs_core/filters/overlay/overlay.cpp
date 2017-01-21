@@ -79,6 +79,7 @@ Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
 GenericVideoFilter(_child) {
 
   full_range = args[ARG_FULL_RANGE].AsBool(false);  // Maintain CCIR601 range when converting to/from RGB.
+  bool use444_defined = args[ARG_USE444].Defined();
   use444 = args[ARG_USE444].AsBool(true);  // avs+ option to use 444-conversionless mode
   name = args[ARG_MODE].AsString("Blend");
 
@@ -90,8 +91,11 @@ GenericVideoFilter(_child) {
   viInternalWorkingFormat = (VideoInfo*)malloc(sizeof(VideoInfo));
   memcpy(viInternalWorkingFormat, &vi, sizeof(VideoInfo));
 
+  viInternalOverlayWorkingFormat = (VideoInfo*)malloc(sizeof(VideoInfo));
+  // fill later
+
   mask = 0;
-  opacity_f = (float)args[ARG_OPACITY].AsDblDef(1.0); // rfu, if once overlay gets float support
+  opacity_f = (float)args[ARG_OPACITY].AsDblDef(1.0); // for float support
   opacity = (int)(256.0*opacity_f + 0.5); // range is converted to 256 for all all bit_depth
   offset_x = args[ARG_X].AsInt(0);
   offset_y = args[ARG_Y].AsInt(0);
@@ -102,6 +106,7 @@ GenericVideoFilter(_child) {
   overlay = args[ARG_OVERLAY].AsClip();
 
   overlayVi = overlay->GetVideoInfo();
+  *viInternalOverlayWorkingFormat = overlayVi;
 
   greymask = args[ARG_GREYMASK].AsBool(true);  // Grey mask, default true
   ignore_conditional = args[ARG_IGNORE_CONDITIONAL].AsBool(false);  // Don't ignore conditionals by default
@@ -115,14 +120,12 @@ GenericVideoFilter(_child) {
     if (maskVi.height!=overlayVi.height) {
       env->ThrowError("Overlay: Mask and overlay must have the same image size! (Height is not the same)");
     }
-
   }
 
-  inputCS = vi.pixel_type;
   pixelsize = vi.ComponentSize();
   bits_per_pixel = vi.BitsPerComponent();
 
-  vi = child->GetVideoInfo();
+  // already filled vi = child->GetVideoInfo();
   // parse and check output format override vi
   const char *output_pixel_format_override = args[ARG_OUTPUT].AsString(0);
   if(output_pixel_format_override) {
@@ -138,26 +141,41 @@ GenericVideoFilter(_child) {
   if (vi.Is444())
     use444 = true; // 444 is conversionless by default
 
+  // let use444=false to go live for subfilters that are ready to use it
+  // except: RGB must be converted to 444 for Luma and Chroma operation
+  if (vi.IsRGB() && (_stricmp(name, "Luma") == 0 || _stricmp(name, "Chroma") == 0)) {
+    if (use444_defined && !use444) {
+      env->ThrowError("Overlay: for RGB you cannot specify use444=false for overlay mode: %s", name);
+    }
+    use444 = true;
+  }
+  else if (!use444_defined &&
+    (vi.IsY() || vi.Is420() || vi.Is422() || vi.IsRGB()) &&
+    (_stricmp(name, "Blend") == 0 || _stricmp(name, "Luma") == 0 || _stricmp(name, "Chroma") == 0))
+  {
+    use444 = false; // default false for modes capable handling of use444==false, and valid formats
+  }
+
   if (!use444) {
     // check if we can work in conversionless mode
-    // 1.) colorspace is 4:2:0 or 4:2:2
-    // 2.) output colorspace is not specified to be different
-    // 3.) mode is "blend" (at the moment)
-    // 4.) format of overlay is the same as input's video format
-    if (!vi.Is420() && !vi.Is422() && !vi.IsPlanarRGB() && !vi.IsPlanarRGBA())
-      env->ThrowError("Overlay: use444=false is allowed only for 4:2:0, 4:2:2 or Planar RGB(A) video formats");
-    if (output_pixel_format_override && outputVi->pixel_type != vi.pixel_type)
-      env->ThrowError("Overlay: use444=false is allowed only when no output pixel format is specified");
+    // 1.) colorspace is greyscale, 4:2:0 or 4:2:2 or any RGB
+    // 2.) mode is "blend-like" (at the moment)
+    if (!vi.IsY() && !vi.Is420() && !vi.Is422() && !vi.IsRGB())
+      env->ThrowError("Overlay: use444=false is allowed only for greyscale, 4:2:0, 4:2:2 or any RGB video formats");
+    //if (output_pixel_format_override && outputVi->pixel_type != vi.pixel_type)
+    //  env->ThrowError("Overlay: use444=false is allowed only when no output pixel format is specified");
     if (_stricmp(name, "Blend") != 0 && _stricmp(name, "Luma") != 0 && _stricmp(name, "Chroma") != 0)
-      env->ThrowError("Overlay: cannot specify use444=false for this overlay mode %s", name);
-    if (vi.pixel_type != overlayVi.pixel_type)
-      env->ThrowError("Overlay: for use444=false input and overlay formats have to be the same");
+      env->ThrowError("Overlay: cannot specify use444=false for this overlay mode: %s", name);
+    //if (vi.pixel_type != overlayVi.pixel_type)
+    //  env->ThrowError("Overlay: for use444=false input and overlay formats have to be the same");
   }
 
   bool hasAlpha = vi.IsYUVA() || vi.IsPlanarRGBA();
 
-  // fill yuv 444 template
+  // set internal working format
   if (use444) {
+    // we convert everything to 4:4:4
+    // fill yuv 444 template
     switch (bits_per_pixel) {
     case 8: viInternalWorkingFormat->pixel_type = hasAlpha ? VideoInfo::CS_YUVA444 : VideoInfo::CS_YV24; break;
     case 10: viInternalWorkingFormat->pixel_type = hasAlpha ? VideoInfo::CS_YUVA444P10 : VideoInfo::CS_YUV444P10; break;
@@ -168,10 +186,21 @@ GenericVideoFilter(_child) {
     }
   }
   else {
+    if (vi.IsRGB() && !vi.IsPlanar()) {
+      // use444=false -> packed RGB 8/16 bit silent conversion to planar RGB
+      bool hasAlpha = vi.IsRGB32() || vi.IsRGB64();
+      switch (bits_per_pixel) {
+      case 8: viInternalWorkingFormat->pixel_type = hasAlpha ? VideoInfo::CS_RGBAP : VideoInfo::CS_RGBP; break;
+      case 16: viInternalWorkingFormat->pixel_type = hasAlpha ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16; break;
+      }
+    }
+    else {
     // keep input format for internal format. Always 4:2:0, 4:2:2 (or 4:4:4 / Planar RGB)
     // filters have to prepare to work for these formats
-    memcpy(viInternalWorkingFormat, &vi, sizeof(VideoInfo));
+      memcpy(viInternalWorkingFormat, &vi, sizeof(VideoInfo));
+    }
   }
+  viInternalOverlayWorkingFormat->pixel_type = viInternalWorkingFormat->pixel_type;
 
   // Set GetFrame's real output format
   // We have fast conversions for YV12, YV16 and YUY2, and YUV420P10-16, YUV422P10-16
@@ -207,7 +236,7 @@ GenericVideoFilter(_child) {
     vi.pixel_type = VideoInfo::CS_YUY2;
   } else {
     vi.pixel_type = viInternalWorkingFormat->pixel_type;
-    // 420,422,444
+    // Y,420,422,444,PlanarRGB (and packed RGB converted to any intermediate)
   }
 
 }
@@ -217,6 +246,7 @@ Overlay::~Overlay() {
   free(inputVi);
   free(outputVi);
   free(viInternalWorkingFormat);
+  free(viInternalOverlayWorkingFormat);
 }
 
 PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
@@ -231,79 +261,208 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   AVSValue child2;
   PVideoFrame frame;
 
-  if (inputVi->Is444() || inputVi->pixel_type == viInternalWorkingFormat->pixel_type)
+  // internal working formats:
+  // subsampled planar: 420, 422
+  // full info: 444, planarRGB(A)
+  // full info 1 plane: greyscale
+  bool isInternalRGB = viInternalWorkingFormat->IsRGB(); // must be planar rgb
+  bool isInternalGrey = viInternalWorkingFormat->IsY();
+  bool isInternal444 = viInternalWorkingFormat->Is444();
+  bool isInternal422 = viInternalWorkingFormat->Is422();
+  bool isInternal420 = viInternalWorkingFormat->Is420();
+
+  if (inputVi->pixel_type == viInternalWorkingFormat->pixel_type)
   {
-    // get frame as is
+    // get frame as is.
+    // includes 420, 422, 444, planarRGB(A)
     frame = child->GetFrame(n, env);
-  } else if((pixelsize == 1 || pixelsize == 2) && inputVi->Is420()) {
-    // use blazing fast YV12 -> YV24 converter
-    PVideoFrame frameSrc420 = child->GetFrame(n, env);
-    frame = env->NewVideoFrame(*viInternalWorkingFormat);
-    // no fancy options for chroma resampler, etc.. simply fast
-    Convert444FromYV12(frameSrc420, frame, pixelsize, bits_per_pixel, env);
-  } else if((pixelsize == 1 || pixelsize == 2) && inputVi->Is422()) {
-    // use blazing fast YV16 -> YV24 converter
-    PVideoFrame frameSrc422 = child->GetFrame(n, env);
-    frame = env->NewVideoFrame(*viInternalWorkingFormat);
-    Convert444FromYV16(frameSrc422, frame, pixelsize, bits_per_pixel, env);
-  } else if(pixelsize == 1 && inputVi->IsYUY2()) {
-    // use blazing fast YUY2 -> YV24 converter
-    PVideoFrame frameSrcYUY2 = child->GetFrame(n, env);
-    frame = env->NewVideoFrame(*viInternalWorkingFormat);
-    Convert444FromYUY2(frameSrcYUY2, frame, pixelsize, bits_per_pixel, env);
-  } else if(inputVi->IsRGB()) {
+  }
+  else if (isInternal444) {
+    if ((pixelsize == 1 || pixelsize == 2) && inputVi->Is420()) {
+      // use blazing fast YV12 -> YV24 converter
+      PVideoFrame frameSrc420 = child->GetFrame(n, env);
+      frame = env->NewVideoFrame(*viInternalWorkingFormat);
+      // no fancy options for chroma resampler, etc.. simply fast
+      Convert444FromYV12(frameSrc420, frame, pixelsize, bits_per_pixel, env);
+    }
+    else if ((pixelsize == 1 || pixelsize == 2) && inputVi->Is422()) {
+   // use blazing fast YV16 -> YV24 converter
+      PVideoFrame frameSrc422 = child->GetFrame(n, env);
+      frame = env->NewVideoFrame(*viInternalWorkingFormat);
+      Convert444FromYV16(frameSrc422, frame, pixelsize, bits_per_pixel, env);
+    }
+    else if (inputVi->IsYUY2()) {
+   // use blazing fast YUY2 -> YV24 converter
+      PVideoFrame frameSrcYUY2 = child->GetFrame(n, env);
+      frame = env->NewVideoFrame(*viInternalWorkingFormat);
+      Convert444FromYUY2(frameSrcYUY2, frame, pixelsize, bits_per_pixel, env);
+    }
+    else if (inputVi->IsRGB()) {
+      // clip, interlaced, matrix
+      AVSValue new_args[3] = { child, false, (full_range) ? "PC.601" : "rec601" };
+      child2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
+      frame = child2.AsClip()->GetFrame(n, env);
+    }
+    else {
+      // clip, interlaced
+      AVSValue new_args[2] = { child, false };
+      child2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
+      frame = child2.AsClip()->GetFrame(n, env);
+    }
+  }
+  else if (isInternalRGB) {
+    // when we reach here and working format is planar rgb, source is surely packed rgb
     // generic Avisynth conversion
-    AVSValue new_args[3] = { child, false, (full_range) ? "PC.601" : "rec601" };
-    child2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
-    frame = child2.AsClip()->GetFrame(n, env);
-  } else {
-    AVSValue new_args[2] = { child, false};
-    child2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
+    if (inputVi->IsRGB()) {
+      if (viInternalWorkingFormat->IsPlanarRGB()) {
+        AVSValue new_args[1] = { child };
+        child2 = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+      }
+      else if (viInternalWorkingFormat->IsPlanarRGBA()) {
+        AVSValue new_args[1] = { child };
+        child2 = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+      }
+    } // for completeness, really, internal is never RGB is source is YUV
+    else {
+      if (viInternalWorkingFormat->IsPlanarRGB()) {
+        // clip, matrix, interlaced
+        AVSValue new_args[3] = { overlay, (full_range) ? "PC.601" : "rec601", false };
+        child2 = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 3)).AsClip();
+      }
+      else if (viInternalWorkingFormat->IsPlanarRGBA()) {
+        AVSValue new_args[3] = { overlay, (full_range) ? "PC.601" : "rec601", false };
+        child2 = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 3)).AsClip();
+      }
+    }
     frame = child2.AsClip()->GetFrame(n, env);
   }
+
   // Fetch current frame and convert it to internal format
   env->MakeWritable(&frame);
 
   ImageOverlayInternal* img = new ImageOverlayInternal(frame, vi.width, vi.height, *viInternalWorkingFormat, child->GetVideoInfo().IsYUVA() || child->GetVideoInfo().IsPlanarRGBA(), false, *viInternalWorkingFormat, env);
 
-  // always use avisynth converters
   PVideoFrame Oframe;
   AVSValue overlay2;
 
   ImageOverlayInternal* maskImg = NULL;
 
-  if(overlayVi.Is444() || overlayVi.pixel_type == viInternalWorkingFormat->pixel_type)
-    // don't convert is input and overlay is the same formats
-    // so we can work in YUV420 or YUV422 directly besides YUV444 (use444==false)
+  // overlay clip should be converted to internal format if different, except for internal Y,
+  // for which original planar YUV is OK
+  if(overlayVi.pixel_type == viInternalWorkingFormat->pixel_type)
   {
+    // don't convert is input and overlay is the same formats
+    // so we can work in YUV420 or YUV422 and Planar RGB directly besides YUV444 (use444==false)
     Oframe = overlay->GetFrame(n, env);
-  } else if((pixelsize == 1 || pixelsize == 2) && overlayVi.Is420()) {
-    // use blazing fast YV12 -> YV24 converter
-    PVideoFrame frameSrc420 = overlay->GetFrame(n, env);
-    Oframe = env->NewVideoFrame(*viInternalWorkingFormat);
-    // no fancy options for chroma resampler, etc.. simply fast
-    Convert444FromYV12(frameSrc420, Oframe, pixelsize, bits_per_pixel, env);
-  } else if((pixelsize == 1 || pixelsize == 2) && overlayVi.Is422()) {
-    // use blazing fast YV16 -> YV24 converter
-    PVideoFrame frameSrc422 = overlay->GetFrame(n, env);
-    Oframe = env->NewVideoFrame(*viInternalWorkingFormat);
-    Convert444FromYV16(frameSrc422, Oframe, pixelsize, bits_per_pixel, env);
-  } else if(pixelsize == 1 && overlayVi.IsYUY2()) {
-    // use blazing fast YUY2 -> YV24 converter
-    PVideoFrame frameSrcYUY2 = overlay->GetFrame(n, env);
-    Oframe = env->NewVideoFrame(*viInternalWorkingFormat);
-    Convert444FromYUY2(frameSrcYUY2, Oframe, pixelsize, bits_per_pixel, env);
-  } else if(overlayVi.IsRGB()) {
-    AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
-    overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
-    Oframe = overlay2.AsClip()->GetFrame(n, env);
-  } else {
-    AVSValue new_args[2] = { overlay, false };
-    overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
-    Oframe = overlay2.AsClip()->GetFrame(n, env);
+  }
+  else if (isInternal444) {
+    if ((pixelsize == 1 || pixelsize == 2) && overlayVi.Is420()) {
+      // use blazing fast YV12 -> YV24 converter
+      PVideoFrame frameSrc420 = overlay->GetFrame(n, env);
+      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+      // no fancy options for chroma resampler, etc.. simply fast
+      Convert444FromYV12(frameSrc420, Oframe, pixelsize, bits_per_pixel, env);
+    }
+    else if ((pixelsize == 1 || pixelsize == 2) && overlayVi.Is422()) {
+      // use blazing fast YV16 -> YV24 converter
+      PVideoFrame frameSrc422 = overlay->GetFrame(n, env);
+      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+      Convert444FromYV16(frameSrc422, Oframe, pixelsize, bits_per_pixel, env);
+    }
+    else if (overlayVi.IsYUY2()) {
+      // use blazing fast YUY2 -> YV24 converter
+      PVideoFrame frameSrcYUY2 = overlay->GetFrame(n, env);
+      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+      Convert444FromYUY2(frameSrcYUY2, Oframe, pixelsize, bits_per_pixel, env);
+    }
+    else if (overlayVi.IsRGB()) {
+      // clip, interlaced, matrix
+      AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
+      overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+    else {
+      // clip, interlaced
+      AVSValue new_args[2] = { overlay, false };
+      overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+  }
+  else if(isInternalGrey) {
+    if (overlayVi.IsPlanar() && (overlayVi.IsYUV() || overlayVi.IsYUVA()))
+    {
+      // they are good as-is, we'll use only Y
+      Oframe = overlay->GetFrame(n, env);
+    } else if(overlayVi.IsRGB()) {
+      // clip, matrix
+      AVSValue new_args[2] = { overlay, (full_range) ? "PC.601" : "rec601" };
+      overlay2 = env->Invoke("ConvertToY", AVSValue(new_args, 2)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+    else if (overlayVi.IsYUY2()) {
+      // use blazing fast YUY2 -> YV24 converter
+      // we'll use only Y anyway
+      PVideoFrame frameSrcYUY2 = overlay->GetFrame(n, env);
+      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+      Convert444FromYUY2(frameSrcYUY2, Oframe, pixelsize, bits_per_pixel, env);
+    }
+    else {
+      AVSValue new_args[1] = { overlay };
+      overlay2 = env->Invoke("ConvertToY", AVSValue(new_args, 2)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+  }
+  else if (isInternalRGB) {
+    if (overlayVi.IsPlanarRGB() || overlayVi.IsPlanarRGBA()) {
+      Oframe = overlay->GetFrame(n, env);
+    }
+    else if (overlayVi.IsYUV() || overlayVi.IsYUVA()) {
+      // clip, matrix, interlaced
+      AVSValue new_args[3] = { overlay, (full_range) ? "PC.601" : "rec601", false };
+      overlay2 = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 3)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    } else {
+      // packed RGB
+      AVSValue new_args[1] = { overlay };
+      overlay2 = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+  }
+  else if (isInternal420) {
+    if (overlayVi.Is420())
+    {
+      Oframe = overlay->GetFrame(n, env);
+    } else if(overlayVi.IsRGB()) {
+      // clip, interlaced, matrix
+      AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
+      overlay2 = env->Invoke("ConvertToYUV420", AVSValue(new_args, 3)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+    else {
+      // clip, interlaced
+      AVSValue new_args[2] = { overlay, false };
+      overlay2 = env->Invoke("ConvertToYUV420", AVSValue(new_args, 2)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+  } else if(isInternal422) {
+    if (overlayVi.Is422())
+    {
+      Oframe = overlay->GetFrame(n, env);
+    } else if(overlayVi.IsRGB()) {
+      // clip, interlaced, matrix
+      AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
+      overlay2 = env->Invoke("ConvertToYUV422", AVSValue(new_args, 3)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
+    else {
+      AVSValue new_args[2] = { overlay, false };
+      // clip, interlaced
+      overlay2 = env->Invoke("ConvertToYUV422", AVSValue(new_args, 2)).AsClip();
+      Oframe = overlay2.AsClip()->GetFrame(n, env);
+    }
   }
   // Fetch current overlay and convert it to internal format
-  ImageOverlayInternal* overlayImg = new ImageOverlayInternal(Oframe, overlayVi.width, overlayVi.height, *viInternalWorkingFormat, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), false, *viInternalWorkingFormat, env);
+  ImageOverlayInternal* overlayImg = new ImageOverlayInternal(Oframe, overlayVi.width, overlayVi.height, *viInternalOverlayWorkingFormat, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), false, *viInternalWorkingFormat, env);
 
   // Clip overlay to original image
   ClipFrames(img, overlayImg, offset_x + con_x_offset, offset_y + con_y_offset);
@@ -324,59 +483,70 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       AVSValue mask2;
       PVideoFrame Mframe;
 
-      if (maskVi.IsY())
+      if (maskVi.IsY() || isInternalGrey)
         greymask = true;
 
-      if(maskVi.Is444() || (greymask && !maskVi.IsRGB()) || maskVi.pixel_type == viInternalWorkingFormat->pixel_type) {
+      if((greymask && !maskVi.IsRGB() && !maskVi.IsYUY2()) || maskVi.pixel_type == viInternalWorkingFormat->pixel_type) {
         // 4:4:4,
         // 4:2:0, 4:2:2 -> greymask uses Y
         // internalworking format: 4:4:4, 4:2:2, 4:2:0
         Mframe = mask->GetFrame(n, env);
-      } else if((pixelsize == 1 || pixelsize == 2) && maskVi.Is420() && viInternalWorkingFormat->Is444()) {
-        // use blazing fast YV12 -> YV24 converter
-        PVideoFrame frameSrc420 = mask->GetFrame(n, env);
-        Mframe = env->NewVideoFrame(*viInternalWorkingFormat);
-        // no fancy options for chroma resampler, etc.. simply fast
-        Convert444FromYV12(frameSrc420, Mframe, pixelsize, bits_per_pixel, env);
-        // convert frameSrc420 -> frame
-      } else if((pixelsize == 1 || pixelsize == 2) && maskVi.Is422()) {
-        // use blazing fast YV16 -> YV24 converter
-        PVideoFrame frameSrc422 = mask->GetFrame(n, env);
-        Mframe = env->NewVideoFrame(*viInternalWorkingFormat);
-        Convert444FromYV16(frameSrc422, Mframe, pixelsize, bits_per_pixel, env);
-      } else if(pixelsize == 1 && maskVi.IsYUY2()) {
-        // use blazing fast YUY2 -> YV24 converter
-        PVideoFrame frameSrcYUY2 = mask->GetFrame(n, env);
-        Mframe = env->NewVideoFrame(*viInternalWorkingFormat);
-        Convert444FromYUY2(frameSrcYUY2, Mframe, pixelsize, bits_per_pixel, env);
-      } else if(maskVi.IsRGB()) {
-        if(greymask) {
-          AVSValue new_args[2] = { mask, (full_range) ? "PC.601" : "rec601" };
-          mask2 = env->Invoke("ConvertToY", AVSValue(new_args, 2)).AsClip();
+      }
+      else if (isInternal444 || greymask) {
+        if ((pixelsize == 1 || pixelsize == 2) && maskVi.Is420()) {
+          // use blazing fast YV12 -> YV24 converter
+          PVideoFrame frameSrc420 = mask->GetFrame(n, env);
+          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+          // no fancy options for chroma resampler, etc.. simply fast
+          Convert444FromYV12(frameSrc420, Mframe, pixelsize, bits_per_pixel, env);
+          // convert frameSrc420 -> frame
+        }
+        else if ((pixelsize == 1 || pixelsize == 2) && maskVi.Is422()) {
+          // use blazing fast YV16 -> YV24 converter
+          PVideoFrame frameSrc422 = mask->GetFrame(n, env);
+          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+          Convert444FromYV16(frameSrc422, Mframe, pixelsize, bits_per_pixel, env);
+        }
+        else if (maskVi.IsYUY2()) {
+          // use blazing fast YUY2 -> YV24 converter
+          PVideoFrame frameSrcYUY2 = mask->GetFrame(n, env);
+          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+          Convert444FromYUY2(frameSrcYUY2, Mframe, pixelsize, bits_per_pixel, env);
+        }
+        else if (maskVi.IsRGB()) {
+          if (greymask) {
+            AVSValue new_args[2] = { mask, (full_range) ? "PC.601" : "rec601" };
+            mask2 = env->Invoke("ConvertToY", AVSValue(new_args, 2)).AsClip();
+          }
+          else {
+            AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
+            mask2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
+          }
+          Mframe = mask2.AsClip()->GetFrame(n, env);
+        }
+      } else {
+        // greymask == false
+        if (isInternalRGB) {
+          // clip, matrix, interlaced
+          AVSValue new_args[3] = { mask, (full_range) ? "PC.601" : "rec601", false };
+          mask2 = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 3)).AsClip();
+        }
+        else if (isInternal420) {
+          AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
+          mask2 = env->Invoke("ConvertToYUV420", AVSValue(new_args, 3)).AsClip();
+        }
+        else if (isInternal422) {
+          AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
+          mask2 = env->Invoke("ConvertToYUV422", AVSValue(new_args, 3)).AsClip();
         } else {
           AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
           mask2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
         }
         Mframe = mask2.AsClip()->GetFrame(n, env);
-      } else {
-        if(greymask) {
-          AVSValue new_args[2] = { mask };
-          mask2 = env->Invoke("ConvertToY", AVSValue(new_args, 1)).AsClip();
-        } else {
-          AVSValue new_args[2] = { mask, false };
-          mask2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
-        }
-        Mframe = mask2.AsClip()->GetFrame(n, env);
       }
       // MFrame here is either internalWorkingFormat or Y or 4:4:4
-      maskImg = new ImageOverlayInternal(Mframe, maskVi.width, maskVi.height, *viInternalWorkingFormat, mask->GetVideoInfo().IsYUVA() || mask->GetVideoInfo().IsPlanarRGBA(), greymask, maskVi, env);
+      maskImg = new ImageOverlayInternal(Mframe, maskVi.width, maskVi.height, *viInternalOverlayWorkingFormat, mask->GetVideoInfo().IsYUVA() || mask->GetVideoInfo().IsPlanarRGBA(), greymask, maskVi, env);
 
-      if (greymask) {
-        // mask is always 444. Be smart later when use444 is false and original is 420 or 422
-        // done in Image444
-        //maskImg->SetPtrByIndex(maskImg->GetPtr(0), 1);
-        //maskImg->SetPtrByIndex(maskImg->GetPtr(0), 2);
-      }
       img->ReturnOriginal(true);
       ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
 
@@ -389,6 +559,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     func->setMode(of_mode);
     func->setBitsPerPixel(bits_per_pixel);
     func->setOpacity(opacity + op_offset, opacity_f + op_offset_f);
+    func->setColorSpaceInfo(viInternalWorkingFormat->IsRGB(), viInternalWorkingFormat->IsY());
     func->setEnv(env);
 
     if (!mask) {
@@ -584,25 +755,25 @@ AVSValue __cdecl Overlay::Create(AVSValue args, void*, IScriptEnvironment* env) 
    // chromaresample = 'bicubic' default
    // chromaresample = 'point' is faster
    if(Result->outputVi->Is444()) {
-     // never can be
-     AVSValue new_args[2] = { Result, false};
-     return env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
+     // if workingFormat is not 444 but output was specified
+     AVSValue new_args[3] = { Result, false, (Result->full_range) ? "PC.601" : "rec601" };
+     return env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
    }
    if(Result->outputVi->Is422()) {
-     AVSValue new_args[2] = { Result, false};
-     return env->Invoke("ConvertToYUV422", AVSValue(new_args, 2)).AsClip();
+     AVSValue new_args[3] = { Result, false, (Result->full_range) ? "PC.601" : "rec601" };
+     return env->Invoke("ConvertToYUV422", AVSValue(new_args, 3)).AsClip();
    }
    if(Result->outputVi->Is420()) {
-     AVSValue new_args[2] = { Result, false};
-     return env->Invoke("ConvertToYUV420", AVSValue(new_args, 2)).AsClip();
+     AVSValue new_args[3] = { Result, false, (Result->full_range) ? "PC.601" : "rec601" };
+     return env->Invoke("ConvertToYUV420", AVSValue(new_args, 3)).AsClip();
    }
    if(Result->outputVi->IsYUY2()) {
-     AVSValue new_args[2] = { Result, false};
-     return env->Invoke("ConvertToYUY2", AVSValue(new_args, 2)).AsClip();
+     AVSValue new_args[3] = { Result, false, (Result->full_range) ? "PC.601" : "rec601" };
+     return env->Invoke("ConvertToYUY2", AVSValue(new_args, 3)).AsClip();
    }
    if(Result->outputVi->IsY()) {
-     AVSValue new_args[1] = { Result};
-     return env->Invoke("ConvertToY", AVSValue(new_args, 1)).AsClip();
+     AVSValue new_args[2] = { Result, (Result->full_range) ? "PC.601" : "rec601" };
+     return env->Invoke("ConvertToY", AVSValue(new_args, 2)).AsClip();
    }
    if(Result->outputVi->IsRGB()) {
      // c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s
