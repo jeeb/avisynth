@@ -664,9 +664,16 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   {
       if (target_rgbtype < 0) // planar to planar
       {
-         if ((vi.IsPlanarRGB() && target_rgbtype==-1) || (vi.IsPlanarRGBA() && target_rgbtype==-2))
+        if (vi.IsPlanarRGB()) {
+          if (target_rgbtype == -1)
+            return clip;
+          // prgb->prgba create with default alpha
+          return new AddAlphaPlane(clip, nullptr, 0.0f, false, env);
+        }
+        // planar rgba source
+        if(target_rgbtype==-2)
            return clip;
-         env->ThrowError("ConvertToPlanarRGB: cannon convert between RGBP and RGBAP");
+        return new RemoveAlphaPlane(clip, env);
       }
       if(vi.ComponentSize() == 4)
           env->ThrowError("ConvertToRGB: conversion from float colorspace is not supported.");
@@ -2380,19 +2387,24 @@ RemoveAlphaPlane::RemoveAlphaPlane(PClip _child, IScriptEnvironment* env)
 PVideoFrame RemoveAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi);
-  if(vi.IsPlanar())
-  {
-    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
-    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
-    int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
-    // copy 3 planes w/o alpha
-    for (int p = 0; p < 3; ++p) {
-      const int plane = planes[p];
-      env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane),
-        src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
-    }
-  }
-  return dst;
   // Packed RGB: already handled in ::Create through Invoke 32->24 or 64->48 conversion
+  // only planar here
+  int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+  int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+  int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+  // Abuse Subframe to snatch the YUV/GBR planes
+  return env->SubframePlanar(src, 0, src->GetPitch(planes[0]), src->GetRowSize(planes[0]), src->GetHeight(planes[0]),0,0,src->GetPitch(planes[1]));
+
+#if 0
+  // BitBlt version. Kept for reference
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  // copy 3 planes w/o alpha
+  for (int p = 0; p < 3; ++p) {
+    const int plane = planes[p];
+    env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane),
+      src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
+  }
+return dst;
+#endif
 }
+
