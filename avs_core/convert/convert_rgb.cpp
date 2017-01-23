@@ -399,7 +399,6 @@ PVideoFrame __stdcall RGBAtoRGB::GetFrame(int n, IScriptEnvironment* env)
 
   int pixelsize = vi.ComponentSize();
 
-  // todo sse for 16 bit
   if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
     if(pixelsize==1)
       convert_rgb32_to_rgb24_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
@@ -431,11 +430,10 @@ PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _sourceHasAlpha, bool
     (targetHasAlpha ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16);
 }
 
-template<typename pixel_t, int src_numcomponents, bool targetHasAlpha>
+template<typename pixel_t, bool targetHasAlpha>
 // minimum width: 32 bytes (8 RGBA pixels for 8 bits, 4 RGBA pixels for 16 bits)
 static void convert_rgba_to_rgbp_sse2(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], size_t width, size_t height) {
-  const bool sourceHasAlpha = (src_numcomponents == 4);
-  const int rowsize = width * sizeof(pixel_t) * src_numcomponents;
+  const int rowsize = width * sizeof(pixel_t) * 4;
   const int pixels_at_a_time = (sizeof(pixel_t) == 1) ? 8 : 4;
   const int wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
   for (size_t y = height; y > 0; --y) {
@@ -542,7 +540,9 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
   srcp += src_pitch * (vi.height - 1); // start from bottom: packed RGB is upside down
 
   const bool targetHasAlpha = vi.IsPlanarRGBA();
-  // todo sse 24/48 bit
+  // temporarily RGB24/48 is converted to RGB32/64 before thus we can use sse.
+  // so sourceHasAlpha is always true.
+  // Direct RGB24/48 -> PlanarRGB is not nice for simd, maybe uglier than being fast
   if(pixelsize==1)
   {
     // targetHasAlpha decision in convert function
@@ -550,9 +550,9 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
       // RGB32->RGBP8
       if ((env->GetCPUFlags() & CPUF_SSE2) && vi.width >= 8) {
         if (targetHasAlpha)
-          convert_rgba_to_rgbp_sse2<uint8_t, 4, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_sse2<uint8_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
         else
-          convert_rgba_to_rgbp_sse2<uint8_t, 4, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_sse2<uint8_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
       }
       else
         convert_rgb_to_rgbp_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
@@ -561,22 +561,24 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
       // RGB24->RGBP8
       convert_rgb_to_rgbp_c<uint8_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     }
-  } else {
-    if(sourceHasAlpha)
+  }
+  else {
+    if (sourceHasAlpha) {
       // RGB32->RGBP16, RGBAP16
       if ((env->GetCPUFlags() & CPUF_SSE2) && vi.width >= 4) {
         if (targetHasAlpha)
-          convert_rgba_to_rgbp_sse2<uint16_t, 4, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_sse2<uint16_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
         else
-          convert_rgba_to_rgbp_sse2<uint16_t, 4, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_sse2<uint16_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
       }
       else {
         convert_rgb_to_rgbp_c<uint16_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
       }
-      else {
-        // RGB48->RGBP16
-        convert_rgb_to_rgbp_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-      }
+    }
+    else {
+      // RGB48->RGBP16
+      convert_rgb_to_rgbp_c<uint16_t, 3>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    }
   }
   return dst;
 }
