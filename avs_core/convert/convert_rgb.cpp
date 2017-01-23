@@ -48,6 +48,51 @@ RGBtoRGBA::RGBtoRGBA(PClip src)
   vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ? VideoInfo::CS_BGR32 : VideoInfo::CS_BGR64;
 }
 
+static void convert_rgb48_to_rgb64_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  size_t mod16_width = sizeof(uint16_t)*(width & (~size_t(7)));
+#pragma warning(push)
+#pragma warning(disable:4309)
+  __m128i mask0 = _mm_set_epi8(0x80, 0x80, 11, 10, 9, 8, 7, 6, 0x80, 0x80, 5, 4, 3, 2, 1, 0);
+  __m128i mask1 = _mm_set_epi8(0x80, 0x80, 15, 14, 13, 12, 11, 10, 0x80, 0x80, 9, 8, 7, 6, 5, 4);
+#pragma warning(pop)
+  __m128i alpha = _mm_set_epi32(0xFFFF0000,0x00000000,0xFFFF0000,0x00000000);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod16_width; x+= 16) {
+      __m128i src0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*3));
+      // 7...       ...0
+      // B G|R B G R B G  #0 #1 (#2)       x*3+0
+      // G R B G|R B G R  (#2) #3 #4 (#5)  x*3+16
+      // R B G R B G|R B  (#5) #6 #7       x*3+32
+      __m128i dst = _mm_or_si128(alpha, _mm_shuffle_epi8(src0, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+4*x), dst);
+
+      __m128i src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*3+16));
+      __m128i tmp = _mm_alignr_epi8(src1, src0, 12);
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(tmp, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+x*4+16), dst);
+
+      __m128i src2 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*3+32));
+      tmp = _mm_alignr_epi8(src2, src1, 8);
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(tmp, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+x*4+32), dst);
+
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(src2, mask1));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+x*4+48), dst);
+    }
+
+    for (size_t x = mod16_width/sizeof(uint16_t); x < width; ++x) {
+      reinterpret_cast<uint16_t *>(dstp)[x*4+0] = reinterpret_cast<const uint16_t *>(srcp)[x*3+0];
+      reinterpret_cast<uint16_t *>(dstp)[x*4+1] = reinterpret_cast<const uint16_t *>(srcp)[x*3+1];
+      reinterpret_cast<uint16_t *>(dstp)[x*4+2] = reinterpret_cast<const uint16_t *>(srcp)[x*3+2];
+      reinterpret_cast<uint16_t *>(dstp)[x*4+3] = 65535;
+    }
+
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
 static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
   size_t mod16_width = (width + 3) & (~size_t(15)); //when the modulo is more than 13, a problem does not happen
@@ -160,9 +205,11 @@ PVideoFrame __stdcall RGBtoRGBA::GetFrame(int n, IScriptEnvironment* env)
 
   int pixelsize = vi.ComponentSize();
 
-  // todo sse for 16 bit
-  if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
-    convert_rgb24_to_rgb32_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
+    if(pixelsize==1)
+      convert_rgb24_to_rgb32_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    else
+      convert_rgb48_to_rgb64_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
   } 
   else
 #ifdef X86_32
