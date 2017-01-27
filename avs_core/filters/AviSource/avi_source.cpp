@@ -286,31 +286,31 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   }
 
   // see if we can handle the video format directly
-  if (pbiSrc->biCompression == '2YUY') { // :FIXME: Handle UYVY, etc
+  if (pbiSrc->biCompression == MAKEFOURCC('Y', 'U', 'Y', '2')) { // :FIXME: Handle UYVY, etc
     vi.pixel_type = VideoInfo::CS_YUY2;
-  } else if (pbiSrc->biCompression == '21VY') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('Y', 'V', '1', '2')) {
     vi.pixel_type = VideoInfo::CS_YV12;
-  } else if (pbiSrc->biCompression == '024I') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('I', '4', '2', '0')) {
     vi.pixel_type = VideoInfo::CS_I420;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 32) {
     vi.pixel_type = VideoInfo::CS_BGR32;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
     vi.pixel_type = VideoInfo::CS_BGR24;
-  } else if (pbiSrc->biCompression == '\100ARB') { // BRA@ ie. BRA[64]
+  } else if (pbiSrc->biCompression == MAKEFOURCC('B','R','A',64)) { // BRA@ ie. BRA[64]
       vi.pixel_type = VideoInfo::CS_BGR64;
-  } else if (pbiSrc->biCompression == '\060RGB') { // BGR0 ie. BGR[48]
+  } else if (pbiSrc->biCompression == MAKEFOURCC('B','G','R',48)) { // BGR0 ie. BGR[48]
       vi.pixel_type = VideoInfo::CS_BGR48;
-  } else if (pbiSrc->biCompression == 'YERG') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('G', 'R', 'E', 'Y')) {
     vi.pixel_type = VideoInfo::CS_Y8;
-  } else if (pbiSrc->biCompression == '008Y') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('Y', '8', '0', '0')) {
     vi.pixel_type = VideoInfo::CS_Y8;
-  } else if (pbiSrc->biCompression == '  8Y') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('Y', '8', ' ', ' ')) {
     vi.pixel_type = VideoInfo::CS_Y8;
-  } else if (pbiSrc->biCompression == '42VY') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('Y', 'V', '2', '4')) {
     vi.pixel_type = VideoInfo::CS_YV24;
-  } else if (pbiSrc->biCompression == '61VY') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('Y', 'V', '1', '6')) {
     vi.pixel_type = VideoInfo::CS_YV16;
-  } else if (pbiSrc->biCompression == 'B14Y') {
+  } else if (pbiSrc->biCompression == MAKEFOURCC('Y', '4', '1', 'B')) {
     vi.pixel_type = VideoInfo::CS_YV411;
 
   // otherwise, find someone who will decompress it
@@ -440,7 +440,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fYV24 && bOpen) {
             vi.pixel_type = VideoInfo::CS_YV24;
             biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = '42VY';
+            biDst.biCompression = MAKEFOURCC('Y', 'V', '2', '4');
             biDst.biBitCount = 24;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0,"AVISource: Opening as YV24.\n");
@@ -454,7 +454,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fYV16 && bOpen) {
             vi.pixel_type = VideoInfo::CS_YV16;
             biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = '61VY';
+            biDst.biCompression = MAKEFOURCC('Y', 'V', '1', '6');
             biDst.biBitCount = 16;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0,"AVISource: Opening as YV16.\n");
@@ -468,7 +468,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fYV12 && bOpen) {
             vi.pixel_type = VideoInfo::CS_YV12;
             biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = '21VY';
+            biDst.biCompression = MAKEFOURCC('Y', 'V', '1', '2');
             biDst.biBitCount = 12;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0,"AVISource: Opening as YV12.\n");
@@ -484,7 +484,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fYV411 && bOpen) {
             vi.pixel_type = VideoInfo::CS_YV411;
             biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = 'B14Y';
+            biDst.biCompression = MAKEFOURCC('Y', '4', '1', 'B');
             biDst.biBitCount = 16;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0,"AVISource: Opening as YV411.\n");
@@ -498,7 +498,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fYUY2 && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUY2;
             biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = '2YUY'; // :FIXME: Handle UYVY, etc
+            biDst.biCompression = MAKEFOURCC('Y', 'U', 'Y', '2'); // :FIXME: Handle UYVY, etc
             biDst.biBitCount = 16;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0,"AVISource: Opening as YUY2.\n");
@@ -540,7 +540,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fRGB48 && bOpen) {
               vi.pixel_type = VideoInfo::CS_BGR48;
               biDst.biSizeImage = vi.BMPSize();
-              biDst.biCompression = '\060RGB'; // BGR0 ie. BGR[48]
+              biDst.biCompression = MAKEFOURCC('B', 'G', 'R', 48); // BGR0 ie. BGR[48]
               biDst.biBitCount = 48;
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                   _RPT0(0,"AVISource: Opening as BGR0 (BGR[48]).\n");
@@ -554,7 +554,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fRGB64 && bOpen) {
               vi.pixel_type = VideoInfo::CS_BGR64;
               biDst.biSizeImage = vi.BMPSize();
-              biDst.biCompression = '\100ARB'; // BRA@ ie. BRA[64]
+              biDst.biCompression = MAKEFOURCC('B', 'R', 'A', 64); // BRA@ ie. BRA[64]
               biDst.biBitCount = 64;
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                   _RPT0(0,"AVISource: Opening as BRA@ (BRA[64]).\n");
@@ -568,18 +568,18 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fY8 && bOpen) {
             vi.pixel_type = VideoInfo::CS_Y8;
             biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = '008Y';
+            biDst.biCompression = MAKEFOURCC('Y', '8', '0', '0');
             biDst.biBitCount = 8;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0,"AVISource: Opening as Y800.\n");
               bOpen = false;  // Skip further attempts
             } else {
-              biDst.biCompression = '  8Y';
+              biDst.biCompression = MAKEFOURCC('Y', '8', ' ', ' ');
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                 _RPT0(0,"AVISource: Opening as Y8.\n");
                 bOpen = false;  // Skip further attempts
               } else {
-                biDst.biCompression = 'YERG';
+                biDst.biCompression = MAKEFOURCC('G', 'R', 'E', 'Y');
                 if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                   _RPT0(0,"AVISource: Opening as GREY.\n");
                   bOpen = false;  // Skip further attempts
