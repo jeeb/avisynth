@@ -1408,5 +1408,36 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
   if (!lstrcmpi(st_m, "audiolevels"))
     mode = ModeAudioLevels;
 
-  return new Histogram(args[0].AsClip(), mode, args[2], args[3].AsInt(8), env);
+  const VideoInfo& vi_orig = args[0].AsClip()->GetVideoInfo();
+
+  if (mode == ModeLevels && vi_orig.IsRGB() && !vi_orig.IsPlanar()) {
+    // as Levels can work for PlanarRGB, convert packed RGB to planar, then back
+    // better that nothing
+    AVSValue new_args[1] = { args[0].AsClip() };
+    PClip clip;
+    if (vi_orig.IsRGB24() || vi_orig.IsRGB48()) {
+      clip = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+    }
+    else if (vi_orig.IsRGB32() || vi_orig.IsRGB64()) {
+      clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+    }
+    Histogram* Result = new Histogram(clip, mode, args[2], args[3].AsInt(8), env);
+
+    AVSValue new_args2[1] = { Result };
+    if (vi_orig.IsRGB24()) {
+      return env->Invoke("ConvertToRGB24", AVSValue(new_args2, 1)).AsClip();
+    }
+    else if (vi_orig.IsRGB48()) {
+      return env->Invoke("ConvertToRGB48", AVSValue(new_args2, 1)).AsClip();
+    }
+    else if (vi_orig.IsRGB32()) {
+      return env->Invoke("ConvertToRGB32", AVSValue(new_args2, 1)).AsClip();
+    }
+    else { // if (vi_orig.IsRGB64())
+      return env->Invoke("ConvertToRGB64", AVSValue(new_args2, 1)).AsClip();
+    }
+  }
+  else {
+    return new Histogram(args[0].AsClip(), mode, args[2], args[3].AsInt(8), env);
+  }
 }
