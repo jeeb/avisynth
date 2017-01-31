@@ -65,6 +65,7 @@ private:
   const int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
   const int *planes;
 
+  int planeCount;
   int pitches[4];
 
   BYTE *maskChroma;
@@ -87,13 +88,15 @@ public:
     else if (_bits_per_pixel <= 16) pixelsize = 2;
     else pixelsize = 4;
 
+    planeCount = _workingVI.NumComponents();
+
     planes = (_workingVI.IsYUV() || _workingVI.IsYUVA()) ? planes_y : planes_r;
     for (int p = 0; p < 4; p++) {
       xSubSamplingShifts[p] = ySubSamplingShifts[p] = 0;
       pitches[p] = 0;
     }
 
-    for (int p = 0; p < _workingVI.NumComponents(); ++p) {
+    for (int p = 0; p < planeCount; ++p) {
       const int plane = planes[p];
       xSubSamplingShifts[p] = _workingVI.GetPlaneWidthSubsampling(plane);
       ySubSamplingShifts[p] = _workingVI.GetPlaneHeightSubsampling(plane);
@@ -120,8 +123,8 @@ public:
     pitchUV = pitches[1];
     pitchA = pitches[3];
 
-    for(int p=0; p<_workingVI.NumComponents(); p++)
-      origPlanes[p] = (BYTE*) frame->GetReadPtr(planes[p]);
+    for (int p = 0; p < planeCount; p++)
+      origPlanes[p] = (BYTE*)frame->GetReadPtr(planes[p]);
     if (grey) {
       if (_workingVI.Is420()) {
         // resize Y-only mask to 4:2:0 chroma
@@ -253,7 +256,7 @@ public:
   bool IsSizeZero() {
     if (w()<=0) return true;
     if (h()<=0) return true;
-    if (!(pitch && origPlanes[0] && origPlanes[1] && origPlanes[2])) return true;
+    if (!(pitch && origPlanes[0])) return true;
     return false;
   }
 
