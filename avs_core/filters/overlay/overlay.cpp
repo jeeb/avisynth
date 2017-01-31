@@ -482,7 +482,8 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   ClipFrames(img, overlayImg, offset_x + con_x_offset, offset_y + con_y_offset);
 
   if (overlayImg->IsSizeZero()) { // Nothing to overlay
-  } else {
+  }
+  else {
     // from Avisynth's doc
     /*
     Inputting RGB for mask clip
@@ -490,7 +491,9 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     If you use a greyscale mask, or if you leave greymask=true, you will get the result you would expect.
     Note that mask values are never scaled, so it will automatically be in 0-255 range, directly copied from the RGB values.
     */
-    // This last sentence is not true. Mask is converted from RGB the same way as input and overlay clips.
+    // Note1: This last sentence is not true. Mask is converted from RGB the same way as input and overlay clips.
+    // Note2: But yes, it's true. Classic AVS converts RGB to mask in "void Convert444FromRGB::ConvertImageLumaOnly"
+    //        and it uses (comment copies as is sic!) dstY[x] = srcP[RGBx]; // Blue channel only ???
 
     // fetch current mask (if given)
     if (mask) {
@@ -500,7 +503,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       if (maskVi.IsY() || isInternalGrey)
         greymask = true;
 
-      if((greymask && !maskVi.IsRGB() && !maskVi.IsYUY2()) || maskVi.pixel_type == viInternalWorkingFormat->pixel_type) {
+      if ((greymask && !maskVi.IsRGB() && !maskVi.IsYUY2()) || maskVi.pixel_type == viInternalWorkingFormat->pixel_type) {
         // 4:4:4,
         // 4:2:0, 4:2:2 -> greymask uses Y
         // internalworking format: 4:4:4, 4:2:2, 4:2:0
@@ -529,8 +532,18 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
         }
         else if (maskVi.IsRGB()) {
           if (greymask) {
+            // Compatibility: ExtractB. See notes above.
+            // This is good, because in the old times rgb32clip.ShowAlpha() was
+            // used for feeding mask to overlay, that spreads alpha to all channels, so classic avisynth chose
+            // B channel for source. (=R=G)
+            // So we are not using greyscale conversion here at mask for compatibility reasons
+            // Still: recommended usage for mask: rgbclip.ExtractA()
+            /*
             AVSValue new_args[2] = { mask, (full_range) ? "PC.601" : "rec601" };
             mask2 = env->Invoke("ConvertToY", AVSValue(new_args, 2)).AsClip();
+            */
+            AVSValue new_args[1] = { mask };
+            mask2 = env->Invoke("ExtractB", AVSValue(new_args, 1)).AsClip();
           }
           else {
             AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
@@ -538,7 +551,8 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           }
           Mframe = mask2.AsClip()->GetFrame(n, env);
         }
-      } else {
+      }
+      else {
         // greymask == false
         if (isInternalRGB) {
           // clip, matrix, interlaced
@@ -563,7 +577,8 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
           // no fancy options for chroma resampler, etc.. simply fast
           Convert444ToYV16(frameSrc422, Mframe, pixelsize, bits_per_pixel, env);
-        } else {
+        }
+        else {
           AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
           mask2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
           Mframe = mask2.AsClip()->GetFrame(n, env);
@@ -773,8 +788,8 @@ void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, float* 
 AVSValue __cdecl Overlay::Create(AVSValue args, void*, IScriptEnvironment* env) {
    //return new Overlay(args[0].AsClip(), args, env);
 
-   Overlay* Result = new Overlay(args[0].AsClip(), args, env);
-   if (Result->GetVideoInfo().pixel_type == Result->outputVi->pixel_type)
+  Overlay* Result = new Overlay(args[0].AsClip(), args, env);
+  if (Result->GetVideoInfo().pixel_type == Result->outputVi->pixel_type)
      return Result;
    // c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s
    // chromaresample = 'bicubic' default
