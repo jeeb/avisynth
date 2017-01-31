@@ -79,6 +79,12 @@ template<typename pixel_t, int bits_per_pixel>
 __forceinline static __m128i overlay_blend_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128) {
   // v128 is rounding half, no use for float
   if (sizeof(pixel_t) == 1) {
+    // todo: 0 ot 255 overlay values becoming 1 and 254 for full mask transparency
+    // p1*(1-mask) + p2*mask = p1+(p2-p1)*mask
+    // p1   p2    mask    (p2-p1)*mask   p1<<8 + 128     sum      result  good result
+    // 255   0    255     -65025          65408          384         1         0
+    //                     511            -128                     254
+    // 0    255   255
     __m128i tmp1 = _mm_mullo_epi16(_mm_sub_epi16(p2, p1), mask); // (p2-p1)*mask
     __m128i tmp2 = _mm_or_si128(_mm_slli_epi16(p1, 8), v128);    // p1<<8 + 128 == p1<<8 | 128
     return _mm_srli_epi16(_mm_add_epi16(tmp1, tmp2), 8);
@@ -90,7 +96,7 @@ __forceinline static __m128i overlay_blend_sse2_core(const __m128i& p1, const __
   }
   else if (sizeof(pixel_t) == 4) {
     __m128 mulres = _mm_mul_ps(_mm_sub_ps(_mm_castsi128_ps(p2), _mm_castsi128_ps(p1)), _mm_castsi128_ps(mask));
-    return _mm_castps_si128(_mm_add_ps(_mm_castsi128_ps(p1),mulres)); // p1*(1-new_mask) + p2*mask = p1+(p2-p1)*mask
+    return _mm_castps_si128(_mm_add_ps(_mm_castsi128_ps(p1),mulres)); // p1*(1-mask) + p2*mask = p1+(p2-p1)*mask
   }
 }
 
