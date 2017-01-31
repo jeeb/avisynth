@@ -201,7 +201,7 @@ typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsiz
 class ConvertBits : public GenericVideoFilter
 {
 public:
-  ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, IScriptEnvironment* env);
+  ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -220,6 +220,8 @@ private:
   int dither_bitdepth;
   bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
   bool format_change_only;
+  bool fulls; // source is full range (defaults: rgb=true, yuv=false (bit shift))
+  bool fulld; // destination is full range (defaults: rgb=true, yuv=false (bit shift))
 };
 
 class AddAlphaPlane : public GenericVideoFilter

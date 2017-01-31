@@ -73,10 +73,10 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToYUV420",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToPlanarGeneric::CreateYUV420},
   { "ConvertToYUV422",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV422},
   { "ConvertToYUV444",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
-  { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)8 },
-  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)16 },
-  { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)32 },
-  { "ConvertBits",    BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i", ConvertBits::Create, (void *)0 },
+  { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)8 },
+  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)16 },
+  { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)32 },
+  { "ConvertBits",    BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)0 },
   { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask].", AddAlphaPlane::Create},
   { "RemoveAlphaPlane",  BUILTIN_FUNC_PREFIX, "c", RemoveAlphaPlane::Create},
   { 0 }
@@ -1671,8 +1671,9 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
 }
 
 
-ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange)
+ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange),
+  fulls(_fulls), fulld(_fulld)
 {
 
   pixelsize = vi.ComponentSize();
@@ -1688,12 +1689,16 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
   BitDepthConvFuncPtr conv_function_full_scale_no_dither;
   BitDepthConvFuncPtr conv_function_shifted_scale;
 
+  if (fulls != fulld)
+    env->ThrowError("ConvertBits: fulls and fulld should be the same");
   // ConvertToFloat
   if (target_bitdepth == 32) {
-    // always full scale
+    // alpha copy is always full scale
+    // todo: conv_function_uv if float U/V is ever goes to +/-0.5 instead of generic 0..1.0
     if (pixelsize == 1) // 8->32 bit
     {
       conv_function = convert_uintN_to_float_c<uint8_t, 8>;
+      conv_function_a = conv_function;
     }
     else if (pixelsize == 2) // 16->32 bit
     {
@@ -1701,10 +1706,14 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
       {
         switch (bits_per_pixel)
         {
-        case 10: conv_function = convert_uintN_to_float_c<uint16_t, 10>; break;
-        case 12: conv_function = convert_uintN_to_float_c<uint16_t, 12>; break;
-        case 14: conv_function = convert_uintN_to_float_c<uint16_t, 14>; break;
-        case 16: conv_function = convert_uintN_to_float_c<uint16_t, 16>; break;
+        case 10: conv_function = convert_uintN_to_float_c<uint16_t, 10>;
+          break;
+        case 12: conv_function = convert_uintN_to_float_c<uint16_t, 12>;
+          break;
+        case 14: conv_function = convert_uintN_to_float_c<uint16_t, 14>;
+          break;
+        case 16: conv_function = convert_uintN_to_float_c<uint16_t, 16>;
+          break;
         default: env->ThrowError("ConvertToFloat: unsupported bit depth");
         }
       }
@@ -1715,7 +1724,7 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
     else
       env->ThrowError("ConvertToFloat: internal error 32->32 is not valid here");
 
-    conv_function_a = conv_function; // alpha copy is the same full scale
+    conv_function_a = conv_function; // alpha is always full
 
     if (vi.NumComponents() == 1)
       vi.pixel_type = VideoInfo::CS_Y32;
@@ -1777,20 +1786,12 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
         conv_function_shifted_scale = sse2 ? convert_8_to_uint16_sse2<16> : convert_8_to_uint16_c<16>;
       }
 
-      // RGB scaling is not shift by 8 as in YUV but like 0..255->0..65535
-      if (vi.IsRGB24() || vi.IsRGB32())
-        conv_function = conv_function_full_scale; // convert_rgb_8_to_uint16_c<16>;
-        // conv_function_a: n/a no separate alpha plane
-      else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
-        conv_function = conv_function_full_scale; // RGB is full scale
-        conv_function_a = conv_function_full_scale; // alpha copy is the same full scale
-      }
-      else if (vi.IsYUV() || vi.IsYUVA()) {
-        conv_function = conv_function_shifted_scale; //
-        conv_function_a = conv_function_full_scale; // alpha copy is the same full scale
-      }
+      if (fulls)
+        conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
       else
-        env->ThrowError("ConvertTo16bit: unsupported color space");
+        conv_function = conv_function_shifted_scale; // yuv default
+
+      conv_function_a = conv_function_full_scale; // alpha copy is the same full scale
     }
     else if (pixelsize == 2)
     {
@@ -1878,15 +1879,12 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
       // range reducing or expansion (truerange=true), or just overriding the pixel_type, keeping scale at 16 bits
       // 10-16 -> 10->16 truerange == false already handled
       if (truerange) {
-        // invalid combinations were already checked
-        if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
-          conv_function = conv_function_full_scale;
-          conv_function_a = conv_function_full_scale;
-        }
-        else if (vi.IsYUV() || vi.IsYUVA()) {
-          conv_function = conv_function_shifted_scale;
-          conv_function_a = conv_function_full_scale; // alpha: always full
-        }
+        if (fulls)
+          conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
+        else
+          conv_function = conv_function_shifted_scale; // yuv default
+
+        conv_function_a = conv_function_full_scale; // alpha copy is always full scale
       }
       else { // truerange==false
              // 10->12 .. 16->12 etc
@@ -1896,6 +1894,7 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
     }
     else if (pixelsize == 4) // 32->16 bit
     {
+      // always from full scale
       if (truerange) {
         switch (target_bitdepth)
         {
@@ -1956,6 +1955,7 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
       // target_dither_bitdepth==8 (RFU for dithering down from e.g. 10->2 bit)
 
       // fill conv_function_full_scale and conv_function_shifted_scale
+      // conv_function_full_scale_no_dither: for alpha plane
       if (truerange) {
         conv_function_full_scale = get_convert_to_8_function(true, bits_per_pixel, dither_mode, 8, 1, CPUF_SSE2);
         conv_function_full_scale_no_dither = get_convert_to_8_function(true, bits_per_pixel, -1, 8, 1, CPUF_SSE2); // force dither_mode==-1
@@ -1975,22 +1975,15 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
       }
 
       // packed RGB scaling is full_scale 0..65535->0..255
-      if (vi.IsRGB48() || vi.IsRGB64()) {
-        conv_function = conv_function_full_scale;
-        // no separate alpha plane
-      } else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
-        conv_function = conv_function_full_scale;
-        conv_function_a = conv_function_full_scale_no_dither; // don't dither alpha plane
-      }
-      else if (vi.IsYUV() || vi.IsYUVA())
-      {
-        conv_function = conv_function_shifted_scale;
-        conv_function_a = conv_function_full_scale_no_dither;  // don't dither alpha plane
-      }
+      if (fulls)
+        conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
       else
-        env->ThrowError("ConvertTo8bit: unsupported color space");
+        conv_function = conv_function_shifted_scale; // yuv default
+
+      conv_function_a = conv_function_full_scale_no_dither; // alpha copy is the same full scale, w/o dithering
+
     }
-    else if (vi.ComponentSize() == 4) // 32->8 bit
+    else if (vi.ComponentSize() == 4) // 32->8 bit, no dithering option atm
     {
       // full scale
       conv_function = avx ? convert_32_to_uintN_c_avx<uint8_t, 8> : convert_32_to_uintN_c<uint8_t, 8>;
@@ -2027,8 +2020,8 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
 
 AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  //0   1        2        3         4         5
-  //c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i
+  //0   1        2        3         4         5           6       7
+  //c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b
 
   const VideoInfo &vi = clip->GetVideoInfo();
 
@@ -2065,6 +2058,11 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     if (!vi.IsPlanar())
       env->ThrowError("ConvertBits: truerange specified for non-planar source");
   }
+
+  // override defaults, e.g. set full range for greyscale clip conversion that is RGB
+  // full range is default also for float (and cannot be set to false)
+  bool fulls = args[6].AsBool(vi.IsRGB() || ((target_bitdepth == 32 || source_bitdepth == 32)));
+  bool fulld = args[7].AsBool(fulls);
 
   int dither_type = args[3].AsInt(-1);
   bool dither_defined = args[3].Defined();
@@ -2117,7 +2115,13 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   if(float_range<=0.0)
       env->ThrowError("ConvertBits: Float range parameter cannot be <= 0");
 
-  return new ConvertBits(clip, float_range, dither_type, target_bitdepth, assume_truerange, env);
+  if (fulls != fulld)
+    env->ThrowError("ConvertBits: fulls and fulld has to be the same at the moment");
+
+  if ((!fulls || !fulld) && (target_bitdepth == 32 || source_bitdepth == 32))
+    env->ThrowError("ConvertBits: fulls and fulld is always true for float");
+
+  return new ConvertBits(clip, float_range, dither_type, target_bitdepth, assume_truerange, fulls, fulld, env);
 }
 
 
