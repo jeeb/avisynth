@@ -117,10 +117,11 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end; 
   t_start = std::chrono::high_resolution_clock::now(); // t_start starts in the constructor. Used in logging
 
-  LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true);
+  LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result);
   switch (LruLookupRes)
 #else
-  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true))
+  // fill result in lookup before releasing cache handle lock
+  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true, result))
 #endif
   {
   case LRU_LOOKUP_NOT_FOUND:
@@ -178,7 +179,11 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
     }
   case LRU_LOOKUP_FOUND_AND_READY:
     {
-      result = cache_handle.first->value;
+      // theoretically cache_handle here may point to wrong entry,
+      // because the lock in lookup is released before this readout
+      // solution:
+      // when LRU_LOOKUP_FOUND_AND_READY, the cache_handle.first->value is copied and returned in result itself
+      // result =  cache_handle.first->value; // old method not needed, result is filled already by lookup
 #ifdef _DEBUG	
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;

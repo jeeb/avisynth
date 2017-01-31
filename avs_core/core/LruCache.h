@@ -147,7 +147,7 @@ public:
     MainCache.set_limits(min, max);
   }
 
-  LruLookupResult lookup(const K& key, handle *hndl, bool block_for_completion)
+  LruLookupResult lookup(const K& key, handle *hndl, bool block_for_completion, V& foundItem)
   {
     std::unique_lock<std::mutex> global_lock(mutex);
 
@@ -183,6 +183,8 @@ public:
           assert(0);
         }
       }
+      // copy and return hndl->first.value before releasing lock
+      foundItem = hndl->first->value;
       --(entry->locks);
       return LRU_LOOKUP_FOUND_AND_READY;
     }
