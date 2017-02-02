@@ -344,7 +344,7 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
     const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
     return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height,
-        rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA);
+        rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA+offsetA);
 }
 
 VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(NULL), data_size(0), sequence_number(0) {}
