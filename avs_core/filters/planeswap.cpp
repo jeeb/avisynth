@@ -904,9 +904,75 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
 
 
 PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
+
+  VideoInfo vi_src = clips[0]->GetVideoInfo();
+
+  // check if fast Subframe magic can replace BitBlt
+  if (!clips[1] && vi.NumComponents() <= vi_src.NumComponents()) // YUV<->RGB, YUVA<->RGBA YUV->Y
+  {
+    // we have only one clip, plane shuffle is valid if target has less plane that defined in source
+    PVideoFrame src = clips[0]->GetFrame(n, env);
+
+    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int *planes = (vi_src.IsYUV() || vi_src.IsYUVA()) ? planes_y : planes_r;
+
+    int Offsets[4];
+    int Pitches[4], NewPitches[4];
+    int RowSizes[4], NewRowSizes[4];
+
+    int RelOffsets[4];
+
+    for (int i = 0; i < vi_src.NumComponents(); i++) {
+      Offsets[i] = src->GetOffset(planes[i]);
+      Pitches[i] = NewPitches[i] = src->GetPitch(planes[i]);
+      RowSizes[i] = NewRowSizes[i] = src->GetRowSize(planes[i]);
+      RelOffsets[i] = 0;
+    }
+
+    for (int i = 0; i < planecount; i++) {
+      int target_plane = target_planes[i];
+      int source_plane = source_planes[i];
+      int target_index, source_index;
+      switch (target_plane) {
+      case PLANAR_Y: case PLANAR_G: target_index = 0; break;
+      case PLANAR_U: case PLANAR_B: target_index = 1; break;
+      case PLANAR_V: case PLANAR_R: target_index = 2; break;
+      case PLANAR_A: target_index = 3; break;
+      }
+      switch (source_plane) {
+      case PLANAR_Y: case PLANAR_G: source_index = 0; break;
+      case PLANAR_U: case PLANAR_B: source_index = 1; break;
+      case PLANAR_V: case PLANAR_R: source_index = 2; break;
+      case PLANAR_A: source_index = 3; break;
+      }
+      RelOffsets[target_index] = Offsets[source_index] - Offsets[target_index];
+      NewPitches[target_index] = Pitches[source_index];
+      NewRowSizes[target_index] = RowSizes[source_index];
+      // Y            U           V          A
+      // 10         1010        2010       3010     offsets
+      // src: AUVY target: YVUA
+      // 3010-10   2010-1010  1010-2010    10-3010
+      //  3000     =+1000      =-1000      =-3000   reloffsets
+      //  3010       2010        1010       10      new offsets inside
+    }
+
+    IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+    if (vi.NumComponents() == 4) {
+      return env2->SubframePlanarA(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
+        RelOffsets[1], RelOffsets[2], NewPitches[1], RelOffsets[3]);
+    }
+    else if (vi.NumComponents() == 3) {
+      return env->SubframePlanar(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
+        RelOffsets[1], RelOffsets[2], NewPitches[1]);
+    }
+    else {
+      return env->Subframe(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight());
+    }
+  }
+
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  int last_clip_index = 0;
   PVideoFrame src;
   for (int i = 0; i < planecount; i++) {
     if (clips[i]) // source clips can be less than defined planes
