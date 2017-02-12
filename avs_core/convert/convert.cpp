@@ -2089,6 +2089,10 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     env->ThrowError("ConvertBits: YUY2 source is 8-bit only");
   }
 
+  if (vi.IsYV411()) {
+    env->ThrowError("ConvertBits: YV411 source cannot be converted");
+  }
+
   // packed RGB conversion is limited
   if (vi.IsRGB24() || vi.IsRGB32()) {
     if (target_bitdepth != 16)
