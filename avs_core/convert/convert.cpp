@@ -2069,7 +2069,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   if(dither_defined && dither_type != 0 && dither_type != -1)
     env->ThrowError("ConvertBits: invalid dither type parameter. Only -1 (disabled) or 0 (ordered dither) is allowed");
 
-  if(dither_defined) {
+  if(dither_type >= 0) {
     if(source_bitdepth - dither_bitdepth > 8)
       env->ThrowError("ConvertBits: ditherbits cannot differ with more than 8 bits from source");
 
