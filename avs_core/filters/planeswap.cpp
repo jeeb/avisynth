@@ -716,6 +716,7 @@ AVSValue __cdecl CombinePlanes::CreateCombinePlanes(AVSValue args, void* user_da
   int sample_clip_param = 3 + mode;
 
   bool hasSampleClip = args[sample_clip_param].Defined();
+
   return new CombinePlanes(args[0].AsClip(),
     mode >= 2 ? args[1].AsClip() : nullptr,
     mode >= 3 ? args[2].AsClip() : nullptr,
@@ -757,6 +758,23 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
       env->ThrowError("CombinePlanes: unknown pixel_type %s", _pixel_type);
     vi_default.pixel_type = i_pixel_type;
     videoFormatOverridden = true;
+  }
+
+  if (!vi_default.IsPlanar())
+    env->ThrowError("CombinePlanes: output clip video format is not planar!");
+
+  // autoconvert packed RGB or YUY2 inputs, in order to able to extract planes
+  for (int i = 0; i < 4; i++) {
+    if (!clips[i]) continue;
+    const VideoInfo &vi_test = clips[i]->GetVideoInfo();
+    if (vi_test.IsRGB() && !vi_test.IsPlanar()) {
+      bool hasAlpha = vi_test.NumComponents() == 4;
+      clips[i] = new PackedRGBtoPlanarRGB(clips[i], hasAlpha, hasAlpha);
+    }
+    else if (vi_test.IsYUY2()) {
+      AVSValue emptyValue;
+      clips[i] = new ConvertToPlanarGeneric(clips[i], VideoInfo::CS_YV16, false, emptyValue, emptyValue, emptyValue, env);
+    }
   }
 
   int source_plane_count = (int)strlen(_source_planes_str); // no check here, can be 0
@@ -975,8 +993,9 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
 
   PVideoFrame src;
   for (int i = 0; i < planecount; i++) {
-    if (clips[i]) // source clips can be less than defined planes
+    if (clips[i]) { // source clips can be less than defined planes
       src = clips[i]->GetFrame(n, env); // last defined clip is used for the others
+    }
     int target_plane = target_planes[i];
     int source_plane = source_planes[i];
     env->BitBlt(dst->GetWritePtr(target_plane), dst->GetPitch(target_plane),
