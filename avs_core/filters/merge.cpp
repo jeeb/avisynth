@@ -586,6 +586,60 @@ void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_p
   }
 }
 
+
+void weighted_merge_planar_sse2_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, float invweight_f) {
+  auto mask = _mm_set1_ps(weight_f);
+
+  int wMod16 = (rowsize / 16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x += 16) {
+      auto px1 = _mm_load_ps(reinterpret_cast<const float*>(p1 + x));
+      auto px2 = _mm_load_ps(reinterpret_cast<const float*>(p2 + x));
+      // p1:dst p2:src
+      // ( 1- mask) * dst + mask * src =
+      // dst - dst * mask + src * mask =
+      // dst + mask * (src - dst)
+      auto diff = _mm_sub_ps(px2, px1);
+      auto tmp = _mm_mul_ps(diff, mask); // (p2-p1)*mask
+      auto result = _mm_add_ps(tmp, px1); // +dst
+
+      _mm_store_ps(reinterpret_cast<float *>(p1 + x), result);
+    }
+
+    for (size_t x = wMod16 / sizeof(float); x < rowsize / sizeof(float); x++) {
+      reinterpret_cast<float *>(p1)[x] = reinterpret_cast<float *>(p1)[x] * invweight_f + reinterpret_cast<const float *>(p2)[x] * weight_f;
+    }
+
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+  }
+}
+
+void average_plane_sse2_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height) {
+  auto OneHalf = _mm_set1_ps(0.5f);
+
+  int wMod16 = (rowsize / 16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x += 16) {
+      auto px1 = _mm_load_ps(reinterpret_cast<const float*>(p1 + x));
+      auto px2 = _mm_load_ps(reinterpret_cast<const float*>(p2 + x));
+
+      auto result = _mm_mul_ps(_mm_add_ps(px1, px2), OneHalf); //
+
+      _mm_store_ps(reinterpret_cast<float *>(p1 + x), result);
+    }
+
+    for (size_t x = wMod16 / sizeof(float); x < rowsize / sizeof(float); x++) {
+      reinterpret_cast<float *>(p1)[x] = (reinterpret_cast<float *>(p1)[x] + reinterpret_cast<const float *>(p2)[x]) * 0.5f;
+    }
+
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+  }
+}
+
 #ifdef X86_32
 void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight) {
   __m64 round_mask = _mm_set1_pi32(0x4000);
@@ -716,7 +770,10 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
     }
     else // if (pixelsize == 4)
     { // todo sse for float
-      average_plane_c_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
+      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
+        average_plane_sse2_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
+      else
+        average_plane_c_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
     }
 
   } 
@@ -784,7 +841,10 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
     {
       float fweight = weight; // intentional
       float finvweight = 1-fweight;
-      weighted_merge_planar_c_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height, fweight, finvweight);
+      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
+        weighted_merge_planar_sse2_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height, fweight, finvweight);
+      else
+        weighted_merge_planar_c_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height, fweight, finvweight);
     }
   }
 }
