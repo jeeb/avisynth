@@ -659,7 +659,7 @@ void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p
 
   for (int y = 0; y < height; ++y) {
     for (size_t x = 0; x < rs; ++x) {
-      reinterpret_cast<float *>(p1)[x] = (reinterpret_cast<float *>(p1)[x] * invweight + reinterpret_cast<const float *>(p2)[x] * weight) / 2.0f;
+      reinterpret_cast<float *>(p1)[x] = (reinterpret_cast<float *>(p1)[x] * invweight + reinterpret_cast<const float *>(p2)[x] * weight);
     }
     p1 += p1_pitch;
     p2 += p2_pitch;
