@@ -43,7 +43,9 @@
 
 extern const AVSFunction Conditional_filters[] = {
   {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "csc+[show]b", ConditionalSelect::Create },
-  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccsss[show]b", ConditionalFilter::Create },
+  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccsss[show]b", ConditionalFilter::Create, (void *)0 },
+  // easy syntax from GConditionalFilter, args3 and 4 to "=" and "true":
+  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccs[show]b", ConditionalFilter::Create, (void *)1 },
   {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create },
   {  "ConditionalReader", BUILTIN_FUNC_PREFIX, "css[show]b", ConditionalReader::Create },
   {  "FrameEvaluate",     BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create_eval },
@@ -400,7 +402,11 @@ void __stdcall ConditionalFilter::GetAudio(void* buf, __int64 start, __int64 cou
 
 AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], args[4], args[5], args[6].AsBool(false), env);
+  int userdata = (intptr_t)user_data;
+  if (userdata == 0)
+    return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], args[4], args[5], args[6].AsBool(false),env);
+  else // like GConditional filter shortcut: no "=" "true" needed
+    return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], "=", "true", args[4].AsBool(false), env);
 }
 
 
