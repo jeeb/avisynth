@@ -261,7 +261,9 @@ static std::string FormatString(const char *fmt, va_list args)
   va_copy(args2, args);
   _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
 
-  int count = _vsnprintf_l(NULL, 0, fmt, locale, args);
+  int count = _vscprintf_l(fmt, locale, args2);
+  // don't use _vsnprintf_l(NULL, 0, fmt, locale, args) here,
+  // it returns -1 instead of the buffer size under Wine (February, 2017)
   std::vector<char> buf(count + 1);
   _vsnprintf_l(buf.data(), buf.size(), fmt, locale, args2);
 
