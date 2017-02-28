@@ -10,23 +10,87 @@ avs_core/core/version.h
 plugins/CMakeCache.txt
 plugins/CMakeFiles/*
 
+plugins/ConvertStacked/CMakeCache.txt
+plugins/ConvertStacked/CMakeFiles/*
+plugins/ConvertStacked/debug/*
+plugins/ConvertStacked/release/*
+
 plugins/DirectShowSource/CMakeCache.txt
 plugins/DirectShowSource/CMakeFiles/*
+plugins/DirectShowSource/debug/*
+plugins/DirectShowSource/release/*
 
 plugins/ImageSeq/CMakeCache.txt
 plugins/ImageSeq/CMakeFiles/*
+plugins/ImageSeq/debug/*
+plugins/ImageSeq/release/*
 
 plugins/Shibatch/CMakeCache.txt
 plugins/Shibatch/CMakeFiles/*
+plugins/Shibatch/debug/*
+plugins/Shibatch/release/*
 
 plugins/TimeStretch/CMakeCache.txt
 plugins/TimeStretch/CMakeFiles/*
+plugins/TimeStretch/debug/*
+plugins/TimeStretch/release/*
 
 plugins/VDubFilter/CMakeCache.txt
 plugins/VDubFilter/CMakeFiles/*
+plugins/VDubFilter/debug/*
+plugins/VDubFilter/release/*
 
 plugins/VFAPIFilter/CMakeCache.txt
 plugins/VFAPIFilter/CMakeFiles/*
+plugins/VFAPIFilter/debug/*
+plugins/VFAPIFilter/release/*
+
+debug/*
+output/*
+release/*
+win32/*
+x64/*
+avscore/debug
+avscore/release/*
+avscore/win32/*
+avscore/x64/*
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+[Rr]elWithDebInfo/
+x64/
+x86/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+# Visual C++ cache files
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
 
 *.rej
 *.orig
