@@ -2548,14 +2548,15 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
       pix_type == VideoInfo::CS_YUV420P10 || pix_type == VideoInfo::CS_YUV420P12 ||
       pix_type == VideoInfo::CS_YUV420P14 || pix_type == VideoInfo::CS_YUV420P16 ||
       pix_type == VideoInfo::CS_YUV420PS ||
-      pix_type == VideoInfo::CS_YUVA420 ||
+        pix_type == VideoInfo::CS_YUVA420 ||
       pix_type == VideoInfo::CS_YUVA420P10 || pix_type == VideoInfo::CS_YUVA420P12 ||
       pix_type == VideoInfo::CS_YUVA420P14 || pix_type == VideoInfo::CS_YUVA420P16 ||
       pix_type == VideoInfo::CS_YUVA420PS;
   };
 
   if (!Is420(vi.pixel_type) && !Is420(dst_space))
-    if (interlaced) env->ThrowError("Convert: Interlaced only available with 4:2:0 color spaces.");
+    interlaced = false;  // Ignore, if YV12 is not involved.
+  //if (interlaced) env->ThrowError("Convert: Interlaced only available with 4:2:0 color spaces.");
 
   // Describe input pixel positioning
   float xdInU = 0.0f, txdInU = 0.0f, bxdInU = 0.0f;
