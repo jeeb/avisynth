@@ -476,7 +476,604 @@ AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* en
 ********************************************************************/
 
 
+template<typename pixel_t, int bits_per_pixel>
+static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pitchY, int pitchUV, int w, int h)
+{
+  pixel_t *pY = reinterpret_cast<pixel_t *>(pY8);
+  pixel_t *pU = reinterpret_cast<pixel_t *>(pU8);
+  pixel_t *pV = reinterpret_cast<pixel_t *>(pV8);
+  pitchY /= sizeof(pixel_t);
+  pitchUV /= sizeof(pixel_t);
 
+  const int shift = sizeof(pixel_t) == 4 ? 0 : (bits_per_pixel - 8);
+  typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
+  factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
+
+  //                                              LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
+  static const BYTE top_two_thirdsY[] = { 0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
+  static const BYTE top_two_thirdsU[] = { 0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
+  static const BYTE top_two_thirdsV[] = { 0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
+
+  int y = 0;
+
+  for (; y * 3 < h * 2; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; i++) {
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pY[x] = factor*(top_two_thirdsY[i] << shift);
+        pU[x] = factor*(top_two_thirdsU[i] << shift);
+        pV[x] = factor*(top_two_thirdsV[i] << shift);
+      }
+    }
+    pY += pitchY; pU += pitchUV; pV += pitchUV;
+  } //                                                    Blue   Black Magenta   Black    Cyan   Black  LtGrey
+  static const BYTE two_thirds_to_three_quartersY[] = { 0x23,   0x10,   0x54,   0x10,   0x83,   0x10,   0xb4 };
+  static const BYTE two_thirds_to_three_quartersU[] = { 0xd4,   0x80,   0xb8,   0x80,   0x9c,   0x80,   0x80 };
+  static const BYTE two_thirds_to_three_quartersV[] = { 0x72,   0x80,   0xc6,   0x80,   0x2c,   0x80,   0x80 };
+  for (; y * 4 < h * 3; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; i++) {
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pY[x] = factor*(two_thirds_to_three_quartersY[i] << shift);
+        pU[x] = factor*(two_thirds_to_three_quartersU[i] << shift);
+        pV[x] = factor*(two_thirds_to_three_quartersV[i] << shift);
+      }
+    }
+    pY += pitchY; pU += pitchUV; pV += pitchUV;
+  } //                                        -I   white      +Q   Black   -4ire   Black   +4ire   Black
+  static const BYTE bottom_quarterY[] = { 0x10,   0xeb,   0x10,   0x10,   0x07,   0x10,   0x19,   0x10 };
+  static const BYTE bottom_quarterU[] = { 0x9e,   0x80,   0xae,   0x80,   0x80,   0x80,   0x80,   0x80 };
+  static const BYTE bottom_quarterV[] = { 0x5f,   0x80,   0x95,   0x80,   0x80,   0x80,   0x80,   0x80 };
+  for (; y < h; ++y) {
+    int x = 0;
+    for (int i = 0; i < 4; ++i) {
+      for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
+        pY[x] = factor*(bottom_quarterY[i] << shift);
+        pU[x] = factor*(bottom_quarterU[i] << shift);
+        pV[x] = factor*(bottom_quarterV[i] << shift);
+      }
+    }
+    for (int j = 4; j < 7; ++j) {
+      for (; x < (w*(j + 12) + 10) / 21; ++x) {
+        pY[x] = factor*(bottom_quarterY[j] << shift);
+        pU[x] = factor*(bottom_quarterU[j] << shift);
+        pV[x] = factor*(bottom_quarterV[j] << shift);
+      }
+    }
+    for (; x < w; ++x) {
+      pY[x] = factor*(bottom_quarterY[7] << shift);
+      pU[x] = factor*(bottom_quarterU[7] << shift);
+      pV[x] = factor*(bottom_quarterV[7] << shift);
+    }
+    pY += pitchY; pU += pitchUV; pV += pitchUV;
+  }
+}
+
+template<typename pixel_t, int bits_per_pixel>
+static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pitchY, int pitchUV, int w, int h)
+{
+  pixel_t *pY = reinterpret_cast<pixel_t *>(pY8);
+  pixel_t *pU = reinterpret_cast<pixel_t *>(pU8);
+  pixel_t *pV = reinterpret_cast<pixel_t *>(pV8);
+  pitchY /= sizeof(pixel_t);
+  pitchUV /= sizeof(pixel_t);
+
+  const int shift = sizeof(pixel_t) == 4 ? 0 : (bits_per_pixel - 8);
+  typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
+  factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
+
+//                                                        LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
+  static const BYTE top_two_thirdsY[] = { 0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
+  static const BYTE top_two_thirdsU[] = { 0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
+  static const BYTE top_two_thirdsV[] = { 0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
+  w >>= 1; // 4:2:0 !!!
+  h >>= 1;
+
+  int y = 0;
+
+  for (; y * 3 < h * 2; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; i++) {
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pY[x*2+0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(top_two_thirdsY[i] << shift);
+        pU[x] = factor*(top_two_thirdsU[i] << shift);
+        pV[x] = factor*(top_two_thirdsV[i] << shift);
+      }
+    }
+    pY += pitchY * 2; pU += pitchUV; pV += pitchUV;
+  }
+  //                                                    Blue   Black Magenta   Black    Cyan   Black  LtGrey
+  static const BYTE two_thirds_to_three_quartersY[] = { 0x23,   0x10,   0x54,   0x10,   0x83,   0x10,   0xb4 };
+  static const BYTE two_thirds_to_three_quartersU[] = { 0xd4,   0x80,   0xb8,   0x80,   0x9c,   0x80,   0x80 };
+  static const BYTE two_thirds_to_three_quartersV[] = { 0x72,   0x80,   0xc6,   0x80,   0x2c,   0x80,   0x80 };
+  for (; y * 4 < h * 3; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; i++) {
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(two_thirds_to_three_quartersY[i] << shift);
+        pU[x] = factor*(two_thirds_to_three_quartersU[i] << shift);
+        pV[x] = factor*(two_thirds_to_three_quartersV[i] << shift);
+      }
+    }
+    pY += pitchY * 2; pU += pitchUV; pV += pitchUV;
+  }
+  //                                        -I   white      +Q   Black   -4ire   Black   +4ire   Black
+  static const BYTE bottom_quarterY[] = { 0x10,   0xeb,   0x10,   0x10,   0x07,   0x10,   0x19,   0x10 };
+  static const BYTE bottom_quarterU[] = { 0x9e,   0x80,   0xae,   0x80,   0x80,   0x80,   0x80,   0x80 };
+  static const BYTE bottom_quarterV[] = { 0x5f,   0x80,   0x95,   0x80,   0x80,   0x80,   0x80,   0x80 };
+  for (; y < h; ++y) {
+    int x = 0;
+    for (int i = 0; i < 4; ++i) {
+      for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
+        pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[i] << shift);
+        pU[x] = factor*(bottom_quarterU[i] << shift);
+        pV[x] = factor*(bottom_quarterV[i] << shift);
+      }
+    }
+    for (int j = 4; j < 7; ++j) {
+      for (; x < (w*(j + 12) + 10) / 21; ++x) {
+        pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[j] << shift);
+        pU[x] = factor*(bottom_quarterU[j] << shift);
+        pV[x] = factor*(bottom_quarterV[j] << shift);
+      }
+    }
+    for (; x < w; ++x) {
+      pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[7] << shift);
+      pU[x] = factor*(bottom_quarterU[7] << shift);
+      pV[x] = factor*(bottom_quarterV[7] << shift);
+    }
+    pY += pitchY *2 ; pU += pitchUV; pV += pitchUV;
+  }
+}
+
+template<typename pixel_t, int bits_per_pixel>
+static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pitchY, int pitchUV, int w, int h)
+{
+  pixel_t *pY = reinterpret_cast<pixel_t *>(pY8);
+  pixel_t *pU = reinterpret_cast<pixel_t *>(pU8);
+  pixel_t *pV = reinterpret_cast<pixel_t *>(pV8);
+  pitchY /= sizeof(pixel_t);
+  pitchUV /= sizeof(pixel_t);
+
+  const int shift = sizeof(pixel_t) == 4 ? 0 : (bits_per_pixel - 8);
+  typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
+  factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
+
+//		Nearest 16:9 pixel exact sizes
+//		56*X x 12*Y
+//		 728 x  480  ntsc anamorphic
+//		 728 x  576  pal anamorphic
+//		 840 x  480
+//		1008 x  576
+//		1288 x  720 <- default
+//		1456 x 1080  hd anamorphic
+//		1904 x 1080
+  int y = 0;
+
+  const int c = (w * 3 + 14) / 28; // 1/7th of 3/4 of width
+  const int d = (w - c * 7 + 1) / 2; // remaining 1/8th of width
+
+  const int p4 = (3 * h + 6) / 12; // 3/12th of height
+  const int p23 = (h + 6) / 12;  // 1/12th of height
+  const int p1 = h - p23 * 2 - p4; // remaining 7/12th of height
+
+  //               75%  Rec709 -- Grey40 Grey75 Yellow  Cyan   Green Magenta  Red   Blue
+  static const BYTE pattern1Y[] = { 104,   180,   168,   145,   134,    63,    51,    28 };
+  static const BYTE pattern1U[] = { 128,   128,    44,   147,    63,   193,   109,   212 };
+  static const BYTE pattern1V[] = { 128,   128,   136,    44,    52,   204,   212,   120 };
+  for (; y < p1; ++y) { // Pattern 1
+    int x = 0;
+    for (; x < d; ++x) {
+      pY[x] = factor*(pattern1Y[0] << shift); // 40% Grey
+      pU[x] = factor*(pattern1U[0] << shift);
+      pV[x] = factor*(pattern1V[0] << shift);
+    }
+    for (int i = 1; i < 8; i++) {
+      for (int j = 0; j < c; ++j, ++x) {
+        pY[x] = factor*(pattern1Y[i] << shift); // 75% Colour bars
+        pU[x] = factor*(pattern1U[i] << shift);
+        pV[x] = factor*(pattern1V[i] << shift);
+      }
+    }
+    for (; x < w; ++x) {
+      pY[x] = factor*(pattern1Y[0] << shift); // 40% Grey
+      pU[x] = factor*(pattern1U[0] << shift);
+      pV[x] = factor*(pattern1V[0] << shift);
+    }
+    pY += pitchY; pU += pitchUV; pV += pitchUV;
+  }
+  //              100% Rec709       Cyan  Blue Yellow  Red    +I Grey75  White
+  static const BYTE pattern23Y[] = { 188,   32,  219,   63,   16,  180,  235 };
+  static const BYTE pattern23U[] = { 154,  240,   16,  102,   98,  128,  128 };
+  static const BYTE pattern23V[] = {  16,  118,  138,  240,  161,  128,  128 };
+  for (; y < p1 + p23; ++y) { // Pattern 2
+    int x = 0;
+    for (; x < d; ++x) {
+      pY[x] = factor*(pattern23Y[0] << shift); // 100% Cyan
+      pU[x] = factor*(pattern23U[0] << shift);
+      pV[x] = factor*(pattern23V[0] << shift);
+    }
+    for (; x < c + d; ++x) {
+      pY[x] = factor*(pattern23Y[4] << shift); // +I or Grey75 or White ???
+      pU[x] = factor*(pattern23U[4] << shift);
+      pV[x] = factor*(pattern23V[4] << shift);
+    }
+    for (; x < c * 7 + d; ++x) {
+      pY[x] = factor*(pattern23Y[5] << shift); // 75% White
+      pU[x] = factor*(pattern23U[5] << shift);
+      pV[x] = factor*(pattern23V[5] << shift);
+    }
+    for (; x < w; ++x) {
+      pY[x] = factor*(pattern23Y[1] << shift); // 100% Blue
+      pU[x] = factor*(pattern23U[1] << shift);
+      pV[x] = factor*(pattern23V[1] << shift);
+    }
+    pY += pitchY; pU += pitchUV; pV += pitchUV;
+  }
+  for (; y < p1 + p23 * 2; ++y) { // Pattern 3
+    int x = 0;
+    for (; x < d; ++x) {
+      pY[x] = factor*(pattern23Y[2] << shift); // 100% Yellow
+      pU[x] = factor*(pattern23U[2] << shift);
+      pV[x] = factor*(pattern23V[2] << shift);
+    }
+    for (int j = 0; j < c * 7; ++j, ++x) { // Y-Ramp
+      pY[x] = pixel_t(factor*(16 << shift) + (factor * (220 << shift) * j) / (c * 7));
+      pU[x] = factor*(128 << shift);
+      pV[x] = factor*(128 << shift);
+    }
+    for (; x < w; ++x) {
+      pY[x] = factor*(pattern23Y[3] << shift); // 100% Red
+      pU[x] = factor*(pattern23U[3] << shift);
+      pV[x] = factor*(pattern23V[3] << shift);
+    }
+    pY += pitchY; pU += pitchUV; pV += pitchUV;
+  } //                           Grey15 Black White Black   -2% Black   +2% Black   +4% Black
+  static const BYTE pattern4Y[] = {  49,   16,  235,   16,   12,   16,   20,   16,   25,   16 };
+  static const BYTE pattern4U[] = { 128,  128,  128,  128,  128,  128,  128,  128,  128,  128 };
+  static const BYTE pattern4V[] = { 128,  128,  128,  128,  128,  128,  128,  128,  128,  128 };
+  static const BYTE pattern4W[] = {   0,    9,   21,   26,   28,   30,   32,   34,   36,   42 }; // in 6th's
+  for (; y < h; ++y) { // Pattern 4
+    int x = 0;
+    for (; x < d; ++x) {
+      pY[x] = factor*(pattern4Y[0] << shift); // 15% Grey
+      pU[x] = factor*(pattern4U[0] << shift);
+      pV[x] = factor*(pattern4V[0] << shift);
+    }
+    for (int i = 1; i <= 9; i++) {
+      for (; x < d + (pattern4W[i] * c + 3) / 6; ++x) {
+        pY[x] = factor*(pattern4Y[i] << shift);
+        pU[x] = factor*(pattern4U[i] << shift);
+        pV[x] = factor*(pattern4V[i] << shift);
+      }
+    }
+    for (; x < w; ++x) {
+      pY[x] = factor*(pattern4Y[0] << shift); // 15% Grey
+      pU[x] = factor*(pattern4U[0] << shift);
+      pV[x] = factor*(pattern4V[0] << shift);
+    }
+    pY += pitchY; pU += pitchUV; pV += pitchUV;
+  }
+}
+
+static uint16_t rgbcolor8to16(uint8_t color8, int max_pixel_value)
+{
+  return (uint16_t)(color8 * max_pixel_value / 255);
+};
+
+
+static uint64_t rgbcolor32to64(uint32_t color32_8)
+{
+  return (uint64_t)(
+    (uint64_t(rgbcolor8to16(uint8_t((color32_8 >> 24) & 0xFF), 65535)) << 48) +
+    (uint64_t(rgbcolor8to16(uint8_t((color32_8 >> 16) & 0xFF), 65535)) << 32) +
+    (uint64_t(rgbcolor8to16(uint8_t((color32_8 >> 8) & 0xFF), 65535)) << 16) +
+    (uint64_t(rgbcolor8to16(uint8_t((color32_8) & 0xFF), 65535)))
+    );
+}
+
+template<typename pixel_t>
+static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
+{
+  typedef typename std::conditional < sizeof(pixel_t) == 2, uint64_t, uint32_t>::type internal_pixel_t;
+
+  internal_pixel_t *p = reinterpret_cast<internal_pixel_t *>(p8);
+  pitch /= sizeof(pixel_t);
+
+  // note we go bottom->top
+  static const uint32_t bottom_quarter[] =
+  // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
+  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+
+  int y = 0;
+
+  bool isRGB32 = sizeof(pixel_t) == 1;
+  const int max_pixel_value = isRGB32 ? 255 : 65535;
+
+  for (; y < h / 4; ++y) {
+    int x = 0;
+    for (int i = 0; i < 4; ++i) {
+      for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
+        p[x] = (internal_pixel_t)(isRGB32 ? bottom_quarter[i] : rgbcolor32to64(bottom_quarter[i]));
+      }
+    }
+    for (int j = 4; j < 7; ++j) {
+      for (; x < (w*(j + 12) + 10) / 21; ++x) {
+        p[x] = (internal_pixel_t)(isRGB32 ? bottom_quarter[j] : rgbcolor32to64(bottom_quarter[j]));
+      }
+    }
+    for (; x < w; ++x) {
+      p[x] = (internal_pixel_t)(isRGB32 ? bottom_quarter[7] : rgbcolor32to64(bottom_quarter[7]));
+    }
+    p += pitch;
+  }
+
+  static const int two_thirds_to_three_quarters[] =
+  // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
+  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
+  for (; y < h / 3; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      for (; x < (w*(i + 1) + 3) / 7; ++x)
+        p[x] = (internal_pixel_t)(isRGB32 ? two_thirds_to_three_quarters[i] : rgbcolor32to64(two_thirds_to_three_quarters[i]));
+    }
+    p += pitch;
+  }
+
+  static const int top_two_thirds[] =
+  // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
+  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
+  for (; y < h; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      for (; x < (w*(i + 1) + 3) / 7; ++x)
+        p[x] = (internal_pixel_t)(isRGB32 ? top_two_thirds[i] : rgbcolor32to64(top_two_thirds[i]));
+    }
+    p += pitch;
+  }
+}
+
+template<typename pixel_t, int bits_per_pixel>
+static void draw_colorbars_rgbp(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int pitch, int w, int h)
+{
+  pixel_t *pR = reinterpret_cast<pixel_t *>(pR8);
+  pixel_t *pG = reinterpret_cast<pixel_t *>(pG8);
+  pixel_t *pB = reinterpret_cast<pixel_t *>(pB8);
+  pitch /= sizeof(pixel_t);
+
+  // note we go bottom->top
+  // original code sample came from packed RGB32 so we are going backward for planar
+
+  pR += (h - 1)*pitch;
+  pG += (h - 1)*pitch;
+  pB += (h - 1)*pitch;
+
+  static const uint32_t bottom_quarter[] =
+    // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
+  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+
+  int y = 0;
+
+  const int max_pixel_value = (1 << bits_per_pixel) - 1;
+
+  const bool is8bit = sizeof(pixel_t) == 1;
+
+  for (; y < h / 4; ++y) {
+    int x = 0;
+    for (int i = 0; i < 4; ++i) {
+      int color = bottom_quarter[i];
+
+      int color_r = (color >> 16) & 0xFF;
+      int color_g = (color >> 8) & 0xFF;
+      int color_b = (color) & 0xFF;
+      if (!is8bit) {
+        color_r = rgbcolor8to16(color_r, max_pixel_value);
+        color_g = rgbcolor8to16(color_g, max_pixel_value);
+        color_b = rgbcolor8to16(color_b, max_pixel_value);
+      }
+      for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+    for (int j = 4; j < 7; ++j) {
+      int color = bottom_quarter[j];
+      int color_r = (color >> 16) & 0xFF;
+      int color_g = (color >> 8) & 0xFF;
+      int color_b = (color) & 0xFF;
+      if (!is8bit) {
+        color_r = rgbcolor8to16(color_r, max_pixel_value);
+        color_g = rgbcolor8to16(color_g, max_pixel_value);
+        color_b = rgbcolor8to16(color_b, max_pixel_value);
+      }
+
+      for (; x < (w*(j + 12) + 10) / 21; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+
+    int color = bottom_quarter[7];
+    int color_r = (color >> 16) & 0xFF;
+    int color_g = (color >> 8) & 0xFF;
+    int color_b = (color) & 0xFF;
+    if (!is8bit) {
+      color_r = rgbcolor8to16(color_r, max_pixel_value);
+      color_g = rgbcolor8to16(color_g, max_pixel_value);
+      color_b = rgbcolor8to16(color_b, max_pixel_value);
+    }
+    for (; x < w; ++x) {
+      pR[x] = color_r;
+      pG[x] = color_g;
+      pB[x] = color_b;
+    }
+    pR -= pitch;
+    pG -= pitch;
+    pB -= pitch;
+  }
+
+  static const int two_thirds_to_three_quarters[] =
+    // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
+  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
+  for (; y < h / 3; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      int color = two_thirds_to_three_quarters[i];
+      int color_r = (color >> 16) & 0xFF;
+      int color_g = (color >> 8) & 0xFF;
+      int color_b = (color) & 0xFF;
+      if (!is8bit) {
+        color_r = rgbcolor8to16(color_r, max_pixel_value);
+        color_g = rgbcolor8to16(color_g, max_pixel_value);
+        color_b = rgbcolor8to16(color_b, max_pixel_value);
+      }
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+    pR -= pitch;
+    pG -= pitch;
+    pB -= pitch;
+  }
+
+  static const int top_two_thirds[] =
+    // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
+  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
+
+  for (; y < h; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      int color = top_two_thirds[i];
+      int color_r = (color >> 16) & 0xFF;
+      int color_g = (color >> 8) & 0xFF;
+      int color_b = (color) & 0xFF;
+      if (!is8bit) {
+        color_r = rgbcolor8to16(color_r, max_pixel_value);
+        color_g = rgbcolor8to16(color_g, max_pixel_value);
+        color_b = rgbcolor8to16(color_b, max_pixel_value);
+      }
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+    pR -= pitch;
+    pG -= pitch;
+    pB -= pitch;
+  }
+}
+
+static void draw_colorbars_rgbp_f(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int pitch, int w, int h)
+{
+  float *pR = reinterpret_cast<float *>(pR8);
+  float *pG = reinterpret_cast<float *>(pG8);
+  float *pB = reinterpret_cast<float *>(pB8);
+  pitch /= sizeof(float);
+
+  // note we go bottom->top
+  // original code sample from packed RGB32 so we are going backward for planar
+
+  pR += (h - 1)*pitch;
+  pG += (h - 1)*pitch;
+  pB += (h - 1)*pitch;
+
+  static const uint32_t bottom_quarter[] =
+  // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
+  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+
+  int y = 0;
+
+  const float factor = 1.0f / 255;
+
+  for (; y < h / 4; ++y) {
+    int x = 0;
+    for (int i = 0; i < 4; ++i) {
+      int color = bottom_quarter[i];
+
+      float color_r = factor * ((color >> 16) & 0xFF);
+      float color_g = factor * ((color >> 8) & 0xFF);
+      float color_b = factor * ((color) & 0xFF);
+      for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+    for (int j = 4; j < 7; ++j) {
+      int color = bottom_quarter[j];
+      float color_r = factor * ((color >> 16) & 0xFF);
+      float color_g = factor * ((color >> 8) & 0xFF);
+      float color_b = factor * ((color) & 0xFF);
+
+      for (; x < (w*(j + 12) + 10) / 21; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+
+    int color = bottom_quarter[7];
+    float color_r = factor * ((color >> 16) & 0xFF);
+    float color_g = factor * ((color >> 8) & 0xFF);
+    float color_b = factor * ((color) & 0xFF);
+    for (; x < w; ++x) {
+      pR[x] = color_r;
+      pG[x] = color_g;
+      pB[x] = color_b;
+    }
+    pR -= pitch;
+    pG -= pitch;
+    pB -= pitch;
+  }
+
+  static const int two_thirds_to_three_quarters[] =
+    // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
+  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
+  for (; y < h / 3; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      int color = two_thirds_to_three_quarters[i];
+      float color_r = factor * ((color >> 16) & 0xFF);
+      float color_g = factor * ((color >> 8) & 0xFF);
+      float color_b = factor * ((color) & 0xFF);
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+    pR -= pitch;
+    pG -= pitch;
+    pB -= pitch;
+  }
+
+  static const int top_two_thirds[] =
+    // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
+  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
+
+  for (; y < h; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      int color = top_two_thirds[i];
+      float color_r = factor * ((color >> 16) & 0xFF);
+      float color_g = factor * ((color >> 8) & 0xFF);
+      float color_b = factor * ((color) & 0xFF);
+      for (; x < (w*(i + 1) + 3) / 7; ++x) {
+        pR[x] = color_r;
+        pG[x] = color_g;
+        pB[x] = color_b;
+      }
+    }
+    pR -= pitch;
+    pG -= pitch;
+    pB -= pitch;
+  }
+}
 
 class ColorBars : public IClip {
   VideoInfo vi;
@@ -502,31 +1099,32 @@ public:
     vi.fps_denominator = 1001;
     vi.num_frames = 107892;   // 1 hour
     int i_pixel_type = GetPixelTypeFromName(pixel_type);
+    vi.pixel_type = i_pixel_type;
+    int bits_per_pixel = vi.BitsPerComponent();
 
     if (type) { // ColorbarsHD
-        if (i_pixel_type != VideoInfo::CS_YV24)
-          env->ThrowError("ColorBarsHD: pixel_type must be \"YV24\"");
-
-        vi.pixel_type = VideoInfo::CS_YV24;
+        if (!vi.Is444())
+          env->ThrowError("ColorBarsHD: pixel_type must be \"YV24\" or other 4:4:4 video format");
     }
-    else if (i_pixel_type == VideoInfo::CS_BGR32) {
-        vi.pixel_type = VideoInfo::CS_BGR32;
+    else if (vi.IsRGB32() || vi.IsRGB64()) {
+      // no special check
     }
-    else if (i_pixel_type == VideoInfo::CS_YUY2) { // YUY2
-        vi.pixel_type = VideoInfo::CS_YUY2;
+    else if (vi.IsRGB() && vi.IsPlanar()) { // planar RGB
+      // no special check
+    }
+    else if (vi.IsYUY2()) { // YUY2
         if (w & 1)
           env->ThrowError("ColorBars: YUY2 width must be even!");
     }
-    else if (i_pixel_type == VideoInfo::CS_YV12) { // YV12
-        vi.pixel_type = VideoInfo::CS_YV12;
+    else if (vi.Is420()) { // 4:2:0
         if ((w & 1) || (h & 1))
-        env->ThrowError("ColorBars: YV12 both height and width must be even!");
+          env->ThrowError("ColorBars: for 4:2:0 both height and width must be even!");
     }
-    else if (i_pixel_type == VideoInfo::CS_YV24) { // YV24
-        vi.pixel_type = VideoInfo::CS_YV24;
+    else if (vi.Is444()) { // 4:4:4
+        // no special check
     }
     else {
-      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"YUY2\" , \"YV12\" or \"YV24\"");
+      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"RGB64\", \"YUY2\", planar RGB, 4:2:0 or 4:4:4 formats");
     }
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
@@ -534,7 +1132,7 @@ public:
     vi.num_audio_samples=vi.AudioSamplesFromFrames(vi.num_frames);
 
     frame = env->NewVideoFrame(vi);
-    unsigned* p = (unsigned*)frame->GetWritePtr();
+    uint32_t* p = (uint32_t *)frame->GetWritePtr();
     const int pitch = frame->GetPitch()/4;
 
     int y = 0;
@@ -548,379 +1146,165 @@ public:
 		const int pitchY  = frame->GetPitch(PLANAR_Y);
 		const int pitchUV = frame->GetPitch(PLANAR_U);
 
-//		Nearest 16:9 pixel exact sizes
-//		56*X x 12*Y
-//		 728 x  480  ntsc anamorphic
-//		 728 x  576  pal anamorphic
-//		 840 x  480
-//		1008 x  576
-//		1288 x  720 <- default
-//		1456 x 1080  hd anamorphic
-//		1904 x 1080
+    switch (bits_per_pixel) {
+    case 8: draw_colorbarsHD_444<uint8_t, 8>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 10: draw_colorbarsHD_444<uint16_t, 10>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 12: draw_colorbarsHD_444<uint16_t, 12>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 14: draw_colorbarsHD_444<uint16_t, 14>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 16: draw_colorbarsHD_444<uint16_t, 16>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 32: draw_colorbarsHD_444<float, 8 /* n/a */>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    }
 
-		const int c = (w*3+14)/28; // 1/7th of 3/4 of width
-		const int d = (w-c*7+1)/2; // remaining 1/8th of width
-
-		const int p4 = (3*h+6)/12; // 3/12th of height
-		const int p23 = (h+6)/12;  // 1/12th of height
-		const int p1 = h-p23*2-p4; // remaining 7/12th of height
-
-//                          75%  Rec709 -- Grey40 Grey75 Yellow  Cyan   Green Magenta  Red   Blue
-		static const BYTE pattern1Y[] = {    104,   180,   168,   145,   134,    63,    51,    28 };
-		static const BYTE pattern1U[] = {    128,   128,    44,   147,    63,   193,   109,   212 };
-		static const BYTE pattern1V[] = {    128,   128,   136,    44,    52,   204,   212,   120 };
-		for (; y < p1; ++y) { // Pattern 1
-			int x = 0;
-			for (; x < d; ++x) {
-				pY[x] = pattern1Y[0]; // 40% Grey
-				pU[x] = pattern1U[0];
-				pV[x] = pattern1V[0];
-			}
-			for (int i=1; i<8; i++) {
-				for (int j=0; j < c; ++j, ++x) {
-					pY[x] = pattern1Y[i]; // 75% Colour bars
-					pU[x] = pattern1U[i];
-					pV[x] = pattern1V[i];
-				}
-			}
-			for (; x < w; ++x) {
-				pY[x] = pattern1Y[0]; // 40% Grey
-				pU[x] = pattern1U[0];
-				pV[x] = pattern1V[0];
-			}
-			pY += pitchY; pU += pitchUV; pV += pitchUV;
-		} //              100% Rec709       Cyan  Blue Yellow  Red    +I Grey75  White
-		static const BYTE pattern23Y[] = {   188,   32,  219,   63,   16,  180,  235 };
-		static const BYTE pattern23U[] = {   154,  240,   16,  102,   98,  128,  128 };
-		static const BYTE pattern23V[] = {    16,  118,  138,  240,  161,  128,  128 };
-		for (; y < p1+p23; ++y) { // Pattern 2
-			int x = 0;
-			for (; x < d; ++x) {
-				pY[x] = pattern23Y[0]; // 100% Cyan
-				pU[x] = pattern23U[0];
-				pV[x] = pattern23V[0];
-			}
-			for (; x < c+d; ++x) {
-				pY[x] = pattern23Y[4]; // +I or Grey75 or White ???
-				pU[x] = pattern23U[4];
-				pV[x] = pattern23V[4];
-			}
-			for (; x < c*7+d; ++x) {
-				pY[x] = pattern23Y[5]; // 75% White
-				pU[x] = pattern23U[5];
-				pV[x] = pattern23V[5];
-			}
-			for (; x < w; ++x) {
-				pY[x] = pattern23Y[1]; // 100% Blue
-				pU[x] = pattern23U[1];
-				pV[x] = pattern23V[1];
-			}
-			pY += pitchY; pU += pitchUV; pV += pitchUV;
-		}
-		for (; y < p1+p23*2; ++y) { // Pattern 3
-			int x = 0;
-			for (; x < d; ++x) {
-				pY[x] = pattern23Y[2]; // 100% Yellow
-				pU[x] = pattern23U[2];
-				pV[x] = pattern23V[2];
-			}
-			for (int j=0; j < c*7; ++j, ++x) { // Y-Ramp
-				pY[x] = BYTE(16 + (220*j)/(c*7));
-				pU[x] = 128;
-				pV[x] = 128;
-			}
-			for (; x < w; ++x) {
-				pY[x] = pattern23Y[3]; // 100% Red
-				pU[x] = pattern23U[3];
-				pV[x] = pattern23V[3];
-			}
-			pY += pitchY; pU += pitchUV; pV += pitchUV;
-		} //                             Grey15 Black White Black   -2% Black   +2% Black   +4% Black
-		static const BYTE pattern4Y[] = {    49,   16,  235,   16,   12,   16,   20,   16,   25,   16 };
-		static const BYTE pattern4U[] = {   128,  128,  128,  128,  128,  128,  128,  128,  128,  128 };
-		static const BYTE pattern4V[] = {   128,  128,  128,  128,  128,  128,  128,  128,  128,  128 };
-		static const BYTE pattern4W[] = {     0,    9,   21,   26,   28,   30,   32,   34,   36,   42 }; // in 6th's
-		for (; y < h; ++y) { // Pattern 4
-			int x = 0;
-			for (; x < d; ++x) {
-				pY[x] = pattern4Y[0]; // 15% Grey
-				pU[x] = pattern4U[0];
-				pV[x] = pattern4V[0];
-			}
-			for (int i=1; i<=9; i++) {
-				for (; x < d+(pattern4W[i]*c+3)/6; ++x) {
-					pY[x] = pattern4Y[i];
-					pU[x] = pattern4U[i];
-					pV[x] = pattern4V[i];
-				}
-			}
-			for (; x < w; ++x) {
-				pY[x] = pattern4Y[0]; // 15% Grey
-				pU[x] = pattern4U[0];
-				pV[x] = pattern4V[0];
-			}
-			pY += pitchY; pU += pitchUV; pV += pitchUV;
-		}
 	}
 	// Rec. ITU-R BT.801-1
-	else if (vi.IsYV24()) {
-		BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
-		BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
-		BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
-		const int pitchY  = frame->GetPitch(PLANAR_Y);
-		const int pitchUV = frame->GetPitch(PLANAR_U);
-//                                              LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
-		static const BYTE top_two_thirdsY[] = {   0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
-		static const BYTE top_two_thirdsU[] = {   0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
-		static const BYTE top_two_thirdsV[] = {   0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
+  else if (vi.Is444()) {
+    BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
+    BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+    BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+    const int pitchY = frame->GetPitch(PLANAR_Y);
+    const int pitchUV = frame->GetPitch(PLANAR_U);
 
-		for (; y*3 < h*2; ++y) {
-			int x = 0;
-			for (int i=0; i<7; i++) {
-				for (; x < (w*(i+1)+3)/7; ++x) {
-					pY[x] = top_two_thirdsY[i];
-					pU[x] = top_two_thirdsU[i];
-					pV[x] = top_two_thirdsV[i];
-				}
-			}
-			pY += pitchY; pU += pitchUV; pV += pitchUV;
-		} //                                                    Blue   Black Magenta   Black    Cyan   Black  LtGrey
-		static const BYTE two_thirds_to_three_quartersY[] = {   0x23,   0x10,   0x54,   0x10,   0x83,   0x10,   0xb4 };
-		static const BYTE two_thirds_to_three_quartersU[] = {   0xd4,   0x80,   0xb8,   0x80,   0x9c,   0x80,   0x80 };
-		static const BYTE two_thirds_to_three_quartersV[] = {   0x72,   0x80,   0xc6,   0x80,   0x2c,   0x80,   0x80 };
-		for (; y*4 < h*3; ++y) {
-			int x = 0;
-			for (int i=0; i<7; i++) {
-				for (; x < (w*(i+1)+3)/7; ++x) {
-					pY[x] = two_thirds_to_three_quartersY[i];
-					pU[x] = two_thirds_to_three_quartersU[i];
-					pV[x] = two_thirds_to_three_quartersV[i];
-				}
-			}
-			pY += pitchY; pU += pitchUV; pV += pitchUV;
-		} //                                        -I   white      +Q   Black   -4ire   Black   +4ire   Black
-		static const BYTE bottom_quarterY[] = {   0x10,   0xeb,   0x10,   0x10,   0x07,   0x10,   0x19,   0x10 };
-		static const BYTE bottom_quarterU[] = {   0x9e,   0x80,   0xae,   0x80,   0x80,   0x80,   0x80,   0x80 };
-		static const BYTE bottom_quarterV[] = {   0x5f,   0x80,   0x95,   0x80,   0x80,   0x80,   0x80,   0x80 };
-		for (; y < h; ++y) {
-			int x = 0;
-			for (int i=0; i<4; ++i) {
-				for (; x < (w*(i+1)*5+14)/28; ++x) {
-					pY[x] = bottom_quarterY[i];
-					pU[x] = bottom_quarterU[i];
-					pV[x] = bottom_quarterV[i];
-				}
-			}
-			for (int j=4; j<7; ++j) {
-				for (; x < (w*(j+12)+10)/21; ++x) {
-					pY[x] = bottom_quarterY[j];
-					pU[x] = bottom_quarterU[j];
-					pV[x] = bottom_quarterV[j];
-				}
-			}
-			for (; x < w; ++x) {
-				pY[x] = bottom_quarterY[7];
-				pU[x] = bottom_quarterU[7];
-				pV[x] = bottom_quarterV[7];
-			}
-			pY += pitchY; pU += pitchUV; pV += pitchUV;
-		}
+    switch (bits_per_pixel) {
+    case 8: draw_colorbars_444<uint8_t, 8>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 10: draw_colorbars_444<uint16_t, 10>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 12: draw_colorbars_444<uint16_t, 12>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 14: draw_colorbars_444<uint16_t, 14>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 16: draw_colorbars_444<uint16_t, 16>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 32: draw_colorbars_444<float, 8 /* n/a */>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    }
 	}
-	else if (vi.IsRGB32()) {
-		// note we go bottom->top
-		static const int bottom_quarter[] =
-// RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
-			{ 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
-		for (; y < h/4; ++y) {
-			int x = 0;
-			for (int i=0; i<4; ++i) {
-				for (; x < (w*(i+1)*5+14)/28; ++x)
-					p[x] = bottom_quarter[i];
-			}
-			for (int j=4; j<7; ++j) {
-				for (; x < (w*(j+12)+10)/21; ++x)
-					p[x] = bottom_quarter[j];
-			}
-			for (; x < w; ++x)
-				p[x] = bottom_quarter[7];
-			p += pitch;
-		}
+  else if (vi.IsRGB() && vi.IsPlanar()) {
+    BYTE* pG = (BYTE*)frame->GetWritePtr(PLANAR_G);
+    BYTE* pB = (BYTE*)frame->GetWritePtr(PLANAR_B);
+    BYTE* pR = (BYTE*)frame->GetWritePtr(PLANAR_R);
+    const int pitch = frame->GetPitch(PLANAR_G);
 
-		static const int two_thirds_to_three_quarters[] =
-// RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
-			{ 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
-		for (; y < h/3; ++y) {
-			int x = 0;
-			for (int i=0; i<7; ++i) {
-				for (; x < (w*(i+1)+3)/7; ++x)
-					p[x] = two_thirds_to_three_quarters[i];
-			}
-			p += pitch;
-		}
-
-		static const int top_two_thirds[] =
-// RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
-			{ 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
-		for (; y < h; ++y) {
-			int x = 0;
-			for (int i=0; i<7; ++i) {
-				for (; x < (w*(i+1)+3)/7; ++x)
-					p[x] = top_two_thirds[i];
-			}
-			p += pitch;
-		}
+    switch (bits_per_pixel) {
+    case 8: draw_colorbars_rgbp<uint8_t, 8>(pR, pG, pB, pitch, w, h); break;
+    case 10: draw_colorbars_rgbp<uint16_t, 10>(pR, pG, pB, pitch, w, h); break;
+    case 12: draw_colorbars_rgbp<uint16_t, 12>(pR, pG, pB, pitch, w, h); break;
+    case 14: draw_colorbars_rgbp<uint16_t, 14>(pR, pG, pB, pitch, w, h); break;
+    case 16: draw_colorbars_rgbp<uint16_t, 16>(pR, pG, pB, pitch, w, h); break;
+    case 32: draw_colorbars_rgbp_f(pR, pG, pB, pitch, w, h); break;
+    }
+  }
+  else if (vi.IsRGB32() || vi.IsRGB64()) {
+    switch (bits_per_pixel) {
+    case 8: draw_colorbars_rgb3264<uint8_t>((uint8_t *)p, pitch, w, h); break;
+    case 16: draw_colorbars_rgb3264<uint16_t>((uint8_t *)p, pitch, w, h); break;
+    }
 	}
-	else if (vi.IsYUY2()) {
-		static const unsigned int top_two_thirds[] =
+  else if (vi.IsYUY2()) {
+    static const unsigned int top_two_thirds[] =
 //                LtGrey      Yellow        Cyan       Green     Magenta         Red        Blue
-			{ 0x80b480b4, 0x8ea22ca2, 0x2c839c83, 0x3a704870, 0xc654b854, 0xd4416441, 0x7223d423 }; //VYUY
-		w >>= 1;
-		for (; y*3 < h*2; ++y) {
-			int x = 0;
-			for (int i=0; i<7; i++) {
-				for (; x < (w*(i+1)+3)/7; ++x)
-					p[x] = top_two_thirds[i];
-			}
-			p += pitch;
-		}
+    { 0x80b480b4, 0x8ea22ca2, 0x2c839c83, 0x3a704870, 0xc654b854, 0xd4416441, 0x7223d423 }; //VYUY
+    w >>= 1;
+    for (; y * 3 < h * 2; ++y) {
+      int x = 0;
+      for (int i = 0; i < 7; i++) {
+        for (; x < (w*(i + 1) + 3) / 7; ++x)
+          p[x] = top_two_thirds[i];
+      }
+      p += pitch;
+    }
 
-		static const unsigned  int two_thirds_to_three_quarters[] =
+    static const unsigned  int two_thirds_to_three_quarters[] =
 //                 Blue        Black     Magenta       Black        Cyan       Black      LtGrey
-			{ 0x7223d423, 0x80108010, 0xc654b854, 0x80108010, 0x2c839c83, 0x80108010, 0x80b480b4 }; //VYUY
-		for (; y*4 < h*3; ++y) {
-			int x = 0;
-			for (int i=0; i<7; i++) {
-				for (; x < (w*(i+1)+3)/7; ++x)
-					p[x] = two_thirds_to_three_quarters[i];
-			}
-			p += pitch;
-		}
+    { 0x7223d423, 0x80108010, 0xc654b854, 0x80108010, 0x2c839c83, 0x80108010, 0x80b480b4 }; //VYUY
+    for (; y * 4 < h * 3; ++y) {
+      int x = 0;
+      for (int i = 0; i < 7; i++) {
+        for (; x < (w*(i + 1) + 3) / 7; ++x)
+          p[x] = two_thirds_to_three_quarters[i];
+      }
+      p += pitch;
+    }
 
-		static const unsigned int bottom_quarter[] =
+    static const unsigned int bottom_quarter[] =
 //                    -I       white          +Q       Black       -4ire       Black       +4ire       Black
-			{ 0x5f109e10, 0x80eb80eb, 0x9510ae10, 0x80108010, 0x80078007, 0x80108010, 0x80198019, 0x80108010 }; //VYUY
-		for (; y < h; ++y) {
-			int x = 0;
-			for (int i=0; i<4; ++i) {
-				for (; x < (w*(i+1)*5+14)/28; ++x)
-					p[x] = bottom_quarter[i];
-			}
-			for (int j=4; j<7; ++j) {
-				for (; x < (w*(j+12)+10)/21; ++x)
-					p[x] = bottom_quarter[j];
-			}
-			for (; x < w; ++x)
-				p[x] = bottom_quarter[7];
-			p += pitch;
-		}
-	}
-	else if (vi.IsYV12()) {
-		unsigned short* pY = (unsigned short*)frame->GetWritePtr(PLANAR_Y);
-		BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
-		BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
-		const int pitchY  = frame->GetPitch(PLANAR_Y)>>1;
-		const int pitchUV = frame->GetPitch(PLANAR_U);
-//                                                        LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
-		static const unsigned short top_two_thirdsY[] = { 0xb4b4, 0xa2a2, 0x8383, 0x7070, 0x5454, 0x4141, 0x2323 };
-		static const BYTE top_two_thirdsU[] =           {   0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
-		static const BYTE top_two_thirdsV[] =           {   0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
-		w >>= 1;
-		h >>= 1;
-		for (; y*3 < h*2; ++y) {
-			int x = 0;
-			for (int i=0; i<7; i++) {
-				for (; x < (w*(i+1)+3)/7; ++x) {
-					pY[x] = pY[x+pitchY] = top_two_thirdsY[i];
-					pU[x] = top_two_thirdsU[i];
-					pV[x] = top_two_thirdsV[i];
-				}
-			}
-			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
-		} //                                                              Blue   Black Magenta   Black    Cyan   Black  LtGrey
-		static const unsigned short two_thirds_to_three_quartersY[] = { 0x2323, 0x1010, 0x5454, 0x1010, 0x8383, 0x1010, 0xb4b4 };
-		static const BYTE two_thirds_to_three_quartersU[] =           {   0xd4,   0x80,   0xb8,   0x80,   0x9c,   0x80,   0x80 };
-		static const BYTE two_thirds_to_three_quartersV[] =           {   0x72,   0x80,   0xc6,   0x80,   0x2c,   0x80,   0x80 };
-		for (; y*4 < h*3; ++y) {
-			int x = 0;
-			for (int i=0; i<7; i++) {
-				for (; x < (w*(i+1)+3)/7; ++x) {
-					pY[x] = pY[x+pitchY] = two_thirds_to_three_quartersY[i];
-					pU[x] = two_thirds_to_three_quartersU[i];
-					pV[x] = two_thirds_to_three_quartersV[i];
-				}
-			}
-			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
-		} //                                                  -I   white      +Q   Black   -4ire   Black   +4ire   Black
-		static const unsigned short bottom_quarterY[] = { 0x1010, 0xebeb, 0x1010, 0x1010, 0x0707, 0x1010, 0x1919, 0x1010 };
-		static const BYTE bottom_quarterU[] =           {   0x9e,   0x80,   0xae,   0x80,   0x80,   0x80,   0x80,   0x80 };
-		static const BYTE bottom_quarterV[] =           {   0x5f,   0x80,   0x95,   0x80,   0x80,   0x80,   0x80,   0x80 };
-		for (; y < h; ++y) {
-			int x = 0;
-			for (int i=0; i<4; ++i) {
-				for (; x < (w*(i+1)*5+14)/28; ++x) {
-					pY[x] = pY[x+pitchY] = bottom_quarterY[i];
-					pU[x] = bottom_quarterU[i];
-					pV[x] = bottom_quarterV[i];
-				}
-			}
-			for (int j=4; j<7; ++j) {
-				for (; x < (w*(j+12)+10)/21; ++x) {
-					pY[x] = pY[x+pitchY] = bottom_quarterY[j];
-					pU[x] = bottom_quarterU[j];
-					pV[x] = bottom_quarterV[j];
-				}
-			}
-			for (; x < w; ++x) {
-				pY[x] = pY[x+pitchY] = bottom_quarterY[7];
-				pU[x] = bottom_quarterU[7];
-				pV[x] = bottom_quarterV[7];
-			}
-			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
-		}
-	}
+    { 0x5f109e10, 0x80eb80eb, 0x9510ae10, 0x80108010, 0x80078007, 0x80108010, 0x80198019, 0x80108010 }; //VYUY
+    for (; y < h; ++y) {
+      int x = 0;
+      for (int i = 0; i < 4; ++i) {
+        for (; x < (w*(i + 1) * 5 + 14) / 28; ++x)
+          p[x] = bottom_quarter[i];
+      }
+      for (int j = 4; j < 7; ++j) {
+        for (; x < (w*(j + 12) + 10) / 21; ++x)
+          p[x] = bottom_quarter[j];
+      }
+      for (; x < w; ++x)
+        p[x] = bottom_quarter[7];
+      p += pitch;
+    }
+  }
+  else if (vi.Is420()) {
 
-	// Generate Audio buffer
-	{
-	  unsigned x=vi.audio_samples_per_second, y=Hz;
-	  while (y) {     // find gcd
-		unsigned t = x%y; x = y; y = t;
-	  }
-	  nsamples = vi.audio_samples_per_second/x; // 1200
-	  const unsigned ncycles  = Hz/x; // 11
+    BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
+    BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+    BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+    const int pitchY = frame->GetPitch(PLANAR_Y);
+    const int pitchUV = frame->GetPitch(PLANAR_U);
 
-	  audio = new(std::nothrow) SFLOAT[nsamples];
-	  if (!audio)
-		env->ThrowError("ColorBars: insufficient memory");
+    switch (bits_per_pixel) {
+    case 8: draw_colorbars_420<uint8_t, 8>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 10: draw_colorbars_420<uint16_t, 10>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 12: draw_colorbars_420<uint16_t, 12>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 14: draw_colorbars_420<uint16_t, 14>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 16: draw_colorbars_420<uint16_t, 16>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 32: draw_colorbars_420<float, 8 /* n/a */>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    }
+  }
 
-	  const double add_per_sample=ncycles/(double)nsamples;
-	  double second_offset=0.0;
-	  for (unsigned i=0;i<nsamples;i++) {
-		  audio[i] = (SFLOAT)sin(PI * 2.0 * second_offset);
-		  second_offset+=add_per_sample;
-	  }
-	}
+  if (vi.IsYUVA() || vi.IsPlanarRGBA()) {
+    // initialize planar alpha planes with full transparency
+    BYTE *dstp = frame->GetWritePtr(PLANAR_A);
+    int pitch = frame->GetPitch(PLANAR_A);
+    int height = frame->GetHeight(PLANAR_A);
+    switch (bits_per_pixel) {
+    case 8: fill_plane<uint8_t>(dstp, height, pitch, 255); break;
+    case 10: case 12: case 14: case 16: fill_plane<uint16_t>(dstp, height, pitch, (1 << bits_per_pixel) - 1); break;
+    case 32: fill_plane<float>(dstp, height, pitch, 1.0f); break;
+    }
+  }
+
+  // Generate Audio buffer
+  {
+    unsigned x = vi.audio_samples_per_second, y = Hz;
+    while (y) {     // find gcd
+      unsigned t = x%y; x = y; y = t;
+    }
+    nsamples = vi.audio_samples_per_second / x; // 1200
+    const unsigned ncycles = Hz / x; // 11
+
+    audio = new(std::nothrow) SFLOAT[nsamples];
+    if (!audio)
+      env->ThrowError("ColorBars: insufficient memory");
+
+    const double add_per_sample = ncycles / (double)nsamples;
+    double second_offset = 0.0;
+    for (unsigned i = 0; i < nsamples; i++) {
+      audio[i] = (SFLOAT)sin(PI * 2.0 * second_offset);
+      second_offset += add_per_sample;
+    }
+  }
   }
 
   // By the new "staticframes" parameter: colorbars we generate (copy) real new frames instead of a ready-to-use static one
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
   {
-    _RPT1(0, "ColorBars::GetFrame %d\n", n); // P.F.
-    if (staticframes) // P.F.
+    _RPT1(0, "ColorBars::GetFrame %d\n", n);
+    if (staticframes)
       return frame; // original default method returns precomputed static frame.
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
-      _RPT3(0, "ColorBars GetFrame origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result); // P.F.
+      _RPT3(0, "ColorBars GetFrame origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result);
       env->BitBlt(result->GetWritePtr(), result->GetPitch(), frame->GetReadPtr(), frame->GetPitch(), frame->GetRowSize(), frame->GetHeight());
       env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
       env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+      env->BitBlt(result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_A), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_A), frame->GetRowSize(PLANAR_A), frame->GetHeight(PLANAR_A));
       return result;
-/*
-      PVideoFrame newframe = AdjustFrameAlignment(frame, vi, env); // P.F.
-      return newframe; // Forcing to create new frame to avoid the excessive SubFrame referencing.
-                       // Perhaps a bit more real-life for synthetic tests
-      */
     }
-    //return frame;
   }
 
   bool __stdcall GetParity(int n) { return false; }
