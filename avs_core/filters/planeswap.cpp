@@ -400,7 +400,7 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     BYTE* dstp = dst->GetWritePtr();
     int src_pitch = src->GetPitch();
     int dst_pitch = dst->GetPitch();
-    int pos = mode == YUY2UToY8 ? 1 : 3;
+    int pos = (mode == YUY2UToY8 || mode == UToY) ? 1 : 3; // YUYV U=offset#1 V=offset#3
 
     if (vi.IsYUY2()) {  // YUY2 To YUY2
       int rowsize = dst->GetRowSize();
