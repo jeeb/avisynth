@@ -182,7 +182,7 @@ public:
         PVideoFrame dst = env->NewVideoFrame(vi);
 
         const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-        const int plane_count = vi.IsColorSpace(VideoInfo::CS_Y16) ? 1 : 3;
+        const int plane_count = vi.IsY() ? 1 : 3;
         for (int p = 0; p < plane_count; ++p) {
             const int plane = planes[p];
             const uint8_t* msb = src->GetReadPtr(plane);
@@ -251,8 +251,10 @@ public:
 
     ConvertFromDoubleWidth(PClip src, int bits, IScriptEnvironment* env) : GenericVideoFilter(src)
     {
-        if (vi.RowSize(PLANAR_U) % 2)
+        if (!vi.IsRGB() && vi.RowSize(PLANAR_U) % 2)
             env->ThrowError("ConvertFromDoubleWidth: Input clip's chroma width must be even.");
+        if ((vi.IsRGB24() || vi.IsRGB32()) && bits != 16)
+          env->ThrowError("ConvertFromDoubleWidth: only bits=16 allowed for RGB24 or RGB32 input");
 
         if (bits == 10 && vi.IsYV12())
             vi.pixel_type = VideoInfo::CS_YUV420P10;
@@ -286,7 +288,11 @@ public:
             vi.pixel_type = VideoInfo::CS_YUV444P16;
         else if (bits == 16 && vi.IsY8())
             vi.pixel_type = VideoInfo::CS_Y16;
-        else env->ThrowError("ConvertFromDoubleWidth: Input double width clip must be YV12, YV16, YV24 or Y8");
+        else if (bits == 16 && vi.IsRGB24())
+          vi.pixel_type = VideoInfo::CS_BGR48;
+        else if (bits == 16 && vi.IsRGB32())
+          vi.pixel_type = VideoInfo::CS_BGR64;
+        else env->ThrowError("ConvertFromDoubleWidth: Input double width clip must be YV12, YV16, YV24, Y8, RGB24 or RGB32");
 
         vi.width /= 2;
     }
@@ -322,7 +328,9 @@ public:
         else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16)) vi.pixel_type = VideoInfo::CS_YV16;
         else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16)) vi.pixel_type = VideoInfo::CS_YV24;
         else if (vi.IsColorSpace(VideoInfo::CS_Y16)) vi.pixel_type = VideoInfo::CS_Y8;
-        else env->ThrowError("ConvertToDoubleWidth: Input clip must be 16bit format");
+        else if (vi.IsColorSpace(VideoInfo::CS_BGR48)) vi.pixel_type = VideoInfo::CS_BGR24;
+        else if (vi.IsColorSpace(VideoInfo::CS_BGR64)) vi.pixel_type = VideoInfo::CS_BGR32;
+        else env->ThrowError("ConvertToDoubleWidth: Input clip must be 16bit YUV format, RGB48 or RGB64");
 
         vi.width *= 2;
     }
