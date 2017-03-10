@@ -2,7 +2,11 @@
 // Avisynth v2.6.  Copyright 2006 Klaus Post.
 // Avisynth v2.6.  Copyright 2009 Ian Brabham.
 // Avisynth+ project
-// Last modification date: 20170117
+// 20160613: new 16 bit planar pixel_type constants go live!
+// 20160725: pixel_type constants 10-12-14 bit + planar RGB + BRG48/64
+// 20161005: Fallback of VideoInfo functions to defaults if no function exists
+// 20170117: global variables for VfW output OPT_xxxx
+// 20170310: new MT mode: MT_SPECIAL_MT
 
 // http://www.avisynth.org
 
@@ -1202,7 +1206,8 @@ enum MtMode
   MT_NICE_FILTER = 1,
   MT_MULTI_INSTANCE = 2,
   MT_SERIALIZED = 3,
-  MT_MODE_COUNT = 4
+  MT_SPECIAL_MT = 4,
+  MT_MODE_COUNT = 5
 };
 
 class IJobCompletion

@@ -943,6 +943,7 @@ void ScriptEnvironment::InitMT()
     global_var_table->Set("MT_NICE_FILTER", (int)MT_NICE_FILTER);
     global_var_table->Set("MT_MULTI_INSTANCE", (int)MT_MULTI_INSTANCE);
     global_var_table->Set("MT_SERIALIZED", (int)MT_SERIALIZED);
+    global_var_table->Set("MT_SPECIAL_MT", (int)MT_SPECIAL_MT);
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
@@ -2650,8 +2651,19 @@ success:;
   std::unique_ptr<const FilterConstructor> funcCtor = std::make_unique<const FilterConstructor>(this, f, &args2, &args3);
   _RPT1(0, "ScriptEnvironment::Invoke after funcCtor make unique %s\r\n", name);
 
-  if (funcCtor->IsScriptFunction())
+  bool is_mtmode_forced;
+  bool filterHasSpecialMT = this->GetFilterMTMode(f, &is_mtmode_forced) == MT_SPECIAL_MT;
+
+  if (filterHasSpecialMT) // e.g. MP_Pipeline
   {
+    *result = funcCtor->InstantiateFilter();
+#ifdef _DEBUG
+    _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
+#endif
+  }
+  else if (funcCtor->IsScriptFunction())
+  {
+    // Eval, EvalOop, Import and user defined script functions
     // Warn user if he set an MT-mode for a script function
     if (this->FilterHasMtMode(f))
     {
@@ -2694,31 +2706,16 @@ success:;
 
     AVSValue fret;
 
-#ifdef DEBUG_GSCRIPTCLIP_MT
-    if (funcCtor->IsRuntimeScriptFunction()) {
-      _RPT3(0, "ScriptEnvironment::Invoke.IsRuntimeScriptFunction funcCtor->InstantiateFilter() %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
-      env_lock.unlock();
-      fret = funcCtor->InstantiateFilter();
-      if(!fret.IsClip())
-        _RPT3(0, "ScriptEnvironment::Invoke: Fret is not clip. %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
-    }
-    else
-#endif
+    invoke_stack.push(&mthelper);
+    try
     {
-      invoke_stack.push(&mthelper);
-      try
-      {
-#ifdef DEBUG_GSCRIPTCLIP_MT
-        _RPT3(0, "ScriptEnvironment::Invoke.funcCtor->InstantiateFilter() %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
-#endif
-        fret = funcCtor->InstantiateFilter();
-        invoke_stack.pop();
-      }
-      catch (...)
-      {
-        invoke_stack.pop();
-        throw;
-      }
+      fret = funcCtor->InstantiateFilter();
+      invoke_stack.pop();
+    }
+    catch (...)
+    {
+      invoke_stack.pop();
+      throw;
     }
 
     // Determine MT-mode, as if this instance had not called Invoke()
