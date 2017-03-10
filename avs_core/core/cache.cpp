@@ -117,7 +117,13 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end; 
   t_start = std::chrono::high_resolution_clock::now(); // t_start starts in the constructor. Used in logging
 
+  char buf[256];
+  std::string name = FuncName;
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  _snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID));
+
   LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result);
+  _snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID), (int)LruLookupRes);
   switch (LruLookupRes)
 #else
   // fill result in lookup before releasing cache handle lock
