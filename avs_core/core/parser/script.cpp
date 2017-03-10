@@ -253,6 +253,7 @@ extern const AVSFunction Script_functions[] = {
   { "NumComponents", BUILTIN_FUNC_PREFIX, "c", NumComponents }, // r2348+
   { "HasAlpha", BUILTIN_FUNC_PREFIX, "c", HasAlpha }, // r2348+
   { "IsPackedRGB", BUILTIN_FUNC_PREFIX, "c", IsPackedRGB }, // r2348+
+  { "IsVideoFloat", BUILTIN_FUNC_PREFIX, "c", IsVideoFloat }, // r2435+
 
 #ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
@@ -1263,6 +1264,7 @@ AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env) { return VI
 AVSValue NumComponents(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).NumComponents(); }
 AVSValue HasAlpha(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA() || VI(args[0]).IsYUVA() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB64(); }
 AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB48() || VI(args[0]).IsRGB64(); }
+AVSValue IsVideoFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BitsPerComponent() == 32; }
 
 #ifdef NEW_AVSVALUE
 
