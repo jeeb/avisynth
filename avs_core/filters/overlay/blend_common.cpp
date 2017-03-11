@@ -177,7 +177,7 @@ void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
   const int half_pixel_value_rounding = (1 << (MASK_CORR_SHIFT - 1));
 
   // avoid "uint16*uint16 can't get into int32" overflows
-  typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -712,7 +712,7 @@ void overlay_blend_c_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *
   const int half_pixel_value_rounding = (1 << (MASK_CORR_SHIFT - 1));
 
   // avoid "uint16*uint16 can't get into int32" overflows
-  typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {

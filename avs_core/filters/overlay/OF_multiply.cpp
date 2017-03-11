@@ -82,7 +82,7 @@ void OL_MultiplyImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayIn
   const int maskpitch = (mask->pitch) / sizeof(pixel_t);
 
   // avoid "uint16*uint16 can't get into int32" overflows
-  typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
 
   int w = base->w();
   int h = base->h();
@@ -175,7 +175,7 @@ void OL_MultiplyImage::BlendImage(ImageOverlayInternal* base, ImageOverlayIntern
   const int overlaypitch = (overlay->pitch) / sizeof(pixel_t);
 
   // avoid "uint16*uint16 can't get into int32" overflows
-  typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
 
   int w = base->w();
   int h = base->h();

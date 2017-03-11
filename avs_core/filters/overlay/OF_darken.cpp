@@ -105,7 +105,7 @@ void OL_DarkenImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInte
   const int maskpitch = maskMode ? (mask->pitch) / sizeof(pixel_t) : 0;
 
   // avoid "uint16*uint16 can't get into int32" overflows
-  typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
 
   int w = base->w();
   int h = base->h();
