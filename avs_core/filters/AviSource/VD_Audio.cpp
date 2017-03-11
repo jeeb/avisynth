@@ -1825,8 +1825,10 @@ void AudioL3Corrector::Process(void *buffer, long bytes) {
 				if (!((hdr>>11)&1)) {
 					samp_rate /= 2;
 					samples += 576;
-				} else
-					samples += 1152;
+        }
+        else {
+          samples += 1152;
+        }
 
 				if (!(hdr & 0x1000))
 					samp_rate /= 2;
