@@ -2672,17 +2672,8 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   delete filter;
 }
 
-// instantiate to let them access from other modules
-template void fill_chroma<BYTE>(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, BYTE val);
-template void fill_chroma<uint16_t>(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, uint16_t val);
-template void fill_chroma<float>(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, float val);
-
-template void fill_plane<BYTE>(BYTE* dstp, int height, int pitch, BYTE val);
-template void fill_plane<uint16_t>(BYTE* dstp, int height, int pitch, uint16_t val);
-template void fill_plane<float>(BYTE* dstp, int height, int pitch, float val);
-
 template <typename pixel_t>
-inline void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, pixel_t val)
+void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, pixel_t val)
 {
   size_t size = height * pitch / sizeof(pixel_t);
   std::fill_n(reinterpret_cast<pixel_t*>(dstp_u), size, val);
@@ -2690,7 +2681,7 @@ inline void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, pixel
 }
 
 template <typename pixel_t>
-inline void fill_plane(BYTE* dstp, int height, int pitch, pixel_t val)
+void fill_plane(BYTE* dstp, int height, int pitch, pixel_t val)
 {
   size_t size = height * pitch / sizeof(pixel_t);
   std::fill_n(reinterpret_cast<pixel_t*>(dstp), size, val);

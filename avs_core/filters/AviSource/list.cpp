@@ -29,13 +29,9 @@
 #include "list.h"
 
 List::List() {
-	Init();
-}
-
-void List::Init() {
-	head.next = tail.prev = 0;
-	head.prev = &tail;
-	tail.next = &head;
+  head.next = tail.prev = 0;
+  head.prev = &tail;
+  tail.next = &head;
 }
 
 ListNode *List::RemoveHead() {

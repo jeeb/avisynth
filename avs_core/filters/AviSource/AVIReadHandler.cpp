@@ -1450,7 +1450,7 @@ bool AVIReadHandler::AppendFile(const char *pszFile) {
 		pDesc->hFileUnbuffered	= hFileUnbuffered;
 		pDesc->i64Size			= _sizeFile();
 	} catch(const AvisynthError&) {
-		while(pasn_new = newstreams.RemoveHead())
+		while((pasn_new = newstreams.RemoveHead()))
 			delete pasn_new;
 
 		CloseHandle(hFile);
@@ -1464,7 +1464,7 @@ bool AVIReadHandler::AppendFile(const char *pszFile) {
 
 	pasn_old = listStreams.AtHead();
 
-	while(pasn_old_next = pasn_old->NextFromHead()) {
+	while((pasn_old_next = pasn_old->NextFromHead())) {
 		pasn_new = newstreams.RemoveHead();
 
 		// Fix up header.
@@ -1507,7 +1507,7 @@ bool AVIReadHandler::AppendFile(const char *pszFile) {
 		AVIReadStream *pStream, *pStreamNext;
 
 		pStream = pasn_old->listHandlers.AtHead();
-		while(pStreamNext = pStream->NextFromHead()) {
+		while((pStreamNext = pStream->NextFromHead())) {
 			pStream->Reinit();
 
 			pStream = pStreamNext;
@@ -1670,7 +1670,7 @@ terminate_scan:
 
 		pasn = streamlist.AtHead();
 
-		while(pasn_next = pasn->NextFromHead()) {
+		while((pasn_next = pasn->NextFromHead())) {
 			pasn->index.clear();
 			pasn = pasn_next;
 		}
@@ -1814,7 +1814,7 @@ terminate_scan:
 
 	pasn = streamlist.AtHead();
 
-	while(pasn_next = pasn->NextFromHead()) {
+	while((pasn_next = pasn->NextFromHead())) {
 		if (!pasn->index.makeIndex2())
 			throw MyMemoryError();
 
@@ -1992,7 +1992,7 @@ bool AVIReadHandler::_parseIndexBlock(List2<AVIStreamNode>& streamlist, int coun
 		if (tc*int(sizeof(AVIINDEXENTRY)) != _readFile(avie, tc*sizeof(AVIINDEXENTRY))) {
 			pasn = streamlist.AtHead();
 
-			while(pasn_next = pasn->NextFromHead()) {
+			while((pasn_next = pasn->NextFromHead())) {
 				pasn->index.clear();
 				pasn->bytes = 0;
 
@@ -2142,7 +2142,7 @@ void AVIReadHandler::_destruct() {
 	if (paf)
 		AVIFileRelease(paf);
 
-	while(pasn = listStreams.RemoveTail())
+	while((pasn = listStreams.RemoveTail()))
 		delete pasn;
 
 	delete streamBuffer;
@@ -2153,7 +2153,7 @@ void AVIReadHandler::_destruct() {
 		if (hFileUnbuffered != INVALID_HANDLE_VALUE)
 			CloseHandle(hFileUnbuffered);
 	} else
-		while(pDesc = listFiles.RemoveTail()) {
+		while((pDesc = listFiles.RemoveTail())) {
 			CloseHandle(pDesc->hFile);
 			CloseHandle(pDesc->hFileUnbuffered);
 			delete pDesc;
@@ -2190,7 +2190,7 @@ IAVIReadStream *AVIReadHandler::GetStream(DWORD fccType, LONG lParam) {
 
 		pasn = listStreams.AtHead();
 
-		while(pasn_next = pasn->NextFromHead()) {
+		while((pasn_next = pasn->NextFromHead())) {
 			if (pasn->hdr.fccType == fccType && !lParam--)
 				break;
 
@@ -2378,7 +2378,7 @@ bool AVIReadHandler::Stream(AVIStreamNode *pusher, __int64 pos) {
 
 			pasn = listStreams.AtHead();
 
-			while(pasn_next = pasn->NextFromHead()) {
+			while((pasn_next = pasn->NextFromHead())) {
 				if (streamno == stream) {
 					long left = hdr[1] + (hdr[1]&1);
 					bool fWrite = pasn->cache->WriteBegin(i64StreamPosition + sbPosition, left);
@@ -2474,7 +2474,7 @@ void AVIReadHandler::FixCacheProblems(AVIReadStream *arse) {
 
 	pasn = listStreams.AtHead();
 
-	while(pasn_next = pasn->NextFromHead()) {
+	while((pasn_next = pasn->NextFromHead())) {
 		if (pasn->cache)
 			if (!stream_leader || pasn->stream_pushes > stream_leader->stream_pushes) {
 				stream_leader = pasn;
@@ -2514,7 +2514,7 @@ void AVIReadHandler::FixCacheProblems(AVIReadStream *arse) {
 
 	pasn = listStreams.AtHead();
 
-	while(pasn_next = pasn->NextFromHead()) {
+	while((pasn_next = pasn->NextFromHead())) {
 		if (pasn->cache)
 			pasn->cache->ResetStatistics();
 

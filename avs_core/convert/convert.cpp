@@ -823,7 +823,7 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
 **********************************/
 // 10->8
 // repeated 4x for sse size 16
-static const struct
+static const struct dither2x2_t
 {
   const BYTE data[4] = {
     0, 2,
@@ -834,11 +834,12 @@ static const struct
     0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2,
     3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1
   };
+  dither2x2_t() {};
 } dither2x2;
 
 
 // 12->8
-static const struct
+static const struct dither4x4_t
 {
   const BYTE data[16] = {
      0,  8,  2, 10,
@@ -853,10 +854,11 @@ static const struct
      3, 11,  1,  9,  3, 11,  1,  9,  3, 11,  1,  9,  3, 11,  1,  9,
     15,  7, 13,  5, 15,  7, 13,  5, 15,  7, 13,  5, 15,  7, 13,  5
   };
+  dither4x4_t() {};
 } dither4x4;
 
 // 14->8
-static const struct
+static const struct dither8x8_t
 {
   const BYTE data[8][8] = {
     { 0, 32,  8, 40,  2, 34, 10, 42}, /* 8x8 Bayer ordered dithering */
@@ -879,10 +881,11 @@ static const struct
     { 15, 47,  7, 39, 13, 45,  5, 37, 15, 47,  7, 39, 13, 45,  5, 37 },
     { 63, 31, 55, 23, 61, 29, 53, 21, 63, 31, 55, 23, 61, 29, 53, 21 }
   };
+  dither8x8_t() {};
 } dither8x8;
 
 // 16->8
-static const struct
+static const struct dither16x16_t
 {
   // cycle: 16x
   alignas(16) const BYTE data[16][16] = {
@@ -903,6 +906,7 @@ static const struct
     {  42,234, 26,218, 38,230, 22,214, 41,233, 25,217, 37,229, 21,213 },
     { 170,106,154, 90,166,102,150, 86,169,105,153, 89,165,101,149, 85 }
   };
+  dither16x16_t() {};
 } dither16x16;
 
 template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>

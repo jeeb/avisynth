@@ -1810,49 +1810,51 @@ void AudioL3Corrector::Process(void *buffer, long bytes) {
 		cnt += tc;
 		read_left -= tc;
 
-		if (read_left <= 0)
-			if (header_mode) {
-				// We've got a header!  Process it...
+    if (read_left <= 0) {
+      if (header_mode) {
+        // We've got a header!  Process it...
 
-				long hdr = *(long *)hdr_buffer;
-				long samp_rate, framelen;
+        long hdr = *(long *)hdr_buffer;
+        long samp_rate, framelen;
 
-				if ((hdr & 0xE0FF) != 0xE0FF)
-					throw MyError("MPEG audio sync error: try disabling MPEG audio time correction");
+        if ((hdr & 0xE0FF) != 0xE0FF)
+          throw MyError("MPEG audio sync error: try disabling MPEG audio time correction");
 
-				samp_rate = samp_freq[(hdr>>18)&3];
+        samp_rate = samp_freq[(hdr >> 18) & 3];
 
-				if (!((hdr>>11)&1)) {
-					samp_rate /= 2;
-					samples += 576;
+        if (!((hdr >> 11) & 1)) {
+          samp_rate /= 2;
+          samples += 576;
         }
         else {
           samples += 1152;
         }
 
-				if (!(hdr & 0x1000))
-					samp_rate /= 2;
+        if (!(hdr & 0x1000))
+          samp_rate /= 2;
 
-				framelen = (bitrates[(hdr>>11)&1][(hdr>>20)&15] * (((hdr>>11)&1) ? 144000 : 72000)) / samp_rate;
+        framelen = (bitrates[(hdr >> 11) & 1][(hdr >> 20) & 15] * (((hdr >> 11) & 1) ? 144000 : 72000)) / samp_rate;
 
-				if (hdr&0x20000) ++framelen;
+        if (hdr & 0x20000) ++framelen;
 
-				// update statistics
+        // update statistics
 
-				frame_bytes += framelen;
+        frame_bytes += framelen;
 
-				// start skipping the remainder
+        // start skipping the remainder
 
-				read_left = framelen - 4;
-				header_mode = false;
+        read_left = framelen - 4;
+        header_mode = false;
 
-			} else {
+      }
+      else {
 
-				// Done skipping frame data; collect the next header
+     // Done skipping frame data; collect the next header
 
-				read_left = 4;
-				header_mode = true;
-			}
+        read_left = 4;
+        header_mode = true;
+      }
+    }
 	}
 }
 

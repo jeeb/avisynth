@@ -56,7 +56,6 @@ private:
   const int _w;
   const int _h;
   const int _bits_per_pixel;
-  const bool hasAlpha;
   const bool grey;
 
   bool return_original;
@@ -81,7 +80,7 @@ public:
     int _inw, int _inh, VideoInfo &_workingVI, bool _hasAlpha, bool _grey, VideoInfo &_originalVI, IScriptEnvironment* env) :
     Env(static_cast<IScriptEnvironment2*>(env)),
     frame(_frame),
-    _w(_inw), _h(_inh), _bits_per_pixel(_workingVI.BitsPerComponent()), hasAlpha(_hasAlpha), grey(_grey), maskChroma(nullptr) {
+    _w(_inw), _h(_inh), _bits_per_pixel(_workingVI.BitsPerComponent()), grey(_grey), maskChroma(nullptr) {
 
     int pixelsize;
     if (_bits_per_pixel == 8) pixelsize = 1;
@@ -107,7 +106,7 @@ public:
     if (grey) {
       if (_workingVI.Is420() || _workingVI.Is422()) {
         // allocate for subSampled chroma when original mask is grey (Y only)
-        size_t tmppitch = AlignNumber((_w >> xSubSamplingShifts[1])*pixelsize, FRAME_ALIGN);
+        int tmppitch = AlignNumber((_w >> xSubSamplingShifts[1])*pixelsize, FRAME_ALIGN);
         maskChroma = static_cast<BYTE*>(Env->Allocate(
           tmppitch * (_h >> ySubSamplingShifts[1]), 64, AVS_POOLED_ALLOC)
           );

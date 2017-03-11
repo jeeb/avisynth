@@ -402,7 +402,7 @@ void __stdcall ConditionalFilter::GetAudio(void* buf, __int64 start, __int64 cou
 
 AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  int userdata = (intptr_t)user_data;
+  intptr_t userdata = (intptr_t)user_data;
   if (userdata == 0)
     return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], args[4], args[5], args[6].AsBool(false),env);
   else // like GConditional filter shortcut: no "=" "true" needed

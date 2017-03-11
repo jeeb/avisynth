@@ -25,7 +25,8 @@ class ListNode {
 public:
 	ListNode *next, *prev;
 
-	ListNode() {}
+  ListNode() {}
+  ListNode(void *pv) {}
 
 	void Remove() {
 		next->prev = prev;
@@ -65,8 +66,6 @@ public:
 	// head <-> node <-> node <-> tail
 
 	List();
-
-	void Init();
 
 	void AddHead(ListNode *node) {
 		node->InsertAfter(&head);

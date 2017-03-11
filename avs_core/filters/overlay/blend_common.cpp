@@ -293,10 +293,6 @@ template<typename pixel_t, int bits_per_pixel>
 void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height) {
-        BYTE* original_p1 = p1;
-  const BYTE* original_p2 = p2;
-  const BYTE* original_mask = mask;
-
   __m128i v128;
   if(sizeof(pixel_t) == 1)
     v128 = _mm_set1_epi16(0x0080);
@@ -547,8 +543,6 @@ template<typename pixel_t, int bits_per_pixel>
 void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
   const int p1_pitch, const int p2_pitch,
   const int width, const int height, const int opacity, const float opacity_f) {
-  BYTE* original_p1 = p1;
-  const BYTE* original_p2 = p2;
 /*
   const int OPACITY_SHIFT  = 8; // opacity always max 0..256
   const int MASK_CORR_SHIFT = OPACITY_SHIFT; // no mask, mask = opacity, 8 bits always
@@ -569,7 +563,6 @@ void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
 */
   const int OPACITY_SHIFT = 8; // opacity always max 0..256
   const int MASK_CORR_SHIFT = OPACITY_SHIFT; // no mask, mask = opacity, 8 bits always
-  const int half_pixel_value_rounding = (1 << (MASK_CORR_SHIFT - 1));
 
   /*
   __m128i v128 = _mm_set1_epi16(half_pixel_value_rounding);
@@ -832,9 +825,6 @@ template<typename pixel_t, int bits_per_pixel>
 void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height, const int opacity, const float opacity_f) {
-        BYTE* original_p1 = p1;
-  const BYTE* original_p2 = p2;
-  const BYTE* original_mask = mask;
 
   const int OPACITY_SHIFT = 8; // opacity always max 0..256
   const int MASK_CORR_SHIFT = OPACITY_SHIFT; // no mask, mask = opacity, 8 bits always
