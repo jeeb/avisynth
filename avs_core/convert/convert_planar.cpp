@@ -43,6 +43,8 @@
 #include <avs/win.h>
 #include <avs/alignment.h>
 #include <tmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
 #include <algorithm>
 #include <string>
 

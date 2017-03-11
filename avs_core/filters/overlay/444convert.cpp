@@ -37,6 +37,7 @@
 #include "444convert.h"
 #include "../../core/internal.h"
 #include <emmintrin.h>
+#include <smmintrin.h>
 #include <avs/alignment.h>
 
 // fast in-place conversions from and to 4:4:4

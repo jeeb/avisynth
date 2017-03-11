@@ -39,6 +39,7 @@
 #include <avs/minmax.h>
 #include "../core/internal.h"
 #include <emmintrin.h>
+#include <smmintrin.h>
 #include <stdint.h>
 
 
