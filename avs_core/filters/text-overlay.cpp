@@ -1046,7 +1046,7 @@ ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x
 {
 }
 
-enum { DefXY = 0x80000000 };
+enum { DefXY = (int)0x80000000 };
 
 PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame frame = child->GetFrame(n, env);
