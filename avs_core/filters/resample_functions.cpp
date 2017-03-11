@@ -69,7 +69,7 @@ double TriangleFilter::f(double x) {
  *** Mitchell-Netravali filter ***
  *********************************/
 
-MitchellNetravaliFilter::MitchellNetravaliFilter (double b=1./3., double c=1./3.) {
+MitchellNetravaliFilter::MitchellNetravaliFilter (double b, double c) {
   p0 = (   6. -  2.*b            ) / 6.;
   p2 = ( -18. + 12.*b +  6.*c    ) / 6.;
   p3 = (  12. -  9.*b -  6.*c    ) / 6.;
@@ -88,8 +88,8 @@ double MitchellNetravaliFilter::f (double x) {
 /***********************
  *** Lanczos3 filter ***
  ***********************/
-LanczosFilter::LanczosFilter(int t = 3) {
-   taps = (double)clamp(t, 1, 100);
+LanczosFilter::LanczosFilter(int _taps) {
+   taps = (double)clamp(_taps, 1, 100);
 }
 
 double LanczosFilter::sinc(double value) {
@@ -115,8 +115,8 @@ double LanczosFilter::f(double value) {
 /***********************
  *** Blackman filter ***
  ***********************/
-BlackmanFilter::BlackmanFilter(int t = 4) {
-   taps = (double)clamp(t, 1, 100);
+BlackmanFilter::BlackmanFilter(int _taps) {
+   taps = (double)clamp(_taps, 1, 100);
    rtaps = 1.0/taps;
 }
 
@@ -198,7 +198,7 @@ double Spline64Filter::f(double value) {
                      value*value < {900, 4.0, 3.0, 0.9}
                      value       < {30, 2.0, 1.73, 0.949}         */
 
-GaussianFilter::GaussianFilter(double p = 30.0) {
+GaussianFilter::GaussianFilter(double p) {
   param = clamp(p, 0.1, 100.0);
 }
 
@@ -210,8 +210,8 @@ double GaussianFilter::f(double value) {
 /***********************
  *** Sinc filter ***
  ***********************/
-SincFilter::SincFilter(int t = 4) {
-   taps = (double)clamp(t, 1, 20);
+SincFilter::SincFilter(int _taps) {
+   taps = (double)clamp(_taps, 1, 20);
 }
 
 double SincFilter::f(double value) {
