@@ -973,7 +973,7 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
         invert_plane(f->GetWritePtr(PLANAR_R), f->GetPitch(PLANAR_R), f->GetRowSize(PLANAR_R_ALIGNED), f->GetHeight(PLANAR_R), pixelsize, mask64, env);
     }
     // alpha
-    if (doA && vi.IsPlanarRGBA() || vi.IsYUVA())
+    if (doA && (vi.IsPlanarRGBA() || vi.IsYUVA()))
       invert_plane(f->GetWritePtr(PLANAR_A), f->GetPitch(PLANAR_A), f->GetRowSize(PLANAR_A_ALIGNED), f->GetHeight(PLANAR_A), pixelsize, mask64, env);
   }
   else if (vi.IsYUY2() || vi.IsRGB32() || vi.IsRGB64()) {
