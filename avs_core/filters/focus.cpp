@@ -1862,7 +1862,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 
   // Just skip if silly settings
 
-  if ((!luma_threshold) && (!chroma_threshold) || (!radius))
+  if ((!luma_threshold && !chroma_threshold) || !radius)
   {
     PVideoFrame ret = child->GetFrame(n, env); // P.F.
     return ret;
