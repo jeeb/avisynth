@@ -1461,7 +1461,6 @@ static void convert_yuv_to_planarrgb_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
   __m128i zero = _mm_setzero_si128();
 
   const int rowsize = width * sizeof(pixel_t);
-  int wmod = (rowsize / 8) * 8;
   for (int y = 0; y < height; y++) {
     // if not mod16 then still no trouble, process non-visible pixels, we have 32 byte aligned in avs+
     for (int x = 0; x < rowsize; x += 8 * sizeof(pixel_t)) {
@@ -1586,10 +1585,8 @@ static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
   // 16 bit uint16_t (unsigned range)
   // 32 bit float
   __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? 0.5f : (float)(1u << (bits_per_pixel - 1)));
-  __m128i half = _mm_set1_epi16(1u << (bits_per_pixel - 1));
   __m128i limit  = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
   __m128  offset_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? m.offset_y / 256.0f : float(m.offset_y << (bits_per_pixel - 8)));
-  __m128i offset = _mm_set1_epi32(m.offset_y << (bits_per_pixel - 8));
 
   __m128i zero = _mm_setzero_si128();
 

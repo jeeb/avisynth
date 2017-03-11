@@ -296,7 +296,7 @@ void* VideoFrame::operator new(size_t size) {
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
-    ,offsetA(0), row_sizeA(0), pitchA(0)
+    ,offsetA(0), pitchA(0), row_sizeA(0)
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -305,7 +305,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
                        int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(0), row_sizeA(0), pitchA(0)
+    ,offsetA(0), pitchA(0), row_sizeA(0)
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -314,7 +314,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
     int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA)
     : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(_offsetA), row_sizeA(_row_size), pitchA(_pitch)
+    ,offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size)
 {
     InterlockedIncrement(&vfb->refcount);
 }
@@ -353,15 +353,15 @@ VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(NULL), data_size(0), se
 
 
 VideoFrameBuffer::VideoFrameBuffer(int size) :
-  refcount(0),
 #ifdef _DEBUG
   data(new BYTE[size+16]),
 #else
   data(new BYTE[size]),
 #endif
   data_size(size),
-  sequence_number(0)
-{
+  sequence_number(0),
+  refcount(0)
+  {
 
 #ifdef _DEBUG
   int *pInt=(int *)(data+size);
@@ -859,16 +859,16 @@ IJobCompletion* __stdcall ScriptEnvironment::NewCompletion(size_t capacity)
 
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(),
-    plugin_manager(NULL),
     vsprintf_buf(NULL),
     vsprintf_len(0),
+    plugin_manager(NULL),
     hrfromcoinit(E_FAIL), coinitThreadId(0),
-    closing(false),
     PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
-    ImportDepth(0),
+    closing(false),
     thread_pool(NULL),
-    prefetcher(NULL),
+    ImportDepth(0),
     FrontCache(NULL),
+    prefetcher(NULL),
     BufferPool(this)
 {
   try {
