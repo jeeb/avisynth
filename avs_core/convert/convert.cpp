@@ -2601,6 +2601,8 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
               break;
             }
           }
+
+          conv_function_full_scale_no_dither = conv_function_full_scale; // save ditherless, used for possible alpha
         }
 
         // fill shift_range converter functions
