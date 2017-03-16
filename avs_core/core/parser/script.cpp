@@ -1250,7 +1250,7 @@ AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env)
     return AVSValue();
 }
 
-AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsY8(); }
+AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsY(); }
 AVSValue Is420(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is420(); }
 AVSValue Is422(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is422(); }
 AVSValue Is444(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is444(); }
