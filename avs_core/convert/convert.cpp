@@ -2396,10 +2396,14 @@ BitDepthConvFuncPtr get_convert_to_16_16_down_dither_function(bool full_scale, i
     // dither, C, dither to N bits
     // keeping bit depth but dither down
     func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_8>;
+    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_7>;
     func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_6>;
+    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_5>;
     func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_4>;
+    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_3>;
     func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_2>;
     func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_1>;
+    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_0>;
 
     // end of floyd
 
