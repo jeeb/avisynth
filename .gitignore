@@ -45,6 +45,17 @@ plugins/VFAPIFilter/CMakeFiles/*
 plugins/VFAPIFilter/debug/*
 plugins/VFAPIFilter/release/*
 
+#cmake generated files
+*.sln
+*.vcxproj
+*.vcxproj.filters
+arch.c
+avs_core/arch.h
+avs_core/version.h
+cmake_install.cmake
+generate.stamp
+generate.stamp.depend
+
 debug/*
 output/*
 release/*
