@@ -29,13 +29,23 @@ foreach(FILE ${AvsCore_Sources})
   source_group("${GROUP}" FILES "${FILE}")
 endforeach()
 
-# special AVX option for source files with *_avx.cpp pattern
-file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
-set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS " /arch:AVX ")
+if (MSVC_IDE)
+  # special AVX option for source files with *_avx.cpp pattern
+  file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
+  set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS " /arch:AVX ")
 
-# special AVX2 option for source files with *_avx2.cpp pattern
-file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
-set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " /arch:AVX2 ")
+  # special AVX2 option for source files with *_avx2.cpp pattern
+  file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
+  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " /arch:AVX2 ")
+elseif (MINGW)
+  # special AVX option for source files with *_avx.cpp pattern
+  file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
+  set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS -mavx )
+
+  # special AVX2 option for source files with *_avx2.cpp pattern
+  file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
+  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS -mavx2 )
+endif()
 
 # Specify include directories
 target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
