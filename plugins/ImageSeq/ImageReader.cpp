@@ -182,9 +182,34 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     else if (!lstrcmpi(_pixel, "y8")) {
       vi.pixel_type = VideoInfo::CS_Y8;
     }
+    else if (!lstrcmpi(_pixel, "y16")) {
+      vi.pixel_type = VideoInfo::CS_Y16;
+    }
+    else if (!lstrcmpi(_pixel, "rgb48")) {
+      vi.pixel_type = VideoInfo::CS_BGR48;
+    }
+    else if (!lstrcmpi(_pixel, "rgb64")) {
+      vi.pixel_type = VideoInfo::CS_BGR64;
+    }
+    /*
+    else if (!lstrcmpi(_pixel, "rgbp8") || !lstrcmpi(_pixel, "rgbp")) {
+      vi.pixel_type = VideoInfo::CS_RGBP;
+    }
+    else if (!lstrcmpi(_pixel, "rgbap8") || !lstrcmpi(_pixel, "rgbap")) {
+      vi.pixel_type = VideoInfo::CS_RGBAP;
+    }
+    else if (!lstrcmpi(_pixel, "rgbp16")) {
+      vi.pixel_type = VideoInfo::CS_RGBP16;
+    }
+    else if (!lstrcmpi(_pixel, "rgbap16")) {
+      vi.pixel_type = VideoInfo::CS_RGBAP16;
+    }
+    // these would need on-the-fly conversion, todo
+    */
     else {
       LeaveCriticalSection(&FramesCriticalSection);
-      env->ThrowError("ImageReader: supports the following pixel types: RGB24, RGB32 or Y8");
+      //env->ThrowError("ImageReader: supports the following pixel types: RGB24/32/48/64, Y8/16 or RGB(A)P8/16");
+      env->ThrowError("ImageReader: supports the following pixel types: RGB24/32/48/64 or Y8/16");
     }
 
     if (animation) {
@@ -225,8 +250,8 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     {
       should_flip = true;
     }
-    // flip back for Y8
-    if (vi.IsY8()) {
+    // flip back for Y8 or Y16
+    if (vi.IsY()) {
         should_flip = !should_flip;
     }
   }
@@ -353,17 +378,19 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       }
     }
 
-    const ILenum il_format = vi.IsY8() ? IL_LUMINANCE : ( vi.IsRGB32() ? IL_BGRA : IL_BGR );
-    const ILenum linesize = width * ( vi.IsY8() ? 1 : ( vi.IsRGB32() ? 4 : 3 ) );
+    const ILenum il_format = vi.IsY() ? IL_LUMINANCE : ( (vi.IsRGB32() || vi.IsRGB64()) ? IL_BGRA : IL_BGR );
+    const ILenum linesize = width * ( vi.IsY() ? 1 : ( (vi.IsRGB32() || vi.IsRGB64()) ? 4 : 3 ) ) * vi.ComponentSize();
     const int height_image = min(height, ilGetInteger(IL_IMAGE_HEIGHT));
     const int width_image = min(width, ilGetInteger(IL_IMAGE_WIDTH));
-    const ILenum linesize_image = width_image * ( vi.IsY8() ? 1 : ( vi.IsRGB32() ? 4 : 3 ) );
+    const ILenum linesize_image = width_image * ( vi.IsY() ? 1 : ( (vi.IsRGB32() || vi.IsRGB64()) ? 4 : 3 ) ) * vi.ComponentSize();
 
-    if (!vi.IsY8()) {
+    if (!vi.IsY()) {
       // fill bottom with black pixels
       memset(dstPtr, 0, pitch * (height-height_image));
       dstPtr += pitch * (height-height_image);
     }
+
+    int ilPixelType = vi.ComponentSize() == 1 ? IL_UNSIGNED_BYTE : IL_UNSIGNED_SHORT;
 
     // Copy raster to AVS frame
 ////if (ilGetInteger(IL_ORIGIN_MODE) == IL_ORIGIN_UPPER_LEFT, IL_ORIGIN_LOWER_LEFT ???
@@ -372,7 +399,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       // Copy upside down
       for (int y=height_image-1; y>=0; --y)
       {
-        if (ilCopyPixels(0, y, 0, width_image, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
+        if (ilCopyPixels(0, y, 0, width_image, 1, 1, il_format, ilPixelType, dstPtr) > linesize)
           break; // Try not to spew all over memory
         memset(dstPtr+linesize_image, 0, linesize-linesize_image);
         dstPtr += pitch;
@@ -382,14 +409,14 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       // Copy right side up
       for (int y=0; y<height_image; ++y)
       {
-        if (ilCopyPixels(0, y, 0, width_image, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
+        if (ilCopyPixels(0, y, 0, width_image, 1, 1, il_format, ilPixelType, dstPtr) > linesize)
           break; // Try not to spew all over memory
         memset(dstPtr+linesize_image, 0, linesize-linesize_image);
         dstPtr += pitch;
       }
     }
 
-    if (vi.IsY8()) {
+    if (vi.IsY()) {
       // fill bottom with black pixels
       memset(dstPtr, 0, pitch * (height-height_image));
     }
@@ -425,7 +452,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     file.seekg (fileHeader.bfOffBits, ios::beg);
 
     // Read in raster
-    if (vi.IsY8())
+    if (vi.IsY())
     {
       // read upside down
       BYTE * endPtr = dstPtr + pitch * (height-1);
@@ -480,18 +507,68 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
 {
   const int size = frame->GetPitch() * frame->GetHeight();
 
-  if (vi.IsRGB() || vi.IsY8()) {
+  if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+    bool hasAlpha = vi.IsPlanarRGBA();
+    int pixelsize = vi.ComponentSize();
+    if (pixelsize == 1) {
+      memset(frame->GetWritePtr(PLANAR_G), 128, size); // Grey frame
+      memset(frame->GetWritePtr(PLANAR_B), 128, size);
+      memset(frame->GetWritePtr(PLANAR_R), 128, size);
+      if(hasAlpha)
+        memset(frame->GetWritePtr(PLANAR_A), 255, size); // transparent alpha
+    }
+    else if (pixelsize == 2) {
+      uint16_t half = 1 << (vi.BitsPerComponent() - 1);
+      uint16_t max = (1 << vi.BitsPerComponent()) - 1;
+      std::fill_n((uint16_t *)frame->GetWritePtr(PLANAR_G), size / 2, half); // Grey frame
+      std::fill_n((uint16_t *)frame->GetWritePtr(PLANAR_B), size / 2, half); // Grey frame
+      std::fill_n((uint16_t *)frame->GetWritePtr(PLANAR_R), size / 2, half); // Grey frame
+      if (hasAlpha)
+        std::fill_n((uint16_t *)frame->GetWritePtr(PLANAR_A), size / 2, max); // transparent alpha
+    }
+    else if (pixelsize == 4) { // float
+      float half = 0.5f;
+      std::fill_n((float *)frame->GetWritePtr(PLANAR_G), size / 4, half); // Grey frame
+      std::fill_n((float *)frame->GetWritePtr(PLANAR_B), size / 4, half); // Grey frame
+      std::fill_n((float *)frame->GetWritePtr(PLANAR_R), size / 4, half); // Grey frame
+      if (hasAlpha)
+        std::fill_n((float *)frame->GetWritePtr(PLANAR_A), size / 4, 1.0f); // Grey frame
+    }
+  } else if (vi.IsRGB() || vi.IsY()) {
     memset(frame->GetWritePtr(), 0, size); // Black frame
   }
   else {
-    memset(frame->GetWritePtr(), 128, size); // Grey frame
-
+    int pixelsize = vi.ComponentSize();
     const int UVpitch = frame->GetPitch(PLANAR_U);
-    if (UVpitch) {
-      const int UVsize = UVpitch * frame->GetHeight(PLANAR_U);
+    if (pixelsize == 1) {
+      memset(frame->GetWritePtr(), 128, size); // Grey frame
 
-      memset(frame->GetWritePtr(PLANAR_U), 128, UVsize);
-      memset(frame->GetWritePtr(PLANAR_V), 128, UVsize);
+      if (UVpitch) {
+        const int UVsize = UVpitch * frame->GetHeight(PLANAR_U);
+
+        memset(frame->GetWritePtr(PLANAR_U), 128, UVsize);
+        memset(frame->GetWritePtr(PLANAR_V), 128, UVsize);
+      }
+    }
+    else if (pixelsize == 2) {
+      uint16_t half = 1 << (vi.BitsPerComponent() - 1);
+      std::fill_n((uint16_t *)frame->GetWritePtr(), size / 2, half); // Grey frame
+
+      if (UVpitch) {
+        const int UVsize = UVpitch * frame->GetHeight(PLANAR_U);
+        std::fill_n((uint16_t *)frame->GetWritePtr(PLANAR_U), UVsize / 2, half); // Grey frame
+        std::fill_n((uint16_t *)frame->GetWritePtr(PLANAR_V), UVsize / 2, half); // Grey frame
+      }
+    }
+    else if (pixelsize == 4) { // float
+      float half = 0.5f;
+      std::fill_n((float *)frame->GetWritePtr(), size / 4, half); // Grey frame
+
+      if (UVpitch) {
+        const int UVsize = UVpitch * frame->GetHeight(PLANAR_U);
+        std::fill_n((float *)frame->GetWritePtr(PLANAR_U), UVsize / 4, half); // Grey frame
+        std::fill_n((float *)frame->GetWritePtr(PLANAR_V), UVsize / 4, half); // Grey frame
+      }
     }
   }
 }
