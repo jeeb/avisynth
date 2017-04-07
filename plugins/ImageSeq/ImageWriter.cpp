@@ -61,6 +61,8 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
 
   if (!lstrcmpi(ext, "ebmp"))
   {
+    if (vi.BitsPerComponent() != 8)
+      env->ThrowError("ImageWriter: ebmp requires 8 bits/component images");
     // construct file header
     fileHeader.bfType = ('M' << 8) + 'B'; // I hate little-endian
     fileHeader.bfSize = vi.BMPSize(); // includes 4-byte padding
@@ -73,7 +75,7 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     infoHeader.biSize = sizeof(BITMAPINFOHEADER);
     infoHeader.biWidth = vi.width;
     infoHeader.biHeight = vi.height;
-    infoHeader.biPlanes = (vi.IsPlanar() && !vi.IsY8()) ? 3 : 1;
+    infoHeader.biPlanes = (vi.IsPlanar() && !vi.IsY()) ? 3 : 1;
     infoHeader.biBitCount = WORD(vi.BitsPerPixel());
     infoHeader.biCompression = 0;
     infoHeader.biSizeImage = fileHeader.bfSize - fileHeader.bfOffBits;
@@ -83,8 +85,8 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     infoHeader.biClrImportant = 0;
   }
   else {
-    if (!(vi.IsY8()||vi.IsRGB()))
-      env->ThrowError("ImageWriter: DevIL requires RGB or Y8 input");
+    if (!((vi.IsY() && (vi.BitsPerComponent() == 8 || vi.BitsPerComponent() == 16)) || (vi.IsRGB() && !vi.IsPlanar())))
+      env->ThrowError("ImageWriter: DevIL requires RGB24/32/48/64, Y8 or Y16 input");
 
     if (InterlockedIncrement(&refcount) == 1) {
       if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
@@ -206,18 +208,31 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     ilGenImages(1, &myImage); // Initialize 1 image structure
     ilBindImage(myImage);     // Set this as the current image
 
-    const ILenum il_format = vi.IsY8() ? IL_LUMINANCE : ( vi.IsRGB32() ? IL_BGRA : IL_BGR );
+    const ILenum il_format = vi.IsY() ? IL_LUMINANCE : ((vi.IsRGB32() || vi.IsRGB64()) ? IL_BGRA : IL_BGR);
+    const ILenum ilPixelType = vi.ComponentSize() == 1 ? IL_UNSIGNED_BYTE : IL_UNSIGNED_SHORT;
+
+    bool should_flip = vi.IsY();
 
     // Set image parameters
-    if (IL_TRUE == ilTexImage(vi.width, vi.height, 1, ILubyte(vi.BitsPerPixel() / 8), il_format, IL_UNSIGNED_BYTE, NULL)) {
+    int bytesPerPixel = vi.BitsPerPixel() / 8 / vi.ComponentSize();
+    if (IL_TRUE == ilTexImage(vi.width, vi.height, 1, ILubyte(bytesPerPixel), il_format, ilPixelType, NULL)) {
 
       // Program actual image raster
       const BYTE * srcPtr = frame->GetReadPtr();
       int pitch = frame->GetPitch();
-      for (int y=0; y<vi.height; ++y)
-      {
-        ilSetPixels(0, y, 0, vi.width, 1, 1, il_format, IL_UNSIGNED_BYTE, (void*) srcPtr);
-        srcPtr += pitch;
+      if (should_flip) {
+        for (int y = vi.height-1; y >= 0; --y)
+        {
+          ilSetPixels(0, y, 0, vi.width, 1, 1, il_format, ilPixelType, (void*)srcPtr);
+          srcPtr += pitch;
+        }
+      }
+      else {
+        for (int y = 0; y < vi.height; ++y)
+        {
+          ilSetPixels(0, y, 0, vi.width, 1, 1, il_format, ilPixelType, (void*)srcPtr);
+          srcPtr += pitch;
+        }
       }
 
       // DevIL writer fails if the file exists, so delete first
