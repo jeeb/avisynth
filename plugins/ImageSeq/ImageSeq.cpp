@@ -44,7 +44,32 @@ volatile ILint DevIL_Version = 0;
 
 AVSValue __cdecl Create_ImageWriter(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ImageWriter(args[0].AsClip(),
+  PClip clip = args[0].AsClip();
+  const VideoInfo &vi = clip->GetVideoInfo();
+  if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+  {
+    // silently convert to packed bitmap
+    int bits_per_pixel = vi.BitsPerComponent();
+    bool hasAlpha = vi.IsPlanarRGBA();
+    AVSValue new_args[1] = { clip };
+    if (bits_per_pixel == 8) {
+      if (hasAlpha)
+        clip = env->Invoke("ConvertToRGB32", AVSValue(new_args, 1)).AsClip();
+      else
+        clip = env->Invoke("ConvertToRGB24", AVSValue(new_args, 1)).AsClip();
+    }
+    else if (bits_per_pixel == 16) {
+      if (hasAlpha)
+        clip = env->Invoke("ConvertToRGB64", AVSValue(new_args, 1)).AsClip();
+      else
+        clip = env->Invoke("ConvertToRGB48", AVSValue(new_args, 1)).AsClip();
+    }
+    else {
+      env->ThrowError("ImageWriter: only 8 or 16 bit planar RGB formats supported");
+    }
+  }
+
+  return new ImageWriter(clip,
                          env->SaveString(args[1].AsString("c:\\")),
                          args[2].AsInt(0),
                          args[3].AsInt(0),
