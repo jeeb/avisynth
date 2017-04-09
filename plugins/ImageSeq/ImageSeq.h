@@ -61,6 +61,8 @@ private:
   int start;
   int end;
 
+  bool should_flip;
+
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;
 };

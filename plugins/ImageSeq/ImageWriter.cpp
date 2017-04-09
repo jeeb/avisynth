@@ -85,8 +85,15 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     infoHeader.biClrImportant = 0;
   }
   else {
+    should_flip = false;   
+    if (vi.IsY())
+      should_flip = true;
+    const char * ext = strrchr(_base_name, '.') + 1;
+    if (!lstrcmpi(ext, "raw"))
+      should_flip = false;
+
     if (!((vi.IsY() && (vi.BitsPerComponent() == 8 || vi.BitsPerComponent() == 16)) || (vi.IsRGB() && !vi.IsPlanar())))
-      env->ThrowError("ImageWriter: DevIL requires RGB24/32/48/64, Y8 or Y16 input");
+      env->ThrowError("ImageWriter: DevIL requires 8 or 16 bits per channel RGB or greyscale input");
 
     if (InterlockedIncrement(&refcount) == 1) {
       if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
@@ -210,8 +217,6 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
 
     const ILenum il_format = vi.IsY() ? IL_LUMINANCE : ((vi.IsRGB32() || vi.IsRGB64()) ? IL_BGRA : IL_BGR);
     const ILenum ilPixelType = vi.ComponentSize() == 1 ? IL_UNSIGNED_BYTE : IL_UNSIGNED_SHORT;
-
-    bool should_flip = vi.IsY();
 
     // Set image parameters
     int bytesPerPixel = vi.BitsPerPixel() / 8 / vi.ComponentSize();
