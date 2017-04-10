@@ -345,7 +345,7 @@ CWDChanger::CWDChanger(const char* new_cwd):
   int len = strlen(new_cwd)+1;
   wchar_t *new_cwd_w = new wchar_t[len];
   
-  std::mbstowcs(new_cwd_w, new_cwd, len); // multibyte->wide char using current C locale
+  MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, new_cwd, -1, new_cwd_w, len);
   Init(new_cwd_w);
   delete[] new_cwd_w;
 }
@@ -459,7 +459,8 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     wchar_t script_name_w[MAX_PATH];
     if (!bUtf8) {
       int len = strlen(script_name) + 1;
-      mbstowcs(script_name_w, script_name, len); // ansi to wchar_t
+      MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, script_name, -1, script_name_w, len);
+      //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
     }
     else {
       int len = strlen(script_name) + 1;
