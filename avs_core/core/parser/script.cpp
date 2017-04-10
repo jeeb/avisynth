@@ -190,7 +190,7 @@ extern const AVSFunction Script_functions[] = {
   { "Eval",   BUILTIN_FUNC_PREFIX, "s[name]s", Eval },
   { "Eval",   BUILTIN_FUNC_PREFIX, "cs[name]s", EvalOop },
   { "Apply",  BUILTIN_FUNC_PREFIX, "s.*", Apply },
-  { "Import", BUILTIN_FUNC_PREFIX, "s+", Import },
+  { "Import", BUILTIN_FUNC_PREFIX, "s+[utf8]b", Import },
 
   { "Assert", BUILTIN_FUNC_PREFIX, "b[message]s", Assert },
   { "Assert", BUILTIN_FUNC_PREFIX, "s", AssertEval },
@@ -224,6 +224,9 @@ extern const AVSFunction Script_functions[] = {
   { "ScriptName", BUILTIN_FUNC_PREFIX, "", ScriptName },
   { "ScriptFile", BUILTIN_FUNC_PREFIX, "", ScriptFile },
   { "ScriptDir",  BUILTIN_FUNC_PREFIX, "", ScriptDir  },
+  { "ScriptNameUtf8", BUILTIN_FUNC_PREFIX, "", ScriptNameUtf8 },
+  { "ScriptFileUtf8", BUILTIN_FUNC_PREFIX, "", ScriptFileUtf8 },
+  { "ScriptDirUtf8",  BUILTIN_FUNC_PREFIX, "", ScriptDirUtf8 },
 
   { "PixelType",  BUILTIN_FUNC_PREFIX, "c", PixelType  },
 
@@ -320,20 +323,37 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
  *******   Helper Functions   ******
  **********************************/
 
-CWDChanger::CWDChanger(const char* new_cwd) :
+void CWDChanger::Init(const wchar_t* new_cwd) 
+{
+  // works in unicode internally
+  DWORD cwdLen = GetCurrentDirectoryW(0, NULL);
+  old_working_directory = new wchar_t[cwdLen];
+  DWORD save_cwd_success = GetCurrentDirectoryW(cwdLen, old_working_directory);
+  BOOL set_cwd_success = SetCurrentDirectoryW(new_cwd);
+  restore = (save_cwd_success && set_cwd_success);
+}
+
+CWDChanger::CWDChanger(const wchar_t* new_cwd) :
   old_working_directory(NULL)
 {
-  DWORD cwdLen = GetCurrentDirectory(0, NULL);
-  old_working_directory = new char[cwdLen];
-  DWORD save_cwd_success = GetCurrentDirectory(cwdLen, old_working_directory);
-  BOOL set_cwd_success = SetCurrentDirectory(new_cwd);
-  restore = (save_cwd_success && set_cwd_success);
+  Init(new_cwd);
+}
+
+CWDChanger::CWDChanger(const char* new_cwd):
+  old_working_directory(NULL)
+{
+  int len = strlen(new_cwd)+1;
+  wchar_t *new_cwd_w = new wchar_t[len];
+  
+  std::mbstowcs(new_cwd_w, new_cwd, len); // multibyte->wide char using current C locale
+  Init(new_cwd_w);
+  delete[] new_cwd_w;
 }
 
 CWDChanger::~CWDChanger(void)
 {
   if (restore)
-    SetCurrentDirectory(old_working_directory);
+    SetCurrentDirectoryW(old_working_directory);
 
   delete [] old_working_directory;
 }
@@ -408,6 +428,10 @@ AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 {
+  // called as s+ or s+[Utf8]b
+  const bool bHasUTF8param = args.IsArray() && args.ArraySize() == 2 && args[1].IsBool();
+  const bool bUtf8 = bHasUTF8param ? args[1].AsBool(false) : false;
+
   args = args[0];
   AVSValue result;
 
@@ -417,21 +441,121 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   AVSValue lastScriptName = env->GetVarDef("$ScriptName$");
   AVSValue lastScriptFile = env->GetVarDef("$ScriptFile$");
   AVSValue lastScriptDir  = env->GetVarDef("$ScriptDir$");
-  for (int i=0; i<args.ArraySize(); ++i) {
+
+  AVSValue lastScriptNameUtf8 = env->GetVarDef("$ScriptNameUtf8$");
+  AVSValue lastScriptFileUtf8 = env->GetVarDef("$ScriptFileUtf8$");
+  AVSValue lastScriptDirUtf8 = env->GetVarDef("$ScriptDirUtf8$");
+
+  for (int i = 0; i < args.ArraySize(); ++i) {
     const char* script_name = args[i].AsString();
 
-    TCHAR full_path[AVS_MAX_PATH];
+#if 1
+    wchar_t full_path_w[MAX_PATH];
+    wchar_t *file_part_w;
+
+      // Handling utf8 and ansi, working in wchar_t internally
+      // filename and path can be full unicode
+      // unicode input can come from CAVIFileSynth
+    wchar_t script_name_w[MAX_PATH];
+    if (!bUtf8) {
+      int len = strlen(script_name) + 1;
+      mbstowcs(script_name_w, script_name, len); // ansi to wchar_t
+    }
+    else {
+      int len = strlen(script_name) + 1;
+      int wchars_count = MultiByteToWideChar(CP_UTF8, 0, script_name, -1, NULL, 0);
+      MultiByteToWideChar(CP_UTF8, 0, script_name, -1, script_name_w, wchars_count);
+    }
+
+    if (wcschr(script_name_w, '\\') || wcschr(script_name_w, '/')) {
+      DWORD len = GetFullPathNameW(script_name_w, MAX_PATH, full_path_w, &file_part_w);
+      if (len == 0 || len > MAX_PATH)
+        env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
+    }
+    else {
+      DWORD len = SearchPathW(NULL, script_name_w, NULL, MAX_PATH, full_path_w, &file_part_w);
+      if (len == 0 || len > MAX_PATH)
+        env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
+    }
+
+    // back to 8 bit Ansi and Utf8
+    // -- full_path
+    int full_path_len = wcslen(full_path_w);
+    // ansi
+    TCHAR *full_path = new TCHAR[full_path_len + 1];
+    WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, full_path_w, -1, full_path, full_path_len + 1, NULL, NULL); // replaces out-of-CP chars by ?
+    // int succ = wcstombs(full_path, full_path_w, full_path_len +1); 
+    // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+    // utf8
+    TCHAR *full_path_utf8 = new TCHAR[full_path_len * 4 + 1];
+    int utf8len = WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
+    WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, full_path_utf8, utf8len + 1, 0, 0);
+
+    // -- file_part
+    int file_part_len = wcslen(file_part_w);
+    // ansi
+    TCHAR *file_part = new TCHAR[file_part_len + 1];
+    WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, file_part_w, -1, file_part, file_part_len + 1, NULL, NULL);
+    // utf8
+    TCHAR *file_part_utf8 = new TCHAR[file_part_len * 4 + 1];
+    int file_part_utf8len = WideCharToMultiByte(CP_UTF8, 0, file_part_w, -1, NULL, 0, 0, 0) - 1;
+    WideCharToMultiByte(CP_UTF8, 0, file_part_w, -1, file_part_utf8, file_part_utf8len + 1, 0, 0);
+
+    // -- dir_part
+    int dir_part_len = full_path_len - file_part_len;
+    // ansi
+    TCHAR *dir_part = new TCHAR[dir_part_len + 1];
+    WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, full_path_w, -1, dir_part, dir_part_len, NULL, NULL);
+    dir_part[dir_part_len] = 0;
+    // utf8
+    TCHAR *dir_part_utf8 = new TCHAR[dir_part_len * 4 + 1];
+    int dir_part_utf8len = WideCharToMultiByte(CP_UTF8, 0, full_path_w, dir_part_len, NULL, 0, 0, 0); // no \0 terminator check requested here
+    WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, dir_part_utf8, dir_part_utf8len, 0, 0);
+    dir_part_utf8[dir_part_utf8len] = 0;
+
+    HANDLE h = ::CreateFileW(full_path_w, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (h == INVALID_HANDLE_VALUE)
+      env->ThrowError("Import: couldn't open \"%s\"", full_path);
+
+    env->SetGlobalVar("$ScriptName$", env->SaveString(full_path));
+    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(dir_part));
+    env->SetGlobalVar("$ScriptNameUtf8$", env->SaveString(full_path_utf8));
+    env->SetGlobalVar("$ScriptFileUtf8$", env->SaveString(file_part_utf8));
+    env->SetGlobalVar("$ScriptDirUtf8$", env->SaveString(dir_part_utf8));
+    if (MainScript)
+    {
+      env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path));
+      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part));
+      env->SetGlobalVar("$MainScriptDir$", env->SaveString(dir_part));
+      env->SetGlobalVar("$MainScriptNameUtf8$", env->SaveString(full_path_utf8));
+      env->SetGlobalVar("$MainScriptFileUtf8$", env->SaveString(file_part_utf8));
+      env->SetGlobalVar("$MainScriptDirUtf8$", env->SaveString(dir_part_utf8));
+    }
+
+    delete[] full_path;
+    delete[] file_part;
+    delete[] dir_part;
+    delete[] full_path_utf8;
+    delete[] file_part_utf8;
+    delete[] dir_part_utf8;
+
+    *file_part_w = 0; // trunc full_path_w to dir-only
+    CWDChanger change_cwd(full_path_w); // unicode!
+#else
+    TCHAR full_path[AVS_MAX_PATH]; // *4 size for worst case UTF8 byte size
     TCHAR* file_part;
+
     if (strchr(script_name, '\\') || strchr(script_name, '/')) {
       DWORD len = GetFullPathName(script_name, AVS_MAX_PATH, full_path, &file_part);
       if (len == 0 || len > AVS_MAX_PATH)
         env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
-    } else {
+    }
+    else {
       DWORD len = SearchPath(NULL, script_name, NULL, AVS_MAX_PATH, full_path, &file_part);
       if (len == 0 || len > AVS_MAX_PATH)
         env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
     }
-
     HANDLE h = ::CreateFile(full_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (h == INVALID_HANDLE_VALUE)
       env->ThrowError("Import: couldn't open \"%s\"", full_path);
@@ -450,25 +574,26 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
     *file_part = 0;
     CWDChanger change_cwd(full_path);
+#endif    
 
     DWORD size = GetFileSize(h, NULL);
-    std::vector<char> buf(size+1, 0);
+    std::vector<char> buf(size + 1, 0);
     BOOL status = ReadFile(h, buf.data(), size, &size, NULL);
     CloseHandle(h);
     if (!status)
       env->ThrowError("Import: unable to read \"%s\"", script_name);
 
-    // Give Unicode smartarses a hint they need to use ANSI encoding
+    // Give Unicode smartarses a hint they need to use ANSI encodingimport"
     if (size >= 2) {
       unsigned char* q = reinterpret_cast<unsigned char*>(buf.data());
 
-      if ((q[0]==0xFF && q[1]==0xFE) || (q[0]==0xFE && q[1]==0xFF))
-          env->ThrowError("Import: Unicode source files are not supported, "
-                          "re-save script with ANSI encoding! : \"%s\"", script_name);
+      if ((q[0] == 0xFF && q[1] == 0xFE) || (q[0] == 0xFE && q[1] == 0xFF))
+        env->ThrowError("Import: Unicode source files are not supported, "
+          "re-save script with ANSI encoding! : \"%s\"", script_name);
 
-      if (q[0]==0xEF && q[1]==0xBB && q[2]==0xBF)
-          env->ThrowError("Import: UTF-8 source files are not supported, "
-                          "re-save script with ANSI encoding! : \"%s\"", script_name);
+      if (q[0] == 0xEF && q[1] == 0xBB && q[2] == 0xBF)
+        env->ThrowError("Import: UTF-8 source files are not supported, "
+          "re-save script with ANSI encoding! : \"%s\"", script_name);
     }
 
     buf[size] = 0;
@@ -479,6 +604,9 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   env->SetGlobalVar("$ScriptName$", lastScriptName);
   env->SetGlobalVar("$ScriptFile$", lastScriptFile);
   env->SetGlobalVar("$ScriptDir$",  lastScriptDir);
+  env->SetGlobalVar("$ScriptNameUtf8$", lastScriptNameUtf8);
+  env->SetGlobalVar("$ScriptFileUtf8$", lastScriptFileUtf8);
+  env->SetGlobalVar("$ScriptDirUtf8$", lastScriptDirUtf8);
   envi->DecrImportDepth();
 
   return result;
@@ -488,6 +616,9 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptName$"); }
 AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptFile$"); }
 AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptDir$" ); }
+AVSValue ScriptNameUtf8(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptNameUtf8$"); }
+AVSValue ScriptFileUtf8(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptFileUtf8$"); }
+AVSValue ScriptDirUtf8(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptDirUtf8$"); }
 
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt(0)); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
