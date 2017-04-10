@@ -143,11 +143,13 @@ class CWDChanger
  **/
 {  
 public:
-  CWDChanger(const char* new_cwd);  
-  ~CWDChanger(void);  
+  CWDChanger(const char* new_cwd);
+  CWDChanger(const wchar_t* new_cwd);
+  ~CWDChanger(void);
 
 private:
-  char *old_working_directory;
+  void Init(const wchar_t* new_cwd);
+  wchar_t *old_working_directory;
   bool restore;
 };
 
