@@ -230,6 +230,9 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ScriptNameUtf8(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ScriptFileUtf8(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ScriptDirUtf8(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ClearAutoloadDirs (AVSValue args, void*, IScriptEnvironment* env);

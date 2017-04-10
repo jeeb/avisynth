@@ -902,6 +902,9 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptName$", AVSValue());
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
+    global_var_table->Set("$ScriptNameUtf8$", AVSValue());
+    global_var_table->Set("$ScriptFileUtf8$", AVSValue());
+    global_var_table->Set("$ScriptDirUtf8$", AVSValue());
 
     plugin_manager = new PluginManager(this);
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
