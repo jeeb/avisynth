@@ -74,7 +74,7 @@ extern const AVSFunction Text_filters[] = {
 
   { "Subtitle",BUILTIN_FUNC_PREFIX,
 	"cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
-	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s",
+	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b",
     Subtitle::Create },       // see docs!
 
   { "Compare",BUILTIN_FUNC_PREFIX,
@@ -1309,13 +1309,13 @@ AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment*
 Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe,
                     int _lastframe, const char _fontname[], int _size, int _textcolor,
                     int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
-					int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], IScriptEnvironment* env)
+					int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, IScriptEnvironment* env)
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y),
    firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
    textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
    halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor),
    align(_align), spc(_spc), multiline(_multiline), lsp(_lsp),
-   font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced), font_filename(_font_filename)
+   font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced), font_filename(_font_filename), utf8(_utf8)
 {
   if (*font_filename) {
     int added_font_count = AddFontResourceEx(
@@ -1392,6 +1392,7 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
 	const int font_angle = int(args[14].AsFloat(0)*10+0.5);
 	const bool interlaced = args[15].AsBool(false);
     const char* font_filename = args[16].AsString("");
+    const bool utf8 = args[17].AsBool(false);
 
     if ((align < 1) || (align > 9))
      env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
@@ -1412,7 +1413,7 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
     const int y = int(args[3].AsDblDef(defy)*8+0.5);
 
     return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color,
-	                    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, env);
+	                    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, env);
 }
 
 
@@ -1426,6 +1427,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
   int real_y = y;
   unsigned int al = 0;
   char *_text = 0;
+  wchar_t *_textw = 0;
 
   HDC hdcAntialias = antialiaser->GetDC();
   if (!hdcAntialias) goto GDIError;
@@ -1448,34 +1450,87 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
   if (x==-7) real_x = (vi.width>>1)*8;
   if (y==-7) real_y = (vi.height>>1)*8;
 
-  if (!multiline) {
-	if (!TextOut(hdcAntialias, real_x+16, real_y+16, text, (int)strlen(text))) goto GDIError;
+  if (utf8) {
+    // Test: 
+    // Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
+    // SubTitle(Title, utf8 = true)
+    int len = strlen(text) + 1;
+    int wchars_count = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
+    wchar_t *textw = new wchar_t[wchars_count];
+    int ret = MultiByteToWideChar(CP_UTF8, 0, text, -1, textw, wchars_count);
+    if (ret == 0) {
+      int lastError = GetLastError();
+      if(lastError = ERROR_NO_UNICODE_TRANSLATION)
+        env->ThrowError("Subtitle: UTF8 conversion error, no unicode translation");
+      else
+        env->ThrowError("Subtitle: UTF8 conversion error %d", lastError);
+    }
+
+    if (!multiline) {
+      if (!TextOutW(hdcAntialias, real_x + 16, real_y + 16, textw, (int)wcslen(textw)))
+      {
+        delete[] textw;
+        goto GDIError;
+      }
+    }
+    else {
+      // multiline patch -- tateu
+      wchar_t *pdest, *psrc;
+      int result, y_inc = real_y + 16;
+      wchar_t search[] = L"\\n";
+      psrc = _textw = _wcsdup(textw); // don't mangle the string constant -- Gavino
+      if (!_textw) goto GDIError;
+      int length = (int)wcslen(psrc);
+
+      do {
+        pdest = wcsstr(psrc, search); // strstr
+        while (pdest != NULL && pdest != psrc && *(pdest - 1) == L'\\') { // \n escape -- foxyshadis
+          for (size_t i = pdest - psrc; i > 0; i--) psrc[i] = psrc[i - 1];
+          psrc++;
+          --length;
+          pdest = wcsstr(pdest + 1, search); // strstr
+        }
+        result = pdest == NULL ? length : (int)size_t(pdest - psrc);
+        if (!TextOutW(hdcAntialias, real_x + 16, y_inc, psrc, result)) goto GDIError;
+        y_inc += size + lsp;
+        psrc = pdest + 2;
+        length -= result + 2;
+      } while (pdest != NULL && length > 0);
+      free(_textw);
+      _textw = NULL;
+    }
+    delete[] textw;
   }
   else {
-	// multiline patch -- tateu
-	char *pdest, *psrc;
-	int result, y_inc = real_y+16;
-	char search[] = "\\n";
-	psrc = _text = _strdup(text); // don't mangle the string constant -- Gavino
-	if (!_text) goto GDIError;
-	int length = (int)strlen(psrc);
+    if (!multiline) {
+      if (!TextOut(hdcAntialias, real_x + 16, real_y + 16, text, (int)strlen(text))) goto GDIError;
+    }
+    else {
+    // multiline patch -- tateu
+      char *pdest, *psrc;
+      int result, y_inc = real_y + 16;
+      char search[] = "\\n";
+      psrc = _text = _strdup(text); // don't mangle the string constant -- Gavino
+      if (!_text) goto GDIError;
+      int length = (int)strlen(psrc);
 
-	do {
-	  pdest = strstr(psrc, search);
-	  while (pdest != NULL && pdest != psrc && *(pdest-1)=='\\') { // \n escape -- foxyshadis
-		for (size_t i=pdest-psrc; i>0; i--) psrc[i] = psrc[i-1];
-		psrc++;
-		--length;
-		pdest = strstr(pdest+1, search);
-	  }
-	  result = pdest == NULL ? length : (int)size_t(pdest - psrc);
-	  if (!TextOut(hdcAntialias, real_x+16, y_inc, psrc, result)) goto GDIError;
-	  y_inc += size + lsp;
-	  psrc = pdest + 2;
-	  length -= result + 2;
-	} while (pdest != NULL && length > 0);
-	free(_text);
-	_text = NULL;
+      do {
+        pdest = strstr(psrc, search);
+        while (pdest != NULL && pdest != psrc && *(pdest - 1) == '\\') { // \n escape -- foxyshadis
+          for (size_t i = pdest - psrc; i > 0; i--) psrc[i] = psrc[i - 1];
+          psrc++;
+          --length;
+          pdest = strstr(pdest + 1, search);
+        }
+        result = pdest == NULL ? length : (int)size_t(pdest - psrc);
+        if (!TextOut(hdcAntialias, real_x + 16, y_inc, psrc, result)) goto GDIError;
+        y_inc += size + lsp;
+        psrc = pdest + 2;
+        length -= result + 2;
+      } while (pdest != NULL && length > 0);
+      free(_text);
+      _text = NULL;
+    }
   }
   if (!GdiFlush()) goto GDIError;
   return;
@@ -1484,6 +1539,7 @@ GDIError:
   delete antialiaser;
   antialiaser = 0;
   free(_text);
+  free(_textw);
 
   env->ThrowError("Subtitle: GDI or Insufficient Memory Error");
 }
