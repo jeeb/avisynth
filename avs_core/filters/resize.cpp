@@ -391,7 +391,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 
   BYTE* dstp = dst->GetWritePtr();
 
-  if (vi.IsYUY2()  && (!(vi.width&3))) {
+  if (vi.IsYUY2() && (!(vi.width&1))) {
 
     const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
