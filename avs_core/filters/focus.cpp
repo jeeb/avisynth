@@ -1702,7 +1702,7 @@ __int64 calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, i
   for ( size_t y = 0; y < height; y++ )
   {
     __m128i sum = _mm_setzero_si128(); // for one row int is enough
-    for ( size_t x = 0; x < rowsize; x+=16 )
+    for ( size_t x = 0; x < mod16_width; x+=16 )
     {
       __m128i src1, src2;
       src1 = _mm_load_si128((__m128i *) (cur_ptr + x));   // 16 bytes or 8 words
