@@ -1047,11 +1047,11 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       BYTE* q = dst->GetWritePtr(plane);
       int pitch = dst->GetPitch(plane);
       int height = dst->GetHeight(plane);
-      if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size >= 16) {
+      if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
         af_horizontal_planar_sse2(q, height, pitch, row_size, half_amount);
       } else
 #ifdef X86_32
-        if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX) && row_size >= 8) {
+        if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX) && row_size > 8) {
           af_horizontal_planar_mmx(q,height,pitch,row_size,half_amount);
         } else
 #endif
