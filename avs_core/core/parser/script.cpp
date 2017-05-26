@@ -258,6 +258,8 @@ extern const AVSFunction Script_functions[] = {
   { "IsPackedRGB", BUILTIN_FUNC_PREFIX, "c", IsPackedRGB }, // r2348+
   { "IsVideoFloat", BUILTIN_FUNC_PREFIX, "c", IsVideoFloat }, // r2435+
 
+  { "GetProcessInfo", BUILTIN_FUNC_PREFIX, "[type]i", GetProcessInfo }, // 170526-
+
 #ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
@@ -1397,6 +1399,51 @@ AVSValue NumComponents(AVSValue args, void*, IScriptEnvironment* env) { return V
 AVSValue HasAlpha(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA() || VI(args[0]).IsYUVA() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB64(); }
 AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB48() || VI(args[0]).IsRGB64(); }
 AVSValue IsVideoFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BitsPerComponent() == 32; }
+
+// helper for GetProcessInfo
+static int ProcessType() {
+#define PROCESS_UNKNOWN  -1
+#define PROCESS_32_ON_32 0
+#define PROCESS_32_ON_64 1
+#define PROCESS_64_ON_64 2
+
+  if (sizeof(void*) == 8)
+    return PROCESS_64_ON_64;
+
+  // IsWow64Process is not available on all supported versions of Windows.
+  // Use GetModuleHandle to get a handle to the DLL that contains the function
+  // and GetProcAddress to get a pointer to the function if available.
+
+  BOOL bWoW64Process = FALSE;
+  typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+  LPFN_ISWOW64PROCESS fnIsWow64Process;
+  HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
+  if (hKernel32 == NULL)
+    return PROCESS_UNKNOWN;
+
+  fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(hKernel32, "IsWow64Process");
+  if (fnIsWow64Process != NULL)
+    fnIsWow64Process(GetCurrentProcess(), &bWoW64Process);
+  else
+    return PROCESS_UNKNOWN;
+
+  if (bWoW64Process)
+    return PROCESS_32_ON_64; //WoW64
+
+  return PROCESS_32_ON_32;
+}
+
+AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env) 
+{ 
+  int infoType = args[0].AsInt(0);
+  if (infoType < 0 || infoType > 1)
+    env->ThrowError("GetProcessInfo: type must be 0 or 1");
+  if (infoType == 0) {
+    return sizeof(void *) == 8 ? 64 : 32;
+  }
+  // infoType == 1
+  return ProcessType();
+}
 
 #ifdef NEW_AVSVALUE
 

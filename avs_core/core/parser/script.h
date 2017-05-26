@@ -263,6 +263,8 @@ AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env); // avs+ 161230
 AVSValue IsVideoFloat(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170309
 
+AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170526
+
 #ifdef NEW_AVSVALUE
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env);
