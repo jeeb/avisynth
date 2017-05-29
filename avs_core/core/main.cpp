@@ -133,7 +133,7 @@ private:
   long m_refs;
 
   char* szScriptName;
-  std::wstring ScriptNameW;
+  char* szScriptNameUTF8;
   IScriptEnvironment2* env;
   PClip filter_graph;
   const VideoInfo* vi;
@@ -603,16 +603,25 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
   filter_graph = 0;
   vi = NULL;
 
-  // when unicode file names are given and cannot be converted to 8 bit, szFile has ??? chars
-  // szFile: 0x0018f198 "C:\\unicode\\SNH48 - ??????.avs"
-  // lpSzFileName 0x02631cc8 L"C:\\unicode\\SNH48 - unicode_chars_here.avs"
-
-  ScriptNameW = lpszFileName; // use this in DelayInit2 instead of szScriptName
-
   szScriptName = new(std::nothrow) char[lstrlen(szFile)+1];
   if (!szScriptName)
     return AVIERR_MEMORY;
   lstrcpy(szScriptName, szFile);
+
+  // when unicode file names are given and cannot be converted to 8 bit, szFile has ??? chars
+  // szFile: 0x0018f198 "C:\\unicode\\SNH48 - ??????.avs"
+  // lpSzFileName 0x02631cc8 L"C:\\unicode\\SNH48 - unicode_chars_here.avs"
+  std::wstring ScriptNameW = lpszFileName; // use this in DelayInit2 instead of szScriptName
+
+  // conversion to c_str once, here, not in DelayInit2
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
+  std::string ScriptNameAsUTF8 = myconv.to_bytes(ScriptNameW);
+
+  const char * szFileUTF8 = ScriptNameAsUTF8.c_str();
+  szScriptNameUTF8 = new(std::nothrow) char[lstrlen(szFileUTF8) + 1];
+  if (!szScriptNameUTF8)
+    return AVIERR_MEMORY;
+  lstrcpy(szScriptNameUTF8, szFileUTF8);
 
   return S_OK;
 }
@@ -634,8 +643,7 @@ bool CAVIFileSynth::DelayInit2() {
   int fp_state = _controlfp( 0, 0 );
   _controlfp( FP_STATE, 0xffffffff );
 #endif
-  if (ScriptNameW.length() > 0) // unicode!
-  //if (szScriptName)
+  if (szScriptNameUTF8) // unicode!
   {
 #ifndef _DEBUG
     try {
@@ -650,12 +658,10 @@ bool CAVIFileSynth::DelayInit2() {
         return false;
       }
       try {
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-        std::string ScriptNameAsUTF8 = myconv.to_bytes(ScriptNameW);
-
         //AVSValue return_val = env->Invoke("Import", szScriptName);
-        AVSValue new_args[2] = { ScriptNameAsUTF8.c_str(), true };
+        AVSValue new_args[2] = { szScriptNameUTF8, true };
         AVSValue return_val = env->Invoke("Import", AVSValue(new_args, 2));
+
         // store the script's return value (a video clip)
         if (return_val.IsClip()) {
           filter_graph = return_val.AsClip();
@@ -729,6 +735,8 @@ bool CAVIFileSynth::DelayInit2() {
 
       delete[] szScriptName;
       szScriptName = NULL;
+      delete[] szScriptNameUTF8;
+      szScriptNameUTF8 = NULL;
 #ifdef X86_32
       _mm_empty();
 #endif
