@@ -473,7 +473,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
           //reinterpret_cast<uint16_t *>(dstp)[x] = (uint16_t)clamp((int)Y,0,65535);  // All the safety we can wish for.
           srcp += pixel_step; // 6,8
         }
-        srcp -= src_pitch;
+        srcp -= srcMod;
         dstp += dst_pitch;
       }
     }
