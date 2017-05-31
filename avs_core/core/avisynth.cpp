@@ -2548,15 +2548,15 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 
           if (!data->CreatedByInvoke)
           {
-#ifdef DEBUG_GSCRIPTCLIP_MT
-            _RPT3(0, "ScriptEnvironment::Invoke.AddChainedFilter %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+#ifdef _DEBUG
+            _RPT3(0, "ScriptEnvironment::Invoke.AddChainedFilter %s thread %d this->DefaultMtMode=%d\n", name, GetCurrentThreadId(), (int)this->DefaultMtMode);
 #endif
             mthelper.AddChainedFilter(clip, this->DefaultMtMode);
           }
 
           // Wrap this input parameter into a guard exit, which is used when
           // the new clip created later below is MT_SERIALIZED.
-          MTGuardExit *ge = new MTGuardExit(argx.AsClip());
+          MTGuardExit *ge = new MTGuardExit(argx.AsClip(), name);
           GuardExits.push_back(ge);
           argx = ge;
       }
@@ -2766,7 +2766,7 @@ success:;
             }
 
 
-            PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
+            PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), name, this);
             *result = Cache::Create(guard, NULL, this);
 
             // Activate the guard exists. This allows us to exit the critical
@@ -2777,7 +2777,7 @@ success:;
                 for (auto &ge : GuardExits)
                 {
 #ifdef DEBUG_GSCRIPTCLIP_MT
-                  _RPT3(0, "ScriptEnvironment::Invoke.ActivateGuard %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+                  _RPT3(0, "ScriptEnvironment::Invoke.ActivateGuard %s thread %d\n", name, GetCurrentThreadId());
 #endif
                   ge->Activate(guard);
                 }

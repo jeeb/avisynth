@@ -44,12 +44,13 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env) :
+MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, const char * _name, InternalEnvironment* env) :
   FilterMutex(NULL),
   MTMode(mtmode),
   nThreads(1),
   FilterCtor(std::move(funcCtor)),
-  Env(env)
+  Env(env),
+  name(_name)
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
 
@@ -62,6 +63,7 @@ MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterCo
 MTGuard::~MTGuard()
 {
   Env->ManageCache(MC_UnRegisterMTGuard, reinterpret_cast<void*>(this));
+  _RPT1(0, "Mutex destroyed %p\n", (void *)FilterMutex);
   delete FilterMutex;
 }
 
@@ -97,6 +99,7 @@ void MTGuard::EnableMT(size_t nThreads)
     case MT_SERIALIZED:
       {
         this->FilterMutex = new std::mutex();
+        _RPT1(0, "Mutex created %p\n", (void *)(this->FilterMutex));
         break;
       }
     default:
@@ -136,8 +139,11 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
     }
   case MT_SERIALIZED:
     {
+      _RPT4(0, " MTGuard::GetFrame wait   %d name=%s %p thread=%d\n", n, name, (void *)FilterMutex, GetCurrentThreadId());
       std::lock_guard<std::mutex> lock(*FilterMutex);
+      _RPT4(0, " MTGuard::GetFrame lock   %d name=%s %p thread=%d\n", n, name, (void *)FilterMutex, GetCurrentThreadId());
       frame = ChildFilters[0]->GetFrame(n, env);
+      _RPT4(0, " MTGuard::GetFrame unlock %d name=%s %p thread=%d\n", n, name, (void *)FilterMutex, GetCurrentThreadId());
       break;
     }
   default:
@@ -225,7 +231,7 @@ bool __stdcall MTGuard::IsMTGuard(const PClip& p)
   return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS));
 }
 
-PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env)
+PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, const char *_name, InternalEnvironment* env)
 {
     switch (mode)
     {
@@ -236,12 +242,13 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
     }
     case MT_MULTI_INSTANCE: // Fall-through intentional
     {
-        return new MTGuard(filterInstance, mode, std::move(funcCtor), env);
+        return new MTGuard(filterInstance, mode, std::move(funcCtor), _name, env);
         // args2 and args3 are not valid after this point anymore
     }
     case MT_SERIALIZED:
     {
-        return new MTGuard(filterInstance, mode, NULL, env);
+        _RPT2(0, "Create MT Guard for %s thread=%d\n", _name, GetCurrentThreadId());
+        return new MTGuard(filterInstance, mode, NULL, _name, env);
         // args2 and args3 are not valid after this point anymore
     }
     default:
@@ -249,7 +256,7 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
         // return garbage for SetCacheHints(). However, this case should be recognized and
         // handled earlier, so we can never get to this default-branch. If we do, assume the worst.
         assert(0);
-        return new MTGuard(filterInstance, MT_SERIALIZED, NULL, env);
+        return new MTGuard(filterInstance, MT_SERIALIZED, NULL, _name, env);
     }
 }
 
@@ -280,8 +287,9 @@ private:
     T *mutex_;
 };
 
-MTGuardExit::MTGuardExit(const PClip &clip) :
-    NonCachedGenericVideoFilter(clip)
+MTGuardExit::MTGuardExit(const PClip &clip, const char *_name) :
+    NonCachedGenericVideoFilter(clip),
+  name(_name)
 {}
 
 void MTGuardExit::Activate(PClip &with_guard)
@@ -293,8 +301,23 @@ void MTGuardExit::Activate(PClip &with_guard)
 PVideoFrame __stdcall MTGuardExit::GetFrame(int n, IScriptEnvironment* env)
 {
     std::mutex *m = (nullptr == guard) ? nullptr : guard->GetMutex();
+#ifdef DEBUG
+    if(nullptr != guard)
+      _RPT3(0, "MTGuardExit::GetFrame %d name=%s (before unlock ) thread=%d\n", n, name.c_str(), GetCurrentThreadId());
+#endif
     reverse_lock<std::mutex> unlock_guard(m);
-    return child->GetFrame(n, env);
+#ifdef DEBUG
+    if (nullptr != guard)
+      _RPT3(0, "MTGuardExit::GetFrame %d name=%s (unlock ok     ) thread=%d\n", n, name.c_str(), GetCurrentThreadId());
+#endif
+    PVideoFrame result = child->GetFrame(n, env);
+#ifdef DEBUG
+    if (nullptr != guard)
+      _RPT3(0, "MTGuardExit::GetFrame %d name=%s (lock again    ) thread=%d\n", n, name.c_str(), GetCurrentThreadId());
+#endif
+    // 170531. problem: in real life MTGuardExit unlocks and allows MT_SERIALIZED filters to be called again
+    // even if they are still in work, make them to be called in a reentant way like in NICE_FILTER mode
+    return result;
 }
 
 void __stdcall MTGuardExit::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
