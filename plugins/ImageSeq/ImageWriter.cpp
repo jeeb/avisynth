@@ -85,10 +85,9 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     infoHeader.biClrImportant = 0;
   }
   else {
-    should_flip = false;   
+    should_flip = false;
     if (vi.IsY())
       should_flip = true;
-    const char * ext = strrchr(_base_name, '.') + 1;
     if (!lstrcmpi(ext, "raw"))
       should_flip = false;
 
