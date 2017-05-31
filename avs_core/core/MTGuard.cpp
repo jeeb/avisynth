@@ -260,6 +260,8 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
     }
 }
 
+#ifdef USE_MT_GUARDEXIT
+// 170531 Optimizing concept introduced in r2069 temporarily disabled by this define
 
 // ---------------------------------------------------------------------
 //                      MTGuardExit
@@ -326,3 +328,4 @@ void __stdcall MTGuardExit::GetAudio(void* buf, __int64 start, __int64 count, IS
     reverse_lock<std::mutex> unlock_guard(m);
     return child->GetAudio(buf, start, count, env);
 }
+#endif

@@ -2518,7 +2518,9 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   const bool chainedCtor = invoke_stack.size() > 0;
 
   MtModeEvaluator mthelper;
+#ifdef USE_MT_GUARDEXIT
   std::vector<MTGuardExit*> GuardExits;
+#endif
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
@@ -2554,11 +2556,13 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
             mthelper.AddChainedFilter(clip, this->DefaultMtMode);
           }
 
+#ifdef USE_MT_GUARDEXIT
           // Wrap this input parameter into a guard exit, which is used when
           // the new clip created later below is MT_SERIALIZED.
           MTGuardExit *ge = new MTGuardExit(argx.AsClip(), name);
           GuardExits.push_back(ge);
           argx = ge;
+#endif
       }
   }
   bool isSourceFilter = !foundClipArgument;
@@ -2769,6 +2773,12 @@ success:;
             PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), name, this);
             *result = Cache::Create(guard, NULL, this);
 
+#ifdef USE_MT_GUARDEXIT
+            // 170531: concept introduced in r2069 is not working
+            // Mutex of serialized filters are unlocked and allow to call
+            // such filters as MT_NICE_FILTER in a reentrant way
+            // Kept for reference, but put in USE_MT_GUARDEXIT define.
+
             // Activate the guard exists. This allows us to exit the critical
             // section encompassing the filter when execution leaves its routines
             // to call other filters.
@@ -2776,12 +2786,11 @@ success:;
             {
                 for (auto &ge : GuardExits)
                 {
-#ifdef DEBUG_GSCRIPTCLIP_MT
                   _RPT3(0, "ScriptEnvironment::Invoke.ActivateGuard %s thread %d\n", name, GetCurrentThreadId());
-#endif
                   ge->Activate(guard);
                 }
             }
+#endif
 
             IClip *clip_raw = (IClip*)((void*)clip);
             ClipDataStore *data = this->ClipData(clip_raw);
