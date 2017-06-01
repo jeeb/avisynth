@@ -432,11 +432,11 @@ PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _sourceHasAlpha, bool
 
 template<typename pixel_t, bool targetHasAlpha>
 // minimum width: 32 bytes (8 RGBA pixels for 8 bits, 4 RGBA pixels for 16 bits)
-static void convert_rgba_to_rgbp_sse2(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], size_t width, size_t height) {
-  const size_t rowsize = width * sizeof(pixel_t) * 4;
+static void convert_rgba_to_rgbp_sse2(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], int width, int height) {
+  const int rowsize = width * sizeof(pixel_t) * 4;
   const int pixels_at_a_time = (sizeof(pixel_t) == 1) ? 8 : 4;
-  const size_t wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
-  for (size_t y = height; y > 0; --y) {
+  const int wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
+  for (int y = height; y > 0; --y) {
     __m128i BGRA_lo, BGRA_hi;
     for (int x = 0; x < wmod; x+=pixels_at_a_time) {
       BGRA_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time));    // 8bit: *4 pixels 16bit:*2 pixels
@@ -592,14 +592,14 @@ PlanarRGBtoPackedRGB::PlanarRGBtoPackedRGB(PClip src, bool _targetHasAlpha)
 }
 
 template<typename pixel_t, int target_numcomponents, bool hasSrcAlpha>
-static void convert_rgbp_to_rgb_sse2(const BYTE *(&srcp)[4], BYTE * dstp, int (&src_pitch)[4], int dst_pitch, size_t width, size_t height) {
+static void convert_rgbp_to_rgb_sse2(const BYTE *(&srcp)[4], BYTE * dstp, int (&src_pitch)[4], int dst_pitch, int width, int height) {
   const int pixels_at_a_time = 8 / sizeof(pixel_t); // 8x uint8_t, 4xuint16_t 8 bytes
 
-  const size_t wmod = (width / pixels_at_a_time) * pixels_at_a_time;
+  const int wmod = (width / pixels_at_a_time) * pixels_at_a_time;
 
   const __m128i transparent = _mm_set1_epi8((char)0xFF); // 0xFFFF for uint16_t
 
-  for (size_t y = 0; y < height; y++) {
+  for (int y = 0; y < height; y++) {
     for (int x = 0; x < wmod; x+=pixels_at_a_time) {
       __m128i R, G, B, A;
       G = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[0] + x*sizeof(pixel_t))); // 8 bytes G7..G0 or G3..G0
