@@ -1455,7 +1455,7 @@ AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env) {
   MultiByteToWideChar(CP_ACP, 0, source, -1, wsource, len);
 
   // wide -> utf8
-  int utf8len = WideCharToMultiByte(CP_UTF8, 0, wsource, -1, NULL, 0, 0, 0) - 1; // with \0 terminator
+  int utf8len = WideCharToMultiByte(CP_UTF8, 0, wsource, -1/*null terminated src*/, NULL, 0/*returns the required buffer size*/, 0, 0) + 1; // with \0 terminator
   TCHAR *source_utf8 = new TCHAR[utf8len];
   WideCharToMultiByte(CP_UTF8, 0, wsource, -1, source_utf8, utf8len, 0, 0);
 
