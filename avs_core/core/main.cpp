@@ -611,17 +611,17 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
   // when unicode file names are given and cannot be converted to 8 bit, szFile has ??? chars
   // szFile: 0x0018f198 "C:\\unicode\\SNH48 - ??????.avs"
   // lpSzFileName 0x02631cc8 L"C:\\unicode\\SNH48 - unicode_chars_here.avs"
-  std::wstring ScriptNameW = lpszFileName; // use this in DelayInit2 instead of szScriptName
+  // use utf8 in DelayInit2 instead of szScriptName
+  std::wstring ScriptNameW = lpszFileName; 
 
-  // conversion to c_str once, here, not in DelayInit2
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-  std::string ScriptNameAsUTF8 = myconv.to_bytes(ScriptNameW);
-
-  const char * szFileUTF8 = ScriptNameAsUTF8.c_str();
-  szScriptNameUTF8 = new(std::nothrow) char[lstrlen(szFileUTF8) + 1];
+  // wide -> utf8
+  int utf8len = WideCharToMultiByte(CP_UTF8, 0, ScriptNameW.c_str(), -1/*null terminated src*/, NULL, 0/*returns the required buffer size*/, 0, 0) + 1; // with \0 terminator
+  szScriptNameUTF8 = new(std::nothrow) char[utf8len];
   if (!szScriptNameUTF8)
     return AVIERR_MEMORY;
-  lstrcpy(szScriptNameUTF8, szFileUTF8);
+
+  WideCharToMultiByte(CP_UTF8, 0, ScriptNameW.c_str(), -1, szScriptNameUTF8, utf8len, 0, 0);
+  // conversion to c_str once, here, not in DelayInit2
 
   return S_OK;
 }
