@@ -5,6 +5,7 @@
 #include "strings.h"
 #include "InternalEnvironment.h"
 #include <cassert>
+#include <Imagehlp.h>
 
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
 typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
@@ -697,6 +698,25 @@ bool PluginManager::LoadPlugin(const char* path, bool throwOnError, AVSValue *re
   return LoadPlugin(pf, throwOnError, result);
 }
 
+static bool Is64BitDLL(std::string sDLL, bool &bIs64BitDLL)
+{
+  bIs64BitDLL = false;
+  LOADED_IMAGE li;
+
+  if (!MapAndLoad((LPSTR)sDLL.c_str(), NULL, &li, TRUE, TRUE))
+  {
+    //error handling (check GetLastError())
+    return false;
+  }
+
+  if (li.FileHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_I386) //64 bit image
+    bIs64BitDLL = true;
+
+  UnMapAndLoad(&li);
+
+  return true;
+}
+
 bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result)
 {
   std::vector<PluginFile>& PluginList = Autoloading ? AutoLoadedPlugins : LoadedPlugins;
@@ -720,9 +740,20 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
   plugin.Library = LoadLibraryEx(plugin.FilePath.c_str(), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (plugin.Library == NULL)
   {
+    DWORD errCode = GetLastError();
+
+    // Bitness mixing always throws an error, regardless of throwOnError state
+    // By this new behaviour even plugin auto-load will fail
+    bool bIs64BitDLL;
+    bool succ = Is64BitDLL(plugin.FilePath, bIs64BitDLL);
+    if (succ) {
+      if (sizeof(void *) == 4 && bIs64BitDLL)
+        Env->ThrowError("Cannot load a 64 bit DLL in 32 bit Avisynth: '%s'.\n", plugin.FilePath.c_str());
+      if (sizeof(void *) != 4 && !bIs64BitDLL)
+        Env->ThrowError("Cannot load a 32 bit DLL in 64 bit Avisynth: '%s'.\n", plugin.FilePath.c_str());
+    }
     if (throwOnError)
     {
-      DWORD errCode = GetLastError();
       Env->ThrowError("Cannot load file '%s'. Platform returned code %d:\n%s", plugin.FilePath.c_str(), errCode, GetLastErrorText(errCode).c_str());
     }
     else
