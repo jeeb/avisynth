@@ -264,6 +264,8 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env); // avs+ 1612
 AVSValue IsVideoFloat(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170309
 
 AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170526
+AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170601
+AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170601
 
 #ifdef NEW_AVSVALUE
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);

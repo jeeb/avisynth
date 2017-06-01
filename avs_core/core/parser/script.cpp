@@ -259,6 +259,8 @@ extern const AVSFunction Script_functions[] = {
   { "IsVideoFloat", BUILTIN_FUNC_PREFIX, "c", IsVideoFloat }, // r2435+
 
   { "GetProcessInfo", BUILTIN_FUNC_PREFIX, "[type]i", GetProcessInfo }, // 170526-
+  { "StrToUtf8", BUILTIN_FUNC_PREFIX, "s", StrToUtf8 }, // 170601-
+  { "StrFromUtf8", BUILTIN_FUNC_PREFIX, "s", StrFromUtf8 }, // 170601-
 
 #ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
@@ -1445,6 +1447,88 @@ AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env)
   return ProcessType();
 }
 
+AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env) {
+  const char *source = args[0].AsString();
+  // in two steps: Ansi -> WideChar -> Utf8
+  int len = strlen(source) + 1; // with zero terminator
+  wchar_t *wsource = new wchar_t[len];
+  MultiByteToWideChar(CP_ACP, 0, source, -1, wsource, len);
+
+  // wide -> utf8
+  int utf8len = WideCharToMultiByte(CP_UTF8, 0, wsource, -1, NULL, 0, 0, 0) - 1; // with \0 terminator
+  TCHAR *source_utf8 = new TCHAR[utf8len];
+  WideCharToMultiByte(CP_UTF8, 0, wsource, -1, source_utf8, utf8len, 0, 0);
+
+  AVSValue ret = env->SaveString(source_utf8);
+
+  delete[] wsource;
+  delete[] source_utf8;
+  return ret;
+}
+
+AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env) {
+  const char *source_utf8 = args[0].AsString();
+  // in two steps: Utf8 -> WideChar -> Ansi
+  int len = strlen(source_utf8) + 1; // with zero terminator
+  int wchars_count = MultiByteToWideChar(CP_UTF8, 0, source_utf8, -1, NULL, 0);
+  wchar_t *wsource = new wchar_t[wchars_count];
+  MultiByteToWideChar(CP_UTF8, 0, source_utf8, -1, wsource, wchars_count);
+
+  // wide -> ansi
+  int len2 = wcslen(wsource); // must be wchars_count
+  TCHAR *source_ansi = new TCHAR[len2 + 1];
+  WideCharToMultiByte(CP_ACP, 0, wsource, -1, source_ansi, len2 + 1, NULL, NULL); // replaces out-of-CP chars by ?
+  // wcstombs() is not good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+
+  AVSValue ret = env->SaveString(source_ansi);
+
+  delete[] wsource;
+  delete[] source_ansi;
+  return ret;
+}
+
+/*
+  // Handling utf8 and ansi, working in wchar_t internally
+  // filename and path can be full unicode
+  // unicode input can come from CAVIFileSynth
+  wchar_t script_name_w[MAX_PATH];
+  if (!bUtf8) {
+    int len = strlen(script_name) + 1;
+    MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, script_name, -1, script_name_w, len);
+    //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
+  }
+  else {
+    int len = strlen(script_name) + 1;
+    int wchars_count = MultiByteToWideChar(CP_UTF8, 0, script_name, -1, NULL, 0);
+    MultiByteToWideChar(CP_UTF8, 0, script_name, -1, script_name_w, wchars_count);
+  }
+
+  if (wcschr(script_name_w, '\\') || wcschr(script_name_w, '/')) {
+    DWORD len = GetFullPathNameW(script_name_w, MAX_PATH, full_path_w, &file_part_w);
+    if (len == 0 || len > MAX_PATH)
+      env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
+  }
+  else {
+    DWORD len = SearchPathW(NULL, script_name_w, NULL, MAX_PATH, full_path_w, &file_part_w);
+    if (len == 0 || len > MAX_PATH)
+      env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
+  }
+
+  // back to 8 bit Ansi and Utf8
+  // -- full_path
+  int full_path_len = wcslen(full_path_w);
+  // ansi
+  TCHAR *full_path = new TCHAR[full_path_len + 1];
+  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, full_path_w, -1, full_path, full_path_len + 1, NULL, NULL); // replaces out-of-CP chars by ?
+                                                                                                                            // int succ = wcstombs(full_path, full_path_w, full_path_len +1); 
+                                                                                                                            // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+                                                                                                                            // utf8
+  TCHAR *full_path_utf8 = new TCHAR[full_path_len * 4 + 1];
+  int utf8len = WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
+  WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, full_path_utf8, utf8len + 1, 0, 0);
+
+}
+*/
 #ifdef NEW_AVSVALUE
 
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env)
