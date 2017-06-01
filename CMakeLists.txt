@@ -50,8 +50,8 @@ IF( MSVC_IDE )  # Check for Visual Studio
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     # VC++ enables the SSE2 instruction set by default even on 32-bits. Step back a bit.
-    add_definitions("/arch:SSE")
-    #add_definitions("/arch:SSE2") # Better use this one, it's 2016 now
+    #add_definitions("/arch:SSE")
+    add_definitions("/arch:SSE2") # Better use this one, it's 2017 now, and helps optimizing hbd stuff still in C
   endif() 
 
   # Set additional optimization flags
