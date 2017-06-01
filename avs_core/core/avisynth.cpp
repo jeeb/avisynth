@@ -888,7 +888,8 @@ ScriptEnvironment::ScriptEnvironment()
     memstatus.dwLength = sizeof(memstatus);
     GlobalMemoryStatusEx(&memstatus);
     memory_max = ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
-    memory_max = min(memory_max, 1024*1024*1024ull);  // at start, cap memory usage to 1GB
+    const bool isX64 = sizeof(void *) == 8;
+    memory_max = min(memory_max, (isX64 ? 4096 : 1024)*(1024*1024ull));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
     memory_used = 0ull;
 
     global_var_table = new VarTable(0, 0);
