@@ -700,19 +700,30 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 
   // conversions from packed RGB
 
-  if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
-      env->ThrowError("ConvertToRGB%d: conversion is allowed only from 8 bit colorspace",target_rgbtype);
-  if((target_rgbtype==48 || target_rgbtype==64) && vi.ComponentSize()!=2)
-      env->ThrowError("ConvertToRGB%d: conversion is allowed only from 16 bit colorspace",target_rgbtype);
+  if (target_rgbtype == 24 || target_rgbtype == 32) {
+    if (vi.ComponentSize() != 1) {
+      // 64->32, 48->24
+      clip = new ConvertBits(clip, 1.0f /*float_range n/a*/, -1 /*dither_type*/, 8 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      vi = clip->GetVideoInfo(); // new format
+    }
+  }
+  else if (target_rgbtype == 48 || target_rgbtype == 64) {
+    if (vi.ComponentSize() != 2) {
+      // 32->64, 24->48
+      clip = new ConvertBits(clip, 1.0f /*float_range n/a*/, -1 /*dither_type*/, 16 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      vi = clip->GetVideoInfo(); // new format
+    }
+  }
 
   if(target_rgbtype==32 || target_rgbtype==64)
       if (vi.IsRGB24() || vi.IsRGB48())
-          return new RGBtoRGBA(clip);
+          return new RGBtoRGBA(clip); // 24->32 or 48->64
 
   if(target_rgbtype==24 || target_rgbtype==48)
       if (vi.IsRGB32() || vi.IsRGB64())
-          return new RGBAtoRGB(clip);
+          return new RGBAtoRGB(clip); // 32->24 or 64->48
 
+  // <0: target is planar RGB(A)
   if (target_rgbtype < 0) {
     if (vi.IsRGB24() || vi.IsRGB48())
       clip = new RGBtoRGBA(clip); // rgb32/64 intermediate. RGB24/48 to planar is painful
