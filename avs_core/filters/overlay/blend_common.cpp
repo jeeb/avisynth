@@ -48,18 +48,28 @@
 /*******************************
  ********* Masked Blend ********
  *******************************/
-template<typename pixel_t, typename intermediate_result_t, int bits_per_pixel>
-__forceinline static pixel_t overlay_blend_c_core(const pixel_t p1, const pixel_t p2, const pixel_t mask) {
-  return (pixel_t)(((((intermediate_result_t)p1 << bits_per_pixel) | (1 << (bits_per_pixel-1))) + (p2-p1)*(intermediate_result_t)mask) >> bits_per_pixel);
-}
 
 __forceinline static BYTE overlay_blend_c_core_8(const BYTE p1, const BYTE p2, const int mask) {
-  return overlay_blend_c_core<uint8_t, int, 8>(p1, p2, mask);
+  if (mask == 0)
+    return p1;
+  if (mask == 0xFF)
+    return p2;
+  //  p1*(1-mask_f) + p2*mask_f -> p1 + (p2-p1)*mask_f
+  return (BYTE)(((p1 << 8) + (p2 - p1)*mask + 128) >> 8);
 }
 
 template<int bits_per_pixel>
 __forceinline static uint16_t overlay_blend_c_core_16(const uint16_t p1, const uint16_t p2, const int mask) {
-  return overlay_blend_c_core<uint16_t, int64_t, bits_per_pixel>(p1, p2, mask);
+  if (mask == 0)
+    return p1;
+  if (mask >= (1 << bits_per_pixel) -1)
+    return p2;
+  //  p1*(1-mask_f) + p2*mask_f -> p1 + (p2-p1)*mask_f
+  const int half_rounder = 1 << (bits_per_pixel - 1);
+  if(bits_per_pixel == 16) // int32 intermediate overflows
+    return (uint16_t)((((int64_t)(p1) << bits_per_pixel) + (p2 - p1)*(int64_t)mask + half_rounder) >> bits_per_pixel);
+  else // signed int arithmetic is enough
+    return (uint16_t)(((p1 << bits_per_pixel) + (p2 - p1)*mask + half_rounder) >> bits_per_pixel);
 }
 
 __forceinline static float overlay_blend_c_core_f(const float p1, const float p2, const float mask) {
@@ -79,7 +89,7 @@ template<typename pixel_t, int bits_per_pixel>
 __forceinline static __m128i overlay_blend_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128) {
   // v128 is rounding half, no use for float
   if (sizeof(pixel_t) == 1) {
-    // todo: 0 ot 255 overlay values becoming 1 and 254 for full mask transparency
+    // done outside: 0 ot 255 overlay values becoming 1 and 254 for full mask transparency
     // p1*(1-mask) + p2*mask = p1+(p2-p1)*mask
     // p1   p2    mask    (p2-p1)*mask   p1<<8 + 128     sum      result  good result
     // 255   0    255     -65025          65408          384         1         0
@@ -175,18 +185,21 @@ void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                   const int width, const int height) {
   const int MASK_CORR_SHIFT = (sizeof(pixel_t) == 1) ? 8 : bits_per_pixel;
   const int half_pixel_value_rounding = (1 << (MASK_CORR_SHIFT - 1));
+  const int max_pixel_value = (1 << bits_per_pixel) - 1;
 
   // avoid "uint16*uint16 can't get into int32" overflows
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result_t;
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      pixel_t new_mask = reinterpret_cast<const pixel_t *>(mask)[x];
-      result_t p1x = reinterpret_cast<pixel_t *>(p1)[x];
+      int new_mask = reinterpret_cast<const pixel_t *>(mask)[x];
+      pixel_t p1x = reinterpret_cast<pixel_t *>(p1)[x];
       pixel_t p2x = reinterpret_cast<const pixel_t *>(p2)[x];
-      pixel_t result = (pixel_t)((((p1x << MASK_CORR_SHIFT) | half_pixel_value_rounding) + (p2x-p1x)*new_mask) >> MASK_CORR_SHIFT);
-
-      //pixel_t result = overlay_blend_c_core(reinterpret_cast<pixel_t *>(p1)[x], reinterpret_cast<pixel_t *>(p2)[x], static_cast<int>(reinterpret_cast<pixel_t *>(mask)[x]));
+      pixel_t result;
+      if (bits_per_pixel == 8)
+        result = (pixel_t)overlay_blend_c_core_8((BYTE)p1x, (BYTE)p2x, new_mask);
+      else
+        result = (pixel_t)overlay_blend_c_core_16<bits_per_pixel>((uint16_t)p1x, (uint16_t)p2x, new_mask);
       reinterpret_cast<pixel_t *>(p1)[x] = result;
     }
 
@@ -289,7 +302,25 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 #pragma warning (pop)
 #endif
 
-template<typename pixel_t, int bits_per_pixel>
+template<bool hasSSE4>
+static __forceinline __m128i simd_blend_epi8(__m128i const &selector, __m128i const &a, __m128i const &b) {
+  if (hasSSE4) {
+    return _mm_blendv_epi8(b, a, selector);
+  }
+  else {
+    return _mm_or_si128(_mm_and_si128(selector, a), _mm_andnot_si128(selector, b));
+  }
+}
+
+// non-existant in simd
+static __forceinline __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
+{
+  // Returns 0xFFFF where x <= y:
+  return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
+}
+
+
+template<typename pixel_t, int bits_per_pixel, bool hasSSE4>
 void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height) {
@@ -312,20 +343,15 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod16; x += 16) {
-      __m128i p1_l, p1_h;
-      __m128i p2_l, p2_h;
-      __m128i mask_l, mask_h;
+      __m128i dst;
+      __m128i src;
+      __m128i msk;
       __m128i p1_f, p2_f, mask_f;
 
       if (sizeof(pixel_t) == 1 || sizeof(pixel_t) == 2) {
-        p1_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1 + x));
-        p1_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1 + x + 8));
-
-        p2_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2 + x));
-        p2_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2 + x + 8));
-
-        mask_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(mask + x));
-        mask_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(mask + x + 8));
+        dst = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1 + x));
+        src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2 + x));
+        msk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(mask + x));
       }
       else {
         p1_f = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1 + x));
@@ -335,29 +361,39 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 
       __m128i result;
       if (sizeof(pixel_t) == 1) {
-        __m128i unpacked_p1_l = _mm_unpacklo_epi8(p1_l, zero);
-        __m128i unpacked_p1_h = _mm_unpacklo_epi8(p1_h, zero);
+        
+        __m128i unpacked_mask_l = _mm_unpacklo_epi8(msk, zero);
+        __m128i unpacked_mask_h = _mm_unpackhi_epi8(msk, zero);
+        
+        __m128i unpacked_p1_l = _mm_unpacklo_epi8(dst, zero);
+        __m128i unpacked_p1_h = _mm_unpackhi_epi8(dst, zero);
 
-        __m128i unpacked_p2_l = _mm_unpacklo_epi8(p2_l, zero);
-        __m128i unpacked_p2_h = _mm_unpacklo_epi8(p2_h, zero);
-
-        __m128i unpacked_mask_l = _mm_unpacklo_epi8(mask_l, zero);
-        __m128i unpacked_mask_h = _mm_unpacklo_epi8(mask_h, zero);
+        __m128i unpacked_p2_l = _mm_unpacklo_epi8(src, zero);
+        __m128i unpacked_p2_h = _mm_unpackhi_epi8(src, zero);
 
         __m128i result_l = overlay_blend_sse2_core<pixel_t, bits_per_pixel>(unpacked_p1_l, unpacked_p2_l, unpacked_mask_l, v128);
         __m128i result_h = overlay_blend_sse2_core<pixel_t, bits_per_pixel>(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
 
         result = _mm_packus_epi16(result_l, result_h);
+        
+        // when mask is FF, keep src
+        // when mask is 00, keep dst
+        //auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
+        auto mask_00 = _mm_cmpeq_epi8(msk, zero);
+        result = simd_blend_epi8<hasSSE4>(mask_00, dst, result); // ensure that zero mask value returns dst
+        auto max_pixel_value = _mm_set1_epi8(0xFF); // for comparison
+        auto mask_FF = _mm_cmpeq_epi8(msk, max_pixel_value); // mask == max ? FF : 00
+        result = simd_blend_epi8<hasSSE4>(mask_FF, src, result); // ensure that max mask value returns src
       }
       else if (sizeof(pixel_t) == 2) {
-        __m128i unpacked_p1_l = _mm_unpacklo_epi16(p1_l, zero);
-        __m128i unpacked_p1_h = _mm_unpacklo_epi16(p1_h, zero);
+        __m128i unpacked_p1_l = _mm_unpacklo_epi16(dst, zero);
+        __m128i unpacked_p1_h = _mm_unpackhi_epi16(dst, zero);
 
-        __m128i unpacked_p2_l = _mm_unpacklo_epi16(p2_l, zero);
-        __m128i unpacked_p2_h = _mm_unpacklo_epi16(p2_h, zero);
+        __m128i unpacked_p2_l = _mm_unpacklo_epi16(src, zero);
+        __m128i unpacked_p2_h = _mm_unpackhi_epi16(src, zero);
 
-        __m128i unpacked_mask_l = _mm_unpacklo_epi16(mask_l, zero);
-        __m128i unpacked_mask_h = _mm_unpacklo_epi16(mask_h, zero);
+        __m128i unpacked_mask_l = _mm_unpacklo_epi16(msk, zero);
+        __m128i unpacked_mask_h = _mm_unpackhi_epi16(msk, zero);
 
         // for uint16, this is SSE4
         // maybe _MM_MULLO_EPI32 and _MM_PACKUS_EPI32 could be used, but sometimes C is faster
@@ -365,6 +401,21 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
         __m128i result_h = overlay_blend_sse2_core<pixel_t, bits_per_pixel>(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
 
         result = _mm_packus_epi32(result_l, result_h);
+
+        __m128i max_pixel_value = _mm_set1_epi16((1 << bits_per_pixel) - 1);
+
+        if (bits_per_pixel < 16) // otherwise no clamp needed
+          result = _mm_min_epi16(result, max_pixel_value); // SSE2 epi16 is enough
+
+        __m128i mask_FFFF;
+        if (bits_per_pixel < 16) // paranoia 
+          mask_FFFF = _MM_CMPLE_EPU16(max_pixel_value, msk); // mask >= max_value ? FFFF : 0000 -> max_value <= mask 
+        else
+          mask_FFFF = _mm_cmpeq_epi16(msk, max_pixel_value); // mask == max ? FFFF : 0000
+        auto mask_zero = _mm_cmpeq_epi16(msk, zero);
+
+        result = simd_blend_epi8<hasSSE4>(mask_FFFF, src, result); // ensure that max mask value returns src
+        result = simd_blend_epi8<hasSSE4>(mask_zero, dst, result); // ensure that zero mask value returns dst
       }
       else {
         // sizeof(pixel_t) == 4, float
@@ -382,17 +433,8 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
         p1[x] = result;
       }
       else if (sizeof(pixel_t) == 2) {
-        uint16_t result;
-        switch (bits_per_pixel) {
-        case 10: result = overlay_blend_c_core_16<10>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], static_cast<int>(reinterpret_cast<const uint16_t *>(mask)[x]));
-          break;
-        case 12: result = overlay_blend_c_core_16<12>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], static_cast<int>(reinterpret_cast<const uint16_t *>(mask)[x]));
-          break;
-        case 14: result = overlay_blend_c_core_16<14>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], static_cast<int>(reinterpret_cast<const uint16_t *>(mask)[x]));
-          break;
-        case 16: result = overlay_blend_c_core_16<16>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], static_cast<int>(reinterpret_cast<const uint16_t *>(mask)[x]));
-          break;
-        }
+        int new_mask = static_cast<int>(reinterpret_cast<const uint16_t *>(mask)[x]);
+        uint16_t result = overlay_blend_c_core_16<bits_per_pixel>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], new_mask);
         reinterpret_cast<pixel_t *>(p1)[x] = (pixel_t)result;
       }
       else { // float
@@ -409,25 +451,16 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 }
 
 // instantiate
-template void overlay_blend_sse2_plane_masked<uint8_t, 8>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_sse2_plane_masked<uint16_t, 10>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_sse2_plane_masked<uint16_t, 12>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_sse2_plane_masked<uint16_t, 14>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_sse2_plane_masked<uint16_t, 16>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_sse2_plane_masked<float, 8>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-
+// last false//true: hasSSE4
+template void overlay_blend_sse2_plane_masked<uint8_t, 8, false>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+template void overlay_blend_sse2_plane_masked<uint8_t, 8, true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+// 16 bit: SSE4 only
+template void overlay_blend_sse2_plane_masked<uint16_t, 10, true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+template void overlay_blend_sse2_plane_masked<uint16_t, 12, true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+template void overlay_blend_sse2_plane_masked<uint16_t, 14, true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+template void overlay_blend_sse2_plane_masked<uint16_t, 16, true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+// float: SSE2 only
+template void overlay_blend_sse2_plane_masked<float, 8, false>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
 
 template<typename pixel_t, int bits_per_pixel>
 void overlay_blend_c_plane_opacity(BYTE *p1, const BYTE *p2,
@@ -821,7 +854,7 @@ void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE
 #pragma warning(pop)
 #endif
 
-template<typename pixel_t, int bits_per_pixel>
+template<typename pixel_t, int bits_per_pixel, bool hasSSE4>
 void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height, const int opacity, const float opacity_f) {
@@ -858,21 +891,16 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod16; x += 16) {
-      __m128i p1_l, p1_h;
-      __m128i p2_l, p2_h;
-      __m128i mask_l, mask_h;
+      __m128i dst;
+      __m128i src;
+      __m128i msk;
       __m128i p1_f, p2_f;
       __m128i mask_f;
 
       if (sizeof(pixel_t) == 1 || sizeof(pixel_t) == 2) {
-        p1_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1 + x));
-        p1_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1 + x + 8));
-
-        p2_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2 + x));
-        p2_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2 + x + 8));
-
-        mask_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(mask + x));
-        mask_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(mask + x + 8));
+        dst = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1 + x));
+        src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2 + x));
+        msk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(mask + x));
       }
       else {
         p1_f = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1 + x));
@@ -882,14 +910,14 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
 
       __m128i result;
       if (sizeof(pixel_t) == 1) {
-        __m128i unpacked_p1_l = _mm_unpacklo_epi8(p1_l, zero);
-        __m128i unpacked_p1_h = _mm_unpacklo_epi8(p1_h, zero);
+        __m128i unpacked_mask_l = _mm_unpacklo_epi8(msk, zero);
+        __m128i unpacked_mask_h = _mm_unpackhi_epi8(msk, zero);
 
-        __m128i unpacked_p2_l = _mm_unpacklo_epi8(p2_l, zero);
-        __m128i unpacked_p2_h = _mm_unpacklo_epi8(p2_h, zero);
+        __m128i unpacked_p1_l = _mm_unpacklo_epi8(dst, zero);
+        __m128i unpacked_p1_h = _mm_unpackhi_epi8(dst, zero);
 
-        __m128i unpacked_mask_l = _mm_unpacklo_epi8(mask_l, zero);
-        __m128i unpacked_mask_h = _mm_unpacklo_epi8(mask_h, zero);
+        __m128i unpacked_p2_l = _mm_unpacklo_epi8(src, zero);
+        __m128i unpacked_p2_h = _mm_unpackhi_epi8(src, zero);
 
         unpacked_mask_l = overlay_merge_mask_sse2<pixel_t, bits_per_pixel>(unpacked_mask_l, opacity_mask);
         unpacked_mask_h = overlay_merge_mask_sse2<pixel_t, bits_per_pixel>(unpacked_mask_h, opacity_mask);
@@ -898,16 +926,23 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
         __m128i result_h = overlay_blend_sse2_core<pixel_t, bits_per_pixel>(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
 
         result = _mm_packus_epi16(result_l, result_h);
+
+        // when mask is FF, keep src
+        // when mask is 00, keep dst
+        // unlike full opacity==1.0 blend, we have to watch zero mask only, opacity*mask is never max (0xFF)
+        auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
+        auto mask_00 = _mm_cmpeq_epi8(msk, zero);
+        result = simd_blend_epi8<hasSSE4>(mask_00, dst, result); // ensure that zero mask value returns dst
       }
       else if (sizeof(pixel_t) == 2) {
-        __m128i unpacked_p1_l = _mm_unpacklo_epi16(p1_l, zero);
-        __m128i unpacked_p1_h = _mm_unpacklo_epi16(p1_h, zero);
+        __m128i unpacked_p1_l = _mm_unpacklo_epi16(dst, zero);
+        __m128i unpacked_p1_h = _mm_unpackhi_epi16(dst, zero);
 
-        __m128i unpacked_p2_l = _mm_unpacklo_epi16(p2_l, zero);
-        __m128i unpacked_p2_h = _mm_unpacklo_epi16(p2_h, zero);
+        __m128i unpacked_p2_l = _mm_unpacklo_epi16(src, zero);
+        __m128i unpacked_p2_h = _mm_unpackhi_epi16(src, zero);
 
-        __m128i unpacked_mask_l = _mm_unpacklo_epi16(mask_l, zero);
-        __m128i unpacked_mask_h = _mm_unpacklo_epi16(mask_h, zero);
+        __m128i unpacked_mask_l = _mm_unpacklo_epi16(msk, zero);
+        __m128i unpacked_mask_h = _mm_unpackhi_epi16(msk, zero);
 
         // for uint16, this is SSE4
         // maybe _MM_MULLO_EPI32 and _MM_PACKUS_EPI32 could be used, but sometimes C is faster
@@ -918,6 +953,16 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
         __m128i result_h = overlay_blend_sse2_core<pixel_t, bits_per_pixel>(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
 
         result = _mm_packus_epi32(result_l, result_h);
+
+        __m128i max_pixel_value = _mm_set1_epi16((1 << bits_per_pixel) - 1);
+
+        if (bits_per_pixel < 16) // otherwise no clamp needed
+          result = _mm_min_epi16(result, max_pixel_value); // SSE2 epi16 is enough
+
+        // unlike full opacity==1.0 blend, we have to watch zero mask only, opacity*mask is never max
+        auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
+        auto mask_zero = _mm_cmpeq_epi16(msk, zero);
+        result = simd_blend_epi8<hasSSE4>(mask_zero, dst, result); // ensure that zero mask value returns dst
       }
       else {
         // sizeof(pixel_t) == 4, float
@@ -937,13 +982,8 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
       }
       else if (sizeof(pixel_t) == 2) {
         int new_mask = (reinterpret_cast<const uint16_t *>(mask)[x] * opacity) >> OPACITY_SHIFT; // int is enough, opacity is 8 bits
-        int64_t p1x = reinterpret_cast<uint16_t *>(p1)[x];
-        uint16_t p2x = reinterpret_cast<const uint16_t *>(p2)[x];
-
-        uint16_t result = (uint16_t)((((p1x << MASK_CORR_SHIFT) | half_pixel_value_rounding) + (p2x-p1x)*new_mask) >> MASK_CORR_SHIFT);
-        //int new_mask = overlay_merge_mask_c<pixel_t, intermediate_result_t, bits_per_pixel>(mask[x], opacity);
-        //BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
-        reinterpret_cast<uint16_t *>(p1)[x] = (uint16_t)result;
+        uint16_t result = overlay_blend_c_core_16<bits_per_pixel>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], new_mask);
+        reinterpret_cast<uint16_t *>(p1)[x] = result;
       }
       else { // float
         float new_mask = (reinterpret_cast<const float *>(mask)[x] * opacity_f);
@@ -962,24 +1002,16 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
 }
 
 // instantiate
-template void overlay_blend_sse2_plane_masked_opacity<uint8_t,8>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity, const float opacity_f);
-template void overlay_blend_sse2_plane_masked_opacity<uint16_t,10>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity, const float opacity_f);
-template void overlay_blend_sse2_plane_masked_opacity<uint16_t,12>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity, const float opacity_f);
-template void overlay_blend_sse2_plane_masked_opacity<uint16_t,14>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity, const float opacity_f);
-template void overlay_blend_sse2_plane_masked_opacity<uint16_t,16>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity, const float opacity_f);
-template void overlay_blend_sse2_plane_masked_opacity<float,8>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity, const float opacity_f);
+// last false//true: hasSSE4
+template void overlay_blend_sse2_plane_masked_opacity<uint8_t,8,false>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+template void overlay_blend_sse2_plane_masked_opacity<uint8_t,8,true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+// SSE4 only
+template void overlay_blend_sse2_plane_masked_opacity<uint16_t,10,true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+template void overlay_blend_sse2_plane_masked_opacity<uint16_t,12,true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+template void overlay_blend_sse2_plane_masked_opacity<uint16_t,14,true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+template void overlay_blend_sse2_plane_masked_opacity<uint16_t,16,true>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+// SSE2 only
+template void overlay_blend_sse2_plane_masked_opacity<float,8,false>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
 
 /***************************************
  ********* Mode: Lighten/Darken ********
