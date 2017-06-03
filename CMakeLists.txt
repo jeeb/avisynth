@@ -30,9 +30,11 @@ IF( MSVC_IDE )  # Check for Visual Studio
     set(CMAKE_GENERATOR_TOOLSET "v120_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
   ELSEIF(MSVC_VERSION VERSION_LESS 1910 )
     set(CMAKE_GENERATOR_TOOLSET "v140_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2015
+    
+	# https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+    add_definitions("/Zc:threadSafeInit-")
   ELSE()
     set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017
-    
     # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
     add_definitions("/Zc:threadSafeInit-")
   ENDIF()
