@@ -2734,7 +2734,7 @@ success:;
     // Prefetch is activated above in: fret = funcCtor->InstantiateFilter();
     if (fret.IsClip() && strcmp(f->name, "Prefetch"))
     {
-        const PClip &clip = fret.AsClip();
+      const PClip &clip = fret.AsClip();
 
         bool is_mtmode_forced;
         this->GetFilterMTMode(f, &is_mtmode_forced);
@@ -2771,7 +2771,7 @@ success:;
             }
 
 
-            PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), name, this);
+            PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
             *result = Cache::Create(guard, NULL, this);
 
 #ifdef USE_MT_GUARDEXIT

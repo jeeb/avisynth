@@ -44,13 +44,12 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, const char * _name, InternalEnvironment* env) :
+MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env) :
   FilterMutex(NULL),
   MTMode(mtmode),
   nThreads(1),
   FilterCtor(std::move(funcCtor)),
-  Env(env),
-  name(_name)
+  Env(env)
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
 
@@ -63,7 +62,6 @@ MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterCo
 MTGuard::~MTGuard()
 {
   Env->ManageCache(MC_UnRegisterMTGuard, reinterpret_cast<void*>(this));
-  _RPT1(0, "Mutex destroyed %p\n", (void *)FilterMutex);
   delete FilterMutex;
 }
 
@@ -99,7 +97,6 @@ void MTGuard::EnableMT(size_t nThreads)
     case MT_SERIALIZED:
       {
         this->FilterMutex = new std::mutex();
-        _RPT1(0, "Mutex created %p\n", (void *)(this->FilterMutex));
         break;
       }
     default:
@@ -139,11 +136,8 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
     }
   case MT_SERIALIZED:
     {
-      _RPT4(0, " MTGuard::GetFrame wait   %d name=%s %p thread=%d\n", n, name, (void *)FilterMutex, GetCurrentThreadId());
       std::lock_guard<std::mutex> lock(*FilterMutex);
-      _RPT4(0, " MTGuard::GetFrame lock   %d name=%s %p thread=%d\n", n, name, (void *)FilterMutex, GetCurrentThreadId());
       frame = ChildFilters[0]->GetFrame(n, env);
-      _RPT4(0, " MTGuard::GetFrame unlock %d name=%s %p thread=%d\n", n, name, (void *)FilterMutex, GetCurrentThreadId());
       break;
     }
   default:
@@ -231,7 +225,7 @@ bool __stdcall MTGuard::IsMTGuard(const PClip& p)
   return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS));
 }
 
-PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, const char *_name, InternalEnvironment* env)
+PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env)
 {
     switch (mode)
     {
@@ -242,13 +236,12 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
     }
     case MT_MULTI_INSTANCE: // Fall-through intentional
     {
-        return new MTGuard(filterInstance, mode, std::move(funcCtor), _name, env);
+        return new MTGuard(filterInstance, mode, std::move(funcCtor), env);
         // args2 and args3 are not valid after this point anymore
     }
     case MT_SERIALIZED:
     {
-        _RPT2(0, "Create MT Guard for %s thread=%d\n", _name, GetCurrentThreadId());
-        return new MTGuard(filterInstance, mode, NULL, _name, env);
+        return new MTGuard(filterInstance, mode, NULL, env);
         // args2 and args3 are not valid after this point anymore
     }
     default:
@@ -256,7 +249,7 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
         // return garbage for SetCacheHints(). However, this case should be recognized and
         // handled earlier, so we can never get to this default-branch. If we do, assume the worst.
         assert(0);
-        return new MTGuard(filterInstance, MT_SERIALIZED, NULL, _name, env);
+        return new MTGuard(filterInstance, MT_SERIALIZED, NULL, env);
     }
 }
 
