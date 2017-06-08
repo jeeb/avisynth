@@ -868,7 +868,7 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
     }
     target_planes[i] = current_target_plane;
     int target_plane_width = vi_default.width >> vi_default.GetPlaneWidthSubsampling(current_target_plane);
-    int target_plane_height = vi_default.height >> vi_default.GetPlaneWidthSubsampling(current_target_plane);
+    int target_plane_height = vi_default.height >> vi_default.GetPlaneHeightSubsampling(current_target_plane);
 
     if (clips[i]) // source clip count can be less than target planes count
       last_clip_index = i; // last defined clip is used for the others
@@ -913,7 +913,7 @@ CombinePlanes::CombinePlanes(PClip _child, PClip _clip2, PClip _clip3, PClip _cl
       source_planes[i] = current_source_plane;
       // check dimensions
       int source_plane_width = src_vi.width >> src_vi.GetPlaneWidthSubsampling(current_source_plane);
-      int source_plane_height = src_vi.height >> src_vi.GetPlaneWidthSubsampling(current_source_plane);
+      int source_plane_height = src_vi.height >> src_vi.GetPlaneHeightSubsampling(current_source_plane);
       if(source_plane_width != target_plane_width || source_plane_height != target_plane_height)
         env->ThrowError("CombinePlanes: source and target plane dimensions are different");
     }
