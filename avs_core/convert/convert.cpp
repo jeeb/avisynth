@@ -1236,7 +1236,6 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   }
 }
 
-// todo: dither sse2
 template<uint8_t sourcebits>
 static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
 {

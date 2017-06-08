@@ -2065,7 +2065,7 @@ static __int64 calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int c
 
 // sum of byte-diffs.
 static __int64 calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
-  // todo: sse for 16bit/float
+  // todo: sse for float
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
     return (__int64)calculate_sad_sse2<false>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
