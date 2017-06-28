@@ -1724,9 +1724,9 @@ static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int plan
     }
 
     __m128i acc;
-    __m128 half = _mm_set1_ps(0.5f); // rounder
-    low = _mm_cvtps_epi32(_mm_add_ps(_mm_mul_ps(_mm_cvtepi32_ps(low), div_vector), half));
-    high = _mm_cvtps_epi32(_mm_add_ps(_mm_mul_ps(_mm_cvtepi32_ps(high), div_vector), half));
+    //__m128 half = _mm_set1_ps(0.5f); // no need rounder, _mm_cvtps_epi32 default is round-to-nearest, unless we use _mm_cvttps_epi32 which truncates
+    low = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(low), div_vector));
+    high = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(high), div_vector));
     if (hasSSE4)
       acc = _mm_packus_epi32(low, high); // sse4
     else
