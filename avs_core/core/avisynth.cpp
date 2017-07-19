@@ -76,6 +76,8 @@
 #include "cache.h"
 #include <clocale>
 
+#include "AVSMap.h"
+
 #ifndef YieldProcessor // low power spin idle
   #define YieldProcessor() __nop(void)
 #endif
@@ -793,6 +795,9 @@ public:
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
   virtual InternalEnvironment* __stdcall GetCoreEnvironment();
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame propSrc, int align);
+  virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst);
+
   virtual ThreadPool* __stdcall GetThreadPool();
   virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
   virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const AVSValue& args,
@@ -845,12 +850,14 @@ private:
   struct DebugTimestampedFrame
   {
     VideoFrame *frame;
+    AVSMap *avsmap;
 #ifdef _DEBUG
     std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
 #endif
 
-    DebugTimestampedFrame(VideoFrame *_frame)
+    DebugTimestampedFrame(VideoFrame *_frame, AVSMap *_avsmap)
       : frame(_frame)
+      , avsmap(_avsmap)
 #ifdef _DEBUG
       , timestamp(std::chrono::high_resolution_clock::now())
 #endif
@@ -1211,10 +1218,12 @@ ScriptEnvironment::~ScriptEnvironment() {
       {
         VideoFrame *frame = it3->frame;
 
+        frame->avsmap = 0;
         //assert(0 == frame->refcount);
         if (0 == frame->refcount)
         {
           delete frame;
+          delete it3->avsmap;
         }
         else
         {
@@ -1776,11 +1785,23 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
     return NULL;
   }
 
+  AVSMap *avsmap = NULL;
+  try
+  {
+    avsmap = new AVSMap();
+  }
+  catch (const std::bad_alloc&)
+  {
+    delete vfb;
+    delete newFrame;
+    return NULL;
+  }
+
   memory_used+=vfb_size;
 
   // automatically inserts keys if they not exist!
   // no locking here, calling method have done it already
-  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame));
+  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame, avsmap));
 
   //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
 
@@ -2012,6 +2033,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       {
         size_t videoFrameListSize = it2->second.size();
         VideoFrame *frame_found;
+        AVSMap *map_found;
         bool found = false;
         for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
           it3 != end_it3;
@@ -2050,6 +2072,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             }
             // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
             frame_found = frame;
+            map_found = it3->avsmap;
             found = true;
             ++it3;
           }
@@ -2058,6 +2081,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             // Benefit: no 4-5k frame list count per a single vfb.
             //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
             delete frame;
+            delete it3->avsmap;
             ++it3;
           }
         } // for it3
@@ -2066,7 +2090,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. clearing frames. List count: it2->second.size(): %7zu \n", it2->second.size());
           it2->second.clear();
           it2->second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
-          it2->second.push_back(DebugTimestampedFrame(frame_found)); // keep only the first
+          it2->second.push_back(DebugTimestampedFrame(frame_found, map_found)); // keep only the first
           return frame_found;
         }
       }
@@ -2113,9 +2137,10 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           it3 != end_it3;
           ++it3)
         {
-          VideoFrame *currentframe = it3->frame;
-          assert(0 == currentframe->refcount);
-          delete currentframe;
+          VideoFrame *frame = it3->frame;
+          assert(0 == frame->refcount);
+          delete frame;
+          delete it3->avsmap;
         }
         delete vfb;
         // delete array belonging to this vfb in one step
@@ -2261,6 +2286,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
             if (0 == frame->refcount)
             {
               delete frame;
+              delete it3->avsmap;
               ++freed_frame_count;
             }
             else {
@@ -2529,6 +2555,9 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
       BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A), vf->GetReadPtr(PLANAR_A),
           vf->GetPitch(PLANAR_A), vf->GetRowSize(PLANAR_A), vf->GetHeight(PLANAR_A));
 
+  // Copy properties
+  *dst->avsmap = *vf->avsmap;
+
   *pvf = dst;
   return true;
 }
@@ -2558,6 +2587,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
+  subframe->avsmap = new AVSMap(*src->avsmap);
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -2567,7 +2597,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 #endif
   // automatically inserts if not exists!
   assert(NULL != subframe);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe, subframe->avsmap)); // insert with timestamp!
 
   return subframe;
 }
@@ -2579,6 +2609,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
     ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
 
   VideoFrame *subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+  subframe->avsmap = new AVSMap(*src->avsmap);
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -2588,7 +2619,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 #endif
   // automatically inserts if not exists!
   assert(subframe != NULL);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe, subframe->avsmap)); // insert with timestamp!
 
   return subframe;
 }
@@ -2600,6 +2631,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
         ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
     VideoFrame* subframe;
     subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
+    subframe->avsmap = new AVSMap(*src->avsmap);
 
     size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -2609,7 +2641,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
     _RPT1(0, "ScScriptEnvironment::SubFramePlanar(2) memory mutext lock: %p\n", (void *)&memory_mutex);
 #endif
     assert(subframe != NULL);
-    FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe)); // insert with timestamp!
+    FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe, subframe->avsmap)); // insert with timestamp!
 
     return subframe;
 }
@@ -3474,6 +3506,17 @@ ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
   return pool;
 }
 
+PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, PVideoFrame propSrc, int align = FRAME_ALIGN)
+{
+  PVideoFrame frame = NewVideoFrame(vi, align);
+  *frame->avsmap = *propSrc->avsmap;
+  return frame;
+}
+
+void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst)
+{
+  *dst->avsmap = *src->avsmap;
+}
 
 extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
   const char* message, int size, int textcolor, int halocolor, int bgcolor,
@@ -3485,6 +3528,7 @@ const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
 
   return AVS_linkage;
 }
+
 
 void __stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
   ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);

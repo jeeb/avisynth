@@ -474,6 +474,16 @@ virtual void __stdcall SetPrefetcher(Prefetcher* p)
   virtual void __stdcall DecEnvCount() {
     core->DecEnvCount();
   }
+
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame propSrc, int align)
+  {
+    return core->NewVideoFrame(vi, propSrc, align);
+  }
+
+  virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst)
+  {
+    core->CopyFrameProps(src, dst);
+  }
 };
 
 #undef CHECK_THREAD
