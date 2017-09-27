@@ -5,7 +5,7 @@
 #include "strings.h"
 #include "InternalEnvironment.h"
 #include <cassert>
-#include <Imagehlp.h>
+#include <imagehlp.h>
 
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
 typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
