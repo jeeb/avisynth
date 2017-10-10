@@ -341,33 +341,31 @@ struct AVS_Linkage {
   bool    (VideoInfo::*IsPlanarRGBA)() const;
   /**********************************************************************/
 
-/**********************************************************************/
-  // Reserve pointer space so that we can keep compatibility with AviSynth+
-  void    (VideoInfo::*reserved2[32])();
-/**********************************************************************/
-  void                (VideoFrame::*SetProps)(const char* key, const AVSMapValue& value);
-  const AVSMapValue*  (VideoFrame::*GetProps)(const char* key) const;
+  // frame properties
+  void                (VideoFrame::*VideoFrame_SetProperty)(const char* key, const AVSMapValue& value);
+  const AVSMapValue*  (VideoFrame::*VideoFrame_GetProperty)(const char* key) const;
+  PVideoFrame         (VideoFrame::*VideoFrame_GetProperty_Frame)(const char* key, PVideoFrame def) const;
+  int                 (VideoFrame::*VideoFrame_GetProperty_Int)(const char* key, int def) const;
+  double              (VideoFrame::*VideoFrame_GetProperty_Float)(const char* key, double def) const;
+  bool                (VideoFrame::*VideoFrame_DeleteProperty)(const char* key);
+  bool                (VideoFrame::*VideoFrame_IsPropertyWritable)() const;
+
 
   // class AVSMapValue
-  void            (AVSMapValue::*AVSMapValue_CONSTRUCTOR0)();
-  void            (AVSMapValue::*AVSMapValue_CONSTRUCTOR1)(__int64 i);
-  void            (AVSMapValue::*AVSMapValue_CONSTRUCTOR2)(const __int64* pi, int size);
-  void            (AVSMapValue::*AVSMapValue_CONSTRUCTOR3)(double d);
-  void            (AVSMapValue::*AVSMapValue_CONSTRUCTOR4)(const double* pd, int size);
-  void            (AVSMapValue::*AVSMapValue_CONSTRUCTOR5)(const char* pdata, int size);
-  void            (AVSMapValue::*AVSMapValue_CONSTRUCTOR6)(const AVSMapValue& other);
-  void            (AVSMapValue::*AVSMapValue_DESTRUCTOR)();
-  AVSMapValue&    (AVSMapValue::*AVSMapValue_OPERATOR_ASSIGN)(const AVSMapValue& v);
-  bool            (AVSMapValue::*AVSMapValue_IsInt)() const;
-  bool            (AVSMapValue::*AVSMapValue_IsIntArray)() const;
-  bool            (AVSMapValue::*AVSMapValue_IsFloat)() const;
-  bool            (AVSMapValue::*AVSMapValue_IsFloatArray)() const;
-  bool            (AVSMapValue::*AVSMapValue_IsData)() const;
-  __int64         (AVSMapValue::*AVSMapValue_GetInt)() const;
-  const __int64*  (AVSMapValue::*AVSMapValue_GetIntArray)() const;
-  double          (AVSMapValue::*AVSMapValue_GetFloat)() const;
-  const double*   (AVSMapValue::*AVSMapValue_GetFloatArray)() const;
-  const char*     (AVSMapValue::*AVSMapValue_GetData)() const;
+  void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR0)();
+  void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR1)(PVideoFrame& frame);
+  void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR2)(int64_t i);
+  void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR3)(double d);
+  void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR4)(const AVSMapValue& other);
+  void            (AVSMapValue::* AVSMapValue_DESTRUCTOR)();
+  AVSMapValue&    (AVSMapValue::* AVSMapValue_OPERATOR_ASSIGN)(const AVSMapValue& v);
+  bool            (AVSMapValue::* AVSMapValue_IsFrame)() const;
+  bool            (AVSMapValue::* AVSMapValue_IsInt)() const;
+  bool            (AVSMapValue::* AVSMapValue_IsFloat)() const;
+  PVideoFrame     (AVSMapValue::* AVSMapValue_GetFrame)() const;
+  int64_t         (AVSMapValue::* AVSMapValue_GetInt)() const;
+  double          (AVSMapValue::* AVSMapValue_GetFloat)() const;
+
   // end class AVSValue
   /**********************************************************************/
 };
@@ -871,17 +869,18 @@ class VideoFrame {
 
   friend class ScriptEnvironment;
   friend class Cache;
+  friend class AVSMapValue;
 
 #ifdef SIZETMOD
-  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height);
-  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height, size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height, size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
   // for Alpha
-  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height, size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, size_t _offsetA);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height, size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, size_t _offsetA);
 #else
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height);
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
   // for Alpha
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA);
 #endif
 
   void* operator new(size_t size);
@@ -909,8 +908,19 @@ public:
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
-  void SetProps(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall(SetProps)(key, value))
-  const AVSMapValue* GetProps(const char* key) const AVS_BakedCode(return AVS_LinkCall(GetProps)(key))
+  bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
+  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
+
+  // if key is not found, returns nullptr
+  const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty)(key))
+
+  // if key is not found or had wrong type, returns supplied default value
+  PVideoFrame GetProperty(const char* key, PVideoFrame def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Frame)(key, def))
+    int GetProperty(const char* key, int def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Int)(key, def))
+  double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Float)(key, def))
+
+  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(VideoFrame_DeleteProperty)(key))
+
 
   ~VideoFrame() AVS_BakedCode( AVS_LinkCall_Void(VideoFrame_DESTRUCTOR)() )
 #ifdef BUILDING_AVSCORE
@@ -1212,50 +1222,41 @@ public:
   int __stdcall SetCacheHints(int cachehints, int frame_range) { AVS_UNUSED(cachehints); AVS_UNUSED(frame_range); return 0; };  // We do not pass cache requests upwards, only to the next filter.
 };
 
-struct AVSMapArray;
-
 class AVSMapValue
 {
 public:
   AVSMapValue() AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR0)())
-  AVSMapValue(__int64 i) AVS_BakedCode( AVS_LinkCall(AVSMapValue_CONSTRUCTOR1)(i) )
-  AVSMapValue(const __int64* pi, int size) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR2)(pi, size))
+	AVSMapValue(PVideoFrame& frame) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR1)(frame))
+  explicit AVSMapValue(int64_t i) AVS_BakedCode( AVS_LinkCall(AVSMapValue_CONSTRUCTOR2)(i) )
+  AVSMapValue(int i) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR2)(i))
   AVSMapValue(double d) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR3)(d))
-  AVSMapValue(const double* pd, int size) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR4)(pd, size))
-  AVSMapValue(const char* pdata, int size) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR5)(pdata, size))
-  AVSMapValue(const AVSMapValue& other) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR6)(other))
+  AVSMapValue(const AVSMapValue& other) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR4)(other))
   ~AVSMapValue() AVS_BakedCode(AVS_LinkCall(AVSMapValue_DESTRUCTOR)())
   AVSMapValue& operator=(const AVSMapValue& other) AVS_BakedCode(return AVS_LinkCall(AVSMapValue_OPERATOR_ASSIGN)(other))
 
-  bool IsInt() const AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsInt)())
-  bool IsIntArray() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsIntArray)())
+    bool IsFrame() const AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsFrame)())
+    bool IsInt() const AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsInt)())
   bool IsFloat() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsFloat)())
-  bool IsFloatArray() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsFloatArray)())
-  bool IsData() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsData)())
 
-  __int64 GetInt() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetInt)())
-  const __int64* GetIntArray() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetIntArray)())
+    PVideoFrame GetFrame() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetFrame)())
+  int64_t GetInt() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetInt)())
   double GetFloat() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetFloat)())
-  const double* GetFloatArray() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetFloatArray)())
-  const char* GetData() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetData)())
 
 private:
   int type;
   union {
-    __int64 i;
+    int64_t i;
     double d;
-    AVSMapArray* arr;
+    VideoFrame* frame;
   } value;
 
 #ifdef BUILDING_AVSCORE
 public:
   void            CONSTRUCTOR0();
-  void            CONSTRUCTOR1(__int64 i);
-  void            CONSTRUCTOR2(const __int64* pi, int size);
+  void            CONSTRUCTOR1(PVideoFrame& frame);
+  void            CONSTRUCTOR2(int64_t i);
   void            CONSTRUCTOR3(double d);
-  void            CONSTRUCTOR4(const double* pd, int size);
-  void            CONSTRUCTOR5(const char* pdata, int size);
-  void            CONSTRUCTOR6(const AVSMapValue& other);
+  void            CONSTRUCTOR4(const AVSMapValue& other);
   void            DESTRUCTOR();
   AVSMapValue&    OPERATOR_ASSIGN(const AVSMapValue& v);
 
@@ -1308,7 +1309,7 @@ public:
   virtual void __stdcall PushContext(int level=0) = 0;
   virtual void __stdcall PopContext() = 0;
 
-  // align should be 4 or 8
+
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align=FRAME_ALIGN) = 0;
 
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
@@ -1343,7 +1344,7 @@ public:
   virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
                                      int textcolor, int halocolor, int bgcolor) = 0;
 
-  virtual const AVS_Linkage* const __stdcall GetAVSLinkage() = 0;
+  virtual const AVS_Linkage* __stdcall GetAVSLinkage() = 0;
 
   // noThrow version of GetVar
   virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
@@ -1365,7 +1366,7 @@ class IJobCompletion
 {
 public:
 
-  virtual __stdcall ~IJobCompletion() {}
+  virtual ~IJobCompletion() {}
   virtual void __stdcall Wait() = 0;
   virtual AVSValue __stdcall Get(size_t i) = 0;
   virtual size_t __stdcall Size() const = 0;
@@ -1449,7 +1450,7 @@ public:
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame propSrc, int align = FRAME_ALIGN) = 0;
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) = 0;
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) = 0;
 
 }; // end class IScriptEnvironment2

@@ -307,7 +307,7 @@ public:
     core->ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor);
   }
 
-  const AVS_Linkage* const __stdcall GetAVSLinkage()
+  const AVS_Linkage* __stdcall GetAVSLinkage()
   {
     return core->GetAVSLinkage();
   }
@@ -386,7 +386,7 @@ public:
 
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
   {
-		core->GetThreadPool()->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
+    core->GetThreadPool()->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
   }
 
 /*replace by ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
@@ -475,14 +475,14 @@ virtual void __stdcall SetPrefetcher(Prefetcher* p)
     core->DecEnvCount();
   }
 
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame propSrc, int align)
-  {
-    return core->NewVideoFrame(vi, propSrc, align);
-  }
-
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst)
   {
     core->CopyFrameProps(src, dst);
+  }
+
+  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame)
+  {
+    return core->GetAVSMap(frame);
   }
 };
 

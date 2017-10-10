@@ -349,7 +349,7 @@ void* VideoFrame::operator new(size_t size) {
 }
 
 #ifdef SIZETMOD
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height)
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
   offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
   , offsetA(0), pitchA(0), row_sizeA(0)
@@ -357,7 +357,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height,
   size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
   offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
@@ -366,7 +366,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height,
   size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, size_t _offsetA)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
   offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
@@ -375,28 +375,28 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _
   InterlockedIncrement(&vfb->refcount);
 }
 #else
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height)
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
-    ,offsetA(0), pitchA(0), row_sizeA(0)
+    ,offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height,
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
                        int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(0), pitchA(0), row_sizeA(0)
+    ,offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height,
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
     int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA)
     : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size)
+    ,offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size), avsmap(avsmap)
 {
     InterlockedIncrement(&vfb->refcount);
 }
@@ -406,7 +406,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
 // P.F. ?? so far it works automatically
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
-  return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height);
+  return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height);
 }
 
 
@@ -416,7 +416,7 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
     const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
     const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
-    return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height,
+    return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height,
         rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
 }
 
@@ -427,7 +427,7 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
     const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
     const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
-    return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height,
+    return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height,
         rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA+offsetA);
 }
 
@@ -751,7 +751,7 @@ public:
   PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
   void __stdcall DeleteScriptEnvironment();
   void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
-  const AVS_Linkage* const __stdcall GetAVSLinkage();
+  const AVS_Linkage* __stdcall GetAVSLinkage();
   AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue());
 
   // alpha support
@@ -794,9 +794,11 @@ public:
   virtual void __stdcall VThrowError(const char* fmt, va_list va);
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
+  // new additions 2020, Neo
   virtual InternalEnvironment* __stdcall GetCoreEnvironment();
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame propSrc, int align);
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst);
+  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame);
+  bool MakePropertyWritable(PVideoFrame* pvf);
 
   virtual ThreadPool* __stdcall GetThreadPool();
   virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
@@ -1195,6 +1197,26 @@ ScriptEnvironment::~ScriptEnvironment() {
     LogMsg(LOGLEVEL_WARNING, "ScriptEnvironmentTLS leaks.");
 }
 
+  // delete avsmap
+  for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
+    it != end_it;
+    ++it)
+  {
+    for (FrameBufferRegistryType::iterator it2 = (it->second).begin(), end_it2 = (it->second).end();
+      it2 != end_it2;
+      ++it2)
+    {
+      for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
+        it3 != end_it3;
+        ++it3)
+      {
+        delete it3->avsmap;
+        it3->avsmap = 0;
+        it3->frame->avsmap = 0;
+      }
+    }
+  }
+
 #ifdef _DEBUG
   // LogMsg(LOGLEVEL_DEBUG, "We are before FrameRegistryCleanup");
   // ListFrameRegistry(0,10000000000000ull, true); // list all
@@ -1218,12 +1240,10 @@ ScriptEnvironment::~ScriptEnvironment() {
       {
         VideoFrame *frame = it3->frame;
 
-        frame->avsmap = 0;
         //assert(0 == frame->refcount);
         if (0 == frame->refcount)
         {
           delete frame;
-          delete it3->avsmap;
         }
         else
         {
@@ -1777,7 +1797,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   VideoFrame *newFrame = NULL;
   try
   {
-    newFrame = new VideoFrame(vfb, 0, 0, 0, 0);
+    newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0);
   }
   catch(const std::bad_alloc&)
   {
@@ -1785,23 +1805,11 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
     return NULL;
   }
 
-  AVSMap *avsmap = NULL;
-  try
-  {
-    avsmap = new AVSMap();
-  }
-  catch (const std::bad_alloc&)
-  {
-    delete vfb;
-    delete newFrame;
-    return NULL;
-  }
-
   memory_used+=vfb_size;
 
   // automatically inserts keys if they not exist!
   // no locking here, calling method have done it already
-  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame, avsmap));
+  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame, newFrame->avsmap));
 
   //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
 
@@ -2044,6 +2052,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           // sanity check if its refcount is zero
           // because when a vfb is free (refcount==0) then all its parent frames should also be free
           assert(0 == frame->refcount);
+          assert(0 == frame->avsmap->data.size());
 
           if (!found)
           {
@@ -2388,6 +2397,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
   size_t size = pitch * height;
 
   // why we need this??
+  // PF: Allow badly written plugins to be able to read "align" bytes even from the last byte?
   size = size + align - 1;
 
   VideoFrame *res = GetNewFrame(size);
@@ -2556,12 +2566,40 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
           vf->GetPitch(PLANAR_A), vf->GetRowSize(PLANAR_A), vf->GetHeight(PLANAR_A));
 
   // Copy properties
-  *dst->avsmap = *vf->avsmap;
+  dst->avsmap->data = vf->avsmap->data;
 
   *pvf = dst;
   return true;
 }
 
+bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
+  const PVideoFrame& vf = *pvf;
+
+  // If the frame is already writable, do nothing.
+  if (vf->IsPropertyWritable())
+    return false;
+
+  // Otherwise, allocate a new frame (using Subframe)
+  PVideoFrame dst;
+  if (vf->GetPitch(PLANAR_A)) {
+    // planar + alpha
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U), 0);
+  }
+  else if (vf->GetPitch(PLANAR_U)) {
+    // planar
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U));
+  }
+  else {
+    // single plane
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight());
+  }
+
+  // Copy properties
+  dst->avsmap->data = vf->avsmap->data;
+
+  *pvf = dst;
+  return true;
+}
 
 void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data) {
   at_exit.Add(function, user_data);
@@ -2587,7 +2625,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
-  subframe->avsmap = new AVSMap(*src->avsmap);
+  subframe->avsmap->data = src->avsmap->data;
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -2609,7 +2647,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
     ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
 
   VideoFrame *subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
-  subframe->avsmap = new AVSMap(*src->avsmap);
+  subframe->avsmap->data = src->avsmap->data;
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -2631,7 +2669,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
         ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
     VideoFrame* subframe;
     subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
-    subframe->avsmap = new AVSMap(*src->avsmap);
+  subframe->avsmap->data = src->avsmap->data;
 
     size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -3476,6 +3514,12 @@ InternalEnvironment* ScriptEnvironment::GetCoreEnvironment()
   return this;
 }
 
+
+void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst)
+{
+  dst->avsmap->data = src->avsmap->data;
+}
+
 ThreadPool* ScriptEnvironment::GetThreadPool()
 {
   return thread_pool;
@@ -3506,24 +3550,19 @@ ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
   return pool;
 }
 
-PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, PVideoFrame propSrc, int align = FRAME_ALIGN)
+AVSMap* __stdcall ScriptEnvironment::GetAVSMap(PVideoFrame& frame)
 {
-  PVideoFrame frame = NewVideoFrame(vi, align);
-  *frame->avsmap = *propSrc->avsmap;
-  return frame;
+  return frame->avsmap;
 }
 
-void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst)
-{
-  *dst->avsmap = *src->avsmap;
-}
+
 
 extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
   const char* message, int size, int textcolor, int halocolor, int bgcolor,
   IScriptEnvironment* env);
 
 
-const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
+const AVS_Linkage* __stdcall ScriptEnvironment::GetAVSLinkage() {
   extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
 
   return AVS_linkage;
