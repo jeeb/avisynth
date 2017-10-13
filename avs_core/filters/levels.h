@@ -50,7 +50,7 @@ class Levels : public GenericVideoFilter
  **/
 {
 public:
-  Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, bool _dither,
+  Levels(PClip _child, float _in_min, double _gamma, float _in_max, float _out_min, float _out_max, bool _coring, bool _dither,
           IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -62,7 +62,13 @@ public:
 
 private:
   BYTE *map, *mapchroma;
+  bool need_chroma;
+  bool coring;
   bool dither;
+  double gamma;
+  bool use_gamma;
+  float in_min_f, in_max_f, out_min_f, out_max_f;
+
   // avs+
   int pixelsize;
   int bits_per_pixel; // 8,10..16
@@ -81,9 +87,23 @@ private:
 
   int middle_chroma;
 
-  float bias_dither;
+  // float things
+  float tv_range_low_f;
+  float tv_range_hi_luma_f;
+  float range_luma_f;
+  float tv_range_hi_chroma_f;
+  float range_chroma_f;
+  float middle_chroma_f;
+  float divisor_f;
+  float out_diff_f; // precalc for speed
 
+  float ditherMap_f[256];
+
+  float bias_dither;
   float dither_strength;
+
+  template<bool chroma, bool use_gamma>
+  __forceinline float calcPixel(const float pixel);
 };
 
 
