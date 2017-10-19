@@ -34,6 +34,9 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "filters/AviSource/*.c"
   "filters/AviSource/*.cpp"
   "filters/AviSource/*.h"
+
+  "filters/exprfilter/*.cpp"
+  "filters/exprfilter/*.h"
 )
 
 IF( MSVC_IDE )
