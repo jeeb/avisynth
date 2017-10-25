@@ -101,6 +101,7 @@ struct ConversionMatrix {
   float v_b_f;
 
   int offset_y;
+  float offset_y_f;
 };
 
 class ConvertRGBToYV24 : public GenericVideoFilter
@@ -115,7 +116,7 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
+  void BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel);
   ConversionMatrix matrix;
   int pixel_step;
   bool hasAlpha;
@@ -149,7 +150,7 @@ public:
 //  static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
 //  static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
+  void BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel);
   ConversionMatrix matrix;
   int pixel_step;
 };
