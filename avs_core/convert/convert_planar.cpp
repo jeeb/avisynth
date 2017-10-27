@@ -527,7 +527,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
              matrix.g_f * reinterpret_cast<const float *>(srcpG)[x] +
              matrix.r_f * reinterpret_cast<const float *>(srcpR)[x]
             );
-          reinterpret_cast<float *>(dstp)[x] = clamp(Y,0.0f,65535.0f);  // All the safety we can wish for.
+          reinterpret_cast<float *>(dstp)[x] = Y;  // no clamping
         }
         srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
         dstp += dst_pitch;
