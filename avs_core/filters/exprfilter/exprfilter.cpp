@@ -245,8 +245,9 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
 
     std::vector<ExprOp> ops;
     int numInputs;
+    int cpuFlags;
 
-    ExprEval(std::vector<ExprOp> &ops, int numInputs) : ops(ops), numInputs(numInputs) {}
+    ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags) {}
 
     void main(Reg regptrs, Reg regoffs, Reg niter)
     {
@@ -342,21 +343,25 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 mov(a, ptr[regptrs]);
                 cvtps2dq(t1.first, t1.first);
                 cvtps2dq(t1.second, t1.second);
-                movdqa(r1, t1.first);
-                movdqa(r2, t1.second);
-                psrldq(t1.first, 6);
-                psrldq(t1.second, 6);
-                por(t1.first, r1);
-                por(t1.second, r2);
-                pshuflw(t1.first, t1.first, 0b11011000);
-                pshuflw(t1.second, t1.second, 0b11011000);
-                punpcklqdq(t1.second, t1.first);
-                packuswb(t1.second, zero);
+                movdqa(r1, t1.first);  // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+                movdqa(r2, t1.second); // 00 w7 00 w6 00 w5 00 w4
+                // new
+                packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+                /* old, kept for reference until figuring out why this method was chosen
+                psrldq(t1.first, 6);   // 00 00 00 00 w3 00 w2 00
+                psrldq(t1.second, 6);  // 00 00 00 00 w7 00 w6 00
+                por(t1.first, r1);     // 00 w3 00 w2 w3 w1 w2 w0
+                por(t1.second, r2);    // 00 w7 00 w6 w7 w5 w6 w4 
+                pshuflw(t1.first, t1.first, 0b11011000);   // 3-1-2-0, w3 w2 w1 w0 w3 w2 w1 w0
+                pshuflw(t1.second, t1.second, 0b11011000); // 3-1-2-0, w7 w6 w5 w4 w7 w6 w5 w4
+                punpcklqdq(t1.second, t1.first); // _mm_unpacklo_epi64: w7 w6 w5 w4 w3 w2 w1 w0
+                */
+                packuswb(t1.second, zero);       // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
                 movq(mmword_ptr[a], t1.second);
-            } else if (iter.op == opStore10 
+            } else if (iter.op == opStore10 // avs+
               || iter.op == opStore12 // avs+ 
               || iter.op == opStore14 // avs+
-              || iter.op == opStore16 // avs+
+              || iter.op == opStore16
               ) {
                 auto t1 = stack.back();
                 stack.pop_back();
@@ -385,15 +390,30 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 mov(a, ptr[regptrs]);
                 cvtps2dq(t1.first, t1.first);
                 cvtps2dq(t1.second, t1.second);
-                movdqa(r1, t1.first);
-                movdqa(r2, t1.second);
-                psrldq(t1.first, 6);
-                psrldq(t1.second, 6);
-                por(t1.first, r1);
-                por(t1.second, r2);
-                pshuflw(t1.first, t1.first, 0b11011000);
-                pshuflw(t1.second, t1.second, 0b11011000);
-                punpcklqdq(t1.second, t1.first);
+                movdqa(r1, t1.first);   // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+                movdqa(r2, t1.second);  // 00 w7 00 w6 00 w5 00 w4
+                // new
+                switch (iter.op) {
+                case opStore10:
+                case opStore12:
+                case opStore14:
+                  packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+                  break;
+                case opStore16:
+                  if (cpuFlags & CPUF_SSE4_1)
+                    packusdw(t1.second, t1.first);   // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+                  else {
+                    // old, sse2
+                    psrldq(t1.first, 6);
+                    psrldq(t1.second, 6);
+                    por(t1.first, r1);
+                    por(t1.second, r2);
+                    pshuflw(t1.first, t1.first, 0b11011000);
+                    pshuflw(t1.second, t1.second, 0b11011000);
+                    punpcklqdq(t1.second, t1.first);
+                  }
+                  break;
+                }
                 movdqa(xmmword_ptr[a], t1.second);
             } else if (iter.op == opStoreF32) {
                 auto t1 = stack.back();
@@ -597,7 +617,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
   int src_stride[MAX_EXPR_INPUTS] = {};
 
-  const bool use_simd = true; // C path only for reference
+  const bool use_simd = !!(env->GetCPUFlags() && CPUF_SSE2); // C path only for reference
 
   int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
@@ -1649,7 +1669,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 #ifdef VS_TARGET_CPU_X86
     for (int i = 0; i < d.vi.NumComponents(); i++) {
       if (d.plane[i] == poProcess) {
-        ExprEval ExprObj(d.ops[i], d.numInputs);
+        ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags());
         if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
 #ifdef VS_TARGET_OS_WINDOWS
           d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
