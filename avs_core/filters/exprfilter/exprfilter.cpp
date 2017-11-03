@@ -915,7 +915,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
       else if (iter.op == opLoadConst) {
         if (processSingle) {
           YmmReg r1;
-          Reg a;
+          Reg32 a;
           XmmReg r1x;
           mov(a, iter.e.ival);
           vmovd(r1x, a);
@@ -924,7 +924,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
         else {
           YmmReg r1, r2;
-          Reg a;
+          Reg32 a;
           XmmReg r1x;
           mov(a, iter.e.ival);
           vmovd(r1x, a);
