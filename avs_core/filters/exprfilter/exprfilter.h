@@ -109,9 +109,10 @@ private:
   std::vector<std::string> expressions;
   VideoInfo vi;
   ExprData d;
+  const bool optAvx2;
 
 public:
-  Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, IScriptEnvironment *env);
+  Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, IScriptEnvironment *env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
   ~Exprfilter();
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

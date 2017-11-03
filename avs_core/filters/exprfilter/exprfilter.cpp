@@ -20,6 +20,9 @@
 *   pi
 * Alpha plane handling
 * Proper clamping when storing 10,12 or 14 bit outputs
+* Faster storing of results for 8 and 10-16 bit outputs
+* 16 pixels/cycle instead of 8 when avx2, with fallback to 8-pixel case on the right edge. Thus no need for 64 byte alignment for 32 bit float.
+* (Load zeros for nonvisible pixels, when simd block size goes beyond image width, to prevent garbage input for simd calculation)
 * 
 * Differences from masktools 2.2.9
 * --------------------------------
@@ -61,12 +64,21 @@
 #endif
 #endif
 
+#include <immintrin.h>
+
 #ifdef VS_TARGET_CPU_X86
+
+// normal versions work with two xmm or ymm registers (2*4 or 2*8 pixels per cycle)
+// _Single suffixed versions work only one xmm or ymm registers at a time (1*4 or 1*8 pixels per cycle)
 
 #define OneArgOp(instr) \
 auto &t1 = stack.back(); \
 instr(t1.first, t1.first); \
 instr(t1.second, t1.second);
+
+#define OneArgOp_Single(instr) \
+auto &t1 = stack.back(); \
+instr(t1.first, t1.first);
 
 #define TwoArgOp(instr) \
 auto t1 = stack.back(); \
@@ -74,6 +86,25 @@ stack.pop_back(); \
 auto &t2 = stack.back(); \
 instr(t2.first, t1.first); \
 instr(t2.second, t1.second);
+
+#define TwoArgOp_Single(instr) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto &t2 = stack.back(); \
+instr(t2.first, t1.first);
+
+#define TwoArgOp_Avx(instr) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto &t2 = stack.back(); \
+instr(t2.first, t2.first, t1.first); \
+instr(t2.second, t2.second, t1.second);
+
+#define TwoArgOp_Single_Avx(instr) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto &t2 = stack.back(); \
+instr(t2.first, t2.first, t1.first);
 
 #define CmpOp(instr) \
 auto t1 = stack.back(); \
@@ -84,6 +115,35 @@ instr(t1.first, t2.first); \
 instr(t1.second, t2.second); \
 andps(t1.first, CPTR(elfloat_one)); \
 andps(t1.second, CPTR(elfloat_one)); \
+stack.push_back(t1);
+
+#define CmpOp_Single(instr) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto t2 = stack.back(); \
+stack.pop_back(); \
+instr(t1.first, t2.first); \
+andps(t1.first, CPTR(elfloat_one)); \
+stack.push_back(t1);
+
+#define CmpOp_Avx(instr, op) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto t2 = stack.back(); \
+stack.pop_back(); \
+instr(t1.first, t1.first, t2.first, op); \
+instr(t1.second, t1.second, t2.second, op); \
+vandps(t1.first, t1.first, CPTR_AVX(elfloat_one)); \
+vandps(t1.second, t1.second, CPTR_AVX(elfloat_one)); \
+stack.push_back(t1);
+
+#define CmpOp_Single_Avx(instr, op) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto t2 = stack.back(); \
+stack.pop_back(); \
+instr(t1.first, t1.first, t2.first, op); \
+vandps(t1.first, t1.first, CPTR_AVX(elfloat_one)); \
 stack.push_back(t1);
 
 #define LogicOp(instr) \
@@ -101,12 +161,51 @@ andps(t1.first, CPTR(elfloat_one)); \
 andps(t1.second, CPTR(elfloat_one)); \
 stack.push_back(t1);
 
+#define LogicOp_Single(instr) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto t2 = stack.back(); \
+stack.pop_back(); \
+cmpnleps(t1.first, zero); \
+cmpnleps(t2.first, zero); \
+instr(t1.first, t2.first); \
+andps(t1.first, CPTR(elfloat_one)); \
+stack.push_back(t1);
+
+#define LogicOp_Avx(instr) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto t2 = stack.back(); \
+stack.pop_back(); \
+vcmpps(t1.first, t1.first, zero, _CMP_GT_OQ); \
+vcmpps(t1.second, t1.second, zero, _CMP_GT_OQ); \
+vcmpps(t2.first, t2.first, zero, _CMP_GT_OQ); \
+vcmpps(t2.second, t2.second, zero, _CMP_GT_OQ); \
+instr(t1.first, t1.first, t2.first); \
+instr(t1.second, t1.second, t2.second); \
+vandps(t1.first, t1.first, CPTR_AVX(elfloat_one)); \
+vandps(t1.second, t1.second, CPTR_AVX(elfloat_one)); \
+stack.push_back(t1);
+
+#define LogicOp_Single_Avx(instr) \
+auto t1 = stack.back(); \
+stack.pop_back(); \
+auto t2 = stack.back(); \
+stack.pop_back(); \
+vcmpps(t1.first, t1.first, zero, _CMP_GT_OQ); \
+vcmpps(t2.first, t2.first, zero, _CMP_GT_OQ); \
+instr(t1.first, t1.first, t2.first); \
+vandps(t1.first, t1.first, CPTR_AVX(elfloat_one)); \
+stack.push_back(t1);
+
 enum {
     elabsmask, elc7F, elmin_norm_pos, elinv_mant_mask,
     elfloat_one, elfloat_half, elstore8, elstore10, elstore12, elstore14, elstore16,
     elexp_hi, elexp_lo, elcephes_LOG2EF, elcephes_exp_C1, elcephes_exp_C2, elcephes_exp_p0, elcephes_exp_p1, elcephes_exp_p2, elcephes_exp_p3, elcephes_exp_p4, elcephes_exp_p5, elcephes_SQRTHF,
     elcephes_log_p0, elcephes_log_p1, elcephes_log_p2, elcephes_log_p3, elcephes_log_p4, elcephes_log_p5, elcephes_log_p6, elcephes_log_p7, elcephes_log_p8, elcephes_log_q1 = elcephes_exp_C2, elcephes_log_q2 = elcephes_exp_C1
 };
+
+// constants for xmm
 
 #define XCONST(x) { x, x, x, x }
 
@@ -147,6 +246,49 @@ alignas(16) static const FloatIntUnion logexpconst[][4] = {
 
 
 #define CPTR(x) (xmmword_ptr[constptr + (x) * 16])
+
+// AVX2 stuff
+// constants for ymm
+
+#undef XCONST
+#define XCONST(x) { x, x, x, x, x, x, x, x }
+
+alignas(32) static const FloatIntUnion logexpconst_avx[][8] = {
+  XCONST(0x7FFFFFFF), // absmask
+  XCONST(0x7F), // c7F
+  XCONST(0x00800000), // min_norm_pos
+  XCONST(~0x7f800000), // inv_mant_mask
+  XCONST(1.0f), // float_one
+  XCONST(0.5f), // float_half
+  XCONST(255.0f), // store8
+  XCONST(1023.0f), // store10 (avs+)
+  XCONST(4095.0f), // store12 (avs+)
+  XCONST(16383.0f), // store14 (avs+)
+  XCONST(65535.0f), // store16
+  XCONST(88.3762626647949f), // exp_hi
+  XCONST(-88.3762626647949f), // exp_lo
+  XCONST(1.44269504088896341f), // cephes_LOG2EF
+  XCONST(0.693359375f), // cephes_exp_C1
+  XCONST(-2.12194440e-4f), // cephes_exp_C2
+  XCONST(1.9875691500E-4f), // cephes_exp_p0
+  XCONST(1.3981999507E-3f), // cephes_exp_p1
+  XCONST(8.3334519073E-3f), // cephes_exp_p2
+  XCONST(4.1665795894E-2f), // cephes_exp_p3
+  XCONST(1.6666665459E-1f), // cephes_exp_p4
+  XCONST(5.0000001201E-1f), // cephes_exp_p5
+  XCONST(0.707106781186547524f), // cephes_SQRTHF
+  XCONST(7.0376836292E-2f), // cephes_log_p0
+  XCONST(-1.1514610310E-1f), // cephes_log_p1
+  XCONST(1.1676998740E-1f), // cephes_log_p2
+  XCONST(-1.2420140846E-1f), // cephes_log_p3
+  XCONST(+1.4249322787E-1f), // cephes_log_p4
+  XCONST(-1.6668057665E-1f), // cephes_log_p5
+  XCONST(+2.0000714765E-1f), // cephes_log_p6
+  XCONST(-2.4999993993E-1f), // cephes_log_p7
+  XCONST(+3.3333331174E-1f) // cephes_log_p8
+};
+
+#define CPTR_AVX(x) (ymmword_ptr[constptr + (x) * 32])
 
 #define EXP_PS(x) { \
 XmmReg fx, emm0, etmp, y, mask, z; \
@@ -241,13 +383,111 @@ addps(x, y); \
 addps(x, emm0); \
 orps(x, invalid_mask); }
 
+#define EXP_PS_AVX(x) { \
+YmmReg fx, emm0, etmp, y, mask, z; \
+vminps(x, x, CPTR_AVX(elexp_hi)); \
+vmaxps(x, x, CPTR_AVX(elexp_lo)); \
+/*vmovaps(fx, x);*/ \
+/*vmulps(fx, fx, CPTR_AVX(elcephes_LOG2EF));*/ \
+vmulps(fx, x, CPTR_AVX(elcephes_LOG2EF)); /* simplified above 2 lines */ \
+vaddps(fx, fx, CPTR_AVX(elfloat_half)); \
+vcvttps2dq(emm0, fx); \
+vcvtdq2ps(etmp, emm0); \
+vmovaps(mask, etmp); \
+vcmpps(mask, mask, fx, _CMP_GT_OQ); /* cmpnleps */ \
+vandps(mask, mask, CPTR_AVX(elfloat_one)); \
+vmovaps(fx, etmp); \
+vsubps(fx, fx, mask); \
+/*vmovaps(etmp, fx);*/ \
+/*vmulps(etmp, etmp, CPTR_AVX(elcephes_exp_C1));*/ \
+vmulps(etmp, fx, CPTR_AVX(elcephes_exp_C1)); /* simplified above 2 lines */ \
+/*vmovaps(z, fx); */\
+/*vmulps(z, z, CPTR_AVX(elcephes_exp_C2));*/ \
+vmulps(z, fx, CPTR_AVX(elcephes_exp_C2));  /* simplified above 2 lines */ \
+vsubps(x, x, etmp); \
+vsubps(x, x, z); \
+/*vmovaps(z, x);*/ \
+/*vmulps(z, z); */ \
+vmulps(z, x, x); /* simplified above 2 lines */ \
+vmovaps(y, CPTR_AVX(elcephes_exp_p0)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_exp_p1)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_exp_p2)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_exp_p3)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_exp_p4)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_exp_p5)); \
+vmulps(y, y, z); \
+vaddps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elfloat_one)); \
+vcvttps2dq(emm0, fx); \
+vpaddd(emm0, emm0, CPTR_AVX(elc7F)); \
+vpslld(emm0, emm0, 23); \
+vmulps(y, y, emm0); \
+x = y; }
+
+#define LOG_PS_AVX(x) { \
+YmmReg emm0, invalid_mask, mask, y, etmp, z; \
+vxorps(invalid_mask, invalid_mask, invalid_mask); \
+vcmpps(invalid_mask, invalid_mask, x, _CMP_GT_OQ); /* cmpnleps */ \
+vmaxps(x, x, CPTR_AVX(elmin_norm_pos)); \
+vmovaps(emm0, x); \
+vpsrld(emm0, emm0, 23); \
+vandps(x, x, CPTR_AVX(elinv_mant_mask)); \
+vorps(x, x, CPTR_AVX(elfloat_half)); \
+vpsubd(emm0, emm0, CPTR_AVX(elc7F)); \
+vcvtdq2ps(emm0, emm0); \
+vaddps(emm0, emm0, CPTR_AVX(elfloat_one)); \
+vmovaps(mask, x); \
+vcmpps(mask, mask, CPTR_AVX(elcephes_SQRTHF), _CMP_LT_OQ); /* cmpltps */ \
+vmovaps(etmp, x); \
+vandps(etmp, etmp, mask); \
+vsubps(x, x, CPTR_AVX(elfloat_one)); \
+vandps(mask, mask, CPTR_AVX(elfloat_one)); \
+vsubps(emm0, emm0, mask); \
+vaddps(x, x, etmp); \
+vmovaps(z, x); \
+vmulps(z, z, z); \
+vmovaps(y, CPTR_AVX(elcephes_log_p0)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p1)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p2)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p3)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p4)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p5)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p6)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p7)); \
+vmulps(y, y, x); \
+vaddps(y, y, CPTR_AVX(elcephes_log_p8)); \
+vmulps(y, y, x); \
+vmulps(y, y, z); \
+vmovaps(etmp, emm0); \
+vmulps(etmp, etmp, CPTR_AVX(elcephes_log_q1)); \
+vaddps(y, y, etmp); \
+vmulps(z, z, CPTR_AVX(elfloat_half)); \
+vsubps(y, y, z); \
+vmulps(emm0, emm0, CPTR_AVX(elcephes_log_q2)); \
+vaddps(x, x, y); \
+vaddps(x, x, emm0); \
+vorps(x, x, invalid_mask); }
+
 struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intptr_t *, intptr_t> {
 
     std::vector<ExprOp> ops;
     int numInputs;
     int cpuFlags;
+    int planewidth;
 
-    ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags) {}
+    ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
 
     void main(Reg regptrs, Reg regoffs, Reg niter)
     {
@@ -341,13 +581,13 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 minps(t1.first, CPTR(elstore8));
                 minps(t1.second, CPTR(elstore8));
                 mov(a, ptr[regptrs]);
-                cvtps2dq(t1.first, t1.first);
-                cvtps2dq(t1.second, t1.second);
-                movdqa(r1, t1.first);  // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
-                movdqa(r2, t1.second); // 00 w7 00 w6 00 w5 00 w4
+                cvtps2dq(t1.first, t1.first);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+                cvtps2dq(t1.second, t1.second);  // 00 w7 00 w6 00 w5 00 w4
                 // new
                 packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
                 /* old, kept for reference until figuring out why this method was chosen
+                movdqa(r1, t1.first);  // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+                movdqa(r2, t1.second); // 00 w7 00 w6 00 w5 00 w4
                 psrldq(t1.first, 6);   // 00 00 00 00 w3 00 w2 00
                 psrldq(t1.second, 6);  // 00 00 00 00 w7 00 w6 00
                 por(t1.first, r1);     // 00 w3 00 w2 w3 w1 w2 w0
@@ -390,8 +630,6 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 mov(a, ptr[regptrs]);
                 cvtps2dq(t1.first, t1.first);
                 cvtps2dq(t1.second, t1.second);
-                movdqa(r1, t1.first);   // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
-                movdqa(r2, t1.second);  // 00 w7 00 w6 00 w5 00 w4
                 // new
                 switch (iter.op) {
                 case opStore10:
@@ -400,10 +638,13 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                   packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
                   break;
                 case opStore16:
-                  if (cpuFlags & CPUF_SSE4_1)
+                  if (cpuFlags & CPUF_SSE4_1) {
                     packusdw(t1.second, t1.first);   // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+                  }
                   else {
                     // old, sse2
+                    movdqa(r1, t1.first);   // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+                    movdqa(r2, t1.second);  // 00 w7 00 w6 00 w5 00 w4
                     psrldq(t1.first, 6);
                     psrldq(t1.second, 6);
                     por(t1.first, r1);
@@ -433,28 +674,37 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 auto &t1 = stack.back();
                 andps(t1.first, CPTR(elabsmask));
                 andps(t1.second, CPTR(elabsmask));
-            } else if (iter.op == opNeg) {
-                auto &t1 = stack.back();
-                cmpleps(t1.first, zero);
-                cmpleps(t1.second, zero);
-                andps(t1.first, CPTR(elfloat_one));
-                andps(t1.second, CPTR(elfloat_one));
-            } else if (iter.op == opAnd) {
-                LogicOp(andps)
-            } else if (iter.op == opOr) {
-                LogicOp(orps)
-            } else if (iter.op == opXor) {
-                LogicOp(xorps)
-            } else if (iter.op == opGt) {
-                CmpOp(cmpltps)
-            } else if (iter.op == opLt) {
-                CmpOp(cmpnleps)
-            } else if (iter.op == opEq) {
-                CmpOp(cmpeqps)
-            } else if (iter.op == opLE) {
-                CmpOp(cmpnltps)
-            } else if (iter.op == opGE) {
-                CmpOp(cmpleps)
+            }
+            else if (iter.op == opNeg) {
+              auto &t1 = stack.back();
+              cmpleps(t1.first, zero);
+              cmpleps(t1.second, zero);
+              andps(t1.first, CPTR(elfloat_one));
+              andps(t1.second, CPTR(elfloat_one));
+            }
+            else if (iter.op == opAnd) {
+              LogicOp(andps)
+            }
+            else if (iter.op == opOr) {
+              LogicOp(orps)
+            }
+            else if (iter.op == opXor) {
+              LogicOp(xorps)
+            }
+            else if (iter.op == opGt) { // a > b (gt) -> b < (lt) a
+              CmpOp(cmpltps)
+            }
+            else if (iter.op == opLt) { // a < b (lt) -> b > (gt,nle) a
+              CmpOp(cmpnleps)
+            }
+            else if (iter.op == opEq) { // a == b -> b == a
+              CmpOp(cmpeqps)
+            }
+            else if (iter.op == opLE) { // a <= b -> b >= (ge,nlt) a
+              CmpOp(cmpnltps)
+            }
+            else if (iter.op == opGE) { // a >= b -> b <= (le) a
+              CmpOp(cmpleps)
             } else if (iter.op == opTernary) {
                 auto t1 = stack.back();
                 stack.pop_back();
@@ -520,6 +770,593 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
         jnz("wloop");
     }
 };
+
+// avx2 evaluator with two ymm registers
+struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, const intptr_t *, intptr_t> {
+
+  std::vector<ExprOp> ops;
+  int numInputs;
+  int cpuFlags;
+  int planewidth;
+
+  ExprEvalAvx2(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
+
+  template<bool processSingle, bool maskUnused>
+  __forceinline void processingLoop(Reg &regptrs, YmmReg &zero, Reg &constptr)
+  {
+    std::list<std::pair<YmmReg, YmmReg>> stack;
+
+    const bool maskIt = (maskUnused && ((planewidth & 7) != 0));
+    const int mask = ((1 << (planewidth & 7)) - 1);
+    // mask by zero when we have only 1-7 valid pixels
+    // 1: 2-1   = 1   // 00000001
+    // 2: 4-3   = 3   // 00000011
+    // 7: 128-1 = 127 // 01111111
+
+    for (const auto &iter : ops) {
+      if (iter.op == opLoadSrc8) {
+        if (processSingle) {
+          XmmReg r1x;
+          YmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          // 8 bytes, 8 pixels * uint8_t
+          vmovq(r1x, mmword_ptr[a]);
+          // 8->32 bits like _mm256_cvtepu8_epi32
+          vpmovzxbd(r1, r1x);
+          // int -> float
+          vcvtdq2ps(r1, r1);
+          if (maskIt)
+            vblendps(r1, zero, r1, mask);
+          stack.push_back(std::make_pair(r1, r1));
+        }
+        else {
+          XmmReg r1x;
+          YmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          // 16 bytes, 16 pixels * uint8_t
+          vmovdqa(r1x, xmmword_ptr[a]);
+          // 8->16 bits like _mm256_cvtepu8_epi16
+          vpmovzxbw(r1, r1x);
+          // 16->32 bit like _mm256_cvtepu16_epi32
+          vextracti128(r1x, r1, 1); // upper 128
+          vpmovzxwd(r2, r1x);
+          vextracti128(r1x, r1, 0); // lower 128
+          vpmovzxwd(r1, r1x);
+          // int -> float
+          vcvtdq2ps(r1, r1);
+          vcvtdq2ps(r2, r2);
+          if (maskIt)
+            vblendps(r2, zero, r2, mask);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSrc16) {
+        if (processSingle) {
+          XmmReg r1x;
+          YmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          // 16 bytes, 8 pixels * uint16_t
+          vmovdqa(r1x, xmmword_ptr[a]);
+          // 16->32 bit like _mm256_cvtepu16_epi32
+          vpmovzxwd(r1, r1x);
+          // int -> float
+          vcvtdq2ps(r1, r1);
+          if (maskIt)
+            vblendps(r1, zero, r1, mask);
+          stack.push_back(std::make_pair(r1, r1));
+        }
+        else {
+          XmmReg r1x;
+          YmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          // 32 bytes, 16 pixels * uint16_t
+          vmovdqa(r1, ymmword_ptr[a]);
+          // 16->32 bit like _mm256_cvtepu16_epi32
+          vextracti128(r1x, r1, 1); // upper 128
+          vpmovzxwd(r2, r1x);
+          vextracti128(r1x, r1, 0); // lower 128
+          vpmovzxwd(r1, r1x);
+          // int -> float
+          vcvtdq2ps(r1, r1);
+          vcvtdq2ps(r2, r2);
+          if (maskIt)
+            vblendps(r2, zero, r2, mask);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSrcF32) {
+        if (processSingle) {
+          YmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          // 32 bytes, 8 * float
+          vmovdqa(r1, ymmword_ptr[a]);
+          if (maskIt)
+            vblendps(r1, zero, r1, mask);
+          stack.push_back(std::make_pair(r1, r1));
+        }
+        else {
+          YmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          // 32 bytes, 8 * float
+          vmovdqa(r1, ymmword_ptr[a]);
+          vmovdqa(r2, ymmword_ptr[a + 32]); // needs 64 byte aligned data to prevent read past valid data!
+          if (maskIt)
+            vblendps(r2, zero, r2, mask);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSrcF16) { // not supported in avs+
+        if (processSingle) {
+          YmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          vcvtph2ps(r1, xmmword_ptr[a]);
+          if (maskIt)
+            vblendps(r1, zero, r1, mask);
+          stack.push_back(std::make_pair(r1, r1));
+        }
+        else {
+          YmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          vcvtph2ps(r1, xmmword_ptr[a]);
+          vcvtph2ps(r2, xmmword_ptr[a + 16]);
+          if (maskIt)
+            vblendps(r2, zero, r2, mask);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadConst) {
+        if (processSingle) {
+          YmmReg r1;
+          Reg a;
+          XmmReg r1x;
+          mov(a, iter.e.ival);
+          vmovd(r1x, a);
+          vbroadcastss(r1, r1x);
+          stack.push_back(std::make_pair(r1,r1));
+        }
+        else {
+          YmmReg r1, r2;
+          Reg a;
+          XmmReg r1x;
+          mov(a, iter.e.ival);
+          vmovd(r1x, a);
+          vbroadcastss(r1, r1x);
+          vmovaps(r2, r1);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opDup) {
+        auto p = std::next(stack.rbegin(), iter.e.ival);
+        if (processSingle) {
+          YmmReg r1;
+          vmovaps(r1, p->first);
+          stack.push_back(std::make_pair(r1, r1));
+        }
+        else {
+          YmmReg r1, r2;
+          vmovaps(r1, p->first);
+          vmovaps(r2, p->second);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opSwap) {
+        std::swap(stack.back(), *std::next(stack.rbegin(), iter.e.ival));
+      }
+      else if (iter.op == opAdd) {
+        if (processSingle) {
+          TwoArgOp_Single_Avx(vaddps);
+        }
+        else {
+          TwoArgOp_Avx(vaddps);
+        }
+      }
+      else if (iter.op == opSub) {
+        if (processSingle) {
+          TwoArgOp_Single_Avx(vsubps);
+        }
+        else {
+          TwoArgOp_Avx(vsubps);
+        }
+      }
+      else if (iter.op == opMul) {
+        if (processSingle) {
+          TwoArgOp_Single_Avx(vmulps);
+        }
+        else {
+          TwoArgOp_Avx(vmulps);
+        }
+      }
+      else if (iter.op == opDiv) {
+        if (processSingle) {
+          TwoArgOp_Single_Avx(vdivps);
+        }
+        else {
+          TwoArgOp_Avx(vdivps);
+        }
+      }
+      else if (iter.op == opMax) {
+        if (processSingle) {
+          TwoArgOp_Single_Avx(vmaxps);
+        }
+        else {
+          TwoArgOp_Avx(vmaxps);
+        }
+      }
+      else if (iter.op == opMin) {
+        if (processSingle) {
+          TwoArgOp_Single_Avx(vminps);
+        }
+        else {
+          TwoArgOp_Avx(vminps);
+        }
+      }
+      else if (iter.op == opSqrt) {
+        auto &t1 = stack.back();
+        if (processSingle) {
+          vmaxps(t1.first, t1.first, zero);
+          vsqrtps(t1.first, t1.first);
+        }
+        else {
+          vmaxps(t1.first, t1.first, zero);
+          vmaxps(t1.second, t1.second, zero);
+          vsqrtps(t1.first, t1.first);
+          vsqrtps(t1.second, t1.second);
+        }
+      }
+      else if (iter.op == opStore8) {
+        auto t1 = stack.back();
+        stack.pop_back();
+        if (processSingle) {
+          YmmReg r1;
+          Reg a;
+          vmaxps(t1.first, t1.first, zero);
+          vminps(t1.first, t1.first, CPTR_AVX(elstore8));
+          mov(a, ptr[regptrs]);
+          vcvtps2dq(t1.first, t1.first);   // float to int32
+          XmmReg r1x, r2x;
+          // 32 -> 16 bits from ymm 8 integers to xmm 8 words
+          // first
+          vextracti128(r1x, t1.first, 0);
+          vextracti128(r2x, t1.first, 1);
+          vpackusdw(r1x, r1x, r2x); // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          // 16 -> 8 bits
+          vpackuswb(r1x, r1x, r1x); // _mm_packus_epi16: w3 w2 w1 w0 w3 w2 w1 w0
+          vmovq(mmword_ptr[a], r1x); // store 8 bytes
+        }
+        else {
+          YmmReg r1, r2;
+          Reg a;
+          vmaxps(t1.first, t1.first, zero);
+          vmaxps(t1.second, t1.second, zero);
+          vminps(t1.first, t1.first, CPTR_AVX(elstore8));
+          vminps(t1.second, t1.second, CPTR_AVX(elstore8));
+          mov(a, ptr[regptrs]);
+          vcvtps2dq(t1.first, t1.first);   // float to int32
+          vcvtps2dq(t1.second, t1.second);
+          // we have 8 integers in t.first and another 8 in t.second
+          // second                           first
+          // d15 d14 d13 d12 d11 d10 d9 d8    d7 d6 d5 d4 d3 d2 d1 d0  // 16x32 bit integers in two ymm registers. not really 256 bits, but 2x128 bits
+          XmmReg r1x, r2x, r_lo_x;
+          // 32 -> 16 bits from ymm 8 integers to xmm 8 words
+          // first
+          vextracti128(r1x, t1.first, 0);
+          vextracti128(r2x, t1.first, 1);
+          vpackusdw(r_lo_x, r1x, r2x); // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          // second
+          vextracti128(r1x, t1.second, 0); // not perfect, lower 128 bits of t1 could be used as xmm in packus. Cannot tell jitasm that xxmN is lower ymmN
+          vextracti128(r2x, t1.second, 1);
+          vpackusdw(r1x, r1x, r2x); //  _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          // 16 -> 8 bits
+          vpackuswb(r1x, r_lo_x, r1x); // _mm_packus_epi16: w3 w2 w1 w0 w3 w2 w1 w0
+          vmovdqa(xmmword_ptr[a], r1x); // store 16 bytes
+        }
+      }
+      else if (iter.op == opStore10 // avs+
+        || iter.op == opStore12 // avs+ 
+        || iter.op == opStore14 // avs+
+        || iter.op == opStore16
+        ) {
+        auto t1 = stack.back();
+        stack.pop_back();
+        if (processSingle) {
+          YmmReg r1;
+          Reg a;
+          vmaxps(t1.first, t1.first, zero);
+          switch (iter.op) {
+          case opStore10:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore10));
+            break;
+          case opStore12:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore12));
+            break;
+          case opStore14:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore14));
+            break;
+          case opStore16:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore16));
+            break;
+          }
+          mov(a, ptr[regptrs]);
+          vcvtps2dq(t1.first, t1.first);   // min / max clamp ensures that high words are zero
+          XmmReg r1x, r2x;
+          // 32 -> 16 bits from ymm 8 integers to xmm 8 words
+          vextracti128(r1x, t1.first, 0); // not perfect, lower 128 bits of t1 could be used as xmm in packus. Cannot tell jitasm that xxmN is lower ymmN
+          vextracti128(r2x, t1.first, 1);
+          vpackusdw(r1x, r1x, r2x); //  _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          vmovdqa(xmmword_ptr[a], r1x);
+        }
+        else {
+          YmmReg r1, r2;
+          Reg a;
+          vmaxps(t1.first, t1.first, zero);
+          vmaxps(t1.second, t1.second, zero);
+          switch (iter.op) {
+          case opStore10:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore10));
+            vminps(t1.second, t1.second, CPTR_AVX(elstore10));
+            break;
+          case opStore12:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore12));
+            vminps(t1.second, t1.second, CPTR_AVX(elstore12));
+            break;
+          case opStore14:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore14));
+            vminps(t1.second, t1.second, CPTR_AVX(elstore14));
+            break;
+          case opStore16:
+            vminps(t1.first, t1.first, CPTR_AVX(elstore16));
+            vminps(t1.second, t1.second, CPTR_AVX(elstore16));
+            break;
+          }
+          mov(a, ptr[regptrs]);
+          vcvtps2dq(t1.first, t1.first);   // min / max clamp ensures that high words are zero
+          vcvtps2dq(t1.second, t1.second);
+          // we have 8 integers in t.first and another 8 in t.second
+          // second                           first
+          // d15 d14 d13 d12 d11 d10 d9 d8    d7 d6 d5 d4 d3 d2 d1 d0  // 16x32 bit integers in two ymm registers. not really 256 bits, but 2x128 bits
+          XmmReg r1x, r2x;
+          // 32 -> 16 bits from ymm 8 integers to xmm 8 words
+          // first
+          vextracti128(r1x, t1.first, 0); // not perfect, lower 128 bits of t1 could be used as xmm in packus. Cannot tell jitasm that xxmN is lower ymmN
+          vextracti128(r2x, t1.first, 1);
+          vpackusdw(r1x, r1x, r2x); //  _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          vmovdqa(xmmword_ptr[a], r1x);
+          // second
+          vextracti128(r1x, t1.second, 0);
+          vextracti128(r2x, t1.second, 1);
+          vpackusdw(r1x, r1x, r2x); //  _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          vmovdqa(xmmword_ptr[a + 16], r1x);
+        }
+      }
+      else if (iter.op == opStoreF32) {
+        auto t1 = stack.back();
+        stack.pop_back();
+        Reg a;
+        mov(a, ptr[regptrs]);
+        vmovaps(ymmword_ptr[a], t1.first);
+        if (!processSingle) {
+          vmovaps(ymmword_ptr[a + 32], t1.second); // this needs 64 byte aligned data to prevent overwrite!
+        }
+      }
+      else if (iter.op == opStoreF16) { // not supported in avs+
+        auto t1 = stack.back();
+        stack.pop_back();
+        Reg a;
+        mov(a, ptr[regptrs]);
+        vcvtps2ph(xmmword_ptr[a], t1.first, 0);
+        if (!processSingle) {
+          vcvtps2ph(xmmword_ptr[a + 16], t1.second, 0);
+        }
+      }
+      else if (iter.op == opAbs) {
+        auto &t1 = stack.back();
+        if (processSingle) {
+          vandps(t1.first, t1.first, CPTR_AVX(elabsmask));
+        }
+        else {
+          vandps(t1.first, t1.first, CPTR_AVX(elabsmask));
+          vandps(t1.second, t1.second, CPTR_AVX(elabsmask));
+        }
+      } else if (iter.op == opNeg) {
+        auto &t1 = stack.back();
+        if (processSingle) {
+          vcmpps(t1.first, t1.first, zero, _CMP_LE_OQ); // cmpleps
+          vandps(t1.first, t1.first, CPTR_AVX(elfloat_one));
+        }
+        else {
+          vcmpps(t1.first, t1.first, zero, _CMP_LE_OQ); // cmpleps
+          vcmpps(t1.second, t1.second, zero, _CMP_LE_OQ);
+          vandps(t1.first, t1.first, CPTR_AVX(elfloat_one));
+          vandps(t1.second, t1.second, CPTR_AVX(elfloat_one));
+        }
+      }
+      else if (iter.op == opAnd) {
+        if (processSingle) {
+          LogicOp_Single_Avx(vandps);
+        }
+        else {
+          LogicOp_Avx(vandps);
+        }
+      }
+      else if (iter.op == opOr) {
+        if (processSingle) {
+          LogicOp_Single_Avx(vorps);
+        }
+        else {
+          LogicOp_Avx(vorps);
+        }
+      }
+      else if (iter.op == opXor) {
+        if (processSingle) {
+          LogicOp_Single_Avx(vxorps);
+        }
+        else {
+          LogicOp_Avx(vxorps);
+        }
+      }
+      else if (iter.op == opGt) { // a > b (gt) -> b < (lt) a
+        if (processSingle) {
+          CmpOp_Single_Avx(vcmpps, _CMP_LT_OQ); // cmpltps
+        }
+        else {
+          CmpOp_Avx(vcmpps, _CMP_LT_OQ) // cmpltps
+        }
+      }
+      else if (iter.op == opLt) { // a < b (lt) -> b > (gt,nle) a
+        if (processSingle) {
+          CmpOp_Single_Avx(vcmpps, _CMP_GT_OQ); // cmpnleps
+        }
+        else {
+          CmpOp_Avx(vcmpps, _CMP_GT_OQ); // cmpnleps
+        }
+      }
+      else if (iter.op == opEq) {
+        if (processSingle) {
+          CmpOp_Single_Avx(vcmpps, _CMP_EQ_OQ);
+        }
+        else {
+          CmpOp_Avx(vcmpps, _CMP_EQ_OQ);
+        }
+      }
+      else if (iter.op == opLE) { // a <= b -> b >= (ge,nlt) a
+        if (processSingle) {
+          CmpOp_Single_Avx(vcmpps, _CMP_GE_OS); // cmpnltps
+        }
+        else {
+          CmpOp_Avx(vcmpps, _CMP_GE_OS) // cmpnltps
+        }
+      }
+      else if (iter.op == opGE) { // a >= b -> b <= (le) a
+        if (processSingle) {
+          CmpOp_Single_Avx(vcmpps, _CMP_LE_OS) // cmpleps
+        }
+        else {
+          CmpOp_Avx(vcmpps, _CMP_LE_OS) // cmpleps
+        }
+      }
+      else if (iter.op == opTernary) {
+        auto t1 = stack.back();
+        stack.pop_back();
+        auto t2 = stack.back();
+        stack.pop_back();
+        auto t3 = stack.back();
+        stack.pop_back();
+        if (processSingle) {
+          YmmReg r1;
+          vxorps(r1, r1, r1);
+          vcmpps(r1, r1, t3.first, _CMP_LT_OQ); // cmpltps -> vcmpps ... _CMP_LT_OQ
+          vandps(t2.first, t2.first, r1);
+          vandnps(r1, r1, t1.first);
+          vorps(r1, r1, t2.first);
+          stack.push_back(std::make_pair(r1, r1));
+        }
+        else {
+          YmmReg r1, r2;
+          vxorps(r1, r1, r1);
+          vxorps(r2, r2, r2);
+          vcmpps(r1, r1, t3.first, _CMP_LT_OQ); // cmpltps -> vcmpps ... _CMP_LT_OQ
+          vcmpps(r2, r2, t3.second, _CMP_LT_OQ);
+          vandps(t2.first, t2.first, r1);
+          vandps(t2.second, t2.second, r2);
+          vandnps(r1, r1, t1.first);
+          vandnps(r2, r2, t1.second);
+          vorps(r1, r1, t2.first);
+          vorps(r2, r2, t2.second);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opExp) {
+        auto &t1 = stack.back();
+        EXP_PS_AVX(t1.first);
+        if (!processSingle) {
+          EXP_PS_AVX(t1.second);
+        }
+      }
+      else if (iter.op == opLog) {
+        auto &t1 = stack.back();
+        LOG_PS_AVX(t1.first);
+        if (!processSingle) {
+          LOG_PS_AVX(t1.second);
+        }
+      }
+      else if (iter.op == opPow) {
+        auto t1 = stack.back();
+        stack.pop_back();
+        auto &t2 = stack.back();
+        LOG_PS_AVX(t2.first);
+        vmulps(t2.first, t2.first, t1.first);
+        EXP_PS_AVX(t2.first);
+        if (!processSingle) {
+          LOG_PS_AVX(t2.second);
+          vmulps(t2.second, t2.second, t1.second);
+          EXP_PS_AVX(t2.second);
+        }
+      }
+    }
+  }
+
+  void main(Reg regptrs, Reg regoffs, Reg niter)
+  {
+    YmmReg zero;
+    vpxor(zero, zero, zero);
+    Reg constptr;
+    mov(constptr, (uintptr_t)logexpconst_avx);
+
+    L("wloop");
+    cmp(niter, 0); // while(niter>0)
+    je("wend");
+    sub(niter, 1);
+
+    // process two sets, no partial input masking
+    processingLoop<false, false>(regptrs, zero, constptr);
+
+    // increase read and write pointers by 16 pixels
+    if (sizeof(void *) == 8) {
+      // x64: two 8 byte pointers in an xmm
+      int numIter = (numInputs + 1 + 1) / 2;
+
+      for (int i = 0; i < numIter; i++) {
+        XmmReg r1, r2;
+        vmovdqu(r1, xmmword_ptr[regptrs + 16 * i]);
+        vmovdqu(r2, xmmword_ptr[regoffs + 16 * i]);
+        vpaddq(r1, r1, r2); // pointers are 64 bits
+        vmovdqu(xmmword_ptr[regptrs + 16 * i], r1);
+      }
+    }
+    else {
+      // x86: four 4 byte pointers in an xmm
+      int numIter = (numInputs + 1 + 3) / 4;
+      for (int i = 0; i < numIter; i++) {
+        XmmReg r1, r2;
+        vmovdqu(r1, xmmword_ptr[regptrs + 16 * i]);
+        vmovdqu(r2, xmmword_ptr[regoffs + 16 * i]);
+        vpaddd(r1, r1, r2); // pointers are 32 bits
+        vmovdqu(xmmword_ptr[regptrs + 16 * i], r1);
+      }
+    }
+    jmp("wloop");
+    L("wend");
+
+    int nrestpixels = planewidth & 15;
+    if(nrestpixels > 8) // dual process with masking
+      processingLoop<false, true>(regptrs, zero, constptr);
+    else if (nrestpixels == 8) // single process, no masking
+      processingLoop<true, false>(regptrs, zero, constptr);
+    else // single process, masking
+      processingLoop<true, true>(regptrs, zero, constptr);
+
+    vzeroupper();
+  }
+};
+
 #endif
 
 /********************************************************************
@@ -527,7 +1364,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
 ********************************************************************/
 
 extern const AVSFunction Exprfilter_filters[] = {
-  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s", Exprfilter::Create },
+  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b", Exprfilter::Create },
   { 0 }
 };
 
@@ -595,8 +1432,15 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
     // always string
     newformat = args[next_paramindex].AsString();
   }
+  next_paramindex++;
 
-  return new Exprfilter(children, expressions, newformat, env);
+  // test parameter for avx2-less mode even with avx2 available
+  bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX2);
+  if (args[next_paramindex].Defined()) {
+    optAvx2 = args[next_paramindex].AsBool();
+  }
+
+  return new Exprfilter(children, expressions, newformat, optAvx2, env);
 
 }
 
@@ -617,14 +1461,16 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
   int src_stride[MAX_EXPR_INPUTS] = {};
 
-  const bool use_simd = !!(env->GetCPUFlags() && CPUF_SSE2); // C path only for reference
+  const bool has_sse2 = !!(env->GetCPUFlags() & CPUF_SSE2); // C path only for reference
+  const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX2) && optAvx2;
 
   int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
   int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
 
-  if (use_simd) {
-    intptr_t ptroffsets[MAX_EXPR_INPUTS + 1] = { d.vi.ComponentSize() * 8 };
+  if (has_sse2) {
+    const int pixels_per_iter = use_avx2 ? 16 : 8;
+    intptr_t ptroffsets[MAX_EXPR_INPUTS + 1] = { d.vi.ComponentSize() * pixels_per_iter }; // output
 
     for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
 
@@ -635,7 +1481,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           if (d.node[i]) {
             srcp[i] = src[i]->GetReadPtr(plane_enum);
             src_stride[i] = src[i]->GetPitch(plane_enum);
-            ptroffsets[i + 1] = d.node[i]->GetVideoInfo().ComponentSize() * 8;
+            ptroffsets[i + 1] = d.node[i]->GetVideoInfo().ComponentSize() * pixels_per_iter;
           }
         }
 
@@ -643,15 +1489,20 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         int dst_stride = dst->GetPitch(plane_enum);
         int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
         int w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
-        int niterations = (w + 7) / 8;
+        int niterations = (w + pixels_per_iter - 1) / pixels_per_iter;
+        int nfulliterations = w / pixels_per_iter;
+        int nrestpixels = w & (pixels_per_iter - 1);
 
         ExprData::ProcessLineProc proc = d.proc[plane];
 
         for (int y = 0; y < h; y++) {
-          const uint8_t *rwptrs[MAX_EXPR_INPUTS + 1] = { dstp + dst_stride * y };
+          const uint8_t *rwptrs[MAX_EXPR_INPUTS + 1] = { dstp + dst_stride * y }; // output pointer
           for (int i = 0; i < numInputs; i++)
-            rwptrs[i + 1] = srcp[i] + src_stride[i] * y;
-          proc(rwptrs, ptroffsets, niterations);
+            rwptrs[i + 1] = srcp[i] + src_stride[i] * y; // input pointers
+          if(use_avx2)
+            proc(rwptrs, ptroffsets, nfulliterations);
+          else
+            proc(rwptrs, ptroffsets, niterations); // non-AVX is not prepared to support single mode
         }
       }
       // avs+: copy plane here
@@ -1565,8 +2416,8 @@ static void foldConstants(std::vector<ExprOp> &ops) {
     }
 }
 
-Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, IScriptEnvironment *env) :
-  children(_child_array), expressions(_expr_array) {
+Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, IScriptEnvironment *env) :
+  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2) {
 
   vi = children[0]->GetVideoInfo();
   d.vi = vi;
@@ -1589,7 +2440,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
     int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
     int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
-    const int plane_enum = plane_enums[1]; // for subsampling
+    const int plane_enum = plane_enums[1]; // for subsampling check U only
 
     // check all clips against first one
     for (int i = 0; i < d.numInputs; i++) {
@@ -1667,16 +2518,38 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     }
 
 #ifdef VS_TARGET_CPU_X86
+    const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX2) && optAvx2;
+    // optAvx2 can only disable avx2 when available
+
     for (int i = 0; i < d.vi.NumComponents(); i++) {
       if (d.plane[i] == poProcess) {
-        ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags());
-        if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
+
+        const int plane_enum = plane_enums[i];
+        int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
+
+        if (use_avx2) {
+          // avx2
+          ExprEvalAvx2 ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth);
+          if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
 #ifdef VS_TARGET_OS_WINDOWS
-          d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+            d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 #else
-          d.proc[i] = (ExprData::ProcessLineProc)mmap(nullptr, ExprObj.GetCodeSize(), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_PRIVATE, 0, 0);
+            d.proc[i] = (ExprData::ProcessLineProc)mmap(nullptr, ExprObj.GetCodeSize(), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_PRIVATE, 0, 0);
 #endif
-          memcpy((void *)d.proc[i], ExprObj.GetCode(), ExprObj.GetCodeSize());
+            memcpy((void *)d.proc[i], ExprObj.GetCode(), ExprObj.GetCodeSize());
+          }
+        }
+        else {
+          // sse2, sse4
+          ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth);
+          if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
+#ifdef VS_TARGET_OS_WINDOWS
+            d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+#else
+            d.proc[i] = (ExprData::ProcessLineProc)mmap(nullptr, ExprObj.GetCodeSize(), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_PRIVATE, 0, 0);
+#endif
+            memcpy((void *)d.proc[i], ExprObj.GetCode(), ExprObj.GetCodeSize());
+          }
         }
       }
     }
