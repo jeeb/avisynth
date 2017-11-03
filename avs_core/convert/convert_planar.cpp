@@ -157,9 +157,9 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
       env->ThrowError("ConvertToY: Unknown matrix.");
     }
     // Anti-Overflow correction
-    if (matrix.g + matrix.r + matrix.b != 32768)
+    if (matrix.offset_y == 0 && matrix.g + matrix.r + matrix.b != 32768)
       matrix.g = 32768 - (matrix.r + matrix.b);
-
+    
     return;
   }
 
