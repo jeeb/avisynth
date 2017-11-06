@@ -393,7 +393,11 @@ const BYTE* VideoFrameBuffer::GetReadPtr() const { return data; }
 BYTE* VideoFrameBuffer::GetWritePtr() { ++sequence_number; return data; }
    Baked ********************/
 BYTE* VideoFrameBuffer::GetWritePtr() { InterlockedIncrement(&sequence_number); return data; }
+#ifdef SIZETMOD
+size_t VideoFrameBuffer::GetDataSize() const { return data_size; }
+#else
 int VideoFrameBuffer::GetDataSize() const { return data_size; }
+#endif
 int VideoFrameBuffer::GetSequenceNumber() const { return sequence_number; }
 int VideoFrameBuffer::GetRefcount() const { return refcount; }
 
@@ -504,7 +508,11 @@ int VideoFrame::GetHeight(int plane) const {
 
 // Generally you should not be using these two
 VideoFrameBuffer* VideoFrame::GetFrameBuffer() const { return vfb; }
-int VideoFrame::GetOffset(int plane) const { 
+#ifdef SIZETMOD
+size_t VideoFrame::GetOffset(int plane) const { 
+#else
+int VideoFrame::GetOffset(int plane) const {
+#endif
     switch (plane) {
     case PLANAR_U: case PLANAR_B: return offsetU; // G is first. Then B,R order like U,V
     case PLANAR_V: case PLANAR_R: return offsetV;
@@ -930,7 +938,11 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoFrame::GetRowSize,                  //   int               (VideoFrame::*GetRowSize)(int plane) const;
   &VideoFrame::GetHeight,                   //   int               (VideoFrame::*GetHeight)(int plane) const;
   &VideoFrame::GetFrameBuffer,              //   VideoFrameBuffer* (VideoFrame::*GetFrameBuffer)() const;
+#ifdef SIZETMOD
+  &VideoFrame::GetOffset,                   //   size_t            (VideoFrame::*GetOffset)(int plane) const;
+#else
   &VideoFrame::GetOffset,                   //   int               (VideoFrame::*GetOffset)(int plane) const;
+#endif
   &VideoFrame::GetReadPtr,                  //   const BYTE*       (VideoFrame::*VFGetReadPtr)(int plane) const;
   &VideoFrame::IsWritable,                  //   bool              (VideoFrame::*IsWritable)() const;
   &VideoFrame::GetWritePtr,                 //   BYTE*             (VideoFrame::*VFGetWritePtr)(int plane) const;

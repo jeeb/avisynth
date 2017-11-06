@@ -7,6 +7,7 @@
 // 20161005: Fallback of VideoInfo functions to defaults if no function exists
 // 20170117: global variables for VfW output OPT_xxxx
 // 20170310: new MT mode: MT_SPECIAL_MT
+// 20171103: (test with SIZETMOD define: Videoframe offsets to size_t, may affect x64)
 
 // http://www.avisynth.org
 
@@ -219,7 +220,11 @@ struct AVS_Linkage {
 // class VideoFrameBuffer
   const BYTE* (VideoFrameBuffer::*VFBGetReadPtr)() const;
   BYTE*       (VideoFrameBuffer::*VFBGetWritePtr)();
+#ifdef SIZETMOD
+  size_t      (VideoFrameBuffer::*GetDataSize)() const;
+#else
   int         (VideoFrameBuffer::*GetDataSize)() const;
+#endif
   int         (VideoFrameBuffer::*GetSequenceNumber)() const;
   int         (VideoFrameBuffer::*GetRefcount)() const;
 // end class VideoFrameBuffer
@@ -231,7 +236,11 @@ struct AVS_Linkage {
   int               (VideoFrame::*GetRowSize)(int plane) const;
   int               (VideoFrame::*GetHeight)(int plane) const;
   VideoFrameBuffer* (VideoFrame::*GetFrameBuffer)() const;
+#ifdef SIZETMOD
+  size_t            (VideoFrame::*GetOffset)(int plane) const;
+#else
   int               (VideoFrame::*GetOffset)(int plane) const;
+#endif
   const BYTE*       (VideoFrame::*VFGetReadPtr)(int plane) const;
   bool              (VideoFrame::*IsWritable)() const;
   BYTE*             (VideoFrame::*VFGetWritePtr)(int plane) const;
@@ -738,7 +747,11 @@ enum {
 
 class VideoFrameBuffer {
   BYTE* data;
+#ifdef SIZETMOD
+  size_t data_size;
+#else
   int data_size;
+#endif
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
   volatile long sequence_number;
@@ -749,14 +762,22 @@ class VideoFrameBuffer {
   volatile long refcount;
 
 protected:
+#ifdef SIZETMOD
+  VideoFrameBuffer(size_t size);
+#else
   VideoFrameBuffer(int size);
+#endif
   VideoFrameBuffer();
   ~VideoFrameBuffer();
 
 public:
   const BYTE* GetReadPtr() const AVS_BakedCode( return AVS_LinkCall(VFBGetReadPtr)() )
   BYTE* GetWritePtr() AVS_BakedCode( return AVS_LinkCall(VFBGetWritePtr)() )
+#ifdef SIZETMOD
+  size_t GetDataSize() const AVS_BakedCode(return AVS_LinkCall(GetDataSize)())
+#else
   int GetDataSize() const AVS_BakedCode( return AVS_LinkCall(GetDataSize)() )
+#endif
   int GetSequenceNumber() const AVS_BakedCode( return AVS_LinkCall(GetSequenceNumber)() )
   int GetRefcount() const AVS_BakedCode( return AVS_LinkCall(GetRefcount)() )
 
@@ -776,12 +797,27 @@ class VideoFrame {
 
   // Due to technical reasons these members are not const, but should be treated as such.
   // That means do not modify them once the class has been constructed.
-  int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
-  int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
+#ifdef SIZETMOD
+  size_t offset;
+#else
+  int offset;
+#endif
+  int pitch, row_size, height;
+#ifdef SIZETMOD
+  size_t offsetU, offsetV;  // U&V offsets are from top of picture.
+#else
+  int offsetU, offsetV;  // U&V offsets are from top of picture.
+#endif
+  int pitchUV, row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
                             // for Planar RGB pitchUV and row_sizeUV = 0, because when no VideoInfo (MakeWriteable)
                             // the decision on existance of UV is checked by zero pitch
   // AVS+ extension, does not break plugins if appended here
-  int offsetA, pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
+#ifdef SIZETMOD
+  size_t offsetA;
+#else
+  int offsetA;
+#endif
+  int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
 
   friend class PVideoFrame;
   void AddRef();
@@ -790,10 +826,17 @@ class VideoFrame {
   friend class ScriptEnvironment;
   friend class Cache;
 
+#ifdef SIZETMOD
+  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height);
+  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height, size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
+  // for Alpha
+  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height, size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, size_t _offsetA);
+#else
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height);
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
   // for Alpha
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA);
+#endif
 
   void* operator new(size_t size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
@@ -804,7 +847,11 @@ public:
 
   // generally you shouldn't use these three
   VideoFrameBuffer* GetFrameBuffer() const AVS_BakedCode( return AVS_LinkCall(GetFrameBuffer)() )
+#ifdef SIZETMOD
+  size_t GetOffset(int plane = 0) const AVS_BakedCode(return AVS_LinkCall(GetOffset)(plane))
+#else
   int GetOffset(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetOffset)(plane) )
+#endif
 
   // in plugins use env->SubFrame() -- because implementation code is only available inside avisynth.dll. Doh!
   VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const;

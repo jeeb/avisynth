@@ -35,6 +35,9 @@
 // new color spaces added in Avisynth 2.60. By no means is this document
 // completely Avisynth 2.60 compliant.
 // 170103: added new CPU constants (FMA4, AVX512xx)
+// 171102: define SIZETMOD (experimental. Offsets are size_t instead of int (x64 is different!)
+// 171106: avs_get_row_size calls into avs_get_row_size_p, instead of direct field access
+// 171106: avs_get_height calls into avs_get_row_size_p, instead of direct field access
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -516,7 +519,11 @@ AVSC_API(int, avs_bits_per_component)(const AVS_VideoInfo * p);
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrameBuffer {
   BYTE * data;
+#ifdef SIZETMOD
+  size_t data_size;
+#else
   int data_size;
+#endif
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
   volatile long sequence_number;
@@ -531,12 +538,28 @@ typedef struct AVS_VideoFrameBuffer {
 typedef struct AVS_VideoFrame {
   volatile long refcount;
   AVS_VideoFrameBuffer * vfb;
-  int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
+#ifdef SIZETMOD
+  size_t offset;
+#else
+  int offset;
+#endif
+  int pitch, row_size, height;
+#ifdef SIZETMOD
+  size_t offsetU, offsetV;
+#else
+  int offsetU, offsetV;
+#endif
+  int pitchUV;  // U&V offsets are from top of picture.
   int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
                             // for Planar RGB pitchUV and row_sizeUV = 0, because when no VideoInfo (MakeWriteable)
                             // the decision on existance of UV is checked by zero pitch
   // AVS+ extension, avisynth.h: class does not break plugins if appended here
-  int offsetA, pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
+#ifdef SIZETMOD
+  size_t offsetA;
+#else
+  int offsetA;
+#endif
+  int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
@@ -547,13 +570,28 @@ AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
 
 AVSC_API(int, avs_get_row_size_p)(const AVS_VideoFrame * p, int plane);
 
+// 171106: this inline breaks because it accesses directly row_size.
+// When x64 and offset is size_t, row_size is misplaced
+#if 0
 AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
         return p->row_size; }
+#else
+AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
+        return avs_get_row_size_p(p, 0); }
+#endif
 
 AVSC_API(int, avs_get_height_p)(const AVS_VideoFrame * p, int plane);
 
+// 171106: this inline breaks because it accesses directly row_size.
+// When x64 and offset is size_t, height is misplaced
+#if 0
 AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
         return p->height;}
+#else
+AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
+  return avs_get_height_p(p, 0);
+}
+#endif
 
 AVSC_API(const BYTE *, avs_get_read_ptr_p)(const AVS_VideoFrame * p, int plane);
 
