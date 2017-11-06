@@ -77,8 +77,8 @@ instr(t1.first, t1.first); \
 instr(t1.second, t1.second);
 
 #define OneArgOp_Single(instr) \
-auto &t1 = stack.back(); \
-instr(t1.first, t1.first);
+auto &t1 = stack1.back(); \
+instr(t1, t1);
 
 #define TwoArgOp(instr) \
 auto t1 = stack.back(); \
@@ -88,10 +88,10 @@ instr(t2.first, t1.first); \
 instr(t2.second, t1.second);
 
 #define TwoArgOp_Single(instr) \
-auto t1 = stack.back(); \
-stack.pop_back(); \
-auto &t2 = stack.back(); \
-instr(t2.first, t1.first);
+auto t1 = stack1.back(); \
+stack1.pop_back(); \
+auto &t2 = stack1.back(); \
+instr(t2, t1);
 
 #define TwoArgOp_Avx(instr) \
 auto t1 = stack.back(); \
@@ -101,10 +101,10 @@ instr(t2.first, t2.first, t1.first); \
 instr(t2.second, t2.second, t1.second);
 
 #define TwoArgOp_Single_Avx(instr) \
-auto t1 = stack.back(); \
-stack.pop_back(); \
-auto &t2 = stack.back(); \
-instr(t2.first, t2.first, t1.first);
+auto t1 = stack1.back(); \
+stack1.pop_back(); \
+auto &t2 = stack1.back(); \
+instr(t2, t2, t1);
 
 #define CmpOp(instr) \
 auto t1 = stack.back(); \
@@ -118,13 +118,13 @@ andps(t1.second, CPTR(elfloat_one)); \
 stack.push_back(t1);
 
 #define CmpOp_Single(instr) \
-auto t1 = stack.back(); \
-stack.pop_back(); \
-auto t2 = stack.back(); \
-stack.pop_back(); \
-instr(t1.first, t2.first); \
-andps(t1.first, CPTR(elfloat_one)); \
-stack.push_back(t1);
+auto t1 = stack1.back(); \
+stack1.pop_back(); \
+auto t2 = stack1.back(); \
+stack1.pop_back(); \
+instr(t1, t2); \
+andps(t1, CPTR(elfloat_one)); \
+stack1.push_back(t1);
 
 #define CmpOp_Avx(instr, op) \
 auto t1 = stack.back(); \
@@ -138,13 +138,13 @@ vandps(t1.second, t1.second, CPTR_AVX(elfloat_one)); \
 stack.push_back(t1);
 
 #define CmpOp_Single_Avx(instr, op) \
-auto t1 = stack.back(); \
-stack.pop_back(); \
-auto t2 = stack.back(); \
-stack.pop_back(); \
-instr(t1.first, t1.first, t2.first, op); \
-vandps(t1.first, t1.first, CPTR_AVX(elfloat_one)); \
-stack.push_back(t1);
+auto t1 = stack1.back(); \
+stack1.pop_back(); \
+auto t2 = stack1.back(); \
+stack1.pop_back(); \
+instr(t1, t1, t2, op); \
+vandps(t1, t1, CPTR_AVX(elfloat_one)); \
+stack1.push_back(t1);
 
 #define LogicOp(instr) \
 auto t1 = stack.back(); \
@@ -162,15 +162,15 @@ andps(t1.second, CPTR(elfloat_one)); \
 stack.push_back(t1);
 
 #define LogicOp_Single(instr) \
-auto t1 = stack.back(); \
-stack.pop_back(); \
-auto t2 = stack.back(); \
-stack.pop_back(); \
-cmpnleps(t1.first, zero); \
-cmpnleps(t2.first, zero); \
-instr(t1.first, t2.first); \
-andps(t1.first, CPTR(elfloat_one)); \
-stack.push_back(t1);
+auto t1 = stack1.back(); \
+stack1.pop_back(); \
+auto t2 = stack1.back(); \
+stack1.pop_back(); \
+cmpnleps(t1, zero); \
+cmpnleps(t2, zero); \
+instr(t1, t2); \
+andps(t1, CPTR(elfloat_one)); \
+stack1.push_back(t1);
 
 #define LogicOp_Avx(instr) \
 auto t1 = stack.back(); \
@@ -188,15 +188,15 @@ vandps(t1.second, t1.second, CPTR_AVX(elfloat_one)); \
 stack.push_back(t1);
 
 #define LogicOp_Single_Avx(instr) \
-auto t1 = stack.back(); \
-stack.pop_back(); \
-auto t2 = stack.back(); \
-stack.pop_back(); \
-vcmpps(t1.first, t1.first, zero, _CMP_GT_OQ); \
-vcmpps(t2.first, t2.first, zero, _CMP_GT_OQ); \
-instr(t1.first, t1.first, t2.first); \
-vandps(t1.first, t1.first, CPTR_AVX(elfloat_one)); \
-stack.push_back(t1);
+auto t1 = stack1.back(); \
+stack1.pop_back(); \
+auto t2 = stack1.back(); \
+stack1.pop_back(); \
+vcmpps(t1, t1, zero, _CMP_GT_OQ); \
+vcmpps(t2, t2, zero, _CMP_GT_OQ); \
+instr(t1, t1, t2); \
+vandps(t1, t1, CPTR_AVX(elfloat_one)); \
+stack1.push_back(t1);
 
 enum {
     elabsmask, elc7F, elmin_norm_pos, elinv_mant_mask,
@@ -785,6 +785,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
   __forceinline void processingLoop(Reg &regptrs, YmmReg &zero, Reg &constptr)
   {
     std::list<std::pair<YmmReg, YmmReg>> stack;
+    std::list<YmmReg> stack1;
 
     const bool maskIt = (maskUnused && ((planewidth & 7) != 0));
     const int mask = ((1 << (planewidth & 7)) - 1);
@@ -808,7 +809,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vcvtdq2ps(r1, r1);
           if (maskIt)
             vblendps(r1, zero, r1, mask);
-          stack.push_back(std::make_pair(r1, r1));
+          stack1.push_back(r1);
         }
         else {
           XmmReg r1x;
@@ -846,7 +847,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vcvtdq2ps(r1, r1);
           if (maskIt)
             vblendps(r1, zero, r1, mask);
-          stack.push_back(std::make_pair(r1, r1));
+          stack1.push_back(r1);
         }
         else {
           XmmReg r1x;
@@ -877,7 +878,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vmovdqa(r1, ymmword_ptr[a]);
           if (maskIt)
             vblendps(r1, zero, r1, mask);
-          stack.push_back(std::make_pair(r1, r1));
+          stack1.push_back(r1);
         }
         else {
           YmmReg r1, r2;
@@ -899,7 +900,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vcvtph2ps(r1, xmmword_ptr[a]);
           if (maskIt)
             vblendps(r1, zero, r1, mask);
-          stack.push_back(std::make_pair(r1, r1));
+          stack1.push_back(r1);
         }
         else {
           YmmReg r1, r2;
@@ -920,7 +921,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           mov(a, iter.e.ival);
           vmovd(r1x, a);
           vbroadcastss(r1, r1x);
-          stack.push_back(std::make_pair(r1,r1));
+          stack1.push_back(r1);
         }
         else {
           YmmReg r1, r2;
@@ -934,13 +935,14 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opDup) {
-        auto p = std::next(stack.rbegin(), iter.e.ival);
         if (processSingle) {
+          auto p = std::next(stack1.rbegin(), iter.e.ival);
           YmmReg r1;
-          vmovaps(r1, p->first);
-          stack.push_back(std::make_pair(r1, r1));
+          vmovaps(r1, *p);
+          stack1.push_back(r1);
         }
         else {
+          auto p = std::next(stack.rbegin(), iter.e.ival);
           YmmReg r1, r2;
           vmovaps(r1, p->first);
           vmovaps(r2, p->second);
@@ -948,7 +950,10 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opSwap) {
-        std::swap(stack.back(), *std::next(stack.rbegin(), iter.e.ival));
+        if(processSingle)
+          std::swap(stack1.back(), *std::next(stack1.rbegin(), iter.e.ival));
+        else
+          std::swap(stack.back(), *std::next(stack.rbegin(), iter.e.ival));
       }
       else if (iter.op == opAdd) {
         if (processSingle) {
@@ -999,12 +1004,13 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opSqrt) {
-        auto &t1 = stack.back();
         if (processSingle) {
-          vmaxps(t1.first, t1.first, zero);
-          vsqrtps(t1.first, t1.first);
+          auto &t1 = stack1.back();
+          vmaxps(t1, t1, zero);
+          vsqrtps(t1, t1);
         }
         else {
+          auto &t1 = stack.back();
           vmaxps(t1.first, t1.first, zero);
           vmaxps(t1.second, t1.second, zero);
           vsqrtps(t1.first, t1.first);
@@ -1012,27 +1018,27 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opStore8) {
-        auto t1 = stack.back();
-        stack.pop_back();
         if (processSingle) {
-          YmmReg r1;
+          auto t1 = stack1.back();
+          stack1.pop_back();
           Reg a;
-          vmaxps(t1.first, t1.first, zero);
-          vminps(t1.first, t1.first, CPTR_AVX(elstore8));
+          vmaxps(t1, t1, zero);
+          vminps(t1, t1, CPTR_AVX(elstore8));
           mov(a, ptr[regptrs]);
-          vcvtps2dq(t1.first, t1.first);   // float to int32
+          vcvtps2dq(t1, t1);   // float to int32
           XmmReg r1x, r2x;
           // 32 -> 16 bits from ymm 8 integers to xmm 8 words
           // first
-          vextracti128(r1x, t1.first, 0);
-          vextracti128(r2x, t1.first, 1);
+          vextracti128(r1x, t1, 0);
+          vextracti128(r2x, t1, 1);
           vpackusdw(r1x, r1x, r2x); // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
           // 16 -> 8 bits
           vpackuswb(r1x, r1x, r1x); // _mm_packus_epi16: w3 w2 w1 w0 w3 w2 w1 w0
           vmovq(mmword_ptr[a], r1x); // store 8 bytes
         }
         else {
-          YmmReg r1, r2;
+          auto t1 = stack.back();
+          stack.pop_back();
           Reg a;
           vmaxps(t1.first, t1.first, zero);
           vmaxps(t1.second, t1.second, zero);
@@ -1064,37 +1070,37 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         || iter.op == opStore14 // avs+
         || iter.op == opStore16
         ) {
-        auto t1 = stack.back();
-        stack.pop_back();
         if (processSingle) {
-          YmmReg r1;
+          auto t1 = stack1.back();
+          stack1.pop_back();
           Reg a;
-          vmaxps(t1.first, t1.first, zero);
+          vmaxps(t1, t1, zero);
           switch (iter.op) {
           case opStore10:
-            vminps(t1.first, t1.first, CPTR_AVX(elstore10));
+            vminps(t1, t1, CPTR_AVX(elstore10));
             break;
           case opStore12:
-            vminps(t1.first, t1.first, CPTR_AVX(elstore12));
+            vminps(t1, t1, CPTR_AVX(elstore12));
             break;
           case opStore14:
-            vminps(t1.first, t1.first, CPTR_AVX(elstore14));
+            vminps(t1, t1, CPTR_AVX(elstore14));
             break;
           case opStore16:
-            vminps(t1.first, t1.first, CPTR_AVX(elstore16));
+            vminps(t1, t1, CPTR_AVX(elstore16));
             break;
           }
           mov(a, ptr[regptrs]);
-          vcvtps2dq(t1.first, t1.first);   // min / max clamp ensures that high words are zero
+          vcvtps2dq(t1, t1);   // min / max clamp ensures that high words are zero
           XmmReg r1x, r2x;
           // 32 -> 16 bits from ymm 8 integers to xmm 8 words
-          vextracti128(r1x, t1.first, 0); // not perfect, lower 128 bits of t1 could be used as xmm in packus. Cannot tell jitasm that xxmN is lower ymmN
-          vextracti128(r2x, t1.first, 1);
+          vextracti128(r1x, t1, 0); // not perfect, lower 128 bits of t1 could be used as xmm in packus. Cannot tell jitasm that xxmN is lower ymmN
+          vextracti128(r2x, t1, 1);
           vpackusdw(r1x, r1x, r2x); //  _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
           vmovdqa(xmmword_ptr[a], r1x);
         }
         else {
-          YmmReg r1, r2;
+          auto t1 = stack.back();
+          stack.pop_back();
           Reg a;
           vmaxps(t1.first, t1.first, zero);
           vmaxps(t1.second, t1.second, zero);
@@ -1137,41 +1143,55 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opStoreF32) {
-        auto t1 = stack.back();
-        stack.pop_back();
-        Reg a;
-        mov(a, ptr[regptrs]);
-        vmovaps(ymmword_ptr[a], t1.first);
-        if (!processSingle) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          vmovaps(ymmword_ptr[a], t1);
+        } else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          vmovaps(ymmword_ptr[a], t1.first);
           vmovaps(ymmword_ptr[a + 32], t1.second); // this needs 64 byte aligned data to prevent overwrite!
         }
       }
       else if (iter.op == opStoreF16) { // not supported in avs+
-        auto t1 = stack.back();
-        stack.pop_back();
-        Reg a;
-        mov(a, ptr[regptrs]);
-        vcvtps2ph(xmmword_ptr[a], t1.first, 0);
-        if (!processSingle) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          vcvtps2ph(xmmword_ptr[a], t1, 0);
+        } else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          vcvtps2ph(xmmword_ptr[a], t1.first, 0);
           vcvtps2ph(xmmword_ptr[a + 16], t1.second, 0);
         }
       }
       else if (iter.op == opAbs) {
-        auto &t1 = stack.back();
         if (processSingle) {
-          vandps(t1.first, t1.first, CPTR_AVX(elabsmask));
+          auto &t1 = stack1.back();
+          vandps(t1, t1, CPTR_AVX(elabsmask));
         }
         else {
+          auto &t1 = stack.back();
           vandps(t1.first, t1.first, CPTR_AVX(elabsmask));
           vandps(t1.second, t1.second, CPTR_AVX(elabsmask));
         }
       } else if (iter.op == opNeg) {
-        auto &t1 = stack.back();
         if (processSingle) {
-          vcmpps(t1.first, t1.first, zero, _CMP_LE_OQ); // cmpleps
-          vandps(t1.first, t1.first, CPTR_AVX(elfloat_one));
+          auto &t1 = stack1.back();
+          vcmpps(t1, t1, zero, _CMP_LE_OQ); // cmpleps
+          vandps(t1, t1, CPTR_AVX(elfloat_one));
         }
         else {
+          auto &t1 = stack.back();
           vcmpps(t1.first, t1.first, zero, _CMP_LE_OQ); // cmpleps
           vcmpps(t1.second, t1.second, zero, _CMP_LE_OQ);
           vandps(t1.first, t1.first, CPTR_AVX(elfloat_one));
@@ -1243,22 +1263,28 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opTernary) {
-        auto t1 = stack.back();
-        stack.pop_back();
-        auto t2 = stack.back();
-        stack.pop_back();
-        auto t3 = stack.back();
-        stack.pop_back();
         if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto t2 = stack1.back();
+          stack1.pop_back();
+          auto t3 = stack1.back();
+          stack1.pop_back();
           YmmReg r1;
           vxorps(r1, r1, r1);
-          vcmpps(r1, r1, t3.first, _CMP_LT_OQ); // cmpltps -> vcmpps ... _CMP_LT_OQ
-          vandps(t2.first, t2.first, r1);
-          vandnps(r1, r1, t1.first);
-          vorps(r1, r1, t2.first);
-          stack.push_back(std::make_pair(r1, r1));
+          vcmpps(r1, r1, t3, _CMP_LT_OQ); // cmpltps -> vcmpps ... _CMP_LT_OQ
+          vandps(t2, t2, r1);
+          vandnps(r1, r1, t1);
+          vorps(r1, r1, t2);
+          stack1.push_back(r1);
         }
         else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto t2 = stack.back();
+          stack.pop_back();
+          auto t3 = stack.back();
+          stack.pop_back();
           YmmReg r1, r2;
           vxorps(r1, r1, r1);
           vxorps(r2, r2, r2);
@@ -1274,27 +1300,41 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opExp) {
-        auto &t1 = stack.back();
-        EXP_PS_AVX(t1.first);
-        if (!processSingle) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          EXP_PS_AVX(t1);
+        }
+        else {
+          auto &t1 = stack.back();
+          EXP_PS_AVX(t1.first);
           EXP_PS_AVX(t1.second);
         }
       }
       else if (iter.op == opLog) {
-        auto &t1 = stack.back();
-        LOG_PS_AVX(t1.first);
-        if (!processSingle) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          LOG_PS_AVX(t1);
+        } else {
+          auto &t1 = stack.back();
+          LOG_PS_AVX(t1.first);
           LOG_PS_AVX(t1.second);
         }
       }
       else if (iter.op == opPow) {
-        auto t1 = stack.back();
-        stack.pop_back();
-        auto &t2 = stack.back();
-        LOG_PS_AVX(t2.first);
-        vmulps(t2.first, t2.first, t1.first);
-        EXP_PS_AVX(t2.first);
-        if (!processSingle) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto &t2 = stack1.back();
+          LOG_PS_AVX(t2);
+          vmulps(t2, t2, t1);
+          EXP_PS_AVX(t2);
+        } else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto &t2 = stack.back();
+          LOG_PS_AVX(t2.first);
+          vmulps(t2.first, t2.first, t1.first);
+          EXP_PS_AVX(t2.first);
           LOG_PS_AVX(t2.second);
           vmulps(t2.second, t2.second, t1.second);
           EXP_PS_AVX(t2.second);
@@ -1302,7 +1342,103 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
       }
     }
   }
+/*
+In brief: 
+jitasm was modded to accept avx_epilog_=true for code generation
 
+Why: couldn't use vzeroupper because prolog/epilog was saving all xmm6:xmm15 registers even if they were not used at all
+Why2: movaps was generated instead of vmovaps for prolog/epilog
+Why3: internal register reordering/saving was non-vex encoded
+All these issues resulted in AVX->SSE2 penalty
+
+From MSDN:
+XMM6:XMM15, YMM6:YMM15 rules for x64:
+Nonvolatile (XMM), Volatile (upper half of YMM)
+XMM6:XMM15 Must be preserved as needed by callee. 
+YMM registers must be preserved as needed by caller. (they do not need to be preserved)
+
+Problem:
+- Jitasm saves xmm6..xmm15 when vzeroupper is used,even if only an xmm0 is used (Why?)
+No problem (looking at the disassembly list):
+- when there is no vzeroupper, then the xmm6:xmm11 is properly saved/restored in prolog/epilog but only
+  if ymm6:ymm11 (in this example) is used. If no register is used over xmm6/ymm6 then xmm registers are not saved at all.
+- question: does it have any penalty when movaps is used w/o vzeroupper?
+  The epilog generates movaps
+  movaps      xmm11,xmmword ptr [rbx-10h] 
+
+0000000002430000  push        rbp
+0000000002430001  mov         rbp,rsp
+0000000002430004  push        rbx
+0000000002430005  lea         rbx,[rsp-8]
+000000000243000A  sub         rsp,0A8h
+0000000002430011  movaps      xmmword ptr [rbx-0A0h],xmm6
+0000000002430018  movaps      xmmword ptr [rbx-90h],xmm7
+000000000243001F  movaps      xmmword ptr [rbx-80h],xmm8
+0000000002430024  movaps      xmmword ptr [rbx-70h],xmm9
+0000000002430029  movaps      xmmword ptr [rbx-60h],xmm10
+000000000243002E  movaps      xmmword ptr [rbx-50h],xmm11
+0000000002430033  movaps      xmmword ptr [rbx-40h],xmm12
+0000000002430038  movaps      xmmword ptr [rbx-30h],xmm13
+000000000243003D  movaps      xmmword ptr [rbx-20h],xmm14
+0000000002430042  movaps      xmmword ptr [rbx-10h],xmm15
+-- end of jitasm generated prolog
+
+-- PF AVX+: passing avx_epilog_ = true for codegen, vmovaps is generated instead of movaps
+0000000001E60010  vmovaps     xmmword ptr [rbx-60h],xmm6
+0000000001E60015  vmovaps     xmmword ptr [rbx-50h],xmm7
+0000000001E6001A  vmovaps     xmmword ptr [rbx-40h],xmm8
+0000000001E6001F  vmovaps     xmmword ptr [rbx-30h],xmm9
+0000000001E60024  vmovaps     xmmword ptr [rbx-20h],xmm10
+0000000001E60029  vmovaps     xmmword ptr [rbx-10h],xmm11
+
+// PF comment: user's code like this:
+  YmmReg zero;
+  vpxor(zero, zero, zero);
+  Reg constptr;
+  mov(constptr, (uintptr_t)logexpconst_avx);
+  vzeroupper();
+And the generated instructions:
+0000000002430047  vpxor       ymm0,ymm0,ymm0
+000000000243004B  mov         rax,7FECCBD15C0h
+0000000002430055  vzeroupper
+Note: Don't use vzeroupper manually. When vzeroupper is issued manually, jitasm is not too generous: marks all xmm6:xmm15 registers as used
+      and epilog and prolog will save all of them, even if none of those xmm/ymm registers are used in the code.
+      Modded jitasm: pass avx_epilog_ = true for codegen, it will issue vzeroupper automatically (and has other benefits)
+
+-- start of jitasm generated epilog (old)
+0000000002430058  movaps      xmm15,xmmword ptr [rbx-10h]
+000000000243005D  movaps      xmm14,xmmword ptr [rbx-20h]
+0000000002430062  movaps      xmm13,xmmword ptr [rbx-30h]
+0000000002430067  movaps      xmm12,xmmword ptr [rbx-40h]
+000000000243006C  movaps      xmm11,xmmword ptr [rbx-50h]
+0000000002430071  movaps      xmm10,xmmword ptr [rbx-60h]
+0000000002430076  movaps      xmm9,xmmword ptr [rbx-70h]
+000000000243007B  movaps      xmm8,xmmword ptr [rbx-80h]
+0000000002430080  movaps      xmm7,xmmword ptr [rbx-90h]
+0000000002430087  movaps      xmm6,xmmword ptr [rbx-0A0h]
+000000000243008E  add         rsp,0A8h
+0000000002430095  pop         rbx
+0000000002430096  pop         rbp
+0000000002430097  ret  
+-- end of jitasm generated epilog (old)
+
+PF: modded jitasm (calling codegen with avx_epilog_ = true) generates vmovaps instead of movaps and and automatic vzeroupper before the ret instruction
+generated epilog example (new): 
+0000000001E70613  vmovaps     xmm11,xmmword ptr [rbx-10h]
+0000000001E70618  vmovaps     xmm10,xmmword ptr [rbx-20h]
+0000000001E7061D  vmovaps     xmm9,xmmword ptr [rbx-30h]
+0000000001E70622  vmovaps     xmm8,xmmword ptr [rbx-40h]
+0000000001E70627  vmovaps     xmm7,xmmword ptr [rbx-50h]
+0000000001E7062C  vmovaps     xmm6,xmmword ptr [rbx-60h]
+0000000001E70631  add         rsp,68h
+0000000001E70635  pop         rdi
+0000000001E70636  pop         rsi
+0000000001E70637  pop         rbx
+0000000001E70638  pop         rbp
+0000000001E70639  vzeroupper
+0000000001E7063C  ret
+
+*/
   void main(Reg regptrs, Reg regoffs, Reg niter)
   {
     YmmReg zero;
@@ -1344,16 +1480,18 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
     }
     jmp("wloop");
     L("wend");
-
+    
     int nrestpixels = planewidth & 15;
     if(nrestpixels > 8) // dual process with masking
       processingLoop<false, true>(regptrs, zero, constptr);
     else if (nrestpixels == 8) // single process, no masking
       processingLoop<true, false>(regptrs, zero, constptr);
-    else // single process, masking
+    else if (nrestpixels > 0) // single process, masking
       processingLoop<true, true>(regptrs, zero, constptr);
-
-    vzeroupper();
+    // bug in jitasm?
+    // on x64, when this is here, debug throws an assert, that a register save/load has an
+    // operand size 8 bit, instead of 128 (XMM) or 256 (YMM)
+    // vzeroupper(); // don't use it directly. Generate code with avx_epilog_=true
   }
 };
 
@@ -1499,10 +1637,12 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           const uint8_t *rwptrs[MAX_EXPR_INPUTS + 1] = { dstp + dst_stride * y }; // output pointer
           for (int i = 0; i < numInputs; i++)
             rwptrs[i + 1] = srcp[i] + src_stride[i] * y; // input pointers
-          if(use_avx2)
-            proc(rwptrs, ptroffsets, nfulliterations);
-          else
-            proc(rwptrs, ptroffsets, niterations); // non-AVX is not prepared to support single mode
+          if(use_avx2) {
+            proc(rwptrs, ptroffsets, nfulliterations); // parameters are put directly in registers
+          }
+          else {
+            proc(rwptrs, ptroffsets, niterations); // todo: non-AVX path is not prepared to support single mode
+          }
         }
       }
       // avs+: copy plane here
@@ -2528,9 +2668,10 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
 
         if (use_avx2) {
+
           // avx2
           ExprEvalAvx2 ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth);
-          if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
+          if (ExprObj.GetCode(true) && ExprObj.GetCodeSize()) { // PF modded jitasm. true: epilog with vmovaps, and vzeroupper
 #ifdef VS_TARGET_OS_WINDOWS
             d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 #else

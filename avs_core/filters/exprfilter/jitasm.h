@@ -1640,6 +1640,7 @@ struct Frontend
 	typedef std::vector<Instr> InstrList;
 	InstrList				instrs_;
 	bool					assembled_;
+  bool avx_epilog_; // PF AVS+: avoid AVX transition penalties
 	detail::CodeBuffer		codebuff_;
 	detail::SpinLock		codelock_;
 	detail::StackManager	stack_manager_;
@@ -1823,8 +1824,9 @@ struct Frontend
 	}
 
 	/// Get assembled code
-	void *GetCode()
+	void *GetCode(bool force_avx_epilog = false)
 	{
+    avx_epilog_ = force_avx_epilog; // PF AVS+: anti penalty
 		if (!assembled_) {
 			Assemble();
 		}
@@ -7324,8 +7326,11 @@ namespace compiler
 		void Move(PhysicalRegID dst_reg, PhysicalRegID src_reg, OpdSize size)
 		{
 			if (size == O_SIZE_128) {
-				f_->movaps(XmmReg(dst_reg), XmmReg(src_reg));
-			} else if (size == O_SIZE_256) {
+        if(f_->avx_epilog_) // PF AVS+ anti AVX-SSE2 penalty
+				  f_->vmovaps(XmmReg(dst_reg), XmmReg(src_reg));
+        else
+          f_->movaps(XmmReg(dst_reg), XmmReg(src_reg));
+      } else if (size == O_SIZE_256) {
 				f_->vmovaps(YmmReg(dst_reg), YmmReg(src_reg));
 			} else {
 				JITASM_ASSERT(0);
@@ -7335,9 +7340,17 @@ namespace compiler
 		void Swap(PhysicalRegID reg1, PhysicalRegID reg2, OpdSize size)
 		{
 			if (size == O_SIZE_128) {
-				f_->xorps(XmmReg(reg1), XmmReg(reg2));
-				f_->xorps(XmmReg(reg2), XmmReg(reg1));
-				f_->xorps(XmmReg(reg1), XmmReg(reg2));
+        if (f_->avx_epilog_) // PF AVS+ anti AVX-SSE2 penalty
+        {
+          f_->vxorps(XmmReg(reg1), XmmReg(reg1), XmmReg(reg2));
+          f_->vxorps(XmmReg(reg2), XmmReg(reg2), XmmReg(reg1));
+          f_->vxorps(XmmReg(reg1), XmmReg(reg1), XmmReg(reg2));
+        }
+        else {
+          f_->xorps(XmmReg(reg1), XmmReg(reg2));
+          f_->xorps(XmmReg(reg2), XmmReg(reg1));
+          f_->xorps(XmmReg(reg1), XmmReg(reg2));
+        }
 			} else if (size == O_SIZE_256) {
 				f_->vxorps(YmmReg(reg1), YmmReg(reg1), YmmReg(reg2));
 				f_->vxorps(YmmReg(reg2), YmmReg(reg1), YmmReg(reg2));
@@ -7351,8 +7364,11 @@ namespace compiler
 		{
 			const OpdSize size = var_manager_->GetVarSize(2, var);
 			if (size == O_SIZE_128) {
-				f_->movaps(XmmReg(dst_reg), f_->xmmword_ptr[var_manager_->GetSpillSlot(2, var)]);
-			} else if (size == O_SIZE_256) {
+        if (f_->avx_epilog_) // PF AVS+ anti AVX-SSE2 penalty
+          f_->vmovaps(XmmReg(dst_reg), f_->xmmword_ptr[var_manager_->GetSpillSlot(2, var)]);
+        else
+          f_->movaps(XmmReg(dst_reg), f_->xmmword_ptr[var_manager_->GetSpillSlot(2, var)]);
+      } else if (size == O_SIZE_256) {
 				f_->vmovaps(YmmReg(dst_reg), f_->ymmword_ptr[var_manager_->GetSpillSlot(2, var)]);
 			} else {
 				JITASM_ASSERT(0);
@@ -7363,8 +7379,11 @@ namespace compiler
 		{
 			const OpdSize size = var_manager_->GetVarSize(2, var);
 			if (size == O_SIZE_128) {
-				f_->movaps(f_->xmmword_ptr[var_manager_->GetSpillSlot(2, var)], XmmReg(src_reg));
-			} else if (size == O_SIZE_256) {
+        if (f_->avx_epilog_) // PF AVS+ anti AVX-SSE2 penalty
+          f_->vmovaps(f_->xmmword_ptr[var_manager_->GetSpillSlot(2, var)], XmmReg(src_reg));
+        else
+          f_->movaps(f_->xmmword_ptr[var_manager_->GetSpillSlot(2, var)], XmmReg(src_reg));
+      } else if (size == O_SIZE_256) {
 				f_->vmovaps(f_->ymmword_ptr[var_manager_->GetSpillSlot(2, var)], YmmReg(src_reg));
 			} else {
 				JITASM_ASSERT(0);
@@ -7610,8 +7629,11 @@ namespace compiler
 		uint32 xmm_reg_mask = preserved_reg[2];
 		for (size_t i = 0; xmm_reg_mask != 0; ++i) {
 			uint32 reg_id = detail::bit_scan_forward(xmm_reg_mask);
-			f.movaps(f.xmmword_ptr[preserved_reg_stack + 16 * i], XmmReg(static_cast<PhysicalRegID>(reg_id)));
-			xmm_reg_mask &= ~(1 << reg_id);
+      if (f.avx_epilog_) // PF AVS+ anti AVX->SSE2 penalty
+        f.vmovaps(f.xmmword_ptr[preserved_reg_stack + 16 * i], XmmReg(static_cast<PhysicalRegID>(reg_id)));
+      else
+        f.movaps(f.xmmword_ptr[preserved_reg_stack + 16 * i], XmmReg(static_cast<PhysicalRegID>(reg_id)));
+      xmm_reg_mask &= ~(1 << reg_id);
 		}
 #endif
 	}
@@ -7636,7 +7658,11 @@ namespace compiler
 
 		// Insert restore instruction by inverse order
 		while (!regs.empty()) {
-			f.movaps(XmmReg(static_cast<PhysicalRegID>(regs.back())), f.xmmword_ptr[preserved_reg_stack + 16 * (regs.size() - 1)]);
+      // PF AVS+: generate vmovaps to avoid AVX->SSE2 penalty
+      if (f.avx_epilog_)
+        f.vmovaps(XmmReg(static_cast<PhysicalRegID>(regs.back())), f.xmmword_ptr[preserved_reg_stack + 16 * (regs.size() - 1)]);
+      else
+        f.movaps(XmmReg(static_cast<PhysicalRegID>(regs.back())), f.xmmword_ptr[preserved_reg_stack + 16 * (regs.size() - 1)]);
 			regs.pop_back();
 		}
 
@@ -7663,7 +7689,9 @@ namespace compiler
 
 		// Restore frame pointer
 		f.pop(f.zbp);
-
+    // PF AVS+: generate avoid AVX->SSE2 penalty
+    if(f.avx_epilog_)
+      f.vzeroupper();
 		f.ret();
 	}
 
