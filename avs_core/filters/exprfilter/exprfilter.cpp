@@ -6,6 +6,9 @@
 * Additions and differences to VS r39 version:
 * ------------------------------
 * (similar features to the masktools mt_lut family syntax)
+* Operator aliases:
+*   Caret (^) can be used like pow
+*   For equality check "==" can be used like "="
 * Built-in constants
 *   ymin, ymax (ymin_a .. ymin_z for individual clips) - the usual luma limits (16..235 or scaled equivalents)
 *   cmin, cmax (cmin_a .. cmin_z) - chroma limits (16..240 or scaled equivalents)
@@ -1932,7 +1935,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             ONE_ARG_OP(opExp);
         else if (tokens[i] == "log")
             ONE_ARG_OP(opLog);
-        else if (tokens[i] == "pow")
+        else if (tokens[i] == "pow" || tokens[i] == "^") // avs+: ^ can be used for power
             TWO_ARG_OP(opPow);
         else if (tokens[i] == "sqrt")
             ONE_ARG_OP(opSqrt);
@@ -1942,7 +1945,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             TWO_ARG_OP(opGt);
         else if (tokens[i] == "<")
             TWO_ARG_OP(opLt);
-        else if (tokens[i] == "=")
+        else if (tokens[i] == "=" || tokens[i] == "==") // avs+: == can be used to equality check
             TWO_ARG_OP(opEq);
         else if (tokens[i] == ">=")
             TWO_ARG_OP(opGE);
