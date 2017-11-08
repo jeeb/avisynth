@@ -67,6 +67,8 @@
 #endif
 #endif
 
+//#define TEST_AVX2_CODEGEN_IN_AVX
+
 #include <immintrin.h>
 
 #ifdef VS_TARGET_CPU_X86
@@ -1576,7 +1578,11 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   next_paramindex++;
 
   // test parameter for avx2-less mode even with avx2 available
+#ifdef TEST_AVX2_CODEGEN_IN_AVX
+  bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX);
+#else
   bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX2);
+#endif
   if (args[next_paramindex].Defined()) {
     optAvx2 = args[next_paramindex].AsBool();
   }
@@ -1603,7 +1609,11 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   int src_stride[MAX_EXPR_INPUTS] = {};
 
   const bool has_sse2 = !!(env->GetCPUFlags() & CPUF_SSE2); // C path only for reference
+#ifdef TEST_AVX2_CODEGEN_IN_AVX
+  const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX) && optAvx2;
+#else
   const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX2) && optAvx2;
+#endif
 
   int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
@@ -2488,33 +2498,33 @@ static void foldConstants(std::vector<ExprOp> &ops) {
     for (size_t i = 0; i < ops.size(); i++) {
         switch (ops[i].op) {
             case opDup:
-                if (ops[i - 1].op == opLoadConst && ops[i].e.ival == 0) {
-                    ops[i] = ops[i - 1];
-                }
-                break;
+              if (ops[i - 1].op == opLoadConst && ops[i].e.ival == 0) {
+                ops[i] = ops[i - 1];
+              }
+              break;
 
             case opSqrt:
             case opAbs:
             case opNeg:
             case opExp:
             case opLog:
-                if (ops[i - 1].op == opLoadConst) {
-                    ops[i].e.fval = calculateOneOperand(ops[i].op, ops[i - 1].e.fval);
-                    ops[i].op = opLoadConst;
-                    ops.erase(ops.begin() + i - 1);
-                    i--;
-                }
-                break;
+              if (ops[i - 1].op == opLoadConst) {
+                ops[i].e.fval = calculateOneOperand(ops[i].op, ops[i - 1].e.fval);
+                ops[i].op = opLoadConst;
+                ops.erase(ops.begin() + i - 1);
+                i--;
+              }
+              break;
 
             case opSwap:
-                if (ops[i - 2].op == opLoadConst && ops[i - 1].op == opLoadConst && ops[i].e.ival == 1) {
-                    const float temp = ops[i - 2].e.fval;
-                    ops[i - 2].e.fval = ops[i - 1].e.fval;
-                    ops[i - 1].e.fval = temp;
-                    ops.erase(ops.begin() + i);
-                    i--;
-                }
-                break;
+              if (ops[i - 2].op == opLoadConst && ops[i - 1].op == opLoadConst && ops[i].e.ival == 1) {
+                const float temp = ops[i - 2].e.fval;
+                ops[i - 2].e.fval = ops[i - 1].e.fval;
+                ops[i - 1].e.fval = temp;
+                ops.erase(ops.begin() + i);
+                i--;
+              }
+              break;
 
             case opAdd:
             case opSub:
@@ -2531,31 +2541,31 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opOr:
             case opXor:
             case opPow:
-                if (ops[i - 2].op == opLoadConst && ops[i - 1].op == opLoadConst) {
-                    ops[i].e.fval = calculateTwoOperands(ops[i].op, ops[i - 2].e.fval, ops[i - 1].e.fval);
-                    ops[i].op = opLoadConst;
-                    ops.erase(ops.begin() + i - 2, ops.begin() + i);
-                    i -= 2;
-                }
-                break;
+              if (ops[i - 2].op == opLoadConst && ops[i - 1].op == opLoadConst) {
+                ops[i].e.fval = calculateTwoOperands(ops[i].op, ops[i - 2].e.fval, ops[i - 1].e.fval);
+                ops[i].op = opLoadConst;
+                ops.erase(ops.begin() + i - 2, ops.begin() + i);
+                i -= 2;
+              }
+              break;
 
             case opTernary:
-                size_t start1, start2, start3;
-                findBranches(ops, i, &start1, &start2, &start3);
-                if (ops[start2 - 1].op == opLoadConst) {
-                    ops.erase(ops.begin() + i);
-                    if (ops[start1].e.fval > 0.0f) {
-                        ops.erase(ops.begin() + start3, ops.begin() + i);
-                        i = start3;
-                    } else {
-                        ops.erase(ops.begin() + start2, ops.begin() + start3);
-                        i -= start3 - start2;
-                    }
-                    ops.erase(ops.begin() + start1);
-                    i -= 2;
+              size_t start1, start2, start3;
+              findBranches(ops, i, &start1, &start2, &start3);
+              if (ops[start2 - 1].op == opLoadConst) {
+                ops.erase(ops.begin() + i);
+                if (ops[start1].e.fval > 0.0f) {
+                  ops.erase(ops.begin() + start3, ops.begin() + i);
+                  i = start3;
+                } else {
+                  ops.erase(ops.begin() + start2, ops.begin() + start3);
+                  i -= start3 - start2;
                 }
-                break;
-        }
+                ops.erase(ops.begin() + start1);
+                i -= 2;
+              }
+              break;
+      }
     }
 }
 
@@ -2661,7 +2671,11 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     }
 
 #ifdef VS_TARGET_CPU_X86
+#ifdef TEST_AVX2_CODEGEN_IN_AVX
+    const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX) && optAvx2;
+#else
     const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX2) && optAvx2;
+#endif
     // optAvx2 can only disable avx2 when available
 
     for (int i = 0; i < d.vi.NumComponents(); i++) {
