@@ -6074,7 +6074,7 @@ namespace compiler
 			// YMM
 			for (size_t i = 0; i < attributes_[2].size(); ++i) {
 				if (attributes_[2][i].spill && attributes_[2][i].size == O_SIZE_256 && attributes_[2][i].stack_slot.reg_.IsInvalid()) {
-					attributes_[2][i].stack_slot = stack_manager.Alloc(256 / 8, 16);
+					attributes_[2][i].stack_slot = stack_manager.Alloc(256 / 8, 32); // 32 bytes aligned! 16->32 171108
 				}
 			}
 
@@ -7599,21 +7599,45 @@ namespace compiler
 		}
 
 #ifdef JITASM64
+    // rsp is 16 bytes aligned in Windows x64
+
 		// Stack base
 		if (stack_size > 0) {
-			if (num_of_preserved_gp_reg & 1) {
-				// Copy with alignment
-				f.lea(f.rbx, f.ptr[f.rsp - 8]);
-				stack_size += 8;	// padding for keep alignment
-			} else {
-				f.mov(f.rbx, f.rsp);
-			}
-		}
+      // do the same stack_size adjust in epilog
+      if (f.avx_epilog_) {
+        // general purpose registers are saved already, num_of_preserved_gp_reg*8 bytes
+        // number of general purpose registers:
+        // even -> rsp 16 byte aligned
+        // odd  -> rsp 8 byte aligned
+        f.mov(f.rbx, f.rsp);
+        // Now ebx becomes the pointer for saving spilled XMM6-15 (x64-compulsory) and 
+        // temporary storage for the local variables (reg, xmm, ymm)
+        // Because we use vmovaps (aligned store/load) for ymm, 32 byte alignment needed for base
+        f.and_(f.ebx, 0xFFFFFFE0); // align 32 bytes, lower 32 only
+                                   
+        // padding for keep alignment (16 bytes for rsp)
+        if (num_of_preserved_gp_reg & 1)
+          stack_size += 16+8; // 8 or 24. Worst case.
+        else
+          stack_size += 16; // 0 or 16 Worst case.
+      }
+      else if (num_of_preserved_gp_reg & 1) {
+        // Copy with alignment
+        f.lea(f.rbx, f.ptr[f.rsp - 8]);
+        stack_size += 8;	// padding for keep alignment
+      }
+      else {
+        f.mov(f.rbx, f.rsp);
+      }
+    }
 #else
 		if (stack_size > 0) {
 			// Align stack pointer
-			f.and_(f.esp, 0xFFFFFFF0);
-
+      if (f.avx_epilog_)
+        f.and_(f.esp, 0xFFFFFFE0); // 32 byte alignment for aligned local ymm spill register storage
+      else
+        f.and_(f.esp, 0xFFFFFFF0); // 16 byte alignment
+      // in x86 we don't adjust stack_size here, esp is restored by ebp
 			// Stack base
 			f.mov(f.ebx, f.esp);
 		}
@@ -7667,12 +7691,19 @@ namespace compiler
 		}
 
 		// Move stack pointer
-		if (stack_size > 0) {
-			if (num_of_preserved_gp_reg & 1) {
-				stack_size += 8;	// padding for keep alignment
-			}
-			f.add(f.zsp, static_cast<uint32>(stack_size));
-		}
+    if (stack_size > 0) {
+      // same calculation like in prolog
+      if (f.avx_epilog_) {
+        if (num_of_preserved_gp_reg & 1)
+          stack_size += 16 + 8; // 8 or 24. Worst case.
+        else
+          stack_size += 16; // 0 or 16 Worst case.
+      }
+      else if (num_of_preserved_gp_reg & 1) {
+        stack_size += 8;	// padding for keep alignment
+      }
+      f.add(f.zsp, static_cast<uint32>(stack_size));
+    }
 #else
 		// Move stack pointer
 		if (stack_size > 0) {
@@ -7689,7 +7720,7 @@ namespace compiler
 
 		// Restore frame pointer
 		f.pop(f.zbp);
-    // PF AVS+: generate avoid AVX->SSE2 penalty
+    // PF AVS+: avoid AVX->SSE2 penalty
     if(f.avx_epilog_)
       f.vzeroupper();
 		f.ret();
