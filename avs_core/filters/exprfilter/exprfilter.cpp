@@ -2496,6 +2496,46 @@ static void printExpression(const std::vector<ExprOp> &ops) {
 
 static void foldConstants(std::vector<ExprOp> &ops) {
     for (size_t i = 0; i < ops.size(); i++) {
+        // optimize pow
+        switch (ops[i].op) {
+        case opPow:
+          if (ops[i - 1].op == opLoadConst) {
+            if (ops[i - 1].e.fval == 0.5f) {
+              // replace pow 0.5 with sqrt
+              ops[i].op = opSqrt;
+              ops.erase(ops.begin() + i - 1);
+              i--;
+            }
+            else if (ops[i - 1].e.fval == 2.0f) {
+              // replace pow 2 with dup *
+              ops[i].op = opMul;
+              ops[i - 1].op = opDup; ops[i - 1].e.ival = 0; // dup 0
+              i--;
+            }
+            else if (ops[i - 1].e.fval == 3.0f) {
+              // replace pow 3 with dup dup * *
+              ops[i].op = opMul;
+              ops[i - 1].op = opMul;
+              ExprOp extraDup(opDup, 0);
+              ops.insert(ops.begin() + i - 1, extraDup);
+              ops.insert(ops.begin() + i - 1, extraDup);
+              i--;
+            }
+            else if (ops[i - 1].e.fval == 4.0f) {
+              // replace pow 4 with dup * dup *
+              ops[i].op = opMul;
+              ops[i - 1].op = opDup; ops[i - 1].e.ival = 0; // dup 0
+              ExprOp extraMul(opMul);
+              ExprOp extraDup(opDup, 0);
+              ops.insert(ops.begin() + i - 1, extraMul);
+              ops.insert(ops.begin() + i - 1, extraDup);
+              i--;
+            }
+            break;
+          }
+        }
+
+        // fold constant
         switch (ops[i].op) {
             case opDup:
               if (ops[i - 1].op == opLoadConst && ops[i].e.ival == 0) {
