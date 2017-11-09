@@ -1766,6 +1766,16 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
             while (true) {
               i++;
               switch (vops[i].op) {
+              case opLoadSpatialX:
+                stack[si] = stacktop;
+                stacktop = (float)x;
+                ++si;
+                break;
+              case opLoadSpatialY:
+                stack[si] = stacktop;
+                stacktop = (float)y;
+                ++si;
+                break;
               case opLoadSrc8:
                 stack[si] = stacktop;
                 stacktop = srcp[vops[i].e.ival][x];
