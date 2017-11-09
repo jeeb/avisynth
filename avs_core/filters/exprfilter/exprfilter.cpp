@@ -26,7 +26,11 @@
 * Faster storing of results for 8 and 10-16 bit outputs
 * 16 pixels/cycle instead of 8 when avx2, with fallback to 8-pixel case on the right edge. Thus no need for 64 byte alignment for 32 bit float.
 * (Load zeros for nonvisible pixels, when simd block size goes beyond image width, to prevent garbage input for simd calculation)
-* 
+* Optimizations for pow: x^0.5 is sqrt, ^2, ^3, ^4 is done by faster and more precise multiplication
+* spatial input variables in expr syntax:
+*    sx, sy (absolute x and y coordinates, 0 to width-1 and 0 to height-1)
+*    sxr, syr (relative x and y coordinates, from 0 to 1.0)
+*
 * Differences from masktools 2.2.9
 * --------------------------------
 *   Up to 26 clips are allowed (x,y,z,a,b,...w). Masktools handles only up to 4 clips with its mt_lut, my_lutxy, mt_lutxyz, mt_lutxyza
@@ -36,6 +40,7 @@
 *   no float clamping and float-to-8bit-and-back load/store autoscale magic
 *   logical 'false' is 0 instead of -1
 *   avs+: ymin, ymax, etc built-in constants can have a _X suffix, where X is the corresponding clip designator letter. E.g. cmax_z, range_half_x
+*   mt_lutspa-like functionality is available throught "sx", "sy", "sxr", "syr"
 */
 
 #include <iostream>
@@ -206,6 +211,7 @@ stack1.push_back(t1);
 enum {
     elabsmask, elc7F, elmin_norm_pos, elinv_mant_mask,
     elfloat_one, elfloat_half, elstore8, elstore10, elstore12, elstore14, elstore16,
+    spatialX, spatialX2,
     elexp_hi, elexp_lo, elcephes_LOG2EF, elcephes_exp_C1, elcephes_exp_C2, elcephes_exp_p0, elcephes_exp_p1, elcephes_exp_p2, elcephes_exp_p3, elcephes_exp_p4, elcephes_exp_p5, elcephes_SQRTHF,
     elcephes_log_p0, elcephes_log_p1, elcephes_log_p2, elcephes_log_p3, elcephes_log_p4, elcephes_log_p5, elcephes_log_p6, elcephes_log_p7, elcephes_log_p8, elcephes_log_q1 = elcephes_exp_C2, elcephes_log_q2 = elcephes_exp_C1
 };
@@ -226,6 +232,8 @@ alignas(16) static const FloatIntUnion logexpconst[][4] = {
     XCONST(4095.0f), // store12 (avs+)
     XCONST(16383.0f), // store14 (avs+)
     XCONST(65535.0f), // store16
+    { 0.0f, 1.0f, 2.0f, 3.0f }, // spatialX
+    { 4.0f, 5.0f, 6.0f, 7.0f }, // spatialX2
     XCONST(88.3762626647949f), // exp_hi
     XCONST(-88.3762626647949f), // exp_lo
     XCONST(1.44269504088896341f), // cephes_LOG2EF
@@ -270,6 +278,8 @@ alignas(32) static const FloatIntUnion logexpconst_avx[][8] = {
   XCONST(4095.0f), // store12 (avs+)
   XCONST(16383.0f), // store14 (avs+)
   XCONST(65535.0f), // store16
+  { 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f }, // spatialX
+  { 8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f }, // spatialX2
   XCONST(88.3762626647949f), // exp_hi
   XCONST(-88.3762626647949f), // exp_lo
   XCONST(1.44269504088896341f), // cephes_LOG2EF
@@ -485,7 +495,7 @@ vaddps(x, x, y); \
 vaddps(x, x, emm0); \
 vorps(x, x, invalid_mask); }
 
-struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intptr_t *, intptr_t> {
+struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intptr_t *, intptr_t, uint32_t> {
 
     std::vector<ExprOp> ops;
     int numInputs;
@@ -494,7 +504,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
 
     ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
 
-    void main(Reg regptrs, Reg regoffs, Reg niter)
+    void main(Reg regptrs, Reg regoffs, Reg niter, Reg32 SpatialY)
     {
         XmmReg zero;
         pxor(zero, zero);
@@ -777,7 +787,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
 };
 
 // avx2 evaluator with two ymm registers
-struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, const intptr_t *, intptr_t> {
+struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, const intptr_t *, intptr_t, uint32_t> {
 
   std::vector<ExprOp> ops;
   int numInputs;
@@ -787,7 +797,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
   ExprEvalAvx2(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
 
   template<bool processSingle, bool maskUnused>
-  __forceinline void processingLoop(Reg &regptrs, YmmReg &zero, Reg &constptr)
+  __forceinline void processingLoop(Reg &regptrs, YmmReg &zero, Reg &constptr, Reg32 &SpatialY, Reg32 &xcounter)
   {
     std::list<std::pair<YmmReg, YmmReg>> stack;
     std::list<YmmReg> stack1;
@@ -800,6 +810,47 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
     // 7: 128-1 = 127 // 01111111
 
     for (const auto &iter : ops) {
+      if (iter.op == opLoadSpatialX) {
+        if (processSingle) {
+          YmmReg r1;
+          XmmReg r1x;
+          vmovd(r1x, xcounter);
+          vcvtdq2ps(r1x, r1x);
+          vbroadcastss(r1, r1x);
+          vaddps(r1, r1, CPTR_AVX(spatialX));
+          stack1.push_back(r1);
+        }
+        else {
+          YmmReg r1, r2;
+          XmmReg r1x;
+          vmovd(r1x, xcounter);
+          vcvtdq2ps(r1x, r1x);
+          vbroadcastss(r1, r1x);
+          vmovaps(r2, r1);
+          vaddps(r1, r1, CPTR_AVX(spatialX));
+          vaddps(r2, r2, CPTR_AVX(spatialX2));
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      if (iter.op == opLoadSpatialY) {
+        if (processSingle) {
+          YmmReg r1;
+          XmmReg r1x;
+          vmovd(r1x, SpatialY);
+          vcvtdq2ps(r1x, r1x);
+          vbroadcastss(r1, r1x);
+          stack1.push_back(r1);
+        }
+        else {
+          YmmReg r1, r2;
+          XmmReg r1x;
+          vmovd(r1x, SpatialY);
+          vcvtdq2ps(r1x, r1x);
+          vbroadcastss(r1, r1x);
+          vmovaps(r2, r1);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
       if (iter.op == opLoadSrc8) {
         if (processSingle) {
           XmmReg r1x;
@@ -1444,12 +1495,15 @@ generated epilog example (new):
 0000000001E7063C  ret
 
 */
-  void main(Reg regptrs, Reg regoffs, Reg niter)
+  void main(Reg regptrs, Reg regoffs, Reg niter, Reg32 SpatialY)
   {
     YmmReg zero;
     vpxor(zero, zero, zero);
     Reg constptr;
     mov(constptr, (uintptr_t)logexpconst_avx);
+    
+    Reg32 xcounter;
+    mov(xcounter, 0);
 
     L("wloop");
     cmp(niter, 0); // while(niter>0)
@@ -1457,7 +1511,10 @@ generated epilog example (new):
     sub(niter, 1);
 
     // process two sets, no partial input masking
-    processingLoop<false, false>(regptrs, zero, constptr);
+    processingLoop<false, false>(regptrs, zero, constptr, SpatialY, xcounter);
+    
+    // todo: move xcounter in regptrs, which starts from zero, and is increased by regoffs=16 (simple counter)
+    // do not spill too much temporary registers
 
     // increase read and write pointers by 16 pixels
     if (sizeof(void *) == 8) {
@@ -1483,16 +1540,18 @@ generated epilog example (new):
         vmovdqu(xmmword_ptr[regptrs + 16 * i], r1);
       }
     }
+    add(xcounter, 16);
+
     jmp("wloop");
     L("wend");
     
     int nrestpixels = planewidth & 15;
     if(nrestpixels > 8) // dual process with masking
-      processingLoop<false, true>(regptrs, zero, constptr);
+      processingLoop<false, true>(regptrs, zero, constptr, SpatialY, xcounter);
     else if (nrestpixels == 8) // single process, no masking
-      processingLoop<true, false>(regptrs, zero, constptr);
+      processingLoop<true, false>(regptrs, zero, constptr, SpatialY, xcounter);
     else if (nrestpixels > 0) // single process, masking
-      processingLoop<true, true>(regptrs, zero, constptr);
+      processingLoop<true, true>(regptrs, zero, constptr, SpatialY, xcounter);
     // bug in jitasm?
     // on x64, when this is here, debug throws an assert, that a register save/load has an
     // operand size 8 bit, instead of 128 (XMM) or 256 (YMM)
@@ -1651,10 +1710,10 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           for (int i = 0; i < numInputs; i++)
             rwptrs[i + 1] = srcp[i] + src_stride[i] * y; // input pointers
           if(use_avx2) {
-            proc(rwptrs, ptroffsets, nfulliterations); // parameters are put directly in registers
+            proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
           }
           else {
-            proc(rwptrs, ptroffsets, niterations); // todo: non-AVX path is not prepared to support single mode
+            proc(rwptrs, ptroffsets, niterations, y); // todo: non-AVX path is not prepared to support single mode
           }
         }
       }
@@ -2001,6 +2060,28 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 env->ThrowError("Failed to convert swap suffix '%s' to valid index", tokens[i].c_str());
               }
             }
+        else if (tokens[i] == "sx") { // avs+
+          // spatial
+          LOAD_OP(opLoadSpatialX, 0, 0);
+        } 
+        else if (tokens[i] == "sy") { // avs+
+          // spatial
+          LOAD_OP(opLoadSpatialY, 0, 0);
+        }
+        else if (tokens[i] == "sxr") { // avs+
+          // spatial X relative 0..1
+          LOAD_OP(opLoadSpatialX, 0, 0);
+          float w = (float)vi_output->width - 1;
+          LOAD_OP(opLoadConst, 1.0f / w, 0); // mul is faster
+          TWO_ARG_OP(opMul);
+        }
+        else if (tokens[i] == "syr") { // avs+
+          // spatial Y relative 0..1
+          LOAD_OP(opLoadSpatialY, 0, 0);
+          float h = (float)vi_output->height - 1;
+          LOAD_OP(opLoadConst, 1.0f / h, 0); // mul is faster
+          TWO_ARG_OP(opMul);
+        }
         else if (tokens[i].length() == 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z') {
           char srcChar = tokens[i][0];
           int loadIndex;

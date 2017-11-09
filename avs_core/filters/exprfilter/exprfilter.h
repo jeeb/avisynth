@@ -34,6 +34,7 @@ Container& split(
 
 typedef enum {
   opLoadSrc8, opLoadSrc16, opLoadSrcF32, opLoadSrcF16, opLoadConst,
+  opLoadSpatialX, opLoadSpatialY,
   opStore8, opStore10, opStore12, opStore14, opStore16, opStoreF32, opStoreF16, // avs+: 10,12,14 bit store
   opDup, opSwap,
   opAdd, opSub, opMul, opDiv, opMax, opMin, opSqrt, opAbs,
@@ -81,7 +82,7 @@ struct ExprData {
   size_t maxStackSize;
   int numInputs;
 #ifdef VS_TARGET_CPU_X86
-  typedef void(*ProcessLineProc)(void *rwptrs, intptr_t ptroff[MAX_EXPR_INPUTS + 1], intptr_t niter);
+  typedef void(*ProcessLineProc)(void *rwptrs, intptr_t ptroff[MAX_EXPR_INPUTS + 1], intptr_t niter, uint32_t spatialY);
   ProcessLineProc proc[4]; // 4th: alpha
   ExprData() : node(), vi(), proc() {}
 #else
