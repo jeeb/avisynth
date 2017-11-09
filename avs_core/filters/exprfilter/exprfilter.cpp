@@ -592,8 +592,8 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           movq(r1, mmword_ptr[a]);
           punpcklbw(r1, zero);
           movdqa(r2, r1);
-          punpckhwd(r1, zero); // ? why does 8 and 16 bit load/store put r1 to high and r2 to low, unlike float?
-          punpcklwd(r2, zero);
+          punpcklwd(r1, zero);
+          punpckhwd(r2, zero);
           cvtdq2ps(r1, r1);
           cvtdq2ps(r2, r2);
           if (maskIt)
@@ -619,8 +619,8 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
           movdqa(r1, xmmword_ptr[a]);
           movdqa(r2, r1);
-          punpckhwd(r1, zero); // ? why does 8 and 16 bit load/store put r1 to high and r2 to low, unlike float?
-          punpcklwd(r2, zero);
+          punpcklwd(r1, zero);
+          punpckhwd(r2, zero);
           cvtdq2ps(r1, r1);
           cvtdq2ps(r2, r2);
           if (maskIt)
@@ -805,9 +805,9 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           cvtps2dq(t1.first, t1.first);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
           cvtps2dq(t1.second, t1.second);  // 00 w7 00 w6 00 w5 00 w4
           // t1.second is the lo
-          packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
-          packuswb(t1.second, zero);       // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
-          movq(mmword_ptr[a], t1.second);
+          packssdw(t1.first, t1.second);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          packuswb(t1.first, zero);       // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
+          movq(mmword_ptr[a], t1.first);
         }
       }
       else if (iter.op == opStore10 // avs+
@@ -893,11 +893,11 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           case opStore10:
           case opStore12:
           case opStore14:
-            packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+            packssdw(t1.first, t1.second);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
             break;
           case opStore16:
             if (cpuFlags & CPUF_SSE4_1) {
-              packusdw(t1.second, t1.first);   // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+              packusdw(t1.first, t1.second);   // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
             }
             else {
               // old, sse2
@@ -909,11 +909,11 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
               por(t1.second, r2);
               pshuflw(t1.first, t1.first, 0b11011000);
               pshuflw(t1.second, t1.second, 0b11011000);
-              punpcklqdq(t1.second, t1.first);
+              punpcklqdq(t1.first, t1.second);
             }
             break;
           }
-          movdqa(xmmword_ptr[a], t1.second);
+          movdqa(xmmword_ptr[a], t1.first);
         }
       }
       else if (iter.op == opStoreF32) {
