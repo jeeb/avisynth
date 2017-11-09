@@ -40,7 +40,7 @@
 *   no float clamping and float-to-8bit-and-back load/store autoscale magic
 *   logical 'false' is 0 instead of -1
 *   avs+: ymin, ymax, etc built-in constants can have a _X suffix, where X is the corresponding clip designator letter. E.g. cmax_z, range_half_x
-*   mt_lutspa-like functionality is available throught "sx", "sy", "sxr", "syr"
+*   mt_lutspa-like functionality is available through "sx", "sy", "sxr", "syr"
 */
 
 #include <iostream>
@@ -212,6 +212,7 @@ enum {
     elabsmask, elc7F, elmin_norm_pos, elinv_mant_mask,
     elfloat_one, elfloat_half, elstore8, elstore10, elstore12, elstore14, elstore16,
     spatialX, spatialX2,
+    loadmask1000, loadmask1100, loadmask1110,
     elexp_hi, elexp_lo, elcephes_LOG2EF, elcephes_exp_C1, elcephes_exp_C2, elcephes_exp_p0, elcephes_exp_p1, elcephes_exp_p2, elcephes_exp_p3, elcephes_exp_p4, elcephes_exp_p5, elcephes_SQRTHF,
     elcephes_log_p0, elcephes_log_p1, elcephes_log_p2, elcephes_log_p3, elcephes_log_p4, elcephes_log_p5, elcephes_log_p6, elcephes_log_p7, elcephes_log_p8, elcephes_log_q1 = elcephes_exp_C2, elcephes_log_q2 = elcephes_exp_C1
 };
@@ -234,6 +235,9 @@ alignas(16) static const FloatIntUnion logexpconst[][4] = {
     XCONST(65535.0f), // store16
     { 0.0f, 1.0f, 2.0f, 3.0f }, // spatialX
     { 4.0f, 5.0f, 6.0f, 7.0f }, // spatialX2
+    { (int)0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000 }, // loadmask1000
+    { (int)0xFFFFFFFF, (int)0xFFFFFFFF, 0x00000000, 0x00000000 }, // loadmask1100
+    { (int)0xFFFFFFFF, (int)0xFFFFFFFF, (int)0xFFFFFFFF, 0x00000000 }, // loadmask1110
     XCONST(88.3762626647949f), // exp_hi
     XCONST(-88.3762626647949f), // exp_lo
     XCONST(1.44269504088896341f), // cephes_LOG2EF
@@ -280,6 +284,9 @@ alignas(32) static const FloatIntUnion logexpconst_avx[][8] = {
   XCONST(65535.0f), // store16
   { 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f }, // spatialX
   { 8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f }, // spatialX2
+  { (int)0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000, 0, 0, 0, 0 }, // loadmask1000 not used, avx supports blendps
+  { (int)0xFFFFFFFF, (int)0xFFFFFFFF, 0x00000000, 0x00000000, 0, 0, 0, 0 }, // loadmask1100 not used, avx supports blendps
+  { (int)0xFFFFFFFF, (int)0xFFFFFFFF, (int)0xFFFFFFFF, 0x00000000, 0, 0, 0, 0 }, // loadmask1110 not used, avx supports blendps
   XCONST(88.3762626647949f), // exp_hi
   XCONST(-88.3762626647949f), // exp_lo
   XCONST(1.44269504088896341f), // cephes_LOG2EF
@@ -497,12 +504,623 @@ vorps(x, x, invalid_mask); }
 
 struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intptr_t *, intptr_t, uint32_t> {
 
-    std::vector<ExprOp> ops;
-    int numInputs;
-    int cpuFlags;
-    int planewidth;
+  std::vector<ExprOp> ops;
+  int numInputs;
+  int cpuFlags;
+  int planewidth;
 
-    ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
+  ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
+
+  __forceinline void doMask(XmmReg &r, Reg &constptr, int planewidth)
+  {
+    switch (planewidth & 3) {
+    case 1: andps(r, CPTR(loadmask1000)); break;
+    case 2: andps(r, CPTR(loadmask1100)); break;
+    case 3: andps(r, CPTR(loadmask1110)); break;
+    }
+  }
+
+  template<bool processSingle, bool maskUnused>
+  __forceinline void processingLoop(Reg &regptrs, XmmReg &zero, Reg &constptr, Reg32 &SpatialY, Reg32 &xcounter)
+  {
+    std::list<std::pair<XmmReg, XmmReg>> stack;
+    std::list<XmmReg> stack1;
+
+    const bool maskIt = (maskUnused && ((planewidth & 3) != 0));
+    //const int mask = ((1 << (planewidth & 3)) - 1);
+    const int mask = ((1 << (3-(planewidth & 3))) - 1);
+    // mask by zero when we have only 1-3 valid pixels
+    // 1: 2-1   = 1   // 00000001
+    // 2: 4-1   = 3   // 00000011
+    // 3: 8-1   = 7   // 00000111
+
+    for (const auto &iter : ops) {
+      if (iter.op == opLoadSpatialX) {
+        if (processSingle) {
+          XmmReg r1;
+          movd(r1, xcounter);
+          shufps(r1, r1, 0);
+          cvtdq2ps(r1, r1);
+          addps(r1, CPTR(spatialX));
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          movd(r1, xcounter);
+          shufps(r1, r1, 0);
+          cvtdq2ps(r1, r1);
+          movaps(r2, r1);
+          addps(r1, CPTR(spatialX));
+          addps(r2, CPTR(spatialX2));
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSpatialY) {
+        if (processSingle) {
+          XmmReg r1;
+          movd(r1, SpatialY);
+          shufps(r1, r1, 0);
+          cvtdq2ps(r1, r1);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          movd(r1, SpatialY);
+          shufps(r1, r1, 0);
+          cvtdq2ps(r1, r1);
+          movaps(r2, r1);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSrc8) {
+        if (processSingle) {
+          XmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          movd(r1, dword_ptr[a]); // 4 pixels, 4 bytes
+          punpcklbw(r1, zero);
+          punpcklwd(r1, zero);
+          cvtdq2ps(r1, r1);
+          if (maskIt)
+            doMask(r1, constptr, planewidth);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          movq(r1, mmword_ptr[a]);
+          punpcklbw(r1, zero);
+          movdqa(r2, r1);
+          punpckhwd(r1, zero); // ? why does 8 and 16 bit load/store put r1 to high and r2 to low, unlike float?
+          punpcklwd(r2, zero);
+          cvtdq2ps(r1, r1);
+          cvtdq2ps(r2, r2);
+          if (maskIt)
+            doMask(r2, constptr, planewidth);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSrc16) {
+        if (processSingle) {
+          XmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          movq(r1, mmword_ptr[a]); // 4 pixels, 8 bytes
+          punpcklwd(r1, zero);
+          cvtdq2ps(r1, r1);
+          if (maskIt)
+            doMask(r1, constptr, planewidth);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          movdqa(r1, xmmword_ptr[a]);
+          movdqa(r2, r1);
+          punpckhwd(r1, zero); // ? why does 8 and 16 bit load/store put r1 to high and r2 to low, unlike float?
+          punpcklwd(r2, zero);
+          cvtdq2ps(r1, r1);
+          cvtdq2ps(r2, r2);
+          if (maskIt)
+            doMask(r2, constptr, planewidth);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSrcF32) {
+        if (processSingle) {
+          XmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          movdqa(r1, xmmword_ptr[a]);
+          if (maskIt)
+            doMask(r1, constptr, planewidth);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          movdqa(r1, xmmword_ptr[a]);
+          movdqa(r2, xmmword_ptr[a + 16]);
+          if (maskIt)
+            doMask(r2, constptr, planewidth);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadSrcF16) { // not supported in avs+
+        if (processSingle) {
+          XmmReg r1;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          vcvtph2ps(r1, qword_ptr[a]);
+          if (maskIt)
+            doMask(r1, constptr, planewidth);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          Reg a;
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          vcvtph2ps(r1, qword_ptr[a]);
+          vcvtph2ps(r2, qword_ptr[a + 8]);
+          if (maskIt)
+            doMask(r2, constptr, planewidth);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadConst) {
+        if (processSingle) {
+          XmmReg r1;
+          Reg a;
+          mov(a, iter.e.ival);
+          movd(r1, a);
+          shufps(r1, r1, 0);
+          if (maskIt)
+            doMask(r1, constptr, planewidth);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          Reg a;
+          mov(a, iter.e.ival);
+          movd(r1, a);
+          shufps(r1, r1, 0);
+          movaps(r2, r1);
+          if (maskIt)
+            doMask(r2, constptr, planewidth);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opDup) {
+        if (processSingle) {
+          auto p = std::next(stack1.rbegin(), iter.e.ival);
+          XmmReg r1;
+          movaps(r1, *p);
+          stack1.push_back(r1);
+        }
+        else {
+          auto p = std::next(stack.rbegin(), iter.e.ival);
+          XmmReg r1, r2;
+          movaps(r1, p->first);
+          movaps(r2, p->second);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opSwap) {
+        if (processSingle) {
+          std::swap(stack1.back(), *std::next(stack1.rbegin(), iter.e.ival));
+        }
+        else {
+          std::swap(stack.back(), *std::next(stack.rbegin(), iter.e.ival));
+        }
+      }
+      else if (iter.op == opAdd) {
+        if (processSingle) {
+          TwoArgOp_Single(addps)
+        }
+        else {
+          TwoArgOp(addps)
+        }
+      }
+      else if (iter.op == opSub) {
+        if (processSingle) {
+          TwoArgOp_Single(subps)
+        }
+        else {
+          TwoArgOp(subps)
+        }
+      }
+      else if (iter.op == opMul) {
+        if (processSingle) {
+          TwoArgOp_Single(mulps)
+        }
+        else {
+          TwoArgOp(mulps)
+        }
+      }
+      else if (iter.op == opDiv) {
+        if (processSingle) {
+          TwoArgOp_Single(divps)
+        }
+        else {
+          TwoArgOp(divps)
+        }
+      }
+      else if (iter.op == opMax) {
+        if (processSingle) {
+          TwoArgOp_Single(maxps)
+        }
+        else {
+          TwoArgOp(maxps)
+        }
+      }
+      else if (iter.op == opMin) {
+        if (processSingle) {
+          TwoArgOp_Single(minps)
+        }
+        else {
+          TwoArgOp(minps)
+        }
+      }
+      else if (iter.op == opSqrt) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          maxps(t1, zero);
+          sqrtps(t1, t1);
+        }
+        else {
+          auto &t1 = stack.back();
+          maxps(t1.first, zero);
+          maxps(t1.second, zero);
+          sqrtps(t1.first, t1.first);
+          sqrtps(t1.second, t1.second);
+        }
+      }
+      else if (iter.op == opStore8) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          XmmReg r1;
+          Reg a;
+          maxps(t1, zero);
+          minps(t1, CPTR(elstore8));
+          mov(a, ptr[regptrs]);
+          cvtps2dq(t1, t1);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+          packssdw(t1, zero);  // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          packuswb(t1, zero);  // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
+          movd(dword_ptr[a], t1);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          XmmReg r1, r2;
+          Reg a;
+          maxps(t1.first, zero);
+          maxps(t1.second, zero);
+          minps(t1.first, CPTR(elstore8));
+          minps(t1.second, CPTR(elstore8));
+          mov(a, ptr[regptrs]);
+          cvtps2dq(t1.first, t1.first);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+          cvtps2dq(t1.second, t1.second);  // 00 w7 00 w6 00 w5 00 w4
+          // t1.second is the lo
+          packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+          packuswb(t1.second, zero);       // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
+          movq(mmword_ptr[a], t1.second);
+        }
+      }
+      else if (iter.op == opStore10 // avs+
+        || iter.op == opStore12 // avs+ 
+        || iter.op == opStore14 // avs+
+        || iter.op == opStore16
+        ) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          XmmReg r1;
+          Reg a;
+          maxps(t1, zero);
+          switch (iter.op) {
+          case opStore10:
+            minps(t1, CPTR(elstore10));
+            break;
+          case opStore12:
+            minps(t1, CPTR(elstore12));
+            break;
+          case opStore14:
+            minps(t1, CPTR(elstore14));
+            break;
+          case opStore16:
+            minps(t1, CPTR(elstore16));
+            break;
+          }
+          mov(a, ptr[regptrs]);
+          cvtps2dq(t1, t1);
+          // new
+          switch (iter.op) {
+          case opStore10:
+          case opStore12:
+          case opStore14:
+            packssdw(t1, zero);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+            break;
+          case opStore16:
+            if (cpuFlags & CPUF_SSE4_1) {
+              packusdw(t1, zero);   // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+            }
+            else {
+              // old, sse2
+              movdqa(r1, t1);   // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+              psrldq(t1, 6);
+              por(t1, r1);
+              pshuflw(t1, t1, 0b11011000);
+              punpcklqdq(t1, zero);
+            }
+            break;
+          }
+          movq(mmword_ptr[a], t1);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          XmmReg r1, r2;
+          Reg a;
+          maxps(t1.first, zero);
+          maxps(t1.second, zero);
+          switch (iter.op) {
+          case opStore10:
+            minps(t1.first, CPTR(elstore10));
+            minps(t1.second, CPTR(elstore10));
+            break;
+          case opStore12:
+            minps(t1.first, CPTR(elstore12));
+            minps(t1.second, CPTR(elstore12));
+            break;
+          case opStore14:
+            minps(t1.first, CPTR(elstore14));
+            minps(t1.second, CPTR(elstore14));
+            break;
+          case opStore16:
+            minps(t1.first, CPTR(elstore16));
+            minps(t1.second, CPTR(elstore16));
+            break;
+          }
+          mov(a, ptr[regptrs]);
+          cvtps2dq(t1.first, t1.first);
+          cvtps2dq(t1.second, t1.second);
+          // new
+          switch (iter.op) {
+          case opStore10:
+          case opStore12:
+          case opStore14:
+            packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+            break;
+          case opStore16:
+            if (cpuFlags & CPUF_SSE4_1) {
+              packusdw(t1.second, t1.first);   // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
+            }
+            else {
+              // old, sse2
+              movdqa(r1, t1.first);   // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+              movdqa(r2, t1.second);  // 00 w7 00 w6 00 w5 00 w4
+              psrldq(t1.first, 6);
+              psrldq(t1.second, 6);
+              por(t1.first, r1);
+              por(t1.second, r2);
+              pshuflw(t1.first, t1.first, 0b11011000);
+              pshuflw(t1.second, t1.second, 0b11011000);
+              punpcklqdq(t1.second, t1.first);
+            }
+            break;
+          }
+          movdqa(xmmword_ptr[a], t1.second);
+        }
+      }
+      else if (iter.op == opStoreF32) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          movaps(xmmword_ptr[a], t1);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          movaps(xmmword_ptr[a], t1.first);
+          movaps(xmmword_ptr[a + 16], t1.second);
+        }
+      }
+      else if (iter.op == opStoreF16) { // not supported in avs+
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          vcvtps2ph(qword_ptr[a], t1, 0);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          Reg a;
+          mov(a, ptr[regptrs]);
+          vcvtps2ph(qword_ptr[a], t1.first, 0);
+          vcvtps2ph(qword_ptr[a + 8], t1.second, 0);
+        }
+      }
+      else if (iter.op == opAbs) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          andps(t1, CPTR(elabsmask));
+        }
+        else {
+          auto &t1 = stack.back();
+          andps(t1.first, CPTR(elabsmask));
+          andps(t1.second, CPTR(elabsmask));
+        }
+      }
+      else if (iter.op == opNeg) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          cmpleps(t1, zero);
+          andps(t1, CPTR(elfloat_one));
+        }
+        else {
+          auto &t1 = stack.back();
+          cmpleps(t1.first, zero);
+          cmpleps(t1.second, zero);
+          andps(t1.first, CPTR(elfloat_one));
+          andps(t1.second, CPTR(elfloat_one));
+        }
+      }
+      else if (iter.op == opAnd) {
+        if (processSingle) {
+          LogicOp_Single(andps)
+        }
+        else {
+          LogicOp(andps)
+        }
+      }
+      else if (iter.op == opOr) {
+        if (processSingle) {
+          LogicOp_Single(orps)
+        }
+        else {
+          LogicOp(orps)
+        }
+      }
+      else if (iter.op == opXor) {
+        if (processSingle) {
+          LogicOp_Single(xorps)
+        }
+        else {
+          LogicOp(xorps)
+        }
+      }
+      else if (iter.op == opGt) { // a > b (gt) -> b < (lt) a
+        if (processSingle) {
+          CmpOp_Single(cmpltps)
+        }
+        else {
+          CmpOp(cmpltps)
+        }
+      }
+      else if (iter.op == opLt) { // a < b (lt) -> b > (gt,nle) a
+        if (processSingle) {
+          CmpOp_Single(cmpnleps)
+        }
+        else {
+          CmpOp(cmpnleps)
+        }
+      }
+      else if (iter.op == opEq) { // a == b -> b == a
+        if (processSingle) {
+          CmpOp_Single(cmpeqps)
+        }
+        else {
+          CmpOp(cmpeqps)
+        }
+      }
+      else if (iter.op == opLE) { // a <= b -> b >= (ge,nlt) a
+        if (processSingle) {
+          CmpOp_Single(cmpnltps)
+        }
+        else {
+          CmpOp(cmpnltps)
+        }
+      }
+      else if (iter.op == opGE) { // a >= b -> b <= (le) a
+        if (processSingle) {
+          CmpOp_Single(cmpleps)
+        }
+        else {
+          CmpOp(cmpleps)
+        }
+      }
+      else if (iter.op == opTernary) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto t2 = stack1.back();
+          stack1.pop_back();
+          auto t3 = stack1.back();
+          stack1.pop_back();
+          XmmReg r1;
+          xorps(r1, r1);
+          cmpltps(r1, t3);
+          andps(t2, r1);
+          andnps(r1, t1);
+          orps(r1, t2);
+          stack1.push_back(r1);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto t2 = stack.back();
+          stack.pop_back();
+          auto t3 = stack.back();
+          stack.pop_back();
+          XmmReg r1, r2;
+          xorps(r1, r1);
+          xorps(r2, r2);
+          cmpltps(r1, t3.first);
+          cmpltps(r2, t3.second);
+          andps(t2.first, r1);
+          andps(t2.second, r2);
+          andnps(r1, t1.first);
+          andnps(r2, t1.second);
+          orps(r1, t2.first);
+          orps(r2, t2.second);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opExp) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          EXP_PS(t1)
+        }
+        else {
+          auto &t1 = stack.back();
+          EXP_PS(t1.first)
+            EXP_PS(t1.second)
+        }
+      }
+      else if (iter.op == opLog) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          LOG_PS(t1)
+        }
+        else {
+          auto &t1 = stack.back();
+          LOG_PS(t1.first)
+            LOG_PS(t1.second)
+        }
+      }
+      else if (iter.op == opPow) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto &t2 = stack1.back();
+          LOG_PS(t2)
+            mulps(t2, t1);
+          EXP_PS(t2)
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto &t2 = stack.back();
+          LOG_PS(t2.first)
+            mulps(t2.first, t1.first);
+          EXP_PS(t2.first)
+            LOG_PS(t2.second)
+            mulps(t2.second, t1.second);
+          EXP_PS(t2.second)
+        }
+      }
+    }
+  }
 
     void main(Reg regptrs, Reg regoffs, Reg niter, Reg32 SpatialY)
     {
@@ -511,254 +1129,16 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
         Reg constptr;
         mov(constptr, (uintptr_t)logexpconst);
 
-        L("wloop");
+        Reg32 xcounter;
+        mov(xcounter, 0);
 
-        std::list<std::pair<XmmReg, XmmReg>> stack;
-        for (const auto &iter : ops) {
-            if (iter.op == opLoadSrc8) {
-                XmmReg r1, r2;
-                Reg a;
-                mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
-                movq(r1, mmword_ptr[a]);
-                punpcklbw(r1, zero);
-                movdqa(r2, r1);
-                punpckhwd(r1, zero);
-                punpcklwd(r2, zero);
-                cvtdq2ps(r1, r1);
-                cvtdq2ps(r2, r2);
-                stack.push_back(std::make_pair(r1, r2));
-            } else if (iter.op == opLoadSrc16) {
-                XmmReg r1, r2;
-                Reg a;
-                mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
-                movdqa(r1, xmmword_ptr[a]);
-                movdqa(r2, r1);
-                punpckhwd(r1, zero);
-                punpcklwd(r2, zero);
-                cvtdq2ps(r1, r1);
-                cvtdq2ps(r2, r2);
-                stack.push_back(std::make_pair(r1, r2));
-            } else if (iter.op == opLoadSrcF32) {
-                XmmReg r1, r2;
-                Reg a;
-                mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
-                movdqa(r1, xmmword_ptr[a]);
-                movdqa(r2, xmmword_ptr[a + 16]);
-                stack.push_back(std::make_pair(r1, r2));
-            } else if (iter.op == opLoadSrcF16) { // not supported in avs+
-                XmmReg r1, r2;
-                Reg a;
-                mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
-                vcvtph2ps(r1, qword_ptr[a]);
-                vcvtph2ps(r2, qword_ptr[a + 8]);
-                stack.push_back(std::make_pair(r1, r2));
-            } else if (iter.op == opLoadConst) {
-                XmmReg r1, r2;
-                Reg a;
-                mov(a, iter.e.ival);
-                movd(r1, a);
-                shufps(r1, r1, 0);
-                movaps(r2, r1);
-                stack.push_back(std::make_pair(r1, r2));
-            } else if (iter.op == opDup) {
-                auto p = std::next(stack.rbegin(), iter.e.ival);
-                XmmReg r1, r2;
-                movaps(r1, p->first);
-                movaps(r2, p->second);
-                stack.push_back(std::make_pair(r1, r2));
-            } else if (iter.op == opSwap) {
-                std::swap(stack.back(), *std::next(stack.rbegin(), iter.e.ival));
-            } else if (iter.op == opAdd) {
-                TwoArgOp(addps)
-            } else if (iter.op == opSub) {
-                TwoArgOp(subps)
-            } else if (iter.op == opMul) {
-                TwoArgOp(mulps)
-            } else if (iter.op == opDiv) {
-                TwoArgOp(divps)
-            } else if (iter.op == opMax) {
-                TwoArgOp(maxps)
-            } else if (iter.op == opMin) {
-                TwoArgOp(minps)
-            } else if (iter.op == opSqrt) {
-                auto &t1 = stack.back();
-                maxps(t1.first, zero);
-                maxps(t1.second, zero);
-                sqrtps(t1.first, t1.first);
-                sqrtps(t1.second, t1.second);
-            } else if (iter.op == opStore8) {
-                auto t1 = stack.back();
-                stack.pop_back();
-                XmmReg r1, r2;
-                Reg a;
-                maxps(t1.first, zero);
-                maxps(t1.second, zero);  
-                minps(t1.first, CPTR(elstore8));
-                minps(t1.second, CPTR(elstore8));
-                mov(a, ptr[regptrs]);
-                cvtps2dq(t1.first, t1.first);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
-                cvtps2dq(t1.second, t1.second);  // 00 w7 00 w6 00 w5 00 w4
-                // new
-                packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
-                /* old, kept for reference until figuring out why this method was chosen
-                movdqa(r1, t1.first);  // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
-                movdqa(r2, t1.second); // 00 w7 00 w6 00 w5 00 w4
-                psrldq(t1.first, 6);   // 00 00 00 00 w3 00 w2 00
-                psrldq(t1.second, 6);  // 00 00 00 00 w7 00 w6 00
-                por(t1.first, r1);     // 00 w3 00 w2 w3 w1 w2 w0
-                por(t1.second, r2);    // 00 w7 00 w6 w7 w5 w6 w4 
-                pshuflw(t1.first, t1.first, 0b11011000);   // 3-1-2-0, w3 w2 w1 w0 w3 w2 w1 w0
-                pshuflw(t1.second, t1.second, 0b11011000); // 3-1-2-0, w7 w6 w5 w4 w7 w6 w5 w4
-                punpcklqdq(t1.second, t1.first); // _mm_unpacklo_epi64: w7 w6 w5 w4 w3 w2 w1 w0
-                */
-                packuswb(t1.second, zero);       // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
-                movq(mmword_ptr[a], t1.second);
-            } else if (iter.op == opStore10 // avs+
-              || iter.op == opStore12 // avs+ 
-              || iter.op == opStore14 // avs+
-              || iter.op == opStore16
-              ) {
-                auto t1 = stack.back();
-                stack.pop_back();
-                XmmReg r1, r2;
-                Reg a;
-                maxps(t1.first, zero);
-                maxps(t1.second, zero);
-                switch (iter.op) {
-                case opStore10: 
-                  minps(t1.first, CPTR(elstore10));
-                  minps(t1.second, CPTR(elstore10));
-                  break;
-                case opStore12:
-                  minps(t1.first, CPTR(elstore12));
-                  minps(t1.second, CPTR(elstore12));
-                  break;
-                case opStore14:
-                  minps(t1.first, CPTR(elstore14));
-                  minps(t1.second, CPTR(elstore14));
-                  break;
-                case opStore16:
-                  minps(t1.first, CPTR(elstore16));
-                  minps(t1.second, CPTR(elstore16));
-                  break;
-                }
-                mov(a, ptr[regptrs]);
-                cvtps2dq(t1.first, t1.first);
-                cvtps2dq(t1.second, t1.second);
-                // new
-                switch (iter.op) {
-                case opStore10:
-                case opStore12:
-                case opStore14:
-                  packssdw(t1.second, t1.first);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
-                  break;
-                case opStore16:
-                  if (cpuFlags & CPUF_SSE4_1) {
-                    packusdw(t1.second, t1.first);   // _mm_packus_epi32: w7 w6 w5 w4 w3 w2 w1 w0
-                  }
-                  else {
-                    // old, sse2
-                    movdqa(r1, t1.first);   // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
-                    movdqa(r2, t1.second);  // 00 w7 00 w6 00 w5 00 w4
-                    psrldq(t1.first, 6);
-                    psrldq(t1.second, 6);
-                    por(t1.first, r1);
-                    por(t1.second, r2);
-                    pshuflw(t1.first, t1.first, 0b11011000);
-                    pshuflw(t1.second, t1.second, 0b11011000);
-                    punpcklqdq(t1.second, t1.first);
-                  }
-                  break;
-                }
-                movdqa(xmmword_ptr[a], t1.second);
-            } else if (iter.op == opStoreF32) {
-                auto t1 = stack.back();
-                stack.pop_back();
-                Reg a;
-                mov(a, ptr[regptrs]);
-                movaps(xmmword_ptr[a], t1.first);
-                movaps(xmmword_ptr[a + 16], t1.second);
-            } else if (iter.op == opStoreF16) { // not supported in avs+
-                auto t1 = stack.back();
-                stack.pop_back();
-                Reg a;
-                mov(a, ptr[regptrs]);
-                vcvtps2ph(qword_ptr[a], t1.first, 0);
-                vcvtps2ph(qword_ptr[a + 8], t1.second, 0);
-            } else if (iter.op == opAbs) {
-                auto &t1 = stack.back();
-                andps(t1.first, CPTR(elabsmask));
-                andps(t1.second, CPTR(elabsmask));
-            }
-            else if (iter.op == opNeg) {
-              auto &t1 = stack.back();
-              cmpleps(t1.first, zero);
-              cmpleps(t1.second, zero);
-              andps(t1.first, CPTR(elfloat_one));
-              andps(t1.second, CPTR(elfloat_one));
-            }
-            else if (iter.op == opAnd) {
-              LogicOp(andps)
-            }
-            else if (iter.op == opOr) {
-              LogicOp(orps)
-            }
-            else if (iter.op == opXor) {
-              LogicOp(xorps)
-            }
-            else if (iter.op == opGt) { // a > b (gt) -> b < (lt) a
-              CmpOp(cmpltps)
-            }
-            else if (iter.op == opLt) { // a < b (lt) -> b > (gt,nle) a
-              CmpOp(cmpnleps)
-            }
-            else if (iter.op == opEq) { // a == b -> b == a
-              CmpOp(cmpeqps)
-            }
-            else if (iter.op == opLE) { // a <= b -> b >= (ge,nlt) a
-              CmpOp(cmpnltps)
-            }
-            else if (iter.op == opGE) { // a >= b -> b <= (le) a
-              CmpOp(cmpleps)
-            } else if (iter.op == opTernary) {
-                auto t1 = stack.back();
-                stack.pop_back();
-                auto t2 = stack.back();
-                stack.pop_back();
-                auto t3 = stack.back();
-                stack.pop_back();
-                XmmReg r1, r2;
-                xorps(r1, r1);
-                xorps(r2, r2);
-                cmpltps(r1, t3.first);
-                cmpltps(r2, t3.second);
-                andps(t2.first, r1);
-                andps(t2.second, r2);
-                andnps(r1, t1.first);
-                andnps(r2, t1.second);
-                orps(r1, t2.first);
-                orps(r2, t2.second);
-                stack.push_back(std::make_pair(r1, r2));
-            } else if (iter.op == opExp) {
-                auto &t1 = stack.back();
-                EXP_PS(t1.first)
-                EXP_PS(t1.second)
-            } else if (iter.op == opLog) {
-                auto &t1 = stack.back();
-                LOG_PS(t1.first)
-                LOG_PS(t1.second)
-            } else if (iter.op == opPow) {
-                auto t1 = stack.back();
-                stack.pop_back();
-                auto &t2 = stack.back();
-                LOG_PS(t2.first)
-                mulps(t2.first, t1.first);
-                EXP_PS(t2.first)
-                LOG_PS(t2.second)
-                mulps(t2.second, t1.second);
-                EXP_PS(t2.second)
-            }
-        }
+        L("wloop");
+        cmp(niter, 0); // while(niter>0)
+        je("wend");
+        sub(niter, 1);
+
+        // process two sets, no partial input masking
+        processingLoop<false, false>(regptrs, zero, constptr, SpatialY, xcounter);
 
         if (sizeof(void *) == 8) {
             int numIter = (numInputs + 1 + 1) / 2;
@@ -781,8 +1161,18 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             }
         }
 
-        sub(niter, 1);
-        jnz("wloop");
+        add(xcounter, 8); // XMM: 2x4=8 pixels per cycle
+
+        jmp("wloop");
+        L("wend");
+
+        int nrestpixels = planewidth & 7;
+        if (nrestpixels > 4) // dual process with masking
+          processingLoop<false, true>(regptrs, zero, constptr, SpatialY, xcounter);
+        else if (nrestpixels == 4) // single process, no masking
+          processingLoop<true, false>(regptrs, zero, constptr, SpatialY, xcounter);
+        else if (nrestpixels > 0) // single process, masking
+          processingLoop<true, true>(regptrs, zero, constptr, SpatialY, xcounter);
     }
 };
 
@@ -806,7 +1196,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
     const int mask = ((1 << (planewidth & 7)) - 1);
     // mask by zero when we have only 1-7 valid pixels
     // 1: 2-1   = 1   // 00000001
-    // 2: 4-3   = 3   // 00000011
+    // 2: 4-1   = 3   // 00000011
     // 7: 128-1 = 127 // 01111111
 
     for (const auto &iter : ops) {
@@ -1699,9 +2089,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         int dst_stride = dst->GetPitch(plane_enum);
         int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
         int w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
-        int niterations = (w + pixels_per_iter - 1) / pixels_per_iter;
         int nfulliterations = w / pixels_per_iter;
-        int nrestpixels = w & (pixels_per_iter - 1);
 
         ExprData::ProcessLineProc proc = d.proc[plane];
 
@@ -1709,12 +2097,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           const uint8_t *rwptrs[MAX_EXPR_INPUTS + 1] = { dstp + dst_stride * y }; // output pointer
           for (int i = 0; i < numInputs; i++)
             rwptrs[i + 1] = srcp[i] + src_stride[i] * y; // input pointers
-          if(use_avx2) {
-            proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
-          }
-          else {
-            proc(rwptrs, ptroffsets, niterations, y); // todo: non-AVX path is not prepared to support single mode
-          }
+          proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
       }
       // avs+: copy plane here
