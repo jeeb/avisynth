@@ -508,8 +508,9 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
   int numInputs;
   int cpuFlags;
   int planewidth;
+  bool singleMode;
 
-  ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
+  ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth), singleMode(singleMode) {}
 
   __forceinline void doMask(XmmReg &r, Reg &constptr, int planewidth)
   {
@@ -1138,7 +1139,10 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
         sub(niter, 1);
 
         // process two sets, no partial input masking
-        processingLoop<false, false>(regptrs, zero, constptr, SpatialY, xcounter);
+        if (singleMode)
+          processingLoop<true, false>(regptrs, zero, constptr, SpatialY, xcounter);
+        else
+          processingLoop<false, false>(regptrs, zero, constptr, SpatialY, xcounter);
 
         if (sizeof(void *) == 8) {
             int numIter = (numInputs + 1 + 1) / 2;
@@ -1161,12 +1165,12 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             }
         }
 
-        add(xcounter, 8); // XMM: 2x4=8 pixels per cycle
+        add(xcounter, singleMode ? 4 : 8); // XMM: 2x4=8 pixels per cycle. Single mode: 4 pixels/cycle
 
         jmp("wloop");
         L("wend");
 
-        int nrestpixels = planewidth & 7;
+        int nrestpixels = planewidth & (singleMode ? 3 : 7);
         if (nrestpixels > 4) // dual process with masking
           processingLoop<false, true>(regptrs, zero, constptr, SpatialY, xcounter);
         else if (nrestpixels == 4) // single process, no masking
@@ -1183,8 +1187,9 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
   int numInputs;
   int cpuFlags;
   int planewidth;
+  bool singleMode;
 
-  ExprEvalAvx2(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth) {}
+  ExprEvalAvx2(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), planewidth(planewidth), singleMode(singleMode) {}
 
   template<bool processSingle, bool maskUnused>
   __forceinline void processingLoop(Reg &regptrs, YmmReg &zero, Reg &constptr, Reg32 &SpatialY, Reg32 &xcounter)
@@ -1901,8 +1906,11 @@ generated epilog example (new):
     sub(niter, 1);
 
     // process two sets, no partial input masking
-    processingLoop<false, false>(regptrs, zero, constptr, SpatialY, xcounter);
-    
+    if(singleMode)
+      processingLoop<true, false>(regptrs, zero, constptr, SpatialY, xcounter);
+    else
+      processingLoop<false, false>(regptrs, zero, constptr, SpatialY, xcounter);
+
     // todo: move xcounter in regptrs, which starts from zero, and is increased by regoffs=16 (simple counter)
     // do not spill too much temporary registers
 
@@ -1930,12 +1938,12 @@ generated epilog example (new):
         vmovdqu(xmmword_ptr[regptrs + 16 * i], r1);
       }
     }
-    add(xcounter, 16);
+    add(xcounter, singleMode ? 8 : 16);
 
     jmp("wloop");
     L("wend");
     
-    int nrestpixels = planewidth & 15;
+    int nrestpixels = planewidth & (singleMode ? 7 : 15);
     if(nrestpixels > 8) // dual process with masking
       processingLoop<false, true>(regptrs, zero, constptr, SpatialY, xcounter);
     else if (nrestpixels == 8) // single process, no masking
@@ -1956,7 +1964,7 @@ generated epilog example (new):
 ********************************************************************/
 
 extern const AVSFunction Exprfilter_filters[] = {
-  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b", Exprfilter::Create },
+  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b[optSingleMode]b[optSSE2]b", Exprfilter::Create },
   { 0 }
 };
 
@@ -2033,10 +2041,25 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX2);
 #endif
   if (args[next_paramindex].Defined()) {
-    optAvx2 = args[next_paramindex].AsBool();
+    if (optAvx2) // disable only
+      optAvx2 = args[next_paramindex].AsBool();
   }
+  next_paramindex++;
 
-  return new Exprfilter(children, expressions, newformat, optAvx2, env);
+  bool optSingleMode = false;
+  if (args[next_paramindex].Defined()) {
+    optSingleMode = args[next_paramindex].AsBool();
+  }
+  next_paramindex++;
+
+  bool optSSE2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+  if (args[next_paramindex].Defined()) {
+    if (optSSE2) // disable only
+      optSSE2 = args[next_paramindex].AsBool();
+  }
+  next_paramindex++;
+
+  return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, env);
 
 }
 
@@ -2057,19 +2080,12 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
   int src_stride[MAX_EXPR_INPUTS] = {};
 
-  const bool has_sse2 = !!(env->GetCPUFlags() & CPUF_SSE2); // C path only for reference
-#ifdef TEST_AVX2_CODEGEN_IN_AVX
-  const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX) && optAvx2;
-#else
-  const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX2) && optAvx2;
-#endif
-
   int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
   int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
 
-  if (has_sse2) {
-    const int pixels_per_iter = use_avx2 ? 16 : 8;
+  if (optSSE2) {
+    const int pixels_per_iter = optAvx2 ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
     intptr_t ptroffsets[MAX_EXPR_INPUTS + 1] = { d.vi.ComponentSize() * pixels_per_iter }; // output
 
     for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
@@ -3083,8 +3099,9 @@ static void foldConstants(std::vector<ExprOp> &ops) {
     }
 }
 
-Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, IScriptEnvironment *env) :
-  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2) {
+Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
+  const bool _optSingleMode, const bool _optSSE2, IScriptEnvironment *env) :
+  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2) {
 
   vi = children[0]->GetVideoInfo();
   d.vi = vi;
@@ -3185,11 +3202,6 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     }
 
 #ifdef VS_TARGET_CPU_X86
-#ifdef TEST_AVX2_CODEGEN_IN_AVX
-    const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX) && optAvx2;
-#else
-    const bool use_avx2 = !!(env->GetCPUFlags() & CPUF_AVX2) && optAvx2;
-#endif
     // optAvx2 can only disable avx2 when available
 
     for (int i = 0; i < d.vi.NumComponents(); i++) {
@@ -3198,10 +3210,10 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         const int plane_enum = plane_enums[i];
         int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
 
-        if (use_avx2) {
+        if (optAvx2) {
 
           // avx2
-          ExprEvalAvx2 ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth);
+          ExprEvalAvx2 ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth, optSingleMode);
           if (ExprObj.GetCode(true) && ExprObj.GetCodeSize()) { // PF modded jitasm. true: epilog with vmovaps, and vzeroupper
 #ifdef VS_TARGET_OS_WINDOWS
             d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -3213,7 +3225,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         }
         else {
           // sse2, sse4
-          ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth);
+          ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth, optSingleMode);
           if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
 #ifdef VS_TARGET_OS_WINDOWS
             d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);

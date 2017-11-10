@@ -110,10 +110,13 @@ private:
   std::vector<std::string> expressions;
   VideoInfo vi;
   ExprData d;
-  const bool optAvx2;
+  const bool optAvx2; // disable avx2 path
+  const bool optSingleMode; // generate asm code using only one XMM/YMM register set instead of two
+  const bool optSSE2; // disable simd path
 
 public:
-  Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, IScriptEnvironment *env);
+  Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
+    const bool _optSingleMode2, const bool _optSSE2, IScriptEnvironment *env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
   ~Exprfilter();
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
