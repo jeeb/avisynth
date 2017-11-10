@@ -2484,7 +2484,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 int tmp = std::stoi(tokens[i].substr(3));
                 if (tmp < 0)
                   env->ThrowError("Dup suffix can't be less than 0 '%s'", tokens[i].c_str());
-                LOAD_OP(opDup, tmp, tmp + 1);
+                LOAD_OP(opDup, tmp, (size_t)(tmp + 1));
               }
               catch (std::logic_error &) {
                 env->ThrowError("Failed to convert dup suffix '%s' to valid index", tokens[i].c_str());
@@ -2499,7 +2499,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 int tmp = std::stoi(tokens[i].substr(4));
                 if (tmp < 1)
                   env->ThrowError("Swap suffix can't be less than 1 '%s'", tokens[i].c_str());
-                GENERAL_OP(opSwap, tmp, tmp + 1, 0);
+                GENERAL_OP(opSwap, tmp, (size_t)(tmp + 1), 0);
               }
               catch (std::logic_error &) {
                 env->ThrowError("Failed to convert swap suffix '%s' to valid index", tokens[i].c_str());
@@ -3199,7 +3199,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     }
 
     // check expression count, duplicate omitted expressions from previous one
-    size_t nexpr = expressions.size();
+    int nexpr = (int)expressions.size();
     if (nexpr > d.vi.NumComponents()) // ->numPlanes)
       env->ThrowError("More expressions given than there are planes");
 
