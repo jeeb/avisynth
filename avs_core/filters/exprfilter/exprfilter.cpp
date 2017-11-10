@@ -30,6 +30,7 @@
 * spatial input variables in expr syntax:
 *    sx, sy (absolute x and y coordinates, 0 to width-1 and 0 to height-1)
 *    sxr, syr (relative x and y coordinates, from 0 to 1.0)
+* Recognize constant plane expression: use fast memset instead of generic simd process. Approx. 3-4x (32 bits) to 10-12x (8 bits) speedup
 *
 * Differences from masktools 2.2.9
 * --------------------------------
@@ -59,6 +60,7 @@
 #include <avs/win.h>
 #include <stdlib.h>
 #include "../core/internal.h"
+#include "../../convert/convert_planar.h" // fill_plane
 
 #define VS_TARGET_CPU_X86
 #define VS_TARGET_OS_WINDOWS
@@ -2125,6 +2127,40 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           src[0]->GetHeight(plane_enum)
         );
       }
+      else if (d.plane[plane] == poFill) { // avs+
+        uint8_t *dstp = dst->GetWritePtr(plane_enum);
+        const int dst_stride = dst->GetPitch(plane_enum);
+        const int h = dst->GetHeight(plane_enum);
+
+        int val;
+
+        switch (vi.BitsPerComponent())
+        {
+        case 8:
+          val = (uint8_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 255.0f)) + 0.5f);
+          fill_plane<BYTE>(dstp, h, dst_stride, val);
+          break;
+        case 10:
+          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 1023.0f)) + 0.5f);
+          fill_plane<uint16_t>(dstp, h, dst_stride, val);
+          break;
+        case 12:
+          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 4095.0f)) + 0.5f);
+          fill_plane<uint16_t>(dstp, h, dst_stride, val);
+          break;
+        case 14:
+          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 16383.0f)) + 0.5f);
+          fill_plane<uint16_t>(dstp, h, dst_stride, val);
+          break;
+        case 16:
+          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 65535.0f)) + 0.5f);
+          fill_plane<uint16_t>(dstp, h, dst_stride, val);
+          break;
+        case 32:
+          fill_plane<float>(dstp, h, dst_stride, d.planeFillValue[plane]);
+          break;
+        }
+      }
 
     }
   }
@@ -3199,6 +3235,16 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     for (int i = 0; i < d.vi.NumComponents(); i++) {
       d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, env), d.maxStackSize);
       foldConstants(d.ops[i]);
+
+      // optimize constant store, change operation to "fill"
+      if (d.plane[i] == poProcess && d.ops[i].size() == 2 && d.ops[i][0].op == opLoadConst) {
+        uint32_t op = d.ops[i][1].op;
+        if (op == opStore8 || op == opStore10 || op == opStore12 || op == opStore14 || op == opStore16 || op == opStoreF32)
+        {
+          d.plane[i] = poFill;
+          d.planeFillValue[i] = d.ops[i][0].e.fval;
+        }
+      }
     }
 
 #ifdef VS_TARGET_CPU_X86

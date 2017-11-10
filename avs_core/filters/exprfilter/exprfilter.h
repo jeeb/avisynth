@@ -66,7 +66,7 @@ struct ExprOp {
 };
 
 enum PlaneOp {
-  poProcess, poCopy, poUndefined
+  poProcess, poCopy, poUndefined, poFill
 };
 
 struct ExprData {
@@ -79,6 +79,7 @@ struct ExprData {
 #endif
   std::vector<ExprOp> ops[4]; // 4th: alpha
   int plane[4];
+  float planeFillValue[4]; // optimize: fill plane with const
   size_t maxStackSize;
   int numInputs;
 #ifdef VS_TARGET_CPU_X86
