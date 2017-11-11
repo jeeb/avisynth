@@ -11,6 +11,7 @@
 *   For equality check "==" can be used like "="
 *   & same as and
 *   | same as or
+* New operator: != (not equal)
 * Built-in constants
 *   ymin, ymax (ymin_a .. ymin_z for individual clips) - the usual luma limits (16..235 or scaled equivalents)
 *   cmin, cmax (cmin_a .. cmin_z) - chroma limits (16..240 or scaled equivalents)
@@ -1030,6 +1031,14 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           CmpOp(cmpeqps)
         }
       }
+      else if (iter.op == opNotEq) { // a != b
+        if (processSingle) {
+          CmpOp_Single(cmpneqps)
+        }
+        else {
+          CmpOp(cmpneqps)
+        }
+      }
       else if (iter.op == opLE) { // a <= b -> b >= (ge,nlt) a
         if (processSingle) {
           CmpOp_Single(cmpnltps)
@@ -1703,6 +1712,14 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           CmpOp_Avx(vcmpps, _CMP_EQ_OQ);
         }
       }
+      else if (iter.op == opNotEq) { // avs+
+        if (processSingle) {
+          CmpOp_Single_Avx(vcmpps, _CMP_NEQ_OQ);
+        }
+        else {
+          CmpOp_Avx(vcmpps, _CMP_NEQ_OQ);
+        }
+      }
       else if (iter.op == opLE) { // a <= b -> b >= (ge,nlt) a
         if (processSingle) {
           CmpOp_Single_Avx(vcmpps, _CMP_GE_OS); // cmpnltps
@@ -2297,6 +2314,10 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
                 --si;
                 stacktop = (stack[si] == stacktop) ? 1.0f : 0.0f;
                 break;
+              case opNotEq:
+                --si;
+                stacktop = (stack[si] != stacktop) ? 1.0f : 0.0f;
+                break;
               case opLE:
                 --si;
                 stacktop = (stack[si] <= stacktop) ? 1.0f : 0.0f;
@@ -2467,15 +2488,17 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             TWO_ARG_OP(opLt);
         else if (tokens[i] == "=" || tokens[i] == "==") // avs+: == can be used to equality check
             TWO_ARG_OP(opEq);
+        else if (tokens[i] == "!=") // avs+: not equal
+          TWO_ARG_OP(opNotEq);
         else if (tokens[i] == ">=")
             TWO_ARG_OP(opGE);
         else if (tokens[i] == "<=")
             TWO_ARG_OP(opLE);
         else if (tokens[i] == "?")
             THREE_ARG_OP(opTernary);
-        else if (tokens[i] == "and" || tokens[i] == "&")
+        else if (tokens[i] == "and" || tokens[i] == "&") // avs+: & alias for and
             TWO_ARG_OP(opAnd);
-        else if (tokens[i] == "or" || tokens[i] == "|")
+        else if (tokens[i] == "or" || tokens[i] == "|") // avs+: | alias for or
             TWO_ARG_OP(opOr);
         else if (tokens[i] == "xor")
             TWO_ARG_OP(opXor);
@@ -2847,6 +2870,8 @@ static float calculateTwoOperands(uint32_t op, float a, float b) {
             return (a < b) ? 1.0f : 0.0f;
         case opEq:
             return (a == b) ? 1.0f : 0.0f;
+        case opNotEq:
+            return (a != b) ? 1.0f : 0.0f;
         case opLE:
             return (a <= b) ? 1.0f : 0.0f;
         case opGE:
@@ -2893,6 +2918,7 @@ static int numOperands(uint32_t op) {
         case opGt:
         case opLt:
         case opEq:
+        case opNotEq:
         case opLE:
         case opGE:
         case opAnd:
@@ -3002,6 +3028,7 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opGt),
         PAIR(opLt),
         PAIR(opEq),
+        PAIR(opNotEq),
         PAIR(opLE),
         PAIR(opGE),
         PAIR(opTernary),
@@ -3113,6 +3140,7 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opGt:
             case opLt:
             case opEq:
+            case opNotEq:
             case opLE:
             case opGE:
             case opAnd:
