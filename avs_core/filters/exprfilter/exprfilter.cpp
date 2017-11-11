@@ -31,6 +31,8 @@
 *    sx, sy (absolute x and y coordinates, 0 to width-1 and 0 to height-1)
 *    sxr, syr (relative x and y coordinates, from 0 to 1.0)
 * Recognize constant plane expression: use fast memset instead of generic simd process. Approx. 3-4x (32 bits) to 10-12x (8 bits) speedup
+* Recognize single clip letter in expression: use fast plane copy (BitBlt) 
+*   (e.g. for 8-16 bits: instead of load-convert_to_float-clamp-convert_to_int-store). Approx. 1.4x (32 bits), 3x (16 bits), 8-9x (8 bits) speedup
 *
 * Differences from masktools 2.2.9
 * --------------------------------
@@ -2120,11 +2122,13 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
       }
       // avs+: copy plane here
       else if (d.plane[plane] == poCopy) {
+        // avs+ copy from Nth clip
+        const int copySource = d.planeCopySourceClip[plane];
         env->BitBlt(dst->GetWritePtr(plane_enum), dst->GetPitch(plane_enum),
-          src[0]->GetReadPtr(plane_enum),
-          src[0]->GetPitch(plane_enum),
-          src[0]->GetRowSize(plane_enum),
-          src[0]->GetHeight(plane_enum)
+          src[copySource]->GetReadPtr(plane_enum),
+          src[copySource]->GetPitch(plane_enum),
+          src[copySource]->GetRowSize(plane_enum),
+          src[copySource]->GetHeight(plane_enum)
         );
       }
       else if (d.plane[plane] == poFill) { // avs+
@@ -3224,8 +3228,10 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         d.plane[i] = poProcess;
       }
       else {
-        if (d.vi.BitsPerComponent() == vi_array[0]->BitsPerComponent())
+        if (d.vi.BitsPerComponent() == vi_array[0]->BitsPerComponent()) {
           d.plane[i] = poCopy; // copy only when target clip format bit depth == 1st clip's bit depth
+          d.planeCopySourceClip[i] = 0; // default source clip from empty expression: first one
+        }
         else
           d.plane[i] = poUndefined;
       }
@@ -3243,6 +3249,20 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         {
           d.plane[i] = poFill;
           d.planeFillValue[i] = d.ops[i][0].e.fval;
+        }
+      }
+
+      // optimize single clip letter in expression: Load-Store. Change operation to "copy"
+      if (d.plane[i] == poProcess && d.ops[i].size() == 2 && 
+        (d.ops[i][0].op == opLoadSrc8 || d.ops[i][0].op == opLoadSrc16 || d.ops[i][0].op == opLoadSrcF16 || d.ops[i][0].op == opLoadSrcF32) &&
+        (d.ops[i][1].op == opStore8 || d.ops[i][1].op == opStore10 || d.ops[i][1].op == opStore12 || d.ops[i][1].op == opStore14 || d.ops[i][1].op == opStore16 || d.ops[i][1].op == opStoreF16 || d.ops[i][1].op == opStoreF32))
+      {
+        const int sourceClip = d.ops[i][0].e.ival;
+        // check target vs source bit depth
+        if(d.vi.BitsPerComponent() == vi_array[sourceClip]->BitsPerComponent()) // no 16bit float in avs+
+        {
+          d.plane[i] = poCopy;
+          d.planeCopySourceClip[i] = sourceClip;
         }
       }
     }
