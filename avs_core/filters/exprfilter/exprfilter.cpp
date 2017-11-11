@@ -2870,6 +2870,8 @@ static int numOperands(uint32_t op) {
         case opLoadSrcF32:
         case opLoadSrcF16:
         case opDup:
+        case opLoadSpatialX:
+        case opLoadSpatialY:
             return 0;
 
         case opSqrt:
@@ -2911,6 +2913,8 @@ static bool isLoadOp(uint32_t op) {
         case opLoadSrc16:
         case opLoadSrcF32:
         case opLoadSrcF16:
+        case opLoadSpatialX:
+        case opLoadSpatialY:
             return true;
     }
 
@@ -2976,6 +2980,8 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opLoadSrc16),
         PAIR(opLoadSrcF32),
         PAIR(opLoadSrcF16),
+        PAIR(opLoadSpatialX),
+        PAIR(opLoadSpatialY),
         PAIR(opLoadConst),
         PAIR(opStore8),
         PAIR(opStore16),
