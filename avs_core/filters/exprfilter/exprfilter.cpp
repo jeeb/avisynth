@@ -9,6 +9,8 @@
 * Operator aliases:
 *   Caret (^) can be used like pow
 *   For equality check "==" can be used like "="
+*   & same as and
+*   | same as or
 * Built-in constants
 *   ymin, ymax (ymin_a .. ymin_z for individual clips) - the usual luma limits (16..235 or scaled equivalents)
 *   cmin, cmax (cmin_a .. cmin_z) - chroma limits (16..240 or scaled equivalents)
@@ -2471,9 +2473,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             TWO_ARG_OP(opLE);
         else if (tokens[i] == "?")
             THREE_ARG_OP(opTernary);
-        else if (tokens[i] == "and")
+        else if (tokens[i] == "and" || tokens[i] == "&")
             TWO_ARG_OP(opAnd);
-        else if (tokens[i] == "or")
+        else if (tokens[i] == "or" || tokens[i] == "|")
             TWO_ARG_OP(opOr);
         else if (tokens[i] == "xor")
             TWO_ARG_OP(opXor);
