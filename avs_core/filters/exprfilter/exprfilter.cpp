@@ -2107,15 +2107,16 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
   int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
 
-  if (optSSE2) {
-    const int pixels_per_iter = optAvx2 ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
-    intptr_t ptroffsets[MAX_EXPR_INPUTS + 1] = { d.vi.ComponentSize() * pixels_per_iter }; // output
+  // for simd:
+  const int pixels_per_iter = optAvx2 ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
+  intptr_t ptroffsets[MAX_EXPR_INPUTS + 1] = { d.vi.ComponentSize() * pixels_per_iter }; // output
 
-    for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
+  for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
 
-      const int plane_enum = plane_enums[plane];
+    const int plane_enum = plane_enums[plane];
 
-      if (d.plane[plane] == poProcess) {
+    if (d.plane[plane] == poProcess) {
+      if (optSSE2) {
         for (int i = 0; i < numInputs; i++) {
           if (d.node[i]) {
             srcp[i] = src[i]->GetReadPtr(plane_enum);
@@ -2139,68 +2140,9 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
       }
-      // avs+: copy plane here
-      else if (d.plane[plane] == poCopy) {
-        // avs+ copy from Nth clip
-        const int copySource = d.planeCopySourceClip[plane];
-        env->BitBlt(dst->GetWritePtr(plane_enum), dst->GetPitch(plane_enum),
-          src[copySource]->GetReadPtr(plane_enum),
-          src[copySource]->GetPitch(plane_enum),
-          src[copySource]->GetRowSize(plane_enum),
-          src[copySource]->GetHeight(plane_enum)
-        );
-      }
-      else if (d.plane[plane] == poFill) { // avs+
-        uint8_t *dstp = dst->GetWritePtr(plane_enum);
-        const int dst_stride = dst->GetPitch(plane_enum);
-        const int h = dst->GetHeight(plane_enum);
-
-        int val;
-
-        switch (vi.BitsPerComponent())
-        {
-        case 8:
-          val = (uint8_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 255.0f)) + 0.5f);
-          fill_plane<BYTE>(dstp, h, dst_stride, val);
-          break;
-        case 10:
-          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 1023.0f)) + 0.5f);
-          fill_plane<uint16_t>(dstp, h, dst_stride, val);
-          break;
-        case 12:
-          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 4095.0f)) + 0.5f);
-          fill_plane<uint16_t>(dstp, h, dst_stride, val);
-          break;
-        case 14:
-          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 16383.0f)) + 0.5f);
-          fill_plane<uint16_t>(dstp, h, dst_stride, val);
-          break;
-        case 16:
-          val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 65535.0f)) + 0.5f);
-          fill_plane<uint16_t>(dstp, h, dst_stride, val);
-          break;
-        case 32:
-          fill_plane<float>(dstp, h, dst_stride, d.planeFillValue[plane]);
-          break;
-        }
-      }
-
-    }
-  }
-  else {
-    // C version
-    std::vector<float> stackVector(d.maxStackSize);
-
-    int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
-    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
-    int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
-
-    for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
-
-      const int plane_enum = plane_enums[plane];
-
-      if (d.plane[plane] == poProcess) {
-
+      else {
+        // C version
+        std::vector<float> stackVector(d.maxStackSize);
         for (int i = 0; i < numInputs; i++) {
           if (d.node[i]) {
             srcp[i] = src[i]->GetReadPtr(plane_enum);
@@ -2372,17 +2314,54 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
             srcp[i] += src_stride[i];
         }
       }
-      // avs+: copy plane here
-      else if (d.plane[plane] == poCopy) {
-        env->BitBlt(dst->GetWritePtr(plane_enum), dst->GetPitch(plane_enum),
-          src[0]->GetReadPtr(plane_enum),
-          src[0]->GetPitch(plane_enum),
-          src[0]->GetRowSize(plane_enum),
-          src[0]->GetHeight(plane_enum)
-        );
-      }
     }
-  }
+    // avs+: copy plane here
+    else if (d.plane[plane] == poCopy) {
+      // avs+ copy from Nth clip
+      const int copySource = d.planeCopySourceClip[plane];
+      env->BitBlt(dst->GetWritePtr(plane_enum), dst->GetPitch(plane_enum),
+        src[copySource]->GetReadPtr(plane_enum),
+        src[copySource]->GetPitch(plane_enum),
+        src[copySource]->GetRowSize(plane_enum),
+        src[copySource]->GetHeight(plane_enum)
+      );
+    }
+    else if (d.plane[plane] == poFill) { // avs+
+      uint8_t *dstp = dst->GetWritePtr(plane_enum);
+      const int dst_stride = dst->GetPitch(plane_enum);
+      const int h = dst->GetHeight(plane_enum);
+
+      int val;
+
+      switch (vi.BitsPerComponent())
+      {
+      case 8:
+        val = (uint8_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 255.0f)) + 0.5f);
+        fill_plane<BYTE>(dstp, h, dst_stride, val);
+        break;
+      case 10:
+        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 1023.0f)) + 0.5f);
+        fill_plane<uint16_t>(dstp, h, dst_stride, val);
+        break;
+      case 12:
+        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 4095.0f)) + 0.5f);
+        fill_plane<uint16_t>(dstp, h, dst_stride, val);
+        break;
+      case 14:
+        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 16383.0f)) + 0.5f);
+        fill_plane<uint16_t>(dstp, h, dst_stride, val);
+        break;
+      case 16:
+        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 65535.0f)) + 0.5f);
+        fill_plane<uint16_t>(dstp, h, dst_stride, val);
+        break;
+      case 32:
+        fill_plane<float>(dstp, h, dst_stride, d.planeFillValue[plane]);
+        break;
+      }
+    } // plane modes
+  } // for planes
+
   return dst;
 }
 
