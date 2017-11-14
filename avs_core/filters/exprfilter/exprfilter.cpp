@@ -24,7 +24,7 @@
 *   i8, i10, i12, i14, i16, f32
 * Built-in math constant
 *   pi
-* Alpha plane handling
+* Alpha plane handling. When no separate expression is supplied for alpha, plane is copied instead of reusing last expression parameter
 * Proper clamping when storing 10,12 or 14 bit outputs
 * Faster storing of results for 8 and 10-16 bit outputs
 * 16 pixels/cycle instead of 8 when avx2, with fallback to 8-pixel case on the right edge. Thus no need for 64 byte alignment for 32 bit float.
@@ -3242,16 +3242,13 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       expr[i] = expressions[i];
     if (nexpr == 1) {
       expr[1] = expr[0];
-      expr[2] = expr[0];
-      expr[3] = expr[0];
+      expr[2] = expr[0]; // e.g. exprU = exprV = exprY
     }
     else if (nexpr == 2) {
-      expr[2] = expr[1];
-      expr[3] = expr[1];
+      expr[2] = expr[1]; // e.g. exprV = exprU
     }
-    else if (nexpr == 3) { // avs+
-      expr[3] = expr[2];
-    }
+    if(nexpr <= 3)
+      expr[3] = ""; // do not use previous expression to alpha expr. Default: "" (copy)
 
     // default: all clips unused
     for (int i = 0; i < MAX_EXPR_INPUTS; i++) {
