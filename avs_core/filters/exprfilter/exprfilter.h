@@ -77,6 +77,7 @@ struct ExprData {
   PClip node[MAX_EXPR_INPUTS];
   VideoInfo vi;
 #endif
+  bool clipsUsed[MAX_EXPR_INPUTS]; // not doing GetFrame unreferenced input clips
   std::vector<ExprOp> ops[4]; // 4th: alpha
   int plane[4];
   float planeFillValue[4]; // optimize: fill plane with const

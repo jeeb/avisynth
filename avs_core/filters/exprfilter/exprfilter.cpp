@@ -33,9 +33,10 @@
 * spatial input variables in expr syntax:
 *    sx, sy (absolute x and y coordinates, 0 to width-1 and 0 to height-1)
 *    sxr, syr (relative x and y coordinates, from 0 to 1.0)
-* Recognize constant plane expression: use fast memset instead of generic simd process. Approx. 3-4x (32 bits) to 10-12x (8 bits) speedup
-* Recognize single clip letter in expression: use fast plane copy (BitBlt) 
+* Optimize: recognize constant plane expression: use fast memset instead of generic simd process. Approx. 3-4x (32 bits) to 10-12x (8 bits) speedup
+* Optimize: Recognize single clip letter in expression: use fast plane copy (BitBlt) 
 *   (e.g. for 8-16 bits: instead of load-convert_to_float-clamp-convert_to_int-store). Approx. 1.4x (32 bits), 3x (16 bits), 8-9x (8 bits) speedup
+* Optimize: do not call GetFrame for input clips that are not referenced or plane-copied
 *
 * Differences from masktools 2.2.9
 * --------------------------------
@@ -2094,10 +2095,11 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   std::vector<PVideoFrame> src;
   src.reserve(children.size());
 
-  for (const auto& child : children)
-    src.emplace_back(child->GetFrame(n, env));
+  for (size_t i = 0; i < children.size(); i++) {
+    const auto &child = children[i];
+    src.emplace_back(d.clipsUsed[i] ? child->GetFrame(n, env) : nullptr); // GetFrame only when really referenced
+  }
 
-  PVideoFrame *srcf[4] = { d.plane[0] != poCopy ? nullptr : &src[0], d.plane[1] != poCopy ? nullptr : &src[0], d.plane[2] != poCopy ? nullptr : &src[0], d.plane[3] != poCopy ? nullptr : &src[0] };
   PVideoFrame dst = env->NewVideoFrame(d.vi);
 
   const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
@@ -2109,7 +2111,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 
   // for simd:
   const int pixels_per_iter = optAvx2 ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
-  intptr_t ptroffsets[MAX_EXPR_INPUTS + 1] = { d.vi.ComponentSize() * pixels_per_iter }; // output
+  intptr_t ptroffsets[MAX_EXPR_INPUTS + 1] = { d.vi.ComponentSize() * pixels_per_iter }; // 0th: output
 
   for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
 
@@ -2119,9 +2121,16 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
       if (optSSE2) {
         for (int i = 0; i < numInputs; i++) {
           if (d.node[i]) {
-            srcp[i] = src[i]->GetReadPtr(plane_enum);
-            src_stride[i] = src[i]->GetPitch(plane_enum);
-            ptroffsets[i + 1] = d.node[i]->GetVideoInfo().ComponentSize() * pixels_per_iter;
+            if (d.clipsUsed[i]) {
+              srcp[i] = src[i]->GetReadPtr(plane_enum);
+              src_stride[i] = src[i]->GetPitch(plane_enum);
+              ptroffsets[i + 1] = d.node[i]->GetVideoInfo().ComponentSize() * pixels_per_iter; // 1..Nth: inputs
+            }
+            else {
+              srcp[i] = nullptr;
+              src_stride[i] = 0;
+              ptroffsets[i + 1] = 0;
+            }
           }
         }
 
@@ -2134,9 +2143,9 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         ExprData::ProcessLineProc proc = d.proc[plane];
 
         for (int y = 0; y < h; y++) {
-          const uint8_t *rwptrs[MAX_EXPR_INPUTS + 1] = { dstp + dst_stride * y }; // output pointer
+          const uint8_t *rwptrs[MAX_EXPR_INPUTS + 1] = { dstp + dst_stride * y }; // output pointer: 0th
           for (int i = 0; i < numInputs; i++)
-            rwptrs[i + 1] = srcp[i] + src_stride[i] * y; // input pointers
+            rwptrs[i + 1] = srcp[i] + src_stride[i] * y; // input pointers 1..Nth
           proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
       }
@@ -2145,8 +2154,14 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         std::vector<float> stackVector(d.maxStackSize);
         for (int i = 0; i < numInputs; i++) {
           if (d.node[i]) {
-            srcp[i] = src[i]->GetReadPtr(plane_enum);
-            src_stride[i] = src[i]->GetPitch(plane_enum);
+            if (d.clipsUsed[i]) {
+              srcp[i] = src[i]->GetReadPtr(plane_enum);
+              src_stride[i] = src[i]->GetPitch(plane_enum);
+            }
+            else {
+              srcp[i] = nullptr;
+              src_stride[i] = 0;
+            }
           }
         }
 
@@ -3238,6 +3253,11 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       expr[3] = expr[2];
     }
 
+    // default: all clips unused
+    for (int i = 0; i < MAX_EXPR_INPUTS; i++) {
+      d.clipsUsed[i] = false;
+    }
+
     for (int i = 0; i < 4; i++) {
       if (!expr[i].empty()) {
         d.plane[i] = poProcess;
@@ -3246,6 +3266,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         if (d.vi.BitsPerComponent() == vi_array[0]->BitsPerComponent()) {
           d.plane[i] = poCopy; // copy only when target clip format bit depth == 1st clip's bit depth
           d.planeCopySourceClip[i] = 0; // default source clip from empty expression: first one
+          d.clipsUsed[0] = true; // mark clip to have its GetFrame
         }
         else
           d.plane[i] = poUndefined;
@@ -3278,6 +3299,17 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         {
           d.plane[i] = poCopy;
           d.planeCopySourceClip[i] = sourceClip;
+          d.clipsUsed[sourceClip] = true; // mark clip to have its GetFrame
+        }
+      }
+
+      // optimize: mark referenced input clips in order to not call GetFrame for unused inputs
+      for (size_t j = 0; j < d.ops[i].size(); j++) {
+        const uint32_t op = d.ops[i][j].op;
+        if (op == opLoadSrc8 || op == opLoadSrc16 || op == opLoadSrcF16 || op == opLoadSrcF32)
+        {
+          const int sourceClip = d.ops[i][j].e.ival;
+          d.clipsUsed[sourceClip] = true;
         }
       }
     }
