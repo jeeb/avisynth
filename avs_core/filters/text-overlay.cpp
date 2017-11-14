@@ -1454,7 +1454,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
     // Test: 
     // Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
     // SubTitle(Title, utf8 = true)
-    int len = strlen(text) + 1;
+    int len = (int)strlen(text) + 1;
     int wchars_count = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
     wchar_t *textw = new wchar_t[wchars_count];
     int ret = MultiByteToWideChar(CP_UTF8, 0, text, -1, textw, wchars_count);
