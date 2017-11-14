@@ -43,7 +43,7 @@
 /********************************************************************
 # Build Hints for DirectShow SDK
 
-# Hints for Avisynth+, Visual Studio 2015
+# Hints for Avisynth+, Visual Studio 2017 (or VS 2015)
 
 - download and install Microsoft Windows SDK for Windows 7 and .NET Framework 3.5 SP1
   https://www.microsoft.com/en-us/download/details.aspx?id=3138
@@ -73,7 +73,7 @@
   - Edit Project Properties|Linker|Input|Additional Dependencies
     Add strmbase.lib to the list
   - For XP compatibility
-    - choose Platform Toolset v140_xp and 
+    - choose Platform Toolset v141_xp (v140_xp for VS2015) and 
     - Edit Project Properties|C/C++|Command Line
       Add
       /Zc:threadSafeInit-
