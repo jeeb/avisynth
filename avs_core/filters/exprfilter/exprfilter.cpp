@@ -2758,7 +2758,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
             else {
               // keep max pixel value e.g. 8->12 bits: x * 4095.0 / 255.0
-              float q = (float)((1 << autoScaleSourceBitDepth) - 1) / (float)((1 << targetBitDepth) - 1);
+              float q = (float)((1 << targetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
               LOAD_OP(opLoadConst, q, 0);
               TWO_ARG_OP(opMul);
             }
