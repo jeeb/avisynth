@@ -29,7 +29,7 @@
 * Faster storing of results for 8 and 10-16 bit outputs
 * 16 pixels/cycle instead of 8 when avx2, with fallback to 8-pixel case on the right edge. Thus no need for 64 byte alignment for 32 bit float.
 * (Load zeros for nonvisible pixels, when simd block size goes beyond image width, to prevent garbage input for simd calculation)
-* Optimizations for pow: x^0.5 is sqrt, ^2, ^3, ^4 is done by faster and more precise multiplication
+* Optimizations: x^0.5 is sqrt, ^1 +0 -0 *1 /1 to nothing, ^2, ^3, ^4 is done by faster and more precise multiplication
 * spatial input variables in expr syntax:
 *    sx, sy (absolute x and y coordinates, 0 to width-1 and 0 to height-1)
 *    sxr, syr (relative x and y coordinates, from 0 to 1.0)
@@ -3055,8 +3055,8 @@ static void printExpression(const std::vector<ExprOp> &ops) {
 
 static void foldConstants(std::vector<ExprOp> &ops) {
     for (size_t i = 0; i < ops.size(); i++) {
-        // optimize pow
         switch (ops[i].op) {
+          // optimize pow
         case opPow:
           if (ops[i - 1].op == opLoadConst) {
             if (ops[i - 1].e.fval == 0.5f) {
@@ -3064,6 +3064,11 @@ static void foldConstants(std::vector<ExprOp> &ops) {
               ops[i].op = opSqrt;
               ops.erase(ops.begin() + i - 1);
               i--;
+            }
+            else if (ops[i - 1].e.fval == 1.0f) {
+              // replace pow 1 with nothing
+              ops.erase(ops.begin() + i - 1, ops.begin() + i + 1);
+              i -= 2;
             }
             else if (ops[i - 1].e.fval == 2.0f) {
               // replace pow 2 with dup *
@@ -3090,8 +3095,29 @@ static void foldConstants(std::vector<ExprOp> &ops) {
               ops.insert(ops.begin() + i - 1, extraDup);
               i--;
             }
-            break;
           }
+          break;
+          // optimize Mul 1 Div 1
+        case opMul: case opDiv:
+          if (ops[i - 1].op == opLoadConst) {
+            if (ops[i - 1].e.fval == 1.0f) {
+              // replace mul 1 or div 1 with nothing
+              ops.erase(ops.begin() + i - 1, ops.begin() + i + 1);
+              i -= 2;
+            }
+          }
+          break;
+          // optimize Add 0 or Sub 0
+        case opAdd: case opSub:
+          if (ops[i - 1].op == opLoadConst) {
+            if (ops[i - 1].e.fval == 0.0f) {
+              // replace add 0 or sub 0 with nothing
+              ops.erase(ops.begin() + i - 1, ops.begin() + i + 1);
+              i -= 2;
+            }
+          }
+          break;
+          
         }
 
         // fold constant
