@@ -1149,9 +1149,41 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
         Reg32 xcounter;
         mov(xcounter, 0);
 
+#ifdef BAD_JIT_REGISTER_COLORING_DEMO
+        // This warning was left here intentionally
+        /* This kind of jump/label structure messes up jitasm's regular register optimizer.
+           Problem occured on x86. x64 probably has enough registers to avoid register rearrangement
+           constptr is put into edi.
+           opStore is using it when getting the clamping constant 255.0.
+           But when opStore tries to read from the memory pointed by edi+0x60, access violation happens
+           Reason: meanwhile edi was changed into esi/edx but constptr access uses wrong register
+           (in the specific example niter became the pointer instead of constptr
+           in real life it is exchanged with edx --> Access Viola 
+           Always check the register usage when labels are involved.
+           This issue came around when the register variable 'SpatialY' was used inside the loop
+           Demo: use single "syr" in the Expression
+        */
+        
         L("wloop");
-        cmp(niter, 0); // while(niter>0)
+        cmp(niter, 0);
         je("wend");
+        sub(niter, 1);
+        [opLoadSpatialY]
+        [opStore8]
+        jmp("wloop");
+        L("wend");
+        */
+
+        L("wloop");
+        cmp(niter, 0);
+        je("wend");
+#else
+        // non-register-messing-up version
+        // one check before loop (another one at the end)
+        cmp(niter, 0);
+        je("wend");
+        L("wloop");
+#endif
         sub(niter, 1);
 
         // process two sets, no partial input masking
@@ -1183,7 +1215,13 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
 
         add(xcounter, singleMode ? 4 : 8); // XMM: 2x4=8 pixels per cycle. Single mode: 4 pixels/cycle
 
+#ifdef BAD_JIT_REGISTER_COLORING_DEMO
         jmp("wloop");
+#else
+        cmp(niter, 0); // while(niter>0)
+        jne("wloop");
+#endif
+
         L("wend");
 
         int nrestpixels = planewidth & (singleMode ? 3 : 7);
@@ -1924,9 +1962,16 @@ generated epilog example (new):
     Reg32 xcounter;
     mov(xcounter, 0);
 
+#ifdef BAD_JIT_REGISTER_COLORING_DEMO
+    // see comments at the SSE2 part
     L("wloop");
     cmp(niter, 0); // while(niter>0)
     je("wend");
+#else
+    cmp(niter, 0); // while(niter>0)
+    je("wend");
+    L("wloop");
+#endif
     sub(niter, 1);
 
     // process two sets, no partial input masking
@@ -1964,7 +2009,12 @@ generated epilog example (new):
     }
     add(xcounter, singleMode ? 8 : 16);
 
+#ifdef BAD_JIT_REGISTER_COLORING_DEMO
     jmp("wloop");
+#else
+    cmp(niter, 0); // while(niter>0)
+    jne("wloop");
+#endif
     L("wend");
     
     int nrestpixels = planewidth & (singleMode ? 7 : 15);
