@@ -1969,11 +1969,11 @@ MaskHS::MaskHS(PClip _child, double _startHue, double _endHue, double _maxSat, d
           for (int v = 0; v < lut_size; v++) {
               const double destv = (v - middle_chroma) * uv_range_corr;
               int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
-              bool low = ProcessPixel(destv, destu, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+              bool ppres = ProcessPixel(destv, destu, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
               if(pixelsize==1)
-                  mapUV[ushift | v] = low ? actual_chroma_range_low : actual_chroma_range_high;
+                  mapUV[ushift | v] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
               else
-                  reinterpret_cast<uint16_t *>(mapUV)[ushift | v] = low ? actual_chroma_range_low : actual_chroma_range_high;
+                  reinterpret_cast<uint16_t *>(mapUV)[ushift | v] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
           }
       }
     } // end of lut calculation
@@ -2048,8 +2048,8 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
                 const double destu = srcpu[x] - middle_chroma;
                 const double destv = srcpv[x] - middle_chroma;
                 int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
-                bool low = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
-                dstp[x] = low ? actual_chroma_range_low : actual_chroma_range_high;
+                bool ppres = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+                dstp[x] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
               }
               dstp += dst_pitch;
               srcpu += srcu_pitch;
@@ -2063,8 +2063,8 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
                 const double destu = (reinterpret_cast<const uint16_t *>(srcpu)[x] - middle_chroma);
                 const double destv = (reinterpret_cast<const uint16_t *>(srcpv)[x] - middle_chroma);
                 int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
-                bool low = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
-                reinterpret_cast<uint16_t *>(dstp)[x] = low ? actual_chroma_range_low : actual_chroma_range_high;
+                bool ppres = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+                reinterpret_cast<uint16_t *>(dstp)[x] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
               }
               dstp += dst_pitch;
               srcpu += srcu_pitch;
@@ -2079,8 +2079,8 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
                 const double destu = (reinterpret_cast<const float *>(srcpu)[x] - middle_chroma_f);
                 const double destv = (reinterpret_cast<const float *>(srcpv)[x] - middle_chroma_f);
                 int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
-                bool low = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
-                reinterpret_cast<float *>(dstp)[x] = low ? actual_chroma_range_low_f : actual_chroma_range_high_f;
+                bool ppres = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
+                reinterpret_cast<float *>(dstp)[x] = ppres ? actual_chroma_range_high_f : actual_chroma_range_low_f;
               }
               dstp += dst_pitch;
               srcpu += srcu_pitch;
