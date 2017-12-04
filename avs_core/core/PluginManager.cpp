@@ -528,7 +528,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
   replace(dir, '\\', '/');
 
   // append terminating slash if needed
-  if (dir[dir.size()-1] != '/')
+  if (dir.size() > 0 && dir[dir.size()-1] != '/')
     dir.append("/");
 
   // remove double slashes
