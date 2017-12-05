@@ -1,6 +1,15 @@
 CMakeCache.txt
 CMakeFiles/*
 distrib/docs/english/build/
+distrib/WinInstaller/git_rev.ini
+distrib/WinInstaller/*.exe
+distrib/WinInstaller/*.bak
+distrib/WinInstaller/x86/*
+distrib/WinInstaller/x64/*
+distrib/Prerequisites/VC_redist.x64.exe
+distrib/Prerequisites/VC_redist.x86.exe
+distrib/Prerequisites/vcredist_x64.exe
+distrib/Prerequisites/vcredist_x86.exe
 
 avs_core/CMakeCache.txt
 avs_core/CMakeFiles/*
