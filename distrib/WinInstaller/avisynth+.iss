@@ -1,13 +1,27 @@
-﻿#define AvsName "AviSynth+"
+﻿;!!!Conditional!!!  comment out the following define to ignore VS redistributables
+#define WITH_VC_REDIST
+
+;!!!Conditional!!!  comment out the following define to include project web url
+;original Avs+ project page is not maintained at the moment (Dec. 2017) and contains very old content
+;#define WITH_AVSPLUS_URL
+
+#define AvsName "AviSynth+"
 #define AvsPublisher "The Public"
 #define AppId "{AC78780F-BACA-4805-8D4F-AE1B52B7E7D3}"
-#define AvsGitURL "https://github.com/pylorak/avisynth"
+#define AvsGitURL "https://github.com/pinterf/AviSynthPlus/"
+;#define AvsGitURL "https://github.com/pylorak/avisynth"
+
+#ifdef WITH_AVSPLUS_URL
 #define AvsWebURL "http://www.avs-plus.net"
+#endif
 
-#define BuildDir32 "..\..\..\build-vs2013-x86"
-#define BuildDir64 "..\..\..\build-vs2013-x64"
+;There is no specific x86/x64 output directory.
+;Build x86 avs+ then copy the Output folder (with the folder itself) here
+#define BuildDir32 "x86"
+;Build x64 avs+ then copy the Output folder (with the folder itself) here
+#define BuildDir64 "x64"
 
-#define VcVersion "Microsoft Visual C++ Redistributable 2013"
+#define VcVersion "Microsoft Visual C++ Redistributable 2017"
 #define BuildDate GetFileDateTimeString(AddBackslash(BuildDir32) + "Output\AviSynth.dll", 'yyyy/mm/dd', '-',);
 
 #expr Exec("powershell", "-ExecutionPolicy unrestricted -File update_git_rev.ps1", SourcePath, 1)
@@ -30,13 +44,16 @@ AppVersion={#Version}.{#RevisionNumber}
   OutputBaseFilename={#AvsName}-{#Branch}-v{#Version}-r{#RevisionNumber}-{#Revision}
 #endif
 AppPublisher={#AvsPublisher}
+#ifdef WITH_AVSPLUS_URL
 AppPublisherURL={#AvsWebURL}
 AppSupportURL={#AvsWebURL}/get_started.html
+#endif
 AppUpdatesURL={#AvsGitURL}/releases
 AppReadmeFile={#AvsGitURL}/blob/master/README.rst
 VersionInfoVersion={#Version}.{#RevisionNumber}
 DefaultDirName={pf}\{#AvsName}
 DefaultGroupName={#AvsName}
+DisableWelcomePage=no
 DisableProgramGroupPage=yes
 OutputDir={#BuildDir32}\..
 SetupIconFile=..\Icons\Ico\InstIcon.ico
@@ -45,7 +62,7 @@ WizardImageFile=WizardImageBig.bmp
 WizardSmallImageFile=WizardImageSmall.bmp
 ChangesAssociations=yes
 ChangesEnvironment=yes
-
+;Compression=lzma2/max
 Compression=lzma2/ultra
 SolidCompression=yes
 SetupLogging=yes
@@ -118,13 +135,17 @@ Source: "{#BuildDir32}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs
 Source: "{#BuildDir32}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion 
 Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
 Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
-Source: "..\Prerequisites\vcredist_x86.exe"; DestDir: {app}; Components: main\avs32; Flags: deleteafterinstall
+;get latest from https://www.visualstudio.com/downloads/
+; 32 bit: https://go.microsoft.com/fwlink/?LinkId=746571
+Source: "..\Prerequisites\VC_redist.x86.exe"; DestDir: {app}; Components: main\avs32; Flags: deleteafterinstall; Check: IncludeVcRedist()
 
 Source: "{#BuildDir64}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion 
 Source: "{#BuildDir64}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion 
 Source: "{#BuildDir64}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion 
 Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion
-Source: "..\Prerequisites\vcredist_x64.exe"; DestDir: {app}; Components: main\avs64; Flags: deleteafterinstall
+;get latest from https://www.visualstudio.com/downloads/
+; 64 bit: https://go.microsoft.com/fwlink/?LinkId=746572
+Source: "..\Prerequisites\VC_redist.x64.exe"; DestDir: {app}; Components: main\avs64; Flags: deleteafterinstall; Check: IncludeVcRedist()
 
 Source: "..\docs\*.css"; DestDir: "{app}\docs"; Components: docs; Flags: ignoreversion
 ;Source: "..\docs\czech\*"; DestDir: "{app}\docs\Czech"; Components: docs\cs; Flags: ignoreversion recursesubdirs 
@@ -189,8 +210,8 @@ Root: HKLM32; Subkey: "Software\AviSynth"; ValueName: "LegacyDir"; ValueType: st
 Type: files; Name: "{app}\Setup Log*.txt"
 
 [Run]
-Filename: "{app}\vcredist_x86.exe"; Parameters: "/q /norestart"; Components: main\avs32 ;Description: "{#VcVersion} (x86)"; StatusMsg: "{cm:InstallStatusRuntime,{#VcVersion},x86}"
-Filename: "{app}\vcredist_x64.exe"; Parameters: "/q /norestart"; Components: main\avs64 ;Description: "{#VcVersion} (x64)"; StatusMsg: "{cm:InstallStatusRuntime,{#VcVersion},x64}"
+Filename: "{app}\VC_redist.x86.exe"; Parameters: "/q /norestart"; Components: main\avs32 ;Description: "{#VcVersion} (x86)"; StatusMsg: "{cm:InstallStatusRuntime,{#VcVersion},x86}"; Check: IncludeVcRedist()
+Filename: "{app}\VC_redist.x64.exe"; Parameters: "/q /norestart"; Components: main\avs64 ;Description: "{#VcVersion} (x64)"; StatusMsg: "{cm:InstallStatusRuntime,{#VcVersion},x64}"; Check: IncludeVcRedist()
 
 [Ini]
 ;Backup legacy AviSynth registry entries to .reg file
@@ -251,6 +272,27 @@ const
   AVSUNINST_OK = 2;
   LogIndent = '--- ';
 
+procedure LogVal(Prefix, Val: String);
+begin
+  Log(Prefix + ': ' + Val);
+end;
+
+procedure LogValInd(Prefix, Val: String);
+begin
+  Log(LogIndent + Prefix + ': ' + Val);
+end;
+
+procedure LogAvsDirectories(AvsDir: TAvsDirs);
+begin
+  with AvsDir do begin 
+    LogValInd('Program',Prog);
+    LogValInd('Plugins',Plug32);
+    LogValInd('Plugins+',PlugPlus32);
+    LogValInd('Plugins64',Plug64);
+    LogValInd('Plugins64+',PlugPlus64);
+  end;
+end;
+
 // Directory handling                                                              
 procedure SetAvsDirsDefault;
 begin
@@ -259,6 +301,7 @@ begin
     AvsDirsDefault.PlugPlus32 := '\plugins+';
     AvsDirsDefault.Plug64 := '\plugins64';
     AvsDirsDefault.PlugPlus64 := '\plugins64+';
+    AvsDirsDefault.IsSet := True;
   end;
 end;
 
@@ -424,27 +467,6 @@ begin
   end;
 end;
 
-procedure LogVal(Prefix, Val: String);
-begin
-  Log(Prefix + ': ' + Val);
-end;
-
-procedure LogValInd(Prefix, Val: String);
-begin
-  Log(LogIndent + Prefix + ': ' + Val);
-end;
-
-procedure LogAvsDirectories(AvsDir: TAvsDirs);
-begin
-  with AvsDir do begin 
-    LogValInd('Program',Prog);
-    LogValInd('Plugins',Plug32);
-    LogValInd('Plugins+',PlugPlus32);
-    LogValInd('Plugins64',Plug64);
-    LogValInd('Plugins64+',PlugPlus64);
-  end;
-end;
-
 procedure SetInputs(ID: Integer; State: Boolean);
 begin
   PluginPage.Edits[ID].Enabled := State
@@ -471,6 +493,7 @@ end;
 function InitializeSetup(): Boolean;
 begin
   SetAvsDirsReg();
+  SetAvsDirsDefault();
   Result := True
 end;
 
@@ -521,7 +544,8 @@ begin
     Result := True
 
   end else if CurPageID = wpSelectComponents then begin
-  UpdatePluginDirPage('read');
+    SetAvsDirsPlus();
+    UpdatePluginDirPage('read');
     if IsComponentSelected('main\avs64') then begin                                                       
       if IsComponentSelected('avsmig\backup') and IsLegacyAvsInstalled('64') then
         SetInputs(2,false)
@@ -713,3 +737,11 @@ begin
   DelTree(ExpandConstant('{commonprograms}\AviSynth 2.5'), True, True, False);
 end;
 
+function IncludeVcRedist(): boolean;
+begin
+  #ifdef WITH_VC_REDIST
+  Result := True;
+  #else
+  Result := False;
+  #endif
+end;
