@@ -573,7 +573,7 @@ public:
       default: env->ThrowError("VirtualdubFilterProxy: Unknown error code %d", e);
     }
   }
-  char* VDcall TranslateScriptError(void* cse) { return ""; }
+  char* VDcall TranslateScriptError(void* cse) { return const_cast<char *>(""); }
   char** VDcall AllocTempString(long l) { return (char**)0; }
   CScriptValue VDcall LookupObjectMember(CScriptObject *obj, void *, char *szIdent) { return CScriptValue(); }
 };
