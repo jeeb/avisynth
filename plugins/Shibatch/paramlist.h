@@ -1,10 +1,13 @@
+#ifndef __PARAMLIST_H__
+#define __PARAMLIST_H__
+
 #include <cstdio>
 #include <stdlib.h>
 #include <string.h>
 
 class paramlistelm {
 public:
-	class paramlistelm *next;
+	paramlistelm *next;
 
 	char left,right;
 	float lower,upper,gain,gain2;
@@ -31,7 +34,7 @@ public:
 
 class paramlist {
 public:
-	class paramlistelm *elm;
+	paramlistelm *elm;
 
 	paramlist(void) {
 		elm = NULL;
@@ -116,3 +119,4 @@ public:
 	    }
 	}
 };
+#endif // __PARAMLIST_H__

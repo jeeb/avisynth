@@ -668,6 +668,7 @@ void convert_to_lower_ascii(const char * src,unsigned max,char * out,char replac
 	*out = 0;
 }
 
+#if 0
 string_list_nulldelimited::string_list_nulldelimited()
 {
 	reset();
@@ -699,3 +700,4 @@ void string_list_nulldelimited::reset()
 	len = 0;
 	data.copy("\0",2,len);
 }
+#endif

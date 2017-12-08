@@ -29,6 +29,8 @@ Copyright (c) 2003, Klaus Post
 #include <cstring>
 #include "PFC/mem_block.h"
 
+#include "paramlist.h"
+
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;
 
@@ -315,7 +317,7 @@ public:
 		equ_init(wb);
 	}
 
-	void equ_makeTable(double *bc,class paramlist *param,double fs)
+  void equ_makeTable(double *bc,paramlist *param,double fs)
 	{
 		int i,cires = cur_ires;
 		REAL *nires;

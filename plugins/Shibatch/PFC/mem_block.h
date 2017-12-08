@@ -41,7 +41,7 @@ public:
 	inline void set_mem_logic(mem_logic_t v) {mem_logic=v;}
 	inline mem_logic_t get_mem_logic() const {return mem_logic;}
 
-	void prealloc(unsigned size);
+  void prealloc(unsigned size);
 
 	inline mem_block() {data=0;size=0;used=0;mem_logic=ALLOC_DEFAULT;}
 	inline ~mem_block() {if (data) free(data);}
@@ -52,7 +52,7 @@ public:
 	inline void * get_ptr() {return data;}
 
 	void * set_size(unsigned new_used);
-
+  
 	inline void * check_size(unsigned new_size)
 	{
 		if (used<new_size) return set_size(new_size);
@@ -177,12 +177,14 @@ public:
 	inline void prealloc(unsigned size) {theBlock.prealloc(size*sizeof(T));}
 };
 
+#if 0
 template<class T>
 class mem_block_fastalloc : public mem_block_t<T>
 {
 public:
 	mem_block_fastalloc(unsigned initsize=0) {set_mem_logic(mem_block::ALLOC_FAST_DONTGODOWN);if (initsize) prealloc(initsize);}
 };
+#endif
 
 #if 0
 

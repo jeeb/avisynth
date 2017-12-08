@@ -66,7 +66,7 @@ private:
 	void bufloop(int finish);
 protected:
 	
-	Resampler_base(const CONFIG & c);
+	Resampler_base(const Resampler_base::CONFIG & c);
 
 	void _inline __output(REAL_inout value, int& delay2)
 	{
@@ -78,6 +78,7 @@ protected:
 	};
 
 	virtual unsigned int Resample(REAL_inout * input,unsigned int size,int ending)=0;
+
 	double peak;
 	int nch,sfrq,dfrq;
 	double gain;
@@ -88,8 +89,8 @@ protected:
 
 public:
 	double GetPeak() {return peak;}//havent tested if this actually still works
-	
-	void Write(const REAL_inout* input,int size);
+
+void Write(const REAL_inout* input,int size);
 	_inline void Finish() {bufloop(1);}
 	
 	_inline REAL_inout* GetBuffer(int * s) {return out.GetBuffer(s);}
@@ -101,11 +102,16 @@ public:
 
 	virtual ~Resampler_base() {}
 
-	static Resampler_base * Create(CONFIG & c);
+	static Resampler_base * Create(Resampler_base::CONFIG & c);
 };
 
+/*
 #define SSRC_create(sfrq,dfrq,nch,dither,pdf,fast) \
 	Resampler_base::Create(Resampler_base::CONFIG(sfrq,dfrq,nch,dither,pdf,fast))
+
+moved outside
+*/
+Resampler_base *SSRC_create(int sfrq, int dfrq, int nch, int dither, int pdf, int fast);
 
 /*
 USAGE:

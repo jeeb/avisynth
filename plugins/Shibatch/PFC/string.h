@@ -593,6 +593,7 @@ public:
 void pfc_float_to_string(char * out,double val,unsigned precision,bool force_sign = false);//doesnt add E+X etc, has internal range limits, useful for storing float numbers as strings without having to bother with international coma/dot settings BS
 double pfc_string_to_float(const char * src);
 
+#if 0
 class string_list_nulldelimited
 {
 	mem_block_fastalloc<char> data;
@@ -605,5 +606,6 @@ public:
 	void add_string_multi(const char *);
 	void reset();
 };
+#endif
 
 #endif //_PFC_STRING_H_
