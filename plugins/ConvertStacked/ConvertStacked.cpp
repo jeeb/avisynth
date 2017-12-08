@@ -120,7 +120,7 @@ public:
         return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
     }
 
-    static AVSValue __cdecl ConvertToStacked::Create(AVSValue args, void*, IScriptEnvironment* env)
+    static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
     {
         PClip clip = args[0].AsClip();
         /*if (clip->GetVideoInfo().IsY8())
@@ -134,7 +134,7 @@ class ConvertFromStacked : public GenericVideoFilter
 {
 public:
 
-    ConvertFromStacked::ConvertFromStacked(PClip src, int bits, IScriptEnvironment* env) : GenericVideoFilter(src)
+    ConvertFromStacked(PClip src, int bits, IScriptEnvironment* env) : GenericVideoFilter(src)
     {
         if (bits == 10 && vi.IsYV12())
             vi.pixel_type = VideoInfo::CS_YUV420P10;
@@ -175,7 +175,7 @@ public:
         return;
     }
 
-    PVideoFrame __stdcall ConvertFromStacked::GetFrame(int n, IScriptEnvironment* env)
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
     {
         PVideoFrame src = child->GetFrame(n, env);
 
@@ -235,7 +235,7 @@ public:
     }
 
 
-    static AVSValue __cdecl ConvertFromStacked::Create(AVSValue args, void*, IScriptEnvironment* env)
+    static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
     {
         PClip clip = args[0].AsClip();
         int bits = args[1].AsInt(16);
