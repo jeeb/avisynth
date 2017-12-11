@@ -5,6 +5,13 @@
 
 #define MAX_EXPR_INPUTS 26
 
+#define RWPTR_START_OF_OUTPUT 0   // 1
+#define RWPTR_START_OF_XCOUNTER 1 // 1
+#define RWPTR_START_OF_INPUTS 2   // count = 26
+#define RWPTR_START_OF_PADDING 4  // padding to have 32 pointers (rfu for 8 ptr/cycle ymm simd)
+#define RWPTR_START_OF_STRIDES 32 // count = 26 for relative_y
+#define RWPTR_SIZE 58 // 1+1+26+4+26
+
 struct split1 {
   enum empties_t { empties_ok, no_empties };
 };
@@ -33,7 +40,9 @@ Container& split(
 }
 
 typedef enum {
-  opLoadSrc8, opLoadSrc16, opLoadSrcF32, opLoadSrcF16, opLoadConst,
+  opLoadSrc8, opLoadSrc16, opLoadSrcF32, opLoadSrcF16, 
+  opLoadRelSrc8, opLoadRelSrc16, opLoadRelSrcF32,
+  opLoadConst,
   opLoadSpatialX, opLoadSpatialY,
   opStore8, opStore10, opStore12, opStore14, opStore16, opStoreF32, opStoreF16, // avs+: 10,12,14 bit store
   opDup, opSwap,
@@ -57,10 +66,14 @@ struct FloatIntUnion {
 struct ExprOp {
   ExprUnion e;
   uint32_t op;
-  ExprOp(SOperation op, float val) : op(op) {
+  int dx, dy;
+  ExprOp(SOperation op, float val) : op(op), dx(0), dy(0) {
     e.fval = val;
   }
-  ExprOp(SOperation op, int32_t val = 0) : op(op) {
+  ExprOp(SOperation op, int32_t val = 0) : op(op), dx(0), dy(0) {
+    e.ival = val;
+  }
+  ExprOp(SOperation op, int32_t val, int dx, int dy) : op(op), dx(dx), dy(dy) {
     e.ival = val;
   }
 };
@@ -82,10 +95,12 @@ struct ExprData {
   int plane[4];
   float planeFillValue[4]; // optimize: fill plane with const
   int planeCopySourceClip[4]; // optimize: copy plane from which clip
+  int planeOptAvx2[4]; // instruction set constraints
+  int planeOptSSE2[4]; 
   size_t maxStackSize;
   int numInputs;
 #ifdef VS_TARGET_CPU_X86
-  typedef void(*ProcessLineProc)(void *rwptrs, intptr_t ptroff[MAX_EXPR_INPUTS + 1], intptr_t niter, uint32_t spatialY);
+  typedef void(*ProcessLineProc)(void *rwptrs, intptr_t ptroff[RWPTR_SIZE], intptr_t niter, uint32_t spatialY);
   ProcessLineProc proc[4]; // 4th: alpha
   ExprData() : node(), vi(), proc() {}
 #else
