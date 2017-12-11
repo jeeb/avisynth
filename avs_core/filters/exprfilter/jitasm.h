@@ -26,6 +26,13 @@
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Changes 2017 by pinterf
+// - AVX friendly prolog/epilog with vzeroupper
+// - Aligned stack slots for ymm spill variables
+// - VEX encoded aligned store and load for temporary xmm/ymm registers
+// - Fix: false codegen when rearranging multiple working registers in MoveGenerator by 
+//   tracking real register usage for an xchg sequence
 
 #pragma once
 #ifndef JITASM_H
@@ -7507,10 +7514,41 @@ namespace compiler
 		MoveGenerator(int *moves, OpdSize *sizes, RegOp *reg_operator) : moves_(moves), sizes_(sizes), reg_operator_(reg_operator) {}
 		void operator()(const int *scc, size_t count) {
 			if (count > 1) {
+        std::vector<std::pair<int, int>> real_moves; // PF 20171210 track real register usage
 				for (size_t i = 0; i < count - 1; ++i) {
 					const int r = scc[i];
-					JITASM_ASSERT(r != moves_[r] && moves_[r] != -1);
-					reg_operator_->Swap(static_cast<PhysicalRegID>(moves_[r]), static_cast<PhysicalRegID>(r), sizes_[r]);
+					JITASM_ASSERT(r != moves_[r] && moves_[r] != -1); // sanity check: cannot move to itself, cannot move to undefined
+          /*
+          PF 20171210 track real register usage
+          Old: reg_operator_->Swap(static_cast<PhysicalRegID>(moves_[r]), static_cast<PhysicalRegID>(r), sizes_[r]);
+          results in wrong code for multiple xchg: does not take into account previous exchanges
+          xchg        edi, ecx
+          xchg        esi, edi
+          xchg        edx, esi
+          new code:
+          xchg        edi,ecx (-> edi = _ecx, ecx = _edi)
+          xchg        esi,ecx (-> esi = ecx (esi = _edi), ecx = _esi)
+          xchg        edx,ecx (-> edx = ecx (edx = _esi), ecx = _edx)
+          */
+
+          // When swapping registers, all register exchanges which took role in swap should be renamed
+          int _this1 = moves_[r];
+          int _this2 = r;
+          for (size_t j = 0; j < real_moves.size(); j++) {
+            int _test_this1 = real_moves[j].first;
+            int _test_this2 = real_moves[j].second;
+            if (_this1 == _test_this1)
+              _this1 = _test_this2;
+            else if (_this1 == _test_this2)
+              _this1 = _test_this1;
+            if (_this2 == _test_this1)
+              _this2 = _test_this2;
+            else if (_this2 == _test_this2)
+              _this2 = _test_this1;
+          }
+          real_moves.push_back(std::make_pair(_this1, _this2));
+          reg_operator_->Swap(static_cast<PhysicalRegID>(_this1), static_cast<PhysicalRegID>(_this2), sizes_[_this2]);
+
 					JITASM_TRACE("Swap%d %d <-> %d\n", sizes_[r], moves_[r], r);
 				}
 			} else if (moves_[scc[0]] != scc[0] && moves_[scc[0]] != -1) {
