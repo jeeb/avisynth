@@ -39,6 +39,10 @@
 * Optimize: do not call GetFrame for input clips that are not referenced or plane-copied
 * 20171211: Implement relative pixel indexing e.g. x[-1,-3], requires SSSE3
 *           Fix jitasm code generation (corrupt code when doing register reorders)
+* 20171212: Variables:  A..Z
+            To store the current top value of the stack to a variable: A@ .. Z@
+*           To store the current top value and pop it from the top of the stack: A^.. Z^
+*           To use a stored variable: single uppercase letter. E.g. A
 *
 * Differences from masktools 2.2.9
 * --------------------------------
@@ -1660,6 +1664,27 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           stack.push_back(std::make_pair(r1, r2));
         }
       }
+      else if (iter.op == opLoadVar) {
+        if (processSingle) {
+          XmmReg r1;
+          // 16 bytes/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 16 * iter.e.ival;
+          movdqa(r1, xmmword_ptr[regptrs + offset]);
+          if (maskIt)
+            doMask(r1, constptr, planewidth);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          // 32 bytes/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
+          movdqa(r1, xmmword_ptr[regptrs + offset]);
+          movdqa(r2, xmmword_ptr[regptrs + offset + 16]);
+          if (maskIt)
+            doMask(r2, constptr, planewidth);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
       else if (iter.op == opLoadConst) {
         if (processSingle) {
           XmmReg r1;
@@ -1948,6 +1973,25 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           mov(a, ptr[regptrs]);
           vcvtps2ph(qword_ptr[a], t1.first, 0);
           vcvtps2ph(qword_ptr[a + 8], t1.second, 0);
+        }
+      }
+      else if (iter.op == opStoreVar || iter.op == opStoreAndPopVar) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          if(iter.op == opStoreAndPopVar)
+            stack1.pop_back();
+          // 16 bytes/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 16 * iter.e.ival;
+          movaps(xmmword_ptr[regptrs + offset], t1);
+        }
+        else {
+          auto &t1 = stack.back();
+          if (iter.op == opStoreAndPopVar)
+            stack.pop_back();
+          // 32 byte/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
+          movaps(xmmword_ptr[regptrs + offset], t1.first);
+          movaps(xmmword_ptr[regptrs + offset + 16], t1.second);
         }
       }
       else if (iter.op == opAbs) {
@@ -2377,6 +2421,29 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           stack.push_back(std::make_pair(r1, r2));
         }
       }
+      else if (iter.op == opLoadVar) {
+        if (processSingle) {
+          YmmReg r1;
+          // 32 bytes/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
+          // 32 bytes, 8 * float
+          vmovdqa(r1, ymmword_ptr[regptrs + offset]);
+          if (maskIt)
+            vblendps(r1, zero, r1, mask);
+          stack1.push_back(r1);
+        }
+        else {
+          YmmReg r1, r2;
+          // 64 bytes/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 64 * iter.e.ival;
+          // 32 bytes, 8 * float
+          vmovdqa(r1, ymmword_ptr[regptrs + offset]);
+          vmovdqa(r2, ymmword_ptr[regptrs + offset + 32]); // needs 64 byte aligned data to prevent read past valid data!
+          if (maskIt)
+            vblendps(r2, zero, r2, mask);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
       else if (iter.op == opLoadConst) {
         if (processSingle) {
           YmmReg r1;
@@ -2636,6 +2703,25 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           mov(a, ptr[regptrs]);
           vcvtps2ph(xmmword_ptr[a], t1.first, 0);
           vcvtps2ph(xmmword_ptr[a + 16], t1.second, 0);
+        }
+      }
+      else if (iter.op == opStoreVar || iter.op == opStoreAndPopVar) {
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          if (iter.op == opStoreAndPopVar)
+            stack1.pop_back();
+          // 32 bytes/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
+          vmovaps(ymmword_ptr[regptrs + offset], t1);
+        }
+        else {
+          auto &t1 = stack.back();
+          if (iter.op == opStoreAndPopVar)
+            stack.pop_back();
+          // 64 bytes/variable
+          int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 64 * iter.e.ival;
+          vmovaps(ymmword_ptr[regptrs + offset], t1.first);
+          vmovaps(ymmword_ptr[regptrs + offset + 32], t1.second); // this needs 64 byte aligned data to prevent overwrite!
         }
       }
       else if (iter.op == opAbs) {
@@ -3096,6 +3182,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
   const uint8_t *srcp_orig[MAX_EXPR_INPUTS] = {}; // for C
   int src_stride[MAX_EXPR_INPUTS] = {};
+  float variable_area[MAX_VARIABLES] = {}; // for C, place for expr variables A..Z
 
   int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
@@ -3249,6 +3336,11 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
                 stacktop = vops[i].e.fval;
                 ++si;
                 break;
+              case opLoadVar:
+                stack[si] = stacktop;
+                stacktop = variable_area[vops[i].e.ival];
+                ++si;
+                break;
               case opDup:
                 stack[si] = stacktop;
                 stacktop = stack[si - vops[i].e.ival];
@@ -3358,6 +3450,15 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
               case opStoreF32:
                 reinterpret_cast<float *>(dstp)[x] = stacktop;
                 goto loopend;
+              case opStoreVar:
+                variable_area[vops[i].e.ival] = stacktop;
+                break;
+              case opStoreAndPopVar:
+                variable_area[vops[i].e.ival] = stacktop;
+                --si;
+                if(si >= 0)
+                  stacktop = stack[si];
+                break;
               }
             }
           loopend:;
@@ -3451,6 +3552,8 @@ static SOperation getStoreOp(const VideoInfo *vi) {
 #define LOAD_REL_OP(op,v,req,dx,dy) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v), (dx), (dy))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
 #define GENERAL_OP(op, v, req, dec) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v))); stackSize-=(dec); } while(0)
 #define ONE_ARG_OP(op) GENERAL_OP(op, 0, 1, 0)
+#define VAR_STORE_OP(op,v) GENERAL_OP(op, v, 1, 0)
+#define VAR_STORE_SPEC_OP(op,v) GENERAL_OP(op, v, 1, 1)
 #define TWO_ARG_OP(op) GENERAL_OP(op, 0, 2, 1)
 #define THREE_ARG_OP(op) GENERAL_OP(op, 0, 3, 2)
 
@@ -3600,6 +3703,24 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Too few input clips supplied to reference '%s'", tokens[i].c_str());
           LOAD_OP(getLoadOp(vi[loadIndex], false), loadIndex, 0);
         } 
+        else if (tokens[i].length() == 1 && tokens[i][0] >= 'A' && tokens[i][0] <= 'Z') { // avs+
+          // use of a variable: single uppercase letter A..Z
+          char srcChar = tokens[i][0];
+          int loadIndex = srcChar - 'A';
+          LOAD_OP(opLoadVar, loadIndex, 0);
+        }
+        else if (tokens[i].length() == 2 && tokens[i][0] >= 'A' && tokens[i][0] <= 'Z') { // avs+
+          // storing a variable: A@ .. Z@
+          // storing a variable and remove from stack: A^..Z^
+          char srcChar = tokens[i][0];
+          int loadIndex = srcChar - 'A';
+          if (tokens[i][1] == '^')
+            VAR_STORE_SPEC_OP(opStoreAndPopVar, loadIndex);
+          else if (tokens[i][1] == '@')
+            VAR_STORE_OP(opStoreVar, loadIndex);
+          else
+            env->ThrowError("Invalid character, '^' or '@' expected in '%s'", tokens[i].c_str());
+        }
         // indexed clips e.g. x[-1,-2]
         else if (tokens[i].length() > 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z' && tokens[i][1] == '[') {
           char srcChar = tokens[i][0];
@@ -3972,14 +4093,17 @@ static int numOperands(uint32_t op) {
         case opDup:
         case opLoadSpatialX:
         case opLoadSpatialY:
-            return 0;
+        case opLoadVar:
+          return 0;
 
         case opSqrt:
         case opAbs:
         case opNeg:
         case opExp:
         case opLog:
-            return 1;
+        case opStoreVar:
+        case opStoreAndPopVar:
+          return 1;
 
         case opSwap:
         case opAdd:
@@ -4019,6 +4143,7 @@ static bool isLoadOp(uint32_t op) {
         case opLoadRelSrcF32:
         case opLoadSpatialX:
         case opLoadSpatialY:
+        case opLoadVar:
             return true;
     }
 
@@ -4090,7 +4215,13 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opLoadSpatialX),
         PAIR(opLoadSpatialY),
         PAIR(opLoadConst),
+        PAIR(opLoadVar)
+        PAIR(opLoadAndPopVar)
+        PAIR(opStoreVar)
         PAIR(opStore8),
+        PAIR(opStore10),
+        PAIR(opStore12),
+        PAIR(opStore14),
         PAIR(opStore16),
         PAIR(opStoreF32),
         PAIR(opStoreF16),

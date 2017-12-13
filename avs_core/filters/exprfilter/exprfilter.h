@@ -4,13 +4,17 @@
 #include <avisynth.h>
 
 #define MAX_EXPR_INPUTS 26
+#define MAX_VARIABLES 26
 
+// indexing RWPTR array (pointer sized elements)
 #define RWPTR_START_OF_OUTPUT 0   // 1
 #define RWPTR_START_OF_XCOUNTER 1 // 1
 #define RWPTR_START_OF_INPUTS 2   // count = 26
 #define RWPTR_START_OF_PADDING 4  // padding to have 32 pointers (rfu for 8 ptr/cycle ymm simd)
 #define RWPTR_START_OF_STRIDES 32 // count = 26 for relative_y
-#define RWPTR_SIZE 58 // 1+1+26+4+26
+#define RWPTR_START_OF_PADDING2 58 // count = 6 pad to 32 bytes boundary in x86
+#define RWPTR_START_OF_USERVARIABLES 64 // count = 26 (for 2*ymm sized variables)
+#define RWPTR_SIZE 64 + MAX_VARIABLES * (2*32 / sizeof(void *)) // 1+1+26+4+26 + 
 
 struct split1 {
   enum empties_t { empties_ok, no_empties };
@@ -49,7 +53,8 @@ typedef enum {
   opAdd, opSub, opMul, opDiv, opMax, opMin, opSqrt, opAbs,
   opGt, opLt, opEq, opNotEq, opLE, opGE, opTernary,
   opAnd, opOr, opXor, opNeg,
-  opExp, opLog, opPow
+  opExp, opLog, opPow,
+  opStoreVar, opLoadVar, opStoreAndPopVar
 } SOperation;
 
 typedef union {
