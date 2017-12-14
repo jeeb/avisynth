@@ -40,9 +40,10 @@
 * 20171211: Implement relative pixel indexing e.g. x[-1,-3], requires SSSE3
 *           Fix jitasm code generation (corrupt code when doing register reorders)
 * 20171212: Variables:  A..Z
-            To store the current top value of the stack to a variable: A@ .. Z@
+*           To store the current top value of the stack to a variable: A@ .. Z@
 *           To store the current top value and pop it from the top of the stack: A^.. Z^
 *           To use a stored variable: single uppercase letter. E.g. A
+* 20171214: Trig.functions (C only): sin, cos, tan, asin, acos, atan
 *
 * Differences from masktools 2.2.9
 * --------------------------------
@@ -3389,6 +3390,24 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
               case opAbs:
                 stacktop = std::abs(stacktop);
                 break;
+              case opSin:
+                stacktop = std::sin(stacktop);
+                break;
+              case opCos:
+                stacktop = std::cos(stacktop);
+                break;
+              case opTan:
+                stacktop = std::tan(stacktop);
+                break;
+              case opAsin:
+                stacktop = std::asin(stacktop);
+                break;
+              case opAcos:
+                stacktop = std::acos(stacktop);
+                break;
+              case opAtan:
+                stacktop = std::atan(stacktop);
+                break;
               case opGt:
                 --si;
                 stacktop = (stack[si] > stacktop) ? 1.0f : 0.0f;
@@ -3618,6 +3637,18 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             ONE_ARG_OP(opSqrt);
         else if (tokens[i] == "abs")
             ONE_ARG_OP(opAbs);
+        else if (tokens[i] == "sin")
+          ONE_ARG_OP(opSin);
+        else if (tokens[i] == "cos")
+          ONE_ARG_OP(opCos);
+        else if (tokens[i] == "tan")
+          ONE_ARG_OP(opTan);
+        else if (tokens[i] == "asin")
+          ONE_ARG_OP(opAsin);
+        else if (tokens[i] == "acos")
+          ONE_ARG_OP(opAcos);
+        else if (tokens[i] == "atan")
+          ONE_ARG_OP(opAtan);
         else if (tokens[i] == ">")
             TWO_ARG_OP(opGt);
         else if (tokens[i] == "<")
@@ -4036,6 +4067,18 @@ static float calculateOneOperand(uint32_t op, float a) {
             return std::exp(a);
         case opLog:
             return std::log(a);
+        case opSin:
+          return std::sin(a);
+        case opCos:
+          return std::cos(a);
+        case opTan:
+          return std::tan(a);
+        case opAsin:
+          return std::asin(a);
+        case opAcos:
+          return std::acos(a);
+        case opAtan:
+          return std::atan(a);
     }
 
     return 0.0f;
@@ -4103,6 +4146,12 @@ static int numOperands(uint32_t op) {
         case opLog:
         case opStoreVar:
         case opStoreAndPopVar:
+        case opSin:
+        case opCos:
+        case opTan:
+        case opAsin:
+        case opAcos:
+        case opAtan:
           return 1;
 
         case opSwap:
@@ -4249,7 +4298,13 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opExp),
         PAIR(opLog),
         PAIR(opPow)
-    };
+        PAIR(opSin)
+        PAIR(opCos)
+        PAIR(opTan)
+        PAIR(opAsin)
+        PAIR(opAcos)
+        PAIR(opAtan)
+      };
 #undef PAIR
 
 
@@ -4349,6 +4404,12 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opNeg:
             case opExp:
             case opLog:
+            case opSin:
+            case opCos:
+            case opTan:
+            case opAsin:
+            case opAcos:
+            case opAtan:
               if (ops[i - 1].op == opLoadConst) {
                 ops[i].e.fval = calculateOneOperand(ops[i].op, ops[i - 1].e.fval);
                 ops[i].op = opLoadConst;
@@ -4556,6 +4617,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 
       // Check CPU instuction level constraints:
       // opLoadRel8/16/32: minimum SSSE3 (pshufb, alignr) for SIMD, and no AVX2 support
+      // Trig.func: C only
       d.planeOptAvx2[i] = optAvx2;
       d.planeOptSSE2[i] = optSSE2;
       for (size_t j = 0; j < d.ops[i].size(); j++) {
@@ -4565,6 +4627,11 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
           d.planeOptAvx2[i] = false; // avx2 path not implemented
           if(!(env->GetCPUFlags() & CPUF_SSSE3)) // required minimum (pshufb, alignr)
             d.planeOptSSE2[i] = false;
+        }
+        // trig.functions C only
+        if (op == opSin || op == opCos || op == opTan || op == opAsin || op == opAcos || op == opAtan) {
+          d.planeOptAvx2[i] = false;
+          d.planeOptSSE2[i] = false;
           break;
         }
       }

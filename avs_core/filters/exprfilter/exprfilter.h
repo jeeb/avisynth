@@ -54,6 +54,7 @@ typedef enum {
   opGt, opLt, opEq, opNotEq, opLE, opGE, opTernary,
   opAnd, opOr, opXor, opNeg,
   opExp, opLog, opPow,
+  opSin, opCos, opTan, opAsin, opAcos, opAtan,
   opStoreVar, opLoadVar, opStoreAndPopVar
 } SOperation;
 
