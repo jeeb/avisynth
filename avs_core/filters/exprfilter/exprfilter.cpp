@@ -44,6 +44,9 @@
 *           To store the current top value and pop it from the top of the stack: A^.. Z^
 *           To use a stored variable: single uppercase letter. E.g. A
 * 20171214: Trig.functions (C only): sin, cos, tan, asin, acos, atan
+*           % The implementation is fmod-like: x - trunc(x/d)*d.
+*             Note: SSE2 and up is using trunc for float->integer conversion, works for usual width/height magnitude.
+*             (A float can hold a 24 bit integer w/o losing precision)
 *
 * Differences from masktools 2.2.9
 * --------------------------------
@@ -553,6 +556,24 @@ vmulps(emm0, emm0, CPTR_AVX(elcephes_log_q2)); \
 vaddps(x, x, y); \
 vaddps(x, x, emm0); \
 vorps(x, x, invalid_mask); }
+
+// return (x - std::round(x / d)*d);
+#define FMOD_PS(x, d) { \
+XmmReg aTmp; \
+movaps(aTmp, x); \
+divps(aTmp, d); \
+cvttps2dq(aTmp,aTmp); \
+cvtdq2ps(aTmp,aTmp); \
+mulps(aTmp, d); \
+subps(x, aTmp); }
+
+#define FMOD_PS_AVX(x, d) { \
+YmmReg aTmp; \
+vdivps(aTmp, x, d); \
+vcvttps2dq(aTmp,aTmp); \
+vcvtdq2ps(aTmp,aTmp); \
+vmulps(aTmp, aTmp, d); \
+vsubps(x, x, aTmp); }
 
 struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intptr_t *, intptr_t, intptr_t> {
 
@@ -1764,6 +1785,21 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           TwoArgOp(divps)
         }
       }
+      else if (iter.op == opFmod) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto &t2 = stack1.back();
+          FMOD_PS(t2, t1)
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto &t2 = stack.back();
+          FMOD_PS(t2.first, t1.first)
+          FMOD_PS(t2.second, t1.second)
+        }
+      }
       else if (iter.op == opMax) {
         if (processSingle) {
           TwoArgOp_Single(maxps)
@@ -2517,6 +2553,21 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
         else {
           TwoArgOp_Avx(vdivps);
+        }
+      }
+      else if (iter.op == opFmod) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto &t2 = stack1.back();
+          FMOD_PS_AVX(t2, t1)
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto &t2 = stack.back();
+          FMOD_PS_AVX(t2.first, t1.first)
+          FMOD_PS_AVX(t2.second, t1.second)
         }
       }
       else if (iter.op == opMax) {
@@ -3366,6 +3417,10 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
                 --si;
                 stacktop = stack[si] / stacktop;
                 break;
+              case opFmod:
+                --si;
+                stacktop = std::fmod(stack[si], stacktop);
+                break;
               case opMax:
                 --si;
                 stacktop = std::max(stacktop, stack[si]);
@@ -3623,6 +3678,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             TWO_ARG_OP(opMul);
         else if (tokens[i] == "/")
             TWO_ARG_OP(opDiv);
+        else if (tokens[i] == "%")
+            TWO_ARG_OP(opFmod);
         else if (tokens[i] == "max")
             TWO_ARG_OP(opMax);
         else if (tokens[i] == "min")
@@ -4094,6 +4151,8 @@ static float calculateTwoOperands(uint32_t op, float a, float b) {
             return a * b;
         case opDiv:
             return a / b;
+        case opFmod:
+            return std::fmod(a, b);
         case opMax:
             return std::max(a, b);
         case opMin:
@@ -4159,6 +4218,7 @@ static int numOperands(uint32_t op) {
         case opSub:
         case opMul:
         case opDiv:
+        case opFmod:
         case opMax:
         case opMin:
         case opGt:
@@ -4280,6 +4340,7 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opSub),
         PAIR(opMul),
         PAIR(opDiv),
+        PAIR(opFmod),
         PAIR(opMax),
         PAIR(opMin),
         PAIR(opSqrt),
@@ -4432,6 +4493,7 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opSub:
             case opMul:
             case opDiv:
+            case opFmod:
             case opMax:
             case opMin:
             case opGt:

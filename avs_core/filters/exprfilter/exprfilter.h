@@ -51,6 +51,7 @@ typedef enum {
   opStore8, opStore10, opStore12, opStore14, opStore16, opStoreF32, opStoreF16, // avs+: 10,12,14 bit store
   opDup, opSwap,
   opAdd, opSub, opMul, opDiv, opMax, opMin, opSqrt, opAbs,
+  opFmod,
   opGt, opLt, opEq, opNotEq, opLE, opGE, opTernary,
   opAnd, opOr, opXor, opNeg,
   opExp, opLog, opPow,
