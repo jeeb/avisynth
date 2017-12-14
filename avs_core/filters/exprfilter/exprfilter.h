@@ -4,7 +4,8 @@
 #include <avisynth.h>
 
 #define MAX_EXPR_INPUTS 26
-#define MAX_VARIABLES 26
+#define INTERNAL_VARIABLES 2
+#define MAX_USER_VARIABLES 26
 
 // indexing RWPTR array (pointer sized elements)
 #define RWPTR_START_OF_OUTPUT 0   // 1
@@ -12,9 +13,10 @@
 #define RWPTR_START_OF_INPUTS 2   // count = 26
 #define RWPTR_START_OF_PADDING 4  // padding to have 32 pointers (rfu for 8 ptr/cycle ymm simd)
 #define RWPTR_START_OF_STRIDES 32 // count = 26 for relative_y
-#define RWPTR_START_OF_PADDING2 58 // count = 6 pad to 32 bytes boundary in x86
+#define RWPTR_START_OF_INTERNAL_VARIABLES 58 // count = 2 + 4(rfu): current_frame, relative_time_pos in clip 0 <= t < 1
+// pad to 32 bytes boundary in x86: 64 * sizeof(pointer) is 32 byte aligned
 #define RWPTR_START_OF_USERVARIABLES 64 // count = 26 (for 2*ymm sized variables)
-#define RWPTR_SIZE 64 + MAX_VARIABLES * (2*32 / sizeof(void *)) // 1+1+26+4+26 + 
+#define RWPTR_SIZE (RWPTR_START_OF_USERVARIABLES + MAX_USER_VARIABLES * (2*32 / sizeof(void *)))
 
 struct split1 {
   enum empties_t { empties_ok, no_empties };
@@ -48,6 +50,7 @@ typedef enum {
   opLoadRelSrc8, opLoadRelSrc16, opLoadRelSrcF32,
   opLoadConst,
   opLoadSpatialX, opLoadSpatialY,
+  opLoadFrameNo, opLoadRelativeTime,
   opStore8, opStore10, opStore12, opStore14, opStore16, opStoreF32, opStoreF16, // avs+: 10,12,14 bit store
   opDup, opSwap,
   opAdd, opSub, opMul, opDiv, opMax, opMin, opSqrt, opAbs,
