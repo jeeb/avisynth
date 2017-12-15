@@ -2347,7 +2347,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           stack.push_back(std::make_pair(r1, r2));
         }
       }
-      if (iter.op == opLoadSpatialY) {
+      else if (iter.op == opLoadSpatialY) {
         if (processSingle) {
           YmmReg r1;
           XmmReg r1x;
@@ -2408,12 +2408,12 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           stack.push_back(std::make_pair(r1, r2));
         }
       }
-      if (iter.op == opLoadSrc8) {
+      else if (iter.op == opLoadSrc8) {
         if (processSingle) {
           XmmReg r1x;
           YmmReg r1;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           // 8 bytes, 8 pixels * uint8_t
           vmovq(r1x, mmword_ptr[a]);
           // 8->32 bits like _mm256_cvtepu8_epi32
@@ -2428,7 +2428,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           XmmReg r1x;
           YmmReg r1, r2;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           // 16 bytes, 16 pixels * uint8_t
           vmovdqa(r1x, xmmword_ptr[a]);
           // 8->16 bits like _mm256_cvtepu8_epi16
@@ -2451,7 +2451,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           XmmReg r1x;
           YmmReg r1;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           // 16 bytes, 8 pixels * uint16_t
           vmovdqa(r1x, xmmword_ptr[a]);
           // 16->32 bit like _mm256_cvtepu16_epi32
@@ -2466,7 +2466,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           XmmReg r1x;
           YmmReg r1, r2;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           // 32 bytes, 16 pixels * uint16_t
           vmovdqa(r1, ymmword_ptr[a]);
           // 16->32 bit like _mm256_cvtepu16_epi32
@@ -2486,7 +2486,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         if (processSingle) {
           YmmReg r1;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           // 32 bytes, 8 * float
           vmovdqa(r1, ymmword_ptr[a]);
           if (maskIt)
@@ -2496,7 +2496,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         else {
           YmmReg r1, r2;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           // 32 bytes, 8 * float
           vmovdqa(r1, ymmword_ptr[a]);
           vmovdqa(r2, ymmword_ptr[a + 32]); // needs 64 byte aligned data to prevent read past valid data!
@@ -2509,7 +2509,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         if (processSingle) {
           YmmReg r1;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           vcvtph2ps(r1, xmmword_ptr[a]);
           if (maskIt)
             vblendps(r1, zero, r1, mask);
@@ -2518,7 +2518,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         else {
           YmmReg r1, r2;
           Reg a;
-          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + 1)]);
+          mov(a, ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INPUTS)]);
           vcvtph2ps(r1, xmmword_ptr[a]);
           vcvtph2ps(r2, xmmword_ptr[a + 16]);
           if (maskIt)
@@ -3347,7 +3347,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         ExprData::ProcessLineProc proc = d.proc[plane];
 
         for (int y = 0; y < h; y++) {
-          const uint8_t *rwptrs[RWPTR_SIZE];
+          alignas(32) const uint8_t *rwptrs[RWPTR_SIZE];
           // output pointer:             0      (n=1)
           // xcounter                    1      (n=1)
           // input pointers:             2..27  (n=26)
