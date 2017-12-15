@@ -50,7 +50,7 @@ typedef enum {
   opLoadRelSrc8, opLoadRelSrc16, opLoadRelSrcF32,
   opLoadConst,
   opLoadSpatialX, opLoadSpatialY,
-  opLoadFrameNo, opLoadRelativeTime,
+  opLoadInternalVar,
   opStore8, opStore10, opStore12, opStore14, opStore16, opStoreF32, opStoreF16, // avs+: 10,12,14 bit store
   opDup, opSwap,
   opAdd, opSub, opMul, opDiv, opMax, opMin, opSqrt, opAbs,

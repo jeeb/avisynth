@@ -44,10 +44,10 @@
 *           To store the current top value and pop it from the top of the stack: A^.. Z^
 *           To use a stored variable: single uppercase letter. E.g. A
 * 20171214: Trig.functions (C only): sin, cos, tan, asin, acos, atan
-*           % The implementation is fmod-like: x - trunc(x/d)*d.
+*           '%' The implementation is fmod-like: x - trunc(x/d)*d.
 *             Note: SSE2 and up is using trunc for float->integer conversion, works for usual width/height magnitude.
 *             (A float can hold a 24 bit integer w/o losing precision)
-*           expr constants: 'width', 'height' for video (not plane!) width and height
+*           expr constants: 'width', 'height' for current plane width and height
 *           expr auto variable: 'frameno' holds the current frame number 0..total number of frames-1
 *           expr auto variable: 'time' relative time in clip, 0 <= time < 1 
 *                calculation: time = frameno/total number of frames)
@@ -654,31 +654,16 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           stack.push_back(std::make_pair(r1, r2));
         }
       }
-      else if (iter.op == opLoadFrameNo) {
+      else if (iter.op == opLoadInternalVar) {
         if (processSingle) {
           XmmReg r1;
-          movd(r1, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 0)]);
+          movd(r1, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INTERNAL_VARIABLES)]);
           shufps(r1, r1, 0);
           stack1.push_back(r1);
         }
         else {
           XmmReg r1, r2;
-          movd(r1, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 0)]);
-          shufps(r1, r1, 0);
-          movaps(r2, r1);
-          stack.push_back(std::make_pair(r1, r2));
-        }
-      }
-      else if (iter.op == opLoadRelativeTime) {
-        if (processSingle) {
-          XmmReg r1;
-          movd(r1, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 1)]);
-          shufps(r1, r1, 0);
-          stack1.push_back(r1);
-        }
-        else {
-          XmmReg r1, r2;
-          movd(r1, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 1)]);
+          movd(r1, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INTERNAL_VARIABLES)]);
           shufps(r1, r1, 0);
           movaps(r2, r1);
           stack.push_back(std::make_pair(r1, r2));
@@ -2374,35 +2359,18 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           stack.push_back(std::make_pair(r1, r2));
         }
       }
-      else if (iter.op == opLoadFrameNo) {
+      else if (iter.op == opLoadInternalVar) {
         if (processSingle) {
           YmmReg r1;
           XmmReg r1x;
-          vmovd(r1x, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 0)]);
+          vmovd(r1x, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INTERNAL_VARIABLES)]);
           vbroadcastss(r1, r1x);
           stack1.push_back(r1);
         }
         else {
           YmmReg r1, r2;
           XmmReg r1x;
-          vmovd(r1x, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 0)]);
-          vbroadcastss(r1, r1x);
-          vmovaps(r2, r1);
-          stack.push_back(std::make_pair(r1, r2));
-        }
-      }
-      else if (iter.op == opLoadRelativeTime) {
-        if (processSingle) {
-          YmmReg r1;
-          XmmReg r1x;
-          vmovd(r1x, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 1)]);
-          vbroadcastss(r1, r1x);
-          stack1.push_back(r1);
-        }
-        else {
-          YmmReg r1, r2;
-          XmmReg r1x;
-          vmovd(r1x, dword_ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_INTERNAL_VARIABLES + 1)]);
+          vmovd(r1x, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INTERNAL_VARIABLES)]);
           vbroadcastss(r1, r1x);
           vmovaps(r2, r1);
           stack.push_back(std::make_pair(r1, r2));
@@ -3346,8 +3314,12 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 
         ExprData::ProcessLineProc proc = d.proc[plane];
 
+        alignas(32) const uint8_t *rwptrs[RWPTR_SIZE];
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 0]) = (float)framecount;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 1]) = (float)relative_time;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 2]) = (float)h;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 3]) = (float)w;
         for (int y = 0; y < h; y++) {
-          alignas(32) const uint8_t *rwptrs[RWPTR_SIZE];
           // output pointer:             0      (n=1)
           // xcounter                    1      (n=1)
           // input pointers:             2..27  (n=26)
@@ -3355,8 +3327,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           // strides:                    28..53 (n=26): inputs
           rwptrs[RWPTR_START_OF_OUTPUT] = dstp + dst_stride * y;
           rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
-          *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 0]) = (float)framecount;
-          *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 1]) = (float)relative_time;
           for (int i = 0; i < numInputs; i++) {
             rwptrs[i + RWPTR_START_OF_INPUTS] = srcp[i] + src_stride[i] * y; // input pointers 1..Nth
             rwptrs[i + RWPTR_START_OF_STRIDES] = reinterpret_cast<const uint8_t *>((intptr_t)src_stride[i]);
@@ -3391,6 +3361,12 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         float *stack = stackVector.data();
         float stacktop = 0;
 
+        float internal_vars[4];
+        internal_vars[0] = (float)framecount;
+        internal_vars[1] = (float)relative_time;
+        internal_vars[2] = (float)h;
+        internal_vars[3] = (float)w;
+
         for (int y = 0; y < h; y++) {
           for (int x = 0; x < w; x++) {
             int si = 0;
@@ -3408,14 +3384,9 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
                 stacktop = (float)y;
                 ++si;
                 break;
-              case opLoadFrameNo:
+              case opLoadInternalVar:
                 stack[si] = stacktop;
-                stacktop = framecount;
-                ++si;
-                break;
-              case opLoadRelativeTime:
-                stack[si] = stacktop;
-                stacktop = relative_time;
+                stacktop = internal_vars[vops[i].e.ival];
                 ++si;
                 break;
               case opLoadSrc8:
@@ -3864,16 +3835,16 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           TWO_ARG_OP(opMul);
         }
         else if (tokens[i] == "frameno") { // avs+
-          LOAD_OP(opLoadFrameNo, 0, 0);
+          LOAD_OP(opLoadInternalVar, 0, 0);
         }
         else if (tokens[i] == "time") { // avs+
-          LOAD_OP(opLoadRelativeTime, 0, 0);
+          LOAD_OP(opLoadInternalVar, 1, 0);
         }
         else if (tokens[i] == "width") { // avs+
-          LOAD_OP(opLoadConst, (float)vi_output->width, 0);
+          LOAD_OP(opLoadInternalVar, 2, 0);
         }
         else if (tokens[i] == "height") { // avs+
-          LOAD_OP(opLoadConst, (float)vi_output->height, 0);
+          LOAD_OP(opLoadInternalVar, 3, 0);
         }
         else if (tokens[i].length() == 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z') {
           char srcChar = tokens[i][0];
@@ -4291,8 +4262,7 @@ static int numOperands(uint32_t op) {
         case opLoadSpatialX:
         case opLoadSpatialY:
         case opLoadVar:
-        case opLoadFrameNo:
-        case opLoadRelativeTime:
+        case opLoadInternalVar:
           return 0;
 
         case opSqrt:
@@ -4350,8 +4320,7 @@ static bool isLoadOp(uint32_t op) {
         case opLoadSpatialX:
         case opLoadSpatialY:
         case opLoadVar:
-        case opLoadFrameNo:
-        case opLoadRelativeTime:
+        case opLoadInternalVar:
           return true;
     }
 
@@ -4423,8 +4392,7 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opLoadSpatialX),
         PAIR(opLoadSpatialY),
         PAIR(opLoadConst),
-        PAIR(opLoadFrameNo),
-        PAIR(opLoadRelativeTime),
+        PAIR(opLoadInternalVars),
         PAIR(opLoadVar)
         PAIR(opLoadAndPopVar)
         PAIR(opStoreVar)
