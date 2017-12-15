@@ -3279,13 +3279,13 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
   int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
 
-  // for simd:
-  const int pixels_per_iter = optAvx2 ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
-  intptr_t ptroffsets[1 + 1 + MAX_EXPR_INPUTS];
-  ptroffsets[RWPTR_START_OF_OUTPUT] = d.vi.ComponentSize() * pixels_per_iter; // stepping for output pointer
-  ptroffsets[RWPTR_START_OF_XCOUNTER] = pixels_per_iter; // stepping for xcounter
-
   for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
+
+      // for simd:
+    const int pixels_per_iter = (optAvx2 && d.planeOptAvx2[plane]) ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
+    intptr_t ptroffsets[1 + 1 + MAX_EXPR_INPUTS];
+    ptroffsets[RWPTR_START_OF_OUTPUT] = d.vi.ComponentSize() * pixels_per_iter; // stepping for output pointer
+    ptroffsets[RWPTR_START_OF_XCOUNTER] = pixels_per_iter; // stepping for xcounter
 
     const int plane_enum = plane_enums[plane];
 

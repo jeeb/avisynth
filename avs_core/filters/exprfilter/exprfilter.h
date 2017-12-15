@@ -105,8 +105,8 @@ struct ExprData {
   int plane[4];
   float planeFillValue[4]; // optimize: fill plane with const
   int planeCopySourceClip[4]; // optimize: copy plane from which clip
-  int planeOptAvx2[4]; // instruction set constraints
-  int planeOptSSE2[4]; 
+  bool planeOptAvx2[4]; // instruction set constraints
+  bool planeOptSSE2[4]; 
   size_t maxStackSize;
   int numInputs;
 #ifdef VS_TARGET_CPU_X86
