@@ -103,6 +103,10 @@ Name: "docs\en"; Description: "{cm:CmpDocsEn}"; Types: full compact custom; Lang
 ;Name: "docs\pt"; Description: "{cm:CmpDocsPt}"; Types: full compact custom; Languages: pt pt_br
 ;Name: "docs\ru"; Description: "{cm:CmpDocsRu}"; Types: full compact custom; Languages: ru
 
+Name: "associations"; Description: "{cm:SelectAssoc}";
+Name: "associations\openwithnotepad"; Description: "{cm:SelectAssocNotepadOpen}"; Types: full compact custom
+Name: "associations\shellnew"; Description: "{cm:SelectAssocAddShellNew}"; Types: full compact custom
+
 Name: "examples"; Description: "{cm:CmpDocsExamples}"; Types: full compact custom
 Name: "sdk"; Description: "{cm:CmpSdk,{#AvsName}}"; Types: full custom
 
@@ -181,6 +185,14 @@ Root: HKLM64; Subkey: "Software\Classes\Media Type\Extensions\.avs"; ValueName: 
 
 Root: HKLM; Subkey: "Software\Classes\.avs"; ValueName: ""; ValueType: string; ValueData: "avsfile"; Flags: uninsdeletekey; Components: main
 Root: HKLM; Subkey: "Software\Classes\.avsi"; ValueName: ""; ValueType: string; ValueData: "avs_auto_file"; Flags: uninsdeletekey; Components: main
+
+Root: HKLM; Subkey: "Software\Classes\.avs\OpenWithList\notepad.exe"; Flags: uninsdeletekey; Components: associations\openwithnotepad
+Root: HKLM; Subkey: "Software\Classes\avsfile\OpenWithList\notepad.exe"; Flags: uninsdeletekey; Components: associations\openwithnotepad
+Root: HKLM; Subkey: "Software\Classes\.avsi\OpenWithList\notepad.exe"; Flags: uninsdeletekey; Components: associations\openwithnotepad
+Root: HKLM; Subkey: "Software\Classes\avs_auto_file\OpenWithList\notepad.exe"; Flags: uninsdeletekey; Components: associations\openwithnotepad
+Root: HKLM; Subkey: "Software\Classes\.avs\ShellNew"; ValueName: "NullFile"; ValueType: string; ValueData: ""; Flags: uninsdeletekey; Components: associations\shellnew
+Root: HKLM; Subkey: "Software\Classes\avsfile\ShellNew"; ValueName: "NullFile"; ValueType: string; ValueData: ""; Flags: uninsdeletekey; Components: associations\shellnew
+
 Root: HKLM; Subkey: "Software\Classes\avsfile"; ValueName: ""; ValueType: string; ValueData: "{cm:FileTypeDescAvs,{#AvsName}}"; Components: main; Flags: uninsdeletekey
 Root: HKLM; Subkey: "Software\Classes\avsfile\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{sys}\AviSynth.dll,0"; Components: main\avs32
 Root: HKLM; Subkey: "Software\Classes\avsfile\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{win}\system32\AviSynth.dll,0"; Components: main\avs64 and not main\avs32 
