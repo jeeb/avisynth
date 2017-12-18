@@ -13,7 +13,15 @@
 #define RWPTR_START_OF_INPUTS 2   // count = 26
 #define RWPTR_START_OF_PADDING 4  // padding to have 32 pointers (rfu for 8 ptr/cycle ymm simd)
 #define RWPTR_START_OF_STRIDES 32 // count = 26 for relative_y
-#define RWPTR_START_OF_INTERNAL_VARIABLES 58 // count = 2 + 4(rfu): current_frame, relative_time_pos in clip 0 <= t < 1
+#define RWPTR_START_OF_INTERNAL_VARIABLES 58 // count = 6
+
+#define INTERNAL_VAR_CURRENT_FRAME 0
+#define INTERNAL_VAR_RELTIME 1
+#define INTERNAL_VAR_PLANEWIDTH 2
+#define INTERNAL_VAR_PLANEHEIGHT 3
+#define INTERNAL_VAR_INV_PLANEWIDTH 4
+#define INTERNAL_VAR_INV_PLANEHEIGHT 5
+
 // pad to 32 bytes boundary in x86: 64 * sizeof(pointer) is 32 byte aligned
 #define RWPTR_START_OF_USERVARIABLES 64 // count = 26 (for 2*ymm sized variables)
 #define RWPTR_SIZE (RWPTR_START_OF_USERVARIABLES + MAX_USER_VARIABLES * (2*32 / sizeof(void *)))

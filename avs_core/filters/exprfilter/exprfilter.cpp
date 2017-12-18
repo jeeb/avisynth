@@ -3315,16 +3315,13 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         ExprData::ProcessLineProc proc = d.proc[plane];
 
         alignas(32) const uint8_t *rwptrs[RWPTR_SIZE];
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 0]) = (float)framecount;
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 1]) = (float)relative_time;
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 2]) = (float)h;
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + 3]) = (float)w;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_CURRENT_FRAME]) = (float)framecount;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_RELTIME]) = (float)relative_time;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_PLANEWIDTH]) = (float)w;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_PLANEHEIGHT]) = (float)h;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_INV_PLANEWIDTH]) = w > 1 ? 1.0f / ((float)w - 1.0f) : 1.0f;
+        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_INV_PLANEHEIGHT]) = h > 1 ? 1.0f / ((float)h - 1.0f) : 1.0f;
         for (int y = 0; y < h; y++) {
-          // output pointer:             0      (n=1)
-          // xcounter                    1      (n=1)
-          // input pointers:             2..27  (n=26)
-          // padding                     28..31 (n=4)
-          // strides:                    28..53 (n=26): inputs
           rwptrs[RWPTR_START_OF_OUTPUT] = dstp + dst_stride * y;
           rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
           for (int i = 0; i < numInputs; i++) {
@@ -3361,11 +3358,13 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         float *stack = stackVector.data();
         float stacktop = 0;
 
-        float internal_vars[4];
-        internal_vars[0] = (float)framecount;
-        internal_vars[1] = (float)relative_time;
-        internal_vars[2] = (float)h;
-        internal_vars[3] = (float)w;
+        float internal_vars[6];
+        internal_vars[INTERNAL_VAR_CURRENT_FRAME] = (float)framecount;
+        internal_vars[INTERNAL_VAR_RELTIME] = (float)relative_time;
+        internal_vars[INTERNAL_VAR_PLANEWIDTH] = (float)w;
+        internal_vars[INTERNAL_VAR_PLANEHEIGHT] = (float)h;
+        internal_vars[INTERNAL_VAR_INV_PLANEWIDTH] = w > 1 ? 1.0f / ((float)w - 1.0f) : 1.0f;
+        internal_vars[INTERNAL_VAR_INV_PLANEHEIGHT] = h > 1 ? 1.0f / ((float)h - 1.0f) : 1.0f;
 
         for (int y = 0; y < h; y++) {
           for (int x = 0; x < w; x++) {
@@ -3823,28 +3822,26 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         else if (tokens[i] == "sxr") { // avs+
           // spatial X relative 0..1
           LOAD_OP(opLoadSpatialX, 0, 0);
-          float w = (float)vi_output->width - 1;
-          LOAD_OP(opLoadConst, 1.0f / w, 0); // mul is faster
+          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_INV_PLANEWIDTH, 0); // invW: 1 / (planewidth-1)
           TWO_ARG_OP(opMul);
         }
         else if (tokens[i] == "syr") { // avs+
           // spatial Y relative 0..1
           LOAD_OP(opLoadSpatialY, 0, 0);
-          float h = (float)vi_output->height - 1;
-          LOAD_OP(opLoadConst, 1.0f / h, 0); // mul is faster
+          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_INV_PLANEHEIGHT, 0); // invW: 1 / (planeheight-1)
           TWO_ARG_OP(opMul);
         }
         else if (tokens[i] == "frameno") { // avs+
-          LOAD_OP(opLoadInternalVar, 0, 0);
+          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_CURRENT_FRAME, 0);
         }
         else if (tokens[i] == "time") { // avs+
-          LOAD_OP(opLoadInternalVar, 1, 0);
+          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_RELTIME, 0);
         }
         else if (tokens[i] == "width") { // avs+
-          LOAD_OP(opLoadInternalVar, 2, 0);
+          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_PLANEWIDTH, 0);
         }
         else if (tokens[i] == "height") { // avs+
-          LOAD_OP(opLoadInternalVar, 3, 0);
+          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_PLANEHEIGHT, 0);
         }
         else if (tokens[i].length() == 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z') {
           char srcChar = tokens[i][0];
