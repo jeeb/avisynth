@@ -6,6 +6,7 @@
 ;#define WITH_AVSPLUS_URL
 
 #define AvsName "AviSynth+"
+#define AvsFriendlyName "AviSynthPlus"
 #define AvsPublisher "The Public"
 #define AppId "{AC78780F-BACA-4805-8D4F-AE1B52B7E7D3}"
 #define AvsGitURL "https://github.com/pinterf/AviSynthPlus/"
@@ -36,6 +37,10 @@
 AppId={{#AppId}
 AppName={#AvsName}
 AppVersion={#Version}.{#RevisionNumber}
+;use a simpler file name convention. e.g. AviSynthPlus-MT-r2570.exe
+AppVerName={#AvsName} {#Version} r{#RevisionNumber}
+OutputBaseFilename={#AvsFriendlyName}-{#Branch}-r{#RevisionNumber}
+#if false
 #if IsRelease == "True"
   AppVerName={#AvsName} {#Version}
   OutputBaseFilename={#AvsName}-v{#Version}
