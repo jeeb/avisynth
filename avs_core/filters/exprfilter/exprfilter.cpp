@@ -3814,14 +3814,14 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         else if (tokens[i] == "sxr") { // avs+
           // spatial X relative 0..1
           LOAD_OP(opLoadSpatialX, 0, 0);
-          const float p = 1.0f / ((float)planewidth - 1.0f);
+          const float p = planewidth > 1 ? 1.0f / ((float)planewidth - 1.0f) : 1.0f;
           LOAD_OP(opLoadConst, p, 0);
           TWO_ARG_OP(opMul);
         }
         else if (tokens[i] == "syr") { // avs+
           // spatial Y relative 0..1
           LOAD_OP(opLoadSpatialY, 0, 0);
-          const float p = 1.0f / ((float)planeheight - 1.0f);
+          const float p = planeheight > 1 ? 1.0f / ((float)planeheight - 1.0f) : 1.0f;
           LOAD_OP(opLoadConst, p, 0);
           TWO_ARG_OP(opMul);
         }
