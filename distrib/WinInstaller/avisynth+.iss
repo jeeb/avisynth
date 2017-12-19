@@ -48,6 +48,7 @@ OutputBaseFilename={#AvsFriendlyName}-{#Branch}-r{#RevisionNumber}
   AppVerName={#AvsName} {#Version} r{#RevisionNumber}
   OutputBaseFilename={#AvsName}-{#Branch}-v{#Version}-r{#RevisionNumber}-{#Revision}
 #endif
+#endif
 AppPublisher={#AvsPublisher}
 #ifdef WITH_AVSPLUS_URL
 AppPublisherURL={#AvsWebURL}
@@ -108,9 +109,11 @@ Name: "docs\en"; Description: "{cm:CmpDocsEn}"; Types: full compact custom; Lang
 ;Name: "docs\pt"; Description: "{cm:CmpDocsPt}"; Types: full compact custom; Languages: pt pt_br
 ;Name: "docs\ru"; Description: "{cm:CmpDocsRu}"; Types: full compact custom; Languages: ru
 
-Name: "associations"; Description: "{cm:SelectAssoc}";
-Name: "associations\openwithnotepad"; Description: "{cm:SelectAssocNotepadOpen}"; Types: full compact custom
-Name: "associations\shellnew"; Description: "{cm:SelectAssocAddShellNew}"; Types: full compact custom
+Name: "associations"; Description: "{cm:SelectAssoc}"; Types: full custom
+Name: "associations\openwithnotepad"; Description: "{cm:SelectAssocNotepadOpen}"; Types: full custom
+Name: "associations\shellnew"; Description: "{cm:SelectAssocAddShellNew}"; Types: full custom
+Name: "associations\mplayer"; Description: "{cm:SelectAssocMplayer}"; Types: full custom; Check: ExistsMPlayer2
+Name: "associations\wmplayer"; Description: "{cm:SelectAssocWMplayer}"; Types: full custom; Check: ExistsWMPlayer
 
 Name: "examples"; Description: "{cm:CmpDocsExamples}"; Types: full compact custom
 Name: "sdk"; Description: "{cm:CmpSdk,{#AvsName}}"; Types: full custom
@@ -197,6 +200,8 @@ Root: HKLM; Subkey: "Software\Classes\.avsi\OpenWithList\notepad.exe"; Flags: un
 Root: HKLM; Subkey: "Software\Classes\avs_auto_file\OpenWithList\notepad.exe"; Flags: uninsdeletekey; Components: associations\openwithnotepad
 Root: HKLM; Subkey: "Software\Classes\.avs\ShellNew"; ValueName: "NullFile"; ValueType: string; ValueData: ""; Flags: uninsdeletekey; Components: associations\shellnew
 Root: HKLM; Subkey: "Software\Classes\avsfile\ShellNew"; ValueName: "NullFile"; ValueType: string; ValueData: ""; Flags: uninsdeletekey; Components: associations\shellnew
+Root: HKLM; Subkey: "Software\Classes\avsfile\shell\play\command"; ValueName: ""; ValueType: string; ValueData: """{pf}\Windows Media Player\mplayer2.exe"" /Play ""%L"""; Flags: uninsdeletekey; Components: associations\mplayer; Check: ExistsMPlayer2
+Root: HKLM; Subkey: "Software\Classes\avsfile\shell\play\command"; ValueName: ""; ValueType: string; ValueData: """{pf}\Windows Media Player\wmplayer.exe"" ""%1"""; Flags: uninsdeletekey; Components: associations\wmplayer; Check: ExistsWMPlayer
 
 Root: HKLM; Subkey: "Software\Classes\avsfile"; ValueName: ""; ValueType: string; ValueData: "{cm:FileTypeDescAvs,{#AvsName}}"; Components: main; Flags: uninsdeletekey
 Root: HKLM; Subkey: "Software\Classes\avsfile\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{sys}\AviSynth.dll,0"; Components: main\avs32
@@ -761,4 +766,14 @@ begin
   #else
   Result := False;
   #endif
+end;
+
+function ExistsMPlayer2(): boolean;
+begin
+  Result := FileExists(ExpandConstant('{pf}\Windows Media Player\mplayer2.exe'));
+end;
+
+function ExistsWMPlayer(): boolean;
+begin
+  Result := FileExists(ExpandConstant('{pf}\Windows Media Player\wmplayer.exe'));
 end;
