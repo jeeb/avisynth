@@ -3,12 +3,14 @@ $isTagged = (git name-rev --name-only --tags HEAD) -ne "undefined"
 $branch = git rev-parse --abbrev-ref HEAD
 $shortHash = git rev-parse --short HEAD
 
+echo "Version matching in progress"
 $x = 0
 do {
     $closestTag = git describe --abbrev=0 --tags HEAD~$x
     $versionMatch = $closestTag | sls "^v?(\d+\.\d+\.\d+(?:\-.*)?$)"
     $x++
 } until ($versionMatch -or -not $closestTag)
+echo "Version matching done"
 
 @"
 [Version]
