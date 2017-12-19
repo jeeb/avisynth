@@ -4057,8 +4057,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             if (targetBitDepth == 32) { // upscale to float
               // divide by max, e.g. x -> x/255
               float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-              LOAD_OP(opLoadConst, q, 0);
-              TWO_ARG_OP(opDiv);
+              LOAD_OP(opLoadConst, 1.0f / q, 0);
+              TWO_ARG_OP(opMul);
             }
             else {
               // shift left by (targetBitDepth - currentBaseBitDepth), that is mul by (1 << (targetBitDepth - currentBaseBitDepth))
@@ -4095,8 +4095,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             // upscale
             if (targetBitDepth == 32) { // upscale to float
               float q = (float)((1 << autoScaleSourceBitDepth) - 1); // divide by max, e.g. x -> x/255
-              LOAD_OP(opLoadConst, q, 0);
-              TWO_ARG_OP(opDiv);
+              LOAD_OP(opLoadConst, 1.0f / q, 0);
+              TWO_ARG_OP(opMul);
             }
             else {
               // keep max pixel value e.g. 8->12 bits: x * 4095.0 / 255.0
