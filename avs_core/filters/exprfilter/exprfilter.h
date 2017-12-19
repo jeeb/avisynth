@@ -17,10 +17,10 @@
 
 #define INTERNAL_VAR_CURRENT_FRAME 0
 #define INTERNAL_VAR_RELTIME 1
-#define INTERNAL_VAR_PLANEWIDTH 2
-#define INTERNAL_VAR_PLANEHEIGHT 3
-#define INTERNAL_VAR_INV_PLANEWIDTH 4
-#define INTERNAL_VAR_INV_PLANEHEIGHT 5
+#define INTERNAL_VAR_RFU2 2
+#define INTERNAL_VAR_RFU3 3
+#define INTERNAL_VAR_RFU4 4
+#define INTERNAL_VAR_RFU5 5
 
 // pad to 32 bytes boundary in x86: 64 * sizeof(pointer) is 32 byte aligned
 #define RWPTR_START_OF_USERVARIABLES 64 // count = 26 (for 2*ymm sized variables)

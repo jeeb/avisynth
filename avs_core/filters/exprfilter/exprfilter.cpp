@@ -3317,10 +3317,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         alignas(32) const uint8_t *rwptrs[RWPTR_SIZE];
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_CURRENT_FRAME]) = (float)framecount;
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_RELTIME]) = (float)relative_time;
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_PLANEWIDTH]) = (float)w;
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_PLANEHEIGHT]) = (float)h;
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_INV_PLANEWIDTH]) = w > 1 ? 1.0f / ((float)w - 1.0f) : 1.0f;
-        *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_INV_PLANEHEIGHT]) = h > 1 ? 1.0f / ((float)h - 1.0f) : 1.0f;
         for (int y = 0; y < h; y++) {
           rwptrs[RWPTR_START_OF_OUTPUT] = dstp + dst_stride * y;
           rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
@@ -3361,10 +3357,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         float internal_vars[6];
         internal_vars[INTERNAL_VAR_CURRENT_FRAME] = (float)framecount;
         internal_vars[INTERNAL_VAR_RELTIME] = (float)relative_time;
-        internal_vars[INTERNAL_VAR_PLANEWIDTH] = (float)w;
-        internal_vars[INTERNAL_VAR_PLANEHEIGHT] = (float)h;
-        internal_vars[INTERNAL_VAR_INV_PLANEWIDTH] = w > 1 ? 1.0f / ((float)w - 1.0f) : 1.0f;
-        internal_vars[INTERNAL_VAR_INV_PLANEHEIGHT] = h > 1 ? 1.0f / ((float)h - 1.0f) : 1.0f;
 
         for (int y = 0; y < h; y++) {
           for (int x = 0; x < w; x++) {
@@ -3708,7 +3700,7 @@ static int getSuffix(std::string token, std::string base) {
   return loadIndex;
 }
 
-static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, IScriptEnvironment *env)
+static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, IScriptEnvironment *env)
 {
     // vi_output is new in avs+, and is not used yet
 
@@ -3822,13 +3814,15 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         else if (tokens[i] == "sxr") { // avs+
           // spatial X relative 0..1
           LOAD_OP(opLoadSpatialX, 0, 0);
-          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_INV_PLANEWIDTH, 0); // invW: 1 / (planewidth-1)
+          const float p = 1.0f / ((float)planewidth - 1.0f);
+          LOAD_OP(opLoadConst, p, 0);
           TWO_ARG_OP(opMul);
         }
         else if (tokens[i] == "syr") { // avs+
           // spatial Y relative 0..1
           LOAD_OP(opLoadSpatialY, 0, 0);
-          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_INV_PLANEHEIGHT, 0); // invW: 1 / (planeheight-1)
+          const float p = 1.0f / ((float)planeheight - 1.0f);
+          LOAD_OP(opLoadConst, p, 0);
           TWO_ARG_OP(opMul);
         }
         else if (tokens[i] == "frameno") { // avs+
@@ -3838,10 +3832,10 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           LOAD_OP(opLoadInternalVar, INTERNAL_VAR_RELTIME, 0);
         }
         else if (tokens[i] == "width") { // avs+
-          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_PLANEWIDTH, 0);
+          LOAD_OP(opLoadConst, (float)planewidth, 0);
         }
         else if (tokens[i] == "height") { // avs+
-          LOAD_OP(opLoadInternalVar, INTERNAL_VAR_PLANEHEIGHT, 0);
+          LOAD_OP(opLoadConst, (float)planeheight, 0);
         }
         else if (tokens[i].length() == 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z') {
           char srcChar = tokens[i][0];
@@ -4703,7 +4697,11 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 
     d.maxStackSize = 0;
     for (int i = 0; i < d.vi.NumComponents(); i++) {
-      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, env), d.maxStackSize);
+      const int plane_enum = plane_enums[i];
+      const int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
+      const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
+
+      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, env), d.maxStackSize);
       foldConstants(d.ops[i]);
 
       // optimize constant store, change operation to "fill"
