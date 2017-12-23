@@ -244,6 +244,32 @@ __forceinline __m128i _MM_PACKUS_EPI32_SRC_TRUEWORD(__m128i a, __m128i b)
   return a;
 }
 
+__forceinline __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
+{
+  // Returns 0xFFFF where x <= y:
+  return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
+}
+
+__forceinline __m128i _MM_BLENDV_SI128(__m128i x, __m128i y, __m128i mask)
+{
+  // Replace bit in x with bit in y when matching bit in mask is set:
+  return _mm_or_si128(_mm_andnot_si128(mask, x), _mm_and_si128(mask, y));
+}
+
+// sse2 simulation of SSE4's _mm_min_epu16
+__forceinline __m128i _MM_MIN_EPU16(__m128i x, __m128i y)
+{
+  // Returns x where x <= y, else y:
+  return _MM_BLENDV_SI128(y, x, _MM_CMPLE_EPU16(x, y));
+}
+
+// sse2 simulation of SSE4's _mm_max_epu16
+__forceinline __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
+{
+  // Returns x where x >= y, else y:
+  return _MM_BLENDV_SI128(x, y, _MM_CMPLE_EPU16(x, y));
+}
+
 // unsigned short div 255
 #define SSE2_DIV255_U16(x) _mm_srli_epi16(_mm_mulhi_epu16(x, _mm_set1_epi16((short)0x8081)), 7)
 #define AVX2_DIV255_U16(x) _mm256_srli_epi16(_mm256_mulhi_epu16(x, _mm256_set1_epi16((short)0x8081)), 7)

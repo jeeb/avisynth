@@ -1850,7 +1850,10 @@ static void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, in
       else
         result = _MM_PACKUS_EPI32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
       if (targetbits < 16) {
-        result = _mm_min_epu16(result, max_pixel_value);
+        if(hasSSE4)
+          result = _mm_min_epu16(result, max_pixel_value);
+        else
+          result = _MM_MIN_EPU16(result, max_pixel_value);
       }
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
     }

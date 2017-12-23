@@ -1732,7 +1732,10 @@ static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int plan
     else
       acc = _MM_PACKUS_EPI32(low, high);
     if (lessThan16bit)
-      acc = _mm_min_epu16(acc, limit);
+      if(hasSSE4)
+        acc = _mm_min_epu16(acc, limit);
+      else
+        acc = _MM_MIN_EPU16(acc, limit);
 
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
   }

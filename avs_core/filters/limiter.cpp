@@ -38,6 +38,7 @@
 #include <smmintrin.h> // for sse41
 #include <avs/alignment.h>
 #include <avs/win.h>
+#include <core/internal.h>
 
 
 //min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
@@ -53,33 +54,6 @@ inline void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch,
     _mm_store_si128(reinterpret_cast<__m128i*>(ptr), src);
     ptr += 16;
   }
-}
-
-static inline __m128i _mm_cmple_epu16 (__m128i x, __m128i y)
-{
-  // Returns 0xFFFF where x <= y:
-  return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
-}
-
-static inline __m128i _mm_blendv_si128 (__m128i x, __m128i y, __m128i mask)
-{
-  // Replace bit in x with bit in y when matching bit in mask is set:
-  return _mm_or_si128(_mm_andnot_si128(mask, x), _mm_and_si128(mask, y));
-}
-
-// sse2 simulation of SSE4's _mm_min_epu16
-static inline __m128i _MM_MIN_EPU16 (__m128i x, __m128i y)
-{
-  // Returns x where x <= y, else y:
-  return _mm_blendv_si128(y, x, _mm_cmple_epu16(x, y));
-}
-
-// sse4.1
-// sse2 simulation of SSE4's _mm_max_epu16
-static inline __m128i _MM_MAX_EPU16 (__m128i x, __m128i y)
-{
-  // Returns x where x >= y, else y:
-  return _mm_blendv_si128(x, y, _mm_cmple_epu16(x, y));
 }
 
 //min and max values are 16-bit unsigned integers

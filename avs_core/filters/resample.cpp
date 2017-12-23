@@ -447,6 +447,8 @@ static void resize_v_sseX_planar_16or32(BYTE* dst0, const BYTE* src0, int dst_pi
         __m128i result = sse41 ? _mm_packus_epi32(result_l, result_h) : (_MM_PACKUS_EPI32(result_l, result_h)) ; // 4*32+4*32 = 8*16
         if (sse41)
           result = _mm_min_epu16(result, clamp_limit_i16); // unsigned clamp here
+        else
+          result = _MM_MIN_EPU16(result, clamp_limit_i16); // unsigned clamp here
         _mm_stream_si128(reinterpret_cast<__m128i*>(dst+x), result);
       }
       else { // float
