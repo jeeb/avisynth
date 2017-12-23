@@ -381,7 +381,7 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
         //auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
         auto mask_00 = _mm_cmpeq_epi8(msk, zero);
         result = simd_blend_epi8<hasSSE4>(mask_00, dst, result); // ensure that zero mask value returns dst
-        auto max_pixel_value = _mm_set1_epi8(0xFF); // for comparison
+        auto max_pixel_value = _mm_set1_epi8(static_cast<unsigned char>(0xFF)); // for comparison
         auto mask_FF = _mm_cmpeq_epi8(msk, max_pixel_value); // mask == max ? FF : 00
         result = simd_blend_epi8<hasSSE4>(mask_FF, src, result); // ensure that max mask value returns src
       }
@@ -402,7 +402,7 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 
         result = _mm_packus_epi32(result_l, result_h);
 
-        __m128i max_pixel_value = _mm_set1_epi16((1 << bits_per_pixel) - 1);
+        __m128i max_pixel_value = _mm_set1_epi16(static_cast<uint16_t>((1 << bits_per_pixel) - 1));
 
         if (bits_per_pixel < 16) // otherwise no clamp needed
           result = _mm_min_epi16(result, max_pixel_value); // SSE2 epi16 is enough
@@ -954,7 +954,7 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
 
         result = _mm_packus_epi32(result_l, result_h);
 
-        __m128i max_pixel_value = _mm_set1_epi16((1 << bits_per_pixel) - 1);
+        __m128i max_pixel_value = _mm_set1_epi16(static_cast<uint16_t>((1 << bits_per_pixel) - 1));
 
         if (bits_per_pixel < 16) // otherwise no clamp needed
           result = _mm_min_epi16(result, max_pixel_value); // SSE2 epi16 is enough
