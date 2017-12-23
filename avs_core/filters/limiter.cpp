@@ -38,7 +38,7 @@
 #include <smmintrin.h> // for sse41
 #include <avs/alignment.h>
 #include <avs/win.h>
-#include <core/internal.h>
+#include <../core/internal.h>
 
 
 //min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
