@@ -853,7 +853,8 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   else
   {
       newFunc = new AVSFunction(name, NULL, params, apply, user_data, NULL);
-      assert(newFunc->IsScriptFunction());
+      if(apply != &create_c_video_filter)
+        assert(newFunc->IsScriptFunction());
   }
 
   // Warn user if a function with the same name is already registered by another plugin

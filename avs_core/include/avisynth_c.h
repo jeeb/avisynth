@@ -301,6 +301,8 @@ enum {
   };
 
 #ifdef BUILDING_AVSCORE
+AVSValue create_c_video_filter(AVSValue args, void * user_data, IScriptEnvironment * e0);
+
 struct AVS_ScriptEnvironment {
         IScriptEnvironment * env;
         const char * error;
