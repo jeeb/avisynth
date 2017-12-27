@@ -1,5 +1,9 @@
 ﻿;!!!Conditional!!!  comment out the following define to ignore VS redistributables
-#define WITH_VC_REDIST
+;#define WITH_VC_REDIST
+
+;these sections are not up to date, don't include them
+;#define WITH_SDK
+;#define WITH_DOCS
 
 ;!!!Conditional!!!  comment out the following define to include project web url
 ;original Avs+ project page is not maintained at the moment (Dec. 2017) and contains very old content
@@ -97,6 +101,7 @@ Name: "main"; Description: "{cm:CmpMain,{#AvsName}}"; Types: full compact custom
 Name: "main\avs32"; Description: "{#AvsName} (x86)"; Types: full compact custom
 Name: "main\avs64"; Description: "{#AvsName} (x64)"; Types: full compact custom; Check: IsWin64
 
+#ifdef WITH_DOCS
 Name: "docs"; Description: "{cm:CmpDocs}";
 Name: "docs\enall"; Description: "{cm:CmpDocsEn}"; Types: full; Languages: not en
 Name: "docs\en"; Description: "{cm:CmpDocsEn}"; Types: full compact custom; Languages: en
@@ -108,6 +113,7 @@ Name: "docs\en"; Description: "{cm:CmpDocsEn}"; Types: full compact custom; Lang
 ;Name: "docs\pl"; Description: "{cm:CmpDocsPl}"; Types: full compact custom; Languages: pl
 ;Name: "docs\pt"; Description: "{cm:CmpDocsPt}"; Types: full compact custom; Languages: pt pt_br
 ;Name: "docs\ru"; Description: "{cm:CmpDocsRu}"; Types: full compact custom; Languages: ru
+#endif
 
 Name: "associations"; Description: "{cm:SelectAssoc}"; Types: full custom
 Name: "associations\openwithnotepad"; Description: "{cm:SelectAssocNotepadOpen}"; Types: full custom
@@ -116,7 +122,9 @@ Name: "associations\mplayer"; Description: "{cm:SelectAssocMplayer}"; Types: ful
 Name: "associations\wmplayer"; Description: "{cm:SelectAssocWMplayer}"; Types: full custom; Check: ExistsWMPlayer
 
 Name: "examples"; Description: "{cm:CmpDocsExamples}"; Types: full compact custom
+#ifdef WITH_SDK
 Name: "sdk"; Description: "{cm:CmpSdk,{#AvsName}}"; Types: full custom
+#endif
 
 Name: "avsmig"; Description: "{cm:CmpMig}"; Types: full compact custom; Flags: fixed; Check: IsLegacyAvsInstalled('32')
 Name: "avsmig\uninst"; Description: "{cm:CmpMigUninstall,{#AvsName}}"; Flags: fixed exclusive
@@ -147,18 +155,23 @@ Source: "{#BuildDir32}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs
 Source: "{#BuildDir32}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion 
 Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
 Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
+#ifdef WITH_VC_REDIST
 ;get latest from https://www.visualstudio.com/downloads/
 ; 32 bit: https://go.microsoft.com/fwlink/?LinkId=746571
 Source: "..\Prerequisites\VC_redist.x86.exe"; DestDir: {app}; Components: main\avs32; Flags: deleteafterinstall; Check: IncludeVcRedist()
+#endif
 
 Source: "{#BuildDir64}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion 
 Source: "{#BuildDir64}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion 
 Source: "{#BuildDir64}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion 
 Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion
+#ifdef WITH_VC_REDIST
 ;get latest from https://www.visualstudio.com/downloads/
 ; 64 bit: https://go.microsoft.com/fwlink/?LinkId=746572
 Source: "..\Prerequisites\VC_redist.x64.exe"; DestDir: {app}; Components: main\avs64; Flags: deleteafterinstall; Check: IncludeVcRedist()
+#endif
 
+#ifdef WITH_DOCS
 Source: "..\docs\*.css"; DestDir: "{app}\docs"; Components: docs; Flags: ignoreversion
 ;Source: "..\docs\czech\*"; DestDir: "{app}\docs\Czech"; Components: docs\cs; Flags: ignoreversion recursesubdirs 
 Source: "..\docs\english\*"; DestDir: "{app}\docs\English"; Components: docs\en docs\enall; Flags: ignoreversion recursesubdirs 
@@ -169,9 +182,12 @@ Source: "..\docs\english\*"; DestDir: "{app}\docs\English"; Components: docs\en 
 ;Source: "..\docs\polish\*"; DestDir: "{app}\docs\Polish"; Components: docs\pl; Flags: ignoreversion recursesubdirs 
 ;Source: "..\docs\portugese\*"; DestDir: "{app}\docs\Portuguese"; Components: docs\pt; Flags: ignoreversion recursesubdirs 
 ;Source: "..\docs\russian\*"; DestDir: "{app}\docs\Russian"; Components: docs\ru; Flags: ignoreversion recursesubdirs 
+#endif
 
+#ifdef WITH_SDK
 Source: "..\FilterSDK\*"; DestDir: "{app}\FilterSDK"; Components: sdk; Flags: ignoreversion recursesubdirs
 Source: "..\..\avs_core\include\*"; DestDir: "{app}\FilterSDK\include"; Components: sdk; Flags: ignoreversion recursesubdirs
+#endif
 
 Source: "..\Examples\*"; DestDir: "{app}\Examples"; Components: examples; Flags: recursesubdirs 
 
@@ -221,8 +237,10 @@ Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:""; ValueType: string; Valu
 Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir2_5"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|Plug64}"; Components: main\avs64; Check:IsWin64; Flags: uninsdeletevalue
 Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir+"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|PlugPlus64}"; Components: main\avs64; Check:IsWin64; Flags: uninsdeletevalue
 
+#ifdef WITH_SDK
 ;Set SDK Environment Variable
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueName: "AVISYNTH_SDK_PATH"; ValueType: string; ValueData: "{app}\FilterSDK"; Components: sdk; Flags: uninsdeletevalue
+#endif
 ;Delete Legacy AVS Install Entry
 Root: HKLM32; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"; Flags: deletekey; Components: avsmig\backup
 ;Add entry for legacy AviSynth Program Folder
