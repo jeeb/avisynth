@@ -58,6 +58,9 @@
  *            average_plane
  * -----------------------------------
  */
+#define AVX2BUG_WORKAROUND
+// VS2017 15.5.1..2 optimizer generates illegal instructions for vmovntdqa
+// just a note, to be removed
 template<typename pixel_t>
 void average_plane_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height) {
   _mm256_zeroupper();
@@ -67,8 +70,30 @@ void average_plane_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, in
 
   for(int y = 0; y < height; y++) {
     for(int x = 0; x < mod32_width; x+=32) {
+#ifdef AVX2BUG_WORKAROUND
+      __m256i src1 = _mm256_load_si256(reinterpret_cast<__m256i*>(p1 + x));
+#else
       __m256i src1  = _mm256_stream_load_si256(reinterpret_cast<__m256i*>(p1+x));
-      __m256i src2  = _mm256_stream_load_si256(const_cast<__m256i*>(reinterpret_cast<const __m256i*>(p2+x)));
+#endif
+      /*
+      00070	8d 40 20	 lea	 eax, DWORD PTR [eax+32]
+
+      ; 70   :       __m256i src1  = _mm256_stream_load_si256(reinterpret_cast<__m256i*>(p1+x));
+
+      00073	c5 fe 6f 40 e0	 vmovdqu ymm0, YMMWORD PTR [eax-32]
+      00078	c4 e2 7d 2a c8	 vmovntdqa ymm1, ymm0            ****CRASH HERE! ILLEGAL INSTRUCTION VS15.5.1!!!****
+
+      ; 71   :       __m256i src2  = _mm256_stream_load_si256(const_cast<__m256i*>(reinterpret_cast<const __m256i*>(p2+x)));
+
+      0007d	c5 fe 6f 44 02 e0		 vmovdqu ymm0, YMMWORD PTR [edx+eax-32]
+      00083	c4 e2 7d 2a c0	 vmovntdqa ymm0, ymm0
+
+      */
+#ifdef AVX2BUG_WORKAROUND
+      __m256i src2  = _mm256_load_si256(const_cast<__m256i*>(reinterpret_cast<const __m256i*>(p2+x)));
+      #else
+      __m256i src2 = _mm256_stream_load_si256(const_cast<__m256i*>(reinterpret_cast<const __m256i*>(p2 + x)));
+      #endif
       __m256i dst;
       if(sizeof(pixel_t)==1)
         dst  = _mm256_avg_epu8(src1, src2); // 16 pixels
@@ -79,8 +104,13 @@ void average_plane_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, in
     }
 
     for(int x = mod32_width; x < mod16_width; x+=16) {
+#ifdef AVX2BUG_WORKAROUND
+      __m128i src1 = _mm_load_si128(reinterpret_cast<__m128i*>(p1 + x));
+      __m128i src2 = _mm_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2 + x)));
+#else
       __m128i src1  = _mm_stream_load_si128(reinterpret_cast<__m128i*>(p1+x));
       __m128i src2  = _mm_stream_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2+x)));
+#endif
       __m128i dst;
       if(sizeof(pixel_t)==1)
         dst  = _mm_avg_epu8(src1, src2); // 8 pixels
