@@ -129,6 +129,44 @@ static void af_vertical_c_float(BYTE* line_buf8, BYTE* dstp8, const int height, 
     }
 }
 
+static void af_vertical_sse2_float(BYTE* line_buf, BYTE* dstp, const int height, const int pitch, const int row_size, const float amount) {
+
+  const float center_weight = amount;
+  const float outer_weight = (1.0f - amount) / 2.0f;
+
+  __m128 center_weight_simd = _mm_set1_ps(center_weight);
+  __m128 outer_weight_simd = _mm_set1_ps(outer_weight);
+  
+  for (int y = 0; y < height - 1; ++y) {
+    for (int x = 0; x < row_size; x += 16) {
+      __m128 upper = _mm_load_ps(reinterpret_cast<const float*>(line_buf + x));
+      __m128 center = _mm_load_ps(reinterpret_cast<const float*>(dstp + x));
+      __m128 lower = _mm_load_ps(reinterpret_cast<const float*>(dstp + pitch + x));
+      _mm_store_ps(reinterpret_cast<float*>(line_buf + x), center);
+
+      __m128 tmp1 = _mm_mul_ps(center, center_weight_simd);
+      __m128 tmp2 = _mm_mul_ps(_mm_add_ps(upper, lower), outer_weight_simd);
+      __m128 result = _mm_add_ps(tmp1, tmp2);
+
+      _mm_store_ps(reinterpret_cast<float*>(dstp + x), result);
+    }
+    dstp += pitch;
+  }
+
+  //last line
+  for (int x = 0; x < row_size; x += 16) {
+    __m128 upper = _mm_load_ps(reinterpret_cast<const float*>(line_buf + x));
+    __m128 center = _mm_load_ps(reinterpret_cast<const float*>(dstp + x));
+
+    __m128 tmp1 = _mm_mul_ps(center, center_weight_simd);
+    __m128 tmp2 = _mm_mul_ps(_mm_add_ps(upper, center), outer_weight_simd); // last line: center instead of lower
+    __m128 result = _mm_add_ps(tmp1, tmp2);
+
+    _mm_store_ps(reinterpret_cast<float*>(dstp + x), result);
+  }
+}
+
+
 static __forceinline __m128i af_blend_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i outer_tmp = _mm_add_epi16(upper, lower);
   __m128i center_tmp = _mm_mullo_epi16(center, center_weight);
@@ -159,6 +197,13 @@ static __forceinline __m128i af_blend_uint16_t_sse2(__m128i &upper, __m128i &cen
   result = _mm_add_epi32(result, round_mask);
   return _mm_srai_epi32(result, 7);
 }
+
+static __forceinline __m128 af_blend_float_sse2(__m128 &upper, __m128 &center, __m128 &lower, __m128 &center_weight, __m128 &outer_weight) {
+  __m128 tmp1 = _mm_mul_ps(center, center_weight);
+  __m128 tmp2 = _mm_mul_ps(_mm_add_ps(upper, lower), outer_weight);
+  return _mm_add_ps(tmp1, tmp2);
+}
+
 
 static __forceinline __m128i af_unpack_blend_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero) {
   __m128i left_lo = _mm_unpacklo_epi8(left, zero);
@@ -377,9 +422,17 @@ template<typename pixel_t>
 static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t row_size, int half_amount, int bits_per_pixel, IScriptEnvironment* env) {
   size_t width = row_size / sizeof(pixel_t);
   // only for 8/16 bit, float separated
+  if (sizeof(pixel_t) == 1 && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(dstp, 32) && width >= 32) {
+    //pitch of aligned frames is always >= 32 so we'll just process some garbage if width is not mod32
+    af_vertical_avx2(line_buf, dstp, (int)height, (int)pitch, (int)width, half_amount);
+  }
+  else
   if (sizeof(pixel_t) == 1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
     //pitch of aligned frames is always >= 16 so we'll just process some garbage if width is not mod16
     af_vertical_sse2(line_buf, dstp, (int)height, (int)pitch, (int)width, half_amount);
+  }
+  else if (sizeof(pixel_t) == 2 && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(dstp, 32) && row_size >= 32) {
+    af_vertical_uint16_t_avx2(line_buf, dstp, (int)height, (int)pitch, (int)row_size, half_amount);
   }
   else if (sizeof(pixel_t) == 2 && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(dstp, 16) && row_size >= 16) {
     af_vertical_uint16_t_sse2<true>(line_buf, dstp, (int)height, (int)pitch, (int)row_size, half_amount);
@@ -406,10 +459,9 @@ static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_
 
 static void af_vertical_process_float(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t row_size, double amountd, IScriptEnvironment* env) {
     size_t width = row_size / sizeof(float);
-    // todo sse2 float
-    if (false && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
         //pitch of aligned frames is always >= 16 so we'll just process some garbage if width is not mod16
-        //af_vertical_sse2_float(line_buf, dstp, (int)height, (int)pitch, (int)width, (float amountd));
+        af_vertical_sse2_float(line_buf, dstp, (int)height, (int)pitch, (int)row_size, (float)amountd);
     } else {
         af_vertical_c_float(line_buf, dstp, (int)height, (int)pitch, (int)width, (float)amountd);
     }
@@ -973,7 +1025,7 @@ static void af_horizontal_rgb24_48_c(BYTE* dstp8, int height, int pitch8, int wi
 // -------------------------------------
 
 template<typename pixel_t>
-static __forceinline void af_horizontal_yv12_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
+static __forceinline void af_horizontal_planar_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
   size_t x;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t; // for calling the right ScaledPixelClip()
@@ -987,7 +1039,7 @@ static __forceinline void af_horizontal_yv12_process_line_c(pixel_t left, BYTE *
   dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x]) * (weight_t)outer_weight));
 }
 
-static __forceinline void af_horizontal_yv12_process_line_uint16_c(uint16_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight, int bits_per_pixel) {
+static __forceinline void af_horizontal_planar_process_line_uint16_c(uint16_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight, int bits_per_pixel) {
   size_t x;
   typedef uint16_t pixel_t;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
@@ -1014,14 +1066,14 @@ static void af_horizontal_planar_c(BYTE* dstp8, size_t height, size_t pitch8, si
     for (size_t y = height; y>0; --y) {
         left = dstp[0];
         if(sizeof(pixel_t) == 1)
-          af_horizontal_yv12_process_line_c<pixel_t>(left, (BYTE *)dstp, row_size, center_weight, outer_weight);
+          af_horizontal_planar_process_line_c<pixel_t>(left, (BYTE *)dstp, row_size, center_weight, outer_weight);
         else
-          af_horizontal_yv12_process_line_uint16_c(left, (BYTE *)dstp, row_size, center_weight, outer_weight, bits_per_pixel);
+          af_horizontal_planar_process_line_uint16_c(left, (BYTE *)dstp, row_size, center_weight, outer_weight, bits_per_pixel);
         dstp += pitch;
     }
 }
 
-static __forceinline void af_horizontal_yv12_process_line_float_c(float left, float *dstp, size_t row_size, float center_weight, float outer_weight) {
+static __forceinline void af_horizontal_planar_process_line_float_c(float left, float *dstp, size_t row_size, float center_weight, float outer_weight) {
     size_t x;
     size_t width = row_size / sizeof(float);
     for (x = 0; x < width-1; ++x) {
@@ -1041,7 +1093,7 @@ static void af_horizontal_planar_float_c(BYTE* dstp8, size_t height, size_t pitc
     float left;
     for (size_t y = height; y>0; --y) {
         left = dstp[0];
-        af_horizontal_yv12_process_line_float_c(left, dstp, row_size, center_weight, outer_weight);
+        af_horizontal_planar_process_line_float_c(left, dstp, row_size, center_weight, outer_weight);
         dstp += pitch;
     }
 }
@@ -1097,7 +1149,7 @@ static void af_horizontal_planar_sse2(BYTE* dstp, size_t height, size_t pitch, s
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+mod16_width-16), result);
     } else { //some stuff left
       BYTE l = _mm_cvtsi128_si32(left) & 0xFF;
-      af_horizontal_yv12_process_line_c<uint8_t>(l, dstp+mod16_width, width-mod16_width, center_weight_c, outer_weight_c);
+      af_horizontal_planar_process_line_c<uint8_t>(l, dstp+mod16_width, width-mod16_width, center_weight_c, outer_weight_c);
 
     }
 
@@ -1132,7 +1184,7 @@ static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t
     left = _mm_or_si128(_mm_and_si128(center, left_mask), _mm_slli_si128(center, 2));
 
     __m128i result = af_unpack_blend_uint16_t_sse2<useSSE4>(left, center, right, center_weight, outer_weight, round_mask, zero);
-    left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + (16-2)));
+    left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + (16 - 2)));
     _mm_store_si128(reinterpret_cast<__m128i*>(dstp), result);
 
     //main processing loop
@@ -1142,7 +1194,7 @@ static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t
 
       result = af_unpack_blend_uint16_t_sse2<useSSE4>(left, center, right, center_weight, outer_weight, round_mask, zero);
 
-      left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + x + (16-2)));
+      left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + x + (16 - 2)));
 
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
     }
@@ -1158,13 +1210,70 @@ static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t
     }
     else { //some stuff left
       uint16_t l = _mm_cvtsi128_si32(left) & 0xFFFF;
-      af_horizontal_yv12_process_line_uint16_c(l, dstp + mod16_width, row_size - mod16_width, center_weight_c, outer_weight_c, bits_per_pixel);
+      af_horizontal_planar_process_line_uint16_c(l, dstp + mod16_width, row_size - mod16_width, center_weight_c, outer_weight_c, bits_per_pixel);
     }
 
     dstp += pitch;
   }
 }
 
+static void af_horizontal_planar_float_sse2(BYTE* dstp, size_t height, size_t pitch, size_t row_size, float amount) {
+  const float center_weight = amount;
+  const float outer_weight = (1.0f - amount) / 2.0f;
+
+  __m128 center_weight_simd = _mm_set1_ps(center_weight);
+  __m128 outer_weight_simd = _mm_set1_ps(outer_weight);
+
+  size_t mod16_width = (row_size / 16) * 16;
+  size_t sse_loop_limit = row_size == mod16_width ? mod16_width - 16 : mod16_width;
+
+#pragma warning(push)
+#pragma warning(disable: 4309)
+  __m128i left_mask = _mm_set_epi32(0, 0, 0, 0xFFFFFFFF);
+  __m128i right_mask = _mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
+#pragma warning(pop)
+
+  __m128 left;
+
+  for (size_t y = 0; y < height; ++y) {
+    //left border
+    __m128 center = _mm_load_ps(reinterpret_cast<const float*>(dstp));
+    __m128 right = _mm_loadu_ps(reinterpret_cast<const float*>(dstp + sizeof(float)));
+    left = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(_mm_castps_si128(center), left_mask), _mm_slli_si128(_mm_castps_si128(center), sizeof(float))));
+
+    __m128 result = af_blend_float_sse2(left, center, right, center_weight_simd, outer_weight_simd);
+    left = _mm_loadu_ps(reinterpret_cast<const float*>(dstp + (16 - sizeof(float))));
+    _mm_store_ps(reinterpret_cast<float*>(dstp), result);
+
+    //main processing loop
+    for (size_t x = 16; x < sse_loop_limit; x += 16) {
+      center = _mm_load_ps(reinterpret_cast<const float*>(dstp + x));
+      right = _mm_loadu_ps(reinterpret_cast<const float*>(dstp + x + sizeof(float)));
+
+      result = af_blend_float_sse2(left, center, right, center_weight_simd, outer_weight_simd);
+
+      left = _mm_loadu_ps(reinterpret_cast<const float*>(dstp + x + (16 - sizeof(float))));
+
+      _mm_store_ps(reinterpret_cast<float*>(dstp + x), result);
+    }
+
+    //right border
+    if (mod16_width == row_size) { //width is mod8, process with mmx
+      center = _mm_load_ps(reinterpret_cast<const float*>(dstp + mod16_width - 16));
+      right = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(_mm_castps_si128(center), right_mask), _mm_srli_si128(_mm_castps_si128(center), sizeof(float))));
+
+      result = af_blend_float_sse2(left, center, right, center_weight_simd, outer_weight_simd);
+
+      _mm_store_ps(reinterpret_cast<float*>(dstp + mod16_width - 16), result);
+    }
+    else { //some stuff left
+      float l = _mm_cvtss_f32(left);
+      af_horizontal_planar_process_line_float_c(l, (float *)(dstp + mod16_width), row_size - mod16_width, center_weight, outer_weight);
+    }
+
+    dstp += pitch;
+  }
+}
 
 
 #ifdef X86_32
@@ -1219,7 +1328,7 @@ static void af_horizontal_planar_mmx(BYTE* dstp, size_t height, size_t pitch, si
       *reinterpret_cast<__m64*>(dstp+mod8_width-8) = result;
     } else { //some stuff left
       BYTE l = _mm_cvtsi64_si32(left) & 0xFF;
-      af_horizontal_yv12_process_line_c<uint8_t>(l, dstp+mod8_width, width-mod8_width, center_weight_c, outer_weight_c);
+      af_horizontal_planar_process_line_c<uint8_t>(l, dstp+mod8_width, width-mod8_width, center_weight_c, outer_weight_c);
     }
 
     dstp += pitch;
@@ -1264,7 +1373,11 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       BYTE* q = dst->GetWritePtr(plane);
       int pitch = dst->GetPitch(plane);
       int height = dst->GetHeight(plane);
-      if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
+      if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(q, 32) && row_size > 32) {
+        af_horizontal_planar_avx2(q, height, pitch, row_size, half_amount);
+      }
+      else
+        if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
         af_horizontal_planar_sse2(q, height, pitch, row_size, half_amount);
       } else
 #ifdef X86_32
@@ -1272,11 +1385,17 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
           af_horizontal_planar_mmx(q,height,pitch,row_size,half_amount);
         } else
 #endif
-        if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(q, 16) && row_size > 16) {
+        if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(q, 32) && row_size > 32) {
+          af_horizontal_planar_uint16_t_avx2(q, height, pitch, row_size, half_amount, bits_per_pixel);
+        } 
+        else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(q, 16) && row_size > 16) {
           af_horizontal_planar_uint16_t_sse2<true>(q, height, pitch, row_size, half_amount, bits_per_pixel);
         } 
         else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
           af_horizontal_planar_uint16_t_sse2<false>(q, height, pitch, row_size, half_amount, bits_per_pixel);
+        }
+        else if (pixelsize == 4 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
+          af_horizontal_planar_float_sse2(q, height, pitch, row_size, (float)amountd);
         }
         else {
           switch (pixelsize) {
