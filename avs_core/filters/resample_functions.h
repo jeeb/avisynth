@@ -36,11 +36,17 @@
 #define __Resample_Functions_H__
 
 #include <avisynth.h>
+#include "avs/alignment.h"
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
 // NOTE: Don't change this value. It's hard-coded in SIMD code.
-const int FPScale = 16384; // fixed point scaler
+const int FPScale = 16384; // fixed point scaler (1<<14)
+// for 16 bits: one bit less
+const int FPScale16bits = 13;
+const int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SIMD signed operation
+const int ALIGN_RESIZER_TARGET_SIZE = 8;
+const int ALIGN_RESIZER_COEFF_SIZE = 8; // simd friendly
 
 // 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
 #define M_PI 3.14159265358979323846
@@ -54,19 +60,34 @@ struct ResamplingProgram {
   // Array of Integer indicate starting point of sampling
   int* pixel_offset;
 
+  int bits_per_pixel;
+
   // Array of array of coefficient for each pixel
   // {{pixel[0]_coeff}, {pixel[1]_coeff}, ...}
   short* pixel_coefficient;
   float* pixel_coefficient_float;
 
-  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, IScriptEnvironment2* env)
-    : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size),
-      pixel_offset(0), pixel_coefficient(0), pixel_coefficient_float(0), Env(env)
+  // anti-overread helpers for float resizer simd code reading 8 pixels from a given offset
+  bool overread_possible;
+  int source_overread_offset; // offset from where reading 8 bytes requires masking garbage on the right side
+  int source_overread_beyond_targetx;
+
+  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment2* env)
+    : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), bits_per_pixel(bits_per_pixel),
+    pixel_offset(0), pixel_coefficient(0), pixel_coefficient_float(0), Env(env)
   {
-    pixel_offset = (int*) Env->Allocate(sizeof(int) * target_size, 64, AVS_NORMAL_ALLOC); // 64-byte alignment
-    pixel_coefficient = (short*) Env->Allocate(sizeof(short) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
-    pixel_coefficient_float = (float*) Env->Allocate(sizeof(float) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
-    if (!pixel_offset || !pixel_coefficient || !pixel_coefficient_float) {
+    overread_possible = false;
+    source_overread_offset = -1;
+    source_overread_beyond_targetx = -1;
+
+    // align target_size to 8 units to allow safe 8 pixels/cycle in resizers
+    pixel_offset = (int*)Env->Allocate(sizeof(int) * AlignNumber(target_size, ALIGN_RESIZER_TARGET_SIZE), 64, AVS_NORMAL_ALLOC); // 64-byte alignment
+    if (bits_per_pixel < 32)
+      pixel_coefficient = (short*)Env->Allocate(sizeof(short) * AlignNumber(target_size, ALIGN_RESIZER_COEFF_SIZE) * filter_size, 64, AVS_NORMAL_ALLOC);
+    else
+      pixel_coefficient_float = (float*)Env->Allocate(sizeof(float) * AlignNumber(target_size, ALIGN_RESIZER_COEFF_SIZE) * filter_size, 64, AVS_NORMAL_ALLOC);
+
+    if (!pixel_offset || (!pixel_coefficient && bits_per_pixel < 32) || (!pixel_coefficient_float && bits_per_pixel == 32)) {
       Env->Free(pixel_offset);
       Env->Free(pixel_coefficient);
       Env->Free(pixel_coefficient_float);
@@ -101,7 +122,7 @@ public:
   virtual double f(double x) = 0;
   virtual double support() = 0;
 
-  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment2* env);
+  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment2* env);
 };
 
 class PointFilter : public ResamplingFunction 

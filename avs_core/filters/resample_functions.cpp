@@ -35,6 +35,7 @@
 #include "resample_functions.h"
 #include <cmath>
 #include <avs/minmax.h>
+#include <avs/alignment.h>
 
 
 /*******************************************
@@ -230,14 +231,14 @@ double SincFilter::f(double value) {
  **** Resampling Patterns  ****
  *****************************/
 
-ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment2* env)
+ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment2* env)
 {
   double filter_scale = double(target_size) / crop_size;
   double filter_step = min(filter_scale, 1.0);
   double filter_support = support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
 
-  ResamplingProgram* program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, env);
+  ResamplingProgram* program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, bits_per_pixel, env);
 
   // this variable translates such that the image center remains fixed
   double pos;
@@ -251,6 +252,8 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
     pos = crop_start;
   else
     pos = crop_start + ((crop_size - target_size) / (target_size*2)); // TODO this look wrong, gotta check
+
+  const int current_FPScale = (bits_per_pixel > 8 && bits_per_pixel <= 16) ? FPScale16 : FPScale;
 
   for (int i = 0; i < target_size; ++i) {
     // Clamp start and end position such that it does not exceed frame size
@@ -266,7 +269,19 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
 
     program->pixel_offset[i] = start_pos;
 
-    // the following code ensures that the coefficients add to exactly FPScale
+    // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
+    // in order not to have NaN floats
+    if (start_pos + AlignNumber(fir_filter_size, ALIGN_RESIZER_COEFF_SIZE) - 1 > source_size - 1)
+    {
+      if (!program->overread_possible) {
+        // register the first occurance
+        program->overread_possible = true;
+        program->source_overread_offset = start_pos;
+        program->source_overread_beyond_targetx = i;
+      }
+    }
+
+    // the following code ensures that the coefficients add to exactly FPScale or FPScale16
     double total = 0.0;
 
     // Ensure that we have a valid position
@@ -285,15 +300,29 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
     double value = 0.0;
 
     // Now we generate real coefficient
-    for (int k = 0; k < fir_filter_size; ++k) {
-      double new_value = value + f((start_pos+k - ok_pos) * filter_step) / total;
-      program->pixel_coefficient[i*fir_filter_size+k] = short(int(new_value*FPScale+0.5) - int(value*FPScale+0.5)); // to make it round across pixels
-      program->pixel_coefficient_float[i*fir_filter_size + k] = float(new_value - value); // no scaling for float
-      value = new_value;
+    if (bits_per_pixel == 32) {
+      // float
+      for (int k = 0; k < fir_filter_size; ++k) {
+        double new_value = value + f((start_pos + k - ok_pos) * filter_step) / total;
+        program->pixel_coefficient_float[i*fir_filter_size + k] = float(new_value - value); // no scaling for float
+        value = new_value;
+      }
+    }
+    else {
+      for (int k = 0; k < fir_filter_size; ++k) {
+        double new_value = value + f((start_pos + k - ok_pos) * filter_step) / total;
+        // FIXME: is it correct to round negative values upwards?
+        program->pixel_coefficient[i*fir_filter_size + k] = short(int(new_value*current_FPScale + 0.5) - int(value*current_FPScale + 0.5)); // to make it round across pixels
+        value = new_value;
+      }
     }
 
     pos += pos_step;
   }
+  
+  // aligned as 8, now fill with safe values for 8 pixels/cycle simd loop
+  for (int i = target_size; i < AlignNumber(target_size, ALIGN_RESIZER_TARGET_SIZE); ++i)
+    program->pixel_offset[i] = source_size - fir_filter_size;
 
   return program;
 }
