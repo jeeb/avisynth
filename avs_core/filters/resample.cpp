@@ -366,6 +366,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
   }
 }
 
+#if 0
 // for uint16_t and float. Both uses float arithmetic and coefficients
 template<SSELoader load, SSELoader_ps loadps, bool sse41, typename pixel_t>
 static void resize_v_sseX_planar_16or32(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
@@ -473,6 +474,7 @@ static void resize_v_sseX_planar_16or32(BYTE* dst0, const BYTE* src0, int dst_pi
     current_coeff_float += filter_size;
   }
 }
+#endif
 
 
 template<SSELoader load>
@@ -578,38 +580,48 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
 // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
 static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* env) {
-  int filter_size = AlignNumber(p->filter_size, 8);
-  short* new_coeff = (short*) env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
-  float* new_coeff_float = (float*) env->Allocate(sizeof(float) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
-  if (!new_coeff || !new_coeff_float) {
-    env->Free(new_coeff);
-    env->Free(new_coeff_float);
-    env->ThrowError("Could not reserve memory in a resampler.");
-  }
-
-  memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
-  std::fill_n(new_coeff_float, p->target_size * filter_size, 0.0f);
+  int filter_size = AlignNumber(p->filter_size, ALIGN_RESIZER_COEFF_SIZE);
 
   // Copy existing coeff
-  short *dst = new_coeff, *src = p->pixel_coefficient;
-  float *dst_f = new_coeff_float, *src_f = p->pixel_coefficient_float;
-  for (int i = 0; i < p->target_size; i++) {
-    for (int j = 0; j < p->filter_size; j++) {
-      dst[j] = src[j];
-      dst_f[j] = src_f[j];
+  if (p->bits_per_pixel == 32) {
+    float* new_coeff_float = (float*)env->Allocate(sizeof(float) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+    if (!new_coeff_float) {
+      env->Free(new_coeff_float);
+      env->ThrowError("Could not reserve memory in a resampler.");
     }
+    std::fill_n(new_coeff_float, p->target_size * filter_size, 0.0f);
+    float *dst_f = new_coeff_float, *src_f = p->pixel_coefficient_float;
+    for (int i = 0; i < p->target_size; i++) {
+      for (int j = 0; j < p->filter_size; j++) {
+        dst_f[j] = src_f[j];
+      }
 
-    dst += filter_size;
-    src += p->filter_size;
-
-    dst_f += filter_size;
-    src_f += p->filter_size;
+      dst_f += filter_size;
+      src_f += p->filter_size;
+    }
+    env->Free(p->pixel_coefficient_float);
+    p->pixel_coefficient_float = new_coeff_float;
   }
+  else {
+    short* new_coeff = (short*)env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+    if (!new_coeff) {
+      env->Free(new_coeff);
+      env->ThrowError("Could not reserve memory in a resampler.");
+    }
+    memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
+    short *dst = new_coeff, *src = p->pixel_coefficient;
+    for (int i = 0; i < p->target_size; i++) {
+      for (int j = 0; j < p->filter_size; j++) {
+        dst[j] = src[j];
+      }
 
-  env->Free(p->pixel_coefficient);
-  env->Free(p->pixel_coefficient_float);
-  p->pixel_coefficient = new_coeff;
-  p->pixel_coefficient_float = new_coeff_float;
+      dst += filter_size;
+      src += p->filter_size;
+
+    }
+    env->Free(p->pixel_coefficient);
+    p->pixel_coefficient = new_coeff;
+  }
 }
 
 template<typename pixel_t>
@@ -655,7 +667,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   }
 }
 
-#if 1
+#if 0
 template<typename pixel_t, bool hasSSE41>
 static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
   int filter_size = AlignNumber(program->filter_size, 8) / 8;
@@ -666,12 +678,11 @@ static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, in
   dst_pitch /= sizeof(pixel_t);
   src_pitch /= sizeof(pixel_t);
 
-  __m128 clamp_limit;
-  if (sizeof(pixel_t) == 2)
-    clamp_limit = _mm_set1_ps((float)(((int)1 << bits_per_pixel) - 1)); // clamp limit
+  __m128 clamp_limit = _mm_set1_ps((float)(((int)1 << bits_per_pixel) - 1)); // clamp limit
 
   for (int y = 0; y < height; y++) {
     float* current_coeff = program->pixel_coefficient_float;
+
     for (int x = 0; x < width; x+=4) {
       __m128 result1 = _mm_set1_ps(0.0f);
       __m128 result2 = result1;
@@ -686,22 +697,13 @@ static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, in
       // begin1, result1
       for (int i = 0; i < filter_size; i++) {
         __m128 data_l_single, data_h_single;
-        if(sizeof(pixel_t)==2) // word
-        {
-          // unaligned
-          __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src+begin1+i*8)); // uint16_t  8*16=128 8 pixels at a time
-          __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
-          __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
-          data_l_single = _mm_cvtepi32_ps (src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
-          data_h_single = _mm_cvtepi32_ps (src_h);
-        }
-        else { // float
-               // unaligned
-          data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin1+i*8)); // float  4*32=128 4 pixels at a time
-          data_h_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin1+i*8+4)); // float  4*32=128 4 pixels at a time
-        }
+        __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin1 + i * 8)); // uint16_t  8*16=128 8 pixels at a time
+        __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
+        __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
+        data_l_single = _mm_cvtepi32_ps(src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
+        data_h_single = _mm_cvtepi32_ps(src_h);
         __m128 coeff_l = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff));    // always aligned
-        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff+4));  // always aligned
+        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff + 4));  // always aligned
         __m128 dst_l = _mm_mul_ps(data_l_single, coeff_l); // Multiply by coefficient
         __m128 dst_h = _mm_mul_ps(data_h_single, coeff_h); // 4*(32bit*32bit=32bit)
         result1 = _mm_add_ps(result1, dst_l); // accumulate result.
@@ -713,22 +715,14 @@ static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, in
       // begin2, result2
       for (int i = 0; i < filter_size; i++) {
         __m128 data_l_single, data_h_single;
-        if(sizeof(pixel_t)==2) // word
-        {
-          // unaligned
-          __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src+begin2+i*8)); // uint16_t  8*16=128 8 pixels at a time
-          __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
-          __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
-          data_l_single = _mm_cvtepi32_ps (src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
-          data_h_single = _mm_cvtepi32_ps (src_h);
-        }
-        else { // float
-               // unaligned
-          data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin2+i*8)); // float  4*32=128 4 pixels at a time
-          data_h_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin2+i*8+4)); // float  4*32=128 4 pixels at a time
-        }
+        // unaligned
+        __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin2 + i * 8)); // uint16_t  8*16=128 8 pixels at a time
+        __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
+        __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
+        data_l_single = _mm_cvtepi32_ps(src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
+        data_h_single = _mm_cvtepi32_ps(src_h);
         __m128 coeff_l = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff));    // always aligned
-        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff+4));  // always aligned
+        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff + 4));  // always aligned
         __m128 dst_l = _mm_mul_ps(data_l_single, coeff_l); // Multiply by coefficient
         __m128 dst_h = _mm_mul_ps(data_h_single, coeff_h); // 4*(32bit*32bit=32bit)
         result2 = _mm_add_ps(result2, dst_l); // accumulate result.
@@ -740,22 +734,14 @@ static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, in
       // begin3, result3
       for (int i = 0; i < filter_size; i++) {
         __m128 data_l_single, data_h_single;
-        if(sizeof(pixel_t)==2) // word
-        {
-          // unaligned
-          __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src+begin3+i*8)); // uint16_t  8*16=128 8 pixels at a time
-          __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
-          __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
-          data_l_single = _mm_cvtepi32_ps (src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
-          data_h_single = _mm_cvtepi32_ps (src_h);
-        }
-        else { // float
-               // unaligned
-          data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin3+i*8)); // float  4*32=128 4 pixels at a time
-          data_h_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin3+i*8+4)); // float  4*32=128 4 pixels at a time
-        }
+        // unaligned
+        __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin3 + i * 8)); // uint16_t  8*16=128 8 pixels at a time
+        __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
+        __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
+        data_l_single = _mm_cvtepi32_ps(src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
+        data_h_single = _mm_cvtepi32_ps(src_h);
         __m128 coeff_l = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff));    // always aligned
-        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff+4));  // always aligned
+        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff + 4));  // always aligned
         __m128 dst_l = _mm_mul_ps(data_l_single, coeff_l); // Multiply by coefficient
         __m128 dst_h = _mm_mul_ps(data_h_single, coeff_h); // 4*(32bit*32bit=32bit)
         result3 = _mm_add_ps(result3, dst_l); // accumulate result.
@@ -767,22 +753,14 @@ static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, in
       // begin4, result4
       for (int i = 0; i < filter_size; i++) {
         __m128 data_l_single, data_h_single;
-        if(sizeof(pixel_t)==2) // word
-        {
-          // unaligned
-          __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src+begin4+i*8)); // uint16_t  8*16=128 8 pixels at a time
-          __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
-          __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
-          data_l_single = _mm_cvtepi32_ps (src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
-          data_h_single = _mm_cvtepi32_ps (src_h);
-        }
-        else { // float
-               // unaligned
-          data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin4+i*8)); // float  4*32=128 4 pixels at a time
-          data_h_single = _mm_loadu_ps(reinterpret_cast<const float*>(src+begin4+i*8+4)); // float  4*32=128 4 pixels at a time
-        }
+        // unaligned
+        __m128i src_p = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin4 + i * 8)); // uint16_t  8*16=128 8 pixels at a time
+        __m128i src_l = _mm_unpacklo_epi16(src_p, zero); // spread lower  4*uint16_t pixel value -> 4*32 bit
+        __m128i src_h = _mm_unpackhi_epi16(src_p, zero); // spread higher 4*uint16_t pixel value -> 4*32 bit
+        data_l_single = _mm_cvtepi32_ps(src_l); // Converts the four signed 32-bit integer values of a to single-precision, floating-point values.
+        data_h_single = _mm_cvtepi32_ps(src_h);
         __m128 coeff_l = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff));    // always aligned
-        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff+4));  // always aligned
+        __m128 coeff_h = /*loadps*/_mm_load_ps(reinterpret_cast<const float*>(current_coeff + 4));  // always aligned
         __m128 dst_l = _mm_mul_ps(data_l_single, coeff_l); // Multiply by coefficient
         __m128 dst_h = _mm_mul_ps(data_h_single, coeff_h); // 4*(32bit*32bit=32bit)
         result4 = _mm_add_ps(result4, dst_l); // accumulate result.
@@ -791,30 +769,321 @@ static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, in
         current_coeff += 8;
       }
 
-      __m128 result;
+      // this part needs ssse3
+      __m128 result12 = _mm_hadd_ps(result1, result2);
+      __m128 result34 = _mm_hadd_ps(result3, result4);
+      __m128 result = _mm_hadd_ps(result12, result34);
+
+      result = _mm_min_ps(result, clamp_limit); // mainly for 10-14 bit
+        // result = _mm_max_ps(result, zero); low limit through pack_us
+
+      // Converts the four single-precision, floating-point values of a to signed 32-bit integer values.
+      __m128i result_4x_int32  = _mm_cvtps_epi32(result);  // 4 * 32 bit integers
+      // SIMD Extensions 4 (SSE4) packus or simulation
+      __m128i result_4x_uint16 = hasSSE41 ? _mm_packus_epi32(result_4x_int32, zero) : (_MM_PACKUS_EPI32(result_4x_int32, zero)) ; // 4*32+zeros = lower 4*16 OK
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dst + x), result_4x_uint16);
+    } // for x
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+#endif
+//-------- 128 bit float Horizontals
+
+__forceinline static void process_one_pixel_h_float(const float *src, int begin, int i, float *&current_coeff, __m128 &result) {
+  // 2x4 pixels
+  __m128 data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8));
+  __m128 data_h_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8 + 4));
+  __m128 coeff_l = _mm_load_ps(reinterpret_cast<const float*>(current_coeff)); // always aligned
+  __m128 coeff_h = _mm_load_ps(reinterpret_cast<const float*>(current_coeff + 4));
+  __m128 dst_l = _mm_mul_ps(data_l_single, coeff_l); // Multiply by coefficient
+  __m128 dst_h = _mm_mul_ps(data_h_single, coeff_h); // 4*(32bit*32bit=32bit)
+  result = _mm_add_ps(result, dst_l); // accumulate result.
+  result = _mm_add_ps(result, dst_h);
+  current_coeff += 8;
+}
+
+template<int filtersizemod8>
+__forceinline static void process_one_pixel_h_float_mask(const float *src, int begin, int i, float *&current_coeff, __m128 &result, __m128 &mask) {
+  __m128 data_l_single;
+  __m128 data_h_single;
+  // 2x4 pixels
+  if (filtersizemod8 > 4) { // keep low, mask high 4 pixels
+    data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8));
+    data_h_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8 + 4));
+    data_h_single = _mm_and_ps(data_h_single, mask);
+  }
+  else if (filtersizemod8 == 4) { // keep low, zero high 4 pixels
+    data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8));
+    data_h_single = _mm_setzero_ps();
+  }
+  else { // filtersizemod8 1..3
+    data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8));
+    data_l_single = _mm_and_ps(data_l_single, mask);
+    data_h_single = _mm_setzero_ps();
+  }
+  __m128 coeff_l = _mm_load_ps(reinterpret_cast<const float*>(current_coeff)); // always aligned
+  __m128 coeff_h = _mm_load_ps(reinterpret_cast<const float*>(current_coeff + 4));
+  __m128 dst_l = _mm_mul_ps(data_l_single, coeff_l); // Multiply by coefficient
+  __m128 dst_h = _mm_mul_ps(data_h_single, coeff_h); // 4*(32bit*32bit=32bit)
+  result = _mm_add_ps(result, dst_l); // accumulate result.
+  result = _mm_add_ps(result, dst_h);
+  current_coeff += 8;
+}
+
+// filtersizealigned8: special: 1, 2. Generic: -1
+template<int filtersizealigned8, int filtersizemod8>
+static void resizer_h_ssse3_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+  const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
+
+  const float *src = reinterpret_cast<const float *>(src8);
+  float *dst = reinterpret_cast<float *>(dst8);
+  dst_pitch /= sizeof(float);
+  src_pitch /= sizeof(float);
+
+  // OMG! 18.01.19
+  // Protection against NaN
+  // When reading the last 8 consecutive pixels from right side offsets, it would access beyond-last-pixel area.
+  // One SIMD cycle reads 8 bytes from (src + begin + i * 8)
+  // When program->filter_size mod 8 is 1..7 then some of the last pixels should be masked because there can be NaN garbage.
+  // So it's not enough to mask the coefficients by zero. Theory: let's multiply offscreen elements by 0 which works for integer samples.
+  // But we are using float, so since NaN * Zero is NaN which propagates further to NaN when hadd is summing up the pixel*coeff series
+
+  __m128 mask;
+  switch (filtersizemod8 & 3) {
+  case 3: mask = _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0)); break; // keep 0-1-2, drop #3
+  case 2: mask = _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)); break; // keep 0-1, drop #2-3
+  case 1: mask = _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0, 0, 0)); break; // keep 0, drop #1-2-3
+  default: break; // for mod4 = 0 no masking needed
+  }
+
+  const int pixels_per_cycle = 8; // doing 8 is faster than 4
+  const int unsafe_limit = (program->overread_possible && filtersizemod8 != 0) ? (program->source_overread_beyond_targetx / pixels_per_cycle) * pixels_per_cycle : width;
+
+  for (int y = 0; y < height; y++) {
+    float* current_coeff = program->pixel_coefficient_float;
+
+    // loop for clean, non-offscreen data
+    for (int x = 0; x < unsafe_limit; x += pixels_per_cycle) {
+      __m128 result1 = _mm_set1_ps(0.0f);
+      __m128 result2 = result1;
+      __m128 result3 = result1;
+      __m128 result4 = result1;
+
+      // 1-4
+      int begin1 = program->pixel_offset[x + 0];
+      int begin2 = program->pixel_offset[x + 1];
+      int begin3 = program->pixel_offset[x + 2];
+      int begin4 = program->pixel_offset[x + 3];
+
+      // begin1, result1
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin1, i, current_coeff, result1);
+
+      // begin2, result2
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin2, i, current_coeff, result2);
+
+      // begin3, result3
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin3, i, current_coeff, result3);
+
+      // begin4, result4
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin4, i, current_coeff, result4);
 
       // this part needs ssse3
       __m128 result12 = _mm_hadd_ps(result1, result2);
       __m128 result34 = _mm_hadd_ps(result3, result4);
-      result = _mm_hadd_ps(result12, result34);
+      __m128 result = _mm_hadd_ps(result12, result34);
 
-      if (sizeof(pixel_t) == 2)
-      {
-        result = _mm_min_ps(result, clamp_limit); // mainly for 10-14 bit
-        // result = _mm_max_ps(result, zero); low limit through pack_us
-      }
+      _mm_stream_ps(reinterpret_cast<float*>(dst + x), result); // 4 results at a time
 
-      if(sizeof(pixel_t)==2) // word
+      // 5-8
+      result1 = _mm_set1_ps(0.0f);
+      result2 = result1;
+      result3 = result1;
+      result4 = result1;
+
+      begin1 = program->pixel_offset[x + 4];
+      begin2 = program->pixel_offset[x + 5];
+      begin3 = program->pixel_offset[x + 6];
+      begin4 = program->pixel_offset[x + 7];
+
+      // begin1, result1
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin1, i, current_coeff, result1);
+
+      // begin2, result2
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin2, i, current_coeff, result2);
+
+      // begin3, result3
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin3, i, current_coeff, result3);
+
+      // begin4, result4
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_float(src, begin4, i, current_coeff, result4);
+
+      // this part needs ssse3
+     result12 = _mm_hadd_ps(result1, result2);
+     result34 = _mm_hadd_ps(result3, result4);
+     result = _mm_hadd_ps(result12, result34);
+
+      _mm_stream_ps(reinterpret_cast<float*>(dst + x + 4), result); // 4 results at a time
+    } // for x
+
+      // possibly right-side offscreen
+      // and the same for the rest with masking the last filtersize/8 chunk
+    for (int x = unsafe_limit; x < width; x += 4) {
+      __m128 result1 = _mm_set1_ps(0.0f);
+      __m128 result2 = result1;
+      __m128 result3 = result1;
+      __m128 result4 = result1;
+
+      int begin1 = program->pixel_offset[x + 0];
+      int begin2 = program->pixel_offset[x + 1];
+      int begin3 = program->pixel_offset[x + 2];
+      int begin4 = program->pixel_offset[x + 3];
+
+      // begin1, result1
+      for (int i = 0; i < filter_size_numOfBlk8 - 1; i++)
+        process_one_pixel_h_float(src, begin1, i, current_coeff, result1);
+      if (begin1 < program->source_overread_offset)
+        process_one_pixel_h_float(src, begin1, filter_size_numOfBlk8 - 1, current_coeff, result1);
+      else
+        process_one_pixel_h_float_mask<filtersizemod8>(src, begin1, filter_size_numOfBlk8 - 1, current_coeff, result1, mask);
+
+      // begin2, result2
+      for (int i = 0; i < filter_size_numOfBlk8 - 1; i++)
+        process_one_pixel_h_float(src, begin2, i, current_coeff, result2);
+      if (begin2 < program->source_overread_offset)
+        process_one_pixel_h_float(src, begin2, filter_size_numOfBlk8 - 1, current_coeff, result2);
+      else
+        process_one_pixel_h_float_mask<filtersizemod8>(src, begin2, filter_size_numOfBlk8 - 1, current_coeff, result2, mask);
+
+      // begin3, result3
+      for (int i = 0; i < filter_size_numOfBlk8 - 1; i++)
+        process_one_pixel_h_float(src, begin3, i, current_coeff, result3);
+      if (begin3 < program->source_overread_offset)
+        process_one_pixel_h_float(src, begin3, filter_size_numOfBlk8 - 1, current_coeff, result3);
+      else
+        process_one_pixel_h_float_mask<filtersizemod8>(src, begin3, filter_size_numOfBlk8 - 1, current_coeff, result3, mask);
+
+      // begin4, result4
+      for (int i = 0; i < filter_size_numOfBlk8 - 1; i++)
+        process_one_pixel_h_float(src, begin4, i, current_coeff, result4);
+      if (begin4 < program->source_overread_offset)
+        process_one_pixel_h_float(src, begin4, filter_size_numOfBlk8 - 1, current_coeff, result4);
+      else
+        process_one_pixel_h_float_mask<filtersizemod8>(src, begin4, filter_size_numOfBlk8 - 1, current_coeff, result4, mask);
+
+      // this part needs ssse3
+      __m128 result12 = _mm_hadd_ps(result1, result2);
+      __m128 result34 = _mm_hadd_ps(result3, result4);
+      __m128 result = _mm_hadd_ps(result12, result34);
+
+      _mm_stream_ps(reinterpret_cast<float*>(dst + x), result); // 4 results at a time
+
+    } // for x
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+  /*
+  // check Nans
+  dst -= dst_pitch * height;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x += 4) {
+      if (std::isnan(dst[x]))
       {
-        // Converts the four single-precision, floating-point values of a to signed 32-bit integer values.
-        __m128i result_4x_int32  = _mm_cvtps_epi32(result);  // 4 * 32 bit integers
-        // SIMD Extensions 4 (SSE4) packus or simulation
-        __m128i result_4x_uint16 = hasSSE41 ? _mm_packus_epi32(result_4x_int32, zero) : (_MM_PACKUS_EPI32(result_4x_int32, zero)) ; // 4*32+zeros = lower 4*16 OK
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dst + x), result_4x_uint16);
-      } else { // float
-        // aligned
-        _mm_store_ps(reinterpret_cast<float*>(dst+x), result); // 4 results at a time
+        x = x;
       }
+    }
+    dst += dst_pitch;
+  }
+  */
+}
+
+//-------- 128 bit uint16_t Horizontals
+
+template<bool lessthan16bit>
+__forceinline static void process_one_pixel_h_uint16_t(const uint16_t *src, int begin, int i, short *&current_coeff, __m128i &result, const __m128i &shifttosigned) {
+  __m128i data_single = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin + i * 8)); // 8 pixels
+  if (!lessthan16bit)
+    data_single = _mm_add_epi16(data_single, shifttosigned); // unsigned -> signed
+  __m128i coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff)); // 8 coeffs
+  result = _mm_add_epi32(result, _mm_madd_epi16(data_single, coeff));
+  current_coeff += 8;
+}
+
+// filter_size <= 8 -> filter_size_align8 == 1 -> no loop, hope it'll be optimized
+// filter_size <= 16 -> filter_size_align8 == 2 -> loop 0..1 hope it'll be optimized
+// filter_size > 16 -> use parameter AlignNumber(program->filter_size_numOfFullBlk8, 8) / 8;
+template<bool lessthan16bit, int filtersizealigned8, bool hasSSE41>
+static void internal_resizer_h_sse34_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+  // 1 and 2: special case for compiler optimization
+  const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
+
+  const __m128i zero = _mm_setzero_si128();
+  const __m128i shifttosigned = _mm_set1_epi16(-32768); // for 16 bits only
+  const __m128i shiftfromsigned = _mm_set1_epi32(+32768 << FPScale16bits); // for 16 bits only
+  const __m128i rounder = _mm_set_epi32(0, 0, 0, 1 << (FPScale16bits - 1)); // only once
+
+  const uint16_t *src = reinterpret_cast<const uint16_t *>(src8);
+  uint16_t *dst = reinterpret_cast<uint16_t *>(dst8);
+  dst_pitch /= sizeof(uint16_t);
+  src_pitch /= sizeof(uint16_t);
+
+  __m128i clamp_limit = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // clamp limit for <16 bits
+
+  for (int y = 0; y < height; y++) {
+    short* current_coeff = program->pixel_coefficient;
+
+    for (int x = 0; x < width; x += 4) {
+      __m128i result1 = rounder;
+      __m128i result2 = result1;
+      __m128i result3 = result1;
+      __m128i result4 = result1;
+
+      int begin1 = program->pixel_offset[x + 0];
+      int begin2 = program->pixel_offset[x + 1];
+      int begin3 = program->pixel_offset[x + 2];
+      int begin4 = program->pixel_offset[x + 3];
+
+      // this part is repeated 4 times
+      // begin1, result1
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin1, i, current_coeff, result1, shifttosigned);
+
+      // begin2, result2
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin2, i, current_coeff, result2, shifttosigned);
+
+      // begin3, result3
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin3, i, current_coeff, result3, shifttosigned);
+
+      // begin4, result4
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin4, i, current_coeff, result4, shifttosigned);
+
+      const __m128i sumQuad12 = _mm_hadd_epi32(result1, result2); // L1L1L1L1 + L2L2L2L2 = L1L1 L2L2
+      const __m128i sumQuad34 = _mm_hadd_epi32(result3, result4); // L3L3L3L3 + L4L4L4L4 = L3L3 L4L4
+      __m128i result = _mm_hadd_epi32(sumQuad12, sumQuad34); // L1L1 L2L2 + L3L3 L4L4 = L1 L2 L3 L4
+
+      // correct if signed, scale back, store
+      if (!lessthan16bit)
+        result = _mm_add_epi32(result, shiftfromsigned);
+      result = _mm_srai_epi32(result, FPScale16bits); // shift back integer arithmetic 13 bits precision
+
+      __m128i result_4x_uint16 = hasSSE41 ? _mm_packus_epi32(result, zero) : _MM_PACKUS_EPI32(result, zero); // 4*32+zeros = lower 4*16 OK
+      // extra clamp for 10-14 bit
+      if (lessthan16bit)
+        result_4x_uint16 = hasSSE41 ? _mm_min_epu16(result_4x_uint16, clamp_limit) : _MM_MIN_EPU16(result_4x_uint16, clamp_limit);
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dst + x), result_4x_uint16);
 
     }
 
@@ -822,7 +1091,339 @@ static void resizer_h_ssse3_generic_int16_float(BYTE* dst8, const BYTE* src8, in
     src += src_pitch;
   }
 }
-#endif
+
+//-------- 128 bit uint16_t Horizontal Dispatcher
+
+template<bool lessthan16bit, bool hasSSE41>
+static void resizer_h_sse34_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size, 8) / 8;
+
+  if (filter_size_numOfBlk8 == 1)
+    internal_resizer_h_sse34_generic_uint16_t<lessthan16bit, 1, hasSSE41>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+  else if (filter_size_numOfBlk8 == 2)
+    internal_resizer_h_sse34_generic_uint16_t<lessthan16bit, 2, hasSSE41>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+  else // -1: basic method, use program->filter_size
+    internal_resizer_h_sse34_generic_uint16_t<lessthan16bit, -1, hasSSE41>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+}
+
+//-------- 128 bit uint16_t Verticals
+
+template<bool lessthan16bit, int index>
+__forceinline static void process_chunk_v_uint16_t(const uint16_t *src2_ptr, int src_pitch, __m128i &coeff01234567, __m128i &result_single, const __m128i &shifttosigned) {
+  // offset table generating is what preventing us from overaddressing
+  // 0-1
+  __m128i src_even = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src2_ptr + index * src_pitch)); // 4x 16bit pixels
+  __m128i src_odd = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src2_ptr + (index + 1) * src_pitch));  // 4x 16bit pixels
+  __m128i src = _mm_unpacklo_epi16(src_even, src_odd);
+  if (!lessthan16bit)
+    src = _mm_add_epi16(src, shifttosigned);
+  __m128i coeff = _mm_shuffle_epi32(coeff01234567, ((index / 2) << 0) | ((index / 2) << 2) | ((index / 2) << 4) | ((index / 2) << 6)); // spread short pair
+  result_single = _mm_add_epi32(result_single, _mm_madd_epi16(src, coeff)); // a*b + c
+}
+
+// program->filtersize: 1..16 special optimized, >8: normal
+template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8, bool hasSSE41>
+void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+{
+  const int filter_size_numOfFullBlk8 = (_filter_size_numOfFullBlk8 >= 0) ? _filter_size_numOfFullBlk8 : (program->filter_size / 8);
+  short* current_coeff = program->pixel_coefficient;
+
+  int wMod4 = (width / 4) * 4; // uint16: 4 at a time (128bit)
+
+  const __m128i zero = _mm_setzero_si128();
+  const __m128i shifttosigned = _mm_set1_epi16(-32768); // for 16 bits only
+  const __m128i shiftfromsigned = _mm_set1_epi32(32768 << FPScale16bits); // for 16 bits only
+  const __m128i rounder = _mm_set1_epi32(1 << (FPScale16bits - 1));
+
+  const uint16_t* src = (uint16_t *)src0;
+  uint16_t* dst = (uint16_t *)dst0;
+  dst_pitch = dst_pitch / sizeof(uint16_t);
+  src_pitch = src_pitch / sizeof(uint16_t);
+
+  const int limit = (1 << bits_per_pixel) - 1;
+  __m128i clamp_limit = _mm_set1_epi16((short)limit); // clamp limit for <16 bits
+
+  for (int y = 0; y < target_height; y++) {
+    int offset = program->pixel_offset[y];
+    const uint16_t* src_ptr = src + pitch_table[offset] / sizeof(uint16_t);
+
+    // why need mod4? avs+ guarantees 64 byte alignment
+    for (int x = 0; x < wMod4; x += 4) { // 4 pixels at a time
+      __m128i result_single = rounder;
+
+      const uint16_t* src2_ptr = src_ptr + x;
+
+      for (int i = 0; i < filter_size_numOfFullBlk8; i++) {
+        __m128i coeff01234567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current_coeff + i * 8)); // 4x (2x16bit) shorts for even/odd
+
+                                                                                                          // offset table generating is what preventing us from overaddressing
+                                                                                                          // 0-1
+        process_chunk_v_uint16_t<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        // 2-3
+        process_chunk_v_uint16_t<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        // 4-5
+        process_chunk_v_uint16_t<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        // 6-7
+        process_chunk_v_uint16_t<lessthan16bit, 6>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        src2_ptr += 8 * src_pitch;
+      }
+
+      // and the rest non-div8 chunk
+      __m128i coeff01234567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current_coeff + filter_size_numOfFullBlk8 * 8)); // 4x (2x16bit) shorts for even/odd
+      if (filtersizemod8 >= 2)
+        process_chunk_v_uint16_t<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+      if (filtersizemod8 >= 4)
+        process_chunk_v_uint16_t<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+      if (filtersizemod8 >= 6)
+        process_chunk_v_uint16_t<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+      if (filtersizemod8 % 2) { // remaining odd one
+        const int index = filtersizemod8 - 1;
+        __m128i src_even = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src2_ptr + index * src_pitch)); // 4x 16bit pixels
+        if (!lessthan16bit)
+          src_even = _mm_add_epi16(src_even, shifttosigned);
+        __m128i coeff = _mm_shuffle_epi32(coeff01234567, ((index / 2) << 0) | ((index / 2) << 2) | ((index / 2) << 4) | ((index / 2) << 6));
+        __m128i src = _mm_unpacklo_epi16(src_even, zero); // insert zero after the unsigned->signed shift!
+        result_single = _mm_add_epi32(result_single, _mm_madd_epi16(src, coeff)); // a*b + c
+      }
+
+      // correct if signed, scale back, store
+      __m128i result = result_single;
+      if (!lessthan16bit)
+        result = _mm_add_epi32(result, shiftfromsigned);
+      result = _mm_srai_epi32(result, FPScale16bits); // shift back integer arithmetic 13 bits precision
+
+      __m128i result_4x_uint16 = hasSSE41 ? _mm_packus_epi32(result, zero) : _MM_PACKUS_EPI32(result, zero); // 4*32+zeros = lower 4*16 OK
+      if (lessthan16bit)
+        result_4x_uint16 = hasSSE41 ? _mm_min_epu16(result_4x_uint16, clamp_limit) : _MM_MIN_EPU16(result_4x_uint16, clamp_limit); // extra clamp for 10-14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dst + x), result_4x_uint16);
+    }
+
+    // Leftover, slow C
+    for (int x = wMod4; x < width; x++) {
+      int64_t result64 = 1 << (FPScale16bits - 1); // rounder
+      const uint16_t* src2_ptr = src_ptr + x;
+      for (int i = 0; i < program->filter_size; i++) {
+        //result64 += (src_ptr + pitch_table[i] / sizeof(uint16_t))[x] * (int64_t)current_coeff[i];
+        result64 += (int)(*src2_ptr) * (int64_t)current_coeff[i];
+        src2_ptr += src_pitch;
+      }
+      int result = (int)(result64 / (1 << FPScale16bits)); // scale back 13 bits
+      result = result > limit ? limit : result < 0 ? 0 : result; // clamp 10..16 bits
+      dst[x] = (uint16_t)result;
+    }
+
+    dst += dst_pitch;
+    current_coeff += program->filter_size;
+  }
+}
+
+//-------- uint16_t Vertical Dispatcher
+
+template<bool lessthan16bit, bool hasSSE41>
+void resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+{
+  // template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8>
+  // filtersize 1..16: to template for optimization
+  switch (program->filter_size) {
+  case 1:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 1, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 2:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 2, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 3:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 3, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 4:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 4, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 5:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 5, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 6:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 6, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 7:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 7, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 8:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 0, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 9:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 1, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 10:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 2, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 11:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 3, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 12:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 4, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 13:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 5, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 14:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 6, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 15:
+    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 7, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  default:
+    switch (program->filter_size & 7) {
+    case 0:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 0, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 1:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 1, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 2:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 2, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 3:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 3, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 4:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 4, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 5:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 5, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 6:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 6, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 7:
+      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 7, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    }
+    break;
+  }
+}
+
+//-------- 128 bit float Verticals
+
+template<int _filtersize>
+static void internal_resize_v_sse2_planar_float(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+{
+  // 1..8: special case for compiler optimization
+  const int filter_size = _filtersize >= 1 ? _filtersize : program->filter_size;
+  float* current_coeff_float = program->pixel_coefficient_float;
+
+  int wMod4 = (width / 4) * 4; // float: 4 at a time
+
+  __m128i zero = _mm_setzero_si128();
+
+  const float* src = (float *)src0;
+  float* dst = (float *)dst0;
+  dst_pitch = dst_pitch / sizeof(float);
+  src_pitch = src_pitch / sizeof(float);
+
+  const int fsmod4 = (filter_size / 4) * 4;
+  for (int y = 0; y < target_height; y++) {
+    int offset = program->pixel_offset[y];
+    const float* src_ptr = src + pitch_table[offset] / sizeof(float);
+
+    for (int x = 0; x < wMod4; x += 4) {
+      __m128 result_single = _mm_set1_ps(0.0f);
+
+      const float* src2_ptr = src_ptr + x;
+
+      for (int i = 0; i < fsmod4; i += 4) {
+        __m128 src_single;
+        __m128 coeff0123 = _mm_loadu_ps(reinterpret_cast<const float*>(current_coeff_float + i)); // loads 4 floats
+        __m128 coeff;
+
+        // unroll 4x
+        // #1
+        src_single = _mm_load_ps(reinterpret_cast<const float*>(src2_ptr)); // float  8*32=256 8 pixels at a time
+        coeff = _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(coeff0123), (0 << 0) | (0 << 2) | (0 << 4) | (0 << 6))); // spread 0th
+        result_single = _mm_add_ps(result_single, _mm_mul_ps(coeff, src_single)); // _mm_fmadd_ps(src_single, coeff, result_single); // a*b + c
+
+                                                                        // #2
+        src_single = _mm_load_ps(reinterpret_cast<const float*>(src2_ptr + 1 * src_pitch)); // float  8*32=256 8 pixels at a time
+        coeff = _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(coeff0123), (1 << 0) | (1 << 2) | (1 << 4) | (1 << 6))); // spread 1st
+        result_single = _mm_add_ps(result_single, _mm_mul_ps(coeff, src_single)); // _mm_fmadd_ps(src_single, coeff, result_single); // a*b + c
+
+                                                                        // #3
+        src_single = _mm_load_ps(reinterpret_cast<const float*>(src2_ptr + 2 * src_pitch)); // float  8*32=256 8 pixels at a time
+        coeff = _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(coeff0123), (2 << 0) | (2 << 2) | (2 << 4) | (2 << 6))); // spread 2nd
+        result_single = _mm_add_ps(result_single, _mm_mul_ps(coeff, src_single)); // _mm_fmadd_ps(src_single, coeff, result_single); // a*b + c
+
+                                                                        // #4
+        src_single = _mm_load_ps(reinterpret_cast<const float*>(src2_ptr + 3 * src_pitch)); // float  8*32=256 8 pixels at a time
+        coeff = _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(coeff0123), (3 << 0) | (3 << 2) | (3 << 4) | (3 << 6))); // spread 3rd
+        result_single = _mm_add_ps(result_single, _mm_mul_ps(coeff, src_single)); // _mm_fmadd_ps(src_single, coeff, result_single); // a*b + c
+
+        src2_ptr += 4 * src_pitch;
+      }
+
+      // one-by-one
+      for (int i = fsmod4; i < filter_size; i++) {
+        __m128 src_single = _mm_loadu_ps(reinterpret_cast<const float*>(src2_ptr)); // float  8*32=256 8 pixels at a time
+        __m128 coeff = _mm_load1_ps(reinterpret_cast<const float*>(current_coeff_float + i)); // loads 1, fills all 8 floats
+        result_single = _mm_add_ps(result_single, _mm_mul_ps(coeff, src_single)); // _mm_fmadd_ps(src_single, coeff, result_single); // a*b + c
+
+        src2_ptr += src_pitch;
+      }
+
+      _mm_stream_ps(reinterpret_cast<float*>(dst + x), result_single);
+    }
+
+    // Leftover, Slow C
+    for (int x = wMod4; x < width; x++) {
+      float result = 0;
+      const float* src2_ptr = src_ptr + x;
+      for (int i = 0; i < filter_size; i++) {
+        result += (*src2_ptr) * current_coeff_float[i];
+        src2_ptr += src_pitch;
+      }
+      dst[x] = result;
+    }
+
+    dst += dst_pitch;
+    current_coeff_float += filter_size;
+  }
+}
+
+//-------- Float Vertical Dispatcher
+
+void resize_v_sse2_planar_float(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+{
+  // 1..8: special case for compiler optimization
+  switch (program->filter_size) {
+  case 1:
+    internal_resize_v_sse2_planar_float<1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 2:
+    internal_resize_v_sse2_planar_float<2>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 3:
+    internal_resize_v_sse2_planar_float<3>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 4:
+    internal_resize_v_sse2_planar_float<4>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 5:
+    internal_resize_v_sse2_planar_float<5>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 6:
+    internal_resize_v_sse2_planar_float<6>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 7:
+    internal_resize_v_sse2_planar_float<7>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 8:
+    internal_resize_v_sse2_planar_float<8>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  default:
+    internal_resize_v_sse2_planar_float<-1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  }
+}
+
+
+//-------- uint8_t Horizontal (8bit)
 
 static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
   int filter_size = AlignNumber(program->filter_size, 8) / 8;
@@ -1036,7 +1637,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
   // Main resampling program
-  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env2);
+  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, bits_per_pixel, env2);
   if (vi.IsPlanar() && !grey && !isRGBPfamily) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -1048,15 +1649,19 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       subrange_left   / div,
       subrange_width  / div,
       target_width   >> shift,
+      bits_per_pixel,
       env2);
   }
 
-  fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 && vi.IsPlanar() && target_width%4 == 0;
+  fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 &&
+    vi.IsPlanar() &&
+    (target_width % 4 == 0 && vi.ComponentSize() == 1 || vi.ComponentSize() > 1); // for non 8 bits: any width
+  // FIXME: check why mod4 existed
   if (fast_resize /*&& vi.IsYUV()*/ && !grey && !isRGBPfamily) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int dst_chroma_width = dst_width >> shift;
 
-    if (dst_chroma_width%4 != 0) {
+    if (dst_chroma_width%4 != 0 && vi.ComponentSize() == 1) { // for non 8 bits: any width
       fast_resize = false;
     }
   }
@@ -1076,8 +1681,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     }
 
     // Temporary buffer size
-    temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
-    temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), 64);
+    temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), FRAME_ALIGN);
+    temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), FRAME_ALIGN);
 
     resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
 
@@ -1160,8 +1765,8 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   if (!fast_resize) {
     // e.g. not aligned, not mod4
     // temp_1_pitch and temp_2_pitch is pixelsize-aware
-    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, 64, AVS_POOLED_ALLOC));
-    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, 64, AVS_POOLED_ALLOC));
+    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, FRAME_ALIGN, AVS_POOLED_ALLOC));
+    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, FRAME_ALIGN, AVS_POOLED_ALLOC));
     if (!temp_1 || !temp_2) {
       env2->Free(temp_1);
       env2->Free(temp_2);
@@ -1260,7 +1865,7 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
     if (program->filter_size > 8)
       return resizer_h_ssse3_generic;
     else
-      return resizer_h_ssse3_8;
+      return resizer_h_ssse3_8; // no loop
   }
     else { // C version
       return resize_h_c_planar<uint8_t>;
@@ -1271,38 +1876,110 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
       resize_h_prepare_coeff_8(program, env);
       if (CPU & CPUF_AVX2) {
         if(bits_per_pixel < 16)
-          return resizer_h_avx2_generic_int16_float<true, uint16_t>;
+          return resizer_h_avx2_generic_uint16_t<true>;
         else
-          return resizer_h_avx2_generic_int16_float<false, uint16_t>;
+          return resizer_h_avx2_generic_uint16_t<false>;
       }
-      if (CPU & CPUF_AVX) {
-        if(bits_per_pixel < 16)
-          return resizer_h_avx_generic_int16_float<true, uint16_t>;
+      else if (CPU & CPUF_SSE4_1) {
+        if (bits_per_pixel < 16)
+          return resizer_h_sse34_generic_uint16_t<true, true>;
         else
-          return resizer_h_avx_generic_int16_float<false, uint16_t>;
+          return resizer_h_sse34_generic_uint16_t<false, true>;
       }
-      if (CPU & CPUF_SSE4_1)
-        return resizer_h_ssse3_generic_int16_float<uint16_t, true>;
-      else
-        return resizer_h_ssse3_generic_int16_float<uint16_t, false>;
+      else {
+        // SSSE3 needed
+        if (bits_per_pixel < 16)
+          return resizer_h_sse34_generic_uint16_t<true, false>;
+        else
+          return resizer_h_sse34_generic_uint16_t<false, false>;
+      }
     } else
       return resize_h_c_planar<uint16_t>;
   } else { //if (pixelsize == 4)
+    
     if (CPU & CPUF_SSSE3) {
       resize_h_prepare_coeff_8(program, env);
-      //if (program->filter_size > 8)
+      
+      const int filtersizealign8 = AlignNumber(program->filter_size, 8);
+      const int filtersizemod8 = program->filter_size & 7;
+
       if (CPU & CPUF_AVX2) {
-        return resizer_h_avx2_generic_int16_float<false, float>;
+        if (filtersizealign8 == 8) {
+          switch (filtersizemod8) {
+          case 0: return resizer_h_avx2_generic_float<1, 0>;
+          case 1: return resizer_h_avx2_generic_float<1, 1>;
+          case 2: return resizer_h_avx2_generic_float<1, 2>;
+          case 3: return resizer_h_avx2_generic_float<1, 3>;
+          case 4: return resizer_h_avx2_generic_float<1, 4>;
+          case 5: return resizer_h_avx2_generic_float<1, 5>;
+          case 6: return resizer_h_avx2_generic_float<1, 6>;
+          case 7: return resizer_h_avx2_generic_float<1, 7>;
+          }
+        }
+        else if (filtersizealign8 == 16) {
+          switch (filtersizemod8) {
+          case 0: return resizer_h_avx2_generic_float<2, 0>;
+          case 1: return resizer_h_avx2_generic_float<2, 1>;
+          case 2: return resizer_h_avx2_generic_float<2, 2>;
+          case 3: return resizer_h_avx2_generic_float<2, 3>;
+          case 4: return resizer_h_avx2_generic_float<2, 4>;
+          case 5: return resizer_h_avx2_generic_float<2, 5>;
+          case 6: return resizer_h_avx2_generic_float<2, 6>;
+          case 7: return resizer_h_avx2_generic_float<2, 7>;
+          }
+        }
+        else {
+          switch (filtersizemod8) {
+          case 0: return resizer_h_avx2_generic_float<-1, 0>;
+          case 1: return resizer_h_avx2_generic_float<-1, 1>;
+          case 2: return resizer_h_avx2_generic_float<-1, 2>;
+          case 3: return resizer_h_avx2_generic_float<-1, 3>;
+          case 4: return resizer_h_avx2_generic_float<-1, 4>;
+          case 5: return resizer_h_avx2_generic_float<-1, 5>;
+          case 6: return resizer_h_avx2_generic_float<-1, 6>;
+          case 7: return resizer_h_avx2_generic_float<-1, 7>;
+          }
+        }
       }
-      if (CPU & CPUF_AVX) {
-        return resizer_h_avx_generic_int16_float<false, float>;
+      // SSSE3
+      if (filtersizealign8 == 8) {
+        switch (filtersizemod8) {
+        case 0: return resizer_h_ssse3_generic_float<1, 0>;
+        case 1: return resizer_h_ssse3_generic_float<1, 1>;
+        case 2: return resizer_h_ssse3_generic_float<1, 2>;
+        case 3: return resizer_h_ssse3_generic_float<1, 3>;
+        case 4: return resizer_h_ssse3_generic_float<1, 4>;
+        case 5: return resizer_h_ssse3_generic_float<1, 5>;
+        case 6: return resizer_h_ssse3_generic_float<1, 6>;
+        case 7: return resizer_h_ssse3_generic_float<1, 7>;
+        }
       }
-      if (CPU & CPUF_SSE4_1)
-        return resizer_h_ssse3_generic_int16_float<float, true>;
-      else
-        return resizer_h_ssse3_generic_int16_float<float, false>;
-    } else
-      return resize_h_c_planar<float>;
+      else if (filtersizealign8 == 16) {
+        switch (filtersizemod8) {
+        case 0: return resizer_h_ssse3_generic_float<2, 0>;
+        case 1: return resizer_h_ssse3_generic_float<2, 1>;
+        case 2: return resizer_h_ssse3_generic_float<2, 2>;
+        case 3: return resizer_h_ssse3_generic_float<2, 3>;
+        case 4: return resizer_h_ssse3_generic_float<2, 4>;
+        case 5: return resizer_h_ssse3_generic_float<2, 5>;
+        case 6: return resizer_h_ssse3_generic_float<2, 6>;
+        case 7: return resizer_h_ssse3_generic_float<2, 7>;
+        }
+      }
+      else {
+        switch (filtersizemod8) {
+        case 0: return resizer_h_ssse3_generic_float<-1, 0>;
+        case 1: return resizer_h_ssse3_generic_float<-1, 1>;
+        case 2: return resizer_h_ssse3_generic_float<-1, 2>;
+        case 3: return resizer_h_ssse3_generic_float<-1, 3>;
+        case 4: return resizer_h_ssse3_generic_float<-1, 4>;
+        case 5: return resizer_h_ssse3_generic_float<-1, 5>;
+        case 6: return resizer_h_ssse3_generic_float<-1, 6>;
+        case 7: return resizer_h_ssse3_generic_float<-1, 7>;
+        }
+      }
+    }
+    return resize_h_c_planar<float>;
   }
 }
 
@@ -1342,11 +2019,11 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
   if (vi.IsRGB() && !isRGBPfamily)
-    subrange_top = vi.height - subrange_top - subrange_height; // why?
+    subrange_top = vi.height - subrange_top - subrange_height; // packed RGB upside down
 
 
   // Create resampling program and pitch table
-  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env2);
+  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, bits_per_pixel, env2);
   resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , pixelsize, bits_per_pixel, filter_storage_luma_aligned,   resampling_program_luma);
   resampler_luma_unaligned = GetResampler(env->GetCPUFlags(), false, pixelsize, bits_per_pixel, filter_storage_luma_unaligned, resampling_program_luma);
 
@@ -1359,6 +2036,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   subrange_top    / div,
                                   subrange_height / div,
                                   target_height  >> shift,
+                                  bits_per_pixel,
                                   env2);
 
     resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , pixelsize, bits_per_pixel, filter_storage_chroma_aligned,   resampling_program_chroma);
@@ -1383,7 +2061,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
 
   // Create pitch table
-  int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 16, AVS_POOLED_ALLOC));
+  int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 32, AVS_POOLED_ALLOC));
   if (!src_pitch_table_luma) {
     env->ThrowError("Could not reserve memory in a resampler.");
   }
@@ -1393,8 +2071,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   int* src_pitch_table_chromaU = NULL;
   int* src_pitch_table_chromaV = NULL;
   if ((!grey && vi.IsPlanar() && !isRGBPfamily)) {
-    src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 16, AVS_POOLED_ALLOC));
-    src_pitch_table_chromaV = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 16, AVS_POOLED_ALLOC));
+    src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 32, AVS_POOLED_ALLOC));
+    src_pitch_table_chromaV = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 32, AVS_POOLED_ALLOC));
     if (!src_pitch_table_chromaU || !src_pitch_table_chromaV) {
       env2->Free(src_pitch_table_chromaU);
       env2->Free(src_pitch_table_chromaV);
@@ -1523,53 +2201,32 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, i
     else if (pixelsize == 2) {
       if (aligned && (CPU & CPUF_AVX2)) {
         if(bits_per_pixel<16)
-          return resize_v_avx2_planar_16or32<true, uint16_t>;
+          return resize_v_avx2_planar_uint16_t<true>;
         else
-          return resize_v_avx2_planar_16or32<false, uint16_t>;
+          return resize_v_avx2_planar_uint16_t<false>;
       }
-      if (aligned && (CPU & CPUF_AVX)) {
-        if(bits_per_pixel<16)
-          return resize_v_avx_planar_16or32<true, uint16_t>;
+      else if (aligned && (CPU & CPUF_SSE4_1)) {
+        if (bits_per_pixel < 16)
+          return resize_v_sse_planar_uint16_t<true, true>;
         else
-          return resize_v_avx_planar_16or32<false, uint16_t>;
+          return resize_v_sse_planar_uint16_t<false, true>;
       }
-      else if (CPU & CPUF_SSE4_1) {
-        if (aligned) {
-          return resize_v_sseX_planar_16or32<simd_load_streaming, simd_loadps_aligned, true, uint16_t>;
-        }
-        else if (CPU & CPUF_SSE3) { // SSE3 lddqu
-          return resize_v_sseX_planar_16or32<simd_load_unaligned_sse3, simd_loadps_unaligned, true, uint16_t>;
-        }
-        else { // unaligned
-          return resize_v_sseX_planar_16or32<simd_load_unaligned, simd_loadps_unaligned, true, uint16_t>;
-        }
+      else if (aligned && (CPU & CPUF_SSE2)) {
+        if (bits_per_pixel < 16)
+          return resize_v_sse_planar_uint16_t<true, false>;
+        else
+          return resize_v_sse_planar_uint16_t<false, false>;
       }
-      else if (CPU & CPUF_SSE2) {
-        if (aligned) {
-          return resize_v_sseX_planar_16or32<simd_load_aligned, simd_loadps_aligned, false, uint16_t>;
-        }
-        else {
-          return resize_v_sseX_planar_16or32<simd_load_unaligned, simd_loadps_unaligned, false, uint16_t>;
-        }
-      } else { // C version
+      else { // C version
         return resize_v_c_planar<uint16_t>;
       }
     }
     else { // pixelsize== 4
-      // no special integer loading difference, no special sse4 case
       if (aligned && (CPU & CPUF_AVX2)) {
-        return resize_v_avx2_planar_16or32<false, float>; // non avx2
+        return resize_v_avx2_planar_float;
       }
-      if (aligned && (CPU & CPUF_AVX)) {
-        return resize_v_avx_planar_16or32<false, float>; // non avx2
-      }
-      else if (CPU & CPUF_SSE2) {
-        if (aligned) {
-          return resize_v_sseX_planar_16or32<simd_load_aligned, simd_loadps_aligned, false, float>;
-        }
-        else {
-          return resize_v_sseX_planar_16or32<simd_load_unaligned, simd_loadps_unaligned, false, float>;
-        }
+      else if (aligned && (CPU & CPUF_SSE2)) {
+        return resize_v_sse2_planar_float;
       } else {
         return resize_v_c_planar<float>;
       }
@@ -1650,6 +2307,26 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
 
   PClip result;
   // ensure that the intermediate area is maximal
+
+  // Helper note when considering zimg as a replacement of existing internal resizers.
+  // It seems that zimg makes the intermediate area minimal, just the opposite logic as avs.
+  // With this logic, zimg is yielding huge speed gain over avs internal resizers.
+  // Float 32 bit samples, avx2, LanczosResize:
+  //                                 zimg avs [fps]
+  // 500x2800 -> 900x400           : 360  104 (auto)
+  // 500x2800 -> 500x400 -> 900x400: 337  275 (Vertical then Horizontal)
+  // 500x2800 -> 900x2800-> 900x400: 104  107 (Horizontal then Vertical)
+  // 2800x400 -> 900x400           : 553  501 Horizontal downscaling is a bit better in zimg
+  //  900x400 -> 2800x400          : 588  422 Horizontal upscaling is much better in zimg
+  //  900x2800-> 900x400           : 185  236 Vertical downscaling is a bit better in avs
+  // 16bit
+  //                      zimg avs                      oldavs
+  // 400x2800 -> 900x400: 389  92(256bit)84(128bit)   54fps    Zimg is much faster : different(worse quality at least in 8 bit(? )) strategy
+  // 2800x400 -> 900x400: 450  461                      302fps  Horizontal downscaling is on par
+  // 900x400  -> 2800x400:489  371                      188fps  Horizontal upscaling is much better in zimg
+  // 900x2800 -> 900x400: 206  231(256bit)173(128bit) 148fps
+  // 500x800  -> 900x800: 730(733 - 10bit) 578(685 - 10bit) ?
+
   const double area_FirstH = subrange_height * target_width;
   const double area_FirstV = subrange_width * target_height;
   if (area_FirstH < area_FirstV)
