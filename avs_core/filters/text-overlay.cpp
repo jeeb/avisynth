@@ -187,10 +187,10 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
     ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0, vi.BitsPerComponent());
   else if (vi.IsPlanar()) {
       if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
-          // color are OK if plane order is sent as G R B
-        ApplyPlanar((*frame)->GetWritePtr(PLANAR_G), pitch,
+          // internal buffer: Y-R, U-G, V-B
+        ApplyPlanar((*frame)->GetWritePtr(PLANAR_R), pitch,
             (*frame)->GetPitch(PLANAR_G),
-            (*frame)->GetWritePtr(PLANAR_R),
+            (*frame)->GetWritePtr(PLANAR_G),
             (*frame)->GetWritePtr(PLANAR_B),
             vi.GetPlaneWidthSubsampling(PLANAR_G),  // no subsampling
             vi.GetPlaneHeightSubsampling(PLANAR_G),
