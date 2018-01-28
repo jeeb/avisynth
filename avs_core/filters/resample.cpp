@@ -2341,28 +2341,18 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
   PClip result;
   // ensure that the intermediate area is maximal
 
-  // Helper note when considering zimg as a replacement of existing internal resizers.
+  // Helper note: when considering zimg as a replacement of existing internal resizers.
   // It seems that zimg makes the intermediate area minimal, just the opposite logic as avs.
-  // With this logic, zimg is yielding huge speed gain over avs internal resizers.
-  // Float 32 bit samples, avx2, LanczosResize:
-  //                                 zimg avs [fps]
-  // 500x2800 -> 900x400           : 360  104 (auto)
-  // 500x2800 -> 500x400 -> 900x400: 337  275 (Vertical then Horizontal)
-  // 500x2800 -> 900x2800-> 900x400: 104  107 (Horizontal then Vertical)
-  // 2800x400 -> 900x400           : 553  501 Horizontal downscaling is a bit better in zimg
-  //  900x400 -> 2800x400          : 588  422 Horizontal upscaling is much better in zimg
-  //  900x2800-> 900x400           : 185  236 Vertical downscaling is a bit better in avs
-  // 16bit
-  //                      zimg avs                      oldavs
-  // 400x2800 -> 900x400: 389  92(256bit)84(128bit)   54fps    Zimg is much faster : different(worse quality at least in 8 bit(? )) strategy
-  // 2800x400 -> 900x400: 450  461                      302fps  Horizontal downscaling is on par
-  // 900x400  -> 2800x400:489  371                      188fps  Horizontal upscaling is much better in zimg
-  // 900x2800 -> 900x400: 206  231(256bit)173(128bit) 148fps
-  // 500x800  -> 900x800: 730(733 - 10bit) 578(685 - 10bit) ?
 
   const double area_FirstH = subrange_height * target_width;
   const double area_FirstV = subrange_width * target_height;
-  if (area_FirstH < area_FirstV)
+
+  // for 32 bit float, there's no need to ensure that the intermediate area is maximal
+  // we use the fastest order, the "minimal area" logic instead.
+  // For other bit-depth? Under consideration.
+  bool use_fastest = (vi.BitsPerComponent() == 32); 
+
+  if ((area_FirstH < area_FirstV && !use_fastest) || (area_FirstH > area_FirstV && use_fastest))
   {
       result = CreateResizeV(clip, subrange_top, subrange_height, target_height, f, env);
       result = CreateResizeH(result, subrange_left, subrange_width, target_width, f, env);
