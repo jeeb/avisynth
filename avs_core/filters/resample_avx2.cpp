@@ -361,15 +361,19 @@ void resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch
 //-------- 256 bit uint16_t Verticals
 
 template<bool lessthan16bit, int index>
-__forceinline static void process_chunk_v_uint16_t_256(const uint16_t *src2_ptr, int src_pitch, __m256i &coeff01234567, __m256i &result_single, const __m256i &shifttosigned) {
+__forceinline static void process_chunk_v_uint16_t_256(const uint16_t *src2_ptr, int src_pitch, __m256i &coeff01234567, __m256i &result_single_lo, __m256i &result_single_hi, const __m256i &shifttosigned) {
   // offset table generating is what preventing us from overaddressing
-  __m128i src_even = _mm_load_si128(reinterpret_cast<const __m128i*>(src2_ptr + index * src_pitch)); // 8x 16bit pixels
-  __m128i src_odd = _mm_load_si128(reinterpret_cast<const __m128i*>(src2_ptr + (index + 1) * src_pitch));  // 8x 16bit pixels
-  __m256i src = _mm256_set_m128i(_mm_unpackhi_epi16(src_even, src_odd), _mm_unpacklo_epi16(src_even, src_odd));
-  if (!lessthan16bit)
-    src = _mm256_add_epi16(src, shifttosigned);
+  __m256i src_even = _mm256_load_si256(reinterpret_cast<const __m256i*>(src2_ptr + index * src_pitch)); // 8x 16bit pixels
+  __m256i src_odd = _mm256_load_si256(reinterpret_cast<const __m256i*>(src2_ptr + (index + 1) * src_pitch));  // 8x 16bit pixels
+  __m256i src_lo = _mm256_unpacklo_epi16(src_even, src_odd);
+  __m256i src_hi = _mm256_unpackhi_epi16(src_even, src_odd);
+  if (!lessthan16bit) {
+    src_lo = _mm256_add_epi16(src_lo, shifttosigned);
+    src_hi = _mm256_add_epi16(src_hi, shifttosigned);
+  }
   __m256i coeff = _mm256_shuffle_epi32(coeff01234567, ((index / 2) << 0) | ((index / 2) << 2) | ((index / 2) << 4) | ((index / 2) << 6)); // spread short pair (128bit lanes!)
-  result_single = _mm256_add_epi32(result_single, _mm256_madd_epi16(src, coeff)); // a*b + c
+  result_single_lo = _mm256_add_epi32(result_single_lo, _mm256_madd_epi16(src_lo, coeff)); // a*b + c
+  result_single_hi = _mm256_add_epi32(result_single_hi, _mm256_madd_epi16(src_hi, coeff)); // a*b + c
 }
 
 // program->filtersize: 1..16 special optimized, >8: normal
@@ -379,7 +383,11 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
   const int filter_size_numOfFullBlk8 = (_filter_size_numOfFullBlk8 >= 0) ? _filter_size_numOfFullBlk8 : (program->filter_size / 8);
   short* current_coeff = program->pixel_coefficient;
 
-  int wMod8 = (width / 8) * 8; // uint16: 8 at a time (256bit)
+// #define NON32_BYTES_ALIGNMENT
+// in AVS+ 32 bytes alignment is guaranteed
+#ifdef NON32_BYTES_ALIGNMENT
+  int wMod16 = (width / 16) * 16; // uint16: 16 at a time (256bit)
+#endif
 
   const __m256i zero = _mm256_setzero_si256();
   const __m256i shifttosigned = _mm256_set1_epi16(-32768); // for 16 bits only
@@ -392,14 +400,18 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
   src_pitch = src_pitch / sizeof(uint16_t);
 
   const int limit = (1 << bits_per_pixel) - 1;
-  __m128i clamp_limit = _mm_set1_epi16((short)limit); // clamp limit for <16 bits
+  __m256i clamp_limit = _mm256_set1_epi16((short)limit); // clamp limit for <16 bits
 
   for (int y = 0; y < target_height; y++) {
     int offset = program->pixel_offset[y];
     const uint16_t* src_ptr = src + pitch_table[offset] / sizeof(uint16_t);
-
-    for (int x = 0; x < wMod8; x += 8) { 
-      __m256i result_single = rounder;
+#ifdef NON32_BYTES_ALIGNMENT
+    for (int x = 0; x < wMod16; x += 16) { // 32 byte alignment guaranteed in avs+ no need 
+#else
+    for (int x = 0; x < width; x += 16) { // 2x16 words, safe to read/write anywhere
+#endif
+      __m256i result_single_lo = rounder;
+      __m256i result_single_hi = rounder;
 
       const uint16_t* src2_ptr = src_ptr + x;
 
@@ -409,13 +421,13 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
 
         // offset table generating is what preventing us from overaddressing
         // 0-1
-        process_chunk_v_uint16_t_256<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        process_chunk_v_uint16_t_256<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
         // 2-3
-        process_chunk_v_uint16_t_256<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        process_chunk_v_uint16_t_256<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
         // 4-5
-        process_chunk_v_uint16_t_256<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        process_chunk_v_uint16_t_256<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
         // 6-7
-        process_chunk_v_uint16_t_256<lessthan16bit, 6>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        process_chunk_v_uint16_t_256<lessthan16bit, 6>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
         src2_ptr += 8 * src_pitch;
       }
 
@@ -423,36 +435,43 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
       __m128i coeff01234567_128 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current_coeff + filter_size_numOfFullBlk8 * 8));
       __m256i coeff01234567 = _mm256_broadcastsi128_si256(coeff01234567_128); // 4x (2x16bit) shorts for even/odd
       if (filtersizemod8 >= 2)
-        process_chunk_v_uint16_t_256<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        process_chunk_v_uint16_t_256<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
       if (filtersizemod8 >= 4)
-        process_chunk_v_uint16_t_256<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        process_chunk_v_uint16_t_256<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
       if (filtersizemod8 >= 6)
-        process_chunk_v_uint16_t_256<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single, shifttosigned);
+        process_chunk_v_uint16_t_256<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
       if (filtersizemod8 % 2) { // remaining odd one
         const int index = filtersizemod8 - 1;
-        __m128i src_even = _mm_load_si128(reinterpret_cast<const __m128i*>(src2_ptr + index * src_pitch)); // 4x 16bit pixels
+        __m256i src_even = _mm256_load_si256(reinterpret_cast<const __m256i*>(src2_ptr + index * src_pitch)); // 4x 16bit pixels
         if (!lessthan16bit)
-          src_even = _mm_add_epi16(src_even, _mm256_castsi256_si128(shifttosigned));
+          src_even = _mm256_add_epi16(src_even, shifttosigned);
         __m256i coeff = _mm256_shuffle_epi32(coeff01234567, ((index / 2) << 0) | ((index / 2) << 2) | ((index / 2) << 4) | ((index / 2) << 6));
-        __m256i src = _mm256_set_m128i(_mm_unpackhi_epi16(src_even, _mm256_castsi256_si128(zero)), _mm_unpacklo_epi16(src_even, _mm256_castsi256_si128(zero))); // insert zero after the unsigned->signed shift!
-        result_single = _mm256_add_epi32(result_single, _mm256_madd_epi16(src, coeff)); // a*b + c
+        __m256i src_lo = _mm256_unpacklo_epi16(src_even, zero);
+        __m256i src_hi = _mm256_unpackhi_epi16(src_even, zero); // insert zero after the unsigned->signed shift!
+        result_single_lo = _mm256_add_epi32(result_single_lo, _mm256_madd_epi16(src_lo, coeff)); // a*b + c
+        result_single_hi = _mm256_add_epi32(result_single_hi, _mm256_madd_epi16(src_hi, coeff)); // a*b + c
       }
 
       // correct if signed, scale back, store
-      __m256i result = result_single;
-      if (!lessthan16bit)
-        result = _mm256_add_epi32(result, shiftfromsigned);
-      result = _mm256_srai_epi32(result, FPScale16bits); // shift back integer arithmetic 13 bits precision
+      __m256i result_lo = result_single_lo;
+      __m256i result_hi = result_single_hi;
+      if (!lessthan16bit) {
+        result_lo = _mm256_add_epi32(result_lo, shiftfromsigned);
+        result_hi = _mm256_add_epi32(result_hi, shiftfromsigned);
+      }
+      result_lo = _mm256_srai_epi32(result_lo, FPScale16bits); // shift back integer arithmetic 13 bits precision
+      result_hi = _mm256_srai_epi32(result_hi, FPScale16bits); // shift back integer arithmetic 13 bits precision
 
-      __m256i result_2x4x_uint16 = _mm256_packus_epi32(result, zero); // 8*32+zeros = lower 4*16 in both 128bit lanes
-      __m128i result_2x4x_uint16_128 = _mm256_castsi256_si128(_mm256_permute4x64_epi64(result_2x4x_uint16, (0 << 0) | (2 << 2) | (0 << 4) | (0 << 6))); // low64 of 2nd 128bit lane to hi64 of 1st 128bit lane
-      if (lessthan16bit)
-        result_2x4x_uint16_128 = _mm_min_epu16(result_2x4x_uint16_128, clamp_limit); // extra clamp for 10-14 bit
-      _mm_stream_si128(reinterpret_cast<__m128i *>(dst + x), result_2x4x_uint16_128);
+      __m256i result_2x8x_uint16 = _mm256_packus_epi32(result_lo, result_hi); // 8*32+zeros = lower 4*16 in both 128bit lanes
+      if (lessthan16bit) {
+        result_2x8x_uint16 = _mm256_min_epu16(result_2x8x_uint16, clamp_limit); // extra clamp for 10-14 bit
+      }
+      _mm256_stream_si256(reinterpret_cast<__m256i *>(dst + x), result_2x8x_uint16);
     }
 
+#ifdef NON32_BYTES_ALIGNMENT
     // Leftover, slow C
-    for (int x = wMod8; x < width; x++) {
+    for (int x = wMod16; x < width; x++) {
       int64_t result64 = 1 << (FPScale16bits - 1); // rounder
       const uint16_t* src2_ptr = src_ptr + x;
       for (int i = 0; i < program->filter_size; i++) {
@@ -464,6 +483,7 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
       result = result > limit ? limit : result < 0 ? 0 : result; // clamp 10..16 bits
       dst[x] = (uint16_t)result;
     }
+#endif
 
     dst += dst_pitch;
     current_coeff += program->filter_size;
