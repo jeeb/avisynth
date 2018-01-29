@@ -1892,13 +1892,18 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
 {
   if (pixelsize == 1)
   {
-  if (CPU & CPUF_SSSE3) {
-    // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
-    resize_h_prepare_coeff_8(program, env);
-    if (program->filter_size > 8)
-      return resizer_h_ssse3_generic;
-    else
-      return resizer_h_ssse3_8; // no loop
+    if (CPU & CPUF_SSSE3) {
+      // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
+      resize_h_prepare_coeff_8(program, env);
+      if (CPU & CPUF_AVX2) {
+        return resizer_h_avx2_generic_uint8_t;
+      }
+      else {
+        if (program->filter_size > 8)
+          return resizer_h_ssse3_generic;
+        else
+          return resizer_h_ssse3_8; // no loop
+      }
   }
     else { // C version
       return resize_h_c_planar<uint8_t>;
@@ -2195,7 +2200,10 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, i
     if (pixelsize == 1)
     {
       if (CPU & CPUF_SSSE3) {
-        if (aligned && CPU & CPUF_SSE4_1) {
+        if (aligned && (CPU & CPUF_AVX2)) {
+          return resize_v_avx2_planar_uint8_t;
+        }
+        if (aligned && (CPU & CPUF_SSE4_1)) {
           return resize_v_ssse3_planar<simd_load_streaming>;
         }
         else if (aligned) { // SSSE3 aligned
