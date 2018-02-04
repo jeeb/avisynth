@@ -121,14 +121,10 @@ private:
   // Note: these pointer are currently not used; they are used to pass data into run-time resampler.
   // They are kept because this may be needed later (like when we implemented actual horizontal resizer.)
   void* filter_storage_luma_aligned;
-  void* filter_storage_luma_unaligned;
   void* filter_storage_chroma_aligned;
-  void* filter_storage_chroma_unaligned;
 
   ResamplerV resampler_luma_aligned;
-  ResamplerV resampler_luma_unaligned;
   ResamplerV resampler_chroma_aligned;
-  ResamplerV resampler_chroma_unaligned;
 };
 
 
