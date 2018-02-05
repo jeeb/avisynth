@@ -372,13 +372,13 @@ struct Rgb48 {
 };
 
 
-void turn_left_rgb48(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+void turn_left_rgb48_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     turn_right_plane_c<Rgb48>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
 }
 
 
-void turn_right_rgb48(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+void turn_right_rgb48_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     turn_right_plane_c<Rgb48>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 6 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
 }
@@ -670,7 +670,7 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
     }
     else if (vi.IsRGB48())
     {
-        set_funcs(turn_left_rgb48, turn_right_rgb48, turn_180_plane_c<Rgb48>);
+        set_funcs(turn_left_rgb48_c, turn_right_rgb48_c, turn_180_plane_c<Rgb48>);
     }
     else if (vi.IsRGB32())
     {

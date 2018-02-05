@@ -1504,8 +1504,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
         turn_right = turn_right_rgb32_c;
       }
     } else if (vi.IsRGB48()) {
-        turn_left = turn_left_rgb48; // todo: _c suffix
-        turn_right = turn_right_rgb48; // todo: _c suffix
+        turn_left = turn_left_rgb48_c;
+        turn_right = turn_right_rgb48_c;
     } else if (vi.IsRGB64()) {
       if (has_sse2) {
         turn_left = turn_left_rgb64_sse2;
@@ -1544,7 +1544,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
         }
       }
     }
-  } else { // Plannar + SSSE3 = use new horizontal resizer routines
+  } else { // Planar + SSSE3 = use new horizontal resizer routines
     resampler_h_luma = GetResampler(env->GetCPUFlags(), true, pixelsize, bits_per_pixel, resampling_program_luma, env2);
 
     if (!grey && !isRGBPfamily) {

@@ -79,7 +79,7 @@ void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, 
 void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
 void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
-void turn_left_rgb48(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
+void turn_left_rgb48_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
 
 void turn_left_rgb64_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int height, int src_pitch, int dst_pitch);
 void turn_left_rgb64_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
@@ -98,7 +98,7 @@ void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_hei
 void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
-void turn_right_rgb48(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+void turn_right_rgb48_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
 void turn_right_rgb64_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 void turn_right_rgb64_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
