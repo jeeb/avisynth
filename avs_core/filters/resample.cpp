@@ -1453,18 +1453,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       env2);
   }
 
-  fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 &&
-    vi.IsPlanar() &&
-    (target_width % 4 == 0 && vi.ComponentSize() == 1 || vi.ComponentSize() > 1); // for non 8 bits: any width
-  // FIXME: check why mod4 existed
-  if (fast_resize /*&& vi.IsYUV()*/ && !grey && !isRGBPfamily) {
-    const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
-    const int dst_chroma_width = dst_width >> shift;
-
-    if (dst_chroma_width%4 != 0 && vi.ComponentSize() == 1) { // for non 8 bits: any width
-      fast_resize = false;
-    }
-  }
+  // r2592+: no target_width mod4 check, (old avs needed for unaligned frames?)
+  fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 && vi.IsPlanar();
 
   if (false && resampling_program_luma->filter_size == 1 && vi.IsPlanar()) {
     // dead code?
