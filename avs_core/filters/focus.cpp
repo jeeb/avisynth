@@ -478,7 +478,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
     env->MakeWritable(&src);
 
     auto env2 = static_cast<IScriptEnvironment2*>(env);
-    BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(src->GetRowSize(), 16, AVS_POOLED_ALLOC));
+    BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(AlignNumber(src->GetRowSize(), FRAME_ALIGN), FRAME_ALIGN, AVS_POOLED_ALLOC));
     if (!line_buf) {
         env2->ThrowError("AdjustFocusV: Could not reserve memory.");
     }
