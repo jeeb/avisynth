@@ -634,31 +634,65 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 		if( mix_ratio > (one - threshold) )
 			return child->GetFrame(nsrc+1, env);
 
+    float mix_ratio_f = (float)mix_ratio / one;
+
 		PVideoFrame a = child->GetFrame(nsrc, env);
 		PVideoFrame b = child->GetFrame(nsrc+1, env);
 
 		env->MakeWritable(&a);
 
-        // All pixel formats -- Tritical Jan 2006
-		int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-		int stop = vi.IsPlanar() ? 3 : 1;
-		for (int j=0; j<stop; ++j)
+    const int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    const int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    const int *planes;
+
+    int planeCount;
+    planeCount = vi.IsPlanar() ? vi.NumComponents() : 1;
+    planes = (!vi.IsPlanar() || vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+
+    const int pixelsize = vi.ComponentSize();
+    const int max_pixel_value = (1 << vi.BitsPerComponent()) - 1;
+		for (int j=0; j<planeCount; ++j)
 		{
-			const BYTE*  b_data   = b->GetReadPtr(plane[j]);
-			int          b_pitch  = b->GetPitch(plane[j]);
-			BYTE*        a_data   = a->GetWritePtr(plane[j]);
-			int          a_pitch  = a->GetPitch(plane[j]);
-			int          row_size = a->GetRowSize(plane[j]);
-			int          height   = a->GetHeight(plane[j]);
+      const int plane = planes[j];
+			const BYTE*  b_data   = b->GetReadPtr(plane);
+			int          b_pitch  = b->GetPitch(plane);
+			BYTE*        a_data   = a->GetWritePtr(plane);
+			int          a_pitch  = a->GetPitch(plane);
+			int          row_size = a->GetRowSize(plane);
+			int          height   = a->GetHeight(plane);
 
 // :FIXME: Use fast plane blend routine from Merge here
+      switch (pixelsize) {
+      case 1:
+        for (int y = 0; y < height; y++) {
+          for (int x = 0; x < row_size; x++)
+            a_data[x] = a_data[x] + BYTE(((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution);
+          a_data += a_pitch;
+          b_data += b_pitch;
+        };
+        break;
+      case 2:
+        for (int y = 0; y < height; y++) {
+          for (int x = 0; x < row_size / sizeof(uint16_t); x++)
+            reinterpret_cast<uint16_t *>(a_data)[x] =
+            clamp(
+              reinterpret_cast<uint16_t *>(a_data)[x] +
+              (int)(((reinterpret_cast<const uint16_t *>(b_data)[x] - reinterpret_cast<const uint16_t *>(a_data)[x]) * (int64_t)mix_ratio + half) >> resolution), 0, max_pixel_value);
+          a_data += a_pitch;
+          b_data += b_pitch;
+        };
+        break;
+      case 4: // float
+        for (int y = 0; y < height; y++) {
+          for (int x = 0; x < row_size / sizeof(float); x++)
+            reinterpret_cast<float *>(a_data)[x] =
+            reinterpret_cast<float *>(a_data)[x] +
+            (reinterpret_cast<const float *>(b_data)[x] - reinterpret_cast<const float *>(a_data)[x]) * mix_ratio_f;
+          a_data += a_pitch;
+          b_data += b_pitch;
+        };
+      }
 
-			for (int y = 0; y < height; y++) {
-				for (int x = 0; x < row_size; x++)
-					a_data[x] = a_data[x] + BYTE(((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution);
-				a_data += a_pitch;
-				b_data += b_pitch;
-			}
 		}
 		return a;
 
