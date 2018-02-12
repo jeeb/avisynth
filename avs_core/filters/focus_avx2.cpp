@@ -42,6 +42,18 @@
 #include <immintrin.h>
 #include <stdint.h>
 
+#ifndef _mm256_set_m128i
+#define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)
+#endif
+
+#ifndef _mm256_set_m128
+#define _mm256_set_m128(v0, v1) _mm256_insertf128_ps(_mm256_castps128_ps256(v1), (v0), 1)
+#endif
+
+#ifndef _mm256_cvtsi256_si32
+// int _mm256_cvtsi256_si32 (__m256i a)
+#define _mm256_cvtsi256_si32(a) (_mm_cvtsi128_si32(_mm256_castsi256_si128(a)))
+#endif
 
 template<typename pixel_t>
 static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const int half_amount, int bits_per_pixel) {
