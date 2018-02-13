@@ -137,25 +137,22 @@ template void average_plane_avx2<uint16_t>(BYTE *p1, const BYTE *p2, int p1_pitc
 
 
 /* -----------------------------------
- *       weighted_merge_planar
- * -----------------------------------
- */
+*       weighted_merge_planar
+* -----------------------------------
+*/
 template<bool lessthan16bit>
-void weighted_merge_planar_uint16_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight) {
-  _mm256_zeroupper();
+void weighted_merge_planar_uint16_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  __m128i mask_128 = _mm_set1_epi32( (weight_i << 16) + invweight_i);
+  __m256i mask = _mm256_set1_epi32((weight_i << 16) + invweight_i);
+
+  const __m128i signed_shifter_128 = _mm_set1_epi16(-32768);
+  const __m256i signed_shifter = _mm256_set1_epi16(-32768);
+
   auto round_mask = _mm256_set1_epi32(0x4000);
   auto zero = _mm256_setzero_si256();
-  auto weightmask = _mm256_set1_epi32(weight);
-  auto invweightmask = _mm256_set1_epi32(invweight);
-  auto weightmask16 = _mm256_set1_epi16(weight);
-  auto invweightmask16 = _mm256_set1_epi16(invweight);
 
   auto round_mask_128 = _mm_set1_epi32(0x4000);
   auto zero_128 = _mm_setzero_si128();
-  auto weightmask_128 = _mm_set1_epi32(weight);
-  auto invweightmask_128 = _mm_set1_epi32(invweight);
-  auto weightmask16_128 = _mm_set1_epi16(weight);
-  auto invweightmask16_128 = _mm_set1_epi16(invweight);
 
   int wMod32 = (rowsize / 32) * 32;
   int wMod16 = (rowsize / 16) * 16;
@@ -163,98 +160,67 @@ void weighted_merge_planar_uint16_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, i
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod32; x += 32) {
       __m256i px1, px2;
-      px1 = _mm256_stream_load_si256(reinterpret_cast<const __m256i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
-      px2 = _mm256_stream_load_si256(reinterpret_cast<const __m256i*>(p2 + x)); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
-      __m256i p1_0123, p1_4567;
-      __m256i p2_0123, p2_4567;
+      px1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
+      px2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(p2 + x)); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
 
-      if (lessthan16bit) {
-        // signed int path
-        auto p1_07_lower32 = _mm256_mullo_epi16(px1, invweightmask16); // 8x(16bit x 16bit = 32 bit)
-        auto p1_07_upper32 = _mm256_mulhi_epu16(px1, invweightmask16); // 8x(16bit x 16bit = 32 bit)
-        p1_0123 = _mm256_unpacklo_epi16(p1_07_lower32, p1_07_upper32); // 4 int32
-        p1_4567 = _mm256_unpackhi_epi16(p1_07_lower32, p1_07_upper32); // 4 int32
-        auto p2_07_lower32 = _mm256_mullo_epi16(px2, weightmask16); // 8x(16bit x 16bit = 32 bit)
-        auto p2_07_upper32 = _mm256_mulhi_epu16(px2, weightmask16); // 8x(16bit x 16bit = 32 bit)
-        p2_0123 = _mm256_unpacklo_epi16(p2_07_lower32, p2_07_upper32); // 4 int32
-        p2_4567 = _mm256_unpackhi_epi16(p2_07_lower32, p2_07_upper32); // 4 int32
-      } else {
-        //------- part 1
-        p1_0123 = _mm256_unpacklo_epi16(px1, zero); // y3 y2 y1 y0   4*int
-        p2_0123 = _mm256_unpacklo_epi16(px2, zero);
-        // mullo: sse4
-        p1_0123 = _mm256_mullo_epi32(p1_0123, invweightmask); // 4x(32bit x 32bit = 32 bit)
-        p2_0123 = _mm256_mullo_epi32(p2_0123, weightmask);
-        //------- part 2
-        p1_4567 = _mm256_unpackhi_epi16(px1, zero); // y7 y6 y5 y4   4*int
-        p2_4567 = _mm256_unpackhi_epi16(px2, zero);
-        // mullo: sse4
-        p1_4567 = _mm256_mullo_epi32(p1_4567, invweightmask);
-        p2_4567 = _mm256_mullo_epi32(p2_4567, weightmask);
-      } // 16 bit unsigned int path
+      if (!lessthan16bit) {
+        px1 = _mm256_add_epi16(px1, signed_shifter);
+        px2 = _mm256_add_epi16(px2, signed_shifter);
+      }
 
-      p1_0123 = _mm256_add_epi32(p1_0123, p2_0123); // 4x(32bit + 32bit = 32 bit)
-      p1_4567 = _mm256_add_epi32(p1_4567, p2_4567);
+      auto p03 = _mm256_unpacklo_epi16(px1, px2); // Y11y11 Y10y10 Y9y9 Y8y8 Y3y3 Y2y2 Y1y1 Y0y0
+      auto p47 = _mm256_unpackhi_epi16(px1, px2); // Yy15-12 Yy7-4
 
-      p1_0123 = _mm256_add_epi32(p1_0123, round_mask); // 4x(32bit + 32bit = 32 bit)
-      p1_4567 = _mm256_add_epi32(p1_4567, round_mask);
+      p03 = _mm256_madd_epi16(p03, mask); // px1 * invweight + px2 * weight
+      p47 = _mm256_madd_epi16(p47, mask);
 
-      p1_0123 = _mm256_srli_epi32(p1_0123, 15);
-      p1_4567 = _mm256_srli_epi32(p1_4567, 15);
+      p03 = _mm256_add_epi32(p03, round_mask);
+      p47 = _mm256_add_epi32(p47, round_mask);
 
-      __m256i result;
-      result = _mm256_packus_epi32(p1_0123, p1_4567); // packus: SSE4.1
+      p03 = _mm256_srai_epi32(p03, 15);
+      p47 = _mm256_srai_epi32(p47, 15);
+
+      auto p07 = _mm256_packs_epi32(p03, p47);
+      if (!lessthan16bit) {
+        p07 = _mm256_add_epi16(p07, signed_shifter);
+      }
+
+      auto result = p07;
       _mm256_store_si256(reinterpret_cast<__m256i*>(p1 + x), result);
     }
 
     for (int x = wMod32; x < wMod16; x += 16) {
       __m128i px1, px2;
-      px1 = _mm_stream_load_si128(reinterpret_cast<__m128i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
-      px2 = _mm_stream_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2 + x))); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
-      __m128i p1_0123, p1_4567;
-      __m128i p2_0123, p2_4567;
+      px1 = _mm_load_si128(reinterpret_cast<__m128i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
+      px2 = _mm_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2 + x))); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
+      if (!lessthan16bit) {
+        px1 = _mm_add_epi16(px1, signed_shifter_128);
+        px2 = _mm_add_epi16(px2, signed_shifter_128);
+      }
 
-      if (lessthan16bit) {
-        // signed int path
-        auto p1_07_lower32 = _mm_mullo_epi16(px1, invweightmask16_128); // 8x(16bit x 16bit = 32 bit)
-        auto p1_07_upper32 = _mm_mulhi_epu16(px1, invweightmask16_128); // 8x(16bit x 16bit = 32 bit)
-        p1_0123 = _mm_unpacklo_epi16(p1_07_lower32, p1_07_upper32); // 4 int32
-        p1_4567 = _mm_unpackhi_epi16(p1_07_lower32, p1_07_upper32); // 4 int32
-        auto p2_07_lower32 = _mm_mullo_epi16(px2, weightmask16_128); // 8x(16bit x 16bit = 32 bit)
-        auto p2_07_upper32 = _mm_mulhi_epu16(px2, weightmask16_128); // 8x(16bit x 16bit = 32 bit)
-        p2_0123 = _mm_unpacklo_epi16(p2_07_lower32, p2_07_upper32); // 4 int32
-        p2_4567 = _mm_unpackhi_epi16(p2_07_lower32, p2_07_upper32); // 4 int32
-      } else {
-        //------- part 1
-        p1_0123 = _mm_unpacklo_epi16(px1, zero_128); // y3 y2 y1 y0   4*int
-        p2_0123 = _mm_unpacklo_epi16(px2, zero_128);
-        // mullo: sse4
-        p1_0123 = _mm_mullo_epi32(p1_0123, invweightmask_128); // 4x(32bit x 32bit = 32 bit)
-        p2_0123 = _mm_mullo_epi32(p2_0123, weightmask_128);
-        //------- part 2
-        p1_4567 = _mm_unpackhi_epi16(px1, zero_128); // y7 y6 y5 y4   4*int
-        p2_4567 = _mm_unpackhi_epi16(px2, zero_128);
-        // mullo: sse4
-        p1_4567 = _mm_mullo_epi32(p1_4567, invweightmask_128);
-        p2_4567 = _mm_mullo_epi32(p2_4567, weightmask_128);
-      } // 16 bit unsigned int path
+      auto p03 = _mm_unpacklo_epi16(px1, px2); // Y11y11 Y10y10 Y9y9 Y8y8 Y3y3 Y2y2 Y1y1 Y0y0
+      auto p47 = _mm_unpackhi_epi16(px1, px2); // Yy15-12 Yy7-4
 
-      p1_0123 = _mm_add_epi32(p1_0123, p2_0123); // 4x(32bit + 32bit = 32 bit)
-      p1_4567 = _mm_add_epi32(p1_4567, p2_4567);
+      p03 = _mm_madd_epi16(p03, mask_128); // px1 * invweight + px2 * weight
+      p47 = _mm_madd_epi16(p47, mask_128);
 
-      p1_0123 = _mm_add_epi32(p1_0123, round_mask_128); // 4x(32bit + 32bit = 32 bit)
-      p1_4567 = _mm_add_epi32(p1_4567, round_mask_128);
+      p03 = _mm_add_epi32(p03, round_mask_128);
+      p47 = _mm_add_epi32(p47, round_mask_128);
 
-      p1_0123 = _mm_srli_epi32(p1_0123, 15);
-      p1_4567 = _mm_srli_epi32(p1_4567, 15);
+      p03 = _mm_srai_epi32(p03, 15);
+      p47 = _mm_srai_epi32(p47, 15);
 
-      __m128i result;
-      result = _mm_packus_epi32(p1_0123, p1_4567); // packus: SSE4.1
+      auto p07 = _mm_packs_epi32(p03, p47);
+      if (!lessthan16bit) {
+        p07 = _mm_add_epi16(p07, signed_shifter_128);
+      }
+
+      auto result = p07;
       _mm_stream_si128(reinterpret_cast<__m128i*>(p1 + x), result);
     }
 
     for (size_t x = wMod16 / sizeof(uint16_t); x < rowsize / sizeof(uint16_t); x++) {
-      reinterpret_cast<uint16_t *>(p1)[x] = (reinterpret_cast<uint16_t *>(p1)[x] * invweight + reinterpret_cast<const uint16_t *>(p2)[x] * weight + 16384) >> 15;
+      reinterpret_cast<uint16_t *>(p1)[x] = (reinterpret_cast<uint16_t *>(p1)[x] * invweight_i + reinterpret_cast<const uint16_t *>(p2)[x] * weight_i + 16384) >> 15;
     }
 
     p1 += p1_pitch;
@@ -264,20 +230,18 @@ void weighted_merge_planar_uint16_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, i
 }
 
 // instantiate to let them access from other modules
-template void weighted_merge_planar_uint16_avx2<false>(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight);
-template void weighted_merge_planar_uint16_avx2<true>(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight);
+template void weighted_merge_planar_uint16_avx2<false>(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i);
+template void weighted_merge_planar_uint16_avx2<true>(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i);
 
 
-void weighted_merge_planar_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight) {
-  // 8 bit only. SSE2 has weak support for unsigned 16 bit
-  _mm256_zeroupper();
+void weighted_merge_planar_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
   auto round_mask = _mm256_set1_epi32(0x4000);
   auto zero = _mm256_setzero_si256();
-  auto mask = _mm256_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight, weight, invweight, weight, invweight, weight, invweight, weight, invweight);
+  auto mask = _mm256_set_epi16(weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i);
 
   auto round_mask_128 = _mm_set1_epi32(0x4000);
   auto zero_128 = _mm_setzero_si128();
-  auto mask_128 = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
+  auto mask_128 = _mm_set_epi16(weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i);
 
   int wMod32 = (rowsize / 32) * 32;
   int wMod16 = (rowsize / 16) * 16;
@@ -354,7 +318,7 @@ void weighted_merge_planar_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_p
     }
 
     for (size_t x = wMod16 / sizeof(uint8_t); x < rowsize / sizeof(uint8_t); x++) {
-      reinterpret_cast<uint8_t *>(p1)[x] = (reinterpret_cast<uint8_t *>(p1)[x] * invweight + reinterpret_cast<const uint8_t *>(p2)[x] * weight + 16384) >> 15;
+      reinterpret_cast<uint8_t *>(p1)[x] = (reinterpret_cast<uint8_t *>(p1)[x] * invweight_i + reinterpret_cast<const uint8_t *>(p2)[x] * weight_i + 16384) >> 15;
     }
 
     p1 += p1_pitch;
