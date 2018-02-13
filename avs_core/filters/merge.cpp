@@ -443,89 +443,51 @@ static void average_plane_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2
  *       weighted_merge_planar
  * -----------------------------------
  */
-template<bool sse41, bool lessthan16bit>
-void weighted_merge_planar_uint16_sse41(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight) {
+
+template<bool lessthan16bit>
+void weighted_merge_planar_uint16_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+
   __m128i round_mask = _mm_set1_epi32(0x4000);
   __m128i zero = _mm_setzero_si128();
-  __m128i weightmask = _mm_set1_epi32(weight);
-  __m128i invweightmask = _mm_set1_epi32(invweight);
-  __m128i weightmask16 = _mm_set1_epi16(weight);
-  __m128i invweightmask16 = _mm_set1_epi16(invweight);
+  __m128i mask = _mm_set1_epi16((weight_i << 16) + invweight_i);
 
   int wMod16 = (rowsize / 16) * 16;
+  const __m128i signed_shifter = _mm_set1_epi16(-32768);
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod16; x += 16) {
-      __m128i px1, px2;
-      if(sse41) {
-        px1 = _mm_stream_load_si128(reinterpret_cast<__m128i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
-        px2 = _mm_stream_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2 + x))); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
+      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(p1 + x)); // y7y6 y5y4 y3y2 y1y0
+      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(p2 + x)); // Y7Y6 Y5Y4 Y3Y2 Y1Y0
+
+      if (!lessthan16bit) {
+        px1 = _mm_add_epi16(px1, signed_shifter);
+        px2 = _mm_add_epi16(px2, signed_shifter);
       }
-      else {
-        px1 = _mm_load_si128(reinterpret_cast<__m128i*>(p1 + x)); // y7 y6 y5 y4 y3 y2 y1 y0
-        px2 = _mm_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2 + x))); // Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
+
+      __m128i p03 = _mm_unpacklo_epi16(px1, px2); // Y3y3 Y2y2 Y1y1 Y0y0
+      __m128i p47 = _mm_unpackhi_epi16(px1, px2); // Y7y7 Y6y6 Y5y5 Y4y4
+
+      p03 = _mm_madd_epi16(p03, mask); // px1 * invweight + px2 * weight
+      p47 = _mm_madd_epi16(p47, mask);
+
+      p03 = _mm_add_epi32(p03, round_mask);
+      p47 = _mm_add_epi32(p47, round_mask);
+
+      p03 = _mm_srai_epi32(p03, 15);
+      p47 = _mm_srai_epi32(p47, 15);
+
+      auto p07 = _mm_packs_epi32(p03, p47);
+      if (!lessthan16bit) {
+        p07 = _mm_add_epi16(p07, signed_shifter);
       }
-      __m128i p1_0123, p1_4567;
-      __m128i p2_0123, p2_4567;
 
-      if (lessthan16bit) {
-        // signed int path
-        __m128i p1_07_lower32 = _mm_mullo_epi16(px1, invweightmask16); // 8x(16bit x 16bit = 32 bit)
-        __m128i p1_07_upper32 = _mm_mulhi_epu16(px1, invweightmask16); // 8x(16bit x 16bit = 32 bit)
-        p1_0123 = _mm_unpacklo_epi16(p1_07_lower32, p1_07_upper32); // 4 int32
-        p1_4567 = _mm_unpackhi_epi16(p1_07_lower32, p1_07_upper32); // 4 int32
-        __m128i p2_07_lower32 = _mm_mullo_epi16(px2, weightmask16); // 8x(16bit x 16bit = 32 bit)
-        __m128i p2_07_upper32 = _mm_mulhi_epu16(px2, weightmask16); // 8x(16bit x 16bit = 32 bit)
-        p2_0123 = _mm_unpacklo_epi16(p2_07_lower32, p2_07_upper32); // 4 int32
-        p2_4567 = _mm_unpackhi_epi16(p2_07_lower32, p2_07_upper32); // 4 int32
-      } else {
-        //------- part 1
-        p1_0123 = _mm_unpacklo_epi16(px1, zero); // y3 y2 y1 y0   4*int
-        p2_0123 = _mm_unpacklo_epi16(px2, zero);
-        // mullo: sse4
-        if(sse41) {
-          p1_0123 = _mm_mullo_epi32(p1_0123, invweightmask); // 4x(32bit x 32bit = 32 bit)
-          p2_0123 = _mm_mullo_epi32(p2_0123, weightmask);
-        }
-        else {
-          // simulation is sloooower than C!
-          p1_0123 = _MM_MULLO_EPI32(p1_0123, invweightmask); // 4x(32bit x 32bit = 32 bit)
-          p2_0123 = _MM_MULLO_EPI32(p2_0123, weightmask);
-        }
-        //------- part 2
-        p1_4567 = _mm_unpackhi_epi16(px1, zero); // y7 y6 y5 y4   4*int
-        p2_4567 = _mm_unpackhi_epi16(px2, zero);
-        // mullo: sse4
-        if(sse41) {
-          p1_4567 = _mm_mullo_epi32(p1_4567, invweightmask);
-          p2_4567 = _mm_mullo_epi32(p2_4567, weightmask);
-        }
-        else {
-          // simulation is sloooower than C!
-          p1_4567 = _MM_MULLO_EPI32(p1_4567, invweightmask);
-          p2_4567 = _MM_MULLO_EPI32(p2_4567, weightmask);
-        }
-      } // 16 bit unsigned int path
+      __m128i result = p07;
 
-      p1_0123 = _mm_add_epi32(p1_0123, p2_0123); // 4x(32bit + 32bit = 32 bit)
-      p1_4567 = _mm_add_epi32(p1_4567, p2_4567);
-
-      p1_0123 = _mm_add_epi32(p1_0123, round_mask); // 4x(32bit + 32bit = 32 bit)
-      p1_4567 = _mm_add_epi32(p1_4567, round_mask);
-
-      p1_0123 = _mm_srli_epi32(p1_0123, 15);
-      p1_4567 = _mm_srli_epi32(p1_4567, 15);
-
-      __m128i result;
-      if(sse41)
-        result = _mm_packus_epi32(p1_0123, p1_4567); // packus: SSE4.1
-      else
-        result = _MM_PACKUS_EPI32(p1_0123, p1_4567); // packus simulation for SSE2
-      _mm_stream_si128(reinterpret_cast<__m128i*>(p1 + x), result);
+      _mm_store_si128(reinterpret_cast<__m128i*>(p1 + x), result);
     }
 
     for (size_t x = wMod16 / sizeof(uint16_t); x < rowsize / sizeof(uint16_t); x++) {
-      reinterpret_cast<uint16_t *>(p1)[x] = (reinterpret_cast<uint16_t *>(p1)[x] * invweight + reinterpret_cast<const uint16_t *>(p2)[x] * weight + 16384) >> 15;
+      reinterpret_cast<uint16_t *>(p1)[x] = (reinterpret_cast<uint16_t *>(p1)[x] * invweight_i + reinterpret_cast<const uint16_t *>(p2)[x] * weight_i + 16384) >> 15;
     }
 
     p1 += p1_pitch;
@@ -533,11 +495,11 @@ void weighted_merge_planar_uint16_sse41(BYTE *p1, const BYTE *p2, int p1_pitch, 
   }
 }
 
-void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight) {
+void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
   // 8 bit only. SSE2 has weak support for unsigned 16 bit
   __m128i round_mask = _mm_set1_epi32(0x4000);
   __m128i zero = _mm_setzero_si128();
-  __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
+  __m128i mask = _mm_set_epi16(weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i);
 
   int wMod16 = (rowsize / 16) * 16;
 
@@ -578,7 +540,7 @@ void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_p
     }
 
     for (size_t x = wMod16 / sizeof(uint8_t); x < rowsize / sizeof(uint8_t); x++) {
-      reinterpret_cast<uint8_t *>(p1)[x] = (reinterpret_cast<uint8_t *>(p1)[x] * invweight + reinterpret_cast<const uint8_t *>(p2)[x] * weight + 16384) >> 15;
+      reinterpret_cast<uint8_t *>(p1)[x] = (reinterpret_cast<uint8_t *>(p1)[x] * invweight_i + reinterpret_cast<const uint8_t *>(p2)[x] * weight_i + 16384) >> 15;
     }
 
     p1 += p1_pitch;
@@ -587,7 +549,8 @@ void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_p
 }
 
 
-void weighted_merge_planar_sse2_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, float invweight_f) {
+void weighted_merge_planar_sse2_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  float invweight_f = 1.0f - weight_f;
   auto mask = _mm_set1_ps(weight_f);
 
   int wMod16 = (rowsize / 16) * 16;
@@ -641,10 +604,10 @@ void average_plane_sse2_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pit
 }
 
 #ifdef X86_32
-void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight) {
+void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
   __m64 round_mask = _mm_set1_pi32(0x4000);
   __m64 zero = _mm_setzero_si64();
-  __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
+  __m64 mask = _mm_set_pi16(weight_i, invweight_i, weight_i, invweight_i);
 
   int wMod8 = (rowsize/8) * 8;
 
@@ -685,7 +648,7 @@ void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
     }
 
     for (int x = wMod8; x < rowsize; x++) {
-      p1[x] = (p1[x]*invweight + p2[x]*weight + 16384) >> 15;
+      p1[x] = (p1[x]*invweight_i + p2[x]*weight_i + 16384) >> 15;
     }
 
     p1 += p1_pitch;
@@ -697,23 +660,23 @@ void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
 
 
 template<typename pixel_t>
-void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
+void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
   for (int y=0;y<height;y++) {
     for (size_t x=0;x<rowsize / sizeof(pixel_t);x++) {
-      (reinterpret_cast<pixel_t *>(p1))[x] = ((reinterpret_cast<pixel_t *>(p1))[x]*invweight + (reinterpret_cast<const pixel_t *>(p2))[x]*weight + 32768) >> 16;
+      (reinterpret_cast<pixel_t *>(p1))[x] = ((reinterpret_cast<pixel_t *>(p1))[x]*invweight_i + (reinterpret_cast<const pixel_t *>(p2))[x]*weight_i + 32768) >> 16;
     }
     p2+=p2_pitch;
     p1+=p1_pitch;
   }
 }
 
-void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight, float invweight) {
-
+void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  float invweight_f = 1.0f - weight_f;
   size_t rs = rowsize / sizeof(float);
 
   for (int y = 0; y < height; ++y) {
     for (size_t x = 0; x < rs; ++x) {
-      reinterpret_cast<float *>(p1)[x] = (reinterpret_cast<float *>(p1)[x] * invweight + reinterpret_cast<const float *>(p2)[x] * weight);
+      reinterpret_cast<float *>(p1)[x] = (reinterpret_cast<float *>(p1)[x] * invweight_f + reinterpret_cast<const float *>(p2)[x] * weight_f);
     }
     p1 += p1_pitch;
     p2 += p2_pitch;
@@ -732,6 +695,58 @@ extern const AVSFunction Merge_filters[] = {
   { "MergeLuma",   BUILTIN_FUNC_PREFIX, "cc[lumaweight]f", MergeLuma::Create },      // Legacy!
   { 0 }
 };
+
+// also returns the proper integer weight/inverse weight for 8-16 bits
+MergeFuncPtr getMergeFunc(int bits_per_pixel, int cpuFlags, BYTE *srcp, const BYTE *otherp, float weight_f, int &weight_i, int &invweight_i)
+{
+  const int pixelsize = bits_per_pixel == 8 ? 1 : (bits_per_pixel == 32 ? 4 : 2);
+
+  // SIMD 8-16 bit: bitshift 15 integer arithmetic
+  // C    8-16 bit: bitshift 16 integer arithmetic
+  // SIMD/C Float: original float weight
+
+  // set basic 8-16bit SIMD
+  weight_i = (int)(weight_f * 32767.0f + 0.5f);
+  invweight_i = 32767 - weight_i;
+
+  if (pixelsize == 1) {
+    if ((cpuFlags & CPUF_AVX2) && IsPtrAligned(srcp, 32) && IsPtrAligned(otherp, 32))
+      return &weighted_merge_planar_avx2;
+    if ((cpuFlags & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
+      return &weighted_merge_planar_sse2;
+#ifdef X86_32
+    if (cpuFlags & CPUF_MMX)
+      return &weighted_merge_planar_mmx;
+#endif
+    // C: different scale!
+    weight_i = (int)(weight_f * 65535.0f + 0.5f);
+    invweight_i = 65535 - weight_i;
+    return &weighted_merge_planar_c<uint8_t>;
+  }
+  if (pixelsize == 2) {
+    if ((cpuFlags & CPUF_AVX2) && IsPtrAligned(srcp, 32) && IsPtrAligned(otherp, 32))
+    {
+      if (bits_per_pixel == 16)
+        return &weighted_merge_planar_uint16_avx2<false>;
+      return &weighted_merge_planar_uint16_avx2<true>;
+    }
+    if ((cpuFlags & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
+    {
+      if (bits_per_pixel == 16)
+        return &weighted_merge_planar_uint16_sse2<false>;
+      return &weighted_merge_planar_uint16_sse2<true>;
+    }
+    // C: different scale!
+    weight_i = (int)(weight_f * 65535.0f + 0.5f);
+    invweight_i = 65535 - weight_i;
+    return &weighted_merge_planar_c<uint16_t>;
+  }
+
+  // pixelsize == 4
+  if ((cpuFlags & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
+    return &weighted_merge_planar_sse2_float;
+  return &weighted_merge_planar_c_float;
+}
 
 static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other_pitch, int src_rowsize, int src_height, float weight, int pixelsize, int bits_per_pixel, IScriptEnvironment *env) {
   if ((weight > 0.4961f) && (weight < 0.5039f))
@@ -779,73 +794,10 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
   } 
   else
   {
-    int iweight = (int)(weight*32767.0f);
-    int invweight = 32767 - iweight;
-    //real merge
-    if (pixelsize != 4)
-    {
-      MergeFuncPtr weighted_merge_planar;
-
-      if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(srcp, 32) && IsPtrAligned(otherp, 32)) {
-        // for lessthan16bit: slower, using generic 16 bit version.
-        // using lessthan16bit signed short multiply routines
-        // if (bits_per_pixel < 16)
-        //   weighted_merge_planar = &weighted_merge_planar_uint16_avx2<true>;
-        weighted_merge_planar = &weighted_merge_planar_uint16_avx2<false>;
-      }
-      if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4_1)) {
-        #if 0
-        in SSE4 lessthan16bit signed int arithmetic is slower
-        if(bits_per_pixel < 16)
-          weighted_merge_planar = &weighted_merge_planar_uint16_sse41<true, true>;
-        else
-        #endif
-        weighted_merge_planar = &weighted_merge_planar_uint16_sse41<true, false>;
-      }
-      else if ((pixelsize == 2) && (bits_per_pixel < 16) && (env->GetCPUFlags() & CPUF_SSE2)) {
-        // using lessthan16bit signed short multiply routines
-        weighted_merge_planar = &weighted_merge_planar_uint16_sse41<false, true>;
-        // no SSE2 for 16 bit unsigned <false,false>: slooow!
-      }
-      else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(srcp, 32) && IsPtrAligned(otherp, 32))
-      {
-        // uint8:
-        weighted_merge_planar = &weighted_merge_planar_avx2;
-      }
-      else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
-      {
-        // uint8: sse2
-        weighted_merge_planar = &weighted_merge_planar_sse2;
-      }
-      else {
-#ifdef X86_32
-        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
-        {
-          weighted_merge_planar = &weighted_merge_planar_mmx;
-        }
-        else
-#endif
-        {
-          // C: different scale!
-          iweight = (int)(weight*65535.0f);
-          invweight = 65535 - iweight;
-          if (pixelsize == 1)
-            weighted_merge_planar = &weighted_merge_planar_c<uint8_t>;
-          else // pixelsize == 2
-            weighted_merge_planar = &weighted_merge_planar_c<uint16_t>;
-        }
-      }
-      weighted_merge_planar(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height, iweight, invweight);
-    }
-    else // if (pixelsize == 4)
-    {
-      float fweight = weight; // intentional
-      float finvweight = 1-fweight;
-      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
-        weighted_merge_planar_sse2_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height, fweight, finvweight);
-      else
-        weighted_merge_planar_c_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height, fweight, finvweight);
-    }
+    int weight_i;
+    int invweight_i;
+    MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, env->GetCPUFlags(), srcp, otherp, weight, /*out*/weight_i, /*out*/invweight_i);
+    weighted_merge_planar(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height, weight, weight_i, invweight_i);
   }
 }
 
