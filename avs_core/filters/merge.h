@@ -115,15 +115,19 @@ private:
   int bits_per_pixel;
 };
 
-typedef void(*MergeFuncPtr) (BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight);
+typedef void(*MergeFuncPtr) (BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i);
+MergeFuncPtr getMergeFunc(int bits_per_pixel, int cpuFlags, BYTE *srcp, const BYTE *otherp, float weight_f, int &weight_i, int &invweight_i);
 
 template<bool sse41, bool lessthat16bit>
-void weighted_merge_planar_uint16_sse41(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height, int weight, int invweight);
+void weighted_merge_planar_uint16_sse41(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height, float weight_f, int weight_i, int invweight_i);
+template<bool lessthan16bit>
+void weighted_merge_planar_uint16_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i);
 
-void weighted_merge_planar_sse2(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
-void weighted_merge_planar_mmx(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+void weighted_merge_planar_sse2(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, float weight_f, int weight_i, int invweight_i);
+void weighted_merge_planar_mmx(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, float weight_f, int weight_i, int invweight_i);
 template<typename pixel_t>
-void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, int weight, int invweight);
-void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight, float invweight);
+void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i);
+void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i);
+void weighted_merge_planar_sse2_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i);
 
 #endif  // __Merge_H__
