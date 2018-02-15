@@ -113,6 +113,8 @@ ipch/
 *.vspx
 *.sap
 
+#Visual Studio other
+.vs/
 
 *.rej
 *.orig
