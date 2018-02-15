@@ -61,7 +61,7 @@ enum { AVISYNTH_INTERFACE_VERSION = 6 };
 /* Compiler-specific crap */
 
 // Tell MSVC to stop precompiling here
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
   #pragma hdrstop
 #endif
 
