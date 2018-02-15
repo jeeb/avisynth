@@ -39,6 +39,7 @@
 #include "../core/bitblt.h"
 #include "../core/internal.h"
 #include "merge.h"
+#include <cmath>
 
 
 
