@@ -39,9 +39,30 @@
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 
-// Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
-#include <emmintrin.h>
-#include <immintrin.h>
+// experimental simd includes for avx2 compiled files
+#if defined (__GNUC__) && ! defined (__INTEL_COMPILER)
+#include <x86intrin.h>
+// x86intrin.h includes header files for whatever instruction 
+// sets are specified on the compiler command line, such as: xopintrin.h, fma4intrin.h
+#else
+#include <immintrin.h> // MS version of immintrin.h covers AVX, AVX2 and FMA3
+#endif // __GNUC__
+
+#if !defined(__FMA__)
+// Assume that all processors that have AVX2 also have FMA3
+#if defined (__GNUC__) && ! defined (__INTEL_COMPILER) && ! defined (__clang__)
+// Prevent error message in g++ when using FMA intrinsics with avx2:
+#pragma message "It is recommended to specify also option -mfma when using -mavx2 or higher"
+#else
+#define __FMA__  1
+#endif
+#endif
+// FMA3 instruction set
+#if defined (__FMA__) && (defined(__GNUC__) || defined(__clang__))  && ! defined (__INTEL_COMPILER)
+#include <fmaintrin.h> 
+#endif // __FMA__ 
+
+
 #include "resample_avx2.h"
 
 #ifndef _mm256_set_m128i
