@@ -25,25 +25,40 @@ IF( MSVC_IDE )  # Check for Visual Studio
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
 
+  IF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
+     #1900 is reported
+    message("v141_clang_c2 toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
+    set(CLANG_IN_VS "1")
+  ENDIF()
+  
   # We want our project to also run on Windows XP
   IF( MSVC_VERSION VERSION_LESS 1900 )  # Check for v11 (VS 2012)
     set(CMAKE_GENERATOR_TOOLSET "v120_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
   ELSEIF(MSVC_VERSION VERSION_LESS 1910 )
-    set(CMAKE_GENERATOR_TOOLSET "v140_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2015
-    
-	# https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
-    add_definitions("/Zc:threadSafeInit-")
-  ELSE()
-    set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017
-    # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
-    add_definitions("/Zc:threadSafeInit-")
+    IF(NOT CLANG_IN_VS STREQUAL "1")
+      set(CMAKE_GENERATOR_TOOLSET "v140_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2015
+      # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+      add_definitions("/Zc:threadSafeInit-")
   ENDIF()
-  
-  # Enable C++ with SEH exceptions
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHa")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
-  # or add_compile_options( /EHa ) for CMake>=3?
+  ELSE()
+    IF(NOT CLANG_IN_VS STREQUAL "1")
+      set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017
+      # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+      add_definitions("/Zc:threadSafeInit-")
+    ENDIF()
+  ENDIF()
 
+  IF(CLANG_IN_VS STREQUAL "1")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-inconsistent-missing-override")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
+  ELSE()
+	  # Enable C++ with SEH exceptions
+	  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHa")
+	  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
+	  # or add_compile_options( /EHa ) for CMake>=3?
+  ENDIF()
   # Prevent VC++ from complaining about not using MS-specific functions
   add_definitions("/D _CRT_SECURE_NO_WARNINGS /D _SECURE_SCL=0")
   

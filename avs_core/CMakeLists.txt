@@ -30,13 +30,23 @@ foreach(FILE ${AvsCore_Sources})
 endforeach()
 
 if (MSVC_IDE)
-  # special AVX option for source files with *_avx.cpp pattern
-  file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
-  set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS " /arch:AVX ")
+  IF(CLANG_IN_VS STREQUAL "1")
+      # special AVX option for source files with *_avx.cpp pattern
+      file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
+      set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS " -mavx ")
 
-  # special AVX2 option for source files with *_avx2.cpp pattern
-  file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
-  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " /arch:AVX2 ")
+      # special AVX2 option for source files with *_avx2.cpp pattern
+      file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
+      set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " -mavx2 -mfma ")
+  ELSE()
+      # special AVX option for source files with *_avx.cpp pattern
+      file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
+      set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS " /arch:AVX ")
+
+      # special AVX2 option for source files with *_avx2.cpp pattern
+      file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
+      set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " /arch:AVX2 ")
+  ENDIF()
 elseif (MINGW)
   # special AVX option for source files with *_avx.cpp pattern
   file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
@@ -44,7 +54,7 @@ elseif (MINGW)
 
   # special AVX2 option for source files with *_avx2.cpp pattern
   file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
-  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS -mavx2 )
+  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS -mavx2 -mfma)
 endif()
 
 # Specify include directories
