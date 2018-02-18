@@ -54,7 +54,7 @@ elseif (MINGW)
 
   # special AVX2 option for source files with *_avx2.cpp pattern
   file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
-  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS -mavx2 -mfma)
+  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
 endif()
 
 # Specify include directories
