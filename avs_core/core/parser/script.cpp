@@ -211,7 +211,7 @@ extern const AVSFunction Script_functions[] = {
   { "float", BUILTIN_FUNC_PREFIX, "f",Float},
 
   { "value",    BUILTIN_FUNC_PREFIX, "s",Value},
-  { "hexvalue", BUILTIN_FUNC_PREFIX, "s",HexValue},
+  { "hexvalue", BUILTIN_FUNC_PREFIX, "s[pos]i",HexValue}, // avs+ 20180222 new pos parameter
 
   { "VersionNumber", BUILTIN_FUNC_PREFIX, "", VersionNumber },
   { "VersionString", BUILTIN_FUNC_PREFIX, "", VersionString },
@@ -1260,7 +1260,19 @@ AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].As
 AVSValue Float(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat(); }
 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
-AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return (int)strtoul(args[0].AsString(),&stopstring,16); }
+AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env)
+{
+  // Added optional pos arg default = 1, start position in string of the HexString, 1 denotes the string beginning.
+  // Will return 0 if error in 'pos' ie if pos is less than 1 or greater than string length.
+  const char *str = args[0].AsString();
+  int pos = args[1].AsInt(1) - 1;
+  int sz = static_cast<int>(strlen(str));
+  if (pos<0 || pos >= sz)
+    return 0;
+  str += pos;
+  char *stopstring;
+  return (int)(strtoul(str, &stopstring, 16));
+}
 
 AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env )
 {
