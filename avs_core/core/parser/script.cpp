@@ -121,6 +121,7 @@ extern const AVSFunction Script_functions[] = {
   { "bitset",    BUILTIN_FUNC_PREFIX, "ii",BitSet},
   { "bittst",    BUILTIN_FUNC_PREFIX, "ii",BitTst},
   { "bittest",   BUILTIN_FUNC_PREFIX, "ii",BitTst},
+  { "bitsetcount", BUILTIN_FUNC_PREFIX, "i+",BitSetCount }, // avs+ 180221
 
   { "lcase",    BUILTIN_FUNC_PREFIX, "s",LCase},
   { "ucase",    BUILTIN_FUNC_PREFIX, "s",UCase},
@@ -705,6 +706,23 @@ AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env) { return a_btc(ar
 AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env) { return a_btr(args[0].AsInt(), args[1].AsInt()); }
 AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env) { return a_bts(args[0].AsInt(), args[1].AsInt()); }
 AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env) { return a_bt (args[0].AsInt(), args[1].AsInt()); }
+
+static int numberOfSetBits(uint32_t i)
+{
+  i = i - ((i >> 1) & 0x55555555);
+  i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+  return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+
+AVSValue BitSetCount(AVSValue args, void*, IScriptEnvironment* env) {
+  if (args[0].IsInt())
+    return numberOfSetBits(args[0].AsInt());
+
+  int count = 0;
+  for (int i = 0; i < args[0].ArraySize(); i++)
+    count += numberOfSetBits(args[0][i].AsInt());
+  return count;
+}
 
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(env->SaveString(args[0].AsString())); }
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(env->SaveString(args[0].AsString())); }

@@ -191,6 +191,7 @@ AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitSetCount(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env);
