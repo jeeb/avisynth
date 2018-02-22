@@ -132,7 +132,7 @@ extern const AVSFunction Script_functions[] = {
   { "rightstr", BUILTIN_FUNC_PREFIX, "si",RightStr},
   { "findstr",  BUILTIN_FUNC_PREFIX, "ss",FindStr},
   { "fillstr",  BUILTIN_FUNC_PREFIX, "i[]s",FillStr},
-  { "replacestr", BUILTIN_FUNC_PREFIX, "sss",ReplaceStr}, // avs+ 161230
+  { "replacestr", BUILTIN_FUNC_PREFIX, "sss[sig]b",ReplaceStr}, // avs+ 161230, case 180222
 
   { "strcmp",   BUILTIN_FUNC_PREFIX, "ss",StrCmp},
   { "strcmpi",  BUILTIN_FUNC_PREFIX, "ss",StrCmpi},
@@ -783,6 +783,7 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
   char const * const original = args[0].AsString();
   char const * const pattern = args[1].AsString();
   char const * const replacement = args[2].AsString();
+  const bool case_insensitive = args[3].AsBool(false);
 
   const size_t replace_len = strlen(replacement);
   const size_t pattern_len = strlen(pattern);
@@ -792,7 +793,67 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
   const char * orig_ptr;
   const char * pattern_location;
 
-  // find how many times the pattern occurs in the original string
+  if (case_insensitive) {
+    char *original_lower = new(std::nothrow) char[sizeof(char) * (orig_len + 1)];
+    if (!original_lower) env->ThrowError("ReplaceStr: malloc failure!");
+    char *pattern_lower = new(std::nothrow) char[sizeof(char) * (pattern_len + 1)];
+    if (!pattern_lower) env->ThrowError("ReplaceStr: malloc failure!");
+
+    // make them lowercase for comparison
+    strcpy(original_lower, original);
+    strcpy(pattern_lower, pattern);
+#ifdef MSVC
+    // works fine also for accented ANSI characters
+    _locale_t locale = _create_locale(LC_ALL, ".ACP"); // Sets the locale to the ANSI code page obtained from the operating system.
+    _strlwr_l(original_lower, locale);
+    _strlwr_l(pattern_lower, locale);
+    _free_locale(locale);
+#else
+    _strlwr(original_lower);
+    _strlwr(pattern_lower);
+#endif
+
+    // find how many times the _lowercased_ pattern occurs in the _lowercased_ original string
+    for (orig_ptr = original_lower; pattern_location = strstr(orig_ptr, pattern_lower); orig_ptr = pattern_location + pattern_len)
+    {
+      pattern_count++;
+    }
+
+    // allocate memory for the new string
+    size_t const retlen = orig_len + pattern_count * (replace_len - pattern_len);
+    char *result = new(std::nothrow) char[sizeof(char) * (retlen + 1)];
+    if (!result) env->ThrowError("ReplaceStr: malloc failure!");
+    *result = 0;
+
+    // copy the original string,
+    // replacing all the instances of the pattern
+    const char * orig_upper_ptr;
+    char * result_ptr = result;
+    // handling dual pointer set: orig, uppercase
+    for (orig_ptr = original, orig_upper_ptr = original_lower;
+      pattern_location = strstr(orig_upper_ptr, pattern_lower);
+      orig_upper_ptr = pattern_location + pattern_len, orig_ptr = original + (orig_upper_ptr - original_lower))
+    {
+      const size_t skiplen = pattern_location - orig_upper_ptr;
+      // copy the section until the occurence of the pattern
+      strncpy(result_ptr, orig_ptr, skiplen);
+      result_ptr += skiplen;
+      // copy the replacement
+      strncpy(result_ptr, replacement, replace_len);
+      result_ptr += replace_len;
+    }
+    // copy rest
+    strcpy(result_ptr, orig_ptr);
+    AVSValue ret = env->SaveString(result);
+    delete[] result;
+    delete[] original_lower;
+    delete[] pattern_lower;
+    return ret;
+  }
+
+  // old case sensitive version
+
+    // find how many times the pattern occurs in the original string
   for (orig_ptr = original; pattern_location = strstr(orig_ptr, pattern); orig_ptr = pattern_location + pattern_len)
   {
     pattern_count++;
