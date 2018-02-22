@@ -177,7 +177,7 @@ extern const AVSFunction Script_functions[] = {
   { "IsFrameBased",  BUILTIN_FUNC_PREFIX, "c", IsFrameBased },
   { "GetParity", BUILTIN_FUNC_PREFIX, "c[n]i", GetParity },
   { "String",    BUILTIN_FUNC_PREFIX, ".[]s", String },
-  { "Hex",       BUILTIN_FUNC_PREFIX, "i", Hex },
+  { "Hex",       BUILTIN_FUNC_PREFIX, "i[width]i", Hex }, // avs+ 20180222 new width parameter
 
   { "IsBool",   BUILTIN_FUNC_PREFIX, ".", IsBool },
   { "IsInt",    BUILTIN_FUNC_PREFIX, ".", IsInt },
@@ -1234,7 +1234,15 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
   return "";
 }
 
-AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env) { char s[9]; return env->SaveString(_itoa(args[0].AsInt(), s, 16)); }
+AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env)
+{ 
+  int n = args[0].AsInt();
+  int wid = args[1].AsInt(0); // 0..8 is the minimum width of the returned string
+  wid = (wid<0) ? 0 : (wid > 8) ? 8 : wid;
+  char buf[8 + 1];
+  sprintf_s(buf, "%0*X", wid, n); // uppercase, unlike <=r2580
+  return env->SaveString(buf);
+}
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsBool(); }
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsInt(); }
