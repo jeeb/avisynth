@@ -432,10 +432,16 @@ PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _sourceHasAlpha, bool
 
 template<typename pixel_t, bool targetHasAlpha>
 // minimum width: 32 bytes (8 RGBA pixels for 8 bits, 4 RGBA pixels for 16 bits)
-static void convert_rgba_to_rgbp_sse2(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], int width, int height) {
+static void convert_rgba_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], int width, int height) {
   const int rowsize = width * sizeof(pixel_t) * 4;
   const int pixels_at_a_time = (sizeof(pixel_t) == 1) ? 8 : 4;
   const int wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
+  __m128i mask;
+  if(sizeof(pixel_t) == 1)
+    mask = _mm_set_epi8(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
+  else
+    mask = _mm_set_epi8(15, 14, 7, 6, 13, 12, 5, 4, 11, 10, 3, 2, 9, 8, 1, 0);
+
   for (int y = height; y > 0; --y) {
     __m128i BGRA_lo, BGRA_hi;
     for (int x = 0; x < wmod; x+=pixels_at_a_time) {
@@ -443,14 +449,10 @@ static void convert_rgba_to_rgbp_sse2(const BYTE *srcp, BYTE * (&dstp)[4], int s
       BGRA_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time + 16));
       __m128i pack_lo, pack_hi, eightbytes_of_pixels;
       if (sizeof(pixel_t) == 1) {
-        __m128i mask = _mm_set_epi8(15, 11, 7, 3,14,10, 6, 2,13, 9, 5, 1, 12, 8, 4, 0);
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBBBGGGGRRRRAAAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBBBGGGGRRRRAAAA
       }
       else if (sizeof(pixel_t) == 2) {
-        BGRA_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time));    // 8bit: *4 pixels 16bit:*2 pixels
-        BGRA_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time + 16));
-        __m128i mask = _mm_set_epi8(15, 14, 7, 6, 13, 12, 5, 4, 11, 10, 3, 2, 9, 8, 1, 0);
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBGGRRAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBGGRRAA
       }
@@ -471,12 +473,10 @@ static void convert_rgba_to_rgbp_sse2(const BYTE *srcp, BYTE * (&dstp)[4], int s
       BGRA_hi = _mm_loadu_si128(reinterpret_cast<const __m128i *>(srcp + last_start * 32 / pixels_at_a_time + 16));
       __m128i pack_lo, pack_hi, eightbytes_of_pixels;
       if (sizeof(pixel_t) == 1) {
-        __m128i mask = _mm_set_epi8(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBBBGGGGRRRRAAAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBBBGGGGRRRRAAAA
       }
       else if (sizeof(pixel_t) == 2) {
-        __m128i mask = _mm_set_epi8(15, 14, 7, 6, 13, 12, 5, 4, 11, 10, 3, 2, 9, 8, 1, 0);
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBGGRRAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBGGRRAA
       }
@@ -548,11 +548,11 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
     // targetHasAlpha decision in convert function
     if (sourceHasAlpha) {
       // RGB32->RGBP8
-      if ((env->GetCPUFlags() & CPUF_SSE2) && vi.width >= 8) {
+      if ((env->GetCPUFlags() & CPUF_SSSE3) && vi.width >= 8) {
         if (targetHasAlpha)
-          convert_rgba_to_rgbp_sse2<uint8_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_ssse3<uint8_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
         else
-          convert_rgba_to_rgbp_sse2<uint8_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_ssse3<uint8_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
       }
       else
         convert_rgb_to_rgbp_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
@@ -565,11 +565,11 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
   else {
     if (sourceHasAlpha) {
       // RGB32->RGBP16, RGBAP16
-      if ((env->GetCPUFlags() & CPUF_SSE2) && vi.width >= 4) {
+      if ((env->GetCPUFlags() & CPUF_SSSE3) && vi.width >= 4) {
         if (targetHasAlpha)
-          convert_rgba_to_rgbp_sse2<uint16_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_ssse3<uint16_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
         else
-          convert_rgba_to_rgbp_sse2<uint16_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+          convert_rgba_to_rgbp_ssse3<uint16_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
       }
       else {
         convert_rgb_to_rgbp_c<uint16_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
