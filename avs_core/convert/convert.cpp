@@ -725,9 +725,10 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 
   // <0: target is planar RGB(A)
   if (target_rgbtype < 0) {
-    if (vi.IsRGB24() || vi.IsRGB48())
-      clip = new RGBtoRGBA(clip); // rgb32/64 intermediate. RGB24/48 to planar is painful
-    return new PackedRGBtoPlanarRGB(clip, true, target_rgbtype == -2);
+    // RGB24/32/48/64 ->
+    const bool isSrcRGBA = vi.IsRGB32() || vi.IsRGB64();
+    const bool isTargetRGBA = target_rgbtype == -2;
+    return new PackedRGBtoPlanarRGB(clip, isSrcRGBA, isTargetRGBA);
   }
 
   return clip;
