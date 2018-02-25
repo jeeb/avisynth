@@ -205,6 +205,10 @@ AVSValue FillStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue TrimAll(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue TrimLeft(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue TrimRight(AVSValue args, void*, IScriptEnvironment* env);
+
 AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 AVSValue Select(AVSValue args, void*, IScriptEnvironment* env);

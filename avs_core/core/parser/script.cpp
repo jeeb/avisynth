@@ -133,6 +133,9 @@ extern const AVSFunction Script_functions[] = {
   { "findstr",  BUILTIN_FUNC_PREFIX, "ss",FindStr},
   { "fillstr",  BUILTIN_FUNC_PREFIX, "i[]s",FillStr},
   { "replacestr", BUILTIN_FUNC_PREFIX, "sss[sig]b",ReplaceStr}, // avs+ 161230, case 180222
+  { "trimall",  BUILTIN_FUNC_PREFIX, "s",TrimAll }, // avs+ 180225 diff name of clip-function Trim
+  { "trimleft", BUILTIN_FUNC_PREFIX, "s",TrimLeft }, // avs+ 180225
+  { "trimright", BUILTIN_FUNC_PREFIX, "s",TrimRight }, // avs+ 180225
 
   { "strcmp",   BUILTIN_FUNC_PREFIX, "ss",StrCmp},
   { "strcmpi",  BUILTIN_FUNC_PREFIX, "ss",StrCmpi},
@@ -884,6 +887,102 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
   delete[] result;
   return ret;
 }
+
+AVSValue TrimLeft(AVSValue args, void*, IScriptEnvironment* env) 
+{ 
+  char const *original = args[0].AsString();
+  char const *s = original;
+  char ch;
+  // space, npsp, tab
+  while ((ch = *s) == (char)32 || ch == (char)160 || ch == (char)9)
+    s++;
+
+  if (original == s)
+    return args[0]; // avoid SaveString if no change
+
+  return env->SaveString(s);
+}
+
+AVSValue TrimRight(AVSValue args, void*, IScriptEnvironment* env)
+{
+  char const *original = args[0].AsString();
+  size_t len = strlen(original);
+  if (len == 0)
+    return args[0]; // avoid SaveString if no change
+
+  size_t orig_len = len;
+  char const *s = original + len;
+
+  char ch;
+  // space, npsp, tab
+  while ((len > 0) && ((ch = *--s) == (char)32 || ch == (char)160 || ch == (char)9)) {
+    len--;
+  }
+  
+  if(orig_len == len)
+    return args[0]; // avoid SaveString if no change
+
+  if (len == 0)
+    return env->SaveString("");
+
+  size_t retlen = s - original + 1;
+
+  char *result = new(std::nothrow) char[sizeof(char) * (retlen + 1)];
+  if (!result) env->ThrowError("TrimRight: malloc failure!");
+  strncpy(result, original, retlen);
+  result[retlen] = 0;
+
+  AVSValue ret = env->SaveString(result);
+  return ret;
+}
+
+AVSValue TrimAll(AVSValue args, void*, IScriptEnvironment* env)
+{
+  // not simplify with calling Left/Right, avoid double SaveStrings
+
+  // like TrimLeft
+  char const *s1 = args[0].AsString();
+  char const *original1 = s1;
+  size_t len = strlen(original1);
+  if (len == 0)
+    return args[0]; // avoid SaveString if no change
+
+  char ch;
+  // space, npsp, tab
+  while ((ch = *s1) == (char)32 || ch == (char)160 || ch == (char)9)
+    s1++;
+
+  // almost like TrimRight
+  char const *original = s1;
+  len = strlen(original);
+  if (len == 0)
+    return env->SaveString("");
+
+  size_t orig_len = len;
+  char const *s = original + len;
+
+  // space, npsp, tab
+  while ((len > 0) && ((ch = *--s) == (char)32 || ch == (char)160 || ch == (char)9)) {
+    len--;
+  }
+
+  if (orig_len == len)
+    return env->SaveString(original);
+
+  if (len == 0)
+    return env->SaveString("");
+
+  size_t retlen = s - original + 1;
+
+  char *result = new(std::nothrow) char[sizeof(char) * (retlen + 1)];
+  if (!result) env->ThrowError("TrimAll: malloc failure!");
+  strncpy(result, original, retlen);
+  result[retlen] = 0;
+
+  AVSValue ret = env->SaveString(result);
+  return ret;
+}
+
 
 AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env)
 {
