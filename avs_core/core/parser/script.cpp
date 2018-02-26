@@ -933,6 +933,7 @@ AVSValue TrimRight(AVSValue args, void*, IScriptEnvironment* env)
   result[retlen] = 0;
 
   AVSValue ret = env->SaveString(result);
+  delete[] result;
   return ret;
 }
 
@@ -941,20 +942,17 @@ AVSValue TrimAll(AVSValue args, void*, IScriptEnvironment* env)
   // not simplify with calling Left/Right, avoid double SaveStrings
 
   // like TrimLeft
-  char const *s1 = args[0].AsString();
-  char const *original1 = s1;
-  size_t len = strlen(original1);
-  if (len == 0)
+  char const *original = args[0].AsString();
+  if (!*original)
     return args[0]; // avoid SaveString if no change
 
   char ch;
   // space, npsp, tab
-  while ((ch = *s1) == (char)32 || ch == (char)160 || ch == (char)9)
-    s1++;
+  while ((ch = *original) == (char)32 || ch == (char)160 || ch == (char)9)
+    original++;
 
   // almost like TrimRight
-  char const *original = s1;
-  len = strlen(original);
+  size_t len = strlen(original);
   if (len == 0)
     return env->SaveString("");
 
@@ -962,15 +960,14 @@ AVSValue TrimAll(AVSValue args, void*, IScriptEnvironment* env)
   char const *s = original + len;
 
   // space, npsp, tab
-  while ((len > 0) && ((ch = *--s) == (char)32 || ch == (char)160 || ch == (char)9)) {
+  while ((len > 0) && ((ch = *--s) == (char)32 || ch == (char)160 || ch == (char)9))
     len--;
-  }
 
   if (orig_len == len)
-    return env->SaveString(original);
+    return env->SaveString(original); // nothing to cut from right
 
   if (len == 0)
-    return env->SaveString("");
+    return env->SaveString(""); // full cut
 
   size_t retlen = s - original + 1;
 
@@ -980,6 +977,7 @@ AVSValue TrimAll(AVSValue args, void*, IScriptEnvironment* env)
   result[retlen] = 0;
 
   AVSValue ret = env->SaveString(result);
+  delete[] result;
   return ret;
 }
 
