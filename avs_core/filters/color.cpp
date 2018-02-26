@@ -42,7 +42,8 @@
 #include <avs/minmax.h>
 #include "../core/internal.h"
 #include <algorithm>
-
+#include <sstream> // stringstream
+#include <iomanip> // setprecision
 
 static void coloryuv_showyuv(BYTE* pY, BYTE* pU, BYTE* pV, int y_pitch, int u_pitch, int v_pitch, int framenumber, bool full_range, int bits_per_pixel)
 {
@@ -109,25 +110,24 @@ static void coloryuv_showyuv(BYTE* pY, BYTE* pU, BYTE* pV, int y_pitch, int u_pi
 
 // luts are only for integer bits 8/10/12/14/16. float will be realtime
 template<typename pixel_t>
-static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, int bits_per_pixel, bool clamp_on_tv_range, bool scale_is_256)
+static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, int bits_per_pixel, bool clamp_on_tv_range, bool tweaklike_params)
 {
     pixel_t *lut = reinterpret_cast<pixel_t *>(lut8);
 
-    // to be decided that parameters are scaled with 256 (legacy 8 bit behaviour) or
-    // bit-depth dependent
+    // parameters are not scaled by bitdepth (legacy 8 bit behaviour)
+
     const double value_scale = (1 << bits_per_pixel); // scale is 256/1024/4096/16384/65536
-    const double scale_param = scale_is_256 ? 256 : (1 << bits_per_pixel); // scale is 256/1024/4096/16384/65536
 
     const int lookup_size = (1 << bits_per_pixel); // 256, 1024, 4096, 16384, 65536
     const int pixel_max = lookup_size - 1;
     int tv_range_low = 16 << (bits_per_pixel - 8);
-    int tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
-    int tv_range_hi_luma = ((235+1) << (bits_per_pixel - 8)) - 1;
+    int tv_range_hi_chroma = 240 << (bits_per_pixel - 8); // 16-240,64–960, 256–3852,... 4096-61692
+    int tv_range_hi_luma = 235 << (bits_per_pixel - 8);
 
-    double gain = config->gain / scale_param + 1.0;
-    double contrast = config->contrast / scale_param + 1.0;
-    double gamma = config->gamma / scale_param + 1.0;
-    double offset = config->offset / scale_param;
+    double gain = tweaklike_params ? config->gain : (config->gain / 256 + 1.0);
+    double contrast = tweaklike_params ? config->contrast : (config->contrast / 256 + 1.0);
+    double gamma = tweaklike_params ? config->gamma : (config->gamma / 256 + 1.0);
+    double offset = config->offset / 256;
 
     int range = config->range;
     if (range == COLORYUV_RANGE_PC_TVY)
@@ -143,7 +143,7 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
         {
             if (config->plane == PLANAR_Y)
             {
-                // 8 bit 219 = 235-16, 10 bit: 64–963
+                // 8 bit 219 = 235-16, 10 bit: 64–960
               range_factor = (tv_range_hi_luma - tv_range_low) / (double)pixel_max; // 219.0 / 255.0
             }
             else
@@ -196,79 +196,247 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
         }
 
         // Convert back to int
-        int iValue = int(value);
+        int iValue = int(value); // hmm P.F. 20180226 no rounding?
 
         // Clamp
         iValue = clamp(iValue, 0, pixel_max);
 
         if (config->clip_tv && clamp_on_tv_range) // avs+: clamp on tv range
         {
-            //iValue = clamp(iValue, tv_range_low, config->plane == PLANAR_Y ? tv_range_hi_luma : tv_range_hi_chroma);
+            //iValue = clamp(iValue, tv_range_lo_luma, config->plane == PLANAR_Y ? tv_range_hi_luma : tv_range_hi_chroma);
         }
 
         lut[i] = iValue;
     }
 }
 
-static void coloryuv_analyse_core(const int* freq, const int pixel_num, ColorYUVPlaneData* data, int bits_per_pixel)
+static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, int bits_per_pixel, bool clamp_on_tv_range, bool tweaklike_params)
 {
-    int pixel_value_count = 1 << bits_per_pixel; // size of freq table
+  // parameters are not scaled by bitdepth (legacy 8 bit behaviour)
 
-    const int pixel_256th = pixel_num / 256; // For loose max/min yes, still 1/256!
+  const bool f32 = (bits_per_pixel == 32);
 
-    double avg = 0.0;
-    data->real_min = -1;
-    data->real_max = -1;
-    data->loose_max = -1;
-    data->loose_min = -1;
+  const double value_scale = f32 ? 1.0 : (1 << bits_per_pixel); // scale is 256/1024/4096/16384/65536
 
-    int px_min_c = 0, px_max_c = 0;
+  double pixel_max;
+  double tv_range_lo_luma;
+  double tv_range_hi_luma;
+  double tv_range_lo_chroma;
+  double tv_range_hi_chroma;
 
-    for (int i = 0; i < pixel_value_count; i++)
+  if (f32) {
+    pixel_max = 1.0;
+    tv_range_lo_luma = 16.0 / 256;
+    tv_range_hi_luma = 235.0 / 256;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+    tv_range_lo_chroma = (16.0 - 128.0) / 256; // -112
+    tv_range_hi_chroma = (240.0 - 128.0) / 256; // 112
+#else
+    tv_range_lo_chroma = 16.0 / 256;
+    tv_range_hi_chroma = 240.0 / 256;
+#endif
+  }
+  else {
+    pixel_max = (double)((1 << bits_per_pixel) - 1);
+    tv_range_lo_luma = (double)(16 << (bits_per_pixel - 8));
+    tv_range_hi_luma = (double)(235 << (bits_per_pixel - 8));
+    tv_range_lo_chroma = tv_range_lo_luma; // 16-240,64–960, 256–3852,... 4096-61692
+    tv_range_hi_chroma = (double)(240 << (bits_per_pixel - 8));
+  }
+
+  double gain = tweaklike_params ? config->gain : (config->gain / 256 + 1.0);
+  double contrast = tweaklike_params ? config->contrast : (config->contrast / 256 + 1.0);
+  double gamma = tweaklike_params ? config->gamma : (config->gamma / 256 + 1.0);
+  double offset = config->offset / 256; // always in the 256 range
+
+  int range = config->range; // enum
+  if (range == COLORYUV_RANGE_PC_TVY)
+  {
+    range = config->plane == PLANAR_Y ? COLORYUV_RANGE_PC_TV : COLORYUV_RANGE_NONE;
+  }
+
+  double range_factor = 1.0;
+
+  if (range != COLORYUV_RANGE_NONE)
+  {
+    if (range == COLORYUV_RANGE_PC_TV)
     {
-        avg += freq[i] * double(i);
-
-        if (freq[i] > 0 && data->real_min == -1)
-        {
-            data->real_min = i;
-        }
-
-        if (data->loose_min == -1)
-        {
-            px_min_c += freq[i];
-
-            if (px_min_c > pixel_256th)
-            {
-                data->loose_min = i;
-            }
-        }
-
-        if (freq[pixel_value_count-1 - i] > 0 && data->real_max == -1)
-        {
-            data->real_max = pixel_value_count-1 - i;
-        }
-
-        if (data->loose_max == -1)
-        {
-            px_max_c += freq[pixel_value_count-1 - i];
-
-            if (px_max_c > pixel_256th)
-            {
-                data->loose_max = pixel_value_count-1 - i;
-            }
-        }
+      if (config->plane == PLANAR_Y)
+      {
+        // 8 bit 219 = 235-16, 10 bit: 64–960
+        range_factor = (tv_range_hi_luma - tv_range_lo_luma) / (double)pixel_max; // 219.0 / 255.0
+      }
+      else
+      {
+        // 224 = 240-16
+        range_factor = (tv_range_hi_chroma - tv_range_lo_chroma) / (double)pixel_max;
+      }
     }
+    else
+    {
+      if (config->plane == PLANAR_Y)
+      {
+        range_factor = (double)pixel_max / (tv_range_hi_luma - tv_range_lo_luma); // 255.0 / 219.0
+      }
+      else
+      {
+        range_factor = (double)pixel_max / (tv_range_hi_chroma - tv_range_lo_luma); // 255.0 / 224.0
+      }
+    }
+  }
 
-    avg /= pixel_num;
-    data->average = avg;
+  std::stringstream ss;
+
+
+  // value = double(i)
+  ss << "x";
+
+  if (!f32) {
+    // value = value / value_scale;
+    ss << " " << value_scale << " /";
+  }
+
+  if (gain != 1.0) {
+    // Applying gain
+    // value *= gain;
+    ss << " " << gain << " *";
+  }
+
+  // Applying contrast
+  //  value = (value - 0.5) * contrast + 0.5;
+  if (f32) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+    ss << " " << contrast << " *";
+#else
+    ss << " 0.5 - " << contrast << " * 0.5 +";
+#endif
+  }
+  else {
+    ss << " 0.5 - " << contrast << " * 0.5 +";
+  }
+
+  // Applying offset
+  // value += offset;
+  ss << " " << offset << " +";
+
+  // Applying gamma
+  if (gamma != 0) {
+
+    //if (gamma != 0 && value > 0)
+    //  value = pow(value, 1.0 / gamma);
+    // value = value > 0 ? pow(value,(1/gamma)) : value
+    ss << " A@ 0 > A " << (1.0 / gamma) << " pow A ?";
+  }
+
+  if (!f32) {
+    // value *= value_scale;
+    ss << " " << std::fixed << std::setprecision(0) << value_scale << " *";
+  }
+
+  // Range conversion
+  if (range == COLORYUV_RANGE_PC_TV)
+  {
+    // value = value * range_factor + tv_range_lo_luma; // v*range - 16
+    if (config->plane == PLANAR_Y)
+      ss << " " << range_factor << " * " << tv_range_lo_luma << " +";
+    else
+      ss << " " << range_factor << " * " << tv_range_lo_chroma << " +";
+  }
+  else if (range == COLORYUV_RANGE_TV_PC)
+  {
+    //value = (value - tv_range_lo_luma) * range_factor; // (v-16)*range
+    if (config->plane == PLANAR_Y)
+      ss << " " << tv_range_lo_luma << " - " << range_factor << " *";
+    else
+      ss << " " << tv_range_lo_chroma << " - " << range_factor << " *";
+  }
+
+  std::string exprString = ss.str();
+  return exprString;
+
 }
 
-static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, int height, ColorYUVPlaneData* data, int bits_per_pixel)
+// for float, only loose_min and loose_max is counted
+template<bool forFloat>
+static void coloryuv_analyse_core(const int* freq, const int pixel_num, ColorYUVPlaneData* data, int bits_per_pixel_for_stat)
 {
+  // 32 bit float reached here as split into ranges like a 16bit clip
+  int pixel_value_count = 1 << bits_per_pixel_for_stat; // size of freq table
+
+  const int pixel_256th = pixel_num / 256; // For loose max/min yes, still 1/256!
+
+  double avg = 0.0;
+  int real_min, real_max;
+
+  if (!forFloat) {
+    real_min = -1;
+    real_max = -1;
+  }
+  data->loose_max = -1;
+  data->loose_min = -1;
+
+  int px_min_c = 0, px_max_c = 0;
+
+  for (int i = 0; i < pixel_value_count; i++)
+  {
+    if (!forFloat) {
+      avg += freq[i] * double(i);
+
+      if (freq[i] > 0 && real_min == -1)
+      {
+        real_min = i;
+      }
+    }
+
+    if (data->loose_min == -1)
+    {
+      px_min_c += freq[i];
+
+      if (px_min_c > pixel_256th)
+      {
+        data->loose_min = i;
+      }
+    }
+
+    if (!forFloat) {
+      if (freq[pixel_value_count - 1 - i] > 0 && real_max == -1)
+      {
+        real_max = pixel_value_count - 1 - i;
+      }
+    }
+
+    if (data->loose_max == -1)
+    {
+      px_max_c += freq[pixel_value_count - 1 - i];
+
+      if (px_max_c > pixel_256th)
+      {
+        data->loose_max = pixel_value_count - 1 - i;
+      }
+    }
+  }
+
+  if (!forFloat) {
+    avg /= pixel_num;
+    data->average = avg;
+    data->real_min = (float)real_min;
+    data->real_max = (float)real_max;
+  }
+}
+
+
+static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, int height, ColorYUVPlaneData* data, int bits_per_pixel, bool chroma)
+{
+    // We can gather statistics from float, but for population count we have to
+    // split the range. We decide to split it into 2^16 ranges.
     int bits_per_pixel_for_freq = bits_per_pixel <= 16 ? bits_per_pixel : 16;
     int statistics_size = 1 << bits_per_pixel_for_freq; // float: 65536
     int *freq = new int[statistics_size];
     std::fill_n(freq, statistics_size, 0);
+
+    double sum = 0.0; // for float
+    float real_min;
+    float real_max;
 
     if(bits_per_pixel==8) {
       for (int y = 0; y < height; y++)
@@ -305,18 +473,60 @@ static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, 
         pSrc += src_pitch;
       }
     } else if(bits_per_pixel==32) {
-      for (int y = 0; y < height; y++)
-      {
-        for (int x = 0; x < width; x++)
+      // 32 bits: we populate pixels only for loose_min and loose_max
+      // real_min and real_max, average (sum) is computed differently
+      real_min = reinterpret_cast<const float *>(pSrc)[0];
+      real_max = real_min;
+      if (chroma) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+        const float shift = 32768.0f;
+#else
+        const float shift = 0.0f;
+#endif
+        for (int y = 0; y < height; y++)
         {
-          freq[clamp((int)(65535.0f*reinterpret_cast<const float *>(pSrc)[x]), 0, 65535)]++;
+          for (int x = 0; x < width; x++)
+          {
+            // -0.5..0.5 to 0..65535 when FLOAT_CHROMA_IS_ZERO_CENTERED
+            const float pixel = reinterpret_cast<const float *>(pSrc)[x];
+            freq[clamp((int)(65535.0f*pixel + shift + 0.5), 0, 65535)]++;
+            // todo: SSE2
+            real_min = min(real_min, pixel);
+            real_max = max(real_max, pixel);
+            sum += pixel;
+          }
+          pSrc += src_pitch;
         }
+      }
+      else {
+        for (int y = 0; y < height; y++)
+        {
+          for (int x = 0; x < width; x++)
+          {
+            // 0..1 -> 0..65535
+            const float pixel = reinterpret_cast<const float *>(pSrc)[x];
+            freq[clamp((int)(65535.0f*reinterpret_cast<const float *>(pSrc)[x] + 0.5), 0, 65535)]++;
+            // todo: SSE2
+            real_min = min(real_min, pixel);
+            real_max = max(real_max, pixel);
+            sum += pixel;
+          }
 
-        pSrc += src_pitch;
+          pSrc += src_pitch;
+        }
       }
     }
 
-    coloryuv_analyse_core(freq, width*height, data, bits_per_pixel_for_freq);
+
+    if (bits_per_pixel == 32) {
+      coloryuv_analyse_core<true>(freq, width*height, data, bits_per_pixel_for_freq);
+      data->average = sum / (height * width);
+      data->real_max = real_max;
+      data->real_min = real_min;
+    }
+    else {
+      coloryuv_analyse_core<false>(freq, width*height, data, bits_per_pixel_for_freq);
+    }
 
     delete[] freq;
 }
@@ -341,40 +551,48 @@ static void coloryuv_analyse_yuy2(const BYTE* pSrc, int src_pitch, int width, in
         pSrc += src_pitch;
     }
 
-    coloryuv_analyse_core(freqY, width*height, dataY, 1);
-    coloryuv_analyse_core(freqU, width*height/2, dataU, 1);
-    coloryuv_analyse_core(freqV, width*height/2, dataV, 1);
+    coloryuv_analyse_core<false>(freqY, width*height, dataY, 1);
+    coloryuv_analyse_core<false>(freqU, width*height/2, dataU, 1);
+    coloryuv_analyse_core<false>(freqV, width*height/2, dataV, 1);
 }
 
 static void coloryuv_autogain(const ColorYUVPlaneData* dY, const ColorYUVPlaneData* dU, const ColorYUVPlaneData* dV, ColorYUVPlaneConfig* cY, ColorYUVPlaneConfig* cU, ColorYUVPlaneConfig* cV,
-  int bits_per_pixel, bool scale_is_256)
+  int bits_per_pixel, bool tweaklike_params)
 {
-    const double scale_param = scale_is_256 ? 256 : (1 << bits_per_pixel); // scale is 256/1024/4096/16384/65536
-    int bits_per_pixel_for_freq = bits_per_pixel <= 16 ? bits_per_pixel : 16; // for float: like uint16_t
-    // always 16..235
-    int loose_max_limit = (235 + 1) << (bits_per_pixel_for_freq - 8);
-    int loose_min_limit = 16 << (bits_per_pixel_for_freq - 8);
-    double gain_corr =  1 << bits_per_pixel_for_freq;
-    int maxY = min(dY->loose_max, loose_max_limit);
-    int minY = max(dY->loose_min, loose_min_limit);
+  int bits_per_pixel_for_freq = bits_per_pixel <= 16 ? bits_per_pixel : 16; // for float: "loose" statistics like uint16_t
+  // always 16..235
+  int loose_max_limit = (235 + 1) << (bits_per_pixel_for_freq - 8);
+  int loose_min_limit = 16 << (bits_per_pixel_for_freq - 8);
+  double gain_corr = 1 << bits_per_pixel_for_freq;
+  int maxY = min(dY->loose_max, loose_max_limit);
+  int minY = max(dY->loose_min, loose_min_limit);
 
-    int range = maxY - minY;
+  int range = maxY - minY;
 
-    if (range > 0) {
-        double scale = double(loose_max_limit - loose_min_limit) / range;
-        cY->offset = (loose_min_limit - scale*minY) / (1<<(bits_per_pixel-8)) * 256 / scale_param;
-        cY->gain = scale_param * (scale - 1.0);
-    }
+  if (range > 0) {
+    double scale = double(loose_max_limit - loose_min_limit) / range;
+    cY->offset = (loose_min_limit - scale * minY) / (1 << (bits_per_pixel_for_freq - 8)); // good for float also, 0..256 range
+    cY->gain = tweaklike_params ? scale : (256 * (scale - 1.0));
+  }
 }
 
 static void coloryuv_autowhite(const ColorYUVPlaneData* dY, const ColorYUVPlaneData* dU, const ColorYUVPlaneData* dV, ColorYUVPlaneConfig* cY, ColorYUVPlaneConfig* cU, ColorYUVPlaneConfig* cV,
-  int bits_per_pixel, bool scale_is_256)
+  int bits_per_pixel)
 {
-    double middle;
-    const double scale_param = scale_is_256 ? 256 : (1 << bits_per_pixel); // scale is 256/1024/4096/16384/65536
-    middle = (1 << (bits_per_pixel - 1)) - 1; // 128-1, 2048-1 ...
-    cU->offset = (middle - dU->average) / (1<<(bits_per_pixel-8)) * 256 / scale_param;
-    cV->offset = (middle - dV->average) / (1<<(bits_per_pixel-8)) * 256 / scale_param;
+  if (bits_per_pixel == 32) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+    double middle = 0.0;
+#else
+    double middle = 0.5;
+#endif
+    cU->offset = (middle - dU->average) * 256; // parameter is in 256 range
+    cV->offset = (middle - dV->average) * 256;
+  }
+  else {
+    double middle = (1 << (bits_per_pixel - 1)) - 1; // 128-1, 2048-1 ...
+    cU->offset = (middle - dU->average) / (1 << (bits_per_pixel - 8)); // parameter is in 256 range
+    cV->offset = (middle - dV->average) / (1 << (bits_per_pixel - 8));
+  }
 }
 
 // only for integer samples
@@ -479,15 +697,13 @@ ColorYUV::ColorYUV(PClip child,
   const char* level, const char* opt,
   bool showyuv, bool analyse, bool autowhite, bool autogain, bool conditional,
   int bits, bool showyuv_fullrange,
+  bool tweaklike_params, // ColorYUV2: 0.0/0.5/1.0/2.0/3.0 instead of -256/-128/0/256/512
   IScriptEnvironment* env)
  : GenericVideoFilter(child),
-   colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional), colorbar_fullrange(showyuv_fullrange)
+   colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional), colorbar_fullrange(showyuv_fullrange), tweaklike_params(tweaklike_params)
 {
     if (!vi.IsYUV() && !vi.IsYUVA())
         env->ThrowError("ColorYUV: Only work with YUV colorspace.");
-
-    if (vi.ComponentSize() == 4)
-      env->ThrowError("ColorYUV: float pixel type is not supported yet.");
 
     configY.gain = gain_y;
     configY.offset = offset_y;
@@ -547,14 +763,14 @@ ColorYUV::ColorYUV(PClip child,
         env->ThrowError("ColorYUV: invalid parameter : opt");
     }
 
-    if(showyuv && colorbar_bits !=8 && colorbar_bits != 10 && colorbar_bits != 12 && colorbar_bits != 14 && colorbar_bits != 16)
-      env->ThrowError("ColorYUV: bits parameter for showyuv must be 8, 10, 12, 14 or 16");
+    if(showyuv && colorbar_bits !=8 && colorbar_bits != 10 && colorbar_bits != 12 && colorbar_bits != 14 && colorbar_bits != 16 && colorbar_bits != 32)
+      env->ThrowError("ColorYUV: bits parameter for showyuv must be 8, 10, 12, 14, 16 or 32");
 
     if (colorbar_bits>0 && showyuv)
     {
         // pre-avs+: coloryuv_showyuv is always called with full_range false
         int chroma_range = colorbar_fullrange ? 256 : (240 - 16 + 1); // 0..255, 16..240
-        // size limited to either 8 or 10 bits, independenly of 12/14/16 bit-depth
+        // size limited to either 8 or 10 bits, independenly of 12/14/16 or 32bit float bit-depth
         vi.width = (colorbar_bits == 8 ? chroma_range : (chroma_range*4)) * 2;
         vi.height = vi.width;
         switch (colorbar_bits) {
@@ -563,6 +779,7 @@ ColorYUV::ColorYUV(PClip child,
         case 12: vi.pixel_type = VideoInfo::CS_YUV420P12; break;
         case 14: vi.pixel_type = VideoInfo::CS_YUV420P14; break;
         case 16: vi.pixel_type = VideoInfo::CS_YUV420P16; break;
+        case 32: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
         }
     }
 }
@@ -580,8 +797,8 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     }
 
     PVideoFrame src = child->GetFrame(n, env);
-    PVideoFrame dst = env->NewVideoFrame(vi);
-
+    PVideoFrame dst;
+    
     int pixelsize = vi.ComponentSize();
     int bits_per_pixel = vi.BitsPerComponent();
 
@@ -591,7 +808,6 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
         cV = configV;
 
     bool clamp_on_tv_range = true;  // rfu
-    bool param_scale_is_256 = true; //rfu
 
     // for analysing data
     char text[512];
@@ -606,116 +822,172 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
         }
         else
         {
-            coloryuv_analyse_planar(src->GetReadPtr(), src->GetPitch(), vi.width, vi.height, &dY, bits_per_pixel);
+            coloryuv_analyse_planar(src->GetReadPtr(), src->GetPitch(), vi.width, vi.height, &dY, bits_per_pixel, false); // false: not chroma
             if (!vi.IsY())
             {
                 const int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
                 const int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-                coloryuv_analyse_planar(src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), width, height, &dU, bits_per_pixel);
-                coloryuv_analyse_planar(src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), width, height, &dV, bits_per_pixel);
+                coloryuv_analyse_planar(src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), width, height, &dU, bits_per_pixel, true); // true: chroma
+                coloryuv_analyse_planar(src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), width, height, &dV, bits_per_pixel, true);
             }
         }
 
         if (analyse)
         {
-            if (!vi.IsY())
-            {
-                sprintf(text,
-                        "        Frame: %-8u ( Luma Y / ChromaU / ChromaV )\n"
-                        "      Average:      ( %7.2f / %7.2f / %7.2f )\n"
-                        "      Minimum:      (   %3d   /   %3d   /   %3d    )\n"
-                        "      Maximum:      (   %3d   /   %3d   /   %3d    )\n"
-                        "Loose Minimum:      (   %3d   /   %3d   /   %3d    )\n"
-                        "Loose Maximum:      (   %3d   /   %3d   /   %3d    )\n",
-                        n,
-                        dY.average, dU.average, dV.average,
-                        dY.real_min, dU.real_min, dV.real_min,
-                        dY.real_max, dU.real_max, dV.real_max,
-                        dY.loose_min, dU.loose_min, dV.loose_min,
-                        dY.loose_max, dU.loose_max, dV.loose_max
-                        );
-            }
+          if (!vi.IsY())
+          {
+            if (bits_per_pixel == 32)
+              sprintf(text,
+                "        Frame: %-8u ( Luma Y / ChromaU / ChromaV )\n"
+                "      Average:      ( %7.5f / %7.5f / %7.5f )\n"
+                "      Minimum:      ( %7.5f / %7.5f / %7.5f )\n"
+                "      Maximum:      ( %7.5f / %7.5f / %7.5f )\n"
+                "Loose Minimum:      ( %7.5f / %7.5f / %7.5f )\n"
+                "Loose Maximum:      ( %7.5f / %7.5f / %7.5f )\n",
+                n,
+                dY.average, dU.average, dV.average,
+                dY.real_min, dU.real_min, dV.real_min,
+                dY.real_max, dU.real_max, dV.real_max,
+                (float)dY.loose_min / 65535.0f, (float)dU.loose_min / 65535.0f, (float)dV.loose_min / 65535.0f,
+                (float)dY.loose_max / 65535.0f, (float)dU.loose_max / 65535.0f, (float)dV.loose_max / 65535.0f
+              );
             else
-            {
-                sprintf(text,
-                        "        Frame: %-8u\n"
-                        "      Average: %7.2f\n"
-                        "      Minimum: %3d\n"
-                        "      Maximum: %3d\n"
-                        "Loose Minimum: %3d\n"
-                        "Loose Maximum: %3d\n",
-                        n,
-                        dY.average,
-                        dY.real_min,
-                        dY.real_max,
-                        dY.loose_min,
-                        dY.loose_max
-                        );
-            }
+              sprintf(text,
+                "        Frame: %-8u ( Luma Y / ChromaU / ChromaV )\n"
+                "      Average:      ( %7.2f / %7.2f / %7.2f )\n"
+                "      Minimum:      (  %5d  /  %5d  /  %5d   )\n"
+                "      Maximum:      (  %5d  /  %5d  /  %5d   )\n"
+                "Loose Minimum:      (  %5d  /  %5d  /  %5d   )\n"
+                "Loose Maximum:      (  %5d  /  %5d  /  %5d   )\n",
+                n,
+                dY.average, dU.average, dV.average,
+                (int)dY.real_min, (int)dU.real_min, (int)dV.real_min,
+                (int)dY.real_max, (int)dU.real_max, (int)dV.real_max,
+                dY.loose_min, dU.loose_min, dV.loose_min,
+                dY.loose_max, dU.loose_max, dV.loose_max
+              );
+          }
+          else
+          {
+            if (bits_per_pixel == 32)
+              sprintf(text,
+                "        Frame: %-8u\n"
+                "      Average: %7.5f\n"
+                "      Minimum: %7.5f\n"
+                "      Maximum: %7.5f\n"
+                "Loose Minimum: %7.5f\n"
+                "Loose Maximum: %7.5f\n",
+                n,
+                dY.average,
+                dY.real_min,
+                dY.real_max,
+                (float)dY.loose_min / 65535.0f,
+                (float)dY.loose_max / 65535.0f
+              );
+            else
+              sprintf(text,
+                "        Frame: %-8u\n"
+                "      Average: %7.2f\n"
+                "      Minimum: %5d\n"
+                "      Maximum: %5d\n"
+                "Loose Minimum: %5d\n"
+                "Loose Maximum: %5d\n",
+                n,
+                dY.average,
+                (int)dY.real_min,
+                (int)dY.real_max,
+                dY.loose_min,
+                dY.loose_max
+              );
+          }
         }
 
         if (autowhite && !vi.IsY())
         {
-            coloryuv_autowhite(&dY, &dU, &dV, &cY, &cU, &cV, bits_per_pixel, param_scale_is_256);
+            coloryuv_autowhite(&dY, &dU, &dV, &cY, &cU, &cV, bits_per_pixel);
         }
 
         if (autogain)
         {
-            coloryuv_autogain(&dY, &dU, &dV, &cY, &cU, &cV, bits_per_pixel, param_scale_is_256);
+            coloryuv_autogain(&dY, &dU, &dV, &cY, &cU, &cV, bits_per_pixel, tweaklike_params);
         }
     }
 
     // Read conditional variables
     coloryuv_read_conditional(env, &cY, &cU, &cV);
 
-    int lut_size = pixelsize*(1 << bits_per_pixel); // 256*1 / 1024*2 .. 65536*2
     BYTE *lutY = nullptr;
     BYTE *lutU = nullptr;
     BYTE *lutV = nullptr;
 
-    if(pixelsize==1 || pixelsize==2) {
-      // no float lut. if ever, float will be realtime
+    if (pixelsize == 1 || pixelsize == 2) {
+      // no float lut. float will be realtime
+      int lut_size = pixelsize * (1 << bits_per_pixel); // 256*1 / 1024*2 .. 65536*2
       lutY = new BYTE[lut_size];
       lutU = new BYTE[lut_size];
       lutV = new BYTE[lut_size];
-    }
 
-    if(pixelsize==1) {
-      coloryuv_create_lut<uint8_t>(lutY, &cY, bits_per_pixel, clamp_on_tv_range, param_scale_is_256);
-      if (!vi.IsY())
-      {
-          coloryuv_create_lut<uint8_t>(lutU, &cU, bits_per_pixel, clamp_on_tv_range, param_scale_is_256);
-          coloryuv_create_lut<uint8_t>(lutV, &cV, bits_per_pixel, clamp_on_tv_range, param_scale_is_256);
+      if (pixelsize == 1) {
+        coloryuv_create_lut<uint8_t>(lutY, &cY, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+        if (!vi.IsY())
+        {
+          coloryuv_create_lut<uint8_t>(lutU, &cU, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+          coloryuv_create_lut<uint8_t>(lutV, &cV, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+        }
       }
-    }
-    else if (pixelsize==2) { // pixelsize==2
-      coloryuv_create_lut<uint16_t>(lutY, &cY, bits_per_pixel, clamp_on_tv_range, param_scale_is_256);
-      if (!vi.IsY())
-      {
-        coloryuv_create_lut<uint16_t>(lutU, &cU, bits_per_pixel, clamp_on_tv_range, param_scale_is_256);
-        coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, clamp_on_tv_range, param_scale_is_256);
+      else if (pixelsize == 2) { // pixelsize==2
+        coloryuv_create_lut<uint16_t>(lutY, &cY, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+        if (!vi.IsY())
+        {
+          coloryuv_create_lut<uint16_t>(lutU, &cU, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+          coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+        }
       }
-    }
 
-    if (vi.IsYUY2())
-    {
+      dst = env->NewVideoFrame(vi); // go live dst here!
+
+      if (vi.IsYUY2())
+      {
         coloryuv_apply_lut_yuy2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.width, vi.height, lutY, lutU, lutV);
-    }
-    else
-    {
+      }
+      else
+      {
         coloryuv_apply_lut_planar(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.width, vi.height, lutY, bits_per_pixel);
         if (!vi.IsY())
         {
-            const int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
-            const int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+          const int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+          const int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-            coloryuv_apply_lut_planar(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetPitch(PLANAR_U), width, height, lutU, bits_per_pixel);
-            coloryuv_apply_lut_planar(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetPitch(PLANAR_V), width, height, lutV, bits_per_pixel);
+          coloryuv_apply_lut_planar(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetPitch(PLANAR_U), width, height, lutU, bits_per_pixel);
+          coloryuv_apply_lut_planar(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetPitch(PLANAR_V), width, height, lutV, bits_per_pixel);
         }
-        if(vi.IsYUVA()) {
-
+        if (vi.IsYUVA()) {
+          env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A), src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), src->GetRowSize(PLANAR_A), src->GetHeight(PLANAR_A));
         }
+      }
+    } // lut create and use
+    else {
+      // 32 bit float: expr
+      std::string exprY = coloryuv_create_lut_expr(&cY, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+      std::string exprU = !vi.IsY() ? coloryuv_create_lut_expr(&cU, bits_per_pixel, clamp_on_tv_range, tweaklike_params) : "";
+      std::string exprV = !vi.IsY() ? coloryuv_create_lut_expr(&cV, bits_per_pixel, clamp_on_tv_range, tweaklike_params) : "";
+      std::string exprA = ""; // copy
+      // Invoke Expr
+      AVSValue child2;
+      if (vi.IsY()) {
+        AVSValue new_args[2] = { child, exprY.c_str() };
+        child2 = env->Invoke("Expr", AVSValue(new_args, 2)).AsClip();
+      }
+      else if(vi.IsYUV()) {
+        AVSValue new_args[4] = { child, exprY.c_str(), exprU.c_str(), exprV.c_str() };
+        child2 = env->Invoke("Expr", AVSValue(new_args, 4)).AsClip();
+      }
+      else if (vi.IsYUVA()) {
+        AVSValue new_args[5] = { child, exprY.c_str(), exprU.c_str(), exprV.c_str(), exprA.c_str() };
+        child2 = env->Invoke("Expr", AVSValue(new_args, 5)).AsClip();
+      }
+      dst = child2.AsClip()->GetFrame(n, env);
     }
 
     if (analyse)
@@ -729,21 +1001,23 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     return dst;
 }
 
-AVSValue __cdecl ColorYUV::Create(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl ColorYUV::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
+    const bool tweaklike_params = (1 == (intptr_t)user_data); // ColorYUV2 for tweak-like parameter range
+    const float def = tweaklike_params ? 1.0f : 0.0f;
     return new ColorYUV(args[0].AsClip(),
-                        args[1].AsFloat(0.0f),                // gain_y
+                        args[1].AsFloat(def),                // gain_y
                         args[2].AsFloat(0.0f),                // off_y      bright
-                        args[3].AsFloat(0.0f),                // gamma_y
-                        args[4].AsFloat(0.0f),                // cont_y
-                        args[5].AsFloat(0.0f),                // gain_u
+                        args[3].AsFloat(def),                // gamma_y
+                        args[4].AsFloat(def),                // cont_y
+                        args[5].AsFloat(def),                // gain_u
                         args[6].AsFloat(0.0f),                // off_u      bright
-                        args[7].AsFloat(0.0f),                // gamma_u
-                        args[8].AsFloat(0.0f),                // cont_u
-                        args[9].AsFloat(0.0f),                // gain_v
+                        args[7].AsFloat(def),                // gamma_u
+                        args[8].AsFloat(def),                // cont_u
+                        args[9].AsFloat(def),                // gain_v
                         args[10].AsFloat(0.0f),                // off_v
-                        args[11].AsFloat(0.0f),                // gamma_v
-                        args[12].AsFloat(0.0f),                // cont_v
+                        args[11].AsFloat(def),                // gamma_v
+                        args[12].AsFloat(def),                // cont_v
                         args[13].AsString(""),                // levels = "", "TV->PC", "PC->TV"
                         args[14].AsString(""),                // opt = "", "coring"
 //                      args[15].AsString(""),                // matrix = "", "rec.709"
@@ -754,6 +1028,7 @@ AVSValue __cdecl ColorYUV::Create(AVSValue args, void*, IScriptEnvironment* env)
                         args[20].AsBool(false),                // conditional
                         args[21].AsInt(8),                     // bits avs+
                         args[22].AsBool(false),                // showyuv_fullrange avs+
+                        tweaklike_params,                      // ColorYUV2: 0.0/0.5/1.0/2.0/3.0 instead of -256/-128/0/256/512
                         env);
 }
 
@@ -765,7 +1040,15 @@ extern const AVSFunction Color_filters[] = {
                   "[levels]s[opt]s[matrix]s[showyuv]b" \
                   "[analyze]b[autowhite]b[autogain]b[conditional]" \
                   "b[bits]i[showyuv_fullrange]b",
-                  ColorYUV::Create },
+                  ColorYUV::Create, (void*)0 },
+    { "ColorYUV2", BUILTIN_FUNC_PREFIX,
+                  "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
+                  "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
+                  "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
+                  "[levels]s[opt]s[matrix]s[showyuv]b" \
+                  "[analyze]b[autowhite]b[autogain]b[conditional]" \
+                  "b[bits]i[showyuv_fullrange]b",
+                  ColorYUV::Create, (void*)1 }, // avs+ 20180226- same but with tweak-like parameters see f2c
     { 0 }
 };
 
