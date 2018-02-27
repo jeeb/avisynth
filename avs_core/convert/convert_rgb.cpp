@@ -448,11 +448,14 @@ static void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int s
   else
     mask = _mm_set_epi8(15, 14, 13, 12, 11, 10, 5, 4, 9, 8, 3, 2, 7, 6, 1, 0);
 
+#pragma warning(push)
+#pragma warning(disable:4309)
   __m128i max_pixel_value;
   if (sizeof(pixel_t) == 1)
     max_pixel_value = _mm_set1_epi8(0xFF);
   else
     max_pixel_value = _mm_set1_epi16((1 << bits_per_pixel) - 1); // bits_per_pixel is 16
+#pragma warning(pop)
 
   for (int y = height; y > 0; --y) {
     __m128i BGRA_1, BGRA_2, BGRA_3;
