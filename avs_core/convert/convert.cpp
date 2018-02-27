@@ -73,10 +73,10 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToYUV420",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToPlanarGeneric::CreateYUV420},
   { "ConvertToYUV422",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV422},
   { "ConvertToYUV444",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
-  { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)8 },
-  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)16 },
-  { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)32 },
-  { "ConvertBits",    BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)0 },
+  { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)8 },
+  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)16 },
+  { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)32 },
+  { "ConvertBits",    BUILTIN_FUNC_PREFIX, "c[bits]i[truerange]b[dither]f[dither_bits]i[fulls]b[fulld]b", ConvertBits::Create, (void *)0 },
   { "AddAlphaPlane",  BUILTIN_FUNC_PREFIX, "c[mask].", AddAlphaPlane::Create},
   { "RemoveAlphaPlane",  BUILTIN_FUNC_PREFIX, "c", RemoveAlphaPlane::Create},
   { 0 }
@@ -703,14 +703,14 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   if (target_rgbtype == 24 || target_rgbtype == 32) {
     if (vi.ComponentSize() != 1) {
       // 64->32, 48->24
-      clip = new ConvertBits(clip, 1.0f /*float_range n/a*/, -1 /*dither_type*/, 8 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      clip = new ConvertBits(clip, -1 /*dither_type*/, 8 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
       vi = clip->GetVideoInfo(); // new format
     }
   }
   else if (target_rgbtype == 48 || target_rgbtype == 64) {
     if (vi.ComponentSize() != 2) {
       // 32->64, 24->48
-      clip = new ConvertBits(clip, 1.0f /*float_range n/a*/, -1 /*dither_type*/, 16 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      clip = new ConvertBits(clip, -1 /*dither_type*/, 16 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
       vi = clip->GetVideoInfo(); // new format
     }
   }
@@ -922,7 +922,7 @@ static const struct dither16x16_t
 } dither16x16;
 
 template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
   src_pitch = src_pitch / sizeof(uint16_t);
@@ -1018,7 +1018,7 @@ static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rows
 }
 
 template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-static void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
   src_pitch = src_pitch / sizeof(uint16_t);
@@ -1219,7 +1219,7 @@ static void diffuse_floyd_f(float err, float &nextError, float *error_ptr)
 }
 
 template<typename source_pixel_t, typename target_pixel_t, uint8_t sourcebits, uint8_t TARGET_BITDEPTH, int TARGET_DITHER_BITDEPTH>
-static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const source_pixel_t *srcp = reinterpret_cast<const source_pixel_t *>(srcp8);
   src_pitch = src_pitch / sizeof(source_pixel_t);
@@ -1290,7 +1290,7 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
 // BitDepthConvFuncPtr
 // Conversion from 16-14-12-10 to 8 bits (bitshift: 8-6-4-2)
 template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH>
-static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
   src_pitch = src_pitch / sizeof(uint16_t);
@@ -1350,7 +1350,7 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 }
 
 template<uint8_t sourcebits>
-static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
   src_pitch = src_pitch / sizeof(uint16_t);
@@ -1386,7 +1386,7 @@ static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rows
 #endif
 
 template<uint8_t sourcebits, uint8_t TARGET_DITHER_BITDEPTH>
-static void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   // Full general ordered dither from 10-16 bits to 2-8 bits, keeping the final 8 bit depth
   // Avisynth's ConvertBits parameter "dither_bits" default 8 goes to TARGET_DITHER_BITDEPTH
@@ -1531,8 +1531,8 @@ static void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int s
 #endif
 
 // float to 8 bit, float to 10/12/14/16 bit
-template<typename pixel_t, uint8_t targetbits>
-static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+template<typename pixel_t, uint8_t targetbits, bool chroma>
+static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const float *srcp0 = reinterpret_cast<const float *>(srcp);
   pixel_t *dstp0 = reinterpret_cast<pixel_t *>(dstp);
@@ -1542,15 +1542,27 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 
   int src_width = src_rowsize / sizeof(float);
 
-  float max_dst_pixelvalue = (float)((1<<targetbits) - 1); // 255, 1023, 4095, 16383, 65535.0
+  const float max_dst_pixelvalue = (float)((1<<targetbits) - 1); // 255, 1023, 4095, 16383, 65535.0
+  const float half = (float)(1 << (targetbits - 1));
 
-  float factor = 1.0f / float_range * max_dst_pixelvalue;
+  float factor = (float)max_dst_pixelvalue;
 
   for(int y=0; y<src_height; y++)
   {
     for (int x = 0; x < src_width; x++)
     {
-      float pixel = srcp0[x] * factor + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
+      float pixel;
+      if (chroma) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+        pixel = srcp0[x] * factor + half + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
+#else
+        // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
+        pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
+#endif
+      }
+      else {
+        pixel = srcp0[x] * factor + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
+      }
       dstp0[x] = pixel_t(clamp(pixel, 0.0f, max_dst_pixelvalue)); // we clamp here!
     }
     dstp0 += dst_pitch;
@@ -1560,7 +1572,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 
 // rgb/alpha: full scale. No bit shift, scale full ranges
 template<uint8_t targetbits>
-static void convert_rgb_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_rgb_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     const uint8_t *srcp0 = reinterpret_cast<const uint8_t *>(srcp);
     uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
@@ -1642,7 +1654,7 @@ static inline __m128i Div_4xint32_by_255(const __m128i &esi, const __m128i &magi
 #endif
 
 template<uint8_t targetbits>
-static void convert_rgb_8_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_rgb_8_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint8_t *srcp = reinterpret_cast<const uint8_t *>(srcp8);
   uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
@@ -1762,7 +1774,7 @@ static void convert_rgb_8_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src
 
 // YUV: bit shift 8 to 10-12-14-16 bits
 template<uint8_t targetbits>
-static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
 
@@ -1782,7 +1794,7 @@ static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp8, int src_rowsize
 }
 
 template<uint8_t targetbits>
-static void convert_8_to_uint16_sse2(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_8_to_uint16_sse2(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
 
@@ -1817,7 +1829,7 @@ static void convert_8_to_uint16_sse2(const BYTE *srcp, BYTE *dstp8, int src_rows
 
 // RGB full range: 10-12-14-16 <=> 10-12-14-16 bits
 template<uint8_t sourcebits, uint8_t targetbits, bool hasSSE4>
-static void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
   src_pitch = src_pitch / sizeof(uint16_t);
@@ -1871,7 +1883,7 @@ static void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, in
 
 // RGB full range: 10-12-14-16 <=> 10-12-14-16 bits
 template<uint8_t sourcebits, uint8_t targetbits>
-static void convert_rgb_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_rgb_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
     uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
@@ -1897,7 +1909,7 @@ static void convert_rgb_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src
 }
 
 template<uint8_t sourcebits, uint8_t targetbits, int TARGET_DITHER_BITDEPTH>
-static void convert_rgb_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_rgb_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
   uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
@@ -1966,7 +1978,7 @@ static void convert_rgb_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
 // shift right or left, depending on expandrange template param
 template<bool expandrange, uint8_t shiftbits>
-static void convert_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
     uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
@@ -1993,7 +2005,7 @@ static void convert_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_row
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
 // shift right or left, depending on expandrange template param
 template<uint8_t sourcebits, uint8_t targetbits, int TARGET_DITHER_BITDEPTH>
-static void convert_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
   uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
@@ -2053,7 +2065,7 @@ static void convert_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, in
 }
 
 template<bool expandrange, uint8_t shiftbits>
-static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   // remark: Compiler with SSE2 option generates the same effective code like this in C
   // Drawback of SSE2: a future avx2 target gives more efficient code than inline SSE2 (256 bit registers)
@@ -2098,8 +2110,8 @@ static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int sr
 
 
 // 8 bit to float, 16/14/12/10 bits to float
-template<typename pixel_t, uint8_t sourcebits>
-static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+template<typename pixel_t, uint8_t sourcebits, bool chroma>
+static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const pixel_t *srcp0 = reinterpret_cast<const pixel_t *>(srcp);
   float *dstp0 = reinterpret_cast<float *>(dstp);
@@ -2110,15 +2122,27 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   int src_width = src_rowsize / sizeof(pixel_t);
 
   const float max_src_pixelvalue = (float)((1<<sourcebits) - 1); // 255, 1023, 4095, 16383, 65535.0
-  const float factor = 1 / max_src_pixelvalue * float_range;
+  const float factor = 1 / max_src_pixelvalue;
+  const int half = 1 << (sourcebits - 1);
 
-  // 0..255,65535 -> 0..float_range
+  // 0..255,65535 -> 0..1.0 (or -0.5..+0.5)
 
   for(int y=0; y<src_height; y++)
   {
     for (int x = 0; x < src_width; x++)
     {
-      dstp0[x] = srcp0[x] * factor;
+      float pixel;
+      if (chroma) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+        pixel = (srcp0[x] - half) * factor; // -0.5..0.5
+#else
+        pixel = srcp0[x] * factor; // 0..1.0
+#endif
+      }
+      else {
+        pixel = srcp0[x] * factor;
+      }
+      dstp0[x] = pixel;
     }
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
@@ -2617,8 +2641,8 @@ BitDepthConvFuncPtr get_convert_to_16_16_down_dither_function(bool full_scale, i
 }
 
 
-ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange),
+ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange),
   fulls(_fulls), fulld(_fulld), dither_bitdepth(_dither_bitdepth)
 {
 
@@ -2635,6 +2659,8 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
   BitDepthConvFuncPtr conv_function_full_scale_no_dither;
   BitDepthConvFuncPtr conv_function_shifted_scale;
 
+  conv_function_ch = nullptr; // used only for 32bit float
+
   if (fulls != fulld)
     env->ThrowError("ConvertBits: fulls and fulld should be the same");
   // ConvertToFloat
@@ -2643,7 +2669,8 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
     // todo: conv_function_uv if float U/V is ever goes to +/-0.5 instead of generic 0..1.0
     if (pixelsize == 1) // 8->32 bit
     {
-      conv_function = convert_uintN_to_float_c<uint8_t, 8>;
+      conv_function = convert_uintN_to_float_c<uint8_t, 8, false>;
+      conv_function_ch = convert_uintN_to_float_c<uint8_t, 8, true>;
       conv_function_a = conv_function;
     }
     else if (pixelsize == 2) // 16->32 bit
@@ -2652,19 +2679,28 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
       {
         switch (bits_per_pixel)
         {
-        case 10: conv_function = convert_uintN_to_float_c<uint16_t, 10>;
+        case 10: 
+          conv_function = convert_uintN_to_float_c<uint16_t, 10, false>;
+          conv_function_ch = convert_uintN_to_float_c<uint16_t, 10, true>;
           break;
-        case 12: conv_function = convert_uintN_to_float_c<uint16_t, 12>;
+        case 12: 
+          conv_function = convert_uintN_to_float_c<uint16_t, 12, false>;
+          conv_function_ch = convert_uintN_to_float_c<uint16_t, 12, true>;
           break;
-        case 14: conv_function = convert_uintN_to_float_c<uint16_t, 14>;
+        case 14: 
+          conv_function = convert_uintN_to_float_c<uint16_t, 14, false>;
+          conv_function_ch = convert_uintN_to_float_c<uint16_t, 14, true>;
           break;
-        case 16: conv_function = convert_uintN_to_float_c<uint16_t, 16>;
+        case 16: 
+          conv_function = convert_uintN_to_float_c<uint16_t, 16, false>;
+          conv_function_ch = convert_uintN_to_float_c<uint16_t, 16, true>;
           break;
         default: env->ThrowError("ConvertToFloat: unsupported bit depth");
         }
       }
       else {
-        conv_function = convert_uintN_to_float_c<uint16_t, 16>;
+        conv_function = convert_uintN_to_float_c<uint16_t, 16, false>;
+        conv_function_ch = convert_uintN_to_float_c<uint16_t, 16, true>;
       }
     }
     else
@@ -2877,14 +2913,27 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
       if (truerange) {
         switch (target_bitdepth)
         {
-        case 10: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 10> : avx ? convert_32_to_uintN_c_avx<uint16_t, 10> : convert_32_to_uintN_c<uint16_t, 10>; break;
-        case 12: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 12> : avx ? convert_32_to_uintN_c_avx<uint16_t, 12> : convert_32_to_uintN_c<uint16_t, 12>; break;
-        case 14: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 14> : avx ? convert_32_to_uintN_c_avx<uint16_t, 14> : convert_32_to_uintN_c<uint16_t, 14>; break;
-        case 16: conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16> : convert_32_to_uintN_c<uint16_t, 16>; break;
+        case 10: 
+          conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 10, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 10, false> : convert_32_to_uintN_c<uint16_t, 10, false>; 
+          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 10, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 10, true> : convert_32_to_uintN_c<uint16_t, 10, true>;
+          break;
+        case 12: 
+          conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 12, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 12, false> : convert_32_to_uintN_c<uint16_t, 12, false>; 
+          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 12, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 12, true> : convert_32_to_uintN_c<uint16_t, 12, true>;
+          break;
+        case 14: 
+          conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 14, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 14, false> : convert_32_to_uintN_c<uint16_t, 14, false>; 
+          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 14, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 14, true> : convert_32_to_uintN_c<uint16_t, 14, true>;
+          break;
+        case 16: 
+          conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, false> : convert_32_to_uintN_c<uint16_t, 16, false>; 
+          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
+          break;
         }
       }
       else {
-        conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16> : convert_32_to_uintN_c<uint16_t, 16>;
+        conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, false> : convert_32_to_uintN_c<uint16_t, 16, false>;
+        conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
       }
       conv_function_a = conv_function;
     }
@@ -2968,7 +3017,8 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
     else if (vi.ComponentSize() == 4) // 32->8 bit, no dithering option atm
     {
       // full scale
-      conv_function = avx ? convert_32_to_uintN_c_avx<uint8_t, 8> : convert_32_to_uintN_c<uint8_t, 8>;
+      conv_function = avx2 ? convert_32_to_uintN_c_avx<uint8_t, 8, false> : avx ? convert_32_to_uintN_c_avx<uint8_t, 8, false> : convert_32_to_uintN_c<uint8_t, 8, false>;
+      conv_function_ch = avx2 ? convert_32_to_uintN_c_avx<uint8_t, 8, true> : avx ? convert_32_to_uintN_c_avx<uint8_t, 8, true> : convert_32_to_uintN_c<uint8_t, 8, true>;
       conv_function_a = conv_function;
     }
     else
@@ -3002,15 +3052,12 @@ ConvertBits::ConvertBits(PClip _child, const float _float_range, const int _dith
 
 AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  //0   1        2        3         4         5           6       7
-  //c[bits]i[truerange]b[dither]i[scale]f[dither_bits]i[fulls]b[fulld]b
+  //0   1        2        3         4         5           6    
+  //c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
 
   const VideoInfo &vi = clip->GetVideoInfo();
 
   int create_param = (int)reinterpret_cast<intptr_t>(user_data);
-
-  // float range parameter
-  float float_range = (float)args[4].AsFloat(1.0f);
 
   // bits parameter is compulsory
   if (!args[1].Defined() && create_param == 0) {
@@ -3024,7 +3071,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   int target_bitdepth = args[1].AsInt(create_param); // default comes by calling from old To8,To16,ToFloat functions
   int source_bitdepth = vi.BitsPerComponent();
   int pixelsize = vi.ComponentSize();
-  int dither_bitdepth = args[5].AsInt(target_bitdepth); // RFU
+  int dither_bitdepth = args[4].AsInt(target_bitdepth);
 
   if(target_bitdepth!=8 && target_bitdepth!=10 && target_bitdepth!=12 && target_bitdepth!=14 && target_bitdepth!=16 && target_bitdepth!=32)
     env->ThrowError("ConvertBits: invalid bit depth: %d", target_bitdepth);
@@ -3043,8 +3090,8 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   // override defaults, e.g. set full range for greyscale clip conversion that is RGB
   // full range is default also for float (and cannot be set to false)
-  bool fulls = args[6].AsBool(vi.IsRGB() || ((target_bitdepth == 32 || source_bitdepth == 32)));
-  bool fulld = args[7].AsBool(fulls);
+  bool fulls = args[5].AsBool(vi.IsRGB() || ((target_bitdepth == 32 || source_bitdepth == 32)));
+  bool fulld = args[6].AsBool(fulls);
 
   int dither_type = args[3].AsInt(-1);
   bool dither_defined = args[3].Defined();
@@ -3128,20 +3175,13 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     // source_16_bit.ConvertTo16bit(bits=10, truerange=true)  : downscale range
     // source_16_bit.ConvertTo16bit(bits=10, truerange=false) : leaves data, only format conversion
 
-  if (args[4].Defined() && (target_bitdepth != 32 || source_bitdepth != 32)) {
-    env->ThrowError("ConvertBits: Float range parameter is not allowed here");
-  }
-
-  if(float_range<=0.0)
-      env->ThrowError("ConvertBits: Float range parameter cannot be <= 0");
-
   if (fulls != fulld)
     env->ThrowError("ConvertBits: fulls and fulld has to be the same at the moment");
 
   if ((!fulls || !fulld) && (target_bitdepth == 32 || source_bitdepth == 32))
     env->ThrowError("ConvertBits: fulls and fulld is always true for float");
 
-  return new ConvertBits(clip, float_range, dither_type, target_bitdepth, assume_truerange, fulls, fulld, dither_bitdepth, env);
+  return new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, fulls, fulld, dither_bitdepth, env);
 }
 
 
@@ -3169,21 +3209,31 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
         else
           conv_function_a(src->GetReadPtr(plane), dst->GetWritePtr(plane),
             src->GetRowSize(plane), src->GetHeight(plane),
-            src->GetPitch(plane), dst->GetPitch(plane), float_range /*, dither_mode */);
+            src->GetPitch(plane), dst->GetPitch(plane));
       }
       else if (conv_function == nullptr)
         env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
-      else
-        conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
-          src->GetRowSize(plane), src->GetHeight(plane),
-          src->GetPitch(plane), dst->GetPitch(plane), float_range /*, dither_mode */);
+      else {
+        const bool chroma = (plane == PLANAR_U || plane == PLANAR_V);
+        if (chroma && conv_function != nullptr)
+          // 32bit float needs separate conversion (possible chroma -0.5 .. 0.5 option)
+          // until then the conv_function_ch behaves the same as conv_function
+          // see #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+          conv_function_ch(src->GetReadPtr(plane), dst->GetWritePtr(plane),
+            src->GetRowSize(plane), src->GetHeight(plane),
+            src->GetPitch(plane), dst->GetPitch(plane));
+        else
+          conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
+            src->GetRowSize(plane), src->GetHeight(plane),
+            src->GetPitch(plane), dst->GetPitch(plane));
+      }
     }
   }
   else {
     // packed RGBs
     conv_function(src->GetReadPtr(), dst->GetWritePtr(),
       src->GetRowSize(), src->GetHeight(),
-      src->GetPitch(), dst->GetPitch(), float_range /*, dither_mode */);
+      src->GetPitch(), dst->GetPitch());
   }
   return dst;
 }

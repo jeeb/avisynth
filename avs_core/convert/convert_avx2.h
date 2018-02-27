@@ -37,10 +37,10 @@
 
 #include "../core/internal.h"
 
-template<typename pixel_t, uint8_t targetbits>
-void convert_32_to_uintN_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range);
+template<typename pixel_t, uint8_t targetbits, bool chroma>
+void convert_32_to_uintN_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
 template<bool expandrange, uint8_t shiftbits>
-void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range);
+void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
 #endif  // __Convert_AVX2_H__

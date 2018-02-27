@@ -197,12 +197,12 @@ private:
 
 //--------------- planar bit depth conversions
 // todo: separate file?
-typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range);
+typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 
 class ConvertBits : public GenericVideoFilter
 {
 public:
-  ConvertBits(PClip _child, const float _float_range, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env);
+  ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -212,6 +212,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 private:
   BitDepthConvFuncPtr conv_function;
+  BitDepthConvFuncPtr conv_function_ch; // 32bit float YUV chroma
   BitDepthConvFuncPtr conv_function_a;
   float float_range;
   int dither_mode;
