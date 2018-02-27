@@ -3215,7 +3215,7 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
         env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
       else {
         const bool chroma = (plane == PLANAR_U || plane == PLANAR_V);
-        if (chroma && conv_function != nullptr)
+        if (chroma && conv_function_ch != nullptr)
           // 32bit float needs separate conversion (possible chroma -0.5 .. 0.5 option)
           // until then the conv_function_ch behaves the same as conv_function
           // see #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
