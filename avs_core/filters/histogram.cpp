@@ -836,31 +836,33 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
   const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
   const int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
+  
+  if (keepsource) {
+    if (src->GetHeight() < dst->GetHeight()) {
+      // fill empty area in the right bottom part
+      const int fillSize = (dst->GetHeight() - src->GetHeight()) * dst->GetPitch();
+      const int fillStart = src->GetHeight() * dst->GetPitch();
 
-  if (src->GetHeight() < dst->GetHeight()) {
+      switch (pixelsize) {
+      case 1: memset(dstp + fillStart, plane_default_black[0], fillSize); break;
+      case 2: std::fill_n((uint16_t *)(dstp + fillStart), fillSize / sizeof(uint16_t), plane_default_black[0]); break;
+      case 4: std::fill_n((float *)(dstp + fillStart), fillSize / sizeof(float), (float)plane_default_black[0] / 255.0f); break;
+      }
 
-    const int fillSize = (dst->GetHeight()-src->GetHeight()) * dst->GetPitch();
-    const int fillStart = src->GetHeight() * dst->GetPitch();
+      // first plane is already processed
+      // dont't touch Alpha
+      for (int p = 1; p < 3; p++) {
+        const int plane = planes[p];
+        BYTE *ptr = dst->GetWritePtr(plane);
 
-    switch(pixelsize) {
-    case 1: memset(dstp + fillStart, plane_default_black[0], fillSize); break;
-    case 2: std::fill_n((uint16_t *)(dstp + fillStart), fillSize / sizeof(uint16_t), plane_default_black[0]); break;
-    case 4: std::fill_n((float *)(dstp + fillStart), fillSize / sizeof(float), (float)plane_default_black[0] / 255.0f); break;
-    }
-
-    // first plane is already processed
-    // dont't touch Alpha
-    for (int p = 1; p < 3; p++) {
-      const int plane = planes[p];
-      BYTE *ptr = dst->GetWritePtr(plane);
-
-      const int fillSize = (dst->GetHeight(plane)-src->GetHeight(plane)) * dst->GetPitch(plane);
-      const int fillStart = src->GetHeight(plane) * dst->GetPitch(plane);
-      int chroma_fill = plane_default_black[p];
-      switch(pixelsize) {
-      case 1: memset(ptr+fillStart, RGB ? 0 : chroma_fill, fillSize); break;
-      case 2: std::fill_n((uint16_t *)(ptr + fillStart), fillSize / sizeof(uint16_t), chroma_fill); break;
-      case 4: std::fill_n((float *)(ptr + fillStart), fillSize / sizeof(float), RGB ? 0.0f : 0.5f); break;
+        const int fillSize = (dst->GetHeight(plane) - src->GetHeight(plane)) * dst->GetPitch(plane);
+        const int fillStart = src->GetHeight(plane) * dst->GetPitch(plane);
+        int chroma_fill = plane_default_black[p];
+        switch (pixelsize) {
+        case 1: memset(ptr + fillStart, RGB ? 0 : chroma_fill, fillSize); break;
+        case 2: std::fill_n((uint16_t *)(ptr + fillStart), fillSize / sizeof(uint16_t), chroma_fill); break;
+        case 4: std::fill_n((float *)(ptr + fillStart), fillSize / sizeof(float), RGB ? 0.0f : 0.5f); break;
+        }
       }
     }
   }
@@ -874,14 +876,21 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     env->ThrowError("Histogram: Could not reserve memory.");
   std::fill_n(histPlane1, show_size*3, 0);
 
+  const int source_width = origwidth;
+  const int xstart = keepsource ? origwidth : 0; // drawing starts at this column
+
   // copy planes
   // luma or G
-  env->BitBlt(dstp, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  if (keepsource) {
+    env->BitBlt(dstp, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  }
   if (vi.IsPlanar()) {
     // copy rest planes
-    for (int p = 1; p < vi.NumComponents(); p++) {
-      const int plane = planes[p];
-      env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
+    if (keepsource) {
+      for (int p = 1; p < vi.NumComponents(); p++) {
+        const int plane = planes[p];
+        env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
+      }
     }
 
     // accumulate population
@@ -945,7 +954,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       }
     } // accumulate end
 
-    int width = src->GetRowSize() / pixelsize;
+    int width = source_width;
     int pos_shift = (show_bits - 8);
     int show_middle_pos = (128 << pos_shift);
     // draw planes
@@ -959,7 +968,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       // Draw Unsafe zone (UV-graph)
 
       unsigned char* pdstb = dst->GetWritePtr(plane);
-      pdstb += (width*pixelsize) >> swidth; // next to the source image
+      pdstb += (xstart*pixelsize) >> swidth; // next to the source image if kept
 
       const int dstPitch = dst->GetPitch(plane);
 
@@ -975,13 +984,13 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         ptr += dstPitch;
       }
 
-      if (!RGB) {
-      // Draw Unsafe zone (Y-graph)
+      if (!RGB && markers) {
+        // Draw Unsafe zone (Y-graph)
         int color_unsafeZones[3] = { 32, 16, 160 };
 
         int color_usz = color_unsafeZones[p];
         int color_i = color_usz << color_shift;
-        float color_f = color / 255.0f;
+        float color_f = color_usz / 255.0f;
         ptr = pdstb + 0 * dstPitch;;
         for (int y = 0; y <= 64 >> sheight; y++) {
           int x = 0;
@@ -993,7 +1002,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
             else
               reinterpret_cast<float *>(ptr)[x] = color_f;
           }
-          for (x = (236 << pos_shift) >> swidth; x < (show_size >> swidth); x++) {
+          for (x = (236 << pos_shift) >> swidth; x < (show_size >> swidth); x++) { // or (235 << pos_shift) + 1?
             if (pixelsize == 1)
               ptr[x] = color_i;
             else if (pixelsize == 2)
@@ -1005,98 +1014,194 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         }
       }
 
-      if (RGB) {
-        int StartY;
-        switch (plane) {
-        case PLANAR_R: StartY = 0 + 0; break;
-        case PLANAR_G: StartY = 64 + 16; break;
-        case PLANAR_B: StartY = 128 + 32; break;
-        }
-        ptr = pdstb + ((StartY) >> sheight) * dstPitch;
-        for (int y = (StartY) >> sheight; y <= (StartY + 64) >> sheight; y++) {
-          for (int x = 0; x < (show_size >> swidth); x++) {
-            int color = x >> pos_shift;
-            int color_i = color << color_shift;
-            float color_f = color / 255.0f;
-            if (pixelsize == 1)      ptr[x] = color_i;
-            else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
-            else reinterpret_cast<float *>(ptr)[x] = color_f;
+      if (markers) {
+        if (RGB) {
+          // nice gradients
+          int StartY;
+          switch (plane) {
+          case PLANAR_R: StartY = 0 + 0; break;
+          case PLANAR_G: StartY = 64 + 16; break;
+          case PLANAR_B: StartY = 128 + 32; break;
           }
-          ptr += dstPitch;
-        }
-      }
-      else {
-        for (int gradient_upper_lower = 0; gradient_upper_lower < 2; gradient_upper_lower++)
-        {
-          // Draw upper and lower gradient
-        // upper: x=0-16, R=G=255, B=0; x=128, R=G=B=0; x=240-255, R=G=0, B=255
-        // lower: x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
-          int color1_upper_lower_gradient[2][3] = { { 210 / 2, 16 + 112 / 2, 128 },{ 170 / 2, 128, 16 + 112 / 2 } };
-          int color = color1_upper_lower_gradient[gradient_upper_lower][p];
-          int color_i = color << color_shift;
-          float color_f = color / 255.0f;
-
-          int color2_upper_lower_gradient[2][3] = { { 41 / 2, 240 - 112 / 2, 128 },{ 81 / 2, 128, 240 - 112 / 2 } };
-          int color2 = color2_upper_lower_gradient[gradient_upper_lower][p];
-          int color2_i = color2 << color_shift;
-          float color2_f = color2 / 255.0f;
-
-          // upper only for planar U and Y
-          if (plane == PLANAR_V && gradient_upper_lower == 0)
-            continue;
-          // lower only for planar V and Y
-          if (plane == PLANAR_U && gradient_upper_lower == 1)
-            continue;
-          int StartY = gradient_upper_lower == 0 ? 64 + 16 : 128 + 32;
           ptr = pdstb + ((StartY) >> sheight) * dstPitch;
           for (int y = (StartY) >> sheight; y <= (StartY + 64) >> sheight; y++) {
-            int x = 0;
-
-            for (; x < ((16 << pos_shift) >> swidth) - 1; x++) { // 0..15, 0..63
-              if (pixelsize == 1)      ptr[x] = color_i;
-              else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
-              else                  reinterpret_cast<float *>(ptr)[x] = color_f;
-            }
-
-            if (plane == PLANAR_Y) {
-              for (; x <= show_middle_pos; x++) {
-                int color3 =
-                  (gradient_upper_lower == 0) ?
-                  (((show_middle_pos - x) * 15) >> 3) >> pos_shift : // *1.875
-                  ((show_middle_pos - x) * 99515) >> 16 >> pos_shift; // *1.518
-                int color3_i = color3 << color_shift;
-                float color3_f = color3 / 255.0f;
-                if (pixelsize == 1)      ptr[x] = color3_i;
-                else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color3_i;
-                else                     reinterpret_cast<float *>(ptr)[x] = color3_f;
+            if (pixelsize == 1) {
+              for (int x = 0; x < (show_size >> swidth); x++) {
+                int color = x >> pos_shift;
+                int color_i = color << color_shift;
+                ptr[x] = color_i;
               }
             }
-
-            for (; x <= (240 << pos_shift) >> swidth; x++) {
-              int color4 = (plane == PLANAR_Y) ?
-                (
-                (gradient_upper_lower == 0) ?
-                  ((x - show_middle_pos) * 24001) >> 16 >> pos_shift :  // *0.366
-                  ((x - show_middle_pos) * 47397) >> 16 >> pos_shift // *0.723
-                  )
-                :
-                (x << swidth) >> pos_shift;
-              int color4_i = color4 << color_shift;
-              float color4_f = color4 / 255.0f;
-              if (pixelsize == 1)      ptr[x] = color4_i;
-              else if (pixelsize == 2) reinterpret_cast<uint16_t *>(ptr)[x] = color4_i;
-              else                  reinterpret_cast<float *>(ptr)[x] = color4_f;
+            else if (pixelsize == 2) {
+              for (int x = 0; x < (show_size >> swidth); x++) {
+                int color = x >> pos_shift;
+                int color_i = color << color_shift;
+                reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
+              }
             }
-
-            for (; x < (show_size >> swidth); x++) {
-              if (pixelsize == 1)       ptr[x] = color2_i;
-              else if (pixelsize == 2)  reinterpret_cast<uint16_t *>(ptr)[x] = color2_i;
-              else                   reinterpret_cast<float *>(ptr)[x] = color2_f;
+            else { // pixelsize == 4 float
+              for (int x = 0; x < (show_size >> swidth); x++) {
+                int color = x >> pos_shift;
+                float color_f = color / 255.0f;
+                reinterpret_cast<float *>(ptr)[x] = color_f;
+              }
             }
             ptr += dstPitch;
-          } // for y gradient draw
-        } // gradient for upper lower
-      } // gradients for RGB/UV
+          }
+        }
+        else {
+          // UV gradients plus danger zones
+          for (int gradient_upper_lower = 0; gradient_upper_lower < 2; gradient_upper_lower++)
+          {
+            // Draw upper and lower gradient
+          // upper: x=0-16, R=G=255, B=0; x=128, R=G=B=0; x=240-255, R=G=0, B=255
+          // lower: x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
+            int color1_upper_lower_gradient[2][3] = { { 210 / 2, 16 + 112 / 2, 128 },{ 170 / 2, 128, 16 + 112 / 2 } };
+            int color = color1_upper_lower_gradient[gradient_upper_lower][p];
+            int color_i = color << color_shift;
+            float color_f = color / 255.0f;
+
+            int color2_upper_lower_gradient[2][3] = { { 41 / 2, 240 - 112 / 2, 128 },{ 81 / 2, 128, 240 - 112 / 2 } };
+            int color2 = color2_upper_lower_gradient[gradient_upper_lower][p];
+            int color2_i = color2 << color_shift;
+            float color2_f = color2 / 255.0f;
+
+            // upper only for planar U and Y
+            if (plane == PLANAR_V && gradient_upper_lower == 0)
+              continue;
+            // lower only for planar V and Y
+            if (plane == PLANAR_U && gradient_upper_lower == 1)
+              continue;
+            int StartY = gradient_upper_lower == 0 ? 64 + 16 : 128 + 32;
+            ptr = pdstb + ((StartY) >> sheight) * dstPitch;
+            for (int y = (StartY) >> sheight; y <= (StartY + 64) >> sheight; y++) {
+              int x = 0;
+              // 0..15, (scaled) left danger area
+              const int left_limit = ((16 << pos_shift) >> swidth) - 1;
+              if (pixelsize == 1) {
+                for (; x < left_limit; x++)
+                  ptr[x] = color_i;
+              }
+              else if (pixelsize == 2) {
+                for (; x < left_limit; x++)
+                  reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
+              }
+              else { // float
+                for (; x < left_limit; x++)
+                  reinterpret_cast<float *>(ptr)[x] = color_f;
+              }
+
+              if (plane == PLANAR_Y) {
+                // from 16 to middle point
+                if (pixelsize == 1) {
+                  for (; x <= show_middle_pos; x++) {
+                    int color3 =
+                      (gradient_upper_lower == 0) ?
+                      (((show_middle_pos - x) * 15) >> 3) >> pos_shift : // *1.875
+                      ((show_middle_pos - x) * 99515) >> 16 >> pos_shift; // *1.518
+                    int color3_i = color3 << color_shift;
+                    ptr[x] = color3_i;
+                  }
+                }
+                else if (pixelsize == 2) {
+                  for (; x <= show_middle_pos; x++) {
+                    int color3 =
+                      (gradient_upper_lower == 0) ?
+                      (((show_middle_pos - x) * 15) >> 3) >> pos_shift : // *1.875
+                      ((show_middle_pos - x) * 99515) >> 16 >> pos_shift; // *1.518
+                    int color3_i = color3 << color_shift;
+                    reinterpret_cast<uint16_t *>(ptr)[x] = color3_i;
+                  }
+                }
+                else { // float
+                  for (; x <= show_middle_pos; x++) {
+                    int color3 =
+                      (gradient_upper_lower == 0) ?
+                      (((show_middle_pos - x) * 15) >> 3) >> pos_shift : // *1.875
+                      ((show_middle_pos - x) * 99515) >> 16 >> pos_shift; // *1.518
+                    float color3_f = color3 / 255.0f;
+                    reinterpret_cast<float *>(ptr)[x] = color3_f;
+                  }
+                }
+              }
+
+              // Y: from middle point to white point
+              // other plane: gradient
+              if (plane == PLANAR_Y) {
+                if (pixelsize == 1) {
+                  for (; x <= (240 << pos_shift) >> swidth; x++) {
+                    int color4 =
+                      (gradient_upper_lower == 0) ?
+                      ((x - show_middle_pos) * 24001) >> 16 >> pos_shift :  // *0.366
+                      ((x - show_middle_pos) * 47397) >> 16 >> pos_shift; // *0.723
+                    int color4_i = color4 << color_shift;
+                    ptr[x] = color4_i;
+                  }
+                }
+                else if (pixelsize == 2) {
+                  for (; x <= (240 << pos_shift) >> swidth; x++) {
+                    int color4 =
+                      (gradient_upper_lower == 0) ?
+                      ((x - show_middle_pos) * 24001) >> 16 >> pos_shift :  // *0.366
+                      ((x - show_middle_pos) * 47397) >> 16 >> pos_shift; // *0.723
+                    int color4_i = color4 << color_shift;
+                    reinterpret_cast<uint16_t *>(ptr)[x] = color4_i;
+                  }
+                }
+                else { // float
+                  for (; x <= (240 << pos_shift) >> swidth; x++) {
+                    int color4 =
+                      (gradient_upper_lower == 0) ?
+                      ((x - show_middle_pos) * 24001) >> 16 >> pos_shift :  // *0.366
+                      ((x - show_middle_pos) * 47397) >> 16 >> pos_shift; // *0.723
+                    float color4_f = color4 / 255.0f;
+                    reinterpret_cast<float *>(ptr)[x] = color4_f;
+                  }
+                }
+              }
+              else {
+                // plane == U or V
+                if (pixelsize == 1) {
+                  for (; x <= (240 << pos_shift) >> swidth; x++) {
+                    int color4 = (x << swidth) >> pos_shift;
+                    int color4_i = color4 << color_shift;
+                    ptr[x] = color4_i;
+                  }
+                }
+                else if (pixelsize == 2) {
+                  for (; x <= (240 << pos_shift) >> swidth; x++) {
+                    int color4 = (x << swidth) >> pos_shift;
+                    int color4_i = color4 << color_shift;
+                    reinterpret_cast<uint16_t *>(ptr)[x] = color4_i;
+                  }
+                }
+                else { // float
+                  for (; x <= (240 << pos_shift) >> swidth; x++) {
+                    int color4 = (x << swidth) >> pos_shift;
+                    float color4_f = color4 / 255.0f;
+                    reinterpret_cast<float *>(ptr)[x] = color4_f;
+                  }
+                }
+              }
+
+              if (pixelsize == 1) {
+                for (; x < (show_size >> swidth); x++)
+                  ptr[x] = color2_i;
+              }
+              else if (pixelsize == 2) {
+                for (; x < (show_size >> swidth); x++)
+                  reinterpret_cast<uint16_t *>(ptr)[x] = color2_i;
+              }
+              else { // float
+                for (; x < (show_size >> swidth); x++)
+                  reinterpret_cast<float *>(ptr)[x] = color2_f;
+              }
+
+              ptr += dstPitch;
+            } // for y gradient draw
+          } // gradient for upper lower
+        } // gradients for RGB/UV
+      } // if markers
     } // planes for
 
     // Draw dotted centerline
@@ -1111,17 +1216,20 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       const int dstPitch = dst->GetPitch(plane);
 
       unsigned char* pdstb = dst->GetWritePtr(plane);
-      pdstb += (width*pixelsize); // next to the original clip, Y plane: no ">> swidth" needed
+      pdstb += (xstart*pixelsize); // next to the original clip (if kept), working only on Y plane: no ">> swidth" needed
       BYTE *ptr = pdstb;
 
-      for (int y = 0; y <= 256 - 32; y++) {
-        if ((y & 3) > 1) {
-          if (pixelsize == 1)       ptr[show_middle_pos] = color_i;
-          else if (pixelsize == 2)  reinterpret_cast<uint16_t *>(ptr)[show_middle_pos] = color_i;
-          else                   reinterpret_cast<float *>(ptr)[show_middle_pos] = color_f;
+      if (markers) {
+        // omit centerline if markers == false
+        for (int y = 0; y <= 256 - 32; y++) {
+          if ((y & 3) > 1) {
+            if (pixelsize == 1)       ptr[show_middle_pos] = color_i;
+            else if (pixelsize == 2)  reinterpret_cast<uint16_t *>(ptr)[show_middle_pos] = color_i;
+            else                   reinterpret_cast<float *>(ptr)[show_middle_pos] = color_f;
 
+          }
+          ptr += dstPitch;
         }
-        ptr += dstPitch;
       }
 
 
