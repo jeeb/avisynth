@@ -53,7 +53,7 @@
 ********************************************************************/
 
 extern const AVSFunction Histogram_filters[] = {
-  { "Histogram", BUILTIN_FUNC_PREFIX, "c[mode]s[].[bits]i", Histogram::Create },   // src clip, avs+ new bits parameter
+  { "Histogram", BUILTIN_FUNC_PREFIX, "c[mode]s[].[bits]i[keepsource]b[markers]b", Histogram::Create },   // src clip, avs+ new bits, keepsource and markers param
   { 0 }
 };
 
@@ -64,8 +64,8 @@ extern const AVSFunction Histogram_filters[] = {
  *******   Histogram Filter   ******
  **********************************/
 
-Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), mode(_mode), option(_option), show_bits(_show_bits)
+Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits, bool _keepsource, bool _markers, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), mode(_mode), option(_option), show_bits(_show_bits), keepsource(_keepsource), markers(_markers)
 {
   bool optionValid = false;
 
@@ -83,10 +83,16 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
     env->ThrowError("Histogram: histogram type is available only for 8 bit formats and parameters");
   }
 
+  origwidth = vi.width;
+  origheight = vi.height;
+
   if (mode == ModeClassic) {
     if (!vi.IsYUV() && !vi.IsYUVA())
       env->ThrowError("Histogram: YUV(A) data only");
-    vi.width += (1 << show_bits);
+    if(keepsource)
+      vi.width += (1 << show_bits);
+    else
+      vi.width = (1 << show_bits);
   }
 
   if (mode == ModeLevels) {
@@ -102,8 +108,14 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
       env->ThrowError("Histogram: Levels population clamping must be between 0 and 100%");
     }
     // put diagram on the right side
-    vi.width += (1 << show_bits); // 256 for 8 bit
-    vi.height = max(256, vi.height);
+    if (keepsource) {
+      vi.width += (1 << show_bits); // 256 for 8 bit
+      vi.height = max(256, vi.height);
+    }
+    else { // or keep it alone
+      vi.width = (1 << show_bits);
+      vi.height = 256;
+    }
   }
 
   if (mode == ModeColor) {
@@ -114,8 +126,14 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
       env->ThrowError("Histogram: Color mode not available in greyscale.");
     }
     // put diagram on the right side
-    vi.width += (1 << show_bits); // 256 for 8 bit
-    vi.height = max(1 << show_bits,vi.height);
+    if (keepsource) {
+      vi.width += (1 << show_bits); // 256 for 8 bit
+      vi.height = max(1 << show_bits, vi.height);
+    }
+    else {
+      vi.width = (1 << show_bits); // 256 for 8 bit
+      vi.height = 1 << show_bits;
+    }
   }
 
   if (mode == ModeColor2) {
@@ -127,8 +145,14 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
     }
 
     // put circle on the right side
-    vi.width += (1 << show_bits); // 256 for 8 bit
-    vi.height = max((1 << show_bits),vi.height); // yes, height can change
+    if (keepsource) {
+      vi.width += (1 << show_bits); // 256 for 8 bit
+      vi.height = max((1 << show_bits), vi.height); // yes, height can change
+    }
+    else {
+      vi.width = (1 << show_bits); // 256 for 8 bit
+      vi.height = (1 << show_bits); // yes, height can change
+    }
     int half = 1 << (show_bits - 1); // 127
     int R = half - 1; // 126
     for (int y=0; y<24; y++) { // just inside the big circle
@@ -152,8 +176,14 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
       vi.num_frames = vi.FramesFromAudioSamples(vi.num_audio_samples);
     }
     if (mode == ModeOverlay)  {
-      vi.height = max(512, vi.height);
-      vi.width = max(512, vi.width);
+      if (keepsource) {
+        vi.height = max(512, vi.height);
+        vi.width = max(512, vi.width);
+      }
+      else {
+        vi.height = 512;
+        vi.width = 512;
+      }
       if (!vi.IsPlanar()) {
         env->ThrowError("Histogram: StereoOverlay requires a Planar video format (YV12, YV24, etc).");
       }
@@ -874,7 +904,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         for (int y = 0; y < h; y++) {
           for (int x = 0; x < w; x++) {
             hist[(int)srcp8[x] << invshift]++;
-            //hist[srcp[y*pitch + x]]++;
+            //hist[srcp[y*dstpitch + x]]++;
           }
           srcp8 += pitch;
         }
@@ -1154,45 +1184,44 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
 PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 {
-  static uint16_t exptab[1<<12]; // max bits=12
+  static uint16_t exptab[1 << 12]; // max bits=12
   static bool init = false;
   static int E167;
-
 
   int show_size = 1 << show_bits;
 
   int lookup_size = 1 << show_bits; // 256, 1024, 4096, 16384, 65536
 
   int hist_max_pixel_value = (1 << show_bits) - 1;
-  int hist_tv_range_low   = 16 << (show_bits - 8); // 16
-  int hist_tv_range_hi_luma   = ((235+1) << (show_bits - 8)) - 1; // 16-235
+  int hist_tv_range_low = 16 << (show_bits - 8); // 16
+  int hist_tv_range_hi_luma = 235 << (show_bits - 8); // 16-235
   int hist_range_luma = hist_tv_range_hi_luma - hist_tv_range_low; // 219
-  int hist_mid_range_luma = (hist_range_luma + 1) / 2; // 124
-  int hist_tv_range_hi_chroma = ((240+1) << (show_bits - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+  int hist_mid_range_luma = (hist_range_luma + 1) / 2 + hist_tv_range_low - 1; // in Classic Avisynth somehow 124 was fixed for this
+  // 235-16 = 219 / 2 => 110; 110 + 16 - 1 = 125.0
+  int hist_tv_range_hi_chroma = 240 << (show_bits - 8); // 16-240,64–960, 256–3852,... 4096-61692
   int hist_range_chroma = hist_tv_range_hi_chroma - hist_tv_range_low; // 224
 
   int internal_bits_per_pixel = (pixelsize == 4) ? 16 : bits_per_pixel; // hack for float
 
   int max_pixel_value = (1 << internal_bits_per_pixel) - 1;
-  int tv_range_low   = 16 << (internal_bits_per_pixel - 8); // 16
-  int tv_range_hi_luma   = ((235+1) << (internal_bits_per_pixel - 8)) - 1; // 16-235
+  int tv_range_low = 16 << (internal_bits_per_pixel - 8); // 16
+  int tv_range_hi_luma = 235 << (internal_bits_per_pixel - 8); // 16-235
   int range_luma = tv_range_hi_luma - tv_range_low; // 219
-  int mid_range_luma = (internal_bits_per_pixel + 1) / 2; // 124
-  int tv_range_hi_chroma = ((240+1) << (internal_bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+  int tv_range_hi_chroma = 240 << (internal_bits_per_pixel - 8); // 16-240,64–960, 256–3852,... 4096-61692
   int range_chroma = tv_range_hi_chroma - tv_range_low; // 224
   int middle_chroma = 1 << (internal_bits_per_pixel - 1); // 128
 
   if (!init) {
     init = true;
 
-    const double K = log(0.5/hist_range_luma)/hist_max_pixel_value; // approx -1/42
+    const double K = log(0.5 / hist_range_luma) / hist_max_pixel_value; // approx -1/42
     const int limit68 = 68 << (internal_bits_per_pixel - 8);
     // exptab: pixel values for final drawing
     exptab[0] = tv_range_low;
-    for (int i = 1; i<show_size; i++) {
-      exptab[i] = uint16_t(tv_range_low + 0.5 + range_luma * (1-exp(i*K))); // 16.5 + 219*
+    for (int i = 1; i < show_size; i++) {
+      exptab[i] = uint16_t(tv_range_low + 0.5 + range_luma * (1 - exp(i*K))); // 16.5 + 219*
       if (exptab[i] <= tv_range_hi_luma - limit68)
-        E167 = i; // index of last value less than...
+        E167 = i; // index of last value less than...  for drawing lower extremes
       /*
       if (internal_bits_per_pixel < show_bits)
         exptab[i] >>= (show_bits - internal_bits_per_pixel); // scale intensity down
@@ -1203,41 +1232,54 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
     exptab[hist_max_pixel_value] = tv_range_hi_luma;
   }
 
-  const int w = vi.width-show_size; // -256
+  const int source_width = origwidth;
+  const int xstart = keepsource ? origwidth : 0; // drawing starts at this column
 
   PVideoFrame src = child->GetFrame(n, env);
+  const BYTE* srcp = src->GetReadPtr();
+  const int srcpitch = src->GetPitch();
+
+  const bool isRGB = vi.IsRGB();
+
   PVideoFrame dst = env->NewVideoFrame(vi);
-  BYTE* p = dst->GetWritePtr();
-  env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  BYTE* pdst = dst->GetWritePtr();
+  const int dstpitch = dst->GetPitch();
+
+  if (keepsource) {
+    env->BitBlt(pdst, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  }
   if (vi.IsPlanar()) {
-    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+    if (keepsource) {
+      env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+      env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+    }
 
     // luma
-    for (int y = 0; y<src->GetHeight(PLANAR_Y); ++y) {
+    const int height = src->GetHeight(PLANAR_Y);
+    for (int y = 0; y<height; ++y) {
       int hist[1<<12] = { 0 }; // allocate max 12 bit res. todo
 
       // accumulate line population
       if(pixelsize==1) {
         // 8 bit clip into 8,9,... bit histogram
         int invshift = show_bits - 8;
-        for (int x = 0; x<w; ++x) {
-          hist[(int)p[x] << invshift]++;
+        for (int x = 0; x<source_width; ++x) {
+          hist[(int)srcp[x] << invshift]++;
         }
       }
       else if (pixelsize == 2) {
-        const uint16_t *srcp16 = reinterpret_cast<uint16_t *>(p);
+        const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
         int shift = bits_per_pixel - show_bits;
         int max_pixel_value = show_size - 1;
         if (shift < 0) {
           // 10 bit clip into 11 bit histogram
           int invshift = -shift;
-          for (int x = 0; x < w; x++) {
+          for (int x = 0; x < source_width; x++) {
             hist[srcp16[x] << invshift]++;
           }
         } else {
           // e.g.10 bit clip into 8-9-10 bit histogram
-          for (int x = 0; x < w; x++) {
+          for (int x = 0; x < source_width; x++) {
             hist[min(srcp16[x] >> shift, max_pixel_value)]++;
           }
         }
@@ -1245,66 +1287,108 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       else // pixelsize == 4
       {
         // float
-        const float *srcp32 = reinterpret_cast<const float *>(p);
+        const float *srcp32 = reinterpret_cast<const float *>(srcp);
         const float multiplier = (float)(show_size - 1);
-        for (int x = 0; x < w; x++) {
+        for (int x = 0; x < source_width; x++) {
           hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier)]++;
         }
       }
       // accumulate end
-      BYTE* const q = p + w * pixelsize; // write to frame
-      if(pixelsize==1) {
-        for (int x = 0; x<show_size; ++x) {
-          if (x<hist_tv_range_low || x==hist_mid_range_luma || x>hist_tv_range_hi_luma) {
-            q[x] = (BYTE)exptab[min(E167, hist[x])] + 68;
-          } else {
-            q[x] = (BYTE)exptab[min(255, hist[x])];
+      BYTE* const q = pdst + xstart * pixelsize; // write to frame
+      if (markers) {
+        if (pixelsize == 1) {
+          for (int x = 0; x < show_size; ++x) {
+            if (x<hist_tv_range_low || x == hist_mid_range_luma || x>hist_tv_range_hi_luma) {
+              q[x] = (BYTE)exptab[min(E167, hist[x])] + 68; // brighter danger zone
+            }
+            else {
+              q[x] = (BYTE)exptab[min(255, hist[x])];
+            }
           }
         }
-      } else if (pixelsize == 2) {
-        uint16_t *dstp16 = reinterpret_cast<uint16_t *>(q);
-        for (int x = 0; x<show_size; ++x) {
-          if (x<hist_tv_range_low || x==hist_mid_range_luma || x>hist_tv_range_hi_luma) {
-            dstp16[x] = exptab[min(E167, hist[x])] + (68 << (bits_per_pixel - 8));
-          } else {
-            dstp16[x] = exptab[min(hist_max_pixel_value, hist[x])];
+        else if (pixelsize == 2) {
+          uint16_t *dstp16 = reinterpret_cast<uint16_t *>(q);
+          for (int x = 0; x < show_size; ++x) {
+            if (x<hist_tv_range_low || x == hist_mid_range_luma || x>hist_tv_range_hi_luma) {
+              dstp16[x] = exptab[min(E167, hist[x])] + (68 << (bits_per_pixel - 8));
+            }
+            else {
+              dstp16[x] = exptab[min(hist_max_pixel_value, hist[x])];
+            }
           }
         }
-      } else { // pixelsize == 4
-        float *dstp32 = reinterpret_cast<float *>(q);
-        for (int x = 0; x<show_size; ++x) {
-          if (x<hist_tv_range_low || x==hist_mid_range_luma || x>hist_tv_range_hi_luma) {
-            dstp32[x] = (exptab[min(E167, hist[x])] + (68 << (internal_bits_per_pixel - 8))) / 65536.0f;
-          } else {
-            dstp32[x] = exptab[min(hist_max_pixel_value, hist[x])] / 65536.0f;
+        else { // pixelsize == 4
+          float *dstp32 = reinterpret_cast<float *>(q);
+          for (int x = 0; x < show_size; ++x) {
+            if (x<hist_tv_range_low || x == hist_mid_range_luma || x>hist_tv_range_hi_luma) {
+              dstp32[x] = (exptab[min(E167, hist[x])] + (68 << (internal_bits_per_pixel - 8))) / 65536.0f;
+            }
+            else {
+              dstp32[x] = exptab[min(hist_max_pixel_value, hist[x])] / 65536.0f;
+            }
           }
         }
       }
-      p += dst->GetPitch();
-    }
+      else {
+        if (pixelsize == 1) {
+          for (int x = 0; x < show_size; ++x)
+            q[x] = (BYTE)exptab[min(255, hist[x])];
+        }
+        else if (pixelsize == 2) {
+          uint16_t *dstp16 = reinterpret_cast<uint16_t *>(q);
+          for (int x = 0; x < show_size; ++x)
+            dstp16[x] = exptab[min(hist_max_pixel_value, hist[x])];
+        }
+        else { // pixelsize == 4
+          float *dstp32 = reinterpret_cast<float *>(q);
+          for (int x = 0; x < show_size; ++x)
+            dstp32[x] = exptab[min(hist_max_pixel_value, hist[x])] / 65536.0f;
+        }
+      }
+      srcp += srcpitch;
+      pdst += dstpitch;
+    } // end of pixel accumulation + luma
 
     // chroma
-    if (dst->GetPitch(PLANAR_U)) {
+    const int pitchUV = dst->GetPitch(PLANAR_U);
+
+    if (pitchUV != 0) {
       const int subs = vi.GetPlaneWidthSubsampling(PLANAR_U);
       const int fact = 1<<subs;
 
-      BYTE* p2 = dst->GetWritePtr(PLANAR_U) + ((w*pixelsize) >> subs);
-      BYTE* p3 = dst->GetWritePtr(PLANAR_V) + ((w*pixelsize) >> subs);
+      BYTE* p2 = dst->GetWritePtr(PLANAR_U) + ((xstart*pixelsize) >> subs); // put it on the right
+      BYTE* p3 = dst->GetWritePtr(PLANAR_V) + ((xstart*pixelsize) >> subs); // put it on the right
 
-      const uint16_t chroma160 = 160 << (internal_bits_per_pixel - 8);
-      const float tv_range_low_f = 16 / 256.0f;
-      const float chroma160_f = 160 / 256.0f;
+      // if markers==false parameter, keep neutral coloring
+      const uint16_t color_u_offlimit8 = markers ? 16 : 128;
+      const uint16_t color_v_offlimit8 = markers ? 160 : 128;
+      const uint16_t color_u_centermark8 = markers ? 160 : 128;
+      const uint16_t color_v_centermark8 = markers ? 16 : 128;
+
+      const uint16_t color_u_offlimit = color_u_offlimit8 << (internal_bits_per_pixel - 8);
+      const uint16_t color_v_offlimit = color_v_offlimit8 << (internal_bits_per_pixel - 8);
+      const uint16_t color_u_centermark = color_u_centermark8 << (internal_bits_per_pixel - 8);
+      const uint16_t color_v_centermark = color_v_centermark8 << (internal_bits_per_pixel - 8);
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+      const float middle_chroma_f = 0.0f;
+#else
       const float middle_chroma_f = 0.5f;
+#endif
+      const float color_u_offlimit_f = (float)(color_u_offlimit8 - 128) / 255.0f + middle_chroma_f;
+      const float color_v_offlimit_f = (float)(color_v_offlimit8 - 128) / 255.0f + middle_chroma_f;
+      const float color_u_centermark_f = (float)(color_u_centermark8 - 128) / 255.0f + middle_chroma_f;
+      const float color_v_centermark_f = (float)(color_v_centermark8 - 128) / 255.0f + middle_chroma_f;
 
-      for (int y2 = 0; y2<src->GetHeight(PLANAR_U); ++y2) {
+      const int height = src->GetHeight(PLANAR_U);
+      for (int y2 = 0; y2<height; ++y2) {
         if(pixelsize==1) {
           for (int x = 0; x<show_size; x += fact) {
             if (x<hist_tv_range_low || x>hist_tv_range_hi_luma) {
-              p2[x >> subs] = 16;
-              p3[x >> subs] = 160;
+              p2[x >> subs] = (BYTE)color_u_offlimit8;
+              p3[x >> subs] = (BYTE)color_v_offlimit8;
             } else if (x==hist_mid_range_luma) {
-              p2[x >> subs] = 160;
-              p3[x >> subs] = 16;
+              p2[x >> subs] = (BYTE)color_u_centermark8;
+              p3[x >> subs] = (BYTE)color_v_centermark8;
             } else {
               p2[x >> subs] = 128;
               p3[x >> subs] = 128;
@@ -1314,11 +1398,11 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
         else if (pixelsize == 2) {
           for (int x = 0; x<show_size; x += fact) {
             if (x<hist_tv_range_low || x>hist_tv_range_hi_luma) {
-              reinterpret_cast<uint16_t *>(p2)[x >> subs] = tv_range_low;
-              reinterpret_cast<uint16_t *>(p3)[x >> subs] = chroma160;
+              reinterpret_cast<uint16_t *>(p2)[x >> subs] = color_u_offlimit;
+              reinterpret_cast<uint16_t *>(p3)[x >> subs] = color_v_offlimit;
             } else if (x==hist_mid_range_luma) {
-              reinterpret_cast<uint16_t *>(p2)[x >> subs] = chroma160;
-              reinterpret_cast<uint16_t *>(p3)[x >> subs] = tv_range_low;
+              reinterpret_cast<uint16_t *>(p2)[x >> subs] = color_u_centermark;
+              reinterpret_cast<uint16_t *>(p3)[x >> subs] = color_v_centermark;
             } else {
               reinterpret_cast<uint16_t *>(p2)[x >> subs] = middle_chroma;
               reinterpret_cast<uint16_t *>(p3)[x >> subs] = middle_chroma;
@@ -1327,11 +1411,11 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
         } else { // pixelsize==4
           for (int x = 0; x<show_size; x += fact) {
             if (x<hist_tv_range_low || x>hist_tv_range_hi_luma) {
-              reinterpret_cast<float *>(p2)[x >> subs] = tv_range_low_f;
-              reinterpret_cast<float *>(p3)[x >> subs] = chroma160_f;
+              reinterpret_cast<float *>(p2)[x >> subs] = color_u_offlimit_f;
+              reinterpret_cast<float *>(p3)[x >> subs] = color_u_offlimit_f;
             } else if (x==hist_mid_range_luma) {
-              reinterpret_cast<float *>(p2)[x >> subs] = chroma160_f;
-              reinterpret_cast<float *>(p3)[x >> subs] = tv_range_low_f;
+              reinterpret_cast<float *>(p2)[x >> subs] = color_u_centermark_f;
+              reinterpret_cast<float *>(p3)[x >> subs] = color_v_centermark_f;
             } else {
               reinterpret_cast<float *>(p2)[x >> subs] = middle_chroma_f;
               reinterpret_cast<float *>(p3)[x >> subs] = middle_chroma_f;
@@ -1339,36 +1423,50 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
           }
 
         }
-        p2 += dst->GetPitch(PLANAR_U);
-        p3 += dst->GetPitch(PLANAR_V);
+        p2 += pitchUV;
+        p3 += pitchUV;
       }
     }
   } else {
+    const int pitch = dst->GetPitch();
     for (int y = 0; y<src->GetHeight(); ++y) { // YUY2
       int hist[256] = { 0 };
-      for (int x = 0; x<w; ++x) {
-        hist[p[x*2]]++;
+      for (int x = 0; x<source_width; ++x) {
+        hist[srcp[x*2]]++;
       }
-      BYTE* const q = p + w*2;
-      for (int x = 0; x<256; x += 2) {
-        if (x<16 || x>235) {
-          q[x*2+0] = (BYTE)exptab[min(E167, hist[x])] + 68;
-          q[x*2+1] = 16;
-          q[x*2+2] = (BYTE)exptab[min(E167, hist[x+1])] + 68;
-          q[x*2+3] = 160;
-        } else if (x==124) {
-          q[x*2+0] = (BYTE)exptab[min(E167, hist[x])] + 68;
-          q[x*2+1] = 160;
-          q[x*2+2] = (BYTE)exptab[min(255, hist[x+1])];
-          q[x*2+3] = 16;
-        } else {
-          q[x*2+0] = (BYTE)exptab[min(255, hist[x])];
-          q[x*2+1] = 128;
-          q[x*2+2] = (BYTE)exptab[min(255, hist[x+1])];
-          q[x*2+3] = 128;
+      BYTE* const q = pdst + xstart*2;
+      if (markers) {
+        for (int x = 0; x < 256; x += 2) {
+          if (x < 16 || x>235) {
+            q[x * 2 + 0] = (BYTE)exptab[min(E167, hist[x])] + 68;
+            q[x * 2 + 1] = 16;
+            q[x * 2 + 2] = (BYTE)exptab[min(E167, hist[x + 1])] + 68;
+            q[x * 2 + 3] = 160;
+          }
+          else if (x == 124) {
+            q[x * 2 + 0] = (BYTE)exptab[min(E167, hist[x])] + 68;
+            q[x * 2 + 1] = 160;
+            q[x * 2 + 2] = (BYTE)exptab[min(255, hist[x + 1])];
+            q[x * 2 + 3] = 16;
+          }
+          else {
+            q[x * 2 + 0] = (BYTE)exptab[min(255, hist[x])];
+            q[x * 2 + 1] = 128;
+            q[x * 2 + 2] = (BYTE)exptab[min(255, hist[x + 1])];
+            q[x * 2 + 3] = 128;
+          }
         }
       }
-      p += dst->GetPitch();
+      else {
+        for (int x = 0; x < 256; x += 2) {
+          q[x * 2 + 0] = (BYTE)exptab[min(255, hist[x])];
+          q[x * 2 + 1] = 128;
+          q[x * 2 + 2] = (BYTE)exptab[min(255, hist[x + 1])];
+          q[x * 2 + 3] = 128;
+        }
+      }
+      pdst += pitch;
+      srcp += srcpitch;
     }
   }
   return dst;
@@ -1421,7 +1519,7 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
     else if (vi_orig.IsRGB32() || vi_orig.IsRGB64()) {
       clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
     }
-    Histogram* Result = new Histogram(clip, mode, args[2], args[3].AsInt(8), env);
+    Histogram* Result = new Histogram(clip, mode, args[2], args[3].AsInt(8), args[4].AsBool(true), args[5].AsBool(true), env);
 
     AVSValue new_args2[1] = { Result };
     if (vi_orig.IsRGB24()) {
@@ -1438,6 +1536,6 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
     }
   }
   else {
-    return new Histogram(args[0].AsClip(), mode, args[2], args[3].AsInt(8), env);
+    return new Histogram(args[0].AsClip(), mode, args[2], args[3].AsInt(8), args[4].AsBool(true), args[5].AsBool(true), env);
   }
 }

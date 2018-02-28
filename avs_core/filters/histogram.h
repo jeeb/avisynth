@@ -59,7 +59,7 @@ public:
 	ModeAudioLevels
   };
 
-  Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits, IScriptEnvironment* env);
+  Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits, bool _keepsource, bool _markers, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   PVideoFrame DrawModeClassic    (int n, IScriptEnvironment* env);
   PVideoFrame DrawModeLevels     (int n, IScriptEnvironment* env);
@@ -83,6 +83,10 @@ private:
   int pixelsize;
   int bits_per_pixel;
   int show_bits; // e.g. levels for 10 bits
+  bool keepsource; // return only the Histogram drawing
+  bool markers; // paint hazardous YUV area
+  int origwidth;
+  int origheight;
 };
 
 
