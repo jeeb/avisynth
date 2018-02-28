@@ -728,7 +728,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
     env->ThrowError("MinMax: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
-  n = min(max(n+offset,0),vi.num_frames-1);
+  n = min(max(n + offset, 0), vi.num_frames - 1);
 
 #ifdef DEBUG_GSCRIPTCLIP_MT
   _RPT3(0, "Inside MinMax getFrame cn=%d n=%d thread=%d\r", cn.AsInt(), n, GetCurrentThreadId());
@@ -751,29 +751,50 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
   std::fill_n(accum_buf, buffersize, 0);
 
   // Count each component
-  if(pixelsize==1) {
-    for (int y=0;y<h;y++) {
-      for (int x=0;x<w;x++) {
-         accum_buf[srcp[x]]++;
+  if (pixelsize == 1) {
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        accum_buf[srcp[x]]++;
       }
-      srcp+=pitch;
+      srcp += pitch;
     }
   }
   else if (pixelsize == 2) {
-    for (int y=0;y<h;y++) {
-      for (int x=0;x<w;x++) {
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
         accum_buf[reinterpret_cast<const uint16_t *>(srcp)[x]]++;
       }
-      srcp+=pitch;
+      srcp += pitch;
     }
-  } else { //pixelsize==4 float
-    // for float results are always checked with 16 bit precision only
-    // or else we cannot populate non-digital steps with this standard method
-    for (int y=0;y<h;y++) {
-      for (int x=0;x<w;x++) {
-        accum_buf[clamp((int)(reinterpret_cast<const float *>(srcp)[x] * 65535.0f), 0, 65535)]++;
+  }
+  else { //pixelsize==4 float
+ // for float results are always checked with 16 bit precision only
+ // or else we cannot populate non-digital steps with this standard method
+    // See similar in colors, ColorYUV analyze
+    const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
+    if (chroma) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+      const float shift = 32768.0f;
+#else
+      const float shift = 0.0f;
+#endif
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+          // -0.5..0.5 to 0..65535 when FLOAT_CHROMA_IS_ZERO_CENTERED
+          const float pixel = reinterpret_cast<const float *>(srcp)[x];
+          accum_buf[clamp((int)(65535.0f*pixel + shift + 0.5f), 0, 65535)]++;
+        }
+        srcp += pitch;
       }
-      srcp+=pitch;
+    }
+    else {
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+          const float pixel = reinterpret_cast<const float *>(srcp)[x];
+          accum_buf[clamp((int)(65535.0f * pixel + 0.5f), 0, 65535)]++;
+        }
+        srcp += pitch;
+      }
     }
   }
 
@@ -836,10 +857,22 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
   }
 
   delete[] accum_buf;
-  _RPT2(0, "End of MinMax cn=%d n=%d\r", cn.AsInt(), n);
+  //_RPT2(0, "End of MinMax cn=%d n=%d\r", cn.AsInt(), n);
 
-  if (pixelsize == 4)
-    return AVSValue((double)retval / (real_buffersize-1)); // convert back to float, /65535
+  if (pixelsize == 4) {
+    const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
+    if (chroma && (mode == MIN && mode == MAX)) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+      const float shift = 32768.0f;
+#else
+      const float shift = 0.0f;
+#endif
+      return AVSValue((double)(retval - shift) / (real_buffersize - 1)); // convert back to float, /65535
+    }
+    else {
+      return AVSValue((double)retval / (real_buffersize - 1)); // convert back to float, /65535
+    }
+  } 
   else
     return AVSValue(retval);
 }
