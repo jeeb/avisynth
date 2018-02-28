@@ -1002,9 +1002,9 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     return dst;
 }
 
-AVSValue __cdecl ColorYUV::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl ColorYUV::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
-    const bool tweaklike_params = (1 == (intptr_t)user_data); // ColorYUV2 for tweak-like parameter range
+    const bool tweaklike_params = args[23].AsBool(false); // f2c = true: for tweak-like parameter interpretation
     const float def = tweaklike_params ? 1.0f : 0.0f;
     return new ColorYUV(args[0].AsClip(),
                         args[1].AsFloat(def),                // gain_y
@@ -1029,7 +1029,7 @@ AVSValue __cdecl ColorYUV::Create(AVSValue args, void* user_data, IScriptEnviron
                         args[20].AsBool(false),                // conditional
                         args[21].AsInt(8),                     // bits avs+
                         args[22].AsBool(false),                // showyuv_fullrange avs+
-                        tweaklike_params,                      // ColorYUV2: 0.0/0.5/1.0/2.0/3.0 instead of -256/-128/0/256/512
+                        tweaklike_params,                      // for gain, gamma, cont: 0.0/0.5/1.0/2.0/3.0 instead of -256/-128/0/256/512
                         env);
 }
 
@@ -1040,16 +1040,8 @@ extern const AVSFunction Color_filters[] = {
                   "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
                   "[levels]s[opt]s[matrix]s[showyuv]b" \
                   "[analyze]b[autowhite]b[autogain]b[conditional]" \
-                  "b[bits]i[showyuv_fullrange]b",
-                  ColorYUV::Create, (void*)0 },
-    { "ColorYUV2", BUILTIN_FUNC_PREFIX,
-                  "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
-                  "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
-                  "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
-                  "[levels]s[opt]s[matrix]s[showyuv]b" \
-                  "[analyze]b[autowhite]b[autogain]b[conditional]" \
-                  "b[bits]i[showyuv_fullrange]b",
-                  ColorYUV::Create, (void*)1 }, // avs+ 20180226- same but with tweak-like parameters see f2c
+                  "b[bits]i[showyuv_fullrange]b[f2c]b", // avs+ 20180226- f2c-like parameters
+                  ColorYUV::Create},
     { 0 }
 };
 
