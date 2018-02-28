@@ -488,8 +488,9 @@ static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, 
           for (int x = 0; x < width; x++)
           {
             // -0.5..0.5 to 0..65535 when FLOAT_CHROMA_IS_ZERO_CENTERED
+            // see also: ConditionalFunctions MinMax
             const float pixel = reinterpret_cast<const float *>(pSrc)[x];
-            freq[clamp((int)(65535.0f*pixel + shift + 0.5), 0, 65535)]++;
+            freq[clamp((int)(65535.0f*pixel + shift + 0.5f), 0, 65535)]++;
             // todo: SSE2
             real_min = min(real_min, pixel);
             real_max = max(real_max, pixel);
@@ -505,7 +506,7 @@ static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, 
           {
             // 0..1 -> 0..65535
             const float pixel = reinterpret_cast<const float *>(pSrc)[x];
-            freq[clamp((int)(65535.0f*reinterpret_cast<const float *>(pSrc)[x] + 0.5), 0, 65535)]++;
+            freq[clamp((int)(65535.0f*pixel + 0.5f), 0, 65535)]++;
             // todo: SSE2
             real_min = min(real_min, pixel);
             real_max = max(real_max, pixel);
