@@ -1172,6 +1172,65 @@ int CAVIFileSynth::ImageSize(const VideoInfo *vi) {
   return image_size;
 }
 
+template<bool hasAlpha>
+static void ToY416_sse2(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height)
+{
+  const int wmod4 = (width / 4) * 4;
+
+  // UYVA
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wmod4; x += 4) {
+      // read 4x4 pixels, store 2x(4x2) pixels
+      auto u = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(uptr + x * sizeof(uint16_t)));
+      auto y = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(yptr + x * sizeof(uint16_t)));
+      auto v = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(vptr + x * sizeof(uint16_t)));
+      __m128i a;
+      if (hasAlpha)
+        a = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(aptr + x * sizeof(uint16_t)));
+      else
+        a = _mm_set1_epi16(-1); // transparent alpha 0xFFFF
+      auto uy = _mm_unpacklo_epi16(u, y);
+      auto va = _mm_unpacklo_epi16(v, a);
+      auto uyva_lo = _mm_unpacklo_epi32(uy, va);
+      _mm_storeu_si128(reinterpret_cast<__m128i *>(outbuf + 4 * sizeof(uint16_t) * x), uyva_lo);
+      auto uyva_hi = _mm_unpackhi_epi32(uy, va);
+      _mm_storeu_si128(reinterpret_cast<__m128i *>(outbuf + 16 + 4 * sizeof(uint16_t) * x), uyva_hi);
+    }
+
+    for (int x = wmod4; x < width; x++) {
+      reinterpret_cast<uint16_t *>(outbuf)[x * 4 + 0] = reinterpret_cast<const uint16_t *>(uptr)[x];
+      reinterpret_cast<uint16_t *>(outbuf)[x * 4 + 1] = reinterpret_cast<const uint16_t *>(yptr)[x];
+      reinterpret_cast<uint16_t *>(outbuf)[x * 4 + 2] = reinterpret_cast<const uint16_t *>(vptr)[x];
+      reinterpret_cast<uint16_t *>(outbuf)[x * 4 + 3] = hasAlpha ? reinterpret_cast<const uint16_t *>(aptr)[x] : 0xFFFF;
+    }
+    outbuf += out_pitch;
+    yptr += ypitch;
+    uptr += uvpitch;
+    vptr += uvpitch;
+    aptr += apitch;
+  }
+}
+
+template<bool hasAlpha>
+static void ToY416_c(uint8_t *outbuf8, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height)
+{
+  uint16_t *outbuf = reinterpret_cast<uint16_t *>(outbuf8);
+  out_pitch /= sizeof(uint16_t);
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      outbuf[x * 4 + 0] = reinterpret_cast<const uint16_t *>(uptr)[x];
+      outbuf[x * 4 + 1] = reinterpret_cast<const uint16_t *>(yptr)[x];
+      outbuf[x * 4 + 2] = reinterpret_cast<const uint16_t *>(vptr)[x];
+      outbuf[x * 4 + 3] = hasAlpha ? reinterpret_cast<const uint16_t *>(aptr)[x] : 0xFFFF;
+    }
+    outbuf += out_pitch;
+    yptr += ypitch;
+    uptr += uvpitch;
+    vptr += uvpitch;
+    aptr += apitch;
+  }
+}
 
 void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   VideoInfo vi = parent->filter_graph->GetVideoInfo();
@@ -1224,33 +1283,27 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   if (vi.pixel_type == VideoInfo::CS_YUV444P16 || vi.pixel_type == VideoInfo::CS_YUVA444P16) {
     int width = vi.width;
     int height = vi.height;
-    int ppitch_y = frame->GetPitch(PLANAR_Y) / sizeof(uint16_t);
-    int ppitch_uv = frame->GetPitch(PLANAR_U) / sizeof(uint16_t);
-    int ppitch_a = frame->GetPitch(PLANAR_A) / sizeof(uint16_t);
+    int ppitch_y = frame->GetPitch(PLANAR_Y);
+    int ppitch_uv = frame->GetPitch(PLANAR_U);
+    int ppitch_a = frame->GetPitch(PLANAR_A);
     bool hasAlpha = (vi.NumComponents() == 4);
-    const uint16_t *yptr = (const uint16_t *)frame->GetReadPtr(PLANAR_Y);
-    const uint16_t *uptr = (const uint16_t *)frame->GetReadPtr(PLANAR_U);
-    const uint16_t *vptr = (const uint16_t *)frame->GetReadPtr(PLANAR_V);
-    const uint16_t *aptr = (const uint16_t *)frame->GetReadPtr(PLANAR_A);
-    uint16_t *outbuf = (uint16_t *)lpBuffer;
-    int out_pitch = width * 4;
-    for (int y = 0; y < height; y++) {
-      const uint16_t *yline = yptr;
-      const uint16_t *uline = uptr;
-      const uint16_t *vline = vptr;
-      const uint16_t *aline = aptr;
-      uint16_t *out_line = outbuf;
-      for (int x = 0; x < width; x++) {
-        out_line[x*4+0] = uline[x];
-        out_line[x*4+1] = yline[x];
-        out_line[x*4+2] = vline[x];
-        out_line[x*4+3] = hasAlpha ? aline[x] : 0xFFFF;
-      }
-      outbuf += out_pitch;
-      yptr += ppitch_y;
-      uptr += ppitch_uv;
-      vptr += ppitch_uv;
-      aptr += ppitch_a;
+    const uint8_t *yptr = frame->GetReadPtr(PLANAR_Y);
+    const uint8_t *uptr = frame->GetReadPtr(PLANAR_U);
+    const uint8_t *vptr = frame->GetReadPtr(PLANAR_V);
+    const uint8_t *aptr = frame->GetReadPtr(PLANAR_A);
+    uint8_t *outbuf = (uint8_t *)lpBuffer;
+    int out_pitch = width * 4 * sizeof(uint16_t);
+    if ((parent->env->GetCPUFlags() & CPUF_SSE2) != 0) {
+      if (hasAlpha)
+        ToY416_sse2<true>(outbuf, out_pitch, yptr, ppitch_y, uptr, vptr, ppitch_uv, aptr, ppitch_a, width, height);
+      else
+        ToY416_sse2<false>(outbuf, out_pitch, yptr, ppitch_y, uptr, vptr, ppitch_uv, aptr, ppitch_a, width, height);
+    }
+    else {
+      if (hasAlpha)
+        ToY416_c<true>(outbuf, out_pitch, yptr, ppitch_y, uptr, vptr, ppitch_uv, aptr, ppitch_a, width, height);
+      else
+        ToY416_c<false>(outbuf, out_pitch, yptr, ppitch_y, uptr, vptr, ppitch_uv, aptr, ppitch_a, width, height);
     }
     return;
   }
