@@ -78,9 +78,9 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
   // until all histogram is ported
   bool non8bit = show_bits != 8 || bits_per_pixel != 8;
 
-  if (non8bit && mode != ModeClassic && mode != ModeLevels)
+  if (non8bit && mode != ModeClassic && mode != ModeLevels && mode != ModeColor)
   {
-    env->ThrowError("Histogram: histogram type is available only for 8 bit formats and parameters");
+    env->ThrowError("Histogram: this histogram type is available only for 8 bit formats and parameters");
   }
 
   origwidth = vi.width;
@@ -712,41 +712,143 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
 
 
 PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
+  // This mode will display the chroma values(U / V color placement) in a two dimensional graph(called a vectorscope)
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
 
-  if (src->GetHeight()<dst->GetHeight()) {
-    memset(p, 16, imgSize);
-    int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-    memset(dst->GetWritePtr(PLANAR_U), 128, imgSizeU);
-    memset(dst->GetWritePtr(PLANAR_V), 128, imgSizeU);
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float middle_f = 0.0f;
+#else
+  const float middle_f = 0.5f;
+#endif
+
+  // clear everything
+  if (keepsource) {
+    if (src->GetHeight() < dst->GetHeight()) {
+      int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
+      switch (pixelsize) {
+      case 1:
+        memset(p, 16, imgSize);
+        memset(dst->GetWritePtr(PLANAR_U), 128, imgSizeU);
+        memset(dst->GetWritePtr(PLANAR_V), 128, imgSizeU);
+        break;
+      case 2:
+        std::fill_n((uint16_t *)p, imgSize / sizeof(uint16_t), 16 << (bits_per_pixel - 8));
+        std::fill_n((uint16_t *)dst->GetWritePtr(PLANAR_U), imgSizeU / sizeof(uint16_t), 128 << (bits_per_pixel - 8));
+        std::fill_n((uint16_t *)dst->GetWritePtr(PLANAR_V), imgSizeU / sizeof(uint16_t), 128 << (bits_per_pixel - 8));
+        break;
+      case 4: // 32 bit float
+        std::fill_n((float *)p, imgSize / sizeof(float), 16 / 255.0f);
+        std::fill_n((float *)dst->GetWritePtr(PLANAR_U), imgSizeU / sizeof(float), middle_f);
+        std::fill_n((float *)dst->GetWritePtr(PLANAR_V), imgSizeU / sizeof(float), middle_f);
+        break;
+      }
+    }
   }
 
-
-  env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  if (keepsource) {
+    env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  }
   if (vi.IsPlanar()) {
-    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+    if (keepsource) {
+      env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+      env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+    }
 
-    int histUV[256*256];
-    memset(histUV, 0, sizeof(int)*256*256);
+    int show_size = 1 << show_bits; // 256 for 8 bits, max 1024x1024 (10 bit resolution) found
+
+    int *histUV = new(std::nothrow) int[show_size *show_size];
+    if (!histUV)
+      env->ThrowError("Histogram: malloc failure!");
+
+    memset(histUV, 0, sizeof(int)*show_size *show_size);
 
     const BYTE* pU = src->GetReadPtr(PLANAR_U);
     const BYTE* pV = src->GetReadPtr(PLANAR_V);
 
-    int w = src->GetRowSize(PLANAR_U);
-    int p = src->GetPitch(PLANAR_U);
+    int w = origwidth;
+    int h = src->GetHeight(PLANAR_U);
+    int p = src->GetPitch(PLANAR_U) / pixelsize;
 
-    for (int y = 0; y < src->GetHeight(PLANAR_U); y++) {
-      for (int x = 0; x < w; x++) {
-        int u = pU[y*p+x];
-        int v = pV[y*p+x];
-        histUV[v*256+u]++;
+    if (pixelsize == 1) {
+      if (show_bits == bits_per_pixel) {
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            int u = pU[y*p + x];
+            int v = pV[y*p + x];
+            histUV[(v << 8) + u]++;
+          }
+        }
+      }
+      else {
+        // 8 bit data on 10 bit sized screen
+        int shift_bits = show_bits - 8;
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            int u = pU[y*p + x] << shift_bits;
+            int v = pV[y*p + x] << shift_bits;
+            histUV[(v << show_bits) + u]++;
+          }
+        }
       }
     }
+    else if (pixelsize == 2) {
+      if (show_bits == bits_per_pixel) {
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            int u = reinterpret_cast<const uint16_t *>(pU)[y*p + x];
+            int v = reinterpret_cast<const uint16_t *>(pV)[y*p + x];
+            histUV[(v << show_bits) + u]++;
+          }
+        }
+      }
+      else if (show_bits < bits_per_pixel) {
+        // 10 bit data on 8 bit sized screen
+        int shift_bits = bits_per_pixel - show_bits;
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            int u = reinterpret_cast<const uint16_t *>(pU)[y*p + x] >> shift_bits;
+            int v = reinterpret_cast<const uint16_t *>(pV)[y*p + x] >> shift_bits;
+            histUV[(v << show_bits) + u]++;
+          }
+        }
+      }
+      else {
+        // show_bits > bits_per_pixel
+        // 10 bit data on 12bit sized screen
+        int shift_bits = show_bits - bits_per_pixel;
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            int u = reinterpret_cast<const uint16_t *>(pU)[y*p + x] << shift_bits;
+            int v = reinterpret_cast<const uint16_t *>(pV)[y*p + x] << shift_bits;
+            histUV[(v << show_bits) + u]++;
+          }
+        }
+      }
+    }
+    else { // float
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+      const float shift = 0.5;
+#else
+      const float shift = 0.0;
+#endif
+      // 32 bit data on show_bits bit sized screen
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+          const float u_f = reinterpret_cast<const float *>(pU)[y*p + x] + shift;
+          const float v_f = reinterpret_cast<const float *>(pV)[y*p + x] + shift;
+          int u = (int)(u_f * show_size); // no rounding
+          int v = (int)(v_f * show_size);
+          u = clamp(u, 0, show_size - 1);
+          v = clamp(v, 0, show_size - 1);
+          histUV[(v << show_bits) + u]++;
+        }
+      }
+    }
+
 
     // Plot Histogram on Y.
     int maxval = 1;
@@ -754,61 +856,196 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
     // Should we adjust the divisor (maxval)??
 
     unsigned char* pdstb = dst->GetWritePtr(PLANAR_Y);
-    pdstb += src->GetRowSize(PLANAR_Y);
+    if (keepsource) {
+      pdstb += src->GetRowSize(PLANAR_Y); // right of the clip
 
     // Erase all
-    for (int y = 256; y<dst->GetHeight(); y++) {
-      int p = dst->GetPitch(PLANAR_Y);
-      for (int x = 0; x<256; x++) {
-        pdstb[x+y*p] = 16;
+      for (int y = show_size; y < dst->GetHeight(); y++) {
+        int p = dst->GetPitch(PLANAR_Y) / pixelsize;
+        if (pixelsize == 1) {
+          for (int x = 0; x < show_size; x++) {
+            pdstb[x + y * p] = 16;
+          }
+        }
+        else if (pixelsize == 2) {
+          for (int x = 0; x < show_size; x++) {
+            reinterpret_cast<uint16_t *>(pdstb)[x + y * p] = 16 << (bits_per_pixel - 8);
+          }
+        }
+        else { // float
+          for (int x = 0; x < show_size; x++) {
+            reinterpret_cast<float *>(pdstb)[x + y * p] = 16 / 255.0f;
+          }
+        }
       }
     }
 
-    for (int y = 0; y<256; y++) {
-      for (int x = 0; x<256; x++) {
-        int disp_val = histUV[x+y*256]/maxval;
-        if (y<16 || y>240 || x<16 || x>240)
-          disp_val -= 16;
+    if (pixelsize == 1) {
+      int limit16 = 16 << (show_bits - 8);
+      int limit16_pixel = 16 << (bits_per_pixel - 8);
+      int limit240 = 240 << (show_bits - 8); // chroma danger
+      int luma235 = 235 << (bits_per_pixel - 8);
+      int dstpitch = dst->GetPitch(PLANAR_Y);
+      for (int y = 0; y < show_size; y++) {
+        const bool ylimited = y < limit16 || y>limit240;
+        for (int x = 0; x < show_size; x++) {
+          int disp_val = histUV[x + y * show_size] / maxval;
+          if (ylimited || x < limit16 || x>limit240)
+            disp_val -= limit16_pixel;
 
-        pdstb[x] = (unsigned char)min(235, 16 + disp_val);
-
+          pdstb[x] = (uint8_t)min(luma235, limit16_pixel + disp_val);
+        }
+        pdstb += dst->GetPitch(PLANAR_Y);
       }
-      pdstb += dst->GetPitch(PLANAR_Y);
+    }
+    else if (pixelsize == 2) {
+      int limit16 = 16 << (show_bits - 8);
+      int limit16_pixel = 16 << (bits_per_pixel - 8);
+      int limit240 = 240 << (show_bits - 8); // chroma danger
+      int luma235 = 235 << (bits_per_pixel - 8);
+      int dstpitch = dst->GetPitch(PLANAR_Y);
+      for (int y = 0; y < show_size; y++) {
+        const bool ylimited = y < limit16 || y>limit240;
+        for (int x = 0; x < show_size; x++) {
+          int disp_val = (histUV[x + y * show_size] << (bits_per_pixel - 8)) / maxval;
+          if (ylimited || x < limit16 || x>limit240)
+            disp_val -= limit16_pixel;
+
+          reinterpret_cast<uint16_t *>(pdstb)[x] = (uint16_t)min(luma235, limit16_pixel + disp_val);
+
+        }
+        pdstb += dstpitch;
+      }
+    }
+    else { // 32 bit float
+      int limit16 = 16 << (show_bits - 8);
+      int limit16_pixel = 16; // keep 8 bit like
+      int limit240 = 240 << (show_bits - 8); // chroma danger
+      int luma235 = 235;// keep 8 bit like
+      int dstpitch = dst->GetPitch(PLANAR_Y);
+      for (int y = 0; y < show_size; y++) {
+        const bool ylimited = y < limit16 || y>limit240;
+        for (int x = 0; x < show_size; x++) {
+          int disp_val = (histUV[x + y * show_size]) / maxval; // float was 16 bit 
+          if (ylimited || x < limit16 || x>limit240)
+            disp_val -= limit16_pixel;
+
+          reinterpret_cast<float *>(pdstb)[x] = (float)(min(luma235, (limit16_pixel + disp_val))) / 255.0f;
+
+        }
+        pdstb += dstpitch;
+      }
     }
 
     // Draw colors.
-    pdstb = dst->GetWritePtr(PLANAR_U);
-    pdstb += src->GetRowSize(PLANAR_U);
+    for (int i = 0; i < 2; i++) {
+      int plane = i == 0 ? PLANAR_U : PLANAR_V;
+      pdstb = dst->GetWritePtr(plane);
+      int swidth = vi.GetPlaneWidthSubsampling(plane);
+      int sheight = vi.GetPlaneHeightSubsampling(plane);
+      int dstpitch = dst->GetPitch(plane);
 
-    int swidth = vi.GetPlaneWidthSubsampling(PLANAR_U);
-    int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
+      if (keepsource) {
+        pdstb += src->GetRowSize(plane);
 
-    // Erase all
-    for (int y = (256>>sheight); y<dst->GetHeight(PLANAR_U); y++) {
-      memset(&pdstb[y*dst->GetPitch(PLANAR_U)], 128, (256>>swidth)-1);
-    }
-
-    for (int y = 0; y<(256>>sheight); y++) {
-      for (int x = 0; x<(256>>swidth); x++) {
-        pdstb[x] = (unsigned char)(x << swidth);
+        // Erase all
+        if (pixelsize == 1) {
+          for (int y = (show_size >> sheight); y < dst->GetHeight(plane); y++) {
+            memset(&pdstb[y*dstpitch], 128, (show_size >> swidth) - 1);
+          }
+        }
+        else if (pixelsize == 2) {
+          for (int y = (show_size >> sheight); y < dst->GetHeight(plane); y++) {
+            std::fill_n((uint16_t *)&pdstb[y*dstpitch], (show_size >> swidth) - 1, 128 << (bits_per_pixel - 8));
+          }
+        }
+        else { // float
+          for (int y = (show_size >> sheight); y < dst->GetHeight(plane); y++) {
+            std::fill_n((float *)&pdstb[y*dstpitch], (show_size >> swidth) - 1, middle_f);
+          }
+        }
       }
-      pdstb += dst->GetPitch(PLANAR_U);
+
+      // PLANAR_U: x << swidth
+      // PLANAR_V: y << sheight
+      if (plane == PLANAR_U) {
+        if (pixelsize == 1) {
+          const int shiftCount = show_bits - bits_per_pixel;
+          for (int y = 0; y < (show_size >> sheight); y++) {
+            for (int x = 0; x < (show_size >> swidth); x++) {
+              pdstb[x] = (unsigned char)((x << swidth) >> shiftCount) ;
+            }
+            pdstb += dstpitch;
+          }
+        }
+        else if (pixelsize == 2) {
+          const int shiftCount = show_bits - bits_per_pixel;
+          for (int y = 0; y < (show_size >> sheight); y++) {
+            for (int x = 0; x < (show_size >> swidth); x++) {
+              if(shiftCount >= 0)
+                reinterpret_cast<uint16_t *>(pdstb)[x] = (uint16_t)((x << swidth) >> shiftCount);
+              else
+                reinterpret_cast<uint16_t *>(pdstb)[x] = (uint16_t)((x << swidth) << -shiftCount);
+            }
+            pdstb += dstpitch;
+          }
+        }
+        else {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+          const float shift = 0.5;
+#else
+          const float shift = 0.0;
+#endif
+          const int shiftCount = show_bits - 8;
+          for (int y = 0; y < (show_size >> sheight); y++) {
+            for (int x = 0; x < (show_size >> swidth); x++) {
+              reinterpret_cast<float *>(pdstb)[x] = (float)(((x << swidth) >> shiftCount) / 255.0f - shift);
+            }
+            pdstb += dstpitch;
+          }
+        }
+      } // PLANAR_U end
+      else {
+        // PLANAR_V
+        if (pixelsize == 1) {
+          const int shiftCount = show_bits - bits_per_pixel;
+          for (int y = 0; y < (show_size >> sheight); y++) {
+            for (int x = 0; x < (show_size >> swidth); x++) {
+              pdstb[x] = (unsigned char)((y << sheight) >> shiftCount);
+            }
+            pdstb += dstpitch;
+          }
+        }
+        else if (pixelsize == 2) {
+          const int shiftCount = show_bits - bits_per_pixel;
+          for (int y = 0; y < (show_size >> sheight); y++) {
+            for (int x = 0; x < (show_size >> swidth); x++) {
+              if(shiftCount >= 0)
+                reinterpret_cast<uint16_t *>(pdstb)[x] = (uint16_t)((y << sheight) >> shiftCount);
+              else
+                reinterpret_cast<uint16_t *>(pdstb)[x] = (uint16_t)((y << sheight) << -shiftCount);
+            }
+            pdstb += dstpitch;
+          }
+        }
+        else {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+          const float shift = 0.5;
+#else
+          const float shift = 0.0;
+#endif
+          const int shiftCount = show_bits - 8;
+          for (int y = 0; y < (show_size >> sheight); y++) {
+            for (int x = 0; x < (show_size >> swidth); x++) {
+              reinterpret_cast<float *>(pdstb)[x] = (float)(((y << sheight) >> shiftCount) / 255.0f - shift);
+            }
+            pdstb += dstpitch;
+          }
+        }
+      } // PLANAR_V end
     }
 
-    pdstb = dst->GetWritePtr(PLANAR_V);
-    pdstb += src->GetRowSize(PLANAR_V);
-
-    // Erase all
-    for (int y = (256>>sheight); y<dst->GetHeight(PLANAR_U); y++) {
-      memset(&pdstb[y*dst->GetPitch(PLANAR_V)], 128, (256>>swidth)-1);
-    }
-
-    for (int y = 0; y<(256>>sheight); y++) {
-      for (int x = 0; x<(256>>swidth); x++) {
-        pdstb[x] = (unsigned char)(y << sheight);
-      }
-      pdstb += dst->GetPitch(PLANAR_V);
-    }
+    delete[] histUV;
   }
   return dst;
 }
