@@ -76,8 +76,18 @@ bool VideoInfo::IsYV411() const { return (pixel_type & CS_PLANAR_MASK) == (CS_YV
 bool VideoInfo::IsColorSpace(int c_space) const { return ((pixel_type & c_space) == c_space); }
    Baked ********************/
 bool VideoInfo::IsColorSpace(int c_space) const {
+  // This function will check if the colorspace (VideoInfo.pixel_type) is the same as given c_space (or more general it checks for a Colorspace property (see avisynth.h)).
+  // So it's not only for exact colorspace comparison but checking properties also.
   return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == (c_space & CS_PLANAR_FILTER)) : 
-      ( ((pixel_type & ~CS_Sample_Bits_Mask & c_space) == (c_space & ~CS_Sample_Bits_Mask)) && // RGB got sample bits
+    // support exact individual flag checking
+    c_space == CS_YUVA ? ((c_space & CS_YUVA) == CS_YUVA) :
+    c_space == CS_BGR ? ((c_space & CS_BGR) == CS_BGR) :
+    c_space == CS_YUV ? ((c_space & CS_YUV) == CS_YUV) :
+    c_space == CS_INTERLEAVED ? ((c_space & CS_INTERLEAVED) == CS_INTERLEAVED) :
+  // RGB got sample bits:
+  // In order to work: RGB64.IsColorSpace(RGB32) => false, or else we get true (RGB64 & RGB32 == RGB32)
+  // Simple ((pixel_type & c_space) == c_space) would not work, does not take into account bit depth
+    ( ((pixel_type & ~CS_Sample_Bits_Mask & c_space) == (c_space & ~CS_Sample_Bits_Mask)) &&
         ((pixel_type & CS_Sample_Bits_Mask) == (c_space & CS_Sample_Bits_Mask)) );
 }
 
