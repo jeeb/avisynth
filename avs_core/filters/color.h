@@ -58,7 +58,8 @@ struct ColorYUVPlaneConfig
     double gain, offset, gamma, contrast;
     int range, plane;
     bool clip_tv;
-    bool changed;
+    bool changed; // for lut recalc
+    bool force_tv_range; // telling to have TV range for gamma when no other parameters
 };
 
 class ColorYUV : public GenericVideoFilter

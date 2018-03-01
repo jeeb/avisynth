@@ -110,7 +110,7 @@ static void coloryuv_showyuv(BYTE* pY, BYTE* pU, BYTE* pV, int y_pitch, int u_pi
 
 // luts are only for integer bits 8/10/12/14/16. float will be realtime
 template<typename pixel_t>
-static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, int bits_per_pixel, bool clamp_on_tv_range, bool tweaklike_params)
+static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, int bits_per_pixel, bool tweaklike_params)
 {
     pixel_t *lut = reinterpret_cast<pixel_t *>(lut8);
 
@@ -120,9 +120,17 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
 
     const int lookup_size = (1 << bits_per_pixel); // 256, 1024, 4096, 16384, 65536
     const int pixel_max = lookup_size - 1;
-    int tv_range_low = 16 << (bits_per_pixel - 8);
-    int tv_range_hi_chroma = 240 << (bits_per_pixel - 8); // 16-240,64–960, 256–3852,... 4096-61692
-    int tv_range_hi_luma = 235 << (bits_per_pixel - 8);
+
+    int tv_range_lo_luma_8 = 16;
+    int tv_range_hi_luma_8 = 235;
+    int tv_range_lo_chroma_8 = tv_range_lo_luma_8; // 16-240,64–960, 256–3852,... 4096-61692
+    int tv_range_hi_chroma_8 = 240;
+
+
+    int tv_range_lo_luma = (tv_range_lo_luma_8 << (bits_per_pixel - 8));
+    int tv_range_hi_luma = (tv_range_hi_luma_8 << (bits_per_pixel - 8));
+    int tv_range_lo_chroma = tv_range_lo_luma; // 16-240,64–960, 256–3852,... 4096-61692
+    int tv_range_hi_chroma = (tv_range_hi_chroma_8 << (bits_per_pixel - 8));
 
     double gain = tweaklike_params ? config->gain : (config->gain / 256 + 1.0);
     double contrast = tweaklike_params ? config->contrast : (config->contrast / 256 + 1.0);
@@ -132,55 +140,75 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
     int range = config->range;
     if (range == COLORYUV_RANGE_PC_TVY)
     {
+      // only luma is treated as PC range
         range = config->plane == PLANAR_Y ? COLORYUV_RANGE_PC_TV : COLORYUV_RANGE_NONE;
     }
 
     double range_factor = 1.0;
+    double range_factor_tv_to_pc;
+    double range_factor_pc_to_tv;
+
+    if (config->plane == PLANAR_Y) {
+      // 8 bit 219 = 235-16, 10 bit: 64–960
+      range_factor_tv_to_pc = (double)pixel_max / (tv_range_hi_luma - tv_range_lo_luma); // 255.0 / 219.0
+      range_factor_pc_to_tv = (tv_range_hi_luma - tv_range_lo_luma) / (double)pixel_max; // 219.0 / 255.0
+    }
+    else {
+      // 224 = 240-16
+      range_factor_tv_to_pc = (double)pixel_max / (tv_range_hi_chroma - tv_range_lo_chroma); // 255.0 / 224.0
+      range_factor_pc_to_tv = (tv_range_hi_chroma - tv_range_lo_chroma) / (double)pixel_max;
+    }
 
     if (range != COLORYUV_RANGE_NONE)
     {
-        if (range == COLORYUV_RANGE_PC_TV)
-        {
-            if (config->plane == PLANAR_Y)
-            {
-                // 8 bit 219 = 235-16, 10 bit: 64–960
-              range_factor = (tv_range_hi_luma - tv_range_low) / (double)pixel_max; // 219.0 / 255.0
-            }
-            else
-            {
-                // 224 = 240-16
-                range_factor = (tv_range_hi_chroma - tv_range_low) / (double)pixel_max;
-            }
-        }
-        else
-        {
-            if (config->plane == PLANAR_Y)
-            {
-              range_factor = (double)pixel_max / (tv_range_hi_luma - tv_range_low); // 255.0 / 219.0
-            }
-            else
-            {
-                range_factor = (double)pixel_max / (tv_range_hi_chroma - tv_range_low); // 255.0 / 224.0
-            }
-        }
+      if (range == COLORYUV_RANGE_PC_TV)
+        range_factor = range_factor_pc_to_tv;
+      else
+        range_factor = range_factor_tv_to_pc;
     }
 
+    double tv_range_lo_current = (config->plane == PLANAR_Y ? tv_range_lo_luma : tv_range_lo_chroma);
+
+    // For gamma pre-post correction. we are in [0..1) working range
+    double tv_range_lo_normalized = (config->plane == PLANAR_Y) ? tv_range_lo_luma_8 / 256.0 : tv_range_lo_chroma_8 / 256.0;
+
     for (int i = 0; i < lookup_size; i++) {
-        double value = double(i) / value_scale;
+
+        double value = double(i);
+
+        // normalize
+        value /= value_scale;
 
         // Applying gain
         value *= gain;
 
         // Applying contrast
-        value = (value - 0.5) * contrast + 0.5;
+        value = (value - 0.5) * contrast + 0.5; // integer here, float would be different when its chroma if -0.5..0.5
+        // in Classic AVS: constract is applied on the original value and not on the already gained value
+        // value = (value * gain) + ((value - 0.5) * contrast + 0.5) - value + (bright - 1);
 
         // Applying offset
         value += offset;
 
         // Applying gamma
-        if (gamma != 0 && value > 0)
-        {
-            value = pow(value, 1.0 / gamma);
+        if (gamma != 0) {
+          // We know that the input is TV range for sure: coring=true, levels="TV->PC" or (new!) levels="TV"
+          if (config->clip_tv || range == COLORYUV_RANGE_TV_PC || config->force_tv_range) {
+            // avs+ 180301- use gamma on the proper 0.0 based value
+            if (value > tv_range_lo_normalized)
+            {
+              // tv->pc
+              value = (value - tv_range_lo_normalized) * range_factor_tv_to_pc; // (v-16)*range
+              value = pow(value, 1.0 / gamma);
+              // pc->tv
+              value = value * range_factor_pc_to_tv + tv_range_lo_normalized; // v*range - 16
+            }
+          }
+          else {
+            if (value > 0) {
+              value = pow(value, 1.0 / gamma);
+            }
+          }
         }
 
         value *= value_scale;
@@ -188,11 +216,11 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
         // Range conversion
         if (range == COLORYUV_RANGE_PC_TV)
         {
-            value = value*range_factor + tv_range_low; // v*range - 16
+          value = value * range_factor + tv_range_lo_current; // v*range - 16
         }
         else if (range == COLORYUV_RANGE_TV_PC)
         {
-            value = (value - tv_range_low) * range_factor; // (v-16)*range
+          value = (value - tv_range_lo_current) * range_factor; // (v-16)*range
         }
 
         // Convert back to int
@@ -201,16 +229,16 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
         // Clamp
         iValue = clamp(iValue, 0, pixel_max);
 
-        if (config->clip_tv && clamp_on_tv_range) // avs+: clamp on tv range
+        if (config->clip_tv) // set when coring
         {
-            //iValue = clamp(iValue, tv_range_lo_luma, config->plane == PLANAR_Y ? tv_range_hi_luma : tv_range_hi_chroma);
+            iValue = clamp(iValue, tv_range_lo_luma, config->plane == PLANAR_Y ? tv_range_hi_luma : tv_range_hi_chroma);
         }
 
         lut[i] = iValue;
     }
 }
 
-static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, int bits_per_pixel, bool clamp_on_tv_range, bool tweaklike_params)
+static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, int bits_per_pixel, bool tweaklike_params)
 {
   // parameters are not scaled by bitdepth (legacy 8 bit behaviour)
 
@@ -224,24 +252,29 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
   double tv_range_lo_chroma;
   double tv_range_hi_chroma;
 
+  int tv_range_lo_luma_8 = 16;
+  int tv_range_hi_luma_8 = 235;
+  int tv_range_lo_chroma_8 = tv_range_lo_luma_8; // 16-240,64–960, 256–3852,... 4096-61692
+  int tv_range_hi_chroma_8 = 240;
+
   if (f32) {
     pixel_max = 1.0;
-    tv_range_lo_luma = 16.0 / 256;
-    tv_range_hi_luma = 235.0 / 256;
+    tv_range_lo_luma = tv_range_lo_luma_8 / 256.0;
+    tv_range_hi_luma = tv_range_hi_luma_8 / 256.0;
 #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-    tv_range_lo_chroma = (16.0 - 128.0) / 256; // -112
-    tv_range_hi_chroma = (240.0 - 128.0) / 256; // 112
+    tv_range_lo_chroma = (tv_range_lo_chroma_8 - 128.0) / 256.0; // -112
+    tv_range_hi_chroma = (tv_range_hi_chroma_8 - 128.0) / 256.0; // 112
 #else
-    tv_range_lo_chroma = 16.0 / 256;
-    tv_range_hi_chroma = 240.0 / 256;
+    tv_range_lo_chroma = tv_range_lo_chroma_8 / 256.0;
+    tv_range_hi_chroma = tv_range_hi_chroma_8 / 256.0;
 #endif
   }
   else {
     pixel_max = (double)((1 << bits_per_pixel) - 1);
-    tv_range_lo_luma = (double)(16 << (bits_per_pixel - 8));
-    tv_range_hi_luma = (double)(235 << (bits_per_pixel - 8));
+    tv_range_lo_luma = (double)(tv_range_lo_luma_8 << (bits_per_pixel - 8));
+    tv_range_hi_luma = (double)(tv_range_hi_luma_8 << (bits_per_pixel - 8));
     tv_range_lo_chroma = tv_range_lo_luma; // 16-240,64–960, 256–3852,... 4096-61692
-    tv_range_hi_chroma = (double)(240 << (bits_per_pixel - 8));
+    tv_range_hi_chroma = (double)(tv_range_hi_chroma_8 << (bits_per_pixel - 8));
   }
 
   double gain = tweaklike_params ? config->gain : (config->gain / 256 + 1.0);
@@ -256,37 +289,34 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
   }
 
   double range_factor = 1.0;
+  double range_factor_tv_to_pc;
+  double range_factor_pc_to_tv;
+
+  if (config->plane == PLANAR_Y) {
+    // 8 bit 219 = 235-16, 10 bit: 64–960
+    range_factor_tv_to_pc = (double)pixel_max / (tv_range_hi_luma - tv_range_lo_luma); // 255.0 / 219.0
+    range_factor_pc_to_tv = (tv_range_hi_luma - tv_range_lo_luma) / (double)pixel_max; // 219.0 / 255.0
+  }
+  else {
+    // 224 = 240-16
+    range_factor_tv_to_pc = (double)pixel_max / (tv_range_hi_chroma - tv_range_lo_chroma); // 255.0 / 224.0
+    range_factor_pc_to_tv = (tv_range_hi_chroma - tv_range_lo_chroma) / (double)pixel_max;
+  }
 
   if (range != COLORYUV_RANGE_NONE)
   {
     if (range == COLORYUV_RANGE_PC_TV)
-    {
-      if (config->plane == PLANAR_Y)
-      {
-        // 8 bit 219 = 235-16, 10 bit: 64–960
-        range_factor = (tv_range_hi_luma - tv_range_lo_luma) / (double)pixel_max; // 219.0 / 255.0
-      }
-      else
-      {
-        // 224 = 240-16
-        range_factor = (tv_range_hi_chroma - tv_range_lo_chroma) / (double)pixel_max;
-      }
-    }
+      range_factor = range_factor_pc_to_tv;
     else
-    {
-      if (config->plane == PLANAR_Y)
-      {
-        range_factor = (double)pixel_max / (tv_range_hi_luma - tv_range_lo_luma); // 255.0 / 219.0
-      }
-      else
-      {
-        range_factor = (double)pixel_max / (tv_range_hi_chroma - tv_range_lo_luma); // 255.0 / 224.0
-      }
-    }
+      range_factor = range_factor_tv_to_pc;
   }
 
-  std::stringstream ss;
+  double tv_range_lo_current = (config->plane == PLANAR_Y ? tv_range_lo_luma : tv_range_lo_chroma);
 
+  // For gamma pre-post correction. we are in [0..1) working range
+  double tv_range_lo_normalized = (config->plane == PLANAR_Y) ? tv_range_lo_luma_8 / 256.0 : tv_range_lo_chroma_8 / 256.0;
+
+  std::stringstream ss;
 
   // value = double(i)
   ss << "x";
@@ -321,17 +351,33 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
 
   // Applying gamma
   if (gamma != 0) {
-
-    //if (gamma != 0 && value > 0)
-    //  value = pow(value, 1.0 / gamma);
-    // value = value > 0 ? pow(value,(1/gamma)) : value
-    ss << " A@ 0 > A " << (1.0 / gamma) << " pow A ?";
+    // We know that the input is TV range for sure: coring=true, levels="TV->PC" or (new!) levels="TV"
+    if (config->clip_tv || range == COLORYUV_RANGE_TV_PC || config->force_tv_range) {
+      // avs+ 180301- use gamma on the proper 0.0 based value
+      // value = value > 16scaled ? (pow((value - 16scl)*range_tv_pc,(1/gamma))*range_pc_tv+16d : value
+      // tv->pc, power, pc->tv
+      ss << " A@ " << tv_range_lo_normalized << " > A " << tv_range_lo_normalized << " - " << range_factor_tv_to_pc << " * " << (1.0 / gamma) << " pow " << range_factor_pc_to_tv << " * " << tv_range_lo_normalized << " + " << " A ?";
+    }
+    else {
+      //if (gamma != 0 && value > 0)
+      //  value = pow(value, 1.0 / gamma);
+      // value = value > 0 ? pow(value,(1/gamma)) : value
+      ss << " A@ 0 > A " << (1.0 / gamma) << " pow A ?";
+    }
   }
 
   if (!f32) {
     // value *= value_scale;
-    ss << " " << std::fixed << std::setprecision(0) << value_scale << " *";
+    ss << " " << value_scale << " *";
   }
+
+  if (config->clip_tv) // set when coring
+  {
+    ss << " " << (config->plane == PLANAR_Y ? tv_range_lo_luma : tv_range_lo_chroma) << " max " << (config->plane == PLANAR_Y ? tv_range_hi_luma : tv_range_hi_chroma) << " min ";
+    //iValue = clamp(iValue, tv_range_lo_luma, config->plane == PLANAR_Y ? tv_range_hi_luma : tv_range_hi_chroma);
+  }
+
+  // clamp to the original valid bitdepth is done by Expr
 
   // Range conversion
   if (range == COLORYUV_RANGE_PC_TV)
@@ -574,6 +620,7 @@ static void coloryuv_autogain(const ColorYUVPlaneData* dY, const ColorYUVPlaneDa
     double scale = double(loose_max_limit - loose_min_limit) / range;
     cY->offset = (loose_min_limit - scale * minY) / (1 << (bits_per_pixel_for_freq - 8)); // good for float also, 0..256 range
     cY->gain = tweaklike_params ? scale : (256 * (scale - 1.0));
+    cY->changed = true;
   }
 }
 
@@ -594,6 +641,8 @@ static void coloryuv_autowhite(const ColorYUVPlaneData* dY, const ColorYUVPlaneD
     cU->offset = (middle - dU->average) / (1 << (bits_per_pixel - 8)); // parameter is in 256 range
     cV->offset = (middle - dV->average) / (1 << (bits_per_pixel - 8));
   }
+  cU->changed = true;
+  cV->changed = true;
 }
 
 // only for integer samples
@@ -712,6 +761,7 @@ ColorYUV::ColorYUV(PClip child,
     configY.contrast = contrast_y;
     configY.changed = false;
     configY.clip_tv = false;
+    configY.force_tv_range = false;
     configY.plane = PLANAR_Y;
 
     configU.gain = gain_u;
@@ -720,6 +770,7 @@ ColorYUV::ColorYUV(PClip child,
     configU.contrast = contrast_u;
     configU.changed = false;
     configU.clip_tv = false;
+    configU.force_tv_range = false; // n/a. in chroma. For gamma
     configU.plane = PLANAR_U;
 
     configV.gain = gain_v;
@@ -728,6 +779,7 @@ ColorYUV::ColorYUV(PClip child,
     configV.contrast = contrast_v;
     configV.changed = false;
     configV.clip_tv = false;
+    configV.force_tv_range = false; // n/a. in chroma. For gamma
     configV.plane = PLANAR_V;
 
     // Range
@@ -742,6 +794,10 @@ ColorYUV::ColorYUV(PClip child,
     else if (lstrcmpi(level, "PC->TV.Y") == 0)
     {
         configV.range = configU.range = configY.range = COLORYUV_RANGE_PC_TVY;
+    }
+    else if (lstrcmpi(level, "TV") == 0)
+    {
+      configV.force_tv_range = configU.force_tv_range = configY.force_tv_range = true;
     }
     else if (lstrcmpi(level, "") != 0)
     {
@@ -807,8 +863,6 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
         cY = configY,
         cU = configU,
         cV = configV;
-
-    bool clamp_on_tv_range = true;  // rfu
 
     // for analysing data
     char text[512];
@@ -918,6 +972,8 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     // Read conditional variables
     coloryuv_read_conditional(env, &cY, &cU, &cV);
 
+    // todo: use info of cY/cU/cV->changed to avoid LUT recalc (should be not in every GetFrame)
+
     BYTE *lutY = nullptr;
     BYTE *lutU = nullptr;
     BYTE *lutV = nullptr;
@@ -930,19 +986,19 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
       lutV = new BYTE[lut_size];
 
       if (pixelsize == 1) {
-        coloryuv_create_lut<uint8_t>(lutY, &cY, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+        coloryuv_create_lut<uint8_t>(lutY, &cY, bits_per_pixel, tweaklike_params);
         if (!vi.IsY())
         {
-          coloryuv_create_lut<uint8_t>(lutU, &cU, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
-          coloryuv_create_lut<uint8_t>(lutV, &cV, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+          coloryuv_create_lut<uint8_t>(lutU, &cU, bits_per_pixel, tweaklike_params);
+          coloryuv_create_lut<uint8_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
         }
       }
       else if (pixelsize == 2) { // pixelsize==2
-        coloryuv_create_lut<uint16_t>(lutY, &cY, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+        coloryuv_create_lut<uint16_t>(lutY, &cY, bits_per_pixel, tweaklike_params);
         if (!vi.IsY())
         {
-          coloryuv_create_lut<uint16_t>(lutU, &cU, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
-          coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
+          coloryuv_create_lut<uint16_t>(lutU, &cU, bits_per_pixel, tweaklike_params);
+          coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
         }
       }
 
@@ -970,9 +1026,9 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     } // lut create and use
     else {
       // 32 bit float: expr
-      std::string exprY = coloryuv_create_lut_expr(&cY, bits_per_pixel, clamp_on_tv_range, tweaklike_params);
-      std::string exprU = !vi.IsY() ? coloryuv_create_lut_expr(&cU, bits_per_pixel, clamp_on_tv_range, tweaklike_params) : "";
-      std::string exprV = !vi.IsY() ? coloryuv_create_lut_expr(&cV, bits_per_pixel, clamp_on_tv_range, tweaklike_params) : "";
+      std::string exprY = coloryuv_create_lut_expr(&cY, bits_per_pixel, tweaklike_params);
+      std::string exprU = !vi.IsY() ? coloryuv_create_lut_expr(&cU, bits_per_pixel, tweaklike_params) : "";
+      std::string exprV = !vi.IsY() ? coloryuv_create_lut_expr(&cV, bits_per_pixel, tweaklike_params) : "";
       std::string exprA = ""; // copy
       // Invoke Expr
       AVSValue child2;
