@@ -126,10 +126,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
     else {
       int color_yuv = (mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
 
-      union {
-        uint32_t i;
-        float f;
-      } Cval;
+      int val_i;
 
       int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
       int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
@@ -142,24 +139,24 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
         // (8)-8-8-8 bit color from int parameter
         if (isyuvlike) {
           switch (plane) {
-          case PLANAR_A: Cval.i = (color >> 24) & 0xff; break;
-          case PLANAR_Y: Cval.i = (color_yuv >> 16) & 0xff; break;
-          case PLANAR_U: Cval.i = (color_yuv >> 8) & 0xff; break;
-          case PLANAR_V: Cval.i = color_yuv & 0xff; break;
+          case PLANAR_A: val_i = (color >> 24) & 0xff; break;
+          case PLANAR_Y: val_i = (color_yuv >> 16) & 0xff; break;
+          case PLANAR_U: val_i = (color_yuv >> 8) & 0xff; break;
+          case PLANAR_V: val_i = color_yuv & 0xff; break;
           }
           if (bits_per_pixel != 32)
-            Cval.i = Cval.i << (bits_per_pixel - 8);
+            val_i = val_i << (bits_per_pixel - 8);
         }
         else {
          // planar RGB
           switch (plane) {
-          case PLANAR_A: Cval.i = (color >> 24) & 0xff; break;
-          case PLANAR_R: Cval.i = (color >> 16) & 0xff; break;
-          case PLANAR_G: Cval.i = (color >> 8) & 0xff; break;
-          case PLANAR_B: Cval.i = color & 0xff; break;
+          case PLANAR_A: val_i = (color >> 24) & 0xff; break;
+          case PLANAR_R: val_i = (color >> 16) & 0xff; break;
+          case PLANAR_G: val_i = (color >> 8) & 0xff; break;
+          case PLANAR_B: val_i = color & 0xff; break;
           }
           if (bits_per_pixel != 32)
-            Cval.i = rgbcolor8to16(Cval.i, max_pixel_value);
+            val_i = rgbcolor8to16(val_i, max_pixel_value);
         }
 
 
@@ -167,14 +164,28 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
         int size = frame->GetPitch(plane) * frame->GetHeight(plane);
 
         switch (pixelsize) {
-        case 1: Cval.i |= (Cval.i << 8) | (Cval.i << 16) | (Cval.i << 24); break; // 4 pixels at a time
-        case 2: Cval.i |= (Cval.i << 16); break; // 2 pixels at a time
+        case 1:
+          memset(dstp, val_i, size);
+          break;
+        case 2: 
+          val_i = clamp(val_i, 0, (1 << vi.BitsPerComponent()) - 1);
+          std::fill_n((uint16_t *)dstp, size / sizeof(uint16_t), val_i);
+          break; // 2 pixels at a time
         default: // case 4:
-          Cval.f = float(Cval.i) / 256.0f; // 32 bit float 128=0.5
+          float val_f;
+          if (plane == PLANAR_U || plane == PLANAR_V) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+            float shift = 0.0f;
+#else
+            float shift = 0.5f;
+#endif
+            val_f = float(val_i - 128) / 255.0f + shift; // 32 bit float chroma 128=0.5
+          }
+          else {
+            val_f = float(val_i) / 255.0f;
+          }
+          std::fill_n((float *)dstp, size / sizeof(float), val_f);
         }
-
-        for (int i = 0; i < size; i += 4)
-          *(uint32_t*)(dstp + i) = Cval.i;
       }
     }
     return frame;
