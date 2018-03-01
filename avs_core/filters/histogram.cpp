@@ -945,11 +945,26 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         // float
         const float *srcp32 = reinterpret_cast<const float *>(srcp);
         const float multiplier = (float)(show_size - 1);
-        for (int y = 0; y < h; y++) {
-          for (int x = 0; x < w; x++) {
-            hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier)]++;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+        const float preshift = 0.5f;
+#else
+        const float preshift = 0.0f;
+#endif
+        if (plane == PLANAR_U || plane == PLANAR_V) {
+          for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+              hist[(int)(clamp(srcp32[x] + preshift, 0.0f, 1.0f)*multiplier + 0.5f)]++;
+            }
+            srcp32 += pitch;
           }
-          srcp32 += pitch;
+        }
+        else {
+          for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+              hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier + 0.5f)]++;
+            }
+            srcp32 += pitch;
+          }
         }
       }
     } // accumulate end
@@ -1398,7 +1413,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
         const float *srcp32 = reinterpret_cast<const float *>(srcp);
         const float multiplier = (float)(show_size - 1);
         for (int x = 0; x < source_width; x++) {
-          hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier)]++;
+          hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier + 0.5f)]++;
         }
       }
       // accumulate end
