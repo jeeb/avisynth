@@ -496,6 +496,14 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   pitchY /= sizeof(pixel_t);
   pitchUV /= sizeof(pixel_t);
 
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  int chroma_offset_i = 0;
+  float chroma_offset_f = 0.0f;
+#else
+  int chroma_offset_i = 128;
+  float chroma_offset_f = 0.5f;
+#endif
+
   const int shift = sizeof(pixel_t) == 4 ? 0 : (bits_per_pixel - 8);
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
   factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
@@ -512,8 +520,14 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x] = factor*(top_two_thirdsY[i] << shift);
-        pU[x] = factor*(top_two_thirdsU[i] << shift);
-        pV[x] = factor*(top_two_thirdsV[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (top_two_thirdsU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (top_two_thirdsV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (top_two_thirdsU[i] << shift);
+          pV[x] = factor * (top_two_thirdsV[i] << shift);
+        }
       }
     }
     pY += pitchY; pU += pitchUV; pV += pitchUV;
@@ -526,8 +540,14 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x] = factor*(two_thirds_to_three_quartersY[i] << shift);
-        pU[x] = factor*(two_thirds_to_three_quartersU[i] << shift);
-        pV[x] = factor*(two_thirds_to_three_quartersV[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (two_thirds_to_three_quartersU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (two_thirds_to_three_quartersV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (two_thirds_to_three_quartersU[i] << shift);
+          pV[x] = factor * (two_thirds_to_three_quartersV[i] << shift);
+        }
       }
     }
     pY += pitchY; pU += pitchUV; pV += pitchUV;
@@ -540,21 +560,39 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 4; ++i) {
       for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
         pY[x] = factor*(bottom_quarterY[i] << shift);
-        pU[x] = factor*(bottom_quarterU[i] << shift);
-        pV[x] = factor*(bottom_quarterV[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (bottom_quarterU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (bottom_quarterV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (bottom_quarterU[i] << shift);
+          pV[x] = factor * (bottom_quarterV[i] << shift);
+        }
       }
     }
     for (int j = 4; j < 7; ++j) {
       for (; x < (w*(j + 12) + 10) / 21; ++x) {
         pY[x] = factor*(bottom_quarterY[j] << shift);
-        pU[x] = factor*(bottom_quarterU[j] << shift);
-        pV[x] = factor*(bottom_quarterV[j] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (bottom_quarterU[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (bottom_quarterV[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (bottom_quarterU[j] << shift);
+          pV[x] = factor * (bottom_quarterV[j] << shift);
+        }
       }
     }
     for (; x < w; ++x) {
       pY[x] = factor*(bottom_quarterY[7] << shift);
-      pU[x] = factor*(bottom_quarterU[7] << shift);
-      pV[x] = factor*(bottom_quarterV[7] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (bottom_quarterU[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (bottom_quarterV[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (bottom_quarterU[7] << shift);
+        pV[x] = factor * (bottom_quarterV[7] << shift);
+      }
     }
     pY += pitchY; pU += pitchUV; pV += pitchUV;
   }
@@ -573,6 +611,15 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
   factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
 
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  int chroma_offset_i = 0;
+  float chroma_offset_f = 0.0f;
+#else
+  int chroma_offset_i = 128;
+  float chroma_offset_f = 0.5f;
+#endif
+
+
 //                                                        LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
   static const BYTE top_two_thirdsY[] = { 0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
   static const BYTE top_two_thirdsU[] = { 0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
@@ -587,8 +634,14 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x*2+0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(top_two_thirdsY[i] << shift);
-        pU[x] = factor*(top_two_thirdsU[i] << shift);
-        pV[x] = factor*(top_two_thirdsV[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (top_two_thirdsU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (top_two_thirdsV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (top_two_thirdsU[i] << shift);
+          pV[x] = factor * (top_two_thirdsV[i] << shift);
+        }
       }
     }
     pY += pitchY * 2; pU += pitchUV; pV += pitchUV;
@@ -602,8 +655,14 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(two_thirds_to_three_quartersY[i] << shift);
-        pU[x] = factor*(two_thirds_to_three_quartersU[i] << shift);
-        pV[x] = factor*(two_thirds_to_three_quartersV[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (two_thirds_to_three_quartersU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (two_thirds_to_three_quartersV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (two_thirds_to_three_quartersU[i] << shift);
+          pV[x] = factor * (two_thirds_to_three_quartersV[i] << shift);
+        }
       }
     }
     pY += pitchY * 2; pU += pitchUV; pV += pitchUV;
@@ -617,21 +676,39 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 4; ++i) {
       for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
         pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[i] << shift);
-        pU[x] = factor*(bottom_quarterU[i] << shift);
-        pV[x] = factor*(bottom_quarterV[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (bottom_quarterU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (bottom_quarterV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (bottom_quarterU[i] << shift);
+          pV[x] = factor * (bottom_quarterV[i] << shift);
+        }
       }
     }
     for (int j = 4; j < 7; ++j) {
       for (; x < (w*(j + 12) + 10) / 21; ++x) {
         pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[j] << shift);
-        pU[x] = factor*(bottom_quarterU[j] << shift);
-        pV[x] = factor*(bottom_quarterV[j] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (bottom_quarterU[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (bottom_quarterV[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (bottom_quarterU[j] << shift);
+          pV[x] = factor * (bottom_quarterV[j] << shift);
+        }
       }
     }
     for (; x < w; ++x) {
       pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[7] << shift);
-      pU[x] = factor*(bottom_quarterU[7] << shift);
-      pV[x] = factor*(bottom_quarterV[7] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (bottom_quarterU[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (bottom_quarterV[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (bottom_quarterU[7] << shift);
+        pV[x] = factor * (bottom_quarterV[7] << shift);
+      }
     }
     pY += pitchY *2 ; pU += pitchUV; pV += pitchUV;
   }
@@ -649,6 +726,15 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
   const int shift = sizeof(pixel_t) == 4 ? 0 : (bits_per_pixel - 8);
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
   factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
+
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  int chroma_offset_i = 0;
+  float chroma_offset_f = 0.0f;
+#else
+  int chroma_offset_i = 128;
+  float chroma_offset_f = 0.5f;
+#endif
+
 
 //		Nearest 16:9 pixel exact sizes
 //		56*X x 12*Y
@@ -676,20 +762,38 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern1Y[0] << shift); // 40% Grey
-      pU[x] = factor*(pattern1U[0] << shift);
-      pV[x] = factor*(pattern1V[0] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern1U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern1V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern1U[0] << shift);
+        pV[x] = factor * (pattern1V[0] << shift);
+      }
     }
     for (int i = 1; i < 8; i++) {
       for (int j = 0; j < c; ++j, ++x) {
         pY[x] = factor*(pattern1Y[i] << shift); // 75% Colour bars
-        pU[x] = factor*(pattern1U[i] << shift);
-        pV[x] = factor*(pattern1V[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (pattern1U[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (pattern1V[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (pattern1U[i] << shift);
+          pV[x] = factor * (pattern1V[i] << shift);
+        }
       }
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern1Y[0] << shift); // 40% Grey
-      pU[x] = factor*(pattern1U[0] << shift);
-      pV[x] = factor*(pattern1V[0] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern1U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern1V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern1U[0] << shift);
+        pV[x] = factor * (pattern1V[0] << shift);
+      }
     }
     pY += pitchY; pU += pitchUV; pV += pitchUV;
   }
@@ -701,23 +805,47 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern23Y[0] << shift); // 100% Cyan
-      pU[x] = factor*(pattern23U[0] << shift);
-      pV[x] = factor*(pattern23V[0] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern23U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern23V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern23U[0] << shift);
+        pV[x] = factor * (pattern23V[0] << shift);
+      }
     }
     for (; x < c + d; ++x) {
       pY[x] = factor*(pattern23Y[4] << shift); // +I or Grey75 or White ???
-      pU[x] = factor*(pattern23U[4] << shift);
-      pV[x] = factor*(pattern23V[4] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern23U[4] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern23V[4] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern23U[4] << shift);
+        pV[x] = factor * (pattern23V[4] << shift);
+      }
     }
     for (; x < c * 7 + d; ++x) {
       pY[x] = factor*(pattern23Y[5] << shift); // 75% White
-      pU[x] = factor*(pattern23U[5] << shift);
-      pV[x] = factor*(pattern23V[5] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern23U[5] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern23V[5] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern23U[5] << shift);
+        pV[x] = factor * (pattern23V[5] << shift);
+      }
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern23Y[1] << shift); // 100% Blue
-      pU[x] = factor*(pattern23U[1] << shift);
-      pV[x] = factor*(pattern23V[1] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern23U[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern23V[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern23U[1] << shift);
+        pV[x] = factor * (pattern23V[1] << shift);
+      }
     }
     pY += pitchY; pU += pitchUV; pV += pitchUV;
   }
@@ -725,18 +853,36 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern23Y[2] << shift); // 100% Yellow
-      pU[x] = factor*(pattern23U[2] << shift);
-      pV[x] = factor*(pattern23V[2] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern23U[2] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern23V[2] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern23U[2] << shift);
+        pV[x] = factor * (pattern23V[2] << shift);
+      }
     }
     for (int j = 0; j < c * 7; ++j, ++x) { // Y-Ramp
       pY[x] = pixel_t(factor*(16 << shift) + (factor * (220 << shift) * j) / (c * 7));
-      pU[x] = factor*(128 << shift);
-      pV[x] = factor*(128 << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (128 - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (128 - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (128 << shift);
+        pV[x] = factor * (128 << shift);
+      }
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern23Y[3] << shift); // 100% Red
-      pU[x] = factor*(pattern23U[3] << shift);
-      pV[x] = factor*(pattern23V[3] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern23U[3] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern23V[3] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern23U[3] << shift);
+        pV[x] = factor * (pattern23V[3] << shift);
+      }
     }
     pY += pitchY; pU += pitchUV; pV += pitchUV;
   } //                           Grey15 Black White Black   -2% Black   +2% Black   +4% Black
@@ -748,20 +894,38 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern4Y[0] << shift); // 15% Grey
-      pU[x] = factor*(pattern4U[0] << shift);
-      pV[x] = factor*(pattern4V[0] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern4U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern4V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern4U[0] << shift);
+        pV[x] = factor * (pattern4V[0] << shift);
+      }
     }
     for (int i = 1; i <= 9; i++) {
       for (; x < d + (pattern4W[i] * c + 3) / 6; ++x) {
         pY[x] = factor*(pattern4Y[i] << shift);
-        pU[x] = factor*(pattern4U[i] << shift);
-        pV[x] = factor*(pattern4V[i] << shift);
+        if (sizeof(pixel_t) == 4) {
+          pU[x] = factor * (pattern4U[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
+          pV[x] = factor * (pattern4V[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        }
+        else {
+          pU[x] = factor * (pattern4U[i] << shift);
+          pV[x] = factor * (pattern4V[i] << shift);
+        }
       }
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern4Y[0] << shift); // 15% Grey
-      pU[x] = factor*(pattern4U[0] << shift);
-      pV[x] = factor*(pattern4V[0] << shift);
+      if (sizeof(pixel_t) == 4) {
+        pU[x] = factor * (pattern4U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+        pV[x] = factor * (pattern4V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
+      }
+      else {
+        pU[x] = factor * (pattern4U[0] << shift);
+        pV[x] = factor * (pattern4V[0] << shift);
+      }
     }
     pY += pitchY; pU += pitchUV; pV += pitchUV;
   }
