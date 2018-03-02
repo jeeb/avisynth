@@ -1412,11 +1412,11 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       BYTE* q = dst->GetWritePtr();
       const int pitch = dst->GetPitch();
       // PF: sse2/mmx versions are not identical to C. Sharpen(1.0, 1.0) has ugly artifacts
-      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
+      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16) && vi.width>8) {
         af_horizontal_yuy2_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_MMX)) {
+      if ((env->GetCPUFlags() & CPUF_MMX) && vi.width>8) {
         af_horizontal_yuy2_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #endif
@@ -1426,21 +1426,21 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       }
     }
     else if (vi.IsRGB32() || vi.IsRGB64()) {
-      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
+      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16) && vi.width>4) {
         //this one is NOT in-place
         af_horizontal_rgb32_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       }
-      else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(src->GetReadPtr(), 16)) {
+      else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(src->GetReadPtr(), 16) && vi.width > 2) {
         //this one is NOT in-place
         af_horizontal_rgb64_sse2<true>(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount); // really width
       }
-      else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
+      else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16) && vi.width > 2) {
         //this one is NOT in-place
         af_horizontal_rgb64_sse2<false>(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount); // really width
       }
       else
 #ifdef X86_32
-      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX))
+      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX) && vi.width > 2)
       { //so as this one
         af_horizontal_rgb32_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
