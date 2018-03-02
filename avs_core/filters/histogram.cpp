@@ -874,8 +874,8 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
         for (int x = 0; x < w; x++) {
           const float u_f = reinterpret_cast<const float *>(pU)[y*p + x] + shift;
           const float v_f = reinterpret_cast<const float *>(pV)[y*p + x] + shift;
-          int u = (int)(u_f * show_size); // no rounding
-          int v = (int)(v_f * show_size);
+          int u = (int)(u_f * show_size + 0.5f); // no rounding
+          int v = (int)(v_f * show_size + 0.5f);
           u = clamp(u, 0, show_size - 1);
           v = clamp(v, 0, show_size - 1);
           histUV[(v << show_bits) + u]++;
