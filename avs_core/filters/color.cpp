@@ -192,8 +192,8 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
 
         // Applying gamma
         if (gamma != 0) {
-          // We know that the input is TV range for sure: coring=true, levels="TV->PC" or (new!) levels="TV"
-          if (config->clip_tv || range == COLORYUV_RANGE_TV_PC || config->force_tv_range) {
+          // We know that the input is TV range for sure: (coring=true and !PC->TV), levels="TV->PC" or (new!) levels="TV"
+          if ((config->clip_tv && range != COLORYUV_RANGE_PC_TV) || range == COLORYUV_RANGE_TV_PC || config->force_tv_range) {
             // avs+ 180301- use gamma on the proper 0.0 based value
             if (value > tv_range_lo_normalized)
             {
@@ -351,8 +351,8 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
 
   // Applying gamma
   if (gamma != 0) {
-    // We know that the input is TV range for sure: coring=true, levels="TV->PC" or (new!) levels="TV"
-    if (config->clip_tv || range == COLORYUV_RANGE_TV_PC || config->force_tv_range) {
+    // We know that the input is TV range for sure: (coring=true and not pc->tv), levels="TV->PC" or (new!) levels="TV"
+    if ((config->clip_tv && range != COLORYUV_RANGE_PC_TV) || range == COLORYUV_RANGE_TV_PC || config->force_tv_range) {
       // avs+ 180301- use gamma on the proper 0.0 based value
       // value = value > 16scaled ? (pow((value - 16scl)*range_tv_pc,(1/gamma))*range_pc_tv+16d : value
       // tv->pc, power, pc->tv
