@@ -2659,18 +2659,18 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   BitDepthConvFuncPtr conv_function_full_scale_no_dither;
   BitDepthConvFuncPtr conv_function_shifted_scale;
 
-  conv_function_ch = nullptr; // used only for 32bit float
+  conv_function_chroma = nullptr; // used only for 32bit float
 
   if (fulls != fulld)
     env->ThrowError("ConvertBits: fulls and fulld should be the same");
   // ConvertToFloat
   if (target_bitdepth == 32) {
     // alpha copy is always full scale
-    // todo: conv_function_uv if float U/V is ever goes to +/-0.5 instead of generic 0..1.0
+    // conv_function_chroma if float U/V is ever goes to +/-0.5 instead of generic 0..1.0
     if (pixelsize == 1) // 8->32 bit
     {
       conv_function = convert_uintN_to_float_c<uint8_t, 8, false>;
-      conv_function_ch = convert_uintN_to_float_c<uint8_t, 8, true>;
+      conv_function_chroma = convert_uintN_to_float_c<uint8_t, 8, true>;
       conv_function_a = conv_function;
     }
     else if (pixelsize == 2) // 16->32 bit
@@ -2681,26 +2681,26 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         {
         case 10: 
           conv_function = convert_uintN_to_float_c<uint16_t, 10, false>;
-          conv_function_ch = convert_uintN_to_float_c<uint16_t, 10, true>;
+          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 10, true>;
           break;
         case 12: 
           conv_function = convert_uintN_to_float_c<uint16_t, 12, false>;
-          conv_function_ch = convert_uintN_to_float_c<uint16_t, 12, true>;
+          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 12, true>;
           break;
         case 14: 
           conv_function = convert_uintN_to_float_c<uint16_t, 14, false>;
-          conv_function_ch = convert_uintN_to_float_c<uint16_t, 14, true>;
+          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 14, true>;
           break;
         case 16: 
           conv_function = convert_uintN_to_float_c<uint16_t, 16, false>;
-          conv_function_ch = convert_uintN_to_float_c<uint16_t, 16, true>;
+          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 16, true>;
           break;
         default: env->ThrowError("ConvertToFloat: unsupported bit depth");
         }
       }
       else {
         conv_function = convert_uintN_to_float_c<uint16_t, 16, false>;
-        conv_function_ch = convert_uintN_to_float_c<uint16_t, 16, true>;
+        conv_function_chroma = convert_uintN_to_float_c<uint16_t, 16, true>;
       }
     }
     else
@@ -2915,25 +2915,25 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         {
         case 10: 
           conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 10, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 10, false> : convert_32_to_uintN_c<uint16_t, 10, false>; 
-          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 10, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 10, true> : convert_32_to_uintN_c<uint16_t, 10, true>;
+          conv_function_chroma = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 10, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 10, true> : convert_32_to_uintN_c<uint16_t, 10, true>;
           break;
         case 12: 
           conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 12, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 12, false> : convert_32_to_uintN_c<uint16_t, 12, false>; 
-          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 12, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 12, true> : convert_32_to_uintN_c<uint16_t, 12, true>;
+          conv_function_chroma = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 12, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 12, true> : convert_32_to_uintN_c<uint16_t, 12, true>;
           break;
         case 14: 
           conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 14, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 14, false> : convert_32_to_uintN_c<uint16_t, 14, false>; 
-          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 14, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 14, true> : convert_32_to_uintN_c<uint16_t, 14, true>;
+          conv_function_chroma = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 14, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 14, true> : convert_32_to_uintN_c<uint16_t, 14, true>;
           break;
         case 16: 
           conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, false> : convert_32_to_uintN_c<uint16_t, 16, false>; 
-          conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
+          conv_function_chroma = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
           break;
         }
       }
       else {
         conv_function = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, false> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, false> : convert_32_to_uintN_c<uint16_t, 16, false>;
-        conv_function_ch = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
+        conv_function_chroma = avx2 ? convert_32_to_uintN_c_avx2<uint16_t, 16, true> : avx ? convert_32_to_uintN_c_avx<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
       }
       conv_function_a = conv_function;
     }
@@ -3018,7 +3018,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
     {
       // full scale
       conv_function = avx2 ? convert_32_to_uintN_c_avx<uint8_t, 8, false> : avx ? convert_32_to_uintN_c_avx<uint8_t, 8, false> : convert_32_to_uintN_c<uint8_t, 8, false>;
-      conv_function_ch = avx2 ? convert_32_to_uintN_c_avx<uint8_t, 8, true> : avx ? convert_32_to_uintN_c_avx<uint8_t, 8, true> : convert_32_to_uintN_c<uint8_t, 8, true>;
+      conv_function_chroma = avx2 ? convert_32_to_uintN_c_avx<uint8_t, 8, true> : avx ? convert_32_to_uintN_c_avx<uint8_t, 8, true> : convert_32_to_uintN_c<uint8_t, 8, true>;
       conv_function_a = conv_function;
     }
     else
@@ -3215,11 +3215,11 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
         env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
       else {
         const bool chroma = (plane == PLANAR_U || plane == PLANAR_V);
-        if (chroma && conv_function_ch != nullptr)
+        if (chroma && conv_function_chroma != nullptr)
           // 32bit float needs separate conversion (possible chroma -0.5 .. 0.5 option)
           // until then the conv_function_ch behaves the same as conv_function
           // see #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-          conv_function_ch(src->GetReadPtr(plane), dst->GetWritePtr(plane),
+          conv_function_chroma(src->GetReadPtr(plane), dst->GetWritePtr(plane),
             src->GetRowSize(plane), src->GetHeight(plane),
             src->GetPitch(plane), dst->GetPitch(plane));
         else

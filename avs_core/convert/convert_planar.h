@@ -212,7 +212,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 private:
   BitDepthConvFuncPtr conv_function;
-  BitDepthConvFuncPtr conv_function_ch; // 32bit float YUV chroma
+  BitDepthConvFuncPtr conv_function_chroma; // 32bit float YUV chroma
   BitDepthConvFuncPtr conv_function_a;
   float float_range;
   int dither_mode;
