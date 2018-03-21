@@ -56,58 +56,6 @@
 #define _mm256_set_m128(v0, v1) _mm256_insertf128_ps(_mm256_castps128_ps256(v1), (v0), 1)
 #endif
 
-template<typename pixel_t, uint8_t targetbits, bool chroma>
-void convert_32_to_uintN_c_avx(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  const float *srcp0 = reinterpret_cast<const float *>(srcp);
-  pixel_t *dstp0 = reinterpret_cast<pixel_t *>(dstp);
-
-  src_pitch = src_pitch / sizeof(float);
-  dst_pitch = dst_pitch / sizeof(pixel_t);
-
-  int src_width = src_rowsize / sizeof(float);
-
-  const float max_dst_pixelvalue = (float)((1 << targetbits) - 1); // 255, 1023, 4095, 16383, 65535.0
-  const float half = (float)(1 << (targetbits - 1));
-
-  float factor = (float)max_dst_pixelvalue;
-
-  for (int y = 0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x++)
-    {
-      float pixel;
-      if (chroma) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        pixel = srcp0[x] * factor + half + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
-#else
-        // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
-        pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
-#endif
-      }
-      else {
-        pixel = srcp0[x] * factor + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
-      }
-      dstp0[x] = pixel_t(clamp(pixel, 0.0f, max_dst_pixelvalue)); // we clamp here!
-    }
-    dstp0 += dst_pitch;
-    srcp0 += src_pitch;
-  }
-  _mm256_zeroupper();
-}
-
-template void convert_32_to_uintN_c_avx<uint8_t, 8, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 10, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 12, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 14, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 16, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint8_t, 8, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 10, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 12, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 14, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_32_to_uintN_c_avx<uint16_t, 16, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-
-
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
 // shift right or left, depending on expandrange template param
 template<bool expandrange, uint8_t shiftbits>
