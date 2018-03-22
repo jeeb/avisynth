@@ -1232,6 +1232,69 @@ static void ToY416_c(uint8_t *outbuf8, int out_pitch, const uint8_t *yptr, int y
   }
 }
 
+// Helpers for RGB64 -> b64a
+
+static __forceinline uint64_t swap64(uint64_t x) {
+  x = (x & 0x00000000FFFFFFFF) << 32 | (x & 0xFFFFFFFF00000000) >> 32;
+  x = (x & 0x0000FFFF0000FFFF) << 16 | (x & 0xFFFF0000FFFF0000) >> 16;
+  x = (x & 0x00FF00FF00FF00FF) << 8 | (x & 0xFF00FF00FF00FF00) >> 8;
+  return x;
+}
+
+static void bgra_to_argbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
+{
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      uint64_t a = reinterpret_cast<const uint64_t *>(src)[x]; // bgra -> argb+byte swap
+      a = swap64(a);
+      reinterpret_cast<uint64_t*>(pdst)[x] = a;
+    }
+    src += srcpitch;
+    pdst += dstpitch;
+  }
+}
+
+template<bool hasSSSE3>
+static __forceinline __m128i _mm_bswap_epi64(__m128i x)
+{
+  // Reverse order of bytes in each 64-bit word.
+  if (hasSSSE3) {
+    return _mm_shuffle_epi8(x, _mm_set_epi8(8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7));
+  }
+  else {
+    // Swap bytes in each 16-bit word:
+    __m128i a = _mm_or_si128(
+      _mm_slli_epi16(x, 8),
+      _mm_srli_epi16(x, 8));
+
+    // Reverse all 16-bit words in 64-bit halves:
+    a = _mm_shufflelo_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
+    a = _mm_shufflehi_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
+
+    return a;
+  }
+}
+
+template<bool hasSSSE3>
+static void bgra_to_argbBE_sse(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
+{
+  const int wmod2 = (width / 2) * 2; // 2x64bit
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wmod2; x += 2) {
+      __m128i a = _mm_load_si128(reinterpret_cast<const __m128i *>(src + 8 * x));
+      a = _mm_bswap_epi64<hasSSSE3>(a);
+      _mm_store_si128(reinterpret_cast<__m128i *>(pdst + 8 * x), a);
+    }
+    if (wmod2 < width) {
+      __m128i a = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(src + 8 * wmod2));
+      a = _mm_bswap_epi64<hasSSSE3>(a);
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(pdst + 8 * wmod2), a);
+    }
+    src += srcpitch;
+    pdst += dstpitch;
+  }
+}
+
 // Helpers for YUV420(422)P10<->P010 and YUV420(422)P16<->P016 conversion
 
 template<bool before>
@@ -1463,8 +1526,12 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   bool semi_packed_p10 = (vi.pixel_type == VideoInfo::CS_YUV420P10) || (vi.pixel_type == VideoInfo::CS_YUV422P10) ;
   bool semi_packed_p16 = (vi.pixel_type == VideoInfo::CS_YUV420P16) || (vi.pixel_type == VideoInfo::CS_YUV422P16) ;
 
-  if ((semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
-      (semi_packed_p16 && !parent->Enable_Y3_10_16)) 
+  const bool ssse3 = (parent->env->GetCPUFlags() & CPUF_SSSE3) != 0;
+  const bool sse2 = (parent->env->GetCPUFlags() & CPUF_SSE2) != 0;
+
+  if ((vi.pixel_type == VideoInfo::CS_YUV420P10) || (vi.pixel_type == VideoInfo::CS_YUV420P16) ||
+      ((vi.pixel_type == VideoInfo::CS_YUV422P10) && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
+      ((vi.pixel_type == VideoInfo::CS_YUV422P16) && !parent->Enable_Y3_10_16))
   {
     // P010/P016 format:
     // Single buffer
@@ -1472,7 +1539,6 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
     // n/2 lines UVUVUVUVUVUVUV
     // Pitch is common. P010 is upshifted to 16 bits
 
-    const bool sse2 = (parent->env->GetCPUFlags() & CPUF_SSE2) != 0;
     uint8_t* pdst = (uint8_t *)lpBuffer;
 
     // luma
@@ -1546,15 +1612,26 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
     else if (semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) {
       // already handled
     }
+    else if (vi.IsRGB64() && parent->Enable_b64a) {
+      // BGRA -> big endian ARGB with byte swap
+      uint8_t* pdst = (uint8_t *)lpBuffer + out_pitch * (height - 1); // upside down
+
+      int srcpitch = frame->GetPitch();
+      const BYTE *src = frame->GetReadPtr();
+      if (ssse3)
+        bgra_to_argbBE_sse<true>(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
+      else if (sse2)
+        bgra_to_argbBE_sse<false>(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
+      else
+        bgra_to_argbBE_c(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
+    }
+    else if (vi.IsRGB48() || vi.IsRGB64())
+    {
+      // avisynth: upside down, output: back to normal
+      parent->env->BitBlt((BYTE*)lpBuffer + out_pitch * (height - 1), -out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+    }
     else {
-      if (vi.IsRGB48() || vi.IsRGB64())
-      {
-        // avisynth: upside down, output: back to normal
-        parent->env->BitBlt((BYTE*)lpBuffer + out_pitch * (height - 1), -out_pitch, frame->GetReadPtr(), pitch, row_size, height);
-      }
-      else {
-        parent->env->BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
-      }
+      parent->env->BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
     }
 
     if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
@@ -1564,7 +1641,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
       (semi_packed_p16 && !parent->Enable_Y3_10_16)) {
       // already handled
     }
-    else {
+    else { // for RGB48 and 64 these are zero sized
       parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height),
         out_pitchUV, frame->GetReadPtr(plane1),
         frame->GetPitch(plane1), frame->GetRowSize(plane1),
