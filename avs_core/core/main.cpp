@@ -1232,6 +1232,109 @@ static void ToY416_c(uint8_t *outbuf8, int out_pitch, const uint8_t *yptr, int y
   }
 }
 
+// Helpers for YUV420(422)P10<->P010 and YUV420(422)P16<->P016 conversion
+
+template<bool before>
+static void prepare_luma_shift6_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
+{
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      if (before)
+        reinterpret_cast<uint16_t*>(pdst)[x] = reinterpret_cast<const uint16_t *>(src)[x] << 6;
+      else
+        reinterpret_cast<uint16_t*>(pdst)[x] = reinterpret_cast<const uint16_t *>(src)[x] >> 6;
+    }
+    src += srcpitch;
+    pdst += dstpitch;
+  }
+}
+
+template<bool before>
+static void prepare_luma_shift6_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
+{
+  const int modw = (width / 8) * 8; // 8 uv pairs at a time
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < modw; x += 8) {
+      __m128i y = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint16_t *>(src) + x));
+      if (before)
+        y = _mm_slli_epi16(y, 6); // make 10->16 bits
+      else
+        y = _mm_srli_epi16(y, 6); // make 16->10 bits
+      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint16_t *>(pdst) + x), y);
+    }
+
+    for (int x = modw; x < width; x++) {
+      if (before)
+        reinterpret_cast<uint16_t*>(pdst)[x] = reinterpret_cast<const uint16_t *>(src)[x] << 6;
+      else
+        reinterpret_cast<uint16_t*>(pdst)[x] = reinterpret_cast<const uint16_t *>(src)[x] >> 6;
+    }
+    src += srcpitch;
+    pdst += dstpitch;
+  }
+}
+
+template<bool shift6>
+static void prepare_to_interleaved_uv_c(uint8_t* pdst, int dstpitch, const uint8_t *srcu, const uint8_t *srcv, int pitchUV, int width, int height)
+{
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      uint16_t u, v;
+      if (shift6) {
+        u = reinterpret_cast<const uint16_t *>(srcu)[x] << 6; // make 10->16 bits
+        v = reinterpret_cast<const uint16_t *>(srcv)[x] << 6; // make 10->16 bits
+      }
+      else {
+        u = reinterpret_cast<const uint16_t *>(srcu)[x];
+        v = reinterpret_cast<const uint16_t *>(srcv)[x];
+      }
+      uint32_t uv = (v << 16) | u;
+      reinterpret_cast<uint32_t*>(pdst)[x] = uv;
+    }
+    srcu += pitchUV;
+    srcv += pitchUV;
+    pdst += dstpitch;
+  }
+}
+
+template<bool shift6>
+static void prepare_to_interleaved_uv_sse2(uint8_t* pdst, int dstpitch, const uint8_t *srcu, const uint8_t *srcv, int pitchUV, int width, int height)
+{
+  const int modw = (width / 8) * 8; // 8 uv pairs at a time
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < modw; x += 8) {
+      __m128i u = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint16_t *>(srcu) + x));
+      __m128i v = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint16_t *>(srcv) + x));
+      if (shift6) {
+        u = _mm_slli_epi16(u, 6); // make 10->16 bits
+        v = _mm_slli_epi16(v, 6);
+      }
+      __m128i uv;
+      uv = _mm_unpacklo_epi16(u, v); // (v << 16) | u;
+      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint32_t *>(pdst) + x), uv);
+      uv = _mm_unpackhi_epi16(u, v); // (v << 16) | u;
+      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint32_t *>(pdst) + x + 4), uv);
+    }
+
+    for (int x = modw; x < width; x++) {
+      uint16_t u, v;
+      if (shift6) {
+        u = reinterpret_cast<const uint16_t *>(srcu)[x] << 6; // make 10->16 bits
+        v = reinterpret_cast<const uint16_t *>(srcv)[x] << 6; // make 10->16 bits
+      }
+      else {
+        u = reinterpret_cast<const uint16_t *>(srcu)[x];
+        v = reinterpret_cast<const uint16_t *>(srcv)[x];
+      }
+      uint32_t uv = (v << 16) | u;
+      reinterpret_cast<uint32_t*>(pdst)[x] = uv;
+    }
+    srcu += pitchUV;
+    srcv += pitchUV;
+    pdst += dstpitch;
+  }
+}
+
 void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   VideoInfo vi = parent->filter_graph->GetVideoInfo();
   PVideoFrame frame;
@@ -1357,108 +1460,121 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
     }
   }
 
-  // thx vs
   bool semi_packed_p10 = (vi.pixel_type == VideoInfo::CS_YUV420P10) || (vi.pixel_type == VideoInfo::CS_YUV422P10) ;
   bool semi_packed_p16 = (vi.pixel_type == VideoInfo::CS_YUV420P16) || (vi.pixel_type == VideoInfo::CS_YUV422P16) ;
 
-  if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
-    int width = frame->GetRowSize(PLANAR_Y) / vi.ComponentSize();
-    int ppitch_y = frame->GetPitch(PLANAR_Y) / 2;
-    int ppitch_uv = frame->GetPitch(PLANAR_U) / 2;
-    const uint16_t *yptr = (const uint16_t *)frame->GetReadPtr(PLANAR_Y);
-    const uint16_t *uptr = (const uint16_t *)frame->GetReadPtr(PLANAR_U);
-    const uint16_t *vptr = (const uint16_t *)frame->GetReadPtr(PLANAR_V);
-    uint32_t *outbuf = (uint32_t *)lpBuffer;
-    out_pitch = ((16*((width + 5) / 6) + 127) & ~127)/4;
-    for (int y = 0; y < height; y++) {
-      const uint16_t *yline = yptr;
-      const uint16_t *uline = uptr;
-      const uint16_t *vline = vptr;
-      uint32_t *out_line = outbuf;
-      for (int x = 0; x < width + 5; x += 6) {
-        out_line[0] = (uline[0] | (yline[0] << 10) | (vline[0] << 20));
-        out_line[1] = (yline[1] | (uline[1] << 10) | (yline[2] << 20));
-        out_line[2] = (vline[1] | (yline[3] << 10) | (uline[2] << 20));
-        out_line[3] = (yline[4] | (vline[2] << 10) | (yline[5] << 20));
-        out_line += 4;
-        yline += 6;
-        uline += 3;
-        vline += 3;
-      }
-      outbuf += out_pitch;
-      yptr += ppitch_y;
-      uptr += ppitch_uv;
-      vptr += ppitch_uv;
-    }
-  } else if (semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) {
-    int pwidth = frame->GetRowSize(PLANAR_Y) / vi.ComponentSize();
-    int ppitch = frame->GetPitch(PLANAR_Y) / 2;
-    uint16_t *outbuf = (uint16_t *)lpBuffer;
-    const uint16_t *yptr = (const uint16_t *)frame->GetReadPtr(PLANAR_Y);
+  if ((semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
+      (semi_packed_p16 && !parent->Enable_Y3_10_16)) 
+  {
+    // P010/P016 format:
+    // Single buffer
+    // n lines   YYYYYYYYYYYYYY
+    // n/2 lines UVUVUVUVUVUVUV
+    // Pitch is common. P010 is upshifted to 16 bits
 
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < pwidth; x++) {
-        outbuf[x] = yptr[x] << 6;
-      }
-      outbuf += out_pitch/2;
-      yptr += ppitch;
-    }
-  }
-  else {
-    if (vi.IsRGB48() || vi.IsRGB64())
-    {
-      // avisynth: upside down, output: back to normal
-      parent->env->BitBlt((BYTE*)lpBuffer+out_pitch*(height-1), -out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+    const bool sse2 = (parent->env->GetCPUFlags() & CPUF_SSE2) != 0;
+    uint8_t* pdst = (uint8_t *)lpBuffer;
+
+    // luma
+    int srcpitch = frame->GetPitch();
+    const BYTE *src = frame->GetReadPtr();
+    if (semi_packed_p16) {
+      // no shift, native copy
+      parent->env->BitBlt(pdst, out_pitch, src, srcpitch, frame->GetRowSize(), vi.height);
     }
     else {
-      parent->env->BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+      // shift by 6 make 10->16 bits
+      if (sse2)
+        prepare_luma_shift6_sse2<true>(pdst, out_pitch, src, srcpitch, vi.width, vi.height); // true: conv to P016
+      else
+        prepare_luma_shift6_c<true>(pdst, out_pitch, src, srcpitch, vi.width, vi.height); // true: conv to P016
     }
-  }
 
-  if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
-    // intentionally empty
-  } else if ((semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
-    (semi_packed_p16 && !parent->Enable_Y3_10_16)) {
-    int pheight = frame->GetHeight(PLANAR_U);
-    int pwidth = frame->GetRowSize(PLANAR_U) / vi.ComponentSize();
-    int ppitch = frame->GetPitch(PLANAR_U) / 2;
-    BYTE *outadj = (BYTE*)lpBuffer + out_pitch*height;
-    uint16_t *outbuf = (uint16_t *)outadj;
-    const uint16_t *uptr = (const uint16_t *)frame->GetReadPtr(PLANAR_U);
-    const uint16_t *vptr = (const uint16_t *)frame->GetReadPtr(PLANAR_V);
+    pdst += out_pitch * vi.height;
+    
+    // Chroma
+    int pitchUV = frame->GetPitch(PLANAR_U);
+    const BYTE *srcu = frame->GetReadPtr(PLANAR_U);
+    const BYTE *srcv = frame->GetReadPtr(PLANAR_V);
+    int cheight = frame->GetHeight(PLANAR_U);
+    int cwidth = frame->GetRowSize(PLANAR_U) / sizeof(uint16_t);
 
-    if (semi_packed_p16) {
-      for (int y = 0; y < pheight; y++) {
-        for (int x = 0; x < pwidth; x++) {
-          outbuf[2*x] = uptr[x];
-          outbuf[2*x + 1] = vptr[x];
-        }
-        outbuf += out_pitchUV;
-        uptr += ppitch;
-        vptr += ppitch;
-      }
-    } else {
-      for (int y = 0; y < pheight; y++) {
-        for (int x = 0; x < pwidth; x++) {
-          outbuf[2*x] = uptr[x] << 6;
-          outbuf[2*x + 1] = vptr[x] << 6;
-        }
-        outbuf += out_pitchUV;
-        uptr += ppitch;
-        vptr += ppitch;
-      }
+    if (sse2) {
+      if (semi_packed_p16)
+        prepare_to_interleaved_uv_sse2<false>(pdst, out_pitch, srcu, srcv, pitchUV, cwidth, cheight);
+      else
+        prepare_to_interleaved_uv_sse2<true>(pdst, out_pitch, srcu, srcv, pitchUV, cwidth, cheight); // shift6 inside
+    }
+    else {
+      if (semi_packed_p16)
+        prepare_to_interleaved_uv_c<false>(pdst, out_pitch, srcu, srcv, pitchUV, cwidth, cheight);
+      else
+        prepare_to_interleaved_uv_c<true>(pdst, out_pitch, srcu, srcv, pitchUV, cwidth, cheight); // shift6 inside
     }
   }
   else {
-    parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height),
-      out_pitchUV, frame->GetReadPtr(plane1),
-      frame->GetPitch(plane1), frame->GetRowSize(plane1),
-      frame->GetHeight(plane1));
+    if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
+      int width = frame->GetRowSize(PLANAR_Y) / vi.ComponentSize();
+      int ppitch_y = frame->GetPitch(PLANAR_Y) / 2;
+      int ppitch_uv = frame->GetPitch(PLANAR_U) / 2;
+      const uint16_t *yptr = (const uint16_t *)frame->GetReadPtr(PLANAR_Y);
+      const uint16_t *uptr = (const uint16_t *)frame->GetReadPtr(PLANAR_U);
+      const uint16_t *vptr = (const uint16_t *)frame->GetReadPtr(PLANAR_V);
+      uint32_t *outbuf = (uint32_t *)lpBuffer;
+      out_pitch = ((16 * ((width + 5) / 6) + 127) & ~127) / 4;
+      for (int y = 0; y < height; y++) {
+        const uint16_t *yline = yptr;
+        const uint16_t *uline = uptr;
+        const uint16_t *vline = vptr;
+        uint32_t *out_line = outbuf;
+        for (int x = 0; x < width + 5; x += 6) {
+          out_line[0] = (uline[0] | (yline[0] << 10) | (vline[0] << 20));
+          out_line[1] = (yline[1] | (uline[1] << 10) | (yline[2] << 20));
+          out_line[2] = (vline[1] | (yline[3] << 10) | (uline[2] << 20));
+          out_line[3] = (yline[4] | (vline[2] << 10) | (yline[5] << 20));
+          out_line += 4;
+          yline += 6;
+          uline += 3;
+          vline += 3;
+        }
+        outbuf += out_pitch;
+        yptr += ppitch_y;
+        uptr += ppitch_uv;
+        vptr += ppitch_uv;
+      }
+    }
+    else if (semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) {
+      // already handled
+    }
+    else {
+      if (vi.IsRGB48() || vi.IsRGB64())
+      {
+        // avisynth: upside down, output: back to normal
+        parent->env->BitBlt((BYTE*)lpBuffer + out_pitch * (height - 1), -out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+      }
+      else {
+        parent->env->BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+      }
+    }
 
-    parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
-      out_pitchUV, frame->GetReadPtr(plane2),
-      frame->GetPitch(plane2), frame->GetRowSize(plane2),
-      frame->GetHeight(plane2));
+    if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
+      // intentionally empty
+    }
+    else if ((semi_packed_p10 && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
+      (semi_packed_p16 && !parent->Enable_Y3_10_16)) {
+      // already handled
+    }
+    else {
+      parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height),
+        out_pitchUV, frame->GetReadPtr(plane1),
+        frame->GetPitch(plane1), frame->GetRowSize(plane1),
+        frame->GetHeight(plane1));
+
+      parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
+        out_pitchUV, frame->GetReadPtr(plane2),
+        frame->GetPitch(plane2), frame->GetRowSize(plane2),
+        frame->GetHeight(plane2));
+    }
   }
   // no alpha?
 }
