@@ -75,33 +75,23 @@
 
 //-------- 256 bit uint8_t Horizontals
 
-__forceinline static void process_two_16pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i, short *&current_coeff, int filter_size_numOfBlk8, __m256i &result1, __m256i &result2) {
-  __m256i data_1 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin1 + i * 8)));
-  __m256i data_2 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin2 + i * 8)));
+__forceinline static void process_two_16pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i, short *&current_coeff, int filter_size_numOfBlk16, __m256i &result1, __m256i &result2) {
+  __m256i data_1 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin1 + i * 16)));
+  __m256i data_2 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin2 + i * 16)));
   __m256i coeff_1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current_coeff)); // 16 coeffs
-  __m256i coeff_2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current_coeff + 1 * filter_size_numOfBlk8 * 8)); // 16 coeffs
+  __m256i coeff_2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current_coeff + 1 * filter_size_numOfBlk16 * 16)); // 16 coeffs
   result1 = _mm256_add_epi32(result1, _mm256_madd_epi16(data_1, coeff_1));
   result2 = _mm256_add_epi32(result2, _mm256_madd_epi16(data_2, coeff_2));
   current_coeff += 16;
 }
 
-__forceinline static void process_two_8pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i, short *&current_coeff, int filter_size_numOfBlk8, __m256i &result1, __m256i &result2) {
-  __m128i data_1 = _mm_cvtepu8_epi16(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(src + begin1 + i * 8)));
-  __m128i data_2 = _mm_cvtepu8_epi16(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(src + begin2 + i * 8)));
-  __m128i coeff_1 = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff)); // 8 coeffs
-  __m128i coeff_2 = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff + 1 * filter_size_numOfBlk8 * 8));
-  result1 = _mm256_add_epi32(result1, _mm256_set_m128i(_mm_setzero_si128(), _mm_madd_epi16(data_1, coeff_1)));
-  result2 = _mm256_add_epi32(result2, _mm256_set_m128i(_mm_setzero_si128(), _mm_madd_epi16(data_2, coeff_2)));
-  current_coeff += 8;
-}
-
-// filtersizealigned8: special: 1, 2. Generic: -1
-template<int filtersizealigned8>
+// filtersizealigned16: special: 1, 2. Generic: -1
+template<int filtersizealigned16>
 static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
-  const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
+  const int filter_size_numOfBlk16 = (filtersizealigned16 >= 1) ? filtersizealigned16 : (AlignNumber(program->filter_size, 16) / 16);
   __m256i zero = _mm256_setzero_si256();
 
-  __m256i rounder256_1 = _mm256_setr_epi32(1 << (14 - 1), 0, 0, 0, 0, 0, 0, 0);
+  __m256i rounder256_1 = _mm256_setr_epi32(1 << (FPScale8bits - 1), 0, 0, 0, 0, 0, 0, 0);
   for (int y = 0; y < height; y++) {
     short* current_coeff = program->pixel_coefficient;
 
@@ -118,18 +108,14 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
       int begin4 = program->pixel_offset[x + 3];
 
       // begin1, begin2
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin1, begin2, i, current_coeff, filter_size_numOfBlk8, result1, result2);
-      if (filter_size_numOfBlk8 % 2) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin1, begin2, filter_size_numOfBlk8 - 1, current_coeff, filter_size_numOfBlk8, result1, result2);
-      current_coeff += 8 * filter_size_numOfBlk8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin1, begin2, i, current_coeff, filter_size_numOfBlk16, result1, result2);
+      current_coeff += 16 * filter_size_numOfBlk16; // because of dual pixel processing
 
       // begin3, begin4
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin3, begin4, i, current_coeff, filter_size_numOfBlk8, result3, result4);
-      if (filter_size_numOfBlk8 % 2) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin3, begin4, filter_size_numOfBlk8 - 1, current_coeff, filter_size_numOfBlk8, result3, result4);
-      current_coeff += 8 * filter_size_numOfBlk8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin3, begin4, i, current_coeff, filter_size_numOfBlk16, result3, result4);
+      current_coeff += 16 * filter_size_numOfBlk16; // because of dual pixel processing
 
       __m256i sumQuad1234 = _mm256_hadd_epi32(_mm256_hadd_epi32(result1, result2), _mm256_hadd_epi32(result3, result4)); 
       // L1L1L1L1 L1L1L1L1 + L2L2L2L2 L2L2L2L2 = L1L1 L2L2 L1L1 L2L2
@@ -148,18 +134,14 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
       begin4 = program->pixel_offset[x + 7];
 
       // begin1, begin2
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin1, begin2, i, current_coeff, filter_size_numOfBlk8, result1, result2);
-      if (filter_size_numOfBlk8 % 2) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin1, begin2, filter_size_numOfBlk8 - 1, current_coeff, filter_size_numOfBlk8, result1, result2);
-      current_coeff += 8 * filter_size_numOfBlk8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin1, begin2, i, current_coeff, filter_size_numOfBlk16, result1, result2);
+      current_coeff += 16 * filter_size_numOfBlk16; // because of dual pixel processing
 
       // begin3, begin4
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin3, begin4, i, current_coeff, filter_size_numOfBlk8, result3, result4);
-      if (filter_size_numOfBlk8 % 2) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin3, begin4, filter_size_numOfBlk8 - 1, current_coeff, filter_size_numOfBlk8, result3, result4);
-      current_coeff += 8 * filter_size_numOfBlk8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin3, begin4, i, current_coeff, filter_size_numOfBlk16, result3, result4);
+      current_coeff += 16 * filter_size_numOfBlk16; // because of dual pixel processing
 
       __m256i sumQuad5678 = _mm256_hadd_epi32(_mm256_hadd_epi32(result1, result2), _mm256_hadd_epi32(result3, result4));
       // L5L6 L7L8 L5L6 L7L8
@@ -172,7 +154,7 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
       __m256i result_8x_uint32 = _mm256_set_m128i(pix5678, pix1234);
 
       // scale back, shuffle, store
-      __m256i result = _mm256_srai_epi32(result_8x_uint32, 14); // shift back integer arithmetic 14 bits precision for 8 bit data
+      __m256i result = _mm256_srai_epi32(result_8x_uint32, FPScale8bits); // shift back integer arithmetic 14 bits precision for 8 bit data
 
       __m256i result_2x4x_uint16 = _mm256_packus_epi32(result, zero); // 8*32+zeros = lower 4*16 in both 128bit lanes
       __m128i result_2x4x_uint16_128 = _mm256_castsi256_si128(_mm256_permute4x64_epi64(result_2x4x_uint16, (0 << 0) | (2 << 2) | (0 << 4) | (0 << 6))); // low64 of 2nd 128bit lane to hi64 of 1st 128bit lane
@@ -385,7 +367,7 @@ __forceinline static void process_two_pixels_h_uint16_t(const uint16_t *src, int
   if (!lessthan16bit)
     data_single = _mm256_add_epi16(data_single, shifttosigned); // unsigned -> signed
   __m128i coeff_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff)); // 8 coeffs
-  __m128i coeff_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff + 1 * filter_size_numOfBlk8 * 8)); // 8 coeffs for begin3
+  __m128i coeff_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff + 1 * filter_size_numOfBlk8 * 8)); // 8 coeffs
   __m256i coeff = _mm256_set_m128i(coeff_hi, coeff_lo);
   result = _mm256_add_epi32(result, _mm256_madd_epi16(data_single, coeff));
   current_coeff += 8;
@@ -398,6 +380,7 @@ template<bool lessthan16bit, int filtersizealigned8>
 void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
   // 1 and 2: special case for compiler optimization
   const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
+  const int incFilterSize = 8 * filter_size_numOfBlk8; // skip every 2nd coeffs (two pixels)
 
   const __m256i zero = _mm256_setzero_si256();
   const __m256i shifttosigned = _mm256_set1_epi16(-32768); // for 16 bits only
@@ -428,16 +411,16 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
       // begin1, begin2, result12
       for (int i = 0; i < filter_size_numOfBlk8; i++)
         process_two_pixels_h_uint16_t<lessthan16bit>(src, begin1, begin2, i, current_coeff, filter_size_numOfBlk8, result12, shifttosigned);
-      current_coeff += 8 * filter_size_numOfBlk8; // skip begin2
+      current_coeff += incFilterSize; // skip begin2
 
-      // begin3, begin4, result34
+                                      // begin3, begin4, result34
       for (int i = 0; i < filter_size_numOfBlk8; i++)
         process_two_pixels_h_uint16_t<lessthan16bit>(src, begin3, begin4, i, current_coeff, filter_size_numOfBlk8, result34, shifttosigned);
-      current_coeff += 8 * filter_size_numOfBlk8; // skip begin4
+      current_coeff += incFilterSize; // skip begin4
 
       __m256i sumQuad1234 = _mm256_hadd_epi32(result12, result34); // L1L1L1L1L2L2L2L2 + L3L3L3L3L4L4L4L4 = L1L1 L3L3 L2L2 L4L4
 
-      // 4-7
+                                                                   // 4-7
       result12 = rounder256;
       result34 = result12;
 
@@ -449,12 +432,12 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
       // begin1, begin2, result12
       for (int i = 0; i < filter_size_numOfBlk8; i++)
         process_two_pixels_h_uint16_t<lessthan16bit>(src, begin1, begin2, i, current_coeff, filter_size_numOfBlk8, result12, shifttosigned);
-      current_coeff += 8 * filter_size_numOfBlk8; // skip begin2
+      current_coeff += incFilterSize; // skip begin2
 
-      // begin3, begin4, result34
+                                      // begin3, begin4, result34
       for (int i = 0; i < filter_size_numOfBlk8; i++)
         process_two_pixels_h_uint16_t<lessthan16bit>(src, begin3, begin4, i, current_coeff, filter_size_numOfBlk8, result34, shifttosigned);
-      current_coeff += 8 * filter_size_numOfBlk8; // skip begin4
+      current_coeff += incFilterSize; // skip begin4
 
       __m256i sumQuad5678 = _mm256_hadd_epi32(result12, result34); // L5L5L5L5L6L6L6L6 + L7L7L7L7L8L8L8L8 = L5L5 L7L7 L6L6 L8L8
 
@@ -480,14 +463,15 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
 
 //-------- 256 bit uint8_t Horizontal Dispatcher
 
+// coeffs are safely padded/aligned to 16
 void resizer_h_avx2_generic_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
-  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size, 8) / 8;
+  const int filter_size_numOfBlk16 = AlignNumber(program->filter_size, 16) / 16;
 
-  if (filter_size_numOfBlk8 == 1)
+  if (filter_size_numOfBlk16 == 1)
     internal_resizer_h_avx2_generic_uint8_t<1>(dst8, src8, dst_pitch, src_pitch, program, width, height);
-  else if (filter_size_numOfBlk8 == 2)
+  else if (filter_size_numOfBlk16 == 2)
     internal_resizer_h_avx2_generic_uint8_t<2>(dst8, src8, dst_pitch, src_pitch, program, width, height);
-  else if (filter_size_numOfBlk8 == 3)
+  else if (filter_size_numOfBlk16 == 3)
     internal_resizer_h_avx2_generic_uint8_t<3>(dst8, src8, dst_pitch, src_pitch, program, width, height);
   else // -1: basic method, use program->filter_size
     internal_resizer_h_avx2_generic_uint8_t<-1>(dst8, src8, dst_pitch, src_pitch, program, width, height);
@@ -497,7 +481,7 @@ void resizer_h_avx2_generic_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch,
 
 template<bool lessthan16bit>
 void resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
-  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size, 8) / 8;
+  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size, 8) / 8; // yes, 8 is used here
 
   if (filter_size_numOfBlk8 == 1)
     internal_resizer_h_avx2_generic_uint16_t<lessthan16bit, 1>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);

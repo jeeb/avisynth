@@ -271,7 +271,7 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
 
     // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
     // in order not to have NaN floats
-    if (start_pos + AlignNumber(fir_filter_size, ALIGN_RESIZER_COEFF_SIZE) - 1 > source_size - 1)
+    if (start_pos + AlignNumber(fir_filter_size, ALIGN_FLOAT_RESIZER_COEFF_SIZE) - 1 > source_size - 1)
     {
       if (!program->overread_possible) {
         // register the first occurance

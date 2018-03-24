@@ -47,7 +47,7 @@ const int FPScale = 1 << FPScale8bits; // fixed point scaler (1<<14)
 const int FPScale16bits = 13;
 const int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SIMD signed operation
 const int ALIGN_RESIZER_TARGET_SIZE = 8;
-const int ALIGN_RESIZER_COEFF_SIZE = 8; // simd friendly
+const int ALIGN_FLOAT_RESIZER_COEFF_SIZE = 8;
 
 // 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
 #define M_PI 3.14159265358979323846
@@ -57,6 +57,7 @@ struct ResamplingProgram {
   int source_size, target_size;
   double crop_start, crop_size;
   int filter_size;
+  int filter_size_alignment; // for info, 1 (C), 8 (sse or avx2) or 16 (avx2)
 
   // Array of Integer indicate starting point of sampling
   int* pixel_offset;
@@ -81,12 +82,14 @@ struct ResamplingProgram {
     source_overread_offset = -1;
     source_overread_beyond_targetx = -1;
 
-    // align target_size to 8 units to allow safe 8 pixels/cycle in resizers
+    // align target_size to 8 units to allow safe 8 pixels/cycle in H resizers
+    // pixel_offset is in unrolled loop, 128/256bit simd size does not affect.
     pixel_offset = (int*)Env->Allocate(sizeof(int) * AlignNumber(target_size, ALIGN_RESIZER_TARGET_SIZE), 64, AVS_NORMAL_ALLOC); // 64-byte alignment
+    filter_size_alignment = 1; // just info. nothing special, for C. resize_h_prepare_coeff_8or16 can override and realign the coefficients for SIMD processing
     if (bits_per_pixel < 32)
-      pixel_coefficient = (short*)Env->Allocate(sizeof(short) * AlignNumber(target_size, ALIGN_RESIZER_COEFF_SIZE) * filter_size, 64, AVS_NORMAL_ALLOC);
+      pixel_coefficient = (short*)Env->Allocate(sizeof(short) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
     else
-      pixel_coefficient_float = (float*)Env->Allocate(sizeof(float) * AlignNumber(target_size, ALIGN_RESIZER_COEFF_SIZE) * filter_size, 64, AVS_NORMAL_ALLOC);
+      pixel_coefficient_float = (float*)Env->Allocate(sizeof(float) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
 
     if (!pixel_offset || (!pixel_coefficient && bits_per_pixel < 32) || (!pixel_coefficient_float && bits_per_pixel == 32)) {
       Env->Free(pixel_offset);

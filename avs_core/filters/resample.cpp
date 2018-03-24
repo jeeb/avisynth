@@ -467,18 +467,21 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
   }
 }
 
-// make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
-static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* env) {
-  int filter_size = AlignNumber(p->filter_size, ALIGN_RESIZER_COEFF_SIZE);
+// make the resampling coefficient array mod8 or mod16 friendly for simd, padding non-used coeffs with zeros
+static void resize_h_prepare_coeff_8or16(ResamplingProgram* p, IScriptEnvironment2* env, int alignFilterSize8or16) {
+  p->filter_size_alignment = alignFilterSize8or16;
+  int filter_size = AlignNumber(p->filter_size, alignFilterSize8or16);
+  // for even non-simd it was aligned/padded as well, keep the same here
+  int target_size = AlignNumber(p->target_size, ALIGN_RESIZER_TARGET_SIZE);
 
   // Copy existing coeff
   if (p->bits_per_pixel == 32) {
-    float* new_coeff_float = (float*)env->Allocate(sizeof(float) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+    float* new_coeff_float = (float*)env->Allocate(sizeof(float) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
     if (!new_coeff_float) {
       env->Free(new_coeff_float);
       env->ThrowError("Could not reserve memory in a resampler.");
     }
-    std::fill_n(new_coeff_float, p->target_size * filter_size, 0.0f);
+    std::fill_n(new_coeff_float, target_size * filter_size, 0.0f);
     float *dst_f = new_coeff_float, *src_f = p->pixel_coefficient_float;
     for (int i = 0; i < p->target_size; i++) {
       for (int j = 0; j < p->filter_size; j++) {
@@ -492,12 +495,12 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* 
     p->pixel_coefficient_float = new_coeff_float;
   }
   else {
-    short* new_coeff = (short*)env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+    short* new_coeff = (short*)env->Allocate(sizeof(short) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
     if (!new_coeff) {
       env->Free(new_coeff);
       env->ThrowError("Could not reserve memory in a resampler.");
     }
-    memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
+    memset(new_coeff, 0, sizeof(short) * target_size * filter_size);
     short *dst = new_coeff, *src = p->pixel_coefficient;
     for (int i = 0; i < p->target_size; i++) {
       for (int j = 0; j < p->filter_size; j++) {
@@ -1656,25 +1659,27 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
   if (pixelsize == 1)
   {
     if (CPU & CPUF_SSSE3) {
-      // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
-      resize_h_prepare_coeff_8(program, env);
       if (CPU & CPUF_AVX2) {
+        // make the resampling coefficient array mod16 friendly for simd, padding non-used coeffs with zeros
+        resize_h_prepare_coeff_8or16(program, env, 16);
         return resizer_h_avx2_generic_uint8_t;
       }
       else {
+        // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
+        resize_h_prepare_coeff_8or16(program, env, 8);
         if (program->filter_size > 8)
           return resizer_h_ssse3_generic;
         else
           return resizer_h_ssse3_8; // no loop
       }
-  }
+    }
     else { // C version
       return resize_h_c_planar<uint8_t>;
-}
+    }
   }
   else if (pixelsize == 2) {
     if (CPU & CPUF_SSSE3) {
-      resize_h_prepare_coeff_8(program, env);
+      resize_h_prepare_coeff_8or16(program, env, 8); // alignment of 8 is enough for AVX2 uint16_t as well
       if (CPU & CPUF_AVX2) {
         if(bits_per_pixel < 16)
           return resizer_h_avx2_generic_uint16_t<true>;
@@ -1699,7 +1704,7 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
   } else { //if (pixelsize == 4)
     
     if (CPU & CPUF_SSSE3) {
-      resize_h_prepare_coeff_8(program, env);
+      resize_h_prepare_coeff_8or16(program, env, ALIGN_FLOAT_RESIZER_COEFF_SIZE); // alignment of 8 is enough for AVX2 float as well
       
       const int filtersizealign8 = AlignNumber(program->filter_size, 8);
       const int filtersizemod8 = program->filter_size & 7;
