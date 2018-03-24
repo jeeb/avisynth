@@ -41,7 +41,8 @@
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
 // NOTE: Don't change this value. It's hard-coded in SIMD code.
-const int FPScale = 16384; // fixed point scaler (1<<14)
+const int FPScale8bits = 14; // fixed point scaler 14 bit
+const int FPScale = 1 << FPScale8bits; // fixed point scaler (1<<14)
 // for 16 bits: one bit less
 const int FPScale16bits = 13;
 const int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SIMD signed operation
