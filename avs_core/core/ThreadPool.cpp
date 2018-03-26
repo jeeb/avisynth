@@ -95,6 +95,9 @@ static void ThreadFunc(size_t thread_id, MessageQueue *msgQueue)
   } //while
 }
 
+__declspec(thread) size_t g_thread_id;
+__declspec(thread) int g_suppress_thread_count;
+
 class ThreadPoolPimpl
 {
 public:

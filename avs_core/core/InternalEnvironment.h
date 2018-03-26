@@ -44,6 +44,9 @@ public:
     bool operator==(const OneTimeLogTicket &other) const;
 };
 
+extern __declspec(thread) size_t g_thread_id;
+extern __declspec(thread) int g_getframe_recursive_count;
+
 // Strictly for Avisynth core only.
 // Neither host applications nor plugins should use
 // these interfaces.
@@ -56,7 +59,7 @@ public:
     virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus) = 0;
     virtual bool __stdcall FilterHasMtMode(const AVSFunction* filter) const = 0;
     virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const = 0; // If filter is "", gets the default MT mode
-    virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
+    virtual void __stdcall SetPrefetcher(Prefetcher* p) = 0;
     virtual ClipDataStore* __stdcall ClipData(IClip *clip) = 0;
     virtual MtMode __stdcall GetDefaultMtMode() const = 0;
     virtual void __stdcall SetLogParams(const char *target, int level) = 0;
@@ -66,6 +69,11 @@ public:
     virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va) = 0;
     virtual void __stdcall VThrowError(const char* fmt, va_list va) = 0;
     virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
+
+    virtual InternalEnvironment* __stdcall GetCoreEnvironment() = 0;
+    virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const AVSValue& args,
+      const char* const* arg_names, IScriptEnvironment2* env) = 0;
+
 };
 
 #endif // _AVS_SCRIPTENVIRONMENT_H_INCLUDED

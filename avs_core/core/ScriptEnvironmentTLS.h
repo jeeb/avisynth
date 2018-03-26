@@ -42,7 +42,7 @@ public:
 
   void Specialize(InternalEnvironment* _core)
   {
-    core = _core;
+    core = _core->GetCoreEnvironment();
   }
 
   /* ---------------------------------------------------------------------------------
@@ -228,7 +228,11 @@ public:
 
   AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0)
   {
-    return core->Invoke(name, args, arg_names);
+		AVSValue result;
+		if (!core->InvokeThread(&result, name, args, arg_names, this)) {
+			throw NotFound();
+		}
+		return result;
   }
 
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align)
@@ -334,7 +338,7 @@ public:
 
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0)
   {
-    return core->Invoke(result, name, args, arg_names=0);
+    return core->InvokeThread(result, name, args, arg_names, this);
   }
 
   size_t  __stdcall GetProperty(AvsEnvProperty prop)
@@ -416,6 +420,17 @@ public:
   virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va)
   {
     core->LogMsgOnce_valist(ticket, level, fmt, va);
+  }
+
+  virtual InternalEnvironment* __stdcall GetCoreEnvironment()
+  {
+    return core->GetCoreEnvironment();
+  }
+
+  virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const AVSValue& args,
+    const char* const* arg_names, IScriptEnvironment2* env)
+  {
+    return core->InvokeThread(result, name, args, arg_names, env);
   }
 
 };
