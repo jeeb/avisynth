@@ -784,7 +784,7 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
         }
     }
     else // if (pixelsize == 4)
-    { // todo sse for float
+    {
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(otherp, 16))
         average_plane_sse2_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
       else
