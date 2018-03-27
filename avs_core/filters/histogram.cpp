@@ -1097,11 +1097,26 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   int src_height = src->GetHeight();
 
   bool RGB = vi.IsRGB();
-  int color_shift = (bits_per_pixel == 32) ? 0 : (bits_per_pixel - 8);
+  const bool isFloat = (bits_per_pixel == 32);
+  const int color_shift =  isFloat ? 0 : (bits_per_pixel - 8);
+
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float middle_chroma_f = 0.0f;
+  const int preshift_i = 128;
+#else
+  const float middle_chroma_f = 0.5f;
+  const int preshift_i = 0;
+#endif
+
   int plane_default_black[3] = {
     RGB ? 0 : (16 << color_shift),
     RGB ? 0 : (128 << color_shift),
     RGB ? 0 : (128 << color_shift)
+  };
+  float plane_default_black_f[3] = {
+    RGB ? 0 : (16/255.0f),
+    RGB ? 0 : middle_chroma_f,
+    RGB ? 0 : middle_chroma_f
   };
 
   const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
@@ -1117,7 +1132,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       switch (pixelsize) {
       case 1: memset(dstp + fillStart, plane_default_black[0], fillSize); break;
       case 2: std::fill_n((uint16_t *)(dstp + fillStart), fillSize / sizeof(uint16_t), plane_default_black[0]); break;
-      case 4: std::fill_n((float *)(dstp + fillStart), fillSize / sizeof(float), (float)plane_default_black[0] / 255.0f); break;
+      case 4: std::fill_n((float *)(dstp + fillStart), fillSize / sizeof(float), plane_default_black_f[0]); break;
       }
 
       // first plane is already processed
@@ -1128,11 +1143,10 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
         const int fillSize = (dst->GetHeight(plane) - src->GetHeight(plane)) * dst->GetPitch(plane);
         const int fillStart = src->GetHeight(plane) * dst->GetPitch(plane);
-        int chroma_fill = plane_default_black[p];
         switch (pixelsize) {
-        case 1: memset(ptr + fillStart, RGB ? 0 : chroma_fill, fillSize); break;
-        case 2: std::fill_n((uint16_t *)(ptr + fillStart), fillSize / sizeof(uint16_t), chroma_fill); break;
-        case 4: std::fill_n((float *)(ptr + fillStart), fillSize / sizeof(float), RGB ? 0.0f : 0.5f); break;
+        case 1: memset(ptr + fillStart, RGB ? 0 : plane_default_black[p], fillSize); break;
+        case 2: std::fill_n((uint16_t *)(ptr + fillStart), fillSize / sizeof(uint16_t), plane_default_black[p]); break;
+        case 4: std::fill_n((float *)(ptr + fillStart), fillSize / sizeof(float), plane_default_black_f[p]); break;
         }
       }
     }
@@ -1260,12 +1274,11 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
       // Clear Y/U/V or B, R G
       BYTE *ptr = pdstb;
-      int color = plane_default_black[p];
       for (int y = 0; y < dst->GetHeight() >> sheight; y++) {
         switch (pixelsize) {
-        case 1: memset(ptr, color, show_size >> swidth); break;
-        case 2: std::fill_n((uint16_t *)(ptr), show_size >> swidth, color); break;
-        case 4: std::fill_n((float *)(ptr), show_size >> swidth, (float)color / 255); break;
+        case 1: memset(ptr, plane_default_black[p], show_size >> swidth); break;
+        case 2: std::fill_n((uint16_t *)(ptr), show_size >> swidth, plane_default_black[p]); break;
+        case 4: std::fill_n((float *)(ptr), show_size >> swidth, plane_default_black_f[p]); break;
         }
         ptr += dstPitch;
       }
@@ -1273,11 +1286,16 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       if (!RGB && markers) {
         // Draw Unsafe zone (Y-graph)
         int color_unsafeZones[3] = { 32, 16, 160 };
-
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+        float color_unsafeZones_f[3] = { 32 / 255.0f, (16 - 128) / 255.0f, (160 - 128) / 255.0f };
+#else
+        float color_unsafeZones_f[3] = { 32 / 255.0f, (16 - 0) / 255.0f, (160 - 0) / 255.0f };
+#endif
         int color_usz = color_unsafeZones[p];
         int color_i = color_usz << color_shift;
-        float color_f = color_usz / 255.0f;
+        float color_f = color_unsafeZones_f[p];
         ptr = pdstb + 0 * dstPitch;;
+        
         for (int y = 0; y <= 64 >> sheight; y++) {
           int x = 0;
           for (; x < (16 << pos_shift) >> swidth; x++) {
@@ -1343,14 +1361,21 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
           // upper: x=0-16, R=G=255, B=0; x=128, R=G=B=0; x=240-255, R=G=0, B=255
           // lower: x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
             int color1_upper_lower_gradient[2][3] = { { 210 / 2, 16 + 112 / 2, 128 },{ 170 / 2, 128, 16 + 112 / 2 } };
+            int color2_upper_lower_gradient[2][3] = { { 41 / 2, 240 - 112 / 2, 128 },{ 81 / 2, 128, 240 - 112 / 2 } };
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+            float color1_upper_lower_gradient_f[2][3] = { { (210 / 2) / 255.0f, ((16 + 112 / 2) - 128) / 255.0f, (128 - 128) / 255.0f },{ (170 / 2) / 255.0f, (128 - 128) / 255.0f, ((16 + 112 / 2) - 128) / 255.0f } };
+            float color2_upper_lower_gradient_f[2][3] = { { (41 / 2) / 255.0f, ((240 - 112 / 2) - 128) / 255.0f, (128 - 128) / 255.0f },{ (81 / 2) / 255.0f, (128 - 128) / 255.0f, ((240 - 112 / 2) - 128) / 255.0f } };
+#else
+            float color1_upper_lower_gradient_f[2][3] = { { (210 / 2) / 255.0f, ((16 + 112 / 2) - 0) / 255.0f, (128 - 0) / 255.0f },{ (170 / 2) / 255.0f, (128 - 0) / 255.0f, ((16 + 112 / 2) - 0) / 255.0f } };
+            float color2_upper_lower_gradient_f[2][3] = { { (41 / 2) / 255.0f, ((240 - 112 / 2) - 128) / 255.0f, (128 - 0) / 255.0f },{ (81 / 2) / 255.0f, (128 - 0) / 255.0f, ((240 - 112 / 2) - 0) / 255.0f } };
+#endif
             int color = color1_upper_lower_gradient[gradient_upper_lower][p];
             int color_i = color << color_shift;
-            float color_f = color / 255.0f;
+            float color_f = color1_upper_lower_gradient_f[gradient_upper_lower][p];
 
-            int color2_upper_lower_gradient[2][3] = { { 41 / 2, 240 - 112 / 2, 128 },{ 81 / 2, 128, 240 - 112 / 2 } };
             int color2 = color2_upper_lower_gradient[gradient_upper_lower][p];
             int color2_i = color2 << color_shift;
-            float color2_f = color2 / 255.0f;
+            float color2_f = color2_upper_lower_gradient_f[gradient_upper_lower][p];;
 
             // upper only for planar U and Y
             if (plane == PLANAR_V && gradient_upper_lower == 0)
@@ -1405,7 +1430,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
                       (gradient_upper_lower == 0) ?
                       (((show_middle_pos - x) * 15) >> 3) >> pos_shift : // *1.875
                       ((show_middle_pos - x) * 99515) >> 16 >> pos_shift; // *1.518
-                    float color3_f = color3 / 255.0f;
+                    float color3_f = color3 / 255.0f; // no shift this is Y
                     reinterpret_cast<float *>(ptr)[x] = color3_f;
                   }
                 }
@@ -1440,7 +1465,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
                       (gradient_upper_lower == 0) ?
                       ((x - show_middle_pos) * 24001) >> 16 >> pos_shift :  // *0.366
                       ((x - show_middle_pos) * 47397) >> 16 >> pos_shift; // *0.723
-                    float color4_f = color4 / 255.0f;
+                    float color4_f = color4 / 255.0f; // no shift, this is Y
                     reinterpret_cast<float *>(ptr)[x] = color4_f;
                   }
                 }
@@ -1464,7 +1489,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
                 else { // float
                   for (; x <= (240 << pos_shift) >> swidth; x++) {
                     int color4 = (x << swidth) >> pos_shift;
-                    float color4_f = color4 / 255.0f;
+                    float color4_f = (color4 - preshift_i) / 255.0f;
                     reinterpret_cast<float *>(ptr)[x] = color4_f;
                   }
                 }
