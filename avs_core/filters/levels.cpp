@@ -121,6 +121,44 @@ static void __cdecl free_buffer(void* buff, IScriptEnvironment* env)
     }
 }
 
+// Helper for Limits, MaskHS, Tweak
+static void get_limits(luma_chroma_limits_t &d, int bits_per_pixel) {
+  int tv_range_lo_luma_8 = 16;
+  int tv_range_hi_luma_8 = 235;
+  int tv_range_lo_chroma_8 = tv_range_lo_luma_8;
+  int tv_range_hi_chroma_8 = 240;
+
+  if (bits_per_pixel == 32) {
+    d.tv_range_low_luma_f = tv_range_lo_luma_8 / 255.0f;
+    d.tv_range_hi_luma_f = tv_range_hi_luma_8 / 255.0f;
+    d.full_range_low_luma_f = 0.0f;
+    d.full_range_hi_luma_f = 1.0f;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+    d.tv_range_low_chroma_f = (tv_range_lo_chroma_8 - 128) / 255.0f; // -112
+    d.tv_range_hi_chroma_f = (tv_range_hi_chroma_8 - 128) / 255.0f; // 112
+    d.middle_chroma_f = 0.0f;
+    d.full_range_low_chroma_f = (0 - 128) / 255.0f;
+    d.full_range_hi_chroma_f = (255 - 128) / 255.0f;
+#else
+    d.tv_range_low_chroma_f = tv_range_lo_chroma_8 / 255.0;
+    d.tv_range_hi_chroma_f = tv_range_hi_chroma_8 / 255.0;
+    d.middle_chroma_f = 0.5f;
+    d.full_range_low_chroma_f = 0 / 255.0f;
+    d.full_range_hi_chroma_f = 255 / 255.0f;
+#endif
+    d.range_luma_f = d.tv_range_hi_luma_f - d.tv_range_low_luma_f;
+    d.range_chroma_f = d.tv_range_hi_chroma_f - d.tv_range_low_chroma_f;
+  }
+  else {
+    d.tv_range_low = tv_range_lo_luma_8 << (bits_per_pixel - 8); // 16-240,64–960, 256–3852,... 4096-61692
+    d.tv_range_hi_luma = tv_range_hi_luma_8 << (bits_per_pixel - 8);
+    d.tv_range_hi_chroma = tv_range_hi_chroma_8 << (bits_per_pixel - 8);
+    d.middle_chroma = 1 << (bits_per_pixel - 1); // 128
+    d.range_luma = d.tv_range_hi_luma - d.tv_range_low; // 219
+    d.range_chroma = d.tv_range_hi_chroma - d.tv_range_low; // 224
+  }
+}
+
 /********************************
  *******   Levels Filter   ******
  ********************************/
@@ -128,12 +166,11 @@ static void __cdecl free_buffer(void* buff, IScriptEnvironment* env)
 template<bool chroma, bool use_gamma>
 __forceinline float Levels::calcPixel(const float pixel)
 {
-
     float result;
     if (!chroma) {
       float p;
       if (coring)
-        p = ((pixel - tv_range_low_f)*(1.0f / range_luma_f) - in_min_f) / divisor_f;
+        p = ((pixel - limits.tv_range_low_luma_f)*(1.0f / limits.range_luma_f) - in_min_f) / divisor_f;
       else
         p = (pixel - in_min_f) / divisor_f;
 
@@ -143,21 +180,29 @@ __forceinline float Levels::calcPixel(const float pixel)
       p = p * out_diff_f + out_min_f; // out_diff_f = out_max_f - out_min_f;
       // luma
       if (coring) {
-        result = clamp(p*(range_luma_f / 1.0f + tv_range_low_f), tv_range_low_f, tv_range_hi_luma_f);
+        result = clamp(p* limits.range_luma_f / 1.0f + limits.tv_range_low_luma_f, limits.tv_range_low_luma_f, limits.tv_range_hi_luma_f);
       }
       else
-        result = clamp(p, 0.0f, 1.0f);
+        result = clamp(p, 0.0f, 1.0f); // todo: theoretical question, should we clamp in Levels function?
     }
     else {
-      // should be changed when float chroma becomes -0.5..+0.5 instead of 0.0..1.0
-      float q = ((pixel - middle_chroma_f) * out_diff_f) / divisor_f + middle_chroma_f;
+      /*
+      int q = (int)(((bias_dither + ii - middle_chroma * scale) * (out_max - out_min)) / divisor + middle_chroma + 0.5);
+      int chroma;
       if (coring)
-        result = clamp(q, tv_range_low_f, tv_range_hi_chroma_f); // e.g. clamp(q, 16, 240)
+        chroma = clamp(q, tv_range_low, tv_range_hi_chroma); // e.g. clamp(q, 16, 240)
       else
-        result = clamp(q, 0.0f, 1.0f); // e.g. clamp(q, 0, 255)
+        chroma = clamp(q, 0, max_pixel_value); // e.g. clamp(q, 0, 255)
+      */
+      float q = ((pixel - limits.middle_chroma_f) * out_diff_f) / divisor_f + limits.middle_chroma_f;
+      if (coring)
+        result = clamp(q, limits.tv_range_low_chroma_f, limits.tv_range_hi_chroma_f); // e.g. clamp(q, 16, 240)
+      else
+        result = clamp(q, limits.full_range_low_chroma_f, limits.full_range_hi_chroma_f); // e.g. clamp(q, 0, 255) todo: theoretical question, should we clamp in Levels function?
     }
     return result;
 }
+
 
 Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float _out_min, float _out_max, bool _coring, bool _dither,
   IScriptEnvironment* env)
@@ -202,24 +247,7 @@ Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float 
 
   use_lut = bits_per_pixel != 32; // for float: realtime only
 
-  // range limits for integer 8-16 bits
-  tv_range_low   = 16 << (bits_per_pixel - 8); // 16
-  tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
-  range_luma = tv_range_hi_luma - tv_range_low; // 219
-
-  tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
-  range_chroma = tv_range_hi_chroma - tv_range_low; // 224
-
-  middle_chroma = 1 << (bits_per_pixel - 1); // 128
-
-  // for float
-  // todo: when chroma for float goes to -0.5..+0.5 instead of 0..1.0 then revise!
-  tv_range_low_f = 16.0f / 255.0f;
-  tv_range_hi_luma_f = 235.0f / 255.0f;
-  range_luma_f = tv_range_hi_luma_f - tv_range_low_f;
-  tv_range_hi_chroma_f = 240.0f / 255.0f;
-  range_chroma_f = tv_range_hi_chroma_f - tv_range_low_f;
-  middle_chroma_f = 128.0f/255.0f; // ? or 0.5?
+  get_limits(limits, bits_per_pixel); // tv range limits
 
   if (pixelsize == 4)
     dither_strength /= 65536.0f; // same dither range as for a 16 bit clip
@@ -267,7 +295,7 @@ Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float 
         ii = i;
 
       if (coring)
-        p = ((bias_dither + ii - tv_range_low *scale)*((double)max_pixel_value / range_luma) - in_min) / divisor;
+        p = ((bias_dither + ii - limits.tv_range_low *scale)*((double)max_pixel_value / limits.range_luma) - in_min) / divisor;
       else
         p = (bias_dither + ii - in_min) / divisor;
 
@@ -275,7 +303,7 @@ Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float 
       p = p * (out_max - out_min) + out_min;
       int luma;
       if (coring)
-        luma = clamp(int(p*((double)range_luma / max_pixel_value) + tv_range_low + 0.5), tv_range_low, tv_range_hi_luma);
+        luma = clamp(int(p*((double)limits.range_luma / max_pixel_value) + limits.tv_range_low + 0.5), limits.tv_range_low, limits.tv_range_hi_luma);
       else
         luma = clamp(int(p + 0.5), 0, max_pixel_value);
 
@@ -285,10 +313,10 @@ Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float 
         reinterpret_cast<uint16_t *>(map)[i] = (uint16_t)luma;
 
       if (need_chroma) {
-        int q = (int)(((bias_dither + ii - middle_chroma*scale) * (out_max - out_min)) / divisor + middle_chroma + 0.5);
+        int q = (int)(((bias_dither + ii - limits.middle_chroma*scale) * (out_max - out_min)) / divisor + limits.middle_chroma + 0.5f);
         int chroma;
         if (coring)
-          chroma = clamp(q, tv_range_low, tv_range_hi_chroma); // e.g. clamp(q, 16, 240)
+          chroma = clamp(q, limits.tv_range_low, limits.tv_range_hi_chroma); // e.g. clamp(q, 16, 240)
         else
           chroma = clamp(q, 0, max_pixel_value); // e.g. clamp(q, 0, 255)
         if (pixelsize == 1)
@@ -1318,23 +1346,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   lut_size = 1 << bits_per_pixel;
   int safe_luma_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
 
-  if(bits_per_pixel < 32) {
-    tv_range_low   = 16 << (bits_per_pixel - 8); // 16
-    tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
-    range_luma = tv_range_hi_luma - tv_range_low; // 219
-
-    tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
-    range_chroma = tv_range_hi_chroma - tv_range_low; // 224
-  }
-  else { // float: range is 0..255 scaled later
-    tv_range_low   = 16; // 16
-    tv_range_hi_luma   = 235; // 16-235
-    range_luma = tv_range_hi_luma - tv_range_low; // 219
-
-    tv_range_hi_chroma = 240; // 16-240
-    range_chroma = tv_range_hi_chroma - tv_range_low; // 224
-  }
-  middle_chroma = 1 << (bits_per_pixel - 1); // 128
+  get_limits(limits, bits_per_pixel); // tv range limits
 
   scale_dither_luma = 1;
   divisor_dither_luma = 1;
@@ -1439,8 +1451,8 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
     if(bits_per_pixel>8 && bits_per_pixel<16) // make lut table safe for 10-14 bit garbage
       std::fill_n((uint16_t *)map, map_size / pixelsize, max_pixel_value);
 
-    int range_low = coring ? tv_range_low : 0;
-    int range_high = coring ? tv_range_hi_luma : max_pixel_value;
+    int range_low = coring ? limits.tv_range_low : 0;
+    int range_high = coring ? limits.tv_range_hi_luma : max_pixel_value;
 
     // dither_scale_luma = 1 if no dither, 256 if dither
     /* create luma lut for brightness and contrast */
@@ -1486,8 +1498,8 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
       env->ThrowError("Tweak: Could not reserve memory.");
     env->AtExit(free_buffer, mapUV);
 
-    int range_low = coring ? tv_range_low : 0;
-    int range_high = coring ? tv_range_hi_chroma : max_pixel_value;
+    int range_low = coring ? limits.tv_range_low : 0;
+    int range_high = coring ? limits.tv_range_hi_chroma : max_pixel_value;
 
     double uv_range_corr = 1.0 / (1 << (bits_per_pixel - 8));
 
@@ -1496,15 +1508,15 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
       for (int d = 0; d < scale_dither_chroma; d++) { // scale = 4    0..15 mini-dither
         for (int u = 0; u < lut_size; u++) {
           // dither_strength: optional correction for 8+ bit to have the same dither range as in 8 bits
-          const double destu = (((u << 4) + d*dither_strength) + bias_dither_chroma) / scale_dither_chroma - middle_chroma; // scale_dither_chroma: 16
+          const double destu = (((u << 4) + d*dither_strength) + bias_dither_chroma) / scale_dither_chroma - limits.middle_chroma; // scale_dither_chroma: 16
           for (int v = 0; v < lut_size; v++) {
-            const double destv = (((v << 4) + d*dither_strength) + bias_dither_chroma) / scale_dither_chroma - middle_chroma;
+            const double destv = (((v << 4) + d*dither_strength) + bias_dither_chroma) / scale_dither_chroma - limits.middle_chroma;
             int iSat = Sat;
             if (allPixels || ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, _startHue, _endHue, maxSat, minSat, p, iSat)) {
               int du = (int)((destu*COS + destv*SIN) * iSat + 0x100) >> 9; // back from the extra 9 bits Sat precision
               int dv = (int)((destv*COS - destu*SIN) * iSat + 0x100) >> 9;
-              du = clamp(du + middle_chroma, range_low, range_high);
-              dv = clamp(dv + middle_chroma, range_low, range_high);
+              du = clamp(du + limits.middle_chroma, range_low, range_high);
+              dv = clamp(dv + limits.middle_chroma, range_low, range_high);
               if(pixelsize==1)
                 mapUV[(u << 12) | (v << 4) | d] = (uint16_t)(du | (dv << 8)); // U and V: two bytes
               else
@@ -1523,15 +1535,15 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
     else {
       // lut chroma, no dither
       for (int u = 0; u < lut_size; u++) {
-        const double destu = u - middle_chroma;
+        const double destu = u - limits.middle_chroma;
         for (int v = 0; v < lut_size; v++) {
-          const double destv = v - middle_chroma;
+          const double destv = v - limits.middle_chroma;
           int iSat = Sat;
           if (allPixels || ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, _startHue, _endHue, maxSat, minSat, p, iSat)) {
             int du = int((destu*COS + destv*SIN) * iSat) >> 9; // back from the extra 9 bits Sat precision
             int dv = int((destv*COS - destu*SIN) * iSat) >> 9;
-            du = clamp(du + middle_chroma, range_low, range_high);
-            dv = clamp(dv + middle_chroma, range_low, range_high);
+            du = clamp(du + limits.middle_chroma, range_low, range_high);
+            dv = clamp(dv + limits.middle_chroma, range_low, range_high);
             if(pixelsize==1)
               mapUV[(u << 8) | v] = (uint16_t)(du | (dv << 8)); // U and V: two bytes
             else
@@ -1574,6 +1586,8 @@ void Tweak::tweak_calc_chroma(BYTE *srcpu, BYTE *srcpv, int src_pitch, int width
 
   double uv_range_corr = 255.0;
 
+  const bool isFloat = sizeof(pixel_t) == 4;
+
   for (int y = 0; y < height; ++y) {
     const int _y = (y << 2) & 0xC;
     for (int x = 0; x < width; ++x) {
@@ -1581,8 +1595,8 @@ void Tweak::tweak_calc_chroma(BYTE *srcpu, BYTE *srcpv, int src_pitch, int width
         ditherval = ((float(ditherMap4[(x & 0x3) | _y]) * dither_strength + bias_dither_chroma) / scale_dither_chroma); // +/-0.5 on 0..255 range
       pixel_t orig_u = reinterpret_cast<pixel_t *>(srcpu)[x];
       pixel_t orig_v = reinterpret_cast<pixel_t *>(srcpv)[x] ;
-      u = sizeof(pixel_t) == 4 ? (orig_u - 0.5f) : (orig_u - middle_chroma);
-      v = sizeof(pixel_t) == 4 ? (orig_v - 0.5f) : (orig_v - middle_chroma);
+      u = isFloat ? (orig_u - limits.middle_chroma_f) : (orig_u - limits.middle_chroma);
+      v = isFloat ? (orig_v - limits.middle_chroma_f) : (orig_v - limits.middle_chroma);
 
       u = (u + (dither ? ditherval : 0)) / (sizeof(pixel_t) == 4 ? 1.0f : pixel_range); // going from 0..1 to +/-0.5
       v = (v + (dither ? ditherval : 0)) / (sizeof(pixel_t) == 4 ? 1.0f : pixel_range);
@@ -1590,10 +1604,20 @@ void Tweak::tweak_calc_chroma(BYTE *srcpu, BYTE *srcpv, int src_pitch, int width
       double dWorkSat = dsat; // init from original param
       if(allPixels || ProcessPixelUnscaled(v * uv_range_corr, u * uv_range_corr, dstartHue, dendHue, maxSat, minSat, p, dWorkSat))
       {
-        float du = ((u*cosHue + v*sinHue) * (float)dWorkSat) + 0.5f; // back to 0..1
-        float dv = ((v*cosHue - u*sinHue) * (float)dWorkSat) + 0.5f;
+        float du = ((u*cosHue + v*sinHue) * (float)dWorkSat);
+        float dv = ((v*cosHue - u*sinHue) * (float)dWorkSat);
 
-        if(sizeof(pixel_t) == 4) {
+        if (isFloat) {
+          du = du + limits.middle_chroma_f;
+          dv = dv + limits.middle_chroma_f;
+        }
+        else {
+          // back to 0..1
+          du = du + 0.5f;
+          dv = dv + 0.5f;
+        }
+
+        if(isFloat) {
           reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp(du, minUV, maxUV);
           reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp(dv, minUV, maxUV);
         } else {
@@ -1602,7 +1626,7 @@ void Tweak::tweak_calc_chroma(BYTE *srcpu, BYTE *srcpv, int src_pitch, int width
         }
       }
       else {
-        if(sizeof(pixel_t) == 4) {
+        if(isFloat) {
           reinterpret_cast<pixel_t *>(srcpu)[x] = (pixel_t)clamp((float)orig_u, minUV, maxUV);
           reinterpret_cast<pixel_t *>(srcpv)[x] = (pixel_t)clamp((float)orig_v, minUV, maxUV);
         } else {
@@ -1684,8 +1708,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
             float minY;
             float ditherval = 0.0f;
             // unique for each bit-depth, difference in the innermost loop (speed)
-            maxY = (float)(coring ? tv_range_hi_luma : max_pixel_value);
-            minY = (float)(coring ? tv_range_low : 0);
+            maxY = (float)(coring ? limits.tv_range_hi_luma : max_pixel_value);
+            minY = (float)(coring ? limits.tv_range_low : 0);
 
             if(pixelsize == 1) {
               if(dither)
@@ -1768,8 +1792,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 
         if (realcalc_chroma) {
           // no lookup, alway true for > 10 bit, optional for 8/10 bit
-          float maxUV = (float)(coring ? tv_range_hi_chroma : max_pixel_value);
-          float minUV = (float)(coring ? tv_range_low : 0);
+          float maxUV = (float)(coring ? limits.tv_range_hi_chroma : max_pixel_value);
+          float minUV = (float)(coring ? limits.tv_range_low : 0);
           if(pixelsize == 1) {
             if (dither)
               tweak_calc_chroma<uint8_t, true>(srcpu, srcpv, src_pitch, width, height, minUV, maxUV);
@@ -1781,8 +1805,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
             else
               tweak_calc_chroma<uint16_t, false>(srcpu, srcpv, src_pitch, width, height, minUV, maxUV);
           } else { // pixelsize == 4
-            maxUV /= 256.0f;
-            minUV /= 256.0f;
+            maxUV = coring ? limits.tv_range_hi_chroma_f : limits.full_range_hi_chroma_f;
+            minUV = coring ? limits.tv_range_low_chroma_f : limits.full_range_low_chroma_f;
             if (dither)
               tweak_calc_chroma<float, true>(srcpu, srcpv, src_pitch, width, height, minUV, maxUV);
             else
@@ -1916,28 +1940,15 @@ MaskHS::MaskHS(PClip _child, double _startHue, double _endHue, double _maxSat, d
     max_pixel_value = (1 << bits_per_pixel) - 1;
     lut_size = 1 << bits_per_pixel;
 
-    if(bits_per_pixel < 32) {
-      tv_range_low   = 16 << (bits_per_pixel - 8); // 16
-      tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
-      range_luma = tv_range_hi_luma - tv_range_low; // 219
+    get_limits(limits, bits_per_pixel);
 
-      tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
-      range_chroma = tv_range_hi_chroma - tv_range_low; // 224
+    mask_low = coring ? limits.tv_range_low : 0;
+    mask_high = coring ? limits.tv_range_hi_luma : max_pixel_value;
+
+    if (bits_per_pixel == 32) {
+      mask_low_f = coring ? limits.tv_range_low_luma_f : limits.full_range_low_luma_f;
+      mask_high_f = coring ? limits.tv_range_hi_luma_f : limits.full_range_hi_luma_f;
     }
-    else { // float: range is 0..255 scaled later
-      tv_range_low   = 16; // 16
-      tv_range_hi_luma   = 235; // 16-235
-      range_luma = tv_range_hi_luma - tv_range_low; // 219
-
-      tv_range_hi_chroma = 240; // 16-240
-      range_chroma = tv_range_hi_chroma - tv_range_low; // 224
-
-      max_pixel_value = 255;
-    }
-    actual_chroma_range_low = coring ? tv_range_low : 0;
-    actual_chroma_range_high = coring ? tv_range_hi_chroma : max_pixel_value;
-
-    middle_chroma = 1 << (bits_per_pixel - 1); // 128
 
     realcalc_chroma = realcalc;
     if (vi.IsPlanar() && (bits_per_pixel > 12)) // max bitdepth is 12 for lut
@@ -1964,16 +1975,16 @@ MaskHS::MaskHS(PClip _child, double _startHue, double _endHue, double _maxSat, d
       // apply mask
       double uv_range_corr = 1.0 / (1 << (bits_per_pixel - 8)); // no float here
       for (int u = 0; u < lut_size; u++) {
-          const double destu = (u - middle_chroma) * uv_range_corr; // processpixel's minSat and maxSat is for 256 range
+          const double destu = (u - limits.middle_chroma) * uv_range_corr; // processpixel's minSat and maxSat is for 256 range
           int ushift = u << bits_per_pixel;
           for (int v = 0; v < lut_size; v++) {
-              const double destv = (v - middle_chroma) * uv_range_corr;
+              const double destv = (v - limits.middle_chroma) * uv_range_corr;
               int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
               bool ppres = ProcessPixel(destv, destu, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
               if(pixelsize==1)
-                  mapUV[ushift | v] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
+                  mapUV[ushift | v] = ppres ? mask_high : mask_low;
               else
-                  reinterpret_cast<uint16_t *>(mapUV)[ushift | v] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
+                  reinterpret_cast<uint16_t *>(mapUV)[ushift | v] = ppres ? mask_high : mask_low;
           }
       }
     } // end of lut calculation
@@ -2045,11 +2056,11 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
           if(pixelsize == 1) {
             for (int y = 0; y < heightu; ++y) {
               for (int x = 0; x < width; ++x) {
-                const double destu = srcpu[x] - middle_chroma;
-                const double destv = srcpv[x] - middle_chroma;
+                const double destu = srcpu[x] - limits.middle_chroma;
+                const double destv = srcpv[x] - limits.middle_chroma;
                 int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
                 bool ppres = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
-                dstp[x] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
+                dstp[x] = ppres ? mask_high : mask_low;
               }
               dstp += dst_pitch;
               srcpu += srcu_pitch;
@@ -2060,27 +2071,24 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
             double range_corr = 1 << (bits_per_pixel - 8);
             for (int y = 0; y < heightu; ++y) {
               for (int x = 0; x < width; ++x) {
-                const double destu = (reinterpret_cast<const uint16_t *>(srcpu)[x] - middle_chroma);
-                const double destv = (reinterpret_cast<const uint16_t *>(srcpv)[x] - middle_chroma);
+                const double destu = (reinterpret_cast<const uint16_t *>(srcpu)[x] - limits.middle_chroma);
+                const double destv = (reinterpret_cast<const uint16_t *>(srcpv)[x] - limits.middle_chroma);
                 int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
                 bool ppres = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
-                reinterpret_cast<uint16_t *>(dstp)[x] = ppres ? actual_chroma_range_high : actual_chroma_range_low;
+                reinterpret_cast<uint16_t *>(dstp)[x] = ppres ? mask_high : mask_low;
               }
               dstp += dst_pitch;
               srcpu += srcu_pitch;
               srcpv += srcu_pitch;
             }
           } else { // pixelsize == 4
-            const float middle_chroma_f = 0.5f;
-            const float actual_chroma_range_low_f = actual_chroma_range_low / 255.0f;
-            const float actual_chroma_range_high_f = actual_chroma_range_high / 255.0f;
             for (int y = 0; y < heightu; ++y) {
               for (int x = 0; x < width; ++x) {
-                const double destu = (reinterpret_cast<const float *>(srcpu)[x] - middle_chroma_f);
-                const double destv = (reinterpret_cast<const float *>(srcpv)[x] - middle_chroma_f);
+                const double destu = (reinterpret_cast<const float *>(srcpu)[x] - limits.middle_chroma_f);
+                const double destv = (reinterpret_cast<const float *>(srcpv)[x] - limits.middle_chroma_f);
                 int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
                 bool ppres = ProcessPixel(destv * uv_range_corr, destu * uv_range_corr, dstartHue, dendHue, maxSat, minSat, 0.0, iSat);
-                reinterpret_cast<float *>(dstp)[x] = ppres ? actual_chroma_range_high_f : actual_chroma_range_low_f;
+                reinterpret_cast<float *>(dstp)[x] = ppres ? mask_high_f : mask_low_f;
               }
               dstp += dst_pitch;
               srcpu += srcu_pitch;

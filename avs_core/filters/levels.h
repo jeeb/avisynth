@@ -42,7 +42,31 @@
 /********************************************************************
 ********************************************************************/
 
+typedef struct {
+  int tv_range_low;
+  int tv_range_hi_luma;
+  int range_luma;
 
+  int tv_range_hi_chroma;
+  int range_chroma;
+
+  int middle_chroma;
+
+  // float things
+  float full_range_low_luma_f;
+  float full_range_hi_luma_f;
+  float tv_range_low_luma_f;
+  float tv_range_hi_luma_f;
+  float range_luma_f;
+
+  float full_range_low_chroma_f;
+  float full_range_hi_chroma_f;
+  float tv_range_low_chroma_f;
+  float tv_range_hi_chroma_f;
+  float range_chroma_f;
+
+  float middle_chroma_f;
+} luma_chroma_limits_t;
 
 class Levels : public GenericVideoFilter 
 /**
@@ -78,22 +102,8 @@ private:
   int lut_size;
   int real_lookup_size;
 
-  int tv_range_low;
-  int tv_range_hi_luma;
-  int range_luma;
+  luma_chroma_limits_t limits;
 
-  int tv_range_hi_chroma;
-  int range_chroma;
-
-  int middle_chroma;
-
-  // float things
-  float tv_range_low_f;
-  float tv_range_hi_luma_f;
-  float range_luma_f;
-  float tv_range_hi_chroma_f;
-  float range_chroma_f;
-  float middle_chroma_f;
   float divisor_f;
   float out_diff_f; // precalc for speed
 
@@ -196,14 +206,7 @@ private:
     int lut_size;
     int real_lookup_size;
 
-    int tv_range_low;
-    int tv_range_hi_luma;
-    int range_luma;
-
-    int tv_range_hi_chroma;
-    int range_chroma;
-
-    int middle_chroma;
+    luma_chroma_limits_t limits;
 
     int scale_dither_luma;
     int divisor_dither_luma;
@@ -248,17 +251,12 @@ private:
   int lut_size;
   int real_lookup_size;
 
-  int tv_range_low;
-  int tv_range_hi_luma;
-  int range_luma;
+  luma_chroma_limits_t limits;
 
-  int tv_range_hi_chroma;
-  int range_chroma;
-
-  int middle_chroma;
-
-  int actual_chroma_range_low;
-  int actual_chroma_range_high;
+  int mask_low;
+  int mask_high;
+  float mask_low_f;
+  float mask_high_f;
 
 };
 
