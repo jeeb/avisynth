@@ -573,8 +573,8 @@ static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, 
 #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
       // loose min and max was shifted by half of 16bit range. We still keep here the range
       if (chroma) {
-        data->loose_max = data->loose_max - 32768.0f;
-        data->loose_min = data->loose_min - 32768.0f;
+        data->loose_max = data->loose_max - 32768;
+        data->loose_min = data->loose_min - 32768;
       }
 #endif
       // autogain treats it as a value of 16bit magnitude, show=true as well
@@ -762,6 +762,8 @@ ColorYUV::ColorYUV(PClip child,
  : GenericVideoFilter(child),
    colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional), colorbar_fullrange(showyuv_fullrange), tweaklike_params(tweaklike_params)
 {
+    luts[0] = luts[1] = luts[2] = nullptr;
+
     if (!vi.IsYUV() && !vi.IsYUVA())
         env->ThrowError("ColorYUV: Only work with YUV colorspace.");
 
@@ -849,7 +851,47 @@ ColorYUV::ColorYUV(PClip child,
         case 32: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
         }
     }
+
+    if (!showyuv) {
+      // prepare basic LUT
+      int pixelsize = vi.ComponentSize();
+      int bits_per_pixel = vi.BitsPerComponent();
+
+      if (pixelsize == 1 || pixelsize == 2) {
+        // no float lut. float will be realtime
+        int lut_size = pixelsize * (1 << bits_per_pixel); // 256*1 / 1024*2 .. 65536*2
+        luts[0] = new BYTE[lut_size];
+        if (!vi.IsY()) {
+          luts[1] = new BYTE[lut_size];
+          luts[2] = new BYTE[lut_size];
+        }
+
+        if (pixelsize == 1) {
+          coloryuv_create_lut<uint8_t>(luts[0], &configY, bits_per_pixel, tweaklike_params);
+          if (!vi.IsY())
+          {
+            coloryuv_create_lut<uint8_t>(luts[1], &configU, bits_per_pixel, tweaklike_params);
+            coloryuv_create_lut<uint8_t>(luts[2], &configV, bits_per_pixel, tweaklike_params);
+          }
+        }
+        else if (pixelsize == 2) { // pixelsize==2
+          coloryuv_create_lut<uint16_t>(luts[0], &configY, bits_per_pixel, tweaklike_params);
+          if (!vi.IsY())
+          {
+            coloryuv_create_lut<uint16_t>(luts[1], &configU, bits_per_pixel, tweaklike_params);
+            coloryuv_create_lut<uint16_t>(luts[2], &configV, bits_per_pixel, tweaklike_params);
+          }
+        }
+      }
+    }
 }
+
+ColorYUV::~ColorYUV() {
+  if (luts[0]) delete[] luts[0];
+  if (luts[1]) delete[] luts[1];
+  if (luts[2]) delete[] luts[2];
+}
+
 
 PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -982,36 +1024,45 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     // Read conditional variables
     coloryuv_read_conditional(env, &cY, &cU, &cV);
 
-    // todo: use info of cY/cU/cV->changed to avoid LUT recalc (should be not in every GetFrame)
-
-    BYTE *lutY = nullptr;
-    BYTE *lutU = nullptr;
-    BYTE *lutV = nullptr;
-
+    // no float lut. float will be realtime
     if (pixelsize == 1 || pixelsize == 2) {
-      // no float lut. float will be realtime
+
+      BYTE *luts_live[3] = { nullptr };
+
+      BYTE *lutY = luts[0];
+      BYTE *lutU = luts[1];
+      BYTE *lutV = luts[2];
+
+      // recalculate plane LUT only if changed
       int lut_size = pixelsize * (1 << bits_per_pixel); // 256*1 / 1024*2 .. 65536*2
-      lutY = new BYTE[lut_size];
-      lutU = new BYTE[lut_size];
-      lutV = new BYTE[lut_size];
-
-      if (pixelsize == 1) {
-        coloryuv_create_lut<uint8_t>(lutY, &cY, bits_per_pixel, tweaklike_params);
-        if (!vi.IsY())
-        {
-          coloryuv_create_lut<uint8_t>(lutU, &cU, bits_per_pixel, tweaklike_params);
-          coloryuv_create_lut<uint8_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
-        }
-      }
-      else if (pixelsize == 2) { // pixelsize==2
-        coloryuv_create_lut<uint16_t>(lutY, &cY, bits_per_pixel, tweaklike_params);
-        if (!vi.IsY())
-        {
-          coloryuv_create_lut<uint16_t>(lutU, &cU, bits_per_pixel, tweaklike_params);
-          coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
-        }
+      if (cY.changed) {
+        luts_live[0] = new BYTE[lut_size];
+        lutY = luts_live[0];
+        if (pixelsize == 1)
+          coloryuv_create_lut<uint8_t>(lutY, &cY, bits_per_pixel, tweaklike_params);
+        else if (pixelsize == 2)
+          coloryuv_create_lut<uint16_t>(lutY, &cY, bits_per_pixel, tweaklike_params);
       }
 
+      if (!vi.IsY())
+      {
+        if (cU.changed) {
+          luts_live[1] = new BYTE[lut_size];
+          lutU = luts_live[1];
+          if (pixelsize == 1)
+            coloryuv_create_lut<uint8_t>(lutU, &cU, bits_per_pixel, tweaklike_params);
+          else if (pixelsize == 2)
+            coloryuv_create_lut<uint16_t>(lutU, &cU, bits_per_pixel, tweaklike_params);
+        }
+        if (cV.changed) {
+          luts_live[2] = new BYTE[lut_size];
+          lutV = luts_live[2];
+          if (pixelsize == 1)
+            coloryuv_create_lut<uint8_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
+          else if (pixelsize == 2)
+            coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
+        }
+      }
       dst = env->NewVideoFrame(vi); // go live dst here!
 
       if (vi.IsYUY2())
@@ -1033,6 +1084,10 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
           env->BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A), src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), src->GetRowSize(PLANAR_A), src->GetHeight(PLANAR_A));
         }
       }
+
+      if (luts_live[0]) delete[] luts_live[0];
+      if (luts_live[1]) delete[] luts_live[1];
+      if (luts_live[2]) delete[] luts_live[2];
     } // lut create and use
     else {
       // 32 bit float: expr
@@ -1062,9 +1117,6 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
         env->ApplyMessage(&dst, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
     }
 
-    if (lutY) delete[] lutY;
-    if (lutU) delete[] lutU;
-    if (lutV) delete[] lutV;
     return dst;
 }
 

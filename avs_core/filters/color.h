@@ -84,12 +84,15 @@ public:
 
     static AVSValue Create(AVSValue args, void*, IScriptEnvironment* env);
 
+    ~ColorYUV();
+
 private:
     ColorYUVPlaneConfig configY, configU, configV;
     int colorbar_bits;
     bool colorbar_fullrange;
     bool analyse, autowhite, autogain, conditional;
     bool tweaklike_params;
+    BYTE *luts[3];
 };
 
 #endif // __Color_h
