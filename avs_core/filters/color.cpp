@@ -570,6 +570,16 @@ static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, 
       data->average = sum / (height * width);
       data->real_max = real_max;
       data->real_min = real_min;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+      // loose min and max was shifted by half of 16bit range. We still keep here the range
+      if (chroma) {
+        data->loose_max = data->loose_max - 32768.0f;
+        data->loose_min = data->loose_min - 32768.0f;
+      }
+#endif
+      // autogain treats it as a value of 16bit magnitude, show=true as well
+      //data->loose_min = data->loose_min / 65535.0f; not now.
+      //data->loose_max = data->loose_max / 65535.0f;
     }
     else {
       coloryuv_analyse_core<false>(freq, width*height, data, bits_per_pixel_for_freq);
