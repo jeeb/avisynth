@@ -147,7 +147,10 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
         result += (src_ptr+pitch_table[i] / sizeof(pixel_t))[x] * current_coeff[i];
       }
       if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
-        result = ((result + 8192) / 16384);
+        if (sizeof(pixel_t) == 1)
+          result = (result + (1 << (FPScale8bits - 1))) / (1 << FPScale8bits);
+        else if (sizeof(pixel_t) == 2)
+          result = (result + (1 << (FPScale16bits - 1))) / (1 << FPScale16bits);
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
       dst0[x] = (pixel_t)result;
