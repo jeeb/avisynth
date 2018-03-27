@@ -374,6 +374,11 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
   else if (bits_per_pixel == 32) { // float. assume 0..1.0 scale
     const float shifter_inv_f = 1.0f / (1 << shifter);
     const float a_factor = shifter_inv_f / 256.0f;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+    const float middle_shift_f = 0.5f;
+#else
+    const float middle_shift_f = 0.0f;
+#endif
     for (int y=yb; y<=yt; y+=stepY) {
       for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
         unsigned short* UValpha = alpha + x*4;
@@ -390,8 +395,8 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
         }
         if (basealphaUV != skipThresh) {
           const float basealphaUV_f = (float)basealphaUV * shifter_inv_f;
-          reinterpret_cast<float *>(bufU)[xs] = reinterpret_cast<float *>(bufU)[xs] * basealphaUV_f + au * a_factor;
-          reinterpret_cast<float *>(bufV)[xs] = reinterpret_cast<float *>(bufV)[xs] * basealphaUV_f + av * a_factor;
+          reinterpret_cast<float *>(bufU)[xs] = (reinterpret_cast<float *>(bufU)[xs] + middle_shift_f) * basealphaUV_f + au * a_factor - middle_shift_f;
+          reinterpret_cast<float *>(bufV)[xs] = (reinterpret_cast<float *>(bufV)[xs] + middle_shift_f) * basealphaUV_f + av * a_factor - middle_shift_f;
         }
       }// end for x
       bufU  += pitchUV;
