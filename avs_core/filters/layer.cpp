@@ -871,11 +871,16 @@ static void invert_plane_uint16_c(BYTE* frame, int pitch, int row_size, int heig
   }
 }
 
-static void invert_plane_float_c(BYTE* frame, int pitch, int row_size, int height) {
+static void invert_plane_float_c(BYTE* frame, int pitch, int row_size, int height, bool chroma) {
   const int width = row_size / sizeof(float);
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+    const float max = chroma ? 0.0f : 1.0f;
+#else
+    const float max = 1.0f;
+#endif
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      reinterpret_cast<float *>(frame)[x] = 1.0f - reinterpret_cast<float *>(frame)[x];
+      reinterpret_cast<float *>(frame)[x] = max - reinterpret_cast<float *>(frame)[x];
     }
     frame += pitch;
   }
@@ -916,7 +921,7 @@ static void invert_frame_uint16(BYTE* frame, int pitch, int rowsize, int height,
 }
 
 
-static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pixelsize, uint64_t mask64,  IScriptEnvironment *env) {
+static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pixelsize, uint64_t mask64, bool chroma, IScriptEnvironment *env) {
   if ((pixelsize == 1 || pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16))
   {
     if(pixelsize == 1)
@@ -937,7 +942,7 @@ static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pi
     else if (pixelsize == 2)
       invert_plane_uint16_c(frame, pitch, rowsize, height, mask64);
     else {
-      invert_plane_float_c(frame, pitch, rowsize, height);
+      invert_plane_float_c(frame, pitch, rowsize, height, chroma);
     }
   }
 }
@@ -957,24 +962,24 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     // planar YUV
     if (vi.IsYUV() || vi.IsYUVA()) {
       if (doY)
-        invert_plane(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, pixelsize, mask64, env);
+        invert_plane(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, pixelsize, mask64, false, env);
       if (doU)
-        invert_plane(f->GetWritePtr(PLANAR_U), f->GetPitch(PLANAR_U), f->GetRowSize(PLANAR_U_ALIGNED), f->GetHeight(PLANAR_U), pixelsize, mask64, env);
+        invert_plane(f->GetWritePtr(PLANAR_U), f->GetPitch(PLANAR_U), f->GetRowSize(PLANAR_U_ALIGNED), f->GetHeight(PLANAR_U), pixelsize, mask64, true, env);
       if (doV)
-        invert_plane(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), pixelsize, mask64, env);
+        invert_plane(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), pixelsize, mask64, true, env);
     }
     // planar RGB
     if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
       if (doG) // first plane, GetWritePtr w/o parameters
-        invert_plane(pf, pitch, f->GetRowSize(PLANAR_G_ALIGNED), height, pixelsize, mask64, env);
+        invert_plane(pf, pitch, f->GetRowSize(PLANAR_G_ALIGNED), height, pixelsize, mask64, false, env);
       if (doB)
-        invert_plane(f->GetWritePtr(PLANAR_B), f->GetPitch(PLANAR_B), f->GetRowSize(PLANAR_B_ALIGNED), f->GetHeight(PLANAR_B), pixelsize, mask64, env);
+        invert_plane(f->GetWritePtr(PLANAR_B), f->GetPitch(PLANAR_B), f->GetRowSize(PLANAR_B_ALIGNED), f->GetHeight(PLANAR_B), pixelsize, mask64, false, env);
       if (doR)
-        invert_plane(f->GetWritePtr(PLANAR_R), f->GetPitch(PLANAR_R), f->GetRowSize(PLANAR_R_ALIGNED), f->GetHeight(PLANAR_R), pixelsize, mask64, env);
+        invert_plane(f->GetWritePtr(PLANAR_R), f->GetPitch(PLANAR_R), f->GetRowSize(PLANAR_R_ALIGNED), f->GetHeight(PLANAR_R), pixelsize, mask64, false, env);
     }
     // alpha
     if (doA && (vi.IsPlanarRGBA() || vi.IsYUVA()))
-      invert_plane(f->GetWritePtr(PLANAR_A), f->GetPitch(PLANAR_A), f->GetRowSize(PLANAR_A_ALIGNED), f->GetHeight(PLANAR_A), pixelsize, mask64, env);
+      invert_plane(f->GetWritePtr(PLANAR_A), f->GetPitch(PLANAR_A), f->GetRowSize(PLANAR_A_ALIGNED), f->GetHeight(PLANAR_A), pixelsize, mask64, false, env);
   }
   else if (vi.IsYUY2() || vi.IsRGB32() || vi.IsRGB64()) {
     invert_frame(pf, pitch, rowsize, height, mask, mask64, pixelsize, env);
