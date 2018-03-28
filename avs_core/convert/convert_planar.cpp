@@ -620,6 +620,22 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
   }
 }
 
+// 8 bit uv to float
+static float uv8tof(int color) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+  return (color - 128) / 255.0f + shift;
+}
+
+// 8 bit fullscale to float
+static float c8tof(int color) {
+  return color / 255.0f;
+}
+
+
 void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel)
 {
   int Sy, Suv, Oy;
@@ -645,8 +661,8 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int shift, bool full_sc
     Oy_f = full_scale ? 0.0f : (16.0f / 255.0f);
     Oy = full_scale ? 0 : 16; // n/a
 
-    Sy_f = full_scale ? 1.0f : (235 - 16) / 255.0f;
-    Suv_f = full_scale ? 0.5f : (240 - 16) / 255.0f;
+    Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
+    Suv_f = full_scale ? uv8tof(128) : (uv8tof(240) - uv8tof(16)) / 2;
   }
 
 
@@ -1041,7 +1057,13 @@ static void convert_planarrgb_to_yuv_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
 {
   // 16 bit uint16_t (unsigned range)
   // 32 bit float
-  __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? 0.5f : (float)(1u << (bits_per_pixel - 1)));
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+
+  __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? shift : (float)(1u << (bits_per_pixel - 1)));
   __m128i limit  = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
   __m128 offset_f = _mm_set1_ps(m.offset_y_f);
 
@@ -1186,20 +1208,27 @@ static void convert_planarrgb_to_yuv_int_c(BYTE *(&dstp)[3], int (&dstPitch)[3],
 
 static void convert_planarrgb_to_yuv_float_c(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
-  typedef float pixel_t;
-  const pixel_t limit = 1.0; // we clamp on RGB conversions for float
-  const pixel_t half = 0.5f;
+  const float limit = 1.0f; // we clamp on RGB conversions for float
+  const float limit_lo_chroma = -0.5f; // checked before shift
+  const float limit_hi_chroma = 0.5f;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float half = 0.0f;
+#else
+  const float half = 0.5f;
+#endif
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      pixel_t g = reinterpret_cast<const pixel_t *>(srcp[0])[x];
-      pixel_t b = reinterpret_cast<const pixel_t *>(srcp[1])[x];
-      pixel_t r = reinterpret_cast<const pixel_t *>(srcp[2])[x];
-      pixel_t Y = m.offset_y_f + (m.y_b_f * b + m.y_g_f * g + m.y_r_f * r);
-      pixel_t U = half + (m.u_b_f * b + m.u_g_f * g + m.u_r_f * r);
-      pixel_t V = half + (m.v_b_f * b + m.v_g_f * g + m.v_r_f * r);
-      reinterpret_cast<pixel_t *>(dstp[0])[x] = (pixel_t)clamp(Y, (pixel_t)0, limit);// All the safety we can wish for.
-      reinterpret_cast<pixel_t *>(dstp[1])[x] = (pixel_t)clamp(U, (pixel_t)0, limit);
-      reinterpret_cast<pixel_t *>(dstp[2])[x] = (pixel_t)clamp(V, (pixel_t)0, limit);
+      float g = reinterpret_cast<const float *>(srcp[0])[x];
+      float b = reinterpret_cast<const float *>(srcp[1])[x];
+      float r = reinterpret_cast<const float *>(srcp[2])[x];
+      float Y = m.offset_y_f + (m.y_b_f * b + m.y_g_f * g + m.y_r_f * r);
+      float U = half + (m.u_b_f * b + m.u_g_f * g + m.u_r_f * r);
+      float V = half + (m.v_b_f * b + m.v_g_f * g + m.v_r_f * r);
+      // All the safety we can wish for.
+      // theoretical question: should we clamp here?
+      reinterpret_cast<float *>(dstp[0])[x] = clamp(Y, 0.0f, limit);
+      reinterpret_cast<float *>(dstp[1])[x] = clamp(U, limit_lo_chroma, limit_hi_chroma) + half;
+      reinterpret_cast<float *>(dstp[2])[x] = clamp(V, limit_lo_chroma, limit_hi_chroma) + half;
     }
     srcp[0] += srcPitch[0];
     srcp[1] += srcPitch[1];
@@ -1464,8 +1493,8 @@ void ConvertYUV444ToRGB::BuildMatrix(double Kr, double Kb, int shift, bool full_
     Oy_f = full_scale ? 0.0f : (16.0f / 255.0f);
     Oy = full_scale ? 0 : 16; // n/a
 
-    Sy_f = full_scale ? 1.0f : (235 - 16) / 255.0f;
-    Suv_f = full_scale ? 0.5f : (240 - 16) / 255.0f;
+    Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
+    Suv_f = full_scale ? uv8tof(128) : (uv8tof(240) - uv8tof(16)) / 2;
   }
 
 
@@ -1658,7 +1687,13 @@ static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
 {
   // 16 bit uint16_t (unsigned range)
   // 32 bit float
-  __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? 0.5f : (float)(1u << (bits_per_pixel - 1)));
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+
+  __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? shift : (float)(1u << (bits_per_pixel - 1)));
   __m128i limit  = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
   __m128  offset_f = _mm_set1_ps(m.offset_y_f);
 
@@ -2320,8 +2355,13 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
       for (int y = 0; y < vi.height; y++) {
         for (int x = 0; x < vi.width; x++) {
           float Y = reinterpret_cast<const float *>(srcY)[x] + matrix.offset_y_f;
-          float U = reinterpret_cast<const float *>(srcU)[x] - 0.5f;
-          float V = reinterpret_cast<const float *>(srcV)[x] - 0.5f;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+          const float shift = 0.0f;
+#else
+          const float shift = 0.5f;
+#endif
+          float U = reinterpret_cast<const float *>(srcU)[x] - shift;
+          float V = reinterpret_cast<const float *>(srcV)[x] - shift;
           float A;
           if(targetHasAlpha)
             A = srcHasAlpha ? reinterpret_cast<const float *>(srcA)[x] : 1.0f;
