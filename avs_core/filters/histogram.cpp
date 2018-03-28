@@ -57,7 +57,20 @@ extern const AVSFunction Histogram_filters[] = {
   { 0 }
 };
 
+// 8 bit uv to float
+static float uv8tof(int color) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+  return (color - 128) / 255.0f + shift;
+}
 
+// 8 bit fullscale to float
+static float c8tof(int color) {
+  return color / 255.0f;
+}
 
 
 /***********************************
@@ -872,9 +885,9 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
       // 32 bit data on show_bits bit sized screen
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-          const float u_f = reinterpret_cast<const float *>(pU)[y*p + x] + shift;
+          const float u_f = reinterpret_cast<const float *>(pU)[y*p + x] + shift; // back to 0..1
           const float v_f = reinterpret_cast<const float *>(pV)[y*p + x] + shift;
-          int u = (int)(u_f * show_size + 0.5f); // no rounding
+          int u = (int)(u_f * show_size + 0.5f);
           int v = (int)(v_f * show_size + 0.5f);
           u = clamp(u, 0, show_size - 1);
           v = clamp(v, 0, show_size - 1);
@@ -1025,15 +1038,10 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
           }
         }
         else {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-          const float shift = 0.5;
-#else
-          const float shift = 0.0;
-#endif
           const int shiftCount = show_bits - 8;
           for (int y = 0; y < (show_size >> sheight); y++) {
             for (int x = 0; x < (show_size >> swidth); x++) {
-              reinterpret_cast<float *>(pdstb)[x] = (float)(((x << swidth) >> shiftCount) / 255.0f - shift);
+              reinterpret_cast<float *>(pdstb)[x] = uv8tof((x << swidth) >> shiftCount);
             }
             pdstb += dstpitch;
           }
@@ -1063,15 +1071,10 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
           }
         }
         else {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-          const float shift = 0.5;
-#else
-          const float shift = 0.0;
-#endif
           const int shiftCount = show_bits - 8;
           for (int y = 0; y < (show_size >> sheight); y++) {
             for (int x = 0; x < (show_size >> swidth); x++) {
-              reinterpret_cast<float *>(pdstb)[x] = (float)(((y << sheight) >> shiftCount) / 255.0f - shift);
+              reinterpret_cast<float *>(pdstb)[x] = uv8tof((y << sheight) >> shiftCount);
             }
             pdstb += dstpitch;
           }
@@ -1100,13 +1103,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   const bool isFloat = (bits_per_pixel == 32);
   const int color_shift =  isFloat ? 0 : (bits_per_pixel - 8);
 
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float middle_chroma_f = 0.0f;
-  const int preshift_i = 128;
-#else
-  const float middle_chroma_f = 0.5f;
-  const int preshift_i = 0;
-#endif
+  const float middle_chroma_f = uv8tof(128);
 
   int plane_default_black[3] = {
     RGB ? 0 : (16 << color_shift),
@@ -1286,11 +1283,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       if (!RGB && markers) {
         // Draw Unsafe zone (Y-graph)
         int color_unsafeZones[3] = { 32, 16, 160 };
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        float color_unsafeZones_f[3] = { 32 / 255.0f, (16 - 128) / 255.0f, (160 - 128) / 255.0f };
-#else
-        float color_unsafeZones_f[3] = { 32 / 255.0f, (16 - 0) / 255.0f, (160 - 0) / 255.0f };
-#endif
+        float color_unsafeZones_f[3] = { c8tof(32), uv8tof(16), uv8tof(160) };
         int color_usz = color_unsafeZones[p];
         int color_i = color_usz << color_shift;
         float color_f = color_unsafeZones_f[p];
@@ -1362,13 +1355,8 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
           // lower: x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
             int color1_upper_lower_gradient[2][3] = { { 210 / 2, 16 + 112 / 2, 128 },{ 170 / 2, 128, 16 + 112 / 2 } };
             int color2_upper_lower_gradient[2][3] = { { 41 / 2, 240 - 112 / 2, 128 },{ 81 / 2, 128, 240 - 112 / 2 } };
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-            float color1_upper_lower_gradient_f[2][3] = { { (210 / 2) / 255.0f, ((16 + 112 / 2) - 128) / 255.0f, (128 - 128) / 255.0f },{ (170 / 2) / 255.0f, (128 - 128) / 255.0f, ((16 + 112 / 2) - 128) / 255.0f } };
-            float color2_upper_lower_gradient_f[2][3] = { { (41 / 2) / 255.0f, ((240 - 112 / 2) - 128) / 255.0f, (128 - 128) / 255.0f },{ (81 / 2) / 255.0f, (128 - 128) / 255.0f, ((240 - 112 / 2) - 128) / 255.0f } };
-#else
-            float color1_upper_lower_gradient_f[2][3] = { { (210 / 2) / 255.0f, ((16 + 112 / 2) - 0) / 255.0f, (128 - 0) / 255.0f },{ (170 / 2) / 255.0f, (128 - 0) / 255.0f, ((16 + 112 / 2) - 0) / 255.0f } };
-            float color2_upper_lower_gradient_f[2][3] = { { (41 / 2) / 255.0f, ((240 - 112 / 2) - 128) / 255.0f, (128 - 0) / 255.0f },{ (81 / 2) / 255.0f, (128 - 0) / 255.0f, ((240 - 112 / 2) - 0) / 255.0f } };
-#endif
+            float color1_upper_lower_gradient_f[2][3] = { { c8tof(210 / 2), uv8tof(16 + 112 / 2), uv8tof(128) },{ c8tof(170 / 2), uv8tof(128), uv8tof(16 + 112 / 2) } };
+            float color2_upper_lower_gradient_f[2][3] = { { c8tof(41 / 2), uv8tof(240 - 112 / 2), uv8tof(128) },{ c8tof(81 / 2), uv8tof(128), uv8tof(240 - 112 / 2) } };
             int color = color1_upper_lower_gradient[gradient_upper_lower][p];
             int color_i = color << color_shift;
             float color_f = color1_upper_lower_gradient_f[gradient_upper_lower][p];
@@ -1489,8 +1477,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
                 else { // float
                   for (; x <= (240 << pos_shift) >> swidth; x++) {
                     int color4 = (x << swidth) >> pos_shift;
-                    float color4_f = (color4 - preshift_i) / 255.0f;
-                    reinterpret_cast<float *>(ptr)[x] = color4_f;
+                    reinterpret_cast<float *>(ptr)[x] = uv8tof(color4);
                   }
                 }
               }
@@ -1611,44 +1598,33 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 
   int lookup_size = 1 << show_bits; // 256, 1024, 4096, 16384, 65536
 
-  int hist_max_pixel_value = (1 << show_bits) - 1;
   int hist_tv_range_low = 16 << (show_bits - 8); // 16
   int hist_tv_range_hi_luma = 235 << (show_bits - 8); // 16-235
   int hist_range_luma = hist_tv_range_hi_luma - hist_tv_range_low; // 219
   int hist_mid_range_luma = (hist_range_luma + 1) / 2 + hist_tv_range_low - 1; // in Classic Avisynth somehow 124 was fixed for this
   // 235-16 = 219 / 2 => 110; 110 + 16 - 1 = 125.0
-  int hist_tv_range_hi_chroma = 240 << (show_bits - 8); // 16-240,64–960, 256–3852,... 4096-61692
-  int hist_range_chroma = hist_tv_range_hi_chroma - hist_tv_range_low; // 224
 
-  int internal_bits_per_pixel = (pixelsize == 4) ? 16 : bits_per_pixel; // hack for float
+  int internal_bits_per_pixel = (pixelsize == 4) ? 16 : bits_per_pixel; // 16bit histogram simulation for float
 
   int max_pixel_value = (1 << internal_bits_per_pixel) - 1;
   int tv_range_low = 16 << (internal_bits_per_pixel - 8); // 16
   int tv_range_hi_luma = 235 << (internal_bits_per_pixel - 8); // 16-235
   int range_luma = tv_range_hi_luma - tv_range_low; // 219
-  int tv_range_hi_chroma = 240 << (internal_bits_per_pixel - 8); // 16-240,64–960, 256–3852,... 4096-61692
-  int range_chroma = tv_range_hi_chroma - tv_range_low; // 224
   int middle_chroma = 1 << (internal_bits_per_pixel - 1); // 128
 
   if (!init) {
     init = true;
 
-    const double K = log(0.5 / hist_range_luma) / hist_max_pixel_value; // approx -1/42
+    const double K = log(0.5 / 219) / 255.0; // approx -1/42
     const int limit68 = 68 << (internal_bits_per_pixel - 8);
     // exptab: pixel values for final drawing
     exptab[0] = tv_range_low;
-    for (int i = 1; i < show_size; i++) {
+    for (int i = 1; i < 255; i++) {
       exptab[i] = uint16_t(tv_range_low + 0.5 + range_luma * (1 - exp(i*K))); // 16.5 + 219*
       if (exptab[i] <= tv_range_hi_luma - limit68)
         E167 = i; // index of last value less than...  for drawing lower extremes
-      /*
-      if (internal_bits_per_pixel < show_bits)
-        exptab[i] >>= (show_bits - internal_bits_per_pixel); // scale intensity down
-      else
-        exptab[i] <<= (internal_bits_per_pixel - show_bits); // scale intensity up
-        */
     }
-    exptab[hist_max_pixel_value] = tv_range_hi_luma;
+    exptab[255] = tv_range_hi_luma;
   }
 
   const int source_width = origwidth;
@@ -1709,7 +1685,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
         const float *srcp32 = reinterpret_cast<const float *>(srcp);
         const float multiplier = (float)(show_size - 1);
         for (int x = 0; x < source_width; x++) {
-          hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier + 0.5f)]++;
+          hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier + 0.5f)]++; // luma, no shift needed
         }
       }
       // accumulate end
@@ -1728,22 +1704,24 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
         else if (pixelsize == 2) {
           uint16_t *dstp16 = reinterpret_cast<uint16_t *>(q);
           for (int x = 0; x < show_size; ++x) {
+            int h = hist[x];
             if (x<hist_tv_range_low || x == hist_mid_range_luma || x>hist_tv_range_hi_luma) {
-              dstp16[x] = exptab[min(E167, hist[x])] + (68 << (bits_per_pixel - 8));
+              dstp16[x] = exptab[min(E167, h)] + (68 << (bits_per_pixel - 8));
             }
             else {
-              dstp16[x] = exptab[min(hist_max_pixel_value, hist[x])];
+              dstp16[x] = exptab[min(255, h)];
             }
           }
         }
         else { // pixelsize == 4
           float *dstp32 = reinterpret_cast<float *>(q);
           for (int x = 0; x < show_size; ++x) {
+            int h = hist[x];
             if (x<hist_tv_range_low || x == hist_mid_range_luma || x>hist_tv_range_hi_luma) {
-              dstp32[x] = (exptab[min(E167, hist[x])] + (68 << (internal_bits_per_pixel - 8))) / 65536.0f;
+              dstp32[x] = (exptab[min(E167, hist[x])] + (68 << (internal_bits_per_pixel - 8))) / 65535.0f; // fake 0..65535 to 0..1.0
             }
             else {
-              dstp32[x] = exptab[min(hist_max_pixel_value, hist[x])] / 65536.0f;
+              dstp32[x] = exptab[min(255, h)] / 65535.0f;
             }
           }
         }
@@ -1755,13 +1733,17 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
         }
         else if (pixelsize == 2) {
           uint16_t *dstp16 = reinterpret_cast<uint16_t *>(q);
-          for (int x = 0; x < show_size; ++x)
-            dstp16[x] = exptab[min(hist_max_pixel_value, hist[x])];
+          for (int x = 0; x < show_size; ++x) {
+            int h = hist[x];
+            dstp16[x] = exptab[min(255, h)];
+          }
         }
         else { // pixelsize == 4
           float *dstp32 = reinterpret_cast<float *>(q);
-          for (int x = 0; x < show_size; ++x)
-            dstp32[x] = exptab[min(hist_max_pixel_value, hist[x])] / 65536.0f;
+          for (int x = 0; x < show_size; ++x) {
+            int h = hist[x];
+            dstp32[x] = exptab[min(255, h)] / 65535.0f; // fake 0..65535 to 0..1.0
+          }
         }
       }
       srcp += srcpitch;
@@ -1788,15 +1770,12 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       const uint16_t color_v_offlimit = color_v_offlimit8 << (internal_bits_per_pixel - 8);
       const uint16_t color_u_centermark = color_u_centermark8 << (internal_bits_per_pixel - 8);
       const uint16_t color_v_centermark = color_v_centermark8 << (internal_bits_per_pixel - 8);
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-      const float middle_chroma_f = 0.0f;
-#else
-      const float middle_chroma_f = 0.5f;
-#endif
-      const float color_u_offlimit_f = (float)(color_u_offlimit8 - 128) / 255.0f + middle_chroma_f;
-      const float color_v_offlimit_f = (float)(color_v_offlimit8 - 128) / 255.0f + middle_chroma_f;
-      const float color_u_centermark_f = (float)(color_u_centermark8 - 128) / 255.0f + middle_chroma_f;
-      const float color_v_centermark_f = (float)(color_v_centermark8 - 128) / 255.0f + middle_chroma_f;
+
+      const float color_u_offlimit_f = uv8tof(color_u_offlimit8);
+      const float color_v_offlimit_f = uv8tof(color_v_offlimit8);
+      const float color_u_centermark_f = uv8tof(color_u_centermark8);
+      const float color_v_centermark_f = uv8tof(color_v_centermark8);
+      const float middle_chroma_f = uv8tof(128);
 
       const int height = src->GetHeight(PLANAR_U);
       for (int y2 = 0; y2<height; ++y2) {
@@ -1831,7 +1810,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
           for (int x = 0; x<show_size; x += fact) {
             if (x<hist_tv_range_low || x>hist_tv_range_hi_luma) {
               reinterpret_cast<float *>(p2)[x >> subs] = color_u_offlimit_f;
-              reinterpret_cast<float *>(p3)[x >> subs] = color_u_offlimit_f;
+              reinterpret_cast<float *>(p3)[x >> subs] = color_v_offlimit_f;
             } else if (x==hist_mid_range_luma) {
               reinterpret_cast<float *>(p2)[x >> subs] = color_u_centermark_f;
               reinterpret_cast<float *>(p3)[x >> subs] = color_v_centermark_f;
