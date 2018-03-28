@@ -16,7 +16,7 @@
 *   ymin, ymax (ymin_a .. ymin_z for individual clips) - the usual luma limits (16..235 or scaled equivalents)
 *   cmin, cmax (cmin_a .. cmin_z) - chroma limits (16..240 or scaled equivalents)
 *   range_half (range_half_a .. range_half_z) - half of the range, (128 or scaled equivalents)
-*   range_size, range_half, range_max (range_size_a .. range_size_z , etc..)
+*   range_size, range_half, range_min, range_max (range_size_a .. range_size_z , etc..)
 * Autoscale helper functions (operand is treated as being a 8 bit constant unless i8..i16 or f32 is specified)
 *   scaleb (scale by bit shift - mul or div by 2, 4, 6, 8...)
 *   scalef (scale by stretch full scale - mul or div by source_max/target_max
@@ -3918,8 +3918,12 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // pre-defined, bit depth aware constants
         //   range_half : autoscaled 128 or 0.5 for float, (or 0.0 for chroma with zero-base float chroma version)
         //   range_max  : 255 / 1023 / 4095 / 16383 / 65535 or 1.0 for float
+        //                                                     0.5 for float chroma (new zero-based style)
+        //   range_min  : 0 for 8-16bits, or 0 for float
+        //                -0.5 for float chroma (new zero-based style)
         //   range_size : 256 / 1024...65536
-        //   ymin, ymax, cmin, cmax : 16 / 235 and 16 / 240 autoscaled.
+        //   ymin, ymax : 16 / 235 autoscaled.
+        //   cmin, cmax : 16 / 240 autoscaled. For 32bits zero based chroma: (16-128)/255.0, (240-128)/255.0
 
         // ymin or ymin_x, ymin_y, ymin_y, ymin_a....
         // similarly: ymax, range_max, cmin, cmax, range_half
@@ -4019,6 +4023,22 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           float q = bitsPerComponent == 32 ? 1.0f : (1 << bitsPerComponent); // 1.0, 256, 1024,... 65536
           LOAD_OP(opLoadConst, q, 0);
         }
+        else if (tokens[i].substr(0, 9) == "range_min") // avs+ > r2636
+        {
+          int loadIndex = -1;
+          std::string toFind = "range_min";
+          if (tokens[i].substr(0, toFind.length()) == toFind)
+            loadIndex = getSuffix(tokens[i], toFind);
+          if (loadIndex < 0)
+            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+          if (loadIndex >= numInputs)
+            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+
+          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          // 0.0 (or -0.5 for zero based 32bit float chroma), 255, 1023,... 65535
+          float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) - 0.5f : 0.0f) : ((1 << bitsPerComponent) - 1);
+          LOAD_OP(opLoadConst, q, 0);
+        }
         else if (tokens[i].substr(0, 9) == "range_max") // avs+
         {
           int loadIndex = -1;
@@ -4031,7 +4051,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
-          float q = bitsPerComponent == 32 ? 1.0f : ((1 << bitsPerComponent) - 1); // 1.0, 255, 1023,... 65535
+          // 1.0 (or 0.5 for zero based 32bit float chroma), 255, 1023,... 65535
+          float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) + 0.5f : 1.0f) : ((1 << bitsPerComponent) - 1);
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 10) == "range_half") // avs+
