@@ -527,7 +527,7 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
         std::fill_n((uint16_t *)frame->GetWritePtr(PLANAR_A), size / 2, max); // transparent alpha
     }
     else if (pixelsize == 4) { // float
-      float half = 0.5f;
+      const float half = 0.5f;
       std::fill_n((float *)frame->GetWritePtr(PLANAR_G), size / 4, half); // Grey frame
       std::fill_n((float *)frame->GetWritePtr(PLANAR_B), size / 4, half); // Grey frame
       std::fill_n((float *)frame->GetWritePtr(PLANAR_R), size / 4, half); // Grey frame
@@ -561,13 +561,18 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
       }
     }
     else if (pixelsize == 4) { // float
-      float half = 0.5f;
+      const float half = 0.5f;
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+      const float halfUV = 0.0f;
+#else
+      const float halfUV = 0.5f;
+#endif
       std::fill_n((float *)frame->GetWritePtr(), size / 4, half); // Grey frame
 
       if (UVpitch) {
         const int UVsize = UVpitch * frame->GetHeight(PLANAR_U);
-        std::fill_n((float *)frame->GetWritePtr(PLANAR_U), UVsize / 4, half); // Grey frame
-        std::fill_n((float *)frame->GetWritePtr(PLANAR_V), UVsize / 4, half); // Grey frame
+        std::fill_n((float *)frame->GetWritePtr(PLANAR_U), UVsize / 4, halfUV); // Grey frame
+        std::fill_n((float *)frame->GetWritePtr(PLANAR_V), UVsize / 4, halfUV); // Grey frame
       }
     }
   }
