@@ -140,8 +140,8 @@ static void get_limits(luma_chroma_limits_t &d, int bits_per_pixel) {
     d.full_range_low_chroma_f = (0 - 128) / 255.0f;
     d.full_range_hi_chroma_f = (255 - 128) / 255.0f;
 #else
-    d.tv_range_low_chroma_f = tv_range_lo_chroma_8 / 255.0;
-    d.tv_range_hi_chroma_f = tv_range_hi_chroma_8 / 255.0;
+    d.tv_range_low_chroma_f = tv_range_lo_chroma_8 / 255.0f;
+    d.tv_range_hi_chroma_f = tv_range_hi_chroma_8 / 255.0f;
     d.middle_chroma_f = 0.5f;
     d.full_range_low_chroma_f = 0 / 255.0f;
     d.full_range_hi_chroma_f = 255 / 255.0f;
