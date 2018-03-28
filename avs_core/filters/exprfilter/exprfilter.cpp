@@ -99,6 +99,33 @@
 
 #include <immintrin.h>
 
+// 8-16 bit uv to float
+static float uv8tof(int color, int bits_per_pixel) {
+  const int half = 1 << (bits_per_pixel - 1);
+  const float max_pixel_value = (float)((1 << bits_per_pixel) - 1);
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+  return (color - half) / max_pixel_value + shift;
+}
+
+// 8 bit uv to float
+static float uv8tof(int color) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+  return (color - 128) / 255.0f + shift;
+}
+
+// 8 bit fullscale to float
+static float c8tof(int color) {
+  return color / 255.0f;
+}
+
 #ifdef VS_TARGET_CPU_X86
 
 // normal versions work with two xmm or ymm registers (2*4 or 2*8 pixels per cycle)
@@ -3281,35 +3308,41 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 
   for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
 
-      // for simd:
-    const int pixels_per_iter = (optAvx2 && d.planeOptAvx2[plane]) ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
-    intptr_t ptroffsets[1 + 1 + MAX_EXPR_INPUTS];
-    ptroffsets[RWPTR_START_OF_OUTPUT] = d.vi.ComponentSize() * pixels_per_iter; // stepping for output pointer
-    ptroffsets[RWPTR_START_OF_XCOUNTER] = pixels_per_iter; // stepping for xcounter
-
     const int plane_enum = plane_enums[plane];
 
     if (d.plane[plane] == poProcess) {
-      if (optSSE2 && d.planeOptSSE2[plane]) {
-        for (int i = 0; i < numInputs; i++) {
-          if (d.node[i]) {
-            if (d.clipsUsed[i]) {
-              srcp[i] = src[i]->GetReadPtr(plane_enum);
-              src_stride[i] = src[i]->GetPitch(plane_enum);
-              ptroffsets[RWPTR_START_OF_INPUTS + i] = d.node[i]->GetVideoInfo().ComponentSize() * pixels_per_iter; // 1..Nth: inputs
-            }
-            else {
-              srcp[i] = nullptr;
-              src_stride[i] = 0;
-              ptroffsets[RWPTR_START_OF_INPUTS + i] = 0;
-            }
+      uint8_t *dstp = dst->GetWritePtr(plane_enum);
+      int dst_stride = dst->GetPitch(plane_enum);
+      int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
+      int w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
+
+      // for simd:
+      const int pixels_per_iter = (optAvx2 && d.planeOptAvx2[plane]) ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
+      intptr_t ptroffsets[1 + 1 + MAX_EXPR_INPUTS];
+      ptroffsets[RWPTR_START_OF_OUTPUT] = d.vi.ComponentSize() * pixels_per_iter; // stepping for output pointer
+      ptroffsets[RWPTR_START_OF_XCOUNTER] = pixels_per_iter; // stepping for xcounter
+
+      for (int i = 0; i < numInputs; i++) {
+        if (d.node[i]) {
+          if (d.clipsUsed[i]) {
+            srcp[i] = src[i]->GetReadPtr(plane_enum);
+            // C only:
+            srcp_orig[i] = srcp[i];
+            src_stride[i] = src[i]->GetPitch(plane_enum);
+            // SIMD only
+            ptroffsets[RWPTR_START_OF_INPUTS + i] = d.node[i]->GetVideoInfo().ComponentSize() * pixels_per_iter; // 1..Nth: inputs
+          }
+          else {
+            srcp[i] = nullptr;
+            srcp_orig[i] = nullptr;
+            src_stride[i] = 0;
+            ptroffsets[RWPTR_START_OF_INPUTS + i] = 0;
           }
         }
+      }
 
-        uint8_t *dstp = dst->GetWritePtr(plane_enum);
-        int dst_stride = dst->GetPitch(plane_enum);
-        int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
-        int w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
+      if (optSSE2 && d.planeOptSSE2[plane]) {
+
         int nfulliterations = w / pixels_per_iter;
 
         ExprData::ProcessLineProc proc = d.proc[plane];
@@ -3330,25 +3363,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
       else {
         // C version
         std::vector<float> stackVector(d.maxStackSize);
-        for (int i = 0; i < numInputs; i++) {
-          if (d.node[i]) {
-            if (d.clipsUsed[i]) {
-              srcp[i] = src[i]->GetReadPtr(plane_enum);
-              srcp_orig[i] = srcp[i];
-              src_stride[i] = src[i]->GetPitch(plane_enum);
-            }
-            else {
-              srcp[i] = nullptr;
-              srcp_orig[i] = nullptr;
-              src_stride[i] = 0;
-            }
-          }
-        }
-
-        uint8_t *dstp = dst->GetWritePtr(plane_enum);
-        int dst_stride = dst->GetPitch(plane_enum);
-        int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
-        int w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
 
         const ExprOp *vops = d.ops[plane].data();
         float *stack = stackVector.data();
@@ -3700,7 +3714,7 @@ static int getSuffix(std::string token, std::string base) {
   return loadIndex;
 }
 
-static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, IScriptEnvironment *env)
+static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma, IScriptEnvironment *env)
 {
     // vi_output is new in avs+, and is not used yet
 
@@ -3913,7 +3927,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // sbitdepth : automatic silent parameter of the lut expression(bit depth of values to scale)
         //
         // pre-defined, bit depth aware constants
-        //   range_half : autoscaled 128 or 0.5 for float
+        //   range_half : autoscaled 128 or 0.5 for float, (or 0.0 for chroma with zero-base float chroma version)
         //   range_max  : 255 / 1023 / 4095 / 16383 / 65535 or 1.0 for float
         //   range_size : 256 / 1024...65536
         //   ymin, ymax, cmin, cmax : 16 / 235 and 16 / 240 autoscaled.
@@ -3983,7 +3997,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
-          float q = bitsPerComponent == 32 ? 16.0f / 255 : (16 << (bitsPerComponent - 8)); // scale chroma min 16
+          float q = bitsPerComponent == 32 ? uv8tof(16) : (16 << (bitsPerComponent - 8)); // scale chroma min 16
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 4) == "cmax") // avs+
@@ -3998,7 +4012,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
-          float q = bitsPerComponent == 32 ? 240.0f / 255 : (240 << (bitsPerComponent - 8)); // scale chroma max 240
+          float q = bitsPerComponent == 32 ? uv8tof(240) : (240 << (bitsPerComponent - 8)); // scale chroma max 240
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 10) == "range_size") // avs+
@@ -4043,7 +4057,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
-          float q = bitsPerComponent == 32 ? 0.5f : (1 << (bitsPerComponent - 1)); // 0.5f, 128, 512, ... 32768
+          float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) : 0.5f) : (1 << (bitsPerComponent - 1)); // 0.5f, 128, 512, ... 32768
           LOAD_OP(opLoadConst, q, 0);
         }
         // "scaleb" and "scalef" functions scale their operand from 8 bit to the bit depth of the first clip.
@@ -4700,8 +4714,8 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       const int plane_enum = plane_enums[i];
       const int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
       const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
-
-      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, env), d.maxStackSize);
+      const bool chroma = (plane_enum == PLANAR_U || plane_enum == PLANAR_V);
+      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma, env), d.maxStackSize);
       foldConstants(d.ops[i]);
 
       // optimize constant store, change operation to "fill"
@@ -4787,7 +4801,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
             memcpy((void *)d.proc[i], ExprObj.GetCode(), ExprObj.GetCodeSize());
           }
         }
-        else if (optSSE2 && d.planeOptSSE2[i]){
+        else if (optSSE2 && d.planeOptSSE2[i]) {
           // sse2, sse4
           ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth, planeheight, optSingleMode);
           if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
@@ -4799,7 +4813,67 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
             memcpy((void *)d.proc[i], ExprObj.GetCode(), ExprObj.GetCodeSize());
           }
         }
-      }
+
+
+#if 0
+        // under construction
+
+        // check LUT possibility: 
+        // * 8-16bit 1D lut, or 8-10 bit 2D lut
+        // * bit depth of input clip(s) and output must match
+        bool useLut =
+          (d.numInputs == 1
+            && d.vi.BitsPerComponent() <= 16
+            && d.vi.BitsPerComponent() == vi_array[0]->BitsPerComponent())
+          ||
+          (
+            d.numInputs == 2 && d.vi.BitsPerComponent() <= 8/*10*/
+            && d.vi.BitsPerComponent() == vi_array[0]->BitsPerComponent()
+            && d.vi.BitsPerComponent() == vi_array[1]->BitsPerComponent()
+            );
+        
+        // todo: 
+        // if there is a 'runtime' variable in the expression (framecount, relative_time), then lut is not possible
+
+        if (useLut) {
+          d.plane[i] = poLut; // change processing mode
+          d.planeLutIndex[i] = i;
+
+          int bits_per_pixel = d.vi.BitsPerComponent();
+          if (d.numInputs == 1 && bits_per_pixel >= 10) // 1D lut 10-16 bits: use 16bit safety area
+            bits_per_pixel = 16;
+
+          int lut_size = (1 << bits_per_pixel);
+          if (d.numInputs == 1)
+            lut_size *= (1 << bits_per_pixel);
+          lut_size *= d.vi.ComponentSize(); // bytes per entry
+
+          d.luts[i].resize(lut_size); // allocate
+
+          // fill LUT tables
+          if (d.numInputs == 1)
+          {
+            std::vector<uint8_t> pixels(lut_size);
+            uint8_t *ptr = pixels.data();
+            uint8_t *ptr_out = d.luts[i].data();
+            if (bits_per_pixel == 8) {
+              for (int i = 0; i < (1 << bits_per_pixel); i++)
+                ptr[i] = i;
+            }
+            else {
+              for (int i = 0; i < (1 << bits_per_pixel); i++)
+                reinterpret_cast<uint16_t *>(ptr)[i] = i;
+            }
+            // treat it as a clip. width=(1 << bits_per_pixel), height=1
+            // GetReadPtr is 'ptr'
+            // GetWritePtr is 'ptr_out'
+            // pitch does not count, we have height==1
+          }
+
+        }
+        // end of LUT
+#endif
+      } // if plane is to be processed
     }
 #ifdef VS_TARGET_OS_WINDOWS
     if (optSSE2)

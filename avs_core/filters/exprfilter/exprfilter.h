@@ -97,7 +97,7 @@ struct ExprOp {
 };
 
 enum PlaneOp {
-  poProcess, poCopy, poUndefined, poFill
+  poProcess, poCopy, poUndefined, poFill, poLut
 };
 
 struct ExprData {
@@ -114,7 +114,9 @@ struct ExprData {
   float planeFillValue[4]; // optimize: fill plane with const
   int planeCopySourceClip[4]; // optimize: copy plane from which clip
   bool planeOptAvx2[4]; // instruction set constraints
-  bool planeOptSSE2[4]; 
+  bool planeOptSSE2[4];
+  std::vector<uint8_t> luts[4]; // different lut tables, reusable by multiple planes
+  int planeLutIndex[4]; // which luts is used by the plane
   size_t maxStackSize;
   int numInputs;
 #ifdef VS_TARGET_CPU_X86
