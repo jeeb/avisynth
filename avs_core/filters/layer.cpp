@@ -3741,20 +3741,36 @@ Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
   }
 }
 
-template<typename pixel_t, int midpixel>
+// 8 bit uv to float
+static float uv8tof(int color) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+  return (color - 128) / 255.0f + shift;
+}
+
+// 8 bit fullscale to float
+static float c8tof(int color) {
+  return color / 255.0f;
+}
+
+template<typename pixel_t, int midpixel, bool chroma>
 static void subtract_plane(BYTE *src1p, const BYTE *src2p, int src1_pitch, int src2_pitch, int width, int height, int bits_per_pixel)
 {
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type limits_t;
 
-  const limits_t limit = sizeof(pixel_t) == 1 ? 255 : sizeof(pixel_t) == 2 ? ((1 << bits_per_pixel) - 1) : (limits_t)1.0f;
-  const limits_t equal_luma = sizeof(pixel_t) == 1 ? midpixel : sizeof(pixel_t) == 2 ? (midpixel << (bits_per_pixel - 8)) : (limits_t)(midpixel / 256.0f);
+  const limits_t limit_lo = sizeof(pixel_t) <= 2 ? 0 : (limits_t)(chroma ? uv8tof(0) : c8tof(0));
+  const limits_t limit_hi = sizeof(pixel_t) == 1 ? 255 : sizeof(pixel_t) == 2 ? ((1 << bits_per_pixel) - 1) : (limits_t)(chroma ? uv8tof(255) : c8tof(255));
+  const limits_t equal_luma = sizeof(pixel_t) == 1 ? midpixel : sizeof(pixel_t) == 2 ? (midpixel << (bits_per_pixel - 8)) : (limits_t)( chroma ? uv8tof(midpixel) : c8tof(midpixel));
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
       reinterpret_cast<pixel_t *>(src1p)[x] =
         (pixel_t)clamp(
         (limits_t)(reinterpret_cast<pixel_t *>(src1p)[x] - reinterpret_cast<const pixel_t *>(src2p)[x] + equal_luma), // 126: luma of equality
-          (limits_t)0,
-          limit);
+          limit_lo,
+          limit_hi);
     }
     src1p += src1_pitch;
     src2p += src2_pitch;
@@ -3780,7 +3796,6 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) {
     // alpha
     if (pixelsize == 1) {
-      //subtract_plane<uint8_t, 126>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       // LUT is a bit faster than clamp version
       for (int y=0; y<vi.height; y++) {
         for (int x=0; x<row_size; x++) {
@@ -3790,9 +3805,9 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
         src2p += src2->GetPitch();
       }
     } else if (pixelsize==2)
-      subtract_plane<uint16_t, 126>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+      subtract_plane<uint16_t, 126, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
     else //if (pixelsize==4)
-      subtract_plane<float, 126>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+      subtract_plane<float, 126, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
 
     // chroma
     row_size=src1->GetRowSize(PLANAR_U);
@@ -3808,9 +3823,6 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
       const BYTE* src2pV = src2->GetReadPtr(PLANAR_V);
 
       if (pixelsize == 1) {
-        //subtract_plane<uint8_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
-        //subtract_plane<uint8_t, 128>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
-
         // LUT is a bit faster than clamp version
         for (int y=0; y<height; y++) {
           for (int x=0; x<width; x++) {
@@ -3823,11 +3835,11 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
           src2pV += src2_pitch;
         }
       } else if (pixelsize==2) {
-        subtract_plane<uint16_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
-        subtract_plane<uint16_t, 128>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        subtract_plane<uint16_t, 128, true>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        subtract_plane<uint16_t, 128, true>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       } else { //if (pixelsize==4)
-        subtract_plane<float, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
-        subtract_plane<float, 128>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        subtract_plane<float, 128, true>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        subtract_plane<float, 128, true>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       }
     }
     return src1;
@@ -3856,11 +3868,11 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
         src1_pitch = src1->GetPitch(plane);
         src2_pitch = src2->GetPitch(plane);
         if(pixelsize==1)
-          subtract_plane<uint8_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+          subtract_plane<uint8_t, 128, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
         else if(pixelsize==2)
-          subtract_plane<uint16_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+          subtract_plane<uint16_t, 128, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
         else
-          subtract_plane<float, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+          subtract_plane<float, 128, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       }
     } else { // packed RGB
       if(pixelsize == 1) {
@@ -3874,7 +3886,7 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
       }
       else { // pixelsize == 2: RGB48, RGB64
         // width is getrowsize based here: ok.
-        subtract_plane<uint16_t, 128>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
+        subtract_plane<uint16_t, 128, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       }
     }
   }
