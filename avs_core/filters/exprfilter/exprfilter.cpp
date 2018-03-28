@@ -99,17 +99,6 @@
 
 #include <immintrin.h>
 
-// 8-16 bit uv to float
-static float uv8tof(int color, int bits_per_pixel) {
-  const int half = 1 << (bits_per_pixel - 1);
-  const float max_pixel_value = (float)((1 << bits_per_pixel) - 1);
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float shift = 0.0f;
-#else
-  const float shift = 0.5f;
-#endif
-  return (color - half) / max_pixel_value + shift;
-}
 
 // 8 bit uv to float
 static float uv8tof(int color) {
@@ -4070,9 +4059,27 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             // upscale
             if (targetBitDepth == 32) { // upscale to float
               // divide by max, e.g. x -> x/255
-              float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-              LOAD_OP(opLoadConst, 1.0f / q, 0);
-              TWO_ARG_OP(opMul);
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+              // for new 0-based chroma: x -> (x-src_chroma_middle)/factor + src_chroma_middle;
+              if (chroma) {
+                int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
+                LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
+                TWO_ARG_OP(opSub);
+
+                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
+                LOAD_OP(opLoadConst, 1.0f / q, 0);
+                TWO_ARG_OP(opMul);
+
+                LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
+                TWO_ARG_OP(opAdd);
+              }
+              else
+#endif
+              {
+                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
+                LOAD_OP(opLoadConst, 1.0f / q, 0);
+                TWO_ARG_OP(opMul);
+              }
             }
             else {
               // shift left by (targetBitDepth - currentBaseBitDepth), that is mul by (1 << (targetBitDepth - currentBaseBitDepth))
@@ -4087,16 +4094,32 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             // downscale
             if (autoScaleSourceBitDepth == 32) {
               // scale 32 bits (0..1.0) -> 8-16 bits
-              float q = (float)((1 << targetBitDepth) - 1);
-              LOAD_OP(opLoadConst, q, 0);
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+              // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
+              if (chroma) {
+                float q = (float)((1 << targetBitDepth) - 1);
+                LOAD_OP(opLoadConst, q, 0);
+                TWO_ARG_OP(opMul);
+
+                int target_middle_chroma = 1 << (targetBitDepth - 1);
+                LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
+                TWO_ARG_OP(opAdd);
+              }
+              else
+#endif
+              {
+                float q = (float)((1 << targetBitDepth) - 1);
+                LOAD_OP(opLoadConst, q, 0);
+                TWO_ARG_OP(opMul);
+              }
             }
             else {
               // shift right by (targetBitDepth - currentBaseBitDepth), that is div by (1 << (currentBaseBitDepth - targetBitDepth))
               int shifts_to_right = autoScaleSourceBitDepth - targetBitDepth;
               float q = (float)(1 << shifts_to_right); // e.g. / 4.0  -> mul by 1/4.0 faster
               LOAD_OP(opLoadConst, 1.0f / q, 0);
+              TWO_ARG_OP(opMul);
             }
-            TWO_ARG_OP(opMul);
           }
           else {
             // no scaling is needed. Bit depth of constant is the same as of the reference clip 
