@@ -34,6 +34,8 @@
 #define AVSCORE_VARTABLE_H
 
 #include "strings.h"
+#include "avs/alignment.h"
+#include "avs/minmax.h"
 #include <avisynth.h>
 #include <unordered_map>
 #include <mutex>
@@ -62,6 +64,7 @@ struct ihash_ascii
   }
 };
 
+#if 0
 class VarTable
 {
 private:
@@ -113,6 +116,236 @@ public:
     ret.first->second = val;
     return ret.second;
   }
+};
+#endif
+
+// This doles out storage space for strings.  No space is ever freed
+// until the class instance is destroyed (which happens when a script
+// file is closed).
+class StringDump {
+   enum { BLOCK_SIZE = 32768 };
+   char* current_block;
+   size_t block_pos, block_size;
+
+public:
+   StringDump() : current_block(0), block_pos(BLOCK_SIZE), block_size(BLOCK_SIZE) {}
+
+   ~StringDump() {
+      _RPT0(0, "StringDump: DeAllocating all stringblocks.\r\n");
+      char* p = current_block;
+      while (p) {
+         char* next = *(char**)p;
+         delete[] p;
+         p = next;
+      }
+   }
+
+   char* SaveString(const char* s, int len = -1) {
+      if (len == -1)
+         len = (int)strlen(s);
+
+      if (block_pos + len + 1 > block_size) {
+         char* new_block = new char[block_size = max(block_size, len + 1 + sizeof(char*))];
+         _RPT0(0, "StringDump: Allocating new stringblock.\r\n");
+         *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
+         current_block = new_block;
+         block_pos = sizeof(char*);
+      }
+      char* result = current_block + block_pos;
+      memcpy(result, s, len);
+      result[len] = 0;
+      block_pos += AlignNumber(len + 1, (int)sizeof(char*)); // Keep word-aligned
+      return result;
+   }
+
+   void Clear() {
+      // deallocate string blocks except the first one
+      while (char* p = *(char**)current_block) {
+         delete[] current_block;
+         current_block = p;
+      }
+      block_pos = sizeof(char*);
+      block_size = BLOCK_SIZE;
+   }
+};
+
+class VarFrame
+{
+   typedef std::unordered_map<const char*, AVSValue, ihash_ascii, iequal_to_ascii> ValueMap;
+   ValueMap variables;
+
+public:
+   VarFrame() {
+      variables.max_load_factor(0.8f);
+   }
+
+   // This method will not modify the *val argument if it returns false.
+   bool Get(const char* name, AVSValue *val) const
+   {
+      ValueMap::const_iterator v = variables.find(name);
+      if (v != variables.end())
+      {
+         *val = v->second;
+         return true;
+      }
+      return false;
+   }
+
+   bool Set(const char* name, const AVSValue& val)
+   {
+      std::pair<ValueMap::iterator, bool> ret = variables.insert(ValueMap::value_type(name, val));
+      ret.first->second = val;
+      return ret.second;
+   }
+
+   void Clear()
+   {
+      variables.clear();
+   }
+};
+
+class VarStringFrame : public VarFrame
+{
+   StringDump string_dump;
+public:
+   char* SaveString(const char* s, int len = -1) {
+      return string_dump.SaveString(s, len);
+   }
+
+   void Clear()
+   {
+      string_dump.Clear();
+      VarFrame::Clear();
+   }
+};
+
+class ConcurrentVarStringFrame : protected VarStringFrame
+{
+   // avoid write/read concurrency of global variables in runtime scripts in MT
+   mutable std::mutex var_mutex;
+
+public:
+   // This method will not modify the *val argument if it returns false.
+   bool Get(const char* name, AVSValue *val) const
+   {
+      std::lock_guard<std::mutex> lock(var_mutex); // avoid concurrency for global variables
+      return VarFrame::Get(name, val);
+   }
+
+   bool Set(const char* name, const AVSValue& val)
+   {
+      std::lock_guard<std::mutex> lock(var_mutex); // avoid concurrency for global variables
+      return VarFrame::Set(name, val);
+   }
+
+   char* SaveString(const char* s, int len = -1) {
+      std::lock_guard<std::mutex> lock(var_mutex); // avoid concurrency for global variables
+      return VarStringFrame::SaveString(s, len);
+   }
+
+   void Clear()
+   {
+      std::lock_guard<std::mutex> lock(var_mutex); // avoid concurrency for global variables
+      VarStringFrame::Clear();
+   }
+};
+
+class VarTable
+{
+private:
+   ConcurrentVarStringFrame* topFrame;
+
+   std::vector<std::unique_ptr<VarFrame>> stackFrames;
+   std::vector<std::unique_ptr<VarStringFrame>> globalFrames;
+
+   std::vector<std::unique_ptr<VarFrame>> stackPool;
+   std::vector<std::unique_ptr<VarStringFrame>> globalPool;
+
+public:
+   VarTable(ConcurrentVarStringFrame* topFrame) : topFrame(topFrame)
+   {
+      Push();
+   }
+
+   void Clear()
+   {
+      stackFrames.clear();
+      globalFrames.clear();
+      stackPool.clear();
+      globalPool.clear();
+   }
+
+   void Push()
+   {
+      if (stackPool.size() > 0) {
+         stackFrames.emplace_back(std::move(stackPool.back()));
+         stackPool.pop_back();
+      }
+      else {
+         stackFrames.emplace_back(new VarFrame());
+      }
+   }
+
+   void Pop()
+   {
+      assert(stackFrames.size() > 0);
+      stackFrames.back()->Clear();
+      stackPool.emplace_back(std::move(stackFrames.back()));
+      stackFrames.pop_back();
+   }
+
+   void PushGlobal()
+   {
+      if (globalPool.size() > 0) {
+         globalFrames.emplace_back(std::move(globalPool.back()));
+         globalPool.pop_back();
+      }
+      else {
+         globalFrames.emplace_back(new VarStringFrame());
+      }
+   }
+
+   void PopGlobal()
+   {
+      assert(globalFrames.size() > 0);
+      globalFrames.back()->Clear();
+      globalPool.emplace_back(std::move(globalFrames.back()));
+      globalFrames.pop_back();
+   }
+
+   bool Set(const char* name, const AVSValue& val)
+   {
+      return stackFrames.back()->Set(name, val);
+   }
+
+   bool SetGlobal(const char* name, const AVSValue& val)
+   {
+      if (globalFrames.size() > 0) {
+         return globalFrames.back()->Set(name, val);
+      }
+      return topFrame->Set(name, val);
+   }
+
+   bool Get(const char* name, AVSValue *val) const
+   {
+      if (stackFrames.size() > 0 && stackFrames.back()->Get(name, val)) {
+         return true;
+      }
+      for (auto it = globalFrames.rbegin(); it != globalFrames.rend(); ++it) {
+         if ((**it).Get(name, val)) {
+            return true;
+         }
+      }
+      return topFrame->Get(name, val);
+   }
+
+   char* SaveString(const char* s, int len = -1)
+   {
+      if (globalFrames.size() > 0) {
+         return globalFrames.back()->SaveString(s, len);
+      }
+      return topFrame->SaveString(s, len);
+   }
 };
 
 #endif // AVSCORE_VARTABLE_H

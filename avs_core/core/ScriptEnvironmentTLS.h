@@ -18,37 +18,27 @@ private:
   InternalEnvironment* env_; // for leak detection
   InternalEnvironment* core;
   const size_t thread_id;
-  VarTable* global_var_table;
   // PF 161223 why do we need thread-local global variables?
   // comment remains here until it gets cleared, anyway, I make it of no use
-  VarTable* var_table;
+  VarTable var_table;
   BufferPool buffer_pool;
   volatile long refcount;
 
-  ~ScriptEnvironmentTLS()
-  {
-    while (var_table)
-      PopContext();
-
-    while (global_var_table)
-      PopContextGlobal();
-
-    env_->DecEnvCount(); // for leak detection
-  }
+	~ScriptEnvironmentTLS()
+	{
+      var_table.Clear();
+		env_->DecEnvCount(); // for leak detection
+	}
 
 public:
   ScriptEnvironmentTLS(size_t _thread_id, InternalEnvironment* env) :
     env_(env),
     core(NULL),
     thread_id(_thread_id),
-    global_var_table(NULL),
-    var_table(NULL),
+    var_table(env->GetTopFrame()),
     buffer_pool(this),
     refcount(1)
   {
-    global_var_table = new VarTable(0, 0);
-    var_table = new VarTable(0, global_var_table);
-
     env_->IncEnvCount(); // for leak detection
   }
 
@@ -65,46 +55,49 @@ public:
   AVSValue __stdcall GetVar(const char* name)
   {
     AVSValue val;
-    if (var_table->Get(name, &val))
+    if (var_table.Get(name, &val))
       return val;
     else
-      return core->GetVar(name);
+       throw IScriptEnvironment::NotFound();
   }
 
   bool __stdcall SetVar(const char* name, const AVSValue& val)
   {
-    return var_table->Set(name, val);
+    return var_table.Set(name, val);
   }
 
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val)
   {
-    //    return global_var_table->Set(name, val);
-    return core->SetGlobalVar(name, val);
+    return var_table.SetGlobal(name, val);
+    // or return core->SetGlobalVar(name, val); ???
+    // fixme: check srestore I don't know what dm means
     // PF 161223 use real global table, runtime scripts can write globals from different threads
     // so we don't use the TLS global_var_table
   }
 
   void __stdcall PushContext(int level = 0)
   {
-    var_table = new VarTable(var_table, global_var_table);
+     var_table.Push();
   }
 
   void __stdcall PopContext()
   {
-    var_table = var_table->Pop();
+     var_table.Pop();
+  }
+
+  void __stdcall PushContextGlobal()
+  {
+     var_table.PushGlobal();
   }
 
   void __stdcall PopContextGlobal()
   {
-    global_var_table = global_var_table->Pop();
+     var_table.PopGlobal();
   }
 
   bool __stdcall GetVar(const char* name, AVSValue* val) const
   {
-    if (!var_table->Get(name, val))
-      return core->GetVar(name, val);
-
-    return true;
+     return var_table.Get(name, val);
   }
 
   AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def)
@@ -192,7 +185,7 @@ public:
 
   char* __stdcall SaveString(const char* s, int length = -1)
   {
-    return core->SaveString(s, length);
+    return var_table.SaveString(s, length);
   }
 
   char* __stdcall Sprintf(const char* fmt, ...)
@@ -389,13 +382,6 @@ public:
     core->GetThreadPool()->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
   }
 
-/*replace by ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
-virtual void __stdcall SetPrefetcher(Prefetcher* p)
-  {
-    core->SetPrefetcher(p);
-  }
-*/
-
   virtual ClipDataStore* __stdcall ClipData(IClip* clip)
   {
     return core->ClipData(clip);
@@ -473,6 +459,11 @@ virtual void __stdcall SetPrefetcher(Prefetcher* p)
 
   virtual void __stdcall DecEnvCount() {
     core->DecEnvCount();
+  }
+
+  virtual ConcurrentVarStringFrame* __stdcall GetTopFrame()
+  {
+    return core->GetTopFrame();
   }
 
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst)

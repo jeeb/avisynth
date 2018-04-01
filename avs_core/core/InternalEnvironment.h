@@ -46,6 +46,8 @@ public:
 };
 
 class ThreadPool;
+class ConcurrentVarStringFrame;
+
 extern __declspec(thread) size_t g_thread_id;
 extern __declspec(thread) int g_getframe_recursive_count;
 
@@ -88,6 +90,9 @@ public:
     virtual void __stdcall Release() = 0;
     virtual void __stdcall IncEnvCount() = 0;
     virtual void __stdcall DecEnvCount() = 0;
+
+    virtual ConcurrentVarStringFrame* __stdcall GetTopFrame() = 0;
+
 };
 
 struct InternalEnvironmentDeleter {

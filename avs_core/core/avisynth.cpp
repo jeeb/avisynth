@@ -459,49 +459,6 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 }
 
 
-// This doles out storage space for strings.  No space is ever freed
-// until the class instance is destroyed (which happens when a script
-// file is closed).
-class StringDump {
-  enum { BLOCK_SIZE = 32768 };
-  char* current_block;
-  size_t block_pos, block_size;
-
-public:
-  StringDump() : current_block(0), block_pos(BLOCK_SIZE), block_size(BLOCK_SIZE) {}
-  ~StringDump();
-  char* SaveString(const char* s, int len = -1);
-};
-
-StringDump::~StringDump() {
-  _RPT0(0,"StringDump: DeAllocating all stringblocks.\r\n");
-  char* p = current_block;
-  while (p) {
-    char* next = *(char**)p;
-    delete[] p;
-    p = next;
-  }
-}
-
-char* StringDump::SaveString(const char* s, int len) {
-  if (len == -1)
-    len = (int)strlen(s);
-
-  if (block_pos+len+1 > block_size) {
-    char* new_block = new char[block_size = max(block_size, len+1+sizeof(char*))];
-    _RPT0(0,"StringDump: Allocating new stringblock.\r\n");
-    *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
-    current_block = new_block;
-    block_pos = sizeof(char*);
-  }
-  char* result = current_block+block_pos;
-  memcpy(result, s, len);
-  result[len] = 0;
-  block_pos += AlignNumber(len+1, (int)sizeof(char*)); // Keep word-aligned
-  return result;
-}
-
-
 class AtExiter {
   struct AtExitRec {
     const IScriptEnvironment::ShutdownFunc func;
@@ -735,6 +692,7 @@ public:
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val);
   void __stdcall PushContext(int level=0);
   void __stdcall PopContext();
+  void __stdcall PushContextGlobal();
   void __stdcall PopContextGlobal();
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align);
   PVideoFrame NewVideoFrame(int row_size, int height, int align);
@@ -810,6 +768,8 @@ public:
   virtual void __stdcall IncEnvCount() { InterlockedIncrement(&EnvCount); }
   virtual void __stdcall DecEnvCount() { InterlockedDecrement(&EnvCount); }
 
+   virtual ConcurrentVarStringFrame* __stdcall GetTopFrame();
+
 
 private:
 
@@ -817,7 +777,8 @@ private:
   // Note order here!!
   // AtExiter has functions which
   // rely on StringDump elements.
-  StringDump string_dump;
+  ConcurrentVarStringFrame top_frame;
+  VarTable var_table;
   std::mutex string_mutex;
 
   AtExiter at_exit;
@@ -826,8 +787,7 @@ private:
   PluginManager *plugin_manager;
   std::recursive_mutex plugin_mutex;
 
-  VarTable* global_var_table;
-  VarTable* var_table;
+
 
   int ImportDepth;
   long EnvCount; // for ScriptEnvironmentTLS leak detection
@@ -886,7 +846,6 @@ private:
 
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
-//  Prefetcher *prefetcher;
 
   std::vector <std::unique_ptr<ThreadPool>> ThreadPoolRegistry;
   size_t nTotalThreads;
@@ -1046,7 +1005,8 @@ IJobCompletion* __stdcall ScriptEnvironment::NewCompletion(size_t capacity)
 }
 
 ScriptEnvironment::ScriptEnvironment()
-  : at_exit(),
+  : var_table(&top_frame),
+    at_exit(),
     plugin_manager(NULL),
     hrfromcoinit(E_FAIL), coinitThreadId(0),
     PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
@@ -1090,20 +1050,18 @@ ScriptEnvironment::ScriptEnvironment()
     memory_max = min(memory_max, (uint64_t)((isX64 ? 4096 : 1024)*(1024*1024ull)));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
     memory_used = 0ull;
 
-    global_var_table = new VarTable(0, 0);
-    var_table = new VarTable(0, global_var_table);
-    global_var_table->Set("true", true);
-    global_var_table->Set("false", false);
-    global_var_table->Set("yes", true);
-    global_var_table->Set("no", false);
-    global_var_table->Set("last", AVSValue());
+    top_frame.Set("true", true);
+    top_frame.Set("false", false);
+    top_frame.Set("yes", true);
+    top_frame.Set("no", false);
+    top_frame.Set("last", AVSValue());
 
-    global_var_table->Set("$ScriptName$", AVSValue());
-    global_var_table->Set("$ScriptFile$", AVSValue());
-    global_var_table->Set("$ScriptDir$",  AVSValue());
-    global_var_table->Set("$ScriptNameUtf8$", AVSValue());
-    global_var_table->Set("$ScriptFileUtf8$", AVSValue());
-    global_var_table->Set("$ScriptDirUtf8$", AVSValue());
+    top_frame.Set("$ScriptName$", AVSValue());
+    top_frame.Set("$ScriptFile$", AVSValue());
+    top_frame.Set("$ScriptDir$",  AVSValue());
+    top_frame.Set("$ScriptNameUtf8$", AVSValue());
+    top_frame.Set("$ScriptFileUtf8$", AVSValue());
+    top_frame.Set("$ScriptDirUtf8$", AVSValue());
 
     plugin_manager = new PluginManager(this);
 #ifdef AVS_WINDOWS
@@ -1123,10 +1081,10 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir(system_avs_plugindir, false);
 #endif
 
-    global_var_table->Set("LOG_ERROR",   (int)LOGLEVEL_ERROR);
-    global_var_table->Set("LOG_WARNING", (int)LOGLEVEL_WARNING);
-    global_var_table->Set("LOG_INFO",    (int)LOGLEVEL_INFO);
-    global_var_table->Set("LOG_DEBUG",   (int)LOGLEVEL_DEBUG);
+    top_frame.Set("LOG_ERROR",   (int)LOGLEVEL_ERROR);
+    top_frame.Set("LOG_WARNING", (int)LOGLEVEL_WARNING);
+    top_frame.Set("LOG_INFO",    (int)LOGLEVEL_INFO);
+    top_frame.Set("LOG_DEBUG",   (int)LOGLEVEL_DEBUG);
 
     InitMT();
     thread_pool = new ThreadPool(std::thread::hardware_concurrency(), 1, this);
@@ -1156,10 +1114,10 @@ MtMode __stdcall ScriptEnvironment::GetDefaultMtMode() const
 
 void ScriptEnvironment::InitMT()
 {
-    global_var_table->Set("MT_NICE_FILTER", (int)MT_NICE_FILTER);
-    global_var_table->Set("MT_MULTI_INSTANCE", (int)MT_MULTI_INSTANCE);
-    global_var_table->Set("MT_SERIALIZED", (int)MT_SERIALIZED);
-    global_var_table->Set("MT_SPECIAL_MT", (int)MT_SPECIAL_MT);
+    top_frame.Set("MT_NICE_FILTER", (int)MT_NICE_FILTER);
+    top_frame.Set("MT_MULTI_INSTANCE", (int)MT_MULTI_INSTANCE);
+    top_frame.Set("MT_SERIALIZED", (int)MT_SERIALIZED);
+    top_frame.Set("MT_SPECIAL_MT", (int)MT_SPECIAL_MT);
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
@@ -1174,11 +1132,8 @@ ScriptEnvironment::~ScriptEnvironment() {
 
   delete thread_pool;
 
-  while (var_table)
-    PopContext();
-
-  while (global_var_table)
-    PopContextGlobal();
+  var_table.Clear();
+  top_frame.Clear();
 
   // There can be a circular reference between the Prefetcher and the
   // TLS PopContext() variables of the threads started by it. Normally
@@ -1605,7 +1560,7 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
   switch(prop)
   {
   case AEP_FILTERCHAIN_THREADS:
-    return nMaxFilterInstances; //return (prefetcher != NULL) ? prefetcher->NumPrefetchThreads()+1 : 1;
+    return nMaxFilterInstances;
   case AEP_PHYSICAL_CPUS:
     return GetNumPhysicalCPUs();
   case AEP_LOGICAL_CPUS:
@@ -1701,7 +1656,7 @@ AVSValue ScriptEnvironment::GetVar(const char* name) {
   if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
 
   AVSValue val;
-  if (var_table->Get(name, &val))
+  if (var_table.Get(name, &val))
     return val;
   else
     throw IScriptEnvironment::NotFound();
@@ -1710,7 +1665,7 @@ AVSValue ScriptEnvironment::GetVar(const char* name) {
 bool ScriptEnvironment::GetVar(const char* name, AVSValue *ret) const {
   if (closing) return false;  // We easily risk  being inside the critical section below, while deleting variables.
 
-  return var_table->Get(name, ret);
+  return var_table.Get(name, ret);
 }
 
 AVSValue ScriptEnvironment::GetVarDef(const char* name, const AVSValue& def) {
@@ -1766,13 +1721,13 @@ const char* ScriptEnvironment::GetVar(const char* name, const char* def) const {
 bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
   if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
 
-  return var_table->Set(name, val);
+  return var_table.Set(name, val);
 }
 
 bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
   if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
 
-  return global_var_table->Set(name, val);
+  return var_table.SetGlobal(name, val);
 }
 
 VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
@@ -2606,15 +2561,19 @@ void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* 
 }
 
 void ScriptEnvironment::PushContext(int level) {
-  var_table = new VarTable(var_table, global_var_table);
+   var_table.Push();
 }
 
 void ScriptEnvironment::PopContext() {
-  var_table = var_table->Pop();
+   var_table.PushGlobal();
+}
+
+void ScriptEnvironment::PushContextGlobal() {
+   var_table.PushGlobal();
 }
 
 void ScriptEnvironment::PopContextGlobal() {
-  global_var_table = global_var_table->Pop();
+   var_table.PopGlobal();
 }
 
 
@@ -3457,16 +3416,14 @@ void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int 
 
 
 char* ScriptEnvironment::SaveString(const char* s, int len) {
-  std::lock_guard<std::mutex> lock(string_mutex);
-  return string_dump.SaveString(s, len);
+  return var_table.SaveString(s, len);
 }
 
 
 char* ScriptEnvironment::VSprintf(const char* fmt, va_list val) {
   try {
-    std::string str = FormatString(fmt, val);
-    std::lock_guard<std::mutex> lock(string_mutex);
-    return string_dump.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
+    std::string str = FormatString(fmt, (va_list)val);
+    return var_table.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
   } catch (...) {
     return NULL;
   }
@@ -3555,7 +3512,10 @@ AVSMap* __stdcall ScriptEnvironment::GetAVSMap(PVideoFrame& frame)
   return frame->avsmap;
 }
 
-
+ConcurrentVarStringFrame* ScriptEnvironment::GetTopFrame()
+{
+  return &top_frame;
+}
 
 extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
   const char* message, int size, int textcolor, int halocolor, int bgcolor,

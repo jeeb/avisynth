@@ -1453,6 +1453,10 @@ public:
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) = 0;
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) = 0;
 
+  // Global variable frame support
+  virtual void __stdcall PushContextGlobal() = 0;
+  virtual void __stdcall PopContextGlobal() = 0;
+
 }; // end class IScriptEnvironment2
 
 
