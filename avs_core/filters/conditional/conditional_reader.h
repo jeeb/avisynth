@@ -21,6 +21,7 @@
 #include <avisynth.h>
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 #include <string>
 
 #ifdef AVS_POSIX
@@ -107,6 +108,25 @@ public:
 	static AVSValue __cdecl Create_If(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_Start(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_End(AVSValue args, void* user_data, IScriptEnvironment* env);
+};
+
+
+class UseVar : public GenericVideoFilter
+{
+private:
+   struct Var {
+      const char* name;
+      AVSValue val;
+   };
+
+   std::vector<Var> vars_;
+
+public:
+   UseVar(PClip _child, AVSValue vars, IScriptEnvironment* env);
+   ~UseVar();
+   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+   int __stdcall SetCacheHints(int cachehints, int frame_range);
+   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
 
 

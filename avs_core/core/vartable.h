@@ -159,13 +159,15 @@ public:
    }
 
    void Clear() {
-      // deallocate string blocks except the first one
-      while (char* p = *(char**)current_block) {
-         delete[] current_block;
-         current_block = p;
+      if (current_block) {
+         // deallocate string blocks except the first one
+         while (char* p = *(char**)current_block) {
+            delete[] current_block;
+            current_block = p;
+         }
+         block_pos = sizeof(char*);
+         block_size = BLOCK_SIZE;
       }
-      block_pos = sizeof(char*);
-      block_size = BLOCK_SIZE;
    }
 };
 
