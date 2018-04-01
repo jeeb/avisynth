@@ -109,11 +109,9 @@ int __stdcall ConditionalSelect::SetCacheHints(int cachehints, int frame_range)
 
 PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env) {
 
-  AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-  AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
-
-  env->SetVar("last", (AVSValue)child);      // Set implicit last
-  env->SetVar("current_frame", (AVSValue)n); // Set frame to be tested by the conditional filters.
+  GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+  env->SetGlobalVar("last", (AVSValue)child);      // Set implicit last
+  env->SetGlobalVar("current_frame", (AVSValue)n); // Set frame to be tested by the conditional filters.
 
   AVSValue result;
 
@@ -126,9 +124,6 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
       env->ThrowError("Conditional Select: Expression must return an integer!");
   }
   catch (const AvisynthError &error) {
-    env->SetVar("last", prev_last);                   // Restore implicit last
-    env->SetVar("current_frame", prev_current_frame); // Restore current_frame
-
     const int num_frames = child->GetVideoInfo().num_frames;
     PVideoFrame dst = child->GetFrame(min(num_frames-1, n), env);
 
@@ -137,9 +132,6 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
 
     return dst;
   }
-
-  env->SetVar("last", prev_last);                   // Restore implicit last
-  env->SetVar("current_frame", prev_current_frame); // Restore current_frame
 
   const int i = result.AsInt();
 
@@ -258,14 +250,12 @@ int __stdcall ConditionalFilter::SetCacheHints(int cachehints, int frame_range)
 
 PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env) {
 
+  GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+
   VideoInfo vi1 = source1->GetVideoInfo();
   VideoInfo vi2 = source2->GetVideoInfo();
-
-  AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-  AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
-
-  env->SetVar("last",(AVSValue)child);       // Set implicit last
-  env->SetVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
 
   AVSValue e1_result;
   AVSValue e2_result;
@@ -283,13 +273,8 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
     env->ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
-    env->SetVar("last",prev_last);       // Restore implicit last
-    env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
     return dst;
   }
-
-  env->SetVar("last",prev_last);       // Restore implicit last
-  env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
 
   bool test_int=false;
   bool test_string=false;
@@ -450,18 +435,14 @@ int __stdcall ScriptClip::SetCacheHints(int cachehints, int frame_range)
 }
 
 PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
-  AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-  AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
-
-  env->SetVar("last",(AVSValue)child);       // Set explicit last
-  env->SetVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
+   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+  env->SetGlobalVar("last",(AVSValue)child);       // Set explicit last
+  env->SetGlobalVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
 
   if (show) {
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
     env->ApplyMessage(&dst, vi, script.AsString(), vi.width/6, 0xa0a0a0, 0, 0);
-    env->SetVar("last",prev_last);       // Restore implicit last
-    env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
     return dst;
   }
 
@@ -480,13 +461,8 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
     env->ApplyMessage(&dst, vi, error_msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
-    env->SetVar("last",prev_last);       // Restore implicit last
-    env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
     return dst;
   }
-
-  env->SetVar("last",prev_last);       // Restore implicit last
-  env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
 
   if (eval_after && only_eval) return eval_return;
   if (only_eval) return child->GetFrame(n,env);

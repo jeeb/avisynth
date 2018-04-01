@@ -325,4 +325,16 @@ static AVS_FORCEINLINE __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
                 ((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24 ))
 #endif
 
+class GlobalVarFrame
+{
+   IScriptEnvironment2* env;
+public:
+   GlobalVarFrame(IScriptEnvironment2* env) : env(env) {
+      env->PushContextGlobal();
+   }
+   ~GlobalVarFrame() {
+      env->PopContextGlobal();
+   }
+};
+
 #endif  // __Internal_H__

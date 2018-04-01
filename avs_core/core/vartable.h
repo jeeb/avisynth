@@ -296,6 +296,7 @@ public:
 
    void PushGlobal()
    {
+      Push();
       if (globalPool.size() > 0) {
          globalFrames.emplace_back(std::move(globalPool.back()));
          globalPool.pop_back();
@@ -307,6 +308,7 @@ public:
 
    void PopGlobal()
    {
+      Pop();
       assert(globalFrames.size() > 0);
       globalFrames.back()->Clear();
       globalPool.emplace_back(std::move(globalFrames.back()));

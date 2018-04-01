@@ -19,6 +19,7 @@
 */
 
 #include "conditional_reader.h"
+#include "../core/internal.h"
 #include <cstdlib>
 
 #ifdef AVS_WINDOWS
@@ -589,28 +590,20 @@ Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck
 		arglist[i].string = EMPTY;
 	}
 
-	if (linecheck == -1) {	//write at start
-		AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-		AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
 
-		env->SetVar("last", (AVSValue)child);       // Set implicit last
-		env->SetVar("current_frame", -1);
+	if (linecheck == -1) {	//write at start
+		env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+		env->SetGlobalVar("current_frame", -1);
+
 		Write::DoEval(env);
 		Write::FileOut(env, AplusT);
-
-		env->SetVar("last", prev_last);       // Restore implicit last
-		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
 	}
 	if (linecheck == -2) {	//write at end, evaluate right now
-		AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-		AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+		env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+		env->SetGlobalVar("current_frame", -2);
 
-		env->SetVar("last", (AVSValue)child);       // Set implicit last
-		env->SetVar("current_frame", -2);
 		Write::DoEval(env);
-
-		env->SetVar("last", prev_last);       // Restore implicit last
-		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
 	}
 }
 
@@ -623,18 +616,13 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 
 	if (linecheck<0) return tmpframe;	//do nothing here when writing only start or end
 
-	AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-	AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
-
-	env->SetVar("last",(AVSValue)child);       // Set implicit last (to avoid recursive stack calls?)
-	env->SetVar("current_frame",n);
+   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+	env->SetGlobalVar("last",(AVSValue)child);       // Set implicit last (to avoid recursive stack calls?)
+	env->SetGlobalVar("current_frame",n);
 
 	if (Write::DoEval(env)) {
 		Write::FileOut(env, AplusT);
 	}
-
-	env->SetVar("last",prev_last);       // Restore implicit last
-	env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
 
 	return tmpframe;
 
