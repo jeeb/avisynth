@@ -69,3 +69,8 @@ private:
   enum { MIN = 1, MAX = 2, MEDIAN = 3, MINMAX_DIFFERENCE = 4 };
 
 };
+
+class GetProp_ {
+public:
+   static AVSValue Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+};

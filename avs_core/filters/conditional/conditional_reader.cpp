@@ -28,6 +28,7 @@
 #endif
 
 #include <avs/minmax.h>
+#include "../core/parser/scriptparser.h"
 
 
 /*****************************************************************************
@@ -716,4 +717,59 @@ AVSValue __cdecl Write::Create_Start(AVSValue args, void*, IScriptEnvironment* e
 AVSValue __cdecl Write::Create_End(AVSValue args, void*, IScriptEnvironment* env)
 {
 	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -2, args[3].AsBool(true), true, env);
+}
+
+AddProp::AddProp(PClip _child, const char* name, AVSValue eval, IScriptEnvironment* env)
+   : GenericVideoFilter(_child)
+   , name(name)
+   , eval(eval)
+{ }
+
+AddProp::~AddProp() { }
+
+PVideoFrame __stdcall AddProp::GetFrame(int n, IScriptEnvironment* env)
+{
+   AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+   AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+
+   // With Neo's GlobalsVarFrame there is no prev_last and prev_current_frame save and restore
+   // but an automatic Push and PopContextGlobal. No pulled yet
+   //GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+
+   env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+   env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
+
+   ScriptParser parser(env, eval.AsString(), "[AddProp Expression]");
+   PExpression exp = parser.Parse();
+   AVSValue result = exp->Evaluate(env);
+   PVideoFrame frame = child->GetFrame(n, env);
+
+   if (result.IsInt())
+      frame->SetProperty(name, result.AsInt());
+   else if (result.IsBool())
+      frame->SetProperty(name, (int)result.AsBool());
+   else if (result.IsFloat())
+      frame->SetProperty(name, result.AsFloat());
+   else if (result.IsString())
+      env->ThrowError("AddProp: Invalid return type (Was a string)");
+   else if (result.IsArray())
+      env->ThrowError("AddProp: Invalid return type (Was an array)");
+   else if (!result.Defined())
+      env->ThrowError("AddProp: Invalid return type (Was not defined value)");
+   else
+      env->ThrowError("AddProp: Invalid return type (Was unknown type)");
+
+   env->SetVar("last", prev_last);                   // Restore implicit last
+   env->SetVar("current_frame", prev_current_frame); // Restore current_frame
+
+   return frame;
+}
+
+int __stdcall AddProp::SetCacheHints(int cachehints, int frame_range) {
+   return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+}
+
+AVSValue __cdecl AddProp::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+   return new AddProp(args[0].AsClip(), args[1].AsString(), args[2], env);
 }
