@@ -465,6 +465,10 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
       AVSValue last;
       if (!env2->GetVar("last", &last) || !env2->Invoke(&result, name, last))
       {
+        // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
+        if (env2->GetVar(name, &result)) {
+          return result; 
+        }
         env->ThrowError("I don't know what '%s' means.", name);
         return 0;
       }
