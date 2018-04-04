@@ -328,11 +328,15 @@ ScriptFunction::ScriptFunction(const PExpression& _body,
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
   apply = Execute;
-  name = _name;
+  if (_name) {
+    std::string cn("_");
+    cn.append(_name);
+    name = _name;
 
-  std::string cn("$UserFunctions$_");
-  cn.append(_name);
-  canon_name = env2->SaveString(cn.c_str());
+
+
+    canon_name = env2->SaveString(cn.c_str());
+  }
 
   param_types = _param_types;
   user_data = this;

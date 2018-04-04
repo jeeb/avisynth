@@ -8,12 +8,12 @@ class FilterConstructor
 {
 private:
   IScriptEnvironment2* const Env;
-  const AVSFunction* const Func;
+  const Function* const Func;
   const std::vector<AVSValue> ArgStorage;
   const std::vector<AVSValue> CtorArgs;
 
 public:
-  FilterConstructor(IScriptEnvironment2 * env, const AVSFunction *func, std::vector<AVSValue>* argStorage, std::vector<AVSValue>* ctorArgs);
+  FilterConstructor(IScriptEnvironment2 * env, const Function *func, std::vector<AVSValue>* argStorage, std::vector<AVSValue>* ctorArgs);
   AVSValue InstantiateFilter() const;
 
   const char* GetFilterName() const
@@ -33,7 +33,7 @@ public:
   }
 #endif
 
-  const AVSFunction* GetAvsFunction() const
+  const Function* GetAvsFunction() const
   {
       return Func;
   }

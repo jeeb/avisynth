@@ -36,13 +36,12 @@
 #include "expression.h"
 #include "../exception.h"
 #include "../internal.h"
-
+#include "../InternalEnvironment.h"
 #ifdef AVS_WINDOWS
 #include <avs/win.h>
 #else
 #include <avs/posix.h>
 #endif
-
 #include <cassert>
 #include <vector>
 
@@ -488,7 +487,7 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
 AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
 {
   env->SetVar(lhs, rhs->Evaluate(env));
-  if (withret) {
+ if (withret) {
     AVSValue last;
     AVSValue result;
 
@@ -529,9 +528,12 @@ AVSValue ExpGlobalAssignment::Evaluate(IScriptEnvironment* env)
 }
 
 
-ExpFunctionCall::ExpFunctionCall( const char* _name, PExpression* _arg_exprs,
+
+
+
+ExpFunctionCall::ExpFunctionCall( const char* _name, const PExpression& _func, PExpression* _arg_exprs,
                    const char** _arg_expr_names, int _arg_expr_count, bool _oop_notation )
-  : name(_name), arg_expr_count(_arg_expr_count), oop_notation(_oop_notation)
+  : name(_name), func(_func), arg_expr_count(_arg_expr_count), oop_notation(_oop_notation)
 {
   arg_exprs = new PExpression[arg_expr_count];
   // arg_expr_names has an extra elt at the beginning, for implicit "last"
@@ -552,7 +554,18 @@ ExpFunctionCall::~ExpFunctionCall(void)
 AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  InternalEnvironment *env2 = static_cast<InternalEnvironment*>(env);
+
+  // evaluate anonymous function if given
+  const Function* real_func = nullptr;
+  AVSValue eval_result; // function must be exist until the function call ends
+  if (func) {
+    eval_result = func->Evaluate(env);
+    if (!eval_result.IsFunction()) {
+      env->ThrowError("Script error: named function cannot be evaluated as a function");
+    }
+    real_func = eval_result.AsFunction()->GetDefinition();
+  }
 
   std::vector<AVSValue> args(arg_expr_count+1, AVSValue());
   for (int a=0; a<arg_expr_count; ++a)
@@ -561,7 +574,7 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
   // first try without implicit "last"
   try
   { // Invoke can always throw by calling a constructor of a filter that throws
-    if (env2->Invoke(&result, name, AVSValue(args.data()+1, arg_expr_count), arg_expr_names+1))
+    if (env2->InvokeFunc(&result, name, real_func, AVSValue(args.data()+1, arg_expr_count), arg_expr_names+1))
       return result;
   } catch(const IScriptEnvironment::NotFound&){}
 

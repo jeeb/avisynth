@@ -233,11 +233,11 @@ public:
 
   AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0)
   {
-    AVSValue result;
-    if (!core->InvokeThread(&result, name, args, arg_names, this)) {
-      throw NotFound();
-    }
-    return result;
+		AVSValue result;
+		if (!core->InvokeThread(&result, name, nullptr, args, arg_names, this)) {
+			throw NotFound();
+		}
+		return result;
   }
 
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align)
@@ -343,7 +343,7 @@ public:
 
   virtual bool __stdcall Invoke(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0)
   {
-    return core->InvokeThread(result, name, args, arg_names, this);
+    return core->InvokeThread(result, name, nullptr, args, arg_names, this);
   }
 
   size_t  __stdcall GetProperty(AvsEnvProperty prop)
@@ -362,12 +362,12 @@ public:
     core->SetFilterMTMode(filter, mode, force);
   }
 
-  virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
+  virtual MtMode __stdcall GetFilterMTMode(const Function* filter, bool* is_forced) const
   {
     return core->GetFilterMTMode(filter, is_forced);
   }
 
-  bool __stdcall FilterHasMtMode(const AVSFunction* filter) const
+  bool __stdcall FilterHasMtMode(const Function* filter) const
   {
     return core->FilterHasMtMode(filter);
   }
@@ -437,10 +437,15 @@ public:
     return core->NewThreadPool(nThreads);
   }
 
-  virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const AVSValue& args,
+  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame)
+  {
+    return core->GetAVSMap(frame);
+  }
+
+  virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const Function* func, const AVSValue& args,
     const char* const* arg_names, IScriptEnvironment2* env)
   {
-    return core->InvokeThread(result, name, args, arg_names, env);
+    return core->InvokeThread(result, name, func, args, arg_names, env);
   }
 
   virtual void __stdcall AddRef() {
@@ -471,14 +476,14 @@ public:
     core->CopyFrameProps(src, dst);
   }
 
-  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame)
-  {
-    return core->GetAVSMap(frame);
-  }
-
   virtual void __stdcall UpdateFunctionExports(const PFunction&, const char*)
   {
     return;
+  }
+
+  virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function* func, const AVSValue& args, const char* const* arg_names = 0)
+  {
+    return core->InvokeThread(result, name, func, args, arg_names, this);
   }
 };
 

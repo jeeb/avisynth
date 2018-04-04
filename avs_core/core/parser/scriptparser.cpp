@@ -81,8 +81,6 @@ void ScriptParser::Expect(int op, const char* msg=0)
 
 PExpression ScriptParser::ParseFunctionDefinition(void)
 {
-  if (!tokenizer.IsIdentifier())
-    env->ThrowError("Script error: expected 'global' or a function name");
   bool global_spcified = false;
   if (tokenizer.IsIdentifier("global")) {
     tokenizer.NextToken();
@@ -192,11 +190,14 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
 
   bool is_global = global_spcified || (var_count == 0);
 
-  PFunction sf = new ScriptFunction(body, name, param_types,
+  PFunction sf = new ScriptFunction(body, name, env->SaveString(param_types),
     param_floats, param_names, param_count, var_names, var_count, env);
 
-  auto envi = static_cast<InternalEnvironment*>(env);
-  envi->UpdateFunctionExports(sf, "$UserFunctions$");
+  if (sf->name) {
+    auto envi = static_cast<InternalEnvironment*>(env);
+    envi->UpdateFunctionExports(sf, "$UserFunctions$");
+  }
+
   return new ExpFunctionDefinition(name, sf, is_global);
 }
 
@@ -282,12 +283,11 @@ PExpression ScriptParser::ParseStatement(bool* stop)
   if (tokenizer.IsNewline() || tokenizer.IsEOF()) {
     return 0;
   }
-  // function declaration
-  else if (tokenizer.IsIdentifier("function")) {
-    tokenizer.NextToken();
-    ParseFunctionDefinition();
-    return 0;
-  }
+  //// function declaration
+  //else if (tokenizer.IsIdentifier("function")) {
+  //  tokenizer.NextToken();
+  //  return ParseFunctionDefinition();
+  //}
   // exception handling
   else if (tokenizer.IsIdentifier("try")) {
     tokenizer.NextToken();
@@ -626,27 +626,37 @@ PExpression ScriptParser::ParseFunction(PExpression context, char context_char)
       return ParseAtom();
   }
 #endif
+  PExpression func;
+  const char* name = nullptr;
   if (tokenizer.IsIdentifier("function")) {
     tokenizer.NextToken();
-    return ParseFunctionDefinition();
+    func = ParseFunctionDefinition();
   }
+  else {
 #ifdef NEW_AVSVALUE
-  // treat [ as special function: "Array"
-  const char* name = (isArraySpecifier ) ? (isVariableReference ? "ArrayGet" : "Array") : tokenizer.AsIdentifier();
-  if(!isArraySpecifier) // also for variable reference: ParseOOP already had [ and also the next
-    tokenizer.NextToken();
+    // treat [ as special function: "Array"
+    const char* name = (isArraySpecifier) ? (isVariableReference ? "ArrayGet" : "Array") : tokenizer.AsIdentifier();
+    if (!isArraySpecifier) // also for variable reference: ParseOOP already had [ and also the next
+      tokenizer.NextToken();
 #else
-  const char* name = tokenizer.AsIdentifier();
-  tokenizer.NextToken();
+    name = tokenizer.AsIdentifier();
+    tokenizer.NextToken();
 #endif
+  }
 
 #ifndef NEW_AVSVALUE
   if (!context && !tokenizer.IsOperator('(')) {
 #else
   if (!context && !tokenizer.IsOperator('(') && !isArraySpecifier) {
 #endif
-    // variable
-    return new ExpVariableReference(name);
+    if (name == nullptr) {
+      // only function definition
+      return func;
+    }
+    else {
+      // variable
+      return new ExpVariableReference(name);
+    }
   }
   // function
   PExpression args[max_args];
@@ -716,7 +726,7 @@ PExpression ScriptParser::ParseFunction(PExpression context, char context_char)
     env->ThrowError("Script error: array indexing must have at least one index");
   }
 #endif
-  return new ExpFunctionCall(name, args, arg_names, i, !!context);
+  return new ExpFunctionCall(name, func, args, arg_names, i, !!context);
 }
 
 PExpression ScriptParser::ParseAtom(void)

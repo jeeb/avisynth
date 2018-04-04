@@ -15,9 +15,10 @@ struct Function {
 };
 
 
-class IFunction : public Function {
+class IFunction : public Function{
 public:
   IFunction() : refcnt(0) {}
+
 
 private:
   friend class PFunction;
@@ -32,24 +33,25 @@ class PFunction
 {
 public:
   PFunction() { Init(0); }
-  PFunction(IFunction* p) { Init(p); }
-  PFunction(const PFunction& p) { Init(p.e); }
-  PFunction& operator=(IFunction* p) { Set(p); return *this; }
-  PFunction& operator=(const PFunction& p) { Set(p.e); return *this; }
+  PFunction(IFunction * p) { Init(p); }
+  PFunction(const PFunction & p) { Init(p.e); }
+  PFunction & operator=(IFunction * p) { Set(p); return *this; }
+  PFunction & operator=(const PFunction & p) { Set(p.e); return *this; }
   int operator!() const { return !e; }
-  operator void*() const { return e; }
-  IFunction* operator->() const { return e; }
+  operator void* () const { return e; }
+  IFunction * operator->() const { return e; }
   ~PFunction() { Release(); }
 
 private:
   IFunction * e;
 
   friend class AVSValue;
-  IFunction * GetPointerWithAddRef() const { if (e) e->AddRef(); return e; }
+  IFunction* GetPointerWithAddRef() const { if (e) e->AddRef(); return e; }
   void Init(IFunction* p) { e = p; if (e) e->AddRef(); }
   void Set(IFunction* p) { if (p) p->AddRef(); if (e) e->Release(); e = p; }
   void Release() { if (e) e->Release(); }
 };
+
 
 
 class AVSFunction : public Function {
@@ -71,7 +73,6 @@ public:
   AVSFunction& operator=(AVSFunction&&) = delete;
 
   bool empty() const;
-  bool IsScriptFunction() const;
 #ifdef DEBUG_GSCRIPTCLIP_MT
   bool IsRuntimeScriptFunction() const;
 #endif

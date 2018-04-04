@@ -1,6 +1,6 @@
 #include "FilterConstructor.h"
 
-FilterConstructor::FilterConstructor(IScriptEnvironment2 * env, const AVSFunction *func, std::vector<AVSValue>* argStorage, std::vector<AVSValue>* ctorArgs) :
+FilterConstructor::FilterConstructor(IScriptEnvironment2 * env, const Function *func, std::vector<AVSValue>* argStorage, std::vector<AVSValue>* ctorArgs) :
   Env(env),
   Func(func),
 #ifndef NEW_AVSVALUE

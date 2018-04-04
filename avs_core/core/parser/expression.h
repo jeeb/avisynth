@@ -418,7 +418,7 @@ private:
 class ExpFunctionCall : public Expression
 {
 public:
-  ExpFunctionCall( const char* _name, PExpression* _arg_exprs,
+  ExpFunctionCall( const char* _name, const PExpression& _func, PExpression* _arg_exprs,
                    const char** _arg_expr_names, int _arg_expr_count, bool _oop_notation );
   ~ExpFunctionCall(void);
 
@@ -426,6 +426,7 @@ public:
 
 private:
   const char* const name;
+  PExpression func;
   PExpression* arg_exprs;
   const char** arg_expr_names;
   const int arg_expr_count;

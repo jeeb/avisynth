@@ -6,6 +6,7 @@
 #include "InternalEnvironment.h"
 #include <cassert>
 #include <filesystem>
+#include "function.h"
 
 namespace fs = std::filesystem;
 #ifdef AVS_WINDOWS
