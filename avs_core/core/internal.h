@@ -39,6 +39,7 @@
 #include <avs/config.h>
 #include <avs/minmax.h>
 #include <stdint.h>
+#include <string.h>
 #include "version.h"
 #include <memory>
 #include <string>
@@ -64,42 +65,7 @@ enum MANAGE_CACHE_KEYS
 #include <avisynth.h>
 #include "parser/script.h" // TODO we only need ScriptFunction from here
 #include <emmintrin.h>
-
-class AVSFunction {
-
-public:
-
-  typedef AVSValue (__cdecl *apply_func_t)(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-  const apply_func_t apply;
-  char* name;
-  char* canon_name;
-  char* param_types;
-  void* user_data;
-  char* dll_path;
-
-  AVSFunction(void*);
-  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply);
-  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data);
-  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path);
-  ~AVSFunction();
-
-  AVSFunction() = delete;
-  AVSFunction(const AVSFunction&) = delete;
-  AVSFunction& operator=(const AVSFunction&) = delete;
-  AVSFunction(AVSFunction&&) = delete;
-  AVSFunction& operator=(AVSFunction&&) = delete;
-
-  bool empty() const;
-  bool IsScriptFunction() const;
-#ifdef DEBUG_GSCRIPTCLIP_MT
-  bool IsRuntimeScriptFunction() const;
-#endif
-
-  static bool ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names);
-  static bool TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env);
-  static bool SingleTypeMatch(char type, const AVSValue& arg, bool strict);
-};
+#include "function.h"
 
 
 int RGB2YUV(int rgb);

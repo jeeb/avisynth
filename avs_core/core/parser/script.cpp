@@ -309,20 +309,54 @@ extern const AVSFunction Script_functions[] = {
 };
 
 
-
 /**********************************
  *******   Script Function   ******
- *********************************/
+*********************************/
 
-ScriptFunction::ScriptFunction( const PExpression& _body, const bool* _param_floats,
-                                const char** _param_names, int param_count )
+ScriptFunction::ScriptFunction(const PExpression& _body,
+  const char* _name, const char* _param_types,
+  const bool* _param_floats, const char** _param_names, int param_count,
+  const char** _var_names, int _var_count,
+  IScriptEnvironment* env)
   : body(_body)
+  , param_floats(nullptr)
+  , param_names(nullptr)
+  , var_count(_var_count)
+  , var_names(nullptr)
+  , var_data(nullptr)
 {
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+
+  apply = Execute;
+  name = _name;
+
+  std::string cn("$UserFunctions$_");
+  cn.append(_name);
+  canon_name = env2->SaveString(cn.c_str());
+
+  param_types = _param_types;
+  user_data = this;
+  dll_path = nullptr;
+
   param_floats = new bool[param_count];
-  memcpy(param_floats, _param_floats, param_count*sizeof(const bool));
+  memcpy(param_floats, _param_floats, param_count * sizeof(const bool));
 
   param_names = new const char*[param_count];
-  memcpy(param_names, _param_names, param_count*sizeof(const char*));
+  memcpy(param_names, _param_names, param_count * sizeof(const char*));
+
+  if (_var_count > 0) {
+    var_names = new const char*[_var_count];
+    memcpy(var_names, _var_names, _var_count * sizeof(const char*));
+
+    AVSValue result;
+    var_data = new AVSValue[_var_count];
+    for (int i = 0; i < var_count; ++i) {
+      if (!env2->GetVar(_var_names[i], &result)) {
+        env->ThrowError("No variable named '%s'", name);
+      }
+      var_data[i] = result;
+    }
+  }
 }
 
 
@@ -330,26 +364,24 @@ AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironm
 {
   ScriptFunction* self = (ScriptFunction*)user_data;
   env->PushContext();
-  for (int i=0; i<args.ArraySize(); ++i)
-    env->SetVar( self->param_names[i], // Force float args that are actually int to be float
-	            (self->param_floats[i] && args[i].IsInt()) ? float(args[i].AsInt()) : args[i]);
+  for (int i = 0; i < self->var_count; ++i) {
+    env->SetVar(self->var_names[i], self->var_data[i]);
+  }
+  for (int i = 0; i<args.ArraySize(); ++i)
+    env->SetVar(self->param_names[i], // Force float args that are actually int to be float
+    (self->param_floats[i] && args[i].IsInt()) ? float(args[i].AsInt()) : args[i]);
 
   AVSValue result;
   try {
     result = self->body->Evaluate(env);
   }
-  catch(...) {
+  catch (...) {
     env->PopContext();
     throw;
   }
 
   env->PopContext();
   return result;
-}
-
-void ScriptFunction::Delete(void* self, IScriptEnvironment*)
-{
-    delete (ScriptFunction*)self;
 }
 
 

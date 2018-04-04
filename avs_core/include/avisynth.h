@@ -159,6 +159,8 @@ class SINGLE_INHERITANCE PVideoFrame;
 class IScriptEnvironment;
 class SINGLE_INHERITANCE AVSValue;
 class SINGLE_INHERITANCE AVSMapValue;
+class IFunction;
+class SINGLE_INHERITANCE PFunction;
 
 
 /*
@@ -366,7 +368,9 @@ struct AVS_Linkage {
   int64_t         (AVSMapValue::* AVSMapValue_GetInt)() const;
   double          (AVSMapValue::* AVSMapValue_GetFloat)() const;
 
-  // end class AVSValue
+  void            (AVSValue::*AVSValue_CONSTRUCTOR11)(IFunction* o);
+  bool            (AVSValue::*IsFunction)() const;
+
   /**********************************************************************/
 };
 
@@ -1117,6 +1121,7 @@ public:
   AVSValue(const AVSValue* a, int size) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR8)(a, size) )
   AVSValue(const AVSValue& a, int size) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR8)(&a, size) )
   AVSValue(const AVSValue& v) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR9)(v) )
+  AVSValue(const PFunction& n) AVS_BakedCode(AVS_LinkCall_Void(AVSValue_CONSTRUCTOR11)(c))
 
   ~AVSValue() AVS_BakedCode( AVS_LinkCall_Void(AVSValue_DESTRUCTOR)() )
   AVSValue& operator=(const AVSValue& v) AVS_BakedCode( return AVS_LinkCallV(AVSValue_OPERATOR_ASSIGN)(v) )
@@ -1132,6 +1137,7 @@ public:
   bool IsFloat() const AVS_BakedCode( return AVS_LinkCall(IsFloat)() )
   bool IsString() const AVS_BakedCode( return AVS_LinkCall(IsString)() )
   bool IsArray() const AVS_BakedCode( return AVS_LinkCall(IsArray)() )
+  bool IsFunction() const AVS_BakedCode(return AVS_LinkCall(IsFunction)() )
 
   PClip AsClip() const AVS_BakedCode( return AVS_LinkCall(AsClip)() )
   bool AsBool() const AVS_BakedCode( return AVS_LinkCall(AsBool1)() )
@@ -1147,6 +1153,7 @@ public:
   double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
   float AsFloatf(float def) const AVS_BakedCode( return float( AVS_LinkCall(AsFloat2)(def) ) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
+  PFunction AsFunction() const; // internal use only
 
   int ArraySize() const AVS_BakedCode( return AVS_LinkCall(ArraySize)() )
 
@@ -1154,7 +1161,7 @@ public:
 
 private:
 
-  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or RFU: 'l'ong ('d'ouble)
+  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, fu'n'ction, or RFU: 'l'ong ('d'ouble)
   short array_size;
   union {
     IClip* clip;
@@ -1163,6 +1170,7 @@ private:
     float floating_pt;
     const char* string;
     const AVSValue* array;
+    IFunction* function;
     #ifdef X86_64
     // if ever, only x64 will support. It breaks struct size on 32 bit
     int64_t longlong; // 8 bytes
@@ -1183,6 +1191,7 @@ public:
   void            CONSTRUCTOR7(const char* s);
   void            CONSTRUCTOR8(const AVSValue* a, int size);
   void            CONSTRUCTOR9(const AVSValue& v);
+  void            CONSTRUCTOR11(const PFunction& n);
   void            DESTRUCTOR();
   AVSValue&       OPERATOR_ASSIGN(const AVSValue& v);
   const AVSValue& OPERATOR_INDEX(int index) const;
@@ -1403,7 +1412,6 @@ enum AvsAllocType
       to test it and give your feedback about any ideas, improvements, or issues
       you might have.
    ----------------------------------------------------------------------------- */
-class AVSFunction;
 class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual ~IScriptEnvironment2() {}

@@ -38,9 +38,9 @@
 #include "../internal.h"
 
 #ifdef AVS_WINDOWS
-    #include <avs/win.h>
+#include <avs/win.h>
 #else
-    #include <avs/posix.h>
+#include <avs/posix.h>
 #endif
 
 #include <cassert>
@@ -489,19 +489,19 @@ AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
 {
   env->SetVar(lhs, rhs->Evaluate(env));
   if (withret) {
-	  AVSValue last;
-	  AVSValue result;
+    AVSValue last;
+    AVSValue result;
 
-	  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-	  if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
-	  {
-		  // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
-		  if (env2->GetVar(lhs, &result)) {
-			  return result;
-		  }
-		  env->ThrowError("I don't know what '%s' means.", lhs);
-		  return 0;
-	  }
+    IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+    if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
+    {
+      // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
+      if (env2->GetVar(lhs, &result)) {
+        return result;
+      }
+      env->ThrowError("I don't know what '%s' means.", lhs);
+      return 0;
+    }
   }
   return AVSValue();
 }
@@ -510,6 +510,21 @@ AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
 AVSValue ExpGlobalAssignment::Evaluate(IScriptEnvironment* env)
 {
   env->SetGlobalVar(lhs, rhs->Evaluate(env));
+  if (withret) {
+    AVSValue last;
+    AVSValue result;
+
+    IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+    if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
+    {
+      // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
+      if (env2->GetVar(lhs, &result)) {
+        return result;
+      }
+      env->ThrowError("I don't know what '%s' means.", lhs);
+      return 0;
+    }
+  }
   return AVSValue();
 }
 
@@ -566,4 +581,23 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 
   assert(0);  // we should never get here
   return 0;
+}
+
+
+ExpFunctionDefinition::ExpFunctionDefinition(const char* name, PFunction func, bool is_global)
+  : name(name), func(func), is_global(is_global)
+{ }
+
+AVSValue ExpFunctionDefinition::Evaluate(IScriptEnvironment* env)
+{
+  if (name == nullptr) {
+    return func;
+  }
+  if (is_global) {
+    env->SetGlobalVar(name, func);
+  }
+  else {
+    env->SetVar(name, func);
+  }
+  return AVSValue();
 }

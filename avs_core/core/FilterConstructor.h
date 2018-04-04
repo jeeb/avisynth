@@ -23,7 +23,7 @@ public:
 
   bool IsScriptFunction() const
   {
-    return Func->IsScriptFunction();
+    return AVSFunction::IsScriptFunction(Func);
   }
 
 #ifdef DEBUG_GSCRIPTCLIP_MT

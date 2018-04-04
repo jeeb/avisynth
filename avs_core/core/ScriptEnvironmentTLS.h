@@ -475,6 +475,11 @@ public:
   {
     return core->GetAVSMap(frame);
   }
+
+  virtual void __stdcall UpdateFunctionExports(const PFunction&, const char*)
+  {
+    return;
+  }
 };
 
 #undef CHECK_THREAD

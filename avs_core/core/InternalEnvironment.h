@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <string>
 #include <memory>
+#include "function.h"
 
 class ClipDataStore;
 
@@ -36,11 +37,11 @@ class OneTimeLogTicket
 {
 public:
     ELogTicketType _type;
-    const AVSFunction *_function = nullptr;
+    const Function *_function = nullptr;
     const std::string _string;
 
     OneTimeLogTicket(ELogTicketType type);
-    OneTimeLogTicket(ELogTicketType type, const AVSFunction *func);
+    OneTimeLogTicket(ELogTicketType type, const Function *func);
     OneTimeLogTicket(ELogTicketType type, const std::string &str);
     bool operator==(const OneTimeLogTicket &other) const;
 };
@@ -93,6 +94,7 @@ public:
 
     virtual ConcurrentVarStringFrame* __stdcall GetTopFrame() = 0;
 
+    virtual void __stdcall UpdateFunctionExports(const PFunction& func, const char *exportVar) = 0;
 };
 
 struct InternalEnvironmentDeleter {

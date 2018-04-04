@@ -55,6 +55,7 @@
     #include <avs/posix.h>
 #endif
 #include "AVSMap.h"
+#include "function.h"
 
 /**********************************************************************/
 
@@ -772,6 +773,9 @@ AVSValue::AVSValue(const AVSValue& v, bool c_arrays) { CONSTRUCTOR10(v, c_arrays
 void AVSValue::CONSTRUCTOR10(const AVSValue& v, bool c_arrays)  { Assign2(&v, true, c_arrays); }
 #endif
 
+AVSValue::AVSValue(const PFunction& n) { CONSTRUCTOR11(n); }
+void AVSValue::CONSTRUCTOR11(const PFunction& n) { type = 'n'; array_size = 0; function = n.GetPointerWithAddRef(); }
+
 #ifndef NEW_AVSVALUE
 AVSValue::~AVSValue()                                    { DESTRUCTOR(); }
 void AVSValue::DESTRUCTOR()
@@ -815,6 +819,7 @@ bool AVSValue::IsInt() const { return type == 'i'; }
 bool AVSValue::IsFloat() const { return type == 'f' || type == 'i'; }
 bool AVSValue::IsString() const { return type == 's'; }
 bool AVSValue::IsArray() const { return type == 'a'; }
+bool AVSValue::IsFunction() const { return type == 'n'; }
 
 PClip AVSValue::AsClip() const { _ASSERTE(IsClip()); return IsClip()?clip:0; }
 
@@ -854,6 +859,8 @@ float AVSValue::AsFloatf(float def) const { return float( AsFloat2(def) ); }
 const char* AVSValue::AsString2(const char* def) const { _ASSERTE(IsString()||!Defined()); return IsString() ? string : def; }
 const char* AVSValue::AsString(const char* def) const { return AVSValue::AsString2(def); }
 
+PFunction AVSValue::AsFunction() const { _ASSERTE(IsFunction()); return IsFunction() ? function : 0; }
+
 int AVSValue::ArraySize() const { _ASSERTE(IsArray()) ; return IsArray() ? array_size : 1; }
 
 const AVSValue& AVSValue::operator[](int index) const     { return OPERATOR_INDEX(index); }
@@ -868,6 +875,11 @@ void AVSValue::Assign(const AVSValue* src, bool init) {
     src->clip->AddRef();
   if (!init && IsClip() && clip)
     clip->Release();
+
+  if (src->IsFunction() && src->function)
+    src->function->AddRef();
+  if (!init && IsFunction() && function)
+    function->Release();
 
   this->type = src->type;
   this->array_size = src->array_size;

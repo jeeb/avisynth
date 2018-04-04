@@ -38,7 +38,7 @@
 // adapted by Richard Berg (avisynth-dev@richardberg.net)
 // iSSE code by Ian Brabham
 
-
+#include <avs/win.h>
 #include "planeswap.h"
 #include "../core/internal.h"
 #include <tmmintrin.h>

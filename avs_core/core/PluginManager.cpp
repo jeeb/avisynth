@@ -8,10 +8,17 @@
 #include <filesystem>
 
 namespace fs = std::filesystem;
+#ifdef AVS_WINDOWS
+  #include <avs/win.h>
+#else
+  #include <avs/posix.h>
+#endif
 
 #ifdef AVS_WINDOWS
     #include <imagehlp.h>
 #endif
+#include "parser/script.h"
+#include "parser/expression.h" // TODO we only need FunctionInstance from here
 
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
 typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
@@ -51,6 +58,15 @@ const char RegPluginDirPlus[] = "PluginDir+";
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 */
+
+void IFunction::AddRef() {
+  InterlockedIncrement(&refcnt);
+}
+
+void IFunction::Release() {
+  if (InterlockedDecrement(&refcnt) <= 0)
+    delete this;
+}
 
 #ifdef AVS_WINDOWS // translate to Linux error handling
 // Translates a Windows error code to a human-readable text message.
@@ -103,6 +119,7 @@ static std::string GetFullPathNameWrap(const std::string &f)
 static bool IsParameterTypeSpecifier(char c) {
   switch (c) {
   case 'b': case 'i': case 'f': case 's': case 'c': case '.':
+  case 'n':
 #ifdef NEW_AVSVALUE
   case 'a': // Arrays as function parameters
 #endif
@@ -198,39 +215,46 @@ AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const 
 {}
 
 AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path) :
-    apply(_apply), name(NULL), canon_name(NULL), param_types(NULL), user_data(_user_data), dll_path(NULL)
+    Function()
 {
+  apply = _apply;
+  user_data = _user_data;
+
     if (NULL != _dll_path)
     {
         size_t len = strlen(_dll_path);
-        dll_path = new char[len + 1];
-        memcpy(dll_path, _dll_path, len);
-        dll_path[len] = 0;
+        auto tmp = new char[len + 1];
+        memcpy(tmp, _dll_path, len);
+        tmp[len] = 0;
+        dll_path = tmp;
     }
 
     if (NULL != _name)
     {
         size_t len = strlen(_name);
-        name = new char[len + 1];
-        memcpy(name, _name, len);
-        name[len] = 0;
+        auto tmp = new char[len + 1];
+        memcpy(tmp, _name, len);
+        tmp[len] = 0;
+        name = tmp;
     }
 
     if ( NULL != _param_types )
     {
         size_t len = strlen(_param_types);
-        param_types = new char[len+1];
-        memcpy(param_types, _param_types, len);
-        param_types[len] = 0;
+        auto tmp = new char[len+1];
+        memcpy(tmp, _param_types, len);
+        tmp[len] = 0;
+        param_types = tmp;
     }
 
     if ( NULL != _name )
     {
-		std::string cn(NULL != _plugin_basename ? _plugin_basename : "");
+        std::string cn(NULL != _plugin_basename ? _plugin_basename : "");
         cn.append("_").append(_name);
-        canon_name = new char[cn.size()+1];
-        memcpy(canon_name, cn.c_str(), cn.size());
-        canon_name[cn.size()] = 0;
+        auto tmp = new char[cn.size()+1];
+        memcpy(tmp, cn.c_str(), cn.size());
+        tmp[cn.size()] = 0;
+        canon_name = tmp;
     }
 }
 
@@ -247,7 +271,7 @@ bool AVSFunction::empty() const
     return NULL == name;
 }
 
-bool AVSFunction::IsScriptFunction() const
+bool AVSFunction::IsScriptFunction(const Function* func)
 {
 #ifdef DEBUG_GSCRIPTCLIP_MT
   /*
@@ -269,10 +293,11 @@ bool AVSFunction::IsScriptFunction() const
   //if (!stricmp(this->name, "srestore_inside_1"))
   //  return true;
 #endif
-  return ( (apply == &(ScriptFunction::Execute))
-		  || (apply == &Eval)
-          || (apply == &EvalOop)
-          || (apply == &Import)
+  return ( /*(func->apply == &(FunctionInstance::Execute))
+		  || */(func->apply == &(ScriptFunction::Execute))
+		  || (func->apply == &Eval)
+          || (func->apply == &EvalOop)
+          || (func->apply == &Import)
         );
 }
 
@@ -290,7 +315,7 @@ bool AVSFunction::IsRuntimeScriptFunction() const
   //if (!stricmp(this->name, "srestore_inside_1"))
   //  return true;
 
-  return (apply == &(ScriptFunction::Execute));
+  return (apply == &(GlobalFunction::Execute));
 }
 #endif
 
@@ -302,6 +327,7 @@ bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
     case 'f': return arg.IsFloat() && (!strict || !arg.IsInt());
     case 's': return arg.IsString();
     case 'c': return arg.IsClip();
+    case 'n': return arg.IsFunction();
 #ifdef NEW_AVSVALUE
     case 'a': return arg.IsArray(); // PF 161028 AVS+ script arrays
 #endif
@@ -447,9 +473,7 @@ bool AVSFunction::ArgNameMatch(const char* param_types, size_t args_names_count,
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 */
-#ifdef AVS_WINDOWS
-#include <avs/win.h>
-#endif
+
 
 struct PluginFile
 {
@@ -1009,7 +1033,7 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
          // e.g. a "master" that directly loads avisynth
          // The extemption could handle only situations when function was loaded by C interface avs_add_function.
       if(apply != &create_c_video_filter)
-        assert(newFunc->IsScriptFunction());
+        assert(AVSFunction::IsScriptFunction(newFunc));
       */
   }
 

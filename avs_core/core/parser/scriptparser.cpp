@@ -34,6 +34,7 @@
 
 
 #include "scriptparser.h"
+#include "../InternalEnvironment.h"
 
 
 /********************************
@@ -78,17 +79,53 @@ void ScriptParser::Expect(int op, const char* msg=0)
 }
 
 
-void ScriptParser::ParseFunctionDefinition(void)
+PExpression ScriptParser::ParseFunctionDefinition(void)
 {
   if (!tokenizer.IsIdentifier())
-    env->ThrowError("Script error: expected a function name");
-  const char* name = tokenizer.AsIdentifier();
-  tokenizer.NextToken();
+    env->ThrowError("Script error: expected 'global' or a function name");
+  bool global_spcified = false;
+  if (tokenizer.IsIdentifier("global")) {
+    tokenizer.NextToken();
+    global_spcified = true;
+  }
+  const char* name = nullptr;
+  if (tokenizer.IsIdentifier()) {
+    name = tokenizer.AsIdentifier();
+    tokenizer.NextToken();
+  }
+  const char* var_names[max_args];
+  int var_count = 0;
   char param_types[4096];
   int param_chars=0;
   bool param_floats[max_args];
   const char* param_names[max_args];
   int param_count=0;
+
+  // variable capture
+  if (tokenizer.IsOperator('[')) {
+    tokenizer.NextToken();
+    bool need_comma = false;
+    for (;;) {
+      if (tokenizer.IsOperator(']')) {
+        tokenizer.NextToken();
+        break;
+      }
+      if (need_comma) {
+        Expect(',', "Script error: expected a , or ]");
+      }
+
+      if (tokenizer.IsIdentifier()) {
+        var_names[var_count++] = tokenizer.AsIdentifier();
+      }
+      else {
+        env->ThrowError("Script error: expected a parameter name");
+      }
+
+      tokenizer.NextToken();
+      need_comma = true;
+    }
+  }
+
   if (!tokenizer.IsOperator('{')) {
     Expect('(', "Script error: expected ( or { after function name");
     bool need_comma = false;
@@ -152,9 +189,15 @@ void ScriptParser::ParseFunctionDefinition(void)
 
   param_types[param_chars] = 0;
   PExpression body = new ExpRootBlock(ParseBlock(true, NULL));
-  ScriptFunction* sf = new ScriptFunction(body, param_floats, param_names, param_count);
-  env->AtExit(ScriptFunction::Delete, sf);
-  env->AddFunction(name, env->SaveString(param_types), ScriptFunction::Execute, sf, "$UserFunctions$");
+
+  bool is_global = global_spcified || (var_count == 0);
+
+  PFunction sf = new ScriptFunction(body, name, param_types,
+    param_floats, param_names, param_count, var_names, var_count, env);
+
+  auto envi = static_cast<InternalEnvironment*>(env);
+  envi->UpdateFunctionExports(sf, "$UserFunctions$");
+  return new ExpFunctionDefinition(name, sf, is_global);
 }
 
 
@@ -583,6 +626,10 @@ PExpression ScriptParser::ParseFunction(PExpression context, char context_char)
       return ParseAtom();
   }
 #endif
+  if (tokenizer.IsIdentifier("function")) {
+    tokenizer.NextToken();
+    return ParseFunctionDefinition();
+  }
 #ifdef NEW_AVSVALUE
   // treat [ as special function: "Array"
   const char* name = (isArraySpecifier ) ? (isVariableReference ? "ArrayGet" : "Array") : tokenizer.AsIdentifier();

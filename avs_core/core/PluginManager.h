@@ -40,7 +40,6 @@ private:
   bool TryAsAvs26(PluginFile &plugin, AVSValue *result);
   bool TryAsAvs25(PluginFile &plugin, AVSValue *result);
   bool TryAsAvsC(PluginFile &plugin, AVSValue *result);
-  void UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar);
 
   const AVSFunction* Lookup(const FunctionMap& map,
     const char* search_name,
@@ -62,6 +61,8 @@ public:
   bool LoadPlugin(const char* path, bool throwOnError, AVSValue *result);
 
   bool HasAutoloadExecuted() const { return AutoloadExecuted; }
+
+  void UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar);
 
   bool FunctionExists(const char* name) const;
   std::string PluginLoading() const;    // Returns the basename of the plugin DLL that is currently being loaded, or NULL if no plugin is being loaded

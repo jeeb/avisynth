@@ -20,6 +20,7 @@
 
 #include "conditional_reader.h"
 #include "../core/internal.h"
+#include "../core/parser/scriptparser.h"
 #include <cstdlib>
 
 #ifdef AVS_WINDOWS

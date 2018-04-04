@@ -67,7 +67,7 @@ private:
 
   void Expect(int op, const char* msg);
 
-  void ParseFunctionDefinition(void);
+  PExpression ParseFunctionDefinition(void);
 
   PExpression ParseBlock(bool braced, bool *empty);
   PExpression ParseStatement(bool* stop);
