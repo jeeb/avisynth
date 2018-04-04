@@ -770,7 +770,7 @@ public:
   virtual bool __stdcall InternalFunctionExists(const char* name);
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
-  virtual void __stdcall SetPrefetcher(Prefetcher *p);
+//  virtual void __stdcall SetPrefetcher(Prefetcher *p); // replaced by ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
   virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force);
@@ -793,8 +793,15 @@ public:
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
   virtual InternalEnvironment* __stdcall GetCoreEnvironment();
+  virtual ThreadPool* __stdcall GetThreadPool();
+  virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
   virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const AVSValue& args,
       const char* const* arg_names, IScriptEnvironment2* env);
+
+  virtual void __stdcall AddRef() { };
+  virtual void __stdcall Release() { };
+  virtual void __stdcall IncEnvCount() { InterlockedIncrement(&EnvCount); }
+  virtual void __stdcall DecEnvCount() { InterlockedDecrement(&EnvCount); }
 
 
 private:
@@ -816,6 +823,7 @@ private:
   VarTable* var_table;
 
   int ImportDepth;
+  long EnvCount; // for ScriptEnvironmentTLS leak detection
 
   const AVSFunction* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                       bool &pstrict, size_t args_names_count, const char* const* arg_names);
@@ -869,7 +877,11 @@ private:
 
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
-  Prefetcher *prefetcher;
+//  Prefetcher *prefetcher;
+
+  std::vector <std::unique_ptr<ThreadPool>> ThreadPoolRegistry;
+  size_t nTotalThreads;
+  size_t nMaxFilterInstances;
 
   // Members used to reconstruct Association between Invoke() calls and filter instances
   std::stack<MtModeEvaluator*> invoke_stack;
@@ -1032,8 +1044,11 @@ ScriptEnvironment::ScriptEnvironment()
     closing(false),
     thread_pool(NULL),
     ImportDepth(0),
+    EnvCount(0),
+    //DeviceManager(this),
     FrontCache(NULL),
-    prefetcher(NULL),
+    nTotalThreads(1),
+    nMaxFilterInstances(1),
     buffer_pool(this)
 {
   try {
@@ -1105,7 +1120,7 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("LOG_DEBUG",   (int)LOGLEVEL_DEBUG);
 
     InitMT();
-    thread_pool = new ThreadPool(std::thread::hardware_concurrency());
+    thread_pool = new ThreadPool(std::thread::hardware_concurrency(), 1, this);
 
     ExportBuiltinFilters();
 
@@ -1163,10 +1178,15 @@ ScriptEnvironment::~ScriptEnvironment() {
   // This circular reference causes leaks, so we call
   // Destroy() on the prefetcher, which will in turn terminate all
   // its TLS stuff and break the chain.
-  if (prefetcher)
-  {
-    prefetcher->Destroy();
+  for (auto& pool : ThreadPoolRegistry) {
+    pool->Join();
   }
+  ThreadPoolRegistry.clear();
+
+  // check ScriptEnvironmentTLS leaks
+  if (EnvCount > 0) {
+    LogMsg(LOGLEVEL_WARNING, "ScriptEnvironmentTLS leaks.");
+}
 
 #ifdef _DEBUG
   // LogMsg(LOGLEVEL_DEBUG, "We are before FrameRegistryCleanup");
@@ -1385,6 +1405,8 @@ ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
 #endif
 }
 
+#if 0
+// replaced by ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
 void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
 {
   if (!p)
@@ -1408,6 +1430,7 @@ void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
       guard->EnableMT(nTotalThreads);
   }
 }
+#endif
 
 void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool minus)
 {
@@ -1553,7 +1576,7 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
   switch(prop)
   {
   case AEP_FILTERCHAIN_THREADS:
-    return (prefetcher != NULL) ? prefetcher->NumPrefetchThreads()+1 : 1;
+    return nMaxFilterInstances; //return (prefetcher != NULL) ? prefetcher->NumPrefetchThreads()+1 : 1;
   case AEP_PHYSICAL_CPUS:
     return GetNumPhysicalCPUs();
   case AEP_LOGICAL_CPUS:
@@ -2288,6 +2311,8 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   }
 
   size_t size = pitchY * height + 2 * pitchUV * heightUV + (alpha ? pitchY * height : 0);
+
+  // why we need this??
   size = size + align -1;
 
   VideoFrame *res = GetNewFrame(size);
@@ -2335,6 +2360,8 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 
   const int pitch = AlignNumber(row_size, align);
   size_t size = pitch * height;
+
+  // why we need this??
   size = size + align - 1;
 
   VideoFrame *res = GetNewFrame(size);
@@ -2682,10 +2709,9 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     MTGuard* guard = reinterpret_cast<MTGuard*>(data);
 
     // If we already have a prefetcher, enable MT on the guard
-    if (prefetcher)
+    if (ThreadPoolRegistry.size() > 0)
     {
-      size_t nTotalThreads = 1 + prefetcher->NumPrefetchThreads();
-      guard->EnableMT(nTotalThreads);
+      guard->EnableMT(nMaxFilterInstances);
     }
 
     MTGuardRegistry.push_back(guard);
@@ -2940,6 +2966,11 @@ bool __stdcall ScriptEnvironment::InvokeThread(AVSValue* result, const char* nam
   return true;
 }
 
+struct SuppressThreadCounter {
+  SuppressThreadCounter() { ++g_suppress_thread_count; }
+  ~SuppressThreadCounter() { --g_suppress_thread_count; }
+};
+
 bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names)
 {
   if (g_thread_id != 0) {
@@ -2958,6 +2989,8 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 #else
   std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
 #endif
+
+  SuppressThreadCounter suppressThreadCount_;
 
   bool strict = false;
   const AVSFunction *f;
@@ -3247,6 +3280,11 @@ success:;
             data->CreatedByInvoke = true;
         } // if (chainedCtor)
 
+/* Or another concept from Neo
+				// Nekopanda: moved here from above.
+				// some filters invoke complex filters in its constructor, and they need cache.
+				*result = CacheGuard::Create(*result, NULL, this);
+*/
 
         // Check that the filter returns zero for unknown queries in SetCacheHints().
         // This is actually something we rely upon.
@@ -3405,6 +3443,37 @@ InternalEnvironment* ScriptEnvironment::GetCoreEnvironment()
 {
   return this;
 }
+
+ThreadPool* ScriptEnvironment::GetThreadPool()
+{
+  return thread_pool;
+}
+
+// replaces void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
+ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
+{
+  ThreadPool* pool = new ThreadPool(nThreads, nTotalThreads, this);
+  ThreadPoolRegistry.emplace_back(pool);
+
+  nTotalThreads += nThreads;
+
+  if (nMaxFilterInstances < nThreads + 1) {
+    // make 2^n
+    nMaxFilterInstances = 1;
+    while (nThreads + 1 > (nMaxFilterInstances <<= 1));
+  }
+
+  // Since this method basically enables MT operation,
+  // upgrade all MTGuards to MT-mode.
+  for (MTGuard* guard : MTGuardRegistry)
+  {
+    if (guard != NULL)
+      guard->EnableMT(nMaxFilterInstances);
+  }
+
+  return pool;
+}
+
 
 extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
   const char* message, int size, int textcolor, int halocolor, int bgcolor,

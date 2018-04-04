@@ -44,8 +44,12 @@
 #include <mmintrin.h>
 #endif
 
+struct MTGuardChildFilter {
+	PClip filter;
+	std::mutex mutex;
+};
+
 MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env) :
-  FilterMutex(NULL),
   MTMode(mtmode),
   nThreads(1),
   FilterCtor(std::move(funcCtor)),
@@ -53,8 +57,9 @@ MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterCo
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
 
-  ChildFilters.emplace_back(firstChild);
-  vi = ChildFilters[0]->GetVideoInfo();
+	ChildFilters = std::unique_ptr<MTGuardChildFilter[]>(new MTGuardChildFilter[1]);
+	ChildFilters[0].filter = firstChild;
+  vi = ChildFilters[0].filter->GetVideoInfo();
 
   Env->ManageCache(MC_RegisterMTGuard, reinterpret_cast<void*>(this));
 }
@@ -62,19 +67,12 @@ MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterCo
 MTGuard::~MTGuard()
 {
   Env->ManageCache(MC_UnRegisterMTGuard, reinterpret_cast<void*>(this));
-  delete FilterMutex;
-}
-
-std::mutex* MTGuard::GetMutex() const
-{
-  return FilterMutex;
 }
 
 void MTGuard::EnableMT(size_t nThreads)
 {
   assert(nThreads >= 1);
-
-  this->nThreads = nThreads;
+	assert((nThreads & (nThreads - 1)) == 0); // must be 2^n
 
   if (nThreads > 1)
   {
@@ -87,19 +85,24 @@ void MTGuard::EnableMT(size_t nThreads)
       }
     case MT_MULTI_INSTANCE:
       {
-        ChildFilters.reserve(nThreads);
-        while (ChildFilters.size() < nThreads)
-        {
-          ChildFilters.emplace_back(FilterCtor->InstantiateFilter().AsClip());
-        }
+				if (this->nThreads < nThreads) {
+					auto newchilds = std::unique_ptr<MTGuardChildFilter[]>(new MTGuardChildFilter[nThreads]);
+					for (int i = 0; i < this->nThreads; ++i) {
+						newchilds[i].filter = ChildFilters[i].filter;
+					}
+					for (int i = this->nThreads; i < nThreads; ++i) {
+						newchilds[i].filter = FilterCtor->InstantiateFilter().AsClip();
+					}
+					ChildFilters = std::move(newchilds);
+				}
         break;
       }
-    case MT_SERIALIZED:
+   case MT_SERIALIZED:
       {
-        this->FilterMutex = new std::mutex();
+				// Nothing to do
         break;
       }
-    default:
+   default:
       {
         assert(0);
         break;
@@ -107,9 +110,11 @@ void MTGuard::EnableMT(size_t nThreads)
     }
   }
 
+	this->nThreads = std::max(this->nThreads, nThreads);
+
   // We don't need the stored parameters any more,
   // free their memory.
-  FilterCtor.reset();
+  //FilterCtor.reset();
 }
 
 PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
@@ -117,7 +122,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
   assert(nThreads > 0);
 
   if (nThreads == 1)
-    return ChildFilters[0]->GetFrame(n, env);
+    return ChildFilters[0].filter->GetFrame(n, env);
 
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame frame = NULL;
@@ -126,18 +131,20 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
   {
   case MT_NICE_FILTER:
     {
-      frame = ChildFilters[0]->GetFrame(n, env);
+      frame = ChildFilters[0].filter->GetFrame(n, env);
       break;
     }
   case MT_MULTI_INSTANCE:
     {
-      frame = ChildFilters[env2->GetProperty(AEP_THREAD_ID)]->GetFrame(n, env);
+			auto& child = ChildFilters[g_thread_id & (nThreads - 1)];
+			std::lock_guard<std::mutex> lock(child.mutex);
+      frame = child.filter->GetFrame(n, env);
       break;
     }
   case MT_SERIALIZED:
     {
-      std::lock_guard<std::mutex> lock(*FilterMutex);
-      frame = ChildFilters[0]->GetFrame(n, env);
+      std::lock_guard<std::mutex> lock(ChildFilters[0].mutex);
+      frame = ChildFilters[0].filter->GetFrame(n, env);
       break;
     }
   default:
@@ -161,7 +168,7 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
 
   if (nThreads == 1)
   {
-    ChildFilters[0]->GetAudio(buf, start, count, env);
+		ChildFilters[0].filter->GetAudio(buf, start, count, env);
     return;
   }
 
@@ -171,18 +178,20 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
   {
   case MT_NICE_FILTER:
     {
-      ChildFilters[0]->GetAudio(buf, start, count, env);
+			ChildFilters[0].filter->GetAudio(buf, start, count, env);
       break;
     }
   case MT_MULTI_INSTANCE:
     {
-      ChildFilters[env2->GetProperty(AEP_THREAD_ID)]->GetAudio(buf, start, count, env);
+			auto& child = ChildFilters[g_thread_id & (nThreads - 1)];
+			std::lock_guard<std::mutex> lock(child.mutex);
+			child.filter->GetAudio(buf, start, count, env);
       break;
     }
   case MT_SERIALIZED:
     {
-      std::lock_guard<std::mutex> lock(*FilterMutex);
-      ChildFilters[0]->GetAudio(buf, start, count, env);
+			std::lock_guard<std::mutex> lock(ChildFilters[0].mutex);
+			ChildFilters[0].filter->GetAudio(buf, start, count, env);
       break;
     }
   default:
@@ -205,7 +214,7 @@ const VideoInfo& __stdcall MTGuard::GetVideoInfo()
 
 bool __stdcall MTGuard::GetParity(int n)
 {
-  return ChildFilters[0]->GetParity(n);
+  return ChildFilters[0].filter->GetParity(n);
 }
 
 int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)

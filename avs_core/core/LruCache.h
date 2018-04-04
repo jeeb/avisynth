@@ -178,7 +178,7 @@ public:
           break;
         case LRU_ENTRY_ROLLED_BACK:     // whoever we were waiting for decided to step back. we take over his place.
           entry->state = LRU_ENTRY_EMPTY;
-          break;
+					return LRU_LOOKUP_NOT_FOUND;
         default:
           assert(0);
         }
@@ -224,6 +224,7 @@ public:
         return LRU_LOOKUP_NO_CACHE;
       }
     } // if
+
   }
 
   void commit_value(handle *hndl)

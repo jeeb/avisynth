@@ -56,15 +56,14 @@ struct PrefetcherPimpl
   std::mutex worker_exception_mutex;
   std::exception_ptr worker_exception;
   bool worker_exception_present;
-  ScriptEnvironmentTLS EnvTlsMainThread;
   InternalEnvironment *EnvI;
 
-  PrefetcherPimpl(const PClip& _child, int _nThreads, IScriptEnvironment2 *env2) :
+  PrefetcherPimpl(const PClip& _child, int _nThreads, int _nPrefetchFrames, IScriptEnvironment2 *env2) :
     child(_child),
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
-    nPrefetchFrames(_nThreads * 2),
-    thread_pool(_nThreads),
+    nPrefetchFrames(_nPrefetchFrames),
+    ThreadPool(NULL),
     LockedPattern(1),
     PatternHits(0),
     Pattern(1),
@@ -74,9 +73,18 @@ struct PrefetcherPimpl
     worker_exception_present(0),
     IsLocked(false),
     PatternMisses(0),
-    EnvTlsMainThread(env2->GetProperty(AEP_THREAD_ID)),
+    // not used anymore, see PInternalEnvironment in ThreadFunc
+    //EnvTlsMainThread(env2->GetProperty(AEP_THREAD_ID), static_cast<InternalEnvironment*>(env2)),
     EnvI(static_cast<InternalEnvironment*>(env2))
   {
+    ThreadPool = EnvI->NewThreadPool(nThreads);
+  }
+~PrefetcherPimpl()
+  {
+		for (void* data : ThreadPool->Finish()) {
+			PrefetcherJobParams *ptr = (PrefetcherJobParams*)data;
+			VideoCache->rollback(&ptr->cache_handle);
+		}
   }
 };
 
@@ -119,10 +127,10 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   return AVSValue();
 }
 
-Prefetcher::Prefetcher(const PClip& _child, int _nThreads, IScriptEnvironment *env) :
+Prefetcher::Prefetcher(const PClip& _child, int _nThreads, int _nPrefetchFrames, IScriptEnvironment *env) :
   _pimpl(NULL)
 {
-  _pimpl = new PrefetcherPimpl(_child, _nThreads, static_cast<IScriptEnvironment2*>(env));
+  _pimpl = new PrefetcherPimpl(_child, _nThreads, _nPrefetchFrames, static_cast<IScriptEnvironment2*>(env));
   _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_pimpl->nPrefetchFrames*2);
 }
 
@@ -131,20 +139,9 @@ void Prefetcher::Destroy()
   if (_pimpl)
   {
     PrefetcherPimpl *pimpl = _pimpl;
-    _pimpl->EnvI->SetPrefetcher(nullptr);
-
-    while (_pimpl->running_workers > 0) {
-#if defined(GCC) || defined(CLANG)
-      __asm__("");
-#else
-      __noop();
-#endif
-    }
-
-    _pimpl = nullptr;
     delete pimpl;
+		_pimpl = nullptr;
   }
-
 }
 
 Prefetcher::~Prefetcher()
@@ -204,9 +201,15 @@ int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, In
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
   InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
-  ScriptEnvironmentTLS *envTLS = &_pimpl->EnvTlsMainThread;
-  envTLS->Specialize(envI);
 
+  if (g_suppress_thread_count > 0) {
+    // do not use thread when invoke running
+    return _pimpl->child->GetFrame(n, env);
+  }
+
+  /*ScriptEnvironmentTLS* envTLS = &_pimpl->EnvTlsMainThread; // see PInternalEnvironment
+  envTLS->Specialize(envI);
+  */
 
   int pattern = n - _pimpl->LastRequestedFrame;
   _pimpl->LastRequestedFrame = n;
@@ -287,7 +290,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     {
       try
       {
-        result = _pimpl->child->GetFrame(n, envTLS); // P.F. fill result before Commit!
+        result = _pimpl->child->GetFrame(n, env/*TLS*/); // P.F. fill result before Commit!
         cache_handle.first->value = result;
         // cache_handle.first->value = _pimpl->child->GetFrame(n, env); // P.F. before Commit!
   #ifdef X86_32
@@ -309,7 +312,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     }
   case LRU_LOOKUP_NO_CACHE:
     {
-      result = _pimpl->child->GetFrame(n, envTLS);
+      result = _pimpl->child->GetFrame(n, env/*TLS*/);
       break;
     }
   case LRU_LOOKUP_FOUND_BUT_NOTAVAIL:    // Fall-through intentional
@@ -356,20 +359,11 @@ AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
   PClip child = args[0].AsClip();
 
   int PrefetchThreads = args[1].AsInt((int)envi->GetProperty(AEP_PHYSICAL_CPUS)+1);
+	int PrefetchFrames = args[2].AsInt(PrefetchThreads * 2);
 
-  if (PrefetchThreads > 0)
+  if (PrefetchThreads > 0 && PrefetchFrames > 0)
   {
-    Prefetcher* prefetcher = new Prefetcher(child, PrefetchThreads, env);
-    try
-    {
-      envi->SetPrefetcher(prefetcher);
-      return prefetcher;
-    }
-    catch(...)
-    {
-      delete prefetcher;
-      throw;
-    }
+		return new Prefetcher(child, PrefetchThreads, PrefetchFrames, env);
   }
   else
     return child;

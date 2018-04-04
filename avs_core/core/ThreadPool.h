@@ -83,14 +83,19 @@ class ThreadPoolPimpl;
 class ThreadPool
 {
 private:
-  ThreadPoolPimpl * const _pimpl;
+  ThreadPoolPimpl* const _pimpl;
 
+  static void ThreadFunc(size_t thread_id, ThreadPoolPimpl* const _pimpl, InternalEnvironment* env);
 public:
-  ThreadPool(size_t nThreads);
+  ThreadPool(size_t nThreads, size_t nStartId, InternalEnvironment* env);
   ~ThreadPool();
 
-  void QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnvironment *env, JobCompletion *tc);
+  void QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnvironment* env, JobCompletion* tc);
   size_t NumThreads() const;
+
+  std::vector<void*> Finish();
+  void Join();
 };
+
 
 #endif  // _AVS_THREADPOOL_H

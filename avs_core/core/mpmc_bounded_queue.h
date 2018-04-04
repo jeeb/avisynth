@@ -37,12 +37,12 @@ public:
     return size == max_size;
   }
 
-  bool push_front(const T& item)
+  bool push_front(T&& item)
   {
     if (full())
       return false;
 
-    array[head] = item;
+    array[head] = std::move(item);
     head = (head + 1) % max_size;
     ++size;
 
@@ -86,10 +86,12 @@ private:
   std::mutex m_mutex;
   std::condition_variable m_not_empty;
   std::condition_variable m_not_full;
+	bool finished;
 
 public:
   mpmc_bounded_queue(size_type capacity) :
-    m_container(capacity)
+    m_container(capacity),
+		finished(false)
   {
   }
 
@@ -98,27 +100,65 @@ public:
     return m_container.capacity();
   }
 
-  void push_front(T const& item)
+	void finish()
+	{
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (finished == false) {
+      finished = true;
+      m_not_full.notify_all();
+      m_not_empty.notify_all();
+    }
+	}
+
+	bool is_finished()
+	{
+    std::unique_lock<std::mutex> lock(m_mutex);
+		return finished;
+	}
+
+  bool push_front(T&& item)
   {
     std::unique_lock<std::mutex> lock(m_mutex);
+		if (finished) {
+      return false;
+		}
     while(m_container.full())
     {
       m_not_full.wait(lock);
+      if (finished) {
+        return false;
+      }
     }
-    m_container.push_front(item);
+    m_container.push_front(std::move(item));
     lock.unlock();
     m_not_empty.notify_one();
+    return true;
   }
 
-  void pop_back(value_type* pItem)
+  bool pop_back(value_type* pItem)
   {
     std::unique_lock<std::mutex> lock(m_mutex);
+    if (finished) {
+      return false;
+    }
     while(m_container.empty())
     {
       m_not_empty.wait(lock);
+      if (finished) {
+        return false;
+      }
     }
     m_container.pop_back(pItem);
     lock.unlock();
     m_not_full.notify_one();
+    return true;
   }
+
+	bool pop_remain(value_type* pItem)
+	{
+		assert(finished);
+		if (m_container.empty()) return false;
+		m_container.pop_back(pItem);
+		return true;
+	}
 };

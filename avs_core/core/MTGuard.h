@@ -9,13 +9,13 @@
 class InternalEnvironment;
 
 class FilterConstructor;
+struct MTGuardChildFilter;
 class MTGuard : public IClip
 {
 private:
   IScriptEnvironment2* Env;
 
-  std::vector<PClip> ChildFilters;
-  std::mutex *FilterMutex;
+	std::unique_ptr<MTGuardChildFilter[]> ChildFilters;
   size_t nThreads;
   VideoInfo vi;
 
@@ -26,7 +26,6 @@ public:
   ~MTGuard();
   MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env);
   void EnableMT(size_t nThreads);
-  std::mutex* GetMutex() const;
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);

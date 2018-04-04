@@ -4,32 +4,26 @@
 #include <avisynth.h>
 #include <cstdarg>
 #include "vartable.h"
+#include "internal.h"
 #include "ThreadPool.h"
 #include "BufferPool.h"
 #include "InternalEnvironment.h"
 
+#define CHECK_THREAD if(g_thread_id != thread_id) \
+  core->ThrowError("Invalid ScriptEnvironment. You are using different thread's environment.")
+
 class ScriptEnvironmentTLS : public InternalEnvironment
 {
 private:
-  InternalEnvironment *core;
+  InternalEnvironment* env_; // for leak detection
+  InternalEnvironment* core;
   const size_t thread_id;
   VarTable* global_var_table;
   // PF 161223 why do we need thread-local global variables?
   // comment remains here until it gets cleared, anyway, I make it of no use
   VarTable* var_table;
   BufferPool buffer_pool;
-
-public:
-  ScriptEnvironmentTLS(size_t _thread_id) :
-    core(NULL),
-    thread_id(_thread_id),
-    global_var_table(NULL),
-    var_table(NULL),
-    buffer_pool(this)
-  {
-    global_var_table = new VarTable(0, 0);
-    var_table = new VarTable(0, global_var_table);
-  }
+  volatile long refcount;
 
   ~ScriptEnvironmentTLS()
   {
@@ -38,6 +32,24 @@ public:
 
     while (global_var_table)
       PopContextGlobal();
+
+    env_->DecEnvCount(); // for leak detection
+  }
+
+public:
+  ScriptEnvironmentTLS(size_t _thread_id, InternalEnvironment* env) :
+    env_(env),
+    core(NULL),
+    thread_id(_thread_id),
+    global_var_table(NULL),
+    var_table(NULL),
+    buffer_pool(this),
+    refcount(1)
+  {
+    global_var_table = new VarTable(0, 0);
+    var_table = new VarTable(0, global_var_table);
+
+    env_->IncEnvCount(); // for leak detection
   }
 
   void Specialize(InternalEnvironment* _core)
@@ -66,13 +78,13 @@ public:
 
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val)
   {
-//    return global_var_table->Set(name, val);
+    //    return global_var_table->Set(name, val);
     return core->SetGlobalVar(name, val);
     // PF 161223 use real global table, runtime scripts can write globals from different threads
     // so we don't use the TLS global_var_table
   }
 
-  void __stdcall PushContext(int level=0)
+  void __stdcall PushContext(int level = 0)
   {
     var_table = new VarTable(var_table, global_var_table);
   }
@@ -87,7 +99,7 @@ public:
     global_var_table = global_var_table->Pop();
   }
 
-  bool __stdcall GetVar(const char* name, AVSValue *val) const
+  bool __stdcall GetVar(const char* name, AVSValue* val) const
   {
     if (!var_table->Get(name, val))
       return core->GetVar(name, val);
@@ -97,11 +109,11 @@ public:
 
   AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def)
   {
-      AVSValue val;
-      if (this->GetVar(name, &val))
-          return val;
-      else
-          return def;
+    AVSValue val;
+    if (this->GetVar(name, &val))
+      return val;
+    else
+      return def;
   }
 
   bool __stdcall GetVar(const char* name, bool def) const
@@ -216,7 +228,7 @@ public:
     return core->SubframePlanarA(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
   }
 
-  void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data=0)
+  void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data = 0)
   {
     core->AddFunction(name, params, apply, user_data);
   }
@@ -226,13 +238,13 @@ public:
     return core->FunctionExists(name);
   }
 
-  AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0)
+  AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0)
   {
-		AVSValue result;
-		if (!core->InvokeThread(&result, name, args, arg_names, this)) {
-			throw NotFound();
-		}
-		return result;
+    AVSValue result;
+    if (!core->InvokeThread(&result, name, args, arg_names, this)) {
+      throw NotFound();
+    }
+    return result;
   }
 
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align)
@@ -265,7 +277,7 @@ public:
     return core->SetMemoryMax(mem);
   }
 
-  int __stdcall SetWorkingDir(const char * newdir)
+  int __stdcall SetWorkingDir(const char* newdir)
   {
     return core->SetWorkingDir(newdir);
   }
@@ -301,7 +313,7 @@ public:
   }
 
   /* IScriptEnvironment2 */
-  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
+  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue* result)
   {
     return core->LoadPlugin(filePath, throwOnError, result);
   }
@@ -321,7 +333,7 @@ public:
     core->AutoloadPlugins();
   }
 
-  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar)
+  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char* exportVar)
   {
     core->AddFunction(name, params, apply, user_data, exportVar);
   }
@@ -336,14 +348,14 @@ public:
     return core->DecrImportDepth();
   }
 
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0)
+  virtual bool __stdcall Invoke(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0)
   {
     return core->InvokeThread(result, name, args, arg_names, this);
   }
 
   size_t  __stdcall GetProperty(AvsEnvProperty prop)
   {
-    switch(prop)
+    switch (prop)
     {
     case AEP_THREAD_ID:
       return thread_id;
@@ -374,15 +386,17 @@ public:
 
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
   {
-    core->ParallelJob(jobFunc, jobData, completion);
+		core->GetThreadPool()->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
   }
 
-  virtual void __stdcall SetPrefetcher(Prefetcher *p)
+/*replace by ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
+virtual void __stdcall SetPrefetcher(Prefetcher* p)
   {
     core->SetPrefetcher(p);
   }
+*/
 
-  virtual ClipDataStore* __stdcall ClipData(IClip *clip)
+  virtual ClipDataStore* __stdcall ClipData(IClip* clip)
   {
     return core->ClipData(clip);
   }
@@ -392,7 +406,7 @@ public:
     return core->GetDefaultMtMode();
   }
 
-  virtual void __stdcall SetLogParams(const char *target, int level)
+  virtual void __stdcall SetLogParams(const char* target, int level)
   {
     core->SetLogParams(target, level);
   }
@@ -409,7 +423,7 @@ public:
     core->LogMsg_valist(level, fmt, va);
   }
 
-  virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...)
+  virtual void __stdcall LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...)
   {
     va_list val;
     va_start(val, fmt);
@@ -417,7 +431,7 @@ public:
     va_end(val);
   }
 
-  virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va)
+  virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va)
   {
     core->LogMsgOnce_valist(ticket, level, fmt, va);
   }
@@ -427,13 +441,40 @@ public:
     return core->GetCoreEnvironment();
   }
 
+	virtual ThreadPool* __stdcall GetThreadPool()
+	{
+		return core->GetThreadPool();
+	}
+
+  virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads)
+  {
+    return core->NewThreadPool(nThreads);
+  }
+
   virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const AVSValue& args,
     const char* const* arg_names, IScriptEnvironment2* env)
   {
     return core->InvokeThread(result, name, args, arg_names, env);
   }
 
+  virtual void __stdcall AddRef() {
+    InterlockedIncrement(&refcount);
+  }
+
+  virtual void __stdcall Release() {
+    if (InterlockedDecrement(&refcount) == 0) {
+      delete this;
+    }
+  }
+
+  virtual void __stdcall IncEnvCount() {
+    core->IncEnvCount();
+  }
+
+  virtual void __stdcall DecEnvCount() {
+    core->DecEnvCount();
+  }
 };
 
-
+#undef CHECK_THREAD
 #endif  // _SCRIPTENVIRONMENTTLS_H

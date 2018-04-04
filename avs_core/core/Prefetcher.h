@@ -14,7 +14,7 @@ private:
 
   static AVSValue ThreadWorker(IScriptEnvironment2* env, void* data);
   int __stdcall SchedulePrefetch(int current_n, int prefetch_start, InternalEnvironment* env);
-  Prefetcher(const PClip& _child, int _nThreads, IScriptEnvironment *env);
+  Prefetcher(const PClip& _child, int _nThreads, int _nPrefetchFrames, IScriptEnvironment *env);
 
 public:
   ~Prefetcher();
