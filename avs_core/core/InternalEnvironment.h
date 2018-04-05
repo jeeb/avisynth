@@ -94,8 +94,13 @@ public:
 
     virtual ConcurrentVarStringFrame* __stdcall GetTopFrame() = 0;
 
-    virtual void __stdcall UpdateFunctionExports(const PFunction& func, const char *exportVar) = 0;
+    virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar) = 0;
     virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names = 0) = 0;
+
+    // per thread data access
+    virtual int __stdcall GetThreadId() = 0;
+    virtual int& __stdcall GetFrameRecursiveCount() = 0;
+    virtual int& __stdcall GetSuppressThreadCount() = 0;
 };
 
 struct InternalEnvironmentDeleter {

@@ -476,15 +476,34 @@ public:
     core->CopyFrameProps(src, dst);
   }
 
-  virtual void __stdcall UpdateFunctionExports(const PFunction&, const char*)
+  virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar)
   {
-    return;
+    if (GetThreadId() != 0 || GetFrameRecursiveCount() != 0) {
+      // no need to export function at runtime
+      return;
+    }
+    core->UpdateFunctionExports(funcName, funcParams, exportVar);
   }
 
   virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function* func, const AVSValue& args, const char* const* arg_names = 0)
   {
     return core->InvokeThread(result, name, func, args, arg_names, this);
   }
+
+  int __stdcall GetThreadId() {
+    return thread_id;
+  }
+
+  int& __stdcall GetFrameRecursiveCount() {
+    return g_getframe_recursive_count;
+    //return DISPATCH(getFrameRecursiveCount);
+  }
+
+  int& __stdcall GetSuppressThreadCount() {
+    return g_suppress_thread_count;
+    //return DISPATCH(suppressThreadCount);
+  }
+
 };
 
 #undef CHECK_THREAD

@@ -782,6 +782,8 @@ void AVSValue::DESTRUCTOR()
 {
   if (IsClip() && clip)
     clip->Release();
+  if (IsFunction() && function)
+    function->Release();
 }
 #else
 AVSValue::~AVSValue()                                    { DESTRUCTOR(); }
@@ -789,6 +791,8 @@ void AVSValue::DESTRUCTOR()
 {
   if (IsClip() && clip)
     clip->Release();
+  if (IsFunction() && function)
+    function->Release();
   if (IsArray() && array_size>0) {
     // array_size < 0: marked as C array internally, don't free elements
     delete[] array; // calls AVSValue destructors for all elements
@@ -899,6 +903,8 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
     // don't free array members!
     if (!init && IsClip() && clip)
       clip->Release();
+    if (!init && IsFunction() && function)
+      function->Release();
 
     this->type = src->type;
     this->array_size = src->array_size;
@@ -1023,7 +1029,7 @@ void AVSMapValue::Set(const AVSMapValue& other) {
     other.value.frame->AddRef();
 
   type = other.type;
-  value.frame = other.value.frame;
+  value.i = other.value.i;
 }
 
 bool AVSMapValue::IsFrame() const { return type == AVS_VALUE_FRAME; }
@@ -1035,6 +1041,28 @@ int64_t AVSMapValue::GetInt() const { return value.i; }
 double AVSMapValue::GetFloat() const { return value.d; }
 
 // end class AVSMapValue
+
+PFunction::PFunction() { CONSTRUCTOR0(); }
+void PFunction::CONSTRUCTOR0() { Init(0); }
+
+PFunction::PFunction(IFunction* p) { CONSTRUCTOR1(p); }
+void PFunction::CONSTRUCTOR1(IFunction* p) { Init(p); }
+
+PFunction::PFunction(const PFunction& p) { CONSTRUCTOR2(p); }
+void PFunction::CONSTRUCTOR2(const PFunction& p) { Init(p.e); }
+
+void PFunction::operator=(IFunction* p) { OPERATOR_ASSIGN0(p); }
+void PFunction::OPERATOR_ASSIGN0(IFunction* p) { Set(p); }
+
+void PFunction::operator=(const PFunction& p) { OPERATOR_ASSIGN1(p); }
+void PFunction::OPERATOR_ASSIGN1(const PFunction& p) { Set(p.e);}
+
+PFunction::~PFunction() { DESTRUCTOR(); }
+void PFunction::DESTRUCTOR() { if (e) e->Release(); }
+
+IFunction * PFunction::GetPointerWithAddRef() const { if (e) e->AddRef(); return e; }
+void PFunction::Init(IFunction* p) { e = p; if (e) e->AddRef(); }
+void PFunction::Set(IFunction* p) { if (p) p->AddRef(); if (e) e->Release(); e = p; }
 
 /**********************************************************************/
 
@@ -1241,6 +1269,16 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &AVSMapValue::GetFloat,
   // end class AVSMapValue
 
+// PFunction
+  &AVSValue::CONSTRUCTOR11,
+  &AVSValue::IsFunction,
+  &PFunction::CONSTRUCTOR0,
+  &PFunction::CONSTRUCTOR1,
+  &PFunction::CONSTRUCTOR2,
+  &PFunction::OPERATOR_ASSIGN0,
+  &PFunction::OPERATOR_ASSIGN1,
+  &PFunction::DESTRUCTOR,
+  // end PFunction
 // this part should be identical with struct AVS_Linkage in avisynth.h
 
 /**********************************************************************/

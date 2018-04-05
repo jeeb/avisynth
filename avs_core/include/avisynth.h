@@ -368,8 +368,16 @@ struct AVS_Linkage {
   int64_t         (AVSMapValue::* AVSMapValue_GetInt)() const;
   double          (AVSMapValue::* AVSMapValue_GetFloat)() const;
 
-  void            (AVSValue::*AVSValue_CONSTRUCTOR11)(IFunction* o);
+// PFunction
+  void            (AVSValue::*AVSValue_CONSTRUCTOR11)(const PFunction& o);
   bool            (AVSValue::*IsFunction)() const;
+  void            (PFunction::*PFunction_CONSTRUCTOR0)();
+  void            (PFunction::*PFunction_CONSTRUCTOR1)(IFunction* p);
+  void            (PFunction::*PFunction_CONSTRUCTOR2)(const PFunction& p);
+  void            (PFunction::*PFunction_OPERATOR_ASSIGN0)(IFunction* other);
+  void            (PFunction::*PFunction_OPERATOR_ASSIGN1)(const PFunction& other);
+  void            (PFunction::*PFunction_DESTRUCTOR)();
+  // end PFunction
 
   /**********************************************************************/
 };
@@ -1273,6 +1281,63 @@ public:
 #endif
 }; // end class AVSMapValue
 
+/*
+  PClip() AVS_BakedCode( AVS_LinkCall_Void(PClip_CONSTRUCTOR0)() )
+  PClip(const PClip& x) AVS_BakedCode( AVS_LinkCall_Void(PClip_CONSTRUCTOR1)(x) )
+  PClip(IClip* x) AVS_BakedCode( AVS_LinkCall_Void(PClip_CONSTRUCTOR2)(x) )
+  void operator=(IClip* x) AVS_BakedCode( AVS_LinkCall_Void(PClip_OPERATOR_ASSIGN0)(x) )
+  void operator=(const PClip& x) AVS_BakedCode( AVS_LinkCall_Void(PClip_OPERATOR_ASSIGN1)(x) )
+
+  IClip* operator->() const { return p; }
+
+  // useful in conditional expressions
+  operator void*() const { return p; }
+  bool operator!() const { return !p; }
+
+  ~PClip() AVS_BakedCode( AVS_LinkCall_Void(PClip_DESTRUCTOR)() )
+#ifdef BUILDING_AVSCORE
+public:
+  void CONSTRUCTOR0();
+void CONSTRUCTOR1(const PClip& x);
+void CONSTRUCTOR2(IClip* x);
+void OPERATOR_ASSIGN0(IClip* x);
+void OPERATOR_ASSIGN1(const PClip& x);
+void DESTRUCTOR();
+#endif
+*/
+class PFunction
+{
+public:
+  PFunction() AVS_BakedCode(AVS_LinkCall_Void(PFunction_CONSTRUCTOR0)())
+  PFunction(IFunction* p) AVS_BakedCode(AVS_LinkCall_Void(PFunction_CONSTRUCTOR1)(p))
+  PFunction(const PFunction& p) AVS_BakedCode(AVS_LinkCall_Void(PFunction_CONSTRUCTOR2)(p))
+  void operator=(IFunction* p) AVS_BakedCode(return AVS_LinkCallV(PFunction_OPERATOR_ASSIGN0)(p))
+  void operator=(const PFunction& p) AVS_BakedCode(return AVS_LinkCallV(PFunction_OPERATOR_ASSIGN1)(p))
+  ~PFunction() AVS_BakedCode(AVS_LinkCall_Void(PFunction_DESTRUCTOR)())
+
+  int operator!() const { return !e; }
+  operator void*() const { return e; }
+  IFunction* operator->() const { return e; }
+
+private:
+  IFunction * e;
+
+  friend class AVSValue;
+  IFunction * GetPointerWithAddRef() const;
+  void Init(IFunction* p);
+  void Set(IFunction* p);
+
+#ifdef BUILDING_AVSCORE
+public:
+  void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
+  void CONSTRUCTOR1(IFunction* p);
+  void CONSTRUCTOR2(const PFunction& p);
+  void OPERATOR_ASSIGN0(IFunction* p);
+  void OPERATOR_ASSIGN1(const PFunction& p);
+  void DESTRUCTOR();
+#endif
+};
+
 #undef CALL_MEMBER_FN
 #undef AVS_LinkCallOptDefault
 #undef AVS_LinkCallOpt
@@ -1458,6 +1523,7 @@ public:
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 
+  // Neo additions
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) = 0;
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) = 0;
 

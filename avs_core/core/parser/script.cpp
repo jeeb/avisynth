@@ -206,7 +206,9 @@ extern const AVSFunction Script_functions[] = {
   { "IsFloat",  BUILTIN_FUNC_PREFIX, ".", IsFloat },
   { "IsString", BUILTIN_FUNC_PREFIX, ".", IsString },
   { "IsClip",   BUILTIN_FUNC_PREFIX, ".", IsClip },
+  { "IsFunction", BUILTIN_FUNC_PREFIX, ".", IsFunction }, // Neo
   { "Defined",  BUILTIN_FUNC_PREFIX, ".", Defined },
+  { "TypeName",  BUILTIN_FUNC_PREFIX, ".", TypeName }, // Neo
 
   { "Default",  BUILTIN_FUNC_PREFIX, "..", Default },
 
@@ -313,34 +315,11 @@ extern const AVSFunction Script_functions[] = {
  *******   Script Function   ******
 *********************************/
 
-ScriptFunction::ScriptFunction(const PExpression& _body,
-  const char* _name, const char* _param_types,
-  const bool* _param_floats, const char** _param_names, int param_count,
-  const char** _var_names, int _var_count,
-  IScriptEnvironment* env)
+ScriptFunction::ScriptFunction( const PExpression& _body, const bool* _param_floats,
+                                const char** _param_names, int param_count )
   : body(_body)
-  , param_floats(nullptr)
-  , param_names(nullptr)
-  , var_count(_var_count)
-  , var_names(nullptr)
-  , var_data(nullptr)
 {
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
-  apply = Execute;
-  if (_name) {
-    std::string cn("_");
-    cn.append(_name);
-    name = _name;
-
-
-
-    canon_name = env2->SaveString(cn.c_str());
-  }
-
-  param_types = _param_types;
-  user_data = this;
-  dll_path = nullptr;
 
   param_floats = new bool[param_count];
   memcpy(param_floats, _param_floats, param_count * sizeof(const bool));
@@ -348,19 +327,7 @@ ScriptFunction::ScriptFunction(const PExpression& _body,
   param_names = new const char*[param_count];
   memcpy(param_names, _param_names, param_count * sizeof(const char*));
 
-  if (_var_count > 0) {
-    var_names = new const char*[_var_count];
-    memcpy(var_names, _var_names, _var_count * sizeof(const char*));
 
-    AVSValue result;
-    var_data = new AVSValue[_var_count];
-    for (int i = 0; i < var_count; ++i) {
-      if (!env2->GetVar(_var_names[i], &result)) {
-        env->ThrowError("No variable named '%s'", name);
-      }
-      var_data[i] = result;
-    }
-  }
 }
 
 
@@ -368,18 +335,15 @@ AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironm
 {
   ScriptFunction* self = (ScriptFunction*)user_data;
   env->PushContext();
-  for (int i = 0; i < self->var_count; ++i) {
-    env->SetVar(self->var_names[i], self->var_data[i]);
-  }
-  for (int i = 0; i<args.ArraySize(); ++i)
-    env->SetVar(self->param_names[i], // Force float args that are actually int to be float
-    (self->param_floats[i] && args[i].IsInt()) ? float(args[i].AsInt()) : args[i]);
+ for (int i=0; i<args.ArraySize(); ++i)
+    env->SetVar( self->param_names[i], // Force float args that are actually int to be float
+	            (self->param_floats[i] && args[i].IsInt()) ? float(args[i].AsInt()) : args[i]);
 
   AVSValue result;
   try {
     result = self->body->Evaluate(env);
   }
-  catch (...) {
+  catch(...) {
     env->PopContext();
     throw;
   }
@@ -388,6 +352,10 @@ AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironm
   return result;
 }
 
+void ScriptFunction::Delete(void* self, IScriptEnvironment*)
+{
+    delete (ScriptFunction*)self;
+}
 
 /***********************************
  *******   wchar_t-utf-ansi   ******
@@ -1558,6 +1526,7 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[0].IsString()) return args[0];
   if (args[0].IsBool()) return (args[0].AsBool()?"true":"false");
+  if (args[0].IsFunction()) return args[0].AsFunction()->ToString(env);
   if (args[1].Defined()) {	// WE --> a format parameter is present
 		if (args[0].IsFloat()) {	//if it is an Int: IsFloat gives True, also !
 			return  env->Sprintf(args[1].AsString("%f"),args[0].AsFloat());
@@ -1598,13 +1567,37 @@ AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env)
   return env->SaveString(buf);
 }
 
+AVSValue Func(AVSValue args, void*, IScriptEnvironment*) { return args[0]; }
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsBool(); }
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsInt(); }
 AVSValue IsFloat(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsFloat(); }
 AVSValue IsString(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsString(); }
 AVSValue IsClip(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsClip(); }
+AVSValue IsFunction(AVSValue args, void*, IScriptEnvironment*) { return args[0].IsFunction(); }
 AVSValue Defined(AVSValue args, void*, IScriptEnvironment*) {  return args[0].Defined(); }
 
+const char* GetAVSTypeName(AVSValue value) {
+  if (value.IsClip())
+    return "clip";
+  else if (value.IsBool())
+    return "bool";
+  else if (value.IsInt())
+    return "int";
+  else if (value.IsFloat())
+    return "float";
+  else if (value.IsString())
+    return "string";
+  else if (value.IsArray())
+    return "array";
+  else if (value.IsFunction())
+    return "function";
+  else if (!value.Defined())
+    return "undefined value";
+  else
+    return "unknown type";
+}
+
+AVSValue TypeName(AVSValue args, void*, IScriptEnvironment*) { return GetAVSTypeName(args[0]); }
 AVSValue Default(AVSValue args, void*, IScriptEnvironment*) {  return args[0].Defined() ? args[0] : args[1]; }
 AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment*) {  return AVS_CLASSIC_VERSION; }
 AVSValue VersionString(AVSValue args, void*, IScriptEnvironment*) {  return AVS_FULLVERSION; }

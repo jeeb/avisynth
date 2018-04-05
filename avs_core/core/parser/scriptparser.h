@@ -83,8 +83,10 @@ private:
   PExpression ParseOOP(void);
 #ifdef NEW_AVSVALUE
   PExpression ParseFunction(PExpression context, char context_char);
+  PExpression ParseCall(PExpression left, PExpression context, char context_char);
 #else
   PExpression ParseFunction(PExpression context);
+  PExpression ParseCall(PExpression left, PExpression context);
 #endif
   PExpression ParseAtom(void);
 

@@ -434,19 +434,63 @@ private:
 };
 
 
+class ExpLegacyFunctionDefinition : public Expression {
+public:
+  virtual AVSValue Evaluate(IScriptEnvironment* env) { return AVSValue(); }
+};
+class ExpFunctionWrapper : public Expression
+{
+public:
+  ExpFunctionWrapper(const char* name);
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
+private:
+  PFunction func;
+  const char* const name;
+};
+
+
 class ExpFunctionDefinition : public Expression
 {
 public:
-  ExpFunctionDefinition(const char* name, PFunction func, bool is_global);
+  ExpFunctionDefinition(const PExpression& _body,
+    const char* _name, const char* _param_types,
+    const bool* _param_floats, const char** _param_names, int param_count,
+    const char** _var_names, int _var_count,
+    const char* filename, int line);
 
   virtual AVSValue Evaluate(IScriptEnvironment* env);
 
-private:
-  const char* const name;
-  PFunction func;
-  const bool is_global;
+//private:
+  const PExpression body;
+  const char* name;
+  const char* param_types;
+  bool *param_floats;
+  const char** param_names;
+  int var_count;
+  const char** var_names;
+
+  const char* filename;
+  int line;
 };
 
+
+class FunctionInstance : public IFunction
+{
+public:
+  FunctionInstance(ExpFunctionDefinition* pdef, IScriptEnvironment* env);
+  virtual ~FunctionInstance();
+  virtual const char* ToString(IScriptEnvironment* env);
+  virtual const char* GetLegacyName() { return nullptr; }
+  virtual const Function* GetDefinition() { return &data; }
+  AVSValue Execute(const AVSValue& args, IScriptEnvironment* env);
+  static AVSValue Execute_(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+private:
+  Function data;
+  ExpFunctionDefinition* pdef;
+  PExpression pdef_ref;
+  AVSValue *var_data;
+};
 
 
 #endif  // __Expression_H_

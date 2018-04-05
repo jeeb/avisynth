@@ -51,39 +51,28 @@
 /********************************************************************
 ********************************************************************/
 
-
-
-class ScriptFunction : public IFunction
-  /**
-  * Encapsul variables
-  **/
+class ScriptFunction
+/**
+  * Executes a script
+ **/
 {
 public:
-  ScriptFunction(const PExpression& _body,
-    const char* _name, const char* _param_types,
-    const bool* _param_floats, const char** _param_names, int param_count,
-    const char** _var_names, int _var_count,
-    IScriptEnvironment* env);
+  ScriptFunction(const PExpression& _body, const bool* _param_floats, const char** _param_names, int param_count);
+
   virtual ~ScriptFunction()
   {
     delete[] param_floats;
     delete[] param_names;
-    delete[] var_names;
-    delete[] var_data;
   }
 
   static AVSValue Execute(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static void Delete(void* self, IScriptEnvironment*);
 
 private:
   const PExpression body;
   bool *param_floats;
   const char** param_names;
-  int var_count;
-  const char** var_names;
-  AVSValue *var_data;
 };
-
-
 /****    Helper functions   ****/
 
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env);
@@ -170,13 +159,17 @@ AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue Func(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFloat(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsString(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsClip(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsFunction(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Defined(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue TypeName(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue Default(AVSValue args, void*, IScriptEnvironment* env);
 

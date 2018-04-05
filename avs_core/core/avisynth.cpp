@@ -768,10 +768,9 @@ public:
   virtual void __stdcall IncEnvCount() { InterlockedIncrement(&EnvCount); }
   virtual void __stdcall DecEnvCount() { InterlockedDecrement(&EnvCount); }
 
-   virtual ConcurrentVarStringFrame* __stdcall GetTopFrame();
+  virtual ConcurrentVarStringFrame* __stdcall GetTopFrame();
+  void UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar);
 
-
-  virtual void __stdcall UpdateFunctionExports(const PFunction& func, const char *exportVar);
   virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names = 0);
 
 private:
@@ -2828,17 +2827,27 @@ static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, int leve
   return index;
 }
 
+const PFunction& getter_proxy(const PFunction& f) { return f; };
+
 const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                     bool &pstrict, size_t args_names_count, const char* const* arg_names)
 {
+
   AVSValue avsv;
   if (GetVar(search_name, &avsv) && avsv.IsFunction()) {
-    const PFunction& func = avsv.AsFunction();
-    if (AVSFunction::TypeMatch(func->param_types, args, num_args, false, this) &&
+    //auto& funcv = avsv.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
+    decltype(auto) funcv = getter_proxy(avsv.AsFunction()); // PF: getter proxy + decltype!
+    const char* name = funcv->GetLegacyName();
+    const Function* func = funcv->GetDefinition();
+    if (name != nullptr) {
+      // wrapped function
+      search_name = name;
+    }
+    else if (AVSFunction::TypeMatch(func->param_types, args, num_args, false, this) &&
       AVSFunction::ArgNameMatch(func->param_types, args_names_count, arg_names))
     {
       pstrict = AVSFunction::TypeMatch(func->param_types, args, num_args, true, this);
-      return func->GetDefinition();
+      return func;
     }
   }
 
@@ -3589,16 +3598,10 @@ ConcurrentVarStringFrame* ScriptEnvironment::GetTopFrame()
   return &top_frame;
 }
 
-void ScriptEnvironment::UpdateFunctionExports(const PFunction& func, const char *exportVar)
+void ScriptEnvironment::UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar)
 {
-  if (g_thread_id != 0 || g_getframe_recursive_count != 0) {
-    // no need to export function at runtime
-    return;
-  }
-
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
-  plugin_manager->UpdateFunctionExports(func->name, func->param_types, exportVar);
-  plugin_manager->UpdateFunctionExports(func->canon_name, func->param_types, exportVar);
+  plugin_manager->UpdateFunctionExports(funcName, funcParams, exportVar);
 }
 
 extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
