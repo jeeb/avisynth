@@ -718,13 +718,7 @@ AddProp::~AddProp() { }
 
 PVideoFrame __stdcall AddProp::GetFrame(int n, IScriptEnvironment* env)
 {
-   AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-   AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
-
-   // With Neo's GlobalsVarFrame there is no prev_last and prev_current_frame save and restore
-   // but an automatic Push and PopContextGlobal. No pulled yet
-   //GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
-
+   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
    env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
    env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
 
@@ -742,9 +736,6 @@ PVideoFrame __stdcall AddProp::GetFrame(int n, IScriptEnvironment* env)
    else
       env->ThrowError("AddProp: Invalid return type (Was a %s)", TypeName(result, nullptr, env));
 
-   env->SetVar("last", prev_last);                   // Restore implicit last
-   env->SetVar("current_frame", prev_current_frame); // Restore current_frame
-
    return frame;
 }
 
@@ -761,11 +752,15 @@ AVSValue __cdecl AddProp::Create(AVSValue args, void* user_data, IScriptEnvironm
 UseVar::UseVar(PClip _child, AVSValue vars, IScriptEnvironment* env)
    : GenericVideoFilter(_child)
 {
-   vars_.resize(vars.ArraySize());
-   for (int i = 0; i < vars.ArraySize(); ++i) {
-      auto name = vars_[i].name = vars[i].AsString();
-      vars_[i].val = env->GetVar(name);
-   }
+
+  IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+
+  vars_.resize(vars.ArraySize());
+  for (int i = 0; i < vars.ArraySize(); ++i) {
+    auto name = vars_[i].name = vars[i].AsString();
+    if (!env2->GetVar(name, &vars_[i].val)) {
+      env->ThrowError("UseVar: No variable named %s", name);
+    }
 }
 
 UseVar::~UseVar() { }
