@@ -46,21 +46,25 @@
 
 #include <avs/minmax.h>
 #include "../../core/internal.h"
+#include "../../core/InternalEnvironment.h"
 
 extern const AVSFunction Conditional_filters[] = {
   {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "csc+[show]b", ConditionalSelect::Create },
+  {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "cnc+[show]b", ConditionalSelect::Create }, // function input
   {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccsss[show]b", ConditionalFilter::Create, (void *)0 },
   // easy syntax from GConditionalFilter, args3 and 4 to "=" and "true":
   {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccs[show]b", ConditionalFilter::Create, (void *)1 },
+  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccn[show]b", ConditionalFilter::Create, (void *)2 }, // function input
   {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create },
-  {  "ConditionalReader", BUILTIN_FUNC_PREFIX, "css[show]b[condvarsuffix]s", ConditionalReader::Create },
+  {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cn[show]b[after_frame]b", ScriptClip::Create }, // function input
+  {  "ConditionalReader", BUILTIN_FUNC_PREFIX, "css[show]b", ConditionalReader::Create },
   {  "FrameEvaluate",     BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create_eval },
   {  "WriteFile",         BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b", Write::Create },
   {  "WriteFileIf",       BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b", Write::Create_If },
   {  "WriteFileStart",    BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b", Write::Create_Start },
   {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b", Write::Create_End },
-  {  "AddProp",           BUILTIN_FUNC_PREFIX, "css", AddProp::Create },
-  {  "UseVar",            BUILTIN_FUNC_PREFIX, "cs+", UseVar::Create },
+  { "UseVar", BUILTIN_FUNC_PREFIX, "cs+", UseVar::Create },
+  { "AddProp", BUILTIN_FUNC_PREFIX, "css", AddProp::Create },
   { 0 }
 };
 
@@ -74,10 +78,10 @@ extern const AVSFunction Conditional_filters[] = {
  * based on an integer evaluator.
  ********************************/
 
-ConditionalSelect::ConditionalSelect(PClip _child, const char _expression[],
+ConditionalSelect::ConditionalSelect(PClip _child, AVSValue _script,
                                      int _num_args, PClip *_child_array,
                                      bool _show, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), expression(_expression),
+  GenericVideoFilter(_child), script(_script),
   num_args(_num_args), child_array(_child_array), show(_show) {
 
   for (int i=0; i<num_args; i++) {
@@ -108,18 +112,32 @@ int __stdcall ConditionalSelect::SetCacheHints(int cachehints, int frame_range)
   return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
 }
 
-PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env)
+{
+  InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
 
-  GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
-  env->SetGlobalVar("last", (AVSValue)child);      // Set implicit last
+  GlobalVarFrame var_frame(envI); // allocate new frame
+  AVSValue child_val = child;
+  env->SetGlobalVar("last", child_val);      // Set implicit last
   env->SetGlobalVar("current_frame", (AVSValue)n); // Set frame to be tested by the conditional filters.
 
   AVSValue result;
 
   try {
-    ScriptParser parser(env, expression, "[Conditional Select, Expression]");
-    PExpression exp = parser.Parse();
-    result = exp->Evaluate(env);
+    if (script.IsString()) {
+      ScriptParser parser(env, script.AsString(), "[Conditional Select, Expression]");
+      PExpression exp = parser.Parse();
+      result = exp->Evaluate(env);
+    }
+    else {
+      AVSValue args(&child_val, 1);
+      auto& func = script.AsFunction();
+      if (!envI->InvokeThread(&result, func->GetLegacyName(), func->GetDefinition(), args, 0, envI)) {
+        env->ThrowError(
+          "ConditionalSelect: Invalid function parameter type '%s'. Function must accept one clip. \n%s",
+          func->GetDefinition()->param_types, func->ToString(env));
+      }
+    }
 
     if (!result.IsInt())
       env->ThrowError("Conditional Select: Expression must return an integer!");
@@ -166,7 +184,7 @@ AVSValue __cdecl ConditionalSelect::Create(AVSValue args, void* , IScriptEnviron
   int num_args = 0;
   PClip* child_array = 0;
 
-  if (!args[1].AsString(0))
+  if(!args[1].IsFunction() && (!args[1].IsString() || !args[1].AsString(nullptr)))
     env->ThrowError("Conditional Select: expression missing!");
 
   if (args[2].IsArray()) {
@@ -186,7 +204,7 @@ AVSValue __cdecl ConditionalSelect::Create(AVSValue args, void* , IScriptEnviron
     env->ThrowError("Conditional Select: clip array not recognized!");
   }
 
-  return new ConditionalSelect(args[0].AsClip(), args[1].AsString(), num_args, child_array, args[3].AsBool(false), env);
+  return new ConditionalSelect(args[0].AsClip(), args[1], num_args, child_array, args[3].AsBool(false), env);
 }
 
 
@@ -249,10 +267,13 @@ int __stdcall ConditionalFilter::SetCacheHints(int cachehints, int frame_range)
   return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
 }
 
-PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env)
+{
+  InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
 
-  GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
-  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+  GlobalVarFrame var_frame(envI); // allocate new frame
+  AVSValue child_val = child;
+  env->SetGlobalVar("last", child_val);       // Set implicit last
   env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
 
   VideoInfo vi1 = source1->GetVideoInfo();
@@ -261,13 +282,25 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   AVSValue e1_result;
   AVSValue e2_result;
   try {
-    ScriptParser parser(env, eval1.AsString(), "[Conditional Filter, Expresion 1]");
-    PExpression exp = parser.Parse();
-    e1_result = exp->Evaluate(env);
+    if (eval1.IsString()) {
+      ScriptParser parser(env, eval1.AsString(), "[Conditional Filter, Expresion 1]");
+      PExpression exp = parser.Parse();
+      e1_result = exp->Evaluate(env);
 
-    ScriptParser parser2(env, eval2.AsString(), "[Conditional Filter, Expression 2]");
-    exp = parser2.Parse();
-    e2_result = exp->Evaluate(env);
+      ScriptParser parser2(env, eval2.AsString(), "[Conditional Filter, Expression 2]");
+      exp = parser2.Parse();
+      e2_result = exp->Evaluate(env);
+    }
+    else {
+      AVSValue args(&child_val, 1);
+      auto& func = eval1.AsFunction();
+      if (!envI->InvokeThread(&e1_result, func->GetLegacyName(), func->GetDefinition(), args, 0, envI)) {
+        env->ThrowError(
+          "ConditionalFilter: Invalid function parameter type '%s'. Function must accept one clip. \n%s",
+          func->GetDefinition()->param_types, func->ToString(env));
+      }
+      e2_result = true;
+    }
   } catch (const AvisynthError &error) {
     const char* error_msg = error.msg;
 
@@ -332,23 +365,23 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   bool state = false;
 
   if (test_int) { // String and Int compare
-    if (evaluator&EQUALS)
+    if (evaluator == EQUALS)
       if (e1 == e2) state = true;
 
-    if (evaluator&GREATERTHAN)
+    if (evaluator == GREATERTHAN)
       if (e1 > e2) state = true;
 
-    if (evaluator&LESSTHAN)
+    if (evaluator == LESSTHAN)
       if (e1 < e2) state = true;
 
   } else {  // Float compare
-    if (evaluator&EQUALS)
+    if (evaluator == EQUALS)
       if (fabs(f1-f2)<0.000001) state = true;   // Exact equal will sometimes be rounded to wrong values.
 
-    if (evaluator&GREATERTHAN)
+    if (evaluator == GREATERTHAN)
       if (f1 > f2) state = true;
 
-    if (evaluator&LESSTHAN)
+    if (evaluator == LESSTHAN)
       if (f1 < f2) state = true;
   }
 
@@ -435,15 +468,19 @@ int __stdcall ScriptClip::SetCacheHints(int cachehints, int frame_range)
 #endif
 }
 
-PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
-   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
-  env->SetGlobalVar("last",(AVSValue)child);       // Set explicit last
+PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env)
+{
+  InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
+  GlobalVarFrame var_frame(envI); // allocate new frame
+  AVSValue child_val = child;
+  env->SetGlobalVar("last", child_val);       // Set explicit last
   env->SetGlobalVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
 
   if (show) {
     PVideoFrame dst = child->GetFrame(n,env);
+    const char* text = script.IsString() ? script.AsString() : script.AsFunction()->ToString(env);
     env->MakeWritable(&dst);
-    env->ApplyMessage(&dst, vi, script.AsString(), vi.width/6, 0xa0a0a0, 0, 0);
+    env->ApplyMessage(&dst, vi, text, vi.width/6, 0xa0a0a0, 0, 0);
     return dst;
   }
 
@@ -453,9 +490,20 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   if (eval_after) eval_return = child->GetFrame(n,env);
 
   try {
-    ScriptParser parser(env, script.AsString(), "[ScriptClip]");
-    PExpression exp = parser.Parse();
-    result = exp->Evaluate(env);
+    if (script.IsString()) {
+      ScriptParser parser(env, script.AsString(), "[ScriptClip]");
+      PExpression exp = parser.Parse();
+      result = exp->Evaluate(env);
+    }
+    else {
+      AVSValue args(&child_val, 1);
+      auto& func = script.AsFunction();
+      if (!envI->InvokeThread(&result, func->GetLegacyName(), func->GetDefinition(), args, 0, envI)) {
+        env->ThrowError(
+          "ScriptClip: Invalid function parameter type '%s'. Function must accept one clip. \n%s",
+          func->GetDefinition()->param_types, func->ToString(env));
+      }
+    }
   } catch (const AvisynthError &error) {
     const char* error_msg = error.msg;
 
