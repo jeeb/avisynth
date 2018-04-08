@@ -200,15 +200,16 @@ extern const AVSFunction Script_functions[] = {
   { "GetParity", BUILTIN_FUNC_PREFIX, "c[n]i", GetParity },
   { "String",    BUILTIN_FUNC_PREFIX, ".[]s", String },
   { "Hex",       BUILTIN_FUNC_PREFIX, "i[width]i", Hex }, // avs+ 20180222 new width parameter
+  { "Func",    BUILTIN_FUNC_PREFIX, "n", Func },
 
   { "IsBool",   BUILTIN_FUNC_PREFIX, ".", IsBool },
   { "IsInt",    BUILTIN_FUNC_PREFIX, ".", IsInt },
   { "IsFloat",  BUILTIN_FUNC_PREFIX, ".", IsFloat },
   { "IsString", BUILTIN_FUNC_PREFIX, ".", IsString },
   { "IsClip",   BUILTIN_FUNC_PREFIX, ".", IsClip },
-  { "IsFunction", BUILTIN_FUNC_PREFIX, ".", IsFunction }, // Neo
+  { "IsFunction", BUILTIN_FUNC_PREFIX, ".", IsFunction },
   { "Defined",  BUILTIN_FUNC_PREFIX, ".", Defined },
-  { "TypeName",  BUILTIN_FUNC_PREFIX, ".", TypeName }, // Neo
+  { "TypeName",  BUILTIN_FUNC_PREFIX, ".", TypeName },
 
   { "Default",  BUILTIN_FUNC_PREFIX, "..", Default },
 
@@ -266,6 +267,7 @@ extern const AVSFunction Script_functions[] = {
   { "Prefetch",         BUILTIN_FUNC_PREFIX, "c[threads]i[frames]i", Prefetcher::Create },
   { "SetLogParams",     BUILTIN_FUNC_PREFIX, "[target]s[level]i", SetLogParams },
   { "LogMsg",              BUILTIN_FUNC_PREFIX, "si", LogMsg },
+//{ "SetCacheMode",     BUILTIN_FUNC_PREFIX, "[mode]i", SetCacheMode },
 
   { "IsY",       BUILTIN_FUNC_PREFIX, "c", IsY },
   { "Is420",     BUILTIN_FUNC_PREFIX, "c", Is420 },
@@ -1568,6 +1570,7 @@ AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 AVSValue Func(AVSValue args, void*, IScriptEnvironment*) { return args[0]; }
+
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsBool(); }
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsInt(); }
 AVSValue IsFloat(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsFloat(); }
@@ -1783,6 +1786,29 @@ AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env)
     }
     return AVSValue();
 }
+
+/*
+AVSValue SetCacheMode(AVSValue args, void*, IScriptEnvironment* env)
+{
+	InternalEnvironment *env2 = static_cast<InternalEnvironment*>(env);
+	env2->SetCacheMode((CacheMode)args[0].AsInt());
+	return AVSValue();
+}
+
+AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env)
+{
+  int memMax = args[0].AsInt(0);
+  int deviceType = args[1].AsInt(0);
+  int deviceIndex = args[2].AsInt(0);
+
+  if (deviceType == 0 || deviceType == DEV_TYPE_CPU) {
+    return env->SetMemoryMax(memMax);
+  }
+
+  InternalEnvironment *env2 = static_cast<InternalEnvironment*>(env);
+  return env2->SetMemoryMax((AvsDeviceType)deviceType, deviceIndex, memMax);
+}
+*/
 
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsY(); }
 AVSValue Is420(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).Is420(); }

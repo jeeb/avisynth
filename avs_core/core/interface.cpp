@@ -54,6 +54,7 @@
 #else
     #include <avs/posix.h>
 #endif
+#include "InternalEnvironment.h"
 #include "AVSMap.h"
 #include "function.h"
 
@@ -1243,7 +1244,74 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoInfo::IsPlanarRGB,                  //   bool    (VideoInfo::*IsPlanarRGB)()  const;
   &VideoInfo::IsPlanarRGBA,                 //   bool    (VideoInfo::*IsPlanarRGBA)()  const;
 /**********************************************************************/
-  // frame properties, Avisynth Neo
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+  NULL,                                     //   reserved for AviSynth+
+/**********************************************************************/
+  // AviSynth+CUDA additions
+  &GetAvsEnv,
   &VideoFrame::SetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::GetProperty,

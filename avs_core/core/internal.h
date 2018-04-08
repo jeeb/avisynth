@@ -46,6 +46,7 @@
 #ifdef AVS_POSIX
 #include <limits.h>
 #endif
+#include "InternalEnvironment.h"
 
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
 #define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2020 AviSynth+ Project"
@@ -63,7 +64,6 @@ enum MANAGE_CACHE_KEYS
 };
 
 #include <avisynth.h>
-#include "parser/script.h" // TODO we only need ScriptFunction from here
 #include <emmintrin.h>
 #include <string>
 #include "function.h"
@@ -72,6 +72,8 @@ enum MANAGE_CACHE_KEYS
 int RGB2YUV(int rgb);
 const char *GetPixelTypeName(const int pixel_type); // in script.c
 const int GetPixelTypeFromName(const char *pixeltypename); // in script.c
+const char* GetAVSTypeName(AVSValue value); // in script.c
+//int GetDeviceTypes(const PClip& child); // in DeviceManager.cpp
 
 PClip Create_MessageClip(const char* message, int width, int height,
   int pixel_type, bool shrink, int textcolor, int halocolor, int bgcolor,
@@ -294,9 +296,9 @@ static AVS_FORCEINLINE __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
 
 class GlobalVarFrame
 {
-   IScriptEnvironment2* env;
+   InternalEnvironment* env;
 public:
-   GlobalVarFrame(IScriptEnvironment2* env) : env(env) {
+   GlobalVarFrame(InternalEnvironment* env) : env(env) {
       env->PushContextGlobal();
    }
    ~GlobalVarFrame() {

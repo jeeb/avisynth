@@ -51,28 +51,8 @@
 /********************************************************************
 ********************************************************************/
 
-class ScriptFunction
-/**
-  * Executes a script
- **/
-{
-public:
-  ScriptFunction(const PExpression& _body, const bool* _param_floats, const char** _param_names, int param_count);
 
-  virtual ~ScriptFunction()
-  {
-    delete[] param_floats;
-    delete[] param_names;
-  }
 
-  static AVSValue Execute(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static void Delete(void* self, IScriptEnvironment*);
-
-private:
-  const PExpression body;
-  bool *param_floats;
-  const char** param_names;
-};
 /****    Helper functions   ****/
 
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env);
@@ -256,7 +236,11 @@ AVSValue InternalFunctionExists (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetFilterMTMode (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetLogParams(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env);
+/*
+AVSValue SetCacheMode(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
+*/
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Is420(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Is422(AVSValue args, void*, IScriptEnvironment* env);

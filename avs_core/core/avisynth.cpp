@@ -677,14 +677,14 @@ namespace std
 #include "BufferPool.h"
 class ScriptEnvironment : public InternalEnvironment {
 public:
-  ScriptEnvironment();
+	ScriptEnvironment();
   void __stdcall CheckVersion(int version);
   int __stdcall GetCPUFlags();
   char* __stdcall SaveString(const char* s, int length = -1);
   char* __stdcall Sprintf(const char* fmt, ...);
   char* __stdcall VSprintf(const char* fmt, va_list val);
   void __stdcall ThrowError(const char* fmt, ...);
-  void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data=0);
+  void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
   bool __stdcall FunctionExists(const char* name);
   AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0);
   AVSValue __stdcall GetVar(const char* name);
@@ -716,7 +716,7 @@ public:
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha);
   PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
-  /* IScriptEnvironment2 */
+	/* IScriptEnvironment2 */
   virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const;
   virtual bool __stdcall GetVar(const char* name, bool def) const;
   virtual int  __stdcall GetVar(const char* name, int def) const;
@@ -726,7 +726,7 @@ public:
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
   virtual void __stdcall ClearAutoloadDirs();
   virtual void __stdcall AutoloadPlugins();
-  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar);
+  virtual void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data, const char *exportVar);
   virtual bool __stdcall InternalFunctionExists(const char* name);
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
@@ -752,26 +752,45 @@ public:
   virtual void __stdcall VThrowError(const char* fmt, va_list va);
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
-  // new additions 2020, Neo
-  virtual InternalEnvironment* __stdcall GetCoreEnvironment();
-  virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst);
-  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame);
-  bool MakePropertyWritable(PVideoFrame* pvf);
+	/* INeoEnv */
+	virtual AVSValue __stdcall Invoke(const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
+	virtual bool __stdcall Invoke(AVSValue *result, const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
 
-  virtual ThreadPool* __stdcall GetThreadPool();
-  virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
-  virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const Function* f, const AVSValue& args,
-    const char* const* arg_names, IScriptEnvironment2* env);
+	virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const Function *f, const AVSValue& args,
+		const char* const* arg_names, InternalEnvironment* env);
+	virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names = 0);
+  /*
+  virtual Device* __stdcall SetCurrentDevice(Device* device);
+  virtual Device* __stdcall GetCurrentDevice() const;
+  virtual PDevice __stdcall GetDevice(AvsDeviceType device_type, int device_index) const;
+  virtual PDevice __stdcall GetDevice() const { return GetCurrentDevice(); }
+  virtual AvsDeviceType __stdcall GetDeviceType() const { return GetCurrentDevice()->device_type; }
+  virtual int __stdcall GetDeviceId() const { return GetCurrentDevice()->device_id; }
+  virtual int __stdcall GetDeviceIndex() const { return GetCurrentDevice()->device_index; }
+  virtual void* __stdcall GetDeviceStream() const { return GetCurrentDevice()->GetComputeStream(); }
+  virtual void __stdcall DeviceAddCallback(void(*cb)(void*), void* user_data);
+  virtual int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem);
+  */
+  virtual InternalEnvironment* __stdcall GetCoreEnvironment() { return this; }
+  //virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device);
+  virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const;
+  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env);
+	virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
+  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) { return frame->avsmap; }
+
+  virtual void __stdcall SetGraphAnalysis(bool enable) { graphAnalysisEnable = enable; }
 
   virtual void __stdcall AddRef() { };
   virtual void __stdcall Release() { };
   virtual void __stdcall IncEnvCount() { InterlockedIncrement(&EnvCount); }
   virtual void __stdcall DecEnvCount() { InterlockedDecrement(&EnvCount); }
 
-  virtual ConcurrentVarStringFrame* __stdcall GetTopFrame();
-  void UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar);
-
-  virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names = 0);
+  virtual ConcurrentVarStringFrame* __stdcall GetTopFrame() { return &top_frame; }
+  /*
+  virtual void __stdcall SetCacheMode(CacheMode mode) { cacheMode = mode; }
+  virtual CacheMode __stdcall GetCacheMode() { return cacheMode; }
+  */
+  virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar);
 
 private:
 
@@ -789,7 +808,7 @@ private:
   PluginManager *plugin_manager;
   std::recursive_mutex plugin_mutex;
 
-
+  //Device* currentDevice;
 
   int ImportDepth;
   long EnvCount; // for ScriptEnvironmentTLS leak detection
@@ -840,6 +859,7 @@ private:
   void ListFrameRegistry(size_t min_size, size_t max_size, bool someframes);
 #endif
 
+  //DeviceManager DeviceManager;
   CacheRegistryType CacheRegistry;
   Cache* FrontCache;
   VideoFrame* GetNewFrame(size_t vfb_size);
@@ -869,6 +889,12 @@ private:
   std::ofstream LogFileStream;
   std::unordered_set<OneTimeLogTicket> LogTickets;
 
+/*
+// filter graph
+  bool graphAnalysisEnable;
+
+	CacheMode cacheMode;
+*/
   void InitMT();
 };
 const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
@@ -1020,6 +1046,7 @@ ScriptEnvironment::ScriptEnvironment()
     EnvCount(0),
     //DeviceManager(this),
     FrontCache(NULL),
+    //graphAnalysisEnable(false),
     nTotalThreads(1),
     nMaxFilterInstances(1),
     buffer_pool(this)
@@ -1037,6 +1064,11 @@ ScriptEnvironment::ScriptEnvironment()
     }
     // Remember our threadId.
     coinitThreadId=GetCurrentThreadId();
+
+    /*
+    auto cpuDevice = DeviceManager.GetCPUDevice();
+    currentDevice = cpuDevice;
+    */
 
     MEMORYSTATUSEX memstatus;
     memstatus.dwLength = sizeof(memstatus);
@@ -1097,6 +1129,10 @@ ScriptEnvironment::ScriptEnvironment()
 
     clip_data.max_load_factor(0.8f);
     LogTickets.max_load_factor(0.8f);
+
+    /*
+    increaseCache = true;
+    */
   }
   catch (const AvisynthError &err) {
 #ifdef AVS_WINDOWS
@@ -1393,33 +1429,6 @@ ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
 #endif
 }
 
-#if 0
-// replaced by ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
-void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
-{
-  if (!p)
-  {
-    prefetcher = NULL;
-    return;
-  }
-
-  if (prefetcher != NULL)
-    throw AvisynthError("Only a single prefetcher is allowed per script.");
-
-  // Make this the active prefetcher
-  prefetcher = p;
-
-  // Since this method basically enables MT operation,
-  // upgrade all MTGuards to MT-mode.
-  size_t nTotalThreads = 1 + p->NumPrefetchThreads();
-  for (MTGuard* guard : MTGuardRegistry)
-  {
-    if (guard != NULL)
-      guard->EnableMT(nTotalThreads);
-  }
-}
-#endif
-
 void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool minus)
 {
   if (minus)
@@ -1431,6 +1440,11 @@ void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool mi
 void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
 {
   thread_pool->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
+}
+
+void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment* env)
+{
+  thread_pool->QueueJob(jobFunc, jobData, env, static_cast<JobCompletion*>(completion));
 }
 
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
@@ -2390,7 +2404,11 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 }
 
 
-PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
+PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi) {
+  return NewVideoFrameOn(vi, FRAME_ALIGN);
+}
+
+PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
   // todo: high bit-depth: we have too many types now. Do we need really check?
   // Check requested pixel_type:
   switch (vi.pixel_type) {
@@ -2509,9 +2527,10 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   // Otherwise, allocate a new frame (using NewVideoFrame) and
   // copy the data into it.  Then modify the passed PVideoFrame
   // to point to the new buffer.
-  const int row_size = vf->GetRowSize();
-  const int height   = vf->GetHeight();
   PVideoFrame dst;
+
+  const int row_size = vf->GetRowSize();
+  const int height = vf->GetHeight();
 
   bool alpha = 0 != vf->GetPitch(PLANAR_A);
   if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we assume that it is Planar if it has a U plane.
@@ -2567,6 +2586,7 @@ bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
   *pvf = dst;
   return true;
 }
+
 
 void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data) {
   at_exit.Add(function, user_data);
@@ -2640,7 +2660,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
         ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
     VideoFrame* subframe;
     subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
-  subframe->avsmap->data = src->avsmap->data;
+    subframe->avsmap->data = src->avsmap->data;
 
     size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -2832,7 +2852,6 @@ const PFunction& getter_proxy(const PFunction& f) { return f; };
 const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                     bool &pstrict, size_t args_names_count, const char* const* arg_names)
 {
-
   AVSValue avsv;
   if (GetVar(search_name, &avsv) && avsv.IsFunction()) {
     //auto& funcv = avsv.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
@@ -2927,7 +2946,17 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   return result;
 }
 
-bool __stdcall ScriptEnvironment::InvokeThread(AVSValue* result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names, IScriptEnvironment2* env)
+AVSValue ScriptEnvironment::Invoke(const PFunction& func, const AVSValue args, const char* const* arg_names)
+{
+  AVSValue result;
+  if (!InvokeFunc(&result, func->GetLegacyName(), func->GetDefinition(), args, arg_names))
+  {
+    throw NotFound();
+  }
+  return result;
+}
+
+bool __stdcall ScriptEnvironment::InvokeThread(AVSValue* result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names, InternalEnvironment* env)
 {
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
@@ -3052,15 +3081,20 @@ bool __stdcall ScriptEnvironment::InvokeThread(AVSValue* result, const char* nam
   return true;
 }
 
+bool __stdcall ScriptEnvironment::Invoke(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names)
+{
+  return InvokeFunc(result, name, nullptr, args, arg_names);
+}
+
+bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const PFunction& func, const AVSValue args, const char* const* arg_names)
+{
+  return InvokeFunc(result, func->GetLegacyName(), func->GetDefinition(), args, arg_names);
+}
+
 struct SuppressThreadCounter {
   SuppressThreadCounter() { ++g_suppress_thread_count; }
   ~SuppressThreadCounter() { --g_suppress_thread_count; }
 };
-
-bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names)
-{
-  return InvokeFunc(result, name, nullptr, args, arg_names);
-}
 
 bool __stdcall ScriptEnvironment::InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names)
 {
@@ -3427,6 +3461,18 @@ success:;
         *result = fret;
     }
 
+    /*
+    // static device check
+    // this is not enough to check all dependencies but much helpful to users
+    if ((*result).IsClip()) {
+      CheckChildDeviceTypes((*result).AsClip(), name, args, arg_names, this);
+    }
+
+    // filter graph
+    if (graphAnalysisEnable && (*result).IsClip()) {
+      *result = new FilterGraphNode((*result).AsClip(), name, args, arg_names);
+    }
+    */
     // args2 and args3 are not valid after this point anymore
 #ifdef _DEBUG
     if (PrevFrontCache != FrontCache && FrontCache != NULL) // cache registering swaps frontcache to the current
@@ -3547,20 +3593,65 @@ PVideoFrame ScriptEnvironment::SubframePlanarA(PVideoFrame src, int rel_offset, 
   return SubframePlanar(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
 }
 
-InternalEnvironment* ScriptEnvironment::GetCoreEnvironment()
+/*
+Device* ScriptEnvironment::SetCurrentDevice(Device* device)
 {
-  return this;
+	Device* old = currentDevice;
+	currentDevice = device;
+	return old;
 }
 
 
-void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst)
+Device* ScriptEnvironment::GetCurrentDevice() const
+{
+	if (g_thread_id != 0) {
+		throw AvisynthError("Invalid ScriptEnvironment. You are using different thread's environment.");
+	}
+	return currentDevice;
+}
+
+PDevice ScriptEnvironment::GetDevice(AvsDeviceType device_type, int device_index) const
+{
+  return DeviceManager.GetDevice(device_type, device_index);
+}
+
+void ScriptEnvironment::DeviceAddCallback(void(*cb)(void*), void* user_data)
+{
+  if (g_thread_id != 0) {
+    ThrowError("Invalid ScriptEnvironment. You are using different thread's environment.");
+  }
+  DeviceCompleteCallbackData cbdata = { cb, user_data };
+  currentDevice->AddCompleteCallback(cbdata);
+}
+
+int ScriptEnvironment::SetMemoryMax(AvsDeviceType type, int index, int mem)
+{
+	return DeviceManager.GetDevice(type, index)->SetMemoryMax(mem);
+}
+
+PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* device)
+{
+	VideoFrame *res = GetNewFrame(src->GetFrameBuffer()->data_size, device);
+	res->offset = src->offset;
+	res->pitch = src->pitch;
+	res->row_size = src->row_size;
+	res->height = src->height;
+	res->offsetU = src->offsetU;
+	res->offsetV = src->offsetV;
+	res->pitchUV = src->pitchUV;
+	res->row_sizeUV = src->row_sizeUV;
+	res->heightUV = src->heightUV;
+	res->offsetA = src->offsetA;
+	res->pitchA = src->pitchA;
+	res->row_sizeA = src->row_sizeA;
+  res->avsmap->data = src->avsmap->data;
+	return PVideoFrame(res);
+}
+*/
+
+void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst) const
 {
   dst->avsmap->data = src->avsmap->data;
-}
-
-ThreadPool* ScriptEnvironment::GetThreadPool()
-{
-  return thread_pool;
 }
 
 // replaces void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
@@ -3588,18 +3679,13 @@ ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
   return pool;
 }
 
-AVSMap* __stdcall ScriptEnvironment::GetAVSMap(PVideoFrame& frame)
+void ScriptEnvironment::UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar)
 {
-  return frame->avsmap;
-}
+  if (g_thread_id != 0 || g_getframe_recursive_count != 0) {
+    // no need to export function at runtime
+    return;
+  }
 
-ConcurrentVarStringFrame* ScriptEnvironment::GetTopFrame()
-{
-  return &top_frame;
-}
-
-void ScriptEnvironment::UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar)
-{
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
   plugin_manager->UpdateFunctionExports(funcName, funcParams, exportVar);
 }

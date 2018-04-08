@@ -539,7 +539,9 @@ void ConditionalReader::ThrowLine(const char* err, int line, IScriptEnvironment*
 PVideoFrame __stdcall ConditionalReader::GetFrame(int n, IScriptEnvironment* env)
 {
   AVSValue v = GetFrameValue(n);
-  env->SetGlobalVar(variableNameFixed, v);
+
+  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
+  env->SetGlobalVar(variableName, v);
 
   PVideoFrame src = child->GetFrame(n,env);
 
@@ -551,6 +553,15 @@ PVideoFrame __stdcall ConditionalReader::GetFrame(int n, IScriptEnvironment* env
   return src;
 }
 
+int __stdcall ConditionalReader::SetCacheHints(int cachehints, int frame_range)
+{
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
 
 
 
@@ -591,7 +602,7 @@ Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck
 		arglist[i].string = EMPTY;
 	}
 
-   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
 
 	if (linecheck == -1) {	//write at start
 		env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
@@ -617,7 +628,7 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 
 	if (linecheck<0) return tmpframe;	//do nothing here when writing only start or end
 
-   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
 	env->SetGlobalVar("last",(AVSValue)child);       // Set implicit last (to avoid recursive stack calls?)
 	env->SetGlobalVar("current_frame",n);
 
@@ -688,6 +699,16 @@ bool Write::DoEval( IScriptEnvironment* env) {
 	return keep_this_line;
 }
 
+int __stdcall Write::SetCacheHints(int cachehints, int frame_range)
+{
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
+
 AVSValue __cdecl Write::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
 	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 0, args[3].AsBool(true),args[4].AsBool(true), env);
@@ -708,6 +729,52 @@ AVSValue __cdecl Write::Create_End(AVSValue args, void*, IScriptEnvironment* env
 	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -2, args[3].AsBool(true), true, env);
 }
 
+
+UseVar::UseVar(PClip _child, AVSValue vars, IScriptEnvironment* env)
+   : GenericVideoFilter(_child)
+{
+  IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+
+   vars_.resize(vars.ArraySize());
+   for (int i = 0; i < vars.ArraySize(); ++i) {
+      auto name = vars_[i].name = vars[i].AsString();
+      if (!env2->GetVar(name, &vars_[i].val)) {
+        env->ThrowError("UseVar: No variable named %s", name);
+      }
+   }
+}
+
+UseVar::~UseVar() { }
+
+PVideoFrame __stdcall UseVar::GetFrame(int n, IScriptEnvironment* env)
+{
+   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
+
+   // set variables
+   for (int i = 0; i < (int)vars_.size(); ++i) {
+      env->SetGlobalVar(vars_[i].name, vars_[i].val);
+   }
+
+   return child->GetFrame(n, env);
+}
+
+int __stdcall UseVar::SetCacheHints(int cachehints, int frame_range) {
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  case CACHE_GET_DEV_TYPE:
+    return (child->GetVersion() >= 5) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
+
+AVSValue __cdecl UseVar::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+   return new UseVar(args[0].AsClip(), args[1], env);
+}
+
+
 AddProp::AddProp(PClip _child, const char* name, AVSValue eval, IScriptEnvironment* env)
    : GenericVideoFilter(_child)
    , name(name)
@@ -718,7 +785,7 @@ AddProp::~AddProp() { }
 
 PVideoFrame __stdcall AddProp::GetFrame(int n, IScriptEnvironment* env)
 {
-   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
+   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
    env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
    env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
 
