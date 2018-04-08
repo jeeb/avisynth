@@ -457,6 +457,11 @@ public:
     const bool* _param_floats, const char** _param_names, int param_count,
     const char** _var_names, int _var_count,
     const char* filename, int line);
+  ~ExpFunctionDefinition() {
+    delete[]param_floats;
+    delete[]param_names;
+    delete[]var_names;
+  }
 
   virtual AVSValue Evaluate(IScriptEnvironment* env);
 
