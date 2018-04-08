@@ -363,7 +363,6 @@ struct AVS_Linkage {
   const AVSMapValue*  (VideoFrame::*GetProperty)(const char* key) const;
   bool                (VideoFrame::*DeleteProperty)(const char* key);
 
-
   // class AVSMapValue
   void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR0)();
   void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR1)(PVideoFrame& frame);
@@ -824,6 +823,9 @@ class VideoFrameBuffer {
   friend class ScriptEnvironment;
   volatile long refcount;
 
+  // AVS+CUDA extension, does not break plugins if appended here
+  //Device* device; // Neo
+
 protected:
 #ifdef SIZETMOD
   VideoFrameBuffer(size_t size);
@@ -931,18 +933,9 @@ public:
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
-  bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
-  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
-
-  // if key is not found, returns nullptr
-  const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty)(key))
-
-  // if key is not found or had wrong type, returns supplied default value
-  PVideoFrame GetProperty(const char* key, PVideoFrame def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Frame)(key, def))
-    int GetProperty(const char* key, int def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Int)(key, def))
-  double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Float)(key, def))
-
-  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(VideoFrame_DeleteProperty)(key))
+  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(SetProperty)(key, value))
+  const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(GetProperty)(key))
+  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(DeleteProperty)(key))
 
 
   ~VideoFrame() AVS_BakedCode( AVS_LinkCall_Void(VideoFrame_DESTRUCTOR)() )
@@ -1326,6 +1319,40 @@ public:
 #endif
 };
 
+class PDevice
+{
+public:
+  PDevice() AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR0)())
+  PDevice(Device* p) AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR1)(p))
+  PDevice(const PDevice& p) AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR2)(p))
+  PDevice& operator=(Device* p) AVS_BakedCode(return AVS_LinkCallV(PDevice_OPERATOR_ASSIGN0)(p))
+  PDevice& operator=(const PDevice& p) AVS_BakedCode(return AVS_LinkCallV(PDevice_OPERATOR_ASSIGN1)(p))
+  ~PDevice() AVS_BakedCode(AVS_LinkCall_Void(PDevice_DESTRUCTOR)())
+
+  int operator!() const { return !e; }
+  operator void*() const { return e; }
+  Device* operator->() const { return e; }
+
+  AvsDeviceType GetType() const AVS_BakedCode(return AVS_LinkCallOptDefault(PDevice_GetType, DEV_TYPE_NONE))
+  int GetId() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetId)())
+  int GetIndex() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetIndex)())
+  const char* GetName() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetName)())
+
+private:
+  Device * e;
+
+#ifdef BUILDING_AVSCORE
+public:
+  void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
+  void CONSTRUCTOR1(Device* p);
+  void CONSTRUCTOR2(const PDevice& p);
+  PDevice& OPERATOR_ASSIGN0(Device* p);
+  PDevice& OPERATOR_ASSIGN1(const PDevice& p);
+  void DESTRUCTOR();
+#endif
+};
+
+
 #undef CALL_MEMBER_FN
 #undef AVS_LinkCallOptDefault
 #undef AVS_LinkCallOpt
@@ -1511,12 +1538,15 @@ public:
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 
-
 }; // end class IScriptEnvironment2
 
 
-// To enable Avisynth+ add functions to IScriptEnvironment2,
-// Neo defines another interface.
+// To allow Avisynth+ add functions to IScriptEnvironment2,
+// Neo defines another new interface, INeoEnv.
+// INeoEnv and the legacy interfaces (IScriptEnvironment/IScriptEnvironment2)
+// share the same ScriptEnvironment instance. The function with the same signiture
+// is exactly identical and there is no limitation to switch interfaces.
+// You can use any inteface you like.
 class INeoEnv {
 public:
   virtual ~INeoEnv() {}
@@ -1525,69 +1555,110 @@ public:
   typedef IScriptEnvironment::ApplyFunc ApplyFunc;
   typedef IScriptEnvironment::ShutdownFunc ShutdownFunc;
 
-  // IScriptEnvironment
-  virtual int __stdcall GetCPUFlags() = 0;
-  virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
-  virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
-  virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
-  __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
-  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
-  virtual bool __stdcall FunctionExists(const char* name) = 0;
-  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
-  virtual AVSValue __stdcall GetVar(const char* name) = 0;
-  virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;
-  virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) = 0;
-  virtual void __stdcall PushContext(int level = 0) = 0;
-  virtual void __stdcall PopContext() = 0;
-  // NewVideoFrame is replaced with new one
-  virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
-  virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
-  virtual void __stdcall AtExit(ShutdownFunc function, void* user_data) = 0;
-  virtual void __stdcall CheckVersion(int version = AVISYNTH_INTERFACE_VERSION) = 0;
-  virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) = 0;
-  virtual int __stdcall SetMemoryMax(int mem) = 0;
-  virtual int __stdcall SetWorkingDir(const char * newdir) = 0;
-  virtual void* __stdcall ManageCache(int key, void* data) = 0;
-  virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
-  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
   virtual void __stdcall DeleteScriptEnvironment() = 0;
-  virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
-    int textcolor, int halocolor, int bgcolor) = 0;
+
   virtual const AVS_Linkage* __stdcall GetAVSLinkage() = 0;
-  virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
-
-  // IScriptEnvironment2
-  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
-  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
-  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
-  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
-  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
-  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
-  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
-  virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
-  virtual void __stdcall ClearAutoloadDirs() = 0;
-  virtual void __stdcall AutoloadPlugins() = 0;
-  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
-  virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
-  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0;
-  virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
-  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
-  virtual void __stdcall Free(void* ptr) = 0;
-  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
-  // No more IScriptEnvironment2 functions should be added here because it would break compartibility with Neo plugins
-
-  // Neo new functions
 
   // Get legacy interface
   virtual IScriptEnvironment2* __stdcall GetEnv2() = 0;
 
-  // Invoke function
+  // Generic system to ask for various properties
+  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+  virtual int __stdcall GetCPUFlags() = 0;
+
+  // Plugin functions
+  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
+  virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
+  virtual void __stdcall ClearAutoloadDirs() = 0;
+  virtual void __stdcall AutoloadPlugins() = 0;
+
+  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
+  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
+  virtual bool __stdcall FunctionExists(const char* name) = 0;
+  virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
+
+  // Invoke function. Throws NotFounc exception when the specified function is not exists.
+  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
   virtual AVSValue __stdcall Invoke(const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+
+  // These versions of Invoke will return false instead of throwing NotFound().
+  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
   virtual bool __stdcall Invoke(AVSValue *result, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+
+  // Throws exception when the requested variable is not found.
+  virtual AVSValue __stdcall GetVar(const char* name) = 0;
+
+  // noThrow version of GetVar
+  virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
+
+  // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
+  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
+
+  // Return the value of the requested variable.
+  // If the variable was not found or had the wrong type,
+  // return the supplied default value.
+  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
+  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
+  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
+  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
+
+  virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;
+  virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) = 0;
+
+  // Switch local variables
+  virtual void __stdcall PushContext(int level = 0) = 0;
+  virtual void __stdcall PopContext() = 0;
+
+  // Global variable frame support
+  virtual void __stdcall PushContextGlobal() = 0;
+  virtual void __stdcall PopContextGlobal() = 0;
+
+  // Allocate new video frame
+  // Align parameter is no longer supported
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi) = 0; // current device is used
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device) = 0;
+
+  // Frame related operations
+  virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
+  virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
+
+  // AVSMap Support
+  virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const = 0;
+
+  virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) = 0;
+  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
+  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
+
+  // Support functions
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
+  virtual void __stdcall Free(void* ptr) = 0;
+
+  virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
+  virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
+  virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
+
+  __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
+
+  virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
+    int textcolor, int halocolor, int bgcolor) = 0;
+
+  // Setting
+  virtual int __stdcall SetMemoryMax(int mem) = 0;
+  virtual int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem) = 0;
+
+  virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
+  virtual int __stdcall SetWorkingDir(const char * newdir) = 0;
+  virtual void* __stdcall ManageCache(int key, void* data) = 0;
+
+  virtual void __stdcall AtExit(ShutdownFunc function, void* user_data) = 0;
+  virtual void __stdcall CheckVersion(int version = AVISYNTH_INTERFACE_VERSION) = 0;
+
+  // Threading
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0;
+  virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
+  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
 
   /*
   // CUDA Support
@@ -1598,18 +1669,7 @@ public:
   virtual int __stdcall GetDeviceIndex() const  = 0;
   virtual void* __stdcall GetDeviceStream() const = 0;
   virtual void __stdcall DeviceAddCallback(void(*cb)(void*), void* user_data) = 0;
-
-  virtual int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem) = 0;
   */
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi) = 0; // current device is used
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device) = 0;
-
-  // AVSMap Support
-  virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const = 0;
-
-  // Global variable frame support
-  virtual void __stdcall PushContextGlobal() = 0;
-  virtual void __stdcall PopContextGlobal() = 0;
 };
 
 // support inteface conversion
