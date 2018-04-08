@@ -388,6 +388,22 @@ struct AVS_Linkage {
   PFunction&      (PFunction::*PFunction_OPERATOR_ASSIGN1)(const PFunction& other);
   void            (PFunction::*PFunction_DESTRUCTOR)();
   // end PFunction
+  /*
+  // class PDevice
+  void            (PDevice::*PDevice_CONSTRUCTOR0)();
+  void            (PDevice::*PDevice_CONSTRUCTOR1)(Device* p);
+  void            (PDevice::*PDevice_CONSTRUCTOR2)(const PDevice& p);
+  PDevice&        (PDevice::*PDevice_OPERATOR_ASSIGN0)(Device* other);
+  PDevice&        (PDevice::*PDevice_OPERATOR_ASSIGN1)(const PDevice& other);
+  void            (PDevice::*PDevice_DESTRUCTOR)();
+  AvsDeviceType   (PDevice::*PDevice_GetType)() const;
+  int             (PDevice::*PDevice_GetId)() const;
+  int             (PDevice::*PDevice_GetIndex)() const;
+  const char*     (PDevice::*PDevice_GetName)() const;
+  // end class PDevice
+  */
+
+  //int     (VideoFrame::*VdieoFrame_CheckMemory)() const;
 
   /**********************************************************************/
 };
@@ -1319,6 +1335,7 @@ public:
 #endif
 };
 
+/*
 class PDevice
 {
 public:
@@ -1343,7 +1360,7 @@ private:
 
 #ifdef BUILDING_AVSCORE
 public:
-  void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
+  void CONSTRUCTOR0();
   void CONSTRUCTOR1(Device* p);
   void CONSTRUCTOR2(const PDevice& p);
   PDevice& OPERATOR_ASSIGN0(Device* p);
@@ -1351,7 +1368,7 @@ public:
   void DESTRUCTOR();
 #endif
 };
-
+*/
 
 #undef CALL_MEMBER_FN
 #undef AVS_LinkCallOptDefault

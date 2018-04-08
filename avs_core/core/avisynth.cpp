@@ -2328,7 +2328,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 
   size_t size = pitchY * height + 2 * pitchUV * heightUV + (alpha ? pitchY * height : 0);
 
-  // why we need this??
+  // make space for alignment
   size = size + align -1;
 
   VideoFrame *res = GetNewFrame(size);
@@ -2377,9 +2377,8 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
   const int pitch = AlignNumber(row_size, align);
   size_t size = pitch * height;
 
-  // why we need this??
-  // PF: Allow badly written plugins to be able to read "align" bytes even from the last byte?
-  size = size + align - 1;
+  // make space for alignment
+  size = size + align -1;
 
   VideoFrame *res = GetNewFrame(size);
 
