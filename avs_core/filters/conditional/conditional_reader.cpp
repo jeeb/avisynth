@@ -680,7 +680,7 @@ bool Write::DoEval( IScriptEnvironment* env_) {
 		if ( (linecheck==1) && (i==0)) {
 			try {
         if (expr.IsFunction()) {
-          env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
+          result = env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
         }
         else {
           expr = expr.AsString(EMPTY);
@@ -696,7 +696,7 @@ bool Write::DoEval( IScriptEnvironment* env_) {
 		} else {
 			try {
         if (expr.IsFunction()) {
-          env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
+          result = env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
         }
         else {
           expr = expr.AsString(EMPTY);

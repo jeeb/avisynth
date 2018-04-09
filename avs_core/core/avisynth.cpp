@@ -3029,6 +3029,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
         !this->CheckArguments(f, args2.data(), args2_count + 1, strict, args_names_count, arg_names))
         return false;
       argbase = 0;
+      args2_count += 1;
     }
   }
   else {
@@ -3041,13 +3042,14 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
       if (!f)
         return false;
       argbase = 0;
+      args2_count += 1;
     }
   }
 
   // combine unnamed args into arrays
   size_t src_index = 0, dst_index = 0;
   const char* p = f->param_types;
-  const size_t maxarg3 = max(args2_count + 1, strlen(p)); // well it can't be any longer than this.
+  const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
 
   std::vector<AVSValue> args3(maxarg3, AVSValue());
 
@@ -3159,7 +3161,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
 #endif
 
   bool foundClipArgument = false;
-  for (int i = argbase; (int)args2.size(); ++i)
+  for (int i = argbase; i < (int)args2.size(); ++i)
   {
     auto& argx = args2[i];
 #ifndef NEW_AVSVALUE
