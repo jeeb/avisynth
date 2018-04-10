@@ -621,6 +621,7 @@ public:
   }
   virtual const char* GetLegacyName() { return name; }
   virtual const Function* GetDefinition() { return nullptr; }
+  virtual CaptureVars GetCaptures() { return CaptureVars(); }
 
 private:
   const char* const name;

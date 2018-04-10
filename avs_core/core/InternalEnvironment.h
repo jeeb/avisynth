@@ -73,9 +73,9 @@ public:
   // IScriptEnvironment
   virtual int __stdcall GetCPUFlags() = 0;
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
-  virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
+  virtual char* Sprintf(const char* fmt, ...) = 0;
   virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
-  __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
+  __declspec(noreturn) virtual void ThrowError(const char* fmt, ...) = 0;
   virtual void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data) = 0;
   virtual bool __stdcall FunctionExists(const char* name) = 0;
   virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
@@ -156,6 +156,7 @@ public:
   using INeoEnv::Invoke;
   //using INeoEnv::NewVideoFrame;
   using INeoEnv::SaveString;
+
   // Nekopanda: support multiple prefetcher //
   // to allow thread to submit with their env
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env) = 0;
@@ -176,6 +177,7 @@ public:
   */
   virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar) = 0;
 
+  // other than ScriptEnvironment, env_thread should be nullptr
   virtual bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
     const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
     IScriptEnvironment* env_thread) = 0;

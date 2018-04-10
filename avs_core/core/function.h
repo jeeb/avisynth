@@ -14,6 +14,12 @@ struct Function {
   const char* dll_path;
 };
 
+struct CaptureVars {
+  int count;
+  const char** var_names;
+  const AVSValue* var_data;
+};
+
 class IFunction {
 public:
   IFunction() : refcnt(0) {}
@@ -21,6 +27,7 @@ public:
   virtual const char* ToString(IScriptEnvironment* env) = 0;
   virtual const char* GetLegacyName() = 0;
   virtual const Function* GetDefinition() = 0;
+  virtual CaptureVars GetCaptures() = 0;
 
 private:
   friend class PFunction;

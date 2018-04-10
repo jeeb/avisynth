@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
+#include <mutex>
 
 #ifdef AVS_POSIX
 #include <limits.h>
@@ -105,11 +106,11 @@ public:
     Write(PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _flush, bool _append, IScriptEnvironment* env);
 	~Write(void);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
 	static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_If(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_Start(AVSValue args, void* user_data, IScriptEnvironment* env);
-  int __stdcall SetCacheHints(int cachehints, int frame_range);
-  static AVSValue __cdecl Create_End(AVSValue args, void* user_data, IScriptEnvironment* env);
+    static AVSValue __cdecl Create_End(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
 
 
@@ -136,10 +137,10 @@ class AddProp : public GenericVideoFilter
 {
 private:
    const char* name;
-   AVSValue eval;
+   PFunction func;
 
 public:
-   AddProp(PClip _child, const char* name, AVSValue eval, IScriptEnvironment* env);
+   AddProp(PClip _child, const char* name, const PFunction& eval, IScriptEnvironment* env);
    ~AddProp();
    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
    int __stdcall SetCacheHints(int cachehints, int frame_range);

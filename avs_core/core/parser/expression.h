@@ -487,6 +487,10 @@ public:
   virtual const char* ToString(IScriptEnvironment* env);
   virtual const char* GetLegacyName() { return nullptr; }
   virtual const Function* GetDefinition() { return &data; }
+  virtual CaptureVars GetCaptures() {
+    CaptureVars ret = { pdef->var_count, pdef->var_names, var_data };
+    return ret;
+  }
   AVSValue Execute(const AVSValue& args, IScriptEnvironment* env);
   static AVSValue Execute_(AVSValue args, void* user_data, IScriptEnvironment* env);
 

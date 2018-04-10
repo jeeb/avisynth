@@ -1402,15 +1402,15 @@ public:
   virtual /*static*/ int __stdcall GetCPUFlags() = 0;
 
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
-  virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
+  virtual char* Sprintf(const char* fmt, ...) = 0;
   // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
   // 20200305: (void *) changed back to va_list
   virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
 
 #ifdef AVS_WINDOWS
-  __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
+  __declspec(noreturn) virtual void ThrowError(const char* fmt, ...) = 0;
 #else
-  virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
+  virtual void ThrowError(const char* fmt, ...) = 0;
 #endif
 
   class NotFound /*exception*/ {};  // thrown by Invoke and GetVar
@@ -1679,10 +1679,10 @@ public:
 
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
   virtual char* __stdcall SaveString(const char* s, int length, bool escape) = 0;
-  virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
+  virtual char* Sprintf(const char* fmt, ...) = 0;
   virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
 
-  __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
+  __declspec(noreturn) virtual void ThrowError(const char* fmt, ...) = 0;
 
   virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
     int textcolor, int halocolor, int bgcolor) = 0;

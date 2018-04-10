@@ -680,11 +680,11 @@ public:
 	ScriptEnvironment();
   void __stdcall CheckVersion(int version);
   int __stdcall GetCPUFlags();
- char* __stdcall SaveString(const char* s, int length = -1) { return SaveString(s, length, false); }
+  char* __stdcall SaveString(const char* s, int length = -1) { return SaveString(s, length, false); }
   char* __stdcall SaveString(const char* s, int length, bool escape);
-  char* __stdcall Sprintf(const char* fmt, ...);
+  char* Sprintf(const char* fmt, ...);
   char* __stdcall VSprintf(const char* fmt, va_list val);
-  void __stdcall ThrowError(const char* fmt, ...);
+  void ThrowError(const char* fmt, ...);
   void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
   bool __stdcall FunctionExists(const char* name);
   AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0);
@@ -2994,14 +2994,18 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
   const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
   IScriptEnvironment* env_thread)
 {
-	if (env_thread == nullptr && g_thread_id != 0) {
-		ThrowError("Invalid ScriptEnvironment. You are using different thread's environment.");
-	}
+  // When invoked from GetFrame/GetAudio, skip all cache and mt mecanism
+  bool is_runtime = true;
 
-	if (g_getframe_recursive_count != 0) {
-		// Invoked from GetFrame/GetAudio, skip all cache and mt mecanism
+  if (env_thread == nullptr) { // not called by thread
+    if (g_thread_id != 0) {
+      ThrowError("Invalid ScriptEnvironment. You are using different thread's environment.");
+    }
+    if (g_getframe_recursive_count == 0) { // not called by GetFrame
+      is_runtime = false;
+    }
     env_thread = this;
-	}
+  }
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
@@ -3133,7 +3137,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
   args3.resize(args3_count);
   std::vector<AVSValue>(args3).swap(args3);
 
-  if(env_thread) {
+  if(is_runtime) {
     // Invoked by a thread or GetFrame
   AVSValue funcArgs(args3.data(), (int)args3.size());
     *result = f->apply(funcArgs, f->user_data, env_thread);
@@ -3549,8 +3553,17 @@ int ScriptEnvironment::SetMemoryMax(AvsDeviceType type, int index, int mem)
 
 PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* device)
 {
-	VideoFrame *res = GetNewFrame(src->GetFrameBuffer()->data_size, device);
-	res->offset = src->offset;
+  size_t srchead = GetFrameHead(src);
+
+  // make space for alignment
+  size_t size = GetFrameTail(src) - srchead + FRAME_ALIGN - 1;
+
+	VideoFrame *res = GetNewFrame(size, device);
+
+  const int offset = (int)(AlignPointer(res->vfb->GetWritePtr(), FRAME_ALIGN) - res->vfb->GetWritePtr()); // first line offset for proper alignment
+  const int diff = offset - srchead;
+
+	res->offset = src->offset + diff;
 	res->pitch = src->pitch;
 	res->row_size = src->row_size;
 	res->height = src->height;
