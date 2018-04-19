@@ -1344,9 +1344,8 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoFrame::GetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::DeleteProperty,
+  //&VideoFrame::GetDevice,
   &VideoFrame::CheckMemory,
-  //&VideoFrame::IsPropertyWritable,
-
 
   // class AVSMapValue
   &AVSMapValue::CONSTRUCTOR0,
@@ -1388,7 +1387,6 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &PDevice::GetIndex,
   &PDevice::GetName,
   // end class PDevice
-  */
 
 // this part should be identical with struct AVS_Linkage in avisynth.h
 

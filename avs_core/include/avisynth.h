@@ -872,6 +872,40 @@ private:
 }; // end class VideoFrameBuffer
 
 
+// smart pointer to VideoFrame
+class PVideoFrame {
+
+  VideoFrame* p;
+
+  void Init(VideoFrame* x);
+  void Set(VideoFrame* x);
+
+public:
+  PVideoFrame() AVS_BakedCode(AVS_LinkCall_Void(PVideoFrame_CONSTRUCTOR0)())
+    PVideoFrame(const PVideoFrame& x) AVS_BakedCode(AVS_LinkCall_Void(PVideoFrame_CONSTRUCTOR1)(x))
+    PVideoFrame(VideoFrame* x) AVS_BakedCode(AVS_LinkCall_Void(PVideoFrame_CONSTRUCTOR2)(x))
+    void operator=(VideoFrame* x) AVS_BakedCode(AVS_LinkCall_Void(PVideoFrame_OPERATOR_ASSIGN0)(x))
+    void operator=(const PVideoFrame& x) AVS_BakedCode(AVS_LinkCall_Void(PVideoFrame_OPERATOR_ASSIGN1)(x))
+
+    VideoFrame* operator->() const { return p; }
+
+  // for conditional expressions
+  operator void*() const { return p; }
+  bool operator!() const { return !p; }
+
+  ~PVideoFrame() AVS_BakedCode(AVS_LinkCall_Void(PVideoFrame_DESTRUCTOR)())
+#ifdef BUILDING_AVSCORE
+public:
+  void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
+  void CONSTRUCTOR1(const PVideoFrame& x);
+  void CONSTRUCTOR2(VideoFrame* x);
+  void OPERATOR_ASSIGN0(VideoFrame* x);
+  void OPERATOR_ASSIGN1(const PVideoFrame& x);
+  void DESTRUCTOR();
+#endif
+}; // end class PVideoFrame
+
+
 class AVSMap;
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.  Operator new
@@ -954,6 +988,7 @@ public:
 
   //bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
   void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
+
   // if key is not found, returns nullptr
   const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty)(key))
 
@@ -1111,40 +1146,6 @@ public:
   void DESTRUCTOR();
 #endif
 }; // end class PClip
-
-
-// smart pointer to VideoFrame
-class PVideoFrame {
-
-  VideoFrame* p;
-
-  void Init(VideoFrame* x);
-  void Set(VideoFrame* x);
-
-public:
-  PVideoFrame() AVS_BakedCode( AVS_LinkCall_Void(PVideoFrame_CONSTRUCTOR0)() )
-  PVideoFrame(const PVideoFrame& x) AVS_BakedCode( AVS_LinkCall_Void(PVideoFrame_CONSTRUCTOR1)(x) )
-  PVideoFrame(VideoFrame* x) AVS_BakedCode( AVS_LinkCall_Void(PVideoFrame_CONSTRUCTOR2)(x) )
-  void operator=(VideoFrame* x) AVS_BakedCode( AVS_LinkCall_Void(PVideoFrame_OPERATOR_ASSIGN0)(x) )
-  void operator=(const PVideoFrame& x) AVS_BakedCode( AVS_LinkCall_Void(PVideoFrame_OPERATOR_ASSIGN1)(x) )
-
-  VideoFrame* operator->() const { return p; }
-
-  // for conditional expressions
-  operator void*() const { return p; }
-  bool operator!() const { return !p; }
-
-  ~PVideoFrame() AVS_BakedCode( AVS_LinkCall_Void(PVideoFrame_DESTRUCTOR)() )
-#ifdef BUILDING_AVSCORE
-public:
-  void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
-  void CONSTRUCTOR1(const PVideoFrame& x);
-  void CONSTRUCTOR2(VideoFrame* x);
-  void OPERATOR_ASSIGN0(VideoFrame* x);
-  void OPERATOR_ASSIGN1(const PVideoFrame& x);
-  void DESTRUCTOR();
-#endif
-}; // end class PVideoFrame
 
 
 class AVSValue {
