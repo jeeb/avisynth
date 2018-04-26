@@ -10,6 +10,11 @@ project(${ProjectName})
 list (APPEND SourceFiles
     "VDubFilter.cpp"
     "GetCPUFlags.cpp"
+    "ScriptInterpreter.h"
+    "ScriptValue.h"
+    "VBitmap.h"
+    "vdplugin.h"
+    "vdvideofilt.h"
 )
 add_library(${ProjectName} SHARED ${SourceFiles})
 set_target_properties(${ProjectName} PROPERTIES "OUTPUT_NAME" ${PluginName})
