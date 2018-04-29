@@ -920,27 +920,32 @@ public:
       }
 
       // here we pass argument values of avs script to the filter's config
-      const int skipLastN = 1; // extra avs-only parameter: [rangeHint]s
+      // extra avs-only parameter: [rangeHint]s
+      // There is always a clip-parameter-only kind of the filter, rangeHint is not applicable.
+      const int skipLastN = args.ArraySize() == 1 ? 0 : 1;
+
       if (args.ArraySize() > 1 + skipLastN)
         InvokeSyliaConfigFunction(fd, args, env, skipLastN);
 
       // parse extra parameter seen only by avisynth
-      const char *rangeHintStr = args[args.ArraySize() - 1].AsString();
       rangeHint = kRangeHintNotSpecified;
-      if (rangeHintStr) {
-        _RPT1(0, "VdubFilterProxy Extra parameter found: %s", rangeHint);
-        if (!lstrcmpi(rangeHintStr, "rec601"))
-          rangeHint = kRangeHintLimited601;
-        else if (!lstrcmpi(rangeHintStr, "rec709"))
-          rangeHint = kRangeHintLimited709;
-        else if (!lstrcmpi(rangeHintStr, "PC.601"))
-          rangeHint = kRangeHintFull601;
-        else if (!lstrcmpi(rangeHintStr, "PC.709"))
-          rangeHint = kRangeHintFull709;
-        else if (!lstrcmpi(rangeHintStr, ""))
-          rangeHint = kRangeHintNotSpecified;
-        else
-          env->ThrowError("VirtualDubFilterProxy: invalid rangehint for filter %s\r\n", fdl->myFilterModule->avisynth_function_name);
+      if (skipLastN > 0) {
+        const char *rangeHintStr = args[args.ArraySize() - skipLastN].AsString();
+        if (rangeHintStr) {
+          _RPT1(0, "VdubFilterProxy Extra parameter found: %s", rangeHint);
+          if (!lstrcmpi(rangeHintStr, "rec601"))
+            rangeHint = kRangeHintLimited601;
+          else if (!lstrcmpi(rangeHintStr, "rec709"))
+            rangeHint = kRangeHintLimited709;
+          else if (!lstrcmpi(rangeHintStr, "PC.601"))
+            rangeHint = kRangeHintFull601;
+          else if (!lstrcmpi(rangeHintStr, "PC.709"))
+            rangeHint = kRangeHintFull709;
+          else if (!lstrcmpi(rangeHintStr, ""))
+            rangeHint = kRangeHintNotSpecified;
+          else
+            env->ThrowError("VirtualDubFilterProxy: invalid 'rangehint' for '%s'\r\n", fdl->myFilterModule->avisynth_function_name);
+        }
       }
 
     }
@@ -1585,7 +1590,7 @@ static void FilterBaseAdd_CreateAvsFnByParams(MyVDXFilterModule * fm2, FilterDef
   // send actual filter definition list as 'user_data' for create
   // add optinal rangehint parameter, which is seen only by avisynth. 
   // See also skipLastN references, which should match the number of extra parameters here
-  fm2->env->AddFunction(fm2->avisynth_function_name, "c[rangehint]s", VirtualdubFilterProxy::Create, fdl);
+  fm2->env->AddFunction(fm2->avisynth_function_name, "c", VirtualdubFilterProxy::Create, fdl);
   if (fd->script_obj && fd->script_obj->func_list) {
     for (VDXScriptFunctionDef* i = fd->script_obj->func_list; i->arg_list; i++) {
       // avisynth does not know 'd'ouble or 'l'ong
