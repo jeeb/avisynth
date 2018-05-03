@@ -396,21 +396,6 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
   vi.height += top+bot;
 }
 
-// 8 bit uv to float
-static float uv8tof(int color) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float shift = 0.0f;
-#else
-  const float shift = 0.5f;
-#endif
-  return (color - 128) / 255.0f + shift;
-}
-
-// 8 bit fullscale to float
-static float c8tof(int color) {
-  return color / 255.0f;
-}
-
 template<typename pixel_t>
 static inline pixel_t GetHbdColorFromByte(uint8_t color, bool fullscale, int bits_per_pixel, bool chroma)
 {
@@ -420,7 +405,7 @@ static inline pixel_t GetHbdColorFromByte(uint8_t color, bool fullscale, int bit
     if (chroma)
       return (pixel_t)uv8tof(color);  // float, scale, 128=0.0f
     else
-      return (pixel_t)c8tof(color); // float, scale to [0..1) 128=0.5f
+      return (pixel_t)c8tof(color); // float, scale to [0..1]
   }
 }
 

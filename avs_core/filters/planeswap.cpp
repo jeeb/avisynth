@@ -380,16 +380,6 @@ static void fill_plane(BYTE* dstp, int rowsize, int height, int pitch, T val)
   }
 }
 
-// 8 bit uv to float
-static float uv8tof(int color) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float shift = 0.0f;
-#else
-  const float shift = 0.5f;
-#endif
-  return (color - 128) / 255.0f + shift;
-}
-
 PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);

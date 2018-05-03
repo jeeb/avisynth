@@ -179,6 +179,32 @@ public:
 
 /*** Inline helper methods ***/
 
+// 8 bit uv to float
+// 16-128-240 -> -112-0-112 -> -112/255..112/255
+static __inline float uv8tof(int color) {
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+  return (color - 128) / 255.0f + shift;
+}
+
+// 16-128-240 -> -112-0-112 -> -0.5..0.5
+static __inline float uv8tof_limited(int color) {
+  const float range = (float)(240 - 16);
+#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const float shift = 0.0f;
+#else
+  const float shift = 0.5f;
+#endif
+  return (color - 128) / range + shift;
+}
+
+// 8 bit fullscale to float
+static __inline float c8tof(int color) {
+  return color / 255.0f;
+}
 
 static __inline BYTE ScaledPixelClip(int i) {
   // return PixelClip((i+32768) >> 16);

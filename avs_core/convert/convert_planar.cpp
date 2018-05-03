@@ -620,22 +620,6 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
   }
 }
 
-// 8 bit uv to float
-static float uv8tof(int color) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float shift = 0.0f;
-#else
-  const float shift = 0.5f;
-#endif
-  return (color - 128) / 255.0f + shift;
-}
-
-// 8 bit fullscale to float
-static float c8tof(int color) {
-  return color / 255.0f;
-}
-
-
 void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel)
 {
   int Sy, Suv, Oy;
