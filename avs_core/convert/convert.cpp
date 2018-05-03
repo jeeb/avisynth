@@ -1529,7 +1529,7 @@ static void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int s
 
 // 10-16bits: sse4.1
 // 8 bits: sse2
-template<typename pixel_t, uint8_t targetbits, bool chroma>
+template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
 void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const float *srcp = reinterpret_cast<const float *>(srcp8);
@@ -1542,12 +1542,30 @@ void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, in
 
   const int max_pixel_value = (1 << targetbits) - 1;
   const __m128i max_pixel_value_128 = _mm_set1_epi16(max_pixel_value);
-  const float half_i = (float)(1 << (targetbits - 1));
-  const __m128 half_ps = _mm_set1_ps(0.5f);
-  const __m128 halfint_plus_rounder_ps = _mm_set1_ps(half_i + 0.5f);
-  const __m128 rounder_ps = _mm_set1_ps(0.5f);
 
-  __m128 factor_ps = _mm_set1_ps((float)max_pixel_value); // 0-1.0 -> 0..max_pixel_value
+  const int limit_lo_d = (fulld ? 0 : 16) << (targetbits - 8);
+  const int limit_hi_d = fulld ? ((1 << targetbits) - 1) : ((chroma ? 240 : 235) << (targetbits - 8));
+  const float range_diff_d = (float)limit_hi_d - limit_lo_d;
+
+  const int limit_lo_s = fulls ? 0 : 16;
+  const int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
+  const float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f;
+
+  // fulls fulld luma             luma_new   chroma                          chroma_new
+  // true  false 0..1              16-235     -0.5..0.5                      16-240       Y = Y * ((235-16) << (bpp-8)) + 16, Chroma= Chroma * ((240-16) << (bpp-8)) + 16
+  // true  true  0..1               0-255     -0.5..0.5                      0-128-255
+  // false false 16/255..235/255   16-235     (16-128)/255..(240-128)/255    16-240
+  // false true  16/255..235/255    0..1      (16-128)/255..(240-128)/255    0-128-255
+  const float factor = range_diff_d / range_diff_s;
+
+  const float half_i = (float)(1 << (targetbits - 1));
+#ifndef FLOAT_CHROMA_IS_ZERO_CENTERED
+  const __m128 half_ps = _mm_set1_ps(0.5f);
+#endif
+  const __m128 halfint_plus_limit_lo_plus_rounder_ps = _mm_set1_ps(half_i + limit_lo_d + 0.5f);
+  const __m128 limit_lo_plus_rounder_ps = _mm_set1_ps(limit_lo_d + 0.5f);
+
+  __m128 factor_ps = _mm_set1_ps(factor); // 0-1.0 -> 0..max_pixel_value
 
   for (int y = 0; y<src_height; y++)
   {
@@ -1559,20 +1577,20 @@ void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, in
       __m128 src_1 = _mm_load_ps(reinterpret_cast<const float *>(srcp + x + 4));
       if (chroma) {
 #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        //pixel = srcp0[x] * factor + half + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
+        //pixel = srcp0[x] * factor + half + limit_lo + 0.5f;
 #else
         // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
         src_0 = _mm_sub_ps(src_0, half_ps);
         src_1 = _mm_sub_ps(src_1, half_ps);
-        //pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
+        //pixel = (srcp0[x] - 0.5f) * factor + half + limit_lo + 0.5f;
 #endif
-        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), halfint_plus_rounder_ps);
-        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), halfint_plus_rounder_ps);
+        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), halfint_plus_limit_lo_plus_rounder_ps);
+        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), halfint_plus_limit_lo_plus_rounder_ps);
       }
       else {
-        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), rounder_ps);
-        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), rounder_ps);
-        // pixel = srcp0[x] * factor + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
+        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), limit_lo_plus_rounder_ps);
+        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), limit_lo_plus_rounder_ps);
+        // pixel = srcp0[x] * factor + limit_lo + 0.5f;
       }
       result_0 = _mm_cvttps_epi32(src_0); // truncate
       result_1 = _mm_cvttps_epi32(src_1);
@@ -1598,7 +1616,7 @@ void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, in
 #endif
 
 // float to 8 bit, float to 10/12/14/16 bit
-template<typename pixel_t, uint8_t targetbits, bool chroma>
+template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
 static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const float *srcp0 = reinterpret_cast<const float *>(srcp);
@@ -1612,7 +1630,20 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   const float max_dst_pixelvalue = (float)((1<<targetbits) - 1); // 255, 1023, 4095, 16383, 65535.0
   const float half = (float)(1 << (targetbits - 1));
 
-  float factor = (float)max_dst_pixelvalue;
+  const int limit_lo_d = (fulld ? 0 : 16) << (targetbits - 8);
+  const int limit_hi_d = fulld ? ((1 << targetbits) - 1) : ((chroma ? 240 : 235) << (targetbits - 8));
+  const float range_diff_d = (float)limit_hi_d - limit_lo_d;
+
+  const int limit_lo_s = fulls ? 0 : 16;
+  const int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
+  const float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f;
+
+  // fulls fulld luma             luma_new   chroma                          chroma_new
+  // true  false 0..1              16-235     -0.5..0.5                      16-240       Y = Y * ((235-16) << (bpp-8)) + 16, Chroma= Chroma * ((240-16) << (bpp-8)) + 16
+  // true  true  0..1               0-255     -0.5..0.5                      0-128-255
+  // false false 16/255..235/255   16-235     (16-128)/255..(240-128)/255    16-240
+  // false true  16/255..235/255    0..1      (16-128)/255..(240-128)/255    0-128-255
+  const float factor = range_diff_d / range_diff_s;
 
   for(int y=0; y<src_height; y++)
   {
@@ -1621,15 +1652,17 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
       float pixel;
       if (chroma) {
 #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        pixel = srcp0[x] * factor + half + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
+        pixel = srcp0[x];
 #else
         // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
-        pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
+        pixel = (srcp0[x] - 0.5f);
 #endif
+        pixel = pixel * factor + half + 0.5f;
       }
       else {
-        pixel = srcp0[x] * factor + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
+        pixel = srcp0[x] * factor + 0.5f;
       }
+      pixel = pixel + limit_lo_d;
       dstp0[x] = pixel_t(clamp(pixel, 0.0f, max_dst_pixelvalue)); // we clamp here!
     }
     dstp0 += dst_pitch;
@@ -2175,9 +2208,8 @@ static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int sr
   }
 }
 
-
 // 8 bit to float, 16/14/12/10 bits to float
-template<typename pixel_t, uint8_t sourcebits, bool chroma>
+template<typename pixel_t, uint8_t sourcebits, bool chroma, bool fulls, bool fulld>
 static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const pixel_t *srcp0 = reinterpret_cast<const pixel_t *>(srcp);
@@ -2189,10 +2221,25 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   int src_width = src_rowsize / sizeof(pixel_t);
 
   const float max_src_pixelvalue = (float)((1<<sourcebits) - 1); // 255, 1023, 4095, 16383, 65535.0
-  const float factor = 1 / max_src_pixelvalue;
+
+  const int limit_lo_s = (fulls ? 0 : 16) << (sourcebits - 8);
+  const int limit_hi_s = fulls ? ((1 << sourcebits) - 1) : ((chroma ? 240 : 235) << (sourcebits - 8));
+  const float range_diff_s = (float)limit_hi_s - limit_lo_s;
+
+  const int limit_lo_d = fulld ? 0 : 16;
+  const int limit_hi_d = fulld ? 255 : (chroma ? 240 : 235);
+  const float range_diff_d = (limit_hi_d - limit_lo_d) / 255.0f;
+
+  // fulls fulld luma             luma_new   chroma                          chroma_new
+  // true  false 0..1              16-235     -0.5..0.5                      16-240       Y = Y * ((235-16) << (bpp-8)) + 16, Chroma= Chroma * ((240-16) << (bpp-8)) + 16
+  // true  true  0..1               0-255     -0.5..0.5                      0-128-255
+  // false false 16/255..235/255   16-235     (16-128)/255..(240-128)/255    16-240
+  // false true  16/255..235/255    0..1      (16-128)/255..(240-128)/255    0-128-255
+  const float factor = range_diff_d / range_diff_s;
+
   const int half = 1 << (sourcebits - 1);
 
-  // 0..255,65535 -> 0..1.0 (or -0.5..+0.5)
+  // 0..255,65535 -> 0..1.0 (or -0.5..+0.5) or less if !full
 
   for(int y=0; y<src_height; y++)
   {
@@ -2201,13 +2248,19 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
       float pixel;
       if (chroma) {
 #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        pixel = (srcp0[x] - half) * factor; // -0.5..0.5
+        if (fulls)
+          pixel = srcp0[x] * factor - 0.5f; // 0..1->-0.5..0.5
+        else
+          pixel = (srcp0[x] - half) * factor; // -0.5..0.5 when fulld
 #else
-        pixel = srcp0[x] * factor; // 0..1.0
+        if (fulls)
+          pixel = srcp0[x] * factor; // 0..255->0..1
+        else
+          pixel = (srcp0[x] - half) * factor + 0.5f; // back to 0..1.0 (0.5 centered)
 #endif
       }
       else {
-        pixel = srcp0[x] * factor;
+        pixel = (srcp0[x] - limit_lo_s) * factor + limit_lo_d / 255.0f;
       }
       dstp0[x] = pixel;
     }
@@ -2728,17 +2781,37 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
 
   conv_function_chroma = nullptr; // used only for 32bit float
 
-  if (fulls != fulld)
-    env->ThrowError("ConvertBits: fulls and fulld should be the same");
+  if (bits_per_pixel < 32 && target_bitdepth < 32) {
+    // 32 bit source: fulls, fulld handled properly
+    if (fulls != fulld)
+      env->ThrowError("ConvertBits: fulls and fulld should be the same for non-32bit float formats");
+  }
+
+  // 8-16bit->32bits support fulls fulld, alpha is always full-full
+#define convert_uintN_to_float_functions(uint_X_t, source_bits) \
+      conv_function_a = convert_uintN_to_float_c<uint_X_t, source_bits, false, true, true>; /* full-full */ \
+      if (fulls && fulld) { \
+        conv_function = convert_uintN_to_float_c<uint_X_t, source_bits, false, true, true>; \
+        conv_function_chroma = convert_uintN_to_float_c<uint_X_t, source_bits, true, true, true>; \
+      } \
+      else if (fulls && !fulld) { \
+        conv_function = convert_uintN_to_float_c<uint_X_t, source_bits, false, true, false>; \
+        conv_function_chroma = convert_uintN_to_float_c<uint_X_t, source_bits, true, true, false>; \
+      } \
+      else if (!fulls && fulld) { \
+        conv_function = convert_uintN_to_float_c<uint_X_t, source_bits, false, false, true>; \
+        conv_function_chroma = convert_uintN_to_float_c<uint_X_t, source_bits, true, false, true>; \
+      } \
+      else if (!fulls && !fulld) { \
+        conv_function = convert_uintN_to_float_c<uint_X_t, source_bits, false, false, false>; \
+        conv_function_chroma = convert_uintN_to_float_c<uint_X_t, source_bits, true, false, false>; \
+      }
+
   // ConvertToFloat
   if (target_bitdepth == 32) {
-    // alpha copy is always full scale
-    // conv_function_chroma if float U/V is ever goes to +/-0.5 instead of generic 0..1.0
     if (pixelsize == 1) // 8->32 bit
     {
-      conv_function = convert_uintN_to_float_c<uint8_t, 8, false>;
-      conv_function_chroma = convert_uintN_to_float_c<uint8_t, 8, true>;
-      conv_function_a = conv_function;
+      convert_uintN_to_float_functions(uint8_t, 8)
     }
     else if (pixelsize == 2) // 16->32 bit
     {
@@ -2747,33 +2820,28 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         switch (bits_per_pixel)
         {
         case 10: 
-          conv_function = convert_uintN_to_float_c<uint16_t, 10, false>;
-          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 10, true>;
+          convert_uintN_to_float_functions(uint16_t, 10);
           break;
         case 12: 
-          conv_function = convert_uintN_to_float_c<uint16_t, 12, false>;
-          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 12, true>;
+          convert_uintN_to_float_functions(uint16_t, 12);
           break;
         case 14: 
-          conv_function = convert_uintN_to_float_c<uint16_t, 14, false>;
-          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 14, true>;
+          convert_uintN_to_float_functions(uint16_t, 14);
           break;
         case 16: 
-          conv_function = convert_uintN_to_float_c<uint16_t, 16, false>;
-          conv_function_chroma = convert_uintN_to_float_c<uint16_t, 16, true>;
+          convert_uintN_to_float_functions(uint16_t, 16);
           break;
         default: env->ThrowError("ConvertToFloat: unsupported bit depth");
         }
       }
       else {
-        conv_function = convert_uintN_to_float_c<uint16_t, 16, false>;
-        conv_function_chroma = convert_uintN_to_float_c<uint16_t, 16, true>;
+        convert_uintN_to_float_functions(uint16_t, 16);
       }
     }
     else
       env->ThrowError("ConvertToFloat: internal error 32->32 is not valid here");
 
-    conv_function_a = conv_function; // alpha is always full
+    conv_function_a = conv_function; 
 
     if (vi.NumComponents() == 1)
       vi.pixel_type = VideoInfo::CS_Y32;
@@ -2793,6 +2861,26 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
     return;
   }
   // ConvertToFloat end
+
+// 32bit->8-16bits support fulls fulld
+#define convert_32_to_uintN_functions(uint_X_t, target_bits) \
+      conv_function_a = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, true, true> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, false, true, true> : convert_32_to_uintN_c<uint_X_t, target_bits, false, true, true>; /* full-full */ \
+      if (fulls && fulld) { \
+        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, true, true> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, false, true, true> : convert_32_to_uintN_c<uint_X_t, target_bits, false, true, true>; \
+        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, true, true> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, true, true, true> : convert_32_to_uintN_c<uint_X_t, target_bits, true, true, true>; \
+      } \
+      else if (fulls && !fulld) { \
+        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, true, false> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, false, true, false> : convert_32_to_uintN_c<uint_X_t, target_bits, false, true, false>; \
+        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, true, false> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, true, true, false> : convert_32_to_uintN_c<uint_X_t, target_bits, true, true, false>; \
+      } \
+      else if (!fulls && fulld) { \
+        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, false, true> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, false, false, true> : convert_32_to_uintN_c<uint_X_t, target_bits, false, false, true>; \
+        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, false, true> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, true, false, true> : convert_32_to_uintN_c<uint_X_t, target_bits, true, false, true>; \
+      } \
+      else if (!fulls && !fulld) { \
+        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, false, false> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, false, false, false> : convert_32_to_uintN_c<uint_X_t, target_bits, false, false, false>; \
+        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, false, false> : sse4 ? convert_32_to_uintN_sse<uint_X_t, target_bits, true, false, false> : convert_32_to_uintN_c<uint_X_t, target_bits, true, false, false>; \
+      }
 
   // ConvertTo16bit() (10, 12, 14, 16)
   // Conversion to uint16_t targets
@@ -2974,35 +3062,28 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         format_change_only = true;
       }
     }
-    else if (pixelsize == 4) // 32->16 bit
+    else if (pixelsize == 4) // 32->10-16 bit
     {
-      // always from full scale
       if (truerange) {
         switch (target_bitdepth)
         {
-        case 10: 
-          conv_function = avx2 ? convert_32_to_uintN_avx2<uint16_t, 10, false> : sse4 ? convert_32_to_uintN_sse<uint16_t, 10, false> : convert_32_to_uintN_c<uint16_t, 10, false>; 
-          conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint16_t, 10, true> : sse4 ? convert_32_to_uintN_sse<uint16_t, 10, true> : convert_32_to_uintN_c<uint16_t, 10, true>;
+        case 10:
+          convert_32_to_uintN_functions(uint16_t, 10); // all variations of fulls fulld
           break;
         case 12: 
-          conv_function = avx2 ? convert_32_to_uintN_avx2<uint16_t, 12, false> : sse4 ? convert_32_to_uintN_sse<uint16_t, 12, false> : convert_32_to_uintN_c<uint16_t, 12, false>; 
-          conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint16_t, 12, true> : sse4 ? convert_32_to_uintN_sse<uint16_t, 12, true> : convert_32_to_uintN_c<uint16_t, 12, true>;
+          convert_32_to_uintN_functions(uint16_t, 12);
           break;
         case 14: 
-          conv_function = avx2 ? convert_32_to_uintN_avx2<uint16_t, 14, false> : sse4 ? convert_32_to_uintN_sse<uint16_t, 14, false> : convert_32_to_uintN_c<uint16_t, 14, false>; 
-          conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint16_t, 14, true> : sse4 ? convert_32_to_uintN_sse<uint16_t, 14, true> : convert_32_to_uintN_c<uint16_t, 14, true>;
+          convert_32_to_uintN_functions(uint16_t, 14);
           break;
         case 16: 
-          conv_function = avx2 ? convert_32_to_uintN_avx2<uint16_t, 16, false> : sse4 ? convert_32_to_uintN_sse<uint16_t, 16, false> : convert_32_to_uintN_c<uint16_t, 16, false>; 
-          conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint16_t, 16, true> : sse4 ? convert_32_to_uintN_sse<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
+          convert_32_to_uintN_functions(uint16_t, 16);
           break;
         }
       }
       else {
-        conv_function = avx2 ? convert_32_to_uintN_avx2<uint16_t, 16, false> : sse4 ? convert_32_to_uintN_sse<uint16_t, 16, false> : convert_32_to_uintN_c<uint16_t, 16, false>;
-        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint16_t, 16, true> : sse4 ? convert_32_to_uintN_sse<uint16_t, 16, true> : convert_32_to_uintN_c<uint16_t, 16, true>;
+        convert_32_to_uintN_functions(uint16_t, 16);
       }
-      conv_function_a = conv_function;
     }
     else {
       env->ThrowError("ConvertTo16bit: unsupported bit depth");
@@ -3083,10 +3164,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
     }
     else if (vi.ComponentSize() == 4) // 32->8 bit, no dithering option atm
     {
-      // full scale
-      conv_function = avx2 ? convert_32_to_uintN_avx2<uint8_t, 8, false> : sse2 ? convert_32_to_uintN_sse<uint8_t, 8, false> : convert_32_to_uintN_c<uint8_t, 8, false>;
-      conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint8_t, 8, true> : sse2 ? convert_32_to_uintN_sse<uint8_t, 8, true> : convert_32_to_uintN_c<uint8_t, 8, true>;
-      conv_function_a = conv_function;
+      convert_32_to_uintN_functions(uint8_t, 8); // all combinations of fulls, fulld
     }
     else
       env->ThrowError("ConvertTo8bit: unsupported bit depth");
@@ -3163,7 +3241,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   int dither_type = args[3].AsInt(-1);
   bool dither_defined = args[3].Defined();
   if(dither_defined && dither_type != 1 && dither_type != 0 && dither_type != -1)
-    env->ThrowError("ConvertBits: invalid dither type parameter. Only -1 (disabled), 0 (ordered dither) or 1 (Floys-S) is allowed");
+    env->ThrowError("ConvertBits: invalid dither type parameter. Only -1 (disabled), 0 (ordered dither) or 1 (Floyd-S) is allowed");
 
   if (dither_type >= 0) {
     if (source_bitdepth < target_bitdepth)
@@ -3242,11 +3320,8 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     // source_16_bit.ConvertTo16bit(bits=10, truerange=true)  : downscale range
     // source_16_bit.ConvertTo16bit(bits=10, truerange=false) : leaves data, only format conversion
 
-  if (fulls != fulld)
-    env->ThrowError("ConvertBits: fulls and fulld has to be the same at the moment");
-
-  if ((!fulls || !fulld) && (target_bitdepth == 32 || source_bitdepth == 32))
-    env->ThrowError("ConvertBits: fulls and fulld is always true for float");
+  if (fulls != fulld && target_bitdepth != 32 && source_bitdepth != 32)
+    env->ThrowError("ConvertBits: fulls must be the same as fulld for non 32bit target and source");
 
   return new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, fulls, fulld, dither_bitdepth, env);
 }
