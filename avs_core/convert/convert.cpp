@@ -600,8 +600,6 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   const char* const matrix = args[1].AsString(0);
   VideoInfo vi = clip->GetVideoInfo();
 
-  // todo bitdepth conversion on-the-fly
-
   // common Create for all CreateRGB24/32/48/64/Planar(RGBP:-1, RGPAP:-2) using user_data
   int target_rgbtype = (int)reinterpret_cast<intptr_t>(user_data);
   // -1,-2: Planar RGB(A)
@@ -610,14 +608,27 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 
   // planar YUV-like
   if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) {
+    bool needConvertFinalBitdepth = false;
+    int finalBitdepth = -1;
+
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
     // conversion to planar or packed RGB is always from 444
     clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
-    if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
-        env->ThrowError("ConvertToRGB%d: conversion is allowed only from 8 bit colorspace",target_rgbtype);
-    if((target_rgbtype==48 || target_rgbtype==64) && vi.BitsPerComponent() != 16)
-        env->ThrowError("ConvertToRGB%d: conversion is allowed only from exact 16 bit colorspace",target_rgbtype);
-    if(target_rgbtype==0 && vi.ComponentSize()==4)
+    if ((target_rgbtype == 24 || target_rgbtype == 32)) {
+      if (vi.BitsPerComponent() != 8) {
+        needConvertFinalBitdepth = true;
+        finalBitdepth = 8;
+        target_rgbtype = (target_rgbtype == 24) ? -1 : -2; // planar rgb intermediate
+      }
+    }
+    else if ((target_rgbtype == 48 || target_rgbtype == 64)) {
+      if (vi.BitsPerComponent() != 16) {
+        needConvertFinalBitdepth = true;
+        finalBitdepth = 16;
+        target_rgbtype = (target_rgbtype == 48) ? -1 : -2; // planar rgb intermediate
+      }
+    }
+    else if(target_rgbtype==0 && vi.ComponentSize()==4)
         env->ThrowError("ConvertToRGB: conversion is allowed only from 8 or 16 bit colorspaces");
     int rgbtype_param;
     bool reallyConvert = true;
@@ -652,8 +663,21 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
       }
       break; // RGB64
     }
-    if(reallyConvert)
-      return new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), rgbtype_param , env);
+    if (reallyConvert) {
+      clip = new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), rgbtype_param, env);
+
+      if (needConvertFinalBitdepth) {
+        // from any planar rgb(a) -> rgb24/32/48/64
+        clip = new ConvertBits(clip, -1 /*dither_type*/, finalBitdepth /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+        vi = clip->GetVideoInfo();
+
+        // source here is always a 8/16bit planar RGB(A), finally it has to be converted to RGB24/32/48/64
+        const bool isRGBA = target_rgbtype == -2;
+        clip = new PlanarRGBtoPackedRGB(clip, isRGBA);
+        vi = clip->GetVideoInfo();
+      }
+      return clip;
+    }
   }
 
   if (haveOpts)
@@ -662,26 +686,44 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   // planar RGB-like source
   if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
   {
-      if (target_rgbtype < 0) // planar to planar
-      {
-        if (vi.IsPlanarRGB()) {
-          if (target_rgbtype == -1)
-            return clip;
-          // prgb->prgba create with default alpha
-          return new AddAlphaPlane(clip, nullptr, 0.0f, false, env);
-        }
-        // planar rgba source
-        if(target_rgbtype==-2)
-           return clip;
-        return new RemoveAlphaPlane(clip, env);
+    if (target_rgbtype < 0) // planar to planar
+    {
+      if (vi.IsPlanarRGB()) {
+        if (target_rgbtype == -1)
+          return clip;
+        // prgb->prgba create with default alpha
+        return new AddAlphaPlane(clip, nullptr, 0.0f, false, env);
       }
-      if(vi.ComponentSize() == 4)
-          env->ThrowError("ConvertToRGB: conversion from float colorspace is not supported.");
-      if((target_rgbtype==24 || target_rgbtype==32) && vi.ComponentSize()!=1)
-          env->ThrowError("ConvertToRGB: conversion is allowed only from 8 bit colorspace");
-      if((target_rgbtype==48 || target_rgbtype==64) && vi.ComponentSize()!=2)
-          env->ThrowError("ConvertToRGB: conversion is allowed only from 16 bit colorspace");
-      return new PlanarRGBtoPackedRGB(clip, (target_rgbtype==32 || target_rgbtype==64));
+      // planar rgba source
+      if (target_rgbtype == -2)
+        return clip;
+      return new RemoveAlphaPlane(clip, env);
+    }
+
+    // planar to packed 24/32/48/64
+    bool needConvertFinalBitdepth = false;
+    int finalBitdepth = -1;
+
+    if (target_rgbtype == 24 || target_rgbtype == 32) {
+      if (vi.BitsPerComponent() != 8) {
+        needConvertFinalBitdepth = true;
+        finalBitdepth = 8;
+      }
+    }
+    else if (target_rgbtype == 48 || target_rgbtype == 64) {
+      if (vi.BitsPerComponent() != 16) {
+        needConvertFinalBitdepth = true;
+        finalBitdepth = 16;
+      }
+    }
+
+    if (needConvertFinalBitdepth) {
+      // from any bitdepth planar rgb(a) -> 8/16 bits
+      clip = new ConvertBits(clip, -1 /*dither_type*/, finalBitdepth /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      vi = clip->GetVideoInfo();
+    }
+
+    return new PlanarRGBtoPackedRGB(clip, (target_rgbtype == 32 || target_rgbtype == 64));
   }
 
   // YUY2
