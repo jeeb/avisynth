@@ -392,7 +392,7 @@ void turn_left_rgb64_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_he
 
 void turn_right_rgb64_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-    turn_right_plane_c<uint64_t>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 3 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+    turn_right_plane_c<uint64_t>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 8 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
 }
 
 
@@ -407,10 +407,10 @@ static inline void turn_right_plane_64_sse2(const BYTE* srcp, BYTE* dstp, int sr
         BYTE* d0 = dstp + y * 8;
         for (int x = 0; x < w; x += 16)
         {
-            __m128i a01 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
-            __m128i b01 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x - src_pitch));
-            __m128i ab0 = _mm_unpacklo_epi64(a01, b01);
-            __m128i ab1 = _mm_unpacklo_epi64(a01, b01);
+            __m128i a01 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));               // a0 a1
+            __m128i b01 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x - src_pitch));   // b0 b1
+            __m128i ab0 = _mm_unpacklo_epi64(a01, b01); // a0 b0
+            __m128i ab1 = _mm_unpackhi_epi64(a01, b01); // a1 b1
             _mm_storeu_si128(reinterpret_cast<__m128i*>(d0), ab0);
             _mm_storeu_si128(reinterpret_cast<__m128i*>(d0 + dst_pitch), ab1);
             d0 += 2 * dst_pitch;
