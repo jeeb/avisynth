@@ -415,7 +415,12 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
       fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 1 << (vi.BitsPerComponent() - 1));
       break;
     case 4:
-      fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, 0.5f);
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+      const float shift = 0.5f;
+#else
+      const float shift = 0.0f;
+#endif
+      fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, shift);
       break;
     }
     return frame;
