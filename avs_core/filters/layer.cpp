@@ -1210,6 +1210,12 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
   const int width = rowsize / pixelsize;
 
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+  const float chroma_center_f = 0.5f;
+#else
+  const float chroma_center_f = 0.0f;
+#endif
+
   if (input_type == VideoInfo::CS_BGR32 || input_type == VideoInfo::CS_BGR64) {
     if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // RGB32->RGB32, RGB64->RGB64
     {
@@ -1353,12 +1359,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           case 1: fill_chroma<BYTE>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
           case 4: 
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-            const float shift = 0.5f;
-#else
-            const float shift = 0.0f;
-#endif
-            fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, shift); 
+            fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, chroma_center_f); 
             break;
           }
         }
@@ -1549,12 +1550,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           case 1: fill_chroma<uint8_t>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
           case 4: 
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-            const float shift = 0.5f;
-#else
-            const float shift = 0.0f;
-#endif
-            fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, shift);
+            fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, chroma_center_f);
             break;
           }
         }
@@ -1744,12 +1740,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           switch (pixelsize) {
           case 1: fill_chroma<BYTE>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-          const float shift = 0.5f;
-#else
-          const float shift = 0.0f;
-#endif
-          case 4: fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, shift); break;
+          case 4: fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, chroma_center_f); break;
           }
         }
         return dst;
