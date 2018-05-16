@@ -266,6 +266,8 @@ extern const AVSFunction Script_functions[] = {
   { "StrToUtf8", BUILTIN_FUNC_PREFIX, "s", StrToUtf8 }, // 170601-
   { "StrFromUtf8", BUILTIN_FUNC_PREFIX, "s", StrFromUtf8 }, // 170601-
 
+  { "IsFloatUvZeroBased", BUILTIN_FUNC_PREFIX, "", IsFloatUvZeroBased }, // 180516-
+
 #ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
@@ -1723,6 +1725,17 @@ AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env) {
 
 }
 */
+
+AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment* env)
+{
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+  return false;
+#else
+  return true;
+#endif
+}
+
+
 #ifdef NEW_AVSVALUE
 
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env)

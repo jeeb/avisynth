@@ -272,6 +272,8 @@ AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env); // avs+ 
 AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170601
 AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170601
 
+AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment* env); // r227x- (180516-)
+
 #ifdef NEW_AVSVALUE
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env);
