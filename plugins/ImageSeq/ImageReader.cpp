@@ -562,10 +562,10 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
     }
     else if (pixelsize == 4) { // float
       const float half = 0.5f;
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-      const float halfUV = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
       const float halfUV = 0.5f;
+#else
+      const float halfUV = 0.0f;
 #endif
       std::fill_n((float *)frame->GetWritePtr(), size / 4, half); // Grey frame
 

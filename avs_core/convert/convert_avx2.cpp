@@ -91,7 +91,7 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
   const float factor = range_diff_d / range_diff_s;
 
   const float half_i = (float)(1 << (targetbits - 1));
-#ifndef FLOAT_CHROMA_IS_ZERO_CENTERED
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const __m256 half_ps = _mm256_set1_ps(0.5f);
 #endif
   const __m256 halfint_plus_limit_lo_plus_rounder_ps = _mm256_set1_ps(half_i + limit_lo_d + 0.5f);
@@ -108,13 +108,13 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
       __m256 src_0 = _mm256_load_ps(reinterpret_cast<const float *>(srcp + x));
       __m256 src_1 = _mm256_load_ps(reinterpret_cast<const float *>(srcp + x + 8));
       if (chroma) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        //pixel = srcp0[x] * factor + half + limit_lo + 0.5f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
         // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
         src_0 = _mm256_sub_ps(src_0, half_ps);
         src_1 = _mm256_sub_ps(src_1, half_ps);
         //pixel = (srcp0[x] - 0.5f) * factor + half + limit_lo + 0.5f;
+#else
+        //pixel = (srcp0[x]       ) * factor + half + limit_lo + 0.5f;
 #endif
         src_0 = _mm256_fmadd_ps(src_0, factor_ps, halfint_plus_limit_lo_plus_rounder_ps);
         src_1 = _mm256_fmadd_ps(src_1, factor_ps, halfint_plus_limit_lo_plus_rounder_ps);

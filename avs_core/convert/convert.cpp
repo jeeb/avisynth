@@ -1601,7 +1601,7 @@ void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, in
   const float factor = range_diff_d / range_diff_s;
 
   const float half_i = (float)(1 << (targetbits - 1));
-#ifndef FLOAT_CHROMA_IS_ZERO_CENTERED
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const __m128 half_ps = _mm_set1_ps(0.5f);
 #endif
   const __m128 halfint_plus_limit_lo_plus_rounder_ps = _mm_set1_ps(half_i + limit_lo_d + 0.5f);
@@ -1618,13 +1618,13 @@ void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, in
       __m128 src_0 = _mm_load_ps(reinterpret_cast<const float *>(srcp + x));
       __m128 src_1 = _mm_load_ps(reinterpret_cast<const float *>(srcp + x + 4));
       if (chroma) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        //pixel = srcp0[x] * factor + half + limit_lo + 0.5f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
         // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
         src_0 = _mm_sub_ps(src_0, half_ps);
         src_1 = _mm_sub_ps(src_1, half_ps);
         //pixel = (srcp0[x] - 0.5f) * factor + half + limit_lo + 0.5f;
+#else
+        //pixel = (srcp0[x]       ) * factor + half + limit_lo + 0.5f;
 #endif
         src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), halfint_plus_limit_lo_plus_rounder_ps);
         src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), halfint_plus_limit_lo_plus_rounder_ps);
@@ -1693,11 +1693,11 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     {
       float pixel;
       if (chroma) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        pixel = srcp0[x];
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
         // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
         pixel = (srcp0[x] - 0.5f);
+#else
+        pixel = srcp0[x];
 #endif
         pixel = pixel * factor + half + 0.5f;
       }
@@ -2289,16 +2289,16 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
     {
       float pixel;
       if (chroma) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        if (fulls)
-          pixel = srcp0[x] * factor - 0.5f; // 0..1->-0.5..0.5
-        else
-          pixel = (srcp0[x] - half) * factor; // -0.5..0.5 when fulld
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
         if (fulls)
           pixel = srcp0[x] * factor; // 0..255->0..1
         else
           pixel = (srcp0[x] - half) * factor + 0.5f; // back to 0..1.0 (0.5 centered)
+#else
+        if (fulls)
+          pixel = srcp0[x] * factor - 0.5f; // 0..1->-0.5..0.5
+        else
+          pixel = (srcp0[x] - half) * factor; // -0.5..0.5 when fulld
 #endif
       }
       else {
@@ -3402,7 +3402,7 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
         if (chroma && conv_function_chroma != nullptr)
           // 32bit float needs separate conversion (possible chroma -0.5 .. 0.5 option)
           // until then the conv_function_ch behaves the same as conv_function
-          // see #ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+          // see #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
           conv_function_chroma(src->GetReadPtr(plane), dst->GetWritePtr(plane),
             src->GetRowSize(plane), src->GetHeight(plane),
             src->GetPitch(plane), dst->GetPitch(plane));

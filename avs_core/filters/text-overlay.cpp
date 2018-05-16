@@ -374,10 +374,10 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
   else if (bits_per_pixel == 32) { // float. assume 0..1.0 scale
     const float shifter_inv_f = 1.0f / (1 << shifter);
     const float a_factor = shifter_inv_f / 256.0f;
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-    const float middle_shift_f = 0.5f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
     const float middle_shift_f = 0.0f;
+#else
+    const float middle_shift_f = 0.5f;
 #endif
     for (int y=yb; y<=yt; y+=stepY) {
       for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {

@@ -133,19 +133,16 @@ static void get_limits(luma_chroma_limits_t &d, int bits_per_pixel) {
     d.tv_range_hi_luma_f = tv_range_hi_luma_8 / 255.0f;
     d.full_range_low_luma_f = 0.0f;
     d.full_range_hi_luma_f = 1.0f;
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-    d.tv_range_low_chroma_f = (tv_range_lo_chroma_8 - 128) / 255.0f; // -112
-    d.tv_range_hi_chroma_f = (tv_range_hi_chroma_8 - 128) / 255.0f; // 112
-    d.middle_chroma_f = 0.0f;
-    d.full_range_low_chroma_f = (0 - 128) / 255.0f;
-    d.full_range_hi_chroma_f = (255 - 128) / 255.0f;
-#else
-    d.tv_range_low_chroma_f = tv_range_lo_chroma_8 / 255.0f;
-    d.tv_range_hi_chroma_f = tv_range_hi_chroma_8 / 255.0f;
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
     d.middle_chroma_f = 0.5f;
-    d.full_range_low_chroma_f = 0 / 255.0f;
-    d.full_range_hi_chroma_f = 255 / 255.0f;
+#else
+    d.middle_chroma_f = 0.0f;
 #endif
+    d.tv_range_low_chroma_f = (tv_range_lo_chroma_8 - 128) / 255.0f + d.middle_chroma_f; // -112
+    d.tv_range_hi_chroma_f = (tv_range_hi_chroma_8 - 128) / 255.0f + d.middle_chroma_f; // 112
+    d.full_range_low_chroma_f = d.middle_chroma_f - 0.5f; // -0.5..0.5 or 0..1.0
+    d.full_range_hi_chroma_f = d.middle_chroma_f + 0.5f;
+
     d.range_luma_f = d.tv_range_hi_luma_f - d.tv_range_low_luma_f;
     d.range_chroma_f = d.tv_range_hi_chroma_f - d.tv_range_low_chroma_f;
   }

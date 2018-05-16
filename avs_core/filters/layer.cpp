@@ -873,10 +873,10 @@ static void invert_plane_uint16_c(BYTE* frame, int pitch, int row_size, int heig
 
 static void invert_plane_float_c(BYTE* frame, int pitch, int row_size, int height, bool chroma) {
   const int width = row_size / sizeof(float);
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-    const float max = chroma ? 0.0f : 1.0f;
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+  const float max = 1.0f;
 #else
-    const float max = 1.0f;
+  const float max = chroma ? 0.0f : 1.0f;
 #endif
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {

@@ -1041,10 +1041,10 @@ static void convert_planarrgb_to_yuv_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
 {
   // 16 bit uint16_t (unsigned range)
   // 32 bit float
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float shift = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float shift = 0.5f;
+#else
+  const float shift = 0.0f;
 #endif
 
   __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? shift : (float)(1u << (bits_per_pixel - 1)));
@@ -1195,10 +1195,10 @@ static void convert_planarrgb_to_yuv_float_c(BYTE *(&dstp)[3], int (&dstPitch)[3
   const float limit = 1.0f; // we clamp on RGB conversions for float
   const float limit_lo_chroma = -0.5f; // checked before shift
   const float limit_hi_chroma = 0.5f;
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float half = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float half = 0.5f;
+#else
+  const float half = 0.0f;
 #endif
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -1671,10 +1671,10 @@ static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
 {
   // 16 bit uint16_t (unsigned range)
   // 32 bit float
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float shift = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float shift = 0.5f;
+#else
+  const float shift = 0.0f;
 #endif
 
   __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? shift : (float)(1u << (bits_per_pixel - 1)));
@@ -2339,10 +2339,10 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
       for (int y = 0; y < vi.height; y++) {
         for (int x = 0; x < vi.width; x++) {
           float Y = reinterpret_cast<const float *>(srcY)[x] + matrix.offset_y_f;
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-          const float shift = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
           const float shift = 0.5f;
+#else
+          const float shift = 0.0f;
 #endif
           float U = reinterpret_cast<const float *>(srcU)[x] - shift;
           float V = reinterpret_cast<const float *>(srcV)[x] - shift;

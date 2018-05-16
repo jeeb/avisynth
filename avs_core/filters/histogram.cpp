@@ -549,10 +549,10 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
 
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float middle_f = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float middle_f = 0.5f;
+#else
+  const float middle_f = 0.0f;
 #endif
 
   // clear everything
@@ -750,10 +750,10 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
 
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  const float middle_f = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float middle_f = 0.5f;
+#else
+  const float middle_f = 0.0f;
 #endif
 
   // clear everything
@@ -861,10 +861,10 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
       }
     }
     else { // float
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-      const float shift = 0.5;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
       const float shift = 0.0;
+#else
+      const float shift = 0.5;
 #endif
       // 32 bit data on show_bits bit sized screen
       for (int y = 0; y < h; y++) {
@@ -1211,10 +1211,10 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         // float
         const float *srcp32 = reinterpret_cast<const float *>(srcp);
         const float multiplier = (float)(show_size - 1);
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        const float preshift = 0.5f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
         const float preshift = 0.0f;
+#else
+        const float preshift = 0.5f;
 #endif
         if (plane == PLANAR_U || plane == PLANAR_V) {
           for (int y = 0; y < h; y++) {

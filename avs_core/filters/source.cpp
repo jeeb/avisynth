@@ -174,10 +174,10 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
         default: // case 4:
           float val_f;
           if (plane == PLANAR_U || plane == PLANAR_V) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-            float shift = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
             float shift = 0.5f;
+#else
+            float shift = 0.0f;
 #endif
             val_f = float(val_i - 128) / 255.0f + shift; // 32 bit float chroma 128=0.5
           }
@@ -496,12 +496,12 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   pitchY /= sizeof(pixel_t);
   pitchUV /= sizeof(pixel_t);
 
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  int chroma_offset_i = 0;
-  float chroma_offset_f = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   int chroma_offset_i = 128;
   float chroma_offset_f = 0.5f;
+#else
+  int chroma_offset_i = 0;
+  float chroma_offset_f = 0.0f;
 #endif
 
   const int shift = sizeof(pixel_t) == 4 ? 0 : (bits_per_pixel - 8);
@@ -611,12 +611,12 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
   factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
 
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  int chroma_offset_i = 0;
-  float chroma_offset_f = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   int chroma_offset_i = 128;
   float chroma_offset_f = 0.5f;
+#else
+  int chroma_offset_i = 0;
+  float chroma_offset_f = 0.0f;
 #endif
 
 
@@ -727,12 +727,12 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
   factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
 
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-  int chroma_offset_i = 0;
-  float chroma_offset_f = 0.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   int chroma_offset_i = 128;
   float chroma_offset_f = 0.5f;
+#else
+  int chroma_offset_i = 0;
+  float chroma_offset_f = 0.0f;
 #endif
 
 

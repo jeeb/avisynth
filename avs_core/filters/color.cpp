@@ -261,12 +261,11 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
     pixel_max = 1.0;
     tv_range_lo_luma = tv_range_lo_luma_8 / 256.0;
     tv_range_hi_luma = tv_range_hi_luma_8 / 256.0;
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
     tv_range_lo_chroma = (tv_range_lo_chroma_8 - 128.0) / 256.0; // -112
     tv_range_hi_chroma = (tv_range_hi_chroma_8 - 128.0) / 256.0; // 112
-#else
-    tv_range_lo_chroma = tv_range_lo_chroma_8 / 256.0;
-    tv_range_hi_chroma = tv_range_hi_chroma_8 / 256.0;
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+    tv_range_lo_chroma = tv_range_lo_chroma + 0.5; // -112
+    tv_range_hi_chroma = tv_range_hi_chroma + 0.5; // 112
 #endif
   }
   else {
@@ -335,11 +334,17 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
   // Applying contrast
   //  value = (value - 0.5) * contrast + 0.5;
   if (f32) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-    ss << " " << contrast << " *";
+    // Although it is possible, it doesn't make sense to apply this setting to the luma of the signal. 
+    if (config->plane == PLANAR_Y) {
+      ss << " 0.5 - " << contrast << " * 0.5 +";
+    }
+    else {
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+      ss << " 0.5 - " << contrast << " * 0.5 +";
 #else
-    ss << " 0.5 - " << contrast << " * 0.5 +";
+      ss << " " << contrast << " *";
 #endif
+    }
   }
   else {
     ss << " 0.5 - " << contrast << " * 0.5 +";
@@ -524,16 +529,16 @@ static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, 
       real_min = reinterpret_cast<const float *>(pSrc)[0];
       real_max = real_min;
       if (chroma) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-        const float shift = 32768.0f;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
         const float shift = 0.0f;
+#else
+        const float shift = 32768.0f;
 #endif
         for (int y = 0; y < height; y++)
         {
           for (int x = 0; x < width; x++)
           {
-            // -0.5..0.5 to 0..65535 when FLOAT_CHROMA_IS_ZERO_CENTERED
+            // -0.5..0.5 (0..1.0 when FLOAT_CHROMA_IS_HALF_CENTERED) to 0..65535
             // see also: ConditionalFunctions MinMax
             const float pixel = reinterpret_cast<const float *>(pSrc)[x];
             freq[clamp((int)(65535.0f*pixel + shift + 0.5f), 0, 65535)]++;
@@ -570,7 +575,7 @@ static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, 
       data->average = sum / (height * width);
       data->real_max = real_max;
       data->real_min = real_min;
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
       // loose min and max was shifted by half of 16bit range. We still keep here the range
       if (chroma) {
         data->loose_max = data->loose_max - 32768;
@@ -638,10 +643,10 @@ static void coloryuv_autowhite(const ColorYUVPlaneData* dY, const ColorYUVPlaneD
   int bits_per_pixel)
 {
   if (bits_per_pixel == 32) {
-#ifdef FLOAT_CHROMA_IS_ZERO_CENTERED
-    double middle = 0.0;
-#else
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
     double middle = 0.5;
+#else
+    double middle = 0.0;
 #endif
     cU->offset = (middle - dU->average) * 256; // parameter is in 256 range
     cV->offset = (middle - dV->average) * 256;
