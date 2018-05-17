@@ -273,6 +273,7 @@ AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env); // avs+ 17060
 AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170601
 
 AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment* env); // r227x- (180516-)
+AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env); // r227x- (180517-)
 
 #ifdef NEW_AVSVALUE
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);

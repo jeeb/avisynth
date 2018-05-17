@@ -267,6 +267,7 @@ extern const AVSFunction Script_functions[] = {
   { "StrFromUtf8", BUILTIN_FUNC_PREFIX, "s", StrFromUtf8 }, // 170601-
 
   { "IsFloatUvZeroBased", BUILTIN_FUNC_PREFIX, "", IsFloatUvZeroBased }, // 180516-
+  { "BuildPixelType", BUILTIN_FUNC_PREFIX, "[family]s[bits]i[chroma]i[compat]b[oldnames]b[sample_clip]c", BuildPixelType }, // 180517-
 
 #ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
@@ -1735,6 +1736,159 @@ AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment* env)
 #endif
 }
 
+AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env)
+{
+  //  { "BuildPixelType", BUILTIN_FUNC_PREFIX, "[family]s[bits]i[chroma]i[compat]b[oldnames]b[sample_clip]c", BuildPixelType }, // 180517-
+  // family: YUV, YUVA, RGB, RGBA, Y
+  // bits: 8, 10, 12, 14, 16, 32
+  // chroma: for YUV(A) 420,422,444,411. Ignored for RGB(A) and Y
+  // compat (default false): returns packed rgb formats for 8/16 bits (RGB default: planar RGB)
+  // oldnames (default false): returns YV12/YV16/YV24 instead of YUV420P8/YUV422P8/YUV444P8
+  // sample_clip: when supported, its format is overridden by specified parameters (e.g. only change bits=10)
+
+  const bool hasTemplate = args[5].Defined();
+
+  if (!args[0].Defined() && !hasTemplate)
+    env->ThrowError("BuildPixelType error: no color space 'family' or template 'sample_clip' specified");
+  if (!args[1].Defined() && !hasTemplate)
+    env->ThrowError("BuildPixelType error: no 'bits' or  template 'sample_clip' specified");
+
+  std::string family;
+  if (!args[0].Defined() && hasTemplate) {
+    // no family parameter: use template
+    VideoInfo const &vi = args[5].AsClip()->GetVideoInfo();
+    if (vi.IsY())
+      family = "Y";
+    else if (vi.IsPlanar()) {
+      if (vi.IsYUV())
+        family = "YUV";
+      else if (vi.IsYUVA())
+        family = "YUVA";
+      else if (vi.IsPlanarRGB())
+        family = "RGB";
+      else if (vi.IsPlanarRGBA())
+        family = "RGBA";
+      else
+        env->ThrowError("BuildPixelType error: invalid sample_clip format");
+    }
+    else if (vi.IsRGB24() || vi.IsRGB48())
+      family = "RGB";
+    else if (vi.IsRGB32() || vi.IsRGB64())
+      family = "RGBA";
+    else
+      env->ThrowError("BuildPixelType error: invalid sample_clip format");
+  }
+  else {
+    family = args[0].AsString();
+    for (auto & c : family) c = toupper(c); // uppercase input string
+  }
+
+  const bool isYUV = family == "YUV";
+  const bool isYUVA = family == "YUVA";
+  const bool isRGB = family == "RGB";
+  const bool isRGBA = family == "RGBA";
+  const bool isY = family == "Y";
+
+  if(!isYUV && !isYUVA && !isRGB && !isRGBA && !isY)
+    env->ThrowError("BuildPixelType error: wrong 'family'.", family.c_str());
+
+  int bits;
+  if (!args[1].Defined() && hasTemplate) {
+    // no bits parameter: get it from template sample_clip
+    bits = args[5].AsClip()->GetVideoInfo().BitsPerComponent();
+  } else {
+    bits = args[1].AsInt();
+  }
+
+  if (bits != 8 && bits != 10 && bits != 12 && bits != 14 && bits != 16 && bits != 32)
+    env->ThrowError("BuildPixelType error: 'bits'=%d is not valid.", bits);
+
+  int chroma;
+
+  if (isYUV || isYUVA) {
+    if (!args[2].Defined() && hasTemplate) {
+      // no chroma parameter: subsampling from template clip
+      VideoInfo const &vi = args[5].AsClip()->GetVideoInfo();
+      const int hs = vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int vs = vi.GetPlaneHeightSubsampling(PLANAR_U);
+      if (hs == 0 && vs == 0) chroma = 444;
+      else if (hs == 1 && vs == 0) chroma = 422;
+      else if (hs == 1 && vs == 1) chroma = 420;
+      else if (hs == 2 && vs == 0) chroma = 411;
+      else
+        env->ThrowError("BuildPixelType error: sample_clip has invalid chroma subsampling.");
+    }
+    else {
+      chroma = args[2].AsInt(444);
+    }
+  }
+  else {
+    chroma = 444; // n/a
+  }
+  chroma = isYUV || isYUVA ? args[2].AsInt(444) : 444; // only for YUV(A)
+  if(chroma != 444 && chroma != 422 && chroma != 420 && chroma != 411)
+    env->ThrowError("BuildPixelType error: 'chroma' must be 444, 422, 420 or 411.");
+
+  // packed RGB compatibility formats only for RGB(A)
+  const bool compat = isRGB || isRGBA ? args[3].AsBool(false) : false;
+
+  // e.g. return YV12 instead of YUV420P8
+  const bool oldNames = args[4].AsBool(false);
+
+  if(compat && bits != 8 && bits != 16)
+    env->ThrowError("BuildPixelType error: 'compat'=true requires bits=8 or 16 for RGB(A).");
+
+  if(chroma == 411 && bits != 8)
+    env->ThrowError("BuildPixelType error: 411 is supported only for 8 bits.");
+
+  if (compat) {
+    if (isRGB && bits == 8)
+      return "RGB24";
+    if (isRGB && bits == 16)
+      return "RGB48";
+    if (isRGBA && bits == 8)
+      return "RGB32";
+    return "RGB64"; // RGBA, bits==16
+  }
+
+  std::string format;
+
+  if (isYUV || isYUVA || isY)
+    format = family;
+  else if (isRGB)
+    format = "RGBP";
+  else if (isRGBA)
+    format = "RGBAP";
+
+  if (isYUV || isYUVA) {
+    if (chroma == 444)
+      format += "444";
+    else if(chroma == 422)
+      format += "422";
+    else if (chroma == 420)
+      format += "420";
+    else if (chroma == 411)
+      format += "411";
+    
+    format = format + "P";
+  }
+
+  if (bits == 32)
+      format += (isY ? "32" : "S"); // no "YS", only "Y32"
+  else
+    format = format + std::to_string(bits);
+
+  if (oldNames) {
+    if (format == "YUV420" || format == "YUV420P8") format = "YV12";
+    else if (format == "YUV422" || format == "YUV422P8") format = "YV16";
+    else if (format == "YUV444" || format == "YUV444P8") format = "YV24";
+  }
+  
+  // 411 has no alternative naming
+  if (format == "YUV411") format = "YV411";
+
+  return env->SaveString(format.c_str());
+}
 
 #ifdef NEW_AVSVALUE
 
