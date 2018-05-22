@@ -3903,7 +3903,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         //   range_half : autoscaled 128 or 0.5 for float, (or 0.0 for chroma with zero-base float chroma version)
         //   range_max  : 255 / 1023 / 4095 / 16383 / 65535 or 1.0 for float
         //                                                     0.5 for float chroma (new zero-based style)
-        //   range_min  : 0 for 8-16bits, or 0 for float
+        //   range_min  : 0 for 8-16bits, or 0 for float luma, or -0.5 for float chroma
         //                -0.5 for float chroma (new zero-based style)
         //   range_size : 256 / 1024...65536
         //   ymin, ymax : 16 / 235 autoscaled.
@@ -4019,8 +4019,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
-          // 0.0 (or -0.5 for zero based 32bit float chroma), 255, 1023,... 65535
-          float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) - 0.5f : 0.0f) : ((1 << bitsPerComponent) - 1);
+          // 0.0 (or -0.5 for zero based 32bit float chroma)
+          float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) - 0.5f : 0.0f) : 0;
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 9) == "range_max") // avs+
