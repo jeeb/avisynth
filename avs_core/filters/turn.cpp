@@ -68,7 +68,6 @@ template <typename T>
 static inline void turn_right_plane_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int height, int src_pitch, int dst_pitch)
 {
     const BYTE* s0 = srcp + src_pitch * (height - 1);
-    BYTE* d0 = dstp;
 
     for (int y = 0; y < height; ++y)
     {

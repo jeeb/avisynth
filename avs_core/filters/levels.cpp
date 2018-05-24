@@ -2065,7 +2065,6 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
             }
           }
           else if (pixelsize == 2) {
-            double range_corr = 1 << (bits_per_pixel - 8);
             for (int y = 0; y < heightu; ++y) {
               for (int x = 0; x < width; ++x) {
                 const double destu = (reinterpret_cast<const uint16_t *>(srcpu)[x] - limits.middle_chroma);

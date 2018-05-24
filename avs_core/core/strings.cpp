@@ -87,8 +87,6 @@ bool replace(std::string &haystack, const std::string &needle, const std::string
 
 bool replace_beginning(std::string &haystack, const std::string &needle, const std::string &newStr)
 {
-  bool replaced = false;
-
   // Locate the substring to replace
   size_t pos = haystack.find(needle);
   if(pos == std::string::npos) return false;

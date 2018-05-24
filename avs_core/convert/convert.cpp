@@ -1278,7 +1278,6 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
   std::fill_n(error_ptr_safe, src_width + 2, 0);
 
   int *error_ptr = error_ptr_safe + 1;
-  int nextError = 0;
 
   const int INTERNAL_BITS = DITHER_BIT_DIFF < 6 ? sourcebits+8 : sourcebits; // keep accuracy
   const int SHIFTBITS_TO_INTERNAL = INTERNAL_BITS - sourcebits;
@@ -3257,7 +3256,6 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   int target_bitdepth = args[1].AsInt(create_param); // default comes by calling from old To8,To16,ToFloat functions
   int source_bitdepth = vi.BitsPerComponent();
-  int pixelsize = vi.ComponentSize();
   int dither_bitdepth = args[4].AsInt(target_bitdepth);
 
   if(target_bitdepth!=8 && target_bitdepth!=10 && target_bitdepth!=12 && target_bitdepth!=14 && target_bitdepth!=16 && target_bitdepth!=32)
