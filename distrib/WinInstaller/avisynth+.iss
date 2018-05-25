@@ -151,6 +151,9 @@ Source: "{commonprograms}\AviSynth 2.5\*"; DestDir:{code:GetAvsDirsLegacy|Prog}\
 Source: "..\gpl*.txt"; DestDir: "{app}\License"; Components: main; Flags: ignoreversion
 Source: "..\lgpl_for_used_libs.txt"; DestDir: "{app}\License"; Components: main; Flags: ignoreversion
 
+Source: "..\Readme\readme.txt"; DestDir: "{app}"; Components: main; Flags: ignoreversion
+Source: "..\Readme\readme_history.txt"; DestDir: "{app}"; Components: main; Flags: ignoreversion
+
 Source: "{#BuildDir32}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion 
 Source: "{#BuildDir32}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion 
 Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
