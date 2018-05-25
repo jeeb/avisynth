@@ -956,7 +956,7 @@ static void apply_map_rgb_packed_c(BYTE *dstp8, int pitch,
       dstp[x * pixel_step + 0] = reinterpret_cast<pixel_t *>(mapB)[dither ? dstp[x * pixel_step + 0] << 8 | _dither : dstp[x * pixel_step + 0]];
       dstp[x * pixel_step + 1] = reinterpret_cast<pixel_t *>(mapG)[dither ? dstp[x * pixel_step + 1] << 8 | _dither : dstp[x * pixel_step + 1]];
       dstp[x * pixel_step + 2] = reinterpret_cast<pixel_t *>(mapR)[dither ? dstp[x * pixel_step + 2] << 8 | _dither : dstp[x * pixel_step + 2]];
-      if(pixel_step == 4)
+      if constexpr(pixel_step == 4)
         dstp[x * pixel_step + 3] = reinterpret_cast<pixel_t *>(mapA)[dither ? dstp[x * pixel_step + 3] << 8 | _dither : dstp[x * pixel_step + 3]];
     }
     dstp += pitch;
@@ -1703,7 +1703,6 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
           // no luma lookup! alway true for 32 bit, optional for 8-16 bits
             float maxY;
             float minY;
-            float ditherval = 0.0f;
             // unique for each bit-depth, difference in the innermost loop (speed)
             maxY = (float)(coring ? limits.tv_range_hi_luma : max_pixel_value);
             minY = (float)(coring ? limits.tv_range_low : 0);
@@ -1882,7 +1881,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
     return src;
 }
 
-AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl Tweak::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
     return new Tweak(args[0].AsClip(),
         args[1].AsDblDef(0.0),     // hue
@@ -2147,7 +2146,7 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
 
 
 
-AVSValue __cdecl MaskHS::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl MaskHS::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
     return new MaskHS(args[0].AsClip(),
         args[1].AsDblDef(0.0),    // startHue

@@ -39,7 +39,7 @@ Container& split(
 {
   result.clear();
   size_t current;
-  size_t next = -1;
+  size_t next = (size_t)-1;
   do {
     if (empties == split1::no_empties) {
       next = s.find_first_not_of(delimiters, next + 1);
@@ -172,6 +172,7 @@ public:
   }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 

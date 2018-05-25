@@ -366,7 +366,7 @@ static void average_plane_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
       __m128i src1  = _mm_load_si128(reinterpret_cast<const __m128i*>(p1+x));
       __m128i src2  = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x));
       __m128i dst;
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t) == 1)
         dst  = _mm_avg_epu8(src1, src2); // 8 pixels
       else // pixel_size == 2
         dst = _mm_avg_epu16(src1, src2); // 4 pixels
@@ -395,7 +395,7 @@ static void average_plane_isse(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
       __m64 src1 = *reinterpret_cast<const __m64*>(p1+x);
       __m64 src2 = *reinterpret_cast<const __m64*>(p2+x);
       __m64 dst;
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t) == 1)
         dst = _mm_avg_pu8(src1, src2);  // 8 pixels
       else // pixel_size == 2
         dst = _mm_avg_pu16(src1, src2); // 4 pixels
@@ -446,6 +446,7 @@ static void average_plane_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2
 
 template<bool lessthan16bit>
 void weighted_merge_planar_uint16_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  AVS_UNUSED(weight_f);
   __m128i round_mask = _mm_set1_epi32(0x4000);
   __m128i zero = _mm_setzero_si128();
   __m128i mask = _mm_set1_epi32((weight_i << 16) + invweight_i);
@@ -495,6 +496,7 @@ void weighted_merge_planar_uint16_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, i
 }
 
 void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  AVS_UNUSED(weight_f);
   // 8 bit only. SSE2 has weak support for unsigned 16 bit
   __m128i round_mask = _mm_set1_epi32(0x4000);
   __m128i zero = _mm_setzero_si128();
@@ -549,6 +551,9 @@ void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_p
 
 
 void weighted_merge_planar_sse2_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  AVS_UNUSED(weight_i);
+  AVS_UNUSED(invweight_i);
+
   float invweight_f = 1.0f - weight_f;
   auto mask = _mm_set1_ps(weight_f);
 
@@ -660,6 +665,7 @@ void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
 
 template<typename pixel_t>
 void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  AVS_UNUSED(weight_f);
   for (int y=0;y<height;y++) {
     for (size_t x=0;x<rowsize / sizeof(pixel_t);x++) {
       (reinterpret_cast<pixel_t *>(p1))[x] = ((reinterpret_cast<pixel_t *>(p1))[x]*invweight_i + (reinterpret_cast<const pixel_t *>(p2))[x]*weight_i + 32768) >> 16;
@@ -670,6 +676,8 @@ void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitc
 }
 
 void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  AVS_UNUSED(weight_i);
+  AVS_UNUSED(invweight_i);
   float invweight_f = 1.0f - weight_f;
   size_t rs = rowsize / sizeof(float);
 
@@ -933,7 +941,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl MergeChroma::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl MergeChroma::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new MergeChroma(args[0].AsClip(), args[1].AsClip(), (float)args[2].AsFloat(1.0f), env);
 }
@@ -1073,7 +1081,7 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl MergeLuma::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl MergeLuma::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new MergeLuma(args[0].AsClip(), args[1].AsClip(), (float)args[2].AsFloat(1.0f), env);
 }
@@ -1135,7 +1143,7 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl MergeAll::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl MergeAll::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new MergeAll(args[0].AsClip(), args[1].AsClip(), (float)args[2].AsFloat(0.5f), env);
 }

@@ -77,61 +77,6 @@
 #define _mm256_cvtsi256_si32(a) (_mm_cvtsi128_si32(_mm256_castsi256_si128(a)))
 #endif
 
-template<typename pixel_t>
-static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const int half_amount, int bits_per_pixel) {
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t;
-  // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
-  weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
-  weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
-  int max_pixel_value = (1 << bits_per_pixel) - 1;
-
-  pixel_t * dstp = reinterpret_cast<pixel_t *>(dstp8);
-  pixel_t * line_buf = reinterpret_cast<pixel_t *>(line_buf8);
-  int pitch = pitch8 / sizeof(pixel_t);
-
-  for (int y = height-1; y>0; --y) {
-    for (int x = 0; x < width; ++x) {
-      pixel_t a;
-      // Note: ScaledPixelClip is overloaded. With __int64 parameter and uint16_t result works for 16 bit
-      if(sizeof(pixel_t) == 1)
-        a = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight));
-      else
-        a = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight), max_pixel_value);
-      line_buf[x] = dstp[x];
-      dstp[x] = a;
-    }
-    dstp += pitch;
-  }
-  for (int x = 0; x < width; ++x) { // Last row - map centre as lower
-    if(sizeof(pixel_t) == 1)
-      dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight));
-    else
-      dstp[x] = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight), max_pixel_value);
-  }
-}
-
-static void af_vertical_c_float(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const float amount) {
-    float *dstp = reinterpret_cast<float *>(dstp8);
-    float *line_buf = reinterpret_cast<float *>(line_buf8);
-    int pitch = pitch8 / sizeof(float);
-
-    const float center_weight = amount;
-    const float outer_weight = (1.0f - amount) / 2.0f;
-
-    for (int y = height-1; y>0; --y) {
-        for (int x = 0; x < width; ++x) {
-            float a = dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight;
-            line_buf[x] = dstp[x];
-            dstp[x] = a;
-        }
-        dstp += pitch;
-    }
-    for (int x = 0; x < width; ++x) { // Last row - map centre as lower
-        dstp[x] = dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight;
-    }
-}
-
-
 static __forceinline __m256i af_blend_avx2(__m256i &upper, __m256i &center, __m256i &lower, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask) {
   __m256i outer_tmp = _mm256_add_epi16(upper, lower);
   __m256i center_tmp = _mm256_mullo_epi16(center, center_weight);

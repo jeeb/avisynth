@@ -443,7 +443,7 @@ static void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int s
   const int pixels_at_a_time = (sizeof(pixel_t) == 1) ? 16 : 8;
   const int wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
   __m128i mask;
-  if (sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     mask = _mm_set_epi8(15, 14, 13, 12, 11, 8, 5, 2, 10, 7, 4, 1, 9, 6, 3, 0);
   else
     mask = _mm_set_epi8(15, 14, 13, 12, 11, 10, 5, 4, 9, 8, 3, 2, 7, 6, 1, 0);
@@ -451,7 +451,7 @@ static void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int s
 #pragma warning(push)
 #pragma warning(disable:4309)
   __m128i max_pixel_value;
-  if (sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     max_pixel_value = _mm_set1_epi8(0xFF);
   else
     max_pixel_value = _mm_set1_epi16((1 << bits_per_pixel) - 1); // bits_per_pixel is 16
@@ -530,7 +530,7 @@ static void convert_rgba_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int 
   const int pixels_at_a_time = (sizeof(pixel_t) == 1) ? 8 : 4;
   const int wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
   __m128i mask;
-  if(sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     mask = _mm_set_epi8(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
   else
     mask = _mm_set_epi8(15, 14, 7, 6, 13, 12, 5, 4, 11, 10, 3, 2, 9, 8, 1, 0);
@@ -541,11 +541,11 @@ static void convert_rgba_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int 
       BGRA_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time));    // 8bit: *4 pixels 16bit:*2 pixels
       BGRA_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp + x*32/pixels_at_a_time + 16));
       __m128i pack_lo, pack_hi, eightbytes_of_pixels;
-      if (sizeof(pixel_t) == 1) {
+      if constexpr(sizeof(pixel_t) == 1) {
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBBBGGGGRRRRAAAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBBBGGGGRRRRAAAA
       }
-      else if (sizeof(pixel_t) == 2) {
+      else if constexpr(sizeof(pixel_t) == 2) {
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBGGRRAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBGGRRAA
       }
@@ -565,11 +565,11 @@ static void convert_rgba_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int 
       BGRA_lo = _mm_loadu_si128(reinterpret_cast<const __m128i *>(srcp + last_start * 32 / pixels_at_a_time));
       BGRA_hi = _mm_loadu_si128(reinterpret_cast<const __m128i *>(srcp + last_start * 32 / pixels_at_a_time + 16));
       __m128i pack_lo, pack_hi, eightbytes_of_pixels;
-      if (sizeof(pixel_t) == 1) {
+      if constexpr(sizeof(pixel_t) == 1) {
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBBBGGGGRRRRAAAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBBBGGGGRRRRAAAA
       }
-      else if (sizeof(pixel_t) == 2) {
+      else if constexpr(sizeof(pixel_t) == 2) {
         pack_lo = _mm_shuffle_epi8(BGRA_lo, mask); // BBGGRRAA
         pack_hi = _mm_shuffle_epi8(BGRA_hi, mask); // BBGGRRAA
       }
@@ -601,7 +601,7 @@ static void convert_rgb_to_rgbp_c(const BYTE *srcp, BYTE * (&dstp)[4], int src_p
       pixel_t B = reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 0];
       pixel_t G = reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 1];
       pixel_t R = reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 2];
-      pixel_t A;
+      pixel_t A = 0;
       if(targetHasAlpha)
         A = (src_numcomponents==4) ? reinterpret_cast<const pixel_t *>(srcp)[x*src_numcomponents + 3] : max_pixel_value;
       reinterpret_cast<pixel_t *>(dstp[0])[x] = G;
@@ -711,13 +711,13 @@ static void convert_rgbp_to_rgb_sse2(const BYTE *(&srcp)[4], BYTE * dstp, int (&
       G = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[0] + x*sizeof(pixel_t))); // 8 bytes G7..G0 or G3..G0
       B = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[1] + x*sizeof(pixel_t))); // 8 bytes
       R = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[2] + x*sizeof(pixel_t))); // 8 bytes
-      if (target_numcomponents == 4) {
+      if constexpr(target_numcomponents == 4) {
         if (hasSrcAlpha)
           A = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[3] + x*sizeof(pixel_t))); // 8 bytes from Alpha plane
         else
           A = transparent;
       }
-      if (sizeof(pixel_t) == 1) {
+      if constexpr(sizeof(pixel_t) == 1) {
         __m128i BG = _mm_unpacklo_epi8(B, G); // G7 B7 .. G0 B0
         __m128i RA = _mm_unpacklo_epi8(R, A); // A7 R7 .. A0 R0
         __m128i BGRA_lo = _mm_unpacklo_epi16(BG, RA); // 0..3
@@ -747,13 +747,13 @@ static void convert_rgbp_to_rgb_sse2(const BYTE *(&srcp)[4], BYTE * dstp, int (&
       G = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[0] + x*sizeof(pixel_t))); // 8 bytes G7..G0 or G3..G0
       B = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[1] + x*sizeof(pixel_t))); // 8 bytes
       R = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[2] + x*sizeof(pixel_t))); // 8 bytes
-      if (target_numcomponents == 4) {
+      if constexpr(target_numcomponents == 4) {
         if (hasSrcAlpha)
           A = _mm_loadl_epi64(reinterpret_cast<const __m128i * > (srcp[3] + x*sizeof(pixel_t))); // 8 bytes from Alpha plane
         else
           A = transparent;
       }
-      if (sizeof(pixel_t) == 1) {
+      if constexpr(sizeof(pixel_t) == 1) {
         __m128i BG = _mm_unpacklo_epi8(B, G); // G7 B7 .. G0 B0
         __m128i RA = _mm_unpacklo_epi8(R, A); // A7 R7 .. A0 R0
         __m128i BGRA_lo = _mm_unpacklo_epi16(BG, RA); // 0..3
@@ -793,12 +793,12 @@ static void convert_rgbp_to_rgb_c(const BYTE *(&srcp)[4], BYTE * dstp, int (&src
       pixel_t B = reinterpret_cast<const pixel_t *>(srcp[1])[x];
       pixel_t R = reinterpret_cast<const pixel_t *>(srcp[2])[x];
       pixel_t A;
-      if(target_numcomponents==4) // either from A channel or default transparent constant
+      if constexpr(target_numcomponents==4) // either from A channel or default transparent constant
         A = hasSrcAlpha ? reinterpret_cast<const pixel_t *>(srcp[3])[x] : (1<<(8*sizeof(pixel_t))) -1; // 255/65535
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+0] = B;
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+1] = G;
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+2] = R;
-      if(target_numcomponents==4)
+      if constexpr(target_numcomponents==4)
         reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+3] = A;
     }
 

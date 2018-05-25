@@ -192,7 +192,7 @@ class KillVideo : public GenericVideoFilter
 {
 public:
   KillVideo(PClip _clip);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; };
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment*) { AVS_UNUSED(n); return NULL; };
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
 
@@ -204,7 +204,7 @@ class KillAudio : public NonCachedGenericVideoFilter
 {
 public:
   KillAudio(PClip _clip);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env) {};
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env) { AVS_UNUSED(buf); AVS_UNUSED(start); AVS_UNUSED(count); AVS_UNUSED(env); };
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
 

@@ -339,6 +339,7 @@ void __stdcall Prefetcher::GetAudio(void* buf, __int64 start, __int64 count, ISc
 
 int __stdcall Prefetcher::SetCacheHints(int cachehints, int frame_range)
 {
+  AVS_UNUSED(frame_range);
   if (CACHE_GET_MTMODE == cachehints)
     return MT_NICE_FILTER;
 

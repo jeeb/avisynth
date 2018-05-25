@@ -88,6 +88,7 @@ static const int kv_values_luma[4]  = {-int((kv_rec601/2) * luma_rec_scale) / 65
 ConvertToYUY2::ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const char *matrix, IScriptEnvironment* env)
   : GenericVideoFilter(_child), interlaced(_interlaced),src_cs(vi.pixel_type)
 {
+  AVS_UNUSED(_dupl);
   if (vi.height&3 && vi.IsYV12() && interlaced)
     env->ThrowError("ConvertToYUY2: Cannot convert from interlaced YV12 if height is not multiple of 4. Use Crop!");
 
@@ -203,7 +204,7 @@ static void convert_rgb_line_to_yuy2_sse2(const BYTE *srcp, BYTE *dstp, int widt
   for (int x = 0; x < width; x+=4) {
 
     __m128i rgb_p1, rgb_p2;
-    if (rgb_bytes == 4) {
+    if constexpr(rgb_bytes == 4) {
       //RGB32
       __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //xxr3 g3b3 xxr2 g2b2 | xxr1 g1b1 xxr0 g0b0
 
@@ -555,7 +556,7 @@ static void convert_yv24_back_to_yuy2_sse2(const BYTE* srcY, const BYTE* srcU, c
   int mod16_width = width / 16 * 16;
   __m128i ff = _mm_set1_epi16(0x00ff);
 
-  for (int y=0; y < height; y++) {
+  for (int yy=0; yy < height; yy++) {
     for (int x=0; x < mod16_width; x+=16) {
       __m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(srcY+x));
       __m128i u = _mm_load_si128(reinterpret_cast<const __m128i*>(srcU+x));
@@ -740,7 +741,7 @@ template<int matrix, int rgb_bytes, bool aligned>
 static __forceinline __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* srcp, const __m128i &luma_coefs, const __m128i &chroma_coefs, const __m128i &upper_dword_mask, 
                                                                  const __m128i &chroma_round_mask, __m128i &luma_round_mask, const __m128i &tv_scale, const __m128i &zero) {
   __m128i rgb_p1, rgb_p2;
-  if (rgb_bytes == 4) {
+  if constexpr(rgb_bytes == 4) {
     //RGB32
     __m128i src;
     if (aligned) {
@@ -807,7 +808,7 @@ static void convert_rgb_line_back_to_yuy2_sse2(const BYTE *srcp, BYTE *dstp, int
   int mod4_width = width / 4 * 4;
 
   __m128i luma_round_mask;
-  if (matrix == Rec601 || matrix == Rec709) {
+  if constexpr(matrix == Rec601 || matrix == Rec709) {
     luma_round_mask = _mm_set1_epi32(0x84000);
   } else {
     luma_round_mask = _mm_set1_epi32(0x4000);

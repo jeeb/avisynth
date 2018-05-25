@@ -63,14 +63,21 @@ class StaticImage : public IClip {
 public:
   StaticImage(const VideoInfo& _vi, const PVideoFrame& _frame, bool _parity)
     : vi(_vi), frame(_frame), parity(_parity) {}
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
+    AVS_UNUSED(n);
+    AVS_UNUSED(env);
+    return frame; 
+  }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    AVS_UNUSED(start);
+    AVS_UNUSED(env);
     memset(buf, 0, (size_t)vi.BytesFromAudioSamples(count));
   }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return (vi.IsFieldBased() ? (n&1) : false) ^ parity; }
   int __stdcall SetCacheHints(int cachehints,int frame_range)
   {
+    AVS_UNUSED(frame_range);
     switch (cachehints)
     {
     case CACHE_DONT_CACHE_ME:
@@ -126,7 +133,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
     else {
       int color_yuv = (mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
 
-      int val_i;
+      int val_i = 0;
 
       int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
       int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
@@ -169,7 +176,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
           break;
         case 2: 
           val_i = clamp(val_i, 0, (1 << vi.BitsPerComponent()) - 1);
-          std::fill_n((uint16_t *)dstp, size / sizeof(uint16_t), val_i);
+          std::fill_n((uint16_t *)dstp, size / sizeof(uint16_t), (uint16_t)val_i);
           break; // 2 pixels at a time
         default: // case 4:
           float val_f;
@@ -520,7 +527,7 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x] = factor*(top_two_thirdsY[i] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (top_two_thirdsU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (top_two_thirdsV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -540,7 +547,7 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x] = factor*(two_thirds_to_three_quartersY[i] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (two_thirds_to_three_quartersU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (two_thirds_to_three_quartersV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -560,7 +567,7 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 4; ++i) {
       for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
         pY[x] = factor*(bottom_quarterY[i] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (bottom_quarterU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (bottom_quarterV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -573,7 +580,7 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int j = 4; j < 7; ++j) {
       for (; x < (w*(j + 12) + 10) / 21; ++x) {
         pY[x] = factor*(bottom_quarterY[j] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (bottom_quarterU[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (bottom_quarterV[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -585,7 +592,7 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     }
     for (; x < w; ++x) {
       pY[x] = factor*(bottom_quarterY[7] << shift);
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (bottom_quarterU[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (bottom_quarterV[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -634,7 +641,7 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x*2+0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(top_two_thirdsY[i] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (top_two_thirdsU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (top_two_thirdsV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -655,7 +662,7 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
         pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(two_thirds_to_three_quartersY[i] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (two_thirds_to_three_quartersU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (two_thirds_to_three_quartersV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -676,7 +683,7 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int i = 0; i < 4; ++i) {
       for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
         pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[i] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (bottom_quarterU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (bottom_quarterV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -689,7 +696,7 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     for (int j = 4; j < 7; ++j) {
       for (; x < (w*(j + 12) + 10) / 21; ++x) {
         pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[j] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (bottom_quarterU[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (bottom_quarterV[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -701,7 +708,7 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     }
     for (; x < w; ++x) {
       pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[7] << shift);
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (bottom_quarterU[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (bottom_quarterV[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -762,7 +769,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern1Y[0] << shift); // 40% Grey
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern1U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern1V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -774,7 +781,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     for (int i = 1; i < 8; i++) {
       for (int j = 0; j < c; ++j, ++x) {
         pY[x] = factor*(pattern1Y[i] << shift); // 75% Colour bars
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (pattern1U[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (pattern1V[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -786,7 +793,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern1Y[0] << shift); // 40% Grey
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern1U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern1V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -805,7 +812,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern23Y[0] << shift); // 100% Cyan
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern23U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern23V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -816,7 +823,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     }
     for (; x < c + d; ++x) {
       pY[x] = factor*(pattern23Y[4] << shift); // +I or Grey75 or White ???
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern23U[4] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern23V[4] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -827,7 +834,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     }
     for (; x < c * 7 + d; ++x) {
       pY[x] = factor*(pattern23Y[5] << shift); // 75% White
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern23U[5] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern23V[5] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -838,7 +845,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern23Y[1] << shift); // 100% Blue
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern23U[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern23V[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -853,7 +860,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern23Y[2] << shift); // 100% Yellow
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern23U[2] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern23V[2] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -864,7 +871,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     }
     for (int j = 0; j < c * 7; ++j, ++x) { // Y-Ramp
       pY[x] = pixel_t(factor*(16 << shift) + (factor * (220 << shift) * j) / (c * 7));
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (128 - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (128 - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -875,7 +882,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern23Y[3] << shift); // 100% Red
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern23U[3] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern23V[3] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -894,7 +901,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     int x = 0;
     for (; x < d; ++x) {
       pY[x] = factor*(pattern4Y[0] << shift); // 15% Grey
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern4U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern4V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -906,7 +913,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     for (int i = 1; i <= 9; i++) {
       for (; x < d + (pattern4W[i] * c + 3) / 6; ++x) {
         pY[x] = factor*(pattern4Y[i] << shift);
-        if (sizeof(pixel_t) == 4) {
+        if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (pattern4U[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (pattern4V[1] - chroma_offset_i) + (factor_t)chroma_offset_f;
         }
@@ -918,7 +925,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     }
     for (; x < w; ++x) {
       pY[x] = factor*(pattern4Y[0] << shift); // 15% Grey
-      if (sizeof(pixel_t) == 4) {
+      if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (pattern4U[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (pattern4V[0] - chroma_offset_i) + (factor_t)chroma_offset_f;
       }
@@ -1468,12 +1475,11 @@ public:
   // By the new "staticframes" parameter: colorbars we generate (copy) real new frames instead of a ready-to-use static one
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
   {
-    _RPT1(0, "ColorBars::GetFrame %d\n", n);
+    AVS_UNUSED(n);
     if (staticframes)
       return frame; // original default method returns precomputed static frame.
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
-      _RPT3(0, "ColorBars GetFrame origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result);
       env->BitBlt(result->GetWritePtr(), result->GetPitch(), frame->GetReadPtr(), frame->GetPitch(), frame->GetRowSize(), frame->GetHeight());
       env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
       env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
@@ -1482,11 +1488,15 @@ public:
     }
   }
 
-  bool __stdcall GetParity(int n) { return false; }
+  bool __stdcall GetParity(int n) {
+    AVS_UNUSED(n);
+    return false; 
+  }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   int __stdcall SetCacheHints(int cachehints,int frame_range)
   {
-      switch (cachehints)
+    AVS_UNUSED(frame_range);
+    switch (cachehints)
       {
       case CACHE_GET_MTMODE:
           return MT_NICE_FILTER;
@@ -1498,6 +1508,7 @@ public:
   };
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    AVS_UNUSED(env);
 #if 1
 	const int d_mod = vi.audio_samples_per_second*2;
 	float* samples = (float*)buf;
@@ -1643,7 +1654,9 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
 class SampleGenerator {
 public:
   SampleGenerator() {}
-  virtual SFLOAT getValueAt(double where) {return 0.0f;}
+  virtual SFLOAT getValueAt(double where) {
+    AVS_UNUSED(where);
+    return 0.0f;}
 };
 
 class SineGenerator : public SampleGenerator {
@@ -1659,7 +1672,9 @@ public:
     srand( (unsigned)time( NULL ) );
   }
 
-  SFLOAT getValueAt(double where) {return (float) rand()*(2.0f/RAND_MAX) -1.0f;}
+  SFLOAT getValueAt(double where) {
+    AVS_UNUSED(where);
+    return (float) rand()*(2.0f/RAND_MAX) -1.0f;}
 };
 
 class SquareGenerator : public SampleGenerator {
@@ -1736,7 +1751,7 @@ public:
   }
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-
+    AVS_UNUSED(env);
     // Where in the cycle are we in?
     const double cycle = (freq * start) / samplerate;
     double period_place = cycle - floor(cycle);
@@ -1760,10 +1775,18 @@ public:
           args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloatf(1.0f), env);
   }
 
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; }
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
+    AVS_UNUSED(n);
+    AVS_UNUSED(env);
+    return NULL; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-  bool __stdcall GetParity(int n) { return false; }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  bool __stdcall GetParity(int n) {
+    AVS_UNUSED(n);
+    return false; }
+  int __stdcall SetCacheHints(int cachehints,int frame_range) {
+    AVS_UNUSED(cachehints);
+    AVS_UNUSED(frame_range);
+    return 0; };
 
 };
 

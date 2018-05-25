@@ -85,6 +85,7 @@ public:
   }
 
   inline static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
+    AVS_UNUSED(env);
     return new ComplementParity(args[0].AsClip());
   }
 
@@ -112,6 +113,7 @@ public:
   }
 
   inline static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
+    AVS_UNUSED(env);
     return new AssumeParity(args[0].AsClip(), user_data!=0);
   }
 
@@ -135,6 +137,7 @@ public:
   }
 
   inline static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
+    AVS_UNUSED(env);
     return new AssumeFieldBased(args[0].AsClip());
   }
 
@@ -153,10 +156,12 @@ public:
   }
 
   inline bool __stdcall GetParity(int n) {
+    AVS_UNUSED(n);
     return false;
   }
 
   inline static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
+    AVS_UNUSED(env);
     return new AssumeFrameBased(args[0].AsClip());
   }
 };
@@ -175,6 +180,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -200,6 +206,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -245,6 +252,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -283,6 +291,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 };
@@ -302,6 +311,7 @@ public:
   }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 };

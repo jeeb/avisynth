@@ -114,7 +114,9 @@ public:
   ExpConstant(int i) : val(i) {}
   ExpConstant(float f) : val(f) {}
   ExpConstant(const char* s) : val(s) {}
-  virtual AVSValue Evaluate(IScriptEnvironment* env) { return val; }
+  virtual AVSValue Evaluate(IScriptEnvironment* env) {
+    AVS_UNUSED(env);
+    return val; }
 
 private:
   friend class ExpNegative;

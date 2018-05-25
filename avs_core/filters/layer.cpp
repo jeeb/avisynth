@@ -2337,6 +2337,7 @@ static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
 
 
 static void layer_yuy2_fast_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  AVS_UNUSED(level);
   int width_bytes = width * 2;
   int width_mod16 = width_bytes / 16 * 16;
 
@@ -2386,6 +2387,7 @@ static void layer_yuy2_fast_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
 
 template<typename pixel_t>
 static void layer_yuy2_fast_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  AVS_UNUSED(level);
   pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
   const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
@@ -2520,7 +2522,7 @@ static void layer_yuy2_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst
       ovr = _mm_unpacklo_epi8(ovr, zero);
 
       __m128i mask;
-      if (mode == LIGHTEN) {
+      if constexpr(mode == LIGHTEN) {
         __m128i temp = _mm_add_epi16(ovr, threshold);
         mask = _mm_cmpgt_epi16(temp, src);
       } else {
@@ -2545,7 +2547,7 @@ static void layer_yuy2_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst
 
     for (int x = mod4_width; x < width; ++x) {
       int alpha_mask;
-      if (mode == LIGHTEN) {
+      if constexpr(mode == LIGHTEN) {
         alpha_mask = (thresh + ovrp[x*2]) > dstp[x*2] ? level : 0;
       } else {
         alpha_mask = (thresh + dstp[x*2]) > ovrp[x*2] ? level : 0;
@@ -2608,7 +2610,7 @@ static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pi
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       int alpha_mask;
-      if (mode == LIGHTEN) {
+      if constexpr(mode == LIGHTEN) {
         alpha_mask = (thresh + ovrp[x*2]) > dstp[x*2] ? level : 0;
       } else {
         alpha_mask = (thresh + dstp[x*2]) > ovrp[x*2] ? level : 0;
@@ -2636,6 +2638,7 @@ static __forceinline __m128i calculate_monochrome_alpha_sse2(const __m128i &src,
 }
 
 static __forceinline __m128i calculate_luma_sse2(const __m128i &src, const __m128i &rgb_coeffs, const __m128i &zero) {
+  AVS_UNUSED(zero);
   __m128i temp = _mm_madd_epi16(src, rgb_coeffs); 
   __m128i low = _mm_shuffle_epi32(temp, _MM_SHUFFLE(3, 3, 1, 1));
   temp = _mm_add_epi32(low, temp);
@@ -3159,7 +3162,7 @@ static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int ds
 
       __m128i tmp = _mm_add_epi16(threshold, luma_src);
       __m128i mask;
-      if (mode == LIGHTEN) {
+      if constexpr(mode == LIGHTEN) {
         mask = _mm_cmpgt_epi16(luma_ovr, tmp);
       } else {
         mask = _mm_cmpgt_epi16(tmp, luma_ovr);
@@ -3183,7 +3186,7 @@ static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int ds
       int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
       int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
 
-      if (mode == LIGHTEN) {
+      if constexpr(mode == LIGHTEN) {
         alpha = luma_ovr > thresh + luma_src ? alpha : 0;
       } else {
         alpha = luma_ovr < thresh + luma_src ? alpha : 0;
@@ -3265,7 +3268,7 @@ static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst
       int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
       int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
 
-      if (mode == LIGHTEN) {
+      if constexpr(mode == LIGHTEN) {
         alpha = luma_ovr > thresh + luma_src ? alpha : 0;
       } else {
         alpha = luma_ovr < thresh + luma_src ? alpha : 0;

@@ -49,6 +49,7 @@
  **************************/
 
 double PointFilter::f(double x) {
+  AVS_UNUSED(x);
   return 1.0;
 }
 

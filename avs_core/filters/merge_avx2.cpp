@@ -116,7 +116,7 @@ void average_plane_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, in
       __m256i src2 = _mm256_stream_load_si256(const_cast<__m256i*>(reinterpret_cast<const __m256i*>(p2 + x)));
       #endif
       __m256i dst;
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t) == 1)
         dst  = _mm256_avg_epu8(src1, src2); // 16 pixels
       else // pixel_size == 2
         dst = _mm256_avg_epu16(src1, src2); // 8 pixels
@@ -133,7 +133,7 @@ void average_plane_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, in
       __m128i src2  = _mm_stream_load_si128(const_cast<__m128i*>(reinterpret_cast<const __m128i*>(p2+x)));
 #endif
       __m128i dst;
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t) == 1)
         dst  = _mm_avg_epu8(src1, src2); // 8 pixels
       else // pixel_size == 2
         dst = _mm_avg_epu16(src1, src2); // 4 pixels
@@ -163,6 +163,7 @@ template void average_plane_avx2<uint16_t>(BYTE *p1, const BYTE *p2, int p1_pitc
 */
 template<bool lessthan16bit>
 void weighted_merge_planar_uint16_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  AVS_UNUSED(weight_f);
   __m128i mask_128 = _mm_set1_epi32( (weight_i << 16) + invweight_i);
   __m256i mask = _mm256_set1_epi32((weight_i << 16) + invweight_i);
 
@@ -256,6 +257,7 @@ template void weighted_merge_planar_uint16_avx2<true>(BYTE *p1, const BYTE *p2, 
 
 
 void weighted_merge_planar_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
+  AVS_UNUSED(weight_f);
   auto round_mask = _mm256_set1_epi32(0x4000);
   auto zero = _mm256_setzero_si256();
   auto mask = _mm256_set_epi16(weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i, weight_i, invweight_i);

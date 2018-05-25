@@ -507,11 +507,11 @@ static void turn_180_plane_xsse(const BYTE* srcp, BYTE* dstp, int src_rowsize, i
     const int w = src_rowsize & ~15;
 
     __m128i pshufb_mask;
-    if (sizeof(T) == 1)
+    if constexpr(sizeof(T) == 1)
     {
         pshufb_mask = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
     }
-    else if (sizeof(T) == 2)
+    else if constexpr(sizeof(T) == 2)
     {
         pshufb_mask = _mm_set_epi8(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
     }
@@ -521,21 +521,21 @@ static void turn_180_plane_xsse(const BYTE* srcp, BYTE* dstp, int src_rowsize, i
         for (int x = 0; x < w; x += 16)
         {
             __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
-            if (sizeof(T) == 8)
+            if constexpr(sizeof(T) == 8)
             {
                 src = _mm_shuffle_epi32(src, _MM_SHUFFLE(1, 0, 3, 2));
             }
-            else if (sizeof(T) == 4)
+            else if constexpr(sizeof(T) == 4)
             {
                 src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
             }
-            else if (INSTRUCTION_SET == CPUF_SSE2)
+            else if constexpr(INSTRUCTION_SET == CPUF_SSE2)
             {
                 src = _mm_shuffle_epi32(src, sizeof(T) == 1 ? _MM_SHUFFLE(0, 1, 2, 3) : _MM_SHUFFLE(1, 0, 3, 2));
                 src = _mm_shufflelo_epi16(src, sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3));
                 src = _mm_shufflehi_epi16(src, sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3));
 
-                if (sizeof(T) == 1)
+                if constexpr(sizeof(T) == 1)
                 {
                     src = _mm_or_si128(_mm_srli_epi16(src, 8), _mm_slli_epi16(src, 8));
                 }
@@ -730,7 +730,8 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
 
 int __stdcall Turn::SetCacheHints(int cachehints, int frame_range)
 {
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  AVS_UNUSED(frame_range);
+  return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
 }
 
 
@@ -765,19 +766,19 @@ PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl Turn::create_turnleft(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl Turn::create_turnleft(AVSValue args, void* , IScriptEnvironment* env)
 {
     return new Turn(args[0].AsClip(), DIRECTION_LEFT, env);
 }
 
 
-AVSValue __cdecl Turn::create_turnright(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl Turn::create_turnright(AVSValue args, void* , IScriptEnvironment* env)
 {
     return new Turn(args[0].AsClip(), DIRECTION_RIGHT, env);
 }
 
 
-AVSValue __cdecl Turn::create_turn180(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl Turn::create_turn180(AVSValue args, void* , IScriptEnvironment* env)
 {
     return new Turn(args[0].AsClip(), DIRECTION_180, env);
 }

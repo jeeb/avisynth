@@ -1802,9 +1802,9 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           it3 != end_it3;
           ++it3)
         {
-          VideoFrame *frame = it3->frame;
-          assert(0 == frame->refcount);
-          delete frame;
+          VideoFrame *currentframe = it3->frame;
+          assert(0 == currentframe->refcount);
+          delete currentframe;
         }
         // delete array belonging to this vfb in one step
         it2->second.clear(); // clear frame list
@@ -1830,7 +1830,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    */
 
   // See if we could benefit from 64-bit Avisynth
-  if (sizeof(void*) == 4)
+  if constexpr(sizeof(void*) == 4)
   {
       // Get system memory information
       MEMORYSTATUSEX memstatus;

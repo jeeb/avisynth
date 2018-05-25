@@ -157,6 +157,7 @@ LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADE
 }
 
 LRESULT AVISource::DecompressFrame(int n, bool preroll, IScriptEnvironment* env) {
+  AVS_UNUSED(env);
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
   BYTE* buf = frame->GetPtr();
   long bytes_read;
@@ -733,6 +734,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  AVS_UNUSED(env);
   long bytes_read=0;
   __int64 samples_read=0;
 
@@ -755,10 +757,14 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
     memset((char*)buf + bytes_read, 0, (size_t)(vi.BytesFromAudioSamples(count) - bytes_read));
 }
 
-bool AVISource::GetParity(int n) { return false; }
+bool AVISource::GetParity(int n) {
+  AVS_UNUSED(n);
+  return false; 
+}
 
 int __stdcall AVISource::SetCacheHints(int cachehints,int frame_range)
 {
+  AVS_UNUSED(frame_range);
   switch(cachehints)
   {
   case CACHE_GET_MTMODE:

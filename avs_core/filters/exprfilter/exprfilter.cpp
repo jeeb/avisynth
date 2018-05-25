@@ -597,9 +597,9 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
   ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, int planeheight, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), 
     planewidth(planewidth), planeheight(planeheight), singleMode(singleMode), labelCount(0) {}
 
-  __forceinline void doMask(XmmReg &r, Reg &constptr, int planewidth)
+  __forceinline void doMask(XmmReg &r, Reg &constptr, int _planewidth)
   {
-    switch (planewidth & 3) {
+    switch (_planewidth & 3) {
     case 1: andps(r, CPTR(loadmask1000)); break;
     case 2: andps(r, CPTR(loadmask1100)); break;
     case 3: andps(r, CPTR(loadmask1110)); break;
@@ -2250,7 +2250,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           processingLoop<false, false>(regptrs, zero, constptr, SpatialY);
 
         const int EXTRA = 2; // output pointer, xcounter
-        if (sizeof(void *) == 8) {
+        if constexpr(sizeof(void *) == 8) {
             int numIter = (numInputs + EXTRA + 1) / 2;
             for (int i = 0; i < numIter; i++) {
                 XmmReg r1, r2;
@@ -3105,7 +3105,7 @@ generated epilog example (new):
 
     // increase read and write pointers by 16 pixels
     const int EXTRA = 2; // output pointer, xcounter
-    if (sizeof(void *) == 8) {
+    if constexpr(sizeof(void *) == 8) {
       // x64: two 8 byte pointers in an xmm
       int numIter = (numInputs + EXTRA + 1) / 2;
 

@@ -83,6 +83,7 @@ public:
   bool __stdcall GetParity(int n);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     //todo: not really sure if it has to be serialized or can do with multiple instances
     return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0; 
   }
@@ -112,6 +113,7 @@ public:
   bool __stdcall GetParity(int n);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 

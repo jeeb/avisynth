@@ -79,7 +79,8 @@ public:
 
     int __stdcall SetCacheHints(int cachehints, int frame_range) override
     {
-        return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+      AVS_UNUSED(frame_range);
+      return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
     }
 
     static AVSValue Create(AVSValue args, void*, IScriptEnvironment* env);

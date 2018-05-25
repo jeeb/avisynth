@@ -190,6 +190,7 @@ __forceinline static void process_one_pixel_h_float_mask(const float *src, int b
 // filtersizealigned8: special: 1, 2. Generic: -1
 template<int filtersizealigned8, int filtersizemod8>
 void resizer_h_avx2_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+  AVS_UNUSED(bits_per_pixel);
   const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
 
   const float *src = reinterpret_cast<const float *>(src8);
@@ -465,6 +466,7 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
 
 // coeffs are safely padded/aligned to 16
 void resizer_h_avx2_generic_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+  AVS_UNUSED(bits_per_pixel);
   const int filter_size_numOfBlk16 = AlignNumber(program->filter_size, 16) / 16;
 
   if (filter_size_numOfBlk16 == 1)
@@ -497,6 +499,8 @@ void resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch
 
 void resize_v_avx2_planar_uint8_t(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
 {
+  AVS_UNUSED(bits_per_pixel);
+  AVS_UNUSED(storage);
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
 
@@ -571,6 +575,7 @@ __forceinline static void process_chunk_v_uint16_t_256(const uint16_t *src2_ptr,
 template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8>
 void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
 {
+  AVS_UNUSED(storage);
   const int filter_size_numOfFullBlk8 = (_filter_size_numOfFullBlk8 >= 0) ? _filter_size_numOfFullBlk8 : (program->filter_size / 8);
   short* current_coeff = program->pixel_coefficient;
 
@@ -687,6 +692,8 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
 template<int _filtersize>
 void internal_resize_v_avx2_planar_float(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
 {
+  AVS_UNUSED(bits_per_pixel);
+  AVS_UNUSED(storage);
   // 1..8: special case for compiler optimization
   const int filter_size = _filtersize >= 1 ? _filtersize : program->filter_size;
   float* current_coeff_float = program->pixel_coefficient_float;

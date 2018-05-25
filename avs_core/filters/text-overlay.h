@@ -98,7 +98,8 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
       // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
   }
 
@@ -125,7 +126,8 @@ public:
   static AVSValue __cdecl CreateTime(AVSValue args, void*, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
       // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
   }
 
@@ -155,7 +157,8 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
       // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
   }
 
@@ -187,7 +190,8 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-      return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
       // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
   }
 
@@ -215,7 +219,8 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-      return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0;
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0;
       // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
       // show_graph gathers data of last n frames inside class -> conditional MT_SERIALIZED
       // logfile writing: if log -> conditional MT_SERIALIZED

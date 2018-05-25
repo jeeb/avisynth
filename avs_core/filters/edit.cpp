@@ -312,6 +312,7 @@ bool FreezeFrame::GetParity(int n)
 
 AVSValue __cdecl FreezeFrame::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
+  AVS_UNUSED(env);
   return new FreezeFrame(args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[0].AsClip());
 }
 
@@ -338,6 +339,7 @@ bool DeleteFrame::GetParity(int n)
 
 AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
+  AVS_UNUSED(env);
   const int n = args[1].ArraySize();
   int m = n-1;
   int *frames = new int[n];
@@ -392,6 +394,7 @@ bool DuplicateFrame::GetParity(int n)
 
 AVSValue __cdecl DuplicateFrame::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
+  AVS_UNUSED(env);
   const int n = args[1].ArraySize();
   int *frames = new int[n];
 
@@ -847,6 +850,7 @@ void AudioDub::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
 
 int __stdcall AudioDub::SetCacheHints(int cachehints,int frame_range)
 {
+  AVS_UNUSED(frame_range);
   switch(cachehints)
   {
   case CACHE_DONT_CACHE_ME:
@@ -906,6 +910,7 @@ void Reverse::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironme
 
 AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
+  AVS_UNUSED(env);
   return new Reverse(args[0].AsClip());
 }
 

@@ -53,6 +53,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -73,6 +74,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -90,6 +92,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -110,6 +113,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 

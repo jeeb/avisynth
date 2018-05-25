@@ -151,7 +151,7 @@ static void yuy2_swap_c(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pit
   }
 }
 
-AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* , IScriptEnvironment* env)
 {
   PClip p = args[0].AsClip();
   if (p->GetVideoInfo().NumComponents() == 1)
@@ -214,18 +214,18 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl SwapUVToY::CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapUVToY::CreateUToY(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new SwapUVToY(args[0].AsClip(), UToY, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreateUToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapUVToY::CreateUToY8(AVSValue args, void* , IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   return new SwapUVToY(clip, (clip->GetVideoInfo().IsYUY2()) ? YUY2UToY8 : UToY8, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreateYToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapUVToY::CreateYToY8(AVSValue args, void* , IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   if(clip->GetVideoInfo().IsYUY2())
@@ -234,12 +234,12 @@ AVSValue __cdecl SwapUVToY::CreateYToY8(AVSValue args, void* user_data, IScriptE
     return new SwapUVToY(clip, YToY8, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapUVToY::CreateVToY(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new SwapUVToY(args[0].AsClip(), VToY, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreateVToY8(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapUVToY::CreateVToY8(AVSValue args, void* , IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   return new SwapUVToY(clip, (clip->GetVideoInfo().IsYUY2()) ? YUY2VToY8 : VToY8, env);
@@ -269,7 +269,7 @@ AVSValue __cdecl SwapUVToY::CreateAnyToY8(AVSValue args, void* user_data, IScrip
   return new SwapUVToY(clip, mode, env);
 }
 
-AVSValue __cdecl SwapUVToY::CreatePlaneToY8(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl SwapUVToY::CreatePlaneToY8(AVSValue args, void* , IScriptEnvironment* env) {
     PClip clip = args[0].AsClip();
 
     const VideoInfo& vi_input = clip->GetVideoInfo();
@@ -485,17 +485,17 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl SwapYToUV::CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapYToUV::CreateYToUV(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), NULL , NULL, env);
 }
 
-AVSValue __cdecl SwapYToUV::CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapYToUV::CreateYToYUV(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), NULL, env);
 }
 
-AVSValue __cdecl SwapYToUV::CreateYToYUVA(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl SwapYToUV::CreateYToYUVA(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new SwapYToUV(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3].AsClip(), env);
 }

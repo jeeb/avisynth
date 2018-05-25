@@ -368,7 +368,6 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsPlanar()) {
 
-    int pixelsize = vi.ComponentSize();
     int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
     int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
     int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;

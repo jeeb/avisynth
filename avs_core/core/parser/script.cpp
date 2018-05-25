@@ -634,45 +634,45 @@ AVSValue ScriptDirUtf8(AVSValue args, void*, IScriptEnvironment* env) { return e
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt(0)); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
 
-AVSValue Muldiv(AVSValue args, void*, IScriptEnvironment* env) { return int(MulDiv(args[0].AsInt(), args[1].AsInt(), args[2].AsInt())); }
+AVSValue Muldiv(AVSValue args, void*, IScriptEnvironment* ) { return int(MulDiv(args[0].AsInt(), args[1].AsInt(), args[2].AsInt())); }
 
-AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env) { return int(floor(args[0].AsFloat())); }
-AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return int(ceil(args[0].AsFloat())); }
-AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()<0 ? -int(-args[0].AsFloat()+.5) : int(args[0].AsFloat()+.5); }
+AVSValue Floor(AVSValue args, void*, IScriptEnvironment* ) { return int(floor(args[0].AsFloat())); }
+AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* ) { return int(ceil(args[0].AsFloat())); }
+AVSValue Round(AVSValue args, void*, IScriptEnvironment* ) { return args[0].AsFloat()<0 ? -int(-args[0].AsFloat()+.5) : int(args[0].AsFloat()+.5); }
 
-AVSValue Acos(AVSValue args, void* user_data, IScriptEnvironment* env) { return acos(args[0].AsFloat()); }
-AVSValue Asin(AVSValue args, void* user_data, IScriptEnvironment* env) { return asin(args[0].AsFloat()); }
-AVSValue Atan(AVSValue args, void* user_data, IScriptEnvironment* env) { return atan(args[0].AsFloat()); }
-AVSValue Atan2(AVSValue args, void* user_data, IScriptEnvironment* env) { return atan2(args[0].AsFloat(), args[1].AsFloat()); }
-AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env) { return cos(args[0].AsFloat()); }
-AVSValue Cosh(AVSValue args, void* user_data, IScriptEnvironment* env) { return cosh(args[0].AsFloat()); }
-AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env) { return exp(args[0].AsFloat()); }
-AVSValue Fmod(AVSValue args, void* user_data, IScriptEnvironment* env) { return fmod(args[0].AsFloat(), args[1].AsFloat()); }
-AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env) { return log(args[0].AsFloat()); }
-AVSValue Log10(AVSValue args, void* user_data, IScriptEnvironment* env) { return log10(args[0].AsFloat()); }
-AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) { return pow(args[0].AsFloat(),args[1].AsFloat()); }
-AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
-AVSValue Sinh(AVSValue args, void* user_data, IScriptEnvironment* env) { return sinh(args[0].AsFloat()); }
-AVSValue Tan(AVSValue args, void* user_data, IScriptEnvironment* env) { return tan(args[0].AsFloat()); }
-AVSValue Tanh(AVSValue args, void* user_data, IScriptEnvironment* env) { return tanh(args[0].AsFloat()); }
-AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return sqrt(args[0].AsFloat()); }
+AVSValue Acos(AVSValue args, void* , IScriptEnvironment* ) { return acos(args[0].AsFloat()); }
+AVSValue Asin(AVSValue args, void* , IScriptEnvironment* ) { return asin(args[0].AsFloat()); }
+AVSValue Atan(AVSValue args, void* , IScriptEnvironment* ) { return atan(args[0].AsFloat()); }
+AVSValue Atan2(AVSValue args, void* , IScriptEnvironment* ) { return atan2(args[0].AsFloat(), args[1].AsFloat()); }
+AVSValue Cos(AVSValue args, void* , IScriptEnvironment* ) { return cos(args[0].AsFloat()); }
+AVSValue Cosh(AVSValue args, void* , IScriptEnvironment* ) { return cosh(args[0].AsFloat()); }
+AVSValue Exp(AVSValue args, void* , IScriptEnvironment* ) { return exp(args[0].AsFloat()); }
+AVSValue Fmod(AVSValue args, void* , IScriptEnvironment* ) { return fmod(args[0].AsFloat(), args[1].AsFloat()); }
+AVSValue Log(AVSValue args, void* , IScriptEnvironment* ) { return log(args[0].AsFloat()); }
+AVSValue Log10(AVSValue args, void* , IScriptEnvironment* ) { return log10(args[0].AsFloat()); }
+AVSValue Pow(AVSValue args, void* , IScriptEnvironment* ) { return pow(args[0].AsFloat(),args[1].AsFloat()); }
+AVSValue Sin(AVSValue args, void* , IScriptEnvironment* ) { return sin(args[0].AsFloat()); }
+AVSValue Sinh(AVSValue args, void* , IScriptEnvironment* ) { return sinh(args[0].AsFloat()); }
+AVSValue Tan(AVSValue args, void* , IScriptEnvironment* ) { return tan(args[0].AsFloat()); }
+AVSValue Tanh(AVSValue args, void* , IScriptEnvironment* ) { return tanh(args[0].AsFloat()); }
+AVSValue Sqrt(AVSValue args, void* , IScriptEnvironment* ) { return sqrt(args[0].AsFloat()); }
 
-AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
-AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env) { return fabs(args[0].AsFloat()); }
-AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env)  { return 3.14159265358979324; }
+AVSValue Abs(AVSValue args, void* , IScriptEnvironment* ) { return abs(args[0].AsInt()); }
+AVSValue FAbs(AVSValue args, void* , IScriptEnvironment* ) { return fabs(args[0].AsFloat()); }
+AVSValue Pi(AVSValue args, void* , IScriptEnvironment* )  { return 3.14159265358979324; }
 #ifdef OPT_ScriptFunctionTau
-AVSValue Tau(AVSValue args, void* user_data, IScriptEnvironment* env) { return 6.28318530717958648; }
+AVSValue Tau(AVSValue args, void* , IScriptEnvironment* ) { return 6.28318530717958648; }
 #endif
-AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()==0 ? 0 : args[0].AsFloat() > 0 ? 1 : -1; }
+AVSValue Sign(AVSValue args, void*, IScriptEnvironment* ) { return args[0].AsFloat()==0 ? 0 : args[0].AsFloat() > 0 ? 1 : -1; }
 
-AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() & args[1].AsInt(); }
-AVSValue BitNot(AVSValue args, void*, IScriptEnvironment* env) { return ~args[0].AsInt(); }
-AVSValue BitOr(AVSValue args, void*, IScriptEnvironment* env)  { return args[0].AsInt() | args[1].AsInt(); }
-AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() ^ args[1].AsInt(); }
+AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* ) { return args[0].AsInt() & args[1].AsInt(); }
+AVSValue BitNot(AVSValue args, void*, IScriptEnvironment* ) { return ~args[0].AsInt(); }
+AVSValue BitOr(AVSValue args, void*, IScriptEnvironment* )  { return args[0].AsInt() | args[1].AsInt(); }
+AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* ) { return args[0].AsInt() ^ args[1].AsInt(); }
 
-AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() << args[1].AsInt(); }
-AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* env) { return int(unsigned(args[0].AsInt()) >> unsigned(args[1].AsInt())); }
-AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() >> args[1].AsInt(); }
+AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* ) { return args[0].AsInt() << args[1].AsInt(); }
+AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* ) { return int(unsigned(args[0].AsInt()) >> unsigned(args[1].AsInt())); }
+AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* ) { return args[0].AsInt() >> args[1].AsInt(); }
 
 static int a_rol(int value, int shift) {
   if ((shift &= sizeof(value)*8 - 1) == 0)
@@ -705,13 +705,13 @@ static bool a_bt (int value, int bit) {
   return (value & (1 << bit)) ? true : false;
 }
 
-AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* env) { return a_rol(args[0].AsInt(), args[1].AsInt()); }
-AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* env) { return a_ror(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* ) { return a_rol(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* ) { return a_ror(args[0].AsInt(), args[1].AsInt()); }
 
-AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env) { return a_btc(args[0].AsInt(), args[1].AsInt()); }
-AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env) { return a_btr(args[0].AsInt(), args[1].AsInt()); }
-AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env) { return a_bts(args[0].AsInt(), args[1].AsInt()); }
-AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env) { return a_bt (args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* ) { return a_btc(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* ) { return a_btr(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* ) { return a_bts(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* ) { return a_bt (args[0].AsInt(), args[1].AsInt()); }
 
 static int numberOfSetBits(uint32_t i)
 {
@@ -720,7 +720,7 @@ static int numberOfSetBits(uint32_t i)
   return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
-AVSValue BitSetCount(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue BitSetCount(AVSValue args, void*, IScriptEnvironment*) {
   if (args[0].IsInt())
     return numberOfSetBits(args[0].AsInt());
 
@@ -733,7 +733,7 @@ AVSValue BitSetCount(AVSValue args, void*, IScriptEnvironment* env) {
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(env->SaveString(args[0].AsString())); }
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(env->SaveString(args[0].AsString())); }
 
-AVSValue StrLen(AVSValue args, void*, IScriptEnvironment* env) { return int(strlen(args[0].AsString())); }
+AVSValue StrLen(AVSValue args, void*, IScriptEnvironment* ) { return int(strlen(args[0].AsString())); }
 AVSValue RevStr(AVSValue args, void*, IScriptEnvironment* env) { return _strrev(env->SaveString(args[0].AsString())); }
 
 AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env)
@@ -985,17 +985,17 @@ AVSValue TrimAll(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment*)
 {
   return lstrcmp( args[0].AsString(), args[1].AsString() );
 }
 
-AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment*)
 {
   return lstrcmpi( args[0].AsString(), args[1].AsString() );
 }
 
-AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue FindStr(AVSValue args, void*, IScriptEnvironment*)
 {
   const char *pdest = strstr( args[0].AsString(),args[1].AsString() );
   int result = (int)(pdest - args[0].AsString() + 1);
@@ -1003,7 +1003,7 @@ AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
   return result;
 }
 
-AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue Rand(AVSValue args, void*, IScriptEnvironment*)
  { int limit = args[0].AsInt(RAND_MAX);
    bool scale_mode = args[1].AsBool((abs(limit) > RAND_MAX));
 
@@ -1027,11 +1027,11 @@ AVSValue Select(AVSValue args, void*, IScriptEnvironment* env)
   return args[1][i];
 }
 
-AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env) { return 0;}
+AVSValue NOP(AVSValue args, void*, IScriptEnvironment*) { return 0;}
 
-AVSValue Undefined(AVSValue args, void*, IScriptEnvironment* env) { return AVSValue();}
+AVSValue Undefined(AVSValue args, void*, IScriptEnvironment*) { return AVSValue();}
 
-AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue Exist(AVSValue args, void*, IScriptEnvironment*nv) {
   const char *filename = args[0].AsString();
 
   if (strchr(filename, '*') || strchr(filename, '?')) // wildcard
@@ -1116,7 +1116,7 @@ AVSValue AVSChr(AVSValue args, void*, IScriptEnvironment* env )
     return env->SaveString(s);
 }
 
-AVSValue AVSOrd(AVSValue args, void*, IScriptEnvironment* env )
+AVSValue AVSOrd(AVSValue args, void*, IScriptEnvironment*)
 {
     return (int)args[0].AsString()[0] & 0xFF;
 }
@@ -1316,55 +1316,55 @@ const int GetPixelTypeFromName(const char *pixeltypename)
 }
 
 
-AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue PixelType (AVSValue args, void*, IScriptEnvironment*) {
   return GetPixelTypeName(VI(args[0]).pixel_type);
 }
 
 // AVS+
-AVSValue ColorSpaceNameToPixelType (AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue ColorSpaceNameToPixelType (AVSValue args, void*, IScriptEnvironment*) {
   return GetPixelTypeFromName(args[0].AsString());
 }
 
-AVSValue Width(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).width; }
-AVSValue Height(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).height; }
-AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).num_frames; }
-AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env) { const VideoInfo& vi = VI(args[0]); return (double)vi.fps_numerator / vi.fps_denominator; } // maximise available precision
-AVSValue FrameRateNumerator(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).fps_numerator; } // unsigned int truncated to int
-AVSValue FrameRateDenominator(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).fps_denominator; } // unsigned int truncated to int
-AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).audio_samples_per_second; }
-AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
-AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
-AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
+AVSValue Width(AVSValue args, void*, IScriptEnvironment*) { return VI(args[0]).width; }
+AVSValue Height(AVSValue args, void*, IScriptEnvironment*) { return VI(args[0]).height; }
+AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment*) { return VI(args[0]).num_frames; }
+AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment*) { const VideoInfo& vi = VI(args[0]); return (double)vi.fps_numerator / vi.fps_denominator; } // maximise available precision
+AVSValue FrameRateNumerator(AVSValue args, void*, IScriptEnvironment*) { return (int)VI(args[0]).fps_numerator; } // unsigned int truncated to int
+AVSValue FrameRateDenominator(AVSValue args, void*, IScriptEnvironment*) { return (int)VI(args[0]).fps_denominator; } // unsigned int truncated to int
+AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment*) { return VI(args[0]).audio_samples_per_second; }
+AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment*) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
+AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment*) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
+AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment*) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) { char s[32]; return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10)); }
-AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
-AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment*) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
+AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment*) {
   const VideoInfo& vi = VI(args[0]);
   return (double)vi.num_audio_samples / vi.audio_samples_per_second;
 }
 
-AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasAudio() ? VI(args[0]).nchannels : 0; }
-AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }
-AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
-AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_INT8 | SAMPLE_INT16 | SAMPLE_INT24 | SAMPLE_INT32 ); }
+AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).HasAudio() ? VI(args[0]).nchannels : 0; }
+AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).BytesPerChannelSample()*8; }
+AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
+AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsSampleType(SAMPLE_INT8 | SAMPLE_INT16 | SAMPLE_INT24 | SAMPLE_INT32 ); }
 
-AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB(); }
-AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24(); }
-AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB32(); }
-AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV(); }
-AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
-AVSValue IsY8(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsY8(); }
-AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV12(); }
-AVSValue IsYV16(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV16(); }
-AVSValue IsYV24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV24(); }
-AVSValue IsYV411(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV411(); }
-AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanar(); }
-AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsColorSpace(VideoInfo::CS_INTERLEAVED); }
-AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsFieldBased(); }
-AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).IsFieldBased(); }
-AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsClip()->GetParity(args[1].AsInt(0)); }
+AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB(); }
+AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB24(); }
+AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB32(); }
+AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsYUV(); }
+AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsYUY2(); }
+AVSValue IsY8(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsY8(); }
+AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsYV12(); }
+AVSValue IsYV16(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsYV16(); }
+AVSValue IsYV24(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsYV24(); }
+AVSValue IsYV411(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsYV411(); }
+AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsPlanar(); }
+AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsColorSpace(VideoInfo::CS_INTERLEAVED); }
+AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsFieldBased(); }
+AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment*) {  return !VI(args[0]).IsFieldBased(); }
+AVSValue GetParity(AVSValue args, void*, IScriptEnvironment*) {  return args[0].AsClip()->GetParity(args[1].AsInt(0)); }
 
-AVSValue HasVideo(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasVideo(); }
-AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasAudio(); }
+AVSValue HasVideo(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).HasVideo(); }
+AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).HasAudio(); }
 
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -1405,23 +1405,23 @@ AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env)
   return env->SaveString(buf);
 }
 
-AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsBool(); }
-AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsInt(); }
-AVSValue IsFloat(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsFloat(); }
-AVSValue IsString(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsString(); }
-AVSValue IsClip(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsClip(); }
-AVSValue Defined(AVSValue args, void*, IScriptEnvironment* env) { return args[0].Defined(); }
+AVSValue IsBool(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsBool(); }
+AVSValue IsInt(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsInt(); }
+AVSValue IsFloat(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsFloat(); }
+AVSValue IsString(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsString(); }
+AVSValue IsClip(AVSValue args, void*, IScriptEnvironment*) {  return args[0].IsClip(); }
+AVSValue Defined(AVSValue args, void*, IScriptEnvironment*) {  return args[0].Defined(); }
 
-AVSValue Default(AVSValue args, void*, IScriptEnvironment* env) { return args[0].Defined() ? args[0] : args[1]; }
-AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return AVS_CLASSIC_VERSION; }
-AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_FULLVERSION; }
+AVSValue Default(AVSValue args, void*, IScriptEnvironment*) {  return args[0].Defined() ? args[0] : args[1]; }
+AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment*) {  return AVS_CLASSIC_VERSION; }
+AVSValue VersionString(AVSValue args, void*, IScriptEnvironment*) {  return AVS_FULLVERSION; }
 
-AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
-AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int64_t(args[0].AsFloat()); }
-AVSValue Float(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat(); }
+AVSValue Int(AVSValue args, void*, IScriptEnvironment*) {  return int(args[0].AsFloat()); }
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment*) {  return args[0].AsFloat() - int64_t(args[0].AsFloat()); }
+AVSValue Float(AVSValue args, void*, IScriptEnvironment*) {  return args[0].AsFloat(); }
 
-AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
-AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue Value(AVSValue args, void*, IScriptEnvironment*) {  char *stopstring; return strtod(args[0].AsString(),&stopstring); }
+AVSValue HexValue(AVSValue args, void*, IScriptEnvironment*)
 {
   // Added optional pos arg default = 1, start position in string of the HexString, 1 denotes the string beginning.
   // Will return 0 if error in 'pos' ie if pos is less than 1 or greater than string length.
@@ -1584,21 +1584,21 @@ AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env)
     return AVSValue();
 }
 
-AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsY(); }
-AVSValue Is420(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is420(); }
-AVSValue Is422(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is422(); }
-AVSValue Is444(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).Is444(); }
-AVSValue IsRGB48(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB48(); }
-AVSValue IsRGB64(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB64(); }
-AVSValue ComponentSize(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).ComponentSize(); }
-AVSValue BitsPerComponent(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BitsPerComponent(); }
-AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUVA(); }
-AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGB(); }
-AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA(); }
-AVSValue NumComponents(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).NumComponents(); }
-AVSValue HasAlpha(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanarRGBA() || VI(args[0]).IsYUVA() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB64(); }
-AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB48() || VI(args[0]).IsRGB64(); }
-AVSValue IsVideoFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BitsPerComponent() == 32; }
+AVSValue IsY(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsY(); }
+AVSValue Is420(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).Is420(); }
+AVSValue Is422(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).Is422(); }
+AVSValue Is444(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).Is444(); }
+AVSValue IsRGB48(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB48(); }
+AVSValue IsRGB64(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB64(); }
+AVSValue ComponentSize(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).ComponentSize(); }
+AVSValue BitsPerComponent(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).BitsPerComponent(); }
+AVSValue IsYUVA(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsYUVA(); }
+AVSValue IsPlanarRGB(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsPlanarRGB(); }
+AVSValue IsPlanarRGBA(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsPlanarRGBA(); }
+AVSValue NumComponents(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).NumComponents(); }
+AVSValue HasAlpha(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsPlanarRGBA() || VI(args[0]).IsYUVA() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB64(); }
+AVSValue IsPackedRGB(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB24() || VI(args[0]).IsRGB32() || VI(args[0]).IsRGB48() || VI(args[0]).IsRGB64(); }
+AVSValue IsVideoFloat(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).BitsPerComponent() == 32; }
 
 // helper for GetProcessInfo
 static int ProcessType() {
@@ -1607,7 +1607,7 @@ static int ProcessType() {
 #define PROCESS_32_ON_64 1
 #define PROCESS_64_ON_64 2
 
-  if (sizeof(void*) == 8)
+  if constexpr(sizeof(void*) == 8)
     return PROCESS_64_ON_64;
 
   // IsWow64Process is not available on all supported versions of Windows.
@@ -1727,7 +1727,7 @@ AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env) {
 }
 */
 
-AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment*)
 {
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   return false;

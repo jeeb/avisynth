@@ -53,7 +53,7 @@ static void convert_yv12_chroma_to_yv24_sse2(BYTE *dstp, const BYTE *srcp, int d
       // 0 0 0 0 0 0 0 0 U7 U6 U5 U4 U3 U2 U1 U0 for 8 bits
       // 0 0 0 0 U3 U2 U1 U0 for 16 bits
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x));
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t) == 1)
         src = _mm_unpacklo_epi8(src, src); //U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
       else
         src = _mm_unpacklo_epi16(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
@@ -64,7 +64,7 @@ static void convert_yv12_chroma_to_yv24_sse2(BYTE *dstp, const BYTE *srcp, int d
 
     if (mod8_width != src_width) {
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+src_width - 8));
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t) == 1)
         src = _mm_unpacklo_epi8(src, src); //U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
       else
         src = _mm_unpacklo_epi16(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
@@ -129,6 +129,7 @@ static void convert_yv12_chroma_to_yv24_c(BYTE *dstp8, const BYTE *srcp8, int ds
 
 void Convert444FromYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
 {
+  AVS_UNUSED(bits_per_pixel);
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -195,7 +196,7 @@ static void convert_yv16_chroma_to_yv24_sse2(BYTE *dstp, const BYTE *srcp, int d
       // 0 0 0 0 0 0 0 0 U7 U6 U5 U4 U3 U2 U1 U0 for 8 bits
       // 0 0 0 0 U3 U2 U1 U0 for 16 bits
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x));
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t) == 1)
         src = _mm_unpacklo_epi8(src, src); //U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
       else
         src = _mm_unpacklo_epi16(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
@@ -205,7 +206,7 @@ static void convert_yv16_chroma_to_yv24_sse2(BYTE *dstp, const BYTE *srcp, int d
 
     if (mod8_width != src_width) {
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+src_width - 8)); //0 0 0 0 0 0 0 0 U8 U7 U6 U5 U4 U3 U2 U1 U0
-      if(sizeof(pixel_t)==1)
+      if constexpr(sizeof(pixel_t)==1)
         src = _mm_unpacklo_epi8(src, src); //U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
       else
         src = _mm_unpacklo_epi16(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
@@ -237,6 +238,7 @@ static void convert_yv16_chroma_to_yv24_c(BYTE *dstp8, const BYTE *srcp8, int ds
 
 void Convert444FromYV16(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
 {
+  AVS_UNUSED(bits_per_pixel);
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -286,6 +288,9 @@ void Convert444FromYV16(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int b
 /***** YUY2 -> YUV 4:4:4   ******/
 
 void Convert444FromYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
+  AVS_UNUSED(pixelsize);
+  AVS_UNUSED(bits_per_pixel);
+  AVS_UNUSED(env);
 
   const BYTE* srcP = src->GetReadPtr();
   int srcPitch = src->GetPitch();
@@ -320,21 +325,21 @@ void Convert444FromYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int b
 template<typename pixel_t, bool hasSSE4>
 static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff_or_mul, const __m128i &mask) {
   __m128i avg1, avg2;
-  if (sizeof(pixel_t) == 1) {
+  if constexpr(sizeof(pixel_t) == 1) {
     avg1 = _mm_avg_epu8(src_line0_p0, src_line1_p0);
     avg2 = _mm_avg_epu8(src_line0_p1, src_line1_p1);
   }
-  else if(sizeof(pixel_t) == 2) {
+  else if constexpr(sizeof(pixel_t) == 2) {
     avg1 = _mm_avg_epu16(src_line0_p0, src_line1_p0);
     avg2 = _mm_avg_epu16(src_line0_p1, src_line1_p1);
   }
-  else if(sizeof(pixel_t) == 4) {
+  else if constexpr(sizeof(pixel_t) == 4) {
     // todo make it faster
-    __m128 avg1 = _mm_add_ps(_mm_castsi128_ps(src_line0_p0), _mm_castsi128_ps(src_line1_p0)); // vertical sum
-    __m128 avg2 = _mm_add_ps(_mm_castsi128_ps(src_line0_p1), _mm_castsi128_ps(src_line1_p1));
+    __m128 avg1f = _mm_add_ps(_mm_castsi128_ps(src_line0_p0), _mm_castsi128_ps(src_line1_p0)); // vertical sum
+    __m128 avg2f = _mm_add_ps(_mm_castsi128_ps(src_line0_p1), _mm_castsi128_ps(src_line1_p1));
     // ABCD -> a3, a2+a3, a1, a1+a0
-    avg1 = _mm_add_ps(avg1,_mm_castsi128_ps(_mm_srli_epi64(_mm_castps_si128(avg1), 32)));
-    avg2 = _mm_add_ps(avg2,_mm_castsi128_ps(_mm_srli_epi64(_mm_castps_si128(avg2), 32)));
+    avg1f = _mm_add_ps(avg1f,_mm_castsi128_ps(_mm_srli_epi64(_mm_castps_si128(avg1f), 32)));
+    avg2f = _mm_add_ps(avg2f,_mm_castsi128_ps(_mm_srli_epi64(_mm_castps_si128(avg2f), 32)));
     //__m128 _mm_shuffle_ps(__m128 lo,__m128 hi, _MM_SHUFFLE(hi3,hi2,lo1,lo0))
     //Interleave inputs into low 2 floats and high 2 floats of output. Basically
     //out[0]=lo[lo0];
@@ -342,22 +347,21 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128
     //out[2]=hi[hi2];
     //out[3]=hi[hi3];
     // avg2[2],avg2[0],avg1[2],avg1[0]
-    return _mm_castps_si128(_mm_mul_ps(_mm_shuffle_ps(avg1, avg2, _MM_SHUFFLE(2, 0, 2, 0)),_mm_castsi128_ps(ffff_or_mul)));
+    return _mm_castps_si128(_mm_mul_ps(_mm_shuffle_ps(avg1f, avg2f, _MM_SHUFFLE(2, 0, 2, 0)),_mm_castsi128_ps(ffff_or_mul)));
   }
 
   __m128i avg1x = _mm_xor_si128(avg1, ffff_or_mul);
   __m128i avg2x = _mm_xor_si128(avg2, ffff_or_mul);
 
-  __m128i avg1_sh, avg2_sh;
-  if (sizeof(pixel_t) == 1) {
-    avg1_sh = _mm_srli_epi16(avg1x, 8);
-    avg2_sh = _mm_srli_epi16(avg2x, 8);
+  if constexpr(sizeof(pixel_t) == 1) {
+    __m128i avg1_sh = _mm_srli_epi16(avg1x, 8);
+    __m128i avg2_sh = _mm_srli_epi16(avg2x, 8);
     avg1 = _mm_avg_epu8(avg1x, avg1_sh);
     avg2 = _mm_avg_epu8(avg2x, avg2_sh);
   }
-  else if(sizeof(pixel_t) == 2) {
-    avg1_sh = _mm_srli_epi32(avg1x, 16);
-    avg2_sh = _mm_srli_epi32(avg2x, 16);
+  else if constexpr(sizeof(pixel_t) == 2) {
+    __m128i avg1_sh = _mm_srli_epi32(avg1x, 16);
+    __m128i avg2_sh = _mm_srli_epi32(avg2x, 16);
     avg1 = _mm_avg_epu16(avg1x, avg1_sh);
     avg2 = _mm_avg_epu16(avg2x, avg2_sh);
   }
@@ -366,9 +370,9 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128
   avg2 = _mm_and_si128(avg2, mask);
 
   __m128i packed;
-  if (sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     packed = _mm_packus_epi16(avg1, avg2);
-  else if (sizeof(pixel_t) == 2) {
+  else if constexpr(sizeof(pixel_t) == 2) {
     if (hasSSE4)
       packed = _mm_packus_epi32(avg1, avg2); // SSE4
     else
@@ -383,13 +387,13 @@ static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int d
   __m128i ffff_or_mul;
 #pragma warning(push)
 #pragma warning(disable:4309)
-  if (sizeof(pixel_t) == 4)
+  if constexpr(sizeof(pixel_t) == 4)
     ffff_or_mul = _mm_castps_si128(_mm_set1_ps(1.0f/4));
   else
     ffff_or_mul = _mm_set1_epi8(0xFF);
 #pragma warning(pop)
   __m128i mask;
-  if (sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     mask = _mm_set1_epi16(0x00FF);
   else
     mask = _mm_set1_epi32(0xFFFF);
@@ -504,7 +508,7 @@ static void convert_yv24_chroma_to_yv12_c(BYTE *dstp8, const BYTE *srcp8, int ds
 // 16 bit: SSE4 option
 template<typename pixel_t, bool hasSSE4>
 static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128i &src_line0_p0, const __m128i &src_line0_p1, const __m128i &ffff_or_mul, const __m128i &mask) {
-  if(sizeof(pixel_t) == 4) {
+  if constexpr(sizeof(pixel_t) == 4) {
     __m128 avg1 = _mm_castsi128_ps(src_line0_p0);
     __m128 avg2 = _mm_castsi128_ps(src_line0_p1);
     // ABCD -> a3, a2+a3, a1, a1+a0
@@ -525,14 +529,14 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128
   __m128i avg1_sh, avg2_sh;
   __m128i avg1, avg2;
 
-  if (sizeof(pixel_t) == 1) {
+  if constexpr(sizeof(pixel_t) == 1) {
     avg1_sh = _mm_srli_epi16(avg1x, 8);
     avg2_sh = _mm_srli_epi16(avg2x, 8);
 
     avg1 = _mm_avg_epu8(avg1x, avg1_sh);
     avg2 = _mm_avg_epu8(avg2x, avg2_sh);
   }
-  else if(sizeof(pixel_t) == 2) {
+  else if constexpr(sizeof(pixel_t) == 2) {
     avg1_sh = _mm_srli_epi32(avg1x, 16);
     avg2_sh = _mm_srli_epi32(avg2x, 16);
 
@@ -544,9 +548,9 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128
   avg2 = _mm_and_si128(avg2, mask);
 
   __m128i packed;
-  if (sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     packed = _mm_packus_epi16(avg1, avg2);
-  else if (sizeof(pixel_t) == 2) {
+  else if constexpr(sizeof(pixel_t) == 2) {
     if(hasSSE4)
       packed = _mm_packus_epi32(avg1, avg2); // SSE4
     else
@@ -561,13 +565,13 @@ static void convert_yv24_chroma_to_yv16_sse2(BYTE *dstp, const BYTE *srcp, int d
   __m128i ffff_or_mul;
 #pragma warning(push)
 #pragma warning(disable:4309)
-  if (sizeof(pixel_t) == 4)
+  if constexpr(sizeof(pixel_t) == 4)
     ffff_or_mul = _mm_castps_si128(_mm_set1_ps(1.0f/2));
   else
     ffff_or_mul = _mm_set1_epi8(0xFF);
 #pragma warning(pop)
   __m128i mask;
-  if(sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     mask = _mm_set1_epi16(0x00FF);
   else
     mask = _mm_set1_epi32(0xFFFF);
@@ -668,6 +672,7 @@ void ConvertYToYV16Chroma(BYTE *dst, BYTE *src, int dstpitch, int srcpitch, int 
 
 void Convert444ToYV16(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
 {
+  AVS_UNUSED(bits_per_pixel);
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
     src->GetReadPtr(PLANAR_Y), src->GetPitch(), dst->GetRowSize(PLANAR_Y), dst->GetHeight());
 
@@ -727,6 +732,7 @@ void Convert444ToYV16(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bit
 
 void Convert444ToYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env)
 {
+  AVS_UNUSED(bits_per_pixel);
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
     src->GetReadPtr(PLANAR_Y), src->GetPitch(), dst->GetRowSize(PLANAR_Y), dst->GetHeight());
 
@@ -797,6 +803,8 @@ void Convert444ToYV12(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bit
 /*****   YUV 4:4:4 -> YUY2   *******/
 
 void Convert444ToYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
+  AVS_UNUSED(bits_per_pixel);
+  AVS_UNUSED(env);
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);

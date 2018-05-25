@@ -747,9 +747,10 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
     bool bIs64BitDLL;
     bool succ = Is64BitDLL(plugin.FilePath, bIs64BitDLL);
     if (succ) {
-      if (sizeof(void *) == 4 && bIs64BitDLL)
+      const bool selfIs32 = sizeof(void *) == 4;
+      if (selfIs32 && bIs64BitDLL)
         Env->ThrowError("Cannot load a 64 bit DLL in 32 bit Avisynth: '%s'.\n", plugin.FilePath.c_str());
-      if (sizeof(void *) != 4 && !bIs64BitDLL)
+      if (!selfIs32 && !bIs64BitDLL)
         Env->ThrowError("Cannot load a 32 bit DLL in 64 bit Avisynth: '%s'.\n", plugin.FilePath.c_str());
     }
     if (throwOnError)
@@ -1025,7 +1026,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 ---------------------------------------------------------------------------------
 */
 
-AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue LoadPlugin(AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 

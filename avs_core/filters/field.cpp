@@ -720,6 +720,7 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
 
 int __stdcall Interleave::SetCacheHints(int cachehints,int frame_range)
 {
+  AVS_UNUSED(frame_range);
   switch (cachehints)
   {
   case CACHE_DONT_CACHE_ME:
@@ -953,6 +954,7 @@ bool __stdcall Fieldwise::GetParity(int n)
 
 static AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env) 
 {
+  AVS_UNUSED(env);
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsFieldBased())
     return new DoubleWeaveFields(clip);
@@ -1074,5 +1076,6 @@ void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 coun
 }
 
 AVSValue __cdecl SelectRangeEvery::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-    return new SelectRangeEvery(args[0].AsClip(), args[1].AsInt(1500), args[2].AsInt(50), args[3].AsInt(0), args[4].AsBool(true), env);
+  AVS_UNUSED(user_data);
+  return new SelectRangeEvery(args[0].AsClip(), args[1].AsInt(1500), args[2].AsInt(50), args[3].AsInt(0), args[4].AsBool(true), env);
 }

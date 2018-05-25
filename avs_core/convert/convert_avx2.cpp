@@ -126,7 +126,7 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
       }
       result_0 = _mm256_cvttps_epi32(src_0); // truncate
       result_1 = _mm256_cvttps_epi32(src_1);
-      if (sizeof(pixel_t) == 2) {
+      if constexpr(sizeof(pixel_t) == 2) {
         result = _mm256_packus_epi32(result_0, result_1);
         result = _mm256_permute4x64_epi64(result, (0 << 0) | (2 << 2) | (1 << 4) | (3 << 6));
         if (targetbits > 8 && targetbits < 16) {

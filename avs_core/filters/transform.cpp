@@ -104,6 +104,7 @@ PVideoFrame FlipVertical::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
+  AVS_UNUSED(env);
   return new FlipVertical(args[0].AsClip());
 }
 
@@ -224,6 +225,7 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
+  AVS_UNUSED(env);
   return new FlipHorizontal(args[0].AsClip());
 }
 
@@ -238,6 +240,7 @@ AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment
 Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _child, IScriptEnvironment* env)
  : GenericVideoFilter(_child), align(FRAME_ALIGN - 1), xsub(0), ysub(0)
 {
+  AVS_UNUSED(_align);
   // _align parameter exists only for the backward compatibility.
 
   /* Negative values -> VDub-style syntax
@@ -399,8 +402,8 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
 template<typename pixel_t>
 static inline pixel_t GetHbdColorFromByte(uint8_t color, bool fullscale, int bits_per_pixel, bool chroma)
 {
-  if (sizeof(pixel_t) == 1) return color;
-  else if (sizeof(pixel_t) == 2) return (pixel_t)(fullscale ? (color * ((1 << bits_per_pixel)-1)) / 255 : (int)color << (bits_per_pixel - 8));
+  if constexpr(sizeof(pixel_t) == 1) return color;
+  else if constexpr(sizeof(pixel_t) == 2) return (pixel_t)(fullscale ? (color * ((1 << bits_per_pixel)-1)) / 255 : (int)color << (bits_per_pixel - 8));
   else {
     if (chroma)
       return (pixel_t)uv8tof(color);  // float, scale, 128=0.0f

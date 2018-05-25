@@ -91,7 +91,7 @@ static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const 
     for (int x = 0; x < width; ++x) {
       pixel_t a;
       // Note: ScaledPixelClip is overloaded. With __int64 parameter and uint16_t result works for 16 bit
-      if(sizeof(pixel_t) == 1)
+      if constexpr(sizeof(pixel_t) == 1)
         a = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight));
       else
         a = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight), max_pixel_value);
@@ -101,7 +101,7 @@ static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const 
     dstp += pitch;
   }
   for (int x = 0; x < width; ++x) { // Last row - map centre as lower
-    if(sizeof(pixel_t) == 1)
+    if constexpr(sizeof(pixel_t) == 1)
       dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight));
     else
       dstp[x] = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight), max_pixel_value);
@@ -585,8 +585,8 @@ static void af_horizontal_rgb32_64_c(BYTE* dstp8, size_t height, size_t pitch8, 
 static void af_horizontal_rgb32_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount) {
   size_t width_bytes = width * 4;
   size_t loop_limit = width_bytes - 16;
-  int center_weight_c = int(amount*2);
-  int outer_weight_c = int(32768-amount);
+  //int center_weight_c = int(amount*2);
+  //int outer_weight_c = int(32768-amount);
 
   short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi16(t);
@@ -848,7 +848,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
       center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
       right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x + 4));//V2 Y5 U2 Y4 V1 Y3 U1 Y2
 
-      __m128i result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
+      result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
       _mm_store_si128(reinterpret_cast< __m128i*>(dstp+x), result);
     }
@@ -1067,7 +1067,7 @@ static void af_horizontal_planar_c(BYTE* dstp8, size_t height, size_t pitch8, si
     pixel_t left;
     for (size_t y = height; y>0; --y) {
         left = dstp[0];
-        if(sizeof(pixel_t) == 1)
+        if constexpr(sizeof(pixel_t) == 1)
           af_horizontal_planar_process_line_c<pixel_t>(left, (BYTE *)dstp, row_size, center_weight, outer_weight);
         else
           af_horizontal_planar_process_line_uint16_c(left, (BYTE *)dstp, row_size, center_weight, outer_weight, bits_per_pixel);
@@ -1367,7 +1367,6 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsPlanar()) {
     copy_frame(src, dst, env, planes, vi.NumComponents() ); //planar processing is always in-place
-    int pixelsize = vi.ComponentSize();
     int bits_per_pixel = vi.BitsPerComponent();
     for(int cplane=0;cplane<3;cplane++) {
       int plane = planes[cplane];
@@ -1617,7 +1616,7 @@ static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, i
   threshold_t threshold = _threshold; // parameter 0..255
   if (std::is_floating_point<pixel_t>::value)
     threshold = (threshold_t)(threshold / 255.0f); // float
-  else if (sizeof(pixel_t) == 2) {
+  else if constexpr(sizeof(pixel_t) == 2) {
     threshold = threshold * (uint16_t)(1 << (bits_per_pixel - 8)); // uint16_t, 10 bit: *4 16bit: *256
   }
 
@@ -2075,7 +2074,7 @@ __int64 calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, i
 
   __m128i rgb_mask;
   if (packedRGB3264) {
-    if (sizeof(pixel_t) == 1)
+    if constexpr(sizeof(pixel_t) == 1)
       rgb_mask = _mm_set1_epi32(0x00FFFFFF);
     else
       rgb_mask = _mm_set_epi32(0x0000FFFF,0xFFFFFFFF,0x0000FFFF,0xFFFFFFFF);
@@ -2093,11 +2092,11 @@ __int64 calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, i
         src1 = _mm_and_si128(src1, rgb_mask); // mask out A channel
         src2 = _mm_and_si128(src2, rgb_mask);
       }
-      if(sizeof(pixel_t) == 1) {
+      if constexpr(sizeof(pixel_t) == 1) {
         // this is uint_16 specific, but leave here for sample
         sum = _mm_add_epi32(sum, _mm_sad_epu8(src1, src2)); // sum0_32, 0, sum1_32, 0
       }
-      else if (sizeof(pixel_t) == 2) {
+      else if constexpr(sizeof(pixel_t) == 2) {
         __m128i greater_t = _mm_subs_epu16(src1, src2); // unsigned sub with saturation
         __m128i smaller_t = _mm_subs_epu16(src2, src1);
         __m128i absdiff = _mm_or_si128(greater_t, smaller_t); //abs(s1-s2)  == (satsub(s1,s2) | satsub(s2,s1))
@@ -2108,7 +2107,7 @@ __int64 calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, i
       }
     }
     // summing up partial sums
-    if(sizeof(pixel_t) == 2) {
+    if constexpr(sizeof(pixel_t) == 2) {
       // at 16 bits: we have 4 integers for sum: a0 a1 a2 a3
       __m128i a0_a1 = _mm_unpacklo_epi32(sum, zero); // a0 0 a1 0
       __m128i a2_a3 = _mm_unpackhi_epi32(sum, zero); // a2 0 a3 0

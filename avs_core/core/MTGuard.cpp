@@ -210,6 +210,7 @@ bool __stdcall MTGuard::GetParity(int n)
 
 int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
 {
+  AVS_UNUSED(frame_range);
   if (CACHE_GET_MTMODE == cachehints) {
     return MT_NICE_FILTER;
   }

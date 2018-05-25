@@ -87,7 +87,7 @@ GeneralConvolution::GeneralConvolution(PClip _child, double _divisor, int _nBias
 }
 
 
-AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
   return new GeneralConvolution( args[0].AsClip(), args[3].AsFloat(1.0f), args[1].AsInt(0),
                                    args[2].AsString("0 0 0 0 1 0 0 0 0" ), args[4].AsBool(true), env);

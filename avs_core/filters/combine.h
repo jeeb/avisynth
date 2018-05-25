@@ -68,6 +68,7 @@ public:
   }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -102,6 +103,7 @@ public:
   }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) {
+    AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -126,7 +128,11 @@ public:
     { return vi; }
   inline bool __stdcall GetParity(int n) 
     { return child[0]->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { 
+    AVS_UNUSED(cachehints);
+    AVS_UNUSED(frame_range);
+    return 0;
+  };
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -162,7 +168,11 @@ public:
     { return cache[0]->GetVideoInfo(); }
   bool __stdcall GetParity(int n);
 
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { 
+    AVS_UNUSED(cachehints);
+    AVS_UNUSED(frame_range);
+    return 0; 
+  };
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl Create_Range(AVSValue args, void*, IScriptEnvironment* env);

@@ -197,7 +197,7 @@ static double get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t wid
 
 
 
-AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, int offset, IScriptEnvironment* env)
+AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IScriptEnvironment* env)
 {
   if (!clip.IsClip())
     env->ThrowError("Average Plane: No clip supplied!");
@@ -354,7 +354,7 @@ static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_
   __m128i zero = _mm_setzero_si128();
   __m128i sum = _mm_setzero_si128();
   __m128i rgb_mask;
-  if(sizeof(pixel_t) == 1)
+  if constexpr(sizeof(pixel_t) == 1)
     rgb_mask = _mm_set1_epi32(0x00FFFFFF);
   else
     rgb_mask = _mm_set_epi32(0x0000FFFF,0xFFFFFFFF,0x0000FFFF,0xFFFFFFFF);
@@ -365,7 +365,7 @@ static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_
       __m128i other = _mm_load_si128(reinterpret_cast<const __m128i*>(other_ptr + x));
       src = _mm_and_si128(src, rgb_mask);
       other = _mm_and_si128(other, rgb_mask);
-      if (sizeof(pixel_t) == 1) {
+      if constexpr(sizeof(pixel_t) == 1) {
         __m128i sad = _mm_sad_epu8(src, other); // Sads in lo64/hi64
         sum = _mm_add_epi32(sum, sad);
       }
@@ -388,7 +388,7 @@ static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_
     other_ptr += other_pitch;
   }
   // summing up partial sums,
-  if(sizeof(pixel_t) == 2) {
+  if constexpr(sizeof(pixel_t) == 2) {
     // at 16 bits: we have 4 integers for sum: a0 a1 a2 a3
     __m128i a0_a1 = _mm_unpacklo_epi32(sum, zero); // a0 0 a1 0
     __m128i a2_a3 = _mm_unpackhi_epi32(sum, zero); // a2 0 a3 0
@@ -465,7 +465,7 @@ static size_t get_sad_rgb_isse(const BYTE* src_ptr, const BYTE* other_ptr, size_
 
 
 
-AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env)
+AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane, IScriptEnvironment* env)
 {
   if (!clip.IsClip())
     env->ThrowError("Plane Difference: No clip supplied!");
@@ -585,7 +585,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 }
 
 
-AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, int plane, IScriptEnvironment* env)
+AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane, IScriptEnvironment* env)
 {
   if (!clip.IsClip())
     env->ThrowError("Plane Difference: No clip supplied!");
@@ -706,7 +706,7 @@ AVSValue MinMaxPlane::Create_minmax(AVSValue args, void* user_data, IScriptEnvir
 }
 
 
-AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
+AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
 
   if (!clip.IsClip())
     env->ThrowError("MinMax: No clip supplied!");

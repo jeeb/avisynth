@@ -55,7 +55,9 @@ public:
     : GenericVideoFilter(_child),
 	  mode(_mode ?  IScriptEnvironment::PlanarChromaAlignmentOff  // Legacy PLANAR_Y alignment
 			      : IScriptEnvironment::PlanarChromaAlignmentOn)  // New PLANAR_UV priority alignment
-  { }
+  { 
+    AVS_UNUSED(env);
+  }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
   {
@@ -94,6 +96,7 @@ private:
 public:
   Echo( PClip _child, const AVSValue _clips, IScriptEnvironment* env )
      : GenericVideoFilter(_child), ClipCount(_clips.ArraySize()) {
+    AVS_UNUSED(env);
 
     clips = new PClip[ClipCount];
     for (int i=0; i < ClipCount; i++)
@@ -144,7 +147,8 @@ public:
       videonext(0),
       audionext(0) {
 
-	// Force source filter to honour preroll
+    AVS_UNUSED(env);
+    // Force source filter to honour preroll
     child->SetCacheHints(CACHE_NOTHING, 0);       // Disable Video cache
     child->SetCacheHints(CACHE_AUDIO_NOTHING, 0); // Disable Audio cache
   }
@@ -218,6 +222,7 @@ extern const AVSFunction Debug_filters[] = {
 Null::Null(PClip _child, const char * _copy, IScriptEnvironment* env)
   : GenericVideoFilter(_child), copy(_copy)
 {
+  AVS_UNUSED(env);
 }
 
 Null::~Null()

@@ -652,7 +652,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   return frame;
 }
 
-AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl Limiter::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
 	const char* option = args[5].AsString(0);
 	show_e show = show_none;

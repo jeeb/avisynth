@@ -268,7 +268,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
   // different paths for different bitdepth
   // todo PF 161208 shiftX shiftY bits_per_pixel templates
   // perpaps int->byte, short (faster??)
-  if(bits_per_pixel == 8) {
+  if constexpr(bits_per_pixel == 8) {
     for (int y=yb; y<=yt; y+=1) {
       for (int x=xl; x<=xr; x+=1) {
         const int x4 = x<<2;
@@ -281,7 +281,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
       alpha += w4;
     }
   }
-  else if (bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
+  else if constexpr(bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
     for (int y=yb; y<=yt; y+=1) {
       for (int x=xl; x<=xr; x+=1) {
         const int x4 = x<<2;
@@ -294,7 +294,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
       alpha += w4;
     }
   }
-  else if (bits_per_pixel == 32) { // float assume 0..1.0 scale
+  else if constexpr(bits_per_pixel == 32) { // float assume 0..1.0 scale
     for (int y=yb; y<=yt; y+=1) {
       for (int x=xl; x<=xr; x+=1) {
         const int x4 = x<<2;
@@ -321,7 +321,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
   bufV += (pitchUV*yb)>>shiftY;
 
   // different paths for different bitdepth
-  if(bits_per_pixel == 8) {
+  if constexpr(bits_per_pixel == 8) {
     for (int y=yb; y<=yt; y+=stepY) {
       for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
         unsigned short* UValpha = alpha + x*4;
@@ -346,7 +346,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
       alpha += UVw4;
     }//end for y
   }
-  else if (bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
+  else if constexpr(bits_per_pixel >= 10 && bits_per_pixel <= 16) { // uint16_t
     for (int y=yb; y<=yt; y+=stepY) {
       for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
         unsigned short* UValpha = alpha + x*4;
@@ -371,7 +371,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
       alpha += UVw4;
     }//end for y
   }
-  else if (bits_per_pixel == 32) { // float. assume 0..1.0 scale
+  else if constexpr(bits_per_pixel == 32) { // float. assume 0..1.0 scale
     const float shifter_inv_f = 1.0f / (1 << shifter);
     const float a_factor = shifter_inv_f / 256.0f;
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
@@ -816,8 +816,8 @@ void Antialiaser::GetAlphaRect()
 
       if (interlaced) {
 #pragma unroll
-        for (int i = -8; i < 16; ++i) {
-          tmp |= *reinterpret_cast<int*>(src + srcpitch*i - 1);
+        for (int ii = -8; ii < 16; ++ii) {
+          tmp |= *reinterpret_cast<int*>(src + srcpitch*ii - 1);
         }
       } else {
 #if 0
@@ -830,7 +830,7 @@ void Antialiaser::GetAlphaRect()
         BYTE *tmpsrc = src + srcpitch*(-12) - 1;
 #pragma unroll
         // PF 161208 speedup test manual unroll, no pragma in VS
-        for (int i = -12; i < 20; i+=4) { // 0..31
+        for (int ii = -12; ii < 20; ii+=4) { // 0..31
           tmp |= *reinterpret_cast<int*>(tmpsrc) |
             *reinterpret_cast<int*>(tmpsrc+srcpitch*1) |
             *reinterpret_cast<int*>(tmpsrc+srcpitch*2) |
@@ -954,13 +954,13 @@ void Antialiaser::GetAlphaRect()
 #if 1
               { // PF 161208 speedup test get first two bytes as word
                 int index = srcpitch*(0 + 8);
-                for (int i = 0; i < 8; i++) {
+                for (int ii = 0; ii < 8; ii++) {
                   // Check the 3 cells above
                   const uint16_t ab = *reinterpret_cast<uint16_t *>(src + index - 1);
                   mask |= bitexr[ab & 0xFF];
                   mask |= -!!(ab >> 8);
                   mask |= bitexl[src[index + 1]];
-                  hmasks[i] = mask;
+                  hmasks[ii] = mask;
                   index += srcpitch;
                 }
               }
@@ -978,13 +978,13 @@ void Antialiaser::GetAlphaRect()
 #if 1
               { // PF 161208 speedup test get first two bytes as word
                 int index = srcpitch*(7 - 8);
-                for (int i = 7; i >= 0; i--) {
+                for (int ii = 7; ii >= 0; ii--) {
                   // Check the 3 cells below
                   const uint16_t ab = *reinterpret_cast<uint16_t *>(src + index - 1);
                   mask |= bitexr[ab & 0xFF];
                   mask |= -!!(ab >> 8);
                   mask |= bitexl[src[index + 1]];
-                  alpha2 += bitcnt[hmasks[i] | mask];
+                  alpha2 += bitcnt[hmasks[ii] | mask];
                   index -= srcpitch;
                 }
               }
@@ -1043,11 +1043,12 @@ void Antialiaser::GetAlphaRect()
 ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
  : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
-   antialiaser(vi.width, vi.height, _fontname, _size,
+  antialiaser(vi.width, vi.height, _fontname, _size,
                vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
                vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
 			   font_width, font_angle)
 {
+  AVS_UNUSED(env);
 }
 
 enum { DefXY = (int)0x80000000 };
@@ -1459,13 +1460,12 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
     // Test: 
     // Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
     // SubTitle(Title, utf8 = true)
-    int len = (int)strlen(text) + 1;
     int wchars_count = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
     wchar_t *textw = new wchar_t[wchars_count];
     int ret = MultiByteToWideChar(CP_UTF8, 0, text, -1, textw, wchars_count);
     if (ret == 0) {
       int lastError = GetLastError();
-      if(lastError = ERROR_NO_UNICODE_TRANSLATION)
+      if(lastError == ERROR_NO_UNICODE_TRANSLATION)
         env->ThrowError("Subtitle: UTF8 conversion error, no unicode translation");
       else
         env->ThrowError("Subtitle: UTF8 conversion error %d", lastError);
@@ -1575,6 +1575,7 @@ FilterInfo::FilterInfo( PClip _child, bool _font_override, const char _fontname[
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
 {
+  AVS_UNUSED(env);
 }
 
 
@@ -2695,6 +2696,8 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
                    int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env )
 {
+  AVS_UNUSED(bgcolor);
+  AVS_UNUSED(env);
   if (vi.IsYUV() || vi.IsYUVA()) {
     textcolor = RGB2YUV(textcolor);
     halocolor = RGB2YUV(halocolor);

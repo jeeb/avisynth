@@ -380,6 +380,7 @@ static __forceinline __m128i convert_yv12_to_yuy2_merge_chroma_sse2(const __m128
 // second and third - 8 chroma bytes in low dwords
 // last two params are OUT
 static __forceinline void convert_yv12_pixels_to_yuy2_sse2(const __m128i &y, const __m128i &u, const __m128i &v,  const __m128i &zero, __m128i &out_low, __m128i &out_high) {
+  AVS_UNUSED(zero);
   __m128i chroma = _mm_unpacklo_epi8(u, v); //...V3 U3 V2 U2 V1 U1 V0 U0
   out_low = _mm_unpacklo_epi8(y, chroma);
   out_high = _mm_unpackhi_epi8(y, chroma);
