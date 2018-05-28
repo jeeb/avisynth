@@ -194,6 +194,9 @@ int VideoInfo::RowSize(int plane) const {
 
 int VideoInfo::BMPSize() const {
   if ((NumComponents() > 1) && IsPlanar()) {
+    if (IsPlanarRGB() || IsPlanarRGBA()) {
+      return ((RowSize(PLANAR_G) + 3) & ~3) * height * NumComponents(); // does it make sense for planar rgb?
+    }
     // Y plane
     const int Ybytes  = ((RowSize(PLANAR_Y)+3) & ~3) * height;
     const int UVbytes = Ybytes >> (GetPlaneWidthSubsampling(PLANAR_U)+GetPlaneHeightSubsampling(PLANAR_U));
