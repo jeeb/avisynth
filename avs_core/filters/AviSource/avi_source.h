@@ -45,17 +45,30 @@ class TemporalBuffer {
   BYTE* pY;
   BYTE* pV;
   BYTE* pU;
+  BYTE* pA;
   int pitchY;
   int pitchUV;
   size_t size;
 public:
-  TemporalBuffer(const VideoInfo& vi, bool bMediaPad, IScriptEnvironment* env);
+  TemporalBuffer(const VideoInfo& vi, bool bMediaPad, 
+    bool b64a, bool b48r, bool v210,
+    bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
+    IScriptEnvironment* env);
   ~TemporalBuffer() {}
-  int GetPitch(int plane=PLANAR_Y) { return (plane == PLANAR_Y) ? pitchY : pitchUV; }
+  int GetPitch(int plane=PLANAR_Y) { 
+    return (plane == PLANAR_Y || plane == PLANAR_G || plane == PLANAR_B || plane == PLANAR_R || plane == PLANAR_A) ? pitchY : pitchUV; }
   size_t GetSize() { return size; }
   BYTE* GetPtr(int plane=PLANAR_Y)
   {
-    switch (plane) { case PLANAR_U: return pU; case PLANAR_V: return pV; default: return pY; }
+    switch (plane) { 
+    case PLANAR_U: return pU; 
+    case PLANAR_V: return pV; 
+    case PLANAR_G: return pY;
+    case PLANAR_B: return pU;
+    case PLANAR_R: return pV;
+    case PLANAR_A: return pA;
+    default: return pY;
+    }
   }
 };
 
@@ -74,6 +87,16 @@ class AVISource : public IClip {
   bool bIsType1;
   bool bInvertFrames;
   bool bMediaPad;
+  bool P010;
+  bool P016;
+  bool v210;
+  bool P210;
+  bool P216;
+  bool v410;
+  bool Y416;
+
+  bool b64a;
+  bool b48r;
 
   PVideoFrame last_frame;
   int last_frame_no;
