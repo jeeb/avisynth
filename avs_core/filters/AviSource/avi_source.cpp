@@ -566,7 +566,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           bool fYUV444P16 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YUV444P16") == 0;
           bool fY416 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y416") == 0;
 
-          bool fRGBP = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB") == 0; // RGB means planar RGB 10-16
+          bool fRGBP = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGBP") == 0; // RGBP means planar RGB 10-16
 
           // we don't set specifically v210, P010, P016, P210, P216, Y410, Y416 for auto.
           // These are set only when negotiated
@@ -602,7 +602,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             || fYUV444P16 || fY416
             || fRGBP
             ))
-            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, RGB24/32/48/64, RGB, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y416, AUTO or FULL");
+            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, RGBP, RGB24/32/48/64, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y416, AUTO or FULL");
 
           // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24, RGB48, RGB64, YUV422P10 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
@@ -611,113 +611,6 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           biDst.biHeight = vi.height;
           biDst.biPlanes = 1;
           bool bOpen = true;
-
-          // YUV422P10
-          if ((fYUV422P10 || fv210 || fP210) && bOpen) {
-            vi.pixel_type = VideoInfo::CS_YUV422P10;
-            if (fv210 || fYUV422P10) {
-              biDst.biSizeImage = ((16 * ((vi.width + 5) / 6) + 127) & ~127) * vi.height; // vi.BMPSize();
-              biDst.biCompression = MAKEFOURCC('v', '2', '1', '0'); // as v210
-              biDst.biBitCount = 30; // should be 30, not 10+(10+10)/2
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                _RPT0(0, "AVISource: Opening as v210.\n");
-                v210 = true;
-                bOpen = false;  // Skip further attempts
-              }
-            }
-            else if (fP210 || fYUV422P10) {
-              biDst.biSizeImage = vi.BMPSize();
-              biDst.biCompression = MAKEFOURCC('P', '2', '1', '0'); // as P210
-              biDst.biBitCount = 30; // should be 30, not 10+(10+10)/2
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                _RPT0(0, "AVISource: Opening as P210.\n");
-                P210 = true;
-                bOpen = false;  // Skip further attempts
-              }
-            }
-            else if (forcedType) {
-              env->ThrowError("AVISource: the video decompressor couldn't produce YUV422P10 output");
-            }
-          }
-
-          // YUV422P16
-          if ((fYUV422P16 || fP216) && bOpen) {
-            vi.pixel_type = VideoInfo::CS_YUV422P16;
-              biDst.biSizeImage = vi.BMPSize();
-              biDst.biCompression = MAKEFOURCC('P', '2', '1', '6'); // as P216
-              biDst.biBitCount = 32; // 16+(16+16)/2 or 3x16?
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                _RPT0(0, "AVISource: Opening as P216.\n");
-                P216 = true;
-                bOpen = false;  // Skip further attempts
-            }
-            else if (forcedType) {
-              env->ThrowError("AVISource: the video decompressor couldn't produce YUV422P16 output");
-            }
-          }
-
-          // YUV420P10
-          if ((fYUV420P10 || fP010) && bOpen) {
-            vi.pixel_type = VideoInfo::CS_YUV422P10;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('P', '0', '1', '0'); // as P010
-            biDst.biBitCount = 15; // 10+(10+10)/4 or 3x10?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              _RPT0(0, "AVISource: Opening as P010.\n");
-              P010 = true;
-              bOpen = false;  // Skip further attempts
-            }
-            else if (forcedType) {
-              env->ThrowError("AVISource: the video decompressor couldn't produce YUV420P10 output");
-            }
-          }
-          // YUV420P16
-          if ((fYUV420P16 || fP016) && bOpen) {
-            vi.pixel_type = VideoInfo::CS_YUV420P16;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('P', '0', '1', '6'); // as P016
-            biDst.biBitCount = 24; // 16+(16+16)/4 or 3x16?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              _RPT0(0, "AVISource: Opening as P016.\n");
-              P016 = true;
-              bOpen = false;  // Skip further attempts
-            }
-            else if (forcedType) {
-              env->ThrowError("AVISource: the video decompressor couldn't produce YUV420P16 output");
-            }
-          }
-
-          // YUV444P16
-          if ((fYUV444P16 || fY416) && bOpen) {
-            vi.pixel_type = VideoInfo::CS_YUV444P16;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('Y', '4', '1', '6'); // as Y416
-            biDst.biBitCount = 48; // 3x16?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              _RPT0(0, "AVISource: Opening as Y416.\n");
-              Y416 = true;
-              bOpen = false;  // Skip further attempts
-            }
-            else if (forcedType) {
-              env->ThrowError("AVISource: the video decompressor couldn't produce YUV444P16 output");
-            }
-          }
-
-          // YUV444P10
-          if ((fYUV444P10 || fv410) && bOpen) {
-            vi.pixel_type = VideoInfo::CS_YUV444P10;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('v', '4', '1', '0'); // as v410
-            biDst.biBitCount = 30; // 3x16?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              _RPT0(0, "AVISource: Opening as v410.\n");
-              v410 = true;
-              bOpen = false;  // Skip further attempts
-            }
-            else if (forcedType) {
-              env->ThrowError("AVISource: the video decompressor couldn't produce YUV444P10 output");
-            }
-          }
 
           // YV24
           if (fYV24 && bOpen) {
@@ -788,6 +681,97 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
               bOpen = false;  // Skip further attempts
             } else if (forcedType) {
                env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
+            }
+          }
+
+          // RGB mean planar RGB
+          /*
+          // 10-bit+ planar RGB
+          mmioFOURCC('G','3',00,10); // ffmpeg GBRP10LE
+          mmioFOURCC('G','3',00,12); // ffmpeg GBRP12LE
+          mmioFOURCC('G','3',00,14); // ffmpeg GBRP14LE
+          mmioFOURCC('G','3',00,16); // ffmpeg GBRP16LE
+          mmioFOURCC('G','4',00,10); // ffmpeg GBRAP10LE
+          mmioFOURCC('G','4',00,12); // ffmpeg GBRAP12LE
+          mmioFOURCC('G','4',00,14); // ffmpeg GBRAP14LE
+          mmioFOURCC('G','4',00,16); // ffmpeg GBRAP16LE
+          */
+          if (fRGBP && bOpen) {
+            vi.pixel_type = VideoInfo::CS_RGBP10;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = MAKEFOURCC('G', '3', 0, 10); // ffmpeg GBRP10LE
+            biDst.biBitCount = 30;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as G3[0][10].\n");
+              bOpen = false;  // Skip further attempts
+            }
+            else {
+              vi.pixel_type = VideoInfo::CS_RGBP12;
+              biDst.biCompression = MAKEFOURCC('G', '3', 0, 12); // ffmpeg GBRP12LE
+              biDst.biBitCount = 36;
+              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                _RPT0(0, "AVISource: Opening as G3[0][12].\n");
+                bOpen = false;  // Skip further attempts
+              }
+              else {
+                vi.pixel_type = VideoInfo::CS_RGBP14;
+                biDst.biCompression = MAKEFOURCC('G', '3', 0, 14); // ffmpeg GBRP14LE
+                biDst.biBitCount = 42;
+                if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                  _RPT0(0, "AVISource: Opening as G3[0][1].\n");
+                  bOpen = false;  // Skip further attempts
+                }
+                else {
+                  vi.pixel_type = VideoInfo::CS_RGBP16;
+                  biDst.biCompression = MAKEFOURCC('G', '3', 0, 16); // ffmpeg GBRP16LE
+                  biDst.biBitCount = 48;
+                  if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                    _RPT0(0, "AVISource: Opening as G3[0][16].\n");
+                    bOpen = false;  // Skip further attempts
+                  }
+                  else {
+                    vi.pixel_type = VideoInfo::CS_RGBAP10;
+                    biDst.biSizeImage = vi.BMPSize();
+                    biDst.biCompression = MAKEFOURCC('G', '4', 0, 10); // ffmpeg GBRAP10LE
+                    biDst.biBitCount = 30;
+                    if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                      _RPT0(0, "AVISource: Opening as G4[0][10].\n");
+                      bOpen = false;  // Skip further attempts
+                    }
+                    else {
+                      vi.pixel_type = VideoInfo::CS_RGBAP12;
+                      biDst.biCompression = MAKEFOURCC('G', '4', 0, 12); // ffmpeg GBRAP12LE
+                      biDst.biBitCount = 36;
+                      if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                        _RPT0(0, "AVISource: Opening as G4[0][12].\n");
+                        bOpen = false;  // Skip further attempts
+                      }
+                      else {
+                        vi.pixel_type = VideoInfo::CS_RGBAP14;
+                        biDst.biCompression = MAKEFOURCC('G', '4', 0, 14); // ffmpeg GBRAP14LE
+                        biDst.biBitCount = 42;
+                        if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                          _RPT0(0, "AVISource: Opening as G4[0][1].\n");
+                          bOpen = false;  // Skip further attempts
+                        }
+                        else {
+                          vi.pixel_type = VideoInfo::CS_RGBAP16;
+                          biDst.biCompression = MAKEFOURCC('G', '4', 0, 16); // ffmpeg GBRAP16LE
+                          biDst.biBitCount = 48;
+                          if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                            _RPT0(0, "AVISource: Opening as G4[0][16].\n");
+                            bOpen = false;  // Skip further attempts
+                          }
+                          else
+                            if (forcedType) {
+                              env->ThrowError("AVISource: the video decompressor couldn't produce Planar RGB(A) output");
+                            }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
 
@@ -869,97 +853,6 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
           }
 
-          // RGB mean planar RGB
-          /*
-          // 10-bit+ planar RGB
-mmioFOURCC('G','3',00,10); // ffmpeg GBRP10LE
-mmioFOURCC('G','3',00,12); // ffmpeg GBRP12LE
-mmioFOURCC('G','3',00,14); // ffmpeg GBRP14LE
-mmioFOURCC('G','3',00,16); // ffmpeg GBRP16LE
-mmioFOURCC('G','4',00,10); // ffmpeg GBRAP10LE
-mmioFOURCC('G','4',00,12); // ffmpeg GBRAP12LE
-mmioFOURCC('G','4',00,14); // ffmpeg GBRAP14LE
-mmioFOURCC('G','4',00,16); // ffmpeg GBRAP16LE
-*/
-          if (fRGBP && bOpen) {
-            vi.pixel_type = VideoInfo::CS_RGBP10;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('G', '3', 0, 10); // ffmpeg GBRP10LE
-            biDst.biBitCount = 30;
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              _RPT0(0, "AVISource: Opening as G3[0][10].\n");
-              bOpen = false;  // Skip further attempts
-            }
-            else {
-              vi.pixel_type = VideoInfo::CS_RGBP12;
-              biDst.biCompression = MAKEFOURCC('G', '3', 0, 12); // ffmpeg GBRP12LE
-              biDst.biBitCount = 36;
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                _RPT0(0, "AVISource: Opening as G3[0][12].\n");
-                bOpen = false;  // Skip further attempts
-              }
-              else {
-                vi.pixel_type = VideoInfo::CS_RGBP14;
-                biDst.biCompression = MAKEFOURCC('G', '3', 0, 14); // ffmpeg GBRP14LE
-                biDst.biBitCount = 42;
-                if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                  _RPT0(0, "AVISource: Opening as G3[0][1].\n");
-                  bOpen = false;  // Skip further attempts
-                }
-                else {
-                  vi.pixel_type = VideoInfo::CS_RGBP16;
-                  biDst.biCompression = MAKEFOURCC('G', '3', 0, 16); // ffmpeg GBRP16LE
-                  biDst.biBitCount = 48;
-                  if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                    _RPT0(0, "AVISource: Opening as G3[0][16].\n");
-                    bOpen = false;  // Skip further attempts
-                  }
-                  else {
-                    vi.pixel_type = VideoInfo::CS_RGBAP10;
-                    biDst.biSizeImage = vi.BMPSize();
-                    biDst.biCompression = MAKEFOURCC('G', '4', 0, 10); // ffmpeg GBRAP10LE
-                    biDst.biBitCount = 30;
-                    if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                      _RPT0(0, "AVISource: Opening as G4[0][10].\n");
-                      bOpen = false;  // Skip further attempts
-                    }
-                    else {
-                      vi.pixel_type = VideoInfo::CS_RGBAP12;
-                      biDst.biCompression = MAKEFOURCC('G', '4', 0, 12); // ffmpeg GBRAP12LE
-                      biDst.biBitCount = 36;
-                      if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                        _RPT0(0, "AVISource: Opening as G4[0][12].\n");
-                        bOpen = false;  // Skip further attempts
-                      }
-                      else {
-                        vi.pixel_type = VideoInfo::CS_RGBAP14;
-                        biDst.biCompression = MAKEFOURCC('G', '4', 0, 14); // ffmpeg GBRAP14LE
-                        biDst.biBitCount = 42;
-                        if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                          _RPT0(0, "AVISource: Opening as G4[0][1].\n");
-                          bOpen = false;  // Skip further attempts
-                        }
-                        else {
-                          vi.pixel_type = VideoInfo::CS_RGBAP16;
-                          biDst.biCompression = MAKEFOURCC('G', '4', 0, 16); // ffmpeg GBRAP16LE
-                          biDst.biBitCount = 48;
-                          if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                            _RPT0(0, "AVISource: Opening as G4[0][16].\n");
-                            bOpen = false;  // Skip further attempts
-                          }
-                          else
-                            if (forcedType) {
-                              env->ThrowError("AVISource: the video decompressor couldn't produce Planar RGB(A) output");
-                            }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-
           // Y8
           if (fY8 && bOpen) {
             vi.pixel_type = VideoInfo::CS_Y8;
@@ -983,6 +876,113 @@ mmioFOURCC('G','4',00,16); // ffmpeg GBRAP16LE
                    env->ThrowError("AVISource: the video decompressor couldn't produce Y8 output");
                 }
               }
+            }
+          }
+
+          // YUV422P10
+          if ((fYUV422P10 || fv210 || fP210) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUV422P10;
+            if (fv210 || fYUV422P10) {
+              biDst.biSizeImage = ((16 * ((vi.width + 5) / 6) + 127) & ~127) * vi.height; // vi.BMPSize();
+              biDst.biCompression = MAKEFOURCC('v', '2', '1', '0'); // as v210
+              biDst.biBitCount = 30; // should be 30, not 10+(10+10)/2
+              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                _RPT0(0, "AVISource: Opening as v210.\n");
+                v210 = true;
+                bOpen = false;  // Skip further attempts
+              }
+            }
+            else if (fP210 || fYUV422P10) {
+              biDst.biSizeImage = vi.BMPSize();
+              biDst.biCompression = MAKEFOURCC('P', '2', '1', '0'); // as P210
+              biDst.biBitCount = 30; // should be 30, not 10+(10+10)/2
+              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                _RPT0(0, "AVISource: Opening as P210.\n");
+                P210 = true;
+                bOpen = false;  // Skip further attempts
+              }
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce YUV422P10 output");
+            }
+          }
+
+          // YUV422P16
+          if ((fYUV422P16 || fP216) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUV422P16;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = MAKEFOURCC('P', '2', '1', '6'); // as P216
+            biDst.biBitCount = 32; // 16+(16+16)/2 or 3x16?
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as P216.\n");
+              P216 = true;
+              bOpen = false;  // Skip further attempts
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce YUV422P16 output");
+            }
+          }
+
+          // YUV420P10
+          if ((fYUV420P10 || fP010) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUV420P10;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = MAKEFOURCC('P', '0', '1', '0'); // as P010
+            biDst.biBitCount = 15; // 10+(10+10)/4 or 3x10?
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as P010.\n");
+              P010 = true;
+              bOpen = false;  // Skip further attempts
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce YUV420P10 output");
+            }
+          }
+          // YUV420P16
+          if ((fYUV420P16 || fP016) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUV420P16;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = MAKEFOURCC('P', '0', '1', '6'); // as P016
+            biDst.biBitCount = 24; // 16+(16+16)/4 or 3x16?
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as P016.\n");
+              P016 = true;
+              bOpen = false;  // Skip further attempts
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce YUV420P16 output");
+            }
+          }
+
+          // YUV444P16
+          if ((fYUV444P16 || fY416) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUV444P16;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = MAKEFOURCC('Y', '4', '1', '6'); // as Y416
+            biDst.biBitCount = 48; // 3x16?
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as Y416.\n");
+              Y416 = true;
+              bOpen = false;  // Skip further attempts
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce YUV444P16 output");
+            }
+          }
+
+          // YUV444P10
+          if ((fYUV444P10 || fv410) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUV444P10;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = MAKEFOURCC('v', '4', '1', '0'); // as v410
+            biDst.biBitCount = 30; // 3x16?
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as v410.\n");
+              v410 = true;
+              bOpen = false;  // Skip further attempts
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce YUV444P10 output");
             }
           }
 
