@@ -17,13 +17,16 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   The 'FourCCs for ICDecompressQuery' column means that when a codec supports the format, it will serve the frame in that one, Avisource then will convert it to the proper colorspace.
 
   Full support list (* = already supported): 
-  'pixel_type' Avs+ Format   FourCCs for ICDecompressQuery
+  'pixel_type' Avs+ Format   FourCC(s) for ICDecompressQuery
   YV24         YV24          *YV24
   YV16         YV16          *YV16 
   YV12         YV12          *YV12
   YV411        YV411         *Y41B
   YUY2         YUY2          *YUY2
-  RGBP         RGBP10        G3[0][10]
+  RGBP10       RGBP10        G3[0][10]  r210  R10k
+  r210         RGBP10        r210
+  R10k         RGBP10        R10k             
+  RGBP         RGBP10        G3[0][10]  r210  R10k
                RGBP12        G3[0][12]
                RGBP14        G3[0][14]
                RGBP16        G3[0][16]

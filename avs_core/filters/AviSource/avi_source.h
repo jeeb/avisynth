@@ -53,6 +53,7 @@ public:
   TemporalBuffer(const VideoInfo& vi, bool bMediaPad, 
     bool b64a, bool b48r, bool v210,
     bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
+    bool r210, bool R10k,
     IScriptEnvironment* env);
   ~TemporalBuffer() {}
   int GetPitch(int plane=PLANAR_Y) { 
@@ -94,7 +95,8 @@ class AVISource : public IClip {
   bool P216;
   bool v410;
   bool Y416;
-
+  bool r210;
+  bool R10k;
   bool b64a;
   bool b48r;
 

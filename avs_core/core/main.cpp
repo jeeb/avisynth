@@ -1138,7 +1138,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::FindSample(LONG lPos, LONG lFlags) {
 //////////// local
 
 int CAVIFileSynth::ImageSize(const VideoInfo *vi) {
-  return AviHelper_ImageSize(vi, AVIPadScanlines, Enable_V210, false);
+  return AviHelper_ImageSize(vi, AVIPadScanlines, Enable_V210, false, false, false);
 }
 
 void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {

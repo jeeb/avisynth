@@ -39,11 +39,19 @@
 #include <emmintrin.h>
 #include <tmmintrin.h>
 
-int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410) {
+int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k) {
   int image_size;
   if (vi->pixel_type == VideoInfo::CS_YUV444P16 || vi->pixel_type == VideoInfo::CS_YUVA444P16)
     { // Y416 packed 4444 U,Y,V,A
     image_size = vi->width * vi->height * 4 * sizeof(uint16_t);
+  }
+  else if (vi->pixel_type == VideoInfo::CS_RGBP10 && r210)
+  { // 3x10bit packed RGB, 64 aligned
+    image_size = ((vi->width + 63) / 64) * 256 * vi->height; // 4 byte/pixel: 32bits for 3x10 bits
+  }
+  else if (vi->pixel_type == VideoInfo::CS_RGBP10 && R10k)
+  { // 3x10bit packed RGB, no aligment
+    image_size = vi->width * 4 * vi->height; // 4 byte/pixel: 32bits for 3x10 bits
   }
   else if (vi->pixel_type == VideoInfo::CS_YUV444P10 && v410)
   { // v410 packed 444 U,Y,V
@@ -172,6 +180,56 @@ void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvp
 // instantiate
 template void FromY416_c<false>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, uint8_t *srcp8, int srcpitch, int width, int height);
 template void FromY416_c<true>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, uint8_t *srcp8, int srcpitch, int width, int height);
+
+// Helpers for 10 bit RGB -> Planar RGB
+
+static __forceinline uint32_t swap32(uint32_t x) {
+  x = (x & 0x0000FFFFu) << 16 | (x & 0xFFFF0000u) >> 16;
+  x = (x & 0x00FF00FFu) << 8 | (x & 0xFF00FF00u) >> 8;
+  return x;
+}
+
+void From_r210_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t *srcp8, int srcpitch, int width, int height)
+{
+  // XXrrrrrr rrrrgggg ggggggbb bbbbbbbb
+  // BigEndian
+  const uint32_t *srcp = reinterpret_cast<const uint32_t *>(srcp8);
+  srcpitch /= sizeof(uint32_t);
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      const uint32_t rgb = swap32(srcp[x]);
+      reinterpret_cast<uint16_t *>(bptr)[x] = (rgb >> 0) & 0x3FF;
+      reinterpret_cast<uint16_t *>(gptr)[x] = (rgb >> 10) & 0x3FF;
+      reinterpret_cast<uint16_t *>(rptr)[x] = (rgb >> 20) & 0x3FF;
+    }
+    srcp += srcpitch;
+    gptr += pitch;
+    rptr += pitch;
+    bptr += pitch;
+  }
+}
+
+void From_R10k_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t *srcp8, int srcpitch, int width, int height)
+{
+  // rrrrrrrr rrgggggg ggggbbbb bbbbbbxx
+  // BigEndian
+  const uint32_t *srcp = reinterpret_cast<const uint32_t *>(srcp8);
+  srcpitch /= sizeof(uint32_t);
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      const uint32_t rgb = swap32(srcp[x]);
+      reinterpret_cast<uint16_t *>(bptr)[x] = (rgb >> 2) & 0x3FF;
+      reinterpret_cast<uint16_t *>(gptr)[x] = (rgb >> 12) & 0x3FF;
+      reinterpret_cast<uint16_t *>(rptr)[x] = (rgb >> 22) & 0x3FF;
+    }
+    srcp += srcpitch;
+    gptr += pitch;
+    rptr += pitch;
+    bptr += pitch;
+  }
+}
 
 // Helpers for b64a <-> RGB64
 
