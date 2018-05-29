@@ -6,6 +6,47 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 201805xx r267x
 --------------
+- AviSource to support more formats with 10+ bit depth.
+  http://avisynth.nl/index.php/AviSource
+
+  When pixel_type is not specified or set to "FULL", AviSource will try to request the formats one-by-one in the order shown in the table below.
+
+  When a classic 'pixel_type' shares more internal formats (such as YUV422P10 first tries to request the v210 then P210 format)
+  you can specify one of the specific format directly. Note that high bit-depth RGBP is prioritized against packed RGB48/64.
+
+  The 'FourCCs for ICDecompressQuery' column means that when a codec supports the format, it will serve the frame in that one, Avisource then will convert it to the proper colorspace.
+
+  Full support list (* = already supported): 
+  'pixel_type' Avs+ Format   FourCCs for ICDecompressQuery
+  YV24         YV24          *YV24
+  YV16         YV16          *YV16 
+  YV12         YV12          *YV12
+  YV411        YV411         *Y41B
+  YUY2         YUY2          *YUY2
+  RGBP         RGBP10        G3[0][10]
+               RGBP12        G3[0][12]
+               RGBP14        G3[0][14]
+               RGBP16        G3[0][16]
+               RGBAP10       G4[0][10]
+               RGBAP12       G4[0][12]
+               RGBAP14       G4[0][14]
+               RGBAP16       G4[0][16]
+  RGB32        RGB32         *BI_RGB internal constant (0) with bitcount=32
+  RGB24        RGB24         *BI_RGB internal constant (0) with bitcount=24
+  RGB48        RGB48         BGR[48]    b48r 
+  RGB64        RGB64         *BRA[64]   b64a
+  Y8           Y8            Y800       Y8[32][32]   GREY
+  YUV422P10    YUV422P10     v210       P210
+  v210         YUV422P10     v210
+  P210         YUV422P10     P210
+  YUV422P16    YUV422P16     P216
+  P216         YUV422P16     P216
+  YUV420P10    YUV420P10     P010
+  P010         YUV422P10     P010
+  YUV420P16    YUV420P16     P016
+  P016         YUV422P16     P016
+  YUV444P10    YUV444P10     v410
+  v410         YUV444P10     v410
 - Changed (finally): 32bit float YUV colorspaces: zero centered chroma channels. 
   U and V channels are now -0.5..+0.5 (if converted to full scale before) instead of 0..1
   Note: filters that relied on having the U and V channel center as 0.5 will fail.
