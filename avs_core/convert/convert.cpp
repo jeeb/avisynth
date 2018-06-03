@@ -1607,7 +1607,8 @@ void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, in
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const __m128 half_ps = _mm_set1_ps(0.5f);
 #endif
-  const __m128 halfint_plus_limit_lo_plus_rounder_ps = _mm_set1_ps(half_i + limit_lo_d + 0.5f);
+  const __m128 halfint_plus_rounder_ps = _mm_set1_ps(half_i + 0.5f);
+  const __m128 limit_lo_s_ps = _mm_set1_ps(limit_lo_s / 255.0f);
   const __m128 limit_lo_plus_rounder_ps = _mm_set1_ps(limit_lo_d + 0.5f);
 
   __m128 factor_ps = _mm_set1_ps(factor); // 0-1.0 -> 0..max_pixel_value
@@ -1625,17 +1626,21 @@ void convert_32_to_uintN_sse(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, in
         // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
         src_0 = _mm_sub_ps(src_0, half_ps);
         src_1 = _mm_sub_ps(src_1, half_ps);
-        //pixel = (srcp0[x] - 0.5f) * factor + half + limit_lo + 0.5f;
+        //pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
 #else
-        //pixel = (srcp0[x]       ) * factor + half + limit_lo + 0.5f;
+        //pixel = (srcp0[x]       ) * factor + half + 0.5f;
 #endif
-        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), halfint_plus_limit_lo_plus_rounder_ps);
-        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), halfint_plus_limit_lo_plus_rounder_ps);
+        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), halfint_plus_rounder_ps);
+        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), halfint_plus_rounder_ps);
       }
       else {
+        if constexpr(!fulls) {
+          src_0 = _mm_sub_ps(src_0, limit_lo_s_ps);
+          src_1 = _mm_sub_ps(src_1, limit_lo_s_ps);
+        }
         src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), limit_lo_plus_rounder_ps);
         src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), limit_lo_plus_rounder_ps);
-        // pixel = srcp0[x] * factor + limit_lo + 0.5f;
+        //pixel = (srcp0[x] - limit_lo_s_ps) * factor + half + limit_lo + 0.5f;
       }
       result_0 = _mm_cvttps_epi32(src_0); // truncate
       result_1 = _mm_cvttps_epi32(src_1);
@@ -1680,8 +1685,9 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   const float range_diff_d = (float)limit_hi_d - limit_lo_d;
 
   const int limit_lo_s = fulls ? 0 : 16;
+  const float limit_lo_s_ps = limit_lo_s / 255.0f;
   const int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
-  const float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f;
+  const float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f; 
 
   // fulls fulld luma             luma_new   chroma                          chroma_new
   // true  false 0..1              16-235     -0.5..0.5                      16-240       Y = Y * ((235-16) << (bpp-8)) + 16, Chroma= Chroma * ((240-16) << (bpp-8)) + 16
@@ -1705,9 +1711,11 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
         pixel = pixel * factor + half + 0.5f;
       }
       else {
-        pixel = srcp0[x] * factor + 0.5f;
+        if constexpr(!fulls)
+          pixel = (srcp0[x] - limit_lo_s_ps) * factor + 0.5f + limit_lo_d;
+        else
+          pixel = srcp0[x] * factor + 0.5f + limit_lo_d;
       }
-      pixel = pixel + limit_lo_d;
       dstp0[x] = pixel_t(clamp(pixel, 0.0f, max_dst_pixelvalue)); // we clamp here!
     }
     dstp0 += dst_pitch;
@@ -3280,8 +3288,8 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   }
 
   // override defaults, e.g. set full range for greyscale clip conversion that is RGB
-  // full range is default also for float (and cannot be set to false)
-  bool fulls = args[5].AsBool(vi.IsRGB() || ((target_bitdepth == 32 || source_bitdepth == 32)));
+  // Post 2664: can be set. Full range is default also for float (and cannot be set to false)
+  bool fulls = args[5].AsBool(vi.IsRGB()/* || ((target_bitdepth == 32 || source_bitdepth == 32))*/);
   bool fulld = args[6].AsBool(fulls);
 
   int dither_type = args[3].AsInt(-1);

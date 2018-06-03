@@ -94,7 +94,8 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const __m256 half_ps = _mm256_set1_ps(0.5f);
 #endif
-  const __m256 halfint_plus_limit_lo_plus_rounder_ps = _mm256_set1_ps(half_i + limit_lo_d + 0.5f);
+  const __m256 halfint_plus_rounder_ps = _mm256_set1_ps(half_i + 0.5f);
+  const __m256 limit_lo_s_ps = _mm256_set1_ps(limit_lo_s / 255.0f);
   const __m256 limit_lo_plus_rounder_ps = _mm256_set1_ps(limit_lo_d + 0.5f);
 
   __m256 factor_ps = _mm256_set1_ps(factor);
@@ -112,17 +113,21 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
         // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
         src_0 = _mm256_sub_ps(src_0, half_ps);
         src_1 = _mm256_sub_ps(src_1, half_ps);
-        //pixel = (srcp0[x] - 0.5f) * factor + half + limit_lo + 0.5f;
+        //pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
 #else
-        //pixel = (srcp0[x]       ) * factor + half + limit_lo + 0.5f;
+        //pixel = (srcp0[x]       ) * factor + half + 0.5f;
 #endif
-        src_0 = _mm256_fmadd_ps(src_0, factor_ps, halfint_plus_limit_lo_plus_rounder_ps);
-        src_1 = _mm256_fmadd_ps(src_1, factor_ps, halfint_plus_limit_lo_plus_rounder_ps);
+        src_0 = _mm256_fmadd_ps(src_0, factor_ps, halfint_plus_rounder_ps);
+        src_1 = _mm256_fmadd_ps(src_1, factor_ps, halfint_plus_rounder_ps);
       }
       else {
+        if constexpr(!fulls) {
+          src_0 = _mm256_sub_ps(src_0, limit_lo_s_ps);
+          src_1 = _mm256_sub_ps(src_1, limit_lo_s_ps);
+        }
         src_0 = _mm256_fmadd_ps(src_0, factor_ps, limit_lo_plus_rounder_ps);
         src_1 = _mm256_fmadd_ps(src_1, factor_ps, limit_lo_plus_rounder_ps);
-        //pixel = srcp0[x] * factor + half + limit_lo + 0.5f;
+        //pixel = (srcp0[x] - limit_lo_s_ps) * factor + half + limit_lo + 0.5f;
       }
       result_0 = _mm256_cvttps_epi32(src_0); // truncate
       result_1 = _mm256_cvttps_epi32(src_1);
