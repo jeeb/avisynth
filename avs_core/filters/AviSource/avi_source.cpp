@@ -590,6 +590,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           bool fY416 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y416") == 0;
 
           bool fRGBP = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGBP") == 0; // RGBP means planar RGB 10-16
+          bool fGrayscale = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y") == 0; // Y8-16
 
           // special 10 bit RGB
           bool fRGBP10 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGBP10") == 0;
@@ -610,6 +611,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             fRGBP10 = true;
             fr210 = true;
             fR10k = true;
+            fGrayscale = true;
             forcedType = false;
           }
           else if (lstrcmpi(pixel_type, "FULL") == 0) {
@@ -624,6 +626,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             fRGBP10 = true;
             fr210 = true;
             fR10k = true;
+            fGrayscale = true;
             forcedType = false;
           }
 
@@ -637,8 +640,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             || fRGBP
             || fRGBP10
             || fr210 || fR10k
+            || fGrayscale
             ))
-            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, RGBP, RGBP10, r210, R10k, RGB24/32/48/64, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y416, AUTO or FULL");
+            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, Y, RGBP, RGBP10, r210, R10k, RGB24/32/48/64, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y416, AUTO or FULL");
 
           // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24, RGB48, RGB64, YUV422P10 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
@@ -940,7 +944,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           }
 
           // Y8
-          if (fY8 && bOpen) {
+          if ((fY8 || fGrayscale) && bOpen) {
             vi.pixel_type = VideoInfo::CS_Y8;
             biDst.biSizeImage = vi.BMPSize();
             biDst.biCompression = MAKEFOURCC('Y', '8', '0', '0');
@@ -960,6 +964,52 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                   bOpen = false;  // Skip further attempts
                 } else if (forcedType) {
                    env->ThrowError("AVISource: the video decompressor couldn't produce Y8 output");
+                }
+              }
+            }
+          }
+
+          // Greyscale 'Y' no specific bit depth
+          if (fGrayscale && bOpen) {
+            vi.pixel_type = VideoInfo::CS_Y10;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = MAKEFOURCC('Y', '1', 0, 10);
+            biDst.biBitCount = 10;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as Y1[0][10].\n");
+              bOpen = false;  // Skip further attempts
+            }
+            else {
+              vi.pixel_type = VideoInfo::CS_Y12;
+              biDst.biSizeImage = vi.BMPSize();
+              biDst.biCompression = MAKEFOURCC('Y', '1', 0, 12);
+              biDst.biBitCount = 12;
+              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                _RPT0(0, "AVISource: Opening as Y1[0][12].\n");
+                bOpen = false;  // Skip further attempts
+              }
+              else {
+                vi.pixel_type = VideoInfo::CS_Y14;
+                biDst.biSizeImage = vi.BMPSize();
+                biDst.biCompression = MAKEFOURCC('Y', '1', 0, 14);
+                biDst.biBitCount = 14;
+                if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                  _RPT0(0, "AVISource: Opening as Y1[0][14].\n");
+                  bOpen = false;  // Skip further attempts
+                }
+                else {
+                  vi.pixel_type = VideoInfo::CS_Y16;
+                  biDst.biSizeImage = vi.BMPSize();
+                  biDst.biCompression = MAKEFOURCC('Y', '1', 0, 16);
+                  biDst.biBitCount = 16;
+                  if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                    _RPT0(0, "AVISource: Opening as Y1[0][16].\n");
+                    bOpen = false;  // Skip further attempts
+                  }
+                  else
+                    if (forcedType) {
+                      env->ThrowError("AVISource: the video decompressor couldn't produce grayscale output");
+                    }
                 }
               }
             }

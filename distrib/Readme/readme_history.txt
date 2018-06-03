@@ -39,6 +39,11 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   RGB48        RGB48         BGR[48]    b48r 
   RGB64        RGB64         *BRA[64]   b64a
   Y8           Y8            Y800       Y8[32][32]   GREY
+  Y            Y8            Y800       Y8[32][32]   GREY
+               Y10           Y1[0][10]
+               Y12           Y1[0][12]
+               Y14           Y1[0][14]
+               Y16           Y1[0][16]
   YUV422P10    YUV422P10     v210       P210
   v210         YUV422P10     v210
   P210         YUV422P10     P210
