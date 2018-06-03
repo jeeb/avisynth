@@ -602,20 +602,28 @@ Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck
 		arglist[i].string = EMPTY;
 	}
 
-   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-
 	if (linecheck == -1) {	//write at start
-		env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
-		env->SetGlobalVar("current_frame", -1);
+		AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+		AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
 
+		env->SetVar("last", (AVSValue)child);       // Set implicit last
+		env->SetVar("current_frame", -1);
 		Write::DoEval(env);
 		Write::FileOut(env, AplusT);
+
+		env->SetVar("last", prev_last);       // Restore implicit last
+		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
 	}
 	if (linecheck == -2) {	//write at end, evaluate right now
-		env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
-		env->SetGlobalVar("current_frame", -2);
+		AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+		AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
 
+		env->SetVar("last", (AVSValue)child);       // Set implicit last
+		env->SetVar("current_frame", -2);
 		Write::DoEval(env);
+
+		env->SetVar("last", prev_last);       // Restore implicit last
+		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
 	}
 }
 
