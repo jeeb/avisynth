@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-201805xx r267x
+201806xx r269x
 --------------
 - AviSource to support more formats with 10+ bit depth.
   http://avisynth.nl/index.php/AviSource
@@ -67,6 +67,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   E.g. after a 8->32 bit fulls=false fulld=true: 
   Y: 16..235 -> 0..1 
   U/V: 16..240 -> -0.5..+0.5
+  Note: now ConvertBits does not assume full range for YUV 32 bit float. 
+  Default values of fulls and fulld are now true only for RGB colorspaces.
 - Fix: couldn't see variables in avsi before plugin autoloads (colors_rgb.avsi issue)
 - Fix: LoadVirtualdubPlugin: Fix crash on exit when more than one instances of a filter was used in a script
 - New: LoadVirtualdubPlugin update:
