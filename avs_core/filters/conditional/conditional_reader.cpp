@@ -410,19 +410,19 @@ void ConditionalReader::SetRange(int start_frame, int stop_frame, AVSValue v) {
 
   switch (mode) {
     case MODE_INT:
-      p = v.AsInt();
+      p = v.Defined() ? v.AsInt() : 0;
       for (i = start_frame; i <= stop_frame; i++) {
         intVal[i] = p;
       }
       break;
     case MODE_FLOAT:
-      q = v.AsFloatf();
+      q = v.Defined() ? v.AsFloatf() : 0.0f;
       for (i = start_frame; i <= stop_frame; i++) {
         floatVal[i] = q;
       }
       break;
     case MODE_BOOL:
-      r = v.AsBool();
+      r = v.Defined() ? v.AsBool() : false;
       for (i = start_frame; i <= stop_frame; i++) {
         boolVal[i] = r;
       }
