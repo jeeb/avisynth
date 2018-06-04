@@ -118,12 +118,17 @@ private:
 };
 
 
+struct RGBAdjustPlaneConfig
+{
+  double scale;
+  double bias;
+  double gamma;
+  bool changed; // for lut recalc
+};
+
 struct RGBAdjustConfig
 {
-  double r, g, b, a;
-  double rb, gb, bb, ab;
-  double rg, gg, bg, ag;
-  bool changed; // for lut recalc
+  RGBAdjustPlaneConfig rgba[4];
 };
 
 class RGBAdjust : public GenericVideoFilter 
@@ -154,7 +159,8 @@ private:
   RGBAdjustConfig config;
 
   size_t number_of_maps;
-  BYTE *mapR, *mapG, *mapB, *mapA;
+  BYTE *map_holder;
+  BYTE *maps[4];
   // avs+
   int pixelsize;
   int bits_per_pixel; // 8,10..16
@@ -174,7 +180,7 @@ private:
   unsigned int *accum_r, *accum_g, *accum_b;
 
   void CheckAndConvertParams(RGBAdjustConfig &config, IScriptEnvironment *env);
-  void rgbadjust_create_lut();
+  void rgbadjust_create_lut(const int plane);
 };
 
 
