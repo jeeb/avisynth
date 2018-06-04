@@ -118,6 +118,13 @@ private:
 };
 
 
+struct RGBAdjustConfig
+{
+  double r, g, b, a;
+  double rb, gb, bb, ab;
+  double rg, gg, bg, ag;
+  bool changed; // for lut recalc
+};
 
 class RGBAdjust : public GenericVideoFilter 
 /**
@@ -128,7 +135,7 @@ public:
   RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
                           double rb, double gb, double bb, double ab,
                           double rg, double gg, double bg, double ag,
-                          bool _analyze, bool _dither, IScriptEnvironment* env);
+                          bool _analyze, bool _dither, bool _conditional, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   RGBAdjust::~RGBAdjust();
 
@@ -142,6 +149,11 @@ public:
 private:
   bool analyze;
   bool dither;
+  bool conditional;
+
+  RGBAdjustConfig config;
+
+  size_t number_of_maps;
   BYTE *mapR, *mapG, *mapB, *mapA;
   // avs+
   int pixelsize;
@@ -161,6 +173,8 @@ private:
 
   unsigned int *accum_r, *accum_g, *accum_b;
 
+  void CheckAndConvertParams(RGBAdjustConfig &config, IScriptEnvironment *env);
+  void rgbadjust_create_lut();
 };
 
 

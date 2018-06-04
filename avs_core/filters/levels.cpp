@@ -52,7 +52,7 @@
 
 extern const AVSFunction Levels_filters[] = {
   { "Levels",    BUILTIN_FUNC_PREFIX, "cfffff[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high cifiii->ffffff
-  { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
+  { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b[conditional]b", RGBAdjust::Create },
   { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b[realcalc]b[dither_strength]f", Tweak::Create },
   { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b[realcalc]b", MaskHS::Create },
   { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
@@ -804,26 +804,107 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
     (float)args[OUT_MIN].AsFloat(), (float)args[OUT_MAX].AsFloat(), args[CORING].AsBool(true), args[DITHER].AsBool(false), env );
 }
 
-
-
-
-
-
-
-
 /********************************
  *******    RGBA Filter    ******
  ********************************/
+
+#define READ_CONDITIONAL(var_name, internal_name)  \
+    {                                                     \
+        const double t = env2->GetVar("rgbadjust_" #var_name, DBL_MIN); \
+        if (t != DBL_MIN) {                          \
+            config->internal_name = t;               \
+            config->changed = true;                  \
+        }                                            \
+    }
+
+static void rgbadjust_read_conditional(IScriptEnvironment* env, RGBAdjustConfig* config)
+{
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+
+  READ_CONDITIONAL(r, r);
+  READ_CONDITIONAL(g, g);
+  READ_CONDITIONAL(b, b);
+  READ_CONDITIONAL(a, a);
+
+  READ_CONDITIONAL(rb, rb);
+  READ_CONDITIONAL(gb, gb);
+  READ_CONDITIONAL(bb, bb);
+  READ_CONDITIONAL(ab, ab);
+
+  READ_CONDITIONAL(rg, rg);
+  READ_CONDITIONAL(gg, gg);
+  READ_CONDITIONAL(bg, bg);
+  READ_CONDITIONAL(ag, ag);
+}
+
+#undef READ_CONDITIONAL
+
+
+
 RGBAdjust::~RGBAdjust()
 {
   if (mapR)
     delete[] mapR;
 }
 
+void RGBAdjust::CheckAndConvertParams(RGBAdjustConfig &config, IScriptEnvironment *env)
+{
+  if ((config.rg <= 0.0) || (config.gg <= 0.0) || (config.bg <= 0.0) || (config.ag <= 0.0))
+    env->ThrowError("RGBAdjust: gammas must be positive");
+}
+
+void RGBAdjust::rgbadjust_create_lut() {
+  if (!use_lut)
+    return;
+
+  const int lookup_size = 1 << bits_per_pixel; // 256, 1024, 4096, 16384, 65536
+
+  void(*set_map)(BYTE*, int, int, float, const double, const double, const double);
+  if (dither) {
+    set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, float dither_strength, const double c0, const double c1, const double c2) {
+      double bias_dither = -(256.0f * dither_strength - 1) / 2; // -127.5 for 8 bit, scaling because of dithershift
+      double pixel_max = (1 << bits_per_pixel) - 1;
+      if (bits_per_pixel == 8) {
+        for (int i = 0; i < lookup_size * 256; ++i) {
+          int ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
+          map[i] = BYTE(pow(clamp((c0 * 256 + ii * c1 - bias_dither) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
+        }
+      }
+      else {
+        for (int i = 0; i < lookup_size * 256; ++i) {
+          int ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
+          reinterpret_cast<uint16_t *>(map)[i] = uint16_t(pow(clamp((c0 * 256 + ii * c1 - bias_dither) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
+        }
+      }
+    };
+  }
+  else {
+    set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, float dither_strength, const double c0, const double c1, const double c2) {
+      double pixel_max = (1 << bits_per_pixel) - 1;
+      if (bits_per_pixel == 8) {
+        for (int i = 0; i < lookup_size; ++i) { // fix of bug introduced in an earlier refactor was: i < 256 * 256
+          map[i] = BYTE(pow(clamp((c0 + i * c1) / (double)pixel_max, 0.0, 1.0), c2) * double(pixel_max) + 0.5);
+        }
+      }
+      else {
+        for (int i = 0; i < lookup_size; ++i) { // fix of bug introduced in an earlier refactor was: i < 256 * 256
+          reinterpret_cast<uint16_t *>(map)[i] = uint16_t(pow(clamp((c0 + i * c1) / (double)pixel_max, 0.0, 1.0), c2) * double(pixel_max) + 0.5);
+        }
+      }
+    };
+  }
+
+  set_map(mapR, lookup_size, bits_per_pixel, dither_strength, config.rb, config.r, 1 / config.rg);
+  set_map(mapG, lookup_size, bits_per_pixel, dither_strength, config.gb, config.g, 1 / config.gg);
+  set_map(mapB, lookup_size, bits_per_pixel, dither_strength, config.bb, config.b, 1 / config.bg);
+  if (number_of_maps == 4)
+    set_map(mapA, lookup_size, bits_per_pixel, dither_strength, config.ab, config.a, 1 / config.ag);
+}
+
 RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     double rb, double gb, double bb, double ab,
     double rg, double gg, double bg, double ag,
-    bool _analyze, bool _dither, IScriptEnvironment* env)
+    bool _analyze, bool _dither, bool _conditional, IScriptEnvironment* env)
     : GenericVideoFilter(_child), analyze(_analyze), dither(_dither)
 {
     // one buffer for all maps
@@ -832,10 +913,24 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     if (!vi.IsRGB())
         env->ThrowError("RGBAdjust requires RGB input");
 
-    if ((rg <= 0.0) || (gg <= 0.0) || (bg <= 0.0) || (ag <= 0.0))
-        env->ThrowError("RGBAdjust: gammas must be positive");
+    config.r = r;
+    config.g = g;
+    config.b = b;
+    config.a = a;
+    // bias
+    config.rb = rb;
+    config.gb = gb;
+    config.bb = bb;
+    config.ab = ab;
+    // gammas
+    config.rg = rg;
+    config.gg = gg;
+    config.bg = bg;
+    config.ag = ag;
 
-    rg = 1 / rg; gg = 1 / gg; bg = 1 / bg; ag = 1 / ag;
+    config.changed = false;
+
+    CheckAndConvertParams(config, env);
 
     pixelsize = vi.ComponentSize();
     bits_per_pixel = vi.BitsPerComponent(); // 8,10..16
@@ -844,7 +939,6 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
       env->ThrowError("RGBAdjust: cannot operate on float video formats");
     // No lookup for float. todo: slow on-the-fly realtime calculation
 
-    int lookup_size = 1 << bits_per_pixel; // 256, 1024, 4096, 16384, 65536
     real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
     max_pixel_value = (1 << bits_per_pixel) - 1;
     dither_strength = 1.0f; // fixed
@@ -856,7 +950,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
 
     if(use_lut) {
       auto env2 = static_cast<IScriptEnvironment2*>(env);
-      size_t number_of_maps = (vi.IsRGB24() || vi.IsRGB48() || vi.IsPlanarRGB()) ? 3 : 4;
+      number_of_maps = (vi.IsRGB24() || vi.IsRGB48() || vi.IsPlanarRGB()) ? 3 : 4;
       int one_bufsize = pixelsize * real_lookup_size;
       if (dither) one_bufsize *= 256;
 
@@ -876,45 +970,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
       mapB = mapG + one_bufsize;
       mapA = number_of_maps == 4 ? mapB + one_bufsize : nullptr;
 
-      void(*set_map)(BYTE*, int, int, float, const double, const double, const double);
-      if (dither) {
-          set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, float dither_strength, const double c0, const double c1, const double c2) {
-              double bias_dither = -(256.0f * dither_strength - 1) / 2; // -127.5 for 8 bit, scaling because of dithershift
-              double pixel_max = (1 << bits_per_pixel) - 1;
-              if(bits_per_pixel == 8) {
-                for (int i = 0; i < lookup_size * 256; ++i) {
-                  int ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
-                  map[i] = BYTE(pow(clamp((c0 * 256 + ii * c1 - bias_dither) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
-                }
-              }
-              else {
-                for (int i = 0; i < lookup_size * 256; ++i) {
-                  int ii = (i & 0xFFFFFF00) + (int)((i & 0xFF)*dither_strength);
-                  reinterpret_cast<uint16_t *>(map)[i] = uint16_t(pow(clamp((c0 * 256 + ii * c1 - bias_dither) / (double(pixel_max) * 256), 0.0, 1.0), c2) * (double)pixel_max + 0.5);
-                }
-              }
-          };
-      } else {
-          set_map = [](BYTE* map, int lookup_size, int bits_per_pixel, float dither_strength, const double c0, const double c1, const double c2) {
-            double pixel_max = (1 << bits_per_pixel) - 1;
-            if(bits_per_pixel==8) {
-              for (int i = 0; i < lookup_size; ++i) { // fix of bug introduced in an earlier refactor was: i < 256 * 256
-                    map[i] = BYTE(pow(clamp((c0 + i * c1) / (double)pixel_max, 0.0, 1.0), c2) * double(pixel_max) + 0.5);
-                }
-            }
-            else {
-              for (int i = 0; i < lookup_size; ++i) { // fix of bug introduced in an earlier refactor was: i < 256 * 256
-                reinterpret_cast<uint16_t *>(map)[i] = uint16_t(pow(clamp((c0 + i * c1) / (double)pixel_max, 0.0, 1.0), c2) * double(pixel_max) + 0.5);
-              }
-            }
-          };
-      }
-
-      set_map(mapR, lookup_size, bits_per_pixel, dither_strength, rb, r, rg);
-      set_map(mapG, lookup_size, bits_per_pixel, dither_strength, gb, g, gg);
-      set_map(mapB, lookup_size, bits_per_pixel, dither_strength, bb, b, bg);
-      if (number_of_maps == 4)
-          set_map(mapA, lookup_size, bits_per_pixel, dither_strength, ab, a, ag);
+      rgbadjust_create_lut();
     }
 }
 
@@ -1015,6 +1071,15 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 
     int w = vi.width;
     int h = vi.height;
+
+    // Read conditional variables
+    config.changed = false;
+    rgbadjust_read_conditional(env, &config);
+
+    if (config.changed) {
+      CheckAndConvertParams(config, env);
+      rgbadjust_create_lut();
+    }
 
     if (dither) {
       if (vi.IsRGB32())
@@ -1203,7 +1268,7 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
                        args[ 1].AsDblDef(1.0), args[ 2].AsDblDef(1.0), args[ 3].AsDblDef(1.0), args[ 4].AsDblDef(1.0),
                        args[ 5].AsDblDef(0.0), args[ 6].AsDblDef(0.0), args[ 7].AsDblDef(0.0), args[ 8].AsDblDef(0.0),
                        args[ 9].AsDblDef(1.0), args[10].AsDblDef(1.0), args[11].AsDblDef(1.0), args[12].AsDblDef(1.0),
-                       args[13].AsBool(false), args[14].AsBool(false), env );
+                       args[13].AsBool(false), args[14].AsBool(false), args[15].AsBool(false), env );
 }
 
 

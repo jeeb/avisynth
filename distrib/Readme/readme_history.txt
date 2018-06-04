@@ -7,6 +7,9 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 201806xx r269x
 --------------
 - Fix: AdjustRGB memory leak when used in ScriptClip
+- Enhanced: AdjustRGB new parameter: conditional (like in ColorYUV)
+  The global variables "adjustrgb_xxx" with xxx = r, g, b, a, rb, gb, bb, ab, rg, gg, bg, ag are read each frame, and applied. 
+  It is possible to modify these variables using FrameEvaluate or ConditionalReader.
 - Enhanced: AviSource to support more formats with 10+ bit depth.
   http://avisynth.nl/index.php/AviSource
 
