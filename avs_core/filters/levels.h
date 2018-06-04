@@ -130,6 +130,7 @@ public:
                           double rg, double gg, double bg, double ag,
                           bool _analyze, bool _dither, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  RGBAdjust::~RGBAdjust();
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);

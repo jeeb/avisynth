@@ -6,7 +6,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 201806xx r269x
 --------------
-- AviSource to support more formats with 10+ bit depth.
+- Fix: AdjustRGB memory leak when used in ScriptClip
+- Enhanced: AviSource to support more formats with 10+ bit depth.
   http://avisynth.nl/index.php/AviSource
 
   When pixel_type is not specified or set to "FULL", AviSource will try to request the formats one-by-one in the order shown in the table below.

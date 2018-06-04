@@ -814,6 +814,11 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 /********************************
  *******    RGBA Filter    ******
  ********************************/
+RGBAdjust::~RGBAdjust()
+{
+  if (mapR)
+    delete[] mapR;
+}
 
 RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     double rb, double gb, double bb, double ab,
@@ -821,6 +826,9 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     bool _analyze, bool _dither, IScriptEnvironment* env)
     : GenericVideoFilter(_child), analyze(_analyze), dither(_dither)
 {
+    // one buffer for all maps
+    mapR = nullptr;
+
     if (!vi.IsRGB())
         env->ThrowError("RGBAdjust requires RGB input");
 
@@ -846,19 +854,22 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     if (!use_lut)
       dither = false;
 
-    // one buffer for all maps
-    mapR = nullptr;
-
     if(use_lut) {
       auto env2 = static_cast<IScriptEnvironment2*>(env);
       size_t number_of_maps = (vi.IsRGB24() || vi.IsRGB48() || vi.IsPlanarRGB()) ? 3 : 4;
       int one_bufsize = pixelsize * real_lookup_size;
       if (dither) one_bufsize *= 256;
 
-      mapR = static_cast<uint8_t*>(env2->Allocate(one_bufsize * number_of_maps, 16, AVS_NORMAL_ALLOC));
+      mapR = new uint8_t[one_bufsize * number_of_maps];
+      /* 
+      // left here intentionally: 
+      // for some reason, AtExit does not get called from within ScriptClip, causing no free thus memory leak
+      // We are using new here and delete in destructor
+      static_cast<uint8_t*>(env2->Allocate(one_bufsize * number_of_maps, 16, AVS_NORMAL_ALLOC));
       if (!mapR)
           env->ThrowError("RGBAdjust: Could not reserve memory.");
       env->AtExit(free_buffer, mapR);
+      */
       if(bits_per_pixel>8 && bits_per_pixel<16) // make lut table safe for 10-14 bit garbage
         std::fill_n(mapR, one_bufsize * number_of_maps, 0); // 8 and 16 bit fully overwrites
       mapG = mapR + one_bufsize;
