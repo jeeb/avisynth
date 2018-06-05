@@ -859,7 +859,7 @@ static __inline float processPixel_f(const float val, const double c0, const dou
   return (float)(pow(clamp((c0 + val * c1) / pixel_max, 0.0, 1.0), c2));
 }
 
-void RGBAdjust::rgbadjust_create_lut(int plane) {
+void RGBAdjust::rgbadjust_create_lut(BYTE *lut_buf, const int plane, RGBAdjustConfig &cfg) {
   if (!use_lut)
     return;
 
@@ -900,7 +900,7 @@ void RGBAdjust::rgbadjust_create_lut(int plane) {
     };
   }
 
-  set_map(maps[plane], lookup_size, bits_per_pixel, dither_strength, config.rgba[plane].bias, config.rgba[plane].scale, 1 / config.rgba[plane].gamma);
+  set_map(lut_buf, lookup_size, bits_per_pixel, dither_strength, cfg.rgba[plane].bias, cfg.rgba[plane].scale, 1 / cfg.rgba[plane].gamma);
 }
 
 RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
@@ -980,8 +980,8 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
       maps[2] = maps[1] + one_bufsize;
       maps[3] = number_of_maps == 4 ? maps[2] + one_bufsize : nullptr;
 
-      for (int plane = 0; plane < number_of_maps; plane++) {
-        rgbadjust_create_lut(plane);
+      for (size_t plane = 0; plane < number_of_maps; plane++) {
+        rgbadjust_create_lut(maps[plane], plane, config);
       }
     }
 }
@@ -1084,32 +1084,44 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
     int w = vi.width;
     int h = vi.height;
 
-    // Read conditional variables
-    config.rgba[0].changed = false;
-    config.rgba[1].changed = false;
-    config.rgba[2].changed = false;
-    config.rgba[3].changed = false;
-    rgbadjust_read_conditional(env, &config);
+    RGBAdjustConfig local_config = config;
 
-    if (config.rgba[0].changed || config.rgba[1].changed || config.rgba[2].changed || config.rgba[3].changed) {
-      CheckAndConvertParams(config, env);
+    // Read conditional variables
+    local_config.rgba[0].changed = false;
+    local_config.rgba[1].changed = false;
+    local_config.rgba[2].changed = false;
+    local_config.rgba[3].changed = false;
+    rgbadjust_read_conditional(env, &local_config);
+
+    BYTE *maps_live[4] = { nullptr };
+    BYTE *maps_local[4] = { nullptr }; // for local lut table allocation, don't overwrite common buffer
+    for (int i = 0; i < 4; i++)
+      maps_live[i] = maps[i];
+
+    if (local_config.rgba[0].changed || local_config.rgba[1].changed || local_config.rgba[2].changed || local_config.rgba[3].changed) {
+      CheckAndConvertParams(local_config, env);
       if (use_lut) {
-        for (int plane = 0; plane < number_of_maps; plane++) {
-          if (config.rgba[plane].changed)
-            rgbadjust_create_lut(plane);
+        for (size_t plane = 0; plane < number_of_maps; plane++) {
+          // recalculate plane LUT only if changed
+          if (local_config.rgba[plane].changed)
+          {
+            maps_local[plane] = new BYTE[pixelsize * real_lookup_size];
+            maps_live[plane] = maps_local[plane]; // use our new local lut
+            rgbadjust_create_lut(maps_live[plane], plane, local_config);
+          }
         }
       }
     }
 
     if (dither) {
       if (vi.IsRGB32())
-        apply_map_rgb_packed_c<uint8_t, 4, true>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint8_t, 4, true>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else if(vi.IsRGB24())
-        apply_map_rgb_packed_c<uint8_t, 3, true>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint8_t, 3, true>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else if(vi.IsRGB64())
-        apply_map_rgb_packed_c<uint16_t, 4, true>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint16_t, 4, true>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else if(vi.IsRGB48())
-        apply_map_rgb_packed_c<uint16_t, 3, true>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint16_t, 3, true>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else {
         // Planar RGB
         bool hasAlpha = vi.IsPlanarRGBA();
@@ -1120,28 +1132,28 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
         // no float support
         if(pixelsize==1) {
           if(hasAlpha)
-            apply_map_rgb_planar_c<uint8_t, true, true>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint8_t, true, true>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
           else
-            apply_map_rgb_planar_c<uint8_t, false, true>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint8_t, false, true>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
         }
         else {
           if(hasAlpha)
-            apply_map_rgb_planar_c<uint16_t, true, true>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint16_t, true, true>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
           else
-            apply_map_rgb_planar_c<uint16_t, false, true>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint16_t, false, true>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
         }
       }
     }
     else {
       // no dither
       if (vi.IsRGB32())
-        apply_map_rgb_packed_c<uint8_t, 4, false>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint8_t, 4, false>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else if(vi.IsRGB24())
-        apply_map_rgb_packed_c<uint8_t, 3, false>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint8_t, 3, false>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else if(vi.IsRGB64())
-        apply_map_rgb_packed_c<uint16_t, 4, false>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint16_t, 4, false>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else if(vi.IsRGB48())
-        apply_map_rgb_packed_c<uint16_t, 3, false>(p, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+        apply_map_rgb_packed_c<uint16_t, 3, false>(p, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
       else {
           // Planar RGB
         bool hasAlpha = vi.IsPlanarRGBA();
@@ -1152,15 +1164,15 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
         // no float support
         if(pixelsize==1) {
           if(hasAlpha)
-            apply_map_rgb_planar_c<uint8_t, true, false>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint8_t, true, false>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
           else
-            apply_map_rgb_planar_c<uint8_t, false, false>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint8_t, false, false>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
         }
         else if(pixelsize==2) {
           if(hasAlpha)
-            apply_map_rgb_planar_c<uint16_t, true, false>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint16_t, true, false>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
           else
-            apply_map_rgb_planar_c<uint16_t, false, false>(p_r, p_g, p_b, p_a, pitch, maps[0], maps[1], maps[2], maps[3], w, h);
+            apply_map_rgb_planar_c<uint16_t, false, false>(p_r, p_g, p_b, p_a, pitch, maps_live[0], maps_live[1], maps_live[2], maps_live[3], w, h);
         }
         else {
           // 32 bit float, no dither
@@ -1168,7 +1180,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
           const int *planes = planesRGB_RgbaOrder;
 
           for (int cplane = 0; cplane < (hasAlpha ? 4 : 3); cplane++) {
-            RGBAdjustPlaneConfig x = config.rgba[cplane];
+            RGBAdjustPlaneConfig x = local_config.rgba[cplane];
             const double scale = x.scale;
             const double bias = x.bias;
             const double gamma = 1 / x.gamma;
@@ -1186,6 +1198,11 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
           }
         }
       }
+    }
+
+    if (use_lut && conditional) {
+      for(int i = 0; i<4; i++)
+        if (maps_local[i]) delete[] maps_local[i];
     }
 
     if (analyze) {

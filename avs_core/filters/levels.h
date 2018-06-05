@@ -180,7 +180,7 @@ private:
   unsigned int *accum_r, *accum_g, *accum_b;
 
   void CheckAndConvertParams(RGBAdjustConfig &config, IScriptEnvironment *env);
-  void rgbadjust_create_lut(const int plane);
+  void rgbadjust_create_lut(BYTE *lut_buf, const int plane, RGBAdjustConfig &config);
 };
 
 
