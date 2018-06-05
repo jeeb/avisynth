@@ -853,7 +853,7 @@ void RGBAdjust::CheckAndConvertParams(RGBAdjustConfig &config, IScriptEnvironmen
     env->ThrowError("RGBAdjust: gammas must be positive");
 }
 
-static __inline float processPixel_f(const float val, const double c0, const double c1, const double c2)
+static __inline float RGBAdjust_processPixel(const float val, const double c0, const double c1, const double c2)
 {
   const double pixel_max = 1.0;
   return (float)(pow(clamp((c0 + val * c1) / pixel_max, 0.0, 1.0), c2));
@@ -1191,7 +1191,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
             int height = frame->GetHeight(plane);
             for (int y = 0; y < h; y++) {
               for (int x = 0; x < w; x++) {
-                dstp[x] = processPixel_f(dstp[x], bias, scale, gamma);
+                dstp[x] = RGBAdjust_processPixel(dstp[x], bias, scale, gamma);
               }
               dstp += pitch;
             }
