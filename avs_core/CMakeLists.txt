@@ -76,6 +76,16 @@ if (MSVC_IDE)
     POST_BUILD
     COMMAND xcopy /Y \"$(TargetPath)\" \"${CMAKE_BINARY_DIR}/Output\"
   )
+  add_custom_command(
+    TARGET AvsCore
+    POST_BUILD
+    COMMAND xcopy /Y \"$(TargetDir)AviSynth.exp\" \"${CMAKE_BINARY_DIR}/Output/c_api\"
+  )
+  add_custom_command(
+    TARGET AvsCore
+    POST_BUILD
+    COMMAND xcopy /Y \"$(TargetDir)AviSynth.lib\" \"${CMAKE_BINARY_DIR}/Output/c_api\"
+  )
 endif()
 
 # Determine target architecture

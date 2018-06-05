@@ -28,6 +28,7 @@ IF( MSVC_IDE )  # Check for Visual Studio
 
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
+  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/c_api")
 
   IF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
      #1900 is reported
