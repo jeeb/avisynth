@@ -268,6 +268,8 @@ extern const AVSFunction Script_functions[] = {
 
   { "IsFloatUvZeroBased", BUILTIN_FUNC_PREFIX, "", IsFloatUvZeroBased }, // 180516-
   { "BuildPixelType", BUILTIN_FUNC_PREFIX, "[family]s[bits]i[chroma]i[compat]b[oldnames]b[sample_clip]c", BuildPixelType }, // 180517-
+  { "VarExists", BUILTIN_FUNC_PREFIX, "s", VarExists }, // 180606-
+
 
 #ifdef NEW_AVSVALUE
   { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
@@ -1889,6 +1891,34 @@ AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env)
 
   return env->SaveString(format.c_str());
 }
+
+AVSValue VarExists(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const char *name = args[0].AsString();
+  int len = (int)strlen(name);
+
+  bool validName = true;
+  // check for a valid identifier name
+  if (*name != '_' && !isalpha(*name))
+    validName = false;
+  else {
+    for (int i = 1; i < len; i++) {
+      const char ch = name[i];
+      if (!(ch == '_' || isalnum(ch))) {
+        validName = false;
+        break;
+      }
+    }
+  }
+
+  if (!validName)
+    env->ThrowError("VarExists: invalid variable name");
+
+  AVSValue result;
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  return (env2->GetVar(name, &result)); // true if exists
+}
+
 
 #ifdef NEW_AVSVALUE
 

@@ -4,8 +4,11 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-201806xx r269x
+201806xx r27xx
 --------------
+- New: function bool VarExists(String variable_name)
+  Checks if a variable exists
+  Returns true if variable exists, false otherwise
 - Fix: RGBAdjust memory leak when used in ScriptClip
 - Enhanced: RGBAdjust new parameter: conditional (like in ColorYUV)
   The global variables "rgbadjust_xxx" with xxx = r, g, b, a, rb, gb, bb, ab, rg, gg, bg, ag are read each frame, and applied. 
