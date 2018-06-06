@@ -1,8 +1,10 @@
 ﻿;!!!Conditional!!!  comment out the following define to ignore VS redistributables
 ;#define WITH_VC_REDIST
 
-;these sections are not up to date, don't include them
-;#define WITH_SDK
+;headers and c lib are OK, but documentation is not up to date, anyway we include them
+#define WITH_SDK
+
+;this section is not up to date, don't include them
 ;#define WITH_DOCS
 
 ;!!!Conditional!!!  comment out the following define to include project web url
@@ -190,6 +192,8 @@ Source: "..\docs\english\*"; DestDir: "{app}\docs\English"; Components: docs\en 
 #ifdef WITH_SDK
 Source: "..\FilterSDK\*"; DestDir: "{app}\FilterSDK"; Components: sdk; Flags: ignoreversion recursesubdirs
 Source: "..\..\avs_core\include\*"; DestDir: "{app}\FilterSDK\include"; Components: sdk; Flags: ignoreversion recursesubdirs
+Source: "{#BuildDir32}\Output\c_api\*"; DestDir: "{app}\FilterSDK\lib\x86"; Components: sdk; Flags: ignoreversion recursesubdirs
+Source: "{#BuildDir64}\Output\c_api\*"; DestDir: "{app}\FilterSDK\lib\x64"; Components: sdk; Flags: ignoreversion recursesubdirs
 #endif
 
 Source: "..\Examples\*"; DestDir: "{app}\Examples"; Components: examples; Flags: recursesubdirs 
