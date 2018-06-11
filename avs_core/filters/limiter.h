@@ -40,7 +40,7 @@
 class Limiter : public GenericVideoFilter
 {
 public:
-    Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env);
+    Limiter(PClip _child, float _min_luma, float _max_luma, float _min_chroma, float _max_chroma, int _show, bool paramscale, IScriptEnvironment* env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
     int __stdcall SetCacheHints(int cachehints, int frame_range) override {

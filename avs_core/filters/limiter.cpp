@@ -119,12 +119,16 @@ inline void limit_plane_isse(BYTE *ptr, int min_value, int max_value, int pitch,
 #endif
 
 
-Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env) :
+Limiter::Limiter(PClip _child, float _min_luma, float _max_luma, float _min_chroma, float _max_chroma, int _show, bool paramscale, IScriptEnvironment* env) :
   GenericVideoFilter(_child),
-  min_luma(_min_luma),
-  max_luma(_max_luma),
-  min_chroma(_min_chroma),
-  max_chroma(_max_chroma),
+  min_luma((int)_min_luma),
+  max_luma((int)_max_luma),
+  min_chroma((int)_min_chroma),
+  max_chroma((int)_max_chroma),
+  min_luma_f(_min_luma),
+  max_luma_f(_max_luma),
+  min_chroma_f(_min_chroma),
+  max_chroma_f(_max_chroma),
   show(show_e(_show))
 {
   if (!vi.IsYUV() && !vi.IsYUVA())
@@ -155,32 +159,40 @@ Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, in
   float tv_range_hi_chroma_f = (240 - 128) / 255.0f;
 #endif
 
-  // float versions
-  min_luma_f = min_luma / 255.0f;
-  max_luma_f = max_luma / 255.0f;
+  if (paramscale) {
+    // float versions
+    min_luma = min_luma << (bits_per_pixel - 8);
+    max_luma = max_luma << (bits_per_pixel - 8);
+    min_chroma = min_chroma << (bits_per_pixel - 8);
+    max_chroma = max_chroma << (bits_per_pixel - 8);
+
+    // float versions
+    min_luma_f = min_luma_f / 255.0f;
+    max_luma_f = max_luma_f / 255.0f;
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-  min_chroma_f = (min_chroma - 128) / 255.0f + 0.5f;
-  max_chroma_f = (max_chroma - 128) / 255.0f + 0.5f;
+    min_chroma_f = (min_chroma_f - 128) / 255.0f + 0.5f;
+    max_chroma_f = (max_chroma_f - 128) / 255.0f + 0.5f;
 #else
-  min_chroma_f = (min_chroma - 128) / 255.0f;
-  max_chroma_f = (max_chroma - 128) / 255.0f;
+    min_chroma_f = (min_chroma_f - 128) / 255.0f;
+    max_chroma_f = (max_chroma_f - 128) / 255.0f;
 #endif
+  }
 
 
   // default min and max values by bitdepths
-  if (min_luma == -9999) {
+  if (_min_luma == -9999.0f) {
     min_luma = tv_range_low;
     min_luma_f = tv_range_low_luma_f;
   }
-  if (max_luma == -9999) {
+  if (_max_luma == -9999.0f) {
     max_luma = tv_range_hi_luma;
     max_luma_f = tv_range_hi_luma_f;
   }
-  if (min_chroma == -9999) {
+  if (_min_chroma == -9999.0f) {
     min_chroma = tv_range_low;
     min_chroma_f = tv_range_low_chroma_f;
   }
-  if (max_chroma == -9999) {
+  if (_max_chroma == -9999.0f) {
     max_chroma = tv_range_hi_chroma;
     max_chroma_f = tv_range_hi_chroma_f;
   }
@@ -707,23 +719,24 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   return frame;
 }
 
-AVSValue __cdecl Limiter::Create(AVSValue args, void* , IScriptEnvironment* env)
+AVSValue __cdecl Limiter::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-	const char* option = args[5].AsString(0);
-	show_e show = show_none;
+  const char* option = args[5].AsString(0);
+  show_e show = show_none;
 
-	if (option) {
-	  if      (lstrcmpi(option, "luma") == 0)
-			show = show_luma;
-	  else if (lstrcmpi(option, "luma_grey") == 0)
-			show = show_luma_grey;
-	  else if (lstrcmpi(option, "chroma") == 0)
-			show = show_chroma;
-	  else if (lstrcmpi(option, "chroma_grey") == 0)
-			show = show_chroma_grey;
-	  else
-			env->ThrowError("Limiter: show must be \"luma\", \"luma_grey\", \"chroma\" or \"chroma_grey\"");
-	}
+  if (option) {
+    if (lstrcmpi(option, "luma") == 0)
+      show = show_luma;
+    else if (lstrcmpi(option, "luma_grey") == 0)
+      show = show_luma_grey;
+    else if (lstrcmpi(option, "chroma") == 0)
+      show = show_chroma;
+    else if (lstrcmpi(option, "chroma_grey") == 0)
+      show = show_chroma_grey;
+    else
+      env->ThrowError("Limiter: show must be \"luma\", \"luma_grey\", \"chroma\" or \"chroma_grey\"");
+  }
 
-	return new Limiter(args[0].AsClip(), args[1].AsInt(-9999), args[2].AsInt(-9999), args[3].AsInt(-9999), args[4].AsInt(-9999), show, env);
+  const bool paramscale = args[6].AsBool(false);
+  return new Limiter(args[0].AsClip(), args[1].AsFloatf(-9999.0f), args[2].AsFloatf(-9999.0f), args[3].AsFloatf(-9999.0f), args[4].AsFloatf(-9999.0f), show, paramscale, env);
 }

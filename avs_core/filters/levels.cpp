@@ -55,7 +55,7 @@ extern const AVSFunction Levels_filters[] = {
   { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b[conditional]b", RGBAdjust::Create },
   { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b[realcalc]b[dither_strength]f", Tweak::Create },
   { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b[realcalc]b", MaskHS::Create },
-  { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
+  { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s[paramscale]b", Limiter::Create },
   { 0 }
 };
 
