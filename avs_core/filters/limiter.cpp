@@ -160,11 +160,11 @@ Limiter::Limiter(PClip _child, float _min_luma, float _max_luma, float _min_chro
 #endif
 
   if (paramscale) {
-    // float versions
-    min_luma = min_luma << (bits_per_pixel - 8);
-    max_luma = max_luma << (bits_per_pixel - 8);
-    min_chroma = min_chroma << (bits_per_pixel - 8);
-    max_chroma = max_chroma << (bits_per_pixel - 8);
+    // int versions, scale from the original float accuracy (e.g. 127.5)
+    min_luma = (int)(_min_luma * (1 << (bits_per_pixel - 8)) + 0.5f);
+    max_luma = (int)(_max_luma * (1 << (bits_per_pixel - 8)) + 0.5f);
+    min_chroma = (int)(_min_chroma * (1 << (bits_per_pixel - 8)) + 0.5f);
+    max_chroma = (int)(_max_chroma * (1 << (bits_per_pixel - 8)) + 0.5f);
 
     // float versions
     min_luma_f = min_luma_f / 255.0f;
