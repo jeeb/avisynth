@@ -7,7 +7,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 201806xx r27xx
 --------------
 - Fix: ColorYUV: round to avoid green cast on consecutive TV<>PC
-- Enhanced: Limiter to work with 32 bit float clips. 'show' option still not supported
+- Enhanced: Limiter to work with 32 bit float clips
 - Enhanced: Limiter new parameter bool 'autoscale' default false.
   If set, minimum/maximum luma/chroma values are treated as they were in 8 bit range (but non-integer values are allowed), limiter will autoscale it.
   Default: does not scale at all, parameters are used as-is. Parameters now are of float type to handle 32 bit float values.
