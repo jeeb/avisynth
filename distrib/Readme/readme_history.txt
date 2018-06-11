@@ -11,9 +11,9 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Enhanced: Limiter new parameter bool 'autoscale' default false.
   If set, minimum/maximum luma/chroma values are treated as they were in 8 bit range (but non-integer values are allowed), limiter will autoscale it.
   Default: does not scale at all, parameters are used as-is. Parameters now are of float type to handle 32 bit float values.
-- New: function bool VarExists(String variable_name)
+- New: function bool VarExist(String variable_name)
   Checks if a variable exists
-  Returns true if variable exists, false otherwise
+  Returns true if variable exists even if it holds 'Undefined', false otherwise
 - Fix: RGBAdjust memory leak when used in ScriptClip
 - Enhanced: RGBAdjust new parameter: conditional (like in ColorYUV)
   The global variables "rgbadjust_xxx" with xxx = r, g, b, a, rb, gb, bb, ab, rg, gg, bg, ag are read each frame, and applied. 

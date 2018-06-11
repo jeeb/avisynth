@@ -268,7 +268,7 @@ extern const AVSFunction Script_functions[] = {
 
   { "IsFloatUvZeroBased", BUILTIN_FUNC_PREFIX, "", IsFloatUvZeroBased }, // 180516-
   { "BuildPixelType", BUILTIN_FUNC_PREFIX, "[family]s[bits]i[chroma]i[compat]b[oldnames]b[sample_clip]c", BuildPixelType }, // 180517-
-  { "VarExists", BUILTIN_FUNC_PREFIX, "s", VarExists }, // 180606-
+  { "VarExist", BUILTIN_FUNC_PREFIX, "s", VarExist }, // 180606-
 
 
 #ifdef NEW_AVSVALUE
@@ -1892,7 +1892,7 @@ AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env)
   return env->SaveString(format.c_str());
 }
 
-AVSValue VarExists(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue VarExist(AVSValue args, void*, IScriptEnvironment* env)
 {
   const char *name = args[0].AsString();
   int len = (int)strlen(name);
@@ -1912,7 +1912,7 @@ AVSValue VarExists(AVSValue args, void*, IScriptEnvironment* env)
   }
 
   if (!validName)
-    env->ThrowError("VarExists: invalid variable name");
+    env->ThrowError("VarExist: invalid variable name");
 
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);

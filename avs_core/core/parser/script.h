@@ -274,7 +274,7 @@ AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env); // avs+ 170
 
 AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment* env); // avs+ 180516
 AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env); // avs+ 180517
-AVSValue VarExists(AVSValue args, void*, IScriptEnvironment* env); // avs+ 180606
+AVSValue VarExist(AVSValue args, void*, IScriptEnvironment* env); // avs+ 180606
 
 #ifdef NEW_AVSVALUE
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);
