@@ -224,7 +224,8 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
         }
 
         // Convert back to int
-        int iValue = int(value); // hmm P.F. 20180226 no rounding?
+        //int iValue = int(value); // hmm P.F. 20180226 no rounding?
+        int iValue = int(value + 0.5); // P.F. 20180611 yes, round!
 
         // Clamp
         iValue = clamp(iValue, 0, pixel_max);
