@@ -128,40 +128,74 @@ Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, in
   show(show_e(_show))
 {
   if (!vi.IsYUV() && !vi.IsYUVA())
-      env->ThrowError("Limiter: Source must be YUV");
+      env->ThrowError("Limiter: Source must be YUV or YUVA");
 
   if(show != show_none && !vi.IsYUY2() && !vi.Is444() && !vi.Is420())
       env->ThrowError("Limiter: Source must be YUV(A) 4:4:4, 4:2:0 or YUY2 with show option.");
+
+  if (show != show_none && vi.BitsPerComponent() == 32)
+    env->ThrowError("Limiter: show option is not supported for 32 bit float.");
 
   pixelsize = vi.ComponentSize();
   bits_per_pixel = vi.BitsPerComponent(); // 8,10..16
   int pixel_max = (1 << bits_per_pixel) - 1; // 255, 1023, 4095, 16383, 65535
 
-  int tv_range_low   = 16 << (bits_per_pixel - 8); // 16
-  int tv_range_hi_luma   = ((235+1) << (bits_per_pixel - 8)) - 1; // 16-235
-  int tv_range_hi_chroma = ((240+1) << (bits_per_pixel - 8)) - 1; // 16-240,64–963, 256–3855,... 4096-61695
+  const bool isFloat = bits_per_pixel == 32;
+  int tv_range_low   = isFloat ? 16 : (16 << (bits_per_pixel - 8)); // 16
+  int tv_range_hi_luma   = isFloat ? 235 : (235 << (bits_per_pixel - 8)); // 16-235
+  int tv_range_hi_chroma = isFloat ? 240 : (240 << (bits_per_pixel - 8)); // 16-240,64–960, ...
+
+  float tv_range_low_luma_f = 16 / 255.0f;
+  float tv_range_hi_luma_f = 235 / 255.0f;
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+  float tv_range_low_chroma = (16-128) / 255.0f + 0.5f;
+  float tv_range_hi_chroma_f = (240 - 128) / 255.0f + 0.5f;
+#else
+  float tv_range_low_chroma_f = (16 - 128) / 255.0f;
+  float tv_range_hi_chroma_f = (240 - 128) / 255.0f;
+#endif
+
+  // float versions
+  min_luma_f = min_luma / 255.0f;
+  max_luma_f = max_luma / 255.0f;
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+  min_chroma_f = (min_chroma - 128) / 255.0f + 0.5f;
+  max_chroma_f = (max_chroma - 128) / 255.0f + 0.5f;
+#else
+  min_chroma_f = (min_chroma - 128) / 255.0f;
+  max_chroma_f = (max_chroma - 128) / 255.0f;
+#endif
+
 
   // default min and max values by bitdepths
-  if (min_luma == -9999)
+  if (min_luma == -9999) {
     min_luma = tv_range_low;
-  if (max_luma == -9999)
+    min_luma_f = tv_range_low_luma_f;
+  }
+  if (max_luma == -9999) {
     max_luma = tv_range_hi_luma;
-  if (min_chroma == -9999)
+    max_luma_f = tv_range_hi_luma_f;
+  }
+  if (min_chroma == -9999) {
     min_chroma = tv_range_low;
-  if (max_chroma == -9999)
+    min_chroma_f = tv_range_low_chroma_f;
+  }
+  if (max_chroma == -9999) {
     max_chroma = tv_range_hi_chroma;
+    max_chroma_f = tv_range_hi_chroma_f;
+  }
 
-  if (pixelsize == 4)
-    env->ThrowError("Limiter: cannot operate on float video formats");
-
-  if ((min_luma<0)||(min_luma>pixel_max))
+  if (pixelsize != 4) {
+    // no check for float
+    if ((min_luma < 0) || (min_luma > pixel_max))
       env->ThrowError("Limiter: Invalid minimum luma");
-  if ((max_luma<0)||(max_luma>pixel_max))
+    if ((max_luma < 0) || (max_luma > pixel_max))
       env->ThrowError("Limiter: Invalid maximum luma");
-  if ((min_chroma<0)||(min_chroma>pixel_max))
+    if ((min_chroma < 0) || (min_chroma > pixel_max))
       env->ThrowError("Limiter: Invalid minimum chroma");
-  if ((max_chroma<0)||(max_chroma>pixel_max))
+    if ((max_chroma < 0) || (max_chroma > pixel_max))
       env->ThrowError("Limiter: Invalid maximum chroma");
+  }
 
 }
 
@@ -175,6 +209,20 @@ static void limit_plane_c(BYTE *srcp8, int pitch, int min, int max, int width, i
         srcp[x] = (pixel_t)min;
       else if(srcp[x] > max)
         srcp[x] = (pixel_t)max;
+    }
+    srcp += pitch;
+  }
+}
+
+static void limit_plane_f_c(BYTE *srcp8, int pitch, float min, float max, int width, int height) {
+  float *srcp = reinterpret_cast<float *>(srcp8);
+  pitch /= sizeof(float);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      if (srcp[x] < min)
+        srcp[x] = min;
+      else if (srcp[x] > max)
+        srcp[x] = max;
     }
     srcp += pitch;
   }
@@ -632,6 +680,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       limit_plane_c<uint8_t>(srcp, pitch, min_luma, max_luma, width, height);
     else if(pixelsize == 2)
       limit_plane_c<uint16_t>(srcp, pitch, min_luma, max_luma, width, height);
+    else // pixelsize == 4: 32 bit float
+      limit_plane_f_c(srcp, pitch, min_luma_f, max_luma_f, width, height);
 
     // chroma if exists
     srcp = frame->GetWritePtr(PLANAR_U);
@@ -647,6 +697,11 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     } else if(pixelsize == 2) {
       limit_plane_c<uint16_t>(srcp, pitch, min_chroma, max_chroma, width, height);
       limit_plane_c<uint16_t>(srcpV, pitch, min_chroma, max_chroma, width, height);
+    }
+    else {
+      // pixelsize == 4: 32 bit float
+      limit_plane_f_c(srcp, pitch, min_chroma_f, max_chroma_f, width, height);
+      limit_plane_f_c(srcpV, pitch, min_chroma_f, max_chroma_f, width, height);
     }
   }
   return frame;

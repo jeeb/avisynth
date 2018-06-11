@@ -56,6 +56,11 @@ private:
   int max_chroma;
   int min_chroma;
 
+  float max_luma_f;
+  float min_luma_f;
+  float max_chroma_f;
+  float min_chroma_f;
+
   enum show_e{show_none, show_luma, show_luma_grey, show_chroma, show_chroma_grey};
   const show_e show;
 
