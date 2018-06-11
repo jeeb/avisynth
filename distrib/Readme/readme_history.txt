@@ -6,6 +6,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 201806xx r27xx
 --------------
+- Fix: ColorYUV: round to avoid green cast on consecutive TV<>PC
+- Enhanced: Limiter to work with 32 bit float clips. 'show' option still not supported
 - New: function bool VarExists(String variable_name)
   Checks if a variable exists
   Returns true if variable exists, false otherwise
