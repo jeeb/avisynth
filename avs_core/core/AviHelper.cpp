@@ -156,7 +156,7 @@ template void ToY416_c<true>(uint8_t *outbuf, int out_pitch, const uint8_t *yptr
 
 template<bool hasAlpha>
 void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, 
-  uint8_t *srcp8, int srcpitch,
+  const uint8_t *srcp8, int srcpitch,
   int width, int height)
 {
   const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
@@ -178,8 +178,8 @@ void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvp
   }
 }
 // instantiate
-template void FromY416_c<false>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, uint8_t *srcp8, int srcpitch, int width, int height);
-template void FromY416_c<true>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, uint8_t *srcp8, int srcpitch, int width, int height);
+template void FromY416_c<false>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, const uint8_t *srcp8, int srcpitch, int width, int height);
+template void FromY416_c<true>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, const uint8_t *srcp8, int srcpitch, int width, int height);
 
 // Helpers for 10 bit RGB -> Planar RGB
 
@@ -696,8 +696,8 @@ void Px10_16_to_yuv42xp10_16(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dst
   const BYTE *srcp, int srcpitch,
   int width, int height, int cheight, bool semi_packed_p16, IScriptEnvironment *env)
 {
-  const bool sse2 = false; // !!(env->GetCPUFlags() & CPUF_SSE2);
-  const bool sse41 = false; // !!(env->GetCPUFlags() & CPUF_SSE4_1);
+  const bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+  const bool sse41 = !!(env->GetCPUFlags() & CPUF_SSE4_1);
 
   // convert P010, P016, P210 and P216 formats back to Avisynth YUV420P10 and P16 or YUV422P10 and P16 formats
 

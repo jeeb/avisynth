@@ -46,7 +46,7 @@ void ToY416_sse2(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch
 template<bool hasAlpha>
 void ToY416_c(uint8_t *outbuf8, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height);
 template<bool hasAlpha>
-void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, uint8_t *srcp8, int srcpitch, int width, int height);
+void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, const uint8_t *srcp8, int srcpitch, int width, int height);
 
 void From_r210_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t *srcp8, int srcpitch, int width, int height);
 void From_R10k_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t *srcp8, int srcpitch, int width, int height);
