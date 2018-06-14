@@ -3153,7 +3153,7 @@ generated epilog example (new):
 ********************************************************************/
 
 extern const AVSFunction Exprfilter_filters[] = {
-  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b[optSingleMode]b[optSSE2]b", Exprfilter::Create },
+  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b[optSingleMode]b[optSSE2]b[scale_inputs]s", Exprfilter::Create },
   { 0 }
 };
 
@@ -3248,7 +3248,9 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   }
   next_paramindex++;
 
-  return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, env);
+  const std::string scale_inputs = args[next_paramindex].Defined() ? args[next_paramindex].AsString("none") : "none";
+
+  return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, scale_inputs, env);
 
 }
 
@@ -3662,6 +3664,11 @@ static SOperation getStoreOp(const VideoInfo *vi) {
 #define VAR_STORE_SPEC_OP(op,v) GENERAL_OP(op, v, 1, 1)
 #define TWO_ARG_OP(op) GENERAL_OP(op, 0, 2, 1)
 #define THREE_ARG_OP(op) GENERAL_OP(op, 0, 3, 2)
+// defines for special scale-back-before-store where no token is in context:
+#define LOAD_OP_NOTOKEN(op,v,req) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform a load operation"); ops.push_back(ExprOp(op, (v))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
+#define GENERAL_OP_NOTOKEN(op, v, req, dec) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform an operation"); ops.push_back(ExprOp(op, (v))); stackSize-=(dec); } while(0)
+#define TWO_ARG_OP_NOTOKEN(op) GENERAL_OP_NOTOKEN(op, 0, 2, 1)
+
 
 // finds _X suffix (clip letter) and returns 0..25 for x,y,z,a,b,...w
 // no suffix means 0
@@ -3687,7 +3694,9 @@ static int getSuffix(std::string token, std::string base) {
   return loadIndex;
 }
 
-static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma, IScriptEnvironment *env)
+static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma, 
+  const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float,
+  IScriptEnvironment *env)
 {
     // vi_output is new in avs+, and is not used yet
 
@@ -3825,6 +3834,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           LOAD_OP(opLoadConst, (float)planeheight, 0);
         }
         else if (tokens[i].length() == 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z') {
+          // loading source clip pixels
           char srcChar = tokens[i][0];
           int loadIndex;
           if (srcChar >= 'x')
@@ -3834,7 +3844,71 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Too few input clips supplied to reference '%s'", tokens[i].c_str());
           LOAD_OP(getLoadOp(vi[loadIndex], false), loadIndex, 0);
-        } 
+
+          // avs+: 'scale_inputs': converts input pixels to a common specified range
+          // Apply to integer and/or float bit depths.
+          // For integers bit-shift or full-scale-stretch method can be chosen
+          // There is no precision loss, since the multiplication/division occurs when original pixels 
+          // are already loaded as float
+          const int realSourceBitdepth = vi[loadIndex]->BitsPerComponent();
+          // need any conversion?
+          if (autoScaleSourceBitDepth != realSourceBitdepth && (autoconv_conv_int || autoconv_conv_float)) {
+            if (autoconv_conv_int && realSourceBitdepth != 32) {
+              // convert from integer to other integer (float: not supported as an internal scale target)
+              if (autoScaleSourceBitDepth == 32)
+                env->ThrowError("Expr: cannot use scale_inputs with 32bit float as internal scale target (f32)");
+              if (autoconv_full_scale) {
+                // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
+                const float strech_mul = (float)(1 << (autoScaleSourceBitDepth - 1)) / (float)(1 << (realSourceBitdepth - 1));
+                LOAD_OP(opLoadConst, strech_mul, 0);
+                TWO_ARG_OP(opMul);
+              }
+              else {
+                if (autoScaleSourceBitDepth > realSourceBitdepth)
+                {
+                  // not fullscale, e.g. conversion from 8 to 16 bits YUV: *256
+                  const float shift_mul = (float)(1 << (autoScaleSourceBitDepth - realSourceBitdepth));
+                  LOAD_OP(opLoadConst, shift_mul, 0);
+                  TWO_ARG_OP(opMul);
+                }
+                else {
+                  // not fullscale, e.g. conversion from 16 to 8 bits YUV: /256
+                  const float shift_mul = 1.0f / (float)(1 << (realSourceBitdepth - autoScaleSourceBitDepth));
+                  LOAD_OP(opLoadConst, shift_mul, 0);
+                  TWO_ARG_OP(opMul);
+                }
+              }
+            }
+            else if (autoconv_conv_float && realSourceBitdepth == 32) {
+              // convert from float to 8-16 bit integer
+              // no difference between autoconv_full_scale or not
+              // scale 32 bits (0..1.0) -> 8-16 bits
+              // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
+              // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
+              if (chroma) {
+                // (x-src_middle_chroma)*factor + target_middle_chroma
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+                LOAD_OP(opLoadConst, 0.5f, 0);
+                TWO_ARG_OP(opSub);
+#endif
+                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
+                LOAD_OP(opLoadConst, q, 0);
+                TWO_ARG_OP(opMul);
+
+                int target_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
+                LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
+                TWO_ARG_OP(opAdd);
+              }
+              else
+              {
+                // conversion from float: mul by max_pixel_value
+                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
+                LOAD_OP(opLoadConst, q, 0);
+                TWO_ARG_OP(opMul);
+              }
+            }
+          } // end of scale inputs
+        }
         else if (tokens[i].length() == 1 && tokens[i][0] >= 'A' && tokens[i][0] <= 'Z') { // avs+
           // use of a variable: single uppercase letter A..Z
           char srcChar = tokens[i][0];
@@ -4211,6 +4285,68 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
     if (tokens.size() > 0) {
         if (stackSize != 1)
             env->ThrowError("Stack unbalanced at end of expression. Need to have exactly one value on the stack to return.");
+
+        // When scale_inputs option was used for scaling input to a common internal range, 
+        // we have to scale pixels before storing them back
+        // need any conversion?
+        if (autoScaleSourceBitDepth != targetBitDepth && (autoconv_conv_int || autoconv_conv_float)) {
+          // We can be sure that internal source was not 32 bits float: 
+          // (was checked during input conversion)
+          if (targetBitDepth != 32) {
+            // convert back internal integer to other integer
+            if (autoconv_full_scale) {
+              // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
+              const float strech_mul = (float)(1 << (targetBitDepth - 1)) / (float)(1 << (autoScaleSourceBitDepth - 1));
+              LOAD_OP_NOTOKEN(opLoadConst, strech_mul, 0);
+              TWO_ARG_OP_NOTOKEN(opMul);
+            }
+            else {
+              if (targetBitDepth > autoScaleSourceBitDepth)
+              {
+                // not fullscale, e.g. conversion from 8 to 16 bits YUV: *256
+                const float shift_mul = (float)(1 << (targetBitDepth - autoScaleSourceBitDepth));
+                LOAD_OP_NOTOKEN(opLoadConst, shift_mul, 0);
+                TWO_ARG_OP_NOTOKEN(opMul);
+              }
+              else {
+                // not fullscale, e.g. conversion from 16 to 8 bits YUV: *256
+                const float shift_mul = 1.0f / (float)(1 << (autoScaleSourceBitDepth - targetBitDepth));
+                LOAD_OP_NOTOKEN(opLoadConst, shift_mul, 0);
+                TWO_ARG_OP_NOTOKEN(opMul);
+              }
+            }
+          }
+          else {
+            // For targetBitDepth == 32 we are converting 8-16 bits integer back to float
+            // No difference between full_scale or not
+            // 8-16 bits -> scale 32 bits (0..1.0)
+            // for new 0-based chroma: 8*16 bits 0..max-1 -> -0.5..0.5
+            // for old 0.5-based chroma:8*16 bits 0..max-1 -> 0.0..1.0
+            if (chroma) {
+              // (x-src_middle_chroma)*factor + target_middle_chroma
+              int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
+              LOAD_OP_NOTOKEN(opLoadConst, (float)src_middle_chroma, 0);
+              TWO_ARG_OP_NOTOKEN(opSub);
+
+              float q = (float)((1 << autoScaleSourceBitDepth) - 1);
+              LOAD_OP_NOTOKEN(opLoadConst, 1.0f / q, 0);
+              TWO_ARG_OP_NOTOKEN(opMul);
+
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+              LOAD_OP(opLoadConst, 0.5f, 0);
+              TWO_ARG_OP(opAdd);
+#endif
+            }
+            else
+            {
+              // 0..max-1 -> 0.0..1.0
+              float q = (float)((1 << autoScaleSourceBitDepth) - 1);
+              LOAD_OP_NOTOKEN(opLoadConst, 1.0f / q, 0);
+              TWO_ARG_OP_NOTOKEN(opMul);
+            }
+          }
+        } // end of scale inputs
+        // and finally store it
         ops.push_back(storeOp);
     }
 
@@ -4643,11 +4779,43 @@ static void foldConstants(std::vector<ExprOp> &ops) {
 }
 
 Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
-  const bool _optSingleMode, const bool _optSSE2, IScriptEnvironment *env) :
-  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2) {
+  const bool _optSingleMode, const bool _optSSE2, const std::string _scale_inputs, IScriptEnvironment *env) :
+  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2), scale_inputs(_scale_inputs) {
 
   vi = children[0]->GetVideoInfo();
   d.vi = vi;
+
+  // parse "scale_inputs"
+  autoconv_full_scale = false;
+  autoconv_conv_float = false;
+  autoconv_conv_int = false;
+
+  if (scale_inputs == "allf") {
+    autoconv_full_scale = true;
+    autoconv_conv_int = true;
+    autoconv_conv_float = true;
+  }
+  else if (scale_inputs == "intf") {
+    autoconv_full_scale = true;
+    autoconv_conv_int = true;
+  }
+  else if (scale_inputs == "floatf") {
+    autoconv_full_scale = true;
+    autoconv_conv_float = true;
+  }
+  else if (scale_inputs == "all") {
+    autoconv_conv_int = true;
+    autoconv_conv_float = true;
+  }
+  else if (scale_inputs == "int") {
+    autoconv_conv_int = true;
+  }
+  else if (scale_inputs == "float") {
+    autoconv_conv_float = true;
+  }
+  else if (scale_inputs != "none") {
+    env->ThrowError("Expr error: scale_inputs must be 'all','allf','int','intf','float','floatf' or 'none'");
+  }
 
   try {
     d.numInputs = (int)children.size(); // d->numInputs = vsapi->propNumElements(in, "clips");
@@ -4749,7 +4917,9 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       const int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
       const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
       const bool chroma = (plane_enum == PLANAR_U || plane_enum == PLANAR_V);
-      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma, env), d.maxStackSize);
+      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma, 
+        autoconv_full_scale, autoconv_conv_int, autoconv_conv_float,
+        env), d.maxStackSize);
       foldConstants(d.ops[i]);
 
       // optimize constant store, change operation to "fill"
