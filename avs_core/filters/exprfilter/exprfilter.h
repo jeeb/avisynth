@@ -157,10 +157,11 @@ private:
   bool autoconv_full_scale;
   bool autoconv_conv_int;
   bool autoconv_conv_float;
+  const bool clamp_float;
 
 public:
   Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
-    const bool _optSingleMode2, const bool _optSSE2, const std::string _scale_inputs, IScriptEnvironment *env);
+    const bool _optSingleMode2, const bool _optSSE2, const std::string _scale_inputs, const bool _clamp_float, IScriptEnvironment *env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
   ~Exprfilter();
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

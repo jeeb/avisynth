@@ -3153,7 +3153,7 @@ generated epilog example (new):
 ********************************************************************/
 
 extern const AVSFunction Exprfilter_filters[] = {
-  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b[optSingleMode]b[optSSE2]b[scale_inputs]s", Exprfilter::Create },
+  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b[optSingleMode]b[optSSE2]b[scale_inputs]s[clamp_float]b", Exprfilter::Create },
   { 0 }
 };
 
@@ -3249,8 +3249,11 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   next_paramindex++;
 
   const std::string scale_inputs = args[next_paramindex].Defined() ? args[next_paramindex].AsString("none") : "none";
+  next_paramindex++;
 
-  return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, scale_inputs, env);
+  const bool clamp_float = args[next_paramindex].AsBool(false);
+
+  return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, scale_inputs, clamp_float, env);
 
 }
 
@@ -3695,7 +3698,7 @@ static int getSuffix(std::string token, std::string base) {
 }
 
 static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma, 
-  const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float,
+  const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float, const bool clamp_float,
   IScriptEnvironment *env)
 {
     // vi_output is new in avs+, and is not used yet
@@ -4333,8 +4336,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               TWO_ARG_OP_NOTOKEN(opMul);
 
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-              LOAD_OP(opLoadConst, 0.5f, 0);
-              TWO_ARG_OP(opAdd);
+              LOAD_OP_NOTOKEN(opLoadConst, 0.5f, 0);
+              TWO_ARG_OP_NOTOKEN(opAdd);
 #endif
             }
             else
@@ -4346,6 +4349,30 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
           }
         } // end of scale inputs
+
+        if (clamp_float && targetBitDepth == 32) {
+          if (chroma) {
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+            LOAD_OP_NOTOKEN(opLoadConst, 0.0f, 0);
+            TWO_ARG_OP_NOTOKEN(opMax);
+            LOAD_OP_NOTOKEN(opLoadConst, 1.0f, 0);
+            TWO_ARG_OP_NOTOKEN(opMin);
+#else
+            LOAD_OP_NOTOKEN(opLoadConst, -0.5f, 0);
+            TWO_ARG_OP_NOTOKEN(opMax);
+            LOAD_OP_NOTOKEN(opLoadConst, 0.5f, 0);
+            TWO_ARG_OP_NOTOKEN(opMin);
+#endif
+          }
+          else
+          {
+            LOAD_OP_NOTOKEN(opLoadConst, 0.0f, 0);
+            TWO_ARG_OP_NOTOKEN(opMax);
+            LOAD_OP_NOTOKEN(opLoadConst, 1.0f, 0);
+            TWO_ARG_OP_NOTOKEN(opMin);
+          }
+        }
+
         // and finally store it
         ops.push_back(storeOp);
     }
@@ -4779,8 +4806,8 @@ static void foldConstants(std::vector<ExprOp> &ops) {
 }
 
 Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
-  const bool _optSingleMode, const bool _optSSE2, const std::string _scale_inputs, IScriptEnvironment *env) :
-  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2), scale_inputs(_scale_inputs) {
+  const bool _optSingleMode, const bool _optSSE2, const std::string _scale_inputs, const bool _clamp_float, IScriptEnvironment *env) :
+  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2), scale_inputs(_scale_inputs), clamp_float(_clamp_float) {
 
   vi = children[0]->GetVideoInfo();
   d.vi = vi;
@@ -4918,7 +4945,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
       const bool chroma = (plane_enum == PLANAR_U || plane_enum == PLANAR_V);
       d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma, 
-        autoconv_full_scale, autoconv_conv_int, autoconv_conv_float,
+        autoconv_full_scale, autoconv_conv_int, autoconv_conv_float, clamp_float,
         env), d.maxStackSize);
       foldConstants(d.ops[i]);
 
