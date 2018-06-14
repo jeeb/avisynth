@@ -6,6 +6,69 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 201806xx r27xx
 --------------
+- New: Expr: Parameter "clamp_float"
+    True: clamps 32 bit float to valid ranges, which is 0..1 for Luma or for RGB color space and -0.5..0.5 for YUV chroma UV channels
+    Default false, ignored (treated as true) when scale_inputs scales float
+- New: Expr: parameter "scale_inputs" (default "none")
+
+    Autoscale any input bit depths to 8-16 bit for internal expression use, the conversion method is either full range or limited YUV range.
+    
+    Feature is similar to the one in masktools2 v2.2.15
+
+    The primary reason of this feature is the "easy" usage of formerly written expressions optimized for 8 bits.
+
+    Use
+    - "int" : scales limited range videos, only integer formats (8-16bits) to 8 (or bit depth specified by 'i8'..'i16')
+    - "intf": scales full range videos, only integer formats (8-16bits) to 8 (or bit depth specified by 'i8'..'i16')
+    - "float" or "floatf" : only scales 32 bit float format to 8 bit range (or bit depth specified by 'i8'..'i16')
+    - "all": scales videos to 8 (or bit depth specified by 'i8'..'i16') - conversion uses limited_range logic (mul/div by two's power)
+    - "allf": scales videos to 8 (or bit depth specified by 'i8'..'i16') - conversion uses full scale logic (stretch)
+    - "none": no magic
+
+    Usually limited range is for normal YUV videos, full scale is for RGB or known-to-be-fullscale YUV
+
+    By default the internal conversion target is 8 bits, so old expressions written for 8 bit videos will probably work.
+    This internal working bit-depth can be overwritten by the i8, i10, i12, i14, i16 specifiers.
+
+    When using autoscale mode, scaleb and scalef keywords are meaningless, because there is nothing to scale.
+
+    How it works:
+    - This option scales all 8-32 bit inputs to a common bit depth value, which bit depth is 8 by default and can be 
+      set to 10, 12, 14 and 16 bits by the 'i10'..'i16' keywords
+      For example: scale_inputs="all" converts any inputs to 8 bit range. No truncation occurs however (no precision loss), 
+      because even a 16 bit data is converted to 8 bit in floating point precision, using division by 256.0 (2^16/2^8). 
+      So the conversion is _not_ a simple shift-right-8 in the integer domain, which would lose precision.
+    - Calculates expression (lut, lut_xy, lut_xyz, lut_xyza)
+    - Scales the result back to the original video bit depth.
+      Clamping (clipping to valid range) and converting to integer occurs here.
+
+    The predefined constants such as 'range_max', etc. will behave according to the internal working bit depth
+
+    Warning#1 
+    This feature was created for easy porting earlier 8-bit-video-only lut expressions.
+    You have to understand how it works internally.
+
+    Let's see a 16bit input in "all" and "allf" mode (target is the default 8 bits)
+
+    Limited range 16->8 bits conversion has a factor of 1/256.0 (Instead of shift right 8 in integer domain, float-division is used or else it would lose presision)
+
+    Full range 16->8 bits conversion has a factor of 255.0/65535
+
+    Using bit shifts (really it's division and multiplication by 2^8=256.0): 
+      result = calculate_lut_value(input / 256.0) * 256.0
+    Full scale 16-8-16 bit mode ('intf', 'allf')
+      result = calculate_lut_value(input / 65535.0 * 255.0 ) / 255.0 * 65535.0
+
+    Use scale_inputs = "all" ("int", "float") for YUV videos with 'limited' range e.g. in 8 bits: Y=16..235, UV=16..240).
+    Use scale_inputs = "allf" (intf, floatf) for RGB or YUV videos with 'full' range e.g. in 8 bits: channels 0..255.
+
+    When input is 32bit float, the 0..1.0 (luma) and -0.5..0.5 (chroma) channel is scaled
+    to 0..255 (8 bits), 0..1023 (i10 mode), 0..4095 (i12 mode), 0..16383(i14 mode), 0..65535(i16 mode) then back.
+
+    Warning#2
+    One cannot specify different conversion methods for converting before and after the expression.
+    Neither can you specify different methods for different input clips (e.g. x is full, y is limited is not supported).
+
 - Fix: ColorYUV: round to avoid green cast on consecutive TV<>PC
 - Enhanced: Limiter to work with 32 bit float clips
 - Enhanced: Limiter new parameter bool 'autoscale' default false.

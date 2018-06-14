@@ -51,6 +51,7 @@
 *           expr auto variable: 'frameno' holds the current frame number 0..total number of frames-1
 *           expr auto variable: 'time' relative time in clip, 0 <= time < 1 
 *                calculation: time = frameno/total number of frames)
+* 20180614 scale_inputs parameter, clamp_float parameter
 *
 * Differences from masktools 2.2.9
 * --------------------------------
