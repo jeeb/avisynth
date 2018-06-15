@@ -6,6 +6,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 201806xx r27xx
 --------------
+- New: Expr: implement 'clip' three operand operator like in masktools2
+  Description: clips (clamps) value: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
 - New: Expr: Parameter "clamp_float"
     True: clamps 32 bit float to valid ranges, which is 0..1 for Luma or for RGB color space and -0.5..0.5 for YUV chroma UV channels
     Default false, ignored (treated as true) when scale_inputs scales float

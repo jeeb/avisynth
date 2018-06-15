@@ -51,15 +51,15 @@
 *           expr auto variable: 'frameno' holds the current frame number 0..total number of frames-1
 *           expr auto variable: 'time' relative time in clip, 0 <= time < 1 
 *                calculation: time = frameno/total number of frames)
-* 20180614 scale_inputs parameter, clamp_float parameter
+* 20180614 new parameters: scale_inputs, clamp_float
+*          implement 'clip' three operand operator like in masktools2: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
 *
-* Differences from masktools 2.2.9
-* --------------------------------
+* Differences from masktools 2.2.15
+* ---------------------------------
 *   Up to 26 clips are allowed (x,y,z,a,b,...w). Masktools handles only up to 4 clips with its mt_lut, my_lutxy, mt_lutxyz, mt_lutxyza
 *   Clips with different bit depths are allowed
 *   works with 32 bit floats instead of 64 bit double internally 
 *   less functions (e.g. no bit shifts)
-*   no float clamping and float-to-8bit-and-back load/store autoscale magic
 *   logical 'false' is 0 instead of -1
 *   avs+: ymin, ymax, etc built-in constants can have a _X suffix, where X is the corresponding clip designator letter. E.g. cmax_z, range_half_x
 *   mt_lutspa-like functionality is available through "sx", "sy", "sxr", "syr"
@@ -2228,6 +2228,30 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           EXP_PS(t2.second)
         }
       }
+      else if (iter.op == opClip) {
+        // clip(a, low, high) = min(max(a, low),high)
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto t2 = stack1.back();
+          stack1.pop_back();
+          auto &t3 = stack1.back();
+          maxps(t3, t2);
+          minps(t3, t1);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto t2 = stack.back();
+          stack.pop_back();
+          auto &t3 = stack.back();
+          maxps(t3.first, t2.first);
+          minps(t3.first, t1.first);
+          maxps(t3.second, t2.second);
+          minps(t3.second, t1.second);
+        }
+      }
+
     }
   }
 
@@ -2987,6 +3011,29 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           EXP_PS_AVX(t2.second);
         }
       }
+      else if (iter.op == opClip) {
+        // clip(a, low, high) = min(max(a, low),high)
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto t2 = stack1.back();
+          stack1.pop_back();
+          auto &t3 = stack1.back();
+          vmaxps(t3, t3, t2);
+          vminps(t3, t3, t1);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto t2 = stack.back();
+          stack.pop_back();
+          auto &t3 = stack.back();
+          vmaxps(t3.first, t3.first, t2.first);
+          vminps(t3.first, t3.first, t1.first);
+          vmaxps(t3.second, t3.second, t2.second);
+          vminps(t3.second, t3.second, t1.second);
+        }
+      }
     }
   }
 /*
@@ -3477,6 +3524,11 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
                 --si;
                 stacktop = std::pow(stack[si], stacktop);
                 break;
+              case opClip:
+                // clip(a, low, high) = min(max(a, low),high)
+                si -= 2;
+                stacktop = std::max(std::min(stack[si], stacktop), stack[si + 1]);
+                break;
               case opSqrt:
                 stacktop = std::sqrt(stacktop);
                 break;
@@ -3751,6 +3803,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           ONE_ARG_OP(opAcos);
         else if (tokens[i] == "atan")
           ONE_ARG_OP(opAtan);
+        else if (tokens[i] == "clip")
+          THREE_ARG_OP(opClip);
         else if (tokens[i] == ">")
             TWO_ARG_OP(opGt);
         else if (tokens[i] == "<")
@@ -4504,6 +4558,7 @@ static int numOperands(uint32_t op) {
             return 2;
 
         case opTernary:
+        case opClip:
             return 3;
     }
 
@@ -4624,6 +4679,7 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opLE),
         PAIR(opGE),
         PAIR(opTernary),
+        PAIR(opClip),
         PAIR(opAnd),
         PAIR(opOr),
         PAIR(opXor),
