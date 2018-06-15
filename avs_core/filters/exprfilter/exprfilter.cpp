@@ -3212,7 +3212,7 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
       expressions[0] = exprarg.AsString();
     }
     else {
-      env->ThrowError("Invalid parameter type for expression string");
+      env->ThrowError("Expr: Invalid parameter type for expression string");
     }
   }
 
@@ -3660,17 +3660,17 @@ static SOperation getStoreOp(const VideoInfo *vi) {
   }
 }
 
-#define LOAD_OP(op,v,req) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
-#define LOAD_REL_OP(op,v,req,dx,dy) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v), (dx), (dy))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
-#define GENERAL_OP(op, v, req, dec) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v))); stackSize-=(dec); } while(0)
+#define LOAD_OP(op,v,req) do { if (stackSize < req) env->ThrowError("Expr: Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
+#define LOAD_REL_OP(op,v,req,dx,dy) do { if (stackSize < req) env->ThrowError("Expr: Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v), (dx), (dy))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
+#define GENERAL_OP(op, v, req, dec) do { if (stackSize < req) env->ThrowError("Expr: Not enough elements on stack to perform operation %s", tokens[i].c_str()); ops.push_back(ExprOp(op, (v))); stackSize-=(dec); } while(0)
 #define ONE_ARG_OP(op) GENERAL_OP(op, 0, 1, 0)
 #define VAR_STORE_OP(op,v) GENERAL_OP(op, v, 1, 0)
 #define VAR_STORE_SPEC_OP(op,v) GENERAL_OP(op, v, 1, 1)
 #define TWO_ARG_OP(op) GENERAL_OP(op, 0, 2, 1)
 #define THREE_ARG_OP(op) GENERAL_OP(op, 0, 3, 2)
 // defines for special scale-back-before-store where no token is in context:
-#define LOAD_OP_NOTOKEN(op,v,req) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform a load operation"); ops.push_back(ExprOp(op, (v))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
-#define GENERAL_OP_NOTOKEN(op, v, req, dec) do { if (stackSize < req) env->ThrowError("Not enough elements on stack to perform an operation"); ops.push_back(ExprOp(op, (v))); stackSize-=(dec); } while(0)
+#define LOAD_OP_NOTOKEN(op,v,req) do { if (stackSize < req) env->ThrowError("Expr: Not enough elements on stack to perform a load operation"); ops.push_back(ExprOp(op, (v))); maxStackSize = std::max(++stackSize, maxStackSize); } while(0)
+#define GENERAL_OP_NOTOKEN(op, v, req, dec) do { if (stackSize < req) env->ThrowError("Expr: Not enough elements on stack to perform an operation"); ops.push_back(ExprOp(op, (v))); stackSize-=(dec); } while(0)
 #define TWO_ARG_OP_NOTOKEN(op) GENERAL_OP_NOTOKEN(op, 0, 2, 1)
 
 
@@ -3781,11 +3781,11 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               try {
                 int tmp = std::stoi(tokens[i].substr(3));
                 if (tmp < 0)
-                  env->ThrowError("Dup suffix can't be less than 0 '%s'", tokens[i].c_str());
+                  env->ThrowError("Expr: Dup suffix can't be less than 0 '%s'", tokens[i].c_str());
                 LOAD_OP(opDup, tmp, (size_t)(tmp + 1));
               }
               catch (std::logic_error &) {
-                env->ThrowError("Failed to convert dup suffix '%s' to valid index", tokens[i].c_str());
+                env->ThrowError("Expr: Failed to convert dup suffix '%s' to valid index", tokens[i].c_str());
               }
             }
         else if (tokens[i].substr(0, 4) == "swap")
@@ -3796,11 +3796,11 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               try {
                 int tmp = std::stoi(tokens[i].substr(4));
                 if (tmp < 1)
-                  env->ThrowError("Swap suffix can't be less than 1 '%s'", tokens[i].c_str());
+                  env->ThrowError("Expr: Swap suffix can't be less than 1 '%s'", tokens[i].c_str());
                 GENERAL_OP(opSwap, tmp, (size_t)(tmp + 1), 0);
               }
               catch (std::logic_error &) {
-                env->ThrowError("Failed to convert swap suffix '%s' to valid index", tokens[i].c_str());
+                env->ThrowError("Expr: Failed to convert swap suffix '%s' to valid index", tokens[i].c_str());
               }
             }
         else if (tokens[i] == "sx") { // avs+
@@ -3846,7 +3846,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           else
             loadIndex = srcChar - 'a' + 3;
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied to reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied to reference '%s'", tokens[i].c_str());
           LOAD_OP(getLoadOp(vi[loadIndex], false), loadIndex, 0);
 
           // avs+: 'scale_inputs': converts input pixels to a common specified range
@@ -3929,7 +3929,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           else if (tokens[i][1] == '@')
             VAR_STORE_OP(opStoreVar, loadIndex);
           else
-            env->ThrowError("Invalid character, '^' or '@' expected in '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Invalid character, '^' or '@' expected in '%s'", tokens[i].c_str());
         }
         // indexed clips e.g. x[-1,-2]
         else if (tokens[i].length() > 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z' && tokens[i][1] == '[') {
@@ -3940,7 +3940,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           else
             loadIndex = srcChar - 'a' + 3;
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied to reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied to reference '%s'", tokens[i].c_str());
 
           int dx, dy;
           std::string s;
@@ -3948,23 +3948,23 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           numStream.imbue(std::locale::classic());
           // first coord
           if (!(numStream >> dx))
-            env->ThrowError("Failed to convert '%s' to integer, relative index dx", tokens[i].c_str());
+            env->ThrowError("Expr: Failed to convert '%s' to integer, relative index dx", tokens[i].c_str());
           // separator ','
           if (numStream.get() != ',')
-            env->ThrowError("Failed to convert '%s', character ',' expected between the coordinates", tokens[i].c_str());
+            env->ThrowError("Expr: Failed to convert '%s', character ',' expected between the coordinates", tokens[i].c_str());
           // second coord
           if (!(numStream >> dy))
-            env->ThrowError("Failed to convert '%s' to integer, relative index dy", tokens[i].c_str());
+            env->ThrowError("Expr: Failed to convert '%s' to integer, relative index dy", tokens[i].c_str());
           // ending ']'
           if (numStream.get() != ']')
-            env->ThrowError("Failed to convert '%s' to [x,y], closing ']' expected ", tokens[i].c_str());
+            env->ThrowError("Expr: Failed to convert '%s' to [x,y], closing ']' expected ", tokens[i].c_str());
           if(numStream >> s)
-            env->ThrowError("Failed to convert '%s' to [x,y], invalid character after ']'", tokens[i].c_str());
+            env->ThrowError("Expr: Failed to convert '%s' to [x,y], invalid character after ']'", tokens[i].c_str());
 
           if(dx <= -vi_output->width || dx >= vi_output->width)
-            env->ThrowError("dx must be between +/- (width-1) in '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: dx must be between +/- (width-1) in '%s'", tokens[i].c_str());
           if (dy <= -vi_output->height || dy >= vi_output->height) 
-            env->ThrowError("dy must be between +/- (height-1) in '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: dy must be between +/- (height-1) in '%s'", tokens[i].c_str());
           LOAD_REL_OP(getLoadOp(vi[loadIndex], true), loadIndex, 0, dx, dy);
         }
         else if (tokens[i] == "pi") // avs+
@@ -3997,9 +3997,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           float q = (float)bitsPerComponent;
@@ -4017,9 +4017,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           float q = bitsPerComponent == 32 ? 16.0f / 255 : (16 << (bitsPerComponent - 8)); // scale luma min 16
@@ -4032,9 +4032,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           float q = bitsPerComponent == 32 ? 235.0f / 255 : (235 << (bitsPerComponent - 8)); // scale luma max 235
@@ -4047,9 +4047,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           float q = bitsPerComponent == 32 ? uv8tof(16) : (16 << (bitsPerComponent - 8)); // scale chroma min 16
@@ -4062,9 +4062,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           float q = bitsPerComponent == 32 ? uv8tof(240) : (240 << (bitsPerComponent - 8)); // scale chroma max 240
@@ -4077,9 +4077,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           float q = bitsPerComponent == 32 ? 1.0f : (1 << bitsPerComponent); // 1.0, 256, 1024,... 65536
@@ -4092,9 +4092,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           // 0.0 (or -0.5 for zero based 32bit float chroma)
@@ -4108,9 +4108,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           // 1.0 (or 0.5 for zero based 32bit float chroma), 255, 1023,... 65535
@@ -4124,9 +4124,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (tokens[i].substr(0, toFind.length()) == toFind)
             loadIndex = getSuffix(tokens[i], toFind);
           if (loadIndex < 0)
-            env->ThrowError("Error in built-in constant expression '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
           if (loadIndex >= numInputs)
-            env->ThrowError("Too few input clips supplied for reference '%s'", tokens[i].c_str());
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           // for chroma: range_half is 0.0 for 32bit float (or 0.5 for old float chroma representation)
@@ -4279,16 +4279,16 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             std::istringstream numStream(tokens[i]);
             numStream.imbue(std::locale::classic());
             if (!(numStream >> f))
-              env->ThrowError("Failed to convert '%s' to float", tokens[i].c_str());
+              env->ThrowError("Expr: Failed to convert '%s' to float", tokens[i].c_str());
             if (numStream >> s)
-              env->ThrowError("Failed to convert '%s' to float, not the whole token could be converted", tokens[i].c_str());
+              env->ThrowError("Expr: Failed to convert '%s' to float, not the whole token could be converted", tokens[i].c_str());
             LOAD_OP(opLoadConst, f, 0);
         }
     }
 
     if (tokens.size() > 0) {
         if (stackSize != 1)
-            env->ThrowError("Stack unbalanced at end of expression. Need to have exactly one value on the stack to return.");
+            env->ThrowError("Expr: Stack unbalanced at end of expression. Need to have exactly one value on the stack to return.");
 
         // When scale_inputs option was used for scaling input to a common internal range, 
         // we have to scale pixels before storing them back
@@ -4842,13 +4842,13 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     autoconv_conv_float = true;
   }
   else if (scale_inputs != "none") {
-    env->ThrowError("Expr error: scale_inputs must be 'all','allf','int','intf','float','floatf' or 'none'");
+    env->ThrowError("Expr: scale_inputs must be 'all','allf','int','intf','float','floatf' or 'none'");
   }
 
   try {
     d.numInputs = (int)children.size(); // d->numInputs = vsapi->propNumElements(in, "clips");
     if (d.numInputs > 26)
-      env->ThrowError("More than 26 input clips provided");
+      env->ThrowError("Expr: More than 26 input clips provided");
     
     for (int i = 0; i < d.numInputs; i++)
       d.node[i] = children[i];
@@ -4880,31 +4880,31 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         )
         || vi_array[0]->width != vi_array[i]->width
         || vi_array[0]->height != vi_array[i]->height)
-        env->ThrowError("All inputs must have the same number of planes and the same dimensions, subsampling included");
+        env->ThrowError("Expr: All inputs must have the same number of planes and the same dimensions, subsampling included");
 
       if (vi_array[i]->IsRGB() && !vi_array[i]->IsPlanar())
-        env->ThrowError("No packed RGB format allowed for clip #%d, use planar RGB instead",i+1);
+        env->ThrowError("Expr: No packed RGB format allowed for clip #%d, use planar RGB instead",i+1);
       if (vi_array[i]->IsYUY2())
-        env->ThrowError("YUY2 format not allowed for clip #%d", i+1);
+        env->ThrowError("Expr: YUY2 format not allowed for clip #%d", i+1);
     }
 
     // format override
     if (_newformat != nullptr) {
       int pixel_type = GetPixelTypeFromName(_newformat);
       if (pixel_type == VideoInfo::CS_UNKNOWN)
-        env->ThrowError("Invalid video format string parameter");
+        env->ThrowError("Expr: Invalid video format string parameter");
       d.vi.pixel_type = pixel_type;
       if(d.vi.IsRGB() && !d.vi.IsPlanar())
-        env->ThrowError("No packed RGB format allowed");
+        env->ThrowError("Expr: No packed RGB format allowed");
       if (d.vi.IsYUY2())
-        env->ThrowError("YUY2 format not allowed");
+        env->ThrowError("Expr: YUY2 format not allowed");
       vi = d.vi;
     }
 
     // check expression count, duplicate omitted expressions from previous one
     int nexpr = (int)expressions.size();
     if (nexpr > d.vi.NumComponents()) // ->numPlanes)
-      env->ThrowError("More expressions given than there are planes");
+      env->ThrowError("Expr: More expressions given than there are planes");
 
     std::string expr[4]; // 4th: alpha
     for (int i = 0; i < nexpr; i++)
