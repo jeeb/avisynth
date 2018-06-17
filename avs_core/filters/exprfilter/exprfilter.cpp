@@ -4350,7 +4350,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         if (autoScaleSourceBitDepth != targetBitDepth && (autoconv_conv_int || autoconv_conv_float)) {
           // We can be sure that internal source was not 32 bits float: 
           // (was checked during input conversion)
-          if (targetBitDepth != 32) {
+          if (targetBitDepth != 32 && autoconv_conv_int) {
             // convert back internal integer to other integer
             if (autoconv_full_scale) {
               // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
@@ -4374,7 +4374,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               }
             }
           }
-          else {
+          else if (targetBitDepth == 32 && autoconv_conv_float) {
             // For targetBitDepth == 32 we are converting 8-16 bits integer back to float
             // No difference between full_scale or not
             // 8-16 bits -> scale 32 bits (0..1.0)
