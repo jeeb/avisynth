@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-201806xx r27xx
+20180617 r2720
 --------------
 - New: Expr: implement 'clip' three operand operator like in masktools2
   Description: clips (clamps) value: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
@@ -216,7 +216,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Source: C api: AVSC_EXPORT to dllexport in capi.h for avisynth_c_plugin_init
 - Source: C api: avs_is_same_colorspace VideoInfo parameters to const
 - Project struct: changelog to git.
-- Planned: include current header files and def/exp file in installer
+- Include current avisynth header files and def/exp file in installer, when SDK is chosen
 
 20180328 r2664
 --------------

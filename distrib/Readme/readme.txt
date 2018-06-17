@@ -1,4 +1,4 @@
-Avisynth+ v2664 (20180328)
+Avisynth+ v2720 (20180617)
 --------------------------
 
 Use the installer or copy files directly
@@ -20,13 +20,52 @@ Avisynth Universal Installer by Groucho2004: https://forum.doom9.org/showthread.
 
 Short info for plugin writers
 -----------------------------
-  Avisynth+ header (and helper headers) are available here:
+  Avisynth+ header (and helper headers) are available here, or choose SDK during install:
   https://github.com/pinterf/AviSynthPlus/tree/MT/avs_core/include
 
   Use these headers for building x86/x64 plugins, and to use Avisynth+'s high-bitdepth related VideoInfo functions
   without any concern. When a VideoInfo function is non-existant on a system that uses your plugin, 
   it won't crash, just fall back to a default behaviour. E.g. VideoInfo.BitsPerComponent() will always return 8
   when your plugin calls it on a Classic Avisynth, or pre-high bit depth Avisynth+ host.
+
+(see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
+20180617 r2720
+--------------
+- Fix: ColorYUV: round to avoid green cast on consecutive TV<>PC
+- Fix: RGBAdjust memory leak when used in ScriptClip
+- Fix: RGB64 Turnleft/Turnright (which are also used in RGB64 Resizers)
+- Fix: Rare crash in FrameRegistry
+- Fix: couldn't see variables in avsi before plugin autoloads (colors_rgb.avsi issue)
+- Fix: LoadVirtualdubPlugin: Fix crash on exit when more than one instances of a filter was used in a script
+- New: Expr: implement 'clip' three operand operator like in masktools2
+- New: Expr: Parameter "clamp_float" (like in masktools2 2.2.15)
+- New: Expr: parameter "scale_inputs" (like in masktools2 2.2.15)
+- New: function bool VarExist(String variable_name)
+- New function: BuildPixelType: 
+  Creates a video format (pixel_type) string by giving a colorspace family, bit depth, optional chroma subsampling and/or a 
+  template clip, from which the undefined format elements are inherited.
+- Enhanced: Limiter to work with 32 bit float clips
+- Enhanced: Limiter new parameter bool 'autoscale' default false, parameters now are of float type to handle 32 bit float values.
+- Enhanced: RGBAdjust new parameter: conditional (like in ColorYUV)
+  The global variables "rgbadjust_xxx" with xxx = r, g, b, a, rb, gb, bb, ab, rg, gg, bg, ag are read each frame, and applied. 
+- Enhanced: RGBAdjust: support 32 bit float ('analyze' not supported, 'dither' silently ignored)
+- Enhanced: AviSource to support much more formats with 10+ bit depth.
+- Changed (finally): 32bit float YUV colorspaces: zero centered chroma channels. 
+  U and V channels are now -0.5..+0.5 (if converted to full scale before) instead of 0..1
+- New function: bool IsFloatUvZeroBased() for plugin or script writers who want to be compatible with pre r2672 Avisynth+ float YUV format:
+- Enhanced: Allow ConvertToRGB24-32-48-64 functions for any source bit depths
+- Enhanced: ConvertBits: allow fulls-fulld combinations when either clip is 32bits
+  E.g. after a 8->32 bit fulls=false fulld=true: 
+  Y: 16..235 -> 0..1 
+  U/V: 16..240 -> -0.5..+0.5
+  Note: now ConvertBits does not assume full range for YUV 32 bit float. 
+  Default values of fulls and fulld are now true only for RGB colorspaces.
+- New: LoadVirtualdubPlugin update: Update from interface V6 to V20, and Filtermod version 6 (partial)
+- Source: move to c++17, 'if constexpr' requires. Use Visual Studio 2017 (or GCC 7?). CMakeLists.txt changed.
+- Source: C api: AVSC_EXPORT to dllexport in capi.h for avisynth_c_plugin_init
+- Source: C api: avs_is_same_colorspace VideoInfo parameters to const
+- Project struct: changelog to git.
+- Include current avisynth header files and def/exp file in installer, when SDK is chosen
 
 20180328 r2664
 --------------
