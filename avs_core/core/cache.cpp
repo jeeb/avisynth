@@ -62,21 +62,19 @@ struct GetFrameCounter {
 	}
 };
 
-#ifdef ORIG_NEO_FOR_SAMPLE
 class CacheStack
 {
 	InternalEnvironment* env;
-	bool retIncreaseCache;
+	bool retSupressCaching;
 public:
 	CacheStack(InternalEnvironment* env)
 		: env(env)
-		, retIncreaseCache(env->increaseCache)
+		, retSupressCaching(env->supressCaching)
 	{ }
 	~CacheStack() {
-		env->increaseCache = retIncreaseCache;
+		env->supressCaching = retSupressCaching;
 	}
 };
-#endif
 
 struct CachePimpl
 {
@@ -92,10 +90,10 @@ struct CachePimpl
   size_t SampleSize;
   size_t MaxSampleCount;
 
-  CachePimpl(const PClip& _child) :
+  CachePimpl(const PClip& _child, CacheMode mode) :
     child(_child),
     vi(_child->GetVideoInfo()),
-    VideoCache(std::make_shared<LruCache<size_t, PVideoFrame> >(0)),
+    VideoCache(std::make_shared<LruCache<size_t, PVideoFrame> >(0, mode)),
     AudioPolicy(CACHE_AUDIO),
     AudioCache(NULL),
     SampleSize(0),
@@ -116,7 +114,7 @@ Cache::Cache(const PClip& _child, InternalEnvironment* env) :
   Env(env),
   _pimpl(NULL)
 {
-  _pimpl = new CachePimpl(_child);
+  _pimpl = new CachePimpl(_child, env->GetCacheMode());
   env->ManageCache(MC_RegisterCache, reinterpret_cast<void*>(this));
   _RPT5(0, "Cache::Cache registered. cache_id=%p child=%p w=%d h=%d VideoCacheSize=%Iu\n", (void *)this, (void *)_child, _pimpl->vi.width, _pimpl->vi.height, _pimpl->VideoCache->size()); // P.F.
 }
@@ -143,9 +141,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env_)
   PVideoFrame result;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
 
-#ifdef ORIG_NEO_FOR_SAMPLE
-  CacheStack cache_stack(env);
-#endif
+	CacheStack cache_stack(env);
 
 #ifdef _DEBUG
   std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end;
@@ -154,14 +150,14 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env_)
   char buf[256];
   std::string name = FuncName;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID));
+  _snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID));
 
-  LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result);
-  snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID), (int)LruLookupRes);
+  LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result, &env->supressCaching);
+  _snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID), (int)LruLookupRes);
   switch (LruLookupRes)
 #else
   // fill result in lookup before releasing cache handle lock
-  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true, result))
+  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true, result, &env->supressCaching))
 #endif
   {
   case LRU_LOOKUP_NOT_FOUND:
@@ -453,9 +449,7 @@ PClip CacheGuard::GetCache(IScriptEnvironment* env_)
 {
     std::unique_lock<std::mutex> global_lock(mutex);
 
-    // no Devices on classic Avs+ merge from Neo 20200321
-    // deviceCaches is a simple cache instead of device;cache pair
-    InternalEnvironment* env = static_cast<InternalEnvironment*>(env_);
+	InternalEnvironment* env = static_cast<InternalEnvironment*>(env_);
 
 #ifdef ORIG_NEO_FOR_SAMPLE
 

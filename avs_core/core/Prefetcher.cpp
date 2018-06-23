@@ -131,7 +131,7 @@ Prefetcher::Prefetcher(const PClip& _child, int _nThreads, int _nPrefetchFrames,
   _pimpl(NULL)
 {
   _pimpl = new PrefetcherPimpl(_child, _nThreads, _nPrefetchFrames, static_cast<IScriptEnvironment2*>(env));
-  _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_pimpl->nPrefetchFrames*2);
+  _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_pimpl->nPrefetchFrames*2, CACHE_NO_RESIZE);
 }
 
 void Prefetcher::Destroy()
@@ -206,10 +206,6 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     // do not use thread when invoke running
     return _pimpl->child->GetFrame(n, env);
   }
-
-  /*ScriptEnvironmentTLS* envTLS = &_pimpl->EnvTlsMainThread; // see PInternalEnvironment
-  envTLS->Specialize(envI);
-  */
 
   int pattern = n - _pimpl->LastRequestedFrame;
   _pimpl->LastRequestedFrame = n;
@@ -290,7 +286,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     {
       try
       {
-        result = _pimpl->child->GetFrame(n, env/*TLS*/); // P.F. fill result before Commit!
+        result = _pimpl->child->GetFrame(n, env); // P.F. fill result before Commit!
         cache_handle.first->value = result;
         // cache_handle.first->value = _pimpl->child->GetFrame(n, env); // P.F. before Commit!
   #ifdef X86_32
@@ -312,7 +308,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     }
   case LRU_LOOKUP_NO_CACHE:
     {
-      result = _pimpl->child->GetFrame(n, env/*TLS*/);
+      result = _pimpl->child->GetFrame(n, env);
       break;
     }
   case LRU_LOOKUP_FOUND_BUT_NOTAVAIL:    // Fall-through intentional
