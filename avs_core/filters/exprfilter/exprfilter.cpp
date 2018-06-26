@@ -4274,9 +4274,25 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           {
             // upscale
             if (targetBitDepth == 32) { // upscale to float
-              float q = (float)((1 << autoScaleSourceBitDepth) - 1); // divide by max, e.g. x -> x/255
-              LOAD_OP(opLoadConst, 1.0f / q, 0);
-              TWO_ARG_OP(opMul);
+              if (chroma) {
+                int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
+                LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
+                TWO_ARG_OP(opSub);
+
+                float q = (float)((1 << autoScaleSourceBitDepth) - 1); // divide by max, e.g. x -> x/255
+                LOAD_OP(opLoadConst, 1.0f / q, 0);
+                TWO_ARG_OP(opMul);
+                // (x-src_middle_chroma)*factor + target_middle_chroma
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+                LOAD_OP(opLoadConst, 0.5f, 0);
+                TWO_ARG_OP(opAdd);
+#endif
+              }
+              else {
+                float q = (float)((1 << autoScaleSourceBitDepth) - 1); // divide by max, e.g. x -> x/255
+                LOAD_OP(opLoadConst, 1.0f / q, 0);
+                TWO_ARG_OP(opMul);
+              }
             }
             else {
               // keep max pixel value e.g. 8->12 bits: x * 4095.0 / 255.0
@@ -4285,18 +4301,42 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               TWO_ARG_OP(opMul);
             }
           }
-          else if (targetBitDepth < autoScaleSourceBitDepth) // scale constant from 12 bits to 8 bit target: /16
+          else if (targetBitDepth < autoScaleSourceBitDepth)
           {
             // downscale
-            float q;
-            if (autoScaleSourceBitDepth == 32)
-              q = (float)((1 << targetBitDepth) - 1);
-            else {
-              // keep max pixel value e.g. 12->8 bits: x * 255.0 / 4095.0
-              q = (float)((1 << targetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
+            if (autoScaleSourceBitDepth == 32) {
+              // float->integer
+              // scale 32 bits (0..1.0) -> 8-16 bits
+              // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
+              // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
+              if (chroma) {
+                // (x-src_middle_chroma)*factor + target_middle_chroma
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+                LOAD_OP(opLoadConst, 0.5f, 0);
+                TWO_ARG_OP(opSub);
+#endif
+                const float q = (float)((1 << targetBitDepth) - 1);
+                LOAD_OP(opLoadConst, q, 0);
+                TWO_ARG_OP(opMul);
+
+                const int target_middle_chroma = 1 << (targetBitDepth - 1);
+                LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
+                TWO_ARG_OP(opAdd);
+              }
+              else
+              {
+                const float q = (float)((1 << targetBitDepth) - 1);
+                LOAD_OP(opLoadConst, q, 0);
+                TWO_ARG_OP(opMul);
+              }
             }
-            LOAD_OP(opLoadConst, q, 0);
-            TWO_ARG_OP(opMul);
+            else {
+              // integer->integer
+              // keep max pixel value e.g. 12->8 bits: x * 255.0 / 4095.0
+              const float q = (float)((1 << targetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
+              LOAD_OP(opLoadConst, q, 0);
+              TWO_ARG_OP(opMul);
+            }
           }
           else {
             // no scaling is needed. Bit depth of constant is the same as of the reference clip 
