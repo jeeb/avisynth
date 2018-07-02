@@ -31,6 +31,7 @@ Short info for plugin writers
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 20180702 r2724
 --------------
+- Fix: Expr: expression string order for planar RGB is properly r-g-b like in original VapourSynth version, instead of counter-intuitive g-b-r.
 - Fix: Expr: check subsampling when a different output pixel format is given
 - Fix: ColorYUV: round to avoid green cast on consecutive TV<>PC
 - Fix: RGBAdjust memory leak when used in ScriptClip

@@ -3329,7 +3329,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const float relative_time = (float)((double)n / vi.num_frames); // 0 <= time < 1
 
   int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
-  int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+  int planes_r[4] = { PLANAR_R, PLANAR_G, PLANAR_B, PLANAR_A }; // expression string order is R G B unlike internal G B R plane order
   int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
 
   for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
@@ -4957,7 +4957,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 
 
     int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
-    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A }; // for checking GBR order is OK
     int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
     const int plane_enum = plane_enums[1]; // for subsampling check U only
 

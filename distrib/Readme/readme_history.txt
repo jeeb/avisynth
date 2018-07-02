@@ -71,6 +71,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     One cannot specify different conversion methods for converting before and after the expression.
     Neither can you specify different methods for different input clips (e.g. x is full, y is limited is not supported).
 
+- Fix: Expr: expression string order for planar RGB is properly r-g-b like in original VapourSynth version, instead of counter-intuitive g-b-r.
 - Fix: Expr: check subsampling when a different output pixel format is given
 - Fix: ColorYUV: round to avoid green cast on consecutive TV<>PC
 - Enhanced: Limiter to work with 32 bit float clips
