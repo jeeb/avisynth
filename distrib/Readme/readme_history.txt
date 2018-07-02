@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20180702 r2724
+20180702 r2728
 --------------
 - New: Expr: implement 'clip' three operand operator like in masktools2
   Description: clips (clamps) value: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
