@@ -7,6 +7,7 @@
 #include <cassert>
 #include "ObjectPool.h"
 #include "SimpleLruCache.h"
+#include "InternalEnvironment.h"
 
 enum LruLookupResult
 {
@@ -112,7 +113,7 @@ public:
 
   typedef std::pair<entry_ptr, std::shared_ptr<LruCache> > handle;
 
-  LruCache(size_type capacity) :
+  LruCache(size_type capacity, CacheMode mode) :
     GHOSTS_MIN_CAPACITY(50),
     mode(mode),
     MainCache(capacity, &MainEvictEvent, reinterpret_cast<void*>(this)),

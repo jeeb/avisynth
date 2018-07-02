@@ -69,10 +69,10 @@ class CacheStack
 public:
 	CacheStack(InternalEnvironment* env)
 		: env(env)
-		, retSupressCaching(env->supressCaching)
+		, retSupressCaching(env->GetSupressCaching())
 	{ }
 	~CacheStack() {
-		env->supressCaching = retSupressCaching;
+		env->GetSupressCaching() = retSupressCaching;
 	}
 };
 
@@ -152,12 +152,12 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env_)
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   _snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID));
 
-  LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result, &env->supressCaching);
+  LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result, &env->GetSupressCaching());
   _snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID), (int)LruLookupRes);
   switch (LruLookupRes)
 #else
   // fill result in lookup before releasing cache handle lock
-  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true, result, &env->supressCaching))
+  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true, result, &env->GetSupressCaching()))
 #endif
   {
   case LRU_LOOKUP_NOT_FOUND:
@@ -439,7 +439,8 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 
 CacheGuard::CacheGuard(const PClip& child, IScriptEnvironment* env) :
     child(child),
-    vi(child->GetVideoInfo())
+    vi(child->GetVideoInfo()),
+		globalEnv(env)
 { }
 
 CacheGuard::~CacheGuard()
@@ -462,7 +463,7 @@ PClip CacheGuard::GetCache(IScriptEnvironment* env_)
     }
 
     // not found for current device, create it
-    Cache* cache = new Cache(child, device, env->GetCoreEnvironment());
+	Cache* cache = new Cache(child, device, static_cast<InternalEnvironment*>(globalEnv));
 
     // apply cache hints if it is changed
     if(hints.min != 0)
@@ -480,7 +481,7 @@ PClip CacheGuard::GetCache(IScriptEnvironment* env_)
     }
 
     // not found for current device, create it
-    Cache* cache = new Cache(child/*, device*/, env->GetCoreEnvironment());
+    Cache* cache = new Cache(child/*, device*/, static_cast<InternalEnvironment*>(globalEnv));
 
     // apply cache hints if it is changed
     if (hints.min != 0)

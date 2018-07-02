@@ -1,5 +1,4 @@
 #include "ThreadPool.h"
-#include "ScriptEnvironmentTLS.h"
 #include "internal.h"
 #include <cassert>
 #include <thread>
@@ -8,7 +7,6 @@ struct ThreadPoolGenericItemData
 {
   ThreadWorkerFuncPtr Func;
   void* Params;
-  PInternalEnvironment Environment;
   AVSPromise* Promise;
   //Device* Device;
 };
@@ -36,9 +34,9 @@ __declspec(thread) int g_suppress_thread_count;
 
 void ThreadPool::ThreadFunc(size_t thread_id, ThreadPoolPimpl* const _pimpl, InternalEnvironment* env)
 {
-  auto EnvTLS = new ScriptEnvironmentTLS(thread_id, env);
-  PInternalEnvironment holder = PInternalEnvironment(EnvTLS);
-  g_thread_id = thread_id;
+  auto EnvTLS = env->NewThreadScriptEnvironment(thread_id);
+	PInternalEnvironment holder = PInternalEnvironment(EnvTLS);
+	g_thread_id = thread_id;
 
   while (true)
   {
@@ -52,8 +50,8 @@ void ThreadPool::ThreadFunc(size_t thread_id, ThreadPoolPimpl* const _pimpl, Int
       return;
     }
 
-    EnvTLS->Specialize(data.Environment.get()/*, data.Device*/);
-    //EnvTLS->increaseCache = true;
+    //EnvTLS->SetCurrentDevice(data.Device);
+    EnvTLS->GetSupressCaching() = false;
     if (data.Promise != NULL)
     {
       try
@@ -107,9 +105,6 @@ void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnviron
   itemData.Params = params;
   //itemData.Device = env->GetCurrentDevice();
 
-  env->AddRef();
-  itemData.Environment = PInternalEnvironment(env);
-
   if (tc != NULL)
     itemData.Promise = tc->Add();
   else
@@ -127,26 +122,21 @@ size_t ThreadPool::NumThreads() const
 
 std::vector<void*> ThreadPool::Finish()
 {
-  std::vector<PInternalEnvironment> envs; // !!declaration order is important!!
-  std::unique_lock<std::mutex> lock(_pimpl->Mutex);
-  if (_pimpl->NumRunning > 0) {
-    _pimpl->MsgQueue.finish();
-    while (_pimpl->NumRunning > 0)
-    {
-      _pimpl->FinishCond.wait(lock);
-    }
-    std::vector<void*> ret;
-    ThreadPoolGenericItemData item;
-    while (_pimpl->MsgQueue.pop_remain(&item)) {
-      ret.push_back(item.Params);
-
-      // store references and release outside the lock
-      // to avoid locking recursively
-      envs.emplace_back(std::move(item.Environment));
-    }
-    return ret;
-  }
-  return std::vector<void*>();
+	std::unique_lock<std::mutex> lock(_pimpl->Mutex);
+	if (_pimpl->NumRunning > 0) {
+		_pimpl->MsgQueue.finish();
+		while (_pimpl->NumRunning > 0)
+		{
+			_pimpl->FinishCond.wait(lock);
+		}
+		std::vector<void*> ret;
+		ThreadPoolGenericItemData item;
+		while (_pimpl->MsgQueue.pop_remain(&item)) {
+			ret.push_back(item.Params);
+		}
+		return ret;
+	}
+	return std::vector<void*>();
 }
 
 void ThreadPool::Join()

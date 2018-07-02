@@ -76,7 +76,7 @@ public:
     resize(RequestedCapacity);
   }
 
-  V* lookup(const K& key, bool *found)
+  V* lookup(const K& key, bool *found, bool lookuponly = false)
   {
     // Look for an existing cache entry,
     // and return it when found
@@ -100,6 +100,10 @@ public:
 
     // Nothing found
     *found = false;
+
+		if (lookuponly) {
+			return NULL;
+		}
 
     // Evict an old element if the cache is full
     trim();

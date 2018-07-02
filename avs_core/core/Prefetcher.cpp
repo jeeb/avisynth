@@ -7,7 +7,6 @@
 #include "ThreadPool.h"
 #include "ObjectPool.h"
 #include "LruCache.h"
-#include "ScriptEnvironmentTLS.h"
 #include "InternalEnvironment.h"
 
 struct PrefetcherJobParams
@@ -73,13 +72,12 @@ struct PrefetcherPimpl
     worker_exception_present(0),
     IsLocked(false),
     PatternMisses(0),
-    // not used anymore, see PInternalEnvironment in ThreadFunc
-    //EnvTlsMainThread(env2->GetProperty(AEP_THREAD_ID), static_cast<InternalEnvironment*>(env2)),
     EnvI(static_cast<InternalEnvironment*>(env2))
   {
-    thread_pool = EnvI->NewThreadPool(nThreads);
+		thread_pool = EnvI->NewThreadPool(nThreads);
   }
-~PrefetcherPimpl()
+
+  ~PrefetcherPimpl()
   {
 		for (void* data : thread_pool->Finish()) {
 			PrefetcherJobParams *ptr = (PrefetcherJobParams*)data;

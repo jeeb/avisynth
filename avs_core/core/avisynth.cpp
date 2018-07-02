@@ -54,7 +54,6 @@
     #include <avs/win.h>
     #include <objbase.h>
 #else
-#include "avisynth_conf.h"
 #if defined(AVS_MACOS)
     #include <mach/host_info.h>
     #include <mach/mach_host.h>
@@ -143,8 +142,11 @@ const AVSFunction* const builtin_functions[] = {
                          Cache_filters,
                          Overlay_filters,
                          Greyscale_filters,
-                         Swap_filters,
-                         Exprfilter_filters };
+                         Swap_filters/*,
+                         FilterGraph_filters,
+                         Device_filters,
+                         Exprfilter_filters*/
+};
 
 // Global statistics counters
 struct {
@@ -156,7 +158,7 @@ struct {
   unsigned int PlanC;
   unsigned int PlanD;
   char tag[36];
-} g_Mem_stats = {0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]"};
+} g_Mem_stats = { 0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]" };
 
 const _PixelClip PixelClip;
 
@@ -164,15 +166,15 @@ const _PixelClip PixelClip;
 // Helper function to count set bits in the processor mask.
 static uint32_t CountSetBits(unsigned long bitMask)
 {
-  uint32_t LSHIFT = sizeof(unsigned long)*8 - 1;
+  uint32_t LSHIFT = sizeof(unsigned long) * 8 - 1;
   uint32_t bitSetCount = 0;
   unsigned long bitTest = (unsigned long)1 << LSHIFT;
   uint32_t i;
 
   for (i = 0; i <= LSHIFT; ++i)
   {
-    bitSetCount += ((bitMask & bitTest)?1:0);
-    bitTest/=2;
+    bitSetCount += ((bitMask & bitTest) ? 1 : 0);
+    bitTest /= 2;
   }
 
   return bitSetCount;
@@ -181,7 +183,7 @@ static uint32_t CountSetBits(unsigned long bitMask)
 static size_t GetNumPhysicalCPUs()
 {
 #ifdef MSVC
-  typedef BOOL (WINAPI *LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
+  typedef BOOL(WINAPI* LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
   LPFN_GLPI glpi;
   BOOL done = FALSE;
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL;
@@ -197,12 +199,12 @@ static size_t GetNumPhysicalCPUs()
   DWORD byteOffset = 0;
   PCACHE_DESCRIPTOR Cache;
 
-  glpi = (LPFN_GLPI) GetProcAddress(
+  glpi = (LPFN_GLPI)GetProcAddress(
     GetModuleHandle(TEXT("kernel32")),
     "GetLogicalProcessorInformation");
   if (NULL == glpi)
   {
-//    _tprintf(TEXT("\nGetLogicalProcessorInformation is not supported.\n"));
+    //    _tprintf(TEXT("\nGetLogicalProcessorInformation is not supported.\n"));
     return (0);
   }
 
@@ -222,13 +224,13 @@ static size_t GetNumPhysicalCPUs()
 
         if (NULL == buffer)
         {
-//          _tprintf(TEXT("\nError: Allocation failure\n"));
+          //          _tprintf(TEXT("\nError: Allocation failure\n"));
           return (0);
         }
       }
       else
       {
-//        _tprintf(TEXT("\nError %d\n"), GetLastError());
+        //        _tprintf(TEXT("\nError %d\n"), GetLastError());
         return (0);
       }
     }
@@ -279,7 +281,7 @@ static size_t GetNumPhysicalCPUs()
       break;
 
     default:
-//      _tprintf(TEXT("\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n"));
+      //      _tprintf(TEXT("\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n"));
       return (0);
     }
     byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
@@ -311,7 +313,7 @@ static size_t GetNumPhysicalCPUs()
 }
 
 #ifdef MSVC
-static std::string FormatString(const char *fmt, va_list args)
+static std::string FormatString(const char* fmt, va_list args)
 {
   va_list args2;
   va_copy(args2, args);
@@ -329,7 +331,7 @@ static std::string FormatString(const char *fmt, va_list args)
   return std::string(buf.data());
 }
 #else
-static std::string FormatString(const char *fmt, va_list args)
+static std::string FormatString(const char* fmt, va_list args)
 {
   va_list args2;
   va_copy(args2, args);
@@ -349,7 +351,7 @@ void* VideoFrame::operator new(size_t size) {
 }
 
 #ifdef SIZETMOD
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height)
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
   offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
   , offsetA(0), pitchA(0), row_sizeA(0)
@@ -357,7 +359,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, i
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height,
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
   size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
   offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
@@ -366,7 +368,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, i
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, int _pitch, int _row_size, int _height,
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
   size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, size_t _offsetA)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
   offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
@@ -377,28 +379,28 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, size_t _offset, i
 #else
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
-    ,offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
+  offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
+  , offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
-                       int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
+  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
+  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
+  , offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
-    int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA)
-    : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size), avsmap(avsmap)
+  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA)
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
+  , offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size), avsmap(avsmap)
 {
-    InterlockedIncrement(&vfb->refcount);
+  InterlockedIncrement(&vfb->refcount);
 }
 #endif
 // Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
@@ -406,29 +408,29 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int 
 // P.F. ?? so far it works automatically
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
-  return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height);
+  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height);
 }
 
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height,
-                                 int rel_offsetU, int rel_offsetV, int new_pitchUV) const {
-    // Maintain plane size relationship
-    const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
-    const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
+  int rel_offsetU, int rel_offsetV, int new_pitchUV) const {
+  // Maintain plane size relationship
+  const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
+  const int new_heightUV = !height ? 0 : MulDiv(new_height, heightUV, height);
 
-    return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height,
-        rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
+  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
+    rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
 }
 
 // alpha support
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height,
-    int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) const {
-    // Maintain plane size relationship
-    const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
-    const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
+  int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) const {
+  // Maintain plane size relationship
+  const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
+  const int new_heightUV = !height ? 0 : MulDiv(new_height, heightUV, height);
 
-    return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height,
-        rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA+offsetA);
+  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
+    rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA);
 }
 
 VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(NULL), data_size(0), sequence_number(0) {}
@@ -440,24 +442,23 @@ VideoFrameBuffer::VideoFrameBuffer(size_t size) :
 VideoFrameBuffer::VideoFrameBuffer(int size) :
 #endif
 #ifdef _DEBUG
-  data(new BYTE[size+16]),
+  data(new BYTE[size + 16]),
 #else
   data(new BYTE[size]),
 #endif
   data_size(size),
   sequence_number(0),
   refcount(0)
-  {
-  refcount(0),
 {
 }
 
 VideoFrameBuffer::~VideoFrameBuffer() {
-//  _ASSERTE(refcount == 0);
+  //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   if (data) delete[] data;
   data = nullptr; // and mark it invalid!!
   data_size = 0;   // and don't forget to set the size to 0 as well!
+  //device = nullptr; // no longer related to a device
 }
 
 
@@ -524,12 +525,12 @@ class ClipDataStore
 public:
 
   // The clip instance that we hold data for.
-  IClip *Clip = nullptr;
+  IClip* Clip = nullptr;
 
   // Clip was created directly by an Invoke() call
   bool CreatedByInvoke = false;
 
-  ClipDataStore(IClip *clip) : Clip(clip) {};
+  ClipDataStore(IClip* clip) : Clip(clip) {};
 };
 
 class MtModeEvaluator
@@ -562,7 +563,7 @@ public:
     }
   }
 
-  void Accumulate(const MtModeEvaluator &other)
+  void Accumulate(const MtModeEvaluator& other)
   {
     NumChainedNice += other.NumChainedNice;
     NumChainedMulti += other.NumChainedMulti;
@@ -588,23 +589,23 @@ public:
     }
   }
 
-  static bool ClipSpecifiesMtMode(const PClip &clip)
+  static bool ClipSpecifiesMtMode(const PClip& clip)
   {
     int val = clip->SetCacheHints(CACHE_GET_MTMODE, 0);
     return (clip->GetVersion() >= 5) && (val > MT_INVALID) && (val < MT_MODE_COUNT);
   }
 
-  static MtMode GetInstanceMode(const PClip &clip, MtMode defaultMode)
+  static MtMode GetInstanceMode(const PClip& clip, MtMode defaultMode)
   {
     return ClipSpecifiesMtMode(clip) ? (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0) : defaultMode;
   }
 
-  static MtMode GetInstanceMode(const PClip &clip)
+  static MtMode GetInstanceMode(const PClip& clip)
   {
     return (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0);
   }
 
-  static MtMode GetMtMode(const PClip &clip, const Function *invokeCall, const InternalEnvironment* env)
+  static MtMode GetMtMode(const PClip& clip, const Function* invokeCall, const InternalEnvironment* env)
   {
     bool invokeModeForced;
 
@@ -616,17 +617,18 @@ public:
     bool hasInstanceMode = ClipSpecifiesMtMode(clip);
     if (hasInstanceMode) {
       return GetInstanceMode(clip);
-        } else {
+    }
+    else {
       return invokeMode;
     }
   }
 
-  static bool UsesDefaultMtMode(const PClip &clip, const Function *invokeCall, const InternalEnvironment* env)
+  static bool UsesDefaultMtMode(const PClip& clip, const Function* invokeCall, const InternalEnvironment* env)
   {
     return !ClipSpecifiesMtMode(clip) && !env->FilterHasMtMode(invokeCall);
   }
 
-  void AddChainedFilter(const PClip &clip, MtMode defaultMode)
+  void AddChainedFilter(const PClip& clip, MtMode defaultMode)
   {
     MtMode mode = GetInstanceMode(clip, defaultMode);
     Accumulate(mode);
@@ -638,15 +640,15 @@ OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type)
   : _type(type)
 {}
 
-OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type, const Function *func)
+OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type, const Function* func)
   : _type(type), _function(func)
 {}
 
-OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type, const std::string &str)
+OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type, const std::string& str)
   : _type(type), _string(str)
 {}
 
-bool OneTimeLogTicket::operator==(const OneTimeLogTicket &other) const
+bool OneTimeLogTicket::operator==(const OneTimeLogTicket& other) const
 {
   return (_type == other._type)
     && (_function == other._function)
@@ -655,18 +657,18 @@ bool OneTimeLogTicket::operator==(const OneTimeLogTicket &other) const
 
 namespace std
 {
-template <>
-struct hash<OneTimeLogTicket>
-{
-  std::size_t operator()(const OneTimeLogTicket& k) const
+  template <>
+  struct hash<OneTimeLogTicket>
   {
-    // TODO: This is a pretty poor combination function for hashes.
-    // Find something better than a simple XOR.
-    return hash<int>()(k._type)
-      ^ hash<void*>()((void*)k._function)
-      ^ hash<std::string>()((std::string)k._string);
-  }
-};
+    std::size_t operator()(const OneTimeLogTicket& k) const
+    {
+      // TODO: This is a pretty poor combination function for hashes.
+      // Find something better than a simple XOR.
+      return hash<int>()(k._type)
+        ^ hash<void*>()((void*)k._function)
+        ^ hash<std::string>()((std::string)k._string);
+    }
+  };
 }
 
 #include "vartable.h"
@@ -677,152 +679,117 @@ struct hash<OneTimeLogTicket>
 #include <stack>
 #include "Prefetcher.h"
 #include "BufferPool.h"
-class ScriptEnvironment : public InternalEnvironment {
+#include "ScriptEnvironmentTLS.h"
+class ThreadScriptEnvironment;
+class ScriptEnvironment {
 public:
   ScriptEnvironment();
-  void __stdcall CheckVersion(int version);
-  int __stdcall GetCPUFlags();
-  char* __stdcall SaveString(const char* s, int length = -1) { return SaveString(s, length, false); }
-  char* __stdcall SaveString(const char* s, int length, bool escape);
-  char* Sprintf(const char* fmt, ...);
-  char* __stdcall VSprintf(const char* fmt, va_list val);
-  void ThrowError(const char* fmt, ...);
-  void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
-  bool __stdcall FunctionExists(const char* name);
-  AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0);
-  AVSValue __stdcall GetVar(const char* name);
-  bool __stdcall SetVar(const char* name, const AVSValue& val);
-  bool __stdcall SetGlobalVar(const char* name, const AVSValue& val);
-  void __stdcall PushContext(int level = 0);
-  void __stdcall PopContext();
-  void __stdcall PushContextGlobal();
-  void __stdcall PopContextGlobal();
-  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align);
+  void CheckVersion(int version);
+  int GetCPUFlags();
+  void AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
+  bool FunctionExists(const char* name);
+  PVideoFrame NewVideoFrame(const VideoInfo& vi, int align);
   PVideoFrame NewVideoFrame(int row_size, int height, int align);
+
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first);
-  bool __stdcall MakeWritable(PVideoFrame* pvf);
-  void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
-  void __stdcall AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data);
-  PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
-  int __stdcall SetMemoryMax(int mem);
-  int __stdcall SetWorkingDir(const char * newdir);
+  bool MakeWritable(PVideoFrame* pvf);
+  void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
+  void AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data);
+  PVideoFrame Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
+  int SetMemoryMax(int mem);
+  int SetWorkingDir(const char* newdir);
   AVSC_CC ~ScriptEnvironment();
-  void* __stdcall ManageCache(int key, void* data);
-  bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key);
-  PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
-  void __stdcall DeleteScriptEnvironment();
-  void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
-  const AVS_Linkage* __stdcall GetAVSLinkage();
-  AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue());
+  void* ManageCache(int key, void* data);
+  bool PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key);
+  PVideoFrame SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
+  void DeleteScriptEnvironment();
+  void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
+  const AVS_Linkage* GetAVSLinkage();
 
   // alpha support
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha);
-  PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
+  PVideoFrame SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
   /* IScriptEnvironment2 */
-  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const;
-  virtual bool __stdcall GetVar(const char* name, bool def) const;
-  virtual int  __stdcall GetVar(const char* name, int def) const;
-  virtual double  __stdcall GetVar(const char* name, double def) const;
-  virtual const char*  __stdcall GetVar(const char* name, const char* def) const;
-  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
-  virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
-  virtual void __stdcall ClearAutoloadDirs();
-  virtual void __stdcall AutoloadPlugins();
-  virtual void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data, const char *exportVar);
-  virtual bool __stdcall InternalFunctionExists(const char* name);
-  virtual int __stdcall IncrImportDepth();
-  virtual int __stdcall DecrImportDepth();
-//  virtual void __stdcall SetPrefetcher(Prefetcher *p); // replaced by ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
-  virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0);
-  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force);
-  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight);
-  virtual MtMode __stdcall GetFilterMTMode(const Function* filter, bool* is_forced) const;
-  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
-  virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
-  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type);
-  virtual void __stdcall Free(void* ptr);
-  virtual ClipDataStore* __stdcall ClipData(IClip *clip);
-  virtual MtMode __stdcall GetDefaultMtMode() const;
-  virtual bool __stdcall FilterHasMtMode(const Function* filter) const;
-  virtual void __stdcall SetLogParams(const char *target, int level);
-  virtual void __stdcall LogMsg(int level, const char* fmt, ...);
-  virtual void __stdcall LogMsg_valist(int level, const char* fmt, va_list va);
-  virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...);
-  virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va);
-  virtual void __stdcall VThrowError(const char* fmt, va_list va);
-  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
+  bool LoadPlugin(const char* filePath, bool throwOnError, AVSValue* result);
+  void AddAutoloadDir(const char* dirPath, bool toFront);
+  void ClearAutoloadDirs();
+  void AutoloadPlugins();
+  void AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data, const char* exportVar);
+  bool InternalFunctionExists(const char* name);
+  void AdjustMemoryConsumption(size_t amount, bool minus);
+  void SetFilterMTMode(const char* filter, MtMode mode, bool force);
+  void SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight);
+  MtMode GetFilterMTMode(const Function* filter, bool* is_forced) const;
+  void ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
+  IJobCompletion* NewCompletion(size_t capacity);
+  size_t  GetProperty(AvsEnvProperty prop);
+  ClipDataStore* ClipData(IClip* clip);
+  MtMode GetDefaultMtMode() const;
+  bool FilterHasMtMode(const Function* filter) const;
+  void SetLogParams(const char* target, int level);
+  void LogMsg(int level, const char* fmt, ...);
+  void LogMsg_valist(int level, const char* fmt, va_list va);
+  void LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...);
+  void LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va);
+  PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
   /* INeoEnv */
-  virtual bool __stdcall Invoke(AVSValue* result, const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0);
-  virtual AVSValue __stdcall Invoke(const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
-  virtual bool __stdcall Invoke(AVSValue *result, const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
+  bool Invoke_(AVSValue* result, const AVSValue& implicit_last,
+    const char* name, const Function* f, const AVSValue& args, const char* const* arg_names,
+    InternalEnvironment* env_thread, bool is_runtime);
 
-  virtual bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
-    const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
-    IScriptEnvironment* env_thread);
-/*
-  virtual Device* __stdcall SetCurrentDevice(Device* device);
-  virtual Device* __stdcall GetCurrentDevice() const;
-  virtual PDevice __stdcall GetDevice(AvsDeviceType device_type, int device_index) const;
-  virtual PDevice __stdcall GetDevice() const { return GetCurrentDevice(); }
-  virtual AvsDeviceType __stdcall GetDeviceType() const { return GetCurrentDevice()->device_type; }
-  virtual int __stdcall GetDeviceId() const { return GetCurrentDevice()->device_id; }
-  virtual int __stdcall GetDeviceIndex() const { return GetCurrentDevice()->device_index; }
-  virtual void* __stdcall GetDeviceStream() const { return GetCurrentDevice()->GetComputeStream(); }
-  virtual void __stdcall DeviceAddCallback(void(*cb)(void*), void* user_data);
-  virtual int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem);
-  */
-  virtual InternalEnvironment* __stdcall GetCoreEnvironment() { return this; }
-  //virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device);
-  virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const;
-  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env);
-  virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
-  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) { return frame->avsmap; }
+  //PDevice GetDevice(AvsDeviceType device_type, int device_index) const;
+  //int SetMemoryMax(AvsDeviceType type, int index, int mem);
 
-  /*
-  virtual void __stdcall SetGraphAnalysis(bool enable) { graphAnalysisEnable = enable; }
-  */
-  virtual void __stdcall AddRef() { };
-  virtual void __stdcall Release() { };
-  virtual void __stdcall IncEnvCount() { InterlockedIncrement(&EnvCount); }
-  virtual void __stdcall DecEnvCount() { InterlockedDecrement(&EnvCount); }
+  //PVideoFrame GetOnDeviceFrame(const PVideoFrame& src, Device* device);
+  void CopyFrameProps(PVideoFrame src, PVideoFrame dst) const;
+  void ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment* env);
+  ThreadPool* NewThreadPool(size_t nThreads);
+  AVSMap* GetAVSMap(PVideoFrame& frame) { return frame->avsmap; }
 
-  virtual ConcurrentVarStringFrame* __stdcall GetTopFrame() { return &top_frame; }
-  virtual void __stdcall SetCacheMode(CacheMode mode) { cacheMode = mode; }
-  virtual CacheMode __stdcall GetCacheMode() { return cacheMode; }
-  /*
-  virtual void __stdcall SetDeviceOpt(DeviceOpt opt, int val) { DeviceManager.SetDeviceOpt(opt, val, this); }
-  */
-  virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar);
+  //void SetGraphAnalysis(bool enable) { graphAnalysisEnable = enable; }
+
+  void IncEnvCount() { InterlockedIncrement(&EnvCount); }
+  void DecEnvCount() { InterlockedDecrement(&EnvCount); }
+
+  ConcurrentVarStringFrame* GetTopFrame() { return &top_frame; }
+  void SetCacheMode(CacheMode mode) { cacheMode = mode; }
+  CacheMode GetCacheMode() { return cacheMode; }
+  //void SetDeviceOpt(DeviceOpt opt, int val);
+
+  void UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar);
+
+  ThreadScriptEnvironment* GetMainThreadEnv() { return threadEnv.get(); }
 
 private:
+
+  typedef IScriptEnvironment::NotFound NotFound;
+  typedef IScriptEnvironment::ApplyFunc ApplyFunc;
 
   // Tritical May 2005
   // Note order here!!
   // AtExiter has functions which
   // rely on StringDump elements.
   ConcurrentVarStringFrame top_frame;
-  VarTable var_table;
+  std::unique_ptr<ThreadScriptEnvironment> threadEnv;
   std::mutex string_mutex;
 
   AtExiter at_exit;
-  ThreadPool * thread_pool;
+  ThreadPool* thread_pool;
 
-  PluginManager *plugin_manager;
+  PluginManager* plugin_manager;
   std::recursive_mutex plugin_mutex;
 
-  //Device* currentDevice;
+  long EnvCount; // for ThreadScriptEnvironment leak detection
 
-  int ImportDepth;
-  long EnvCount; // for ScriptEnvironmentTLS leak detection
+  void ThrowError(const char* fmt, ...);
+  void VThrowError(const char* fmt, va_list va);
 
   const Function* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
-    bool &pstrict, size_t args_names_count, const char* const* arg_names, IScriptEnvironment* env_thread);
+    bool& pstrict, size_t args_names_count, const char* const* arg_names, IScriptEnvironment2* env_thread);
   bool CheckArguments(const Function* f, const AVSValue* args, size_t num_args,
-    bool &pstrict, size_t args_names_count, const char* const* arg_names);
+    bool& pstrict, size_t args_names_count, const char* const* arg_names);
   std::unordered_map<IClip*, ClipDataStore> clip_data;
 
   uint64_t memory_max;
@@ -830,23 +797,20 @@ private:
 
   void ExportBuiltinFilters();
 
-  IScriptEnvironment2* This() { return this; }
   bool PlanarChromaAlignmentState;
 
   long hrfromcoinit;
   uint32_t coinitThreadId;
 
-  bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
-
   struct DebugTimestampedFrame
   {
-    VideoFrame *frame;
-    AVSMap *avsmap;
+    VideoFrame* frame;
+    AVSMap* avsmap;
 #ifdef _DEBUG
     std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
 #endif
 
-    DebugTimestampedFrame(VideoFrame *_frame, AVSMap *_avsmap)
+    DebugTimestampedFrame(VideoFrame* _frame, AVSMap* _avsmap)
       : frame(_frame)
       , avsmap(_avsmap)
 #ifdef _DEBUG
@@ -854,8 +818,39 @@ private:
 #endif
     {}
   };
+  /*
+  class VFBStorage : public VideoFrameBuffer {
+  public:
+    int free_count;
+    PGraphMemoryNode memory_node;
+    VFBStorage()
+      : VideoFrameBuffer(),
+      free_count(0)
+    { }
+    VFBStorage(int size, Device* device)
+      : VideoFrameBuffer(size, device),
+      free_count(0)
+    { }
+    void Attach(FilterGraphNode* node) {
+      if (memory_node) {
+        memory_node->OnFree(data_size, device);
+        memory_node = nullptr;
+      }
+      if (node != nullptr) {
+        memory_node = node->GetMemoryNode();
+        memory_node->OnAllocate(data_size, device);
+      }
+    }
+    ~VFBStorage() {
+      if (memory_node) {
+        memory_node->OnFree(data_size, device);
+        memory_node = nullptr;
+      }
+    }
+  };
+  */
   typedef std::vector<DebugTimestampedFrame> VideoFrameArrayType;
-  typedef std::map<VideoFrameBuffer *, VideoFrameArrayType> FrameBufferRegistryType;
+  typedef std::map<VideoFrameBuffer*, VideoFrameArrayType> FrameBufferRegistryType;
   typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; // post r1825 P.F.
   typedef mapped_list<Cache*> CacheRegistryType;
 
@@ -865,7 +860,7 @@ private:
   void ListFrameRegistry(size_t min_size, size_t max_size, bool someframes);
 #endif
 
-  //DeviceManager DeviceManager;
+  //std::unique_ptr<DeviceManager> Devices;
   CacheRegistryType CacheRegistry;
   Cache* FrontCache;
   VideoFrame* GetNewFrame(size_t vfb_size);
@@ -874,7 +869,7 @@ private:
   VideoFrame* AllocateFrame(size_t vfb_size);
   std::recursive_mutex memory_mutex;
 
-  BufferPool buffer_pool;
+  //BufferPool BufferPool;
 
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
@@ -897,15 +892,705 @@ private:
   std::ofstream LogFileStream;
   std::unordered_set<OneTimeLogTicket> LogTickets;
 
-/*
-// filter graph
-  bool graphAnalysisEnable;
-*/
+  // filter graph
+  //bool graphAnalysisEnable;
+
   CacheMode cacheMode;
 
   void InitMT();
 };
 const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
+
+
+/* ---------------------------------------------------------------------------------
+*  Per thread data
+* ---------------------------------------------------------------------------------
+*/
+struct ScriptEnvironmentTLS
+{
+  const int thread_id;
+  // PF 161223 why do we need thread-local global variables?
+  // comment remains here until it gets cleared, anyway, I make it of no use
+  VarTable var_table;
+  BufferPool BufferPool;
+  //Device* currentDevice;
+  bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
+  bool supressCaching;
+  int ImportDepth;
+  volatile long refcount;
+
+  ScriptEnvironmentTLS(int thread_id, InternalEnvironment* core)
+    : thread_id(thread_id)
+    , var_table(core->GetTopFrame())
+    , BufferPool(core)
+    //, currentDevice(NULL)
+    , closing(false)
+    , supressCaching(false)
+    , ImportDepth(0)
+    , refcount(1)
+  {
+  }
+};
+
+// per thread data is bound to a thread (not ThreadScriptEnvironment)
+// since some filter (e.g. svpflow1) ignores env given for GetFrame, and always use main thread's env.
+// this is a work-around for that.
+__declspec(thread) ScriptEnvironmentTLS* g_TLS;
+
+class ThreadScriptEnvironment : public InternalEnvironment
+{
+  ScriptEnvironment* core;
+  ScriptEnvironmentTLS* coreTLS;
+  ScriptEnvironmentTLS myTLS;
+public:
+
+  ThreadScriptEnvironment(int thread_id, ScriptEnvironment* core, ScriptEnvironmentTLS* coreTLS)
+    : core(core)
+    , coreTLS(coreTLS)
+    , myTLS(thread_id, this)
+  {
+    if (coreTLS == nullptr) {
+      // when this is main thread TLS
+      this->coreTLS = &myTLS;
+    }
+    if (thread_id != 0) {
+      // thread pool thread
+      if (g_TLS != nullptr) {
+        ThrowError("Detected multiple ScriptEnvironmentTLSs for a single thread");
+      }
+      g_TLS = &myTLS;
+    }
+    core->IncEnvCount(); // for leak detection
+  }
+
+  ~ThreadScriptEnvironment() {
+    core->DecEnvCount(); // for leak detection
+  }
+
+  ScriptEnvironmentTLS* GetTLS() { return &myTLS; }
+
+#define DISPATCH(name) (g_TLS ? g_TLS : coreTLS)->name
+
+  AVSValue __stdcall GetVar(const char* name)
+  {
+    if (DISPATCH(closing)) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
+    AVSValue val;
+    if (DISPATCH(var_table).Get(name, &val))
+      return val;
+    else
+      throw IScriptEnvironment::NotFound();
+  }
+
+  bool __stdcall SetVar(const char* name, const AVSValue& val)
+  {
+    if (DISPATCH(closing)) return true;  // We easily risk  being inside the critical section below, while deleting variables.
+    return DISPATCH(var_table).Set(name, val);
+  }
+
+  bool __stdcall SetGlobalVar(const char* name, const AVSValue& val)
+  {
+    if (DISPATCH(closing)) return true;  // We easily risk  being inside the critical section below, while deleting variables.
+    return DISPATCH(var_table).SetGlobal(name, val);
+  }
+
+  void __stdcall PushContext(int level = 0)
+  {
+    DISPATCH(var_table).Push();
+  }
+
+  void __stdcall PopContext()
+  {
+    DISPATCH(var_table).Pop();
+  }
+
+  void __stdcall PushContextGlobal()
+  {
+    DISPATCH(var_table).PushGlobal();
+  }
+
+  void __stdcall PopContextGlobal()
+  {
+    DISPATCH(var_table).PopGlobal();
+  }
+
+  bool __stdcall GetVar(const char* name, AVSValue* val) const
+  {
+    if (DISPATCH(closing)) return false;  // We easily risk  being inside the critical section below, while deleting variables.
+    return DISPATCH(var_table).Get(name, val);
+  }
+
+  AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def)
+  {
+    if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+    AVSValue val;
+    if (this->GetVar(name, &val))
+      return val;
+    else
+      return def;
+  }
+
+  bool __stdcall GetVar(const char* name, bool def) const
+  {
+    if (DISPATCH(closing)) return false;  // We easily risk  being inside the critical section below, while deleting variables.
+    AVSValue val;
+    if (this->GetVar(name, &val))
+      return val.AsBool(def);
+    else
+      return def;
+  }
+
+  int __stdcall GetVar(const char* name, int def) const
+  {
+    if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+    AVSValue val;
+    if (this->GetVar(name, &val))
+      return val.AsInt(def);
+    else
+      return def;
+  }
+
+  double __stdcall GetVar(const char* name, double def) const
+  {
+    if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+    AVSValue val;
+    if (this->GetVar(name, &val))
+      return val.AsDblDef(def);
+    else
+      return def;
+  }
+
+  const char* __stdcall GetVar(const char* name, const char* def) const
+  {
+    if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+    AVSValue val;
+    if (this->GetVar(name, &val))
+      return val.AsString(def);
+    else
+      return def;
+  }
+
+  void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
+  {
+    if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
+      return NULL;
+    return DISPATCH(BufferPool).Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
+  }
+
+  void __stdcall Free(void* ptr)
+  {
+    DISPATCH(BufferPool).Free(ptr);
+  }
+
+  /*
+  Device* __stdcall GetCurrentDevice() const
+  {
+    return DISPATCH(currentDevice);
+  }
+
+  Device* __stdcall SetCurrentDevice(Device* device)
+  {
+    Device* old = DISPATCH(currentDevice);
+    DISPATCH(currentDevice) = device;
+    return old;
+  }
+  */
+  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align)
+  {
+    return core->NewVideoFrame(vi, align);
+  }
+  /*
+  void* __stdcall GetDeviceStream()
+  {
+    return DISPATCH(currentDevice)->GetComputeStream();
+  }
+
+  void __stdcall DeviceAddCallback(void(*cb)(void*), void* user_data)
+  {
+    DeviceCompleteCallbackData cbdata = { cb, user_data };
+    DISPATCH(currentDevice)->AddCompleteCallback(cbdata);
+  }
+
+  PVideoFrame __stdcall GetFrame(PClip c, int n, const PDevice& device)
+  {
+    DeviceSetter setter(this, (Device*)(void*)device);
+    return c->GetFrame(n, this);
+  }
+  */
+
+  /* ---------------------------------------------------------------------------------
+  *             S T U B S
+  * ---------------------------------------------------------------------------------
+  */
+
+  bool __stdcall InternalFunctionExists(const char* name)
+  {
+    return core->InternalFunctionExists(name);
+  }
+
+  void __stdcall AdjustMemoryConsumption(size_t amount, bool minus)
+  {
+    core->AdjustMemoryConsumption(amount, minus);
+  }
+
+  void __stdcall CheckVersion(int version)
+  {
+    core->CheckVersion(version);
+  }
+
+  int __stdcall GetCPUFlags()
+  {
+    return core->GetCPUFlags();
+  }
+
+  char* __stdcall SaveString(const char* s, int length = -1)
+  {
+    return DISPATCH(var_table).SaveString(s, length);
+  }
+
+  char* __stdcall SaveString(const char* s, int length, bool escape)
+  {
+    return DISPATCH(var_table).SaveString(s, length, escape);
+  }
+
+  char* Sprintf(const char* fmt, ...)
+  {
+    va_list val;
+    va_start(val, fmt);
+    // do not call core->Sprintf, because cannot pass ... further
+    char* result = VSprintf(fmt, val);
+    va_end(val);
+    return result;
+  }
+
+  char* __stdcall VSprintf(const char* fmt, va_list val)
+  {
+    try {
+      std::string str = FormatString(fmt, (va_list)val);
+      return DISPATCH(var_table).SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
+    }
+    catch (...) {
+      return NULL;
+    }
+  }
+
+  void ThrowError(const char* fmt, ...)
+  {
+    va_list val;
+    va_start(val, fmt);
+    VThrowError(fmt, val);
+    va_end(val);
+  }
+
+  void __stdcall VThrowError(const char* fmt, va_list va)
+  {
+    std::string msg;
+    try {
+      msg = FormatString(fmt, va);
+    }
+    catch (...) {
+      msg = "Exception while processing ScriptEnvironment::ThrowError().";
+    }
+
+    // Also log the error before throwing
+    this->LogMsg(LOGLEVEL_ERROR, msg.c_str());
+
+    // Throw...
+    throw AvisynthError(DISPATCH(var_table).SaveString(msg.c_str()));
+  }
+
+  PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA)
+  {
+    return core->SubframePlanarA(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
+  }
+
+  void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data = 0)
+  {
+    core->AddFunction(name, params, apply, user_data);
+  }
+
+  bool __stdcall FunctionExists(const char* name)
+  {
+    return core->FunctionExists(name);
+  }
+
+  bool IsRuntime() {
+    // When invoked from GetFrame/GetAudio, skip all cache and mt mecanism
+    bool is_runtime = true;
+
+    if (g_TLS == nullptr) { // not called by thread
+      if (g_getframe_recursive_count == 0) { // not called by GetFrame
+        is_runtime = false;
+      }
+    }
+
+    return is_runtime;
+  }
+
+  AVSValue __stdcall Invoke(const char* name,
+    const AVSValue args, const char* const* arg_names)
+  {
+    AVSValue result;
+    if (!core->Invoke_(&result, AVSValue(), name, nullptr, args, arg_names, this, IsRuntime()))
+    {
+      throw NotFound();
+    }
+    return result;
+  }
+
+  bool __stdcall Invoke(AVSValue* result,
+    const char* name, const AVSValue& args, const char* const* arg_names)
+  {
+    return core->Invoke_(result, AVSValue(), name, nullptr, args, arg_names, this, IsRuntime());
+  }
+
+  bool __stdcall Invoke(AVSValue* result, const AVSValue& implicit_last,
+    const char* name, const AVSValue args, const char* const* arg_names)
+  {
+    return core->Invoke_(result, implicit_last,
+      name, nullptr, args, arg_names, this, IsRuntime());
+  }
+
+  AVSValue __stdcall Invoke(const AVSValue& implicit_last,
+    const PFunction& func, const AVSValue args, const char* const* arg_names)
+  {
+    AVSValue result;
+    if (!core->Invoke_(&result, implicit_last,
+      func->GetLegacyName(), func->GetDefinition(), args, arg_names, this, IsRuntime()))
+    {
+      throw NotFound();
+    }
+    return result;
+  }
+
+  bool __stdcall Invoke(AVSValue* result, const AVSValue& implicit_last,
+    const PFunction& func, const AVSValue args, const char* const* arg_names)
+  {
+    return core->Invoke_(result, implicit_last,
+      func->GetLegacyName(), func->GetDefinition(), args, arg_names, this, IsRuntime());
+  }
+
+  bool __stdcall Invoke_(AVSValue* result, const AVSValue& implicit_last,
+    const char* name, const Function* f, const AVSValue& args, const char* const* arg_names)
+  {
+    return core->Invoke_(result, implicit_last, name, f, args, arg_names, this, IsRuntime());
+  }
+
+  bool __stdcall MakeWritable(PVideoFrame* pvf)
+  {
+    return core->MakeWritable(pvf);
+  }
+
+  void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height)
+  {
+    core->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
+  }
+
+  void __stdcall AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data)
+  {
+    core->AtExit(function, user_data);
+  }
+
+  PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height)
+  {
+    return core->Subframe(src, rel_offset, new_pitch, new_row_size, new_height);
+  }
+
+  int __stdcall SetMemoryMax(int mem)
+  {
+    return core->SetMemoryMax(mem);
+  }
+
+  int __stdcall SetWorkingDir(const char* newdir)
+  {
+    return core->SetWorkingDir(newdir);
+  }
+
+  void* __stdcall ManageCache(int key, void* data)
+  {
+    return core->ManageCache(key, data);
+  }
+
+  bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key)
+  {
+    return core->PlanarChromaAlignment(key);
+  }
+
+  PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV)
+  {
+    return core->SubframePlanar(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+  }
+
+  void __stdcall DeleteScriptEnvironment()
+  {
+    if (g_TLS != nullptr) {
+      ThrowError("Cannot delete environment from a TLS proxy.");
+    }
+    core->DeleteScriptEnvironment();
+  }
+
+  void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor)
+  {
+    core->ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor);
+  }
+
+  const AVS_Linkage* __stdcall GetAVSLinkage()
+  {
+    return core->GetAVSLinkage();
+  }
+
+  /* IScriptEnvironment2 */
+  bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue* result)
+  {
+    return core->LoadPlugin(filePath, throwOnError, result);
+  }
+
+  void __stdcall AddAutoloadDir(const char* dirPath, bool toFront)
+  {
+    core->AddAutoloadDir(dirPath, toFront);
+  }
+
+  void __stdcall ClearAutoloadDirs()
+  {
+    core->ClearAutoloadDirs();
+  }
+
+  void __stdcall AutoloadPlugins()
+  {
+    core->AutoloadPlugins();
+  }
+
+  void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char* exportVar)
+  {
+    core->AddFunction(name, params, apply, user_data, exportVar);
+  }
+
+  int __stdcall IncrImportDepth()
+  {
+    return ++DISPATCH(ImportDepth);
+  }
+
+  int __stdcall DecrImportDepth()
+  {
+    return --DISPATCH(ImportDepth);
+  }
+
+  size_t  __stdcall GetProperty(AvsEnvProperty prop)
+  {
+    switch (prop)
+    {
+    case AEP_THREAD_ID:
+      return DISPATCH(thread_id);
+    default:
+      return core->GetProperty(prop);
+    }
+  }
+
+  void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force)
+  {
+    core->SetFilterMTMode(filter, mode, force);
+  }
+
+  MtMode __stdcall GetFilterMTMode(const Function* filter, bool* is_forced) const
+  {
+    return core->GetFilterMTMode(filter, is_forced);
+  }
+
+  bool __stdcall FilterHasMtMode(const Function* filter) const
+  {
+    return core->FilterHasMtMode(filter);
+  }
+
+  IJobCompletion* __stdcall NewCompletion(size_t capacity)
+  {
+    return core->NewCompletion(capacity);
+  }
+
+  void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
+  {
+    core->ParallelJob(jobFunc, jobData, completion, this);
+  }
+
+  void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment* env)
+  {
+    core->ParallelJob(jobFunc, jobData, completion, env);
+  }
+
+  ClipDataStore* __stdcall ClipData(IClip* clip)
+  {
+    return core->ClipData(clip);
+  }
+
+  MtMode __stdcall GetDefaultMtMode() const
+  {
+    return core->GetDefaultMtMode();
+  }
+
+  void __stdcall SetLogParams(const char* target, int level)
+  {
+    core->SetLogParams(target, level);
+  }
+
+  void __stdcall LogMsg(int level, const char* fmt, ...)
+  {
+    va_list val;
+    va_start(val, fmt);
+    core->LogMsg_valist(level, fmt, val);
+    va_end(val);
+  }
+
+  void __stdcall LogMsg_valist(int level, const char* fmt, va_list va)
+  {
+    core->LogMsg_valist(level, fmt, va);
+  }
+
+  void __stdcall LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...)
+  {
+    va_list val;
+    va_start(val, fmt);
+    core->LogMsgOnce_valist(ticket, level, fmt, val);
+    va_end(val);
+  }
+
+  void __stdcall LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va)
+  {
+    core->LogMsgOnce_valist(ticket, level, fmt, va);
+  }
+
+  /*
+  void __stdcall SetGraphAnalysis(bool enable)
+  {
+    core->SetGraphAnalysis(enable);
+  }
+
+  int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem)
+  {
+    return core->SetMemoryMax(type, index, mem);
+  }
+
+  PDevice __stdcall GetDevice(AvsDeviceType device_type, int device_index) const
+  {
+    return core->GetDevice(device_type, device_index);
+  }
+
+  PDevice __stdcall GetDevice() const
+  {
+    return DISPATCH(currentDevice);
+  }
+
+  AvsDeviceType __stdcall GetDeviceType() const
+  {
+    return DISPATCH(currentDevice)->device_type;
+  }
+
+  int __stdcall GetDeviceId() const
+  {
+    return DISPATCH(currentDevice)->device_id;
+  }
+
+  int __stdcall GetDeviceIndex() const
+  {
+    return DISPATCH(currentDevice)->device_index;
+  }
+
+  void* __stdcall GetDeviceStream() const
+  {
+    return DISPATCH(currentDevice)->GetComputeStream();;
+  }
+
+  PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device)
+  {
+    return core->NewVideoFrameOnDevice(vi, align, device);
+  }
+
+  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi)
+  {
+    return NewVideoFrameOnDevice(vi, FRAME_ALIGN, DISPATCH(currentDevice));
+  }
+
+  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device)
+  {
+    return NewVideoFrameOnDevice(vi, FRAME_ALIGN, (Device*)(void*)device);
+  }
+
+  PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device)
+  {
+    return core->GetOnDeviceFrame(src, device);
+  }
+  */
+  void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const
+  {
+    core->CopyFrameProps(src, dst);
+  }
+
+  ThreadPool* __stdcall NewThreadPool(size_t nThreads)
+  {
+    return core->NewThreadPool(nThreads);
+  }
+
+  AVSMap* __stdcall GetAVSMap(PVideoFrame& frame)
+  {
+    return core->GetAVSMap(frame);
+  }
+
+  void __stdcall AddRef() {
+    InterlockedIncrement(&DISPATCH(refcount));
+  }
+
+  void __stdcall Release() {
+    if (InterlockedDecrement(&DISPATCH(refcount)) == 0) {
+      delete this;
+    }
+  }
+
+  void __stdcall IncEnvCount() {
+    core->IncEnvCount();
+  }
+
+  void __stdcall DecEnvCount() {
+    core->DecEnvCount();
+  }
+
+  ConcurrentVarStringFrame* __stdcall GetTopFrame()
+  {
+    return core->GetTopFrame();
+  }
+
+  void __stdcall SetCacheMode(CacheMode mode)
+  {
+    core->SetCacheMode(mode);
+  }
+
+  CacheMode __stdcall GetCacheMode()
+  {
+    return core->GetCacheMode();
+  }
+  /*
+  void __stdcall SetDeviceOpt(DeviceOpt opt, int val)
+  {
+    core->SetDeviceOpt(opt, val);
+  }
+  */
+  void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar)
+  {
+    if (g_thread_id != 0 || g_getframe_recursive_count != 0) {
+      // no need to export function at runtime
+      return;
+    }
+    core->UpdateFunctionExports(funcName, funcParams, exportVar);
+  }
+
+  virtual InternalEnvironment* __stdcall NewThreadScriptEnvironment(int thread_id)
+  {
+    return new ThreadScriptEnvironment(thread_id, core, coreTLS);
+  }
+
+  virtual bool& __stdcall GetSupressCaching()
+  {
+    return DISPATCH(supressCaching);
+  }
+
+#undef DISPATCH
+};
 
 #ifdef AVS_POSIX
 static uint64_t posix_get_physical_memory() {
@@ -975,13 +1660,13 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
   {
     // We are probably running on a 32bit OS system where the virtual space is capped to
     // much less than what the system can use, so it is enough to reserve only a small amount.
-    mem_sysreserve = 128*1024*1024ull;
+    mem_sysreserve = 128 * 1024 * 1024ull;
   }
   else
   {
     // We could probably use up all the RAM in our single application,
     // so reserve more to leave some RAM for other apps and the OS too.
-    mem_sysreserve = 1024*1024*1024ull;
+    mem_sysreserve = 1024 * 1024 * 1024ull;
   }
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
@@ -1004,7 +1689,7 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
   // We could probably use up all the RAM in our single application,
   // so reserve more to leave some RAM for other apps and the OS too.
   const bool isX64 = sizeof(void*) == 8;
-  uint64_t mem_sysreserve = isX64 ? (uint64_t) 1024 * 1024 * 1024 : (uint64_t)128 * 1024 * 1024;
+  uint64_t mem_sysreserve = isX64 ? (uint64_t)1024 * 1024 * 1024 : (uint64_t)128 * 1024 * 1024;
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
   uint64_t allowed_memory = clamp(requested, (uint64_t)64 * 1024 * 1024, mem_limit - mem_sysreserve);
@@ -1035,34 +1720,35 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
 #endif
   return allowed_memory;
 #endif
+
 }
 
-IJobCompletion* __stdcall ScriptEnvironment::NewCompletion(size_t capacity)
+IJobCompletion* ScriptEnvironment::NewCompletion(size_t capacity)
 {
   return new JobCompletion(capacity);
 }
 
 ScriptEnvironment::ScriptEnvironment()
-  : var_table(&top_frame),
-    at_exit(),
-    plugin_manager(NULL),
-    hrfromcoinit(E_FAIL), coinitThreadId(0),
-    PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
-    closing(false),
-    thread_pool(NULL),
-    ImportDepth(0),
-    EnvCount(0),
-    //DeviceManager(this),
-    FrontCache(NULL),
-    //graphAnalysisEnable(false),
-    nTotalThreads(1),
-    nMaxFilterInstances(1),
-    buffer_pool(this)
+  : threadEnv(),
+  at_exit(),
+  plugin_manager(NULL),
+  hrfromcoinit(E_FAIL), coinitThreadId(0),
+  PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
+  thread_pool(NULL),
+  EnvCount(0),
+  //Devices(),
+  FrontCache(NULL),
+  //graphAnalysisEnable(false),
+  nTotalThreads(1),
+  nMaxFilterInstances(1)
 {
   try {
 #ifdef AVS_WINDOWS // needs linux alternative
     // Make sure COM is initialised
     hrfromcoinit = CoInitialize(NULL);
+
+    threadEnv = std::unique_ptr<ThreadScriptEnvironment>(new ThreadScriptEnvironment(0, this, nullptr));
+    //Devices = std::unique_ptr<DeviceManager>(new DeviceManager(threadEnv.get()));
 
     // If it was already init'd then decrement
     // the use count and leave it alone!
@@ -1072,10 +1758,9 @@ ScriptEnvironment::ScriptEnvironment()
     }
     // Remember our threadId.
     coinitThreadId = GetCurrentThreadId();
-
     /*
-    auto cpuDevice = DeviceManager.GetCPUDevice();
-    currentDevice = cpuDevice;
+    auto cpuDevice = Devices->GetCPUDevice();
+    threadEnv->GetTLS()->currentDevice = cpuDevice;
     */
     MEMORYSTATUSEX memstatus;
     memstatus.dwLength = sizeof(memstatus);
@@ -1089,8 +1774,8 @@ ScriptEnvironment::ScriptEnvironment()
     // fprintf(stdout, "Total physical memory= %" PRIu64 ", after constraint=%" PRIu64 "\r\n", ullTotalPhys, memory_max);
     // Total physical memory = 17083355136, after constraint = 7274700800
 #endif
-    const bool isX64 = sizeof(void *) == 8;
-    memory_max = min(memory_max, (uint64_t)((isX64 ? 4096 : 1024)*(1024*1024ull)));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
+    const bool isX64 = sizeof(void*) == 8;
+    memory_max = min(memory_max, (uint64_t)((isX64 ? 4096 : 1024) * (1024 * 1024ull)));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
     memory_used = 0ull;
 
     top_frame.Set("true", true);
@@ -1101,12 +1786,12 @@ ScriptEnvironment::ScriptEnvironment()
 
     top_frame.Set("$ScriptName$", AVSValue());
     top_frame.Set("$ScriptFile$", AVSValue());
-    top_frame.Set("$ScriptDir$",  AVSValue());
+    top_frame.Set("$ScriptDir$", AVSValue());
     top_frame.Set("$ScriptNameUtf8$", AVSValue());
     top_frame.Set("$ScriptFileUtf8$", AVSValue());
     top_frame.Set("$ScriptDirUtf8$", AVSValue());
 
-    plugin_manager = new PluginManager(this);
+    plugin_manager = new PluginManager(threadEnv.get());
 #ifdef AVS_WINDOWS
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
@@ -1124,28 +1809,27 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir(system_avs_plugindir, false);
 #endif
 
-    top_frame.Set("LOG_ERROR",   (int)LOGLEVEL_ERROR);
+    top_frame.Set("LOG_ERROR", (int)LOGLEVEL_ERROR);
     top_frame.Set("LOG_WARNING", (int)LOGLEVEL_WARNING);
-    top_frame.Set("LOG_INFO",    (int)LOGLEVEL_INFO);
-    top_frame.Set("LOG_DEBUG",   (int)LOGLEVEL_DEBUG);
-/*
+    top_frame.Set("LOG_INFO", (int)LOGLEVEL_INFO);
+    top_frame.Set("LOG_DEBUG", (int)LOGLEVEL_DEBUG);
+    /*
     top_frame.Set("DEV_TYPE_CPU", (int)DEV_TYPE_CPU);
     top_frame.Set("DEV_TYPE_CUDA", (int)DEV_TYPE_CUDA);
-*/
+    */
     top_frame.Set("CACHE_FAST_START", (int)CACHE_FAST_START);
     top_frame.Set("CACHE_OPTIMAL_SIZE", (int)CACHE_OPTIMAL_SIZE);
+    /*
     top_frame.Set("DEV_CUDA_PINNED_HOST", (int)DEV_CUDA_PINNED_HOST);
     top_frame.Set("DEV_FREE_THRESHOLD", (int)DEV_FREE_THRESHOLD);
-
+    */
     InitMT();
-    thread_pool = new ThreadPool(std::thread::hardware_concurrency(), 1, this);
+    thread_pool = new ThreadPool(std::thread::hardware_concurrency(), 1, threadEnv.get());
 
     ExportBuiltinFilters();
 
     clip_data.max_load_factor(0.8f);
     LogTickets.max_load_factor(0.8f);
-
-    supressCaching = false;
   }
   catch (const AvisynthError &err) {
 #ifdef AVS_WINDOWS
@@ -1160,7 +1844,7 @@ ScriptEnvironment::ScriptEnvironment()
   }
 }
 
-MtMode __stdcall ScriptEnvironment::GetDefaultMtMode() const
+MtMode ScriptEnvironment::GetDefaultMtMode() const
 {
   return DefaultMtMode;
 }
@@ -1177,15 +1861,16 @@ ScriptEnvironment::~ScriptEnvironment() {
 
   _RPT0(0, "~ScriptEnvironment() called.\n");
 
-  closing = true;
+  auto tls = threadEnv->GetTLS();
+  tls->closing = true;
 
   // Before we start to pull the world apart
   // give every one their last wish.
-  at_exit.Execute(this);
+  at_exit.Execute(threadEnv.get());
 
   delete thread_pool;
 
-  var_table.Clear();
+  tls->var_table.Clear();
   top_frame.Clear();
 
   // There can be a circular reference between the Prefetcher and the
@@ -1200,10 +1885,13 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
   ThreadPoolRegistry.clear();
 
-  // check ScriptEnvironmentTLS leaks
+  // delete ThreadScriptEnvironment
+  threadEnv = nullptr;
+
+  // check ThreadScriptEnvironment leaks
   if (EnvCount > 0) {
-    LogMsg(LOGLEVEL_WARNING, "ScriptEnvironmentTLS leaks.");
-}
+    LogMsg(LOGLEVEL_WARNING, "ThreadScriptEnvironment leaks.");
+  }
 
   // delete avsmap
   for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
@@ -1240,13 +1928,13 @@ ScriptEnvironment::~ScriptEnvironment() {
       it2 != end_it2;
       ++it2)
     {
-      VideoFrameBuffer *vfb = it2->first;
+      VideoFrameBuffer* vfb = it2->first;
       // iterate through frames belonging to this vfb
       for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
         it3 != end_it3;
         ++it3)
       {
-        VideoFrame *frame = it3->frame;
+        VideoFrame* frame = it3->frame;
 
         //assert(0 == frame->refcount);
         if (0 == frame->refcount)
@@ -1264,7 +1952,7 @@ ScriptEnvironment::~ScriptEnvironment() {
   } // it
 
   if (somethingLeaks) {
-      LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks. Leaking count = %d",leakCount);
+    LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks. Leaking count = %d", leakCount);
   }
 
   delete plugin_manager;
@@ -1279,7 +1967,7 @@ ScriptEnvironment::~ScriptEnvironment() {
 #endif
 }
 
-void __stdcall ScriptEnvironment::SetLogParams(const char *target, int level)
+void ScriptEnvironment::SetLogParams(const char* target, int level)
 {
   if (nullptr == target) {
     target = "stderr";
@@ -1307,7 +1995,7 @@ void __stdcall ScriptEnvironment::SetLogParams(const char *target, int level)
   LogTarget = target;
 }
 
-void __stdcall ScriptEnvironment::LogMsg(int level, const char *fmt, ...)
+void ScriptEnvironment::LogMsg(int level, const char* fmt, ...)
 {
   va_list val;
   va_start(val, fmt);
@@ -1315,108 +2003,108 @@ void __stdcall ScriptEnvironment::LogMsg(int level, const char *fmt, ...)
   va_end(val);
 }
 
-void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_list va)
+void ScriptEnvironment::LogMsg_valist(int level, const char* fmt, va_list va)
 {
   // Don't output message if our logging level is not high enough
   if (level > LogLevel) {
     return;
   }
 
-    // Setup string prefixes for output messages
-    const char *levelStr = nullptr;
-    uint16_t levelAttr;
-    switch (level)
-    {
-    case LOGLEVEL_ERROR:
-        levelStr = "ERROR: ";
+  // Setup string prefixes for output messages
+  const char* levelStr = nullptr;
+  uint16_t levelAttr;
+  switch (level)
+  {
+  case LOGLEVEL_ERROR:
+    levelStr = "ERROR: ";
 #ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
-        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_RED;
+    levelAttr = FOREGROUND_INTENSITY | FOREGROUND_RED;
 #endif
-        break;
-    case LOGLEVEL_WARNING:
-        levelStr = "WARNING: ";
+    break;
+  case LOGLEVEL_WARNING:
+    levelStr = "WARNING: ";
 #ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
-        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_RED;
+    levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_RED;
 #endif
-        break;
-    case LOGLEVEL_INFO:
-        levelStr = "INFO: ";
+    break;
+  case LOGLEVEL_INFO:
+    levelStr = "INFO: ";
 #ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
-        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE;
+    levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE;
 #endif
-        break;
-    case LOGLEVEL_DEBUG:
-        levelStr = "DEBUG: ";
+    break;
+  case LOGLEVEL_DEBUG:
+    levelStr = "DEBUG: ";
 #ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
-        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_RED;
+    levelAttr = FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_RED;
 #endif
-        break;
-    default:
-        this->ThrowError("LogMsg: level argument must be between 1 and 4.");
-        break;
-    }
+    break;
+  default:
+    this->ThrowError("LogMsg: level argument must be between 1 and 4.");
+    break;
+  }
 
-    // Prepare message output target
-    std::ostream *targetStream = nullptr;
+  // Prepare message output target
+  std::ostream* targetStream = nullptr;
 #ifdef AVS_WINDOWS
-    void* hConsole = GetStdHandle(STD_ERROR_HANDLE);
+  void* hConsole = GetStdHandle(STD_ERROR_HANDLE);
 #else
-    void* hConsole = stderr;
+  void* hConsole = stderr;
 #endif
 
-    if (streqi("stderr", LogTarget.c_str()))
-    {
+  if (streqi("stderr", LogTarget.c_str()))
+  {
 #ifdef AVS_WINDOWS
-        hConsole = GetStdHandle(STD_ERROR_HANDLE);
+    hConsole = GetStdHandle(STD_ERROR_HANDLE);
 #else
-        hConsole = stderr;
+    hConsole = stderr;
 #endif
-        targetStream = &std::cerr;
-    }
-    else if (streqi("stdout", LogTarget.c_str()))
-    {
+    targetStream = &std::cerr;
+  }
+  else if (streqi("stdout", LogTarget.c_str()))
+  {
 #ifdef AVS_WINDOWS // linux alternative?
-        hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 #else
-        hConsole = stdout;
+    hConsole = stdout;
 #endif
-        targetStream = &std::cout;
-    }
-    else if (LogFileStream.is_open())
-    {
-        targetStream = &LogFileStream;
-    }
-    else
-    {
-        // Logging not yet set up (SetLogParams() not yet called).
-        // Do nothing.
-        return;
-    }
+    targetStream = &std::cout;
+  }
+  else if (LogFileStream.is_open())
+  {
+    targetStream = &LogFileStream;
+  }
+  else
+  {
+    // Logging not yet set up (SetLogParams() not yet called).
+    // Do nothing.
+    return;
+  }
 
   // Format our message string
   std::string msg = FormatString(fmt, va);
 
 #ifdef AVS_WINDOWS
-    // Save current console attributes so that we can restore them later
-    CONSOLE_SCREEN_BUFFER_INFO Info;
-    GetConsoleScreenBufferInfo(hConsole, &Info);
+  // Save current console attributes so that we can restore them later
+  CONSOLE_SCREEN_BUFFER_INFO Info;
+  GetConsoleScreenBufferInfo(hConsole, &Info);
 #endif
 
-    // Do the output
-    std::lock_guard<std::mutex> lock(string_mutex);
-    *targetStream << "---------------------------------------------------------------------" << std::endl;
+  // Do the output
+  std::lock_guard<std::mutex> lock(string_mutex);
+  *targetStream << "---------------------------------------------------------------------" << std::endl;
 #ifdef AVS_WINDOWS
-    SetConsoleTextAttribute(hConsole, levelAttr);
+  SetConsoleTextAttribute(hConsole, levelAttr);
 #endif
-    *targetStream << levelStr;
+  *targetStream << levelStr;
 #ifdef AVS_WINDOWS
-    SetConsoleTextAttribute(hConsole, Info.wAttributes);
+  SetConsoleTextAttribute(hConsole, Info.wAttributes);
 #endif
-    *targetStream << msg << std::endl;
-    targetStream->flush();
+  *targetStream << msg << std::endl;
+  targetStream->flush();
 }
 
-void __stdcall ScriptEnvironment::LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char *fmt, ...)
+void ScriptEnvironment::LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...)
 {
   va_list val;
   va_start(val, fmt);
@@ -1424,7 +2112,7 @@ void __stdcall ScriptEnvironment::LogMsgOnce(const OneTimeLogTicket &ticket, int
   va_end(val);
 }
 
-void __stdcall ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char *fmt, va_list va)
+void ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va)
 {
   if (LogTickets.end() == LogTickets.find(ticket))
   {
@@ -1433,7 +2121,7 @@ void __stdcall ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket &tick
   }
 }
 
-ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
+ClipDataStore* ScriptEnvironment::ClipData(IClip* clip)
 {
 #if ( !defined(_MSC_VER) || (_MSC_VER < 1900) )
   return &(clip_data.emplace(clip, clip).first->second);
@@ -1442,7 +2130,7 @@ ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
 #endif
 }
 
-void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool minus)
+void ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool minus)
 {
   if (minus)
     memory_used -= amount;
@@ -1450,22 +2138,22 @@ void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool mi
     memory_used += amount;
 }
 
-void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
+void ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
 {
-  thread_pool->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
+  thread_pool->QueueJob(jobFunc, jobData, threadEnv.get(), static_cast<JobCompletion*>(completion));
 }
 
-void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment* env)
+void ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment* env)
 {
   thread_pool->QueueJob(jobFunc, jobData, env, static_cast<JobCompletion*>(completion));
 }
 
-void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
+void ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
   this->SetFilterMTMode(filter, mode, force ? MtWeight::MT_WEIGHT_2_USERFORCE : MtWeight::MT_WEIGHT_1_USERSPEC);
 }
 
-void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight)
+void ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight)
 {
   assert(NULL != filter);
   assert(strcmp("", filter) != 0);
@@ -1510,17 +2198,17 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
   }
 }
 
-bool __stdcall ScriptEnvironment::FilterHasMtMode(const Function* filter) const
+bool ScriptEnvironment::FilterHasMtMode(const Function* filter) const
 {
   if (filter->name == nullptr) { // no named function
     return false;
   }
-  const auto &end = MtMap.end();
+  const auto& end = MtMap.end();
   return (end != MtMap.find(NormalizeString(filter->canon_name)))
     || (end != MtMap.find(NormalizeString(filter->name)));
 }
 
-MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const Function* filter, bool* is_forced) const
+MtMode ScriptEnvironment::GetFilterMTMode(const Function* filter, bool* is_forced) const
 {
   assert(NULL != filter);
   if (filter->name == nullptr) { // no named function
@@ -1549,18 +2237,6 @@ MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const Function* filter, bool
   return DefaultMtMode;
 }
 
-void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
-{
-  if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
-    return NULL;
-  return buffer_pool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
-}
-
-void __stdcall ScriptEnvironment::Free(void* ptr)
-{
-  buffer_pool.Free(ptr);
-}
-
 /* This function adds information about builtin functions into global variables.
  * External utilities (like AvsPmod) can parse these variables and use them
  * to learn about supported functions and their syntax.
@@ -1586,18 +2262,24 @@ void ScriptEnvironment::ExportBuiltinFilters()
       param_var_name.append("$Plugin!");
       param_var_name.append(f->name);
       param_var_name.append("!Param$");
-      SetGlobalVar(SaveString(param_var_name.c_str(), (int)param_var_name.size()), AVSValue(f->param_types));
+      threadEnv->SetGlobalVar(threadEnv->SaveString(param_var_name.c_str(), (int)param_var_name.size()), AVSValue(f->param_types));
     }
   }
 
   // Save $InternalFunctions$
-  SetGlobalVar("$InternalFunctions$", AVSValue(SaveString(FunctionList.c_str(), (int)FunctionList.size())));
+  threadEnv->SetGlobalVar("$InternalFunctions$", AVSValue(threadEnv->SaveString(FunctionList.c_str(), (int)FunctionList.size())));
 }
 
-size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
+size_t  ScriptEnvironment::GetProperty(AvsEnvProperty prop)
 {
   switch (prop)
   {
+    /*
+  case AEP_NUM_DEVICES:
+    return Devices->GetNumDevices();
+  case AEP_FRAME_ALIGN:
+    return FRAME_ALIGN;
+    */
   case AEP_FILTERCHAIN_THREADS:
     return nMaxFilterInstances;
   case AEP_PHYSICAL_CPUS:
@@ -1622,18 +2304,7 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
   assert(0);
 }
 
-int __stdcall ScriptEnvironment::IncrImportDepth()
-{
-  ImportDepth++;
-  return ImportDepth;
-}
-int __stdcall ScriptEnvironment::DecrImportDepth()
-{
-  ImportDepth--;
-  return ImportDepth;
-}
-
-bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
+bool ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError, AVSValue* result)
 {
   // Autoload needed to ensure that manual LoadPlugin() calls always override autoloaded plugins.
   // For that, autoloading must happen before any LoadPlugin(), so we force an
@@ -1644,19 +2315,19 @@ bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnE
   return plugin_manager->LoadPlugin(filePath, throwOnError, result);
 }
 
-void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFront)
+void ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFront)
 {
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
   plugin_manager->AddAutoloadDir(dirPath, toFront);
 }
 
-void __stdcall ScriptEnvironment::ClearAutoloadDirs()
+void ScriptEnvironment::ClearAutoloadDirs()
 {
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
   plugin_manager->ClearAutoloadDirs();
 }
 
-void __stdcall ScriptEnvironment::AutoloadPlugins()
+void ScriptEnvironment::AutoloadPlugins()
 {
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
   plugin_manager->AutoloadPlugins();
@@ -1664,13 +2335,14 @@ void __stdcall ScriptEnvironment::AutoloadPlugins()
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
 
+  //Device* cpuDevice = Devices->GetCPUDevice();
   if (mem > 0)  /* If mem is zero, we should just return current setting */
     memory_max = ConstrainMemoryRequest(mem * 1048576ull);
 
-  return (int)(memory_max/1048576ull);
+  return (int)(memory_max / 1048576ull);
 }
 
-int ScriptEnvironment::SetWorkingDir(const char * newdir) {
+int ScriptEnvironment::SetWorkingDir(const char* newdir) {
   return SetCurrentDirectory(newdir) ? 0 : 1;
 }
 
@@ -1685,133 +2357,55 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
   this->AddFunction(name, params, apply, user_data, NULL);
 }
 
-void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) {
+void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char* exportVar) {
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
   plugin_manager->AddFunction(name, params, apply, user_data, exportVar);
-}
-
-// Throws if unsuccessfull
-AVSValue ScriptEnvironment::GetVar(const char* name) {
-  if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
-
-  AVSValue val;
-  if (var_table.Get(name, &val))
-    return val;
-  else
-    throw IScriptEnvironment::NotFound();
-}
-
-bool ScriptEnvironment::GetVar(const char* name, AVSValue *ret) const {
-  if (closing) return false;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  return var_table.Get(name, ret);
-}
-
-AVSValue ScriptEnvironment::GetVarDef(const char* name, const AVSValue& def) {
-  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  AVSValue val;
-  if (this->GetVar(name, &val))
-    return val;
-  else
-    return def;
-}
-
-bool ScriptEnvironment::GetVar(const char* name, bool def) const {
-  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  AVSValue val;
-  if (this->GetVar(name, &val))
-    return val.AsBool(def);
-  else
-    return def;
-}
-
-int ScriptEnvironment::GetVar(const char* name, int def) const {
-  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  AVSValue val;
-  if (this->GetVar(name, &val))
-    return val.AsInt(def);
-  else
-    return def;
-}
-
-double ScriptEnvironment::GetVar(const char* name, double def) const {
-  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  AVSValue val;
-  if (this->GetVar(name, &val))
-    return val.AsDblDef(def);
-  else
-    return def;
-}
-
-const char* ScriptEnvironment::GetVar(const char* name, const char* def) const {
-  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  AVSValue val;
-  if (this->GetVar(name, &val))
-    return val.AsString(def);
-  else
-    return def;
-}
-
-bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
-  if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  return var_table.Set(name, val);
-}
-
-bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
-  if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
-
-  return var_table.SetGlobal(name, val);
 }
 
 VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 {
   if (vfb_size > (size_t)std::numeric_limits<int>::max())
   {
-    throw AvisynthError(this->Sprintf("Requested buffer size of %zu is too large", vfb_size));
+    throw AvisynthError(threadEnv->Sprintf("Requested buffer size of %zu is too large", vfb_size));
   }
 
-  EnsureMemoryLimit(vfb_size);
-
+  //VFBStorage* vfb = NULL;
   VideoFrameBuffer* vfb = NULL;
   try
   {
     vfb = new VideoFrameBuffer((int)vfb_size);
   }
-  catch(const std::bad_alloc&)
+  catch (const std::bad_alloc&)
   {
     return NULL;
   }
 
-  VideoFrame *newFrame = NULL;
+  VideoFrame* newFrame = NULL;
   try
   {
     newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0);
   }
-  catch(const std::bad_alloc&)
+  catch (const std::bad_alloc&)
   {
     delete vfb;
     return NULL;
   }
 
-  memory_used+=vfb_size;
+  memory_used += vfb_size;
+  //vfb->Attach(g_current_graph_node);
 
   // automatically inserts keys if they not exist!
   // no locking here, calling method have done it already
   FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame, newFrame->avsmap));
 
-  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
+  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);  //_RPT1(0, "ScriptEnvironment::AllocateFrame %Iu frame=%p vfb=%p %I64d\n", vfb_size, newFrame, newFrame->vfb, memory_used); // P.F.
 
   return newFrame;
 }
 
 #ifdef _DEBUG
 #ifdef AVS_POSIX
+// fixme: unifiy posix/win
 void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
 {
   int linearsearchcount;
@@ -1843,7 +2437,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       size_t inner_frame_count_size = it2->second.size();
       char buf[128];
       LogMsg(LOGLEVEL_DEBUG, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
-       // P.F. iterate the frame list of this vfb
+      // P.F. iterate the frame list of this vfb
       int inner_frame_count = 0;
       int inner_frame_count_for_frame_refcount_nonzero = 0;
       for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
@@ -1924,7 +2518,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       ++it2)
     {
       size2++;
-      VideoFrameBuffer *vfb = it2->first;
+      VideoFrameBuffer* vfb = it2->first;
       total_vfb_size += vfb->GetDataSize();
       size_t inner_frame_count_size = it2->second.size();
       char buf[128];
@@ -1939,10 +2533,10 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
         size3++;
         inner_frame_count++;
 #ifdef _DEBUG
-        VideoFrame *frame = it3->frame;
+        VideoFrame* frame = it3->frame;
         std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->timestamp;
 #else
-        VideoFrame *frame = *it3;
+        VideoFrame* frame = *it3;
 #endif
         if (0 != frame->refcount)
           inner_frame_count_for_frame_refcount_nonzero++;
@@ -1982,7 +2576,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
 #endif
 #endif
 
-VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* device)
+VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size)
 {
 #ifdef _DEBUG
   std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end; // std::chrono::time_point<std::chrono::system_clock> t_start, t_end;
@@ -2005,25 +2599,25 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
   //for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size); // exact! no-go. special service clips can fragment it
   //for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.end(); // vfb_size or bigger, so a 100K size would claim a 1.5M space.
   for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size * 3 / 2); // vfb_size or at most 1.5* bigger
-      it != end_it;
+    it != end_it;
     ++it)
   {
     for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
       it2 != end_it2;
       ++it2)
     {
-      VideoFrameBuffer *vfb = it2->first; // same for all map content, the key is vfb pointer
+      VideoFrameBuffer* vfb = it2->first; // same for all map content, the key is vfb pointer
       if (0 == vfb->refcount) // vfb refcount check
       {
         size_t videoFrameListSize = it2->second.size();
-        VideoFrame *frame_found;
-        AVSMap *map_found;
+        VideoFrame* frame_found;
+        AVSMap* map_found;
         bool found = false;
         for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
           it3 != end_it3;
           /*++it3 not here, because of the delete*/)
         {
-          VideoFrame *frame = it3->frame;
+          VideoFrame* frame = it3->frame;
 
           // sanity check if its refcount is zero
           // because when a vfb is free (refcount==0) then all its parent frames should also be free
@@ -2033,6 +2627,10 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           if (!found)
           {
             InterlockedIncrement(&(frame->vfb->refcount)); // same as &(vfb->refcount)
+            /*
+            vfb->free_count = 0; // reset free count
+            vfb->Attach(g_current_graph_node);
+            */
 #ifdef _DEBUG
             char buf[256];
             t_end = std::chrono::high_resolution_clock::now();
@@ -2040,9 +2638,9 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             snprintf(buf, 255, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7zu GotSize=%7zu FrReg.Size=%6zu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
             _RPT0(0, buf);
 #ifdef SIZETMOD
-            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%7zu\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
+            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%7Iu\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #else
-            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
+            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #endif
 #endif
             // only 1 frame in list -> no delete
@@ -2091,11 +2689,11 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
   return NULL;
 }
 
-VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
+VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 {
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT1(0, "ScScriptEnvironment::GetNewFrame memory mutex lock: %p\n", (void *)&memory_mutex);
+  _RPT1(0, "ScScriptEnvironment::GetNewFrame memory mutex lock: %p\n", (void*)&memory_mutex);
 #endif
 
   // prevent fragmentation of vfb buffer list many different small-sized vfb's
@@ -2120,9 +2718,9 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
    */
    // We reserve 15% for unaccounted stuff
   if (memory_used + vfb_size < memory_max * 0.85f) {
-    frame = AllocateFrame(vfb_size/*, device*/);
+    frame = AllocateFrame(vfb_size);
   }
-  if ( frame != NULL)
+  if (frame != NULL)
     return frame;
 
 #ifdef _DEBUG
@@ -2140,7 +2738,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
     cache_counter++;
     Cache* cache = *cit;
     int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
-    _RPT4(0, "  cache#%d cache_ptr=%p cache_size=%d \n", cache_counter, (void *)cache, cache_size); // let's see what's in the cache
+    _RPT4(0, "  cache#%d cache_ptr=%p cache_size=%d \n", cache_counter, (void*)cache, cache_size); // let's see what's in the cache
   }
 #endif
 #endif
@@ -2149,7 +2747,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
   * Couldn't allocate, shrink cache and get more unused frames
   * -----------------------------------------------------------
   */
-  ShrinkCache(/*device*/);
+  ShrinkCache();
 
   /* -----------------------------------------------------------
   *   Try to return an unused frame again
@@ -2171,7 +2769,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
   LogMsgOnce(ticket, LOGLEVEL_WARNING, "Memory reallocation occurs. This will probably degrade performance. You can try increasing the limit using SetMemoryMax().");
 
   /* -----------------------------------------------------------
-   * Couldn't allocate, try to free up unused frames of any size
+   * No frame found, free all the unused frames!!!
    * -----------------------------------------------------------
    */
   _RPT1(0, "Allocate failed. GC start memory_used=%" PRIu64 "\n", memory_used.load());
@@ -2186,7 +2784,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
       it2 != end_it2;
       /*++it2: not here: may delete iterator position */)
     {
-      VideoFrameBuffer *vfb = it2->first;
+      VideoFrameBuffer* vfb = it2->first;
       if (0 == vfb->refcount) // vfb refcount check
       {
         memory_used -= vfb->GetDataSize(); // frame->vfb->GetDataSize();
@@ -2195,7 +2793,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
           it3 != end_it3;
           ++it3)
         {
-          VideoFrame *frame = it3->frame;
+          VideoFrame* frame = it3->frame;
           assert(0 == frame->refcount);
           delete frame;
           delete it3->avsmap;
@@ -2209,13 +2807,17 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
     }
   }
   _RPT1(0, "End of garbage collection A memused=%" PRIu64 "\n", memory_used.load()); // P.F.
-
+#if 0
+  static int counter = 0;
+  char buf[200]; sprintf(buf, "Re allocation %d\r\n", counter++);
+  OutputDebugStringA(buf);
+#endif
   /* -----------------------------------------------------------
    *   Try to allocate again
    * -----------------------------------------------------------
    */
   frame = AllocateFrame(vfb_size);
-  if ( frame != NULL)
+  if (frame != NULL)
     return frame;
 
 
@@ -2224,22 +2826,22 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
    * -----------------------------------------------------------
    */
 
-  // See if we could benefit from 64-bit Avisynth
-  if constexpr(sizeof(void*) == 4)
+   // See if we could benefit from 64-bit Avisynth
+  if (sizeof(void*) == 4)
   {
 #ifdef AVS_WINDOWS
-      // Get system memory information
-      MEMORYSTATUSEX memstatus;
-      memstatus.dwLength = sizeof(memstatus);
-      GlobalMemoryStatusEx(&memstatus);
+    // Get system memory information
+    MEMORYSTATUSEX memstatus;
+    memstatus.dwLength = sizeof(memstatus);
+    GlobalMemoryStatusEx(&memstatus);
 
-      BOOL using_wow64;
-      if ( IsWow64Process(GetCurrentProcess(), &using_wow64)     // if running 32-bits on a 64-bit OS
-       &&  (memstatus.ullAvailPhys > 1024ull * 1024 * 1024) )    // if at least 1GB of system memory is still free
-      {
-          OneTimeLogTicket ticket(LOGTICKET_W1007);
-          LogMsgOnce(ticket, LOGLEVEL_INFO, "We have run out of memory, but your system still has some free RAM left. You might benefit from a 64-bit build of Avisynth+.");
-      }
+    BOOL using_wow64;
+    if (IsWow64Process(GetCurrentProcess(), &using_wow64)     // if running 32-bits on a 64-bit OS
+      && (memstatus.ullAvailPhys > 1024ull * 1024 * 1024))    // if at least 1GB of system memory is still free
+    {
+      OneTimeLogTicket ticket(LOGTICKET_W1007);
+      LogMsgOnce(ticket, LOGLEVEL_INFO, "We have run out of memory, but your system still has some free RAM left. You might benefit from a 64-bit build of Avisynth+.");
+    }
 #endif
   }
 
@@ -2247,7 +2849,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, Device* device)
   return NULL;
 }
 
-void ScriptEnvironment::ShrinkCache(Device* device)
+void ScriptEnvironment::ShrinkCache()
 {
   /* -----------------------------------------------------------
   *   Shrink cache to keep memory limit
@@ -2258,7 +2860,7 @@ void ScriptEnvironment::ShrinkCache(Device* device)
   const CacheRegistryType::iterator end_cit = CacheRegistry.end();
   for (
     CacheRegistryType::iterator cit = CacheRegistry.begin();
-    (memory_need > memory_max) && (cit != end_cit);
+    cit != end_cit;
     ++cit
     )
   {
@@ -2276,7 +2878,7 @@ void ScriptEnvironment::ShrinkCache(Device* device)
     int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
     if (cache_size != 0)
     {
-      _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit shrink cache. cache=%p new size=%d\n", (void *)cache, cache_size - 1);
+      _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit shrink cache. cache=%p new size=%d\n", (void*)cache, cache_size - 1);
       cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, cache_size - 1);
       shrinkcount++;
     } // if
@@ -2289,7 +2891,7 @@ void ScriptEnvironment::ShrinkCache(Device* device)
   }
 
   /* -----------------------------------------------------------
-  * Try to free up memory that we've just released from a cache
+  * Count up free_count and free if it exceeds the threshold
   * -----------------------------------------------------------
   */
   // Free up in one pass in FrameRegistry2
@@ -2308,7 +2910,7 @@ void ScriptEnvironment::ShrinkCache(Device* device)
         it2 != end_it2;
         /*++it2: not here: may delete iterator position */)
       {
-        VideoFrameBuffer *vfb = it2->first;
+        VideoFrameBuffer* vfb = it2->first;
         if (0 == vfb->refcount) // vfb refcount check
         {
 #if 0
@@ -2322,7 +2924,7 @@ void ScriptEnvironment::ShrinkCache(Device* device)
             it3 != end_it3;
             ++it3)
           {
-            VideoFrame *frame = it3->frame;
+            VideoFrame* frame = it3->frame;
             assert(0 == frame->refcount);
             if (0 == frame->refcount)
             {
@@ -2352,7 +2954,7 @@ void ScriptEnvironment::ShrinkCache(Device* device)
 // no alpha
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first)
 {
-    return NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, align, U_first, false); // no alpha
+  return NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, align, U_first, false); // no alpha
 }
 
 // with alpha support
@@ -2362,15 +2964,15 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   {
     align = -align;
     OneTimeLogTicket ticket(LOGTICKET_W1009);
-    this->LogMsgOnce(ticket, LOGLEVEL_WARNING, "A filter is using forced frame alignment, a feature that is deprecated and disabled. The filter will likely behave erroneously.");
+    LogMsgOnce(ticket, LOGLEVEL_WARNING, "A filter is using forced frame alignment, a feature that is deprecated and disabled. The filter will likely behave erroneously.");
   }
   align = max(align, FRAME_ALIGN);
 
   int pitchUV;
   const int pitchY = AlignNumber(row_size, align);
-  if (!PlanarChromaAlignmentState && (row_size == row_sizeUV*2) && (height == heightUV*2)) { // Meet old 2.5 series API expectations for YV12
+  if (!PlanarChromaAlignmentState && (row_size == row_sizeUV * 2) && (height == heightUV * 2)) { // Meet old 2.5 series API expectations for YV12
     // Legacy alignment - pack Y as specified, pack UV half that
-    pitchUV = (pitchY+1)>>1;  // UV plane, width = 1/2 byte per pixel - don't align UV planes seperately.
+    pitchUV = (pitchY + 1) >> 1;  // UV plane, width = 1/2 byte per pixel - don't align UV planes seperately.
   }
   else {
     // Align planes separately
@@ -2380,9 +2982,9 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   size_t size = pitchY * height + 2 * pitchUV * heightUV + (alpha ? pitchY * height : 0);
 
   // make space for alignment
-  size = size + align -1;
+  size = size + align - 1;
 
-  VideoFrame *res = GetNewFrame(size);
+  VideoFrame* res = GetNewFrame(size);
 
   int  offsetU, offsetV, offsetA;
   const int offsetY = (int)(AlignPointer(res->vfb->GetWritePtr(), align) - res->vfb->GetWritePtr()); // first line offset for proper alignment
@@ -2390,7 +2992,8 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     offsetU = offsetY + pitchY * height;
     offsetV = offsetY + pitchY * height + pitchUV * heightUV;
     offsetA = alpha ? offsetV + pitchUV * heightUV : 0;
-  } else {
+  }
+  else {
     offsetV = offsetY + pitchY * height;
     offsetU = offsetY + pitchY * height + pitchUV * heightUV;
     offsetA = alpha ? offsetU + pitchUV * heightUV : 0;
@@ -2414,7 +3017,6 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   return PVideoFrame(res);
 }
 
-
 PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align)
 {
   if (align < 0)
@@ -2429,9 +3031,9 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
   size_t size = pitch * height;
 
   // make space for alignment
-  size = size + align -1;
+  size = size + align - 1;
 
-  VideoFrame *res = GetNewFrame(size);
+  VideoFrame* res = GetNewFrame(size);
 
   const int offset = (int)(AlignPointer(res->vfb->GetWritePtr(), align) - res->vfb->GetWritePtr()); // first line offset for proper alignment
 
@@ -2452,15 +3054,9 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 
   return PVideoFrame(res);
 }
-
 /*
-PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
-  return NewVideoFrameOnDevice(vi, align, GetCurrentDevice());
-}
-*/
-/*
-PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi) {
-  return NewVideoFrame(vi, FRAME_ALIGN);
+PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, const PDevice& device) {
+  return NewVideoFrameOnDevice(vi, FRAME_ALIGN, (Device*)(void*)device);
 }
 */
 
@@ -2543,7 +3139,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
   PVideoFrame retval;
 
   if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
-    if(vi.IsYUV() || vi.IsYUVA()) {
+    if (vi.IsYUV() || vi.IsYUVA()) {
         // Planar requires different math ;)
         const int xmod  = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
         const int xmask = xmod - 1;
@@ -2557,17 +3153,18 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
 
         const int heightUV = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-        retval=NewPlanarVideoFrame(vi.RowSize(PLANAR_Y), vi.height, vi.RowSize(PLANAR_U), heightUV, align, !vi.IsVPlaneFirst(), vi.IsYUVA());
-    } else {
-        // plane order: G,B,R
-        retval=NewPlanarVideoFrame(vi.RowSize(PLANAR_G), vi.height, vi.RowSize(PLANAR_G), vi.height, align, !vi.IsVPlaneFirst(), vi.IsPlanarRGBA());
+      retval = NewPlanarVideoFrame(vi.RowSize(PLANAR_Y), vi.height, vi.RowSize(PLANAR_U), heightUV, align, !vi.IsVPlaneFirst(), vi.IsYUVA());
+    }
+    else {
+      // plane order: G,B,R
+      retval = NewPlanarVideoFrame(vi.RowSize(PLANAR_G), vi.height, vi.RowSize(PLANAR_G), vi.height, align, !vi.IsVPlaneFirst(), vi.IsPlanarRGBA());
     }
   }
   else {
-    if ((vi.width&1)&&(vi.IsYUY2()))
+    if ((vi.width & 1) && (vi.IsYUY2()))
       ThrowError("Filter Error: Attempted to request an YUY2 frame that wasn't mod2 in width.");
 
-    retval=NewVideoFrame(vi.RowSize(), vi.height, align);
+    retval = NewVideoFrame(vi.RowSize(), vi.height, align);
   }
 
   return retval;
@@ -2583,58 +3180,38 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   // Otherwise, allocate a new frame (using NewVideoFrame) and
   // copy the data into it.  Then modify the passed PVideoFrame
   // to point to the new buffer.
+  //Device* device = vf->GetFrameBuffer()->device;
   PVideoFrame dst;
-
-  const int row_size = vf->GetRowSize();
-  const int height = vf->GetHeight();
-
-  bool alpha = 0 != vf->GetPitch(PLANAR_A);
-  if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we assume that it is Planar if it has a U plane.
-    const int row_sizeUV = vf->GetRowSize(PLANAR_U); // for Planar RGB this returns row_sizeUV which is the same for all planes
-    const int heightUV   = vf->GetHeight(PLANAR_U);
-    dst = NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, FRAME_ALIGN, false, alpha);  // Always V first on internal images
-  } else {
-    dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
+  /*
+  if (device->device_type == DEV_TYPE_CUDA) {
+    // copy whole frame
+    dst = GetOnDeviceFrame(vf, device);
+    CopyCUDAFrame(dst, vf, threadEnv.get());
   }
+  else*/
+  {
+    const int row_size = vf->GetRowSize();
+    const int height = vf->GetHeight();
 
-  BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
-  // Blit More planes (pitch, rowsize and height should be 0, if none is present)
-  BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), vf->GetReadPtr(PLANAR_V),
-         vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
-  BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U),
-         vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
-  if (alpha)
+    bool alpha = 0 != vf->GetPitch(PLANAR_A);
+    if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we assume that it is Planar if it has a U plane.
+      const int row_sizeUV = vf->GetRowSize(PLANAR_U); // for Planar RGB this returns row_sizeUV which is the same for all planes
+      const int heightUV = vf->GetHeight(PLANAR_U);
+      dst = NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, FRAME_ALIGN, false, alpha);  // Always V first on internal images
+    }
+    else {
+      dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
+    }
+
+    BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
+    // Blit More planes (pitch, rowsize and height should be 0, if none is present)
+    BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), vf->GetReadPtr(PLANAR_V),
+      vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
+    BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U),
+      vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
+    if (alpha)
       BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A), vf->GetReadPtr(PLANAR_A),
-          vf->GetPitch(PLANAR_A), vf->GetRowSize(PLANAR_A), vf->GetHeight(PLANAR_A));
-
-  // Copy properties
-  dst->avsmap->data = vf->avsmap->data;
-
-  *pvf = dst;
-  return true;
-}
-
-/*
-bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
-  const PVideoFrame& vf = *pvf;
-
-  // If the frame is already writable, do nothing.
-  if (vf->IsPropertyWritable())
-    return false;
-
-  // Otherwise, allocate a new frame (using Subframe)
-  PVideoFrame dst;
-  if (vf->GetPitch(PLANAR_A)) {
-    // planar + alpha
-    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U), 0);
-  }
-  else if (vf->GetPitch(PLANAR_U)) {
-    // planar
-    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U));
-  }
-  else {
-    // single plane
-    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight());
+        vf->GetPitch(PLANAR_A), vf->GetRowSize(PLANAR_A), vf->GetHeight(PLANAR_A));
   }
 
   // Copy properties
@@ -2643,33 +3220,17 @@ bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
   *pvf = dst;
   return true;
 }
-*/
+
 
 void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data) {
   at_exit.Add(function, user_data);
 }
 
-void ScriptEnvironment::PushContext(int level) {
-  var_table.Push();
-}
+PVideoFrame ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
 
-void ScriptEnvironment::PopContext() {
-  var_table.Pop();
-}
-
-void ScriptEnvironment::PushContextGlobal() {
-  var_table.PushGlobal();
-}
-
-void ScriptEnvironment::PopContextGlobal() {
-  var_table.PopGlobal();
-}
-
-
-PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
-
-  if ((new_pitch | rel_offset) & (FRAME_ALIGN - 1))
-    ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
+  //if (src->GetFrameBuffer()->device->device_type == DEV_TYPE_CPU)
+    if ((new_pitch | rel_offset) & (FRAME_ALIGN - 1))
+      ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
 
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
@@ -2679,7 +3240,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT1(0, "ScScriptEnvironment::SubFrame memory mutext lock: %p\n", (void *)&memory_mutex);
+  _RPT1(0, "ScScriptEnvironment::SubFrame memory mutext lock: %p\n", (void*)&memory_mutex);
 #endif
   // automatically inserts if not exists!
   assert(NULL != subframe);
@@ -2689,19 +3250,20 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 }
 
 //tsp June 2005 new function compliments the above function
-PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-                                                        int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
-  if ((rel_offset | new_pitch | rel_offsetU | rel_offsetV | new_pitchUV) & (FRAME_ALIGN - 1))
-    ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
+PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+  int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
+  //if (src->GetFrameBuffer()->device->device_type == DEV_TYPE_CPU)
+    if ((rel_offset | new_pitch | rel_offsetU | rel_offsetV | new_pitchUV) & (FRAME_ALIGN - 1))
+      ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
 
-  VideoFrame *subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+  VideoFrame* subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
   subframe->avsmap->data = src->avsmap->data;
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT1(0, "ScScriptEnvironment::SubFramePlanar memory mutext lock: %p\n", (void *)&memory_mutex);
+  _RPT1(0, "ScScriptEnvironment::SubFramePlanar memory mutext lock: %p\n", (void*)&memory_mutex);
 #endif
   // automatically inserts if not exists!
   assert(subframe != NULL);
@@ -2711,20 +3273,21 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 }
 
 // alpha aware version
-PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) {
+PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+  int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) {
+  //if (src->GetFrameBuffer()->device->device_type == DEV_TYPE_CPU)
     if ((rel_offset | new_pitch | rel_offsetU | rel_offsetV | new_pitchUV | rel_offsetA) & (FRAME_ALIGN - 1))
-        ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
-    VideoFrame* subframe;
-    subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
-    subframe->avsmap->data = src->avsmap->data;
+      ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
+  VideoFrame* subframe;
+  subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
+  subframe->avsmap->data = src->avsmap->data;
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
                                                        // automatically inserts if not exists!
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT1(0, "ScScriptEnvironment::SubFramePlanar(2) memory mutext lock: %p\n", (void *)&memory_mutex);
+  _RPT1(0, "ScScriptEnvironment::SubFramePlanar(2) memory mutext lock: %p\n", (void*)&memory_mutex);
 #endif
   assert(subframe != NULL);
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe, subframe->avsmap)); // insert with timestamp!
@@ -2733,14 +3296,14 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 }
 
 void* ScriptEnvironment::ManageCache(int key, void* data) {
-// An extensible interface for providing system or user access to the
-// ScriptEnvironment class without extending the IScriptEnvironment
-// definition.
+  // An extensible interface for providing system or user access to the
+  // ScriptEnvironment class without extending the IScriptEnvironment
+  // definition.
 
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT3(0, "ScriptEnvironment::ManageCache %d memory mutex try to lock: %p thread %d\n", key, (void *)&memory_mutex, GetCurrentThreadId());
+  _RPT3(0, "ScriptEnvironment::ManageCache %d memory mutex try to lock: %p thread %d\n", key, (void*)&memory_mutex, GetCurrentThreadId());
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
-  _RPT2(0, "ScriptEnvironment::ManageCache memory mutex lock ok: %p thread %d\n", (void *)&memory_mutex, GetCurrentThreadId());
+  _RPT2(0, "ScriptEnvironment::ManageCache memory mutex lock ok: %p thread %d\n", (void*)&memory_mutex, GetCurrentThreadId());
 #else
   std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
 #endif
@@ -2786,7 +3349,8 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     if (cache_reqcap <= cache_cap)
       return 0;
 
-    if ((memory_used > memory_max) || (memory_max - memory_used < memory_max*0.1f))
+    //Device* device = cache->GetDevice();
+    if ((memory_used > memory_max) || (memory_max - memory_used < memory_max * 0.1f))
     {
       // If we don't have enough free reserves, take away a cache slot from
       // a cache instance that hasn't been used since long.
@@ -2856,13 +3420,13 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
   }
   } // switch
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT2(0, "ScriptEnvironment::ManageCache memory mutex will unlock on release: %p thread=%d\n", (void *)&memory_mutex, GetCurrentThreadId());
+  _RPT2(0, "ScriptEnvironment::ManageCache memory mutex will unlock on release: %p thread=%d\n", (void*)&memory_mutex, GetCurrentThreadId());
 #endif
   return 0;
 }
 
 
-bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key){
+bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) {
   bool oldPlanarChromaAlignmentState = PlanarChromaAlignmentState;
 
   switch (key)
@@ -2897,11 +3461,12 @@ static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, int leve
 #endif
     ) { // flatten for the first arg level
     const int array_size = src.ArraySize();
-    for (int i=0; i<array_size; ++i) {
+    for (int i = 0; i < array_size; ++i) {
       if (!arg_names || arg_names[i] == 0)
-        index = Flatten(src[i], dst, index, level+1);
+        index = Flatten(src[i], dst, index, level + 1);
     }
-  } else {
+  }
+  else {
     if (dst != NULL)
       dst[index] = src;
     ++index;
@@ -2912,10 +3477,10 @@ static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, int leve
 static const PFunction& getter_proxy(const PFunction& f) { return f; };
 
 const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
-                    bool &pstrict, size_t args_names_count, const char* const* arg_names)
+  bool& pstrict, size_t args_names_count, const char* const* arg_names, IScriptEnvironment2* ctx)
 {
   AVSValue avsv;
-  if (GetVar(search_name, &avsv) && avsv.IsFunction()) {
+  if (ctx->GetVar(search_name, &avsv) && avsv.IsFunction()) {
     //auto& funcv = avsv.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
     decltype(auto) funcv = getter_proxy(avsv.AsFunction()); // PF: getter proxy + decltype!
     const char* name = funcv->GetLegacyName();
@@ -2924,22 +3489,22 @@ const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValu
       // wrapped function
       search_name = name;
     }
-    else if (AVSFunction::TypeMatch(func->param_types, args, num_args, false, this) &&
+    else if (AVSFunction::TypeMatch(func->param_types, args, num_args, false, threadEnv.get()) &&
       AVSFunction::ArgNameMatch(func->param_types, args_names_count, arg_names))
     {
-      pstrict = AVSFunction::TypeMatch(func->param_types, args, num_args, true, this);
+      pstrict = AVSFunction::TypeMatch(func->param_types, args, num_args, true, threadEnv.get());
       return func;
     }
   }
 
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
 
-  const Function *result = NULL;
+  const Function* result = NULL;
 
   size_t oanc;
   do {
     for (int strict = 1; strict >= 0; --strict) {
-      pstrict = strict&1;
+      pstrict = strict & 1;
 
       // first, look in loaded plugins
       result = plugin_manager->Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
@@ -2947,11 +3512,11 @@ const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValu
         return result;
 
       // then, look for a built-in function
-      for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
+      for (int i = 0; i < sizeof(builtin_functions) / sizeof(builtin_functions[0]); ++i)
         for (const AVSFunction* j = builtin_functions[i]; !j->empty(); ++j)
         {
           if (streqi(j->name, search_name) &&
-            AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, this) &&
+            AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, ctx) &&
             AVSFunction::ArgNameMatch(j->param_types, args_names_count, arg_names))
             return j;
         }
@@ -2967,78 +3532,22 @@ const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValu
   if (!plugin_manager->HasAutoloadExecuted())
   {
     plugin_manager->AutoloadPlugins();
-    return Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
+    return Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names, ctx);
   }
 
   return NULL;
 }
 
 bool ScriptEnvironment::CheckArguments(const Function* func, const AVSValue* args, size_t num_args,
-  bool &pstrict, size_t args_names_count, const char* const* arg_names)
+  bool& pstrict, size_t args_names_count, const char* const* arg_names)
 {
-  if (AVSFunction::TypeMatch(func->param_types, args, num_args, false, this) &&
+  if (AVSFunction::TypeMatch(func->param_types, args, num_args, false, threadEnv.get()) &&
     AVSFunction::ArgNameMatch(func->param_types, args_names_count, arg_names))
   {
-    pstrict = AVSFunction::TypeMatch(func->param_types, args, num_args, true, this);
+    pstrict = AVSFunction::TypeMatch(func->param_types, args, num_args, true, threadEnv.get());
     return true;
   }
   return false;
-}
-
-AVSValue ScriptEnvironment::Invoke(const char* name,
-  const AVSValue args, const char* const* arg_names)
-{
-  AVSValue result;
-  if (!Invoke_(&result, AVSValue(), name, nullptr, args, arg_names, nullptr))
-  {
-    throw NotFound();
-  }
-#ifdef NEW_AVSVALUE
-  // args parameter is an array, and on exiting from here its destructor is called.
-  // But if this AVSValue was created by a v2.5 caller plugin (baked code in avisynth.h)
-  // we can't use the smart way and free up the array elements, because the child AVSValue's are
-  // owned by the plugin itself.
-  // Unfortunately at this point we do not know who is calling Invoke.
-  // If AVSValue was created by a v2.5 interface, we get and exception when trying to free up
-  // childs.
-  if (!stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
-  {
-//    const_cast<AVSValue *>(&args)->MarkArrayAsC();
-  }
-#endif
-  return result;
-}
-
-bool __stdcall ScriptEnvironment::Invoke(AVSValue* result,
-  const char* name, const AVSValue& args, const char* const* arg_names)
-{
-  return Invoke_(result, AVSValue(), name, nullptr, args, arg_names, nullptr);
-}
-
-bool __stdcall ScriptEnvironment::Invoke(AVSValue* result, const AVSValue& implicit_last,
-  const char* name, const AVSValue args, const char* const* arg_names)
-{
-  return Invoke_(result, implicit_last,
-    name, nullptr, args, arg_names, nullptr);
-}
-
-AVSValue __stdcall ScriptEnvironment::Invoke(const AVSValue& implicit_last,
-  const PFunction& func, const AVSValue args, const char* const* arg_names)
-{
-  AVSValue result;
-  if (!Invoke_(&result, implicit_last,
-    func->GetLegacyName(), func->GetDefinition(), args, arg_names, nullptr))
-  {
-    throw NotFound();
-  }
-  return result;
-}
-
-bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const AVSValue& implicit_last,
-  const PFunction& func, const AVSValue args, const char* const* arg_names)
-{
-  return Invoke_(result, implicit_last,
-    func->GetLegacyName(), func->GetDefinition(), args, arg_names, nullptr);
 }
 
 struct SuppressThreadCounter {
@@ -3046,24 +3555,14 @@ struct SuppressThreadCounter {
   ~SuppressThreadCounter() { --g_suppress_thread_count; }
 };
 
-bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
-  const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
-  IScriptEnvironment* env_thread)
+bool ScriptEnvironment::Invoke_(AVSValue* result, const AVSValue& implicit_last,
+  const char* name, const Function* f, const AVSValue& args, const char* const* arg_names,
+  InternalEnvironment* env_thread, bool is_runtime)
 {
-  // When invoked from GetFrame/GetAudio, skip all cache and mt mecanism
-  bool is_runtime = true;
-
-  if (env_thread == nullptr) { // not called by thread
-    CHECK_THREAD;
-    if (g_getframe_recursive_count == 0) { // not called by GetFrame
-      is_runtime = false;
-    }
-    env_thread = this;
-  }
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
- if (name == nullptr) {
+  if (name == nullptr) {
     // for debug printing
     name = "<anonymous function>";
   }
@@ -3092,11 +3591,11 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
   }
   else {
     // find matching function
-    f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names);
+    f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names, env_thread);
     if (!f) {
       if (!implicit_last.Defined())
         return false;
-      f = this->Lookup(name, args2.data(), args2_count + 1, strict, args_names_count, arg_names);
+      f = this->Lookup(name, args2.data(), args2_count + 1, strict, args_names_count, arg_names, env_thread);
       if (!f)
         return false;
       argbase = 0;
@@ -3144,7 +3643,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
   const int args3_count = (int)dst_index;
 
   // copy named args
-  for (int i = 0; i<args_names_count; ++i) {
+  for (int i = 0; i < args_names_count; ++i) {
     if (arg_names[i]) {
       size_t named_arg_index = 0;
       for (const char* p = f->param_types; *p; ++p) {
@@ -3191,17 +3690,17 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
   args3.resize(args3_count);
   std::vector<AVSValue>(args3).swap(args3);
 
-  if(is_runtime) {
+  if (is_runtime) {
     // Invoked by a thread or GetFrame
-  AVSValue funcArgs(args3.data(), (int)args3.size());
+    AVSValue funcArgs(args3.data(), (int)args3.size());
     *result = f->apply(funcArgs, f->user_data, env_thread);
     return true;
   }
 
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT3(0, "ScriptEnvironment::Invoke %s try memory lock %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+  _RPT3(0, "ScriptEnvironment::Invoke %s try memory lock %p thread %d\n", name, (void*)&memory_mutex, GetCurrentThreadId());
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
-  _RPT3(0, "ScriptEnvironment::Invoke %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+  _RPT3(0, "ScriptEnvironment::Invoke %s memory mutex lock: %p thread %d\n", name, (void*)&memory_mutex, GetCurrentThreadId());
 #else
   std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
 #endif
@@ -3230,9 +3729,9 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
     {
       foundClipArgument = true;
 
-      const PClip &clip = argx.AsClip();
-      IClip *clip_raw = (IClip*)((void*)clip);
-      ClipDataStore *data = this->ClipData(clip_raw);
+      const PClip& clip = argx.AsClip();
+      IClip* clip_raw = (IClip*)((void*)clip);
+      ClipDataStore* data = this->ClipData(clip_raw);
 
       if (!data->CreatedByInvoke)
       {
@@ -3245,7 +3744,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
 #ifdef USE_MT_GUARDEXIT
       // Wrap this input parameter into a guard exit, which is used when
       // the new clip created later below is MT_SERIALIZED.
-      MTGuardExit *ge = new MTGuardExit(argx.AsClip(), name);
+      MTGuardExit* ge = new MTGuardExit(argx.AsClip(), name);
       GuardExits.push_back(ge);
       argx = ge;
 #endif
@@ -3254,7 +3753,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
   bool isSourceFilter = !foundClipArgument;
 
   // ... and we're finally ready to make the call
-  std::unique_ptr<const FilterConstructor> funcCtor = std::make_unique<const FilterConstructor>(this, f, &args2, &args3);
+  std::unique_ptr<const FilterConstructor> funcCtor = std::make_unique<const FilterConstructor>(threadEnv.get(), f, &args2, &args3);
   _RPT1(0, "ScriptEnvironment::Invoke after funcCtor make unique %s\r\n", name);
 
   bool is_mtmode_forced;
@@ -3296,7 +3795,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
       YPlaneMax (MinMax) calls child->GetFrame, that can Invoke srestore_inside1 again but from a different thread.
       */
 #endif
-    *result = funcCtor->InstantiateFilter();
+    * result = funcCtor->InstantiateFilter();
 #ifdef _DEBUG
     _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
 #endif
@@ -3304,10 +3803,10 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
   else
   {
 #ifdef DEBUG_GSCRIPTCLIP_MT
-    _RPT3(0, "ScriptEnvironment::Invoke.WasNotScriptFunction %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+    _RPT3(0, "ScriptEnvironment::Invoke.WasNotScriptFunction %s memory mutex lock: %p thread %d\n", name, (void*)&memory_mutex, GetCurrentThreadId());
 #endif
 #ifdef _DEBUG
-    Cache *PrevFrontCache = FrontCache;
+    Cache* PrevFrontCache = FrontCache;
 #endif
 
     AVSValue fret;
@@ -3332,16 +3831,16 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
     // Prefetch is activated above in: fret = funcCtor->InstantiateFilter();
     if (fret.IsClip() && (f->name == nullptr || strcmp(f->name, "Prefetch")))
     {
-      const PClip &clip = fret.AsClip();
+      const PClip& clip = fret.AsClip();
 
       bool is_mtmode_forced;
       this->GetFilterMTMode(f, &is_mtmode_forced);
-      MtMode mtmode = MtModeEvaluator::GetMtMode(clip, f, this);
+      MtMode mtmode = MtModeEvaluator::GetMtMode(clip, f, threadEnv.get());
 
       if (chainedCtor)
       {
 #ifdef DEBUG_GSCRIPTCLIP_MT
-        _RPT3(0, "ScriptEnvironment::Invoke.chainedCtor %s memory mutex lock: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+        _RPT3(0, "ScriptEnvironment::Invoke.chainedCtor %s memory mutex lock: %p thread %d\n", name, (void*)&memory_mutex, GetCurrentThreadId());
 #endif
         // Propagate information about our children's MT-safety
           // to our parent.
@@ -3360,7 +3859,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
 
         // Special handling for source filters
         if (isSourceFilter
-          && MtModeEvaluator::UsesDefaultMtMode(clip, f, this)
+          && MtModeEvaluator::UsesDefaultMtMode(clip, f, threadEnv.get())
           && (MT_SERIALIZED != mtmode))
         {
           mtmode = MT_SERIALIZED;
@@ -3369,7 +3868,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
         }
 
 
-        *result = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
+        *result = MTGuard::Create(mtmode, clip, std::move(funcCtor), threadEnv.get());
 
 #ifdef USE_MT_GUARDEXIT
         // 170531: concept introduced in r2069 is not working
@@ -3382,7 +3881,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
         // to call other filters.
         if (MT_SERIALIZED == mtmode)
         {
-          for (auto &ge : GuardExits)
+          for (auto& ge : GuardExits)
           {
             _RPT3(0, "ScriptEnvironment::Invoke.ActivateGuard %s thread %d\n", name, GetCurrentThreadId());
             ge->Activate(guard);
@@ -3390,14 +3889,14 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
         }
 #endif
 
-        IClip *clip_raw = (IClip*)((void*)clip);
-        ClipDataStore *data = this->ClipData(clip_raw);
+        IClip* clip_raw = (IClip*)((void*)clip);
+        ClipDataStore* data = this->ClipData(clip_raw);
         data->CreatedByInvoke = true;
       } // if (chainedCtor)
 
       // Nekopanda: moved here from above.
       // some filters invoke complex filters in its constructor, and they need cache.
-      *result = CacheGuard::Create(*result, NULL, this);
+      *result = CacheGuard::Create(*result, NULL, threadEnv.get());
 
       // Check that the filter returns zero for unknown queries in SetCacheHints().
       // This is actually something we rely upon.
@@ -3408,7 +3907,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
       }
 
       // Warn user if the MT-mode of this filter is unknown
-      if (MtModeEvaluator::UsesDefaultMtMode(clip, f, this) && !isSourceFilter)
+      if (MtModeEvaluator::UsesDefaultMtMode(clip, f, threadEnv.get()) && !isSourceFilter)
       {
         OneTimeLogTicket ticket(LOGTICKET_W1004, f);
         LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() has no MT-mode set and will use the default MT-mode. This might be dangerous.", f->canon_name);
@@ -3442,19 +3941,21 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
     // static device check
     // this is not enough to check all dependencies but much helpful to users
     if ((*result).IsClip()) {
-      CheckChildDeviceTypes((*result).AsClip(), name, args, arg_names, this);
+      auto last = (argbase == 0) ? implicit_last : AVSValue();
+      CheckChildDeviceTypes((*result).AsClip(), name, last, args, arg_names, threadEnv.get());
     }
 
     // filter graph
     if (graphAnalysisEnable && (*result).IsClip()) {
-      *result = new FilterGraphNode((*result).AsClip(), name, args, arg_names);
+      auto last = (argbase == 0) ? implicit_last : AVSValue();
+      *result = new FilterGraphNode((*result).AsClip(), f->name, last, args, arg_names);
     }
     */
     // args2 and args3 are not valid after this point anymore
 #ifdef _DEBUG
     if (PrevFrontCache != FrontCache && FrontCache != NULL) // cache registering swaps frontcache to the current
     {
-      _RPT2(0, "ScriptEnvironment::Invoke done Cache::Create %s  cache_id=%p\r\n", name, (void *)FrontCache); // P.F.
+      _RPT2(0, "ScriptEnvironment::Invoke done Cache::Create %s  cache_id=%p\r\n", name, (void*)FrontCache); // P.F.
       FrontCache->FuncName = name; // helps debugging. See also in cache.cpp
     }
     else {
@@ -3463,7 +3964,7 @@ bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& impl
 #endif
   }
 #ifdef DEBUG_GSCRIPTCLIP_MT
-  _RPT3(0, "ScriptEnvironment::Invoke %s memory mutex unlock soon: %p thread %d\n", name, (void *)&memory_mutex, GetCurrentThreadId());
+  _RPT3(0, "ScriptEnvironment::Invoke %s memory mutex unlock soon: %p thread %d\n", name, (void*)&memory_mutex, GetCurrentThreadId());
 #endif
 
   return true;
@@ -3476,7 +3977,7 @@ bool ScriptEnvironment::FunctionExists(const char* name)
 
   // Look among variable table
   AVSValue result;
-  if (GetVar(name, &result)) {
+  if (threadEnv->GetVar(name, &result)) {
     if (result.IsFunction()) {
       return true;
     }
@@ -3500,9 +4001,9 @@ bool ScriptEnvironment::FunctionExists(const char* name)
   return false;
 }
 
-bool __stdcall ScriptEnvironment::InternalFunctionExists(const char* name)
+bool ScriptEnvironment::InternalFunctionExists(const char* name)
 {
-  for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
+  for (int i = 0; i < sizeof(builtin_functions) / sizeof(builtin_functions[0]); ++i)
     for (const AVSFunction* j = builtin_functions[i]; !j->empty(); ++j)
       if (streqi(j->name, name))
         return true;
@@ -3511,58 +4012,24 @@ bool __stdcall ScriptEnvironment::InternalFunctionExists(const char* name)
 }
 
 void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-  if (height<0)
+  if (height < 0)
     ThrowError("Filter Error: Attempting to blit an image with negative height.");
-  if (row_size<0)
+  if (row_size < 0)
     ThrowError("Filter Error: Attempting to blit an image with negative row size.");
   ::BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
-}
-
-
-char* ScriptEnvironment::SaveString(const char* s, int len, bool escape) {
-  return var_table.SaveString(s, len, escape);
-}
-
-
-char* ScriptEnvironment::VSprintf(const char* fmt, va_list val) {
-  try {
-    std::string str = FormatString(fmt, (va_list)val);
-    return var_table.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
-  } catch (...) {
-    return NULL;
-  }
-}
-
-char* ScriptEnvironment::Sprintf(const char* fmt, ...) {
-  va_list val;
-  va_start(val, fmt);
-  char* result = ScriptEnvironment::VSprintf(fmt, val);
-  va_end(val);
-  return result;
 }
 
 void ScriptEnvironment::ThrowError(const char* fmt, ...)
 {
   va_list val;
   va_start(val, fmt);
-  VThrowError(fmt, val);
+  threadEnv->VThrowError(fmt, val);
   va_end(val);
 }
 
 void ScriptEnvironment::VThrowError(const char* fmt, va_list va)
 {
-  std::string msg;
-  try {
-    msg = FormatString(fmt, va);
-  } catch (...) {
-    msg = "Exception while processing ScriptEnvironment::ThrowError().";
-  }
-
-  // Also log the error before throwing
-  this->LogMsg(LOGLEVEL_ERROR, msg.c_str());
-
-  // Throw...
-  throw AvisynthError(ScriptEnvironment::SaveString(msg.c_str()));
+  threadEnv->VThrowError(fmt, va);
 }
 
 PVideoFrame ScriptEnvironment::SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA)
@@ -3571,41 +4038,14 @@ PVideoFrame ScriptEnvironment::SubframePlanarA(PVideoFrame src, int rel_offset, 
 }
 
 /*
-Device* ScriptEnvironment::SetCurrentDevice(Device* device)
-{
-  Device* old = currentDevice;
-  currentDevice = device;
-  return old;
-}
-
-Device* ScriptEnvironment::GetCurrentDevice() const
-{
-  CHECK_THREAD;
-  return currentDevice;
-}
-
 PDevice ScriptEnvironment::GetDevice(AvsDeviceType device_type, int device_index) const
 {
-  return DeviceManager.GetDevice(device_type, device_index);
-}
-
-void ScriptEnvironment::DeviceAddCallback(void(*cb)(void*), void* user_data)
-{
-  CHECK_THREAD;
-  DeviceCompleteCallbackData cbdata = { cb, user_data };
-  currentDevice->AddCompleteCallback(cbdata);
-}
-
-PVideoFrame ScriptEnvironment::GetFrame(PClip c, int n, const PDevice& device)
-{
-  CHECK_THREAD;
-  DeviceSetter setter(this, (Device*)(void*)device);
-  return c->GetFrame(n, this);
+  return Devices->GetDevice(device_type, device_index);
 }
 
 int ScriptEnvironment::SetMemoryMax(AvsDeviceType type, int index, int mem)
 {
-  return DeviceManager.GetDevice(type, index)->SetMemoryMax(mem);
+  return Devices->GetDevice(type, index)->SetMemoryMax(mem);
 }
 
 PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* device)
@@ -3623,7 +4063,7 @@ PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* 
   // make space for alignment
   size_t size = GetFrameTail(src) - srchead + FRAME_ALIGN - 1;
 
-  VideoFrame *res = GetNewFrame(size, device);
+  VideoFrame* res = GetNewFrame(size, device);
 
   const diff_t offset = (diff_t)(AlignPointer(res->vfb->GetWritePtr(), FRAME_ALIGN) - res->vfb->GetWritePtr()); // first line offset for proper alignment
   const diff_t diff = offset - (diff_t)srchead;
@@ -3645,16 +4085,14 @@ PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* 
   return PVideoFrame(res);
 }
 */
-
 void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst) const
 {
   dst->avsmap->data = src->avsmap->data;
 }
 
-// replaces void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
 ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
 {
-  ThreadPool* pool = new ThreadPool(nThreads, nTotalThreads, this);
+  ThreadPool* pool = new ThreadPool(nThreads, nTotalThreads, threadEnv.get());
   ThreadPoolRegistry.emplace_back(pool);
 
   nTotalThreads += nThreads;
@@ -3676,13 +4114,15 @@ ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
   return pool;
 }
 
-void ScriptEnvironment::UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar)
+/*
+void ScriptEnvironment::SetDeviceOpt(DeviceOpt opt, int val)
 {
-  if (g_thread_id != 0 || g_getframe_recursive_count != 0) {
-    // no need to export function at runtime
-    return;
-  }
+  Devices->SetDeviceOpt(opt, val, threadEnv.get());
+}
+*/
 
+void ScriptEnvironment::UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar)
+{
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
   plugin_manager->UpdateFunctionExports(funcName, funcParams, exportVar);
 }
@@ -3692,19 +4132,32 @@ extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
   IScriptEnvironment* env);
 
 
-const AVS_Linkage* __stdcall ScriptEnvironment::GetAVSLinkage() {
+const AVS_Linkage* ScriptEnvironment::GetAVSLinkage() {
   extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
 
   return AVS_linkage;
 }
 
 
-void __stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
-  ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);
+void ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor)
+{
+  /*
+  if ((*frame)->GetDevice()->device_type == DEV_TYPE_CUDA) {
+    // if frame is CUDA frame, copy to CPU and apply
+    PVideoFrame copy = GetOnDeviceFrame(*frame, Devices->GetCPUDevice());
+    CopyCUDAFrame(copy, *frame, threadEnv.get(), true);
+    ::ApplyMessage(&copy, vi, message, size, textcolor, halocolor, bgcolor, threadEnv.get());
+    CopyCUDAFrame(*frame, copy, threadEnv.get(), true);
+  }
+  else
+  */
+  {
+    ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, threadEnv.get());
+  }
 }
 
 
-void __stdcall ScriptEnvironment::DeleteScriptEnvironment() {
+void ScriptEnvironment::DeleteScriptEnvironment() {
   // Provide a method to delete this ScriptEnvironment in
   // the same malloc context in which it was created below.
   delete this;
@@ -3729,14 +4182,10 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version)
   * to shut down immediately instead of continuing to spin.
   * This solves our problem at the cost of some performance.
   */
-#ifdef AVS_WINDOWS
   _putenv("OMP_WAIT_POLICY=passive");
-#endif
 
   if (version <= AVISYNTH_INTERFACE_VERSION)
-    return new ScriptEnvironment();
+    return (new ScriptEnvironment())->GetMainThreadEnv();
   else
-    return NULL;
-}
     return NULL;
 }

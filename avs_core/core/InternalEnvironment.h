@@ -178,33 +178,30 @@ public:
   // to allow thread to submit with their env
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env) = 0;
   virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads) = 0;
-  virtual InternalEnvironment* __stdcall GetCoreEnvironment() = 0;
   virtual void __stdcall AddRef() = 0;
   virtual void __stdcall Release() = 0;
-  virtual void __stdcall IncEnvCount() = 0;
-  virtual void __stdcall DecEnvCount() = 0;
+  //virtual void __stdcall IncEnvCount() = 0;
+  //virtual void __stdcall DecEnvCount() = 0;
 
   virtual ConcurrentVarStringFrame* __stdcall GetTopFrame() = 0;
 
   // Nekopanda: new cache control mechanism
   virtual void __stdcall SetCacheMode(CacheMode mode) = 0;
   virtual CacheMode __stdcall GetCacheMode() = 0;
-	virtual bool& __stdcall GetSupressCaching() = 0;
   /*
   virtual void __stdcall SetDeviceOpt(DeviceOpt mode, int val) = 0;
   */
   virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar) = 0;
-
-  // other than ScriptEnvironment, env_thread should be nullptr
   virtual bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
-    const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
-    IScriptEnvironment* env_thread) = 0;
+    const char* name, const Function *f, const AVSValue& args, const char* const* arg_names) = 0;
+  virtual InternalEnvironment* __stdcall NewThreadScriptEnvironment(int thread_id) = 0;
+  virtual bool& __stdcall GetSupressCaching() = 0;
 };
 
 struct InternalEnvironmentDeleter {
-  void operator()(InternalEnvironment* ptr) const {
-    ptr->Release();
-  }
+	void operator()(InternalEnvironment* ptr) const {
+		ptr->Release();
+	}
 };
 typedef std::unique_ptr<InternalEnvironment, InternalEnvironmentDeleter> PInternalEnvironment;
 

@@ -491,21 +491,6 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
 AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
 {
   env->SetVar(lhs, rhs->Evaluate(env));
- if (withret) {
-    AVSValue last;
-    AVSValue result;
-
-    IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
-    if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
-    {
-      // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
-      if (env2->GetVar(lhs, &result)) {
-        return result;
-      }
-      env->ThrowError("I don't know what '%s' means.", lhs);
-      return 0;
-    }
-  }
   return AVSValue();
 }
 
@@ -513,26 +498,8 @@ AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
 AVSValue ExpGlobalAssignment::Evaluate(IScriptEnvironment* env)
 {
   env->SetGlobalVar(lhs, rhs->Evaluate(env));
-  if (withret) {
-    AVSValue last;
-    AVSValue result;
-
-    IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
-    if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
-    {
-      // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
-      if (env2->GetVar(lhs, &result)) {
-        return result;
-      }
-      env->ThrowError("I don't know what '%s' means.", lhs);
-      return 0;
-    }
-  }
   return AVSValue();
 }
-
-
-
 
 
 ExpFunctionCall::ExpFunctionCall( const char* _name, const PExpression& _func, PExpression* _arg_exprs,
@@ -540,7 +507,7 @@ ExpFunctionCall::ExpFunctionCall( const char* _name, const PExpression& _func, P
   : name(_name), func(_func), arg_expr_count(_arg_expr_count), oop_notation(_oop_notation)
 {
   arg_exprs = new PExpression[arg_expr_count];
-arg_expr_names = new const char*[arg_expr_count];
+  arg_expr_names = new const char*[arg_expr_count];
   for (int i=0; i<arg_expr_count; ++i) {
     arg_exprs[i] = _arg_exprs[i];
     arg_expr_names[i] = _arg_expr_names[i];
@@ -571,8 +538,7 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
           "Script error: '%s' cannot be called. Give me a function!",
         GetAVSTypeName(eval_result));
     }
-    //auto& func = eval_result.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
-    decltype(auto) func = getter_proxy(eval_result.AsFunction()); // PF: getter proxy + decltype!
+    decltype(auto) func = getter_proxy(eval_result.AsFunction());
     real_name = func->GetLegacyName();
     real_func = func->GetDefinition();
   }
@@ -583,11 +549,11 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
   for (int a=0; a<arg_expr_count; ++a)
     args[a] = arg_exprs[a]->Evaluate(env);
 
- AVSValue implicit_last = oop_notation ? AVSValue() : env2->GetVarDef("last");
+  AVSValue implicit_last = oop_notation ? AVSValue() : env2->GetVarDef("last");
   try
   { // Invoke can always throw by calling a constructor of a filter that throws
     if (env2->Invoke_(&result, implicit_last,
-      real_name, real_func, AVSValue(args.data(), arg_expr_count), arg_expr_names, nullptr))
+      real_name, real_func, AVSValue(args.data(), arg_expr_count), arg_expr_names))
       return result;
   } catch(const IScriptEnvironment::NotFound&){}
 
@@ -717,10 +683,10 @@ FunctionInstance::~FunctionInstance() {
 const char* FunctionInstance::ToString(IScriptEnvironment* env)
 {
   if (pdef->name) {
-    return env->Sprintf("Named Function: %s defined at %s, line %d", pdef->name, pdef->filename, pdef->line);
+    return env->Sprintf("Function: %s defined at %s, line %d", pdef->name, pdef->filename, pdef->line);
   }
   else {
-    return env->Sprintf("Anonymous Function: defined at %s, line %d", pdef->filename, pdef->line);
+    return env->Sprintf("Function: defined at %s, line %d", pdef->filename, pdef->line);
   }
 }
 
