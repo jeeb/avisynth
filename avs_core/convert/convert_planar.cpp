@@ -1828,7 +1828,6 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
   __m128i pixels0123_mask = _mm_set_epi8(0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
   __m128i pixels4567_mask = _mm_set_epi8(4, 2, 1, 0, 0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5);
   __m128i ssse3_merge_mask = _mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
-  BYTE temp[32];
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < mod8_width; x+=8) {
@@ -1891,6 +1890,7 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
           _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*3+16), dst567);
 
         } else {
+          alignas(16) BYTE temp[32];
           //slow SSE2 version
           _mm_store_si128(reinterpret_cast<__m128i*>(temp),    result_lo);
           _mm_store_si128(reinterpret_cast<__m128i*>(temp+16), result_hi);
