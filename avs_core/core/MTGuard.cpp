@@ -124,7 +124,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
   if (nThreads == 1)
     return ChildFilters[0].filter->GetFrame(n, env);
 
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+	InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
   PVideoFrame frame = NULL;
 
   switch (MTMode)
@@ -136,7 +136,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
     }
   case MT_MULTI_INSTANCE:
     {
-			auto& child = ChildFilters[g_thread_id & (nThreads - 1)];
+			auto& child = ChildFilters[envI->GetThreadId() & (nThreads - 1)];
 			std::lock_guard<std::mutex> lock(child.mutex);
       frame = child.filter->GetFrame(n, env);
       break;
@@ -150,7 +150,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
   default:
     {
       assert(0);
-      env2->ThrowError("Invalid Avisynth logic.");
+			envI->ThrowError("Invalid Avisynth logic.");
       break;
     }
   } // switch
@@ -172,7 +172,7 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
     return;
   }
 
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+	InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
 
   switch (MTMode)
   {
@@ -183,7 +183,7 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
     }
   case MT_MULTI_INSTANCE:
     {
-			auto& child = ChildFilters[g_thread_id & (nThreads - 1)];
+			auto& child = ChildFilters[envI->GetThreadId() & (nThreads - 1)];
 			std::lock_guard<std::mutex> lock(child.mutex);
 			child.filter->GetAudio(buf, start, count, env);
       break;
@@ -197,7 +197,7 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
   default:
     {
       assert(0);
-      env2->ThrowError("Invalid Avisynth logic.");
+			envI->ThrowError("Invalid Avisynth logic.");
       break;
     }
   } // switch

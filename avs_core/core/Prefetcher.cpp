@@ -200,7 +200,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
   InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
 
-  if (g_suppress_thread_count > 0) {
+  if (envI->GetSuppressThreadCount() > 0) {
     // do not use thread when invoke running
     return _pimpl->child->GetFrame(n, env);
   }

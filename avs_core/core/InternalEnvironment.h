@@ -63,18 +63,19 @@ public:
 //class Device;
 class ThreadPool;
 class ConcurrentVarStringFrame;
+//class FilterGraphNode;
 
-extern __declspec(thread) size_t g_thread_id;
-extern __declspec(thread) int g_getframe_recursive_count;
+class ScopedCounter {
+	int& counter;
+public:
+	ScopedCounter(int& counter) : counter(counter) {
+		++counter;
+	}
+	~ScopedCounter() {
+		--counter;
+	}
+};
 
-// Concurrent GetFrame with Invoke causes deadlock.
-// Increment this variable when Invoke running
-// to prevent submitting job to threadpool
-extern __declspec(thread) int g_suppress_thread_count;
-/*
-class FilterGraphNode;
-extern __declspec(thread) FilterGraphNode* g_current_graph_node;
-*/
 // Strictly for Avisynth core only.
 // Neither host applications nor plugins should use
 // these interfaces.
@@ -180,22 +181,28 @@ public:
   virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads) = 0;
   virtual void __stdcall AddRef() = 0;
   virtual void __stdcall Release() = 0;
-  //virtual void __stdcall IncEnvCount() = 0;
-  //virtual void __stdcall DecEnvCount() = 0;
 
   virtual ConcurrentVarStringFrame* __stdcall GetTopFrame() = 0;
 
   // Nekopanda: new cache control mechanism
   virtual void __stdcall SetCacheMode(CacheMode mode) = 0;
   virtual CacheMode __stdcall GetCacheMode() = 0;
+	virtual bool& __stdcall GetSupressCaching() = 0;
+
   /*
   virtual void __stdcall SetDeviceOpt(DeviceOpt mode, int val) = 0;
   */
   virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar) = 0;
   virtual bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
     const char* name, const Function *f, const AVSValue& args, const char* const* arg_names) = 0;
+
   virtual InternalEnvironment* __stdcall NewThreadScriptEnvironment(int thread_id) = 0;
-  virtual bool& __stdcall GetSupressCaching() = 0;
+
+	// per thread data access
+	virtual int __stdcall GetThreadId() = 0;
+	virtual int& __stdcall GetFrameRecursiveCount() = 0;
+	virtual int& __stdcall GetSuppressThreadCount() = 0;
+	virtual FilterGraphNode*& GetCurrentGraphNode() = 0;
 };
 
 struct InternalEnvironmentDeleter {

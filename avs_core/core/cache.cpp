@@ -51,17 +51,6 @@ extern const AVSFunction Cache_filters[] = {
   { 0 }
 };
 
-__declspec(thread) int g_getframe_recursive_count;
-
-struct GetFrameCounter {
-	GetFrameCounter() {
-		++g_getframe_recursive_count;
-	}
-	~GetFrameCounter() {
-		--g_getframe_recursive_count;
-	}
-};
-
 class CacheStack
 {
 	InternalEnvironment* env;
@@ -525,14 +514,14 @@ int CacheGuard::GetOrDefault(int cachehints, int frame_range, int def)
 
 PVideoFrame __stdcall CacheGuard::GetFrame(int n, IScriptEnvironment* env)
 {
-  GetFrameCounter getframe_counter;
-  return GetCache(env)->GetFrame(n, env);
+	ScopedCounter getframe_counter(static_cast<InternalEnvironment*>(env)->GetFrameRecursiveCount());
+    return GetCache(env)->GetFrame(n, env);
 }
 
 void __stdcall CacheGuard::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
-  GetFrameCounter getframe_counter;
-  return GetCache(env)->GetAudio(buf, start, count, env);
+	ScopedCounter getframe_counter(static_cast<InternalEnvironment*>(env)->GetFrameRecursiveCount());
+    return GetCache(env)->GetAudio(buf, start, count, env);
 }
 
 const VideoInfo& __stdcall CacheGuard::GetVideoInfo()
