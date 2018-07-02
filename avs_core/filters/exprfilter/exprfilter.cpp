@@ -4994,6 +4994,22 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         env->ThrowError("Expr: No packed RGB format allowed");
       if (d.vi.IsYUY2())
         env->ThrowError("Expr: YUY2 format not allowed");
+
+      // number of planes and subsampling should match
+      if (vi_array[0]->NumComponents() != d.vi.NumComponents())
+        env->ThrowError("Expr: inputs and output must have the same number of planes");
+
+      int *plane_enums_s = (vi_array[0]->IsYUV() || vi_array[0]->IsYUVA()) ? planes_y : planes_r;
+      int *plane_enums_d = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
+      for (int p = 0; p < d.vi.NumComponents(); p++) {
+        const int plane_enum_s = plane_enums_s[p];
+        const int plane_enum_d = plane_enums_d[p];
+        if (vi_array[0]->GetPlaneWidthSubsampling(plane_enum_s) != d.vi.GetPlaneWidthSubsampling(plane_enum_d)
+          || vi_array[0]->GetPlaneHeightSubsampling(plane_enum_s) != d.vi.GetPlaneHeightSubsampling(plane_enum_d)) {
+          env->ThrowError("Expr: inputs and output must have the same subsampling");
+        }
+      }
+
       vi = d.vi;
     }
 

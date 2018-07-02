@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20180617 r2720
+20180702 r2724
 --------------
 - New: Expr: implement 'clip' three operand operator like in masktools2
   Description: clips (clamps) value: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
@@ -71,6 +71,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     One cannot specify different conversion methods for converting before and after the expression.
     Neither can you specify different methods for different input clips (e.g. x is full, y is limited is not supported).
 
+- Fix: Expr: check subsampling when a different output pixel format is given
 - Fix: ColorYUV: round to avoid green cast on consecutive TV<>PC
 - Enhanced: Limiter to work with 32 bit float clips
 - Enhanced: Limiter new parameter bool 'autoscale' default false.
