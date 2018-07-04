@@ -3328,19 +3328,19 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const float framecount = (float)n; // max precision: 2^24 (16M) frames (32 bit float precision)
   const float relative_time = (float)((double)n / vi.num_frames); // 0 <= time < 1
 
-  int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
-  int planes_r[4] = { PLANAR_R, PLANAR_G, PLANAR_B, PLANAR_A }; // expression string order is R G B unlike internal G B R plane order
-  int *plane_enums = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
+  const int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+  const int planes_r[4] = { PLANAR_R, PLANAR_G, PLANAR_B, PLANAR_A }; // expression string order is R G B unlike internal G B R plane order
+  const int *plane_enums_d = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
 
   for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
 
-    const int plane_enum = plane_enums[plane];
+    const int plane_enum_d = plane_enums_d[plane];
 
     if (d.plane[plane] == poProcess) {
-      uint8_t *dstp = dst->GetWritePtr(plane_enum);
-      int dst_stride = dst->GetPitch(plane_enum);
-      int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
-      int w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
+      uint8_t *dstp = dst->GetWritePtr(plane_enum_d);
+      int dst_stride = dst->GetPitch(plane_enum_d);
+      int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum_d);
+      int w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum_d);
 
       // for simd:
       const int pixels_per_iter = (optAvx2 && d.planeOptAvx2[plane]) ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
@@ -3351,10 +3351,15 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
       for (int i = 0; i < numInputs; i++) {
         if (d.node[i]) {
           if (d.clipsUsed[i]) {
-            srcp[i] = src[i]->GetReadPtr(plane_enum);
+            // when input is a single Y, use PLANAR_Y instead of the plane matching to the output
+            const VideoInfo& vi_src = d.node[i]->GetVideoInfo();
+            const int *plane_enums_s = (vi_src.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
+            const int plane_enum_s = vi_src.IsY() ? PLANAR_Y : plane_enums_d[plane];
+
+            srcp[i] = src[i]->GetReadPtr(plane_enum_s);
             // C only:
             srcp_orig[i] = srcp[i];
-            src_stride[i] = src[i]->GetPitch(plane_enum);
+            src_stride[i] = src[i]->GetPitch(plane_enum_s);
             // SIMD only
             ptroffsets[RWPTR_START_OF_INPUTS + i] = d.node[i]->GetVideoInfo().ComponentSize() * pixels_per_iter; // 1..Nth: inputs
           }
@@ -3637,17 +3642,22 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
     else if (d.plane[plane] == poCopy) {
       // avs+ copy from Nth clip
       const int copySource = d.planeCopySourceClip[plane];
-      env->BitBlt(dst->GetWritePtr(plane_enum), dst->GetPitch(plane_enum),
-        src[copySource]->GetReadPtr(plane_enum),
-        src[copySource]->GetPitch(plane_enum),
-        src[copySource]->GetRowSize(plane_enum),
-        src[copySource]->GetHeight(plane_enum)
+      // when input is a single Y, use PLANAR_Y instead of the plane matching to the output
+      const VideoInfo& vi_src = d.node[copySource]->GetVideoInfo();
+      const int *plane_enums_s = (vi_src.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
+      const int plane_enum_s = vi_src.IsY() ? PLANAR_Y : plane_enums_d[plane];
+
+      env->BitBlt(dst->GetWritePtr(plane_enum_d), dst->GetPitch(plane_enum_d),
+        src[copySource]->GetReadPtr(plane_enum_s),
+        src[copySource]->GetPitch(plane_enum_s),
+        src[copySource]->GetRowSize(plane_enum_s),
+        src[copySource]->GetHeight(plane_enum_s)
       );
     }
     else if (d.plane[plane] == poFill) { // avs+
-      uint8_t *dstp = dst->GetWritePtr(plane_enum);
-      const int dst_stride = dst->GetPitch(plane_enum);
-      const int h = dst->GetHeight(plane_enum);
+      uint8_t *dstp = dst->GetWritePtr(plane_enum_d);
+      const int dst_stride = dst->GetPitch(plane_enum_d);
+      const int h = dst->GetHeight(plane_enum_d);
 
       int val;
 
@@ -4995,18 +5005,24 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       if (d.vi.IsYUY2())
         env->ThrowError("Expr: YUY2 format not allowed");
 
-      // number of planes and subsampling should match
-      if (vi_array[0]->NumComponents() != d.vi.NumComponents())
-        env->ThrowError("Expr: inputs and output must have the same number of planes");
+      const bool isSinglePlaneInput = vi_array[0]->IsY();
 
+      // input number of planes >= output planes
+      if (!isSinglePlaneInput && vi_array[0]->NumComponents() < d.vi.NumComponents())
+        env->ThrowError("Expr: number of planes in input should be greater than or equal than of output");
+
+      // subsampling should match
       int *plane_enums_s = (vi_array[0]->IsYUV() || vi_array[0]->IsYUVA()) ? planes_y : planes_r;
       int *plane_enums_d = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
       for (int p = 0; p < d.vi.NumComponents(); p++) {
-        const int plane_enum_s = plane_enums_s[p];
+        const int plane_enum_s = isSinglePlaneInput ? plane_enums_s[0] : plane_enums_s[p]; // for Y inputs, reference is Y for each output plane
         const int plane_enum_d = plane_enums_d[p];
         if (vi_array[0]->GetPlaneWidthSubsampling(plane_enum_s) != d.vi.GetPlaneWidthSubsampling(plane_enum_d)
           || vi_array[0]->GetPlaneHeightSubsampling(plane_enum_s) != d.vi.GetPlaneHeightSubsampling(plane_enum_d)) {
-          env->ThrowError("Expr: inputs and output must have the same subsampling");
+          if(isSinglePlaneInput)
+            env->ThrowError("Expr: output must not be a subsampled format for Y-only input(s)");
+          else
+            env->ThrowError("Expr: inputs and output must have the same subsampling");
         }
       }
 
