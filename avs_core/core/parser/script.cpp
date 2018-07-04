@@ -375,7 +375,7 @@ DllDirChanger::DllDirChanger(const char* new_dir) :
   old_directory(NULL)
 {
   DWORD len = GetDllDirectory (0, NULL);
-  old_directory = new char[len];
+  old_directory = new char[len + 1];
   DWORD save_success = GetDllDirectory (len, old_directory);
   BOOL set_success = SetDllDirectory(new_dir);
   restore = (save_success && set_success);
