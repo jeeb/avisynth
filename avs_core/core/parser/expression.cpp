@@ -336,8 +336,10 @@ AVSValue ExpPlus::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   AVSValue y = b->Evaluate(env);
-  if (x.IsClip() && y.IsClip())
-    return new_Splice(x.AsClip(), y.AsClip(), false, env);    // UnalignedSplice
+ if (x.IsClip() && y.IsClip()) {
+    AVSValue arg[3] = { x, y, 0 };
+    return env->Invoke("UnalignedSplice", AVSValue(arg, 3));
+  }
   else if (x.IsInt() && y.IsInt())
     return x.AsInt() + y.AsInt();
   else if (x.IsFloat() && y.IsFloat())
@@ -355,8 +357,10 @@ AVSValue ExpDoublePlus::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   AVSValue y = b->Evaluate(env);
-  if (x.IsClip() && y.IsClip())
-    return new_Splice(x.AsClip(), y.AsClip(), true, env);    // AlignedSplice
+ if (x.IsClip() && y.IsClip()) {
+    AVSValue arg[3] = { x, y, 0 };
+    return env->Invoke("AlignedSplice", AVSValue(arg, 3));
+  }
   else {
     env->ThrowError("Evaluate: operands of `++' must be clips");
     return 0;

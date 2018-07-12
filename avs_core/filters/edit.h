@@ -157,6 +157,8 @@ public:
 
   static AVSValue __cdecl CreateUnaligned(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateAligned(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateUnalignedNoCache(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateAlignedNoCache(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   PClip child2;

@@ -924,7 +924,7 @@ struct ScriptEnvironmentTLS
 	// to prevent submitting job to threadpool
 	int suppressThreadCount;
 
-	FilterGraphNode* currentGraphNode;
+	//FilterGraphNode* currentGraphNode;
   volatile long refcount;
 
   ScriptEnvironmentTLS(int thread_id, InternalEnvironment* core)
@@ -937,7 +937,7 @@ struct ScriptEnvironmentTLS
     , ImportDepth(0)
 		, getFrameRecursiveCount(0)
 		, suppressThreadCount(0)
-		, currentGraphNode(nullptr)
+    //, currentGraphNode(nullptr)
     , refcount(1)
   {
   }

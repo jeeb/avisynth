@@ -1831,7 +1831,8 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
           } else {
             clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, vtrack, atrack, AVISource::MODE_NORMAL, utf8, env));
           }
-          result = !result ? clip : new_Splice(result, clip, false, env);
+          AVSValue arg[3] = { result, clip, 0 };
+          result = !result ? clip : env->Invoke("UnalignedSplice", AVSValue(arg, 3)).AsClip();
         } catch (const AvisynthError &e) {
           error_msg=e.msg;
         }

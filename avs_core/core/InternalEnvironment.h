@@ -202,7 +202,7 @@ public:
 	virtual int __stdcall GetThreadId() = 0;
 	virtual int& __stdcall GetFrameRecursiveCount() = 0;
 	virtual int& __stdcall GetSuppressThreadCount() = 0;
-	virtual FilterGraphNode*& GetCurrentGraphNode() = 0;
+	//virtual FilterGraphNode*& GetCurrentGraphNode() = 0;
 };
 
 struct InternalEnvironmentDeleter {

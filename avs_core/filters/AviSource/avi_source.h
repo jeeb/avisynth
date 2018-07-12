@@ -89,6 +89,7 @@ class AVISource : public IClip {
   bool bIsType1;
   bool bInvertFrames;
   bool bMediaPad;
+  // fixme: to enum
   bool P010;
   bool P016;
   bool v210;
@@ -103,7 +104,6 @@ class AVISource : public IClip {
   bool v308;
   bool v408;
 
-  //bool utf8;
 
   PVideoFrame last_frame;
   int last_frame_no;
@@ -153,8 +153,10 @@ public:
     const int utf8 = (mode != MODE_WAV) ? args[6].AsBool(false) : args[1].AsBool(false);
 
     PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, utf8, env);
-    for (int i=1; i<args[0].ArraySize(); ++i)
-      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, utf8, env), false, env);
+    for (int i = 1; i < args[0].ArraySize(); ++i) {
+      AVSValue arg[3] = { result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, utf8, env), 0 };
+      result = env->Invoke("UnalignedSplice", AVSValue(arg, 3)).AsClip();
+    }
     return AlignPlanar::Create(result);
   }
 };

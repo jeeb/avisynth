@@ -69,6 +69,8 @@ extern const AVSFunction Edit_filters[] = {
   { "DuplicateFrame",  BUILTIN_FUNC_PREFIX, "ci+", DuplicateFrame::Create },      // frame #
   { "UnalignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateUnaligned },    // clips
   { "AlignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateAligned },        // clips
+	{ "UnalignedSplice", BUILTIN_FUNC_PREFIX, "cci", Splice::CreateUnalignedNoCache },    // clips
+	{ "AlignedSplice", BUILTIN_FUNC_PREFIX, "cci", Splice::CreateAlignedNoCache },        // clips
   { "Dissolve",   BUILTIN_FUNC_PREFIX, "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
   { "AudioDub",   BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)0},          // video src, audio src
   { "AudioDubEx", BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)1},        // video! src, audio! src
@@ -561,12 +563,15 @@ AVSValue __cdecl Splice::CreateAligned(AVSValue args, void*, IScriptEnvironment*
 
 
 
-/* Used internally to join clips without intervening caches. */
-PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env)
+AVSValue __cdecl Splice::CreateUnalignedNoCache(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Splice(_child1, _child2, realign_sound, true, env);
+	return new Splice(args[0].AsClip(), args[1].AsClip(), false, true, env);
 }
 
+AVSValue __cdecl Splice::CreateAlignedNoCache(AVSValue args, void*, IScriptEnvironment* env)
+{
+	return new Splice(args[0].AsClip(), args[1].AsClip(), true, true, env);
+}
 
 
 
