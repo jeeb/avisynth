@@ -60,10 +60,10 @@ public:
     bool operator==(const OneTimeLogTicket &other) const;
 };
 
-//class Device;
+class Device;
 class ThreadPool;
 class ConcurrentVarStringFrame;
-//class FilterGraphNode;
+class FilterGraphNode;
 
 class ScopedCounter {
 	int& counter;
@@ -160,9 +160,9 @@ public:
 
   virtual IScriptEnvironment2* __stdcall GetEnv2() final { return this; }
 
-  /*
-  virtual void __stdcall SetGraphAnalysis(bool enable) = 0;
 
+  virtual void __stdcall SetGraphAnalysis(bool enable) = 0;
+/*
   virtual Device* __stdcall SetCurrentDevice(Device* device) = 0;
   virtual Device* __stdcall GetCurrentDevice() const = 0;
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) = 0;
@@ -202,7 +202,7 @@ public:
 	virtual int __stdcall GetThreadId() = 0;
 	virtual int& __stdcall GetFrameRecursiveCount() = 0;
 	virtual int& __stdcall GetSuppressThreadCount() = 0;
-	//virtual FilterGraphNode*& GetCurrentGraphNode() = 0;
+	virtual FilterGraphNode*& GetCurrentGraphNode() = 0;
 };
 
 struct InternalEnvironmentDeleter {

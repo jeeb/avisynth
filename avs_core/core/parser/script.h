@@ -257,9 +257,9 @@ AVSValue InternalFunctionExists (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetFilterMTMode (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetLogParams(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env);
-/*
-AVSValue SetCacheMode(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue SetCacheMode(AVSValue args, void*, IScriptEnvironment* env);
+/*
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
 */
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env);

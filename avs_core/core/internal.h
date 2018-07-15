@@ -60,7 +60,10 @@ enum MANAGE_CACHE_KEYS
   MC_NodCache          = (int)0xFFFF0007,
   MC_NodAndExpandCache = (int)0xFFFF0008,
   MC_RegisterMTGuard,
-  MC_UnRegisterMTGuard
+  MC_UnRegisterMTGuard,
+
+	MC_RegisterGraphNode = (int)0xFFFF0100,
+	MC_UnRegisterGraphNode,
 };
 
 #include <avisynth.h>
@@ -74,6 +77,8 @@ const char *GetPixelTypeName(const int pixel_type); // in script.c
 const int GetPixelTypeFromName(const char *pixeltypename); // in script.c
 const char* GetAVSTypeName(AVSValue value); // in script.c
 //int GetDeviceTypes(const PClip& child); // in DeviceManager.cpp
+//size_t GetFrameHead(const PVideoFrame& vf); // in DeviceManager.cpp
+//size_t GetFrameTail(const PVideoFrame& vf); // in DeviceManager.cpp
 
 PClip Create_MessageClip(const char* message, int width, int height,
   int pixel_type, bool shrink, int textcolor, int halocolor, int bgcolor,
@@ -143,6 +148,7 @@ private:
   bool restore;
 };
 
+//fixme pf: move to strings
 #ifdef AVS_WINDOWS
 std::unique_ptr<char[]> WideCharToUtf8(const wchar_t *w_string);
 std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string);
@@ -172,7 +178,7 @@ public:
 
 // 8 bit uv to float
 // 16-128-240 -> -112-0-112 -> -112/255..112/255
-static __inline float uv8tof(int color) {
+static AVS_FORCEINLINE float uv8tof(int color) {
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float shift = 0.5f;
 #else
@@ -182,7 +188,7 @@ static __inline float uv8tof(int color) {
 }
 
 // 16-128-240 -> -112-0-112 -> -0.5..0.5
-static __inline float uv8tof_limited(int color) {
+static AVS_FORCEINLINE float uv8tof_limited(int color) {
   const float range = (float)(240 - 16);
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float shift = 0.5f;
@@ -193,35 +199,35 @@ static __inline float uv8tof_limited(int color) {
 }
 
 // 8 bit fullscale to float
-static __inline float c8tof(int color) {
+static AVS_FORCEINLINE float c8tof(int color) {
   return color / 255.0f;
 }
 
-static __inline uint8_t ScaledPixelClip(int i) {
+static AVS_FORCEINLINE uint8_t ScaledPixelClip(int i) {
   // return PixelClip((i+32768) >> 16);
   // PF: clamp is faster than lut
   return (uint8_t)clamp((i + 32768) >> 16, 0, 255);
 }
 
-static __inline uint16_t ScaledPixelClip(long long int i) {
+static AVS_FORCEINLINE uint16_t ScaledPixelClip(int64_t i) {
     return (uint16_t)clamp((i + 32768) >> 16, 0LL, 65535LL);
 }
 
-static __inline uint16_t ScaledPixelClipEx(long long int i, int max_value) {
+static AVS_FORCEINLINE uint16_t ScaledPixelClipEx(int64_t i, int max_value) {
   return (uint16_t)clamp((int)((i + 32768) >> 16), 0, max_value);
 }
 
-static __inline bool IsClose(int a, int b, unsigned threshold)
+static AVS_FORCEINLINE bool IsClose(int a, int b, unsigned threshold)
   { return (unsigned(a-b+threshold) <= threshold*2); }
 
-static __inline bool IsCloseFloat(float a, float b, float threshold)
+static AVS_FORCEINLINE bool IsCloseFloat(float a, float b, float threshold)
 { return (a-b+threshold <= threshold*2); }
 
 // useful SIMD helpers
 
 // sse2 replacement of _mm_mullo_epi32 in SSE4.1
 // use it after speed test, may have too much overhead and C is faster
-static AVS_FORCEINLINE __m128i _MM_MULLO_EPI32(const __m128i &a, const __m128i &b)
+AVS_FORCEINLINE __m128i _MM_MULLO_EPI32(const __m128i &a, const __m128i &b)
 {
   // for SSE 4.1: return _mm_mullo_epi32(a, b);
   __m128i tmp1 = _mm_mul_epu32(a,b); // mul 2,0
@@ -235,10 +241,10 @@ static AVS_FORCEINLINE __m128i _MM_MULLO_EPI32(const __m128i &a, const __m128i &
 #pragma warning(disable: 4309)
 #endif
 // fake _mm_packus_epi32 (orig is SSE4.1 only)
-static AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
+AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
 {
-  const __m128i val_32 = _mm_set1_epi32(0x8000);
-  const __m128i val_16 = _mm_set1_epi16(0x8000);
+  const static __m128i val_32 = _mm_set1_epi32(0x8000);
+  const static __m128i val_16 = _mm_set1_epi16(0x8000);
 
   a = _mm_sub_epi32(a, val_32);
   b = _mm_sub_epi32(b, val_32);
@@ -252,7 +258,7 @@ static AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
 #endif
 // fake _mm_packus_epi32 (orig is SSE4.1 only)
 // only for packing 00000000..0000FFFF range integers, does not clamp properly above that, e.g. 00010001
-static AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32_SRC_TRUEWORD(__m128i a, __m128i b)
+AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32_SRC_TRUEWORD(__m128i a, __m128i b)
 {
   a = _mm_slli_epi32 (a, 16);
   a = _mm_srai_epi32 (a, 16);
@@ -262,27 +268,27 @@ static AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32_SRC_TRUEWORD(__m128i a, __m128i 
   return a;
 }
 
-static AVS_FORCEINLINE __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
+AVS_FORCEINLINE __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
 {
   // Returns 0xFFFF where x <= y:
   return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
 }
 
-static AVS_FORCEINLINE __m128i _MM_BLENDV_SI128(__m128i x, __m128i y, __m128i mask)
+AVS_FORCEINLINE __m128i _MM_BLENDV_SI128(__m128i x, __m128i y, __m128i mask)
 {
   // Replace bit in x with bit in y when matching bit in mask is set:
   return _mm_or_si128(_mm_andnot_si128(mask, x), _mm_and_si128(mask, y));
 }
 
 // sse2 simulation of SSE4's _mm_min_epu16
-static AVS_FORCEINLINE __m128i _MM_MIN_EPU16(__m128i x, __m128i y)
+AVS_FORCEINLINE __m128i _MM_MIN_EPU16(__m128i x, __m128i y)
 {
   // Returns x where x <= y, else y:
   return _MM_BLENDV_SI128(y, x, _MM_CMPLE_EPU16(x, y));
 }
 
 // sse2 simulation of SSE4's _mm_max_epu16
-static AVS_FORCEINLINE __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
+AVS_FORCEINLINE __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
 {
   // Returns x where x >= y, else y:
   return _MM_BLENDV_SI128(x, y, _MM_CMPLE_EPU16(x, y));
