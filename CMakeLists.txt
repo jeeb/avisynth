@@ -68,18 +68,22 @@ IF( MSVC )  # Check for Visual Studio
   
   # Enable CRT heap debugging - only effective in debug builds
   add_definitions("/D _CRTDBG_MAP_ALLOC")
-  
+
   add_definitions("/D __SSE2__")
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    # VC++ enables the SSE2 instruction set by default even on 32-bits. Step back a bit.
-    #add_definitions("/arch:SSE")
-    add_definitions("/arch:SSE2") # Better use this one, it's 2017 now, and helps optimizing hbd stuff still in C
-  endif() 
+    # CPU_ARCH can be overridden with the corresponding values when using MSVC:
+    # IA32 (disabled),
+    # SSE (Pentium III and higher, 1999),
+    # SSE2 (Pentium 4 and higher, 2000/2001),
+    # AVX (Sandy Bridge and higher, 2011),
+    # AVX2 (Haswell and higher, 2013)
+    set(MSVC_CPU_ARCH "SSE2" CACHE STRING "Set MSVC architecture optimization level (default: SSE2)")
+  endif()
 
   # Set additional optimization flags
-  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS- /Oi")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oy /Ot /GS- /Oi")
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS- /Oi /arch:${MSVC_CPU_ARCH}")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oy /Ot /GS- /Oi /arch:${MSVC_CPU_ARCH}")
 
   # Set C++17 flag
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c++17")
