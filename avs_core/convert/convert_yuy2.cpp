@@ -518,6 +518,10 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
 
   const bool haveOpts = args[3].Defined() || args[4].Defined();
 
+  if (clip->GetVideoInfo().BitsPerComponent() != 8) {
+    env->ThrowError("ConvertToYUY2: only 8 bit sources are supported");
+  }
+
   if (clip->GetVideoInfo().IsPlanar()) {
     if (haveOpts || !clip->GetVideoInfo().IsYV12()) {
       // We have no direct conversions. Go to YV16.
