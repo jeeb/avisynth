@@ -32,7 +32,8 @@ BOOL DubSource::init() {
 void *DubSource::allocFormat(int format_len) {
 	delete [] format;
 
-	return format = new char[this->format_len = format_len];
+  this->format_len = format_len;
+	return format = new char[format_len];
 }
 
 bool DubSource::isStreaming() {
