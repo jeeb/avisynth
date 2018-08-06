@@ -40,6 +40,7 @@
 #include <avs/minmax.h>
 #include <stdint.h>
 #include "version.h"
+#include <memory>
 
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
 #define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2016 AviSynth+ Project\nhttp://avs-plus.net"
@@ -149,7 +150,7 @@ public:
 
 private:
   void Init(const wchar_t* new_cwd);
-  wchar_t *old_working_directory;
+  std::unique_ptr<wchar_t[]> old_working_directory;
   bool restore;
 };
 
@@ -160,7 +161,7 @@ public:
   ~DllDirChanger(void);  
 
 private:
-  char *old_directory;
+  std::unique_ptr<char[]> old_directory;
   bool restore;
 };
 

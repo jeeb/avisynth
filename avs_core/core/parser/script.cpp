@@ -340,43 +340,37 @@ void CWDChanger::Init(const wchar_t* new_cwd)
 {
   // works in unicode internally
   DWORD cwdLen = GetCurrentDirectoryW(0, NULL);
-  old_working_directory = new wchar_t[cwdLen];
-  DWORD save_cwd_success = GetCurrentDirectoryW(cwdLen, old_working_directory);
+  old_working_directory = std::make_unique<wchar_t[]>(cwdLen); // instead of new wchar_t[cwdLen];
+  DWORD save_cwd_success = GetCurrentDirectoryW(cwdLen, old_working_directory.get());
   BOOL set_cwd_success = SetCurrentDirectoryW(new_cwd);
   restore = (save_cwd_success && set_cwd_success);
 }
 
-CWDChanger::CWDChanger(const wchar_t* new_cwd) :
-  old_working_directory(NULL)
+CWDChanger::CWDChanger(const wchar_t* new_cwd)
 {
   Init(new_cwd);
 }
 
-CWDChanger::CWDChanger(const char* new_cwd):
-  old_working_directory(NULL)
+CWDChanger::CWDChanger(const char* new_cwd)
 {
   int len = (int)strlen(new_cwd)+1;
-  wchar_t *new_cwd_w = new wchar_t[len];
+  auto new_cwd_w = std::make_unique<wchar_t[]>(len); // new wchar_t[len];
   
-  MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, new_cwd, -1, new_cwd_w, len);
-  Init(new_cwd_w);
-  delete[] new_cwd_w;
+  MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, new_cwd, -1, new_cwd_w.get(), len);
+  Init(new_cwd_w.get());
 }
 
 CWDChanger::~CWDChanger(void)
 {
   if (restore)
-    SetCurrentDirectoryW(old_working_directory);
-
-  delete [] old_working_directory;
+    SetCurrentDirectoryW(old_working_directory.get());
 }
 
-DllDirChanger::DllDirChanger(const char* new_dir) :
-  old_directory(NULL)
+DllDirChanger::DllDirChanger(const char* new_dir)
 {
   DWORD len = GetDllDirectory (0, NULL);
-  old_directory = new char[len + 1];
-  DWORD save_success = GetDllDirectory (len, old_directory);
+  old_directory = std::make_unique<char[]>(len + 1); // instead of new char[len+1]
+  DWORD save_success = GetDllDirectory (len, old_directory.get());
   BOOL set_success = SetDllDirectory(new_dir);
   restore = (save_success && set_success);
 }
@@ -384,9 +378,7 @@ DllDirChanger::DllDirChanger(const char* new_dir) :
 DllDirChanger::~DllDirChanger(void)
 {
   if (restore)
-    SetDllDirectory(old_directory);
-
-  delete [] old_directory;
+    SetDllDirectory(old_directory.get());
 }
 
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env)
