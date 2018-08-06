@@ -2827,7 +2827,12 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
         fill_chroma<uint16_t>(dstp_u, dstp_v, height, dst_pitch, 1 << (vi.BitsPerComponent() - 1));
         break;
       case 4:
-        fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, 0.5f);
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+        const float half = 0.5f;
+#else
+        const float half = 0.0f;
+#endif
+        fill_chroma<float>(dstp_u, dstp_v, height, dst_pitch, half);
         break;
     }
   } else {
