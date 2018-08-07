@@ -545,14 +545,14 @@ AVSValue __cdecl ConvertToY8::Create(AVSValue args, void*, IScriptEnvironment* e
 }
 
 /*****************************************************
- * ConvertRGBToYV24
+ * ConvertRGBToYUV444
  ******************************************************/
 
-ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment* env)
+ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, int in_matrix, IScriptEnvironment* env)
   : GenericVideoFilter(src)
 {
   if (!vi.IsRGB())
-    env->ThrowError("ConvertRGBToYV24: Only RGB data input accepted");
+    env->ThrowError("ConvertRGBToYV24/YUV444: Only RGB data input accepted");
 
   isPlanarRGBfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
   hasAlpha = vi.IsPlanarRGBA(); // for packed RGB always false (no YUVA target option)
@@ -616,11 +616,11 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
     BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, false, bits_per_pixel); // false: limited range
   }
   else {
-    env->ThrowError("ConvertRGBToYV24: Unknown matrix.");
+    env->ThrowError("ConvertRGBToYV24/YUV444: Unknown matrix.");
   }
 }
 
-void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel)
+void ConvertRGBToYUV444::BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel)
 {
   int Sy, Suv, Oy;
   float Sy_f, Suv_f, Oy_f;
@@ -1222,7 +1222,7 @@ static void convert_planarrgb_to_yuv_float_c(BYTE *(&dstp)[3], int (&dstPitch)[3
   }
 }
 
-PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
+PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -1364,11 +1364,11 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-AVSValue __cdecl ConvertRGBToYV24::Create(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertRGBToYUV444::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().Is444())
     return clip;
-  return new ConvertRGBToYV24(clip, getMatrix(args[1].AsString(0), env), env);
+  return new ConvertRGBToYUV444(clip, getMatrix(args[1].AsString(0), env), env);
 }
 
 
@@ -2857,7 +2857,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
       vi = clip->GetVideoInfo();
     }
 
-    clip = new ConvertRGBToYV24(clip, getMatrix(args[2].AsString(0), env), env);
+    clip = new ConvertRGBToYUV444(clip, getMatrix(args[2].AsString(0), env), env);
     vi = clip->GetVideoInfo();
   }
   else if (vi.IsYUY2()) { // 8 bit only

@@ -105,10 +105,10 @@ struct ConversionMatrix {
   float offset_y_f;
 };
 
-class ConvertRGBToYV24 : public GenericVideoFilter
+class ConvertRGBToYUV444 : public GenericVideoFilter
 {
 public:
-  ConvertRGBToYV24(PClip src, int matrix, IScriptEnvironment* env);
+  ConvertRGBToYUV444(PClip src, int matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
