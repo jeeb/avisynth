@@ -1269,7 +1269,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
   srcp += Spitch * (vi.height-1);  // We start at last line
   const int Sstep = Spitch + (vi.width * pixel_step);
 
-  if(pixel_step==3 && pixel_step==4)
+  if(pixel_step==3 || pixel_step==4)
   {
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
