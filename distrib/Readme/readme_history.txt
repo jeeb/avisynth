@@ -13,6 +13,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   Expr(Grey_r, Grey_g, Grey_b, "x", "y 2.0 /", "z 3.0 /", format="RGBPS") # r, g and b expression uses Y plane
 - Fix: ConvertToYUY2() error message for non-8 bit sources.
 - Fix: Y32 source to 32 bit 420,422,444 (introduced in big the zero-chroma-center transition)
+- Fix: ShowU, ShowV crash for subsampled YUV sources
 
 20180702 r2728
 --------------
