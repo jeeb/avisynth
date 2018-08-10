@@ -2846,6 +2846,8 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
 }
 
 AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScriptEnvironment* env) {
+  bool converted = false;
+
   PClip clip = args[0].AsClip();
   VideoInfo vi = clip->GetVideoInfo();
 
@@ -2859,10 +2861,12 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
 
     clip = new ConvertRGBToYUV444(clip, getMatrix(args[2].AsString(0), env), env);
     vi = clip->GetVideoInfo();
+    converted = true;
   }
   else if (vi.IsYUY2()) { // 8 bit only
     clip = new ConvertYUY2ToYV16(clip, env);
     vi = clip->GetVideoInfo();
+    converted = true;
   }
   else if (!vi.IsPlanar())
     env->ThrowError("%s: Can only convert from Planar YUV.", filter);
@@ -2876,6 +2880,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
     if (vi.Is420())
       if (getPlacement(args[3], env) == getPlacement(args[5], env))
         return clip;
+
+    if(converted)
+      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+
     outplacement = args[5];
     switch (vi.BitsPerComponent())
     {
@@ -2890,6 +2898,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   else if (strcmp(filter, "ConvertToYUV422") == 0) {
     if (vi.Is422())
       return clip;
+
+    if (converted)
+      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+
     switch (vi.BitsPerComponent())
     {
     case 8 : pixel_type = hasAlpha ? VideoInfo::CS_YUVA422 : VideoInfo::CS_YV16; break;
@@ -2903,6 +2915,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   else if (strcmp(filter, "ConvertToYUV444") == 0) {
     if (vi.Is444())
       return clip;
+
+    if (converted)
+      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+
     switch (vi.BitsPerComponent())
     {
     case 8 : pixel_type = hasAlpha ? VideoInfo::CS_YUVA444 : VideoInfo::CS_YV24; break;
@@ -2917,6 +2933,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
     if (vi.IsYV411()) return clip;
     if(vi.ComponentSize()!=1)
       env->ThrowError("%s: 8 bit only", filter);
+
+    if (converted)
+      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+
     pixel_type = VideoInfo::CS_YV411;
   }
   else env->ThrowError("Convert: unknown filter '%s'.", filter);
