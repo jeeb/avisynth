@@ -13,7 +13,6 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "core/*.c"
   "core/*.cpp"
   "core/*.h"
-  "core/avisynth.rc"
 
   "core/parser/*.c"
   "core/parser/*.cpp"
@@ -47,4 +46,9 @@ IF( MSVC OR MINGW )
     else()
       LIST(APPEND AvsCore_Sources "core/avisynth.def")
     endif() 
+ENDIF()
+
+IF( MSVC_IDE )
+    # Ninja, unfortunately, seems to have some issues with using rc.exe
+    LIST(APPEND AvsCore_Sources "core/avisynth.rc")
 ENDIF()
