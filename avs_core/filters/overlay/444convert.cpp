@@ -526,19 +526,18 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128
   __m128i avg1x = _mm_xor_si128(src_line0_p0, ffff_or_mul);
   __m128i avg2x = _mm_xor_si128(src_line0_p1, ffff_or_mul);
 
-  __m128i avg1_sh, avg2_sh;
   __m128i avg1, avg2;
 
   if constexpr(sizeof(pixel_t) == 1) {
-    avg1_sh = _mm_srli_epi16(avg1x, 8);
-    avg2_sh = _mm_srli_epi16(avg2x, 8);
+    __m128i avg1_sh = _mm_srli_epi16(avg1x, 8);
+    __m128i avg2_sh = _mm_srli_epi16(avg2x, 8);
 
     avg1 = _mm_avg_epu8(avg1x, avg1_sh);
     avg2 = _mm_avg_epu8(avg2x, avg2_sh);
   }
   else if constexpr(sizeof(pixel_t) == 2) {
-    avg1_sh = _mm_srli_epi32(avg1x, 16);
-    avg2_sh = _mm_srli_epi32(avg2x, 16);
+    __m128i avg1_sh = _mm_srli_epi32(avg1x, 16);
+    __m128i avg2_sh = _mm_srli_epi32(avg2x, 16);
 
     avg1 = _mm_avg_epu16(avg1x, avg1_sh);
     avg2 = _mm_avg_epu16(avg2x, avg2_sh);
