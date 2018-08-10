@@ -12,7 +12,7 @@ if (BUILD_IMAGESEQ)
 add_subdirectory("ImageSeq")
 endif()
 
-if (MSVC_IDE OR MINGW)
+if (MSVC OR MINGW)
   if(BUILD_DIRECTSHOWSOURCE)
     add_subdirectory("DirectShowSource")
   endif()
