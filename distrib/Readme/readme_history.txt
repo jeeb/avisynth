@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20180807 r27xx
+20180810 r27xx
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
   Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
@@ -14,6 +14,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Fix: ConvertToYUY2() error message for non-8 bit sources.
 - Fix: Y32 source to 32 bit 420,422,444 (introduced in big the zero-chroma-center transition)
 - Fix: ShowY, ShowU, ShowV crash for YUV (non-YUVA) sources
+- Speedup: ConvertToY12/16... for RGB or YUY2 sources where 4:4:4 or YV16 intermediate clip was used internally (~1.5-2x speed)
 
 20180702 r2728
 --------------
