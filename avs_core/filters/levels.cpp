@@ -34,6 +34,7 @@
 
 
 #include "levels.h"
+#include <float.h>
 #include "limiter.h"
 #include <cstdio>
 #include <cmath>
@@ -811,10 +812,10 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 #define READ_CONDITIONAL(plane_num, var_name, internal_name)  \
     {                                                     \
         const double t = env2->GetVar("rgbadjust_" #var_name, DBL_MIN); \
-        if (t != DBL_MIN) {                               \
+        if (t != DBL_MIN) {                             \
             config->rgba[##plane_num].internal_name = t;  \
             config->rgba[##plane_num].changed = true;     \
-        }                                                 \
+        }                                               \
     }
 
 static void rgbadjust_read_conditional(IScriptEnvironment* env, RGBAdjustConfig* config)
