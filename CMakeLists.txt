@@ -60,10 +60,11 @@ IF( MSVC )  # Check for Visual Studio
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-inconsistent-missing-override")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
   ELSE()
-	  # Enable C++ with SEH exceptions
-	  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHa")
-	  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
-	  # or add_compile_options( /EHa ) for CMake>=3?
+      # Enable C++ with SEH exceptions
+      # Avoid an obnoxious 'overrriding /EHsc with /EHa' warning when
+      # using something other than MSBuild
+      STRING( REPLACE "/EHsc" "/EHa" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+      STRING( REPLACE "/EHsc" "/EHa" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   ENDIF()
   # Prevent VC++ from complaining about not using MS-specific functions
   add_definitions("/D _CRT_SECURE_NO_WARNINGS /D _SECURE_SCL=0")
