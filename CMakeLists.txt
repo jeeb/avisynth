@@ -30,25 +30,27 @@ IF( MSVC )  # Check for Visual Studio
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/c_api")
 
-  IF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
-     #1900 is reported
-    message("v141_clang_c2 toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
-    set(CLANG_IN_VS "1")
-  ENDIF()
+  IF(MSVC_IDE)
+    IF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
+       #1900 is reported
+      message("v141_clang_c2 toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
+      set(CLANG_IN_VS "1")
+    ENDIF()
   
-  # We want our project to also run on Windows XP
-  # 1900 (VS2015) is not supported but we leave here
-  IF(MSVC_VERSION VERSION_LESS 1910 )
-    IF(NOT CLANG_IN_VS STREQUAL "1")
-      set(CMAKE_GENERATOR_TOOLSET "v140_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2015
-      # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
-      add_definitions("/Zc:threadSafeInit-")
-  ENDIF()
-  ELSE()
-    IF(NOT CLANG_IN_VS STREQUAL "1")
-      set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017
-      # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
-      add_definitions("/Zc:threadSafeInit-")
+    # We want our project to also run on Windows XP
+    # 1900 (VS2015) is not supported but we leave here
+    IF(MSVC_VERSION VERSION_LESS 1910 )
+      IF(NOT CLANG_IN_VS STREQUAL "1")
+        set(CMAKE_GENERATOR_TOOLSET "v140_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2015
+        # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+        add_definitions("/Zc:threadSafeInit-")
+    ENDIF()
+    ELSE()
+      IF(NOT CLANG_IN_VS STREQUAL "1")
+        set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017
+        # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+        add_definitions("/Zc:threadSafeInit-")
+      ENDIF()
     ENDIF()
   ENDIF()
 
