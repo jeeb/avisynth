@@ -813,8 +813,8 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
     {                                                     \
         const double t = env2->GetVar("rgbadjust_" #var_name, DBL_MIN); \
         if (t != DBL_MIN) {                             \
-            config->rgba[##plane_num].internal_name = t;  \
-            config->rgba[##plane_num].changed = true;     \
+            config->rgba[plane_num].internal_name = t;  \
+            config->rgba[plane_num].changed = true;     \
         }                                               \
     }
 
