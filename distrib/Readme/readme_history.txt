@@ -17,6 +17,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Speedup: ConvertToY12/16... for RGB or YUY2 sources where 4:4:4 or YV16 intermediate clip was used internally
   (~1.5-2x speed, was a regression in Avs+, use intermediate cache again)
 - Fix: Allow ExtractY on greyscale clips
+- ImageReader/ImageSource: use cache before FreezeFrame when result is a multiframe clip (regression since an early AVS+ version)
 
 20180702 r2728
 --------------
