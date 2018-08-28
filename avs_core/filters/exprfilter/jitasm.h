@@ -457,6 +457,7 @@ struct Reg32 : Opd32 {
 struct Reg64 : Opd64 {
 	Reg64() : Opd64(RegID::CreateSymbolicRegID(R_TYPE_SYMBOLIC_GP)) {}
 	explicit Reg64(PhysicalRegID id) : Opd64(RegID::CreatePhysicalRegID(R_TYPE_GP, id)) {}
+  explicit Reg64(RegID reg_id) : Opd64(reg_id) {} // VS2017 /permissive-
 };
 typedef Reg64 Reg;
 #else
