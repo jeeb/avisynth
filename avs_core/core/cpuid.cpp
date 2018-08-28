@@ -19,13 +19,23 @@
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <avs/cpuid.h>
+#include <avs/config.h>
+#include <stdint.h>
 #include <intrin.h>
 
 #define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
 
-#ifndef _XCR_XFEATURE_ENABLED_MASK
-#define _XCR_XFEATURE_ENABLED_MASK 0
+static uint32_t get_xcr0()
+{
+    uint32_t xcr0;
+    // _XCR_XFEATURE_ENABLED_MASK: 0
+#if defined(GCC)
+    __asm__("xgetbv" : "=a" (xcr0) : "c" (0) : "%edx");
+#else
+    xcr0 = (uint32_t)_xgetbv(0);
 #endif
+    return xcr0;
+}
 
 static int CPUCheckForExtensions()
 {
@@ -62,8 +72,8 @@ static int CPUCheckForExtensions()
   bool avx_supported = IS_BIT_SET(cpuinfo[2], 28);
   if (xgetbv_supported && avx_supported)
   {
-    unsigned long long xgetbv0 = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
-    if ((xgetbv0 & 0x6ull) == 0x6ull) {
+    uint32_t xgetbv0_32 = get_xcr0();
+    if ((xgetbv0_32 & 0x6u) == 0x6u) {
       result |= CPUF_AVX;
       if (IS_BIT_SET(cpuinfo[2], 12))
         result |= CPUF_FMA3;
@@ -71,8 +81,8 @@ static int CPUCheckForExtensions()
       if (IS_BIT_SET(cpuinfo[1], 5))
         result |= CPUF_AVX2;
     }
-    if((xgetbv0 & (0x7ull << 5)) && // OPMASK: upper-256 enabled by OS
-       (xgetbv0 & (0x3ull << 1))) { // XMM/YMM enabled by OS
+    if((xgetbv0_32 & (0x7u << 5)) && // OPMASK: upper-256 enabled by OS
+       (xgetbv0_32 & (0x3u << 1))) { // XMM/YMM enabled by OS
       // Verify that XCR0[7:5] = ‘111b’ (OPMASK state, upper 256-bit of ZMM0-ZMM15 and
       // ZMM16-ZMM31 state are enabled by OS)
       /// and that XCR0[2:1] = ‘11b’ (XMM state and YMM state are enabled by OS).
