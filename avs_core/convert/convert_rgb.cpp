@@ -789,17 +789,16 @@ static void convert_rgbp_to_rgb_c(const BYTE *(&srcp)[4], BYTE * dstp, int (&src
     size_t x;
     // not proud of it but it works
     for (x = 0; x < width; ++x) {
-      pixel_t G = reinterpret_cast<const pixel_t *>(srcp[0])[x];
-      pixel_t B = reinterpret_cast<const pixel_t *>(srcp[1])[x];
-      pixel_t R = reinterpret_cast<const pixel_t *>(srcp[2])[x];
-      pixel_t A;
-      if constexpr(target_numcomponents==4) // either from A channel or default transparent constant
-        A = hasSrcAlpha ? reinterpret_cast<const pixel_t *>(srcp[3])[x] : (1<<(8*sizeof(pixel_t))) -1; // 255/65535
+      const pixel_t G = reinterpret_cast<const pixel_t *>(srcp[0])[x];
+      const pixel_t B = reinterpret_cast<const pixel_t *>(srcp[1])[x];
+      const pixel_t R = reinterpret_cast<const pixel_t *>(srcp[2])[x];
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+0] = B;
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+1] = G;
       reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+2] = R;
-      if constexpr(target_numcomponents==4)
-        reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents+3] = A;
+      if constexpr (target_numcomponents == 4) { // either from A channel or default transparent constant
+        const pixel_t A = hasSrcAlpha ? reinterpret_cast<const pixel_t *>(srcp[3])[x] : (1 << (8 * sizeof(pixel_t))) - 1; // 255/65535
+        reinterpret_cast<pixel_t *>(dstp)[x*target_numcomponents + 3] = A;
+      }
     }
 
     dstp -= dst_pitch; // source packed RGB is upside down
