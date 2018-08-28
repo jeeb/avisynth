@@ -2073,7 +2073,8 @@ PClip FilteredResize::CreateResizeH(PClip clip, double subrange_left, double sub
   if (subrange_left == 0 && subrange_width == target_width && subrange_width == vi.width) {
     return clip;
   }
-
+  /*
+  // intentionally left here: don't use crop at special edge cases to avoid inconsistent results across params/color spaces
   if (subrange_left == int(subrange_left) && subrange_width == target_width
    && subrange_left >= 0 && subrange_left + subrange_width <= vi.width) {
     const int mask = ((vi.IsYUV() || vi.IsYUVA()) && !vi.IsY()) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
@@ -2081,7 +2082,7 @@ PClip FilteredResize::CreateResizeH(PClip clip, double subrange_left, double sub
     if (((int(subrange_left) | int(subrange_width)) & mask) == 0)
       return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
   }
-
+  */
   // Convert interleaved yuv to planar yuv
   PClip result = clip;
   if (vi.IsYUY2()) {
@@ -2103,7 +2104,8 @@ PClip FilteredResize::CreateResizeV(PClip clip, double subrange_top, double subr
   if (subrange_top == 0 && subrange_height == target_height && subrange_height == vi.height) {
     return clip;
   }
-
+  /*
+  // intentionally left here: don't use crop at special edge cases to avoid inconsistent results across params/color spaces
   if (subrange_top == int(subrange_top) && subrange_height == target_height
    && subrange_top >= 0 && subrange_top + subrange_height <= vi.height) {
     const int mask = ((vi.IsYUV() || vi.IsYUVA()) && !vi.IsY()) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
@@ -2111,6 +2113,7 @@ PClip FilteredResize::CreateResizeV(PClip clip, double subrange_top, double subr
     if (((int(subrange_top) | int(subrange_height)) & mask) == 0)
       return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);
   }
+  */
   return new FilteredResizeV(clip, subrange_top, subrange_height, target_height, func, env);
 }
 
