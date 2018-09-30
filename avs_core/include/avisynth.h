@@ -408,6 +408,8 @@ struct AVS_Linkage {
   // end class PDevice
   */
 
+	bool            (VideoFrame::*VdieoFrame_IsPropertyWritable)() const;
+
   /**********************************************************************/
 };
 
@@ -986,18 +988,20 @@ public:
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
-  //bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
-  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
+  bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_IsPropertyWritable)())
+  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VdieoFrame_SetProperty)(key, value))
 
   // if key is not found, returns nullptr
   const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty)(key))
 
   // if key is not found or had wrong type, returns supplied default value
-  PVideoFrame GetProperty(const char* key, PVideoFrame def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Frame)(key, def))
-  int GetProperty(const char* key, int def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Int)(key, def))
-  double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Float)(key, def))
-  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(DeleteProperty)(key))
-  // PDevice GetDevice() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetDevice)())
+  PVideoFrame GetProperty(const char* key, PVideoFrame def) const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetProperty_Frame)(key, def))
+    int GetProperty(const char* key, int def) const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetProperty_Int)(key, def))
+  double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetProperty_Float)(key, def))
+
+  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(VdieoFrame_DeleteProperty)(key))
+
+  //PDevice GetDevice() const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetDevice)())
 
   // 0: OK, 1: NG, -1: disabled or non CPU frame
   int CheckMemory() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_CheckMemory)())
@@ -1714,7 +1718,10 @@ public:
   virtual int __stdcall GetDeviceIndex() const  = 0;
   virtual void* __stdcall GetDeviceStream() const = 0;
   virtual void __stdcall DeviceAddCallback(void(*cb)(void*), void* user_data) = 0;
+
+  virtual PVideoFrame __stdcall GetFrame(PClip c, int n, const PDevice& device) = 0;
   */
+	virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
 };
 
 // support inteface conversion

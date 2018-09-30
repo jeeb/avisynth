@@ -555,11 +555,10 @@ bool VideoFrame::IsWritable() const {
   return false;
 }
 
-/*
 bool VideoFrame::IsPropertyWritable() const {
-  return (refcount == 1);
+	return (refcount == 1);
 }
-*/
+
 BYTE* VideoFrame::GetWritePtr(int plane) const {
   if (!plane || plane == PLANAR_Y || plane == PLANAR_G) { // planar RGB order GBR
     if (vfb->GetRefcount()>1) {
@@ -621,8 +620,11 @@ bool VideoFrame::DeleteProperty(const char* key) {
   std::unique_lock<std::mutex> global_lock(avsmap->mutex);
 	return (avsmap->data.erase(key) > 0);
 }
-
-
+/*
+PDevice VideoFrame::GetDevice() const {
+  return vfb->device;
+}
+*/
 int VideoFrame::CheckMemory() const {
 #ifdef _DEBUG
   if (vfb->data /*&& vfb->device->device_type == DEV_TYPE_CPU*/) {
@@ -1336,7 +1338,7 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
 /**********************************************************************/
-  // AviSynth+CUDA additions
+  // AviSynth Neo additions
   &GetAvsEnv,
   &VideoFrame::SetProperty,
   &VideoFrame::GetProperty,
@@ -1387,6 +1389,8 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &PDevice::GetIndex,
   &PDevice::GetName,
   // end class PDevice
+
+	&VideoFrame::IsPropertyWritable,
 
 // this part should be identical with struct AVS_Linkage in avisynth.h
 

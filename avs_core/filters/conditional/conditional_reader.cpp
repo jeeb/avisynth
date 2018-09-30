@@ -835,6 +835,7 @@ PVideoFrame __stdcall AddProp::GetFrame(int n, IScriptEnvironment* env)
     return frame;
   }
 
+	static_cast<InternalEnvironment*>(env)->MakePropertyWritable(&frame);
   if (result.IsInt())
     frame->SetProperty(name, result.AsInt());
   else if (result.IsBool())
