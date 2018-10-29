@@ -222,8 +222,7 @@ extern const AVSFunction Script_functions[] = {
   { "Assert", BUILTIN_FUNC_PREFIX, "b[message]s", Assert },
   { "Assert", BUILTIN_FUNC_PREFIX, "s", AssertEval },
 
-  { "SetMemoryMax", BUILTIN_FUNC_PREFIX, "[]i", SetMemoryMax },
-//   { "SetMemoryMax", BUILTIN_FUNC_PREFIX, "[]i[type]i[index]i", SetMemoryMax }, // Neo
+  { "SetMemoryMax", BUILTIN_FUNC_PREFIX, "[]i[type]i[index]i", SetMemoryMax }, // Neo
   { "SetWorkingDir", BUILTIN_FUNC_PREFIX, "s", SetWorkingDir },
   { "Exist",         BUILTIN_FUNC_PREFIX, "s[utf8]b", Exist },
 
@@ -269,7 +268,7 @@ extern const AVSFunction Script_functions[] = {
   { "SetLogParams",     BUILTIN_FUNC_PREFIX, "[target]s[level]i", SetLogParams },
   { "LogMsg",              BUILTIN_FUNC_PREFIX, "si", LogMsg },
   { "SetCacheMode",     BUILTIN_FUNC_PREFIX, "[mode]i", SetCacheMode }, // Neo
- // { "SetDeviceOpt",     BUILTIN_FUNC_PREFIX, "[opt]i[val]i", SetDeviceOpt }, // Neo
+  { "SetDeviceOpt",     BUILTIN_FUNC_PREFIX, "[opt]i[val]i", SetDeviceOpt }, // Neo
 
   { "IsY",       BUILTIN_FUNC_PREFIX, "c", IsY },
   { "Is420",     BUILTIN_FUNC_PREFIX, "c", Is420 },
@@ -770,8 +769,6 @@ AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env) { return env-
 AVSValue ScriptNameUtf8(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptNameUtf8$"); }
 AVSValue ScriptFileUtf8(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptFileUtf8$"); }
 AVSValue ScriptDirUtf8(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptDirUtf8$"); }
-// Avs+ style SetMemoryMax
-AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt(0)); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
 
 AVSValue Muldiv(AVSValue args, void*, IScriptEnvironment* ) { return int(MulDiv(args[0].AsInt(), args[1].AsInt(), args[2].AsInt())); }
@@ -1793,7 +1790,7 @@ AVSValue SetCacheMode(AVSValue args, void*, IScriptEnvironment* env)
   envI->SetCacheMode((CacheMode)args[0].AsInt());
 	return AVSValue();
 }
-/*
+
 AVSValue SetDeviceOpt(AVSValue args, void*, IScriptEnvironment* env)
 {
     InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
@@ -1801,6 +1798,7 @@ AVSValue SetDeviceOpt(AVSValue args, void*, IScriptEnvironment* env)
     return AVSValue();
 }
 
+// Neo style
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env)
 {
   int memMax = args[0].AsInt(0);
@@ -1814,7 +1812,7 @@ AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env)
   InternalEnvironment *env2 = static_cast<InternalEnvironment*>(env);
   return env2->SetMemoryMax((AvsDeviceType)deviceType, deviceIndex, memMax);
 }
-*/
+
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsY(); }
 AVSValue Is420(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).Is420(); }
 AVSValue Is422(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).Is422(); }

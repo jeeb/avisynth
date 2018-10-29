@@ -51,7 +51,7 @@ private:
 
   IScriptEnvironment* Env;
   CachePimpl* _pimpl;
-  // Device* device; // not in Classic Avs+
+  Device* device;
   void FillAudioZeros(void* buf, int start_offset, int count);
 
 public:
@@ -66,10 +66,10 @@ public:
   bool __stdcall GetParity(int n);
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
-  /*Device* GetDevice() const { return device; }*/
+  Device* GetDevice() const { return device; }
 
-  //static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  //static bool __stdcall IsCache(const PClip& c);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static bool __stdcall IsCache(const PClip& c);
 
 };
 

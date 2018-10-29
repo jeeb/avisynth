@@ -1,5 +1,5 @@
 #include "FilterGraph.h"
-  #include "DeviceManager.h"
+#include "DeviceManager.h"
 #include "InternalEnvironment.h"
 
 #include <avs/win.h>

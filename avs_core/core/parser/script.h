@@ -85,7 +85,6 @@ AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env) ;
 AVSValue Import(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
-
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env);
 
 /*****   Entry/Factory Methods   ******/
@@ -259,9 +258,9 @@ AVSValue SetLogParams(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue SetCacheMode(AVSValue args, void*, IScriptEnvironment* env);
-/*
+AVSValue SetDeviceOpt(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
-*/
+
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Is420(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Is422(AVSValue args, void*, IScriptEnvironment* env);

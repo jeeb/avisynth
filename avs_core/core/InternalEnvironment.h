@@ -41,12 +41,12 @@ enum CacheMode {
 
 	CACHE_DEFAULT = CACHE_FAST_START,
 };
-/*
+
 enum DeviceOpt {
     DEV_CUDA_PINNED_HOST, // allocate CPU frame with CUDA pinned host memory
     DEV_FREE_THRESHOLD,   // free request count threshold to free frame
 };
-*/
+
 class OneTimeLogTicket
 {
 public:
@@ -162,17 +162,17 @@ public:
 
 
   virtual void __stdcall SetGraphAnalysis(bool enable) = 0;
-/*
+
   virtual Device* __stdcall SetCurrentDevice(Device* device) = 0;
   virtual Device* __stdcall GetCurrentDevice() const = 0;
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) = 0;
   virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device) = 0;
-*/
+
   virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) = 0;
 
-  //using INeoEnv::SetMemoryMax;
+  using INeoEnv::SetMemoryMax;
   using INeoEnv::Invoke;
-  //using INeoEnv::NewVideoFrame;
+  using INeoEnv::NewVideoFrame;
   using INeoEnv::SaveString;
 
   // Nekopanda: support multiple prefetcher //
@@ -189,9 +189,8 @@ public:
   virtual CacheMode __stdcall GetCacheMode() = 0;
 	virtual bool& __stdcall GetSupressCaching() = 0;
 
-  /*
   virtual void __stdcall SetDeviceOpt(DeviceOpt mode, int val) = 0;
-  */
+
   virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar) = 0;
   virtual bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
     const char* name, const Function *f, const AVSValue& args, const char* const* arg_names) = 0;

@@ -13,7 +13,7 @@
 #include "internal.h"
 #include "ThreadPool.h"
 #include "BufferPool.h"
-//#include "DeviceManager.h"
+#include "DeviceManager.h"
 #include "InternalEnvironment.h"
 
 #endif  // _ThreadScriptEnvironment_H

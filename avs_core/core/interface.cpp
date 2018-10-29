@@ -55,6 +55,7 @@
     #include <avs/posix.h>
 #endif
 #include "InternalEnvironment.h"
+#include "DeviceManager.h"
 #include "AVSMap.h"
 #include "function.h"
 
@@ -620,11 +621,11 @@ bool VideoFrame::DeleteProperty(const char* key) {
   std::unique_lock<std::mutex> global_lock(avsmap->mutex);
 	return (avsmap->data.erase(key) > 0);
 }
-/*
+
 PDevice VideoFrame::GetDevice() const {
   return vfb->device;
 }
-*/
+
 int VideoFrame::CheckMemory() const {
 #ifdef _DEBUG
   if (vfb->data /*&& vfb->device->device_type == DEV_TYPE_CPU*/) {
@@ -1088,6 +1089,29 @@ IFunction * PFunction::GetPointerWithAddRef() const { if (e) e->AddRef(); return
 void PFunction::Init(IFunction* p) { e = p; if (e) e->AddRef(); }
 void PFunction::Set(IFunction* p) { if (p) p->AddRef(); if (e) e->Release(); e = p; }
 
+PDevice::PDevice() { CONSTRUCTOR0(); }
+void PDevice::CONSTRUCTOR0() { e = 0; }
+
+PDevice::PDevice(Device* p) { CONSTRUCTOR1(p); }
+void PDevice::CONSTRUCTOR1(Device* p) { e = p; }
+
+PDevice::PDevice(const PDevice& p) { CONSTRUCTOR2(p); }
+void PDevice::CONSTRUCTOR2(const PDevice& p) { e = p.e; }
+
+PDevice& PDevice::operator=(Device* p) { return OPERATOR_ASSIGN0(p); }
+PDevice& PDevice::OPERATOR_ASSIGN0(Device* p) { e = p; return *this; }
+
+PDevice& PDevice::operator=(const PDevice& p) { return OPERATOR_ASSIGN1(p); }
+PDevice& PDevice::OPERATOR_ASSIGN1(const PDevice& p) { e = p.e; return *this; }
+
+PDevice::~PDevice() { }
+void PDevice::DESTRUCTOR() { }
+
+AvsDeviceType PDevice::GetType() const { return e ? e->device_type : DEV_TYPE_NONE; }
+int PDevice::GetId() const { return e ? e->device_id : -1; }
+int PDevice::GetIndex() const { return e ? e->device_index : -1; }
+const char* PDevice::GetName() const { return e ? e->GetName() : nullptr; }
+
 INeoEnv* __stdcall GetAvsEnv(IScriptEnvironment* env) { return static_cast<InternalEnvironment*>(env); }
 
 PNeoEnv::PNeoEnv(IScriptEnvironment* env) : p(static_cast<InternalEnvironment*>(env)) { }
@@ -1304,7 +1328,6 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
-
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
@@ -1346,7 +1369,7 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoFrame::GetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::DeleteProperty,
-  //&VideoFrame::GetDevice,
+  &VideoFrame::GetDevice,
   &VideoFrame::CheckMemory,
 
   // class AVSMapValue
@@ -1376,8 +1399,7 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &PFunction::DESTRUCTOR,
   // end PFunction
 
-  /*
-  // class PDevice
+    // class PDevice
   &PDevice::CONSTRUCTOR0,
   &PDevice::CONSTRUCTOR1,
   &PDevice::CONSTRUCTOR2,

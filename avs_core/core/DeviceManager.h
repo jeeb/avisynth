@@ -6,6 +6,7 @@
 #include <memory>
 
 class InternalEnvironment;
+enum DeviceOpt;
 
 struct DeviceCompleteCallbackData {
   void(*cb)(void*);
@@ -46,7 +47,7 @@ public:
     virtual std::unique_ptr<std::vector<DeviceCompleteCallbackData>> GetAndClearCallbacks() = 0;
     virtual void SetActiveToCurrentThread(InternalEnvironment* env) = 0;
     virtual void* GetComputeStream() = 0;
-    //virtual void SetDeviceOpt(DeviceOpt opt, int val, InternalEnvironment* env) = 0;
+    virtual void SetDeviceOpt(DeviceOpt opt, int val, InternalEnvironment* env) = 0;
 		virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment) = 0;
 };
 
@@ -68,7 +69,7 @@ public:
 		int GetNumDevices() const { return numDevices; }
 		int GetNumDevices(AvsDeviceType device_type) const;
 
-    //void SetDeviceOpt(DeviceOpt opt, int val, InternalEnvironment* env);
+    void SetDeviceOpt(DeviceOpt opt, int val, InternalEnvironment* env);
 };
 
 class DeviceSetter {

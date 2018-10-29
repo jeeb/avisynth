@@ -365,7 +365,7 @@ struct AVS_Linkage {
   int                 (VideoFrame::* VideoFrame_GetProperty_Int)(const char* key, int def) const;
   double              (VideoFrame::* VideoFrame_GetProperty_Float)(const char* key, double def) const;
   bool                (VideoFrame::* VideoFrame_DeleteProperty)(const char* key);
-  //PDevice(VideoFrame::* VideoFrame_GetDevice)() const;
+  PDevice             (VideoFrame::* VideoFrame_GetDevice)() const;
   int                 (VideoFrame::* VideoFrame_CheckMemory)() const;
 
   // class AVSMapValue
@@ -393,7 +393,7 @@ struct AVS_Linkage {
   PFunction&      (PFunction::*PFunction_OPERATOR_ASSIGN1)(const PFunction& other);
   void            (PFunction::*PFunction_DESTRUCTOR)();
   // end PFunction
-  /*
+
   // class PDevice
   void            (PDevice::*PDevice_CONSTRUCTOR0)();
   void            (PDevice::*PDevice_CONSTRUCTOR1)(Device* p);
@@ -406,9 +406,8 @@ struct AVS_Linkage {
   int             (PDevice::*PDevice_GetIndex)() const;
   const char*     (PDevice::*PDevice_GetName)() const;
   // end class PDevice
-  */
 
-	bool            (VideoFrame::*VdieoFrame_IsPropertyWritable)() const;
+	bool            (VideoFrame::*VideoFrame_IsPropertyWritable)() const;
 
   /**********************************************************************/
 };
@@ -449,6 +448,38 @@ extern const AVS_Linkage* AVS_linkage;
 
 #endif
 
+class PDevice
+{
+public:
+  PDevice() AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR0)())
+    PDevice(Device* p) AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR1)(p))
+    PDevice(const PDevice& p) AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR2)(p))
+    PDevice& operator=(Device* p) AVS_BakedCode(return AVS_LinkCallV(PDevice_OPERATOR_ASSIGN0)(p))
+    PDevice& operator=(const PDevice& p) AVS_BakedCode(return AVS_LinkCallV(PDevice_OPERATOR_ASSIGN1)(p))
+    ~PDevice() AVS_BakedCode(AVS_LinkCall_Void(PDevice_DESTRUCTOR)())
+
+    int operator!() const { return !e; }
+  operator void*() const { return e; }
+  Device* operator->() const { return e; }
+
+  AvsDeviceType GetType() const AVS_BakedCode(return AVS_LinkCallOptDefault(PDevice_GetType, DEV_TYPE_NONE))
+    int GetId() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetId)())
+    int GetIndex() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetIndex)())
+    const char* GetName() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetName)())
+
+private:
+  Device * e;
+
+#ifdef BUILDING_AVSCORE
+public:
+  void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
+  void CONSTRUCTOR1(Device* p);
+  void CONSTRUCTOR2(const PDevice& p);
+  PDevice& OPERATOR_ASSIGN0(Device* p);
+  PDevice& OPERATOR_ASSIGN1(const PDevice& p);
+  void DESTRUCTOR();
+#endif
+};
 struct VideoInfo {
   int width, height;    // width=0 means no video
   unsigned fps_numerator, fps_denominator;
@@ -845,14 +876,10 @@ class VideoFrameBuffer {
   volatile long refcount;
 
   // AVS+CUDA extension, does not break plugins if appended here
-  //Device* device; // Neo
+  Device* device;
 
 protected:
-#ifdef SIZETMOD
-  VideoFrameBuffer(size_t size);
-#else
-  VideoFrameBuffer(int size);
-#endif
+  VideoFrameBuffer(int size, int margin, Device* device);
   VideoFrameBuffer();
   ~VideoFrameBuffer();
 
@@ -988,20 +1015,20 @@ public:
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
-  bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_IsPropertyWritable)())
-  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VdieoFrame_SetProperty)(key, value))
+  bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
+  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
 
   // if key is not found, returns nullptr
   const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty)(key))
 
   // if key is not found or had wrong type, returns supplied default value
-  PVideoFrame GetProperty(const char* key, PVideoFrame def) const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetProperty_Frame)(key, def))
-    int GetProperty(const char* key, int def) const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetProperty_Int)(key, def))
-  double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetProperty_Float)(key, def))
+  PVideoFrame GetProperty(const char* key, PVideoFrame def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Frame)(key, def))
+  int GetProperty(const char* key, int def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Int)(key, def))
+  double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Float)(key, def))
 
-  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(VdieoFrame_DeleteProperty)(key))
+  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(VideoFrame_DeleteProperty)(key))
 
-  //PDevice GetDevice() const AVS_BakedCode(return AVS_LinkCall(VdieoFrame_GetDevice)())
+  PDevice GetDevice() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetDevice)())
 
   // 0: OK, 1: NG, -1: disabled or non CPU frame
   int CheckMemory() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_CheckMemory)())
@@ -1090,6 +1117,11 @@ enum CachePolicyHint {
   CACHE_IS_MTGUARD_REQ,
   CACHE_IS_MTGUARD_ANS,
 
+  CACHE_AVSPLUS_CUDA_CONSTANTS = 600,
+
+  CACHE_GET_DEV_TYPE,           // Device types a filter can return
+  CACHE_GET_CHILD_DEV_TYPE,    // Device types a fitler can receive
+
   CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
 
 };
@@ -1167,7 +1199,7 @@ public:
   AVSValue(const AVSValue* a, int size) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR8)(a, size) )
   AVSValue(const AVSValue& a, int size) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR8)(&a, size) )
   AVSValue(const AVSValue& v) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR9)(v) )
-  AVSValue(const PFunction& n) AVS_BakedCode(AVS_LinkCall_Void(AVSValue_CONSTRUCTOR11)(c))
+  AVSValue(const PFunction& n) AVS_BakedCode(AVS_LinkCall_Void(AVSValue_CONSTRUCTOR11)(n))
 
   ~AVSValue() AVS_BakedCode( AVS_LinkCall_Void(AVSValue_DESTRUCTOR)() )
   AVSValue& operator=(const AVSValue& v) AVS_BakedCode( return AVS_LinkCallV(AVSValue_OPERATOR_ASSIGN)(v) )
@@ -1182,8 +1214,8 @@ public:
 //  bool IsLong() const;
   bool IsFloat() const AVS_BakedCode( return AVS_LinkCall(IsFloat)() )
   bool IsString() const AVS_BakedCode( return AVS_LinkCall(IsString)() )
-  bool IsArray() const AVS_BakedCode( return AVS_LinkCall(IsArray)() )
-  bool IsFunction() const AVS_BakedCode(return AVS_LinkCall(IsFunction)() )
+  bool IsArray() const AVS_BakedCode(return AVS_LinkCall(IsArray)())
+  bool IsFunction() const AVS_BakedCode( return AVS_LinkCall(IsFunction)() )
 
   PClip AsClip() const AVS_BakedCode( return AVS_LinkCall(AsClip)() )
   bool AsBool() const AVS_BakedCode( return AVS_LinkCall(AsBool1)() )
@@ -1353,40 +1385,6 @@ public:
 #endif
 };
 
-/*
-class PDevice
-{
-public:
-  PDevice() AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR0)())
-  PDevice(Device* p) AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR1)(p))
-  PDevice(const PDevice& p) AVS_BakedCode(AVS_LinkCall_Void(PDevice_CONSTRUCTOR2)(p))
-  PDevice& operator=(Device* p) AVS_BakedCode(return AVS_LinkCallV(PDevice_OPERATOR_ASSIGN0)(p))
-  PDevice& operator=(const PDevice& p) AVS_BakedCode(return AVS_LinkCallV(PDevice_OPERATOR_ASSIGN1)(p))
-  ~PDevice() AVS_BakedCode(AVS_LinkCall_Void(PDevice_DESTRUCTOR)())
-
-  int operator!() const { return !e; }
-  operator void*() const { return e; }
-  Device* operator->() const { return e; }
-
-  AvsDeviceType GetType() const AVS_BakedCode(return AVS_LinkCallOptDefault(PDevice_GetType, DEV_TYPE_NONE))
-  int GetId() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetId)())
-  int GetIndex() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetIndex)())
-  const char* GetName() const AVS_BakedCode(return AVS_LinkCall(PDevice_GetName)())
-
-private:
-  Device * e;
-
-#ifdef BUILDING_AVSCORE
-public:
-  void CONSTRUCTOR0();
-  void CONSTRUCTOR1(Device* p);
-  void CONSTRUCTOR2(const PDevice& p);
-  PDevice& OPERATOR_ASSIGN0(Device* p);
-  PDevice& OPERATOR_ASSIGN1(const PDevice& p);
-  void DESTRUCTOR();
-#endif
-};
-*/
 
 #undef CALL_MEMBER_FN
 #undef AVS_LinkCallOptDefault
@@ -1510,7 +1508,15 @@ enum AvsEnvProperty
   AEP_THREADPOOL_THREADS = 3,
   AEP_FILTERCHAIN_THREADS = 4,
   AEP_THREAD_ID = 5,
-  AEP_VERSION = 6
+  AEP_VERSION = 6,
+
+  // Neo additionals
+  AEP_NUM_DEVICES = 901,
+  AEP_FRAME_ALIGN = 902,
+  AEP_PLANE_ALIGN = 903,
+
+  AEP_SUPPRESS_THREAD = 921,
+  AEP_GETFRAME_RECURSIVE = 922
 };
 
 enum AvsAllocType
@@ -1661,10 +1667,9 @@ public:
 
   // Allocate new video frame
   // Align parameter is no longer supported
-  /* Neo versions
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi) = 0; // current device is used
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device) = 0;
-  */
+
   // Frame related operations
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
   virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
@@ -1694,9 +1699,8 @@ public:
 
   // Setting
   virtual int __stdcall SetMemoryMax(int mem) = 0;
-  /* Neo
   virtual int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem) = 0;
-  */
+
   virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
   virtual int __stdcall SetWorkingDir(const char * newdir) = 0;
   virtual void* __stdcall ManageCache(int key, void* data) = 0;
@@ -1709,7 +1713,6 @@ public:
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
 
-  /*
   // CUDA Support
   virtual PDevice __stdcall GetDevice(AvsDeviceType dev_type, int dev_index) const = 0;
   virtual PDevice __stdcall GetDevice() const = 0; // get current device
@@ -1720,7 +1723,7 @@ public:
   virtual void __stdcall DeviceAddCallback(void(*cb)(void*), void* user_data) = 0;
 
   virtual PVideoFrame __stdcall GetFrame(PClip c, int n, const PDevice& device) = 0;
-  */
+
 	virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
 };
 
