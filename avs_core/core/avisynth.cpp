@@ -1521,6 +1521,10 @@ public:
     {
     case AEP_THREAD_ID:
       return DISPATCH(thread_id);
+    case AEP_SUPPRESS_THREAD:
+      return DISPATCH(suppressThreadCount);
+    case AEP_GETFRAME_RECURSIVE:
+      return DISPATCH(getFrameRecursiveCount);
     default:
       return core->GetProperty(prop);
     }
