@@ -35,7 +35,7 @@
 #define __Histogram_H__
 
 #include <avisynth.h>
-
+#include <vector>
 
 /********************************************************************
 ********************************************************************/
@@ -87,6 +87,10 @@ private:
   bool markers; // paint hazardous YUV area
   int origwidth;
   int origheight;
+
+  int E167;
+  std::vector<uint16_t> exptab;
+  void ClassicLUTInit();
 };
 
 

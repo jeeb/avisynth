@@ -90,6 +90,7 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
       vi.width += (1 << show_bits);
     else
       vi.width = (1 << show_bits);
+    ClassicLUTInit();
   }
 
   if (mode == ModeLevels) {
@@ -1572,15 +1573,32 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 }
 
 
+void Histogram::ClassicLUTInit()
+{
+  int internal_bits_per_pixel = (pixelsize == 4) ? 16 : bits_per_pixel; // 16bit histogram simulation for float
+
+  int tv_range_low = 16 << (internal_bits_per_pixel - 8); // 16
+  int tv_range_hi_luma = 235 << (internal_bits_per_pixel - 8); // 16-235
+  int range_luma = tv_range_hi_luma - tv_range_low; // 219
+  // exptab: population count within a line -> brigtness mapping
+  // exptab index (population) is maximized at 255 during the actual drawing
+  exptab.resize(256);
+  const double K = log(0.5 / 219) / 255.0; // approx -1/42
+  const int limit68 = 68 << (internal_bits_per_pixel - 8);
+  // exptab: pixel values for final drawing
+  exptab[0] = tv_range_low;
+  for (int i = 1; i < 255; i++) {
+    exptab[i] = uint16_t(tv_range_low + 0.5 + range_luma * (1 - exp(i*K))); // 16.5 + 219*
+    if (exptab[i] <= tv_range_hi_luma - limit68)
+      E167 = i; // index of last value less than...  for drawing lower extremes
+  }
+  exptab[255] = tv_range_hi_luma;
+}
+
 PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 {
-  static uint16_t exptab[1 << 12]; // max bits=12
-  static bool init = false;
-  static int E167;
 
   int show_size = 1 << show_bits;
-
-  int lookup_size = 1 << show_bits; // 256, 1024, 4096, 16384, 65536
 
   int hist_tv_range_low = 16 << (show_bits - 8); // 16
   int hist_tv_range_hi_luma = 235 << (show_bits - 8); // 16-235
@@ -1595,21 +1613,6 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
   int tv_range_hi_luma = 235 << (internal_bits_per_pixel - 8); // 16-235
   int range_luma = tv_range_hi_luma - tv_range_low; // 219
   int middle_chroma = 1 << (internal_bits_per_pixel - 1); // 128
-
-  if (!init) {
-    init = true;
-
-    const double K = log(0.5 / 219) / 255.0; // approx -1/42
-    const int limit68 = 68 << (internal_bits_per_pixel - 8);
-    // exptab: pixel values for final drawing
-    exptab[0] = tv_range_low;
-    for (int i = 1; i < 255; i++) {
-      exptab[i] = uint16_t(tv_range_low + 0.5 + range_luma * (1 - exp(i*K))); // 16.5 + 219*
-      if (exptab[i] <= tv_range_hi_luma - limit68)
-        E167 = i; // index of last value less than...  for drawing lower extremes
-    }
-    exptab[255] = tv_range_hi_luma;
-  }
 
   const int source_width = origwidth;
   const int xstart = keepsource ? origwidth : 0; // drawing starts at this column
@@ -1702,7 +1705,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
           for (int x = 0; x < show_size; ++x) {
             int h = hist[x];
             if (x<hist_tv_range_low || x == hist_mid_range_luma || x>hist_tv_range_hi_luma) {
-              dstp32[x] = (exptab[min(E167, hist[x])] + (68 << (internal_bits_per_pixel - 8))) / 65535.0f; // fake 0..65535 to 0..1.0
+              dstp32[x] = (exptab[min(E167, h)] + (68 << (internal_bits_per_pixel - 8))) / 65535.0f; // fake 0..65535 to 0..1.0
             }
             else {
               dstp32[x] = exptab[min(255, h)] / 65535.0f;

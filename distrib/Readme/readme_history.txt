@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20180828 r27xx
+20181107 r27xx
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
   Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
@@ -19,6 +19,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Fix: Allow ExtractY on greyscale clips
 - ImageReader/ImageSource: use cache before FreezeFrame when result is a multiframe clip (regression since an early AVS+ version)
 - Resizers: don't use crop at special edge cases to avoid inconsistent results across different parameters/color spaces
+- Fix: Histogram 'classic': rare incomplete histogram shown in multithreading environment
 
 20180702 r2728
 --------------
