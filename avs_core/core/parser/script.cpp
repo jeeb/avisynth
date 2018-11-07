@@ -1603,28 +1603,29 @@ static int ProcessType() {
 
   if constexpr(sizeof(void*) == 8)
     return PROCESS_64_ON_64;
+  else {
+    // IsWow64Process is not available on all supported versions of Windows.
+    // Use GetModuleHandle to get a handle to the DLL that contains the function
+    // and GetProcAddress to get a pointer to the function if available.
 
-  // IsWow64Process is not available on all supported versions of Windows.
-  // Use GetModuleHandle to get a handle to the DLL that contains the function
-  // and GetProcAddress to get a pointer to the function if available.
+    BOOL bWoW64Process = FALSE;
+    typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+    LPFN_ISWOW64PROCESS fnIsWow64Process;
+    HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
+    if (hKernel32 == NULL)
+      return PROCESS_UNKNOWN;
 
-  BOOL bWoW64Process = FALSE;
-  typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
-  LPFN_ISWOW64PROCESS fnIsWow64Process;
-  HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
-  if (hKernel32 == NULL)
-    return PROCESS_UNKNOWN;
+    fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(hKernel32, "IsWow64Process");
+    if (fnIsWow64Process != NULL)
+      fnIsWow64Process(GetCurrentProcess(), &bWoW64Process);
+    else
+      return PROCESS_UNKNOWN;
 
-  fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(hKernel32, "IsWow64Process");
-  if (fnIsWow64Process != NULL)
-    fnIsWow64Process(GetCurrentProcess(), &bWoW64Process);
-  else
-    return PROCESS_UNKNOWN;
+    if (bWoW64Process)
+      return PROCESS_32_ON_64; //WoW64
 
-  if (bWoW64Process)
-    return PROCESS_32_ON_64; //WoW64
-
-  return PROCESS_32_ON_32;
+    return PROCESS_32_ON_32;
+  }
 }
 
 AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env) 
