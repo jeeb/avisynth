@@ -148,29 +148,12 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
         throw;
       }
 #ifdef _DEBUG	
-#define SLOW_READOUT_TEST
-  #ifdef SLOW_READOUT_TEST
-      // at threadcount==8, when the _RPT1 debug line (or similar time-consuming command) is present here
-      // random frame==NULL return -> 0xC0000005
-      // !!! some process during the next 1/10000 seconds is overwriting the content of this cache handle (frame) with NULL!
-      // 1/10000 sec delay, but a simple _RPT debug line is enough, albeit the corruption occurs more rarely
-      std::chrono::time_point<std::chrono::high_resolution_clock> t_start2, t_end2;
-      std::chrono::duration<double> elapsed_seconds;
-      t_start2 = std::chrono::high_resolution_clock::now();
-      do {
-        t_end2 = std::chrono::high_resolution_clock::now();
-        elapsed_seconds = t_end2 - t_start2;
-      } while (elapsed_seconds.count() < 1.0 / 10000.0);
-      // end of delay
-      //assert(NULL != cache_handle.first->value); // and now it's NULL!!!
-      assert(NULL != result); // but previously saved value is NOT NULL!!!
-      // P.F. debug lines to be removed when the NULL pointer frame problem is surely solved
-  #endif
       t_end = std::chrono::high_resolution_clock::now();
-      elapsed_seconds = t_end - t_start;
+      std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
       char buf[256];
       if (NULL == cache_handle.first->value) {
+          // fixed bug but who knows
           _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: HEY! got nulled! [%s] n=%6d child=%p frame=%p framebefore=%p SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, elapsed_seconds.count()); // P.F.
           _RPT0(0, buf);
       } else {
