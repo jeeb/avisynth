@@ -347,6 +347,8 @@ public:
   {
     sprintf_s(name, "CUDA %d", n);
 
+		ScopedCUDADevice d(device_index, env);
+
 		CUDA_CHECK(cudaGetDeviceProperties(&prop, device_index));
 
     SetMemoryMax(768); // start with 768MB
@@ -428,7 +430,7 @@ public:
   void MakeStreamWaitCompute(cudaStream_t stream, InternalEnvironment* env)
   {
 #if ENABLE_CUDA_COMPUTE_STREAM
-    std::lock_guard<std::mutex> lock(mutex);
+		std::lock_guard<std::mutex> lock(mutex);
 
     CUDA_CHECK(cudaEventRecord(computeEvent, computeStream));
     CUDA_CHECK(cudaStreamWaitEvent(stream, computeEvent, 0));
