@@ -48,11 +48,15 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
                          const char * _ext, bool _info, IScriptEnvironment* env)
  : GenericVideoFilter(_child), ext(_ext), info(_info)
 {
+  // treat empty input as current directory
+  const char *base_name_good = (*_base_name == 0) ? ".\\" : _base_name;
   // Make sure we have an absolute path.
-  DWORD len = GetFullPathName(_base_name, 0, base_name, NULL);
+  DWORD len = GetFullPathName(base_name_good, 0, base_name, NULL);
+  if (len == 0)
+    env->ThrowError("ImageWriter: GetFullPathName failed. Error code: %d.", GetLastError());
   if (len > sizeof(base_name))
-    env->ThrowError("Path to %s too long.", _base_name);
-  (void)GetFullPathName(_base_name, len, base_name, NULL);
+    env->ThrowError("ImageWriter: Path to %s too long.", _base_name);
+  (void)GetFullPathName(base_name_good, len, base_name, NULL);
 
   if (strchr(base_name, '%') == NULL) {
     base_name[(sizeof base_name)-8] = '\0';
