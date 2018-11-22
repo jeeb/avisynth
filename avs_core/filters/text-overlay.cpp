@@ -184,7 +184,7 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
               (*frame)->GetWritePtr(PLANAR_U),
               (*frame)->GetWritePtr(PLANAR_V) );
   else if (vi.NumComponents() == 1) // Y8, Y16, Y32
-    ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0, vi.BitsPerComponent());
+    ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0, vi.BitsPerComponent(), vi.IsRGB());
   else if (vi.IsPlanar()) {
       if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
           // internal buffer: Y-R, U-G, V-B
@@ -194,7 +194,7 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
             (*frame)->GetWritePtr(PLANAR_B),
             vi.GetPlaneWidthSubsampling(PLANAR_G),  // no subsampling
             vi.GetPlaneHeightSubsampling(PLANAR_G),
-            vi.BitsPerComponent() );
+            vi.BitsPerComponent(), vi.IsRGB() );
       else
         ApplyPlanar((*frame)->GetWritePtr(), pitch,
             (*frame)->GetPitch(PLANAR_U),
@@ -202,7 +202,7 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
             (*frame)->GetWritePtr(PLANAR_V),
             vi.GetPlaneWidthSubsampling(PLANAR_U),
             vi.GetPlaneHeightSubsampling(PLANAR_U),
-            vi.BitsPerComponent());
+            vi.BitsPerComponent(), vi.IsRGB());
   }
 }
 
@@ -250,7 +250,7 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
 
 
 template<int shiftX, int shiftY, int bits_per_pixel>
-void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV)
+void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, bool isRGB)
 {
   const int stepX = 1<<shiftX;
   const int stepY = 1<<shiftY;
@@ -377,7 +377,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
     const float middle_shift_f = 0.0f;
 #else
-    const float middle_shift_f = 0.5f;
+    const float middle_shift_f = isRGB ? 0.0f : 0.5f;
 #endif
     for (int y=yb; y<=yt; y+=stepY) {
       for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
@@ -406,92 +406,92 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
   }
 }
 
-void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int bits_per_pixel) {
+void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int bits_per_pixel, bool isRGB) {
   const int stepX = 1 << shiftX;
   const int stepY = 1 << shiftY;
 
   switch (bits_per_pixel) {
   case 8:
     if (shiftX == 0 && shiftY == 0) {
-      ApplyPlanar_core<0, 0, 8>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      ApplyPlanar_core<0, 0, 8>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
     else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 8>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      ApplyPlanar_core<0, 1, 8>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
-      ApplyPlanar_core<1, 1, 8>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      ApplyPlanar_core<1, 1, 8>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:0
       return;
     }
     break;
   case 10:
     if (shiftX == 0 && shiftY == 0) {
-      ApplyPlanar_core<0, 0, 10>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      ApplyPlanar_core<0, 0, 10>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
     else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 10>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      ApplyPlanar_core<0, 1, 10>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
-      ApplyPlanar_core<1, 1, 10>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      ApplyPlanar_core<1, 1, 10>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:0
       return;
     }
     break;
   case 12:
     if (shiftX == 0 && shiftY == 0) {
-      ApplyPlanar_core<0, 0, 12>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      ApplyPlanar_core<0, 0, 12>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
     else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 12>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      ApplyPlanar_core<0, 1, 12>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
-      ApplyPlanar_core<1, 1, 12>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      ApplyPlanar_core<1, 1, 12>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:0
       return;
     }
     break;
   case 14:
     if (shiftX == 0 && shiftY == 0) {
-      ApplyPlanar_core<0, 0, 14>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      ApplyPlanar_core<0, 0, 14>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
     else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 14>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      ApplyPlanar_core<0, 1, 14>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
-      ApplyPlanar_core<1, 1, 14>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      ApplyPlanar_core<1, 1, 14>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:0
       return;
     }
     break;
   case 16:
     if (shiftX == 0 && shiftY == 0) {
-      ApplyPlanar_core<0, 0, 16>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      ApplyPlanar_core<0, 0, 16>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
     else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 16>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      ApplyPlanar_core<0, 1, 16>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
-      ApplyPlanar_core<1, 1, 16>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      ApplyPlanar_core<1, 1, 16>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:0
       return;
     }
     break;
   case 32:
     if (shiftX == 0 && shiftY == 0) {
-      ApplyPlanar_core<0, 0, 32>(buf, pitch, pitchUV, bufU, bufV); // 4:4:4
+      ApplyPlanar_core<0, 0, 32>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
     else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 32>(buf, pitch, pitchUV, bufU, bufV); // 4:2:2
+      ApplyPlanar_core<0, 1, 32>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
-      ApplyPlanar_core<1, 1, 32>(buf, pitch, pitchUV, bufU, bufV); // 4:2:0
+      ApplyPlanar_core<1, 1, 32>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:0
       return;
     }
     break;
