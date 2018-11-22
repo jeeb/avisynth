@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20181118 r27xx
+20181122 r27xx
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
   Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
@@ -21,6 +21,15 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Resizers: don't use crop at special edge cases to avoid inconsistent results across different parameters/color spaces
 - Fix: Histogram 'classic': rare incomplete histogram shown in multithreading environment
 - Fix: ImageReader and ImageWriter: if path is "" then it works from/to the current directory.
+- GeneralConvolution: Allow 7x7 and 9x9 matrices (was: 3x3 and 5x5)
+- GeneralConvolution: All 8-32 bit formats (was: RGB32 only): YUY2 is converted to/from YV16, RGB24/32/48/64 are treated as planar RGB internally
+  Since 32 bit float input is now possible, matrix elements and bias parameter now is of float type.
+  When the clip is 8-16 bits, they are converted to integer before use.
+- GeneralConvolution: Allow chroma subsampled formats to have their luma _or_ chroma processed. E.g. set chroma=false for a YV12 input.
+- GeneralConvolution: new parameters: boolean luma (true), boolean chroma(true), boolean alpha(true)
+    Default: process all planes. For RGB: luma and chroma parameters are ignored. 
+    Unprocessed planes are copied. Using alpha=false makes RGB32 processing faster, usually A channel is not needed.
+- GeneralConvolution: MT friendly parameter parsing
 
 20180702 r2728
 --------------

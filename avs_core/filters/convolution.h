@@ -42,7 +42,7 @@
 #define __GeneralConvolution_H__
 
 #include <avisynth.h>
-
+#include <vector>
 
 /*****************************************
 ****** General Convolution 2D filter *****
@@ -54,8 +54,11 @@ class GeneralConvolution : public GenericVideoFilter
   * kernel -- to a clip.  Smaller (3x3) kernels have their own code path.  SIMD support forthcoming.
  **/
 {
+  using do_conv_int_t = void(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+  using do_conv_float_t = void(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const float *matrix, float fCountDiv, float fBias);
+
 public:
-    GeneralConvolution(PClip _child, double _divisor, int _nBias, const char * _matrix, bool _autoscale, IScriptEnvironment* _env);
+    GeneralConvolution(PClip _child, double _divisor, float _nBias, const char * _matrix, bool _autoscale, bool _luma, bool _chroma, bool _alpha, IScriptEnvironment* _env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
     static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
@@ -65,40 +68,33 @@ public:
     }
 
 protected:
-    void setMatrix(const char * _matrix, IScriptEnvironment* env);
+    void setMatrix(const char * _matrix, bool _isinteger, IScriptEnvironment* env);
 
 private:      
     double divisor;
     size_t nSize;
     int nBias;
+    float fBias;
     bool autoscale;
 
-    // Messy way of storing matrix, but avoids performance penalties of indirection    
-    int i00;
-    int i10;
-    int i20;
-    int i30;
-    int i40;
-    int i01;
-    int i11;
-    int i21;
-    int i31;
-    int i41;
-    int i02;
-    int i12;
-    int i22;
-    int i32;
-    int i42;
-    int i03;
-    int i13;
-    int i23;
-    int i33;
-    int i43;
-    int i04;
-    int i14;
-    int i24;
-    int i34;
-    int i44;
+    int iCountDiv;
+    float fCountDiv;
+    bool int64needed;
+
+    bool luma;
+    bool chroma;
+    bool alpha;
+
+    std::vector<int> iMatrix;
+    std::vector<float> fMatrix;
+    float fNormalizeSum;
+    int iNormalizeSum;
+    int iWeightSumPositives;
+    int iWeightSumNegatives;
+
+    do_conv_int_t *conversionFnPtr;
+    do_conv_float_t *FconversionFnPtr;
+
 };
 
 

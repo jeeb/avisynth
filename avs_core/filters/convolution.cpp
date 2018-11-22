@@ -39,10 +39,15 @@
 // Avisynth filter: general convolution
 // by Richard Berg (avisynth-dev@richardberg.net)
 // adapted from General Convolution 3D for VDub by Gunnar Thalin (guth@home.se)
+// avs+: all color spaces, 8-32 bits, 7x7, 9x9, luma/chroma/alpha option
 
 #include "convolution.h"
 #include "../core/internal.h"
 
+#include <regex>
+#include <iostream>
+#include <iterator>
+#include <string>
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -50,7 +55,7 @@
 
 extern const AVSFunction Convolution_filters[] = {
 // Please when adding parameters try not to break the legacy order - IanB July 2004
-	{ "GeneralConvolution", BUILTIN_FUNC_PREFIX, "c[bias]i[matrix]s[divisor]f[auto]b", GeneralConvolution::Create },
+	{ "GeneralConvolution", BUILTIN_FUNC_PREFIX, "c[bias]f[matrix]s[divisor]f[auto]b[luma]b[chroma]b[alpha]b", GeneralConvolution::Create },
     /**
       * GeneralConvolution(PClip clip, int divisor=1, int bias=0, string matrix)
       * clip     =  input video
@@ -58,6 +63,9 @@ extern const AVSFunction Convolution_filters[] = {
       * matrix   =  the kernel (3x3 or 5x5).  any kind of whitespace is ok, see example
       * divisor  =  divides the output of the convolution (calculated before adding bias)
       * auto     =  automaticly scale the result based on the sum of the matrix elements
+      * luma     =  apply on luma (if applicable) avs+
+      * chroma   =  apply on chroma (if applicable) avs+
+      * alpha    =  apply on alpha (if applicable e.g. RGB32 converted to planar RGBA) avs+
       *
       * clip.GeneralConvolution(matrix = "1 2 3
       *                                   4 5 6
@@ -72,71 +80,558 @@ extern const AVSFunction Convolution_filters[] = {
 ****** General Convolution 2D filter *****
 *****************************************/
 
+// safe_int_t is int or int64_t. Int is faster but for larger bitdepth int32 overflows
+template<typename pixel_t, int bits_per_pixel, int matrix_size, typename safe_int_t>
+static void do_conv_integer(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias)
+{
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const pixel_t *srcp = reinterpret_cast<const pixel_t *>(srcp8);
+  dst_pitch /= sizeof(pixel_t);
+  src_pitch /= sizeof(pixel_t);
+
+  constexpr int limit = (matrix_size - 1) / 2; // +-1, +-2, +-3
+  constexpr int max_pixel_value = (1 << bits_per_pixel) - 1;
+
+  std::vector<const pixel_t*> src_lineptrs;
+  src_lineptrs.resize(limit + height + limit);
+
+  // prefill line pointers
+  for (int y = -limit; y < height + limit; y++)
+  {
+    if (y < 0)
+      src_lineptrs[y + limit] = srcp + src_pitch * 0;
+    else if (y < height)
+      src_lineptrs[y + limit] = srcp + src_pitch * y;
+    else
+      src_lineptrs[y + limit] = srcp + src_pitch * (height - 1);
+  }
+
+  std::vector<const pixel_t *> src_current_lineptrs(matrix_size); // +/-limit => 2*limit + 1
+
+  for (int y = 0; y < height; ++y) {
+    // prefill current vertical line pointers
+    for (int yy = -limit; yy <= limit; yy++) {
+      src_current_lineptrs[yy + limit] = src_lineptrs[limit + (y + yy)];
+    }
+    int x = 0;
+    // left area: check valid x
+    for (; x < limit; x++)
+    {
+      safe_int_t sum = 0; // int or int64_t!!!
+      const int *current_matrix = matrix + limit; // center of the matrix line
+      for (int yy = 0; yy < matrix_size; yy++) { // 0..limit * 2 + 1
+        const pixel_t *current_line = src_current_lineptrs[yy];
+        for (int xx = -limit; xx <= limit; xx++) {
+          int current_x = x + xx;
+          if (current_x < 0) current_x = 0;
+          else if (current_x >= width) current_x = width - 1;
+          const int current_pixel = current_line[current_x];
+          const int current_weight = current_matrix[xx];
+          sum += current_pixel * current_weight;
+        }
+        current_matrix += matrix_size; // next matrix line
+      }
+      int result = (int)((sum * iCountDiv) >> 20) + iBias;
+      dstp[x] = static_clip<0, max_pixel_value>(result);
+    }
+    // middle area: no x check: fast!
+    for (; x < width - limit; x++) {
+      safe_int_t sum = 0;
+      const int *current_matrix = matrix + limit; // center of the matrix line
+      for (int yy = 0; yy < matrix_size; yy++) { // 0..limit * 2 + 1
+        const pixel_t *current_line = src_current_lineptrs[yy];
+        // compilers are smart nowadays but let's help them
+        if constexpr (matrix_size == 3) {
+          sum +=
+            current_line[x - 1] * current_matrix[-1] +
+            current_line[x + 0] * current_matrix[0] +
+            current_line[x + 1] * current_matrix[1];
+        }
+        else if constexpr (matrix_size == 5) {
+          sum +=
+            current_line[x - 2] * current_matrix[-2] +
+            current_line[x - 1] * current_matrix[-1] +
+            current_line[x + 0] * current_matrix[0] +
+            current_line[x + 1] * current_matrix[1] +
+            current_line[x + 2] * current_matrix[2];
+        }
+        else {
+          for (int xx = -limit; xx <= limit; xx++) {
+            int current_x = x + xx;
+            // no checking!
+            /*if (current_x < 0) current_x = 0;
+            else if (current_x >= width) current_x = width - 1;*/
+            const int current_pixel = current_line[current_x];
+            const int current_weight = current_matrix[xx];
+            sum += current_pixel * current_weight;
+          }
+        }
+        current_matrix += matrix_size; // next matrix line
+      }
+      int result = (int)((sum * iCountDiv) >> 20) + iBias;
+      dstp[x] = static_clip<0, max_pixel_value>(result);
+    }
+    // right area: check valid x
+    for (; x < width; x++)
+    {
+      safe_int_t sum = 0;
+      const int *current_matrix = matrix + limit; // center of the matrix line
+      for (int yy = 0; yy < matrix_size; yy++) { // 0..limit * 2 + 1
+        const pixel_t *current_line = src_current_lineptrs[yy];
+        for (int xx = -limit; xx <= limit; xx++) {
+          int current_x = x + xx;
+          if (current_x < 0) current_x = 0;
+          else if (current_x >= width) current_x = width - 1;
+          const int current_pixel = current_line[current_x];
+          const int current_weight = current_matrix[xx];
+          sum += current_pixel * current_weight;
+        }
+        current_matrix += matrix_size; // next matrix line
+      }
+      int result = (int)((sum * iCountDiv) >> 20) + iBias;
+      dstp[x] = static_clip<0, max_pixel_value>(result);
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+// instantiate for 8 bit 3,5,7 and 9
+template void do_conv_integer<uint8_t, 8, 3, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint8_t, 8, 5, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint8_t, 8, 7, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint8_t, 8, 9, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint8_t, 8, 3, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint8_t, 8, 5, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint8_t, 8, 7, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint8_t, 8, 9, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+
+template void do_conv_integer<uint16_t, 10, 3, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 10, 5, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 10, 7, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 10, 9, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 10, 3, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 10, 5, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 10, 7, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 10, 9, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+
+template void do_conv_integer<uint16_t, 12, 3, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 12, 5, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 12, 7, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 12, 9, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 12, 3, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 12, 5, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 12, 7, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 12, 9, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+
+template void do_conv_integer<uint16_t, 14, 3, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 14, 5, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 14, 7, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 14, 9, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 14, 3, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 14, 5, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 14, 7, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 14, 9, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+
+template void do_conv_integer<uint16_t, 16, 3, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 16, 5, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 16, 7, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 16, 9, int>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 16, 3, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 16, 5, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 16, 7, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+template void do_conv_integer<uint16_t, 16, 9, int64_t>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const int *matrix, int iCountDiv, int iBias);
+
+template<int matrix_size>
+static void do_conv_float(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const float *matrix, float fCountDiv, float fBias)
+{
+  float *dstp = reinterpret_cast<float *>(dstp8);
+  const float *srcp = reinterpret_cast<const float *>(srcp8);
+  dst_pitch /= sizeof(float);
+  src_pitch /= sizeof(float);
+
+  constexpr int limit = (matrix_size - 1) / 2; // +-1, +-2, +-3
+
+  std::vector<const float*> src_lineptrs;
+  src_lineptrs.resize(limit + height + limit);
+
+  // prefill line pointers
+  for (int y = -limit; y < height + limit; y++)
+  {
+    if (y < 0)
+      src_lineptrs[y + limit] = srcp + src_pitch * 0;
+    else if (y < height)
+      src_lineptrs[y + limit] = srcp + src_pitch * y;
+    else
+      src_lineptrs[y + limit] = srcp + src_pitch * (height - 1);
+  }
+
+  std::vector<const float *> src_current_lineptrs(matrix_size); // +/-limit => 2*limit + 1
+
+  for (int y = 0; y < height; ++y) {
+    // prefill current vertical line pointers
+    for (int yy = -limit; yy <= limit; yy++) {
+      src_current_lineptrs[yy + limit] = src_lineptrs[limit + (y + yy)];
+    }
+    int x = 0;
+    // left area: check valid x
+    for (; x < limit; x++)
+    {
+      float sum = 0.0f;
+      const float *current_matrix = matrix + limit; // center of the matrix line
+      for (int yy = 0; yy < matrix_size; yy++) { // 0..limit * 2 + 1
+        const float *current_line = src_current_lineptrs[yy];
+        for (int xx = -limit; xx <= limit; xx++) {
+          int current_x = x + xx;
+          if (current_x < 0) current_x = 0;
+          else if (current_x >= width) current_x = width - 1;
+          const float current_pixel = current_line[current_x];
+          const float current_weight = current_matrix[xx];
+          sum += current_pixel * current_weight;
+        }
+        current_matrix += matrix_size; // next matrix line
+      }
+      float result = sum * fCountDiv + fBias;
+      dstp[x] = result; // no clipping for float
+    }
+    // middle area: no x check: fast!
+    for (; x < width - limit; x++) {
+      float sum = 0.0f;
+      const float *current_matrix = matrix + limit; // center of the matrix line
+      for (int yy = 0; yy < matrix_size; yy++) { // 0..limit * 2 + 1
+        const float *current_line = src_current_lineptrs[yy];
+        // compilers are smart nowadays but let's help them
+        if constexpr (matrix_size == 3) {
+          sum +=
+            current_line[x - 1] * current_matrix[-1] +
+            current_line[x + 0] * current_matrix[0] +
+            current_line[x + 1] * current_matrix[1];
+        }
+        else if constexpr (matrix_size == 5) {
+          sum +=
+            current_line[x - 2] * current_matrix[-2] +
+            current_line[x - 1] * current_matrix[-1] +
+            current_line[x + 0] * current_matrix[0] +
+            current_line[x + 1] * current_matrix[1] +
+            current_line[x + 2] * current_matrix[2];
+        }
+        else {
+          for (int xx = -limit; xx <= limit; xx++) {
+            int current_x = x + xx;
+            // no checking!
+            /*if (current_x < 0) current_x = 0;
+            else if (current_x >= width) current_x = width - 1;*/
+            const float current_pixel = current_line[current_x];
+            const float current_weight = current_matrix[xx];
+            sum += current_pixel * current_weight;
+          }
+        }
+        current_matrix += matrix_size; // next matrix line
+      }
+      float result = sum * fCountDiv + fBias;
+      dstp[x] = result; // no clipping for float
+    }
+    // right area: check valid x
+    for (; x < width; x++)
+    {
+      float sum = 0.0f;
+      const float *current_matrix = matrix + limit; // center of the matrix line
+      for (int yy = 0; yy < matrix_size; yy++) { // 0..limit * 2 + 1
+        const float *current_line = src_current_lineptrs[yy];
+        for (int xx = -limit; xx <= limit; xx++) {
+          int current_x = x + xx;
+          if (current_x < 0) current_x = 0;
+          else if (current_x >= width) current_x = width - 1;
+          const float current_pixel = current_line[current_x];
+          const float current_weight = current_matrix[xx];
+          sum += current_pixel * current_weight;
+        }
+        current_matrix += matrix_size; // next matrix line
+      }
+      float result = sum * fCountDiv + fBias;
+      dstp[x] = result; // no clipping for float
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+template void do_conv_float<3>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const float *matrix, float fCountDiv, float fBias);
+template void do_conv_float<5>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const float *matrix, float fCountDiv, float fBias);
+template void do_conv_float<7>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const float *matrix, float fCountDiv, float fBias);
+template void do_conv_float<9>(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int src_pitch, int width, int height, const float *matrix, float fCountDiv, float fBias);
 
 /***** Setup stuff ****/
 
-GeneralConvolution::GeneralConvolution(PClip _child, double _divisor, int _nBias, const char * _matrix,
-                                       bool _autoscale, IScriptEnvironment* _env)
-  : GenericVideoFilter(_child), divisor(_divisor), nBias(_nBias), autoscale(_autoscale)
+GeneralConvolution::GeneralConvolution(PClip _child, double _divisor, float _nBias, const char * _matrix,
+  bool _autoscale, bool _luma, bool _chroma, bool _alpha, IScriptEnvironment* _env)
+  : GenericVideoFilter(_child), divisor(_divisor), nBias((int)_nBias), fBias(_nBias), autoscale(_autoscale), luma(_luma), chroma(_chroma), alpha(_alpha)
 {
-  if (!child->GetVideoInfo().IsRGB32())
-    _env->ThrowError("GeneralConvolution requires RGBA input");
+  if (vi.Is420() || vi.Is422() || vi.IsYV411()) {
+    if (luma && chroma)
+      _env->ThrowError("GeneralConvolution: both luma and chroma cannot be set for subsampled video formats");
+  }
+  if (!vi.IsRGB() && !vi.IsYUV() && !vi.IsYUVA())
+    _env->ThrowError("GeneralConvolution requires RGB (planar or packed), greyscale or YUV(A) input");
   if (divisor == 0.0)
     _env->ThrowError("GeneralConvolution: divisor cannot be zero");
-  setMatrix(_matrix, _env);
-}
+  setMatrix(_matrix, vi.BitsPerComponent() < 32, _env); // float: todo
 
+  if (vi.BitsPerComponent() <= 16) {
+    // precompute divisor
+    int iCountT;
+    if (autoscale) {
+      iCountT = iNormalizeSum;
+    }
+    else {
+      iCountT = 0;
+    }
 
-AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void* , IScriptEnvironment* env)
-{
-  return new GeneralConvolution( args[0].AsClip(), args[3].AsFloat(1.0f), args[1].AsInt(0),
-                                   args[2].AsString("0 0 0 0 1 0 0 0 0" ), args[4].AsBool(true), env);
-}
+    // Truncate instead of round - keep in the spirit of the original code
+    // 0x100000: 20 bit precision integer arithmetic
+    // todo: check overflow for matrices larger than 5x5
+    iCountDiv = (int)(0x100000 / (iCountT == 0 ? divisor : iCountT * divisor));
+    if (iCountDiv == 0)
+      _env->ThrowError("GeneralConvolution: normalizing factor is zero, check for too large elements or divisor value");
 
+    // safety check
+    int64needed = false;
 
-void GeneralConvolution::setMatrix(const char * _matrix, IScriptEnvironment* env)
-{
-  char * copymatrix = _strdup (_matrix); // strtok mangles the input string
-  char * ch = strtok (copymatrix, " \n\t\r");
-  int matrix[26];
-  nSize = 0;
-  while (ch)
-  {
-    matrix[nSize++] = atoi(ch);
-	if (nSize > 25) break;
-    ch = strtok (NULL, " \n\t\r");
+    // check possible overflow:
+    // Worst case: maximum pixel values, matrix multiplications will overflow either on positive or negative direction
+    // When max_pixel_value * sum(max(weight_pos, -weight_neg)) * iCountDiv > 1 << 31 = > int64_t needed(safe_int_t is int64_t)
+    const int max_pixel_value = (1 << vi.BitsPerComponent()) - 1;
+    const int maxWeightSum = max(iWeightSumPositives, -iWeightSumNegatives);
+    if ((int64_t)max_pixel_value * maxWeightSum * iCountDiv >= std::numeric_limits<int>::max())
+      int64needed = true;
+
+    switch (vi.BitsPerComponent()) {
+
+    case 8:
+      if (nSize == 3 * 3) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint8_t, 8, 3, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint8_t, 8, 3, int>;
+      }
+      else if (nSize == 5 * 5) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint8_t, 8, 5, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint8_t, 8, 5, int>;
+      }
+      else if (nSize == 7 * 7) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint8_t, 8, 7, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint8_t, 8, 7, int>;
+      }
+      else if (nSize == 9 * 9) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint8_t, 8, 9, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint8_t, 8, 9, int>;
+      }
+      break;
+
+    case 10:
+      if (nSize == 3 * 3) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 10, 3, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 10, 3, int>;
+      }
+      else if (nSize == 5 * 5) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 10, 5, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 10, 5, int>;
+      }
+      else if (nSize == 7 * 7) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 10, 7, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 10, 7, int>;
+      }
+      else if (nSize == 9 * 9) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 10, 9, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 10, 9, int>;
+      }
+      break;
+
+    case 12:
+      if (nSize == 3 * 3) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 12, 3, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 12, 3, int>;
+      }
+      else if (nSize == 5 * 5) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 12, 5, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 12, 5, int>;
+      }
+      else if (nSize == 7 * 7) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 12, 7, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 12, 7, int>;
+      }
+      else if (nSize == 9 * 9) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 12, 9, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 12, 9, int>;
+      }
+      break;
+
+    case 14:
+      if (nSize == 3 * 3) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 14, 3, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 14, 3, int>;
+      }
+      else if (nSize == 5 * 5) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 14, 5, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 14, 5, int>;
+      }
+      else if (nSize == 7 * 7) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 14, 7, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 14, 7, int>;
+      }
+      else if (nSize == 9 * 9) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 14, 9, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 14, 9, int>;
+      }
+      break;
+
+    case 16:
+      if (nSize == 3 * 3) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 16, 3, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 16, 3, int>;
+      }
+      else if (nSize == 5 * 5) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 16, 5, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 16, 5, int>;
+      }
+      else if (nSize == 7 * 7) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 16, 7, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 16, 7, int>;
+      }
+      else if (nSize == 9 * 9) {
+        if (int64needed) conversionFnPtr = do_conv_integer<uint16_t, 16, 9, int64_t>;
+        else conversionFnPtr = do_conv_integer<uint16_t, 16, 9, int>;
+      }
+      break;
+    }
   }
-  free(copymatrix);
+  else {
+    // 32 bit float clip
+    // precompute divisor
+    float fCountT;
+    if (autoscale) {
+      fCountT = fNormalizeSum;
+    }
+    else {
+      fCountT = 0.0f;
+    }
+
+    fCountDiv = (float)(1.0f / (fCountT == 0 ? divisor : fCountT * divisor));
+
+    if (nSize == 3 * 3)
+      FconversionFnPtr = do_conv_float<3>;
+    else if (nSize == 5 * 5)
+      FconversionFnPtr = do_conv_float<5>;
+    else if (nSize == 7 * 7)
+      FconversionFnPtr = do_conv_float<7>;
+    else if (nSize == 9 * 9)
+      FconversionFnPtr = do_conv_float<9>;
+  }
+}
+
+AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const VideoInfo& vi_orig = args[0].AsClip()->GetVideoInfo();
+
+  // convert old RGB format to planar RGB
+  AVSValue new_args[1] = { args[0].AsClip() };
+  PClip clip;
+  if (vi_orig.IsRGB24() || vi_orig.IsRGB48()) {
+    clip = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+  }
+  else if (vi_orig.IsRGB32() || vi_orig.IsRGB64()) {
+    clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+  }
+  else if (vi_orig.IsYUY2()) {
+    clip = env->Invoke("ConvertToYV16", AVSValue(new_args, 1)).AsClip();
+  }
+  else {
+    clip = args[0].AsClip();
+  }
+
+  GeneralConvolution* Result = new GeneralConvolution(clip, args[3].AsFloat(1.0f), args[1].AsFloatf(0.0f),
+    args[2].AsString("0 0 0 0 1 0 0 0 0"), args[4].AsBool(true), 
+    args[5].AsBool(true), args[6].AsBool(true), args[7].AsBool(true), // luma, chroma, alpha, when n/a then ignored
+    env);
+
+  AVSValue new_args2[1] = { Result };
+  if (vi_orig.IsRGB24()) {
+    return env->Invoke("ConvertToRGB24", AVSValue(new_args2, 1)).AsClip();
+  }
+  else if (vi_orig.IsRGB48()) {
+    return env->Invoke("ConvertToRGB48", AVSValue(new_args2, 1)).AsClip();
+  }
+  else if (vi_orig.IsRGB32()) {
+    return env->Invoke("ConvertToRGB32", AVSValue(new_args2, 1)).AsClip();
+  }
+  else if (vi_orig.IsRGB64()) {
+    return env->Invoke("ConvertToRGB64", AVSValue(new_args2, 1)).AsClip();
+  }
+  else if (vi_orig.IsYUY2()) {
+    return env->Invoke("ConvertToYUY2", AVSValue(new_args2, 1)).AsClip();
+  }
+
+  return Result;
+}
+
+
+void GeneralConvolution::setMatrix(const char * _matrix, bool _isInteger, IScriptEnvironment* env)
+{
+  char delimiter[] = "([ \t\n\r]+)";
+  std::regex regex(delimiter);
+  std::string str(_matrix);
+  std::vector<std::string> out(
+    std::sregex_token_iterator(str.begin(), str.end(), regex, -1),
+    std::sregex_token_iterator()
+  );
+
+  fNormalizeSum = 0.0f;
+  iNormalizeSum = 0;
+  iWeightSumPositives = 0; // for int32 overflow decision
+  iWeightSumNegatives = 0;
+  const int MAX_DIMENSION = 9; // 9 is the max matrix size which is templated
+
+  nSize = 0;
+  int dim = 3;
+  int maxsize = dim * dim;
+  if (_isInteger)
+    iMatrix.resize(maxsize);
+  else
+    fMatrix.resize(maxsize);
+  for (auto &s : out) {
+    if (s.length() == 0) continue; // first string can be empty is matrix string is starting with separators
+
+    if (nSize == maxsize) {
+      if (dim == MAX_DIMENSION) {
+        env->ThrowError("GeneralConvolution: matrix too big, maximum %dx%d elements allowed", MAX_DIMENSION, MAX_DIMENSION);
+      }
+      dim += 2;
+      maxsize = dim * dim;
+      if (_isInteger)
+        iMatrix.resize(maxsize);
+      else
+        fMatrix.resize(maxsize);
+    }
+    if (_isInteger) {
+      const double val = atof(s.c_str());
+      const int ival = (int)(val + 0.5);
+      iNormalizeSum += ival;
+      iMatrix[nSize++] = ival;
+      if (ival >= 0)
+        iWeightSumPositives += ival;
+      else
+        iWeightSumNegatives += ival;
+    }
+    else {
+      const float val = (float)atof(s.c_str());
+      fNormalizeSum += val;
+      fMatrix[nSize++] = val;
+    }
+
+  }
 
   if (nSize < 9)
-    env->ThrowError("GeneralConvolution sez: matrix too small");
-  else if (nSize > 9 && nSize < 25)
-    env->ThrowError("GeneralConvolution sez: invalid matrix");
-  else if (nSize > 25)
-    env->ThrowError("GeneralConvolution sez: matrix too big");
-
-
-  // Uglify matrix storage in return for fast lookups
-  if (25 == nSize)
-  {
-    i00 = matrix[ 0]; i10 = matrix[ 1]; i20 = matrix[ 2]; i30 = matrix[ 3]; i40 = matrix[ 4];
-    i01 = matrix[ 5]; i11 = matrix[ 6]; i21 = matrix[ 7]; i31 = matrix[ 8]; i41 = matrix[ 9];
-    i02 = matrix[10]; i12 = matrix[11]; i22 = matrix[12]; i32 = matrix[13]; i42 = matrix[14];
-    i03 = matrix[15]; i13 = matrix[16]; i23 = matrix[17]; i33 = matrix[18]; i43 = matrix[19];
-    i04 = matrix[20]; i14 = matrix[21]; i24 = matrix[22]; i34 = matrix[23]; i44 = matrix[24];
-  }
-  else if (9 == nSize)
-  {
-    i11 = matrix[0]; i21 = matrix[1]; i31 = matrix[2];
-    i12 = matrix[3]; i22 = matrix[4]; i32 = matrix[5];
-    i13 = matrix[6]; i23 = matrix[7]; i33 = matrix[8];
-
-    i00 = i10 = i20 = i30 = i40 = 0;
-    i01 =                   i41 = 0;
-    i02 =                   i42 = 0;
-    i03 =                   i43 = 0;
-    i04 = i14 = i24 = i34 = i44 = 0;
-  }
+    env->ThrowError("GeneralConvolution: matrix too small, need at least 3x3 elements");
+  else if (nSize != maxsize)
+    env->ThrowError("GeneralConvolution: matrix incomplete, possible size %dx%d but element count %d", dim, dim, nSize);
 }
 
 template<int mi, int ma>
@@ -152,155 +647,34 @@ __forceinline int static_clip(int value) {
 
 PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* env)
 {
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  auto pbyA = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
-  auto pbyR = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
-  auto pbyG = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
-  auto pbyB = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
-
-  if ((pbyA == nullptr) || (pbyR == nullptr) || (pbyG == nullptr) || (pbyB == nullptr)) {
-    env2->Free(pbyA);
-    env2->Free(pbyR);
-    env2->Free(pbyG);
-    env2->Free(pbyB);
-    env->ThrowError("GeneralConvolution: out of memory");
-  }
-
   int h = vi.height;
   int w = vi.width;
 
-  PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
-  char *dstStart = (char *) dst->GetWritePtr();
+  PVideoFrame src = child->GetFrame(n, env);
 
-  const int pitch = dst->GetPitch();
-  const int modulo = src->GetPitch() - src->GetRowSize();
 
-  Pixel32* srcp = (Pixel32*)src->GetReadPtr();
-  uint8_t *pbyA0 = pbyA;
-  uint8_t *pbyR0 = pbyR;
-  uint8_t *pbyG0 = pbyG;
-  uint8_t *pbyB0 = pbyB;
+  const int *matrix = iMatrix.data();
+  const float *matrixf = fMatrix.data();
 
-  for(int y = 0; y < h; y++)
-  {
-    for(int x = 0; x < w; x++)
+  int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+  int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+  int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+  for (int p = 0; p < vi.NumComponents(); ++p) {
+    const int plane = planes[p];
+    if ((plane == PLANAR_Y && !luma) ||
+        ((plane == PLANAR_U || plane == PLANAR_V) && !chroma) ||
+        (plane == PLANAR_A && !alpha))
     {
-      *pbyA0++ = (uint8_t)((*srcp &  0xff000000) >> 24);
-      *pbyR0++ = (uint8_t)((*srcp &  0x00ff0000) >> 16);
-      *pbyG0++ = (uint8_t)((*srcp &  0x0000ff00) >> 8);
-      *pbyB0++ = (uint8_t)(*srcp++ & 0x000000ff);
+      env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
+      continue;
     }
-    srcp = (Pixel32 *)((char *)srcp + modulo);
+
+    if(vi.BitsPerComponent() <= 16)
+      conversionFnPtr(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), w, h, matrix, iCountDiv, nBias);
+    else
+      FconversionFnPtr(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), w, h, matrixf, fCountDiv, fBias);
   }
-
-  int iA, iR, iG, iB, x0, x1, x2, x3, x4;
-
-  int iCountT;
-  if (autoscale) {
-    iCountT = i00 + i01 + i02 + i03 + i04 +
-              i10 + i11 + i12 + i13 + i14 +
-              i20 + i21 + i22 + i23 + i24 +
-              i30 + i31 + i32 + i33 + i34 +
-              i40 + i41 + i42 + i43 + i44;
-  } else {
-    iCountT = 0;
-  }
-    
-  // Truncate instead of round - keep in the spirit of the original code
-  int iCountDiv = (int)(0x100000 / (iCountT == 0 ? divisor : iCountT * divisor));
-
-  for(int y = 0; y < h; y++)
-  {
-    uint8_t *pbyR1, *pbyG1, *pbyB1, *pbyR2, *pbyG2, *pbyB2,
-      *pbyR3, *pbyG3, *pbyB3, *pbyR4, *pbyG4, *pbyB4;
-
-    pbyA0                                 = pbyA + y * w;
-    pbyR0 = pbyR1 = pbyR2 = pbyR3 = pbyR4 = pbyR + y * w;
-    pbyG0 = pbyG1 = pbyG2 = pbyG3 = pbyG4 = pbyG + y * w;
-    pbyB0 = pbyB1 = pbyB2 = pbyB3 = pbyB4 = pbyB + y * w;
-
-    if(y > 0)
-    {
-      pbyR4 -= w;  pbyG4 -= w;  pbyB4 -= w;
-      pbyR3 -= w;  pbyG3 -= w;  pbyB3 -= w;
-
-      if(y > 1)
-      {
-        pbyR4 -= w;  pbyG4 -= w;  pbyB4 -= w;
-      }
-    }
-
-    if(y < h - 1)
-    {
-      pbyR1 += w;  pbyG1 += w;  pbyB1 += w;
-      pbyR0 += w;  pbyG0 += w;  pbyB0 += w;
-
-      if(y < h - 2)
-      {
-        pbyR0 += w;  pbyG0 += w;  pbyB0 += w;
-      }
-    }
-
-    Pixel32* dstp = (Pixel32 *)(dstStart + y * pitch);
-    for(x2 = 0; x2 < w; x2++)
-    {
-      x0 = x2 > 2 ? x2 - 2 : 0;
-      x1 = x2 > 1 ? x2 - 1 : 0;
-      x3 = x2 < w - 2 ? x2 + 1 : w - 1;
-      x4 = x2 < w - 3 ? x2 + 2 : w - 2;
-
-      iA = pbyA0[x2];
-      // Always do 3x3 ring of pixel
-      iR = i11 * pbyR1[x1] + i21 * pbyR1[x2] + i31 * pbyR1[x3] +
-           i12 * pbyR2[x1] + i22 * pbyR2[x2] + i32 * pbyR2[x3] +
-           i13 * pbyR3[x1] + i23 * pbyR3[x2] + i33 * pbyR3[x3];
-
-      iG = i11 * pbyG1[x1] + i21 * pbyG1[x2] + i31 * pbyG1[x3] +
-           i12 * pbyG2[x1] + i22 * pbyG2[x2] + i32 * pbyG2[x3] +
-           i13 * pbyG3[x1] + i23 * pbyG3[x2] + i33 * pbyG3[x3];
-
-      iB = i11 * pbyB1[x1] + i21 * pbyB1[x2] + i31 * pbyB1[x3] +
-           i12 * pbyB2[x1] + i22 * pbyB2[x2] + i32 * pbyB2[x3] +
-           i13 * pbyB3[x1] + i23 * pbyB3[x2] + i33 * pbyB3[x3];
-      // Only do 5x5 ring of pixel if needed
-      if(nSize == 25)
-      {
-        iR += i00 * pbyR0[x0] + i10 * pbyR0[x1] + i20 * pbyR0[x2] + i30 * pbyR0[x3] + i40 * pbyR0[x4] +
-              i01 * pbyR1[x0] +                                                       i41 * pbyR1[x4] +
-              i02 * pbyR2[x0] +                                                       i42 * pbyR2[x4] +
-              i03 * pbyR3[x0] +                                                       i43 * pbyR3[x4] +
-              i04 * pbyR4[x0] + i14 * pbyR4[x1] + i24 * pbyR4[x2] + i34 * pbyR4[x3] + i44 * pbyR4[x4];
-
-        iG += i00 * pbyG0[x0] + i10 * pbyG0[x1] + i20 * pbyG0[x2] + i30 * pbyG0[x3] + i40 * pbyG0[x4] +
-              i01 * pbyG1[x0] +                                                       i41 * pbyG1[x4] +
-              i02 * pbyG2[x0] +                                                       i42 * pbyG2[x4] +
-              i03 * pbyG3[x0] +                                                       i43 * pbyG3[x4] +
-              i04 * pbyG4[x0] + i14 * pbyG4[x1] + i24 * pbyG4[x2] + i34 * pbyG4[x3] + i44 * pbyG4[x4];
-
-        iB += i00 * pbyB0[x0] + i10 * pbyB0[x1] + i20 * pbyB0[x2] + i30 * pbyB0[x3] + i40 * pbyB0[x4] +
-              i01 * pbyB1[x0] +                                                       i41 * pbyB1[x4] +
-              i02 * pbyB2[x0] +                                                       i42 * pbyB2[x4] +
-              i03 * pbyB3[x0] +                                                       i43 * pbyB3[x4] +
-              i04 * pbyB4[x0] + i14 * pbyB4[x1] + i24 * pbyB4[x2] + i34 * pbyB4[x3] + i44 * pbyB4[x4];
-      }
-
-      iR = ((iR * iCountDiv) >> 20) + nBias;
-      iG = ((iG * iCountDiv) >> 20) + nBias;
-      iB = ((iB * iCountDiv) >> 20) + nBias;
-
-      iR = static_clip<0, 255>(iR);
-      iG = static_clip<0, 255>(iG);
-      iB = static_clip<0, 255>(iB);
-
-      *dstp++ = (iA << 24) + (iR << 16) + (iG << 8) + iB;
-    }
-  }
-
-  env2->Free(pbyA);
-  env2->Free(pbyR);
-  env2->Free(pbyG);
-  env2->Free(pbyB);
-
   return dst;
+  // really, not other case left... packed RGB was converted to planar RGB, YUY2 to YV16
 }
