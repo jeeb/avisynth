@@ -331,6 +331,81 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
 }
 
 
+/***********************************
+ *******   wchar_t-utf-ansi   ******
+ **********************************/
+
+std::unique_ptr<char[]> WideCharToUtf8(const wchar_t *w_string)
+{
+  const auto utf8len = WideCharToMultiByte(CP_UTF8, 0, w_string, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
+  auto s_utf8 = std::make_unique<char[]>(utf8len + 1);
+  WideCharToMultiByte(CP_UTF8, 0, w_string, -1, s_utf8.get(), (int)utf8len + 1, 0, 0);
+  return s_utf8;
+}
+
+std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string)
+{
+  const auto len = wcslen(w_string);
+  auto s_ansi = std::make_unique<char[]>(len + 1);
+  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
+  // int succ = wcstombs(s_ansi, w_string, len +1); 
+  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+  return s_ansi;
+}
+
+std::unique_ptr<char[]> WideCharToAnsiACP(const wchar_t *w_string)
+{
+  const auto len = wcslen(w_string);
+  auto s_ansi = std::make_unique<char[]>(len + 1);
+  WideCharToMultiByte(CP_ACP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
+  // int succ = wcstombs(s_ansi, w_string, len +1); 
+  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+  return s_ansi;
+}
+
+std::unique_ptr<char[]> WideCharToUtf8_maxn(const wchar_t *w_string, size_t maxn)
+{
+  const auto utf8len = WideCharToMultiByte(CP_UTF8, 0, w_string, (int)maxn, NULL, 0, 0, 0); // no \0 terminator check requested here
+  auto s_utf8 = std::make_unique<char[]>(utf8len + 1);
+  WideCharToMultiByte(CP_UTF8, 0, w_string, -1, s_utf8.get(), utf8len, 0, 0);
+  s_utf8[utf8len] = 0;
+  return s_utf8;
+}
+
+std::unique_ptr<char[]> WideCharToAnsi_maxn(const wchar_t *w_string, size_t maxn)
+{
+  auto s_ansi = std::make_unique<char[]>(maxn + 1);
+  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, w_string, -1, s_ansi.get(), (int)maxn, NULL, NULL); // replaces out-of-CP chars by ?
+  s_ansi[maxn] = 0;
+  return s_ansi;
+}
+
+std::unique_ptr<wchar_t[]> AnsiToWideChar(const char *s_ansi)
+{
+  const size_t bufsize = strlen(s_ansi) + 1;
+  auto w_string = std::make_unique<wchar_t[]>(bufsize);
+  MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, s_ansi, -1, w_string.get(), (int)bufsize);
+  //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
+  return w_string;
+}
+
+std::unique_ptr<wchar_t[]> AnsiToWideCharACP(const char *s_ansi)
+{
+  const size_t bufsize = strlen(s_ansi) + 1;
+  auto w_string = std::make_unique<wchar_t[]>(bufsize);
+  MultiByteToWideChar(CP_ACP, 0, s_ansi, -1, w_string.get(), (int)bufsize);
+  //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
+  return w_string;
+}
+
+std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi)
+{
+  const size_t wchars_count = MultiByteToWideChar(CP_UTF8, 0, s_ansi, -1, NULL, 0);
+  const size_t bufsize = wchars_count + 1;
+  auto w_string = std::make_unique<wchar_t[]>(bufsize);
+  MultiByteToWideChar(CP_UTF8, 0, s_ansi, -1, w_string.get(), (int)bufsize);
+  return w_string;
+}
 
 /***********************************
  *******   Helper Functions   ******
@@ -353,10 +428,7 @@ CWDChanger::CWDChanger(const wchar_t* new_cwd)
 
 CWDChanger::CWDChanger(const char* new_cwd)
 {
-  int len = (int)strlen(new_cwd)+1;
-  auto new_cwd_w = std::make_unique<wchar_t[]>(len); // new wchar_t[len];
-  
-  MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, new_cwd, -1, new_cwd_w.get(), len);
+  auto new_cwd_w = AnsiToWideChar(new_cwd);
   Init(new_cwd_w.get());
 }
 
@@ -454,132 +526,59 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   for (int i = 0; i < args.ArraySize(); ++i) {
     const char* script_name = args[i].AsString();
 
-#if 1
     wchar_t full_path_w[MAX_PATH];
     wchar_t *file_part_w;
 
       // Handling utf8 and ansi, working in wchar_t internally
       // filename and path can be full unicode
       // unicode input can come from CAVIFileSynth
-    wchar_t script_name_w[MAX_PATH];
-    if (!bUtf8) {
-      int len = (int)strlen(script_name) + 1;
-      MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, script_name, -1, script_name_w, len);
-      //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
-    }
-    else {
-      int wchars_count = MultiByteToWideChar(CP_UTF8, 0, script_name, -1, NULL, 0);
-      MultiByteToWideChar(CP_UTF8, 0, script_name, -1, script_name_w, wchars_count);
-    }
 
-    if (wcschr(script_name_w, '\\') || wcschr(script_name_w, '/')) {
-      DWORD len = GetFullPathNameW(script_name_w, MAX_PATH, full_path_w, &file_part_w);
+    // make wchar_t full path strnig from either ansi or utf8
+    auto script_name_w = !bUtf8 ? AnsiToWideChar(script_name) : Utf8ToWideChar(script_name);
+
+    if (wcschr(script_name_w.get(), '\\') || wcschr(script_name_w.get(), '/')) {
+      DWORD len = GetFullPathNameW(script_name_w.get(), MAX_PATH, full_path_w, &file_part_w);
       if (len == 0 || len > MAX_PATH)
         env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
     }
     else {
-      DWORD len = SearchPathW(NULL, script_name_w, NULL, MAX_PATH, full_path_w, &file_part_w);
+      DWORD len = SearchPathW(NULL, script_name_w.get(), NULL, MAX_PATH, full_path_w, &file_part_w);
       if (len == 0 || len > MAX_PATH)
         env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
     }
 
     // back to 8 bit Ansi and Utf8
-    // -- full_path
-    int full_path_len = (int)wcslen(full_path_w);
-    // ansi
-    TCHAR *full_path = new TCHAR[full_path_len + 1];
-    WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, full_path_w, -1, full_path, full_path_len + 1, NULL, NULL); // replaces out-of-CP chars by ?
-    // int succ = wcstombs(full_path, full_path_w, full_path_len +1); 
-    // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
-    // utf8
-    TCHAR *full_path_utf8 = new TCHAR[full_path_len * 4 + 1];
-    int utf8len = WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
-    WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, full_path_utf8, utf8len + 1, 0, 0);
-
-    // -- file_part
-    int file_part_len = (int)wcslen(file_part_w);
-    // ansi
-    TCHAR *file_part = new TCHAR[file_part_len + 1];
-    WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, file_part_w, -1, file_part, file_part_len + 1, NULL, NULL);
-    // utf8
-    TCHAR *file_part_utf8 = new TCHAR[file_part_len * 4 + 1];
-    int file_part_utf8len = WideCharToMultiByte(CP_UTF8, 0, file_part_w, -1, NULL, 0, 0, 0) - 1;
-    WideCharToMultiByte(CP_UTF8, 0, file_part_w, -1, file_part_utf8, file_part_utf8len + 1, 0, 0);
-
-    // -- dir_part
-    int dir_part_len = full_path_len - file_part_len;
-    // ansi
-    TCHAR *dir_part = new TCHAR[dir_part_len + 1];
-    WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, full_path_w, -1, dir_part, dir_part_len, NULL, NULL);
-    dir_part[dir_part_len] = 0;
-    // utf8
-    TCHAR *dir_part_utf8 = new TCHAR[dir_part_len * 4 + 1];
-    int dir_part_utf8len = WideCharToMultiByte(CP_UTF8, 0, full_path_w, dir_part_len, NULL, 0, 0, 0); // no \0 terminator check requested here
-    WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, dir_part_utf8, dir_part_utf8len, 0, 0);
-    dir_part_utf8[dir_part_utf8len] = 0;
+    auto full_path = WideCharToAnsi(full_path_w);
+    auto full_path_utf8 = WideCharToUtf8(full_path_w);
+    auto file_part = WideCharToAnsi(file_part_w);
+    auto file_part_utf8 = WideCharToUtf8(file_part_w);
+    size_t dir_part_len = wcslen(full_path_w) - wcslen(file_part_w);
+    auto dir_part = WideCharToAnsi_maxn(full_path_w, dir_part_len);
+    auto dir_part_utf8 = WideCharToUtf8_maxn(full_path_w, dir_part_len);
 
     HANDLE h = ::CreateFileW(full_path_w, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (h == INVALID_HANDLE_VALUE)
-      env->ThrowError("Import: couldn't open \"%s\"", full_path);
+      env->ThrowError("Import: couldn't open \"%s\"", full_path.get());
 
-    env->SetGlobalVar("$ScriptName$", env->SaveString(full_path));
-    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
-    env->SetGlobalVar("$ScriptDir$", env->SaveString(dir_part));
-    env->SetGlobalVar("$ScriptNameUtf8$", env->SaveString(full_path_utf8));
-    env->SetGlobalVar("$ScriptFileUtf8$", env->SaveString(file_part_utf8));
-    env->SetGlobalVar("$ScriptDirUtf8$", env->SaveString(dir_part_utf8));
+    env->SetGlobalVar("$ScriptName$", env->SaveString(full_path.get()));
+    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part.get()));
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(dir_part.get()));
+    env->SetGlobalVar("$ScriptNameUtf8$", env->SaveString(full_path_utf8.get()));
+    env->SetGlobalVar("$ScriptFileUtf8$", env->SaveString(file_part_utf8.get()));
+    env->SetGlobalVar("$ScriptDirUtf8$", env->SaveString(dir_part_utf8.get()));
     if (MainScript)
     {
-      env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path));
-      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part));
-      env->SetGlobalVar("$MainScriptDir$", env->SaveString(dir_part));
-      env->SetGlobalVar("$MainScriptNameUtf8$", env->SaveString(full_path_utf8));
-      env->SetGlobalVar("$MainScriptFileUtf8$", env->SaveString(file_part_utf8));
-      env->SetGlobalVar("$MainScriptDirUtf8$", env->SaveString(dir_part_utf8));
+      env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path.get()));
+      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part.get()));
+      env->SetGlobalVar("$MainScriptDir$", env->SaveString(dir_part.get()));
+      env->SetGlobalVar("$MainScriptNameUtf8$", env->SaveString(full_path_utf8.get()));
+      env->SetGlobalVar("$MainScriptFileUtf8$", env->SaveString(file_part_utf8.get()));
+      env->SetGlobalVar("$MainScriptDirUtf8$", env->SaveString(dir_part_utf8.get()));
     }
-
-    delete[] full_path;
-    delete[] file_part;
-    delete[] dir_part;
-    delete[] full_path_utf8;
-    delete[] file_part_utf8;
-    delete[] dir_part_utf8;
 
     *file_part_w = 0; // trunc full_path_w to dir-only
-    CWDChanger change_cwd(full_path_w); // unicode!
-#else
-    TCHAR full_path[AVS_MAX_PATH]; // *4 size for worst case UTF8 byte size
-    TCHAR* file_part;
-
-    if (strchr(script_name, '\\') || strchr(script_name, '/')) {
-      DWORD len = GetFullPathName(script_name, AVS_MAX_PATH, full_path, &file_part);
-      if (len == 0 || len > AVS_MAX_PATH)
-        env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
-    }
-    else {
-      DWORD len = SearchPath(NULL, script_name, NULL, AVS_MAX_PATH, full_path, &file_part);
-      if (len == 0 || len > AVS_MAX_PATH)
-        env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
-    }
-    HANDLE h = ::CreateFile(full_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (h == INVALID_HANDLE_VALUE)
-      env->ThrowError("Import: couldn't open \"%s\"", full_path);
-
-    size_t dir_part_len = file_part - full_path;
-
-    env->SetGlobalVar("$ScriptName$", env->SaveString(full_path));
-    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
-    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path, (int)dir_part_len));
-    if (MainScript)
-    {
-      env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path));
-      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part));
-      env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path, (int)dir_part_len));
-    }
-
-    *file_part = 0;
-    CWDChanger change_cwd(full_path);
-#endif    
+    CWDChanger change_cwd(full_path_w);
+    // end of filename parsing / file open things
 
     DWORD size = GetFileSize(h, NULL);
     std::vector<char> buf(size + 1, 0);
@@ -588,7 +587,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     if (!status)
       env->ThrowError("Import: unable to read \"%s\"", script_name);
 
-    // Give Unicode smartarses a hint they need to use ANSI encodingimport"
+    // Give poor Unicode users a hint they need to use ANSI encoding import"
     if (size >= 2) {
       unsigned char* q = reinterpret_cast<unsigned char*>(buf.data());
 
@@ -1643,84 +1642,23 @@ AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env)
 AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env) {
   const char *source = args[0].AsString();
   // in two steps: Ansi -> WideChar -> Utf8
-  int len = (int)strlen(source) + 1; // with zero terminator
-  wchar_t *wsource = new wchar_t[len];
-  MultiByteToWideChar(CP_ACP, 0, source, -1, wsource, len);
-
+  auto wsource = AnsiToWideCharACP(source);
   // wide -> utf8
-  int utf8len = WideCharToMultiByte(CP_UTF8, 0, wsource, -1/*null terminated src*/, NULL, 0/*returns the required buffer size*/, 0, 0) + 1; // with \0 terminator
-  TCHAR *source_utf8 = new TCHAR[utf8len];
-  WideCharToMultiByte(CP_UTF8, 0, wsource, -1, source_utf8, utf8len, 0, 0);
-
-  AVSValue ret = env->SaveString(source_utf8);
-
-  delete[] wsource;
-  delete[] source_utf8;
+  auto source_utf8 = WideCharToUtf8(wsource.get());
+  AVSValue ret = env->SaveString(source_utf8.get());
   return ret;
 }
 
 AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env) {
   const char *source_utf8 = args[0].AsString();
   // in two steps: Utf8 -> WideChar -> Ansi
-  int wchars_count = MultiByteToWideChar(CP_UTF8, 0, source_utf8, -1, NULL, 0);
-  wchar_t *wsource = new wchar_t[wchars_count];
-  MultiByteToWideChar(CP_UTF8, 0, source_utf8, -1, wsource, wchars_count);
-
+  auto wsource = Utf8ToWideChar(source_utf8);
   // wide -> ansi
-  int len2 = (int)wcslen(wsource); // must be wchars_count
-  TCHAR *source_ansi = new TCHAR[len2 + 1];
-  WideCharToMultiByte(CP_ACP, 0, wsource, -1, source_ansi, len2 + 1, NULL, NULL); // replaces out-of-CP chars by ?
-  // wcstombs() is not good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
-
-  AVSValue ret = env->SaveString(source_ansi);
-
-  delete[] wsource;
-  delete[] source_ansi;
+  auto source_ansi = WideCharToAnsiACP(wsource.get());
+  AVSValue ret = env->SaveString(source_ansi.get());
   return ret;
 }
 
-/*
-  // Handling utf8 and ansi, working in wchar_t internally
-  // filename and path can be full unicode
-  // unicode input can come from CAVIFileSynth
-  wchar_t script_name_w[MAX_PATH];
-  if (!bUtf8) {
-    int len = strlen(script_name) + 1;
-    MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, script_name, -1, script_name_w, len);
-    //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
-  }
-  else {
-    int len = strlen(script_name) + 1;
-    int wchars_count = MultiByteToWideChar(CP_UTF8, 0, script_name, -1, NULL, 0);
-    MultiByteToWideChar(CP_UTF8, 0, script_name, -1, script_name_w, wchars_count);
-  }
-
-  if (wcschr(script_name_w, '\\') || wcschr(script_name_w, '/')) {
-    DWORD len = GetFullPathNameW(script_name_w, MAX_PATH, full_path_w, &file_part_w);
-    if (len == 0 || len > MAX_PATH)
-      env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
-  }
-  else {
-    DWORD len = SearchPathW(NULL, script_name_w, NULL, MAX_PATH, full_path_w, &file_part_w);
-    if (len == 0 || len > MAX_PATH)
-      env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
-  }
-
-  // back to 8 bit Ansi and Utf8
-  // -- full_path
-  int full_path_len = wcslen(full_path_w);
-  // ansi
-  TCHAR *full_path = new TCHAR[full_path_len + 1];
-  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, full_path_w, -1, full_path, full_path_len + 1, NULL, NULL); // replaces out-of-CP chars by ?
-                                                                                                                            // int succ = wcstombs(full_path, full_path_w, full_path_len +1); 
-                                                                                                                            // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
-                                                                                                                            // utf8
-  TCHAR *full_path_utf8 = new TCHAR[full_path_len * 4 + 1];
-  int utf8len = WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
-  WideCharToMultiByte(CP_UTF8, 0, full_path_w, -1, full_path_utf8, utf8len + 1, 0, 0);
-
-}
-*/
 
 AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment*)
 {

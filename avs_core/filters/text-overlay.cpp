@@ -1460,21 +1460,11 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
     // Test: 
     // Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
     // SubTitle(Title, utf8 = true)
-    int wchars_count = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
-    wchar_t *textw = new wchar_t[wchars_count];
-    int ret = MultiByteToWideChar(CP_UTF8, 0, text, -1, textw, wchars_count);
-    if (ret == 0) {
-      int lastError = GetLastError();
-      if(lastError == ERROR_NO_UNICODE_TRANSLATION)
-        env->ThrowError("Subtitle: UTF8 conversion error, no unicode translation");
-      else
-        env->ThrowError("Subtitle: UTF8 conversion error %d", lastError);
-    }
+    auto textw = Utf8ToWideChar(text);
 
     if (!multiline) {
-      if (!TextOutW(hdcAntialias, real_x + 16, real_y + 16, textw, (int)wcslen(textw)))
+      if (!TextOutW(hdcAntialias, real_x + 16, real_y + 16, textw.get(), (int)wcslen(textw.get())))
       {
-        delete[] textw;
         goto GDIError;
       }
     }
@@ -1483,7 +1473,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
       wchar_t *pdest, *psrc;
       int result, y_inc = real_y + 16;
       wchar_t search[] = L"\\n";
-      psrc = _textw = _wcsdup(textw); // don't mangle the string constant -- Gavino
+      psrc = _textw = _wcsdup(textw.get()); // don't mangle the string constant -- Gavino
       if (!_textw) goto GDIError;
       int length = (int)wcslen(psrc);
 
@@ -1504,7 +1494,6 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
       free(_textw);
       _textw = NULL;
     }
-    delete[] textw;
   }
   else {
     if (!multiline) {
