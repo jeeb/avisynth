@@ -396,7 +396,7 @@ public:
 private:
   const char* const lhs;
   PExpression rhs;
-  bool withret;
+  bool withret = false;
 };
 
 
