@@ -72,6 +72,7 @@ private:
   PExpression ParseBlock(bool braced, bool *empty);
   PExpression ParseStatement(bool* stop);
   PExpression ParseAssignment(void);
+  PExpression ParseAssignmentWithRet(void);
   PExpression ParseConditional(void);
   PExpression ParseOr(void);
   PExpression ParseAnd(void);

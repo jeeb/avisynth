@@ -276,7 +276,7 @@ PExpression ScriptParser::ParseStatement(bool* stop)
   else if (tokenizer.IsIdentifier("return")) {
     *stop = true;
     tokenizer.NextToken();
-    return new ExpReturn(ParseConditional());
+    return new ExpReturn(ParseAssignmentWithRet());
   }
   // break statement
   else if (tokenizer.IsIdentifier("break")) {
@@ -297,7 +297,7 @@ PExpression ScriptParser::ParseIf(void)
   PExpression If, Then, Else = 0;
   tokenizer.NextToken();
   Expect('(');
-  If = ParseConditional();
+  If = ParseAssignmentWithRet();
   Expect(')');
 
   Then = ParseBlock(true, &blockEmpty);
@@ -327,7 +327,7 @@ PExpression ScriptParser::ParseWhile(void)
 {  
   tokenizer.NextToken();
   Expect('(');
-  const PExpression cond = ParseConditional();
+  const PExpression cond = ParseAssignmentWithRet();
   Expect(')');
 
   ++loopDepth;
@@ -349,13 +349,13 @@ PExpression ScriptParser::ParseFor(void)
   const char* id = tokenizer.AsIdentifier();
   tokenizer.NextToken();
   Expect('=');
-  const PExpression init = ParseConditional();
+  const PExpression init = ParseAssignmentWithRet();
   Expect(',');
-  const PExpression limit = ParseConditional();
+  const PExpression limit = ParseAssignmentWithRet();
   PExpression step = NULL;
   if (tokenizer.IsOperator(',')) {
     tokenizer.NextToken();
-    step = ParseConditional();
+    step = ParseAssignmentWithRet();
   } else {
     step = PExpression(new ExpConstant(AVSValue(1)));
   }
@@ -382,29 +382,43 @@ PExpression ScriptParser::ParseAssignment(void)
     tokenizer.NextToken();
     Expect('=');
     PExpression exp = ParseConditional();
-    return new ExpGlobalAssignment(name, exp);
+	return new ExpGlobalAssignment(name, exp);
   }
-  PExpression exp = ParseConditional();
+  PExpression exp = ParseAssignmentWithRet();
   if (tokenizer.IsOperator('=')) {
     const char* name = exp->GetLvalue();
     if (!name)
       env->ThrowError("Script error: left operand of `=' must be a variable name");
     tokenizer.NextToken();
-    exp = ParseConditional();
+	exp = ParseAssignmentWithRet();
     return new ExpAssignment(name, exp);
   }
+
   return exp;
 }
 
+PExpression ScriptParser::ParseAssignmentWithRet(void)
+{
+	PExpression exp = ParseConditional();
+	if (tokenizer.IsOperator(':=')) {
+		const char* name = exp->GetLvalue();
+		if (!name)
+			env->ThrowError("Script error: left operand of `:=' must be a variable name");
+		tokenizer.NextToken();
+		exp = ParseAssignmentWithRet();
+		return new ExpAssignment(name, exp, true);
+	}
+	return exp;
+}
 
 PExpression ScriptParser::ParseConditional(void) 
 {
   PExpression a = ParseOr();
   if (tokenizer.IsOperator('?')) {
     tokenizer.NextToken();
-    PExpression b = ParseConditional();
+    PExpression b = ParseAssignmentWithRet();
     Expect(':');
-    PExpression c = ParseConditional();
+    PExpression c = ParseAssignmentWithRet();
     return new ExpConditional(a, b, c);
   }
   return a;
@@ -636,7 +650,7 @@ PExpression ScriptParser::ParseFunction(PExpression context, char context_char)
       if (i == max_args) {
         env->ThrowError("Script error: argument list too long");
       }
-      args[i++] = ParseConditional();
+	  args[i++] = ParseAssignmentWithRet();
       params_count++;
       need_comma = true;
     }
@@ -684,7 +698,7 @@ PExpression ScriptParser::ParseAtom(void)
 #endif
   else if (tokenizer.IsOperator('(')) {
     tokenizer.NextToken();
-    PExpression result = ParseConditional();
+	PExpression result = ParseAssignmentWithRet();
     Expect(')');
     return result;
   }
