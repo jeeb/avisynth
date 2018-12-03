@@ -30,6 +30,54 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     Default: process all planes. For RGB: luma and chroma parameters are ignored. 
     Unprocessed planes are copied. Using alpha=false makes RGB32 processing faster, usually A channel is not needed.
 - GeneralConvolution: MT friendly parameter parsing
+- Experimental: new syntax element (by addewyd): assignment operator ":=" which returns the assigned value itself.
+  Examples:
+	w := h := 256
+
+	b := blankclip(width=w * 2, height = h * 3, length=40, pixel_type="yv12")
+	bm = blankclip(width=w, height = w).letterbox(2,0,2,0, color=$ff)
+	b
+
+	for(j = 0, 1, 1) {
+		for(i = 0, 1, 1) {
+			e = 0 + i * 16 + j * 16 * 4
+			ce = string(e)
+			c = bm.subtitle("Y = 0x" + hex(e) + " " + ce)
+			eval("c" + string(i) + string(j) + " := c")
+			b := b.overlay(c, x = i * w, y = j * h)
+		}
+	}
+
+	cx = c00.trim(0, 9) + c01.trim(0, 9) + c10.trim(0, 9) + c11.trim(0, 9) 
+
+	b := overlay(cx, x = 0, y = w * 2)
+
+	 /* defined NEW_AVSVALUE at build */
+	array = [99, 101, "303", cnt := 4]
+
+	for(j = 0, cnt - 1, 1) {
+		b := subtitle(string(array[ind := j]), x = 100, y=(j+1) * 20)
+	}
+
+	g := b.tstfunc(kf := "first", ks := "second")
+
+	g := subtitle((s := 4) > 0 ? t := "left" : t := "right", y = 100)
+	g := subtitle(string(s) + " " + t + " " + ks, y = 150)
+
+	eval("""h := g.subtitle("G", x=200, y = 20)""")
+
+	h.subtitle("H " + string(ind), x = 300, y = 20)
+
+
+	function tstfunc(c, d, e) {
+		if (f := 1 < 2) {
+			c.subtitle(string(f) + e, y = 50)
+		} else {
+			c.subtitle(d, y = 50)
+		}
+	}
+
+
 
 20180702 r2728
 --------------
