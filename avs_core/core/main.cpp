@@ -1142,6 +1142,7 @@ int CAVIFileSynth::ImageSize(const VideoInfo *vi) {
 }
 
 void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
+//  _RPT1(0, "CAVIStreamSynth::ReadFrame %d\r\n", n);
   VideoInfo vi = parent->filter_graph->GetVideoInfo();
   PVideoFrame frame;
 
@@ -1335,6 +1336,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
     }
   }
   // no alpha?
+//_RPT1(0, "CAVIStreamSynth::ReadFrame %d END\r\n", n);
 }
 
 

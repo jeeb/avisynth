@@ -322,7 +322,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
         AVSValue new_args[1] = { child };
         child2 = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
       }
-    } // for completeness, really, internal is never RGB is source is YUV
+    } // for completeness, really, internal is never RGB if source is YUV
     else {
       if (viInternalWorkingFormat->IsPlanarRGB()) {
         // clip, matrix, interlaced

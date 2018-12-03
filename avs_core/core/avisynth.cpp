@@ -1577,6 +1577,8 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
   _RPT3(0, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7Iu and %7Iu\n", &FrameRegistry2, min_size, max_size);
   _RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%Iu \n", FrameRegistry2.size());
   size_t total_vfb_size = 0;
+  auto t_end = std::chrono::high_resolution_clock::now();
+
   // list to debugview: all frames up-to vfb_size size
   for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(min_size), end_it = FrameRegistry2.upper_bound(max_size);
     it != end_it;
@@ -1613,7 +1615,6 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
           inner_frame_count_for_frame_refcount_nonzero++;
         if (someframes)
         {
-          std::chrono::time_point<std::chrono::high_resolution_clock> t_end = std::chrono::high_resolution_clock::now();
           std::chrono::duration<double> elapsed_seconds = t_end - frame_entry_timestamp;
           if (inner_frame_count <= 2) // list only the first 2. There can be even many thousand of frames!
           {
@@ -1763,8 +1764,8 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
 
 #ifdef _DEBUG
-  //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames
-  //ListFrameRegistry(0, vfb_size, true); // for chasing stuck frames
+  //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames. List exact vfb_size
+  //ListFrameRegistry(0, vfb_size, true); // for chasing stuck frames. List between 0 and vfb_size
 #endif
 
   /* -----------------------------------------------------------
@@ -1908,8 +1909,8 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
 
   if (shrinkcount != 0)
   {
-      OneTimeLogTicket ticket(LOGTICKET_W1003);
-      LogMsgOnce(ticket, LOGLEVEL_WARNING, "Caches have been shrunk due to low memory limit. This will probably degrade performance. You can try increasing the limit using SetMemoryMax().");
+    OneTimeLogTicket ticket(LOGTICKET_W1003);
+    LogMsgOnce(ticket, LOGLEVEL_WARNING, "Caches have been shrunk due to low memory limit. This will probably degrade performance. You can try increasing the limit using SetMemoryMax().");
   }
 
   /* -----------------------------------------------------------
@@ -1935,7 +1936,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
         VideoFrameBuffer *vfb = it2->first;
         if (0 == vfb->refcount) // vfb refcount check
         {
-          _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%Iu freed=%d\n", request, vfb->GetDataSize()); // P.F.
+          _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%Iu freed=%d\n", request, vfb->GetDataSize());
           memory_used -= vfb->GetDataSize();
           VideoFrameBuffer *_vfb = vfb;
           delete vfb;

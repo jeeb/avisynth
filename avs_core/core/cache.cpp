@@ -266,7 +266,7 @@ bool __stdcall Cache::GetParity(int n)
 
 int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 {
-  _RPT3(0, "Cache::SetCacheHints called. cache=%p hint=%d frame_range=%d\n", (void *)this, cachehints, frame_range); // P.F.
+  // _RPT3(0, "Cache::SetCacheHints called. cache=%p hint=%d frame_range=%d\n", (void *)this, cachehints, frame_range);
   switch(cachehints)
   {
     /*********************************************
@@ -340,7 +340,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
       _pimpl->VideoCache->limits(&min, &max);
       max = frame_range;
       _pimpl->VideoCache->set_limits(min, max);
-      _RPT3(0, "Cache::SetCacheHints CACHE_SET_MAX_CAPACITY cache=%p hint=%d frame_range=%d\n", (void *)this, cachehints, frame_range); // P.F.
+      _RPT3(0, "Cache::SetCacheHints CACHE_SET_MAX_CAPACITY cache=%p hint=%d frame_range=%d\n", (void *)this, cachehints, frame_range);
       break;
     }
 
