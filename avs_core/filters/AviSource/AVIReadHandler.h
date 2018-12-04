@@ -55,11 +55,11 @@ public:
 	virtual bool isOptimizedForRealtime()=0;
 	virtual bool isStreaming()=0;
 	virtual bool isIndexFabricated()=0;
-	virtual bool AppendFile(const char *pszFile)=0;
+	virtual bool AppendFile(const wchar_t *pszFile)=0;
 	virtual bool getSegmentHint(const char **ppszPath)=0;
 };
 
 IAVIReadHandler *CreateAVIReadHandler(PAVIFILE paf);
-IAVIReadHandler *CreateAVIReadHandler(const char *pszFile);
+IAVIReadHandler *CreateAVIReadHandler(const wchar_t *pszFile);
 
 #endif

@@ -480,7 +480,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
 }
 
 
-AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int vtrack, int atrack, avi_mode_e mode, IScriptEnvironment* env) {
+AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int vtrack, int atrack, avi_mode_e mode, bool utf8, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
   memset(&vi, 0, sizeof(vi));
   ex = false;
@@ -506,12 +506,14 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   bMediaPad = false;
   frame = 0;
 
+  auto filename_w = utf8 ? Utf8ToWideChar(filename) : AnsiToWideChar(filename);
+
   AVIFileInit();
   try {
 
     if (mode == MODE_NORMAL) {
       // if it looks like an AVI file, open in OpenDML mode; otherwise AVIFile mode
-      HANDLE h = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+      HANDLE h = CreateFileW(filename_w.get(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       if (h == INVALID_HANDLE_VALUE) {
         env->ThrowError("AVISource autodetect: couldn't open file '%s'\nError code: %d", filename, GetLastError());
       }
@@ -527,7 +529,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode == MODE_AVIFILE || mode == MODE_WAV) {    // AVIFile mode
       PAVIFILE paf = NULL;
       try { // The damn .WAV clsid handler has only a 48 byte buffer to parse the filename and GPF's
-		if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
+		if (FAILED(AVIFileOpenW(&paf, filename_w.get(), OF_READ, 0)))
 		  env->ThrowError("AVIFileSource: couldn't open file '%s'", filename);
       }
 	  catch (AvisynthError) {
@@ -538,7 +540,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 	  }
 	  pfile = CreateAVIReadHandler(paf);
     } else {              // OpenDML mode
-      pfile = CreateAVIReadHandler(filename);
+      pfile = CreateAVIReadHandler(filename_w.get());
     }
 
     if (mode != MODE_WAV) { // check for video stream

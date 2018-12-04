@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20181122 r27xx
+20181204 r27xx
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
   Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
@@ -30,6 +30,9 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     Default: process all planes. For RGB: luma and chroma parameters are ignored. 
     Unprocessed planes are copied. Using alpha=false makes RGB32 processing faster, usually A channel is not needed.
 - GeneralConvolution: MT friendly parameter parsing
+- New: UTF8 filename support in AviSource, AVIFileSource, WAVSource, OpenDMLSource and SegmentedAVISource
+  All the functions above have a new bool utf8 parameter. Default value is false. 
+  Note: the avs script which contains UTF8 characters inside cannot be saved with UTF8 marker, save it without UTF8-BOM.
 - Experimental: new syntax element (by addewyd): assignment operator ":=" which returns the assigned value itself.
   Examples:
 	w := h := 256

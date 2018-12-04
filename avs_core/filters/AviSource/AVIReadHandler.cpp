@@ -28,7 +28,7 @@
 #include "File64.h"
 
 #include "clip_info.h"
-
+#include "..\avs_core\core\internal.h"
 #include <cmath>
 #include <cstdint>
 
@@ -329,7 +329,7 @@ class AVIReadHandler : public IAVIReadHandler, private File64 {
 public:
 	bool		fDisableFastIO;
 
-	AVIReadHandler(const char *);
+	AVIReadHandler(const wchar_t *);
 	AVIReadHandler(PAVIFILE);
 	~AVIReadHandler();
 
@@ -340,7 +340,7 @@ public:
 	bool isOptimizedForRealtime();
 	bool isStreaming();
 	bool isIndexFabricated();
-	bool AppendFile(const char *pszFile);
+	bool AppendFile(const wchar_t *pszFile);
 	bool getSegmentHint(const char **ppszPath);
 
 	void EnableStreaming(int stream);
@@ -380,7 +380,7 @@ private:
 	List2<AVIStreamNode>		listStreams;
 	List2<AVIFileDesc>			listFiles;
 
-	void		_construct(const char *pszFile);
+	void		_construct(const wchar_t *pszFile_w);
 	void		_parseFile(List2<AVIStreamNode>& streams);
 	bool		_parseStreamHeader(List2<AVIStreamNode>& streams, DWORD dwLengthLeft, bool& bIndexDamaged);
 	bool		_parseIndexBlock(List2<AVIStreamNode>& streams, int count, __int64);
@@ -396,8 +396,8 @@ IAVIReadHandler *CreateAVIReadHandler(PAVIFILE paf) {
 	return new AVIReadHandler(paf);
 }
 
-IAVIReadHandler *CreateAVIReadHandler(const char *pszFile) {
-	return new AVIReadHandler(pszFile);
+IAVIReadHandler *CreateAVIReadHandler(const wchar_t *pszFile_w) {
+	return new AVIReadHandler(pszFile_w);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1252,7 +1252,7 @@ bool AVIReadStream::getVBRInfo(double& bitrate_mean, double& bitrate_stddev, dou
 
 ///////////////////////////////////////////////////////////////////////////
 
-AVIReadHandler::AVIReadHandler(const char *s)
+AVIReadHandler::AVIReadHandler(const wchar_t *s)
 : pAvisynthClipInfo(0)
 , bAggressivelyRecovered(false)
 {
@@ -1312,20 +1312,20 @@ AVIReadHandler::~AVIReadHandler() {
 	_destruct();
 }
 
-void AVIReadHandler::_construct(const char *pszFile) {
+void AVIReadHandler::_construct(const wchar_t *pszFile_w) {
 
 	try {
 		AVIFileDesc *pDesc;
 
 		// open file
 
-		hFile = CreateFile(pszFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		hFile = CreateFileW(pszFile_w, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 
 		if (INVALID_HANDLE_VALUE == hFile)
-			throw MyWin32Error("Couldn't open %s: %%s", GetLastError(), pszFile);
+			throw MyWin32Error("Couldn't open %s: %%s", GetLastError(), WideCharToAnsi(pszFile_w).get());
 
-		hFileUnbuffered = CreateFile(
-				pszFile,
+		hFileUnbuffered = CreateFileW(
+				pszFile_w,
 				GENERIC_READ,
 				FILE_SHARE_READ,
 				NULL,
@@ -1357,7 +1357,7 @@ void AVIReadHandler::_construct(const char *pszFile) {
 	}
 }
 
-bool AVIReadHandler::AppendFile(const char *pszFile) {
+bool AVIReadHandler::AppendFile(const wchar_t *pszFile_w) {
 	List2<AVIStreamNode> newstreams;
 	AVIStreamNode *pasn_old, *pasn_new, *pasn_old_next=NULL, *pasn_new_next=NULL;
 	AVIFileDesc *pDesc;
@@ -1366,13 +1366,13 @@ bool AVIReadHandler::AppendFile(const char *pszFile) {
 
 	// open file
 
-	hFile = CreateFile(pszFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	hFile = CreateFileW(pszFile_w, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 
 	if (INVALID_HANDLE_VALUE == hFile)
-		throw MyWin32Error("Couldn't open %s: %%s", GetLastError(), pszFile);
+		throw MyWin32Error("Couldn't open %s: %%s", GetLastError(), WideCharToAnsi(pszFile_w).get());
 
-	hFileUnbuffered = CreateFile(
-			pszFile,
+	hFileUnbuffered = CreateFileW(
+			pszFile_w,
 			GENERIC_READ,
 			FILE_SHARE_READ,
 			NULL,
