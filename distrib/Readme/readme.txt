@@ -29,6 +29,37 @@ Short info for plugin writers
   when your plugin calls it on a Classic Avisynth, or pre-high bit depth Avisynth+ host.
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
+20181218 r2767
+--------------
+- New: Expr: allow input clips to have more planes than an implicitely specified output format
+  Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
+- New: Expr: Y-plane-only clip(s) can be used as source planes when a non-subsampled (rgb or 444) output format implicitely specified 
+  Expr(Y, "x", "x 2.0 /", "x 3.0 /", format="RGBPS") # r, g and b expression uses Y plane
+  Expr(Grey_r, Grey_g, Grey_b, "x", "y 2.0 /", "z 3.0 /", format="RGBPS") # r, g and b expression uses Y plane
+- Fix: ConvertToYUY2() error message for non-8 bit sources.
+- Fix: Y32 source to 32 bit 420,422,444 (introduced in big the zero-chroma-center transition)
+- Fix: ShowY, ShowU, ShowV crash for YUV (non-YUVA) sources
+- Speedup: ConvertToY12/16... for RGB or YUY2 sources where 4:4:4 or YV16 intermediate clip was used internally
+  (~1.5-2x speed, was a regression in Avs+, use intermediate cache again)
+- Fix: Allow ExtractY on greyscale clips
+- ImageReader/ImageSource: use cache before FreezeFrame when result is a multiframe clip (fast again, regression since an early AVS+ version)
+- Resizers: don't use crop at special edge cases to avoid inconsistent results across different parameters/color spaces
+- Fix: Histogram 'classic': rare incomplete histogram shown in multithreading environment
+- Fix: ImageReader and ImageWriter: if path is "" then it works from/to the current directory.
+- GeneralConvolution: Allow 7x7 and 9x9 matrices (was: 3x3 and 5x5)
+- GeneralConvolution: All 8-32 bit formats (was: RGB32 only): YUY2 is converted to/from YV16, RGB24/32/48/64 are treated as planar RGB internally
+  Since 32 bit float input is now possible, matrix elements and bias parameter now is of float type.
+  For 8-16 bit clips the matrix is converted to integer before use.
+- GeneralConvolution: Allow chroma subsampled formats to have their luma _or_ chroma processed. E.g. set chroma=false for a YV12 input.
+- GeneralConvolution: new parameters: boolean luma (true), boolean chroma(true), boolean alpha(true)
+    Default: process all planes. For RGB: luma and chroma parameters are ignored. 
+    Unprocessed planes are copied. Using alpha=false makes RGB32 processing faster, usually A channel is not needed.
+- GeneralConvolution: MT friendly parameter parsing
+- New: UTF8 filename support in AviSource, AVIFileSource, WAVSource, OpenDMLSource and SegmentedAVISource
+  All functions above have a new bool utf8 parameter. Default value is false. 
+- Experimental: new syntax element (by addewyd): assignment operator ":=" which returns the assigned value itself.
+  (Assignment within an expression) 
+
 20180702 r2728
 --------------
 - Fix: Expr: expression string order for planar RGB is properly r-g-b like in original VapourSynth version, instead of counter-intuitive g-b-r.

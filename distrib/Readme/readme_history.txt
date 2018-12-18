@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20181204 r27xx
+20181218 r2767
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
   Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
@@ -24,61 +24,61 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - GeneralConvolution: Allow 7x7 and 9x9 matrices (was: 3x3 and 5x5)
 - GeneralConvolution: All 8-32 bit formats (was: RGB32 only): YUY2 is converted to/from YV16, RGB24/32/48/64 are treated as planar RGB internally
   Since 32 bit float input is now possible, matrix elements and bias parameter now is of float type.
-  When the clip is 8-16 bits, they are converted to integer before use.
+  For 8-16 bit clips the matrix is converted to integer before use.
 - GeneralConvolution: Allow chroma subsampled formats to have their luma _or_ chroma processed. E.g. set chroma=false for a YV12 input.
 - GeneralConvolution: new parameters: boolean luma (true), boolean chroma(true), boolean alpha(true)
     Default: process all planes. For RGB: luma and chroma parameters are ignored. 
     Unprocessed planes are copied. Using alpha=false makes RGB32 processing faster, usually A channel is not needed.
 - GeneralConvolution: MT friendly parameter parsing
 - New: UTF8 filename support in AviSource, AVIFileSource, WAVSource, OpenDMLSource and SegmentedAVISource
-  All the functions above have a new bool utf8 parameter. Default value is false. 
-  Note: the avs script which contains UTF8 characters inside cannot be saved with UTF8 marker, save it without UTF8-BOM.
+  All functions above have a new bool utf8 parameter. Default value is false. 
 - Experimental: new syntax element (by addewyd): assignment operator ":=" which returns the assigned value itself.
+  (Assignment within an expression) 
   Examples:
-	w := h := 256
+    w := h := 256
 
-	b := blankclip(width=w * 2, height = h * 3, length=40, pixel_type="yv12")
-	bm = blankclip(width=w, height = w).letterbox(2,0,2,0, color=$ff)
-	b
+    b := blankclip(width=w * 2, height = h * 3, length=40, pixel_type="yv12")
+    bm = blankclip(width=w, height = w).letterbox(2,0,2,0, color=$ff)
+    b
 
-	for(j = 0, 1, 1) {
-		for(i = 0, 1, 1) {
-			e = 0 + i * 16 + j * 16 * 4
-			ce = string(e)
-			c = bm.subtitle("Y = 0x" + hex(e) + " " + ce)
-			eval("c" + string(i) + string(j) + " := c")
-			b := b.overlay(c, x = i * w, y = j * h)
-		}
-	}
+    for(j = 0, 1, 1) {
+        for(i = 0, 1, 1) {
+            e = 0 + i * 16 + j * 16 * 4
+            ce = string(e)
+            c = bm.subtitle("Y = 0x" + hex(e) + " " + ce)
+            eval("c" + string(i) + string(j) + " := c")
+            b := b.overlay(c, x = i * w, y = j * h)
+        }
+    }
 
-	cx = c00.trim(0, 9) + c01.trim(0, 9) + c10.trim(0, 9) + c11.trim(0, 9) 
+    cx = c00.trim(0, 9) + c01.trim(0, 9) + c10.trim(0, 9) + c11.trim(0, 9) 
 
-	b := overlay(cx, x = 0, y = w * 2)
+    b := overlay(cx, x = 0, y = w * 2)
 
-	 /* defined NEW_AVSVALUE at build */
-	array = [99, 101, "303", cnt := 4]
+     /* defined NEW_AVSVALUE at build */
+    array = [99, 101, "303", cnt := 4]
 
-	for(j = 0, cnt - 1, 1) {
-		b := subtitle(string(array[ind := j]), x = 100, y=(j+1) * 20)
-	}
+    for(j = 0, cnt - 1, 1) {
+        b := subtitle(string(array[ind := j]), x = 100, y=(j+1) * 20)
+    }
 
-	g := b.tstfunc(kf := "first", ks := "second")
+    g := b.tstfunc(kf := "first", ks := "second")
 
-	g := subtitle((s := 4) > 0 ? t := "left" : t := "right", y = 100)
-	g := subtitle(string(s) + " " + t + " " + ks, y = 150)
+    g := subtitle((s := 4) > 0 ? t := "left" : t := "right", y = 100)
+    g := subtitle(string(s) + " " + t + " " + ks, y = 150)
 
-	eval("""h := g.subtitle("G", x=200, y = 20)""")
+    eval("""h := g.subtitle("G", x=200, y = 20)""")
 
-	h.subtitle("H " + string(ind), x = 300, y = 20)
+    h.subtitle("H " + string(ind), x = 300, y = 20)
 
 
-	function tstfunc(c, d, e) {
-		if (f := 1 < 2) {
-			c.subtitle(string(f) + e, y = 50)
-		} else {
-			c.subtitle(d, y = 50)
-		}
-	}
+    function tstfunc(c, d, e) {
+        if (f := 1 < 2) {
+            c.subtitle(string(f) + e, y = 50)
+        } else {
+            c.subtitle(d, y = 50)
+        }
+    }
 
 
 
