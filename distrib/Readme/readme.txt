@@ -1,4 +1,4 @@
-Avisynth+ v2728 (20180702)
+Avisynth+ v2768 (20181218)
 --------------------------
 
 Use the installer or copy files directly
@@ -29,7 +29,7 @@ Short info for plugin writers
   when your plugin calls it on a Classic Avisynth, or pre-high bit depth Avisynth+ host.
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
-20181218 r2767
+20181218 r2768
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
   Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
