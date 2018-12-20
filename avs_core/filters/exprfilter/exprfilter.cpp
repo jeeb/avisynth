@@ -2034,21 +2034,21 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
       }
       else if (iter.op == opStoreVar || iter.op == opStoreAndPopVar) {
         if (processSingle) {
-          auto &t1 = stack1.back();
-          if(iter.op == opStoreAndPopVar)
-            stack1.pop_back();
+          auto t1 = stack1.back();
           // 16 bytes/variable
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 16 * iter.e.ival;
           movaps(xmmword_ptr[regptrs + offset], t1);
+          if (iter.op == opStoreAndPopVar)
+            stack1.pop_back();
         }
         else {
-          auto &t1 = stack.back();
-          if (iter.op == opStoreAndPopVar)
-            stack.pop_back();
+          auto t1 = stack.back();
           // 32 byte/variable
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
           movaps(xmmword_ptr[regptrs + offset], t1.first);
           movaps(xmmword_ptr[regptrs + offset + 16], t1.second);
+          if (iter.op == opStoreAndPopVar)
+            stack.pop_back();
         }
       }
       else if (iter.op == opAbs) {
@@ -2820,21 +2820,21 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
       }
       else if (iter.op == opStoreVar || iter.op == opStoreAndPopVar) {
         if (processSingle) {
-          auto &t1 = stack1.back();
-          if (iter.op == opStoreAndPopVar)
-            stack1.pop_back();
+          auto t1 = stack1.back();
           // 32 bytes/variable
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
           vmovaps(ymmword_ptr[regptrs + offset], t1);
+          if (iter.op == opStoreAndPopVar)
+            stack1.pop_back();
         }
         else {
-          auto &t1 = stack.back();
-          if (iter.op == opStoreAndPopVar)
-            stack.pop_back();
+          auto t1 = stack.back();
           // 64 bytes/variable
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 64 * iter.e.ival;
           vmovaps(ymmword_ptr[regptrs + offset], t1.first);
           vmovaps(ymmword_ptr[regptrs + offset + 32], t1.second); // this needs 64 byte aligned data to prevent overwrite!
+          if (iter.op == opStoreAndPopVar)
+            stack.pop_back();
         }
       }
       else if (iter.op == opAbs) {
