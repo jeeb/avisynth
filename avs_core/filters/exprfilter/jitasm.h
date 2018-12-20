@@ -7649,7 +7649,7 @@ namespace compiler
         // even -> rsp 16 byte aligned
         // odd  -> rsp 8 byte aligned
         f.mov(f.rbx, f.rsp);
-        // Now ebx becomes the pointer for saving spilled XMM6-15 (x64-compulsory) and 
+        // Now rbx becomes the pointer for saving spilled XMM6-15 (x64-compulsory) and 
         // temporary storage for the local variables (reg, xmm, ymm)
         // Because we use vmovaps (aligned store/load) for ymm, 32 byte alignment needed for base
         f.and_(f.rbx, 0xFFFFFFFFFFFFFFE0LL); // align 32 bytes
