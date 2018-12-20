@@ -1,4 +1,4 @@
-Avisynth+ v2768 (20181218)
+Avisynth+ v2772 (20181220)
 --------------------------
 
 Use the installer or copy files directly
@@ -29,6 +29,11 @@ Short info for plugin writers
   when your plugin calls it on a Classic Avisynth, or pre-high bit depth Avisynth+ host.
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
+20181220 r2772
+--------------
+- Fix: Expr: possible Expr x64 crash under specific memory circumstances
+- Fix: Expr: safer code for internal variables "Store and pop from stack" (see: Internal variables at http://avisynth.nl/index.php/Expr)
+
 20181218 r2768
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format

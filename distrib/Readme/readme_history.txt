@@ -4,6 +4,11 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20181220 r2772
+--------------
+- Fix: Expr: possible Expr x64 crash under specific memory circumstances
+- Fix: Expr: safer code for internal variables "Store and pop from stack" (see: Internal variables at http://avisynth.nl/index.php/Expr)
+
 20181218 r2768
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
