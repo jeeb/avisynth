@@ -7652,8 +7652,8 @@ namespace compiler
         // Now ebx becomes the pointer for saving spilled XMM6-15 (x64-compulsory) and 
         // temporary storage for the local variables (reg, xmm, ymm)
         // Because we use vmovaps (aligned store/load) for ymm, 32 byte alignment needed for base
-        f.and_(f.ebx, 0xFFFFFFE0); // align 32 bytes, lower 32 only
-                                   
+        f.and_(f.rbx, 0xFFFFFFFFFFFFFFE0LL); // align 32 bytes
+
         // padding for keep alignment (16 bytes for rsp)
         if (num_of_preserved_gp_reg & 1)
           stack_size += 16+8; // 8 or 24. Worst case.
