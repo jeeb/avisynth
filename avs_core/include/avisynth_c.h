@@ -40,6 +40,7 @@
 // 171106: avs_get_height calls into avs_get_row_size_p, instead of direct field access
 // 180524: AVSC_EXPORT to dllexport in capi.h for avisynth_c_plugin_init
 // 180524: avs_is_same_colorspace VideoInfo parameters to const
+// 181230: Readability: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -361,76 +362,19 @@ AVSC_INLINE int avs_is_yuv(const AVS_VideoInfo * p)
 AVSC_INLINE int avs_is_yuy2(const AVS_VideoInfo * p)
         { return (p->pixel_type & AVS_CS_YUY2) == AVS_CS_YUY2; }
 
-AVSC_API(int, avs_is_rgb48)(const AVS_VideoInfo * p);
+AVSC_API(int, avs_is_yv24)(const AVS_VideoInfo * p); // avs+: for generic 444 check, use avs_is_yuv444
 
-AVSC_API(int, avs_is_rgb64)(const AVS_VideoInfo * p);
+AVSC_API(int, avs_is_yv16)(const AVS_VideoInfo * p); // avs+: for generic 422 check, use avs_is_yuv422
 
-AVSC_API(int, avs_is_yv24)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yv16)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yv12)(const AVS_VideoInfo * p) ;
+AVSC_API(int, avs_is_yv12)(const AVS_VideoInfo * p) ; // avs+: for generic 420 check, use avs_is_yuv420
 
 AVSC_API(int, avs_is_yv411)(const AVS_VideoInfo * p);
 
-AVSC_API(int, avs_is_y8)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yuv444p16)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yuv422p16)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yuv420p16)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_y16)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yuv444ps)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_444)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_422)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_420)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_y)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_yuva)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_planar_rgb)(const AVS_VideoInfo * p);
-
-AVSC_API(int, avs_is_planar_rgba)(const AVS_VideoInfo * p);
-
-
-
-AVSC_INLINE int avs_is_property(const AVS_VideoInfo * p, int property)
-        { return ((p->image_type & property)==property ); }
-
-AVSC_INLINE int avs_is_planar(const AVS_VideoInfo * p)
-        { return !!(p->pixel_type & AVS_CS_PLANAR); }
-
-AVSC_API(int, avs_is_color_space)(const AVS_VideoInfo * p, int c_space);
-
-AVSC_INLINE int avs_is_field_based(const AVS_VideoInfo * p)
-        { return !!(p->image_type & AVS_IT_FIELDBASED); }
-
-AVSC_INLINE int avs_is_parity_known(const AVS_VideoInfo * p)
-        { return ((p->image_type & AVS_IT_FIELDBASED)&&(p->image_type & (AVS_IT_BFF | AVS_IT_TFF))); }
-
-AVSC_INLINE int avs_is_bff(const AVS_VideoInfo * p)
-        { return !!(p->image_type & AVS_IT_BFF); }
-
-AVSC_INLINE int avs_is_tff(const AVS_VideoInfo * p)
-        { return !!(p->image_type & AVS_IT_TFF); }
+AVSC_API(int, avs_is_y8)(const AVS_VideoInfo * p); // for generic grayscale, use avs_is_y
 
 AVSC_API(int, avs_get_plane_width_subsampling)(const AVS_VideoInfo * p, int plane);
 
 AVSC_API(int, avs_get_plane_height_subsampling)(const AVS_VideoInfo * p, int plane);
-
 
 AVSC_API(int, avs_bits_per_pixel)(const AVS_VideoInfo * p);
 
@@ -440,9 +384,41 @@ AVSC_API(int, avs_row_size)(const AVS_VideoInfo * p, int plane);
 
 AVSC_API(int, avs_bmp_size)(const AVS_VideoInfo * vi);
 
+AVSC_API(int, avs_is_color_space)(const AVS_VideoInfo * p, int c_space);
+
+// no API for these, inline helper functions
+AVSC_INLINE int avs_is_property(const AVS_VideoInfo * p, int property)
+{
+  return ((p->image_type & property) == property);
+}
+
+AVSC_INLINE int avs_is_planar(const AVS_VideoInfo * p)
+{
+  return !!(p->pixel_type & AVS_CS_PLANAR);
+}
+
+AVSC_INLINE int avs_is_field_based(const AVS_VideoInfo * p)
+{
+  return !!(p->image_type & AVS_IT_FIELDBASED);
+}
+
+AVSC_INLINE int avs_is_parity_known(const AVS_VideoInfo * p)
+{
+  return ((p->image_type & AVS_IT_FIELDBASED) && (p->image_type & (AVS_IT_BFF | AVS_IT_TFF)));
+}
+
+AVSC_INLINE int avs_is_bff(const AVS_VideoInfo * p)
+{
+  return !!(p->image_type & AVS_IT_BFF);
+}
+
+AVSC_INLINE int avs_is_tff(const AVS_VideoInfo * p)
+{
+  return !!(p->image_type & AVS_IT_TFF);
+}
+
 AVSC_INLINE int avs_samples_per_second(const AVS_VideoInfo * p)
         { return p->audio_samples_per_second; }
-
 
 AVSC_INLINE int avs_bytes_per_channel_sample(const AVS_VideoInfo * p)
 {
@@ -455,6 +431,7 @@ AVSC_INLINE int avs_bytes_per_channel_sample(const AVS_VideoInfo * p)
       default: return 0;
     }
 }
+
 AVSC_INLINE int avs_bytes_per_audio_sample(const AVS_VideoInfo * p)
         { return p->nchannels*avs_bytes_per_channel_sample(p);}
 
@@ -502,11 +479,47 @@ AVSC_INLINE int avs_is_same_colorspace(const AVS_VideoInfo * x, const AVS_VideoI
                 || (avs_is_yv12(x) && avs_is_yv12(y));
 }
 
+// Avisynth+ extensions
+AVSC_API(int, avs_is_rgb48)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_rgb64)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_yuv444p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv444
+
+AVSC_API(int, avs_is_yuv422p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv422
+
+AVSC_API(int, avs_is_yuv420p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv420
+
+AVSC_API(int, avs_is_y16)(const AVS_VideoInfo * p); // obsolate, use avs_is_y
+
+AVSC_API(int, avs_is_yuv444ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv444
+
+AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv422
+
+AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv420
+
+AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p); // obsolate, use avs_is_y
+
+AVSC_API(int, avs_is_444)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_422)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_420)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_y)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_yuva)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_planar_rgb)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_planar_rgba)(const AVS_VideoInfo * p);
+
 AVSC_API(int, avs_num_components)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_component_size)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_bits_per_component)(const AVS_VideoInfo * p);
+// end of Avisynth+ specific
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -569,10 +582,24 @@ typedef struct AVS_VideoFrame {
 // Access functions for AVS_VideoFrame
 AVSC_API(int, avs_get_pitch_p)(const AVS_VideoFrame * p, int plane);
 
-AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
-        return avs_get_pitch_p(p, 0);}
-
 AVSC_API(int, avs_get_row_size_p)(const AVS_VideoFrame * p, int plane);
+
+AVSC_API(int, avs_get_height_p)(const AVS_VideoFrame * p, int plane);
+
+AVSC_API(const BYTE *, avs_get_read_ptr_p)(const AVS_VideoFrame * p, int plane);
+
+AVSC_API(int, avs_is_writable)(const AVS_VideoFrame * p);
+
+AVSC_API(BYTE *, avs_get_write_ptr_p)(const AVS_VideoFrame * p, int plane);
+
+AVSC_API(void, avs_release_video_frame)(AVS_VideoFrame *);
+// makes a shallow copy of a video frame
+AVSC_API(AVS_VideoFrame *, avs_copy_video_frame)(AVS_VideoFrame *);
+
+// no API for these, inline helper functions
+AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
+  return avs_get_pitch_p(p, 0);
+}
 
 // 171106: this inline breaks because it accesses directly row_size.
 // When x64 and offset is size_t, row_size is misplaced
@@ -584,7 +611,6 @@ AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
         return avs_get_row_size_p(p, 0); }
 #endif
 
-AVSC_API(int, avs_get_height_p)(const AVS_VideoFrame * p, int plane);
 
 // 171106: this inline breaks because it accesses directly row_size.
 // When x64 and offset is size_t, height is misplaced
@@ -597,21 +623,11 @@ AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
 }
 #endif
 
-AVSC_API(const BYTE *, avs_get_read_ptr_p)(const AVS_VideoFrame * p, int plane);
-
 AVSC_INLINE const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p) {
         return avs_get_read_ptr_p(p, 0);}
 
-AVSC_API(int, avs_is_writable)(const AVS_VideoFrame * p);
-
-AVSC_API(BYTE *, avs_get_write_ptr_p)(const AVS_VideoFrame * p, int plane);
-
 AVSC_INLINE BYTE* avs_get_write_ptr(const AVS_VideoFrame * p) {
         return avs_get_write_ptr_p(p, 0);}
-
-AVSC_API(void, avs_release_video_frame)(AVS_VideoFrame *);
-// makes a shallow copy of a video frame
-AVSC_API(AVS_VideoFrame *, avs_copy_video_frame)(AVS_VideoFrame *);
 
 #ifndef AVSC_NO_DECLSPEC
 AVSC_INLINE void avs_release_frame(AVS_VideoFrame * f)
@@ -657,7 +673,11 @@ static const AVS_Value avs_void = {'v'};
 
 AVSC_API(void, avs_copy_value)(AVS_Value * dest, AVS_Value src);
 AVSC_API(void, avs_release_value)(AVS_Value);
+AVSC_API(AVS_Clip *, avs_take_clip)(AVS_Value, AVS_ScriptEnvironment *);
+AVSC_API(void, avs_set_to_clip)(AVS_Value *, AVS_Clip *);
 
+
+// no API for these, inline helper functions
 AVSC_INLINE int avs_defined(AVS_Value v) { return v.type != 'v'; }
 AVSC_INLINE int avs_is_clip(AVS_Value v) { return v.type == 'c'; }
 AVSC_INLINE int avs_is_bool(AVS_Value v) { return v.type == 'b'; }
@@ -666,9 +686,6 @@ AVSC_INLINE int avs_is_float(AVS_Value v) { return v.type == 'f' || v.type == 'i
 AVSC_INLINE int avs_is_string(AVS_Value v) { return v.type == 's'; }
 AVSC_INLINE int avs_is_array(AVS_Value v) { return v.type == 'a'; }
 AVSC_INLINE int avs_is_error(AVS_Value v) { return v.type == 'e'; }
-
-AVSC_API(AVS_Clip *, avs_take_clip)(AVS_Value, AVS_ScriptEnvironment *);
-AVSC_API(void, avs_set_to_clip)(AVS_Value *, AVS_Clip *);
 
 AVSC_INLINE int avs_as_bool(AVS_Value v)
         { return v.d.boolean; }
@@ -705,6 +722,7 @@ AVSC_INLINE AVS_Value avs_new_value_clip(AVS_Clip * v0)
 #endif
 AVSC_INLINE AVS_Value avs_new_value_array(AVS_Value * v0, int size)
         { AVS_Value v; v.type = 'a'; v.d.array = v0; v.array_size = (short)size; return v; }
+// end of inline helper functions
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -850,18 +868,18 @@ AVSC_API(AVS_VideoFrame *, avs_new_video_frame_a)(AVS_ScriptEnvironment *,
                                           const AVS_VideoInfo * vi, int align);
 // align should be at least 16
 
+// no API for these, inline helper functions
 #ifndef AVSC_NO_DECLSPEC
-AVSC_INLINE
-AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env,
+AVSC_INLINE AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env,
                                      const AVS_VideoInfo * vi)
   {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
 
-AVSC_INLINE
-AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env,
+// an older compatibility alias
+AVSC_INLINE AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env,
                                const AVS_VideoInfo * vi)
   {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
 #endif
-
+// end of inline helper functions
 
 AVSC_API(int, avs_make_writable)(AVS_ScriptEnvironment *, AVS_VideoFrame * * pvf);
 
@@ -910,6 +928,10 @@ AVSC_API(AVS_VideoFrame *, avs_subframe_planar)(AVS_ScriptEnvironment *, AVS_Vid
 typedef struct AVS_Library AVS_Library;
 
 #define AVSC_DECLARE_FUNC(name) name##_func name
+// we'll have
+// avs_add_function_func avs_add_function;
+// avs_copy_clip_func avs_copy_clip;
+// etc.. for all AVSC_API functions
 
 struct AVS_Library {
   HMODULE handle;
@@ -953,28 +975,11 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_vsprintf);
 
   AVSC_DECLARE_FUNC(avs_get_error);
-  AVSC_DECLARE_FUNC(avs_is_rgb48);
-  AVSC_DECLARE_FUNC(avs_is_rgb64);
   AVSC_DECLARE_FUNC(avs_is_yv24);
   AVSC_DECLARE_FUNC(avs_is_yv16);
   AVSC_DECLARE_FUNC(avs_is_yv12);
   AVSC_DECLARE_FUNC(avs_is_yv411);
   AVSC_DECLARE_FUNC(avs_is_y8);
-  AVSC_DECLARE_FUNC(avs_is_yuv444p16);
-  AVSC_DECLARE_FUNC(avs_is_yuv422p16);
-  AVSC_DECLARE_FUNC(avs_is_yuv420p16);
-  AVSC_DECLARE_FUNC(avs_is_y16);
-  AVSC_DECLARE_FUNC(avs_is_yuv444ps);
-  AVSC_DECLARE_FUNC(avs_is_yuv422ps);
-  AVSC_DECLARE_FUNC(avs_is_yuv420ps);
-  AVSC_DECLARE_FUNC(avs_is_y32);
-  AVSC_DECLARE_FUNC(avs_is_444);
-  AVSC_DECLARE_FUNC(avs_is_422);
-  AVSC_DECLARE_FUNC(avs_is_420);
-  AVSC_DECLARE_FUNC(avs_is_y);
-  AVSC_DECLARE_FUNC(avs_is_yuva);
-  AVSC_DECLARE_FUNC(avs_is_planar_rgb);
-  AVSC_DECLARE_FUNC(avs_is_planar_rgba);
   AVSC_DECLARE_FUNC(avs_is_color_space);
 
   AVSC_DECLARE_FUNC(avs_get_plane_width_subsampling);
@@ -990,9 +995,28 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_is_writable);
   AVSC_DECLARE_FUNC(avs_get_write_ptr_p);
 
+  // Avisynth+ specific
+  AVSC_DECLARE_FUNC(avs_is_rgb48);
+  AVSC_DECLARE_FUNC(avs_is_rgb64);
+  AVSC_DECLARE_FUNC(avs_is_yuv444p16);
+  AVSC_DECLARE_FUNC(avs_is_yuv422p16);
+  AVSC_DECLARE_FUNC(avs_is_yuv420p16);
+  AVSC_DECLARE_FUNC(avs_is_y16);
+  AVSC_DECLARE_FUNC(avs_is_yuv444ps);
+  AVSC_DECLARE_FUNC(avs_is_yuv422ps);
+  AVSC_DECLARE_FUNC(avs_is_yuv420ps);
+  AVSC_DECLARE_FUNC(avs_is_y32);
+  AVSC_DECLARE_FUNC(avs_is_444);
+  AVSC_DECLARE_FUNC(avs_is_422);
+  AVSC_DECLARE_FUNC(avs_is_420);
+  AVSC_DECLARE_FUNC(avs_is_y);
+  AVSC_DECLARE_FUNC(avs_is_yuva);
+  AVSC_DECLARE_FUNC(avs_is_planar_rgb);
+  AVSC_DECLARE_FUNC(avs_is_planar_rgba);
   AVSC_DECLARE_FUNC(avs_num_components);
   AVSC_DECLARE_FUNC(avs_component_size);
   AVSC_DECLARE_FUNC(avs_bits_per_component);
+  // end of Avisynth+ specific
 
 };
 
