@@ -43,6 +43,7 @@
 // 181230: Readability: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
 // 181230: use #ifndef AVSC_NO_DECLSPEC for AVSC_INLINE functions which are calling API functions
 // 181230: comments on avs_load_library (helper for loading API entries dynamically into a struct using AVSC_NO_DECLSPEC define)
+// 181230: define alias AVS_FRAME_ALIGN as FRAME_ALIGN
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -51,7 +52,7 @@
 #include <avs/capi.h>
 #include <avs/types.h>
 
-
+#define AVS_FRAME_ALIGN FRAME_ALIGN
 /////////////////////////////////////////////////////////////////////
 //
 // Constants
@@ -154,7 +155,7 @@ enum {
 
   //-------------------------
   // AVS16: new planar constants go live! Experimental PF 160613
-  // 10-12-14 bit + planar RGB + BRG48/64 160725
+  // 10-12-14-16 bit + planar RGB + BRG48/64 160725
   AVS_CS_YUV444P10 = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_10, // YUV 4:4:4 10bit samples
   AVS_CS_YUV422P10 = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:2 10bit samples
   AVS_CS_YUV420P10 = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:0 10bit samples
@@ -900,13 +901,13 @@ AVSC_API(AVS_VideoFrame *, avs_new_video_frame_a)(AVS_ScriptEnvironment *,
 // this inline function is calling an API function
 AVSC_INLINE AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env,
                                      const AVS_VideoInfo * vi)
-  {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
+  {return avs_new_video_frame_a(env,vi,AVS_FRAME_ALIGN);}
 
 // an older compatibility alias
 // this inline function is calling an API function
 AVSC_INLINE AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env,
                                const AVS_VideoInfo * vi)
-  {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
+  {return avs_new_video_frame_a(env,vi,AVS_FRAME_ALIGN);}
 #endif
 // end of inline helper functions
 
