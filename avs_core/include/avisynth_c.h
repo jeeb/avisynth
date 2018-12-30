@@ -43,7 +43,9 @@
 // 181230: Readability: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
 // 181230: use #ifndef AVSC_NO_DECLSPEC for AVSC_INLINE functions which are calling API functions
 // 181230: comments on avs_load_library (helper for loading API entries dynamically into a struct using AVSC_NO_DECLSPEC define)
-// 181230: define alias AVS_FRAME_ALIGN as FRAME_ALIGN
+// 181230: define alias AVS_FRAME_ALIGN as 
+// 181230: remove unused form of avs_get_rowsize and avs_get_height (kept earlier for reference)
+
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -610,32 +612,18 @@ AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
 }
 #endif
 
-// 171106: this inline breaks because it accesses directly row_size.
-// When x64 and offset is size_t, row_size is misplaced
-#if 0
-AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
-        return p->row_size; }
-#else
 #ifndef AVSC_NO_DECLSPEC
 // this inline function is calling an API function
 AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
         return avs_get_row_size_p(p, 0); }
 #endif
-#endif
 
 
-// 171106: this inline breaks because it accesses directly row_size.
-// When x64 and offset is size_t, height is misplaced
-#if 0
-AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
-        return p->height;}
-#else
 #ifndef AVSC_NO_DECLSPEC
 // this inline function is calling an API function
 AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
   return avs_get_height_p(p, 0);
 }
-#endif
 #endif
 
 #ifndef AVSC_NO_DECLSPEC
