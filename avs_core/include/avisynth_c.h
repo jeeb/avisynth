@@ -41,6 +41,8 @@
 // 180524: AVSC_EXPORT to dllexport in capi.h for avisynth_c_plugin_init
 // 180524: avs_is_same_colorspace VideoInfo parameters to const
 // 181230: Readability: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
+// 181230: use #ifndef AVSC_NO_DECLSPEC for AVSC_INLINE functions which are calling API functions
+// 181230: comments on avs_load_library (helper for loading API entries dynamically into a struct using AVSC_NO_DECLSPEC define)
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -370,7 +372,7 @@ AVSC_API(int, avs_is_yv12)(const AVS_VideoInfo * p) ; // avs+: for generic 420 c
 
 AVSC_API(int, avs_is_yv411)(const AVS_VideoInfo * p);
 
-AVSC_API(int, avs_is_y8)(const AVS_VideoInfo * p); // for generic grayscale, use avs_is_y
+AVSC_API(int, avs_is_y8)(const AVS_VideoInfo * p); // avs+: for generic grayscale, use avs_is_y
 
 AVSC_API(int, avs_get_plane_width_subsampling)(const AVS_VideoInfo * p, int plane);
 
@@ -473,11 +475,14 @@ AVSC_INLINE void avs_set_fps(AVS_VideoInfo * p, unsigned numerator, unsigned den
     p->fps_denominator = denominator/x;
 }
 
+#ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE int avs_is_same_colorspace(const AVS_VideoInfo * x, const AVS_VideoInfo * y)
 {
         return (x->pixel_type == y->pixel_type)
                 || (avs_is_yv12(x) && avs_is_yv12(y));
 }
+#endif
 
 // Avisynth+ extensions
 AVSC_API(int, avs_is_rgb48)(const AVS_VideoInfo * p);
@@ -597,9 +602,12 @@ AVSC_API(void, avs_release_video_frame)(AVS_VideoFrame *);
 AVSC_API(AVS_VideoFrame *, avs_copy_video_frame)(AVS_VideoFrame *);
 
 // no API for these, inline helper functions
+#ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
   return avs_get_pitch_p(p, 0);
 }
+#endif
 
 // 171106: this inline breaks because it accesses directly row_size.
 // When x64 and offset is size_t, row_size is misplaced
@@ -607,8 +615,11 @@ AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
 AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
         return p->row_size; }
 #else
+#ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
         return avs_get_row_size_p(p, 0); }
+#endif
 #endif
 
 
@@ -618,20 +629,34 @@ AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
 AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
         return p->height;}
 #else
+#ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
   return avs_get_height_p(p, 0);
 }
 #endif
-
-AVSC_INLINE const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p) {
-        return avs_get_read_ptr_p(p, 0);}
-
-AVSC_INLINE BYTE* avs_get_write_ptr(const AVS_VideoFrame * p) {
-        return avs_get_write_ptr_p(p, 0);}
+#endif
 
 #ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
+AVSC_INLINE const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p) {
+        return avs_get_read_ptr_p(p, 0);}
+#endif
+
+#ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
+AVSC_INLINE BYTE* avs_get_write_ptr(const AVS_VideoFrame * p) {
+        return avs_get_write_ptr_p(p, 0);}
+#endif
+
+#ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE void avs_release_frame(AVS_VideoFrame * f)
   {avs_release_video_frame(f);}
+#endif
+
+#ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE AVS_VideoFrame * avs_copy_frame(AVS_VideoFrame * f)
   {return avs_copy_video_frame(f);}
 #endif
@@ -717,6 +742,7 @@ AVSC_INLINE AVS_Value avs_new_value_float(float v0)
 AVSC_INLINE AVS_Value avs_new_value_error(const char * v0)
         { AVS_Value v; v.type = 'e'; v.d.string = v0; return v; }
 #ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE AVS_Value avs_new_value_clip(AVS_Clip * v0)
         { AVS_Value v; avs_set_to_clip(&v, v0); return v; }
 #endif
@@ -866,15 +892,18 @@ AVSC_API(int, avs_set_global_var)(AVS_ScriptEnvironment *, const char* name, con
 
 AVSC_API(AVS_VideoFrame *, avs_new_video_frame_a)(AVS_ScriptEnvironment *,
                                           const AVS_VideoInfo * vi, int align);
-// align should be at least 16
+// align should be at least 16 for classic Avisynth
+// Avisynth+: any value, Avs+ ensures a minimum alignment if too small align is provided
 
 // no API for these, inline helper functions
 #ifndef AVSC_NO_DECLSPEC
+// this inline function is calling an API function
 AVSC_INLINE AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env,
                                      const AVS_VideoInfo * vi)
   {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
 
 // an older compatibility alias
+// this inline function is calling an API function
 AVSC_INLINE AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env,
                                const AVS_VideoInfo * vi)
   {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
@@ -912,7 +941,10 @@ AVSC_API(AVS_VideoFrame *, avs_subframe_planar)(AVS_ScriptEnvironment *, AVS_Vid
 // The returned video frame must be be released
 
 #ifdef AVSC_NO_DECLSPEC
-// use LoadLibrary and related functions to dynamically load Avisynth instead of declspec(dllimport)
+// This part uses LoadLibrary and related functions to dynamically load Avisynth instead of declspec(dllimport)
+// When AVSC_NO_DECLSPEC is defined, you can use avs_load_library to populate API functions into a struct
+// AVSC_INLINE funcions sould be treated specially (todo)
+
 /*
   The following functions needs to have been declared, probably from windows.h
 
@@ -931,7 +963,11 @@ typedef struct AVS_Library AVS_Library;
 // we'll have
 // avs_add_function_func avs_add_function;
 // avs_copy_clip_func avs_copy_clip;
-// etc.. for all AVSC_API functions
+// etc.. for all AVSC_API 
+
+// Note: AVSC_INLINE functions which call into API,
+// are guarded by #ifndef AVSC_NO_DECLSPEC
+// They should call the appropriate library-> API entry
 
 struct AVS_Library {
   HMODULE handle;
@@ -1022,6 +1058,9 @@ struct AVS_Library {
 
 #undef AVSC_DECLARE_FUNC
 
+// avs_load_library() allocates an array for API procedure entries
+// reads and fills the entries with live procedure addresses.
+// AVSC_INLINE helpers which are calling into API procedures are not treated here (todo)
 
 AVSC_INLINE AVS_Library * avs_load_library() {
   AVS_Library *library = (AVS_Library *)malloc(sizeof(AVS_Library));
