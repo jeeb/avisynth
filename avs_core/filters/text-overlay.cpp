@@ -377,7 +377,7 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
     const float middle_shift_f = 0.0f;
 #else
-    const float middle_shift_f = isRGB ? 0.0f : 0.5f;
+    const float middle_shift_f = isRGB ? 0.0f : 0.5f; // yes, correction needed in and out
 #endif
     for (int y=yb; y<=yt; y+=stepY) {
       for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
@@ -409,15 +409,14 @@ void Antialiaser::ApplyPlanar_core(BYTE* buf, int pitch, int pitchUV, BYTE* bufU
 void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int bits_per_pixel, bool isRGB) {
   const int stepX = 1 << shiftX;
   const int stepY = 1 << shiftY;
-
   switch (bits_per_pixel) {
   case 8:
     if (shiftX == 0 && shiftY == 0) {
       ApplyPlanar_core<0, 0, 8>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
-    else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 8>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
+    else if (shiftX == 1 && shiftY == 0) {
+      ApplyPlanar_core<1, 0, 8>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
@@ -430,8 +429,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
       ApplyPlanar_core<0, 0, 10>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
-    else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 10>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
+    else if (shiftX == 1 && shiftY == 0) {
+      ApplyPlanar_core<1, 0, 10>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
@@ -444,8 +443,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
       ApplyPlanar_core<0, 0, 12>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
-    else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 12>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
+    else if (shiftX == 1 && shiftY == 0) {
+      ApplyPlanar_core<1, 0, 12>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
@@ -458,8 +457,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
       ApplyPlanar_core<0, 0, 14>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
-    else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 14>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
+    else if (shiftX == 1 && shiftY == 0) {
+      ApplyPlanar_core<1, 0, 14>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
@@ -472,8 +471,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
       ApplyPlanar_core<0, 0, 16>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
-    else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 16>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
+    else if (shiftX == 1 && shiftY == 0) {
+      ApplyPlanar_core<1, 0, 16>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
@@ -486,8 +485,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
       ApplyPlanar_core<0, 0, 32>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:4:4
       return;
     }
-    else if (shiftX == 0 && shiftY == 1) {
-      ApplyPlanar_core<0, 1, 32>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
+    else if (shiftX == 1 && shiftY == 0) {
+      ApplyPlanar_core<1, 0, 32>(buf, pitch, pitchUV, bufU, bufV, isRGB); // 4:2:2
       return;
     }
     else if (shiftX == 1 && shiftY == 1) {
@@ -615,6 +614,11 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
       }//end for y
   }
   else { // float. assume 0..1.0 scale
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+      const float middle_shift_f = 0.0f;
+#else
+      const float middle_shift_f = isRGB ? 0.0f : 0.5f; // yes, correction needed in and out
+#endif
       const float shifter_inv_f = 1.0f / (1 << shifter);
       const float a_factor = shifter_inv_f / 256.0f;
       for (int y=yb; y<=yt; y+=stepY) {
@@ -633,8 +637,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
               }
               if (basealphaUV != skipThresh) {
                   const float basealphaUV_f = (float)basealphaUV * shifter_inv_f;
-                  reinterpret_cast<float *>(bufU)[xs] = reinterpret_cast<float *>(bufU)[xs] * basealphaUV_f + au * a_factor;
-                  reinterpret_cast<float *>(bufV)[xs] = reinterpret_cast<float *>(bufV)[xs] * basealphaUV_f + av * a_factor;
+                  reinterpret_cast<float *>(bufU)[xs] = (reinterpret_cast<float *>(bufU)[xs] + middle_shift_f) * basealphaUV_f + au * a_factor - middle_shift_f;
+                  reinterpret_cast<float *>(bufV)[xs] = (reinterpret_cast<float *>(bufV)[xs] + middle_shift_f) * basealphaUV_f + av * a_factor - middle_shift_f;
               }
           }// end for x
           bufU  += pitchUV;
