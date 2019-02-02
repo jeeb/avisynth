@@ -2065,7 +2065,6 @@ static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* sr
 PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-  //PVideoFrame dst = env->NewVideoFrame(vi, 8); // PF: why 8? A larger default Avisynth align should work fine
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
