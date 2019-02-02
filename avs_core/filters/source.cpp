@@ -1439,14 +1439,14 @@ public:
   }
 
   if (vi.IsYUVA() || vi.IsPlanarRGBA()) {
-    // initialize planar alpha planes with full transparency
+    // initialize planar alpha planes with zero (no transparency), like RGB32 does
     BYTE *dstp = frame->GetWritePtr(PLANAR_A);
     int pitch = frame->GetPitch(PLANAR_A);
     int height = frame->GetHeight(PLANAR_A);
     switch (bits_per_pixel) {
-    case 8: fill_plane<uint8_t>(dstp, height, pitch, 255); break;
-    case 10: case 12: case 14: case 16: fill_plane<uint16_t>(dstp, height, pitch, (1 << bits_per_pixel) - 1); break;
-    case 32: fill_plane<float>(dstp, height, pitch, 1.0f); break;
+    case 8: fill_plane<uint8_t>(dstp, height, pitch, 0); break;
+    case 10: case 12: case 14: case 16: fill_plane<uint16_t>(dstp, height, pitch, 0); break;
+    case 32: fill_plane<float>(dstp, height, pitch, 0.0f); break;
     }
   }
 
