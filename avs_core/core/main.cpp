@@ -1082,8 +1082,9 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       asi.fccHandler = MAKEFOURCC('P','2','1','6');
     else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16 || vi_final.pixel_type == VideoInfo::CS_YUVA444P16)
       asi.fccHandler = MAKEFOURCC('Y','4','1','6');
-    else if (vi_final.pixel_type == VideoInfo::CS_RGBP) // 8 bit planar RGB??
-      asi.fccHandler = MAKEFOURCC('8','B','P','S');
+    else if (vi_final.pixel_type == VideoInfo::CS_RGBP)
+      asi.fccHandler = MAKEFOURCC('G','3',0, 8); // similar to 10-16 bits
+    // asi.fccHandler = MAKEFOURCC('8','B','P','S');  // this would be a special RLE encoded format
     // MagicYUV implements these (planar rgb/rgba 10,12,14,16) G3[0][10], G4[0][10], G3[0][12], G4[0][12], G3[0][14], G4[0][14], G3[0][16], G4[0][16]
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP10)
       asi.fccHandler = MAKEFOURCC('G','3',0,10);
@@ -1093,6 +1094,8 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       asi.fccHandler = MAKEFOURCC('G','3',0,14);
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP16)
       asi.fccHandler = MAKEFOURCC('G','3',0,16);
+    else if (vi_final.pixel_type == VideoInfo::CS_RGBAP)
+      asi.fccHandler = MAKEFOURCC('G','4',0, 8); // similar to 10-16 bits
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP10)
       asi.fccHandler = MAKEFOURCC('G','4',0,10);
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP12)
@@ -1636,7 +1639,8 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
     else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16 || vi_final.pixel_type == VideoInfo::CS_YUVA444P16)
       bi.biCompression = MAKEFOURCC('Y','4','1','6');
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP)
-      bi.biCompression = MAKEFOURCC('8','B','P','S');
+      bi.biCompression = MAKEFOURCC('G','3', 0, 8);
+    //      bi.biCompression = MAKEFOURCC('8','B','P','S'); special RLA encoded format, support G3[0][8] instead
     // MagicYUV implements these (planar rgb/rgba 10,12,14,16) G3[0][10], G4[0][10], G3[0][12], G4[0][12], G3[0][14], G4[0][14], G3[0][16], G4[0][16]
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP10)
       bi.biCompression = MAKEFOURCC('G','3',0,10);
@@ -1646,6 +1650,8 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       bi.biCompression = MAKEFOURCC('G','3',0,14);
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP16)
       bi.biCompression = MAKEFOURCC('G','3',0,16);
+    else if (vi_final.pixel_type == VideoInfo::CS_RGBAP)
+      bi.biCompression = MAKEFOURCC('G','4',0, 8); // similar to 10-16 bits
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP10)
       bi.biCompression = MAKEFOURCC('G','4',0,10);
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP12)
