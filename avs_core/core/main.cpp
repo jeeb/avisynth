@@ -1083,8 +1083,8 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
     else if (vi_final.pixel_type == VideoInfo::CS_YUV444P16 || vi_final.pixel_type == VideoInfo::CS_YUVA444P16)
       asi.fccHandler = MAKEFOURCC('Y','4','1','6');
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP)
-      asi.fccHandler = MAKEFOURCC('G','3',0, 8); // similar to 10-16 bits
-    // asi.fccHandler = MAKEFOURCC('8','B','P','S');  // this would be a special RLE encoded format
+      asi.fccHandler = MAKEFOURCC('G','3',0, 8); // similar to 10-16 bits G3[0][8]
+    // asi.fccHandler = MAKEFOURCC('8','B','P','S'); // this would be a special RLE encoded format
     // MagicYUV implements these (planar rgb/rgba 10,12,14,16) G3[0][10], G4[0][10], G3[0][12], G4[0][12], G3[0][14], G4[0][14], G3[0][16], G4[0][16]
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP10)
       asi.fccHandler = MAKEFOURCC('G','3',0,10);
@@ -1095,7 +1095,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
     else if (vi_final.pixel_type == VideoInfo::CS_RGBP16)
       asi.fccHandler = MAKEFOURCC('G','3',0,16);
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP)
-      asi.fccHandler = MAKEFOURCC('G','4',0, 8); // similar to 10-16 bits
+      asi.fccHandler = MAKEFOURCC('G','4',0, 8); // similar to 10-16 bits G4[0][10]
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP10)
       asi.fccHandler = MAKEFOURCC('G','4',0,10);
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP12)
@@ -1336,6 +1336,14 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
         out_pitchUV, frame->GetReadPtr(plane2),
         frame->GetPitch(plane2), frame->GetRowSize(plane2),
         frame->GetHeight(plane2));
+
+      // fill alpha, not from YUVA, only from RGBAP, because only RGBAP8-16 is mapped to alpha aware fourCCs
+      if (vi.IsPlanarRGBA()) {
+        parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height + 2 * frame->GetHeight(plane1)*out_pitchUV),
+          out_pitchUV, frame->GetReadPtr(PLANAR_A),
+          frame->GetPitch(PLANAR_A), frame->GetRowSize(PLANAR_A),
+          frame->GetHeight(PLANAR_A));
+      }
     }
   }
   // no alpha?
