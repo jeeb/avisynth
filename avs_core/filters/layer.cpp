@@ -3831,47 +3831,6 @@ static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int ds
 }
 #endif
 
-/*
-Fixme 20190206:
-
-By specification:
-add "Where overlay is brigher by threshold" => e.g. Where overlay is brigther by 10 => Where overlay > src + 10
-add "Where overlay is darker by threshold" => e.g. Where overlay is darker by 10 => Where overlay < src - 10
-
-Threshold == 0 is OK.
-Problems for Threshold != 0:
-1.) Layer works inconsistently for YUY2 and RGB32
-2.) Layer "darken" is wrong for both colorspaces
-Until 2019 the only correct case was LIGHTEN for RGB32, even in Classic Avisynth.
-LIGHTEN for YUY2 and DARKEN for both (old) formats needs to be fixed.
-
-RGB32:
-      if constexpr(mode == LIGHTEN)
-        alpha = luma_ovr > thresh + luma_src ? alpha : 0;
-      else // DARKEN
-        alpha = luma_ovr < thresh + luma_src ? alpha : 0
-
-YUV:
-      if constexpr (mode == LIGHTEN)
-        alpha_mask = (thresh + ovr) > src ? level : 0;
-      else // DARKEN
-        alpha_mask = (thresh + src) > ovr ? level : 0;
-
-Will be fixed as
-RGB:
-      if constexpr(mode == LIGHTEN)
-        alpha = luma_ovr > (luma_src + thresh) ? alpha : 0; // As original
-      else // DARKEN
-        alpha = luma_ovr < (luma_src - thresh) ? alpha : 0
-      }
-
-YUV:
-      if constexpr (mode == LIGHTEN)
-        alpha_mask = ovr > (src + thresh) ? level : 0;
-      else // DARKEN
-        alpha_mask = ovr < (src - thresh) ? level : 0;
-*/
-
 template<int mode, typename pixel_t>
 static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
   pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
