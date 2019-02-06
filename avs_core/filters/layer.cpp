@@ -2359,7 +2359,7 @@ static void layer_yuy2_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int
     for (int x = mod4_width; x < width; ++x) {
       dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * level) >> 8);
       if (use_chroma) {
-        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8); // fixme: ovrp[x*2-1] is typo? -> dangerous!
+        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
       } else {
         dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
       }
@@ -2412,7 +2412,7 @@ static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
     for (int x = 0; x < width; ++x) {
       dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * level) >> 8);
       if (use_chroma) {
-        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8); // fixme: ovrp[x*2-1] is typo? -> dangerous!
+        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
       } else {
         dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
       }
@@ -2642,7 +2642,7 @@ static void layer_yuy2_subtract_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch
     for (int x = mod4_width; x < width; ++x) {
       dstp[x*2]   = dstp[x*2]  + (((255 - ovrp[x*2] - dstp[x*2]) * level) >> 8);
       if (use_chroma) {
-        dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8); // fixme: ovrp[x*2-1] is typo? -> dangerous!
+        dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
       } else {
         dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
       }
@@ -2697,7 +2697,7 @@ static void layer_yuy2_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, i
     for (int x = 0; x < width; ++x) {
       dstp[x*2]   = dstp[x*2]  + (((255 - ovrp[x*2] - dstp[x*2]) * level) >> 8);
       if (use_chroma) {
-        dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8); // fixme: typo? why ovrp[x*2-1], maybe bug?
+        dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
       } else {
         dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
       }
