@@ -2780,12 +2780,13 @@ static void layer_yuy2_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst
       ovr = _mm_unpacklo_epi8(ovr, zero);
 
       __m128i mask;
-      if constexpr(mode == LIGHTEN) {
-        __m128i temp = _mm_add_epi16(ovr, threshold);
-        mask = _mm_cmpgt_epi16(temp, src);
-      } else {
-        __m128i temp = _mm_add_epi16(src, threshold);
-        mask = _mm_cmpgt_epi16(temp, ovr);
+      if constexpr (mode == LIGHTEN) {
+        __m128i tmp = _mm_add_epi16(src, threshold);
+        mask = _mm_cmpgt_epi16(ovr, tmp);
+      }
+      else {
+        __m128i tmp = _mm_sub_epi16(src, threshold);
+        mask = _mm_cmpgt_epi16(tmp, ovr);
       }
 
       mask = _mm_shufflelo_epi16(mask, _MM_SHUFFLE(2, 2, 0, 0));
@@ -2805,11 +2806,10 @@ static void layer_yuy2_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst
 
     for (int x = mod4_width; x < width; ++x) {
       int alpha_mask;
-      if constexpr(mode == LIGHTEN) {
-        alpha_mask = (thresh + ovrp[x*2]) > dstp[x*2] ? level : 0;
-      } else {
-        alpha_mask = (thresh + dstp[x*2]) > ovrp[x*2] ? level : 0;
-      }
+      if constexpr (mode == LIGHTEN)
+        alpha_mask = ovrp[x * 2] > (dstp[x * 2] + thresh) ? level : 0;
+      else // DARKEN
+        alpha_mask = ovrp[x * 2] < (dstp[x * 2] - thresh) ? level : 0;
 
       dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * alpha_mask) >> 8);
       dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * alpha_mask) >> 8);
@@ -2834,14 +2834,14 @@ static void layer_yuy2_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst
 
       src = _mm_unpacklo_pi8(src, zero);
       ovr = _mm_unpacklo_pi8(ovr, zero);
-      
+
       __m64 mask;
       if (mode == LIGHTEN) {
-        __m64 temp = _mm_add_pi16(ovr, threshold);
-        mask = _mm_cmpgt_pi16(temp, src);
+        __m64 tmp = _mm_add_pi16(src, threshold);
+        mask = _mm_cmpgt_pi16(ovr, tmp);
       } else {
-        __m64 temp = _mm_add_pi16(src, threshold);
-        mask = _mm_cmpgt_pi16(temp, ovr);
+        __m64 tmp = _mm_sub_pi16(src, threshold);
+        mask = _mm_cmpgt_pi16(tmp, ovr);
       }
 
       mask = _mm_shuffle_pi16(mask, _MM_SHUFFLE(2, 2, 0, 0));
@@ -2868,11 +2868,11 @@ static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pi
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       int alpha_mask;
-      if constexpr(mode == LIGHTEN) {
-        alpha_mask = (thresh + ovrp[x*2]) > dstp[x*2] ? level : 0;
-      } else {
-        alpha_mask = (thresh + dstp[x*2]) > ovrp[x*2] ? level : 0;
-      }
+      if constexpr (mode == LIGHTEN)
+        alpha_mask = ovrp[x * 2] > (dstp[x * 2] + thresh) ? level : 0;
+      else // DARKEN
+        alpha_mask = ovrp[x * 2] < (dstp[x * 2] - thresh) ? level : 0;
+
       dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * alpha_mask) >> 8);
       // fixme: not too correct but probably fast. U is masked by even Y, V is masked by odd Y
       dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * alpha_mask) >> 8);
@@ -4254,7 +4254,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // Copy overlay_clip over base_clip in areas where overlay_clip is darker by threshold. 
       if (chroma)
       {
-          if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
