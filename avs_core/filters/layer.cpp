@@ -3733,11 +3733,12 @@ static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int ds
       __m128i luma_ovr = calculate_luma_sse2(ovr, rgb_coeffs, zero);
       __m128i luma_src = calculate_luma_sse2(src, rgb_coeffs, zero);
 
-      __m128i tmp = _mm_add_epi16(threshold, luma_src);
       __m128i mask;
       if constexpr(mode == LIGHTEN) {
+        __m128i tmp = _mm_add_epi16(luma_src, threshold);
         mask = _mm_cmpgt_epi16(luma_ovr, tmp);
       } else {
+        __m128i tmp = _mm_sub_epi16(luma_src, threshold);
         mask = _mm_cmpgt_epi16(tmp, luma_ovr);
       }
 
@@ -3759,11 +3760,10 @@ static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int ds
       int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
       int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
 
-      if constexpr(mode == LIGHTEN) {
-        alpha = luma_ovr > thresh + luma_src ? alpha : 0;
-      } else {
-        alpha = luma_ovr < thresh + luma_src ? alpha : 0;
-      }
+      if constexpr (mode == LIGHTEN)
+        alpha = luma_ovr > luma_src + thresh ? alpha : 0;
+      else // DARKEN
+        alpha = luma_ovr < luma_src - thresh ? alpha : 0;
 
       dstp[x*4]   = dstp[x*4]   + (((ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
       dstp[x*4+1] = dstp[x*4+1] + (((ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
@@ -3797,11 +3797,19 @@ static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int ds
       __m64 luma_ovr = calculate_luma_isse(ovr, rgb_coeffs, zero);
       __m64 luma_src = calculate_luma_isse(src, rgb_coeffs, zero);
 
-      __m64 tmp = _mm_add_pi16(threshold, luma_src);
+      /*
+      if constexpr (mode == LIGHTEN)
+        alpha = luma_ovr > luma_src + thresh ? alpha : 0;
+      else // DARKEN
+        alpha = luma_ovr < luma_src - thresh ? alpha : 0;
+      */
+
       __m64 mask;
       if (mode == LIGHTEN) {
+        __m64 tmp = _mm_add_pi16(luma_src, threshold);
         mask = _mm_cmpgt_pi16(luma_ovr, tmp);
       } else {
+        __m64 tmp = _mm_sub_pi16(luma_src, threshold);
         mask = _mm_cmpgt_pi16(tmp, luma_ovr);
       }
 
@@ -3874,28 +3882,16 @@ static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst
 
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
 
-  const calc_t MAX_PIXEL_VALUE = sizeof(pixel_t) == 1 ? 255 : 65535;
-
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
       calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
       int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
       int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
-      /*
-      fixme: this is from YUY2. Different if threshold is not zero
-      if constexpr (mode == LIGHTEN) {
-        alpha_mask = (thresh + ovr) > src ? level : 0;
-      }
-      else {
-        alpha_mask = (thresh + src) > ovr ? level : 0;
-      }
-      Copy overlay_clip over base_clip in areas where overlay_clip is darker by threshold.
-      */
-      if constexpr(mode == LIGHTEN) {
-        alpha = luma_ovr > thresh + luma_src ? alpha : 0;
-      } else {
-        alpha = luma_ovr < thresh + luma_src ? alpha : 0;
-      }
+
+      if constexpr (mode == LIGHTEN)
+        alpha = luma_ovr > luma_src + thresh ? alpha : 0;
+      else // DARKEN
+        alpha = luma_ovr < luma_src - thresh ? alpha : 0;
 
       dstp[x*4]   = (pixel_t)(dstp[x*4]   + ((((calc_t)ovrp[x*4]   - dstp[x*4])   * alpha) >> SHIFT));
       dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + ((((calc_t)ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> SHIFT));
