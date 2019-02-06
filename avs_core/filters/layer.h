@@ -223,7 +223,7 @@ class Layer: public IClip
 { 
 public:
   Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y, 
-         int _t, bool _chroma, IScriptEnvironment* env );
+         int _t, bool _chroma, float _strength, int _placement, IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   inline virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
@@ -247,7 +247,11 @@ private:
   int levelB, ThresholdParam;
   int ydest, xdest, ysrc, xsrc, ofsX, ofsY, ycount, xcount, overlay_frames;
   const bool chroma;
-
+  bool hasAlpha;
+  int bits_per_pixel;
+  float strength;
+  int placement; // PLACEMENT_MPEG1 or PLACEMENT_MPEG2
+  float ThresholdParam_f;
 };
 
 
