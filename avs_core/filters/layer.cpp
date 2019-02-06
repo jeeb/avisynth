@@ -2769,7 +2769,7 @@ static void layer_yuy2_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst
 
   __m128i alpha = _mm_set1_epi16(level);
   __m128i zero = _mm_setzero_si128();
-  __m128i threshold = _mm_set1_epi32(thresh); // fixme: set1_epi16 and do prepare as 2x16 bits
+  __m128i threshold = _mm_set1_epi16(thresh);
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < mod4_width; x+=4) {
@@ -2825,7 +2825,7 @@ template<int mode>
 static void layer_yuy2_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
   __m64 alpha = _mm_set1_pi16(level);
   __m64 zero = _mm_setzero_si64();
-  __m64 threshold = _mm_set1_pi32(thresh); // fixme: set1_epi16 and do prepare as 2x16 bits
+  __m64 threshold = _mm_set1_pi16(thresh);
   
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; x+=2) {
@@ -3936,9 +3936,6 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     src1p += (src1_pitch * ydest) + (xdest * 2); // *2: Y U Y V
     src2p += (src2_pitch * ysrc) + (xsrc * 2);
 
-    int thresh= ((ThresholdParam & 0xFF) <<16)| (ThresholdParam & 0xFF); // fixme: breaks C code. Use set1_epi16 in mmx/sse2 code instead
-    // prepare for yuy2: used in lighten/darken for luma. Transition point.
-
     if (!lstrcmpi(Op, "Mul"))
     {
       if (chroma) // Use chroma of the overlay_clip.
@@ -4080,17 +4077,17 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       {
         if (env->GetCPUFlags() & CPUF_SSE2) 
         {
-          layer_yuy2_lighten_darken_sse2<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_sse2<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
         }
 #ifdef X86_32
         else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_yuy2_lighten_darken_isse<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_isse<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
         } 
 #endif
         else
         {
-          layer_yuy2_lighten_darken_c<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_c<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
         }
       } else 
       {
@@ -4103,17 +4100,17 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       {
         if (env->GetCPUFlags() & CPUF_SSE2)
         {
-          layer_yuy2_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
         }
 #ifdef X86_32
         else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_yuy2_lighten_darken_isse<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_isse<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
         } 
 #endif
         else
         {
-          layer_yuy2_lighten_darken_c<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_c<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
         }
       } else 
       {
