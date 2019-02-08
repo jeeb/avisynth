@@ -48,6 +48,19 @@
 
 enum { PLACEMENT_MPEG2, PLACEMENT_MPEG1 }; // for Layer 420, 422
 
+// 15 bit scaled constants used for calculating luma mask from RGB
+// original constants (3736,19235,9798) cause int32 overfloat at 16 bits as sum()=32769
+// modified constants (3736,19234,9798) O.K. at 16 bits as sum()=32768
+// 32769 * 65535 + 16384 = 8000BFFF int32 overflow
+// 32768 * 65535 + 16384 = 7FFFC000 OK
+const int cyb = 3736;      // int(0.114 * 32768 + 0.5); // 3736
+const int cyg = 19235 - 1; // int(0.587 * 32768 + 0.5); // 19235
+const int cyr = 9798;      // int(0.299 * 32768 + 0.5); // 9798
+// w/o correction: 32769
+const float cyb_f = 0.114f;
+const float cyg_f = 0.587f;
+const float cyr_f = 0.299f;
+
 static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
   const char* placement = _placement.AsString(0);
 
@@ -138,7 +151,7 @@ static __forceinline __m128i mask_core_sse2(__m128i &src, __m128i &alpha, __m128
   return _mm_or_si128(result_alpha, not_alpha);
 }
 
-static void mask_sse2(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+static void mask_sse2(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height) {
   __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
   __m128i zero = _mm_setzero_si128();
   __m128i round_mask = _mm_set1_epi32(16384);
@@ -191,7 +204,7 @@ static __forceinline __m64 mask_core_mmx(__m64 &src, __m64 &alpha, __m64 &not_al
   return _mm_or_si64(result_alpha, not_alpha);
 }
 
-static void mask_mmx(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+static void mask_mmx(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height) {
   __m64 matrix = _mm_set_pi16(0, cyr, cyg, cyb);
   __m64 zero = _mm_setzero_si64();
   __m64 round_mask = _mm_set1_pi32(16384);
@@ -228,7 +241,7 @@ static void mask_mmx(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pi
 
 
 template<typename pixel_t>
-static void mask_c(BYTE *srcp8, const BYTE *alphap8, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+static void mask_c(BYTE *srcp8, const BYTE *alphap8, int src_pitch, int alpha_pitch, size_t width, size_t height) {
   pixel_t *srcp = reinterpret_cast<pixel_t *>(srcp8);
   const pixel_t *alphap = reinterpret_cast<const pixel_t *>(alphap8);
 
@@ -245,16 +258,7 @@ static void mask_c(BYTE *srcp8, const BYTE *alphap8, int src_pitch, int alpha_pi
 }
 
 template<typename pixel_t>
-static void mask_planar_rgb_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height, int cyb, int cyg, int cyr, int bits_per_pixel) {
-  // worst case uint16: 65535 * 19235 + 65535 * 9798 + 65535 * 3736 + 16384 = 65535 * 32769 + 16384 = 2147532799 = 8000BFFF -> int32 fail
-  //                    2147532799 >> 15 = 65537 = 0x10001, needs clamping :( !!!!!
-  // worst case uint16: 65535 * (!!!19234) + 65535 * 9798 + 65535 * 3736 + 16384 = 65535 * 32768 + 16384 = 2147467264 = 7FFFC000 -> int32 OK
-  //                    2147467264 >> 15 = 65535 no need clamping
-  // worst case uint14: 16383*(19235+9798+3736) + 16384 = 16383*32769 + 16384 = 536870911 >> 15 = 16383 -> int is enough, and no clamping needed
-  // worst case uint12: 4095*(19235+9798+3736) + 16384 = 4095*32769 + 16384 = 134205439 >> 15 = 4095 -> int is enough, and no clamping needed
-  // worst case uint10: 1023*(19235+9798+3736) + 16384 = 1023*32769 + 16384 = 33539071 >> 15 = 1023 -> int is enough, and no clamping needed
-  // worst case uint8 : 255*(19235+9798+3736) + 16384 = 255*32769 + 16384 = 8372479 >> 15 = 255 -> int is enough, and no clamping needed
-
+static void mask_planar_rgb_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height, int bits_per_pixel) {
   pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
   const pixel_t *srcp_r = reinterpret_cast<const pixel_t *>(srcp_r8);
   const pixel_t *srcp_g = reinterpret_cast<const pixel_t *>(srcp_g8);
@@ -273,7 +277,7 @@ static void mask_planar_rgb_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp
   }
 }
 
-static void mask_planar_rgb_float_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height, float cyb_f, float cyg_f, float cyr_f) {
+static void mask_planar_rgb_float_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height) {
 
   float *dstp = reinterpret_cast<float *>(dstp8);
   const float *srcp_r = reinterpret_cast<const float *>(srcp_r8);
@@ -300,22 +304,8 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 
   env->MakeWritable(&src1);
 
-  // 15 bit scaled
-  // PF check: int32 overflow in 16 bits
-  // 32769 * 65535 + 16384 = 8000BFFF int32 overflow
-  // 32768 * 65535 + 16384 = 7FFFC000 OK
-  // Let's make correction
-  const int cyb = 3736;  // int(0.114 * 32768 + 0.5); // 3736
-  const int cyg = 19235-1; // int(0.587 * 32768 + 0.5); // 19235
-  const int cyr = 9798;  // int(0.299 * 32768 + 0.5); // 9798
-  // w/o correction: 32769
-
   if (vi.IsPlanar()) {
     // planar RGB
-    const float cyb_f = 0.114f;
-    const float cyg_f = 0.587f;
-    const float cyr_f = 0.299f;
-
     BYTE* dstp = src1->GetWritePtr(PLANAR_A); // destination Alpha plane
 
     const BYTE* srcp_g = src2->GetReadPtr(PLANAR_G);
@@ -327,11 +317,11 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 
     // clip1_alpha = greyscale(clip2)
     if (pixelsize == 1)
-      mask_planar_rgb_c<uint8_t>(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, cyb, cyg, cyr, bits_per_pixel);
+      mask_planar_rgb_c<uint8_t>(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, bits_per_pixel);
     else if (pixelsize == 2)
-      mask_planar_rgb_c<uint16_t>(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, cyb, cyg, cyr, bits_per_pixel);
+      mask_planar_rgb_c<uint16_t>(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, bits_per_pixel);
     else
-      mask_planar_rgb_float_c(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, cyb_f, cyg_f, cyr_f);
+      mask_planar_rgb_float_c(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height);
   } else {
     // Packed RGB32/64
     BYTE* src1p = src1->GetWritePtr();
@@ -343,21 +333,21 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
     // clip1_alpha = greyscale(clip2)
     if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
     {
-      mask_sse2(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+      mask_sse2(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
     }
     else
   #ifdef X86_32
     if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
     {
-      mask_mmx(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+      mask_mmx(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
     }
     else
   #endif
     {
       if (pixelsize == 1) {
-        mask_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+        mask_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
       } else { // if (pixelsize == 2)
-        mask_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+        mask_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
       }
     }
   }
@@ -2099,16 +2089,6 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
 
   overlay_frames = vi2.num_frames;
 }
-
-// 15 bit scaled
-// PF check: int32 overflow in 16 bits
-// 32769 * 65535 + 16384 = 8000BFFF int32 overflow
-// 32768 * 65535 + 16384 = 7FFFC000 OK
-// Let's make correction
-const int cyb = 3736;    // int(0.114 * 32768 + 0.5); // 3736
-const int cyg = 19235-1; // int(0.587 * 32768 + 0.5); // 19235
-const int cyr = 9798;    // int(0.299 * 32768 + 0.5); // 9798
-// w/o correction: 32769
 
 enum
 {
