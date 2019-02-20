@@ -249,7 +249,7 @@ private:
   const bool chroma;
   bool hasAlpha;
   int bits_per_pixel;
-  float strength;
+  float opacity; // like in "Overlay"
   int placement; // PLACEMENT_MPEG1 or PLACEMENT_MPEG2
   float ThresholdParam_f;
 };
