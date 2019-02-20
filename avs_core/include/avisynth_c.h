@@ -43,9 +43,13 @@
 // 181230: Readability: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
 // 181230: use #ifndef AVSC_NO_DECLSPEC for AVSC_INLINE functions which are calling API functions
 // 181230: comments on avs_load_library (helper for loading API entries dynamically into a struct using AVSC_NO_DECLSPEC define)
-// 181230: define alias AVS_FRAME_ALIGN as 
+// 181230: define alias AVS_FRAME_ALIGN as FRAME_ALIGN
 // 181230: remove unused form of avs_get_rowsize and avs_get_height (kept earlier for reference)
-
+// 190104: avs_load_library: smart fallback mechanism for Avisynth+ specific functions:
+//         if they are not loadable, they will work in a classic Avisynth compatible mode
+//         Example#1: e.g. avs_is_444 will call the existing avs_is_yv24 instead
+//         Example#2: avs_bits_per_component will return 8 for all colorspaces (Classic Avisynth supports only 8 bits/pixel)
+//         Thus the Avisynth+ specific API functions are safely callable even when connected to classic Avisynth DLL
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -932,7 +936,7 @@ AVSC_API(AVS_VideoFrame *, avs_subframe_planar)(AVS_ScriptEnvironment *, AVS_Vid
 #ifdef AVSC_NO_DECLSPEC
 // This part uses LoadLibrary and related functions to dynamically load Avisynth instead of declspec(dllimport)
 // When AVSC_NO_DECLSPEC is defined, you can use avs_load_library to populate API functions into a struct
-// AVSC_INLINE funcions sould be treated specially (todo)
+// AVSC_INLINE functions which call onto an API functions should be treated specially (todo)
 
 /*
   The following functions needs to have been declared, probably from windows.h
@@ -949,10 +953,10 @@ AVSC_API(AVS_VideoFrame *, avs_subframe_planar)(AVS_ScriptEnvironment *, AVS_Vid
 typedef struct AVS_Library AVS_Library;
 
 #define AVSC_DECLARE_FUNC(name) name##_func name
-// we'll have
-// avs_add_function_func avs_add_function;
-// avs_copy_clip_func avs_copy_clip;
-// etc.. for all AVSC_API 
+
+// AVSC_DECLARE_FUNC helps keeping naming convention: type is xxxxx_func, function name is xxxxx
+// e.g. "AVSC_DECLARE_FUNC(avs_add_function);"
+// is a shortcut for "avs_add_function_func avs_add_function;"
 
 // Note: AVSC_INLINE functions which call into API,
 // are guarded by #ifndef AVSC_NO_DECLSPEC
@@ -1021,6 +1025,7 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_get_write_ptr_p);
 
   // Avisynth+ specific
+  // Note: these functions are simulated/use fallback to existing functions
   AVSC_DECLARE_FUNC(avs_is_rgb48);
   AVSC_DECLARE_FUNC(avs_is_rgb64);
   AVSC_DECLARE_FUNC(avs_is_yuv444p16);
@@ -1047,6 +1052,42 @@ struct AVS_Library {
 
 #undef AVSC_DECLARE_FUNC
 
+// Helper functions for fallback simulation
+// Avisynth+ extensions do not exist in classic Avisynth so they are simulated
+AVSC_INLINE int avs_is_xx_fallback_return_false(const AVS_VideoInfo * p)
+{
+  return 0;
+}
+
+// Avisynth+ extensions do not exist in classic Avisynth so they are simulated
+AVSC_INLINE int avs_num_components_fallback(const AVS_VideoInfo * p)
+{
+  switch (p->pixel_type) {
+  case AVS_CS_UNKNOWN:
+    return 0;
+  case AVS_CS_RAW32:
+  case AVS_CS_Y8:
+    return 1;
+  case AVS_CS_BGR32:
+    return 4; // not planar but return the count
+  default:
+    return 3;
+  }
+}
+
+// Avisynth+ extensions do not exist in classic Avisynth so they are simulated
+AVSC_INLINE int avs_component_size_fallback(const AVS_VideoInfo * p)
+{
+  return 1;
+}
+
+// Avisynth+ extensions do not exist in classic Avisynth so they are simulated
+AVSC_INLINE int avs_bits_per_component_fallback(const AVS_VideoInfo * p)
+{
+  return 8;
+}
+// End of helper functions for fallback simulation
+
 // avs_load_library() allocates an array for API procedure entries
 // reads and fills the entries with live procedure addresses.
 // AVSC_INLINE helpers which are calling into API procedures are not treated here (todo)
@@ -1063,6 +1104,50 @@ AVSC_INLINE AVS_Library * avs_load_library() {
 #define AVSC_STRINGIFY(x) __AVSC_STRINGIFY(x)
 #define AVSC_LOAD_FUNC(name) {\
   library->name = (name##_func) GetProcAddress(library->handle, AVSC_STRINGIFY(name));\
+  if (library->name == NULL)\
+    goto fail;\
+}
+
+// When an API funcion is not loadable, let's try a replacement
+// Missing Avisynth+ functions will be substituted with classic Avisynth compatible methods
+/*
+Avisynth+                 When method is missing (classic Avisynth)
+avs_is_rgb48              constant false
+avs_is_rgb64              constant false
+avs_is_yuv444p16          constant false
+avs_is_yuv422p16          constant false
+avs_is_yuv420p16          constant false
+avs_is_y16                constant false
+avs_is_yuv444ps           constant false
+avs_is_yuv422ps           constant false
+avs_is_yuv420ps           constant false
+avs_is_y32                constant false
+avs_is_444                avs_is_yv24
+avs_is_422                avs_is_yv16
+avs_is_420                avs_is_yv12
+avs_is_y                  avs_is_y8
+avs_is_yuva               constant false
+avs_is_planar_rgb         constant false
+avs_is_planar_rgba        constant false
+avs_num_components        special: avs_num_components_fake Y8:1 RGB32:4 else 3
+avs_component_size        constant 1 (1 bytes/component)
+avs_bits_per_component    constant 8 (8 bits/component)
+*/
+
+  // try to load an alternative function
+#define AVSC_LOAD_FUNC_FALLBACK(name,name2) {\
+  library->name = (name##_func) GetProcAddress(library->handle, AVSC_STRINGIFY(name));\
+  if (library->name == NULL)\
+    library->name = (name##_func) GetProcAddress(library->handle, AVSC_STRINGIFY(name2));\
+  if (library->name == NULL)\
+    goto fail;\
+}
+
+  // try to assign a replacement function
+#define AVSC_LOAD_FUNC_FALLBACK_SIMULATED(name,name2) {\
+  library->name = (name##_func) GetProcAddress(library->handle, AVSC_STRINGIFY(name));\
+  if (library->name == NULL)\
+    library->name = name2;\
   if (library->name == NULL)\
     goto fail;\
 }
@@ -1106,28 +1191,11 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_vsprintf);
 
   AVSC_LOAD_FUNC(avs_get_error);
-  AVSC_LOAD_FUNC(avs_is_rgb48);
-  AVSC_LOAD_FUNC(avs_is_rgb64);
   AVSC_LOAD_FUNC(avs_is_yv24);
   AVSC_LOAD_FUNC(avs_is_yv16);
   AVSC_LOAD_FUNC(avs_is_yv12);
   AVSC_LOAD_FUNC(avs_is_yv411);
   AVSC_LOAD_FUNC(avs_is_y8);
-  AVSC_LOAD_FUNC(avs_is_yuv444p16);
-  AVSC_LOAD_FUNC(avs_is_yuv422p16);
-  AVSC_LOAD_FUNC(avs_is_yuv420p16);
-  AVSC_LOAD_FUNC(avs_is_y16);
-  AVSC_LOAD_FUNC(avs_is_yuv444ps);
-  AVSC_LOAD_FUNC(avs_is_yuv422ps);
-  AVSC_LOAD_FUNC(avs_is_yuv420ps);
-  AVSC_LOAD_FUNC(avs_is_y32);
-  AVSC_LOAD_FUNC(avs_is_444);
-  AVSC_LOAD_FUNC(avs_is_422);
-  AVSC_LOAD_FUNC(avs_is_420);
-  AVSC_LOAD_FUNC(avs_is_y);
-  AVSC_LOAD_FUNC(avs_is_yuva);
-  AVSC_LOAD_FUNC(avs_is_planar_rgb);
-  AVSC_LOAD_FUNC(avs_is_planar_rgba);
   AVSC_LOAD_FUNC(avs_is_color_space);
 
   AVSC_LOAD_FUNC(avs_get_plane_width_subsampling);
@@ -1143,15 +1211,33 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_is_writable);
   AVSC_LOAD_FUNC(avs_get_write_ptr_p);
 
-  AVSC_LOAD_FUNC(avs_num_components);
-  AVSC_LOAD_FUNC(avs_component_size);
-  AVSC_LOAD_FUNC(avs_bits_per_component);
-
-
+  // Avisynth+ specific but made them callable for classic Avisynth hosts
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_rgb48, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_rgb64, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv444p16, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv422p16, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv420p16, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_y16, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv444ps, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv422ps, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv420ps, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_y32, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK(avs_is_444, avs_is_yv24);
+  AVSC_LOAD_FUNC_FALLBACK(avs_is_422, avs_is_yv16);
+  AVSC_LOAD_FUNC_FALLBACK(avs_is_420, avs_is_yv12);
+  AVSC_LOAD_FUNC_FALLBACK(avs_is_y, avs_is_y8);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuva, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_planar_rgb, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_planar_rgba, avs_is_xx_fallback_return_false);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_num_components, avs_num_components_fallback);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_component_size, avs_component_size_fallback);
+  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_bits_per_component, avs_bits_per_component_fallback);
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY
 #undef AVSC_LOAD_FUNC
+#undef AVSC_LOAD_FUNC_FALLBACK
+#undef AVSC_LOAD_FUNC_FALLBACK_SIMULATED
 
   return library;
 
