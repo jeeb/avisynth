@@ -4,6 +4,66 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20190220 r27xx
+--------------
+- Fix: ColorBars: pixel_type planar RGB will set alpha to 0 instead of 255, consistent with RGB32 Alpha channel
+- Fix: text colors for YUV422PS - regression since r2728 (zero-centered chroma)
+- VfW interface (VirtualDub2): Negotiate 8 bit Planar RGB(A) with FourCCs: G3[0][8] and G4[0][8], similar to the 10-16 bit logic
+  (When you would still stick with RGB24/RGB32/RGB64 export, use OPT_Enable_PlanarToPackedRGB = true)
+- Fix: planar RGBA Alpha on VfW was uninitialized because it wasn't filled.
+- Layer: Support for all 8-32 bit Y and planar YUV/YUVA and planar RGB/RGBA formats
+  When overlay clip is YUVA and RGBA, then alpha channels of overlay clip are used (similarly to RGB32 and RGB64 formats)
+  Non-alpha plane YUV/planar RGB color spaces act as having a fully transparent alpha channel (like the former YUY2 only working mode)
+  
+  Note: now if destination is YUVA/RGBA, the overlay clip also has to be Alpha-aware type.
+  Now A channel is not updated for YUVA targets, but RGBA targets do get the Alpha updated (like the old RGB32 mode did)
+  Todo: allow non-Alpha destination and Alpha-Overlay
+  
+- Layer: new parameter: float "opacity" (0.0 .. 1.0) optionally replaces the previous "level". Similar to "opacity" in "Overlay"
+  For "level" see http://avisynth.nl/index.php/Layer
+  "opacity" parameter is bit depth independent, one does not have to fiddle with it like had to with level (which was maxed with level=257 when RGB32 but level=256 for YUY2/YUV)
+- Layer: threshold parameter (used for lighten/darken) is autoscaled.
+  Keep it between 0 and 255, same as it was used for 8 bit videos.
+- Layer: new parameter: string placement "mpeg2".
+  Possible values: "mpeg2" (default), "mpeg1".
+  Used in "mul", "darken" and "lighten", "add" and "subtract" modes with planar YUV 4:2:0 or 4:2:2 color spaces (not available for YUY2)
+  in order to properly apply luma/overlay mask on U and V chroma channels.
+- Layer: Fix some out-of-frame memory access in YUY2 C code
+- Layer: Fix: Internal rounding for add/subtract/lighten/darken for 8 bits. (YUY2, RGB32, 8 bit YUV and 8 bit Planar RGB)
+- Fix: Layer: "lighten" and "darken" was different between yuy2 and rgb32 when Threshold<>0
+  - fixed "darken" for RGB32 when Threshold<>0
+  - fixed "lighten" and "darken" for YUY2 when Threshold<>0
+  Fix was done by specification:
+  add "Where overlay is brigher by threshold" => e.g. Where overlay is brigther by 10 => Where overlay > src + 10
+  Calculation: alpha_mask = ovr > (src + thresh) ? level : 0;
+  add "Where overlay is darker by threshold" => e.g. Where overlay is darker by 10 => Where overlay < src - 10
+  Calculation: alpha_mask = ovr < (src - thresh) ? level : 0;
+  The only correct case of the above was "lighten" for RGB32, even in Classic Avisynth. Note: Threshold=0 was O.K.
+- Layer: just an info: existing lighten/darken code for YUY2 is still not correct, messing up chroma a bit, 
+  since it uses weights from even luma positions (0,2,4,...) for U, and odd luma positions (1,3,5,...) for V.
+- Avisynth C interface header (avisynth_c.h): 
+  - cosmetics: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
+  - cosmetics: remove unused form of avs_get_rowsize and avs_get_height (kept earlier for reference)
+  - use #ifndef AVSC_NO_DECLSPEC for AVSC_INLINE functions which are calling API functions
+  - define alias AVS_FRAME_ALIGN as FRAME_ALIGN (keep the AVS_xxxx naming convention)
+  - dynamic loader (avs_load_library) uses fallback mechanism for non-existant Avisynth+ specific functions, 
+    in order to have Avisynth+ specific API functions safely callable even when connected to classic Avisynth DLL
+    The smart fallback mechanism for Avisynth+ specific functions ensures that if the functions are not loadable, 
+    they will work in a classic Avisynth compatible mode
+    Example#1: e.g. avs_is_444 will call the existing avs_is_yv24 instead
+    Example#2: avs_bits_per_component will return 8 for all colorspaces (Classic Avisynth supports only 8 bits/pixel)
+    Affected functions and mapping:
+      avs_is_rgb48, avs_is_rgb64, avs_is_yuv444p16, avs_is_yuv422p16, avs_is_yuv420p16, avs_is_y16: returns false (0)
+      avs_is_yuv444ps, avs_is_yuv422ps, avs_is_yuv420ps, avs_is_y32: returns false (0)
+      avs_is_yuva, avs_is_planar_rgb, avs_is_planar_rgba: returns false (0)
+      avs_is_444: calls avs_is_yv24 instead
+      avs_is_422: calls avs_is_yv16 instead
+      avs_is_420: calls avs_is_yv12 instead
+      avs_is_y: calls avs_is_y instead
+      avs_num_components: returns 1 for y8, 4 for RGB32, 3 otherwise
+      avs_component_size: returns 1 (1 bytes)
+      avs_bits_per_component: returns 8 (8 bits)
+
 20181220 r2772
 --------------
 - Fix: Expr: possible Expr x64 crash under specific memory circumstances
