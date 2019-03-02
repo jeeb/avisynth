@@ -28,7 +28,7 @@
 #include "File64.h"
 
 #include "clip_info.h"
-#include "..\core\internal.h"
+#include "../core/internal.h"
 #include <cmath>
 #include <cstdint>
 
