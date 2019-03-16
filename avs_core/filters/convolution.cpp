@@ -75,6 +75,16 @@ extern const AVSFunction Convolution_filters[] = {
   { 0 }
 };
 
+template<int mi, int ma>
+__forceinline int static_clip(int value) {
+  if (value < mi) {
+    return mi;
+  }
+  if (value > ma) {
+    return ma;
+  }
+  return value;
+}
 
 /*****************************************
 ****** General Convolution 2D filter *****
@@ -632,17 +642,6 @@ void GeneralConvolution::setMatrix(const char * _matrix, bool _isInteger, IScrip
     env->ThrowError("GeneralConvolution: matrix too small, need at least 3x3 elements");
   else if (nSize != maxsize)
     env->ThrowError("GeneralConvolution: matrix incomplete, possible size %dx%d but element count %d", dim, dim, nSize);
-}
-
-template<int mi, int ma>
-__forceinline int static_clip(int value) {
-  if (value < mi) {
-    return mi;
-  }
-  if (value > ma) {
-    return ma;
-  }
-  return value;
 }
 
 PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* env)
