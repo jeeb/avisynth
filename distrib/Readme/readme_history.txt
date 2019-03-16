@@ -59,7 +59,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       avs_is_444: calls avs_is_yv24 instead
       avs_is_422: calls avs_is_yv16 instead
       avs_is_420: calls avs_is_yv12 instead
-      avs_is_y: calls avs_is_y instead
+      avs_is_y: calls avs_is_y8 instead
       avs_num_components: returns 1 for y8, 4 for RGB32, 3 otherwise
       avs_component_size: returns 1 (1 bytes)
       avs_bits_per_component: returns 8 (8 bits)
