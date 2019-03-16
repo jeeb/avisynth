@@ -54,7 +54,7 @@ elseif (MINGW)
 
   # special AVX2 option for source files with *_avx2.cpp pattern
   file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
-  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS -mavx2 -mfma)
+  set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
 endif()
 
 # Specify include directories
@@ -63,10 +63,8 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
 # Windows DLL dependencies 
-if (MSVC_IDE)
-  target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib" "ImageHlp.lib")
-elseif (MINGW)
-  target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp.lib")
+if (MSVC OR MINGW)
+  target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
 endif()
 
 if (MSVC_IDE)    

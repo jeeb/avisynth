@@ -13,7 +13,6 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "core/*.c"
   "core/*.cpp"
   "core/*.h"
-  "core/avisynth.rc"
 
   "core/parser/*.c"
   "core/parser/*.cpp"
@@ -39,7 +38,7 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "filters/exprfilter/*.h"
 )
 
-IF( MSVC_IDE )
+IF( MSVC OR MINGW )
     # Export definitions in general are not needed on x64 and only cause warnings,
     # unfortunately we still must need a .def file for some COM functions.
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -47,4 +46,9 @@ IF( MSVC_IDE )
     else()
       LIST(APPEND AvsCore_Sources "core/avisynth.def")
     endif() 
+ENDIF()
+
+IF( MSVC_IDE )
+    # Ninja, unfortunately, seems to have some issues with using rc.exe
+    LIST(APPEND AvsCore_Sources "core/avisynth.rc")
 ENDIF()

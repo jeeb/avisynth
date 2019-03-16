@@ -86,6 +86,17 @@ __forceinline int static_clip(int value) {
   return value;
 }
 
+template<int mi, int ma>
+__forceinline int static_clip(int value) {
+  if (value < mi) {
+    return mi;
+  }
+  if (value > ma) {
+    return ma;
+  }
+  return value;
+}
+
 /*****************************************
 ****** General Convolution 2D filter *****
 *****************************************/

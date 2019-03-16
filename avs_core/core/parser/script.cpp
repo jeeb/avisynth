@@ -49,6 +49,10 @@
 #include "../InternalEnvironment.h"
 #include <map>
 
+#ifndef MINGW_HAS_SECURE_API
+#define sprintf_s sprintf
+#endif
+
 
 
 /********************************************************************
