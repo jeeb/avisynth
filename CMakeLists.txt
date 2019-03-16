@@ -74,6 +74,10 @@ IF( MSVC )  # Check for Visual Studio
 
   add_definitions("/D __SSE2__")
 
+  # Set additional optimization flags
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS- /Oi")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oy /Ot /GS- /Oi")
+
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     # CPU_ARCH can be overridden with the corresponding values when using MSVC:
     # IA32 (disabled),
@@ -82,15 +86,21 @@ IF( MSVC )  # Check for Visual Studio
     # AVX (Sandy Bridge and higher, 2011),
     # AVX2 (Haswell and higher, 2013)
     set(MSVC_CPU_ARCH "SSE2" CACHE STRING "Set MSVC architecture optimization level (default: SSE2)")
-  endif()
 
-  # Set additional optimization flags
-  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS- /Oi /arch:${MSVC_CPU_ARCH}")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oy /Ot /GS- /Oi /arch:${MSVC_CPU_ARCH}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:${MSVC_CPU_ARCH}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:${MSVC_CPU_ARCH}")
+  endif()
 
   # Set C++17 flag
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c++17")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+
+  # Enable standards-conformance mode for MSVC compilers that support this
+  # flag (Visual C++ 2017 and later).
+  if (NOT (MSVC_VERSION LESS 1910))
+    add_compile_options ("/permissive-")
+  endif()
+
 ELSE()
 
   # c++17: if constexpr() and others from gcc 7
