@@ -101,8 +101,8 @@ IF( MSVC )  # Check for Visual Studio
 
 ELSE()
 
-  # c++17: if constexpr() and others from gcc 7
-  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++17" ) # or -std=c++17 w/o gnu c++17 extensions
+  # c++17: if constexpr() and others from gcc 7/clang 5
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++17" )
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native" )
   SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
 
