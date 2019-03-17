@@ -78,18 +78,16 @@ IF( MSVC )  # Check for Visual Studio
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS- /Oi")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oy /Ot /GS- /Oi")
 
-  if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    # CPU_ARCH can be overridden with the corresponding values when using MSVC:
-    # IA32 (disabled),
-    # SSE (Pentium III and higher, 1999),
-    # SSE2 (Pentium 4 and higher, 2000/2001),
-    # AVX (Sandy Bridge and higher, 2011),
-    # AVX2 (Haswell and higher, 2013)
-    set(MSVC_CPU_ARCH "SSE2" CACHE STRING "Set MSVC architecture optimization level (default: SSE2)")
+  # CPU_ARCH can be overridden with the corresponding values when using MSVC:
+  # IA32 (disabled),
+  # SSE (Pentium III and higher, 1999),
+  # SSE2 (Pentium 4 and higher, 2000/2001),
+  # AVX (Sandy Bridge and higher, 2011),
+  # AVX2 (Haswell and higher, 2013)
+  set(MSVC_CPU_ARCH "SSE2" CACHE STRING "Set MSVC architecture optimization level (default: SSE2)")
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:${MSVC_CPU_ARCH}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:${MSVC_CPU_ARCH}")
-  endif()
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:${MSVC_CPU_ARCH}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:${MSVC_CPU_ARCH}")
 
   # Set C++17 flag
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c++17")
