@@ -186,6 +186,8 @@ public:
 template<class T>
 class ptr_list_autodel_t : public ptr_list_t<T>
 {
+  // the compiler knows that 'delete_all' is a member functions of ptr_list_t<T>
+  using ptr_list_t<T>::delete_all;
 public:
 	~ptr_list_autodel_t() {delete_all();}
 };
@@ -194,6 +196,8 @@ public:
 template<class T>
 class ptr_list_autofree_t : public ptr_list_t<T>
 {
+  // the compiler knows that 'free_all' is a member functions of ptr_list_t<T>
+  using ptr_list_t<T>::free_all;
 public:
 	~ptr_list_autofree_t() {free_all();}
 };

@@ -4,6 +4,10 @@
 template<class T>
 class cfg_memblock : public cfg_var, public mem_block_list<T>
 {
+  // the compiler knows that 'remove_all' and the others are member functions of mem_block_list<T>
+  using mem_block_list<T>::remove_all; 
+  using mem_block_list<T>::get_ptr;
+  using mem_block_list<T>::get_count;
 private:
 	const T* init_val;
 	int init_size;
