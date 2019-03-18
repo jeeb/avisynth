@@ -4,43 +4,51 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190220 r27xx
+20190318 r28xx
 --------------
 - Fix: ColorBars: pixel_type planar RGB will set alpha to 0 instead of 255, consistent with RGB32 Alpha channel
 - Fix: text colors for YUV422PS - regression since r2728 (zero-centered chroma)
-- VfW interface (VirtualDub2): Negotiate 8 bit Planar RGB(A) with FourCCs: G3[0][8] and G4[0][8], similar to the 10-16 bit logic
+- New: VirtualDub2 to display 8 bit planar RGB (needs up-to-date VirtualDub2 as well)
+  VfW interface to negotiate 8 bit Planar RGB(A) with FourCCs: G3[0][8] and G4[0][8], similar to the 10-16 bit logic
   (When you would still stick with RGB24/RGB32/RGB64 export, use OPT_Enable_PlanarToPackedRGB = true)
 - Fix: planar RGBA Alpha on VfW was uninitialized because it wasn't filled.
-- Layer: Support for all 8-32 bit Y and planar YUV/YUVA and planar RGB/RGBA formats
-  When overlay clip is YUVA and RGBA, then alpha channels of overlay clip are used (similarly to RGB32 and RGB64 formats)
-  Non-alpha plane YUV/planar RGB color spaces act as having a fully transparent alpha channel (like the former YUY2 only working mode)
+- Layer: big update
+  Previously Layer was working only for RGB32 and YUY2. Overlay was used primarily for YUV. Now Layer accept practically all formats (no RGB24).
+  Note that some modes can be similar to Overlay, but the two filters are still different. 
+  Overlay accepts mask clip, Layer would use existing A plane.
+  Overlay "blend" is Layer "add", Overlay "add" is different.
+  Lighten and darken is a bit different in Overlay.
+  Layer has "placement" parameter for proper mask positioning over chroma.
+
+  - Support for all 8-32 bit Y and planar YUV/YUVA and planar RGB/RGBA formats
+    When overlay clip is YUVA and RGBA, then alpha channels of overlay clip are used (similarly to RGB32 and RGB64 formats)
+    Non-alpha plane YUV/planar RGB color spaces act as having a fully transparent alpha channel (like the former YUY2 only working mode)
   
-  Note: now if destination is YUVA/RGBA, the overlay clip also has to be Alpha-aware type.
-  Now A channel is not updated for YUVA targets, but RGBA targets do get the Alpha updated (like the old RGB32 mode did)
-  Todo: allow non-Alpha destination and Alpha-Overlay
-  
-- Layer: new parameter: float "opacity" (0.0 .. 1.0) optionally replaces the previous "level". Similar to "opacity" in "Overlay"
-  For "level" see http://avisynth.nl/index.php/Layer
-  "opacity" parameter is bit depth independent, one does not have to fiddle with it like had to with level (which was maxed with level=257 when RGB32 but level=256 for YUY2/YUV)
-- Layer: threshold parameter (used for lighten/darken) is autoscaled.
-  Keep it between 0 and 255, same as it was used for 8 bit videos.
-- Layer: new parameter: string placement "mpeg2".
-  Possible values: "mpeg2" (default), "mpeg1".
-  Used in "mul", "darken" and "lighten", "add" and "subtract" modes with planar YUV 4:2:0 or 4:2:2 color spaces (not available for YUY2)
-  in order to properly apply luma/overlay mask on U and V chroma channels.
-- Layer: Fix some out-of-frame memory access in YUY2 C code
-- Layer: Fix: Internal rounding for add/subtract/lighten/darken for 8 bits. (YUY2, RGB32, 8 bit YUV and 8 bit Planar RGB)
-- Fix: Layer: "lighten" and "darken" was different between yuy2 and rgb32 when Threshold<>0
-  - fixed "darken" for RGB32 when Threshold<>0
-  - fixed "lighten" and "darken" for YUY2 when Threshold<>0
-  Fix was done by specification:
-  add "Where overlay is brigher by threshold" => e.g. Where overlay is brigther by 10 => Where overlay > src + 10
-  Calculation: alpha_mask = ovr > (src + thresh) ? level : 0;
-  add "Where overlay is darker by threshold" => e.g. Where overlay is darker by 10 => Where overlay < src - 10
-  Calculation: alpha_mask = ovr < (src - thresh) ? level : 0;
-  The only correct case of the above was "lighten" for RGB32, even in Classic Avisynth. Note: Threshold=0 was O.K.
-- Layer: just an info: existing lighten/darken code for YUY2 is still not correct, messing up chroma a bit, 
-  since it uses weights from even luma positions (0,2,4,...) for U, and odd luma positions (1,3,5,...) for V.
+    Note: now if destination is YUVA/RGBA, the overlay clip also has to be Alpha-aware type.
+    Now A channel is not updated for YUVA targets, but RGBA targets do get the Alpha updated (like the old RGB32 mode did)
+    Todo: allow non-Alpha destination and Alpha-Overlay
+  - New parameter: float "opacity" (0.0 .. 1.0) optionally replaces the previous "level". Similar to "opacity" in "Overlay"
+    For usage of "level" see http://avisynth.nl/index.php/Layer
+    "opacity" parameter is bit depth independent, one does not have to fiddle with it like had to with level (which was maxed with level=257 when RGB32 but level=256 for YUY2/YUV)
+  - threshold parameter (used for lighten/darken) is autoscaled.
+    Keep it between 0 and 255, same as it was used for 8 bit videos.
+  - new parameter: string "placement" default "mpeg2".
+    Possible values: "mpeg2" (default), "mpeg1".
+    Used in "mul", "darken" and "lighten", "add" and "subtract" modes with planar YUV 4:2:0 or 4:2:2 color spaces (not available for YUY2)
+    in order to properly apply luma/overlay mask on U and V chroma channels.
+  - Fix some out-of-frame memory access in YUY2 C code
+  - Fix: Add proper rounding for add/subtract/lighten/darken calculations. (YUY2, RGB32, 8 bit YUV and 8 bit Planar RGB)
+  - Fix: "lighten" and "darken" gave different results between yuy2 and rgb32 when Threshold<>0
+    Fixed "darken" for RGB32 when Threshold<>0
+    Fixed "lighten" and "darken" for YUY2 when Threshold<>0
+    All the above was done by specification:
+    Add: "Where overlay is brigher by threshold" => e.g. Where overlay is brigther by 10 => Where overlay > src + 10
+    Calculation: alpha_mask = ovr > (src + thresh) ? level : 0;
+    Add: "Where overlay is darker by threshold" => e.g. Where overlay is darker by 10 => Where overlay < src - 10
+    Calculation: alpha_mask = ovr < (src - thresh) ? level : 0;
+    The only correct case of the above was "lighten" for RGB32, even in Classic Avisynth. Note: Threshold=0 was O.K.
+  - (Just an info: existing lighten/darken code for YUY2 is still not correct, messing up chroma a bit, 
+     since it uses weights from even luma positions (0,2,4,...) for U, and odd luma positions (1,3,5,...) for V)
 - Avisynth C interface header (avisynth_c.h): 
   - cosmetics: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
   - cosmetics: remove unused form of avs_get_rowsize and avs_get_height (kept earlier for reference)
@@ -63,6 +71,17 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       avs_num_components: returns 1 for y8, 4 for RGB32, 3 otherwise
       avs_component_size: returns 1 (1 bytes)
       avs_bits_per_component: returns 8 (8 bits)
+- Version: update year, removed avs-plus.net link
+- Updated: TimeStretch plugin with SoundTouch 2.1.3 (as of 07.Jan 2019)
+- Source/Build system
+  - various source fixes for MinGW builds (qyot27)
+  - CMakeLists.txt updates (user selecteble CPU arch, MinGW things) (qyot27)
+  - PluginManager.cpp: [MSVC|GCC] should only load [MSVC|GCC] plugins (qyot27)
+    This commit simply tells GCC builds of AviSynth to use the value
+    of the PluginDir+GCC registry entry to find plugins, and ignore
+    PluginDir and PluginDir+.  Vice-versa for MSVC builds.
+    C plugins are an exception to this, since those can be loaded with
+    either MSVC- or GCC-built AviSynth+. 
 
 20181220 r2772
 --------------
