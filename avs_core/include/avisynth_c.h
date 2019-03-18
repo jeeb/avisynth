@@ -140,7 +140,7 @@ enum {
     AVS_CS_GENERIC_YUVA444 = AVS_CS_PLANAR | AVS_CS_YUVA | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1 }; // 4:4:4:A planar
 
 
-  // Specific colorformats
+  // Specific color formats
 enum {
   AVS_CS_UNKNOWN = 0,
   AVS_CS_BGR24 = AVS_CS_RGB_TYPE  | AVS_CS_BGR | AVS_CS_INTERLEAVED,
@@ -150,18 +150,18 @@ enum {
   //  AVS_CS_I420  = 1<<4  Reserved
   AVS_CS_RAW32 = 1<<5 | AVS_CS_INTERLEAVED,
 
-  AVS_CS_YV24  = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:4:4 planar
-  AVS_CS_YV16  = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:2:2 planar
-  AVS_CS_YV12  = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:2:0 planar
+  AVS_CS_YV24  = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_8,  // YUV 4:4:4 planar
+  AVS_CS_YV16  = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_8,  // YUV 4:2:2 planar
+  AVS_CS_YV12  = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_8,  // YUV 4:2:0 planar
   AVS_CS_I420  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_UPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // YUV 4:2:0 planar
   AVS_CS_IYUV  = AVS_CS_I420,
-  AVS_CS_YV411 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:1 planar
-  AVS_CS_YUV9  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_4 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:0 planar
+  AVS_CS_YV411 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_4,  // YUV 4:1:1 planar
+  AVS_CS_YUV9  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_4 | AVS_CS_SUB_WIDTH_4,  // YUV 4:1:0 planar
   AVS_CS_Y8    = AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_8,       // Y   4:0:0 planar
 
   //-------------------------
   // AVS16: new planar constants go live! Experimental PF 160613
-  // 10-12-14-16 bit + planar RGB + BRG48/64 160725
+  // 10-12-14-16 bit + planar RGB + BGR48/64 160725
   AVS_CS_YUV444P10 = AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_10, // YUV 4:4:4 10bit samples
   AVS_CS_YUV422P10 = AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:2 10bit samples
   AVS_CS_YUV420P10 = AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:0 10bit samples
@@ -262,9 +262,9 @@ enum {  //SUBTYPES
 enum {
   // New 2.6 explicitly defined cache hints.
   AVS_CACHE_NOTHING=10, // Do not cache video.
-  AVS_CACHE_WINDOW=11, // Hard protect upto X frames within a range of X from the current frame N.
-  AVS_CACHE_GENERIC=12, // LRU cache upto X frames.
-  AVS_CACHE_FORCE_GENERIC=13, // LRU cache upto X frames, override any previous CACHE_WINDOW.
+  AVS_CACHE_WINDOW=11, // Hard protect up to X frames within a range of X from the current frame N.
+  AVS_CACHE_GENERIC=12, // LRU cache up to X frames.
+  AVS_CACHE_FORCE_GENERIC=13, // LRU cache up to X frames, override any previous CACHE_WINDOW.
 
   AVS_CACHE_GET_POLICY=30, // Get the current policy.
   AVS_CACHE_GET_WINDOW=31, // Get the current window h_span.
@@ -272,8 +272,8 @@ enum {
 
   AVS_CACHE_AUDIO=50, // Explicitly do cache audio, X byte cache.
   AVS_CACHE_AUDIO_NOTHING=51, // Explicitly do not cache audio.
-  AVS_CACHE_AUDIO_NONE=52, // Audio cache off (auto mode), X byte intial cache.
-  AVS_CACHE_AUDIO_AUTO=53, // Audio cache on (auto mode), X byte intial cache.
+  AVS_CACHE_AUDIO_NONE=52, // Audio cache off (auto mode), X byte initial cache.
+  AVS_CACHE_AUDIO_AUTO=53, // Audio cache on (auto mode), X byte initial cache.
 
   AVS_CACHE_GET_AUDIO_POLICY=70, // Get the current audio policy.
   AVS_CACHE_GET_AUDIO_SIZE=71, // Get the current audio cache size.
@@ -300,7 +300,7 @@ enum {
     AVS_CACHE_COST_MED=224, // Child response of medium cost. (Real time)
     AVS_CACHE_COST_HI=225, // Child response of heavy cost. (Slow)
 
-  AVS_CACHE_GETCHILD_THREAD_MODE=240, // Cache ask Child for thread safetyness.
+  AVS_CACHE_GETCHILD_THREAD_MODE=240, // Cache ask Child for thread safety.
     AVS_CACHE_THREAD_UNSAFE=241, // Only 1 thread allowed for all instances. 2.5 filters default!
     AVS_CACHE_THREAD_CLASS=242, // Only 1 thread allowed for each instance. 2.6 filters default!
     AVS_CACHE_THREAD_SAFE=243, //  Allow all threads in any instance.
@@ -331,7 +331,7 @@ typedef struct AVS_ScriptEnvironment AVS_ScriptEnvironment;
 // AVS_VideoInfo
 //
 
-// AVS_VideoInfo is layed out identicly to VideoInfo
+// AVS_VideoInfo is laid out identically to VideoInfo
 typedef struct AVS_VideoInfo {
   int width, height;    // width=0 means no video
   unsigned fps_numerator, fps_denominator;
@@ -344,7 +344,7 @@ typedef struct AVS_VideoInfo {
   INT64 num_audio_samples;
   int nchannels;
 
-  // Imagetype properties
+  // Image type properties
 
   int image_type;
 } AVS_VideoInfo;
@@ -496,21 +496,21 @@ AVSC_API(int, avs_is_rgb48)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_is_rgb64)(const AVS_VideoInfo * p);
 
-AVSC_API(int, avs_is_yuv444p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv444
+AVSC_API(int, avs_is_yuv444p16)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv444
 
-AVSC_API(int, avs_is_yuv422p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv422
+AVSC_API(int, avs_is_yuv422p16)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv422
 
-AVSC_API(int, avs_is_yuv420p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv420
+AVSC_API(int, avs_is_yuv420p16)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv420
 
-AVSC_API(int, avs_is_y16)(const AVS_VideoInfo * p); // obsolate, use avs_is_y
+AVSC_API(int, avs_is_y16)(const AVS_VideoInfo * p); // obsolete, use avs_is_y
 
-AVSC_API(int, avs_is_yuv444ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv444
+AVSC_API(int, avs_is_yuv444ps)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv444
 
-AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv422
+AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv422
 
-AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv420
+AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv420
 
-AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p); // obsolate, use avs_is_y
+AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p); // obsolete, use avs_is_y
 
 AVSC_API(int, avs_is_444)(const AVS_VideoInfo * p);
 
@@ -544,7 +544,7 @@ AVSC_API(int, avs_bits_per_component)(const AVS_VideoInfo * p);
 // to be reused.  The instances are deleted when the corresponding AVS
 // file is closed.
 
-// AVS_VideoFrameBuffer is layed out identicly to VideoFrameBuffer
+// AVS_VideoFrameBuffer is laid out identically to VideoFrameBuffer
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrameBuffer {
   BYTE * data;
@@ -562,7 +562,7 @@ typedef struct AVS_VideoFrameBuffer {
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.
 
-// AVS_VideoFrame is layed out identicly to IVideoFrame
+// AVS_VideoFrame is laid out identically to IVideoFrame
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrame {
   volatile long refcount;
@@ -581,7 +581,7 @@ typedef struct AVS_VideoFrame {
   int pitchUV;  // U&V offsets are from top of picture.
   int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
                             // for Planar RGB pitchUV and row_sizeUV = 0, because when no VideoInfo (MakeWriteable)
-                            // the decision on existance of UV is checked by zero pitch
+                            // the decision on existence of UV is checked by zero pitch
   // AVS+ extension, avisynth.h: class does not break plugins if appended here
 #ifdef SIZETMOD
   size_t offsetA;
@@ -660,14 +660,14 @@ AVSC_INLINE AVS_VideoFrame * avs_copy_frame(AVS_VideoFrame * f)
 //
 
 // Treat AVS_Value as a fat pointer.  That is use avs_copy_value
-// and avs_release_value appropiaty as you would if AVS_Value was
+// and avs_release_value appropriately as you would if AVS_Value was
 // a pointer.
 
 // To maintain source code compatibility with future versions of the
 // avisynth_c API don't use the AVS_Value directly.  Use the helper
 // functions below.
 
-// AVS_Value is layed out identicly to AVSValue
+// AVS_Value is laid out identically to AVSValue
 typedef struct AVS_Value AVS_Value;
 struct AVS_Value {
   short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or 'l'ong
@@ -683,9 +683,9 @@ struct AVS_Value {
   } d;
 };
 
-// AVS_Value should be initilized with avs_void.
+// AVS_Value should be initialized with avs_void.
 // Should also set to avs_void after the value is released
-// with avs_copy_value.  Consider it the equalvent of setting
+// with avs_copy_value.  Consider it the equivalent of setting
 // a pointer to NULL
 static const AVS_Value avs_void = {'v'};
 
@@ -798,7 +798,7 @@ struct AVS_FilterInfo
 
 // Create a new filter
 // fi is set to point to the AVS_FilterInfo so that you can
-//   modify it once it is initilized.
+//   modify it once it is initialized.
 // store_child should generally be set to true.  If it is not
 //    set than ALL methods (the function pointers) must be defined
 // If it is set than you do not need to worry about freeing the child
@@ -1108,7 +1108,7 @@ AVSC_INLINE AVS_Library * avs_load_library() {
     goto fail;\
 }
 
-// When an API funcion is not loadable, let's try a replacement
+// When an API function is not loadable, let's try a replacement
 // Missing Avisynth+ functions will be substituted with classic Avisynth compatible methods
 /*
 Avisynth+                 When method is missing (classic Avisynth)
