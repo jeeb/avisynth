@@ -89,7 +89,17 @@ IF( MSVC )  # Check for Visual Studio
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:${MSVC_CPU_ARCH}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:${MSVC_CPU_ARCH}")
 
-  # Set C++17 flag
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  # MSVC doesn't allow 64-bit builds to have their /arch set to SSE2 (no-op) or below
+    if("${MSVC_CPU_ARCH}" MATCHES "(IA32|SSE|SSE2)")
+      set(DELETE_THIS "/arch:${MSVC_CPU_ARCH}")
+      message("MSVC doesn't allow x86-64 builds to define /arch:${MSVC_CPU_ARCH}. Setting will be ignored.")
+      STRING( REPLACE "${DELETE_THIS}" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+      STRING( REPLACE "${DELETE_THIS}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    endif()
+  endif()
+
+# Set C++17 flag
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c++17")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
 
