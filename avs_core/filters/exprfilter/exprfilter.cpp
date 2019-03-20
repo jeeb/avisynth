@@ -49,8 +49,8 @@
 *             (A float can hold a 24 bit integer w/o losing precision)
 *           expr constants: 'width', 'height' for current plane width and height
 *           expr auto variable: 'frameno' holds the current frame number 0..total number of frames-1
-*           expr auto variable: 'time' relative time in clip, 0 <= time < 1 
-*                calculation: time = frameno/total number of frames)
+*           expr auto variable: 'time' relative time in clip, 0 <= time <= 1 
+*                calculation: time = frameno/(total number of frames - 1)
 * 20180614 new parameters: scale_inputs, clamp_float
 *          implement 'clip' three operand operator like in masktools2: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
 *
@@ -3326,8 +3326,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   float variable_area[MAX_USER_VARIABLES] = {}; // for C, place for expr variables A..Z
 
   const float framecount = (float)n; // max precision: 2^24 (16M) frames (32 bit float precision)
-  const float relative_time = (float)((double)n / vi.num_frames); // 0 <= time < 1
-
+  const float relative_time = vi.num_frames > 1 ? (float)((double)n / (vi.num_frames - 1)) : 0.0f; // 0 <= time <= 1
   const int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
   const int planes_r[4] = { PLANAR_R, PLANAR_G, PLANAR_B, PLANAR_A }; // expression string order is R G B unlike internal G B R plane order
   const int *plane_enums_d = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
