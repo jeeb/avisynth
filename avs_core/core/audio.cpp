@@ -143,7 +143,9 @@ AVSValue __cdecl ConvertAudio::Create_24bit(AVSValue args, void*, IScriptEnviron
 }
 
 
+#if defined(X86_32) && defined(MSVC) && !defined(__clang__)
 void FilterUD_mmx(short *Xp, unsigned Ph, int _inc, int _dhb, short *p_Imp, unsigned End);
+#endif
 
 
 /*************************************
@@ -1296,7 +1298,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 
 	short* dst_end = &dst[count * ch];
 
-#if defined(X86_32) && defined(MSVC)
+#if defined(X86_32) && defined(MSVC) && !defined(__clang__)
 	if (env->GetCPUFlags() & CPUF_MMX)
   {
 	  static const int r_Na     = 1 << (Na-1);
@@ -1465,7 +1467,8 @@ AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment*
 }
 
 
-#if defined(X86_32) && defined(MSVC)
+#if defined(X86_32) && defined(MSVC) && !defined(__clang__)
+
 // FilterUD MMX SAMPLE_INT16 Version -- approx 3.25 times faster than original (2.4x than new)
 /*
  * MMx registers transfered across calls
