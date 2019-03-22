@@ -100,6 +100,10 @@
 
 #include <immintrin.h>
 
+#ifdef __clang__
+#include <avxintrin.h>
+#endif
+
 #ifdef VS_TARGET_CPU_X86
 
 // normal versions work with two xmm or ymm registers (2*4 or 2*8 pixels per cycle)
