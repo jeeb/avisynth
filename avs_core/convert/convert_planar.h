@@ -42,10 +42,10 @@
 
 // useful functions
 template <typename pixel_t>
-void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, pixel_t val);
+void fill_chroma(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, pixel_t val);
 
 template <typename pixel_t>
-void fill_plane(BYTE* dstp, int height, int pitch, pixel_t val);
+void fill_plane(uint8_t * dstp, int height, int pitch, pixel_t val);
 
 struct ChannelConversionMatrix {
   int16_t r;    // for 15bit scaled integer arithmetic

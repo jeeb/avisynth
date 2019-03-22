@@ -53,6 +53,28 @@ enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
 static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
 static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
 
+template <typename pixel_t>
+void fill_chroma(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, pixel_t val)
+{
+  size_t size = height * pitch / sizeof(pixel_t);
+  std::fill_n(reinterpret_cast<pixel_t*>(dstp_u), size, val);
+  std::fill_n(reinterpret_cast<pixel_t*>(dstp_v), size, val);
+}
+
+template <typename pixel_t>
+void fill_plane(uint8_t * dstp, int height, int pitch, pixel_t val)
+{
+  size_t size = height * pitch / sizeof(pixel_t);
+  std::fill_n(reinterpret_cast<pixel_t*>(dstp), size, val);
+}
+
+// specialize it
+template void fill_plane<uint8_t>(uint8_t * dstp, int height, int pitch, uint8_t val);
+template void fill_plane<uint16_t>(uint8_t * dstp, int height, int pitch, uint16_t val);
+template void fill_plane<float>(uint8_t * dstp, int height, int pitch, float val);
+template void fill_chroma<uint8_t>(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, uint8_t val);
+template void fill_chroma<uint16_t>(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, uint16_t val);
+template void fill_chroma<float>(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, float val);
 
 ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src) {
   yuy2_input = blit_luma_only = packed_rgb_input = planar_rgb_input = false;
@@ -2761,22 +2783,6 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   }
   delete filter;
 }
-
-template <typename pixel_t>
-void fill_chroma(BYTE* dstp_u, BYTE* dstp_v, int height, int pitch, pixel_t val)
-{
-  size_t size = height * pitch / sizeof(pixel_t);
-  std::fill_n(reinterpret_cast<pixel_t*>(dstp_u), size, val);
-  std::fill_n(reinterpret_cast<pixel_t*>(dstp_v), size, val);
-}
-
-template <typename pixel_t>
-void fill_plane(BYTE* dstp, int height, int pitch, pixel_t val)
-{
-  size_t size = height * pitch / sizeof(pixel_t);
-  std::fill_n(reinterpret_cast<pixel_t*>(dstp), size, val);
-}
-
 
 PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
