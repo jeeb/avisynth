@@ -140,8 +140,8 @@ private:
 
 /**** Factory methods ****/
 
-static AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env);
 
 
 

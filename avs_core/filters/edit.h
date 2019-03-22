@@ -239,15 +239,15 @@ private:
 
 /**** A few factory methods ****/
 
-static AVSValue __cdecl Create_FadeOut0(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeOut(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeOut2(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeIn0(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeIn(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeIn2(AVSValue args, void*,IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeIO0(AVSValue args, void*,IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeIO(AVSValue args, void*,IScriptEnvironment* env);
-static AVSValue __cdecl Create_FadeIO2(AVSValue args, void*,IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeOut0(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeOut(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeOut2(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeIn0(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeIn(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeIn2(AVSValue args, void*,IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeIO0(AVSValue args, void*,IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeIO(AVSValue args, void*,IScriptEnvironment* env);
+AVSValue __cdecl Create_FadeIO2(AVSValue args, void*,IScriptEnvironment* env);
 
 PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env);
 
