@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190318 r28xx
+2019032 r28xx
 --------------
 - Fix: ColorBars: pixel_type planar RGB will set alpha to 0 instead of 255, consistent with RGB32 Alpha channel
 - Fix: text colors for YUV422PS - regression since r2728 (zero-centered chroma)
@@ -82,6 +82,15 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     PluginDir and PluginDir+.  Vice-versa for MSVC builds.
     C plugins are an exception to this, since those can be loaded with
     either MSVC- or GCC-built AviSynth+. 
+  - Clang 7.0.1 support (LLVM) with Visual Studio 2017 (15.9.9) (8.0.0 not tried yet)
+    - Install LLVM 7.0.1 (http://releases.llvm.org/download.html, Windows pre-built libraries)
+    - Install Clang Power Tools & LLVM Compiler Toolchain (thx fuchanghao)
+      - https://marketplace.visualstudio.com/items?itemName=caphyon.ClangPowerTools
+      - https://marketplace.visualstudio.com/items?itemName=LLVMExtensions.llvm-toolchain
+    - (When using CMakeGUI) After Configure/Specify generator for this project, type LLVM for "Optional Toolset to use (-T option)"
+    - Note: Due to current limitation of Avs+ source code structure the option SSE4.1 is set as a minimum CPU level
+      (work in progress)
+    
 
 20181220 r2772
 --------------

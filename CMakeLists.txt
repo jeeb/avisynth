@@ -23,7 +23,11 @@ IF( MSVC )  # Check for Visual Studio
   #1910-1919 = VS 15.0 (v141 toolset)
 
   IF( MSVC_VERSION VERSION_LESS 1910 )
-    MESSAGE(FATAL_ERROR "Visual C++ 2017 or newer required.")
+    IF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm")
+      MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required")
+    ELSE()
+      MESSAGE(FATAL_ERROR "Visual C++ 2017 or newer required.")
+    ENDIF() 
   ENDIF()
 
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
@@ -31,10 +35,17 @@ IF( MSVC )  # Check for Visual Studio
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/c_api")
 
   IF(MSVC_IDE)
-    IF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
+    message("Reported CMAKE_GENERATOR_TOOLSET is: ${CMAKE_GENERATOR_TOOLSET}")
+    
+    IF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm")
+      message("LLVM toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
+      set(CLANG_IN_VS "1")
+    ELSEIF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
        #1900 is reported
       message("v141_clang_c2 toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
       set(CLANG_IN_VS "1")
+    ELSEIF(NOT CMAKE_GENERATOR_TOOLSET STREQUAL "")
+      message("${CMAKE_GENERATOR_TOOLSET} toolset may not handled properly. Use LLVM (or v141_clang_c2)")
     ENDIF()
   
     # We want our project to also run on Windows XP
@@ -55,8 +66,11 @@ IF( MSVC )  # Check for Visual Studio
   ENDIF()
 
   IF(CLANG_IN_VS STREQUAL "1")
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+      #these are unknown
+      #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions")
+      #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+      STRING( REPLACE "/EHsc" "/EHa" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+      STRING( REPLACE "/EHsc" "/EHa" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-inconsistent-missing-override")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
   ELSE()
@@ -98,6 +112,16 @@ IF( MSVC )  # Check for Visual Studio
       STRING( REPLACE "${DELETE_THIS}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     endif()
   endif()
+
+  IF(CLANG_IN_VS STREQUAL "1")
+    # until SSE2/SSSE3/SSE4.1 is not separated in avs+ source, we set SSE4.1 as general option
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse4.1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.1")
+    message("Clang warning: until SSE2/SSSE3/SSE4.1 is not separated in avs+ source, SSE4.1 is set")
+    # suppress other warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-value")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-value")
+  ENDIF()
 
 # Set C++17 flag
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c++17")
