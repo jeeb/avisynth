@@ -58,6 +58,9 @@ public:
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
+    if (cachehints == CACHE_GET_DEV_TYPE) {
+      return (vi.IsPlanar() && (child->GetVersion() >= 5)) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+    }
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
@@ -77,6 +80,9 @@ public:
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
+    if (cachehints == CACHE_GET_DEV_TYPE) {
+      return (!vi.IsYUY2() && (child->GetVersion() >= 5)) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+    }
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
