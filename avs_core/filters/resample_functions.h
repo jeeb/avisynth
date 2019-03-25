@@ -41,13 +41,13 @@
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
 // NOTE: Don't change this value. It's hard-coded in SIMD code.
-const int FPScale8bits = 14; // fixed point scaler 14 bit
-const int FPScale = 1 << FPScale8bits; // fixed point scaler (1<<14)
+constexpr int FPScale8bits = 14; // fixed point scaler 14 bit
+constexpr int FPScale = 1 << FPScale8bits; // fixed point scaler (1<<14)
 // for 16 bits: one bit less
-const int FPScale16bits = 13;
-const int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SIMD signed operation
-const int ALIGN_RESIZER_TARGET_SIZE = 8;
-const int ALIGN_FLOAT_RESIZER_COEFF_SIZE = 8;
+constexpr int FPScale16bits = 13;
+constexpr int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SIMD signed operation
+constexpr int ALIGN_RESIZER_TARGET_SIZE = 8;
+constexpr int ALIGN_FLOAT_RESIZER_COEFF_SIZE = 8;
 
 // 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
 #define M_PI 3.14159265358979323846
