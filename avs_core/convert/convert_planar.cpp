@@ -1057,11 +1057,8 @@ static void convert_planarrgb_to_yuv_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
   }
 }
 
-// todo FMA?
-template<typename pixel_t, int bits_per_pixel, bool hasSSE4>
-static void convert_planarrgb_to_yuv_uint16_float_sse2(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
+static void convert_planarrgb_to_yuv_float_sse2(BYTE *(&dstp)[3], int(&dstPitch)[3], const BYTE *(&srcp)[3], const int(&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
-  // 16 bit uint16_t (unsigned range)
   // 32 bit float
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float shift = 0.5f;
@@ -1069,34 +1066,20 @@ static void convert_planarrgb_to_yuv_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
   const float shift = 0.0f;
 #endif
 
-  __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? shift : (float)(1u << (bits_per_pixel - 1)));
-  __m128i limit  = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
+  __m128  half_f = _mm_set1_ps(shift);
   __m128 offset_f = _mm_set1_ps(m.offset_y_f);
 
-  __m128i zero = _mm_setzero_si128();
-
-  const int rowsize = width * sizeof(pixel_t);
+  const int rowsize = width * sizeof(float);
   for (int yy = 0; yy < height; yy++) {
-    for (int x = 0; x < rowsize; x += 4 * sizeof(pixel_t)) {
+    for (int x = 0; x < rowsize; x += 4 * sizeof(float)) {
       __m128 sum1, sum2;
       __m128 mul_r, mul_g, mul_b;
       __m128 mat_r, mat_g, mat_b;
       __m128 g, b, r;
-      if constexpr(sizeof(pixel_t) == 4) {
-        // float: load 16 bytes: 4 pixels
-        g = _mm_load_ps(reinterpret_cast<const float *>(srcp[0] + x));
-        b = _mm_load_ps(reinterpret_cast<const float *>(srcp[1] + x));
-        r = _mm_load_ps(reinterpret_cast<const float *>(srcp[2] + x));
-      }
-      else {
-        // uint16_t: load 8 bytes: 4 pixels
-        __m128i gi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[0] + x));
-        __m128i bi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[1] + x));
-        __m128i ri = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[2] + x));
-        g = _mm_cvtepi32_ps(_mm_unpacklo_epi16(gi,zero));
-        b = _mm_cvtepi32_ps(_mm_unpacklo_epi16(bi,zero));
-        r = _mm_cvtepi32_ps(_mm_unpacklo_epi16(ri,zero));
-      }
+      // float: load 16 bytes: 4 pixels
+      g = _mm_load_ps(reinterpret_cast<const float *>(srcp[0] + x));
+      b = _mm_load_ps(reinterpret_cast<const float *>(srcp[1] + x));
+      r = _mm_load_ps(reinterpret_cast<const float *>(srcp[2] + x));
       /*
       int Y = m.offset_y + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
       int U = half + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384) >> 15);
@@ -1112,20 +1095,8 @@ static void convert_planarrgb_to_yuv_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
       sum1 = _mm_add_ps(mul_r, mul_g);
       sum2 = _mm_add_ps(mul_b, offset_f);
       __m128 y = _mm_add_ps(sum1, sum2);
-      if constexpr(sizeof(pixel_t) == 4) {
-        // no clamp
-        _mm_store_ps(reinterpret_cast<float *>(dstp[0] + x), y);
-      }
-      else {
-        __m128i yi = _mm_cvtps_epi32(y); // no extra rounding, cvtps rounds to nearest
-        if (hasSSE4)
-          yi = _mm_packus_epi32(yi, zero);
-        else
-          yi = _MM_PACKUS_EPI32(yi, zero); // simulation
-        if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
-          yi = _mm_min_epi16(yi, limit); // clamp 10,12,14 bit
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[0] + x), yi);
-      }
+      // no clamp
+      _mm_store_ps(reinterpret_cast<float *>(dstp[0] + x), y);
       // *U*
       mat_r = _mm_set1_ps(m.u_r_f);
       mat_g = _mm_set1_ps(m.u_g_f);
@@ -1136,20 +1107,8 @@ static void convert_planarrgb_to_yuv_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
       sum1 = _mm_add_ps(mul_r, mul_g);
       sum2 = _mm_add_ps(mul_b, half_f);
       __m128 u = _mm_add_ps(sum1, sum2);
-      if constexpr(sizeof(pixel_t) == 4) {
-        // no clamp
-        _mm_store_ps(reinterpret_cast<float *>(dstp[1] + x), u);
-      }
-      else {
-        __m128i ui = _mm_cvtps_epi32(u); // no extra rounding, cvtps rounds to nearest
-        if (hasSSE4)
-          ui = _mm_packus_epi32(ui, zero);
-        else
-          ui = _MM_PACKUS_EPI32(ui, zero); // simulation
-        if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
-          ui = _mm_min_epi16(ui, limit); // clamp 10,12,14 bit
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + x), ui);
-      }
+      // no clamp
+      _mm_store_ps(reinterpret_cast<float *>(dstp[1] + x), u);
       // *V*
       mat_r = _mm_set1_ps(m.v_r_f);
       mat_g = _mm_set1_ps(m.v_g_f);
@@ -1160,20 +1119,183 @@ static void convert_planarrgb_to_yuv_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
       sum1 = _mm_add_ps(mul_r, mul_g);
       sum2 = _mm_add_ps(mul_b, half_f);
       __m128 v = _mm_add_ps(sum1, sum2);
-      if constexpr(sizeof(pixel_t) == 4) {
-        // no clamp
-        _mm_store_ps(reinterpret_cast<float *>(dstp[2] + x), v);
-      }
-      else {
-        __m128i vi = _mm_cvtps_epi32(v); // no extra rounding, cvtps rounds to nearest
-        if (hasSSE4)
-          vi = _mm_packus_epi32(vi, zero);
-        else
-          vi = _MM_PACKUS_EPI32(vi, zero); // simulation
-        if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
-          vi = _mm_min_epi16(vi, limit); // clamp 10,12,14 bit
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + x), vi);
-      }
+      // no clamp
+      _mm_store_ps(reinterpret_cast<float *>(dstp[2] + x), v);
+    }
+    srcp[0] += srcPitch[0];
+    srcp[1] += srcPitch[1];
+    srcp[2] += srcPitch[2];
+    dstp[0] += dstPitch[0];
+    dstp[1] += dstPitch[1];
+    dstp[2] += dstPitch[2];
+  }
+}
+
+template<int bits_per_pixel>
+static void convert_planarrgb_to_yuv_uint16_sse41(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  // generic for 10-16 bit uint16 but only used for 16 bits where unsigned 16 arithmetic makes things difficult
+  // 16 bit uint16_t (unsigned range)
+
+  __m128  half_f = _mm_set1_ps((float)(1u << (bits_per_pixel - 1)));
+  __m128i limit  = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
+  __m128 offset_f = _mm_set1_ps(m.offset_y_f);
+
+  __m128i zero = _mm_setzero_si128();
+
+  const int rowsize = width * sizeof(uint16_t);
+  for (int yy = 0; yy < height; yy++) {
+    for (int x = 0; x < rowsize; x += 4 * sizeof(uint16_t)) {
+      __m128 sum1, sum2;
+      __m128 mul_r, mul_g, mul_b;
+      __m128 mat_r, mat_g, mat_b;
+      __m128 g, b, r;
+      // uint16_t: load 8 bytes: 4 pixels
+      __m128i gi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[0] + x));
+      __m128i bi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[1] + x));
+      __m128i ri = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[2] + x));
+      g = _mm_cvtepi32_ps(_mm_unpacklo_epi16(gi,zero));
+      b = _mm_cvtepi32_ps(_mm_unpacklo_epi16(bi,zero));
+      r = _mm_cvtepi32_ps(_mm_unpacklo_epi16(ri,zero));
+      /*
+      int Y = m.offset_y + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
+      int U = half + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384) >> 15);
+      int V = half + (int)(((sum_t)m.v_b * b + (sum_t)m.v_g * g + (sum_t)m.v_r * r + 16384) >> 15);
+      */
+      // *Y*
+      mat_r = _mm_set1_ps(m.y_r_f);
+      mat_g = _mm_set1_ps(m.y_g_f);
+      mat_b = _mm_set1_ps(m.y_b_f);
+      mul_r = _mm_mul_ps(r, mat_r);
+      mul_g = _mm_mul_ps(g, mat_g);
+      mul_b = _mm_mul_ps(b, mat_b);
+      sum1 = _mm_add_ps(mul_r, mul_g);
+      sum2 = _mm_add_ps(mul_b, offset_f);
+      __m128 y = _mm_add_ps(sum1, sum2);
+      __m128i yi = _mm_cvtps_epi32(y); // no extra rounding, cvtps rounds to nearest
+      yi = _mm_packus_epi32(yi, zero);
+      if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
+        yi = _mm_min_epi16(yi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[0] + x), yi);
+      // *U*
+      mat_r = _mm_set1_ps(m.u_r_f);
+      mat_g = _mm_set1_ps(m.u_g_f);
+      mat_b = _mm_set1_ps(m.u_b_f);
+      mul_r = _mm_mul_ps(r, mat_r);
+      mul_g = _mm_mul_ps(g, mat_g);
+      mul_b = _mm_mul_ps(b, mat_b);
+      sum1 = _mm_add_ps(mul_r, mul_g);
+      sum2 = _mm_add_ps(mul_b, half_f);
+      __m128 u = _mm_add_ps(sum1, sum2);
+      __m128i ui = _mm_cvtps_epi32(u); // no extra rounding, cvtps rounds to nearest
+      ui = _mm_packus_epi32(ui, zero);
+      if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
+        ui = _mm_min_epi16(ui, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + x), ui);
+      // *V*
+      mat_r = _mm_set1_ps(m.v_r_f);
+      mat_g = _mm_set1_ps(m.v_g_f);
+      mat_b = _mm_set1_ps(m.v_b_f);
+      mul_r = _mm_mul_ps(r, mat_r);
+      mul_g = _mm_mul_ps(g, mat_g);
+      mul_b = _mm_mul_ps(b, mat_b);
+      sum1 = _mm_add_ps(mul_r, mul_g);
+      sum2 = _mm_add_ps(mul_b, half_f);
+      __m128 v = _mm_add_ps(sum1, sum2);
+      __m128i vi = _mm_cvtps_epi32(v); // no extra rounding, cvtps rounds to nearest
+      vi = _mm_packus_epi32(vi, zero);
+      if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
+        vi = _mm_min_epi16(vi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + x), vi);
+    }
+    srcp[0] += srcPitch[0];
+    srcp[1] += srcPitch[1];
+    srcp[2] += srcPitch[2];
+    dstp[0] += dstPitch[0];
+    dstp[1] += dstPitch[1];
+    dstp[2] += dstPitch[2];
+  }
+}
+
+template<int bits_per_pixel>
+static void convert_planarrgb_to_yuv_uint16_sse2(BYTE *(&dstp)[3], int(&dstPitch)[3], const BYTE *(&srcp)[3], const int(&srcPitch)[3], int width, int height, const ConversionMatrix &m)
+{
+  // generic for 10-16 bit uint16 but only used for 16 bits where unsigned 16 arithmetic makes things difficult
+  // 16 bit uint16_t (unsigned range)
+
+  __m128  half_f = _mm_set1_ps((float)(1u << (bits_per_pixel - 1)));
+  __m128i limit = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
+  __m128 offset_f = _mm_set1_ps(m.offset_y_f);
+
+  __m128i zero = _mm_setzero_si128();
+
+  const int rowsize = width * sizeof(uint16_t);
+  for (int yy = 0; yy < height; yy++) {
+    for (int x = 0; x < rowsize; x += 4 * sizeof(uint16_t)) {
+      __m128 sum1, sum2;
+      __m128 mul_r, mul_g, mul_b;
+      __m128 mat_r, mat_g, mat_b;
+      __m128 g, b, r;
+      // uint16_t: load 8 bytes: 4 pixels
+      __m128i gi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[0] + x));
+      __m128i bi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[1] + x));
+      __m128i ri = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[2] + x));
+      g = _mm_cvtepi32_ps(_mm_unpacklo_epi16(gi, zero));
+      b = _mm_cvtepi32_ps(_mm_unpacklo_epi16(bi, zero));
+      r = _mm_cvtepi32_ps(_mm_unpacklo_epi16(ri, zero));
+      /*
+      int Y = m.offset_y + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
+      int U = half + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384) >> 15);
+      int V = half + (int)(((sum_t)m.v_b * b + (sum_t)m.v_g * g + (sum_t)m.v_r * r + 16384) >> 15);
+      */
+      // *Y*
+      mat_r = _mm_set1_ps(m.y_r_f);
+      mat_g = _mm_set1_ps(m.y_g_f);
+      mat_b = _mm_set1_ps(m.y_b_f);
+      mul_r = _mm_mul_ps(r, mat_r);
+      mul_g = _mm_mul_ps(g, mat_g);
+      mul_b = _mm_mul_ps(b, mat_b);
+      sum1 = _mm_add_ps(mul_r, mul_g);
+      sum2 = _mm_add_ps(mul_b, offset_f);
+      __m128 y = _mm_add_ps(sum1, sum2);
+      __m128i yi = _mm_cvtps_epi32(y); // no extra rounding, cvtps rounds to nearest
+      yi = _MM_PACKUS_EPI32(yi, zero); // simulation
+      if constexpr (bits_per_pixel < 16) // albeit 10-14 bit have another function, make this general
+        yi = _mm_min_epi16(yi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[0] + x), yi);
+      // *U*
+      mat_r = _mm_set1_ps(m.u_r_f);
+      mat_g = _mm_set1_ps(m.u_g_f);
+      mat_b = _mm_set1_ps(m.u_b_f);
+      mul_r = _mm_mul_ps(r, mat_r);
+      mul_g = _mm_mul_ps(g, mat_g);
+      mul_b = _mm_mul_ps(b, mat_b);
+      sum1 = _mm_add_ps(mul_r, mul_g);
+      sum2 = _mm_add_ps(mul_b, half_f);
+      __m128 u = _mm_add_ps(sum1, sum2);
+      __m128i ui = _mm_cvtps_epi32(u); // no extra rounding, cvtps rounds to nearest
+      ui = _MM_PACKUS_EPI32(ui, zero); // simulation
+      if constexpr (bits_per_pixel < 16) // albeit 10-14 bit have another function, make this general
+        ui = _mm_min_epi16(ui, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + x), ui);
+      // *V*
+      mat_r = _mm_set1_ps(m.v_r_f);
+      mat_g = _mm_set1_ps(m.v_g_f);
+      mat_b = _mm_set1_ps(m.v_b_f);
+      mul_r = _mm_mul_ps(r, mat_r);
+      mul_g = _mm_mul_ps(g, mat_g);
+      mul_b = _mm_mul_ps(b, mat_b);
+      sum1 = _mm_add_ps(mul_r, mul_g);
+      sum2 = _mm_add_ps(mul_b, half_f);
+      __m128 v = _mm_add_ps(sum1, sum2);
+      __m128i vi = _mm_cvtps_epi32(v); // no extra rounding, cvtps rounds to nearest
+      vi = _MM_PACKUS_EPI32(vi, zero); // simulation
+      if constexpr (bits_per_pixel < 16) // albeit 10-14 bit have another function, make this general
+        vi = _mm_min_epi16(vi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + x), vi);
     }
     srcp[0] += srcPitch[0];
     srcp[1] += srcPitch[1];
@@ -1188,7 +1310,7 @@ template<typename pixel_t, int bits_per_pixel>
 static void convert_planarrgb_to_yuv_int_c(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
   const pixel_t half = 1 << (bits_per_pixel - 1 );
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type sum_t;
+  typedef typename std::conditional < bits_per_pixel < 16, int, __int64>::type sum_t;
   const int limit = (1 << bits_per_pixel) - 1;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -1213,13 +1335,13 @@ static void convert_planarrgb_to_yuv_int_c(BYTE *(&dstp)[3], int (&dstPitch)[3],
 
 static void convert_planarrgb_to_yuv_float_c(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
-  const float limit = 1.0f; // we clamp on RGB conversions for float
-  const float limit_lo_chroma = -0.5f; // checked before shift
-  const float limit_hi_chroma = 0.5f;
+  constexpr float limit = 1.0f; // we clamp on RGB conversions for float
+  constexpr float limit_lo_chroma = -0.5f; // checked before shift
+  constexpr float limit_hi_chroma = 0.5f;
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-  const float half = 0.5f;
+  constexpr float half = 0.5f;
 #else
-  const float half = 0.0f;
+  constexpr float half = 0.0f;
 #endif
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -1366,11 +1488,11 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
     }
     if (bits_per_pixel >= 16 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16)) {
       if (pixelsize == 4) // float 32 bit
-        convert_planarrgb_to_yuv_uint16_float_sse2<float, 8 /*n/a*/, false>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
-      else if (env->GetCPUFlags() & CPUF_SSE4)
-        convert_planarrgb_to_yuv_uint16_float_sse2<uint16_t, 16, true>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+        convert_planarrgb_to_yuv_float_sse2(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+      else if (env->GetCPUFlags() & CPUF_SSE4_1)
+        convert_planarrgb_to_yuv_uint16_sse41<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
       else
-        convert_planarrgb_to_yuv_uint16_float_sse2<uint16_t, 16, false>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+        convert_planarrgb_to_yuv_uint16_sse2<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
       return dst;
     }
 
@@ -1687,8 +1809,7 @@ static void convert_yuv_to_planarrgb_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
   }
 }
 
-template<typename pixel_t, int bits_per_pixel, bool hasSSE4>
-static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
+static void convert_yuv_to_planarrgb_float_sse2(BYTE *(&dstp)[3], int(&dstPitch)[3], const BYTE *(&srcp)[3], const int(&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
   // 16 bit uint16_t (unsigned range)
   // 32 bit float
@@ -1698,34 +1819,20 @@ static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
   const float shift = 0.0f;
 #endif
 
-  __m128  half_f = _mm_set1_ps(sizeof(pixel_t) == 4 ? shift : (float)(1u << (bits_per_pixel - 1)));
-  __m128i limit  = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
+  __m128  half_f = _mm_set1_ps(shift);
   __m128  offset_f = _mm_set1_ps(m.offset_y_f);
 
-  __m128i zero = _mm_setzero_si128();
-
-  const int rowsize = width * sizeof(pixel_t);
+  const int rowsize = width * sizeof(float);
   for (int yy = 0; yy < height; yy++) {
-    for (int x = 0; x < rowsize; x += 4 * sizeof(pixel_t)) {
+    for (int x = 0; x < rowsize; x += 4 * sizeof(float)) {
       __m128 sum1, res;
       __m128 mul_y, mul_u, mul_v;
       __m128 mat_y, mat_u, mat_v;
       __m128 y, u, v;
-      if constexpr(sizeof(pixel_t) == 4) {
-        // float: load 16 bytes: 4 pixels
-        y = _mm_load_ps(reinterpret_cast<const float *>(srcp[0] + x));
-        u = _mm_load_ps(reinterpret_cast<const float *>(srcp[1] + x));
-        v = _mm_load_ps(reinterpret_cast<const float *>(srcp[2] + x));
-      }
-      else {
-        // uint16_t: load 8 bytes: 4 pixels
-        __m128i yi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[0] + x));
-        __m128i ui = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[1] + x));
-        __m128i vi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[2] + x));
-        y = _mm_cvtepi32_ps(_mm_unpacklo_epi16(yi,zero));
-        u = _mm_cvtepi32_ps(_mm_unpacklo_epi16(ui,zero));
-        v = _mm_cvtepi32_ps(_mm_unpacklo_epi16(vi,zero));
-      }
+      // float: load 16 bytes: 4 pixels
+      y = _mm_load_ps(reinterpret_cast<const float *>(srcp[0] + x));
+      u = _mm_load_ps(reinterpret_cast<const float *>(srcp[1] + x));
+      v = _mm_load_ps(reinterpret_cast<const float *>(srcp[2] + x));
       y = _mm_add_ps(y, offset_f); // offset is negative
       u = _mm_sub_ps(u, half_f);
       v = _mm_sub_ps(v, half_f);
@@ -1736,20 +1843,8 @@ static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
       mul_v = _mm_mul_ps(v, mat_v);
       sum1 = _mm_add_ps(mul_y, mul_u);
       res = _mm_add_ps(sum1, mul_v);
-      if constexpr(sizeof(pixel_t) == 4) {
-        // no clamp
-        _mm_store_ps(reinterpret_cast<float *>(dstp[0] + x), res);
-      }
-      else {
-        __m128i resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
-        if (hasSSE4)
-          resi = _mm_packus_epi32(resi, zero);
-        else
-          resi = _MM_PACKUS_EPI32(resi, zero); // simulation
-        if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
-          resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[0] + x), resi);
-      }
+      // no clamp
+      _mm_store_ps(reinterpret_cast<float *>(dstp[0] + x), res);
       // *B*
       mat_y = _mm_set1_ps(m.y_b_f);  mat_u = _mm_set1_ps(m.u_b_f); mat_v = _mm_set1_ps(m.v_b_f);
       mul_y = _mm_mul_ps(y, mat_y);
@@ -1757,20 +1852,8 @@ static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
       mul_v = _mm_mul_ps(v, mat_v);
       sum1 = _mm_add_ps(mul_y, mul_u);
       res = _mm_add_ps(sum1, mul_v);
-      if constexpr(sizeof(pixel_t) == 4) {
-        // no clamp
-        _mm_store_ps(reinterpret_cast<float *>(dstp[1] + x), res);
-      }
-      else {
-        __m128i resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
-        if (hasSSE4)
-          resi = _mm_packus_epi32(resi, zero);
-        else
-          resi = _MM_PACKUS_EPI32(resi, zero); // simulation
-        if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
-          resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + x), resi);
-      }
+      // no clamp
+      _mm_store_ps(reinterpret_cast<float *>(dstp[1] + x), res);
       // *R*
       mat_y = _mm_set1_ps(m.y_r_f);  mat_u = _mm_set1_ps(m.u_r_f); mat_v = _mm_set1_ps(m.v_r_f);
       mul_y = _mm_mul_ps(y, mat_y);
@@ -1778,20 +1861,159 @@ static void convert_yuv_to_planarrgb_uint16_float_sse2(BYTE *(&dstp)[3], int (&d
       mul_v = _mm_mul_ps(v, mat_v);
       sum1 = _mm_add_ps(mul_y, mul_u);
       res = _mm_add_ps(sum1, mul_v);
-      if constexpr(sizeof(pixel_t) == 4) {
-        // no clamp
-        _mm_store_ps(reinterpret_cast<float *>(dstp[2] + x), res);
-      }
-      else {
-        __m128i resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
-        if (hasSSE4)
-          resi = _mm_packus_epi32(resi, zero);
-        else
-          resi = _MM_PACKUS_EPI32(resi, zero); // simulation
-        if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
-          resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + x), resi);
-      }
+      // no clamp
+      _mm_store_ps(reinterpret_cast<float *>(dstp[2] + x), res);
+    }
+    srcp[0] += srcPitch[0];
+    srcp[1] += srcPitch[1];
+    srcp[2] += srcPitch[2];
+    dstp[0] += dstPitch[0];
+    dstp[1] += dstPitch[1];
+    dstp[2] += dstPitch[2];
+  }
+}
+
+template<int bits_per_pixel>
+static void convert_yuv_to_planarrgb_uint16_sse41(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  // 16 bit uint16_t (unsigned range)
+  __m128  half_f = _mm_set1_ps((float)(1u << (bits_per_pixel - 1)));
+  __m128i limit  = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
+  __m128  offset_f = _mm_set1_ps(m.offset_y_f);
+
+  __m128i zero = _mm_setzero_si128();
+
+  const int rowsize = width * sizeof(uint16_t);
+  for (int yy = 0; yy < height; yy++) {
+    for (int x = 0; x < rowsize; x += 4 * sizeof(uint16_t)) {
+      __m128 sum1, res;
+      __m128 mul_y, mul_u, mul_v;
+      __m128 mat_y, mat_u, mat_v;
+      __m128 y, u, v;
+      // uint16_t: load 8 bytes: 4 pixels
+      __m128i yi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[0] + x));
+      __m128i ui = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[1] + x));
+      __m128i vi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[2] + x));
+      y = _mm_cvtepi32_ps(_mm_unpacklo_epi16(yi,zero));
+      u = _mm_cvtepi32_ps(_mm_unpacklo_epi16(ui,zero));
+      v = _mm_cvtepi32_ps(_mm_unpacklo_epi16(vi,zero));
+
+      y = _mm_add_ps(y, offset_f); // offset is negative
+      u = _mm_sub_ps(u, half_f);
+      v = _mm_sub_ps(v, half_f);
+      // *G*
+      mat_y = _mm_set1_ps(m.y_g_f);  mat_u = _mm_set1_ps(m.u_g_f); mat_v = _mm_set1_ps(m.v_g_f);
+      mul_y = _mm_mul_ps(y, mat_y);
+      mul_u = _mm_mul_ps(u, mat_u);
+      mul_v = _mm_mul_ps(v, mat_v);
+      sum1 = _mm_add_ps(mul_y, mul_u);
+      res = _mm_add_ps(sum1, mul_v);
+      __m128i resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
+      resi = _mm_packus_epi32(resi, zero);
+      if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
+        resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[0] + x), resi);
+      // *B*
+      mat_y = _mm_set1_ps(m.y_b_f);  mat_u = _mm_set1_ps(m.u_b_f); mat_v = _mm_set1_ps(m.v_b_f);
+      mul_y = _mm_mul_ps(y, mat_y);
+      mul_u = _mm_mul_ps(u, mat_u);
+      mul_v = _mm_mul_ps(v, mat_v);
+      sum1 = _mm_add_ps(mul_y, mul_u);
+      res = _mm_add_ps(sum1, mul_v);
+      resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
+      resi = _mm_packus_epi32(resi, zero);
+      if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
+        resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + x), resi);
+      // *R*
+      mat_y = _mm_set1_ps(m.y_r_f);  mat_u = _mm_set1_ps(m.u_r_f); mat_v = _mm_set1_ps(m.v_r_f);
+      mul_y = _mm_mul_ps(y, mat_y);
+      mul_u = _mm_mul_ps(u, mat_u);
+      mul_v = _mm_mul_ps(v, mat_v);
+      sum1 = _mm_add_ps(mul_y, mul_u);
+      res = _mm_add_ps(sum1, mul_v);
+      resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
+      resi = _mm_packus_epi32(resi, zero);
+      if constexpr(bits_per_pixel<16) // albeit 10-14 bit have another function, make this general
+        resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + x), resi);
+    }
+    srcp[0] += srcPitch[0];
+    srcp[1] += srcPitch[1];
+    srcp[2] += srcPitch[2];
+    dstp[0] += dstPitch[0];
+    dstp[1] += dstPitch[1];
+    dstp[2] += dstPitch[2];
+  }
+}
+
+template<int bits_per_pixel>
+static void convert_yuv_to_planarrgb_uint16_sse2(BYTE *(&dstp)[3], int(&dstPitch)[3], const BYTE *(&srcp)[3], const int(&srcPitch)[3], int width, int height, const ConversionMatrix &m)
+{
+  // 16 bit uint16_t (unsigned range)
+  __m128  half_f = _mm_set1_ps((float)(1u << (bits_per_pixel - 1)));
+  __m128i limit = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // 255
+  __m128  offset_f = _mm_set1_ps(m.offset_y_f);
+
+  __m128i zero = _mm_setzero_si128();
+
+  const int rowsize = width * sizeof(uint16_t);
+  for (int yy = 0; yy < height; yy++) {
+    for (int x = 0; x < rowsize; x += 4 * sizeof(uint16_t)) {
+      __m128 sum1, res;
+      __m128 mul_y, mul_u, mul_v;
+      __m128 mat_y, mat_u, mat_v;
+      __m128 y, u, v;
+      // uint16_t: load 8 bytes: 4 pixels
+      __m128i yi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[0] + x));
+      __m128i ui = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[1] + x));
+      __m128i vi = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(srcp[2] + x));
+      y = _mm_cvtepi32_ps(_mm_unpacklo_epi16(yi, zero));
+      u = _mm_cvtepi32_ps(_mm_unpacklo_epi16(ui, zero));
+      v = _mm_cvtepi32_ps(_mm_unpacklo_epi16(vi, zero));
+
+      y = _mm_add_ps(y, offset_f); // offset is negative
+      u = _mm_sub_ps(u, half_f);
+      v = _mm_sub_ps(v, half_f);
+      // *G*
+      mat_y = _mm_set1_ps(m.y_g_f);  mat_u = _mm_set1_ps(m.u_g_f); mat_v = _mm_set1_ps(m.v_g_f);
+      mul_y = _mm_mul_ps(y, mat_y);
+      mul_u = _mm_mul_ps(u, mat_u);
+      mul_v = _mm_mul_ps(v, mat_v);
+      sum1 = _mm_add_ps(mul_y, mul_u);
+      res = _mm_add_ps(sum1, mul_v);
+      __m128i resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
+      resi = _MM_PACKUS_EPI32(resi, zero); // simulation
+      if constexpr (bits_per_pixel < 16) // albeit 10-14 bit have another function, make this general
+        resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[0] + x), resi);
+      // *B*
+      mat_y = _mm_set1_ps(m.y_b_f);  mat_u = _mm_set1_ps(m.u_b_f); mat_v = _mm_set1_ps(m.v_b_f);
+      mul_y = _mm_mul_ps(y, mat_y);
+      mul_u = _mm_mul_ps(u, mat_u);
+      mul_v = _mm_mul_ps(v, mat_v);
+      sum1 = _mm_add_ps(mul_y, mul_u);
+      res = _mm_add_ps(sum1, mul_v);
+      resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
+      resi = _MM_PACKUS_EPI32(resi, zero); // simulation
+      if constexpr (bits_per_pixel < 16) // albeit 10-14 bit have another function, make this general
+        resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[1] + x), resi);
+      // *R*
+      mat_y = _mm_set1_ps(m.y_r_f);  mat_u = _mm_set1_ps(m.u_r_f); mat_v = _mm_set1_ps(m.v_r_f);
+      mul_y = _mm_mul_ps(y, mat_y);
+      mul_u = _mm_mul_ps(u, mat_u);
+      mul_v = _mm_mul_ps(v, mat_v);
+      sum1 = _mm_add_ps(mul_y, mul_u);
+      res = _mm_add_ps(sum1, mul_v);
+      resi = _mm_cvtps_epi32(res); // no extra rounding, cvtps rounds to nearest
+      resi = _MM_PACKUS_EPI32(resi, zero); // simulation
+      if constexpr (bits_per_pixel < 16) // albeit 10-14 bit have another function, make this general
+        resi = _mm_min_epi16(resi, limit); // clamp 10,12,14 bit
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp[2] + x), resi);
     }
     srcp[0] += srcPitch[0];
     srcp[1] += srcPitch[1];
@@ -1834,8 +2056,12 @@ static __forceinline __m128i convert_yuv_to_rgb_sse2_core(const __m128i &px01, c
 }
 
 //todo: consider rewriting
-template<int rgb_pixel_step, int instruction_set, bool hasAlpha>
-static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, const BYTE*srcA, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t src_pitch_a, size_t width, size_t height, const ConversionMatrix &matrix) {
+template<int rgb_pixel_step, bool hasAlpha>
+static void convert_yv24_to_rgb_ssse3(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, const BYTE*srcA, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t src_pitch_a, size_t width, size_t height, const ConversionMatrix &matrix)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   dstp += dst_pitch * (height-1);  // We start at last line
 
   size_t mod8_width = rgb_pixel_step == 3 ? width / 8 * 8 : width; // for rgb32 target we may process pixels beyond width, but we have 32bit alignment at target
@@ -1896,35 +2122,21 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
         //rgb32
         _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4),    result_lo);
         _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4+16), result_hi);
-      } else {
+      }
+      else {
         //rgb24
-        if constexpr(instruction_set == CPUF_SSSE3) {
-          //"fast" SSSE3 version
-          __m128i px0123 = _mm_shuffle_epi8(result_lo, pixels0123_mask); //xxxx xxxx b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
-          __m128i dst567 = _mm_shuffle_epi8(result_hi, pixels4567_mask); //r5b4 g4r4 xxxx xxxx b7g7 r7b6 g6r6 b5g5
+        //"fast" SSSE3 version
+        __m128i px0123 = _mm_shuffle_epi8(result_lo, pixels0123_mask); //xxxx xxxx b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
+        __m128i dst567 = _mm_shuffle_epi8(result_hi, pixels4567_mask); //r5b4 g4r4 xxxx xxxx b7g7 r7b6 g6r6 b5g5
 
-          __m128i dst012345 = _mm_or_si128(
-            _mm_andnot_si128(ssse3_merge_mask, px0123),
-            _mm_and_si128(ssse3_merge_mask, dst567)
-            ); //r5b4 g4r4 b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
+        __m128i dst012345 = _mm_or_si128(
+          _mm_andnot_si128(ssse3_merge_mask, px0123),
+          _mm_and_si128(ssse3_merge_mask, dst567)
+        ); //r5b4 g4r4 b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
 
-          _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+x*3), dst012345);
-          _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*3+16), dst567);
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + x * 3), dst012345);
+        _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + x * 3 + 16), dst567);
 
-        } else {
-          alignas(16) BYTE temp[32];
-          //slow SSE2 version
-          _mm_store_si128(reinterpret_cast<__m128i*>(temp),    result_lo);
-          _mm_store_si128(reinterpret_cast<__m128i*>(temp+16), result_hi);
-
-          for (int i = 0; i < 8; ++i) {
-            *reinterpret_cast<int*>(dstp + (x+i)*3) = *reinterpret_cast<int*>(temp+i*4);
-          }
-          //last pixel
-          dstp[(x+7)*3+0] = temp[7*4+0];
-          dstp[(x+7)*3+1] = temp[7*4+1];
-          dstp[(x+7)*3+2] = temp[7*4+2];
-        }
       }
     }
 
@@ -1950,6 +2162,109 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
     srcU += src_pitch_uv;
     srcV += src_pitch_uv;
     if(hasAlpha)
+      srcA += src_pitch_a;
+  }
+}
+
+template<int rgb_pixel_step, bool hasAlpha>
+static void convert_yv24_to_rgb_sse2(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, const BYTE*srcA, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t src_pitch_a, size_t width, size_t height, const ConversionMatrix &matrix) {
+  dstp += dst_pitch * (height - 1);  // We start at last line
+
+  size_t mod8_width = rgb_pixel_step == 3 ? width / 8 * 8 : width; // for rgb32 target we may process pixels beyond width, but we have 32bit alignment at target
+
+  __m128i matrix_b = _mm_set_epi16(0, matrix.v_b, matrix.u_b, matrix.y_b, 0, matrix.v_b, matrix.u_b, matrix.y_b);
+  __m128i matrix_g = _mm_set_epi16(0, matrix.v_g, matrix.u_g, matrix.y_g, 0, matrix.v_g, matrix.u_g, matrix.y_g);
+  __m128i matrix_r = _mm_set_epi16(0, matrix.v_r, matrix.u_r, matrix.y_r, 0, matrix.v_r, matrix.u_r, matrix.y_r);
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i round_mask = _mm_set1_epi32(4096);
+  __m128i offset = _mm_set_epi16(0, -128, -128, matrix.offset_y, 0, -128, -128, matrix.offset_y);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod8_width; x += 8) {
+      __m128i src_y = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcY + x)); //0 0 0 0 0 0 0 0 Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
+      __m128i src_u = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcU + x)); //0 0 0 0 0 0 0 0 U7 U6 U5 U4 U3 U2 U1 U0
+      __m128i src_v = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcV + x)); //0 0 0 0 0 0 0 0 V7 V6 V5 V4 V3 V2 V1 V0
+      __m128i src_a;
+      if (hasAlpha)
+        src_a = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcA + x)); //0 0 0 0 0 0 0 0 A7 A6 A5 A4 A3 A2 A1 A0
+
+      __m128i t1 = _mm_unpacklo_epi8(src_y, src_u); //U7 Y7 U6 Y6 U5 Y5 U4 Y4 U3 Y3 U2 Y2 U1 Y1 U0 Y0
+      __m128i t2 = _mm_unpacklo_epi8(src_v, zero);  //00 V7 00 V6 00 V5 00 V4 00 V3 00 V2 00 V1 00 V0
+
+      __m128i low = _mm_unpacklo_epi16(t1, t2); //xx V3 U3 Y3 xx V2 U2 Y2 xx V1 U1 Y1 xx V0 U0 Y0
+      __m128i high = _mm_unpackhi_epi16(t1, t2); //xx V7 U7 Y7 xx V6 U6 Y6 xx V5 U5 Y5 xx V4 U4 Y4
+
+      __m128i px01 = _mm_unpacklo_epi8(low, zero);  //xx xx 00 V1 00 U1 00 Y1 xx xx 00 V0 00 U0 00 Y0
+      __m128i px23 = _mm_unpackhi_epi8(low, zero);  //xx xx 00 V3 00 U3 00 Y3 xx xx 00 V2 00 U2 00 Y2
+      __m128i px45 = _mm_unpacklo_epi8(high, zero); //xx xx 00 V5 00 U5 00 Y5 xx xx 00 V4 00 U4 00 Y4
+      __m128i px67 = _mm_unpackhi_epi8(high, zero); //xx xx 00 V7 00 U7 00 Y7 xx xx 00 V6 00 U6 00 Y6
+
+      px01 = _mm_add_epi16(px01, offset);
+      px23 = _mm_add_epi16(px23, offset);
+      px45 = _mm_add_epi16(px45, offset);
+      px67 = _mm_add_epi16(px67, offset);
+
+      __m128i result_b = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_b, round_mask); //00 00 00 00 00 00 00 00 b7 b6 b5 b4 b3 b2 b1 b0
+      __m128i result_g = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_g, round_mask); //00 00 00 00 00 00 00 00 g7 g6 g5 g4 g3 g2 g1 g0
+      __m128i result_r = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_r, round_mask); //00 00 00 00 00 00 00 00 r7 r6 r5 r4 r3 r2 r1 r0
+
+      __m128i result_bg = _mm_unpacklo_epi8(result_b, result_g); //g7 b7 g6 b6 g5 b5 g4 b4 g3 b3 g2 b2 g1 b1 g0 b0
+      __m128i alpha;
+      if (hasAlpha)
+        alpha = src_a; // a7 .. a0
+      else
+        alpha = _mm_cmpeq_epi32(result_r, result_r); // FF FF FF FF ... default alpha transparent
+
+      __m128i result_ra = _mm_unpacklo_epi8(result_r, alpha);       //a7 r7 a6 r6 a5 r5 a4 r4 a3 r3 a2 r2 a1 r1 a0 r0
+
+      __m128i result_lo = _mm_unpacklo_epi16(result_bg, result_ra);
+      __m128i result_hi = _mm_unpackhi_epi16(result_bg, result_ra);
+
+      if constexpr (rgb_pixel_step == 4) {
+        //rgb32
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x * 4), result_lo);
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x * 4 + 16), result_hi);
+      }
+      else {
+        //rgb24
+        alignas(16) BYTE temp[32];
+        //slow SSE2 version
+        _mm_store_si128(reinterpret_cast<__m128i*>(temp), result_lo);
+        _mm_store_si128(reinterpret_cast<__m128i*>(temp + 16), result_hi);
+
+        for (int i = 0; i < 8; ++i) {
+          *reinterpret_cast<int*>(dstp + (x + i) * 3) = *reinterpret_cast<int*>(temp + i * 4);
+        }
+        //last pixel
+        dstp[(x + 7) * 3 + 0] = temp[7 * 4 + 0];
+        dstp[(x + 7) * 3 + 1] = temp[7 * 4 + 1];
+        dstp[(x + 7) * 3 + 2] = temp[7 * 4 + 2];
+      }
+    }
+
+    if constexpr (rgb_pixel_step == 3) {
+      // for rgb32 (pixel_step == 4) we processed full width and more, including padded 8 bytes
+      for (size_t x = mod8_width; x < width; ++x) {
+        int Y = srcY[x] + matrix.offset_y;
+        int U = srcU[x] - 128;
+        int V = srcV[x] - 128;
+        int b = (((int)matrix.y_b * Y + (int)matrix.u_b * U + (int)matrix.v_b * V + 4096) >> 13);
+        int g = (((int)matrix.y_g * Y + (int)matrix.u_g * U + (int)matrix.v_g * V + 4096) >> 13);
+        int r = (((int)matrix.y_r * Y + (int)matrix.u_r * U + (int)matrix.v_r * V + 4096) >> 13);
+        dstp[x*rgb_pixel_step + 0] = PixelClip(b);
+        dstp[x*rgb_pixel_step + 1] = PixelClip(g);
+        dstp[x*rgb_pixel_step + 2] = PixelClip(r);
+        if constexpr (rgb_pixel_step == 4) { // n/a
+          dstp[x * 4 + 3] = 255;
+        }
+      }
+    }
+    dstp -= dst_pitch;
+    srcY += src_pitch_y;
+    srcU += src_pitch_uv;
+    srcV += src_pitch_uv;
+    if (hasAlpha)
       srcA += src_pitch_a;
   }
 }
@@ -2112,14 +2427,14 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
     //we load using movq so no need to check for alignment
     if (pixel_step == 4) {
       if(src_pitch_a) // move alpha channel from YUVA
-        convert_yv24_to_rgb_ssex<4, CPUF_SSE2, true>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+        convert_yv24_to_rgb_sse2<4, true>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
       else
-        convert_yv24_to_rgb_ssex<4, CPUF_SSE2, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+        convert_yv24_to_rgb_sse2<4, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
     } else {
       if (env->GetCPUFlags() & CPUF_SSSE3) {
-        convert_yv24_to_rgb_ssex<3, CPUF_SSSE3, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+        convert_yv24_to_rgb_ssse3<3, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
       } else {
-        convert_yv24_to_rgb_ssex<3, CPUF_SSE2, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+        convert_yv24_to_rgb_sse2<3, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
       }
     }
     return dst;
@@ -2284,11 +2599,11 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
     }
     if (bits_per_pixel >= 16 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16)) {
       if (pixelsize == 4) // float 32 bit
-        convert_yuv_to_planarrgb_uint16_float_sse2<float, 8 /*n/a*/, false>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
-      else if (env->GetCPUFlags() & CPUF_SSE4)
-        convert_yuv_to_planarrgb_uint16_float_sse2<uint16_t, 16, true>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+        convert_yuv_to_planarrgb_float_sse2(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+      else if (env->GetCPUFlags() & CPUF_SSE4_1)
+        convert_yuv_to_planarrgb_uint16_sse41<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
       else
-        convert_yuv_to_planarrgb_uint16_float_sse2<uint16_t, 16, false>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+        convert_yuv_to_planarrgb_uint16_sse2<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
       return dst;
     }
 

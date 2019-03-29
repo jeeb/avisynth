@@ -53,10 +53,15 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                     const int width, const int height);
 #endif
-template<typename pixel_t, int bits_per_pixel, bool hasSSE4>
-void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
+void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+
+template<typename pixel_t, int bits_per_pixel>
+void overlay_blend_sse41_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height);
+
+void overlay_blend_sse2_plane_masked_float(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
+
 
 template<typename pixel_t, int bits_per_pixel>
 void overlay_blend_c_plane_opacity(BYTE *p1, const BYTE *p2,
@@ -70,10 +75,21 @@ void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
                                      const int p1_pitch, const int p2_pitch,
                                      const int width, const int height, const int opacity);
 #endif
-template<typename pixel_t, int bits_per_pixel>
+
 void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
-                                      const int p1_pitch, const int p2_pitch,
-                                      const int width, const int height, const int opacity, const float opacity_f);
+  const int p1_pitch, const int p2_pitch,
+  const int width, const int height, const int opacity, const float opacity_f);
+
+template<int bits_per_pixel>
+void overlay_blend_sse41_plane_opacity_uint16(BYTE *p1, const BYTE *p2,
+  const int p1_pitch, const int p2_pitch,
+  const int width, const int height, const int opacity, const float opacity_f);
+
+void overlay_blend_sse2_plane_opacity_float(BYTE *p1, const BYTE *p2,
+  const int p1_pitch, const int p2_pitch,
+  const int width, const int height, const int opacity, const float opacity_f);
+
+
 
 template<typename pixel_t, int bits_per_pixel>
 void overlay_blend_c_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
@@ -88,10 +104,16 @@ void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE
                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                     const int width, const int height, const int opacity);
 #endif
-template<typename pixel_t, int bits_per_pixel, bool hasSSE4>
-void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
+
+void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+
+template<typename pixel_t, int bits_per_pixel>
+void overlay_blend_sse41_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height, const int opacity, const float opacity_f);
+
+void overlay_blend_sse2_plane_masked_opacity_float(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height, const int opacity, const float opacity_f);
+
 
 // Mode: Darken/lighten
 template<typename pixel_t>

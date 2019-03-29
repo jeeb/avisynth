@@ -42,7 +42,7 @@
 
 
 //min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
-inline void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
+void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
   __m128i min_vector = _mm_set1_epi16(min_value);
   __m128i max_vector = _mm_set1_epi16(max_value);
   BYTE* end_point = ptr + pitch * height;
@@ -57,7 +57,7 @@ inline void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch,
 }
 
 //min and max values are 16-bit unsigned integers
-inline void limit_plane_uint16_sse2(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height) {
+void limit_plane_uint16_sse2(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height) {
   __m128i min_vector = _mm_set1_epi16(min_value);
   __m128i max_vector = _mm_set1_epi16(max_value);
   BYTE* end_point = ptr + pitch * height;
@@ -72,7 +72,11 @@ inline void limit_plane_uint16_sse2(BYTE *ptr, unsigned int min_value, unsigned 
 }
 
 //min and max values are 16-bit unsigned integers
-inline void limit_plane_uint16_sse4(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height) {
+void limit_plane_uint16_sse4(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
   __m128i min_vector = _mm_set1_epi16(min_value);
   __m128i max_vector = _mm_set1_epi16(max_value);
   BYTE* end_point = ptr + pitch * height;
@@ -90,7 +94,7 @@ inline void limit_plane_uint16_sse4(BYTE *ptr, unsigned int min_value, unsigned 
 #ifdef X86_32
 
 //min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
-inline void limit_plane_isse(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
+void limit_plane_isse(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
   __m64 min_vector = _mm_set1_pi16(min_value);
   __m64 max_vector = _mm_set1_pi16(max_value);
   int mod8_width = width / 8 * 8;

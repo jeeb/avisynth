@@ -53,8 +53,8 @@ void From_R10k_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t
 
 void bgr_to_rgbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
 
-template<bool hasSSSE3>
-void bgra_to_argbBE_sse(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
+void bgra_to_argbBE_ssse3(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
+void bgra_to_argbBE_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
 
 void bgra_to_argbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
 void v410_to_yuv444p10(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dstp_v, int dstpitch_uv, const BYTE *srcp, int width, int height);

@@ -199,9 +199,9 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
         const bool ssse3 = (env->GetCPUFlags() & CPUF_SSSE3) != 0;
         const bool sse2 = (env->GetCPUFlags() & CPUF_SSE2) != 0; 
         if (ssse3)
-          bgra_to_argbBE_sse<true>(pdst, pitch, src, srcpitch, vi.width, vi.height);
+          bgra_to_argbBE_ssse3(pdst, pitch, src, srcpitch, vi.width, vi.height);
         else if (sse2)
-          bgra_to_argbBE_sse<false>(pdst, pitch, src, srcpitch, vi.width, vi.height);
+          bgra_to_argbBE_sse2(pdst, pitch, src, srcpitch, vi.width, vi.height);
         else
           bgra_to_argbBE_c(pdst, pitch, src, srcpitch, vi.width, vi.height);
       }

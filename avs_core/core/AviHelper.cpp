@@ -36,6 +36,7 @@
 #include <avisynth.h>
 #include "internal.h"
 #include <intrin.h>
+#include <smmintrin.h> // SSE4.1
 #include <emmintrin.h>
 #include <tmmintrin.h>
 
@@ -240,25 +241,28 @@ static __forceinline uint64_t swap64(uint64_t x) {
   return x;
 }
 
-template<bool hasSSSE3>
-static __forceinline __m128i _mm_bswap_epi64(__m128i x)
+static __forceinline __m128i _mm_bswap_epi64_ssse3(__m128i x)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
 {
   // Reverse order of bytes in each 64-bit word.
-  if (hasSSSE3) {
-    return _mm_shuffle_epi8(x, _mm_set_epi8(8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7));
-  }
-  else {
-    // Swap bytes in each 16-bit word:
-    __m128i a = _mm_or_si128(
-      _mm_slli_epi16(x, 8),
-      _mm_srli_epi16(x, 8));
+  return _mm_shuffle_epi8(x, _mm_set_epi8(8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7));
+}
 
-    // Reverse all 16-bit words in 64-bit halves:
-    a = _mm_shufflelo_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
-    a = _mm_shufflehi_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
+static __forceinline __m128i _mm_bswap_epi64_sse2(__m128i x)
+{
+  // Reverse order of bytes in each 64-bit word.
+  // Swap bytes in each 16-bit word:
+  __m128i a = _mm_or_si128(
+    _mm_slli_epi16(x, 8),
+    _mm_srli_epi16(x, 8));
 
-    return a;
-  }
+  // Reverse all 16-bit words in 64-bit halves:
+  a = _mm_shufflelo_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
+  a = _mm_shufflehi_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
+
+  return a;
 }
 
 static __forceinline uint16_t swap16(uint16_t x) {
@@ -288,19 +292,21 @@ void bgr_to_rgbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitc
 }
 
 // 4x16: two-way symmetric
-template<bool hasSSSE3>
-void bgra_to_argbBE_sse(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
+void bgra_to_argbBE_ssse3(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
 {
   const int wmod2 = (width / 2) * 2; // 2x64bit
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wmod2; x += 2) {
       __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i *>(src + 8 * x));
-      a = _mm_bswap_epi64<hasSSSE3>(a);
+      a = _mm_bswap_epi64_ssse3(a);
       _mm_store_si128(reinterpret_cast<__m128i *>(pdst + 8 * x), a);
     }
     if (wmod2 < width) {
       __m128i a = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(src + 8 * wmod2));
-      a = _mm_bswap_epi64<hasSSSE3>(a);
+      a = _mm_bswap_epi64_ssse3(a);
       _mm_storel_epi64(reinterpret_cast<__m128i *>(pdst + 8 * wmod2), a);
     }
     src += srcpitch;
@@ -308,9 +314,24 @@ void bgra_to_argbBE_sse(uint8_t* pdst, int dstpitch, const uint8_t *src, int src
   }
 }
 
-//instantiate
-template void bgra_to_argbBE_sse<false>(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
-template void bgra_to_argbBE_sse<true>(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
+void bgra_to_argbBE_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
+{
+  const int wmod2 = (width / 2) * 2; // 2x64bit
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wmod2; x += 2) {
+      __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i *>(src + 8 * x));
+      a = _mm_bswap_epi64_sse2(a);
+      _mm_store_si128(reinterpret_cast<__m128i *>(pdst + 8 * x), a);
+    }
+    if (wmod2 < width) {
+      __m128i a = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(src + 8 * wmod2));
+      a = _mm_bswap_epi64_sse2(a);
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(pdst + 8 * wmod2), a);
+    }
+    src += srcpitch;
+    pdst += dstpitch;
+  }
+}
 
 // 4x16: two-way symmetric
 void bgra_to_argbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
@@ -450,7 +471,7 @@ static void prepare_from_interleaved_uv_c(uint8_t* pdstu, uint8_t* pdstv, int pi
   }
 }
 
-template<bool shift6, bool hasSSE41>
+template<bool shift6>
 static void prepare_from_interleaved_uv_sse2(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
 {
   const int modw = (width / 8) * 8;
@@ -465,12 +486,57 @@ static void prepare_from_interleaved_uv_sse2(uint8_t* pdstu, uint8_t* pdstv, int
       }
       auto u_lo = _mm_and_si128(uv_lo, mask0000FFFF);
       auto u_hi = _mm_and_si128(uv_hi, mask0000FFFF);
-      auto u = shift6 ? _mm_packs_epi32(u_lo, u_hi) : (hasSSE41 ? _mm_packus_epi32(u_lo, u_hi) : _MM_PACKUS_EPI32(u_lo, u_hi));
+      auto u = shift6 ? _mm_packs_epi32(u_lo, u_hi) : _MM_PACKUS_EPI32(u_lo, u_hi); // sse41 simul
       _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint16_t*>(pdstu) + x), u);
 
       auto v_lo = _mm_srli_epi32(uv_lo, 16);
       auto v_hi = _mm_srli_epi32(uv_hi, 16);
-      auto v = shift6 ? _mm_packs_epi32(v_lo, v_hi) : (hasSSE41 ? _mm_packus_epi32(v_lo, v_hi) : _MM_PACKUS_EPI32(v_lo, v_hi));
+      auto v = shift6 ? _mm_packs_epi32(v_lo, v_hi) : _MM_PACKUS_EPI32(v_lo, v_hi); // sse41 simul
+      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint16_t*>(pdstv) + x), v);
+    }
+
+    for (int x = modw; x < width; x++) {
+      uint32_t uv = reinterpret_cast<const uint32_t*>(src)[x];
+      uint16_t u = uv & 0xFFFF;
+      uint16_t v = uv >> 16;
+      if (shift6) {
+        u >>= 6;
+        v >>= 6;
+      }
+      reinterpret_cast<uint16_t*>(pdstu)[x] = u;
+      reinterpret_cast<uint16_t*>(pdstv)[x] = v;
+    }
+
+    pdstu += pitchUV;
+    pdstv += pitchUV;
+    src += srcpitch;
+  }
+}
+
+template<bool shift6>
+static void prepare_from_interleaved_uv_sse41(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  const int modw = (width / 8) * 8;
+  auto mask0000FFFF = _mm_set1_epi32(0x0000FFFF);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < modw; x += 8) {
+      auto uv_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x));
+      auto uv_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x + 4));
+      if (shift6) {
+        uv_lo = _mm_srli_epi16(uv_lo, 6);
+        uv_hi = _mm_srli_epi16(uv_hi, 6);
+      }
+      auto u_lo = _mm_and_si128(uv_lo, mask0000FFFF);
+      auto u_hi = _mm_and_si128(uv_hi, mask0000FFFF);
+      auto u = shift6 ? _mm_packs_epi32(u_lo, u_hi) : _mm_packus_epi32(u_lo, u_hi); // sse41
+      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint16_t*>(pdstu) + x), u);
+
+      auto v_lo = _mm_srli_epi32(uv_lo, 16);
+      auto v_hi = _mm_srli_epi32(uv_hi, 16);
+      auto v = shift6 ? _mm_packs_epi32(v_lo, v_hi) : _mm_packus_epi32(v_lo, v_hi); // sse41
       _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint16_t*>(pdstv) + x), v);
     }
 
@@ -718,15 +784,15 @@ void Px10_16_to_yuv42xp10_16(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dst
   int cwidth = width / 2; // 422 or 420
   if (sse41) {
     if (semi_packed_p16)
-      prepare_from_interleaved_uv_sse2<false, true>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight);
+      prepare_from_interleaved_uv_sse41<false>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight);
     else
-      prepare_from_interleaved_uv_sse2<true, true>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight); // true: shift 6
+      prepare_from_interleaved_uv_sse41<true>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight); // true: shift 6
   }
   else if (sse2) {
     if (semi_packed_p16)
-      prepare_from_interleaved_uv_sse2<false, false>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight);
+      prepare_from_interleaved_uv_sse2<false>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight);
     else
-      prepare_from_interleaved_uv_sse2<true, false>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight); // true: shift 6
+      prepare_from_interleaved_uv_sse2<true>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight); // true: shift 6
   }
   else {
     if (semi_packed_p16)

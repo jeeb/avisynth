@@ -95,7 +95,7 @@
 #include "vdplugin.h"
 #include "ScriptValue.h"
 #include "ScriptInterpreter.h"
-#include "vbitmap.h"
+#include "Vbitmap.h"
 
 int GetCPUFlags(); // to have a prototype
 
@@ -138,7 +138,7 @@ public:
 
 //////////////////// vbitmap things ////////////////////
 
-VBitmap& VBitmap::init(void *lpData, BITMAPINFOHEADER *bmih) throw() {
+VBitmap& VBitmap::init(void *lpData, BITMAPINFOHEADER *bmih) {
   data      = (Pixel *)lpData;
   palette     = (Pixel *)(bmih+1);
   depth     = bmih->biBitCount;
@@ -150,7 +150,7 @@ VBitmap& VBitmap::init(void *lpData, BITMAPINFOHEADER *bmih) throw() {
   return *this;
 }
 
-VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
+VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) {
   this->data    = (Pixel32 *)data;
   this->palette = NULL;
   this->depth   = depth;
@@ -162,7 +162,7 @@ VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
   return *this;
 }
 
-void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw() {
+void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const {
   bih->biSize       = sizeof(BITMAPINFOHEADER);
   bih->biBitCount   = (WORD)depth;
   bih->biPlanes     = 1;
@@ -181,13 +181,13 @@ void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw() {
   bih->biYPelsPerMeter  = 0;
 }
 
-void VBitmap::AlignTo4() throw() {
+void VBitmap::AlignTo4() {
   pitch   = PitchAlign4();
   modulo    = Modulo();
   size    = Size();
 }
 
-void VBitmap::AlignTo8() throw() {
+void VBitmap::AlignTo8() {
   pitch   = PitchAlign8();
   modulo    = Modulo();
   size    = Size();

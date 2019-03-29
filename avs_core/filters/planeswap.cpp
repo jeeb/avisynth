@@ -102,6 +102,10 @@ static void yuy2_swap_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_
 }
 
 static void yuy2_swap_ssse3(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+
 {
   const __m128i mask = _mm_set_epi8(13, 14, 15, 12, 9, 10, 11, 8, 5, 6, 7, 4, 1, 2, 3, 0);
 

@@ -179,18 +179,25 @@ static __forceinline __m128i af_blend_sse2(__m128i &upper, __m128i &center, __m1
   return _mm_srai_epi16(result, 7);
 }
 
-template<bool useSSE4>
 static __forceinline __m128i af_blend_uint16_t_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i outer_tmp = _mm_add_epi32(upper, lower);
-  __m128i center_tmp;
-  if (useSSE4) {
-    center_tmp = _mm_mullo_epi32(center, center_weight);
-    outer_tmp = _mm_mullo_epi32(outer_tmp, outer_weight);
-  }
-  else {
-    center_tmp = _MM_MULLO_EPI32(center, center_weight);
-    outer_tmp = _MM_MULLO_EPI32(outer_tmp, outer_weight);
-  }
+  __m128i center_tmp = _MM_MULLO_EPI32(center, center_weight); // sse2: mullo simulation
+  outer_tmp = _MM_MULLO_EPI32(outer_tmp, outer_weight);
+
+  __m128i result = _mm_add_epi32(center_tmp, outer_tmp);
+  result = _mm_add_epi32(result, center_tmp);
+  result = _mm_add_epi32(result, round_mask);
+  return _mm_srai_epi32(result, 7);
+}
+
+static __forceinline __m128i af_blend_uint16_t_sse41(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  __m128i outer_tmp = _mm_add_epi32(upper, lower);
+  __m128i center_tmp = _mm_mullo_epi32(center, center_weight);
+  outer_tmp = _mm_mullo_epi32(outer_tmp, outer_weight);
 
   __m128i result = _mm_add_epi32(center_tmp, outer_tmp);
   result = _mm_add_epi32(result, center_tmp);
@@ -219,7 +226,6 @@ static __forceinline __m128i af_unpack_blend_sse2(__m128i &left, __m128i &center
   return _mm_packus_epi16(result_lo, result_hi);
 }
 
-template<bool useSSE4>
 static __forceinline __m128i af_unpack_blend_uint16_t_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero) {
   __m128i left_lo = _mm_unpacklo_epi16(left, zero);
   __m128i left_hi = _mm_unpackhi_epi16(left, zero);
@@ -228,15 +234,29 @@ static __forceinline __m128i af_unpack_blend_uint16_t_sse2(__m128i &left, __m128
   __m128i right_lo = _mm_unpacklo_epi16(right, zero);
   __m128i right_hi = _mm_unpackhi_epi16(right, zero);
 
-  __m128i result_lo = af_blend_uint16_t_sse2<useSSE4>(left_lo, center_lo, right_lo, center_weight, outer_weight, round_mask);
-  __m128i result_hi = af_blend_uint16_t_sse2<useSSE4>(left_hi, center_hi, right_hi, center_weight, outer_weight, round_mask);
-  if(useSSE4)
-    return _mm_packus_epi32(result_lo, result_hi);
-  else
-    return _MM_PACKUS_EPI32(result_lo, result_hi);
+  __m128i result_lo = af_blend_uint16_t_sse2(left_lo, center_lo, right_lo, center_weight, outer_weight, round_mask);
+  __m128i result_hi = af_blend_uint16_t_sse2(left_hi, center_hi, right_hi, center_weight, outer_weight, round_mask);
+  return _MM_PACKUS_EPI32(result_lo, result_hi); // sse4.1 simul
 }
 
-template<bool useSSE4>
+static __forceinline __m128i af_unpack_blend_uint16_t_sse41(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  __m128i left_lo = _mm_unpacklo_epi16(left, zero);
+  __m128i left_hi = _mm_unpackhi_epi16(left, zero);
+  __m128i center_lo = _mm_unpacklo_epi16(center, zero);
+  __m128i center_hi = _mm_unpackhi_epi16(center, zero);
+  __m128i right_lo = _mm_unpacklo_epi16(right, zero);
+  __m128i right_hi = _mm_unpackhi_epi16(right, zero);
+
+  __m128i result_lo = af_blend_uint16_t_sse41(left_lo, center_lo, right_lo, center_weight, outer_weight, round_mask);
+  __m128i result_hi = af_blend_uint16_t_sse41(left_hi, center_hi, right_hi, center_weight, outer_weight, round_mask);
+  return _mm_packus_epi32(result_lo, result_hi);
+}
+
+
 static void af_vertical_uint16_t_sse2(BYTE* line_buf, BYTE* dstp, int height, int pitch, int row_size, int amount) {
   // amount was: half_amount (32768). Full: 65536 (2**16)
   // now it becomes 2**(16-9)=2**7 scale
@@ -260,14 +280,10 @@ static void af_vertical_uint16_t_sse2(BYTE* line_buf, BYTE* dstp, int height, in
       __m128i lower_lo = _mm_unpacklo_epi16(lower, zero);
       __m128i lower_hi = _mm_unpackhi_epi16(lower, zero);
 
-      __m128i result_lo = af_blend_uint16_t_sse2<useSSE4>(upper_lo, center_lo, lower_lo, center_weight, outer_weight, round_mask);
-      __m128i result_hi = af_blend_uint16_t_sse2<useSSE4>(upper_hi, center_hi, lower_hi, center_weight, outer_weight, round_mask);
+      __m128i result_lo = af_blend_uint16_t_sse2(upper_lo, center_lo, lower_lo, center_weight, outer_weight, round_mask);
+      __m128i result_hi = af_blend_uint16_t_sse2(upper_hi, center_hi, lower_hi, center_weight, outer_weight, round_mask);
 
-      __m128i result;
-      if(useSSE4)
-        result = _mm_packus_epi32(result_lo, result_hi);
-      else
-        result = _MM_PACKUS_EPI32(result_lo, result_hi);
+      __m128i result = _MM_PACKUS_EPI32(result_lo, result_hi); // sse4.1 simul
 
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
     }
@@ -284,14 +300,66 @@ static void af_vertical_uint16_t_sse2(BYTE* line_buf, BYTE* dstp, int height, in
     __m128i center_lo = _mm_unpacklo_epi16(center, zero);
     __m128i center_hi = _mm_unpackhi_epi16(center, zero);
 
-    __m128i result_lo = af_blend_uint16_t_sse2<useSSE4>(upper_lo, center_lo, center_lo, center_weight, outer_weight, round_mask);
-    __m128i result_hi = af_blend_uint16_t_sse2<useSSE4>(upper_hi, center_hi, center_hi, center_weight, outer_weight, round_mask);
+    __m128i result_lo = af_blend_uint16_t_sse2(upper_lo, center_lo, center_lo, center_weight, outer_weight, round_mask);
+    __m128i result_hi = af_blend_uint16_t_sse2(upper_hi, center_hi, center_hi, center_weight, outer_weight, round_mask);
 
-    __m128i result;
-    if (useSSE4)
-      result = _mm_packus_epi32(result_lo, result_hi);
-    else
-      result = _MM_PACKUS_EPI32(result_lo, result_hi);
+    __m128i result = _MM_PACKUS_EPI32(result_lo, result_hi); // sse4.1 simul
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
+  }
+}
+
+static void af_vertical_uint16_t_sse41(BYTE* line_buf, BYTE* dstp, int height, int pitch, int row_size, int amount)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  // amount was: half_amount (32768). Full: 65536 (2**16)
+  // now it becomes 2**(16-9)=2**7 scale
+  int t = (amount + 256) >> 9; // 16-9 = 7 -> shift in 
+  __m128i center_weight = _mm_set1_epi32(t);
+  __m128i outer_weight = _mm_set1_epi32(64 - t);
+  __m128i round_mask = _mm_set1_epi32(0x40);
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < height - 1; ++y) {
+    for (int x = 0; x < row_size; x += 16) {
+      __m128i upper = _mm_load_si128(reinterpret_cast<const __m128i*>(line_buf + x));
+      __m128i center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp + x));
+      __m128i lower = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp + pitch + x));
+      _mm_store_si128(reinterpret_cast<__m128i*>(line_buf + x), center);
+
+      __m128i upper_lo = _mm_unpacklo_epi16(upper, zero);
+      __m128i upper_hi = _mm_unpackhi_epi16(upper, zero);
+      __m128i center_lo = _mm_unpacklo_epi16(center, zero);
+      __m128i center_hi = _mm_unpackhi_epi16(center, zero);
+      __m128i lower_lo = _mm_unpacklo_epi16(lower, zero);
+      __m128i lower_hi = _mm_unpackhi_epi16(lower, zero);
+
+      __m128i result_lo = af_blend_uint16_t_sse41(upper_lo, center_lo, lower_lo, center_weight, outer_weight, round_mask);
+      __m128i result_hi = af_blend_uint16_t_sse41(upper_hi, center_hi, lower_hi, center_weight, outer_weight, round_mask);
+
+      __m128i result = _mm_packus_epi32(result_lo, result_hi);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
+    }
+    dstp += pitch;
+  }
+
+  //last line
+  for (int x = 0; x < row_size; x += 16) {
+    __m128i upper = _mm_load_si128(reinterpret_cast<const __m128i*>(line_buf + x));
+    __m128i center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp + x));
+
+    __m128i upper_lo = _mm_unpacklo_epi16(upper, zero);
+    __m128i upper_hi = _mm_unpackhi_epi16(upper, zero);
+    __m128i center_lo = _mm_unpacklo_epi16(center, zero);
+    __m128i center_hi = _mm_unpackhi_epi16(center, zero);
+
+    __m128i result_lo = af_blend_uint16_t_sse41(upper_lo, center_lo, center_lo, center_weight, outer_weight, round_mask);
+    __m128i result_hi = af_blend_uint16_t_sse41(upper_hi, center_hi, center_hi, center_weight, outer_weight, round_mask);
+
+    __m128i result = _mm_packus_epi32(result_lo, result_hi);
 
     _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
   }
@@ -435,10 +503,10 @@ static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_
     af_vertical_uint16_t_avx2(line_buf, dstp, (int)height, (int)pitch, (int)row_size, half_amount);
   }
   else if (sizeof(pixel_t) == 2 && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(dstp, 16) && row_size >= 16) {
-    af_vertical_uint16_t_sse2<true>(line_buf, dstp, (int)height, (int)pitch, (int)row_size, half_amount);
+    af_vertical_uint16_t_sse41(line_buf, dstp, (int)height, (int)pitch, (int)row_size, half_amount);
   }
   else if (sizeof(pixel_t) == 2 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && row_size >= 16) {
-    af_vertical_uint16_t_sse2<false>(line_buf, dstp, (int)height, (int)pitch, (int)row_size, half_amount);
+    af_vertical_uint16_t_sse2(line_buf, dstp, (int)height, (int)pitch, (int)row_size, half_amount);
   }
   else
 #ifdef X86_32
@@ -633,7 +701,6 @@ static void af_horizontal_rgb32_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pi
   }
 }
 
-template<bool useSSE4>
 static void af_horizontal_rgb64_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount) {
   // width is really width
   size_t width_bytes = width * 4 * sizeof(uint16_t);
@@ -667,7 +734,7 @@ static void af_horizontal_rgb64_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pi
       center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
       right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x + 4 * sizeof(uint16_t)));
 
-      result = af_unpack_blend_uint16_t_sse2<useSSE4>(left, center, right, center_weight, outer_weight, round_mask, zero);
+      result = af_unpack_blend_uint16_t_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
 
       _mm_store_si128(reinterpret_cast< __m128i*>(dstp + x), result);
     }
@@ -676,9 +743,65 @@ static void af_horizontal_rgb64_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pi
     center = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + loop_limit));
     right = _mm_or_si128(_mm_and_si128(center, right_mask), _mm_srli_si128(center, 4 * sizeof(uint16_t)));
 
-    result = af_unpack_blend_uint16_t_sse2<useSSE4>(left, center, right, center_weight, outer_weight, round_mask, zero);
+    result = af_unpack_blend_uint16_t_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
 
     _mm_storeu_si128(reinterpret_cast< __m128i*>(dstp + loop_limit), result);
+
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+static void af_horizontal_rgb64_sse41(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  // width is really width
+  size_t width_bytes = width * 4 * sizeof(uint16_t);
+  size_t loop_limit = width_bytes - 16;
+  int center_weight_c = int(amount * 2);
+  int outer_weight_c = int(32768 - amount);
+
+  short t = short((amount + 256) >> 9);
+  __m128i center_weight = _mm_set1_epi32(t);
+  __m128i outer_weight = _mm_set1_epi32(64 - t);
+  __m128i round_mask = _mm_set1_epi32(0x40);
+  __m128i zero = _mm_setzero_si128();
+  //#pragma warning(disable: 4309)
+  __m128i left_mask = _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF);
+  __m128i right_mask = _mm_set_epi32(0xFFFFFFFF, 0xFFFFFFFF, 0, 0);
+  //#pragma warning(default: 4309)
+
+  __m128i center, right, left, result;
+
+  for (size_t y = 0; y < height; ++y) {
+    center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp));
+    right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4 * sizeof(uint16_t))); // move right by one 4*uint16_t pixelblock
+    left = _mm_or_si128(_mm_and_si128(center, left_mask), _mm_slli_si128(center, 8));
+
+    result = af_unpack_blend_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp), result);
+
+    for (size_t x = 16; x < loop_limit; x += 16) {
+      left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x - 4 * sizeof(uint16_t)));
+      center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
+      right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x + 4 * sizeof(uint16_t)));
+
+      result = af_unpack_blend_uint16_t_sse41(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
+    }
+
+    left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + loop_limit - 4 * sizeof(uint16_t)));
+    center = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + loop_limit));
+    right = _mm_or_si128(_mm_and_si128(center, right_mask), _mm_srli_si128(center, 4 * sizeof(uint16_t)));
+
+    result = af_unpack_blend_uint16_t_sse41(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + loop_limit), result);
 
 
     dstp += dst_pitch;
@@ -1159,7 +1282,6 @@ static void af_horizontal_planar_sse2(BYTE* dstp, size_t height, size_t pitch, s
   }
 }
 
-template<bool useSSE4>
 static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount, int bits_per_pixel) {
   size_t mod16_width = (row_size / 16) * 16;
   size_t sse_loop_limit = row_size == mod16_width ? mod16_width - 16 : mod16_width;
@@ -1185,7 +1307,7 @@ static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t
     __m128i right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + 2));
     left = _mm_or_si128(_mm_and_si128(center, left_mask), _mm_slli_si128(center, 2));
 
-    __m128i result = af_unpack_blend_uint16_t_sse2<useSSE4>(left, center, right, center_weight, outer_weight, round_mask, zero);
+    __m128i result = af_unpack_blend_uint16_t_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
     left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + (16 - 2)));
     _mm_store_si128(reinterpret_cast<__m128i*>(dstp), result);
 
@@ -1194,7 +1316,7 @@ static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t
       center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp + x));
       right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + x + 2));
 
-      result = af_unpack_blend_uint16_t_sse2<useSSE4>(left, center, right, center_weight, outer_weight, round_mask, zero);
+      result = af_unpack_blend_uint16_t_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
 
       left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + x + (16 - 2)));
 
@@ -1206,7 +1328,70 @@ static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t
       center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp + mod16_width - 16));
       right = _mm_or_si128(_mm_and_si128(center, right_mask), _mm_srli_si128(center, 2));
 
-      result = af_unpack_blend_uint16_t_sse2<useSSE4>(left, center, right, center_weight, outer_weight, round_mask, zero);
+      result = af_unpack_blend_uint16_t_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + mod16_width - 16), result);
+    }
+    else { //some stuff left
+      uint16_t l = _mm_cvtsi128_si32(left) & 0xFFFF;
+      af_horizontal_planar_process_line_uint16_c(l, dstp + mod16_width, row_size - mod16_width, center_weight_c, outer_weight_c, bits_per_pixel);
+    }
+
+    dstp += pitch;
+  }
+}
+
+static void af_horizontal_planar_uint16_t_sse41(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  size_t mod16_width = (row_size / 16) * 16;
+  size_t sse_loop_limit = row_size == mod16_width ? mod16_width - 16 : mod16_width;
+  int center_weight_c = int(amount * 2);
+  int outer_weight_c = int(32768 - amount);
+
+  int t = int((amount + 256) >> 9);
+  __m128i center_weight = _mm_set1_epi32(t);
+  __m128i outer_weight = _mm_set1_epi32(64 - t);
+  __m128i round_mask = _mm_set1_epi32(0x40);
+  __m128i zero = _mm_setzero_si128();
+#pragma warning(push)
+#pragma warning(disable: 4309)
+  __m128i left_mask = _mm_set_epi16(0, 0, 0, 0, 0, 0, 0, 0xFFFF); // 0, 0, 0, 0, 0, 0, 0, FFFF
+  __m128i right_mask = _mm_set_epi16(0xFFFF, 0, 0, 0, 0, 0, 0, 0);
+#pragma warning(pop)
+
+  __m128i left;
+
+  for (size_t y = 0; y < height; ++y) {
+    //left border
+    __m128i center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp));
+    __m128i right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + 2));
+    left = _mm_or_si128(_mm_and_si128(center, left_mask), _mm_slli_si128(center, 2));
+
+    __m128i result = af_unpack_blend_uint16_t_sse41(left, center, right, center_weight, outer_weight, round_mask, zero);
+    left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + (16 - 2)));
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp), result);
+
+    //main processing loop
+    for (size_t x = 16; x < sse_loop_limit; x += 16) {
+      center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp + x));
+      right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + x + 2));
+
+      result = af_unpack_blend_uint16_t_sse41(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+      left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + x + (16 - 2)));
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
+    }
+
+    //right border
+    if (mod16_width == row_size) { //width is mod8, process with mmx
+      center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp + mod16_width - 16));
+      right = _mm_or_si128(_mm_and_si128(center, right_mask), _mm_srli_si128(center, 2));
+
+      result = af_unpack_blend_uint16_t_sse41(left, center, right, center_weight, outer_weight, round_mask, zero);
 
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp + mod16_width - 16), result);
     }
@@ -1390,10 +1575,10 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
           af_horizontal_planar_uint16_t_avx2(q, height, pitch, row_size, half_amount, bits_per_pixel);
         } 
         else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(q, 16) && row_size > 16) {
-          af_horizontal_planar_uint16_t_sse2<true>(q, height, pitch, row_size, half_amount, bits_per_pixel);
+          af_horizontal_planar_uint16_t_sse41(q, height, pitch, row_size, half_amount, bits_per_pixel);
         } 
         else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
-          af_horizontal_planar_uint16_t_sse2<false>(q, height, pitch, row_size, half_amount, bits_per_pixel);
+          af_horizontal_planar_uint16_t_sse2(q, height, pitch, row_size, half_amount, bits_per_pixel);
         }
         else if (pixelsize == 4 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
           af_horizontal_planar_float_sse2(q, height, pitch, row_size, (float)amountd);
@@ -1432,11 +1617,11 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       }
       else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(src->GetReadPtr(), 16) && vi.width > 2) {
         //this one is NOT in-place
-        af_horizontal_rgb64_sse2<true>(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount); // really width
+        af_horizontal_rgb64_sse41(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount); // really width
       }
       else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16) && vi.width > 2) {
         //this one is NOT in-place
-        af_horizontal_rgb64_sse2<false>(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount); // really width
+        af_horizontal_rgb64_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount); // really width
       }
       else
 #ifdef X86_32
@@ -1693,31 +1878,28 @@ static inline __m128i _mm_cmple_epu8(__m128i x, __m128i y)
   return _mm_cmpeq_epi8(_mm_min_epu8(x, y), x);
 }
 
-template<bool hasSSE4>
-static inline __m128i _mm_cmple_epu16(__m128i x, __m128i y)
+static inline __m128i _mm_cmple_epu16_sse41(__m128i x, __m128i y)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
 {
   // Returns 0xFFFF where x <= y:
-  if(hasSSE4)
-    return _mm_cmpeq_epi16(_mm_min_epu16(x, y), x);
-  else
-    return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
+  return _mm_cmpeq_epi16(_mm_min_epu16(x, y), x);
+}
+
+static inline __m128i _mm_cmple_epu16_sse2(__m128i x, __m128i y)
+{
+  // Returns 0xFFFF where x <= y:
+  return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
 }
 
 // fast: maxThreshold (255) simple accumulate for average
-template<bool maxThreshold, bool hasSSSE3>
+template<bool maxThreshold>
 static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div) {
-
   // threshold: 8 bits: 2 bytes in a word. for YUY2: luma<<8 | chroma
   // 16 bits: 16 bit value (orig threshold scaled by bits_per_pixel)
-  __m128i halfdiv_vector, div_vector;
-  if (hasSSSE3) {
-    halfdiv_vector = _mm_set1_epi32(16384); // for mulhrs
-    div_vector = _mm_set1_epi16(div);
-  }
-  else {
-    halfdiv_vector = _mm_set1_epi16(1); // High16(0x10000)
-    div_vector = _mm_set1_epi16(65536 / (planes + 1)); // mulhi
-  }
+  __m128i halfdiv_vector = _mm_set1_epi16(1); // High16(0x10000)
+  __m128i div_vector = _mm_set1_epi16(65536 / (planes + 1)); // mulhi
   __m128i thresh = _mm_set1_epi16(threshold);
 
   for (size_t x = 0; x < width; x+=16) {
@@ -1739,13 +1921,7 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
         auto cp = _mm_subs_epu8(current, p);
         auto abs_cp = _mm_or_si128(pc, cp);
         auto leq_thresh = _mm_cmple_epu8(abs_cp, thresh);
-        /*
-        __m128i p_greater_t = _mm_subs_epu8(p, thresh);
-        __m128i c_greater_t = _mm_subs_epu8(current, thresh);
-        __m128i over_thresh = _mm_or_si128(p_greater_t, c_greater_t); //abs(p-c) - t == (satsub(p,c) | satsub(c,p)) - t =kinda= satsub(p,t) | satsub(c,t)
 
-        __m128i leq_thresh = _mm_cmpeq_epi8(over_thresh, zero); //abs diff lower or equal to threshold
-        */
         __m128i andop = _mm_and_si128(leq_thresh, p);
         __m128i andnop = _mm_andnot_si128(leq_thresh, current);
         __m128i blended = _mm_or_si128(andop, andnop); //abs(p-c) <= thresh ? p : c
@@ -1757,42 +1933,77 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
       high = _mm_adds_epu16(high, add_high);
     }
 
-    __m128i acc;
-    if (hasSSSE3) {
-      // SSSE3: _mm_mulhrs_epi16: r0 := INT16(((a0 * b0) + 0x4000) >> 15)
-      low = _mm_mulhrs_epi16(low, div_vector);
-      high = _mm_mulhrs_epi16(high, div_vector);
-    }
-    else {
-      // (x*2 * 65536/N + 65536) / 65536 / 2
-      // Hi16(x*2 * 65536/N + 1) >> 1
-      low = _mm_mulhi_epu16(_mm_slli_epi16(low, 1), div_vector);
-      low = _mm_adds_epu16(low, halfdiv_vector);
-      low = _mm_srli_epi16(low, 1);
-      high = _mm_mulhi_epu16(_mm_slli_epi16(high, 1), div_vector);
-      high = _mm_adds_epu16(high, halfdiv_vector);
-      high = _mm_srli_epi16(high, 1);
-    }
-    acc = _mm_packus_epi16(low, high);
-
-    /* old, slowish
-    __m128i low_low   = ts_multiply_repack_sse2(_mm_unpacklo_epi16(low, zero), div_vector, halfdiv_vector, zero);
-    __m128i low_high  = ts_multiply_repack_sse2(_mm_unpackhi_epi16(low, zero), div_vector, halfdiv_vector, zero);
-    __m128i high_low  = ts_multiply_repack_sse2(_mm_unpacklo_epi16(high, zero), div_vector, halfdiv_vector, zero);
-    __m128i high_high = ts_multiply_repack_sse2(_mm_unpackhi_epi16(high, zero), div_vector, halfdiv_vector, zero);
-
-    low = _mm_unpacklo_epi32(low_low, low_high);
-    high = _mm_unpacklo_epi32(high_low, high_high);
-    __m128i acc = _mm_unpacklo_epi64(low, high);
-    */
+    // non SSSE3, no _mm_mulhrs_epi16
+    // (x*2 * 65536/N + 65536) / 65536 / 2
+    // Hi16(x*2 * 65536/N + 1) >> 1
+    low = _mm_mulhi_epu16(_mm_slli_epi16(low, 1), div_vector);
+    low = _mm_adds_epu16(low, halfdiv_vector);
+    low = _mm_srli_epi16(low, 1);
+    high = _mm_mulhi_epu16(_mm_slli_epi16(high, 1), div_vector);
+    high = _mm_adds_epu16(high, halfdiv_vector);
+    high = _mm_srli_epi16(high, 1);
+    __m128i acc = _mm_packus_epi16(low, high);
 
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
   }
 }
 
+template<bool maxThreshold>
+static void accumulate_line_ssse3(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
+  // threshold: 8 bits: 2 bytes in a word. for YUY2: luma<<8 | chroma
+  // 16 bits: 16 bit value (orig threshold scaled by bits_per_pixel)
+  __m128i halfdiv_vector = _mm_set1_epi32(16384); // for mulhrs
+  __m128i div_vector = _mm_set1_epi16(div);
+
+  __m128i thresh = _mm_set1_epi16(threshold);
+
+  for (size_t x = 0; x < width; x += 16) {
+    __m128i current = _mm_load_si128(reinterpret_cast<const __m128i*>(c_plane + x));
+    __m128i zero = _mm_setzero_si128();
+    __m128i low = _mm_unpacklo_epi8(current, zero);
+    __m128i high = _mm_unpackhi_epi8(current, zero);
+
+    for (int plane = planes - 1; plane >= 0; --plane) {
+      __m128i p = _mm_load_si128(reinterpret_cast<const __m128i*>(planeP[plane] + x));
+
+      __m128i add_low, add_high;
+      if (maxThreshold) {
+        // fast: simple accumulate for average
+        add_low = _mm_unpacklo_epi8(p, zero);
+        add_high = _mm_unpackhi_epi8(p, zero);
+      }
+      else {
+        auto pc = _mm_subs_epu8(p, current); // r2507-
+        auto cp = _mm_subs_epu8(current, p);
+        auto abs_cp = _mm_or_si128(pc, cp);
+        auto leq_thresh = _mm_cmple_epu8(abs_cp, thresh);
+
+        __m128i andop = _mm_and_si128(leq_thresh, p);
+        __m128i andnop = _mm_andnot_si128(leq_thresh, current);
+        __m128i blended = _mm_or_si128(andop, andnop); //abs(p-c) <= thresh ? p : c
+        add_low = _mm_unpacklo_epi8(blended, zero);
+        add_high = _mm_unpackhi_epi8(blended, zero);
+      }
+
+      low = _mm_adds_epu16(low, add_low);
+      high = _mm_adds_epu16(high, add_high);
+    }
+
+      // SSSE3: _mm_mulhrs_epi16: r0 := INT16(((a0 * b0) + 0x4000) >> 15)
+    low = _mm_mulhrs_epi16(low, div_vector);
+    high = _mm_mulhrs_epi16(high, div_vector);
+    __m128i acc = _mm_packus_epi16(low, high);
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(c_plane + x), acc);
+  }
+}
 
 // fast: maxThreshold (255) simple accumulate for average
-template<bool maxThreshold, bool hasSSE4, bool lessThan16bit>
+template<bool maxThreshold, bool lessThan16bit>
 static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, int threshold, int div, int bits_per_pixel) {
   // threshold:
   // 10-16 bits: orig threshold scaled by (bits_per_pixel-8)
@@ -1822,7 +2033,7 @@ static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int plan
         auto pc = _mm_subs_epu16(p, current); // r2507-
         auto cp = _mm_subs_epu16(current, p);
         auto abs_cp = _mm_or_si128(pc, cp);
-        auto leq_thresh = _mm_cmple_epu16<hasSSE4>(abs_cp, thresh);
+        auto leq_thresh = _mm_cmple_epu16_sse2(abs_cp, thresh);
         /*
         __m128i p_greater_t = _mm_subs_epu16(p, thresh);
         __m128i c_greater_t = _mm_subs_epu16(current, thresh);
@@ -1846,19 +2057,81 @@ static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int plan
     //__m128 half = _mm_set1_ps(0.5f); // no need rounder, _mm_cvtps_epi32 default is round-to-nearest, unless we use _mm_cvttps_epi32 which truncates
     low = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(low), div_vector));
     high = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(high), div_vector));
-    if (hasSSE4)
-      acc = _mm_packus_epi32(low, high); // sse4
-    else
-      acc = _MM_PACKUS_EPI32(low, high);
+    acc = _MM_PACKUS_EPI32(low, high); // sse4.1 simul
     if (lessThan16bit)
-      if(hasSSE4)
-        acc = _mm_min_epu16(acc, limit);
-      else
-        acc = _MM_MIN_EPU16(acc, limit);
+      acc = _MM_MIN_EPU16(acc, limit); // sse4.1 simul
 
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
   }
 }
+// fast: maxThreshold (255) simple accumulate for average
+template<bool maxThreshold, bool lessThan16bit>
+static void accumulate_line_16_sse41(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, int threshold, int div, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  // threshold:
+  // 10-16 bits: orig threshold scaled by (bits_per_pixel-8)
+  int max_pixel_value = (1 << bits_per_pixel) - 1;
+  __m128i limit = _mm_set1_epi16(max_pixel_value); //used for clamping when 10-14 bits
+  // halfdiv_vector = _mm_set1_epi32(1); // n/a
+  __m128 div_vector = _mm_set1_ps(1.0f / (planes + 1));
+  __m128i thresh = _mm_set1_epi16(threshold);
+
+
+  for (size_t x = 0; x < rowsize; x += 16) {
+    __m128i current = _mm_load_si128(reinterpret_cast<const __m128i*>(c_plane + x));
+    __m128i zero = _mm_setzero_si128();
+    __m128i low, high;
+    low = _mm_unpacklo_epi16(current, zero);
+    high = _mm_unpackhi_epi16(current, zero);
+
+    for (int plane = planes - 1; plane >= 0; --plane) {
+      __m128i p = _mm_load_si128(reinterpret_cast<const __m128i*>(planeP[plane] + x));
+
+      __m128i add_low, add_high;
+      if (maxThreshold) {
+        // fast: simple accumulate for average
+        add_low = _mm_unpacklo_epi16(p, zero);
+        add_high = _mm_unpackhi_epi16(p, zero);
+      }
+      else {
+        auto pc = _mm_subs_epu16(p, current); // r2507-
+        auto cp = _mm_subs_epu16(current, p);
+        auto abs_cp = _mm_or_si128(pc, cp);
+        auto leq_thresh = _mm_cmple_epu16_sse41(abs_cp, thresh);
+        /*
+        __m128i p_greater_t = _mm_subs_epu16(p, thresh);
+        __m128i c_greater_t = _mm_subs_epu16(current, thresh);
+        __m128i over_thresh = _mm_or_si128(p_greater_t, c_greater_t); //abs(p-c) - t == (satsub(p,c) | satsub(c,p)) - t =kinda= satsub(p,t) | satsub(c,t)
+
+        __m128i leq_thresh = _mm_cmpeq_epi16(over_thresh, zero); //abs diff lower or equal to threshold
+        */
+
+        __m128i andop = _mm_and_si128(leq_thresh, p);
+        __m128i andnop = _mm_andnot_si128(leq_thresh, current);
+        __m128i blended = _mm_or_si128(andop, andnop); //abs(p-c) <= thresh ? p : c
+
+        add_low = _mm_unpacklo_epi16(blended, zero);
+        add_high = _mm_unpackhi_epi16(blended, zero);
+      }
+      low = _mm_add_epi32(low, add_low);
+      high = _mm_add_epi32(high, add_high);
+    }
+
+    __m128i acc;
+    //__m128 half = _mm_set1_ps(0.5f); // no need rounder, _mm_cvtps_epi32 default is round-to-nearest, unless we use _mm_cvttps_epi32 which truncates
+    low = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(low), div_vector));
+    high = _mm_cvtps_epi32(_mm_mul_ps(_mm_cvtepi32_ps(high), div_vector));
+    acc = _mm_packus_epi32(low, high); // sse41
+    if (lessThan16bit)
+      acc = _mm_min_epu16(acc, limit); // sse41
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(c_plane + x), acc);
+  }
+}
+
 #endif
 
 #ifdef X86_32
@@ -1922,7 +2195,7 @@ static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, 
 
 static void accumulate_line_yuy2(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, BYTE threshold_luma, BYTE threshold_chroma, int div, bool aligned16, IScriptEnvironment* env) {
   if ((env->GetCPUFlags() & CPUF_SSE2) && aligned16 && width >= 16) {
-    accumulate_line_sse2<false, false>(c_plane, planeP, planes, width, threshold_luma | (threshold_chroma << 8), div);
+    accumulate_line_sse2<false>(c_plane, planeP, planes, width, threshold_luma | (threshold_chroma << 8), div);
   } else
 #ifdef X86_32
   if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
@@ -1937,44 +2210,44 @@ static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size
   // threshold == 255: simple average
   bool maxThreshold = (threshold == 255);
   if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4) && aligned16 && rowsize >= 16) {
-    // <maxThreshold, hasSSE4, lessThan16bit>
+    // <maxThreshold, lessThan16bit>
     if(maxThreshold) {
       if(bits_per_pixel < 16)
-        accumulate_line_16_sse2<true, true, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse41<true, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
       else
-        accumulate_line_16_sse2<true, true, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse41<true, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
     }
     else {
       if (bits_per_pixel < 16)
-        accumulate_line_16_sse2<false, true, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse41<false, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
       else
-        accumulate_line_16_sse2<false, true, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse41<false, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
     }
   } else if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && aligned16 && rowsize >= 16) {
-    // <maxThreshold, hasSSE4, lessThan16bit>
+    // <maxThreshold, lessThan16bit>
     if(maxThreshold) {
       if(bits_per_pixel < 16)
-        accumulate_line_16_sse2<true, false, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse2<true, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
       else
-        accumulate_line_16_sse2<true, false, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse2<true, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
     }
     else {
       if (bits_per_pixel < 16)
-        accumulate_line_16_sse2<false, false, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse2<false, true>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
       else
-        accumulate_line_16_sse2<false, false, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
+        accumulate_line_16_sse2<false, false>(c_plane, planeP, planes, rowsize, threshold << (bits_per_pixel - 8), div, bits_per_pixel);
     }
   }
   else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSSE3) && aligned16 && rowsize >= 16) {
-    if (maxThreshold) // <maxThreshold, hasSSSE3
-      accumulate_line_sse2<true, true>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+    if (maxThreshold) // <maxThreshold
+      accumulate_line_ssse3<true>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
     else
-      accumulate_line_sse2<false, true>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+      accumulate_line_ssse3<false>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
   } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && aligned16 && rowsize >= 16) {
     if (maxThreshold)
-      accumulate_line_sse2<true, false>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+      accumulate_line_sse2<true>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
     else
-      accumulate_line_sse2<false, false>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
+      accumulate_line_sse2<false>(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
   }
   else
 #ifdef X86_32

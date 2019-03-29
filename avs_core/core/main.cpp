@@ -1304,9 +1304,9 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
       int srcpitch = frame->GetPitch();
       const BYTE *src = frame->GetReadPtr();
       if (ssse3)
-        bgra_to_argbBE_sse<true>(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
+        bgra_to_argbBE_ssse3(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
       else if (sse2)
-        bgra_to_argbBE_sse<false>(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
+        bgra_to_argbBE_sse2(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
       else
         bgra_to_argbBE_c(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
     }

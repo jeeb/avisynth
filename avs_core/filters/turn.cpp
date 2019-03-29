@@ -498,62 +498,81 @@ static void turn_180_plane_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int 
     }
 }
 
-
-template <typename T, int INSTRUCTION_SET=CPUF_SSE2>
-static void turn_180_plane_xsse(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+template <typename T>
+static void turn_180_plane_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-    const BYTE* s0 = srcp;
-    BYTE* d0 = dstp + dst_pitch * (src_height - 1) + src_rowsize - 16;
-    const int w = src_rowsize & ~15;
+  const BYTE* s0 = srcp;
+  BYTE* d0 = dstp + dst_pitch * (src_height - 1) + src_rowsize - 16;
+  const int w = src_rowsize & ~15;
 
-    __m128i pshufb_mask;
-    if constexpr(sizeof(T) == 1)
+  for (int y = 0; y < src_height; ++y)
+  {
+    for (int x = 0; x < w; x += 16)
     {
-        pshufb_mask = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-    }
-    else if constexpr(sizeof(T) == 2)
-    {
-        pshufb_mask = _mm_set_epi8(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
-    }
+      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
+      if constexpr (sizeof(T) == 8) // RGB64
+        src = _mm_shuffle_epi32(src, _MM_SHUFFLE(1, 0, 3, 2));
+      else if constexpr (sizeof(T) == 4) // RGB32
+        src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
+      else { // uint16_t, uint8_t
+        src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
+        src = _mm_shufflelo_epi16(src, _MM_SHUFFLE(2, 3, 0, 1));
+        src = _mm_shufflehi_epi16(src, _MM_SHUFFLE(2, 3, 0, 1));
 
-    for (int y = 0; y < src_height; ++y)
-    {
-        for (int x = 0; x < w; x += 16)
-        {
-            __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
-            if constexpr(sizeof(T) == 8)
-            {
-                src = _mm_shuffle_epi32(src, _MM_SHUFFLE(1, 0, 3, 2));
-            }
-            else if constexpr(sizeof(T) == 4)
-            {
-                src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
-            }
-            else if constexpr(INSTRUCTION_SET == CPUF_SSE2)
-            {
-                src = _mm_shuffle_epi32(src, sizeof(T) == 1 ? _MM_SHUFFLE(0, 1, 2, 3) : _MM_SHUFFLE(1, 0, 3, 2));
-                src = _mm_shufflelo_epi16(src, sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3));
-                src = _mm_shufflehi_epi16(src, sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3));
-
-                if constexpr(sizeof(T) == 1)
-                {
-                    src = _mm_or_si128(_mm_srli_epi16(src, 8), _mm_slli_epi16(src, 8));
-                }
-            }
-            else // SSSE3
-            {
-                src = _mm_shuffle_epi8(src, pshufb_mask);
-            }
-            _mm_storeu_si128(reinterpret_cast<__m128i*>(d0 - x), src);
-        }
-        s0 += src_pitch;
-        d0 -= dst_pitch;
+        if constexpr (sizeof(T) == 1)
+          src = _mm_or_si128(_mm_srli_epi16(src, 8), _mm_slli_epi16(src, 8));
+      }
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(d0 - x), src);
     }
+    s0 += src_pitch;
+    d0 -= dst_pitch;
+  }
 
-    if (src_rowsize != w)
+  if (src_rowsize != w)
+  {
+    turn_180_plane_c<T>(srcp + w, dstp, src_rowsize - w, src_height, src_pitch, dst_pitch);
+  }
+}
+
+template <typename T>
+static void turn_180_plane_ssse3(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
+  const BYTE* s0 = srcp;
+  BYTE* d0 = dstp + dst_pitch * (src_height - 1) + src_rowsize - 16;
+  const int w = src_rowsize & ~15;
+
+  for (int y = 0; y < src_height; ++y)
+  {
+    for (int x = 0; x < w; x += 16)
     {
-        turn_180_plane_c<T>(srcp + w, dstp, src_rowsize - w, src_height, src_pitch, dst_pitch);
+      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
+      if constexpr (sizeof(T) == 8) // RGB64
+        src = _mm_shuffle_epi32(src, _MM_SHUFFLE(1, 0, 3, 2));
+      else if constexpr (sizeof(T) == 4) // RGB32
+        src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
+      else { // uint16_t, uint8_t
+        // SSSE3
+        __m128i pshufb_mask;
+        if constexpr (sizeof(T) == 1)
+          pshufb_mask = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        else if constexpr (sizeof(T) == 2)
+          pshufb_mask = _mm_set_epi8(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
+
+        src = _mm_shuffle_epi8(src, pshufb_mask);
+      }
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(d0 - x), src);
     }
+    s0 += src_pitch;
+    d0 -= dst_pitch;
+  }
+
+  if (src_rowsize != w)
+  {
+    turn_180_plane_c<T>(srcp + w, dstp, src_rowsize - w, src_height, src_pitch, dst_pitch);
+  }
 }
 
 
@@ -660,7 +679,7 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
     {
         if (cpu & CPUF_SSE2)
         {
-            set_funcs(turn_left_rgb64_sse2, turn_right_rgb64_sse2, turn_180_plane_xsse<uint64_t>);
+            set_funcs(turn_left_rgb64_sse2, turn_right_rgb64_sse2, turn_180_plane_sse2<uint64_t>);
         }
         else
         {
@@ -675,7 +694,7 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
     {
         if (cpu & CPUF_SSE2)
         {
-            set_funcs(turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_plane_xsse<uint32_t>);
+            set_funcs(turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_plane_sse2<uint32_t>);
         }
         else
         {
@@ -695,7 +714,7 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
         if (cpu & CPUF_SSE2)
         {
             set_funcs(turn_left_plane_8_sse2, turn_right_plane_8_sse2,
-                cpu & CPUF_SSSE3 ? turn_180_plane_xsse<BYTE, CPUF_SSSE3> : turn_180_plane_xsse<BYTE>);
+                cpu & CPUF_SSSE3 ? turn_180_plane_ssse3<BYTE> : turn_180_plane_sse2<BYTE>);
         }
         else
         {
@@ -707,7 +726,7 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
         if (cpu & CPUF_SSE2)
         {
             set_funcs(turn_left_plane_16_sse2, turn_right_plane_16_sse2,
-                cpu & CPUF_SSSE3 ? turn_180_plane_xsse<uint16_t, CPUF_SSSE3> : turn_180_plane_xsse<uint16_t>);
+                cpu & CPUF_SSSE3 ? turn_180_plane_ssse3<uint16_t> : turn_180_plane_sse2<uint16_t>);
         }
         else
         {
@@ -717,7 +736,7 @@ void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
     else if (vi.ComponentSize() == 4) // 32 bit
     {
         if (cpu & CPUF_SSE2) {
-            set_funcs(turn_left_plane_32_sse2, turn_right_plane_32_sse2, turn_180_plane_xsse<uint32_t>);
+            set_funcs(turn_left_plane_32_sse2, turn_right_plane_32_sse2, turn_180_plane_sse2<uint32_t>);
         } else {
             set_funcs(turn_left_plane_32_c, turn_right_plane_32_c, turn_180_plane_c<uint32_t>);
         }

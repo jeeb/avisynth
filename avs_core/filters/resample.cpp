@@ -68,11 +68,17 @@ __forceinline __m128i simd_load_unaligned(const __m128i* adr)
 }
 
 __forceinline __m128i simd_load_unaligned_sse3(const __m128i* adr)
+#ifdef __clang__
+__attribute__((__target__("sse3")))
+#endif
 {
   return _mm_lddqu_si128(adr);
 }
 
 __forceinline __m128i simd_load_streaming(const __m128i* adr)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
 {
   return _mm_stream_load_si128(const_cast<__m128i*>(adr));
 }
@@ -153,9 +159,9 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       }
       if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
         if constexpr(sizeof(pixel_t) == 1)
-          result = (result + (1 << (FPScale8bits - 1))) / (1 << FPScale8bits);
+          result = (result + (1 << (FPScale8bits - 1))) >> FPScale8bits;
         else if constexpr(sizeof(pixel_t) == 2)
-          result = (result + (1 << (FPScale16bits - 1))) / (1 << FPScale16bits);
+          result = (result + (1 << (FPScale16bits - 1))) >> FPScale16bits;
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
       dst0[x] = (pixel_t)result;
@@ -380,6 +386,9 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
 template<SSELoader load>
 static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
 {
   AVS_UNUSED(bits_per_pixel);
   AVS_UNUSED(storage);
@@ -568,9 +577,9 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       }
       if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped
         if constexpr(sizeof(pixel_t) == 1)
-          result = (result + (1 << (FPScale8bits-1))) / (1 << FPScale8bits);
+          result = (result + (1 << (FPScale8bits-1))) >> FPScale8bits;
         else if constexpr(sizeof(pixel_t) == 2)
-          result = (result + (1 << (FPScale16bits - 1))) / (1 << FPScale16bits);
+          result = (result + (1 << (FPScale16bits - 1))) >> FPScale16bits;
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
       (dst0 + y*dst_pitch)[x] = (pixel_t)result;
@@ -624,7 +633,11 @@ __forceinline static void process_one_pixel_h_float_mask(const float *src, int b
 
 // filtersizealigned8: special: 1, 2. Generic: -1
 template<int filtersizealigned8, int filtersizemod8>
-static void resizer_h_ssse3_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+static void resizer_h_ssse3_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   AVS_UNUSED(bits_per_pixel);
   const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
 
@@ -813,8 +826,88 @@ __forceinline static void process_one_pixel_h_uint16_t(const uint16_t *src, int 
 // filter_size <= 8 -> filter_size_align8 == 1 -> no loop, hope it'll be optimized
 // filter_size <= 16 -> filter_size_align8 == 2 -> loop 0..1 hope it'll be optimized
 // filter_size > 16 -> use parameter AlignNumber(program->filter_size_numOfFullBlk8, 8) / 8;
-template<bool lessthan16bit, int filtersizealigned8, bool hasSSE41>
-static void internal_resizer_h_sse34_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+template<bool lessthan16bit, int filtersizealigned8>
+static void internal_resizer_h_ssse3_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
+  // 1 and 2: special case for compiler optimization
+  const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
+
+  const __m128i zero = _mm_setzero_si128();
+  const __m128i shifttosigned = _mm_set1_epi16(-32768); // for 16 bits only
+  const __m128i shiftfromsigned = _mm_set1_epi32(+32768 << FPScale16bits); // for 16 bits only
+  const __m128i rounder = _mm_set_epi32(0, 0, 0, 1 << (FPScale16bits - 1)); // only once
+
+  const uint16_t *src = reinterpret_cast<const uint16_t *>(src8);
+  uint16_t *dst = reinterpret_cast<uint16_t *>(dst8);
+  dst_pitch /= sizeof(uint16_t);
+  src_pitch /= sizeof(uint16_t);
+
+  __m128i clamp_limit = _mm_set1_epi16((short)((1 << bits_per_pixel) - 1)); // clamp limit for <16 bits
+
+  for (int y = 0; y < height; y++) {
+    short* current_coeff = program->pixel_coefficient;
+
+    for (int x = 0; x < width; x += 4) {
+      __m128i result1 = rounder;
+      __m128i result2 = result1;
+      __m128i result3 = result1;
+      __m128i result4 = result1;
+
+      int begin1 = program->pixel_offset[x + 0];
+      int begin2 = program->pixel_offset[x + 1];
+      int begin3 = program->pixel_offset[x + 2];
+      int begin4 = program->pixel_offset[x + 3];
+
+      // this part is repeated 4 times
+      // begin1, result1
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin1, i, current_coeff, result1, shifttosigned);
+
+      // begin2, result2
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin2, i, current_coeff, result2, shifttosigned);
+
+      // begin3, result3
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin3, i, current_coeff, result3, shifttosigned);
+
+      // begin4, result4
+      for (int i = 0; i < filter_size_numOfBlk8; i++)
+        process_one_pixel_h_uint16_t<lessthan16bit>(src, begin4, i, current_coeff, result4, shifttosigned);
+
+      // _mm_hadd_epi32: SSSE3
+      const __m128i sumQuad12 = _mm_hadd_epi32(result1, result2); // L1L1L1L1 + L2L2L2L2 = L1L1 L2L2
+      const __m128i sumQuad34 = _mm_hadd_epi32(result3, result4); // L3L3L3L3 + L4L4L4L4 = L3L3 L4L4
+      __m128i result = _mm_hadd_epi32(sumQuad12, sumQuad34); // L1L1 L2L2 + L3L3 L4L4 = L1 L2 L3 L4
+
+      // correct if signed, scale back, store
+      if (!lessthan16bit)
+        result = _mm_add_epi32(result, shiftfromsigned);
+      result = _mm_srai_epi32(result, FPScale16bits); // shift back integer arithmetic 13 bits precision
+
+      // _MM_PACKUS_EPI32: SSE4.1 simul
+      __m128i result_4x_uint16 = _MM_PACKUS_EPI32(result, zero); // 4*32+zeros = lower 4*16 OK
+      // extra clamp for 10-14 bit
+      if (lessthan16bit)
+        result_4x_uint16 = _MM_MIN_EPU16(result_4x_uint16, clamp_limit);
+      _mm_storel_epi64(reinterpret_cast<__m128i *>(dst + x), result_4x_uint16);
+
+    }
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+
+template<bool lessthan16bit, int filtersizealigned8>
+static void internal_resizer_h_sse41_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
   // 1 and 2: special case for compiler optimization
   const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size, 8) / 8);
 
@@ -870,10 +963,10 @@ static void internal_resizer_h_sse34_generic_uint16_t(BYTE* dst8, const BYTE* sr
         result = _mm_add_epi32(result, shiftfromsigned);
       result = _mm_srai_epi32(result, FPScale16bits); // shift back integer arithmetic 13 bits precision
 
-      __m128i result_4x_uint16 = hasSSE41 ? _mm_packus_epi32(result, zero) : _MM_PACKUS_EPI32(result, zero); // 4*32+zeros = lower 4*16 OK
+      __m128i result_4x_uint16 = _mm_packus_epi32(result, zero); // 4*32+zeros = lower 4*16 OK
       // extra clamp for 10-14 bit
       if (lessthan16bit)
-        result_4x_uint16 = hasSSE41 ? _mm_min_epu16(result_4x_uint16, clamp_limit) : _MM_MIN_EPU16(result_4x_uint16, clamp_limit);
+        result_4x_uint16 = _mm_min_epu16(result_4x_uint16, clamp_limit);
       _mm_storel_epi64(reinterpret_cast<__m128i *>(dst + x), result_4x_uint16);
 
     }
@@ -885,16 +978,36 @@ static void internal_resizer_h_sse34_generic_uint16_t(BYTE* dst8, const BYTE* sr
 
 //-------- 128 bit uint16_t Horizontal Dispatcher
 
-template<bool lessthan16bit, bool hasSSE41>
-static void resizer_h_sse34_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+template<bool lessthan16bit>
+static void resizer_h_ssse3_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   const int filter_size_numOfBlk8 = AlignNumber(program->filter_size, 8) / 8;
 
   if (filter_size_numOfBlk8 == 1)
-    internal_resizer_h_sse34_generic_uint16_t<lessthan16bit, 1, hasSSE41>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+    internal_resizer_h_ssse3_generic_uint16_t<lessthan16bit, 1>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
   else if (filter_size_numOfBlk8 == 2)
-    internal_resizer_h_sse34_generic_uint16_t<lessthan16bit, 2, hasSSE41>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+    internal_resizer_h_ssse3_generic_uint16_t<lessthan16bit, 2>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
   else // -1: basic method, use program->filter_size
-    internal_resizer_h_sse34_generic_uint16_t<lessthan16bit, -1, hasSSE41>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+    internal_resizer_h_ssse3_generic_uint16_t<lessthan16bit, -1>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+}
+
+template<bool lessthan16bit>
+static void resizer_h_sse41_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size, 8) / 8;
+
+  if (filter_size_numOfBlk8 == 1)
+    internal_resizer_h_sse41_generic_uint16_t<lessthan16bit, 1>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+  else if (filter_size_numOfBlk8 == 2)
+    internal_resizer_h_sse41_generic_uint16_t<lessthan16bit, 2>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
+  else // -1: basic method, use program->filter_size
+    internal_resizer_h_sse41_generic_uint16_t<lessthan16bit, -1>(dst8, src8, dst_pitch, src_pitch, program, width, height, bits_per_pixel);
 }
 
 //-------- 128 bit uint16_t Verticals
@@ -917,8 +1030,8 @@ __forceinline static void process_chunk_v_uint16_t(const uint16_t *src2_ptr, int
 }
 
 // program->filtersize: 1..16 special optimized, >8: normal
-template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8, bool hasSSE41>
-void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8>
+void internal_resize_v_sse2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
 {
   AVS_UNUSED(storage);
   const int filter_size_numOfFullBlk8 = (_filter_size_numOfFullBlk8 >= 0) ? _filter_size_numOfFullBlk8 : (program->filter_size / 8);
@@ -1002,9 +1115,9 @@ void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst
       result_lo = _mm_srai_epi32(result_lo, FPScale16bits); // shift back integer arithmetic 13 bits precision
       result_hi = _mm_srai_epi32(result_hi, FPScale16bits);
 
-      __m128i result_8x_uint16 = hasSSE41 ? _mm_packus_epi32(result_lo, result_hi) : _MM_PACKUS_EPI32(result_lo, result_hi);
+      __m128i result_8x_uint16 = _MM_PACKUS_EPI32(result_lo, result_hi); // SSE4.1 simul
       if (lessthan16bit)
-        result_8x_uint16 = hasSSE41 ? _mm_min_epu16(result_8x_uint16, clamp_limit) : _MM_MIN_EPU16(result_8x_uint16, clamp_limit); // extra clamp for 10-14 bit
+        result_8x_uint16 = _MM_MIN_EPU16(result_8x_uint16, clamp_limit); // SSE4.1 simul extra clamp for 10-14 bit
       _mm_store_si128(reinterpret_cast<__m128i *>(dst + x), result_8x_uint16);
     }
 
@@ -1018,7 +1131,7 @@ void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst
         result64 += (int)(*src2_ptr) * (int64_t)current_coeff[i];
         src2_ptr += src_pitch;
       }
-      int result = (int)(result64 / (1 << FPScale16bits)); // scale back 13 bits
+      int result = (int)(result64 >> FPScale16bits); // scale back 13 bits
       result = result > limit ? limit : result < 0 ? 0 : result; // clamp 10..16 bits
       dst[x] = (uint16_t)result;
     }
@@ -1029,84 +1142,286 @@ void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst
   }
 }
 
+template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8>
+void internal_resize_v_sse41_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  AVS_UNUSED(storage);
+  const int filter_size_numOfFullBlk8 = (_filter_size_numOfFullBlk8 >= 0) ? _filter_size_numOfFullBlk8 : (program->filter_size / 8);
+  short* current_coeff = program->pixel_coefficient;
+
+  // #define NON32_BYTES_ALIGNMENT
+  // in AVS+ 32 bytes alignment is guaranteed
+#ifdef NON32_BYTES_ALIGNMENT
+  int wMod8 = (width / 8) * 8; // uint16: 8 at a time (2x128bit)
+#endif
+
+  const __m128i zero = _mm_setzero_si128();
+  const __m128i shifttosigned = _mm_set1_epi16(-32768); // for 16 bits only
+  const __m128i shiftfromsigned = _mm_set1_epi32(32768 << FPScale16bits); // for 16 bits only
+  const __m128i rounder = _mm_set1_epi32(1 << (FPScale16bits - 1));
+
+  const uint16_t* src = (uint16_t *)src0;
+  uint16_t* dst = (uint16_t *)dst0;
+  dst_pitch = dst_pitch / sizeof(uint16_t);
+  src_pitch = src_pitch / sizeof(uint16_t);
+
+  const int limit = (1 << bits_per_pixel) - 1;
+  __m128i clamp_limit = _mm_set1_epi16((short)limit); // clamp limit for <16 bits
+
+  for (int y = 0; y < target_height; y++) {
+    int offset = program->pixel_offset[y];
+    const uint16_t* src_ptr = src + pitch_table[offset] / sizeof(uint16_t);
+
+#ifdef NON32_BYTES_ALIGNMENT
+    for (int x = 0; x < wMod8; x += 8) { // 2x4 pixels at a time
+#else
+    for (int x = 0; x < width; x += 8) {
+#endif
+      __m128i result_single_lo = rounder;
+      __m128i result_single_hi = rounder;
+
+      const uint16_t* src2_ptr = src_ptr + x;
+
+      for (int i = 0; i < filter_size_numOfFullBlk8; i++) {
+        __m128i coeff01234567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current_coeff + i * 8)); // 4x (2x16bit) shorts for even/odd
+
+        // offset table generating is what preventing us from overaddressing
+        // 0-1
+        process_chunk_v_uint16_t<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
+        // 2-3
+        process_chunk_v_uint16_t<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
+        // 4-5
+        process_chunk_v_uint16_t<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
+        // 6-7
+        process_chunk_v_uint16_t<lessthan16bit, 6>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
+        src2_ptr += 8 * src_pitch;
+      }
+
+      // and the rest non-div8 chunk
+      __m128i coeff01234567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current_coeff + filter_size_numOfFullBlk8 * 8)); // 4x (2x16bit) shorts for even/odd
+      if constexpr (filtersizemod8 >= 2)
+        process_chunk_v_uint16_t<lessthan16bit, 0>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
+      if constexpr (filtersizemod8 >= 4)
+        process_chunk_v_uint16_t<lessthan16bit, 2>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
+      if constexpr (filtersizemod8 >= 6)
+        process_chunk_v_uint16_t<lessthan16bit, 4>(src2_ptr, src_pitch, coeff01234567, result_single_lo, result_single_hi, shifttosigned);
+      if constexpr (filtersizemod8 % 2) { // remaining odd one
+        const int index = filtersizemod8 - 1;
+        __m128i src_even = _mm_load_si128(reinterpret_cast<const __m128i*>(src2_ptr + index * src_pitch)); // 8x 16bit pixels
+        if (!lessthan16bit)
+          src_even = _mm_add_epi16(src_even, shifttosigned);
+        __m128i coeff = _mm_shuffle_epi32(coeff01234567, ((index / 2) << 0) | ((index / 2) << 2) | ((index / 2) << 4) | ((index / 2) << 6));
+        __m128i src_lo = _mm_unpacklo_epi16(src_even, zero); // insert zero after the unsigned->signed shift!
+        __m128i src_hi = _mm_unpackhi_epi16(src_even, zero); // insert zero after the unsigned->signed shift!
+        result_single_lo = _mm_add_epi32(result_single_lo, _mm_madd_epi16(src_lo, coeff)); // a*b + c
+        result_single_hi = _mm_add_epi32(result_single_hi, _mm_madd_epi16(src_hi, coeff)); // a*b + c
+      }
+
+      // correct if signed, scale back, store
+      __m128i result_lo = result_single_lo;
+      __m128i result_hi = result_single_hi;
+      if (!lessthan16bit) {
+        result_lo = _mm_add_epi32(result_lo, shiftfromsigned);
+        result_hi = _mm_add_epi32(result_hi, shiftfromsigned);
+      }
+      result_lo = _mm_srai_epi32(result_lo, FPScale16bits); // shift back integer arithmetic 13 bits precision
+      result_hi = _mm_srai_epi32(result_hi, FPScale16bits);
+
+      __m128i result_8x_uint16 = _mm_packus_epi32(result_lo, result_hi);
+      if (lessthan16bit)
+        result_8x_uint16 = _mm_min_epu16(result_8x_uint16, clamp_limit); // extra clamp for 10-14 bit
+      _mm_store_si128(reinterpret_cast<__m128i *>(dst + x), result_8x_uint16);
+    }
+
+#ifdef NON32_BYTES_ALIGNMENT
+    // Leftover, slow C
+    for (int x = wMod8; x < width; x++) {
+      int64_t result64 = 1 << (FPScale16bits - 1); // rounder
+      const uint16_t* src2_ptr = src_ptr + x;
+      for (int i = 0; i < program->filter_size; i++) {
+        //result64 += (src_ptr + pitch_table[i] / sizeof(uint16_t))[x] * (int64_t)current_coeff[i];
+        result64 += (int)(*src2_ptr) * (int64_t)current_coeff[i];
+        src2_ptr += src_pitch;
+      }
+      int result = (int)(result64 >> FPScale16bits); // scale back 13 bits
+      result = result > limit ? limit : result < 0 ? 0 : result; // clamp 10..16 bits
+      dst[x] = (uint16_t)result;
+    }
+#endif
+
+    dst += dst_pitch;
+    current_coeff += program->filter_size;
+    }
+  }
+
 //-------- uint16_t Vertical Dispatcher
 
-template<bool lessthan16bit, bool hasSSE41>
-void resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+template<bool lessthan16bit>
+void resize_v_sse2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
 {
   // template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8>
   // filtersize 1..16: to template for optimization
   switch (program->filter_size) {
   case 1:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 1, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 0, 1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 2:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 2, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 0, 2>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 3:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 3, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 0, 3>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 4:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 4, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 0, 4>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 5:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 5, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 0, 5>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 6:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 6, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 0, 6>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 7:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 0, 7, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 0, 7>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 8:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 0, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 0>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 9:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 1, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 10:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 2, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 2>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 11:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 3, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 3>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 12:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 4, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 4>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 13:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 5, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 5>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 14:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 6, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 6>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 15:
-    internal_resize_v_sse_planar_uint16_t<lessthan16bit, 1, 7, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    internal_resize_v_sse2_planar_uint16_t<lessthan16bit, 1, 7>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   default:
     switch (program->filter_size & 7) {
     case 0:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 0, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 0>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     case 1:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 1, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     case 2:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 2, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 2>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     case 3:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 3, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 3>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     case 4:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 4, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 4>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     case 5:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 5, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 5>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     case 6:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 6, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 6>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     case 7:
-      internal_resize_v_sse_planar_uint16_t<lessthan16bit, -1, 7, hasSSE41>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      internal_resize_v_sse2_planar_uint16_t<lessthan16bit, -1, 7>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    }
+    break;
+  }
+}
+
+
+// FIXME: put into separate SSE3/SSE4.1 module
+template<bool lessthan16bit>
+void resize_v_sse41_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+#ifdef __clang__
+__attribute__((__target__("sse4.1")))
+#endif
+{
+  // template<bool lessthan16bit, int _filter_size_numOfFullBlk8, int filtersizemod8>
+  // filtersize 1..16: to template for optimization
+  switch (program->filter_size) {
+  case 1:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 0, 1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 2:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 0, 2>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 3:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 0, 3>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 4:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 0, 4>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 5:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 0, 5>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 6:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 0, 6>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 7:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 0, 7>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 8:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 0>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 9:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 10:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 2>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 11:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 3>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 12:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 4>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 13:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 5>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 14:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 6>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  case 15:
+    internal_resize_v_sse41_planar_uint16_t<lessthan16bit, 1, 7>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+    break;
+  default:
+    switch (program->filter_size & 7) {
+    case 0:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 0>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 1:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 2:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 2>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 3:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 3>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 4:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 4>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 5:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 5>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 6:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 6>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
+      break;
+    case 7:
+      internal_resize_v_sse41_planar_uint16_t<lessthan16bit, -1, 7>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
       break;
     }
     break;
@@ -1252,7 +1567,11 @@ void resize_v_sse2_planar_float(BYTE* dst0, const BYTE* src0, int dst_pitch, int
 
 //-------- uint8_t Horizontal (8bit)
 
-static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   AVS_UNUSED(bits_per_pixel);
 
   int filter_size = AlignNumber(program->filter_size, 8) / 8;
@@ -1332,7 +1651,11 @@ static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, i
   }
 }
 
-static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
+static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   AVS_UNUSED(bits_per_pixel);
 
   __m128i zero = _mm_setzero_si128();
@@ -1713,16 +2036,16 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
       }
       else if (CPU & CPUF_SSE4_1) {
         if (bits_per_pixel < 16)
-          return resizer_h_sse34_generic_uint16_t<true, true>;
+          return resizer_h_sse41_generic_uint16_t<true>;
         else
-          return resizer_h_sse34_generic_uint16_t<false, true>;
+          return resizer_h_sse41_generic_uint16_t<false>;
       }
       else {
         // SSSE3 needed
         if (bits_per_pixel < 16)
-          return resizer_h_sse34_generic_uint16_t<true, false>;
+          return resizer_h_ssse3_generic_uint16_t<true>;
         else
-          return resizer_h_sse34_generic_uint16_t<false, false>;
+          return resizer_h_ssse3_generic_uint16_t<false>;
       }
     } else
       return resize_h_c_planar<uint16_t>;
@@ -1962,9 +2285,12 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, int bits_per_pixel, void*& storage, ResamplingProgram* program)
+ResamplerV FilteredResizeV::GetResampler(int CPU, bool _aligned_not_used, int pixelsize, int bits_per_pixel, void*& storage, ResamplingProgram* program)
 {
   AVS_UNUSED(storage);
+
+  constexpr bool aligned = true; // no unaligned source possible
+
   if (program->filter_size == 1) {
     // Fast pointresize
     switch (pixelsize) // AVS16
@@ -2028,15 +2354,15 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, i
       }
       else if (aligned && (CPU & CPUF_SSE4_1)) {
         if (bits_per_pixel < 16)
-          return resize_v_sse_planar_uint16_t<true, true>;
+          return resize_v_sse41_planar_uint16_t<true>;
         else
-          return resize_v_sse_planar_uint16_t<false, true>;
+          return resize_v_sse41_planar_uint16_t<false>;
       }
       else if (aligned && (CPU & CPUF_SSE2)) {
         if (bits_per_pixel < 16)
-          return resize_v_sse_planar_uint16_t<true, false>;
+          return resize_v_sse2_planar_uint16_t<true>;
         else
-          return resize_v_sse_planar_uint16_t<false, false>;
+          return resize_v_sse2_planar_uint16_t<false>;
       }
       else { // C version
         return resize_v_c_planar<uint16_t>;

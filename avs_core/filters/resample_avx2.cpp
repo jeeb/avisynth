@@ -675,7 +675,7 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
         result64 += (int)(*src2_ptr) * (int64_t)current_coeff[i];
         src2_ptr += src_pitch;
       }
-      int result = (int)(result64 / (1 << FPScale16bits)); // scale back 13 bits
+      int result = (int)(result64 >> FPScale16bits); // scale back 13 bits
       result = result > limit ? limit : result < 0 ? 0 : result; // clamp 10..16 bits
       dst[x] = (uint16_t)result;
     }

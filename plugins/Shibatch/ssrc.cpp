@@ -159,7 +159,7 @@ void Resampler_i_base<REAL>::make_inbuf(int nsmplread, int inbuflen, REAL_inout*
 	size_t	ClearSize = toberead - nsmplread;
 
 	if(ClearSize) {
-		memset(inbuf + InbufBase + MaxLoop, 0, ClearSize * nch * sizeof REAL);
+		memset(inbuf + InbufBase + MaxLoop, 0, ClearSize * nch * sizeof(REAL));
 	}
 }
 

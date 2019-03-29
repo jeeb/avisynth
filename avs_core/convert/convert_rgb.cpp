@@ -48,7 +48,11 @@ RGBtoRGBA::RGBtoRGBA(PClip src)
   vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ? VideoInfo::CS_BGR32 : VideoInfo::CS_BGR64;
 }
 
-static void convert_rgb48_to_rgb64_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+static void convert_rgb48_to_rgb64_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   size_t mod16_width = sizeof(uint16_t)*(width & (~size_t(7)));
 #pragma warning(push)
 #pragma warning(disable:4309)
@@ -93,8 +97,11 @@ static void convert_rgb48_to_rgb64_ssse3(const BYTE *srcp, BYTE *dstp, size_t sr
   }
 }
 
-//todo: think how to port to sse2 without tons of shuffles or (un)packs
-static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   size_t mod16_width = (width + 3) & (~size_t(15)); //when the modulo is more than 13, a problem does not happen
 #pragma warning(push)
 #pragma warning(disable:4309)
@@ -237,7 +244,11 @@ RGBAtoRGB::RGBAtoRGB(PClip src)
   vi.pixel_type = src->GetVideoInfo().ComponentSize() == 1 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR48;
 }
 
-static void convert_rgb64_to_rgb48_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+static void convert_rgb64_to_rgb48_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   size_t mod16_width = sizeof(uint16_t) * ((width) & (~size_t(7))); // perhaps width+2 is still o.k
   __m128i mask0 = _mm_set_epi8(13, 12, 11, 10, 9, 8, 5, 4, 3, 2, 1, 0, 15, 14, 7, 6); // BBGGRRBBGGRRAAAA
   __m128i mask1 = _mm_set_epi8(15, 14, 7, 6, 13, 12, 11, 10, 9, 8, 5, 4, 3, 2, 1, 0); // AAAABBGGRRBBGGRR
@@ -276,7 +287,11 @@ static void convert_rgb64_to_rgb48_ssse3(const BYTE *srcp, BYTE *dstp, size_t sr
 }
 
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
-static void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+static void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   size_t mod16_width = (width + 3) & (~size_t(15)); //when the modulo is more than 13, a problem does not happen
   __m128i mask0 = _mm_set_epi8(14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0, 15, 11, 7, 3);
   __m128i mask1 = _mm_set_epi8(15, 11, 7, 3, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
@@ -432,7 +447,11 @@ PackedRGBtoPlanarRGB::PackedRGBtoPlanarRGB(PClip src, bool _sourceHasAlpha, bool
 
 template<typename pixel_t, bool targetHasAlpha>
 // minimum width: 48 bytes
-static void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int(&dst_pitch)[4], int width, int height, int bits_per_pixel) {
+static void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int(&dst_pitch)[4], int width, int height, int bits_per_pixel)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   // RGB24: 3x16 bytes cycle, 16*(RGB) 8bit pixels
   // RGB48: 3x16 bytes cycle, 8*(RGB) 16bit pixels
   // 0123456789ABCDEF 0123456789ABCDEF 0123456789ABCDEF
@@ -526,7 +545,11 @@ static void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int s
 
 template<typename pixel_t, bool targetHasAlpha>
 // minimum width: 32 bytes (8 RGBA pixels for 8 bits, 4 RGBA pixels for 16 bits)
-static void convert_rgba_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], int width, int height) {
+static void convert_rgba_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], int width, int height)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
   const int pixels_at_a_time = (sizeof(pixel_t) == 1) ? 8 : 4;
   const int wmod = (width / pixels_at_a_time) * pixels_at_a_time; // 8 pixels for 8 bit, 4 pixels for 16 bit
   __m128i mask;
