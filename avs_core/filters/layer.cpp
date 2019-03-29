@@ -655,7 +655,6 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
   int pitch = f->GetPitch();
   int rowsize = f->GetRowSize();
   int height = f->GetHeight();
-  int width = vi.width;
 
   if(vi.IsRGB32()) {
     for (int y = 0; y<height; y++) {
@@ -923,18 +922,6 @@ static void invert_frame(BYTE* frame, int pitch, int rowsize, int height, int ma
       invert_frame_uint16_c(frame, pitch, rowsize, height, mask64);
   }
 }
-
-static void invert_frame_uint16(BYTE* frame, int pitch, int rowsize, int height, uint64_t mask64, IScriptEnvironment *env) {
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16)) 
-  {
-    invert_frame_uint16_sse2(frame, pitch, rowsize, height, mask64);
-  }
-  else
-  {
-    invert_frame_uint16_c(frame, pitch, rowsize, height, mask64);
-  }
-}
-
 
 static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pixelsize, uint64_t mask64, bool chroma, IScriptEnvironment *env) {
   if ((pixelsize == 1 || pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16))
@@ -1643,7 +1630,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       PVideoFrame dst = env->NewVideoFrame(vi);
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
-      const int dstrowsize = dst->GetRowSize();
 
       for (int i=0; i<height; ++i) {
         for (int j=0; j<width; j++) {
@@ -1715,7 +1701,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
         BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
 
-        BYTE * dstp_a = targetHasAlpha ? dst->GetWritePtr(PLANAR_A) : nullptr;
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
@@ -4629,8 +4614,6 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
   if(vi.IsYUY2()) {
     const int src1_pitch = src1->GetPitch();
     const int src2_pitch = src2->GetPitch();
-    const int src2_row_size = src2->GetRowSize();
-    const int row_size = src1->GetRowSize();
     BYTE* src1p = src1->GetWritePtr();
     const BYTE* src2p = src2->GetReadPtr();
 
@@ -4813,8 +4796,6 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
   {
     const int src1_pitch = src1->GetPitch();
     const int src2_pitch = src2->GetPitch();
-    const int src2_row_size = src2->GetRowSize();
-    const int row_size = src1->GetRowSize();
     BYTE* src1p = src1->GetWritePtr();
     const BYTE* src2p = src2->GetReadPtr();
   
@@ -5036,8 +5017,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     const int pixelsize = vi.ComponentSize();
 
     // when exists, alpha comes from overlay (source) clip. Not used yet
-    const int src2_pitch_a = hasAlpha ? src2->GetPitch(PLANAR_A) : 0;
-    const BYTE* srcp2_a = hasAlpha ? src2->GetReadPtr(PLANAR_A) + src2_pitch_a * ysrc + xsrc * pixelsize : nullptr;
+    //const int src2_pitch_a = hasAlpha ? src2->GetPitch(PLANAR_A) : 0;
+    //const BYTE* srcp2_a = hasAlpha ? src2->GetReadPtr(PLANAR_A) + src2_pitch_a * ysrc + xsrc * pixelsize : nullptr;
 
     if (!lstrcmpi(Op, "Lighten") || !lstrcmpi(Op, "Darken"))
     {
@@ -5076,7 +5057,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         int overlay_pitch, int overlay_pitchUV,
         int mask_pitch,
         int width, int height, int level, int thresh);
-      layer_yuv_lighten_darken_c_t *layer_fn;
+      layer_yuv_lighten_darken_c_t *layer_fn = nullptr;
 
       // 32 bit float version
       using layer_yuv_lighten_darken_f_c_t = void (BYTE* dstp8, BYTE* dstp8_u, BYTE* dstp8_v,
@@ -5085,7 +5066,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         int overlay_pitch, int overlay_pitchUV,
         int mask_pitch,
         int width, int height, float level, float thresh);
-      layer_yuv_lighten_darken_f_c_t *layer_f_fn;
+      layer_yuv_lighten_darken_f_c_t *layer_f_fn = nullptr;
 
 #define YUV_LIGHTEN_DARKEN_DISPATCH(L_or_D, MaskType, lumaonly, has_alpha) \
       switch (bits_per_pixel) { \
@@ -5525,11 +5506,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // called only once, for all planes
       // integer 8-16 bits version
       using layer_planarrgb_mul_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level);
-      layer_planarrgb_mul_c_t *layer_fn;
+      layer_planarrgb_mul_c_t *layer_fn = nullptr;
 
       // 32 bit float version
       using layer_planarrgb_mul_f_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity);
-      layer_planarrgb_mul_f_c_t *layer_f_fn;
+      layer_planarrgb_mul_f_c_t *layer_f_fn = nullptr;
 
 #define PLANARRGB_MUL_DISPATCH(chroma, has_alpha) \
       switch (bits_per_pixel) { \
@@ -5573,11 +5554,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // called only once, for all planes
       // integer 8-16 bits version
       using layer_planarrgb_add_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level);
-      layer_planarrgb_add_c_t *layer_fn;
+      layer_planarrgb_add_c_t *layer_fn = nullptr;
 
       // 32 bit float version
       using layer_planarrgb_add_f_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity);
-      layer_planarrgb_add_f_c_t *layer_f_fn;
+      layer_planarrgb_add_f_c_t *layer_f_fn = nullptr;
 
       if (isAdd) {
 #define PLANARRGB_ADD_DISPATCH(chroma, has_alpha) \
@@ -5658,11 +5639,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // called only once, for all planes
       // integer 8-16 bits version
       using layer_planarrgb_lighten_darken_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh);
-      layer_planarrgb_lighten_darken_c_t *layer_fn;
+      layer_planarrgb_lighten_darken_c_t *layer_fn = nullptr;
 
       // 32 bit float version
       using layer_planarrgb_lighten_darken_f_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity, float thresh);
-      layer_planarrgb_lighten_darken_f_c_t *layer_f_fn;
+      layer_planarrgb_lighten_darken_f_c_t *layer_f_fn = nullptr;
 
 #define PLANARRGB_LD_DISPATCH(LorD, has_alpha) \
       switch (bits_per_pixel) { \
