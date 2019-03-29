@@ -82,15 +82,19 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     PluginDir and PluginDir+.  Vice-versa for MSVC builds.
     C plugins are an exception to this, since those can be loaded with
     either MSVC- or GCC-built AviSynth+. 
-  - Clang 7.0.1 support (LLVM) with Visual Studio 2017 (15.9.9) (8.0.0 not tried yet)
-    - Install LLVM 7.0.1 (http://releases.llvm.org/download.html, Windows pre-built libraries)
+  - Clang (LLVM) support with Visual Studio 2017 (15.9.9) (Latest Clang is 8.0 at the moment)
+    - CMakeLists.txt update
+    - Additional source fixes.
+    - Codes for different processor targets (SSSE3 and SSE4.1) are now separated and are compiled using function attributes.
+    Clang howto:
+    - Install LLVM 8.0 (latest as of March 29, 2019: http://releases.llvm.org/download.html, Windows pre-built libraries)
     - Install Clang Power Tools & LLVM Compiler Toolchain (thx fuchanghao)
       - https://marketplace.visualstudio.com/items?itemName=caphyon.ClangPowerTools
       - https://marketplace.visualstudio.com/items?itemName=LLVMExtensions.llvm-toolchain
     - (When using CMakeGUI) After Configure/Specify generator for this project, type LLVM for "Optional Toolset to use (-T option)"
-    - Note: Due to current limitation of Avs+ source code structure the option SSE4.1 is set as a minimum CPU level
-      (work in progress)
-    
+    - Knows issues: 
+      - compiling Avisynth only .lib is generated (used for C api), .exp is missing
+      - Generating assembler output is broken on 32 bits (not set by default for x64 either)
 
 20181220 r2772
 --------------
