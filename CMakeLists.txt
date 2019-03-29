@@ -23,11 +23,7 @@ IF( MSVC )  # Check for Visual Studio
   #1910-1919 = VS 15.0 (v141 toolset)
 
   IF( MSVC_VERSION VERSION_LESS 1910 )
-    IF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm")
-      MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required")
-    ELSE()
-      MESSAGE(FATAL_ERROR "Visual C++ 2017 or newer required.")
-    ENDIF() 
+    MESSAGE(FATAL_ERROR "Visual C++ 2017 or newer required.")
   ENDIF()
 
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
@@ -38,14 +34,21 @@ IF( MSVC )  # Check for Visual Studio
     message("Reported CMAKE_GENERATOR_TOOLSET is: ${CMAKE_GENERATOR_TOOLSET}")
     
     IF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm")
-      message("LLVM toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
+      if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") # hope: always
+        message("LLVM toolset was specified via -T. Compiler ID is: ${CMAKE_CXX_COMPILER_ID}; CMAKE_CXX_COMPILER_VERSION is: ${CMAKE_CXX_COMPILER_VERSION}")
+        # Clang; 8.0.0
+        # These are probably not supported when clang is downloaded as a ready-made binary: CLANG_VERSION_MAJOR CLANG_VERSION_MINOR CLANG_VERSION_STRING
+        # string (REGEX REPLACE ".*clang version ([0-9]+\\.[0-9]+).*" "\\1" CLANG_VERSION_STRING ${clang_full_version_string})
+        if( CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0.1 )
+          MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required") # 8.0
+        endif()
+      endif()
       set(CLANG_IN_VS "1")
     ELSEIF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
        #1900 is reported
       message("v141_clang_c2 toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
+      message("May not work, try LLVM")
       set(CLANG_IN_VS "1")
-    ELSEIF(NOT CMAKE_GENERATOR_TOOLSET STREQUAL "")
-      message("${CMAKE_GENERATOR_TOOLSET} toolset may not handled properly. Use LLVM (or v141_clang_c2)")
     ENDIF()
   
     # We want our project to also run on Windows XP
@@ -86,6 +89,7 @@ IF( MSVC )  # Check for Visual Studio
   # Enable CRT heap debugging - only effective in debug builds
   add_definitions("/D _CRTDBG_MAP_ALLOC")
 
+  # if missing, some modules inhibit source containing assembler/simd parts
   add_definitions("/D __SSE2__")
 
   # Set additional optimization flags
@@ -114,13 +118,12 @@ IF( MSVC )  # Check for Visual Studio
   endif()
 
   IF(CLANG_IN_VS STREQUAL "1")
-    # until SSE2/SSSE3/SSE4.1 is not separated in avs+ source, we set SSE4.1 as general option
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse4.1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.1")
-    message("Clang warning: until SSE2/SSSE3/SSE4.1 is not separated in avs+ source, SSE4.1 is set")
     # suppress other warnings
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-value")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-value")
+    # allow per-function attributes like __attribute__((__target__("sse4.1")))
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-gcc-compat")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-gcc-compat")
   ENDIF()
 
 # Set C++17 flag

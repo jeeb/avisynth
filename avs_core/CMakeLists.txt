@@ -31,6 +31,14 @@ endforeach()
 
 if (MSVC_IDE)
   IF(CLANG_IN_VS STREQUAL "1")
+      # special SSSE3 option for source files with *_ssse3.cpp pattern
+      file(GLOB_RECURSE SRCS_SSSE3 "*_ssse3.cpp")
+      set_source_files_properties(${SRCS_SSSE3} PROPERTIES COMPILE_FLAGS " -mssse3 ")
+
+      # special SSE4.1 option for source files with *_sse41.cpp pattern
+      file(GLOB_RECURSE SRCS_SSE41 "*_sse41.cpp")
+      set_source_files_properties(${SRCS_SSE41} PROPERTIES COMPILE_FLAGS " -msse4.1 ")
+
       # special AVX option for source files with *_avx.cpp pattern
       file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
       set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS " -mavx ")
@@ -48,6 +56,14 @@ if (MSVC_IDE)
       set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " /arch:AVX2 ")
   ENDIF()
 elseif (MINGW)
+  # special SSSE3 option for source files with *_ssse3.cpp pattern
+  file(GLOB_RECURSE SRCS_SSSE3 "*_ssse3.cpp")
+  set_source_files_properties(${SRCS_SSSE3} PROPERTIES COMPILE_FLAGS " -mssse3 ")
+
+  # special SSE4.1 option for source files with *_sse41.cpp pattern
+  file(GLOB_RECURSE SRCS_SSE41 "*_sse41.cpp")
+  set_source_files_properties(${SRCS_SSE41} PROPERTIES COMPILE_FLAGS " -msse4.1 ")
+
   # special AVX option for source files with *_avx.cpp pattern
   file(GLOB_RECURSE SRCS_AVX "*_avx.cpp")
   set_source_files_properties(${SRCS_AVX} PROPERTIES COMPILE_FLAGS -mavx )
@@ -74,11 +90,14 @@ if (MSVC_IDE)
     POST_BUILD
     COMMAND xcopy /Y \"$(TargetPath)\" \"${CMAKE_BINARY_DIR}/Output\"
   )
-  add_custom_command(
-    TARGET AvsCore
-    POST_BUILD
-    COMMAND xcopy /Y \"$(TargetDir)AviSynth.exp\" \"${CMAKE_BINARY_DIR}/Output/c_api\"
-  )
+  IF(NOT CLANG_IN_VS STREQUAL "1")
+    # LLVM does not generate exp or don't know how to do it
+    add_custom_command(
+      TARGET AvsCore
+      POST_BUILD
+      COMMAND xcopy /Y \"$(TargetDir)AviSynth.exp\" \"${CMAKE_BINARY_DIR}/Output/c_api\"
+    )
+  ENDIF()
   add_custom_command(
     TARGET AvsCore
     POST_BUILD
