@@ -53,7 +53,7 @@
 /***************************************
  ********* Templated SSE Loader ********
  ***************************************/
-
+#if 0
 typedef __m128i (SSELoader)(const __m128i*);
 typedef __m128 (SSELoader_ps)(const float*);
 
@@ -93,7 +93,7 @@ __forceinline __m128 simd_loadps_unaligned(const float* adr)
 {
   return _mm_loadu_ps(adr);
 }
-
+#endif
 
 /***************************************
  ***** Vertical Resizer Assembly *******
@@ -277,7 +277,6 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
 }
 #endif
 
-template<SSELoader load>
 static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
 {
   AVS_UNUSED(src_pitch);
@@ -288,7 +287,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
   short* current_coeff = program->pixel_coefficient;
 
   int wMod16 = (width / 16) * 16;
-  int sizeMod2 = (filter_size/2) * 2;
+  int sizeMod2 = (filter_size / 2) * 2;
   bool notMod2 = sizeMod2 < filter_size;
 
   __m128i zero = _mm_setzero_si128();
@@ -304,8 +303,8 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
       __m128i result_4 = result_1;
 
       for (int i = 0; i < sizeMod2; i += 2) {
-        __m128i src_p1 = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i]+x));   // p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-        __m128i src_p2 = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i+1]+x)); // P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
+        __m128i src_p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(src_ptr + pitch_table[i] + x));   // p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+        __m128i src_p2 = _mm_load_si128(reinterpret_cast<const __m128i*>(src_ptr + pitch_table[i + 1] + x)); // P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
 
         __m128i src_l = _mm_unpacklo_epi8(src_p1, src_p2);                                   // Hh|Gg|Ff|Ee|Dd|Cc|Bb|Aa
         __m128i src_h = _mm_unpackhi_epi8(src_p1, src_p2);                                   // Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
@@ -315,7 +314,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
         __m128i src_3 = _mm_unpacklo_epi8(src_h, zero);                                      // etc.
         __m128i src_4 = _mm_unpackhi_epi8(src_h, zero);                                      // etc.
 
-        __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff+i));   // XX|XX|XX|XX|XX|XX|CO|co
+        __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff + i));   // XX|XX|XX|XX|XX|XX|CO|co
         coeff = _mm_shuffle_epi32(coeff, 0);                                                 // CO|co|CO|co|CO|co|CO|co
 
         __m128i dst_1 = _mm_madd_epi16(src_1, coeff);                                         // CO*D+co*d | CO*C+co*c | CO*B+co*b | CO*A+co*a
@@ -330,7 +329,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
       }
 
       if (notMod2) { // do last odd row
-        __m128i src_p = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[sizeMod2]+x));
+        __m128i src_p = _mm_load_si128(reinterpret_cast<const __m128i*>(src_ptr + pitch_table[sizeMod2] + x));
 
         __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
         __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
@@ -354,28 +353,28 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
       }
 
       // Divide by 16348 (FPRound)
-      result_1  = _mm_srai_epi32(result_1, 14);
-      result_2  = _mm_srai_epi32(result_2, 14);
-      result_3  = _mm_srai_epi32(result_3, 14);
-      result_4  = _mm_srai_epi32(result_4, 14);
+      result_1 = _mm_srai_epi32(result_1, 14);
+      result_2 = _mm_srai_epi32(result_2, 14);
+      result_3 = _mm_srai_epi32(result_3, 14);
+      result_4 = _mm_srai_epi32(result_4, 14);
 
       // Pack and store
       __m128i result_l = _mm_packs_epi32(result_1, result_2);
       __m128i result_h = _mm_packs_epi32(result_3, result_4);
-      __m128i result   = _mm_packus_epi16(result_l, result_h);
+      __m128i result = _mm_packus_epi16(result_l, result_h);
 
-      _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), result);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dst + x), result);
     }
 
     // Leftover
     for (int x = wMod16; x < width; x++) {
       int result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
+        result += (src_ptr + pitch_table[i])[x] * current_coeff[i];
       }
-      result = ((result+8192)/16384);
+      result = ((result + 8192) / 16384);
       result = result > 255 ? 255 : result < 0 ? 0 : result;
-      dst[x] = (BYTE) result;
+      dst[x] = (BYTE)result;
     }
 
     dst += dst_pitch;
@@ -383,11 +382,10 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
   }
 }
 
-
-template<SSELoader load>
-static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+// The only difference between resize_v_sse41_planar and resize_v_ssse3_planar is the load operation
+static void resize_v_sse41_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
 #ifdef __clang__
-__attribute__((__target__("ssse3")))
+__attribute__((__target__("sse4.1")))
 #endif
 {
   AVS_UNUSED(bits_per_pixel);
@@ -412,7 +410,7 @@ __attribute__((__target__("ssse3")))
       const BYTE* src2_ptr = src_ptr+x;
 
       for (int i = 0; i < filter_size; i++) {
-        __m128i src_p = load(reinterpret_cast<const __m128i*>(src2_ptr));
+        __m128i src_p = _mm_stream_load_si128(reinterpret_cast<const __m128i*>(src2_ptr));
 
         __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
         __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
@@ -451,6 +449,79 @@ __attribute__((__target__("ssse3")))
       result = ((result+8192)/16384);
       result = result > 255 ? 255 : result < 0 ? 0 : result;
       dst[x] = (BYTE) result;
+    }
+
+    dst += dst_pitch;
+    current_coeff += filter_size;
+  }
+}
+
+static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage)
+#ifdef __clang__
+__attribute__((__target__("ssse3")))
+#endif
+{
+  AVS_UNUSED(bits_per_pixel);
+  AVS_UNUSED(storage);
+
+  int filter_size = program->filter_size;
+  short* current_coeff = program->pixel_coefficient;
+
+  int wMod16 = (width / 16) * 16;
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i coeff_unpacker = _mm_set_epi8(1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
+
+  for (int y = 0; y < target_height; y++) {
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
+
+    for (int x = 0; x < wMod16; x += 16) {
+      __m128i result_l = _mm_set1_epi16(32); // Init. with rounder ((1 << 6)/2 = 32)
+      __m128i result_h = result_l;
+
+      const BYTE* src2_ptr = src_ptr + x;
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i src_p = _mm_load_si128(reinterpret_cast<const __m128i*>(src2_ptr));
+
+        __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
+        __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
+
+        src_l = _mm_slli_epi16(src_l, 7);
+        src_h = _mm_slli_epi16(src_h, 7);
+
+        __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff + i));
+        coeff = _mm_shuffle_epi8(coeff, coeff_unpacker);
+
+        __m128i dst_l = _mm_mulhrs_epi16(src_l, coeff);   // Multiply by coefficient (SSSE3)
+        __m128i dst_h = _mm_mulhrs_epi16(src_h, coeff);
+
+        result_l = _mm_add_epi16(result_l, dst_l);
+        result_h = _mm_add_epi16(result_h, dst_h);
+
+        src2_ptr += src_pitch;
+      }
+
+      // Divide by 64
+      result_l = _mm_srai_epi16(result_l, 6);
+      result_h = _mm_srai_epi16(result_h, 6);
+
+      // Pack and store
+      __m128i result = _mm_packus_epi16(result_l, result_h);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dst + x), result);
+    }
+
+    // Leftover
+    for (int x = wMod16; x < width; x++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src_ptr + pitch_table[i])[x] * current_coeff[i];
+      }
+      result = ((result + 8192) / 16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      dst[x] = (BYTE)result;
     }
 
     dst += dst_pitch;
@@ -2305,60 +2376,37 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool _aligned_not_used, int pi
     // Other resizers
     if (pixelsize == 1)
     {
-      if (CPU & CPUF_SSSE3) {
-        if (aligned && (CPU & CPUF_AVX2)) {
-          return resize_v_avx2_planar_uint8_t;
-        }
-        if (aligned && (CPU & CPUF_SSE4_1)) {
-          return resize_v_ssse3_planar<simd_load_streaming>;
-        }
-        else if (aligned) { // SSSE3 aligned
-          return resize_v_ssse3_planar<simd_load_aligned>;
-        }
-        else if (CPU & CPUF_SSE3) { // SSE3 lddqu
-          return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
-        }
-        else { // SSSE3 unaligned
-          return resize_v_ssse3_planar<simd_load_unaligned>;
-        }
-      }
-      else if (CPU & CPUF_SSE2) {
-        if (aligned && CPU & CPUF_SSE4_1) { // SSE4.1 movntdqa constantly provide ~2% performance increase in my testing
-          return resize_v_sse2_planar<simd_load_streaming>;
-        }
-        else if (aligned) { // SSE2 aligned
-          return resize_v_sse2_planar<simd_load_aligned>;
-        }
-        else if (CPU & CPUF_SSE3) { // SSE2 lddqu
-          return resize_v_sse2_planar<simd_load_unaligned_sse3>;
-        }
-        else { // SSE2 unaligned
-          return resize_v_sse2_planar<simd_load_unaligned>;
-        }
+      // always aligned
+      if (CPU & CPUF_AVX2)
+        return resize_v_avx2_planar_uint8_t;
+      else if (CPU & CPUF_SSE4_1)
+        return resize_v_sse41_planar;
+      else if (CPU & CPUF_SSSE3)
+        return resize_v_ssse3_planar;
+      else if (CPU & CPUF_SSE2)
+        return resize_v_sse2_planar;
 #ifdef X86_32
-      }
-      else if (CPU & CPUF_MMX) {
+      else if (CPU & CPUF_MMX)
         return resize_v_mmx_planar;
 #endif
-      }
-      else { // C version
+      else // C version
         return resize_v_c_planar<uint8_t>;
-      }
     }
     else if (pixelsize == 2) {
-      if (aligned && (CPU & CPUF_AVX2)) {
+      // always aligned
+      if (CPU & CPUF_AVX2) {
         if(bits_per_pixel<16)
           return resize_v_avx2_planar_uint16_t<true>;
         else
           return resize_v_avx2_planar_uint16_t<false>;
       }
-      else if (aligned && (CPU & CPUF_SSE4_1)) {
+      else if (CPU & CPUF_SSE4_1) {
         if (bits_per_pixel < 16)
           return resize_v_sse41_planar_uint16_t<true>;
         else
           return resize_v_sse41_planar_uint16_t<false>;
       }
-      else if (aligned && (CPU & CPUF_SSE2)) {
+      else if (CPU & CPUF_SSE2) {
         if (bits_per_pixel < 16)
           return resize_v_sse2_planar_uint16_t<true>;
         else
@@ -2369,10 +2417,10 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool _aligned_not_used, int pi
       }
     }
     else { // pixelsize== 4
-      if (aligned && (CPU & CPUF_AVX2)) {
+      if (CPU & CPUF_AVX2) {
         return resize_v_avx2_planar_float;
       }
-      else if (aligned && (CPU & CPUF_SSE2)) {
+      else if (CPU & CPUF_SSE2) {
         return resize_v_sse2_planar_float;
       } else {
         return resize_v_c_planar<float>;

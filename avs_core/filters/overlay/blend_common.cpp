@@ -304,16 +304,9 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 #pragma warning (pop)
 #endif
 
-static __forceinline __m128i simd_blend_epi8_sse2(__m128i const &selector, __m128i const &a, __m128i const &b) {
-  return _mm_or_si128(_mm_and_si128(selector, a), _mm_andnot_si128(selector, b));
-}
-
-static __forceinline __m128i simd_blend_epi8_sse41(__m128i const &selector, __m128i const &a, __m128i const &b)
-#ifdef __clang__
-__attribute__((__target__("sse4.1")))
-#endif
-{
-  return _mm_blendv_epi8(b, a, selector);
+// SSE4.1 simulation for SSE2
+static __forceinline __m128i _MM_BLENDV_EPI8(__m128i const &a, __m128i const &b, __m128i const &selector) {
+  return _mm_or_si128(_mm_and_si128(selector, b), _mm_andnot_si128(selector, a));
 }
 
 // non-existant in simd
@@ -366,10 +359,10 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
       // when mask is 00, keep dst
       //auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
       auto mask_00 = _mm_cmpeq_epi8(msk, zero);
-      result = simd_blend_epi8_sse2(mask_00, dst, result); // ensure that zero mask value returns dst
+      result = _MM_BLENDV_EPI8(result, dst, mask_00); // ensure that zero mask value returns dst
       auto max_pixel_value = _mm_set1_epi8(static_cast<unsigned char>(0xFF)); // for comparison
       auto mask_FF = _mm_cmpeq_epi8(msk, max_pixel_value); // mask == max ? FF : 00
-      result = simd_blend_epi8_sse2(mask_FF, src, result); // ensure that max mask value returns src
+      result = _MM_BLENDV_EPI8(result, src, mask_FF); // ensure that max mask value returns src
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
     }
@@ -440,10 +433,10 @@ void overlay_blend_sse41_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask
         // when mask is 00, keep dst
         //auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
         auto mask_00 = _mm_cmpeq_epi8(msk, zero);
-        result = simd_blend_epi8_sse41(mask_00, dst, result); // ensure that zero mask value returns dst
+        result = _mm_blendv_epi8(result, dst, mask_00); // ensure that zero mask value returns dst
         auto max_pixel_value = _mm_set1_epi8(static_cast<unsigned char>(0xFF)); // for comparison
         auto mask_FF = _mm_cmpeq_epi8(msk, max_pixel_value); // mask == max ? FF : 00
-        result = simd_blend_epi8_sse41(mask_FF, src, result); // ensure that max mask value returns src
+        result = _mm_blendv_epi8(result, src, mask_FF); // ensure that max mask value returns src
       }
       else if constexpr (sizeof(pixel_t) == 2) {
         __m128i unpacked_p1_l = _mm_unpacklo_epi16(dst, zero);
@@ -474,8 +467,8 @@ void overlay_blend_sse41_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask
           mask_FFFF = _mm_cmpeq_epi16(msk, max_pixel_value); // mask == max ? FFFF : 0000
         auto mask_zero = _mm_cmpeq_epi16(msk, zero);
 
-        result = simd_blend_epi8_sse41(mask_FFFF, src, result); // ensure that max mask value returns src
-        result = simd_blend_epi8_sse41(mask_zero, dst, result); // ensure that zero mask value returns dst
+        result = _mm_blendv_epi8(result, src, mask_FFFF); // ensure that max mask value returns src
+        result = _mm_blendv_epi8(result, dst, mask_zero); // ensure that zero mask value returns dst
       }
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
@@ -1041,7 +1034,7 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
       // unlike full opacity==1.0 blend, we have to watch zero mask only, opacity*mask is never max (0xFF)
       msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
       auto mask_00 = _mm_cmpeq_epi8(msk, zero);
-      result = simd_blend_epi8_sse2(mask_00, dst, result); // ensure that zero mask value returns dst
+      result = _MM_BLENDV_EPI8(result, dst, mask_00); // ensure that zero mask value returns dst
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
     }
@@ -1124,7 +1117,7 @@ __attribute__((__target__("sse4.1")))
         // unlike full opacity==1.0 blend, we have to watch zero mask only, opacity*mask is never max (0xFF)
         auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
         auto mask_00 = _mm_cmpeq_epi8(msk, zero);
-        result = simd_blend_epi8_sse41(mask_00, dst, result); // ensure that zero mask value returns dst
+        result = _mm_blendv_epi8(result, dst, mask_00); // ensure that zero mask value returns dst
       }
       else if constexpr (sizeof(pixel_t) == 2) {
         __m128i unpacked_p1_l = _mm_unpacklo_epi16(dst, zero);
@@ -1154,7 +1147,7 @@ __attribute__((__target__("sse4.1")))
         // unlike full opacity==1.0 blend, we have to watch zero mask only, opacity*mask is never max
         auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
         auto mask_zero = _mm_cmpeq_epi16(msk, zero);
-        result = simd_blend_epi8_sse41(mask_zero, dst, result); // ensure that zero mask value returns dst
+        result = _mm_blendv_epi8(result, dst, mask_zero); // ensure that zero mask value returns dst
       }
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
