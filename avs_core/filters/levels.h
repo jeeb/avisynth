@@ -140,7 +140,7 @@ public:
   RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
                           double rb, double gb, double bb, double ab,
                           double rg, double gg, double bg, double ag,
-                          bool _analyze, bool _dither, bool _conditional, IScriptEnvironment* env);
+                          bool _analyze, bool _dither, bool _conditional, const char *_condVarSuffix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   ~RGBAdjust();
 
@@ -155,6 +155,7 @@ private:
   bool analyze;
   bool dither;
   bool conditional;
+  const char* condVarSuffix;
 
   RGBAdjustConfig config;
 

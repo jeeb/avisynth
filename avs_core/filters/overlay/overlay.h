@@ -63,7 +63,7 @@ public:
 private:
   static OverlayFunction* SelectFunction(const char* name, int &of_mode, IScriptEnvironment* env);
   static void ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* overlay, int x, int y);
-  static void FetchConditionals(IScriptEnvironment* env, int*, float *, int*, int*, bool);
+  static void FetchConditionals(IScriptEnvironment* env, int*, float *, int*, int*, bool, const char *);
 
   VideoInfo overlayVi;
   VideoInfo maskVi;
@@ -81,6 +81,7 @@ private:
   bool full_range;
   int offset_x, offset_y;
   bool use444; // conversionless support
+  const char* condVarSuffix;
 
   const char* name; // Blend parameter
 

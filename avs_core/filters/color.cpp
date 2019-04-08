@@ -44,6 +44,7 @@
 #include <algorithm>
 #include <sstream> // stringstream
 #include <iomanip> // setprecision
+#include <string>
 
 static void coloryuv_showyuv(BYTE* pY, BYTE* pU, BYTE* pV, int y_pitch, int u_pitch, int v_pitch, int framenumber, bool full_range, int bits_per_pixel)
 {
@@ -725,33 +726,36 @@ static void coloryuv_apply_lut_yuy2(BYTE* pDst, const BYTE* pSrc, int dst_pitch,
     }
 }
 
-#define READ_CONDITIONAL(plane, var_name, internal_name)  \
-    {                                                     \
-        const double t = env2->GetVar("coloryuv_" #var_name "_" #plane, DBL_MIN); \
+#define READ_CONDITIONAL(plane, var_name, internal_name, condVarSuffix)  \
+    {            \
+        std::string s = "coloryuv_" #var_name "_" #plane;\
+        s = s + condVarSuffix; \
+        const double t = env2->GetVar(s.c_str(), DBL_MIN); \
         if (t != DBL_MIN) {                               \
             c_##plane->internal_name = t;               \
             c_##plane->changed = true;                  \
         }                                                 \
     }
 
-static void coloryuv_read_conditional(IScriptEnvironment* env, ColorYUVPlaneConfig* c_y, ColorYUVPlaneConfig* c_u, ColorYUVPlaneConfig* c_v)
+// extra: add extra at the end of variable names: different variables for multiple instances of coloryuv
+static void coloryuv_read_conditional(IScriptEnvironment* env, ColorYUVPlaneConfig* c_y, ColorYUVPlaneConfig* c_u, ColorYUVPlaneConfig* c_v, const char *condVarSuffix)
 {
     auto env2 = static_cast<IScriptEnvironment2*>(env);
 
-    READ_CONDITIONAL(y, gain, gain);
-    READ_CONDITIONAL(y, off, offset);
-    READ_CONDITIONAL(y, gamma, gamma);
-    READ_CONDITIONAL(y, cont, contrast);
+    READ_CONDITIONAL(y, gain, gain, condVarSuffix);
+    READ_CONDITIONAL(y, off, offset, condVarSuffix);
+    READ_CONDITIONAL(y, gamma, gamma, condVarSuffix);
+    READ_CONDITIONAL(y, cont, contrast, condVarSuffix);
 
-    READ_CONDITIONAL(u, gain, gain);
-    READ_CONDITIONAL(u, off, offset);
-    READ_CONDITIONAL(u, gamma, gamma);
-    READ_CONDITIONAL(u, cont, contrast);
+    READ_CONDITIONAL(u, gain, gain, condVarSuffix);
+    READ_CONDITIONAL(u, off, offset, condVarSuffix);
+    READ_CONDITIONAL(u, gamma, gamma, condVarSuffix);
+    READ_CONDITIONAL(u, cont, contrast, condVarSuffix);
 
-    READ_CONDITIONAL(v, gain, gain);
-    READ_CONDITIONAL(v, off, offset);
-    READ_CONDITIONAL(v, gamma, gamma);
-    READ_CONDITIONAL(v, cont, contrast);
+    READ_CONDITIONAL(v, gain, gain, condVarSuffix);
+    READ_CONDITIONAL(v, off, offset, condVarSuffix);
+    READ_CONDITIONAL(v, gamma, gamma, condVarSuffix);
+    READ_CONDITIONAL(v, cont, contrast, condVarSuffix);
 }
 
 #undef READ_CONDITIONAL
@@ -764,9 +768,11 @@ ColorYUV::ColorYUV(PClip child,
   bool showyuv, bool analyse, bool autowhite, bool autogain, bool conditional,
   int bits, bool showyuv_fullrange,
   bool tweaklike_params, // ColorYUV2: 0.0/0.5/1.0/2.0/3.0 instead of -256/-128/0/256/512
+  const char* condVarSuffix,
   IScriptEnvironment* env)
  : GenericVideoFilter(child),
-   colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional), colorbar_fullrange(showyuv_fullrange), tweaklike_params(tweaklike_params)
+   colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional), 
+   colorbar_fullrange(showyuv_fullrange), tweaklike_params(tweaklike_params), condVarSuffix(condVarSuffix)
 {
     luts[0] = luts[1] = luts[2] = nullptr;
 
@@ -1028,7 +1034,7 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     }
 
     // Read conditional variables
-    coloryuv_read_conditional(env, &cY, &cU, &cV);
+    coloryuv_read_conditional(env, &cY, &cU, &cV, condVarSuffix);
 
     // no float lut. float will be realtime
     if (pixelsize == 1 || pixelsize == 2) {
@@ -1154,7 +1160,8 @@ AVSValue __cdecl ColorYUV::Create(AVSValue args, void* , IScriptEnvironment* env
                         args[21].AsInt(8),                     // bits avs+
                         args[22].AsBool(false),                // showyuv_fullrange avs+
                         tweaklike_params,                      // for gain, gamma, cont: 0.0/0.5/1.0/2.0/3.0 instead of -256/-128/0/256/512
-                        env);
+                        args[24].AsString(""),                // condvarsuffix avs+
+      env);
 }
 
 extern const AVSFunction Color_filters[] = {
@@ -1163,8 +1170,8 @@ extern const AVSFunction Color_filters[] = {
                   "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
                   "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
                   "[levels]s[opt]s[matrix]s[showyuv]b" \
-                  "[analyze]b[autowhite]b[autogain]b[conditional]" \
-                  "b[bits]i[showyuv_fullrange]b[f2c]b", // avs+ 20180226- f2c-like parameters
+                  "[analyze]b[autowhite]b[autogain]b[conditional]b" \
+                  "[bits]i[showyuv_fullrange]b[f2c]b[condvarsuffix]s", // avs+ 20180226- f2c-like parameters
                   ColorYUV::Create},
     { 0 }
 };

@@ -44,7 +44,7 @@
 ********************************************************************/
 
 extern const AVSFunction Overlay_filters[] = {
-  { "Overlay", BUILTIN_FUNC_PREFIX, "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b[PC_Range]b[use444]b", Overlay::Create },
+  { "Overlay", BUILTIN_FUNC_PREFIX, "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b[PC_Range]b[use444]b[condvarsuffix]s", Overlay::Create },
     // 0, src clip
     // 1, overlay clip
     // 2, x
@@ -57,6 +57,7 @@ extern const AVSFunction Overlay_filters[] = {
     // 9, ignore conditional variabels
     // 10, full YUV range.
     // 11, ignore 4:4:4 conversion
+    // 12, conditional variable suffix AVS+
   { 0 }
 };
 
@@ -72,7 +73,8 @@ enum {
   ARG_OUTPUT = 8,
   ARG_IGNORE_CONDITIONAL = 9,
   ARG_FULL_RANGE = 10,
-  ARG_USE444 = 11 // 170103 possible conversionless option experimental
+  ARG_USE444 = 11, // 170103 possible conversionless option experimental
+  ARG_CONDVARSUFFIX = 12 // 190408
 };
 
 Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
@@ -82,6 +84,7 @@ GenericVideoFilter(_child) {
   bool use444_defined = args[ARG_USE444].Defined();
   use444 = args[ARG_USE444].AsBool(true);  // avs+ option to use 444-conversionless mode
   name = args[ARG_MODE].AsString("Blend");
+  condVarSuffix = args[ARG_CONDVARSUFFIX].AsString("");
 
   // Make copy of the VideoInfo
   inputVi = (VideoInfo*)malloc(sizeof(VideoInfo));
@@ -255,7 +258,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   float op_offset_f;
   int con_x_offset;
   int con_y_offset;
-  FetchConditionals(env, &op_offset, &op_offset_f, &con_x_offset, &con_y_offset, ignore_conditional);
+  FetchConditionals(env, &op_offset, &op_offset_f, &con_x_offset, &con_y_offset, ignore_conditional, condVarSuffix);
 
   // always use avisynth converters
   AVSValue child2;
@@ -769,7 +772,7 @@ void Overlay::ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* over
 
 }
 
-void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, float* op_offset_f, int* con_x_offset, int* con_y_offset, bool ignore_conditional) {
+void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, float* op_offset_f, int* con_x_offset, int* con_y_offset, bool ignore_conditional, const char *condVarSuffix) {
   *op_offset = 0;
   *op_offset_f = 0.0f;
   *con_x_offset = 0;
@@ -777,10 +780,19 @@ void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, float* 
 
   if (!ignore_conditional) {
     IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-    *op_offset    = (int)(env2->GetVar("OL_opacity_offset", 0.0)*256);
-    *op_offset_f  = (float)(env2->GetVar("OL_opacity_offset", 0.0));
-    *con_x_offset = (int)(env2->GetVar("OL_x_offset"      , 0.0));
-    *con_y_offset = (int)(env2->GetVar("OL_y_offset"      , 0.0));
+    {
+      std::string s = std::string("OL_opacity_offset") + condVarSuffix;
+      *op_offset = (int)(env2->GetVar(s.c_str(), 0.0) * 256);
+      *op_offset_f = (float)(env2->GetVar(s.c_str(), 0.0));
+    }
+    {
+      std::string s = std::string("OL_x_offset") + condVarSuffix;
+      *con_x_offset = (int)(env2->GetVar(s.c_str(), 0.0));
+    }
+    {
+      std::string s = std::string("OL_y_offset") + condVarSuffix;
+      *con_y_offset = (int)(env2->GetVar(s.c_str(), 0.0));
+    }
   }
 }
 

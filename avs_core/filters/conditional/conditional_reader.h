@@ -21,6 +21,7 @@
 #include <avisynth.h>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 
 
 
@@ -41,7 +42,8 @@ class ConditionalReader : public GenericVideoFilter
 {
 private:
   const bool show;
-  const char* variableName;
+  std::string variableName;
+  const char* variableNameFixed;
   int mode;
   int offset;
   StringCache* stringcache;
@@ -60,7 +62,7 @@ private:
   void CleanUp(void);
 
 public:
-  ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, IScriptEnvironment* env);
+  ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, const char *_condVarSuffix, IScriptEnvironment* env);
   ~ConditionalReader(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);

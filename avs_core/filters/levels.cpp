@@ -53,7 +53,7 @@
 
 extern const AVSFunction Levels_filters[] = {
   { "Levels",    BUILTIN_FUNC_PREFIX, "cfffff[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high cifiii->ffffff
-  { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b[conditional]b", RGBAdjust::Create },
+  { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b[conditional]b[condvarsuffix]s", RGBAdjust::Create },
   { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b[realcalc]b[dither_strength]f", Tweak::Create },
   { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b[realcalc]b", MaskHS::Create },
   { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]f[max_luma]f[min_chroma]f[max_chroma]f[show]s[paramscale]b", Limiter::Create },
@@ -809,33 +809,35 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
  *******    RGBA Filter    ******
  ********************************/
 
-#define READ_CONDITIONAL(plane_num, var_name, internal_name)  \
+#define READ_CONDITIONAL(plane_num, var_name, internal_name, condVarSuffix)  \
     {                                                     \
-        const double t = env2->GetVar("rgbadjust_" #var_name, DBL_MIN); \
+        std::string s = "rgbadjust_" #var_name;\
+        s = s + condVarSuffix; \
+        const double t = env2->GetVar(s.c_str(), DBL_MIN); \
         if (t != DBL_MIN) {                             \
             config->rgba[plane_num].internal_name = t;  \
             config->rgba[plane_num].changed = true;     \
         }                                               \
     }
 
-static void rgbadjust_read_conditional(IScriptEnvironment* env, RGBAdjustConfig* config)
+static void rgbadjust_read_conditional(IScriptEnvironment* env, RGBAdjustConfig* config, const char * condVarSuffix)
 {
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
-  READ_CONDITIONAL(0, r, scale);
-  READ_CONDITIONAL(1, g, scale);
-  READ_CONDITIONAL(2, b, scale);
-  READ_CONDITIONAL(3, a, scale);
+  READ_CONDITIONAL(0, r, scale, condVarSuffix);
+  READ_CONDITIONAL(1, g, scale, condVarSuffix);
+  READ_CONDITIONAL(2, b, scale, condVarSuffix);
+  READ_CONDITIONAL(3, a, scale, condVarSuffix);
 
-  READ_CONDITIONAL(0, rb, bias);
-  READ_CONDITIONAL(1, gb, bias);
-  READ_CONDITIONAL(2, bb, bias);
-  READ_CONDITIONAL(3, ab, bias);
+  READ_CONDITIONAL(0, rb, bias, condVarSuffix);
+  READ_CONDITIONAL(1, gb, bias, condVarSuffix);
+  READ_CONDITIONAL(2, bb, bias, condVarSuffix);
+  READ_CONDITIONAL(3, ab, bias, condVarSuffix);
 
-  READ_CONDITIONAL(0, rg, gamma);
-  READ_CONDITIONAL(1, gg, gamma);
-  READ_CONDITIONAL(2, bg, gamma);
-  READ_CONDITIONAL(3, ag, gamma);
+  READ_CONDITIONAL(0, rg, gamma, condVarSuffix);
+  READ_CONDITIONAL(1, gg, gamma, condVarSuffix);
+  READ_CONDITIONAL(2, bg, gamma, condVarSuffix);
+  READ_CONDITIONAL(3, ag, gamma, condVarSuffix);
 }
 
 #undef READ_CONDITIONAL
@@ -907,8 +909,8 @@ void RGBAdjust::rgbadjust_create_lut(BYTE *lut_buf, const int plane, RGBAdjustCo
 RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     double rb, double gb, double bb, double ab,
     double rg, double gg, double bg, double ag,
-    bool _analyze, bool _dither, bool _conditional, IScriptEnvironment* env)
-    : GenericVideoFilter(_child), analyze(_analyze), dither(_dither)
+    bool _analyze, bool _dither, bool _conditional, const char *_condVarSuffix, IScriptEnvironment* env)
+    : GenericVideoFilter(_child), analyze(_analyze), dither(_dither), condVarSuffix(_condVarSuffix)
 {
     // one buffer for all maps
     map_holder = nullptr;
@@ -1092,7 +1094,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
     local_config.rgba[1].changed = false;
     local_config.rgba[2].changed = false;
     local_config.rgba[3].changed = false;
-    rgbadjust_read_conditional(env, &local_config);
+    rgbadjust_read_conditional(env, &local_config, condVarSuffix);
 
     BYTE *maps_live[4] = { nullptr };
     BYTE *maps_local[4] = { nullptr }; // for local lut table allocation, don't overwrite common buffer
@@ -1330,7 +1332,7 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
                        args[ 1].AsDblDef(1.0), args[ 2].AsDblDef(1.0), args[ 3].AsDblDef(1.0), args[ 4].AsDblDef(1.0),
                        args[ 5].AsDblDef(0.0), args[ 6].AsDblDef(0.0), args[ 7].AsDblDef(0.0), args[ 8].AsDblDef(0.0),
                        args[ 9].AsDblDef(1.0), args[10].AsDblDef(1.0), args[11].AsDblDef(1.0), args[12].AsDblDef(1.0),
-                       args[13].AsBool(false), args[14].AsBool(false), args[15].AsBool(false), env );
+                       args[13].AsBool(false), args[14].AsBool(false), args[15].AsBool(false), args[16].AsString(""), env );
 }
 
 

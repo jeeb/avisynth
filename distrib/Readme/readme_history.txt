@@ -4,8 +4,30 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-2019032 r28xx
+20190408 r28xx
 --------------
+- New: ColorYUV, RGBAdjust, Overlay plus ConditionalReader: 
+  new parameter: string "condvarsuffix", helps multiple filter instances to use different conditional parameters.
+  In order that values from another ConditionalReader not used again, variable names should differ.
+  See Conditional Variables section of http://avisynth.nl/index.php/ColorYUV.
+  How does it work: when reading the global variables, the "condvarsuffix" parameter is appended to the variable name.
+  E.g. ColorYUV will read "coloryuv_gain_y_a" instead of "coloryuv_gain_y" where condvarsuffix = "_a" is provided for ColorYUV.
+  In the matching ConditionalReader one have to use the modified name:
+    ConditionalReader("coloryuvoffset.txt", "coloryuv_gain_y", false, CondVarSuffix = "_a") # "_a" is added here by parameter!
+    or
+    ConditionalReader("coloryuvoffset.txt", "coloryuv_gain_y_a", false) # "_a" should be added manually here!
+
+  Example:
+    Colorbars(512,256).ConvertToYV12.Trim(0,299)
+    ConditionalReader("coloryuvoffset.txt", "coloryuv_gain_y", false)
+    a=ColorYUV(cont_y=10, conditional=true)
+
+    Colorbars(512,256).ConvertToYV12.Trim(0,299)
+    ConditionalReader("coloryuvoffset2.txt", "coloryuv_gamma_y", false, condvarsuffix="_a")
+    b=ColorYUV(cont_y=10, conditional=true, condvarsuffix="_a") # will read coloryuv_gain_y_a, coloryuv_gamma_y_a, etc. 
+    
+    Stackvertical(a,b)
+
 - Fix: ColorBars: pixel_type planar RGB will set alpha to 0 instead of 255, consistent with RGB32 Alpha channel
 - Fix: text colors for YUV422PS - regression since r2728 (zero-centered chroma)
 - New: VirtualDub2 to display 8 bit planar RGB (needs up-to-date VirtualDub2 as well)
