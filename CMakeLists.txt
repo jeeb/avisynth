@@ -1,5 +1,6 @@
 # We need CMake 2.8.11 at least, because we use CMake features
 # "Target Usage Requirements" and "Generator Toolset selection"
+# Visual Studio 2019 is supported from 3.14.1
 CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
 
 project("AviSynth+")
@@ -20,7 +21,8 @@ IF( MSVC )  # Check for Visual Studio
 
   #1800      = VS 12.0 (v120 toolset)
   #1900      = VS 14.0 (v140 toolset)
-  #1910-1919 = VS 15.0 (v141 toolset)
+  #1910-1919 = VS 15.0 (v141 toolset) Visual Studio 2017
+  #1920      = VS 16.0 (v142 toolset) Visual Studio 2019
 
   IF( MSVC_VERSION VERSION_LESS 1910 )
     MESSAGE(FATAL_ERROR "Visual C++ 2017 or newer required.")
@@ -40,7 +42,7 @@ IF( MSVC )  # Check for Visual Studio
         # These are probably not supported when clang is downloaded as a ready-made binary: CLANG_VERSION_MAJOR CLANG_VERSION_MINOR CLANG_VERSION_STRING
         # string (REGEX REPLACE ".*clang version ([0-9]+\\.[0-9]+).*" "\\1" CLANG_VERSION_STRING ${clang_full_version_string})
         if( CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0.1 )
-          MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required") # 8.0
+          MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required") # actually we are using 8.0
         endif()
       endif()
       set(CLANG_IN_VS "1")
@@ -52,17 +54,20 @@ IF( MSVC )  # Check for Visual Studio
     ENDIF()
   
     # We want our project to also run on Windows XP
+    # Not for LLVM: Clang stopped XP support in 2016
     # 1900 (VS2015) is not supported but we leave here
     IF(MSVC_VERSION VERSION_LESS 1910 )
       IF(NOT CLANG_IN_VS STREQUAL "1")
         set(CMAKE_GENERATOR_TOOLSET "v140_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2015
         # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+        message("CMAKE_GENERATOR_TOOLSET is forced to: ${CMAKE_GENERATOR_TOOLSET}")
         add_definitions("/Zc:threadSafeInit-")
     ENDIF()
     ELSE()
       IF(NOT CLANG_IN_VS STREQUAL "1")
-        set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017
+        set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017, also choosable for VS2019
         # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+        message("CMAKE_GENERATOR_TOOLSET is forced to: ${CMAKE_GENERATOR_TOOLSET}")
         add_definitions("/Zc:threadSafeInit-")
       ENDIF()
     ENDIF()
