@@ -535,10 +535,10 @@ static void turn_180_plane_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, i
 }
 
 template <typename T>
-static void turn_180_plane_ssse3(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
 #endif
+static void turn_180_plane_ssse3(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const BYTE* s0 = srcp;
   BYTE* d0 = dstp + dst_pitch * (src_height - 1) + src_rowsize - 16;

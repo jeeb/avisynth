@@ -190,10 +190,10 @@ static __forceinline __m128i af_blend_uint16_t_sse2(__m128i &upper, __m128i &cen
   return _mm_srai_epi32(result, 7);
 }
 
-static __forceinline __m128i af_blend_uint16_t_sse41(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static __forceinline __m128i af_blend_uint16_t_sse41(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask)
 {
   __m128i outer_tmp = _mm_add_epi32(upper, lower);
   __m128i center_tmp = _mm_mullo_epi32(center, center_weight);
@@ -239,10 +239,10 @@ static __forceinline __m128i af_unpack_blend_uint16_t_sse2(__m128i &left, __m128
   return _MM_PACKUS_EPI32(result_lo, result_hi); // sse4.1 simul
 }
 
-static __forceinline __m128i af_unpack_blend_uint16_t_sse41(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static __forceinline __m128i af_unpack_blend_uint16_t_sse41(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero)
 {
   __m128i left_lo = _mm_unpacklo_epi16(left, zero);
   __m128i left_hi = _mm_unpackhi_epi16(left, zero);
@@ -309,10 +309,10 @@ static void af_vertical_uint16_t_sse2(BYTE* line_buf, BYTE* dstp, int height, in
   }
 }
 
-static void af_vertical_uint16_t_sse41(BYTE* line_buf, BYTE* dstp, int height, int pitch, int row_size, int amount)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void af_vertical_uint16_t_sse41(BYTE* line_buf, BYTE* dstp, int height, int pitch, int row_size, int amount)
 {
   // amount was: half_amount (32768). Full: 65536 (2**16)
   // now it becomes 2**(16-9)=2**7 scale
@@ -753,10 +753,10 @@ static void af_horizontal_rgb64_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pi
   }
 }
 
-static void af_horizontal_rgb64_sse41(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void af_horizontal_rgb64_sse41(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount)
 {
   // width is really width
   size_t width_bytes = width * 4 * sizeof(uint16_t);
@@ -1341,10 +1341,10 @@ static void af_horizontal_planar_uint16_t_sse2(BYTE* dstp, size_t height, size_t
   }
 }
 
-static void af_horizontal_planar_uint16_t_sse41(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount, int bits_per_pixel)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void af_horizontal_planar_uint16_t_sse41(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount, int bits_per_pixel)
 {
   size_t mod16_width = (row_size / 16) * 16;
   size_t sse_loop_limit = row_size == mod16_width ? mod16_width - 16 : mod16_width;
@@ -1878,10 +1878,10 @@ static inline __m128i _mm_cmple_epu8(__m128i x, __m128i y)
   return _mm_cmpeq_epi8(_mm_min_epu8(x, y), x);
 }
 
-static inline __m128i _mm_cmple_epu16_sse41(__m128i x, __m128i y)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static inline __m128i _mm_cmple_epu16_sse41(__m128i x, __m128i y)
 {
   // Returns 0xFFFF where x <= y:
   return _mm_cmpeq_epi16(_mm_min_epu16(x, y), x);
@@ -1949,10 +1949,10 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
 }
 
 template<bool maxThreshold>
-static void accumulate_line_ssse3(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
 #endif
+static void accumulate_line_ssse3(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div)
 {
   // threshold: 8 bits: 2 bytes in a word. for YUY2: luma<<8 | chroma
   // 16 bits: 16 bit value (orig threshold scaled by bits_per_pixel)
@@ -2066,10 +2066,10 @@ static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int plan
 }
 // fast: maxThreshold (255) simple accumulate for average
 template<bool maxThreshold, bool lessThan16bit>
-static void accumulate_line_16_sse41(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, int threshold, int div, int bits_per_pixel)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void accumulate_line_16_sse41(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, int threshold, int div, int bits_per_pixel)
 {
   // threshold:
   // 10-16 bits: orig threshold scaled by (bits_per_pixel-8)

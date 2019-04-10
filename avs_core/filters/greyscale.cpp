@@ -131,10 +131,10 @@ static void greyscale_rgb32_sse2(BYTE *srcp, size_t /*width*/, size_t height, si
   }
 }
 
-static void greyscale_rgb64_sse41(BYTE *srcp, size_t /*width*/, size_t height, size_t pitch, int cyb, int cyg, int cyr)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void greyscale_rgb64_sse41(BYTE *srcp, size_t /*width*/, size_t height, size_t pitch, int cyb, int cyg, int cyr)
 {
   __m128i matrix = _mm_set_epi32(0, cyr, cyg, cyb);
   __m128i zero = _mm_setzero_si128();

@@ -43,6 +43,7 @@
 #include "../core/internal.h"
 #include <xmmintrin.h>
 #include <algorithm>
+#include <string>
 
 #define PI 3.141592653589793
 

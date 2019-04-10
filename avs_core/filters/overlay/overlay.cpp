@@ -37,6 +37,7 @@
 #include <avs/win.h>
 #include <stdlib.h>
 #include "overlay.h"
+#include <string>
 #include "../core/internal.h"
 
 /********************************************************************

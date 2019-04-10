@@ -72,10 +72,10 @@ void limit_plane_uint16_sse2(BYTE *ptr, unsigned int min_value, unsigned int max
 }
 
 //min and max values are 16-bit unsigned integers
-void limit_plane_uint16_sse4(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+void limit_plane_uint16_sse4(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height)
 {
   __m128i min_vector = _mm_set1_epi16(min_value);
   __m128i max_vector = _mm_set1_epi16(max_value);

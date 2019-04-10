@@ -1132,10 +1132,10 @@ static void convert_planarrgb_to_yuv_float_sse2(BYTE *(&dstp)[3], int(&dstPitch)
 }
 
 template<int bits_per_pixel>
-static void convert_planarrgb_to_yuv_uint16_sse41(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void convert_planarrgb_to_yuv_uint16_sse41(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
   // generic for 10-16 bit uint16 but only used for 16 bits where unsigned 16 arithmetic makes things difficult
   // 16 bit uint16_t (unsigned range)
@@ -1874,10 +1874,10 @@ static void convert_yuv_to_planarrgb_float_sse2(BYTE *(&dstp)[3], int(&dstPitch)
 }
 
 template<int bits_per_pixel>
-static void convert_yuv_to_planarrgb_uint16_sse41(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void convert_yuv_to_planarrgb_uint16_sse41(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
 {
   // 16 bit uint16_t (unsigned range)
   __m128  half_f = _mm_set1_ps((float)(1u << (bits_per_pixel - 1)));
@@ -2057,10 +2057,10 @@ static __forceinline __m128i convert_yuv_to_rgb_sse2_core(const __m128i &px01, c
 
 //todo: consider rewriting
 template<int rgb_pixel_step, bool hasAlpha>
-static void convert_yv24_to_rgb_ssse3(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, const BYTE*srcA, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t src_pitch_a, size_t width, size_t height, const ConversionMatrix &matrix)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
 #endif
+static void convert_yv24_to_rgb_ssse3(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, const BYTE*srcA, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t src_pitch_a, size_t width, size_t height, const ConversionMatrix &matrix)
 {
   dstp += dst_pitch * (height-1);  // We start at last line
 

@@ -100,10 +100,10 @@ __forceinline static __m128i overlay_blend_sse2_uint8_core(const __m128i& p1, co
 }
 
 template<int bits_per_pixel>
-__forceinline static __m128i overlay_blend_sse41_uint16_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+__forceinline static __m128i overlay_blend_sse41_uint16_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128)
 {
   // v128 is rounding half
   __m128i tmp1 = _mm_mullo_epi32(_mm_sub_epi32(p2, p1), mask); // (p2-p1)*mask
@@ -144,10 +144,11 @@ __forceinline static __m128i overlay_merge_mask_sse2_uint8(const __m128i& p1, co
 }
 
 template<int bits_per_pixel>
-__forceinline static __m128i overlay_merge_mask_sse41_uint16(const __m128i& p1, const __m128i& p2)
-#ifdef __clang__
+
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+__forceinline static __m128i overlay_merge_mask_sse41_uint16(const __m128i& p1, const __m128i& p2)
 {
   __m128i t1 = _mm_mullo_epi32(p1, p2);
   __m128i t2 = _mm_srli_epi32(t1, bits_per_pixel);
@@ -381,12 +382,12 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 }
 
 template<typename pixel_t, int bits_per_pixel>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
 void overlay_blend_sse41_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
   const int p1_pitch, const int p2_pitch, const int mask_pitch,
   const int width, const int height)
-#ifdef __clang__
-  __attribute__((__target__("sse4.1")))
-#endif
 {
   __m128i v128;
   if constexpr (sizeof(pixel_t) == 1)
@@ -712,12 +713,12 @@ void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
 }
 
 template<int bits_per_pixel>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
 void overlay_blend_sse41_plane_opacity_uint16(BYTE *p1, const BYTE *p2,
   const int p1_pitch, const int p2_pitch,
   const int width, const int height, const int opacity, const float opacity_f)
-#ifdef __clang__
-  __attribute__((__target__("sse4.1")))
-#endif
 {
   /*
     const int OPACITY_SHIFT  = 8; // opacity always max 0..256
@@ -1054,12 +1055,12 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
 
 // 8 or 16 bits
 template<typename pixel_t, int bits_per_pixel>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
 void overlay_blend_sse41_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
   const int p1_pitch, const int p2_pitch, const int mask_pitch,
   const int width, const int height, const int opacity, const float opacity_f)
-#ifdef __clang__
-__attribute__((__target__("sse4.1")))
-#endif
 {
 
   AVS_UNUSED(opacity_f);
@@ -1376,10 +1377,10 @@ void overlay_darklighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, 
 }
 
 template <OverlaySseCompare compare, OverlayCCompare compare_c>
-void overlay_darklighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+void overlay_darklighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height)
 {
   __m128i zero = _mm_setzero_si128();
 

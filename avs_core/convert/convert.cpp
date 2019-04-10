@@ -41,6 +41,7 @@
 #include <avs/alignment.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include <avs/config.h>
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <smmintrin.h> // SSE4.1
@@ -1576,10 +1577,10 @@ static void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int s
 
 // sse4.1
 template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
-void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const float *srcp = reinterpret_cast<const float *>(srcp8);
   pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
@@ -1938,10 +1939,10 @@ static void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, in
 }
 
 template<uint8_t sourcebits, uint8_t targetbits>
-static void convert_rgb_uint16_to_uint16_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void convert_rgb_uint16_to_uint16_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
   src_pitch = src_pitch / sizeof(uint16_t);
@@ -1973,6 +1974,7 @@ __attribute__((__target__("sse4.1")))
 
       __m128i result;
       result = _mm_packus_epi32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
+
       if constexpr (targetbits < 16) {
         result = _mm_min_epu16(result, max_pixel_value);
       }

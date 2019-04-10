@@ -241,10 +241,10 @@ static __forceinline uint64_t swap64(uint64_t x) {
   return x;
 }
 
-static __forceinline __m128i _mm_bswap_epi64_ssse3(__m128i x)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
 #endif
+static __forceinline __m128i _mm_bswap_epi64_ssse3(__m128i x)
 {
   // Reverse order of bytes in each 64-bit word.
   return _mm_shuffle_epi8(x, _mm_set_epi8(8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7));
@@ -292,10 +292,10 @@ void bgr_to_rgbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitc
 }
 
 // 4x16: two-way symmetric
-void bgra_to_argbBE_ssse3(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
 #endif
+void bgra_to_argbBE_ssse3(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
 {
   const int wmod2 = (width / 2) * 2; // 2x64bit
   for (int y = 0; y < height; y++) {
@@ -514,10 +514,10 @@ static void prepare_from_interleaved_uv_sse2(uint8_t* pdstu, uint8_t* pdstv, int
 }
 
 template<bool shift6>
-static void prepare_from_interleaved_uv_sse41(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void prepare_from_interleaved_uv_sse41(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
 {
   const int modw = (width / 8) * 8;
   auto mask0000FFFF = _mm_set1_epi32(0x0000FFFF);

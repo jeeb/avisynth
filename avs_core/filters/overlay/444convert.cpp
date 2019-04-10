@@ -416,10 +416,10 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128
 }
 
 template<typename pixel_t>
-static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse41(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse41(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask)
 {
   __m128i avg1, avg2;
   if constexpr (sizeof(pixel_t) == 1) {
@@ -502,10 +502,10 @@ static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int d
 }
 
 template<typename pixel_t>
-static void convert_yv24_chroma_to_yv12_sse41(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void convert_yv24_chroma_to_yv12_sse41(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height)
 {
   int mod16_width = dst_width / 16 * 16;
 #pragma warning(push)
@@ -702,10 +702,10 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128
 }
 
 template<typename pixel_t>
-static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse41(const __m128i &src_line0_p0, const __m128i &src_line0_p1, const __m128i &mask)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse41(const __m128i &src_line0_p0, const __m128i &src_line0_p1, const __m128i &mask)
 {
   __m128i avg1, avg2;
 
@@ -772,10 +772,10 @@ static void convert_yv24_chroma_to_yv16_sse2(BYTE *dstp, const BYTE *srcp, int d
 }
 
 template<typename pixel_t>
-static void convert_yv24_chroma_to_yv16_sse41(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height)
-#ifdef __clang__
+#if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
+static void convert_yv24_chroma_to_yv16_sse41(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height)
 {
   int mod16_width = dst_width / 16 * 16;
 
