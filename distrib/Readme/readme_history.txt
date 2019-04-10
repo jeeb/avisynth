@@ -4,7 +4,7 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190408 r28xx
+20190410 r28xx
 --------------
 - New: ColorYUV, RGBAdjust, Overlay plus ConditionalReader: 
   new parameter: string "condvarsuffix", helps multiple filter instances to use different conditional parameters.
@@ -95,16 +95,17 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       avs_bits_per_component: returns 8 (8 bits)
 - Version: update year, removed avs-plus.net link
 - Updated: TimeStretch plugin with SoundTouch 2.1.3 (as of 07.Jan 2019)
-- Source/Build system
-  - various source fixes for MinGW builds (qyot27)
-  - CMakeLists.txt updates (user selecteble CPU arch, MinGW things) (qyot27)
+- Source/Build system (huge thanks to qyot27)
+  - various source fixes for MinGW builds 
+  - CMakeLists.txt updates (user selecteble CPU arch, MinGW things)
   - PluginManager.cpp: [MSVC|GCC] should only load [MSVC|GCC] plugins (qyot27)
     This commit simply tells GCC builds of AviSynth to use the value
     of the PluginDir+GCC registry entry to find plugins, and ignore
     PluginDir and PluginDir+.  Vice-versa for MSVC builds.
     C plugins are an exception to this, since those can be loaded with
     either MSVC- or GCC-built AviSynth+. 
-  - Clang (LLVM) support with Visual Studio 2017 (15.9.9) (Latest Clang is 8.0 at the moment)
+  - CMake: Visual Studio 2019 generator support, please update to CMake to 3.14.1
+  - Clang (LLVM) support with Visual Studio 2019 (16.0) / 2017 (15.9.9) (Latest Clang is 8.0 at the moment)
     - CMakeLists.txt update
     - Additional source fixes.
     - Codes for different processor targets (SSSE3 and SSE4.1) are now separated and are compiled using function attributes.
@@ -117,6 +118,17 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     - Knows issues: 
       - compiling Avisynth only .lib is generated (used for C api), .exp is missing
       - Generating assembler output is broken on 32 bits (not set by default for x64 either)
+  - GCC 8.3 support
+    - Howto: MSYS2/GCC: for windows based build environment see step-by-step instructions: 
+      https://github.com/orlp/dev-on-windows/wiki/Installing-GCC--&-MSYS2
+    - Avisynth and plugins compiles fine, except external plugins Shibatch and DirectShowSource
+    - CMake: choose generator "MinGW Makefiles" from CMakeGUI or 
+        del CMakeCache.txt
+        "c:\Program Files\CMake\bin\cmake.exe" -G "MinGW Makefiles" .
+      then build with
+        mingw32-make -f makefile
+    - todo: build description for dummies
+    - todo: fix plugin DLL names
 
 20181220 r2772
 --------------
