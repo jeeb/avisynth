@@ -1,6 +1,12 @@
 # We need CMake 2.8.11 at least, because we use CMake features
 # "Target Usage Requirements" and "Generator Toolset selection"
-# Visual Studio 2019 is supported from 3.14.1
+# Visual Studio 2019 is supported from CMake 3.14.1
+
+# Tested generators:
+# "MinGW Makefiles": MSYS2/Mingw32 GCC 8.3 build
+# "Visual Studio 15 2017" optional platform generator Win32 and x64
+# "Visual Studio 16 2019" optional platform generator Win32 and x64
+# "Visual Studio 16 2019" + LLVM 8.0 (clang) optional platform generator Win32 and x64
 CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
 
 project("AviSynth+")
@@ -145,7 +151,7 @@ ELSE()
 
   # c++17: if constexpr() and others from gcc 7/clang 5
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++17" )
-  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native" )
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 " )
   SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
 
 ENDIF()
