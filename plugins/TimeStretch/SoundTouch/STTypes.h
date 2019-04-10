@@ -50,7 +50,9 @@ typedef unsigned long   ulong;
 #if (defined(__GNUC__) && !defined(ANDROID))
     // In GCC, include soundtouch_config.h made by config scritps.
     // Skip this in Android compilation that uses GCC but without configure scripts.
-    #include "soundtouch_config.h"
+
+    // FIXME: check it what is does, because it compiles nicely without this line
+    // #include "soundtouch_config.h"
 #endif
 
 
