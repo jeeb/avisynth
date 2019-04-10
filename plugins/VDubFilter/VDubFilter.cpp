@@ -1510,7 +1510,7 @@ public:
     _RPT4(0, "CallEndProc done fdl=%p MyFilterModule=%p fd=%p, instanceNo=%d\r\n", fdl, fdl->myFilterModule, fd, fdl->myFilterModule->refcounter);
     // filter activation is per instance
     if (fa.filter_data) {
-      delete[] fa.filter_data; // PF 180417
+      delete[] (char *)fa.filter_data; // PF 180417 190409 cast to char * before free (gcc warning: delete on void *)
       fa.filter_data = nullptr;
       fma.filter_data = nullptr; // fma had no separate filter data, just a same pointer
     }
