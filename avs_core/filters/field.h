@@ -419,12 +419,4 @@ public:
 };
 
 
-/**** Factory methods ****/
-
-AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env);
-
 #endif  // __Field_H__

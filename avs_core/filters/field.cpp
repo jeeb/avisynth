@@ -39,6 +39,15 @@
 #include "../core/internal.h"
 
 
+/**** Factory methods ****/
+
+static AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env);
+static AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env);
+static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env);
+static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env);
+static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env);
+
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -963,7 +972,7 @@ static AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironm
 }
 
 
-static AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   if (!clip->GetVideoInfo().IsFieldBased())
@@ -972,7 +981,7 @@ static AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* e
 }
 
 
-static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   PClip* child_array = new PClip[2];
@@ -982,7 +991,7 @@ static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment
 }
 
 
-static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new SelectEvery(new DoubleWeaveFields(new ComplementParity(
 	  new SeparateFields(args[0].AsClip(), env))), 2, 0, env);
