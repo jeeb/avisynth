@@ -1958,6 +1958,7 @@ struct Frontend
 	void and_(const Mem32& dst, const Reg32& src)	{AppendInstr(I_AND, 0x21, 0, R(src), RW(dst));}
 	void and_(const Reg32& dst, const Mem32& src)	{AppendInstr(I_AND, 0x23, 0, RW(dst), R(src));}
 #ifdef JITASM64
+  // and with Imm32 is sign extended
 	void and_(const Reg64& dst, const Imm32& imm)	{AppendInstr(I_AND, detail::IsInt8(imm.GetImm()) ? 0x83 : 0x81, E_REXW_PREFIX | E_SPECIAL, Imm8(4), RW(dst), detail::ImmXor8(imm));}
 	void and_(const Mem64& dst, const Imm32& imm)	{AppendInstr(I_AND, detail::IsInt8(imm.GetImm()) ? 0x83 : 0x81, E_REXW_PREFIX, Imm8(4), RW(dst), detail::ImmXor8(imm));}
 	void and_(const Reg64& dst, const Reg64& src)	{AppendInstr(I_AND, 0x23, E_REXW_PREFIX, RW(dst), R(src));}
@@ -7652,7 +7653,8 @@ namespace compiler
         // Now rbx becomes the pointer for saving spilled XMM6-15 (x64-compulsory) and 
         // temporary storage for the local variables (reg, xmm, ymm)
         // Because we use vmovaps (aligned store/load) for ymm, 32 byte alignment needed for base
-        f.and_(f.rbx, 0xFFFFFFFFFFFFFFE0LL); // align 32 bytes
+        // like and rbx, -32; ffffffffffffffe0H (r64 with imm32: sign extended)
+        f.and_(f.rbx, -32); // align 32 bytes
 
         // padding for keep alignment (16 bytes for rsp)
         if (num_of_preserved_gp_reg & 1)
