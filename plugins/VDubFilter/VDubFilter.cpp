@@ -95,7 +95,7 @@
 #include "vdplugin.h"
 #include "ScriptValue.h"
 #include "ScriptInterpreter.h"
-#include "Vbitmap.h"
+#include "VBitmap.h"
 
 int GetCPUFlags(); // to have a prototype
 
