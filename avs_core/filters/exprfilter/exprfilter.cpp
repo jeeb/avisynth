@@ -3387,24 +3387,29 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         ExprData::ProcessLineProc proc = d.proc[plane];
 
         // 1.) Problem #1: alignas(32) warns with GCC 8.3, as the maximum alignment is 16
-        //alignas(32) const uint8_t *rwptrs[RWPTR_SIZE];
+        //alignas(32) uint8_t *rwptrs[RWPTR_SIZE];
         // Instead: c++17 feature: new with alignment
         // 2.) Problem #2: VS 2019 16.0 bug(?): error C2956: sized deallocation function 'operator delete(void*, size_t)' would be chosen as placement deallocation function.
-        // intptr_t *rwptrs2 = new (std::align_val_t(32)) intptr_t[RWPTR_SIZE];
-        // 3.) Working: c++17: direct call of operator new with alignment-type parameters
-        intptr_t *rwptrs = (intptr_t *) operator new[](sizeof(intptr_t) * RWPTR_SIZE, (std::align_val_t)(32));
+#if defined(CLANG)
+        intptr_t *rwptrs = new (std::align_val_t(32)) intptr_t[RWPTR_SIZE];
+#else
+        // 3.) MSVC 16.0 workaround: c++17: direct call of operator new with alignment-type parameters
+        intptr_t *rwptrs = (intptr_t *) operator new[]((size_t)(sizeof(intptr_t) * RWPTR_SIZE), (std::align_val_t)(32));
+#endif
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_CURRENT_FRAME]) = (float)framecount;
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_RELTIME]) = (float)relative_time;
         for (int y = 0; y < h; y++) {
-          rwptrs[RWPTR_START_OF_OUTPUT] = reinterpret_cast<intptr_t>(dstp + dst_stride * y);
-          rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
+          *reinterpret_cast<intptr_t *>(&rwptrs[RWPTR_START_OF_OUTPUT]) = reinterpret_cast<intptr_t>(dstp + dst_stride * y);
+          *reinterpret_cast<intptr_t*>(&rwptrs[RWPTR_START_OF_XCOUNTER]) = 0; // xcounter internal variable
           for (int i = 0; i < numInputs; i++) {
-            rwptrs[i + RWPTR_START_OF_INPUTS] = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
-            rwptrs[i + RWPTR_START_OF_STRIDES] = static_cast<intptr_t>(src_stride[i]);
+            *reinterpret_cast<intptr_t*>(&rwptrs[i + RWPTR_START_OF_INPUTS]) = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
+            *reinterpret_cast<intptr_t*>(&rwptrs[i + RWPTR_START_OF_STRIDES]) = static_cast<intptr_t>(src_stride[i]);
           }
           proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
-        delete rwptrs;
+        // yet another workaround: aligned alloc needs special delete
+        operator delete[](rwptrs, (size_t)(sizeof(intptr_t) * RWPTR_SIZE), (std::align_val_t)(32));
+        //delete[] rwptrs; // this causes heap errors on MSVC and LLVM as well
       }
       else {
         // C version
