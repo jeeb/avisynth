@@ -15,6 +15,10 @@ list (APPEND SourceFiles
 )
 add_library(${ProjectName} SHARED ${SourceFiles})
 set_target_properties(${ProjectName} PROPERTIES "OUTPUT_NAME" ${PluginName})
+if (MINGW)
+  set_target_properties(${ProjectName} PROPERTIES PREFIX "")
+  set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
+endif()
 
 if( CMAKE_SIZEOF_VOID_P EQUAL 4 ) # 32-bit
   # Specify include directories

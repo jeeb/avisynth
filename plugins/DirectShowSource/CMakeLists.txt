@@ -25,6 +25,10 @@ list (APPEND SourceFiles
 )
 add_library(${ProjectName} SHARED ${SourceFiles})
 set_target_properties(${ProjectName} PROPERTIES "OUTPUT_NAME" ${PluginName})
+if (MINGW)
+  set_target_properties(${ProjectName} PROPERTIES PREFIX "")
+  set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
+endif()
 
 # Library dependencies 
 target_link_libraries(${ProjectName} "Winmm.lib" "Quartz.lib" "Ole32.lib" "User32.lib" "Oleaut32.lib" "Advapi32.lib" ${DSHOWSRC_BASECLASSES_LIB})
