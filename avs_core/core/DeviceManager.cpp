@@ -244,6 +244,7 @@ public:
     unsigned int flags = (num_cuda_devices > 1)
       ? cudaHostAllocPortable : cudaHostAllocDefault;
     BYTE* data = nullptr;
+    size += margin;
 #ifdef _DEBUG
     CUDA_CHECK(cudaHostAlloc((void**)&data, size + 16, flags));
     int *pInt = (int *)(data + size);
@@ -264,7 +265,7 @@ public:
       pByte[4] = filler[4];
     }
 #else
-    CUDA_CHECK(cudaHostAlloc((void**)&data, size + margin + 16, flags));
+    CUDA_CHECK(cudaHostAlloc((void**)&data, size + 16, flags));
 #endif
     return data;
   }
