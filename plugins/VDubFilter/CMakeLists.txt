@@ -20,7 +20,7 @@ add_library(${ProjectName} SHARED ${SourceFiles})
 set_target_properties(${ProjectName} PROPERTIES "OUTPUT_NAME" ${PluginName})
 
 # Library dependencies 
-target_link_libraries(${ProjectName} "User32.lib")
+target_link_libraries(${ProjectName} "user32")
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR})
