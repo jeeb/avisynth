@@ -14,6 +14,9 @@ typedef const char* (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* en
 const char RegAvisynthKey[] = "Software\\Avisynth";
 #if defined (__GNUC__)
 const char RegPluginDirPlus_GCC[] = "PluginDir+GCC";
+#if defined(X86_32)
+  #define GCC_WIN32
+#endif
 #else
 const char RegPluginDirClassic[] = "PluginDir2_5";
 const char RegPluginDirPlus[] = "PluginDir+";
@@ -910,10 +913,15 @@ std::string PluginManager::PluginLoading() const
 bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
 {
   extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
-
+#ifdef GCC_WIN32
+  AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit3");
+  if (!AvisynthPluginInit3)
+    AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "AvisynthPluginInit3@8");
+#else
   AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "AvisynthPluginInit3");
   if (!AvisynthPluginInit3)
     AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit3@8");
+#endif
 
   if (AvisynthPluginInit3 == NULL)
     return false;
@@ -929,9 +937,15 @@ bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
 
 bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
 {
+#ifdef GCC_WIN32
+  AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit2");
+  if (!AvisynthPluginInit2)
+    AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "AvisynthPluginInit2@4");
+#else
   AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "AvisynthPluginInit2");
   if (!AvisynthPluginInit2)
     AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit2@4");
+#endif
 
   if (AvisynthPluginInit2 == NULL)
     return false;
