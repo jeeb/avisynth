@@ -3400,7 +3400,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
           for (int i = 0; i < numInputs; i++) {
             rwptrs[i + RWPTR_START_OF_INPUTS] = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
-            rwptrs[i + RWPTR_START_OF_STRIDES] = reinterpret_cast<intptr_t>(src_stride[i]);
+            rwptrs[i + RWPTR_START_OF_STRIDES] = static_cast<intptr_t>(src_stride[i]);
           }
           proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
