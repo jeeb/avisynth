@@ -124,6 +124,17 @@ ADD_CUSTOM_TARGET(
 )
 ADD_DEPENDENCIES("AvsCore" VersionGen)
 
+# Generate pkg-config file
+file(READ "core/version.h.in" versioning)
+string(REGEX MATCH "AVS_MAJOR_VER     ([0-9]*)" _ ${versioning})
+set(version_major ${CMAKE_MATCH_1})
+string(REGEX MATCH "AVS_MINOR_VER     ([0-9]*)" _ ${versioning})
+set(version_minor ${CMAKE_MATCH_1})
+set(AVS_VERSION "${version_major}.${version_minor}.0")
+
+set(AVSPREFIX "${CMAKE_INSTALL_PREFIX}")
+CONFIGURE_FILE("avisynth.pc.in" "avisynth.pc" @ONLY)
+
 set(RUNTIME_INSTALL_DIR bin CACHE STRING "Install location of Windows DLLs")
 set(LIB_INSTALL_DIR lib CACHE STRING "Install location of libraries")
 set(ARCHIVE_INSTALL_DIR lib CACHE STRING "Install location of static libraries")
