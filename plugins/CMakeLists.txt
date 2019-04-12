@@ -8,6 +8,12 @@ option(BUILD_VDUBFILTER "Build VDubFilter plugin" ON)
 option(BUILD_CONVERTSTACKED "Build ConvertStacked plugin" ON)
 #option(BUILD_VFAPIFILTER "Build VFAPIFilter plugin" ON)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  if(NOT MSVC)
+    add_definitions("-DAVSC_WIN32_GCC32")
+  endif()
+endif()
+
 if (BUILD_IMAGESEQ)
 add_subdirectory("ImageSeq")
 endif()

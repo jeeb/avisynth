@@ -864,7 +864,7 @@ MaskHS uses LUT for 10/12 bits. Above this (no memory for fast LUTs) the calcula
 To override LUT for 10-12 bits use new parameter realcalc=true
 
 [ColorKeyMask]: 
-Works for RGB64, Planar RGBA 8-16,float.
+Works for RGB64, Planar RGBA 8-16,float.
 ColorKeyMask color and tolerance parameters are the same as for 8 bit RGB32.
 Internally they are automatically scaled to the current bit-depth
 
@@ -909,7 +909,7 @@ StackVertical(rgb32, rgb64)
 
 [Levels]
 Levels: 10-16 bit support for YUV(A), PlanarRGB(A), 16 bits for RGB48/64
-No float support yet
+No float support yet
 
 Level values are not scaled, they are accepted as-is for 8+ bit depths
 
@@ -936,7 +936,7 @@ clip16 = xx.ConvertBits(16).Levels(0,gamma,65535,0,65535,dither=dither, coring=c
 stackvertical(clip8.ConvertToYUV444().Histogram("levels"), Clip16.ConvertBits(8).ConvertToYUV444().Histogram("levels"))
 
 [ColorYUV] 
-Now it works for 10-16 bit clips
+Now it works for 10-16 bit clips
 
 • Slightly modified "demo" mode when using ColorYUV(showyuv=true) 
 

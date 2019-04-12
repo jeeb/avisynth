@@ -18,9 +18,13 @@ list (APPEND SourceFiles
 )
 add_library(${ProjectName} SHARED ${SourceFiles})
 set_target_properties(${ProjectName} PROPERTIES "OUTPUT_NAME" ${PluginName})
+if (MINGW)
+  set_target_properties(${ProjectName} PROPERTIES PREFIX "")
+  set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
+endif()
 
 # Library dependencies 
-target_link_libraries(${ProjectName} "User32.lib")
+target_link_libraries(${ProjectName} "user32")
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR})
