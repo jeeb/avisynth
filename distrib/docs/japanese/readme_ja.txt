@@ -1,99 +1,99 @@
 
-                        AviSynth ƒ}ƒjƒ…ƒAƒ‹ “ú–{Œê”Å
+                        AviSynth ãƒãƒ‹ãƒ¥ã‚¢ãƒ« æ—¥æœ¬èªç‰ˆ
 
- à–¾:
+ èª¬æ˜:
 
-  ‚±‚ê‚ÍAAviSynth ‚É“¯«‚³‚ê‚Ä‚¢‚éƒ}ƒjƒ…ƒAƒ‹‚Ì“ú–{Œê–óiˆê•”j‚Å‚·B
+  ã“ã‚Œã¯ã€AviSynth ã«åŒæ¢±ã•ã‚Œã¦ã„ã‚‹ãƒãƒ‹ãƒ¥ã‚¢ãƒ«ã®æ—¥æœ¬èªè¨³ï¼ˆä¸€éƒ¨ï¼‰ã§ã™ã€‚
 
-  Œ»İA„‚½‚¿‚ÍƒvƒƒWƒFƒNƒgƒ`[ƒ€‚ğŒ‹¬‚µ‚ÄAAviSynth ƒ}ƒjƒ…ƒAƒ‹‚Ì“ú–{Œê‚Ö‚Ì
-  –|–óì‹Æ‚ğs‚Á‚Ä‚¢‚Ü‚·B‚µ‚©‚µ‚È‚ª‚çA‚·‚×‚Ä‚Ì–|–óì‹Æ‚ªŠ®—¹‚·‚é‚Ü‚Å‚É‚ÍA‚©
-  ‚È‚è‚ÌŠÔ‚ğ—v‚·‚é‚±‚Æ‚ª—\‘z‚³‚ê‚Ü‚·B
+  ç¾åœ¨ã€ç§ãŸã¡ã¯ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆãƒãƒ¼ãƒ ã‚’çµæˆã—ã¦ã€AviSynth ãƒãƒ‹ãƒ¥ã‚¢ãƒ«ã®æ—¥æœ¬èªã¸ã®
+  ç¿»è¨³ä½œæ¥­ã‚’è¡Œã£ã¦ã„ã¾ã™ã€‚ã—ã‹ã—ãªãŒã‚‰ã€ã™ã¹ã¦ã®ç¿»è¨³ä½œæ¥­ãŒå®Œäº†ã™ã‚‹ã¾ã§ã«ã¯ã€ã‹
+  ãªã‚Šã®æ™‚é–“ã‚’è¦ã™ã‚‹ã“ã¨ãŒäºˆæƒ³ã•ã‚Œã¾ã™ã€‚
 
-  ‚±‚Ì‚½‚ßAŒ 1 ‰ñ` 2 ƒJŒ‚É 1 ‰ñ’ö“x‚Ìƒy[ƒX‚ÅA–|–óì‹Æ‚ªŠ®—¹‚µ‚½•ª‚Ìƒy[ƒW‚ğŒöŠJ‚µ‚Äs‚­
-  ‚±‚Æ‚É‚µ‚Ü‚µ‚½B
+  ã“ã®ãŸã‚ã€æœˆ 1 å›ã€œ 2 ã‚«æœˆã« 1 å›ç¨‹åº¦ã®ãƒšãƒ¼ã‚¹ã§ã€ç¿»è¨³ä½œæ¥­ãŒå®Œäº†ã—ãŸåˆ†ã®ãƒšãƒ¼ã‚¸ã‚’å…¬é–‹ã—ã¦è¡Œã
+  ã“ã¨ã«ã—ã¾ã—ãŸã€‚
 
-  ‚Ü‚¾”‚Í­‚È‚¢‚Å‚·‚ªA‚İ‚È‚³‚ñ‚Ì‚¨–ğ‚É—§‚Ä‚ê‚ÎK‚¢‚Å‚·B
+  ã¾ã æ•°ã¯å°‘ãªã„ã§ã™ãŒã€ã¿ãªã•ã‚“ã®ãŠå½¹ã«ç«‹ã¦ã‚Œã°å¹¸ã„ã§ã™ã€‚
 
- ƒ‰ƒCƒZƒ“ƒX‚É‚Â‚¢‚Ä:
+ ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã«ã¤ã„ã¦:
 
-   AviSynth ƒ}ƒjƒ…ƒAƒ‹ “ú–{Œê”Å‚ÍAƒNƒŠƒGƒCƒeƒBƒuEƒRƒ‚ƒ“ƒY •\¦-Œp³ 3.0 ƒ‰ƒCƒZƒ“ƒX‚Ì‰º‚Åƒ‰ƒCƒZƒ“ƒX‚³‚ê‚Ä‚¢‚Ü‚·B
-   ƒNƒŠƒGƒCƒeƒBƒuEƒRƒ‚ƒ“ƒY •\¦-Œp³ 3.0 ƒ‰ƒCƒZƒ“ƒX‚É‚Â‚¢‚Ä‚ÍA‰º‹L‚Ì URL ‚ğQÆ‚µ‚Ä‚­‚¾‚³‚¢B
+   AviSynth ãƒãƒ‹ãƒ¥ã‚¢ãƒ« æ—¥æœ¬èªç‰ˆã¯ã€ã‚¯ãƒªã‚¨ã‚¤ãƒ†ã‚£ãƒ–ãƒ»ã‚³ãƒ¢ãƒ³ã‚º è¡¨ç¤º-ç¶™æ‰¿ 3.0 ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã®ä¸‹ã§ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã•ã‚Œã¦ã„ã¾ã™ã€‚
+   ã‚¯ãƒªã‚¨ã‚¤ãƒ†ã‚£ãƒ–ãƒ»ã‚³ãƒ¢ãƒ³ã‚º è¡¨ç¤º-ç¶™æ‰¿ 3.0 ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã«ã¤ã„ã¦ã¯ã€ä¸‹è¨˜ã® URL ã‚’å‚ç…§ã—ã¦ãã ã•ã„ã€‚
 
      Creative Commons Attribution-Share Alike 3.0 Unported
      http://creativecommons.org/licenses/by-sa/3.0/
 
-   Ql: Avisynth:Copyrights - Avisynth
+   å‚è€ƒ: Avisynth:Copyrights - Avisynth
          http://avisynth.org/mediawiki/Avisynth:Copyrights
 
- XV—š—ğ:
+ æ›´æ–°å±¥æ­´:
 
   - 2008-08-13:
-   - •ÏX: –|–ó‚Ìƒx[ƒX‚ğ v2.5.8 RC3 ‚ÉXVB
+   - å¤‰æ›´: ç¿»è¨³ã®ãƒ™ãƒ¼ã‚¹ã‚’ v2.5.8 RC3 ã«æ›´æ–°ã€‚
   - 2008-07-21:
-   - C³: layer.htm
+   - ä¿®æ­£: layer.htm
   - 2008-07-18:
-   - ’Ç‰Á: timestretch.htm, tweak.htm, write.htm
-   - C³: blur.htm
+   - è¿½åŠ : timestretch.htm, tweak.htm, write.htm
+   - ä¿®æ­£: blur.htm
   - 2008-07-08: 
-   - ’Ç‰Á: tone.htm, trim.htm, turn.htm, version.htm, weave.htm
-   - C³: fade.htm
-   - •ÏX: ja.css ‚É font-family w’è‚ğ’Ç‰ÁB
+   - è¿½åŠ : tone.htm, trim.htm, turn.htm, version.htm, weave.htm
+   - ä¿®æ­£: fade.htm
+   - å¤‰æ›´: ja.css ã« font-family æŒ‡å®šã‚’è¿½åŠ ã€‚
   - 2008-07-01: 
-   - ’Ç‰Á: conditionalreader.htm, tcpdeliver.htm
+   - è¿½åŠ : conditionalreader.htm, tcpdeliver.htm
   - 2008-06-28: 
-   - ’Ç‰Á: syntax_clip_properties.htm, syntax_internal_functions.htm,
+   - è¿½åŠ : syntax_clip_properties.htm, syntax_internal_functions.htm,
            conditionalfilter.htm, subtitle.htm, subtract.htm, supereq.htm, 
            swap.htm, swapfields.htm
-   - C³: compare.htm, convertaudio.htm, overlay.htm, resize.htm, soften.htm
+   - ä¿®æ­£: compare.htm, convertaudio.htm, overlay.htm, resize.htm, soften.htm
   - 2008-06-12: 
-   - ’Ç‰Á: corefilters.htm, index.htm, overview.htm, syntax.htm ('japanese' ƒtƒHƒ‹ƒ_), 
+   - è¿½åŠ : corefilters.htm, index.htm, overview.htm, syntax.htm ('japanese' ãƒ•ã‚©ãƒ«ãƒ€),
            showalpha.htm, showfive.htm, showframes.htm, soften.htm, splice.htm, 
-           ssrc.htm, stack.htm ('corefilters' ƒtƒHƒ‹ƒ_)
-   - •ÏX: –|–ó‚Ìƒx[ƒX‚ğ v2.5.8 RC1 ‚ÉXVB
+           ssrc.htm, stack.htm ('corefilters' ãƒ•ã‚©ãƒ«ãƒ€)
+   - å¤‰æ›´: ç¿»è¨³ã®ãƒ™ãƒ¼ã‚¹ã‚’ v2.5.8 RC1 ã«æ›´æ–°ã€‚
   - 2008-05-29: 
-   - ’Ç‰Á resize.htm, reverse.htm, segmentedsource.htm, select.htm,
+   - è¿½åŠ  resize.htm, reverse.htm, segmentedsource.htm, select.htm,
            selectevery.htm, selectrangeevery.htm, separetefields.htm
   - 2008-03-31: 
-   - ’Ç‰Á: peculiar.htm, pulldown.htm, reduceby2.htm, resampleaudio.htm
+   - è¿½åŠ : peculiar.htm, pulldown.htm, reduceby2.htm, resampleaudio.htm
   - 2008-03-02: 
-   - ’Ç‰Á: mixaudio.htm, monotostereo.htm, normalize.htm, overlay.htm, parity.htm
-   - C³: colorbars.htm
-   - •ÏX: ƒXƒ^ƒCƒ‹ƒV[ƒg‚Ì\‘¢‚ğ•ÏXija.css‚Ì’Ç‰ÁjB
+   - è¿½åŠ : mixaudio.htm, monotostereo.htm, normalize.htm, overlay.htm, parity.htm
+   - ä¿®æ­£: colorbars.htm
+   - å¤‰æ›´: ã‚¹ã‚¿ã‚¤ãƒ«ã‚·ãƒ¼ãƒˆã®æ§‹é€ ã‚’å¤‰æ›´ï¼ˆja.cssã®è¿½åŠ ï¼‰ã€‚
   - 2008-02-03: 
-   - ’Ç‰Á: limiter.htm, levels.htm, letterbox.htm, loop.htm, merge.htm, 
+   - è¿½åŠ : limiter.htm, levels.htm, letterbox.htm, loop.htm, merge.htm,
            mergechannels.htm, mergergb.htm, message.htm
-   - C³: adjust.htm, colorbars.htm, coloryuv.htm, convert.htm
+   - ä¿®æ­£: adjust.htm, colorbars.htm, coloryuv.htm, convert.htm
   - 2007-12-10: 
-   - ’Ç‰Á: greyscale.htm, histogram.htm, imagereader.htm, imagewriter.htm, import.htm,
+   - è¿½åŠ : greyscale.htm, histogram.htm, imagereader.htm, imagewriter.htm, import.htm,
            info.htm, interleave.htm, invert.htm, killaudio.htm, layer.htm
   - 2007-09-29: 
-   - ’Ç‰Á: flip.htmAfps.htmAfreezeframe.htm ‚Æ getchannel.htm
-   - •ÏX: ƒNƒŠƒGƒCƒeƒBƒuEƒRƒ‚ƒ“ƒY •\¦-Œp³ 3.0 ƒ‰ƒCƒZƒ“ƒX‚Ì‰º‚Åƒ‰ƒCƒZƒ“ƒXB
+   - è¿½åŠ : flip.htmã€fps.htmã€freezeframe.htm ã¨ getchannel.htm
+   - å¤‰æ›´: ã‚¯ãƒªã‚¨ã‚¤ãƒ†ã‚£ãƒ–ãƒ»ã‚³ãƒ¢ãƒ³ã‚º è¡¨ç¤º-ç¶™æ‰¿ 3.0 ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã®ä¸‹ã§ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã€‚
   - 2007-08-01: 
-   - ’Ç‰Á: ensuresync.htmAfade.htmAfixbrokenchromaupsampling.htm ‚Æ fixluminance.htm
+   - è¿½åŠ : ensuresync.htmã€fade.htmã€fixbrokenchromaupsampling.htm ã¨ fixluminance.htm
   - 2007-06-01: 
-   - ’Ç‰Á: directshowsource.htmAdissolve.htmAdoubleweave.htm ‚Æ duplicateframe.htm
+   - è¿½åŠ : directshowsource.htmã€dissolve.htmã€doubleweave.htm ã¨ duplicateframe.htm
   - 2007-04-30: 
-   - ’Ç‰Á: convolution.htmAcrop.htmAdelayaudio.htm ‚Æ deleteframe.htm
+   - è¿½åŠ : convolution.htmã€crop.htmã€delayaudio.htm ã¨ deleteframe.htm
   - 2007-04-01: 
-   - ’Ç‰Á: convert.htmAconvertaudio.htm ‚Æ converttomono.htm
+   - è¿½åŠ : convert.htmã€convertaudio.htm ã¨ converttomono.htm
   - 2007-03-02: 
-   - ’Ç‰Á: coloryuv.htm ‚Æ compare.htm
-   - XV: animate.htmAblankclip.htmAblur.htmAbob.htmi2.5.7 ‚Ì‰pŒê”Åƒx[ƒX‚É•ÏXj
-  - 2007-01-01: bob.htm ‚Æ colorbars.htm ‚ğ’Ç‰Ái2.5.7 RC1 ‚Ì‰pŒê”Å‚ğƒx[ƒX‚É–|–ójB
-  - 2006-12-01: corefilters ‚Ì addborders.htm ‚©‚ç blur.htm ‚Ü‚Å‚ğû˜^B
+   - è¿½åŠ : coloryuv.htm ã¨ compare.htm
+   - æ›´æ–°: animate.htmã€blankclip.htmã€blur.htmã€bob.htmï¼ˆ2.5.7 ã®è‹±èªç‰ˆãƒ™ãƒ¼ã‚¹ã«å¤‰æ›´ï¼‰
+  - 2007-01-01: bob.htm ã¨ colorbars.htm ã‚’è¿½åŠ ï¼ˆ2.5.7 RC1 ã®è‹±èªç‰ˆã‚’ãƒ™ãƒ¼ã‚¹ã«ç¿»è¨³ï¼‰ã€‚
+  - 2006-12-01: corefilters ã® addborders.htm ã‹ã‚‰ blur.htm ã¾ã§ã‚’åéŒ²ã€‚
 
 
- ŠÖ˜AƒTƒCƒg:
+ é–¢é€£ã‚µã‚¤ãƒˆ:
 
   - AviSynth Wiki
     http://www.avisynth.info/
-  - AviSynthƒ}ƒjƒ…ƒAƒ‹–|–óƒvƒƒWƒFƒNƒg
+  - AviSynthãƒãƒ‹ãƒ¥ã‚¢ãƒ«ç¿»è¨³ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆ
     http://translation.avisynth.info/
 
 
- ˜A—æ:
+ é€£çµ¡å…ˆ:
 
-  AviSynth ƒ}ƒjƒ…ƒAƒ‹ –|–óƒvƒƒWƒFƒNƒg
-  ‚É[‚â‚ñiniiyanj
-  ƒ[ƒ‹ƒAƒhƒŒƒX: niiyan@avisynth.info
+  AviSynth ãƒãƒ‹ãƒ¥ã‚¢ãƒ« ç¿»è¨³ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆ
+  ã«ãƒ¼ã‚„ã‚“ï¼ˆniiyanï¼‰
+  ãƒ¡ãƒ¼ãƒ«ã‚¢ãƒ‰ãƒ¬ã‚¹: niiyan@avisynth.info
