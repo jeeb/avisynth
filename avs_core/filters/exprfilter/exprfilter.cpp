@@ -3386,30 +3386,38 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 
         ExprData::ProcessLineProc proc = d.proc[plane];
 
-        // 1.) Problem #1: alignas(32) warns with GCC 8.3, as the maximum alignment is 16
-        //alignas(32) uint8_t *rwptrs[RWPTR_SIZE];
-        // Instead: c++17 feature: new with alignment
-        // 2.) Problem #2: VS 2019 16.0 bug(?): error C2956: sized deallocation function 'operator delete(void*, size_t)' would be chosen as placement deallocation function.
-#if defined(CLANG)
-        intptr_t *rwptrs = new (std::align_val_t(32)) intptr_t[RWPTR_SIZE];
+#ifdef GCC
+        // the following local allocation in gcc 8.3 results in warning: 
+        // alignas(32) intptr_t rwptrs[RWPTR_SIZE];
+        // requested alignment 32 is larger than 16 [-Wattributes]
+
+        // Using c++17 feature instead: new with alignment
+        intptr_t* rwptrs = new (std::align_val_t(32)) intptr_t[RWPTR_SIZE];
+        
+        // Note: this method is giving immediate build error in VS2019 16.0.4 (bug?). Clang 8.0 and gcc 8.3 is O.K.
+        // error C2956: sized deallocation function 'operator delete(void*, size_t)' would be chosen as placement deallocation function.
+        // See https://developercommunity.visualstudio.com/content/problem/528320/using-c17-new-stdalign-val-tn-syntax-results-in-er.html
+        // Anyway, we are using it only for gcc)
+        // Possible MSVC 16.0 workaround: c++17: direct call of operator new with alignment-type parameters
+        //intptr_t* rwptrs = (intptr_t*) operator new[]((size_t)(sizeof(intptr_t) * RWPTR_SIZE), (std::align_val_t)(32));
 #else
-        // 3.) MSVC 16.0 workaround: c++17: direct call of operator new with alignment-type parameters
-        intptr_t *rwptrs = (intptr_t *) operator new[]((size_t)(sizeof(intptr_t) * RWPTR_SIZE), (std::align_val_t)(32));
+        // msvc, clang
+        alignas(32) intptr_t rwptrs[RWPTR_SIZE];
 #endif
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_CURRENT_FRAME]) = (float)framecount;
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_RELTIME]) = (float)relative_time;
         for (int y = 0; y < h; y++) {
-          *reinterpret_cast<intptr_t *>(&rwptrs[RWPTR_START_OF_OUTPUT]) = reinterpret_cast<intptr_t>(dstp + dst_stride * y);
-          *reinterpret_cast<intptr_t*>(&rwptrs[RWPTR_START_OF_XCOUNTER]) = 0; // xcounter internal variable
+          rwptrs[RWPTR_START_OF_OUTPUT] = reinterpret_cast<intptr_t>(dstp + dst_stride * y);
+          rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
           for (int i = 0; i < numInputs; i++) {
-            *reinterpret_cast<intptr_t*>(&rwptrs[i + RWPTR_START_OF_INPUTS]) = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
-            *reinterpret_cast<intptr_t*>(&rwptrs[i + RWPTR_START_OF_STRIDES]) = static_cast<intptr_t>(src_stride[i]);
+            rwptrs[i + RWPTR_START_OF_INPUTS] = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
+            rwptrs[i + RWPTR_START_OF_STRIDES] = static_cast<intptr_t>(src_stride[i]);
           }
           proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
-        // yet another workaround: aligned alloc needs special delete
-        operator delete[](rwptrs, (size_t)(sizeof(intptr_t) * RWPTR_SIZE), (std::align_val_t)(32));
-        //delete[] rwptrs; // this causes heap errors on MSVC and LLVM as well
+#ifdef GCC
+        operator delete[](rwptrs, (std::align_val_t)(32)); // paired with aligned new
+#endif
       }
       else {
         // C version
@@ -4997,7 +5005,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       d.node[i] = children[i];
 
     // checking formats
-    const VideoInfo *vi_array[MAX_EXPR_INPUTS] = {};
+    const VideoInfo* vi_array[MAX_EXPR_INPUTS] = {};
     for (int i = 0; i < d.numInputs; i++)
       if (d.node[i])
         vi_array[i] = &d.node[i]->GetVideoInfo();
