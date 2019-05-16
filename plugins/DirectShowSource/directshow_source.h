@@ -43,37 +43,45 @@
 /********************************************************************
 # Build Hints for DirectShow SDK
 
-# Hints for Avisynth+, Visual Studio 2017 (or VS 2015)
+# Hints for Avisynth+, Visual Studio 2019
 
-- download and install Microsoft Windows SDK for Windows 7 and .NET Framework 3.5 SP1
-  https://www.microsoft.com/en-us/download/details.aspx?id=3138
+- download and install 7.1 SDK
+  Microsoft Windows SDK for Windows 7 and .NET Framework 4 
+    https://www.microsoft.com/en-us/download/details.aspx?id=8279
+  
+  In case of problems:
+  https://social.msdn.microsoft.com/Forums/vstudio/en-US/1de7c9b4-1feb-4c98-b426-f7f02cbafa99/windows-sdk-71-on-windows-10
+  Uninstall VC2010 redist, download offline ISO image installer, install
+
 - [Building strmbase.lib]
   - Open solution in
-    c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\
-    It will be converted.
+      c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\
+    (or replace v7.1A with appropriate v7 SDK folder)
+    Project is of old format, will be converted.
   - Compile for targets Release_MBCS x86 and x64. 
     Find compiled library strmbase.lib in 
-      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
+      c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
     and
-      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
+      c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
 - [Building DirectShowSource.dll]
   - Open PluginDirectShowSource project in the AviSynth plus solution
+  - Note: Usually Avisynth+ CMake is configuring the settings below properly.
   - Edit Project Properties|VC++ Directories|Include Paths
     Add to the beginning
-    c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\;
-    c:\Program Files\Microsoft SDKs\Windows\v7.0\Include\; or put behind $(VC_IncludePath) if windows.h not found
+    c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\;
+    c:\Program Files\Microsoft SDKs\Windows\v7.1A\Include\; or put behind $(VC_IncludePath) if windows.h not found
   - Edit Project Properties|VC++ Directories|Library Directories
     For x86 target add 
-      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
+      c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
     For x64 target add 
-      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
+      c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
     For XP target add (to find winmm.lib)
       c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\; (for 32 bit build)
       c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\x64\; (for 64 bit build)
   - Edit Project Properties|Linker|Input|Additional Dependencies
     Add strmbase.lib to the list
   - For XP compatibility
-    - choose Platform Toolset v141_xp (v140_xp for VS2015) and 
+    - choose Platform Toolset v141_xp 
     - Edit Project Properties|C/C++|Command Line
       Add
       /Zc:threadSafeInit-
