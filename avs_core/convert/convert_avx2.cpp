@@ -33,18 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "convert.h"
-#include "convert_planar.h"
-#include "convert_rgb.h"
-#include "convert_yv12.h"
-#include "convert_yuy2.h"
 #include <avs/alignment.h>
-#include <avs/win.h>
-#include <avs/minmax.h>
-#include <emmintrin.h>
-#include <immintrin.h>
-#include <tuple>
-#include <map>
+#include <intrin.h>
 
 #ifndef _mm256_set_m128i
 #define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)

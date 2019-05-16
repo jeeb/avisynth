@@ -35,7 +35,7 @@
 #ifndef __Convert_AVX2_H__
 #define __Convert_AVX2_H__
 
-#include "../core/internal.h"
+#include <avs/types.h>
 
 template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
 void convert_32_to_uintN_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);

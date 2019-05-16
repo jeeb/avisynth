@@ -305,10 +305,6 @@ __forceinline __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
   return _MM_BLENDV_SI128(x, y, _MM_CMPLE_EPU16(x, y));
 }
 
-// unsigned short div 255
-#define SSE2_DIV255_U16(x) _mm_srli_epi16(_mm_mulhi_epu16(x, _mm_set1_epi16((short)0x8081)), 7)
-#define AVX2_DIV255_U16(x) _mm256_srli_epi16(_mm256_mulhi_epu16(x, _mm256_set1_epi16((short)0x8081)), 7)
-
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                              \
                 ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |   \

@@ -39,11 +39,9 @@
 #include "convert_yv12.h"
 #include "convert_yuy2.h"
 #include <avs/alignment.h>
-#include <avs/win.h>
 #include <avs/minmax.h>
 #include <avs/config.h>
 #include <emmintrin.h>
-#include <immintrin.h>
 #include <smmintrin.h> // SSE4.1
 #include <tuple>
 #include <map>

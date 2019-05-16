@@ -35,7 +35,7 @@
 #ifndef __Convert_AVX_H__
 #define __Convert_AVX_H__
 
-#include "../core/internal.h"
+#include <avs/types.h>
 
 template<bool expandrange, uint8_t shiftbits>
 void convert_uint16_to_uint16_c_avx(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
