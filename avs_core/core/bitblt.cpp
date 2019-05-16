@@ -36,7 +36,7 @@
 #include <cstring>
 #include <cassert>
 
-#if defined(X86_32) && defined(MSVC) && !defined(__clang__)
+#if defined(X86_32) && defined(MSVC_PURE)
 
 // Assembler bitblit by Steady
 static void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
@@ -260,7 +260,7 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
 {
   if ( (!height) || (!row_size) ) return;
 
-#if defined(X86_32) && defined(MSVC) && !defined(__clang__)
+#if defined(X86_32) && defined(MSVC_PURE)
   const int cpuf = GetCPUFlags();
   if ((cpuf & CPUF_INTEGER_SSE) && !(cpuf & CPUF_AVX))
   {

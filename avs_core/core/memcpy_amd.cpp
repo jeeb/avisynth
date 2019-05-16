@@ -71,7 +71,7 @@ MEMCPY_AMD.CPP
 
 #include <avs/config.h>
 
-#if defined(X86_32) && defined(MSVC) && !defined(__clang__)
+#if defined(X86_32) && defined(MSVC_PURE)
 void memcpy_amd(void *dest, const void *src, size_t n)
 {
   // Warning! : If you modify this routine, check the generated assembler to make sure
