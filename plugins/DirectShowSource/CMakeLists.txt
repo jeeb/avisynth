@@ -8,9 +8,9 @@ set(ProjectName "Plugin${PluginName}")
 # Sensible defaults that should just work if WINSDK is installed and baseclasses built
 set(DEFAULT_BASECLASSES_PATH "C:/Program Files/Microsoft SDKs/Windows/v7.1/Samples/multimedia/directshow/baseclasses")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4) # 32-bit
-  set(DEFAULT_BASECLASSES_LIB "${DEFAULT_BASECLASSES_PATH}/Release/strmbase.lib")
+  set(DEFAULT_BASECLASSES_LIB "${DEFAULT_BASECLASSES_PATH}/Release_MBCS/strmbase.lib")
 else() # 64-bit
-  set(DEFAULT_BASECLASSES_LIB "${DEFAULT_BASECLASSES_PATH}/x64/Release/strmbase.lib")
+  set(DEFAULT_BASECLASSES_LIB "${DEFAULT_BASECLASSES_PATH}/x64/Release_MBCS/strmbase.lib")
 endif()
 
 # We need these variables set by the user to compile successfully
@@ -37,6 +37,11 @@ target_link_libraries(${ProjectName} "Winmm.lib" "Quartz.lib" "Ole32.lib" "User3
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR} ${DSHOWSRC_BASECLASSES_PATH})
 
 if (MSVC_IDE)    
+  # Old v7 SDK code won't compile otherwise
+  set(DELETE_THIS "/permissive-")
+  STRING( REPLACE "${DELETE_THIS}" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+  STRING( REPLACE "${DELETE_THIS}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
   # Copy output to a common folder for easy deployment
   add_custom_command(
     TARGET ${ProjectName}

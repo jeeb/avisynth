@@ -142,9 +142,10 @@ IF( MSVC )  # Check for Visual Studio
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
 
   # Enable standards-conformance mode for MSVC compilers that support this
-  # flag (Visual C++ 2017 and later).
+  # flag (Visual C++ 2017 and later). Default. DirectShowSource will remove if needed.
   if (NOT (MSVC_VERSION LESS 1910))
-    add_compile_options ("/permissive-")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive-")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive-")
   endif()
 
 ELSE()
