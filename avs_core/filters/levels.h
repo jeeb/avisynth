@@ -114,7 +114,7 @@ private:
   float dither_strength;
 
   template<bool chroma, bool use_gamma>
-  __forceinline float calcPixel(const float pixel);
+  AVS_FORCEINLINE float calcPixel(const float pixel);
 };
 
 

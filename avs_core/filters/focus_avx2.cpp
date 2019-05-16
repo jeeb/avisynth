@@ -77,7 +77,7 @@
 #define _mm256_cvtsi256_si32(a) (_mm_cvtsi128_si32(_mm256_castsi256_si128(a)))
 #endif
 
-static __forceinline __m256i af_blend_avx2(__m256i &upper, __m256i &center, __m256i &lower, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask) {
+static AVS_FORCEINLINE __m256i af_blend_avx2(__m256i &upper, __m256i &center, __m256i &lower, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask) {
   __m256i outer_tmp = _mm256_add_epi16(upper, lower);
   __m256i center_tmp = _mm256_mullo_epi16(center, center_weight);
 
@@ -89,7 +89,7 @@ static __forceinline __m256i af_blend_avx2(__m256i &upper, __m256i &center, __m2
   return _mm256_srai_epi16(result, 7);
 }
 
-static __forceinline __m256i af_blend_uint16_t_avx2(__m256i &upper, __m256i &center, __m256i &lower, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask) {
+static AVS_FORCEINLINE __m256i af_blend_uint16_t_avx2(__m256i &upper, __m256i &center, __m256i &lower, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask) {
   __m256i outer_tmp = _mm256_add_epi32(upper, lower);
   __m256i center_tmp;
   center_tmp = _mm256_mullo_epi32(center, center_weight);
@@ -101,7 +101,7 @@ static __forceinline __m256i af_blend_uint16_t_avx2(__m256i &upper, __m256i &cen
   return _mm256_srai_epi32(result, 7);
 }
 
-static __forceinline __m256i af_unpack_blend_avx2(__m256i &left, __m256i &center, __m256i &right, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask, __m256i &zero) {
+static AVS_FORCEINLINE __m256i af_unpack_blend_avx2(__m256i &left, __m256i &center, __m256i &right, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask, __m256i &zero) {
   __m256i left_lo = _mm256_unpacklo_epi8(left, zero);
   __m256i left_hi = _mm256_unpackhi_epi8(left, zero);
   __m256i center_lo = _mm256_unpacklo_epi8(center, zero);
@@ -115,7 +115,7 @@ static __forceinline __m256i af_unpack_blend_avx2(__m256i &left, __m256i &center
   return _mm256_packus_epi16(result_lo, result_hi);
 }
 
-static __forceinline __m256i af_unpack_blend_uint16_t_avx2(__m256i &left, __m256i &center, __m256i &right, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask, __m256i &zero) {
+static AVS_FORCEINLINE __m256i af_unpack_blend_uint16_t_avx2(__m256i &left, __m256i &center, __m256i &right, __m256i &center_weight, __m256i &outer_weight, __m256i &round_mask, __m256i &zero) {
   __m256i left_lo = _mm256_unpacklo_epi16(left, zero);
   __m256i left_hi = _mm256_unpackhi_epi16(left, zero);
   __m256i center_lo = _mm256_unpacklo_epi16(center, zero);
@@ -238,7 +238,7 @@ void af_vertical_avx2(BYTE* line_buf, BYTE* dstp, int height, int pitch, int wid
 // -------------------------------------
 
 template<typename pixel_t>
-static __forceinline void af_horizontal_planar_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
+static AVS_FORCEINLINE void af_horizontal_planar_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
   size_t x;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t; // for calling the right ScaledPixelClip()
@@ -252,7 +252,7 @@ static __forceinline void af_horizontal_planar_process_line_c(pixel_t left, BYTE
   dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x]) * (weight_t)outer_weight));
 }
 
-static __forceinline void af_horizontal_planar_process_line_uint16_c(uint16_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight, int bits_per_pixel) {
+static AVS_FORCEINLINE void af_horizontal_planar_process_line_uint16_c(uint16_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight, int bits_per_pixel) {
   size_t x;
   typedef uint16_t pixel_t;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
@@ -268,7 +268,7 @@ static __forceinline void af_horizontal_planar_process_line_uint16_c(uint16_t le
   dstp[x] = ScaledPixelClipEx((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x]) * (weight_t)outer_weight), max_pixel_value);
 }
 
-static __forceinline void af_horizontal_planar_process_line_float_c(float left, float *dstp, size_t row_size, float center_weight, float outer_weight) {
+static AVS_FORCEINLINE void af_horizontal_planar_process_line_float_c(float left, float *dstp, size_t row_size, float center_weight, float outer_weight) {
     size_t x;
     size_t width = row_size / sizeof(float);
     for (x = 0; x < width-1; ++x) {

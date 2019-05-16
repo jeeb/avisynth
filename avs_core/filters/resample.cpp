@@ -57,12 +57,12 @@
 typedef __m128i (SSELoader)(const __m128i*);
 typedef __m128 (SSELoader_ps)(const float*);
 
-__forceinline __m128i simd_load_aligned(const __m128i* adr)
+AVS_FORCEINLINE __m128i simd_load_aligned(const __m128i* adr)
 {
   return _mm_load_si128(adr);
 }
 
-__forceinline __m128i simd_load_unaligned(const __m128i* adr)
+AVS_FORCEINLINE __m128i simd_load_unaligned(const __m128i* adr)
 {
   return _mm_loadu_si128(adr);
 }
@@ -70,7 +70,7 @@ __forceinline __m128i simd_load_unaligned(const __m128i* adr)
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse3")))
 #endif
-__forceinline __m128i simd_load_unaligned_sse3(const __m128i* adr)
+AVS_FORCEINLINE __m128i simd_load_unaligned_sse3(const __m128i* adr)
 {
   return _mm_lddqu_si128(adr);
 }
@@ -78,18 +78,18 @@ __forceinline __m128i simd_load_unaligned_sse3(const __m128i* adr)
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-__forceinline __m128i simd_load_streaming(const __m128i* adr)
+AVS_FORCEINLINE __m128i simd_load_streaming(const __m128i* adr)
 {
   return _mm_stream_load_si128(const_cast<__m128i*>(adr));
 }
 
 // float loaders
-__forceinline __m128 simd_loadps_aligned(const float * adr)
+AVS_FORCEINLINE __m128 simd_loadps_aligned(const float * adr)
 {
   return _mm_load_ps(adr);
 }
 
-__forceinline __m128 simd_loadps_unaligned(const float* adr)
+AVS_FORCEINLINE __m128 simd_loadps_unaligned(const float* adr)
 {
   return _mm_loadu_ps(adr);
 }
@@ -529,7 +529,7 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
   }
 }
 
-__forceinline static void resize_v_create_pitch_table(int* table, int pitch, int height) {
+AVS_FORCEINLINE static void resize_v_create_pitch_table(int* table, int pitch, int height) {
   table[0] = 0;
   for (int i = 1; i < height; i++) {
     table[i] = table[i-1]+pitch;
@@ -661,7 +661,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 
 //-------- 128 bit float Horizontals
 
-__forceinline static void process_one_pixel_h_float(const float *src, int begin, int i, float *&current_coeff, __m128 &result) {
+AVS_FORCEINLINE static void process_one_pixel_h_float(const float *src, int begin, int i, float *&current_coeff, __m128 &result) {
   // 2x4 pixels
   __m128 data_l_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8));
   __m128 data_h_single = _mm_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8 + 4));
@@ -675,7 +675,7 @@ __forceinline static void process_one_pixel_h_float(const float *src, int begin,
 }
 
 template<int filtersizemod8>
-__forceinline static void process_one_pixel_h_float_mask(const float *src, int begin, int i, float *&current_coeff, __m128 &result, __m128 &mask) {
+AVS_FORCEINLINE static void process_one_pixel_h_float_mask(const float *src, int begin, int i, float *&current_coeff, __m128 &result, __m128 &mask) {
   __m128 data_l_single;
   __m128 data_h_single;
   // 2x4 pixels
@@ -887,7 +887,7 @@ static void resizer_h_ssse3_generic_float(BYTE* dst8, const BYTE* src8, int dst_
 //-------- 128 bit uint16_t Horizontals
 
 template<bool lessthan16bit>
-__forceinline static void process_one_pixel_h_uint16_t(const uint16_t *src, int begin, int i, short *&current_coeff, __m128i &result, const __m128i &shifttosigned) {
+AVS_FORCEINLINE static void process_one_pixel_h_uint16_t(const uint16_t *src, int begin, int i, short *&current_coeff, __m128i &result, const __m128i &shifttosigned) {
   __m128i data_single = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin + i * 8)); // 8 pixels
   if (!lessthan16bit)
     data_single = _mm_add_epi16(data_single, shifttosigned); // unsigned -> signed
@@ -1086,7 +1086,7 @@ static void resizer_h_sse41_generic_uint16_t(BYTE* dst8, const BYTE* src8, int d
 //-------- 128 bit uint16_t Verticals
 
 template<bool lessthan16bit, int index>
-__forceinline static void process_chunk_v_uint16_t(const uint16_t *src2_ptr, int src_pitch, __m128i &coeff01234567, __m128i &result_single_lo, __m128i &result_single_hi, const __m128i &shifttosigned) {
+AVS_FORCEINLINE static void process_chunk_v_uint16_t(const uint16_t *src2_ptr, int src_pitch, __m128i &coeff01234567, __m128i &result_single_lo, __m128i &result_single_hi, const __m128i &shifttosigned) {
   // offset table generating is what preventing us from overaddressing
   // 0-1
   __m128i src_even = _mm_load_si128(reinterpret_cast<const __m128i*>(src2_ptr + index * src_pitch)); // 4x 16bit pixels

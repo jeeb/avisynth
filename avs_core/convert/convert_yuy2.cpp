@@ -742,7 +742,7 @@ static void convert_rgb_back_to_yuy2_c(BYTE* yuv, const BYTE* rgb, int rgb_offse
 
 
 template<int matrix, int rgb_bytes, bool aligned>
-static __forceinline __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* srcp, const __m128i &luma_coefs, const __m128i &chroma_coefs, const __m128i &upper_dword_mask, 
+static AVS_FORCEINLINE __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* srcp, const __m128i &luma_coefs, const __m128i &chroma_coefs, const __m128i &upper_dword_mask, 
                                                                  const __m128i &chroma_round_mask, __m128i &luma_round_mask, const __m128i &tv_scale, const __m128i &zero) {
   __m128i rgb_p1, rgb_p2;
   if constexpr(rgb_bytes == 4) {

@@ -604,7 +604,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
   ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, int planeheight, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), 
     planewidth(planewidth), planeheight(planeheight), singleMode(singleMode), labelCount(0) {}
 
-  __forceinline void doMask(XmmReg &r, Reg &constptr, int _planewidth)
+  AVS_FORCEINLINE void doMask(XmmReg &r, Reg &constptr, int _planewidth)
   {
     switch (_planewidth & 3) {
     case 1: andps(r, CPTR(loadmask1000)); break;
@@ -614,7 +614,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
   }
 
   template<bool processSingle, bool maskUnused>
-  __forceinline void processingLoop(Reg &regptrs, XmmReg &zero, Reg &constptr, Reg &SpatialY)
+  AVS_FORCEINLINE void processingLoop(Reg &regptrs, XmmReg &zero, Reg &constptr, Reg &SpatialY)
   {
     std::list<std::pair<XmmReg, XmmReg>> stack;
     std::list<XmmReg> stack1;
@@ -2328,7 +2328,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
     planewidth(planewidth), planeheight(planeheight), singleMode(singleMode) {}
 
   template<bool processSingle, bool maskUnused>
-  __forceinline void processingLoop(Reg &regptrs, YmmReg &zero, Reg &constptr, Reg &SpatialY)
+  AVS_FORCEINLINE void processingLoop(Reg &regptrs, YmmReg &zero, Reg &constptr, Reg &SpatialY)
   {
     std::list<std::pair<YmmReg, YmmReg>> stack;
     std::list<YmmReg> stack1;

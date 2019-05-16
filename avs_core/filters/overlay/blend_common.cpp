@@ -50,7 +50,7 @@
  ********* Masked Blend ********
  *******************************/
 
-__forceinline static BYTE overlay_blend_c_core_8(const BYTE p1, const BYTE p2, const int mask) {
+AVS_FORCEINLINE static BYTE overlay_blend_c_core_8(const BYTE p1, const BYTE p2, const int mask) {
   if (mask == 0)
     return p1;
   if (mask == 0xFF)
@@ -60,7 +60,7 @@ __forceinline static BYTE overlay_blend_c_core_8(const BYTE p1, const BYTE p2, c
 }
 
 template<int bits_per_pixel>
-__forceinline static uint16_t overlay_blend_c_core_16(const uint16_t p1, const uint16_t p2, const int mask) {
+AVS_FORCEINLINE static uint16_t overlay_blend_c_core_16(const uint16_t p1, const uint16_t p2, const int mask) {
   if (mask == 0)
     return p1;
   if (mask >= (1 << bits_per_pixel) -1)
@@ -73,20 +73,20 @@ __forceinline static uint16_t overlay_blend_c_core_16(const uint16_t p1, const u
     return (uint16_t)(((p1 << bits_per_pixel) + (p2 - p1)*mask + half_rounder) >> bits_per_pixel);
 }
 
-__forceinline static float overlay_blend_c_core_f(const float p1, const float p2, const float mask) {
+AVS_FORCEINLINE static float overlay_blend_c_core_f(const float p1, const float p2, const float mask) {
   return p1 + (p2-p1)*mask; // p1*(1-mask) + p2*mask
 }
 
 
 #ifdef X86_32
-__forceinline static __m64 overlay_blend_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask, const __m64& v128) {
+AVS_FORCEINLINE static __m64 overlay_blend_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask, const __m64& v128) {
   __m64 tmp1 = _mm_mullo_pi16(_mm_sub_pi16(p2, p1), mask); // (p2-p1)*mask
   __m64 tmp2 = _mm_or_si64(_mm_slli_pi16(p1, 8), v128);    // p1<<8 + 128 == p1<<8 | 128
   return _mm_srli_pi16(_mm_add_pi16(tmp1, tmp2), 8);
 }
 #endif
 
-__forceinline static __m128i overlay_blend_sse2_uint8_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128) {
+AVS_FORCEINLINE static __m128i overlay_blend_sse2_uint8_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128) {
   // v128 is rounding half
   // done outside: 0 ot 255 overlay values becoming 1 and 254 for full mask transparency
   // p1*(1-mask) + p2*mask = p1+(p2-p1)*mask
@@ -103,7 +103,7 @@ template<int bits_per_pixel>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-__forceinline static __m128i overlay_blend_sse41_uint16_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128)
+AVS_FORCEINLINE static __m128i overlay_blend_sse41_uint16_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128)
 {
   // v128 is rounding half
   __m128i tmp1 = _mm_mullo_epi32(_mm_sub_epi32(p2, p1), mask); // (p2-p1)*mask
@@ -111,7 +111,7 @@ __forceinline static __m128i overlay_blend_sse41_uint16_core(const __m128i& p1, 
   return _mm_srli_epi32(_mm_add_epi32(tmp1, tmp2), bits_per_pixel);
 }
 
-__forceinline static __m128i overlay_blend_sse2_float_core(const __m128i& p1, const __m128i& p2, const __m128i& mask)
+AVS_FORCEINLINE static __m128i overlay_blend_sse2_float_core(const __m128i& p1, const __m128i& p2, const __m128i& mask)
 {
   __m128 mulres = _mm_mul_ps(_mm_sub_ps(_mm_castsi128_ps(p2), _mm_castsi128_ps(p1)), _mm_castsi128_ps(mask));
   return _mm_castps_si128(_mm_add_ps(_mm_castsi128_ps(p1), mulres)); // p1*(1-mask) + p2*mask = p1+(p2-p1)*mask
@@ -121,23 +121,23 @@ __forceinline static __m128i overlay_blend_sse2_float_core(const __m128i& p1, co
  ********* Merge Two Masks Function ********
  *******************************************/
 template<typename pixel_t, typename intermediate_result_t, int bits_per_pixel>
-__forceinline static pixel_t overlay_merge_mask_c(const pixel_t p1, const pixel_t p2) {
+AVS_FORCEINLINE static pixel_t overlay_merge_mask_c(const pixel_t p1, const pixel_t p2) {
   return ((intermediate_result_t)p1*p2) >> bits_per_pixel;
 }
 
-__forceinline static BYTE overlay_merge_mask_c_8(const BYTE p1, const int p2) {
+AVS_FORCEINLINE static BYTE overlay_merge_mask_c_8(const BYTE p1, const int p2) {
   return (p1*p2) >> 8;
 }
 
 #ifdef X86_32
-__forceinline static __m64 overlay_merge_mask_mmx(const __m64& p1, const __m64& p2) {
+AVS_FORCEINLINE static __m64 overlay_merge_mask_mmx(const __m64& p1, const __m64& p2) {
   __m64 t1 = _mm_mullo_pi16(p1, p2);
   __m64 t2 = _mm_srli_pi16(t1, 8);
   return t2;
 }
 #endif
 
-__forceinline static __m128i overlay_merge_mask_sse2_uint8(const __m128i& p1, const __m128i& p2) {
+AVS_FORCEINLINE static __m128i overlay_merge_mask_sse2_uint8(const __m128i& p1, const __m128i& p2) {
   __m128i t1 = _mm_mullo_epi16(p1, p2);
   __m128i t2 = _mm_srli_epi16(t1, 8);
   return t2;
@@ -148,14 +148,14 @@ template<int bits_per_pixel>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-__forceinline static __m128i overlay_merge_mask_sse41_uint16(const __m128i& p1, const __m128i& p2)
+AVS_FORCEINLINE static __m128i overlay_merge_mask_sse41_uint16(const __m128i& p1, const __m128i& p2)
 {
   __m128i t1 = _mm_mullo_epi32(p1, p2);
   __m128i t2 = _mm_srli_epi32(t1, bits_per_pixel);
   return t2;
 }
 
-__forceinline static __m128i overlay_merge_mask_sse2_float(const __m128i& p1, const __m128i& p2) {
+AVS_FORCEINLINE static __m128i overlay_merge_mask_sse2_float(const __m128i& p1, const __m128i& p2) {
   __m128 mulres = _mm_mul_ps(_mm_castsi128_ps(p1), _mm_castsi128_ps(p2));
   return _mm_castps_si128(mulres);
 }
@@ -166,19 +166,19 @@ __forceinline static __m128i overlay_merge_mask_sse2_float(const __m128i& p1, co
  ** Use for Lighten and Darken **
  ********************************/
 template<typename pixel_t>
-__forceinline pixel_t overlay_blend_opaque_c_core(const pixel_t p1, const pixel_t p2, const pixel_t mask) {
+AVS_FORCEINLINE pixel_t overlay_blend_opaque_c_core(const pixel_t p1, const pixel_t p2, const pixel_t mask) {
   return (mask) ? p2 : p1;
 }
 
 #ifdef X86_32
-__forceinline __m64 overlay_blend_opaque_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask) {
+AVS_FORCEINLINE __m64 overlay_blend_opaque_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask) {
   __m64 r1 = _mm_andnot_si64(mask, p1);
   __m64 r2 = _mm_and_si64   (mask, p2);
   return _mm_or_si64(r1, r2);
 }
 #endif
 
-__forceinline __m128i overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+AVS_FORCEINLINE __m128i overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
   __m128i r1 = _mm_andnot_si128(mask, p1);
   __m128i r2 = _mm_and_si128   (mask, p2);
   return _mm_or_si128(r1, r2);
@@ -306,12 +306,12 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 #endif
 
 // SSE4.1 simulation for SSE2
-static __forceinline __m128i _MM_BLENDV_EPI8(__m128i const &a, __m128i const &b, __m128i const &selector) {
+static AVS_FORCEINLINE __m128i _MM_BLENDV_EPI8(__m128i const &a, __m128i const &b, __m128i const &selector) {
   return _mm_or_si128(_mm_and_si128(selector, b), _mm_andnot_si128(selector, a));
 }
 
 // non-existant in simd
-static __forceinline __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
+static AVS_FORCEINLINE __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
 {
   // Returns 0xFFFF where x <= y:
   return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
@@ -1237,7 +1237,7 @@ typedef   __m64 (OverlayMmxCompare)(const __m64&, const __m64&, const __m64&);
 typedef int (OverlayCCompare)(BYTE, BYTE);
 
 template<typename pixel_t, bool darken /* OverlayCCompare<pixel_t> compare*/>
-__forceinline void overlay_darklighten_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
+AVS_FORCEINLINE void overlay_darklighten_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
   pixel_t* p1Y = reinterpret_cast<pixel_t *>(p1Y_8);
   pixel_t* p1U = reinterpret_cast<pixel_t *>(p1U_8);
   pixel_t* p1V = reinterpret_cast<pixel_t *>(p1V_8);
@@ -1270,7 +1270,7 @@ __forceinline void overlay_darklighten_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, 
 
 #ifdef X86_32
 template<OverlayMmxCompare compare, OverlayCCompare compare_c>
-__forceinline void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+AVS_FORCEINLINE void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
   __m64 zero = _mm_setzero_si64();
 
   int wMod8 = (width/8) * 8;
@@ -1433,35 +1433,35 @@ void overlay_darklighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y,
 }
 
 // Compare functions for lighten and darken mode
-__forceinline int overlay_darken_c_cmp(BYTE p1, BYTE p2) {
+AVS_FORCEINLINE int overlay_darken_c_cmp(BYTE p1, BYTE p2) {
   return p2 <= p1;
 }
 
 #ifdef X86_32
-__forceinline __m64 overlay_darken_mmx_cmp(const __m64& p1, const __m64& p2, const __m64& zero) {
+AVS_FORCEINLINE __m64 overlay_darken_mmx_cmp(const __m64& p1, const __m64& p2, const __m64& zero) {
   __m64 diff = _mm_subs_pu8(p2, p1);
   return _mm_cmpeq_pi8(diff, zero);
 }
 #endif
 
-__forceinline __m128i overlay_darken_sse_cmp(const __m128i& p1, const __m128i& p2, const __m128i& zero) {
+AVS_FORCEINLINE __m128i overlay_darken_sse_cmp(const __m128i& p1, const __m128i& p2, const __m128i& zero) {
   __m128i diff = _mm_subs_epu8(p2, p1);
   return _mm_cmpeq_epi8(diff, zero);
 }
 
 template<typename pixel_t>
-__forceinline int overlay_lighten_c_cmp(pixel_t p1, pixel_t p2) {
+AVS_FORCEINLINE int overlay_lighten_c_cmp(pixel_t p1, pixel_t p2) {
   return p2 >= p1;
 }
 
 #ifdef X86_32
-__forceinline __m64 overlay_lighten_mmx_cmp(const __m64& p1, const __m64& p2, const __m64& zero) {
+AVS_FORCEINLINE __m64 overlay_lighten_mmx_cmp(const __m64& p1, const __m64& p2, const __m64& zero) {
   __m64 diff = _mm_subs_pu8(p1, p2);
   return _mm_cmpeq_pi8(diff, zero);
 }
 #endif
 
-__forceinline __m128i overlay_lighten_sse_cmp(const __m128i& p1, const __m128i& p2, const __m128i& zero) {
+AVS_FORCEINLINE __m128i overlay_lighten_sse_cmp(const __m128i& p1, const __m128i& p2, const __m128i& zero) {
   __m128i diff = _mm_subs_epu8(p1, p2);
   return _mm_cmpeq_epi8(diff, zero);
 }

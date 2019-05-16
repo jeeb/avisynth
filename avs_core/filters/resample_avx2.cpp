@@ -75,7 +75,7 @@
 
 //-------- 256 bit uint8_t Horizontals
 
-__forceinline static void process_two_16pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i, short *&current_coeff, int filter_size_numOfBlk16, __m256i &result1, __m256i &result2) {
+AVS_FORCEINLINE static void process_two_16pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i, short *&current_coeff, int filter_size_numOfBlk16, __m256i &result1, __m256i &result2) {
   __m256i data_1 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin1 + i * 16)));
   __m256i data_2 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin2 + i * 16)));
   __m256i coeff_1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current_coeff)); // 16 coeffs
@@ -171,7 +171,7 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
 
 //-------- 256 bit float Horizontals
 
-__forceinline static void process_one_pixel_h_float(const float *src, int begin, int i, float *&current_coeff, __m256 &result) {
+AVS_FORCEINLINE static void process_one_pixel_h_float(const float *src, int begin, int i, float *&current_coeff, __m256 &result) {
   __m256 data_single = _mm256_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8)); // float 8*32=256 8 pixels at a time
   __m256 coeff = _mm256_load_ps(reinterpret_cast<const float*>(current_coeff)); // always aligned
   result = _mm256_fmadd_ps(data_single, coeff, result); // a*b+c
@@ -179,7 +179,7 @@ __forceinline static void process_one_pixel_h_float(const float *src, int begin,
 }
 
 template<int filtersizemod8>
-__forceinline static void process_one_pixel_h_float_mask(const float *src, int begin, int i, float *&current_coeff, __m256 &result, __m256 &zero) {
+AVS_FORCEINLINE static void process_one_pixel_h_float_mask(const float *src, int begin, int i, float *&current_coeff, __m256 &result, __m256 &zero) {
   __m256 data_single = _mm256_loadu_ps(reinterpret_cast<const float*>(src + begin + i * 8)); // float 8*32=256 8 pixels at a time
   data_single = _mm256_blend_ps(zero, data_single, (1 << filtersizemod8) - 1);
   __m256 coeff = _mm256_load_ps(reinterpret_cast<const float*>(current_coeff)); // always aligned
@@ -361,7 +361,7 @@ void resizer_h_avx2_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, i
 //-------- 256 bit uint16_t Horizontals
 
 template<bool lessthan16bit>
-__forceinline static void process_two_pixels_h_uint16_t(const uint16_t *src, int begin1, int begin2, int i, short *&current_coeff, int filter_size_numOfBlk8, __m256i &result, const __m256i &shifttosigned) {
+AVS_FORCEINLINE static void process_two_pixels_h_uint16_t(const uint16_t *src, int begin1, int begin2, int i, short *&current_coeff, int filter_size_numOfBlk8, __m256i &result, const __m256i &shifttosigned) {
   __m128i data_single_lo = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin1 + i * 8));
   __m128i data_single_hi = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin2 + i * 8));
   __m256i data_single = _mm256_set_m128i(data_single_hi, data_single_lo);
@@ -556,7 +556,7 @@ void resize_v_avx2_planar_uint8_t(BYTE* dst, const BYTE* src, int dst_pitch, int
 //-------- 256 bit uint16_t Verticals
 
 template<bool lessthan16bit, int index>
-__forceinline static void process_chunk_v_uint16_t_256(const uint16_t *src2_ptr, int src_pitch, __m256i &coeff01234567, __m256i &result_single_lo, __m256i &result_single_hi, const __m256i &shifttosigned) {
+AVS_FORCEINLINE static void process_chunk_v_uint16_t_256(const uint16_t *src2_ptr, int src_pitch, __m256i &coeff01234567, __m256i &result_single_lo, __m256i &result_single_hi, const __m256i &shifttosigned) {
   // offset table generating is what preventing us from overaddressing
   __m256i src_even = _mm256_load_si256(reinterpret_cast<const __m256i*>(src2_ptr + index * src_pitch)); // 8x 16bit pixels
   __m256i src_odd = _mm256_load_si256(reinterpret_cast<const __m256i*>(src2_ptr + (index + 1) * src_pitch));  // 8x 16bit pixels

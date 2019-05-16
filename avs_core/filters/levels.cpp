@@ -163,7 +163,7 @@ static void get_limits(luma_chroma_limits_t &d, int bits_per_pixel) {
  ********************************/
 
 template<bool chroma, bool use_gamma>
-__forceinline float Levels::calcPixel(const float pixel)
+AVS_FORCEINLINE float Levels::calcPixel(const float pixel)
 {
     float result;
     if (!chroma) {

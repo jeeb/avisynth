@@ -167,7 +167,7 @@ static void af_vertical_sse2_float(BYTE* line_buf, BYTE* dstp, const int height,
 }
 
 
-static __forceinline __m128i af_blend_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
+static AVS_FORCEINLINE __m128i af_blend_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i outer_tmp = _mm_add_epi16(upper, lower);
   __m128i center_tmp = _mm_mullo_epi16(center, center_weight);
 
@@ -179,7 +179,7 @@ static __forceinline __m128i af_blend_sse2(__m128i &upper, __m128i &center, __m1
   return _mm_srai_epi16(result, 7);
 }
 
-static __forceinline __m128i af_blend_uint16_t_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
+static AVS_FORCEINLINE __m128i af_blend_uint16_t_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i outer_tmp = _mm_add_epi32(upper, lower);
   __m128i center_tmp = _MM_MULLO_EPI32(center, center_weight); // sse2: mullo simulation
   outer_tmp = _MM_MULLO_EPI32(outer_tmp, outer_weight);
@@ -193,7 +193,7 @@ static __forceinline __m128i af_blend_uint16_t_sse2(__m128i &upper, __m128i &cen
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-static __forceinline __m128i af_blend_uint16_t_sse41(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask)
+static AVS_FORCEINLINE __m128i af_blend_uint16_t_sse41(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask)
 {
   __m128i outer_tmp = _mm_add_epi32(upper, lower);
   __m128i center_tmp = _mm_mullo_epi32(center, center_weight);
@@ -205,14 +205,14 @@ static __forceinline __m128i af_blend_uint16_t_sse41(__m128i &upper, __m128i &ce
   return _mm_srai_epi32(result, 7);
 }
 
-static __forceinline __m128 af_blend_float_sse2(__m128 &upper, __m128 &center, __m128 &lower, __m128 &center_weight, __m128 &outer_weight) {
+static AVS_FORCEINLINE __m128 af_blend_float_sse2(__m128 &upper, __m128 &center, __m128 &lower, __m128 &center_weight, __m128 &outer_weight) {
   __m128 tmp1 = _mm_mul_ps(center, center_weight);
   __m128 tmp2 = _mm_mul_ps(_mm_add_ps(upper, lower), outer_weight);
   return _mm_add_ps(tmp1, tmp2);
 }
 
 
-static __forceinline __m128i af_unpack_blend_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero) {
+static AVS_FORCEINLINE __m128i af_unpack_blend_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero) {
   __m128i left_lo = _mm_unpacklo_epi8(left, zero);
   __m128i left_hi = _mm_unpackhi_epi8(left, zero);
   __m128i center_lo = _mm_unpacklo_epi8(center, zero);
@@ -226,7 +226,7 @@ static __forceinline __m128i af_unpack_blend_sse2(__m128i &left, __m128i &center
   return _mm_packus_epi16(result_lo, result_hi);
 }
 
-static __forceinline __m128i af_unpack_blend_uint16_t_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero) {
+static AVS_FORCEINLINE __m128i af_unpack_blend_uint16_t_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero) {
   __m128i left_lo = _mm_unpacklo_epi16(left, zero);
   __m128i left_hi = _mm_unpackhi_epi16(left, zero);
   __m128i center_lo = _mm_unpacklo_epi16(center, zero);
@@ -242,7 +242,7 @@ static __forceinline __m128i af_unpack_blend_uint16_t_sse2(__m128i &left, __m128
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-static __forceinline __m128i af_unpack_blend_uint16_t_sse41(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero)
+static AVS_FORCEINLINE __m128i af_unpack_blend_uint16_t_sse41(__m128i &left, __m128i &center, __m128i &right, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask, __m128i &zero)
 {
   __m128i left_lo = _mm_unpacklo_epi16(left, zero);
   __m128i left_hi = _mm_unpackhi_epi16(left, zero);
@@ -417,7 +417,7 @@ static void af_vertical_sse2(BYTE* line_buf, BYTE* dstp, int height, int pitch, 
 
 #ifdef X86_32
 
-static __forceinline __m64 af_blend_mmx(__m64 &upper, __m64 &center, __m64 &lower, __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
+static AVS_FORCEINLINE __m64 af_blend_mmx(__m64 &upper, __m64 &center, __m64 &lower, __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
   __m64 outer_tmp = _mm_add_pi16(upper, lower);
   __m64 center_tmp = _mm_mullo_pi16(center, center_weight);
 
@@ -429,7 +429,7 @@ static __forceinline __m64 af_blend_mmx(__m64 &upper, __m64 &center, __m64 &lowe
   return _mm_srai_pi16(result, 7);
 }
 
-static __forceinline __m64 af_unpack_blend_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask, __m64 &zero) {
+static AVS_FORCEINLINE __m64 af_unpack_blend_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask, __m64 &zero) {
   __m64 left_lo = _mm_unpacklo_pi8(left, zero);
   __m64 left_hi = _mm_unpackhi_pi8(left, zero);
   __m64 center_lo = _mm_unpacklo_pi8(center, zero);
@@ -603,7 +603,7 @@ AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
 // --------------------------------------
 
 template<typename pixel_t, typename weight_t>
-static __forceinline void af_horizontal_rgb32_process_line_c(pixel_t b_left, pixel_t g_left, pixel_t r_left, pixel_t a_left, pixel_t *dstp, size_t width, weight_t center_weight, weight_t outer_weight) {
+static AVS_FORCEINLINE void af_horizontal_rgb32_process_line_c(pixel_t b_left, pixel_t g_left, pixel_t r_left, pixel_t a_left, pixel_t *dstp, size_t width, weight_t center_weight, weight_t outer_weight) {
   size_t x;
   for (x = 0; x < width-1; ++x)
   {
@@ -899,7 +899,7 @@ static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int 
 }
 
 
-static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask,
+static AVS_FORCEINLINE __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask,
                                              __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i left_luma = _mm_and_si128(left, luma_mask); //0 Y5 0 Y4 0 Y3 0 Y2 0 Y1 0 Y0 0 Y-1 0 Y-2
   __m128i center_luma = _mm_and_si128(center, luma_mask); //0 Y7 0 Y6 0 Y5 0 Y4 0 Y3 0 Y2 0 Y1 0 Y0
@@ -1006,7 +1006,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
 //
-static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask,
+static AVS_FORCEINLINE __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask,
                            __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
   __m64 left_luma = _mm_and_si64(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
   __m64 center_luma = _mm_and_si64(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
@@ -1150,7 +1150,7 @@ static void af_horizontal_rgb24_48_c(BYTE* dstp8, int height, int pitch8, int wi
 // -------------------------------------
 
 template<typename pixel_t>
-static __forceinline void af_horizontal_planar_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
+static AVS_FORCEINLINE void af_horizontal_planar_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
   size_t x;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t; // for calling the right ScaledPixelClip()
@@ -1164,7 +1164,7 @@ static __forceinline void af_horizontal_planar_process_line_c(pixel_t left, BYTE
   dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x]) * (weight_t)outer_weight));
 }
 
-static __forceinline void af_horizontal_planar_process_line_uint16_c(uint16_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight, int bits_per_pixel) {
+static AVS_FORCEINLINE void af_horizontal_planar_process_line_uint16_c(uint16_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight, int bits_per_pixel) {
   size_t x;
   typedef uint16_t pixel_t;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
@@ -1198,7 +1198,7 @@ static void af_horizontal_planar_c(BYTE* dstp8, size_t height, size_t pitch8, si
     }
 }
 
-static __forceinline void af_horizontal_planar_process_line_float_c(float left, float *dstp, size_t row_size, float center_weight, float outer_weight) {
+static AVS_FORCEINLINE void af_horizontal_planar_process_line_float_c(float left, float *dstp, size_t row_size, float center_weight, float outer_weight) {
     size_t x;
     size_t width = row_size / sizeof(float);
     for (x = 0; x < width-1; ++x) {
@@ -1864,7 +1864,7 @@ static void accumulate_line_yuy2_c(BYTE* c_plane, const BYTE** planeP, int plane
 }
 
 #ifdef __SSE2__
-static __forceinline __m128i ts_multiply_repack_sse2(const __m128i &src, const __m128i &div, __m128i &halfdiv, __m128i &zero) {
+static AVS_FORCEINLINE __m128i ts_multiply_repack_sse2(const __m128i &src, const __m128i &div, __m128i &halfdiv, __m128i &zero) {
   __m128i acc = _mm_madd_epi16(src, div);
   acc = _mm_add_epi32(acc, halfdiv);
   acc = _mm_srli_epi32(acc, 15);
@@ -2136,7 +2136,7 @@ static void accumulate_line_16_sse41(BYTE* c_plane, const BYTE** planeP, int pla
 
 #ifdef X86_32
 
-static __forceinline __m64 ts_multiply_repack_mmx(const __m64 &src, const __m64 &div, __m64 &halfdiv, __m64 &zero) {
+static AVS_FORCEINLINE __m64 ts_multiply_repack_mmx(const __m64 &src, const __m64 &div, __m64 &halfdiv, __m64 &zero) {
   __m64 acc = _mm_madd_pi16(src, div);
   acc = _mm_add_pi32(acc, halfdiv);
   acc = _mm_srli_pi32(acc, 15);

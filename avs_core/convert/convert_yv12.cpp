@@ -175,7 +175,7 @@ void convert_yv12_to_yuy2_interlaced_c(const BYTE* srcY, const BYTE* srcU, const
 #pragma warning(push)
 #pragma warning(disable: 4799)
 //75% of the first argument and 25% of the second one.
-static __forceinline __m64 convert_yv12_to_yuy2_merge_chroma_isse(const __m64 &line75p, const __m64 &line25p, const __m64 &one) {
+static AVS_FORCEINLINE __m64 convert_yv12_to_yuy2_merge_chroma_isse(const __m64 &line75p, const __m64 &line25p, const __m64 &one) {
   __m64 avg_chroma_lo = _mm_avg_pu8(line75p, line25p);
   avg_chroma_lo = _mm_subs_pu8(avg_chroma_lo, one);
   return _mm_avg_pu8(avg_chroma_lo, line75p);
@@ -184,7 +184,7 @@ static __forceinline __m64 convert_yv12_to_yuy2_merge_chroma_isse(const __m64 &l
 // first parameter is 8 luma pixels
 // second and third - 4 chroma bytes in low dwords
 // last two params are OUT
-static __forceinline void convert_yv12_pixels_to_yuy2_isse(const __m64 &y, const __m64 &u, const __m64 &v,  const __m64 &zero, __m64 &out_low, __m64 &out_high) {
+static AVS_FORCEINLINE void convert_yv12_pixels_to_yuy2_isse(const __m64 &y, const __m64 &u, const __m64 &v,  const __m64 &zero, __m64 &out_low, __m64 &out_high) {
   __m64 chroma = _mm_unpacklo_pi8(u, v);
   out_low = _mm_unpacklo_pi8(y, chroma);
   out_high = _mm_unpackhi_pi8(y, chroma);
@@ -370,7 +370,7 @@ void convert_yv12_to_yuy2_progressive_isse(const BYTE* srcY, const BYTE* srcU, c
 
 #ifdef __SSE2__
 //75% of the first argument and 25% of the second one.
-static __forceinline __m128i convert_yv12_to_yuy2_merge_chroma_sse2(const __m128i &line75p, const __m128i &line25p, const __m128i &one) {
+static AVS_FORCEINLINE __m128i convert_yv12_to_yuy2_merge_chroma_sse2(const __m128i &line75p, const __m128i &line25p, const __m128i &one) {
   __m128i avg_chroma_lo = _mm_avg_epu8(line75p, line25p);
   avg_chroma_lo = _mm_subs_epu8(avg_chroma_lo, one);
   return _mm_avg_epu8(avg_chroma_lo, line75p);
@@ -379,7 +379,7 @@ static __forceinline __m128i convert_yv12_to_yuy2_merge_chroma_sse2(const __m128
 // first parameter is 16 luma pixels
 // second and third - 8 chroma bytes in low dwords
 // last two params are OUT
-static __forceinline void convert_yv12_pixels_to_yuy2_sse2(const __m128i &y, const __m128i &u, const __m128i &v,  const __m128i &zero, __m128i &out_low, __m128i &out_high) {
+static AVS_FORCEINLINE void convert_yv12_pixels_to_yuy2_sse2(const __m128i &y, const __m128i &u, const __m128i &v,  const __m128i &zero, __m128i &out_low, __m128i &out_high) {
   AVS_UNUSED(zero);
   __m128i chroma = _mm_unpacklo_epi8(u, v); //...V3 U3 V2 U2 V1 U1 V0 U0
   out_low = _mm_unpacklo_epi8(y, chroma);
@@ -671,7 +671,7 @@ void convert_yuy2_to_yv12_progressive_isse(const BYTE* src, int src_width, int s
 }
 
 //75% of the first argument and 25% of the second one.
-static __forceinline __m64 convert_yuy2_to_yv12_merge_chroma_isse(const __m64 &line75p, const __m64 &line25p, const __m64 &one, const __m64 &luma_mask) {
+static AVS_FORCEINLINE __m64 convert_yuy2_to_yv12_merge_chroma_isse(const __m64 &line75p, const __m64 &line25p, const __m64 &one, const __m64 &luma_mask) {
   __m64 avg_chroma_lo = _mm_avg_pu8(line75p, line25p);
   avg_chroma_lo = _mm_subs_pu8(avg_chroma_lo, one);
   avg_chroma_lo = _mm_avg_pu8(avg_chroma_lo, line75p);
@@ -817,7 +817,7 @@ void convert_yuy2_to_yv12_progressive_sse2(const BYTE* src, int src_width, int s
 }
 
 //75% of the first argument and 25% of the second one.
-static __forceinline __m128i convert_yuy2_to_yv12_merge_chroma_sse2(const __m128i &line75p, const __m128i &line25p, const __m128i &one, const __m128i &luma_mask) {
+static AVS_FORCEINLINE __m128i convert_yuy2_to_yv12_merge_chroma_sse2(const __m128i &line75p, const __m128i &line25p, const __m128i &one, const __m128i &luma_mask) {
   __m128i avg_chroma_lo = _mm_avg_epu8(line75p, line25p);
   avg_chroma_lo = _mm_subs_epu8(avg_chroma_lo, one);
   avg_chroma_lo = _mm_avg_epu8(avg_chroma_lo, line75p);

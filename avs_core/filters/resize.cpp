@@ -53,7 +53,7 @@ extern const AVSFunction Resize_filters[] = {
 };
 
 //todo: think of a way to do this with pavgb
-static __forceinline __m128i vertical_reduce_sse2_blend(__m128i &src, __m128i &src_next, __m128i &src_next2, __m128i &zero, __m128i &two) {
+static AVS_FORCEINLINE __m128i vertical_reduce_sse2_blend(__m128i &src, __m128i &src_next, __m128i &src_next2, __m128i &zero, __m128i &two) {
   __m128i src_unpck_lo = _mm_unpacklo_epi8(src, zero);
   __m128i src_unpck_hi = _mm_unpackhi_epi8(src, zero);
 
@@ -116,7 +116,7 @@ static void vertical_reduce_sse2(BYTE* dstp, const BYTE* srcp, int dst_pitch, in
 #ifdef X86_32
 
 //todo: think of a way to do this with pavgb
-static __forceinline __m64 vertical_reduce_mmx_blend(__m64 &src, __m64 &src_next, __m64 &src_next2, __m64 &zero, __m64 &two) {
+static AVS_FORCEINLINE __m64 vertical_reduce_mmx_blend(__m64 &src, __m64 &src_next, __m64 &src_next2, __m64 &zero, __m64 &two) {
   __m64 src_unpck_lo = _mm_unpacklo_pi8(src, zero);
   __m64 src_unpck_hi = _mm_unpackhi_pi8(src, zero);
 

@@ -140,7 +140,7 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   mask_frames = vi2.num_frames;
 }
 
-static __forceinline __m128i mask_core_sse2(__m128i &src, __m128i &alpha, __m128i &not_alpha_mask, __m128i &zero, __m128i &matrix, __m128i &round_mask) {
+static AVS_FORCEINLINE __m128i mask_core_sse2(__m128i &src, __m128i &alpha, __m128i &not_alpha_mask, __m128i &zero, __m128i &matrix, __m128i &round_mask) {
   __m128i not_alpha = _mm_and_si128(src, not_alpha_mask);
 
   __m128i pixel0 = _mm_unpacklo_epi8(alpha, zero); 
@@ -193,7 +193,7 @@ static void mask_sse2(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_p
 
 #ifdef X86_32
 
-static __forceinline __m64 mask_core_mmx(__m64 &src, __m64 &alpha, __m64 &not_alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
+static AVS_FORCEINLINE __m64 mask_core_mmx(__m64 &src, __m64 &alpha, __m64 &not_alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
   __m64 not_alpha = _mm_and_si64(src, not_alpha_mask);
 
   __m64 pixel0 = _mm_unpacklo_pi8(alpha, zero); 
@@ -424,7 +424,7 @@ static void colorkeymask_sse2(BYTE* pf, int pitch, int color, int height, int wi
 
 #ifdef X86_32
 
-static __forceinline __m64 colorkeymask_core_mmx(const __m64 &src, const __m64 &colorv, const __m64 &tolerance, const __m64 &zero) {
+static AVS_FORCEINLINE __m64 colorkeymask_core_mmx(const __m64 &src, const __m64 &colorv, const __m64 &tolerance, const __m64 &zero) {
   __m64 gt = _mm_subs_pu8(colorv, src); 
   __m64 lt = _mm_subs_pu8(src, colorv); 
   __m64 absdiff = _mm_or_si64(gt, lt); //abs(color - src)
@@ -2145,7 +2145,7 @@ static void layer_yuy2_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int
 
 #ifdef X86_32
 template<bool use_chroma>
-static __forceinline __m64 layer_yuy2_mul_mmx_core(const __m64 &src, const __m64 &ovr, const __m64 &luma_mask, 
+static AVS_FORCEINLINE __m64 layer_yuy2_mul_mmx_core(const __m64 &src, const __m64 &ovr, const __m64 &luma_mask, 
                                        const __m64 &alpha, const __m64 &half_alpha, const __m64 &v128) {
   __m64 src_luma = _mm_and_si64(src, luma_mask);
   __m64 ovr_luma = _mm_and_si64(ovr, luma_mask);
@@ -3549,7 +3549,7 @@ static void layer_yuv_lighten_darken_f_c(
 
 //src format: xx xx xx xx | xx xx xx xx | a1 xx xx xx | a0 xx xx xx
 //level_vector and one should be vectors of 32bit packed integers
-static __forceinline __m128i calculate_monochrome_alpha_sse2(const __m128i &src, const __m128i &level_vector, const __m128i &one) {
+static AVS_FORCEINLINE __m128i calculate_monochrome_alpha_sse2(const __m128i &src, const __m128i &level_vector, const __m128i &one) {
   __m128i alpha = _mm_srli_epi32(src, 24);
   alpha = _mm_mullo_epi16(alpha, level_vector);
   alpha = _mm_add_epi32(alpha, one);
@@ -3558,7 +3558,7 @@ static __forceinline __m128i calculate_monochrome_alpha_sse2(const __m128i &src,
   return _mm_shuffle_epi32(alpha, _MM_SHUFFLE(1, 1, 0, 0));
 }
 
-static __forceinline __m128i calculate_luma_sse2(const __m128i &src, const __m128i &rgb_coeffs, const __m128i &zero) {
+static AVS_FORCEINLINE __m128i calculate_luma_sse2(const __m128i &src, const __m128i &rgb_coeffs, const __m128i &zero) {
   AVS_UNUSED(zero);
   __m128i temp = _mm_madd_epi16(src, rgb_coeffs); 
   __m128i low = _mm_shuffle_epi32(temp, _MM_SHUFFLE(3, 3, 1, 1));
@@ -3569,7 +3569,7 @@ static __forceinline __m128i calculate_luma_sse2(const __m128i &src, const __m12
 }
 
 #ifdef X86_32
-static __forceinline __m64 calculate_luma_isse(const __m64 &src, const __m64 &rgb_coeffs, const __m64 &zero) {
+static AVS_FORCEINLINE __m64 calculate_luma_isse(const __m64 &src, const __m64 &rgb_coeffs, const __m64 &zero) {
   __m64 temp = _mm_madd_pi16(src, rgb_coeffs);
   __m64 low = _mm_unpackhi_pi32(temp, zero);
   temp = _mm_add_pi32(low, temp);

@@ -171,7 +171,7 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
 
 #if defined(__SSE2__)
 template<int rgb_size>
-static __forceinline __m128i convert_yuy2_to_rgb_sse2_core(const __m128i& src_luma_scaled, const __m128i& src_chroma, const __m128i &alpha,
+static AVS_FORCEINLINE __m128i convert_yuy2_to_rgb_sse2_core(const __m128i& src_luma_scaled, const __m128i& src_chroma, const __m128i &alpha,
                                                            const __m128i& v128, const __m128i& zero, const __m128i& rounder, const __m128i &ff,
                                                            const __m128i& ymul, const __m128i& bmul, const __m128i& gmul, const __m128i& rmul) {
   __m128i chroma_scaled = _mm_sub_epi16(src_chroma, v128);  //V2-128 | U2-128 | V1-128 | U1-128 | V1-128 | U1-128 | V0-128 | U0-128
@@ -331,7 +331,7 @@ static void convert_yuy2_to_rgb_sse2(const BYTE *srcp, BYTE* dstp, int src_pitch
 #ifdef X86_32
 
 template<int rgb_size>
-static __forceinline __m64 convert_yuy2_to_rgb_isse_core(const __m64& src_luma_scaled, const __m64& src_chroma, const __m64 &alpha,
+static AVS_FORCEINLINE __m64 convert_yuy2_to_rgb_isse_core(const __m64& src_luma_scaled, const __m64& src_chroma, const __m64 &alpha,
                                                          const __m64& v128, const __m64& zero, const __m64& rounder, const __m64 &ff,
                                                          const __m64& ymul, const __m64& bmul, const __m64& gmul, const __m64& rmul) {
   __m64 chroma_scaled = _mm_sub_pi16(src_chroma, v128); //V1-128 | U1-128 | V0-128 | U0-128
@@ -1224,7 +1224,7 @@ static void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_r
 #define FS_OPTIMIZED_SERPENTINE_COEF
 
 template<int direction>
-static __forceinline void diffuse_floyd(int err, int &nextError, int *error_ptr)
+static AVS_FORCEINLINE void diffuse_floyd(int err, int &nextError, int *error_ptr)
 {
 #if defined (FS_OPTIMIZED_SERPENTINE_COEF)
   const int      e1 = 0;

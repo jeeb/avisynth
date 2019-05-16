@@ -184,7 +184,7 @@ template void FromY416_c<true>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t
 
 // Helpers for 10 bit RGB -> Planar RGB
 
-static __forceinline uint32_t swap32(uint32_t x) {
+static AVS_FORCEINLINE uint32_t swap32(uint32_t x) {
   x = (x & 0x0000FFFFu) << 16 | (x & 0xFFFF0000u) >> 16;
   x = (x & 0x00FF00FFu) << 8 | (x & 0xFF00FF00u) >> 8;
   return x;
@@ -234,7 +234,7 @@ void From_R10k_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t
 
 // Helpers for b64a <-> RGB64
 
-static __forceinline uint64_t swap64(uint64_t x) {
+static AVS_FORCEINLINE uint64_t swap64(uint64_t x) {
   x = (x & 0x00000000FFFFFFFFULL) << 32 | (x & 0xFFFFFFFF00000000ULL) >> 32;
   x = (x & 0x0000FFFF0000FFFFULL) << 16 | (x & 0xFFFF0000FFFF0000ULL) >> 16;
   x = (x & 0x00FF00FF00FF00FFULL) << 8 | (x & 0xFF00FF00FF00FF00ULL) >> 8;
@@ -244,13 +244,13 @@ static __forceinline uint64_t swap64(uint64_t x) {
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
 #endif
-static __forceinline __m128i _mm_bswap_epi64_ssse3(__m128i x)
+static AVS_FORCEINLINE __m128i _mm_bswap_epi64_ssse3(__m128i x)
 {
   // Reverse order of bytes in each 64-bit word.
   return _mm_shuffle_epi8(x, _mm_set_epi8(8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7));
 }
 
-static __forceinline __m128i _mm_bswap_epi64_sse2(__m128i x)
+static AVS_FORCEINLINE __m128i _mm_bswap_epi64_sse2(__m128i x)
 {
   // Reverse order of bytes in each 64-bit word.
   // Swap bytes in each 16-bit word:
@@ -265,7 +265,7 @@ static __forceinline __m128i _mm_bswap_epi64_sse2(__m128i x)
   return a;
 }
 
-static __forceinline uint16_t swap16(uint16_t x) {
+static AVS_FORCEINLINE uint16_t swap16(uint16_t x) {
   return (x & 0x00FF) << 8 | (x & 0xFF00) >> 8;
 }
 

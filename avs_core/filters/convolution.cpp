@@ -76,7 +76,7 @@ extern const AVSFunction Convolution_filters[] = {
 };
 
 template<int mi, int ma>
-__forceinline int static_clip(int value) {
+AVS_FORCEINLINE int static_clip(int value) {
   if (value < mi) {
     return mi;
   }

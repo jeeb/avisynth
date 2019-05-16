@@ -322,7 +322,7 @@ void Convert444FromYUY2(PVideoFrame &src, PVideoFrame &dst, int pixelsize, int b
 
 // YV24->YV12 float types
 // Quick simple 2x2 averaging, no mpeg2 or mpeg1 placement involved
-static __forceinline __m128 convert_yv24_chroma_block_to_yv12_float_sse2(const __m128 &src_line0_p0, const __m128 &src_line1_p0, const __m128 &src_line0_p1, const __m128 &src_line1_p1, const __m128 &onefourth) {
+static AVS_FORCEINLINE __m128 convert_yv24_chroma_block_to_yv12_float_sse2(const __m128 &src_line0_p0, const __m128 &src_line1_p0, const __m128 &src_line0_p1, const __m128 &src_line1_p1, const __m128 &onefourth) {
   __m128 avg1f = _mm_add_ps(src_line0_p0, src_line1_p0); // vertical sum
   __m128 avg2f = _mm_add_ps(src_line0_p1, src_line1_p1);
   // ABCD -> a3, a2+a3, a1, a1+a0
@@ -376,7 +376,7 @@ static void convert_yv24_chroma_to_yv12_float_sse2(BYTE *dstp, const BYTE *srcp,
     = ~pavgb(~pavgb(a, b), ~pavgb(c, d))
 */
 template<typename pixel_t>
-static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask) {
+static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask) {
   __m128i avg1, avg2;
   if constexpr(sizeof(pixel_t) == 1) {
     avg1 = _mm_avg_epu8(src_line0_p0, src_line1_p0);
@@ -419,7 +419,7 @@ template<typename pixel_t>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse41(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask)
+static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv12_sse41(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask)
 {
   __m128i avg1, avg2;
   if constexpr (sizeof(pixel_t) == 1) {
@@ -549,7 +549,7 @@ static void convert_yv24_chroma_to_yv12_sse41(BYTE *dstp, const BYTE *srcp, int 
 
 #ifdef X86_32
 
-static __forceinline __m64 convert_yv24_chroma_block_to_yv12_isse(const __m64 &src_line0_p0, const __m64 &src_line1_p0, const __m64 &src_line0_p1, const __m64 &src_line1_p1, const __m64 &ffff, const __m64 &mask) {
+static AVS_FORCEINLINE __m64 convert_yv24_chroma_block_to_yv12_isse(const __m64 &src_line0_p0, const __m64 &src_line1_p0, const __m64 &src_line0_p1, const __m64 &src_line1_p1, const __m64 &ffff, const __m64 &mask) {
   __m64 avg1 = _mm_avg_pu8(src_line0_p0, src_line1_p0);
   __m64 avg2 = _mm_avg_pu8(src_line0_p1, src_line1_p1);
 
@@ -628,7 +628,7 @@ static void convert_yv24_chroma_to_yv12_c(BYTE *dstp8, const BYTE *srcp8, int ds
 }
 
 // Quick YV24->YV16 chroma
-static __forceinline __m128 convert_yv24_chroma_block_to_yv16_float_sse2(const __m128 &src_line0_p0, const __m128 &src_line0_p1, const __m128 &half) {
+static AVS_FORCEINLINE __m128 convert_yv24_chroma_block_to_yv16_float_sse2(const __m128 &src_line0_p0, const __m128 &src_line0_p1, const __m128 &half) {
   // A3 A2 A1 A0 B3 B2 B1 B0 -> A3 + A2, A1 + A0, B3 + B2, B1 + B0
   __m128 avg1 = src_line0_p0;
   __m128 avg2 = src_line0_p1;
@@ -671,7 +671,7 @@ static void convert_yv24_chroma_to_yv16_float_sse2(BYTE *dstp, const BYTE *srcp,
 // 16 bit: SSE4 option
 // uint8_t, uint16_t
 template<typename pixel_t>
-static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128i &src_line0_p0, const __m128i &src_line0_p1, const __m128i &mask) {
+static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m128i &src_line0_p0, const __m128i &src_line0_p1, const __m128i &mask) {
   __m128i avg1, avg2;
 
   if constexpr(sizeof(pixel_t) == 1) {
@@ -705,7 +705,7 @@ template<typename pixel_t>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-static __forceinline __m128i convert_yv24_chroma_block_to_yv16_sse41(const __m128i &src_line0_p0, const __m128i &src_line0_p1, const __m128i &mask)
+static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv16_sse41(const __m128i &src_line0_p0, const __m128i &src_line0_p1, const __m128i &mask)
 {
   __m128i avg1, avg2;
 

@@ -208,7 +208,7 @@ static void greyscale_yuy2_mmx(BYTE *srcp, size_t width, size_t height, size_t p
  _mm_empty();
 }
 
-static __forceinline __m64 greyscale_rgb32_core_mmx(__m64 &src, __m64 &alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
+static AVS_FORCEINLINE __m64 greyscale_rgb32_core_mmx(__m64 &src, __m64 &alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
   __m64 alpha = _mm_and_si64(src, alpha_mask);
   __m64 pixel0 = _mm_unpacklo_pi8(src, zero); 
   __m64 pixel1 = _mm_unpackhi_pi8(src, zero);
