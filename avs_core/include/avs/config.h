@@ -52,22 +52,28 @@
 #   error Unsupported CPU architecture.
 #endif
 
-#if   defined(_MSC_VER)
+//            VC++  LLVM-Clang-cl   MinGW-Gnu
+// MSVC        x          x 
+// MSVC_PURE   x
+// CLANG                  x             
+// GCC                                  x
+
+#if defined(__clang__)
+// Check clang first. clang-cl also defines __MSC_VER
+// We set MSVC because they are mostly compatible
 #   define MSVC
+#   define CLANG
+#   define AVS_FORCEINLINE __attribute__((always_inline))
+#elif   defined(_MSC_VER)
+#   define MSVC
+#   define MSVC_PURE
+#   define AVS_FORCEINLINE __forceinline
 #elif defined(__GNUC__)
 #   define GCC
-#elif defined(__clang__)
-#   define CLANG
+#   define AVS_FORCEINLINE __attribute__((always_inline)) inline
 #else
 #   error Unsupported compiler.
-#endif
-
-#if !defined(CLANG) && defined(__clang__)
- // MSVC is defined when LLVM build in VS
-#   define CLANG
-#endif
-
-#if    defined(GCC)
+#   define AVS_FORCEINLINE inline
 #   undef __forceinline
 #   define __forceinline inline
 #endif
