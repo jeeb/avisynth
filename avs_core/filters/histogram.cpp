@@ -1638,15 +1638,18 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 
     // luma
     const int height = src->GetHeight(PLANAR_Y);
-    for (int y = 0; y<height; ++y) {
-      int hist[1<<12] = { 0 }; // allocate max 12 bit res. todo
 
+    std::vector<int> hist;
+    hist.resize(1ULL << show_bits);
+
+    for (int y = 0; y<height; ++y) {
+      std::fill(hist.begin(), hist.end(), 0);
       // accumulate line population
       if(pixelsize==1) {
         // 8 bit clip into 8,9,... bit histogram
         int invshift = show_bits - 8;
         for (int x = 0; x<source_width; ++x) {
-          hist[(int)srcp[x] << invshift]++;
+          hist[srcp[x] << invshift]++;
         }
       }
       else if (pixelsize == 2) {
@@ -1657,7 +1660,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
           // 10 bit clip into 11 bit histogram
           int invshift = -shift;
           for (int x = 0; x < source_width; x++) {
-            hist[srcp16[x] << invshift]++;
+            hist[min(srcp16[x] << invshift, max_pixel_value)]++;
           }
         } else {
           // e.g.10 bit clip into 8-9-10 bit histogram
@@ -1672,7 +1675,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
         const float *srcp32 = reinterpret_cast<const float *>(srcp);
         const float multiplier = (float)(show_size - 1);
         for (int x = 0; x < source_width; x++) {
-          hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier + 0.5f)]++; // luma, no shift needed
+          hist[(intptr_t)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier + 0.5f)]++; // luma, no shift needed
         }
       }
       // accumulate end
