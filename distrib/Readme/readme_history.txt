@@ -4,18 +4,19 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190410 r28xx
+20190517 r28xx
 --------------
-- New: ColorYUV, RGBAdjust, Overlay plus ConditionalReader: 
-  new parameter: string "condvarsuffix", helps multiple filter instances to use different conditional parameters.
-  In order that values from another ConditionalReader not used again, variable names should differ.
+- New parameter in ColorYUV, RGBAdjust, Overlay, ConditionalReader.
+    string "condvarsuffix"
+  Allows multiple filter instances to use differently named conditional parameters.
+  Prevents collision and overwrite of variables which are used by different ConditionalReader instances.
   See Conditional Variables section of http://avisynth.nl/index.php/ColorYUV.
   How does it work: when reading the global variables, the "condvarsuffix" parameter is appended to the variable name.
-  E.g. ColorYUV will read "coloryuv_gain_y_a" instead of "coloryuv_gain_y" where condvarsuffix = "_a" is provided for ColorYUV.
-  In the matching ConditionalReader one have to use the modified name:
-    ConditionalReader("coloryuvoffset.txt", "coloryuv_gain_y", false, CondVarSuffix = "_a") # "_a" is added here by parameter!
-    or
-    ConditionalReader("coloryuvoffset.txt", "coloryuv_gain_y_a", false) # "_a" should be added manually here!
+  E.g. ColorYUV will read "coloryuv_gain_y_a" instead of "coloryuv_gain_y" when condvarsuffix = "_a" is provided for ColorYUV.
+  In the matching ConditionalReader one have to use the modified name as well:
+      ConditionalReader("coloryuvoffset.txt", "coloryuv_gain_y", false, CondVarSuffix = "_a") # "_a" is added here by parameter
+  or specify the suffixed name directly:
+      ConditionalReader("coloryuvoffset.txt", "coloryuv_gain_y_a", false) # "_a" is added here manually
 
   Example:
     Colorbars(512,256).ConvertToYV12.Trim(0,299)
@@ -79,7 +80,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   - dynamic loader (avs_load_library) uses fallback mechanism for non-existant Avisynth+ specific functions, 
     in order to have Avisynth+ specific API functions safely callable even when connected to classic Avisynth DLL
     The smart fallback mechanism for Avisynth+ specific functions ensures that if the functions are not loadable, 
-    they will work in a classic Avisynth compatible mode
+    they will work in a classic Avisynth compatible mode:
     Example#1: e.g. avs_is_444 will call the existing avs_is_yv24 instead
     Example#2: avs_bits_per_component will return 8 for all colorspaces (Classic Avisynth supports only 8 bits/pixel)
     Affected functions and mapping:
@@ -93,42 +94,45 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       avs_num_components: returns 1 for y8, 4 for RGB32, 3 otherwise
       avs_component_size: returns 1 (1 bytes)
       avs_bits_per_component: returns 8 (8 bits)
-- Version: update year, removed avs-plus.net link
+- filter "Version": update year, removed avs-plus.net link
 - Updated: TimeStretch plugin with SoundTouch 2.1.3 (as of 07.Jan 2019)
-- Source/Build system (huge thanks to qyot27)
-  - various source fixes for MinGW builds 
-  - CMakeLists.txt updates (user selecteble CPU arch, MinGW things)
-  - PluginManager.cpp: [MSVC|GCC] should only load [MSVC|GCC] plugins (qyot27)
-    This commit simply tells GCC builds of AviSynth to use the value
-    of the PluginDir+GCC registry entry to find plugins, and ignore
-    PluginDir and PluginDir+.  Vice-versa for MSVC builds.
-    C plugins are an exception to this, since those can be loaded with
-    either MSVC- or GCC-built AviSynth+. 
+- Source/Build system 
+  - rst documentation update (qyot27) in distrib\docs\english\source\avisynthdoc\contributing\compiling_avsplus.rst
+  - GCC-MinGW build (huge thanks to qyot27)
+    - various source fixes for MinGW builds,
+      Avisynth core compiles fine, except external plugins Shibatch and DirectShowSource
+    - CMakeLists.txt updates (user selecteble CPU arch, MinGW things)
+    - PluginManager.cpp: [MSVC|GCC] should only load [MSVC|GCC] plugins (qyot27)
+      This commit simply tells GCC builds of AviSynth to use the value
+      of the PluginDir+GCC registry entry to find plugins, and ignore
+      PluginDir and PluginDir+.  Vice-versa for MSVC builds.
+      C plugins are an exception to this, since those can be loaded with
+      either MSVC- or GCC-built AviSynth+. 
+    - GCC 8.3 support
+      (see in distrib\docs\english\source\avisynthdoc\contributing\compiling_avsplus.rst)
+      - Howto: MSYS2/GCC: for windows based build environment see step-by-step instructions: 
+        https://github.com/orlp/dev-on-windows/wiki/Installing-GCC--&-MSYS2
+      - CMake: choose generator "MinGW Makefiles" from CMakeGUI or 
+          del CMakeCache.txt
+          "c:\Program Files\CMake\bin\cmake.exe" -G "MinGW Makefiles" .
+        then build with
+          mingw32-make -f makefile
+      - todo: fix plugin DLL names
   - CMake: Visual Studio 2019 generator support, please update to CMake to 3.14.1
   - Clang (LLVM) support with Visual Studio 2019 (16.0) / 2017 (15.9.9) (Latest Clang is 8.0 at the moment)
     - CMakeLists.txt update
     - Additional source fixes.
-    - Codes for different processor targets (SSSE3 and SSE4.1) are now separated and are compiled using function attributes.
+    - Source lines for different processor targets (SSSE3 and SSE4.1) are now separated and are compiled using function attributes.
     Clang howto:
-    - Install LLVM 8.0 (latest as of March 29, 2019: http://releases.llvm.org/download.html, Windows pre-built libraries)
+    - Install LLVM 8.0 or later (http://releases.llvm.org/download.html, Windows pre-built libraries)
     - Install Clang Power Tools & LLVM Compiler Toolchain (thx fuchanghao)
       - https://marketplace.visualstudio.com/items?itemName=caphyon.ClangPowerTools
       - https://marketplace.visualstudio.com/items?itemName=LLVMExtensions.llvm-toolchain
     - (When using CMakeGUI) After Configure/Specify generator for this project, type LLVM for "Optional Toolset to use (-T option)"
-    - Knows issues: 
+    - Known issues: 
       - compiling Avisynth only .lib is generated (used for C api), .exp is missing
-      - Generating assembler output is broken on 32 bits (not set by default for x64 either)
-  - GCC 8.3 support
-    - Howto: MSYS2/GCC: for windows based build environment see step-by-step instructions: 
-      https://github.com/orlp/dev-on-windows/wiki/Installing-GCC--&-MSYS2
-    - Avisynth and plugins compiles fine, except external plugins Shibatch and DirectShowSource
-    - CMake: choose generator "MinGW Makefiles" from CMakeGUI or 
-        del CMakeCache.txt
-        "c:\Program Files\CMake\bin\cmake.exe" -G "MinGW Makefiles" .
-      then build with
-        mingw32-make -f makefile
-    - todo: build description for dummies
-    - todo: fix plugin DLL names
+      - When generating assembler output linking or other errors can happen
+      - LLVM 8.0 has sub-optimal avg_epu8 intrinsic "optimization", 
 
 20181220 r2772
 --------------

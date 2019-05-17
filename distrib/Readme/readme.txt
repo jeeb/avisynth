@@ -29,6 +29,42 @@ Short info for plugin writers
   when your plugin calls it on a Classic Avisynth, or pre-high bit depth Avisynth+ host.
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
+
+20190517 r28xx
+--------------
+- New parameter in ColorYUV, RGBAdjust, Overlay, ConditionalReader: string "condvarsuffix"
+  Allows multiple filter instances to use differently named conditional parameters.
+- Fix: ColorBars: pixel_type planar RGB will set alpha to 0 instead of 255, consistent with RGB32 Alpha channel
+- Fix: text colors for YUV422PS - regression since r2728 (zero-centered chroma)
+- New: VirtualDub2 to display 8 bit planar RGB (needs up-to-date VirtualDub2 as well)
+  VfW interface to negotiate 8 bit Planar RGB(A) with FourCCs: G3[0][8] and G4[0][8], similar to the 10-16 bit logic
+- Fix: planar RGBA Alpha on VfW was uninitialized because it wasn't filled.
+- Layer: big update
+  - Support for all 8-32 bit Y and planar YUV/YUVA and planar RGB/RGBA formats
+  - New parameter: float "opacity" (0.0 .. 1.0) optionally replaces the previous "level". Similar to "opacity" in "Overlay"
+  - threshold parameter (used for lighten/darken) is autoscaled. Keep it between 0 and 255, same as it was used for 8 bit videos.
+  - new parameter: string "placement" default "mpeg2". Possible values: "mpeg2" (default), "mpeg1".
+    Used in "mul", "darken" and "lighten", "add" and "subtract" modes with planar YUV 4:2:0 or 4:2:2 color spaces (not available for YUY2)
+    in order to properly apply luma/overlay mask on U and V chroma channels.
+  - Fix some out-of-frame memory access in YUY2 C code
+  - Fix: Add proper rounding for add/subtract/lighten/darken calculations. (YUY2, RGB32, 8 bit YUV and 8 bit Planar RGB)
+  - Fix: "lighten" and "darken" gave different results between yuy2 and rgb32 when Threshold<>0
+    Fixed "darken" for RGB32 when Threshold<>0
+    Fixed "lighten" and "darken" for YUY2 when Threshold<>0
+- Avisynth C interface header (avisynth_c.h): 
+  - cosmetics: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
+  - cosmetics: remove unused form of avs_get_rowsize and avs_get_height (kept earlier for reference)
+  - use #ifndef AVSC_NO_DECLSPEC for AVSC_INLINE functions which are calling API functions
+  - define alias AVS_FRAME_ALIGN as FRAME_ALIGN (keep the AVS_xxxx naming convention)
+  - dynamic loader (avs_load_library) uses fallback mechanism for non-existant Avisynth+ specific functions, functions are usable for classic avisynth
+- filter "Version": update year, removed avs-plus.net link
+- Updated: TimeStretch plugin with SoundTouch 2.1.3 (as of 07.Jan 2019)
+- Source/Build system 
+  - rst documentation update (qyot27) in distrib\docs\english\source\avisynthdoc\contributing\compiling_avsplus.rst
+  - GCC-MinGW build, GCC 8.3 support
+  - CMake: Visual Studio 2019 generator support
+  - Clang (LLVM) support
+
 20181220 r2772
 --------------
 - Fix: Expr: possible Expr x64 crash under specific memory circumstances
