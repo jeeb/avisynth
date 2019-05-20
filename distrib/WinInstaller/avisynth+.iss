@@ -1,5 +1,7 @@
 ﻿;!!!Conditional!!!  comment out the following define to ignore VS redistributables
 ;#define WITH_VC_REDIST
+;Note: Microsoft Visual C++ Redistributable 2019 (2015-2019) still installs on older OS's 
+;such as WinXP SP3 to support apps built with v141(_xp) toolset
 
 ;headers and c lib are OK, but documentation is not up to date, anyway we include them
 #define WITH_SDK
@@ -28,7 +30,7 @@
 ;Build x64 avs+ then copy the Output folder (with the folder itself) here
 #define BuildDir64 "x64"
 
-#define VcVersion "Microsoft Visual C++ Redistributable 2017"
+#define VcVersion "Microsoft Visual C++ Redistributable for Visual Studio 2019"
 #define BuildDate GetFileDateTimeString(AddBackslash(BuildDir32) + "Output\AviSynth.dll", 'yyyy/mm/dd', '-',);
 
 #expr Exec("powershell", "-ExecutionPolicy unrestricted -File update_git_rev.ps1", SourcePath, 1)
@@ -162,7 +164,6 @@ Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugP
 Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
 #ifdef WITH_VC_REDIST
 ;get latest from https://www.visualstudio.com/downloads/
-; 32 bit: https://go.microsoft.com/fwlink/?LinkId=746571
 Source: "..\Prerequisites\VC_redist.x86.exe"; DestDir: {app}; Components: main\avs32; Flags: deleteafterinstall; Check: IncludeVcRedist()
 #endif
 
@@ -172,7 +173,6 @@ Source: "{#BuildDir64}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugP
 Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion
 #ifdef WITH_VC_REDIST
 ;get latest from https://www.visualstudio.com/downloads/
-; 64 bit: https://go.microsoft.com/fwlink/?LinkId=746572
 Source: "..\Prerequisites\VC_redist.x64.exe"; DestDir: {app}; Components: main\avs64; Flags: deleteafterinstall; Check: IncludeVcRedist()
 #endif
 
