@@ -129,7 +129,11 @@ IF( MSVC )  # Check for Visual Studio
   endif()
 
   IF(CLANG_IN_VS STREQUAL "1")
-    # suppress other warnings
+    # suppress other frequent but harmless/unavoidable warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-reorder")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-reorder")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-value")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-value")
     # allow per-function attributes like __attribute__((__target__("sse4.1")))
