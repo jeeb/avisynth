@@ -122,3 +122,8 @@ ipch/
 *_BASE_*
 *_LOCAL_*
 *_REMOTE_*
+
+# Assorted build generator files
+Makefile
+build.ninja
+rules.ninja
