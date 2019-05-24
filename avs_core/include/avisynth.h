@@ -196,10 +196,10 @@ struct AVS_Linkage {
   int     (VideoInfo::*BytesFromPixels)(int pixels) const;
   int     (VideoInfo::*RowSize)(int plane) const;
   int     (VideoInfo::*BMPSize)() const;
-  __int64 (VideoInfo::*AudioSamplesFromFrames)(int frames) const;
-  int     (VideoInfo::*FramesFromAudioSamples)(__int64 samples) const;
-  __int64 (VideoInfo::*AudioSamplesFromBytes)(__int64 bytes) const;
-  __int64 (VideoInfo::*BytesFromAudioSamples)(__int64 samples) const;
+  int64_t (VideoInfo::*AudioSamplesFromFrames)(int frames) const;
+  int     (VideoInfo::*FramesFromAudioSamples)(int64_t samples) const;
+  int64_t (VideoInfo::*AudioSamplesFromBytes)(int64_t bytes) const;
+  int64_t (VideoInfo::*BytesFromAudioSamples)(int64_t samples) const;
   int     (VideoInfo::*AudioChannels)() const;
   int     (VideoInfo::*SampleType)() const;
   bool    (VideoInfo::*IsSampleType)(int testtype) const;
@@ -608,7 +608,7 @@ enum {
 
   int audio_samples_per_second;   // 0 means no audio
   int sample_type;                // as of 2.5
-  __int64 num_audio_samples;      // changed as of 2.5
+  int64_t num_audio_samples;      // changed as of 2.5
   int nchannels;                  // as of 2.5
 
   // Imagetype properties
@@ -661,10 +661,10 @@ enum {
   int RowSize(int plane = 0) const AVS_BakedCode(return AVS_LinkCall(RowSize)(plane))
   int BMPSize() const AVS_BakedCode(return AVS_LinkCall(BMPSize)())
 
-  __int64 AudioSamplesFromFrames(int frames) const AVS_BakedCode(return AVS_LinkCall(AudioSamplesFromFrames)(frames))
-  int FramesFromAudioSamples(__int64 samples) const AVS_BakedCode(return AVS_LinkCall(FramesFromAudioSamples)(samples))
-  __int64 AudioSamplesFromBytes(__int64 bytes) const AVS_BakedCode(return AVS_LinkCall(AudioSamplesFromBytes)(bytes))
-  __int64 BytesFromAudioSamples(__int64 samples) const AVS_BakedCode(return AVS_LinkCall(BytesFromAudioSamples)(samples))
+  int64_t AudioSamplesFromFrames(int frames) const AVS_BakedCode(return AVS_LinkCall(AudioSamplesFromFrames)(frames))
+  int FramesFromAudioSamples(int64_t samples) const AVS_BakedCode(return AVS_LinkCall(FramesFromAudioSamples)(samples))
+  int64_t AudioSamplesFromBytes(int64_t bytes) const AVS_BakedCode(return AVS_LinkCall(AudioSamplesFromBytes)(bytes))
+  int64_t BytesFromAudioSamples(int64_t samples) const AVS_BakedCode(return AVS_LinkCall(BytesFromAudioSamples)(samples))
   int AudioChannels() const AVS_BakedCode(return AVS_LinkCall(AudioChannels)())
   int SampleType() const AVS_BakedCode(return AVS_LinkCall(SampleType)())
   bool IsSampleType(int testtype) const AVS_BakedCode(return AVS_LinkCall(IsSampleType)(testtype))
@@ -966,7 +966,7 @@ public:
   virtual int __stdcall GetVersion() { return AVISYNTH_INTERFACE_VERSION; }
   virtual PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) = 0;
   virtual bool __stdcall GetParity(int n) = 0;  // return field parity if field_based, else parity of first field in frame
-  virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) = 0;  // start and count are in samples
+  virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) = 0;  // start and count are in samples
   /* Need to check GetVersion first, pre v5 will return random crap from EAX reg. */
   virtual int __stdcall SetCacheHints(int cachehints,int frame_range) = 0 ;  // We do not pass cache requests upwards, only to the next filter.
   virtual const VideoInfo& __stdcall GetVideoInfo() = 0;
@@ -1054,7 +1054,7 @@ public:
   AVSValue(const PClip& c) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR2)(c) )
   AVSValue(bool b) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR3)(b) )
   AVSValue(int i) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR4)(i) )
-//  AVSValue(__int64 l);
+//  AVSValue(int64_t l);
   AVSValue(float f) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR5)(f) )
   AVSValue(double f) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR6)(f) )
   AVSValue(const char* s) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR7)(s) )
@@ -1109,7 +1109,7 @@ private:
     const AVSValue* array;
     #ifdef X86_64
     // if ever, only x64 will support. It breaks struct size on 32 bit
-    __int64 longlong; // 8 bytes
+    int64_t longlong; // 8 bytes
     double double_pt; // 8 bytes
     #endif
   };
@@ -1168,7 +1168,7 @@ protected:
 public:
   GenericVideoFilter(PClip _child) : child(_child) { vi = child->GetVideoInfo(); }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return child->GetFrame(n, env); }
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) { child->GetAudio(buf, start, count, env); }
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) { child->GetAudio(buf, start, count, env); }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return child->GetParity(n); }
   int __stdcall SetCacheHints(int cachehints, int frame_range) { AVS_UNUSED(cachehints); AVS_UNUSED(frame_range); return 0; };  // We do not pass cache requests upwards, only to the next filter.
