@@ -78,4 +78,12 @@
 #   define __forceinline inline
 #endif
 
+#ifdef _WIN32
+#   define AVS_WINDOWS
+#elif  __linux__
+#   define AVS_LINUX
+#else
+#   error Operating system unsupported.
+#endif
+
 #endif //AVS_CONFIG_H
