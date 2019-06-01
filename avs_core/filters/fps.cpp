@@ -616,32 +616,24 @@ ConvertFPS::ConvertFPS(PClip _child, unsigned new_numerator, unsigned new_denomi
 
 PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 {
-  static const int resolution = 10; //bits. Must be >= 4, or modify next line
-  static const int threshold = 1 << (resolution - 4);
-  static const int one = 1 << resolution;
-  static const int half = 1 << (resolution - 1);
-
-  double nsrc_f, frac_f;
-  frac_f = modf((double)n * fa / fb, &nsrc_f);
-  // integer versions
-  int nsrc = int(n * fa / fb);
-  int frac = int((((n*fa) % fb) << resolution) / fb);
-
-  double frac_f_from_int = (double)frac / one;
+  double nsrc_f;
+  double frac_f = modf((double)n * fa / fb, &nsrc_f);
+  // integer frame no
+  int nsrc = (int)nsrc_f;
 
   if (zone < 0) {
 
     // Mode 1: Blend full frames
-    int mix_ratio = frac;
-
+ 
+    constexpr double threshold_f = 1.0 / 16.0; 
+    // was: 1 << (resolution - 4); // 64/1024
+    
     // Don't bother if the blend ratio is small
-    if (mix_ratio < threshold)
+    if (frac_f < threshold_f)
       return child->GetFrame(nsrc, env);
 
-    if (mix_ratio > (one - threshold))
+    if (frac_f > 1.0 - threshold_f)
       return child->GetFrame(nsrc + 1, env);
-
-    float mix_ratio_f = (float)mix_ratio / one;
 
     PVideoFrame a = child->GetFrame(nsrc, env);
     PVideoFrame b = child->GetFrame(nsrc + 1, env);
@@ -667,18 +659,9 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
       int          row_size = a->GetRowSize(plane);
       int          height = a->GetHeight(plane);
 
-      // :FIXME: Use fast plane blend routine from Merge here
-      /* fixed :)
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < row_size; x++)
-          a_data[x] = a_data[x] + BYTE(((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution);
-        a_data += a_pitch;
-        b_data += b_pitch;
-      };
-      */
       int weight_i;
       int invweight_i;
-      float weight = (float)frac_f;
+      float weight = (float)frac_f; // between 0 and 1.0
       MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, env->GetCPUFlags(), a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
       weighted_merge_planar(a_data, b_data, a_pitch, b_pitch, row_size, height, weight, weight_i, invweight_i);
     }
@@ -703,7 +686,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 		const BYTE *pa, *pb, *a_data = a->GetReadPtr();
 		int   a_pitch = a->GetPitch();
 
-		int switch_line = (lps * (one - frac)) >> resolution;
+		int switch_line = (int)(lps * (1.0 - frac_f));
 		int top = switch_line - (zone>>1);
 		int bottom = switch_line + (zone>>1) - lps;
 		if( bottom > 0 && nsrc > 0 ) {
