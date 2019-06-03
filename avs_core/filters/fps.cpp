@@ -616,10 +616,14 @@ ConvertFPS::ConvertFPS(PClip _child, unsigned new_numerator, unsigned new_denomi
 
 PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 {
-  double nsrc_f;
-  double frac_f = modf((double)n * fa / fb, &nsrc_f);
-  // integer frame no
-  int nsrc = (int)nsrc_f;
+  // Using int64 modulo instead of modf, for double holds only 53 bits
+  // n*fa worst-like case: (60000/1001 <> 30000/1001)
+  // n = 0x7FFFFFFF; // 31 bits
+  // fa = 1001 * 60000ULL // 26 bits
+  // summa 57 bits, too much, modf((double)n * fa / fb, &nsrc_f); is not enough
+  int64_t modulo = (n * fa) % fb; 
+  double frac_f = (double)modulo / fb;
+  int nsrc = int(n * fa / fb);
 
   if (zone < 0) {
 
