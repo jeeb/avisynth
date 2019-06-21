@@ -559,8 +559,12 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
-AVSValue __cdecl ConvertToY8::Create(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertToY8::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
+  bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
+  if (only_8bit && clip->GetVideoInfo().BitsPerComponent() != 8)
+    env->ThrowError("ConvertToY8: only 8 bit sources allowed");
+
   if (clip->GetVideoInfo().NumComponents() == 1)
     return clip;
   return new ConvertToY8(clip, getMatrix(args[1].AsString(0), env), env);
@@ -3267,19 +3271,43 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], outplacement, env);
 }
 
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  PClip clip = args[0].AsClip();
+  const VideoInfo& vi = clip->GetVideoInfo();
+  bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
+  if (only_8bit && vi.BitsPerComponent() != 8)
+    env->ThrowError("ConvertToYV12: only 8 bit sources allowed");
+
   return Create(args, "ConvertToYUV420", env);
 }
 
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV422(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV422(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  PClip clip = args[0].AsClip();
+  const VideoInfo& vi = clip->GetVideoInfo();
+  bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
+  if (only_8bit && vi.BitsPerComponent() != 8)
+    env->ThrowError("ConvertToYV16: only 8 bit sources allowed");
+
   return Create(args, "ConvertToYUV422", env);
 }
 
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV444(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV444(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  PClip clip = args[0].AsClip();
+  const VideoInfo& vi = clip->GetVideoInfo();
+  bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
+  if (only_8bit && vi.BitsPerComponent() != 8)
+    env->ThrowError("ConvertToYV24: only 8 bit sources allowed");
+
   return Create(args, "ConvertToYUV444", env);
 }
 
-AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  PClip clip = args[0].AsClip();
+  const VideoInfo& vi = clip->GetVideoInfo();
+  bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
+  if (only_8bit && vi.BitsPerComponent() != 8)
+    env->ThrowError("ConvertToYV411: only 8 bit sources allowed");
+
   return Create(args, "ConvertToYV411", env);
 }
 
