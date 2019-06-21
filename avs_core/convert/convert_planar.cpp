@@ -76,7 +76,7 @@ template void fill_chroma<uint8_t>(uint8_t * dstp_u, uint8_t * dstp_v, int heigh
 template void fill_chroma<uint16_t>(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, uint16_t val);
 template void fill_chroma<float>(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, float val);
 
-ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src) {
+ConvertToY::ConvertToY(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src) {
   yuy2_input = blit_luma_only = packed_rgb_input = planar_rgb_input = false;
 
   int target_pixel_type;
@@ -407,7 +407,7 @@ static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
 #endif // X86_32
 
 
-PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 
   if (blit_luma_only) {
@@ -559,7 +559,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
-AVSValue __cdecl ConvertToY8::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertToY::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
   bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
   if (only_8bit && clip->GetVideoInfo().BitsPerComponent() != 8)
@@ -567,7 +567,7 @@ AVSValue __cdecl ConvertToY8::Create(AVSValue args, void* user_data, IScriptEnvi
 
   if (clip->GetVideoInfo().NumComponents() == 1)
     return clip;
-  return new ConvertToY8(clip, getMatrix(args[1].AsString(0), env), env);
+  return new ConvertToY(clip, getMatrix(args[1].AsString(0), env), env);
 }
 
 /*****************************************************

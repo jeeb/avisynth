@@ -58,10 +58,10 @@ struct ChannelConversionMatrix {
   float offset_y_f; // for float
 };
 
-class ConvertToY8 : public GenericVideoFilter
+class ConvertToY : public GenericVideoFilter
 {
 public:
-  ConvertToY8(PClip src, int matrix, IScriptEnvironment* env);
+  ConvertToY(PClip src, int matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {

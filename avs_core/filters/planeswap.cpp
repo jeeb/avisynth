@@ -232,7 +232,7 @@ AVSValue __cdecl SwapUVToY::CreateYToY8(AVSValue args, void* , IScriptEnvironmen
 {
   PClip clip = args[0].AsClip();
   if(clip->GetVideoInfo().IsYUY2())
-    return new ConvertToY8(clip, Rec601 /*n/a*/, env);
+    return new ConvertToY(clip, Rec601 /*n/a*/, env);
   else
     return new SwapUVToY(clip, YToY8, env);
 }
@@ -264,7 +264,7 @@ AVSValue __cdecl SwapUVToY::CreateAnyToY8(AVSValue args, void* user_data, IScrip
   }
 
   if(clip->GetVideoInfo().IsYUY2() && mode == YToY8)
-    return new ConvertToY8(clip, Rec601 /*n/a*/, env);
+    return new ConvertToY(clip, Rec601 /*n/a*/, env);
 
   if (clip->GetVideoInfo().IsY() && mode == YToY8)
     return clip;
