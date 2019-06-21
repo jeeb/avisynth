@@ -1,4 +1,4 @@
-Avisynth+ v2772 (20181220)
+Avisynth+ v28xx (20190621)
 --------------------------
 
 Use the installer or copy files directly
@@ -30,8 +30,11 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20190517 r28xx
+20190621 r28xx
 --------------
+- Fix: ConvertToY8, ConvertToYV12, ConvertToYV16, ConvertToYV24 are now allowed only for 8 bit inputs.
+  Formerly these functions were allowed for 10+ bit colorspaces but were not converted to real 8 bit Y8/YV12/16/24.
+  Use ConvertToY, ConvertToYUV420, ConvertToYUV422, ConvertToYUV444 instead which are bit depth independent
 - New parameter in ColorYUV, RGBAdjust, Overlay, ConditionalReader: string "condvarsuffix"
   Allows multiple filter instances to use differently named conditional parameters.
 - Fix: ColorBars: pixel_type planar RGB will set alpha to 0 instead of 255, consistent with RGB32 Alpha channel
