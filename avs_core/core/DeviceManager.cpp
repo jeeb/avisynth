@@ -687,9 +687,10 @@ public:
 
   PVideoFrame GetFrame(int n, InternalEnvironment* env)
   {
-    if (prefetchFrames == 0) {
-      return child->GetFrame(n, env);
-    }
+		// do not use thread when invoke running
+		if (prefetchFrames == 0 || env->GetSuppressThreadCount() > 0) {
+			return child->GetFrame(n, env);
+		}
 
     PVideoFrame result;
     CacheType::handle cacheHandle;
