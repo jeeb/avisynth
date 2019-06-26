@@ -614,7 +614,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 
     AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
     // conversion to planar or packed RGB is always from 444
-    clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), NULL, env).AsClip();
+    clip = ConvertToPlanarGeneric::CreateYUV444(AVSValue(new_args, 5), (void *)1, env).AsClip(); // (void *)1: not restricted to 8 bits
     if ((target_rgbtype == 24 || target_rgbtype == 32)) {
       if (vi.BitsPerComponent() != 8) {
         needConvertFinalBitdepth = true;

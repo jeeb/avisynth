@@ -526,7 +526,7 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
     if (haveOpts || !clip->GetVideoInfo().IsYV12()) {
       // We have no direct conversions. Go to YV16.
       AVSValue new_args[5] = { clip, args[1], args[2], args[3], args[4] };
-      clip = ConvertToPlanarGeneric::CreateYUV422(AVSValue(new_args, 5), NULL,  env).AsClip();
+      clip = ConvertToPlanarGeneric::CreateYUV422(AVSValue(new_args, 5), (void *)0,  env).AsClip(); // (void *)0: restricted to 8 bits
     }
   }
 

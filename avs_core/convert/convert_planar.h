@@ -187,10 +187,10 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl CreateYV411(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateYUV420(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateYUV422(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateYUV444(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYV411(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYUV420(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYUV422(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYUV444(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
   static AVSValue Create(AVSValue& args, const char* filter, IScriptEnvironment* env);
