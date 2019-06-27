@@ -4,8 +4,9 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190621 r28xx
+20190627 r28xx
 --------------
+- Fix: shifted chroma in ColorBars and ColorBarsHD for YUV444PS
 - Fix: ConvertToY8, ConvertToYV12, ConvertToYV16, ConvertToYV24 are now allowed only for 8 bit inputs.
   Formerly these functions were allowed for 10+ bit colorspaces but were not converted to real 8 bit Y8/YV12/16/24.
   Use ConvertToY, ConvertToYUV420, ConvertToYUV422, ConvertToYUV444 instead which are bit depth independent
@@ -135,7 +136,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     - Known issues: 
       - compiling Avisynth only .lib is generated (used for C api), .exp is missing
       - When generating assembler output linking or other errors can happen
-      - LLVM 8.0 has sub-optimal avg_epu8 intrinsic "optimization", 
+      - LLVM 8.0 has sub-optimal avg_epu8 intrinsic "optimization", which is fixed in LLVM 9.0 (e.g. in snapshot build 21 June 2019)
 
 20181220 r2772
 --------------

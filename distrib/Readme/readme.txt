@@ -1,4 +1,4 @@
-Avisynth+ v28xx (20190621)
+Avisynth+ v28xx (20190627)
 --------------------------
 
 Use the installer or copy files directly
@@ -30,8 +30,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20190621 r28xx
+20190627 r28xx
 --------------
+- Fix: shifted chroma in ColorBars and ColorBarsHD for YUV444PS
 - Fix: ConvertToY8, ConvertToYV12, ConvertToYV16, ConvertToYV24 are now allowed only for 8 bit inputs.
   Formerly these functions were allowed for 10+ bit colorspaces but were not converted to real 8 bit Y8/YV12/16/24.
   Use ConvertToY, ConvertToYUV420, ConvertToYUV422, ConvertToYUV444 instead which are bit depth independent
