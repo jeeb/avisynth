@@ -605,8 +605,8 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   }
 }
 
-template<typename pixel_t, int bits_per_pixel>
-static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pitchY, int pitchUV, int w, int h)
+template<typename pixel_t, int bits_per_pixel, bool is420, bool is422, bool is411>
+static void draw_colorbars_420_422_411(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pitchY, int pitchUV, int w, int h)
 {
   pixel_t *pY = reinterpret_cast<pixel_t *>(pY8);
   pixel_t *pU = reinterpret_cast<pixel_t *>(pU8);
@@ -622,7 +622,7 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   int chroma_offset_i = 128;
   float chroma_offset_f = 0.5f;
 #else
-  int chroma_offset_i = 0;
+  int chroma_offset_i = 128;
   float chroma_offset_f = 0.0f;
 #endif
 
@@ -631,8 +631,13 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   static const BYTE top_two_thirdsY[] = { 0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
   static const BYTE top_two_thirdsU[] = { 0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
   static const BYTE top_two_thirdsV[] = { 0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
-  w >>= 1; // 4:2:0 !!!
-  h >>= 1;
+  
+  if(is420 || is422)
+    w >>= 1; // 4:2:0, 4:2:2 !!!
+  if (is411)
+    w >>= 2; // 4:1:1
+  if (is420)
+    h >>= 1;
 
   int y = 0;
 
@@ -640,7 +645,10 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     int x = 0;
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
-        pY[x*2+0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(top_two_thirdsY[i] << shift);
+        pixel_t pix = factor * (top_two_thirdsY[i] << shift);
+        if constexpr (is420) pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = pix;
+        else if constexpr(is422) pY[x * 2 + 0] = pY[x * 2 + 1] = pix;
+        else if constexpr(is411) pY[x * 4 + 0] = pY[x * 4 + 1] = pY[x * 4 + 2] = pY[x * 4 + 3] = pix;
         if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (top_two_thirdsU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (top_two_thirdsV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
@@ -651,7 +659,11 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
         }
       }
     }
-    pY += pitchY * 2; pU += pitchUV; pV += pitchUV;
+    if constexpr(is420)
+      pY += pitchY * 2; 
+    else
+      pY += pitchY; // no vertical subsampling
+    pU += pitchUV; pV += pitchUV;
   }
   //                                                    Blue   Black Magenta   Black    Cyan   Black  LtGrey
   static const BYTE two_thirds_to_three_quartersY[] = { 0x23,   0x10,   0x54,   0x10,   0x83,   0x10,   0xb4 };
@@ -661,7 +673,11 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     int x = 0;
     for (int i = 0; i < 7; i++) {
       for (; x < (w*(i + 1) + 3) / 7; ++x) {
-        pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(two_thirds_to_three_quartersY[i] << shift);
+        pixel_t pix = factor * (two_thirds_to_three_quartersY[i] << shift);
+        if constexpr (is420) pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = pix;
+        else if constexpr (is422) pY[x * 2 + 0] = pY[x * 2 + 1] = pix;
+        else if constexpr (is411) pY[x * 4 + 0] = pY[x * 4 + 1] = pY[x * 4 + 2] = pY[x * 4 + 3] = pix;
+
         if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (two_thirds_to_three_quartersU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (two_thirds_to_three_quartersV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
@@ -672,7 +688,11 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
         }
       }
     }
-    pY += pitchY * 2; pU += pitchUV; pV += pitchUV;
+    if constexpr (is420)
+      pY += pitchY * 2;
+    else
+      pY += pitchY; // no vertical subsampling
+    pU += pitchUV; pV += pitchUV;
   }
   //                                        -I   white      +Q   Black   -4ire   Black   +4ire   Black
   static const BYTE bottom_quarterY[] = { 0x10,   0xeb,   0x10,   0x10,   0x07,   0x10,   0x19,   0x10 };
@@ -682,7 +702,11 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     int x = 0;
     for (int i = 0; i < 4; ++i) {
       for (; x < (w*(i + 1) * 5 + 14) / 28; ++x) {
-        pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[i] << shift);
+        pixel_t pix = factor * (bottom_quarterY[i] << shift);
+        if constexpr (is420) pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = pix;
+        else if constexpr (is422) pY[x * 2 + 0] = pY[x * 2 + 1] = pix;
+        else if constexpr (is411) pY[x * 4 + 0] = pY[x * 4 + 1] = pY[x * 4 + 2] = pY[x * 4 + 3] = pix;
+
         if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (bottom_quarterU[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (bottom_quarterV[i] - chroma_offset_i) + (factor_t)chroma_offset_f;
@@ -695,7 +719,11 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
     }
     for (int j = 4; j < 7; ++j) {
       for (; x < (w*(j + 12) + 10) / 21; ++x) {
-        pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[j] << shift);
+        pixel_t pix = factor * (bottom_quarterY[j] << shift);
+        if constexpr (is420) pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = pix;
+        else if constexpr (is422) pY[x * 2 + 0] = pY[x * 2 + 1] = pix;
+        else if constexpr (is411) pY[x * 4 + 0] = pY[x * 4 + 1] = pY[x * 4 + 2] = pY[x * 4 + 3] = pix;
+
         if constexpr(sizeof(pixel_t) == 4) {
           pU[x] = factor * (bottom_quarterU[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
           pV[x] = factor * (bottom_quarterV[j] - chroma_offset_i) + (factor_t)chroma_offset_f;
@@ -707,7 +735,11 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
       }
     }
     for (; x < w; ++x) {
-      pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = factor*(bottom_quarterY[7] << shift);
+      pixel_t pix = factor * (bottom_quarterY[7] << shift);
+        if constexpr (is420) pY[x * 2 + 0] = pY[x * 2 + 1] = pY[x * 2 + pitchY] = pY[x * 2 + 1 + pitchY] = pix;
+        else if constexpr (is422) pY[x * 2 + 0] = pY[x * 2 + 1] = pix;
+        else if constexpr (is411) pY[x * 4 + 0] = pY[x * 4 + 1] = pY[x * 4 + 2] = pY[x * 4 + 3] = pix;
+
       if constexpr(sizeof(pixel_t) == 4) {
         pU[x] = factor * (bottom_quarterU[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
         pV[x] = factor * (bottom_quarterV[7] - chroma_offset_i) + (factor_t)chroma_offset_f;
@@ -717,7 +749,11 @@ static void draw_colorbars_420(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
         pV[x] = factor * (bottom_quarterV[7] << shift);
       }
     }
-    pY += pitchY *2 ; pU += pitchUV; pV += pitchUV;
+    if constexpr (is420)
+      pY += pitchY * 2;
+    else
+      pY += pitchY; // no vertical subsampling
+    pU += pitchUV; pV += pitchUV;
   }
 }
 
@@ -1302,11 +1338,19 @@ public:
         if ((w & 1) || (h & 1))
           env->ThrowError("ColorBars: for 4:2:0 both height and width must be even!");
     }
+    else if (vi.Is422()) { // 4:2:2
+      if (w & 1)
+        env->ThrowError("ColorBars: for 4:2:2 width must be even!");
+    }
+    else if (vi.IsYV411()) { // 4:1:1
+      if (w & 3)
+        env->ThrowError("ColorBars: for 4:1:1 width must be divisible by 4!");
+    }
     else if (vi.Is444()) { // 4:4:4
         // no special check
     }
     else {
-      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"RGB64\", \"YUY2\", planar RGB, 4:2:0 or 4:4:4 formats");
+      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"RGB64\", \"YUY2\", planar RGB, 4:2:0, 4:2:2, 4:1:1 or 4:4:4 formats");
     }
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
@@ -1429,13 +1473,41 @@ public:
     const int pitchUV = frame->GetPitch(PLANAR_U);
 
     switch (bits_per_pixel) {
-    case 8: draw_colorbars_420<uint8_t, 8>(pY, pU, pV, pitchY, pitchUV, w, h); break;
-    case 10: draw_colorbars_420<uint16_t, 10>(pY, pU, pV, pitchY, pitchUV, w, h); break;
-    case 12: draw_colorbars_420<uint16_t, 12>(pY, pU, pV, pitchY, pitchUV, w, h); break;
-    case 14: draw_colorbars_420<uint16_t, 14>(pY, pU, pV, pitchY, pitchUV, w, h); break;
-    case 16: draw_colorbars_420<uint16_t, 16>(pY, pU, pV, pitchY, pitchUV, w, h); break;
-    case 32: draw_colorbars_420<float, 8 /* n/a */>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 8: draw_colorbars_420_422_411<uint8_t, 8, true, false, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 10: draw_colorbars_420_422_411<uint16_t, 10, true, false, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 12: draw_colorbars_420_422_411<uint16_t, 12, true, false, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 14: draw_colorbars_420_422_411<uint16_t, 14, true, false, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 16: draw_colorbars_420_422_411<uint16_t, 16, true, false, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 32: draw_colorbars_420_422_411<float, 8 /* n/a */, true, false, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
     }
+  }
+  else if (vi.Is422()) {
+
+    BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
+    BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+    BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+    const int pitchY = frame->GetPitch(PLANAR_Y);
+    const int pitchUV = frame->GetPitch(PLANAR_U);
+
+    switch (bits_per_pixel) {
+    case 8: draw_colorbars_420_422_411<uint8_t, 8, false, true, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 10: draw_colorbars_420_422_411<uint16_t, 10, false, true, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 12: draw_colorbars_420_422_411<uint16_t, 12, false, true, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 14: draw_colorbars_420_422_411<uint16_t, 14, false, true, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 16: draw_colorbars_420_422_411<uint16_t, 16, false, true, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    case 32: draw_colorbars_420_422_411<float, 8 /* n/a */, false, true, false>(pY, pU, pV, pitchY, pitchUV, w, h); break;
+    }
+  }
+  else if (vi.IsYV411()) {
+
+    BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
+    BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+    BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+    const int pitchY = frame->GetPitch(PLANAR_Y);
+    const int pitchUV = frame->GetPitch(PLANAR_U);
+
+    // only 8 bits
+    draw_colorbars_420_422_411<uint8_t, 8, false, false, true>(pY, pU, pV, pitchY, pitchUV, w, h);
   }
 
   if (vi.IsYUVA() || vi.IsPlanarRGBA()) {
