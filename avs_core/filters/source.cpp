@@ -507,7 +507,7 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   int chroma_offset_i = 128;
   float chroma_offset_f = 0.5f;
 #else
-  int chroma_offset_i = 0;
+  int chroma_offset_i = 128;
   float chroma_offset_f = 0.0f;
 #endif
 
@@ -738,7 +738,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
   int chroma_offset_i = 128;
   float chroma_offset_f = 0.5f;
 #else
-  int chroma_offset_i = 0;
+  int chroma_offset_i = 128;
   float chroma_offset_f = 0.0f;
 #endif
 
