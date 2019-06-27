@@ -6,6 +6,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 20190627 r28xx
 --------------
+- Enhanced: Colorbars to accept YV411 and 4:2:2 formats for pixel_type 
 - Fix: shifted chroma in ColorBars and ColorBarsHD for YUV444PS
 - Fix: ConvertToY8, ConvertToYV12, ConvertToYV16, ConvertToYV24 are now allowed only for 8 bit inputs.
   Formerly these functions were allowed for 10+ bit colorspaces but were not converted to real 8 bit Y8/YV12/16/24.
