@@ -1051,6 +1051,87 @@ static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
   }
 }
 
+template<typename pixel_t>
+static void draw_colorbars_rgb2448(uint8_t* p8, int pitch, int w, int h)
+{
+  typedef typename std::conditional < sizeof(pixel_t) == 2, uint64_t, uint32_t>::type internal_pixel_t;
+
+  pixel_t* p = reinterpret_cast<pixel_t*>(p8);
+  pitch /= sizeof(pixel_t);
+
+  // note we go bottom->top
+  static const uint32_t bottom_quarter[] =
+    // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
+  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+
+  int y = 0;
+
+  constexpr bool isRGB24 = sizeof(pixel_t) == 1;
+  const int max_pixel_value = isRGB24 ? 255 : 65535;
+  constexpr pixel_t mask = isRGB24 ? 0xFF : 0xFFFF;
+  constexpr int shift = isRGB24 ? 8 : 16;
+
+  for (; y < h / 4; ++y) {
+    int x = 0;
+    for (int i = 0; i < 4; ++i) {
+      for (; x < (w * (i + 1) * 5 + 14) / 28; ++x) {
+        internal_pixel_t pix = (internal_pixel_t)(isRGB24 ? bottom_quarter[i] : rgbcolor32to64(bottom_quarter[i]));
+        p[x * 3 + 0] = pix & mask; pix >>= shift;
+        p[x * 3 + 1] = pix & mask; pix >>= shift;
+        p[x * 3 + 2] = pix & mask;
+      }
+    }
+    for (int j = 4; j < 7; ++j) {
+      for (; x < (w * (j + 12) + 10) / 21; ++x) {
+        internal_pixel_t pix = (internal_pixel_t)(isRGB24 ? bottom_quarter[j] : rgbcolor32to64(bottom_quarter[j]));
+        p[x * 3 + 0] = pix & mask; pix >>= shift;
+        p[x * 3 + 1] = pix & mask; pix >>= shift;
+        p[x * 3 + 2] = pix & mask;
+      }
+    }
+    for (; x < w; ++x) {
+      internal_pixel_t pix = (internal_pixel_t)(isRGB24 ? bottom_quarter[7] : rgbcolor32to64(bottom_quarter[7]));
+      p[x * 3 + 0] = pix & mask; pix >>= shift;
+      p[x * 3 + 1] = pix & mask; pix >>= shift;
+      p[x * 3 + 2] = pix & mask;
+    }
+    p += pitch;
+  }
+
+  static const int two_thirds_to_three_quarters[] =
+    // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
+  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
+  for (; y < h / 3; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      for (; x < (w * (i + 1) + 3) / 7; ++x)
+      {
+        internal_pixel_t pix = (internal_pixel_t)(isRGB24 ? two_thirds_to_three_quarters[i] : rgbcolor32to64(two_thirds_to_three_quarters[i]));
+        p[x * 3 + 0] = pix & mask; pix >>= shift;
+        p[x * 3 + 1] = pix & mask; pix >>= shift;
+        p[x * 3 + 2] = pix & mask;
+      }
+    }
+    p += pitch;
+  }
+
+  static const int top_two_thirds[] =
+    // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
+  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
+  for (; y < h; ++y) {
+    int x = 0;
+    for (int i = 0; i < 7; ++i) {
+      for (; x < (w * (i + 1) + 3) / 7; ++x) {
+        internal_pixel_t pix = (internal_pixel_t)(isRGB24 ? top_two_thirds[i] : rgbcolor32to64(top_two_thirds[i]));
+        p[x * 3 + 0] = pix & mask; pix >>= shift;
+        p[x * 3 + 1] = pix & mask; pix >>= shift;
+        p[x * 3 + 2] = pix & mask;
+      }
+    }
+    p += pitch;
+  }
+}
+
 template<typename pixel_t, int bits_per_pixel>
 static void draw_colorbars_rgbp(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int pitch, int w, int h)
 {
@@ -1324,7 +1405,7 @@ public:
         if (!vi.Is444())
           env->ThrowError("ColorBarsHD: pixel_type must be \"YV24\" or other 4:4:4 video format");
     }
-    else if (vi.IsRGB32() || vi.IsRGB64()) {
+    else if (vi.IsRGB32() || vi.IsRGB64() || vi.IsRGB24() || vi.IsRGB48()) {
       // no special check
     }
     else if (vi.IsRGB() && vi.IsPlanar()) { // planar RGB
@@ -1350,7 +1431,7 @@ public:
         // no special check
     }
     else {
-      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"RGB64\", \"YUY2\", planar RGB, 4:2:0, 4:2:2, 4:1:1 or 4:4:4 formats");
+      env->ThrowError("ColorBars: this pixel_type not supported");
     }
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
@@ -1359,7 +1440,6 @@ public:
 
     frame = env->NewVideoFrame(vi);
     uint32_t* p = (uint32_t *)frame->GetWritePtr();
-    const int pitch = frame->GetPitch()/4;
 
     int y = 0;
 
@@ -1415,12 +1495,21 @@ public:
     }
   }
   else if (vi.IsRGB32() || vi.IsRGB64()) {
+    const int pitch = frame->GetPitch() / 4;
     switch (bits_per_pixel) {
     case 8: draw_colorbars_rgb3264<uint8_t>((uint8_t *)p, pitch, w, h); break;
     case 16: draw_colorbars_rgb3264<uint16_t>((uint8_t *)p, pitch, w, h); break;
     }
 	}
+  else if (vi.IsRGB24() || vi.IsRGB48()) {
+    const int pitch = frame->GetPitch();
+    switch (bits_per_pixel) {
+    case 8: draw_colorbars_rgb2448<uint8_t>((uint8_t*)p, pitch, w, h); break;
+    case 16: draw_colorbars_rgb2448<uint16_t>((uint8_t*)p, pitch, w, h); break;
+    }
+  }
   else if (vi.IsYUY2()) {
+    const int pitch = frame->GetPitch() / 4;
     static const unsigned int top_two_thirds[] =
 //                LtGrey      Yellow        Cyan       Green     Magenta         Red        Blue
     { 0x80b480b4, 0x8ea22ca2, 0x2c839c83, 0x3a704870, 0xc654b854, 0xd4416441, 0x7223d423 }; //VYUY
