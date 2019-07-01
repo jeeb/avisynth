@@ -32,6 +32,8 @@ Short info for plugin writers
 
 20190628 r28xx
 --------------
+- Fix: Strip alpha channel when origin is YUVA and using ConvertToYV12/ConvertToYV16/ConvertToYV24 funtions
+- Fix: garbage with ConvertToYUY2 from 8 bit YUVA colorspaces
 - Enhanced: Colorbars to accept RGB24, RGB48, YV411 and 4:2:2 formats for pixel_type (now all colorspaces are supported)
 - Fix: shifted chroma in ColorBars and ColorBarsHD for YUV444PS
 - Fix: ConvertToY8, ConvertToYV12, ConvertToYV16, ConvertToYV24 are now allowed only for 8 bit inputs.
