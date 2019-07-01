@@ -3169,7 +3169,7 @@ PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment
   return dst;
 }
 
-AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScriptEnvironment* env) {
+AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool strip_alpha_legacy_8bit, IScriptEnvironment* env) {
   bool converted = false;
 
   PClip clip = args[0].AsClip();
@@ -3198,12 +3198,16 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   int pixel_type = VideoInfo::CS_UNKNOWN;
   AVSValue outplacement = AVSValue();
 
-  bool hasAlpha = vi.NumComponents() == 4;
+  bool hasAlpha = vi.NumComponents() == 4 && !strip_alpha_legacy_8bit;
+  bool shouldStripAlpha = vi.NumComponents() == 4 && strip_alpha_legacy_8bit;
 
   if (strcmp(filter, "ConvertToYUV420") == 0) {
     if (vi.Is420())
       if (getPlacement(args[3], env) == getPlacement(args[5], env))
-        return clip;
+          if(shouldStripAlpha)
+            return new RemoveAlphaPlane(clip, env);
+          else
+            return clip;
 
     if(converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3221,7 +3225,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   }
   else if (strcmp(filter, "ConvertToYUV422") == 0) {
     if (vi.Is422())
-      return clip;
+      if (shouldStripAlpha)
+        return new RemoveAlphaPlane(clip, env);
+      else
+        return clip;
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3238,7 +3245,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, IScr
   }
   else if (strcmp(filter, "ConvertToYUV444") == 0) {
     if (vi.Is444())
-      return clip;
+      if (shouldStripAlpha)
+        return new RemoveAlphaPlane(clip, env);
+      else
+        return clip;
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3277,8 +3287,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void* user_
   bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
   if (only_8bit && vi.BitsPerComponent() != 8)
     env->ThrowError("ConvertToYV12: only 8 bit sources allowed");
-
-  return Create(args, "ConvertToYUV420", env);
+  return Create(args, "ConvertToYUV420", only_8bit, env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV422(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -3287,8 +3296,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV422(AVSValue args, void* user_
   bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
   if (only_8bit && vi.BitsPerComponent() != 8)
     env->ThrowError("ConvertToYV16: only 8 bit sources allowed");
-
-  return Create(args, "ConvertToYUV422", env);
+  return Create(args, "ConvertToYUV422", only_8bit, env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV444(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -3297,8 +3305,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV444(AVSValue args, void* user_
   bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
   if (only_8bit && vi.BitsPerComponent() != 8)
     env->ThrowError("ConvertToYV24: only 8 bit sources allowed");
-
-  return Create(args, "ConvertToYUV444", env);
+  return Create(args, "ConvertToYUV444", only_8bit, env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -3307,8 +3314,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void* user_d
   bool only_8bit = reinterpret_cast<intptr_t>(user_data) == 0;
   if (only_8bit && vi.BitsPerComponent() != 8)
     env->ThrowError("ConvertToYV411: only 8 bit sources allowed");
-
-  return Create(args, "ConvertToYV411", env);
+  return Create(args, "ConvertToYV411", only_8bit, env);
 }
 
 

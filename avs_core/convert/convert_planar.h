@@ -193,7 +193,7 @@ public:
   static AVSValue __cdecl CreateYUV444(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
-  static AVSValue Create(AVSValue& args, const char* filter, IScriptEnvironment* env);
+  static AVSValue Create(AVSValue& args, const char* filter, bool strip_alpha_legacy_8bit, IScriptEnvironment* env);
   bool Yinput;
   int pixelsize;
   PClip Usource;
