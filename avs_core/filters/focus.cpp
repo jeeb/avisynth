@@ -725,7 +725,7 @@ static void af_horizontal_rgb64_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pi
     right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4*sizeof(uint16_t))); // move right by one 4*uint16_t pixelblock
     left = _mm_or_si128(_mm_and_si128(center, left_mask), _mm_slli_si128(center, 8));
 
-    result = af_unpack_blend_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
+    result = af_unpack_blend_uint16_t_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
 
     _mm_store_si128(reinterpret_cast< __m128i*>(dstp), result);
 
@@ -781,7 +781,7 @@ static void af_horizontal_rgb64_sse41(BYTE* dstp, const BYTE* srcp, size_t dst_p
     right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4 * sizeof(uint16_t))); // move right by one 4*uint16_t pixelblock
     left = _mm_or_si128(_mm_and_si128(center, left_mask), _mm_slli_si128(center, 8));
 
-    result = af_unpack_blend_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
+    result = af_unpack_blend_uint16_t_sse41(left, center, right, center_weight, outer_weight, round_mask, zero);
 
     _mm_store_si128(reinterpret_cast<__m128i*>(dstp), result);
 
