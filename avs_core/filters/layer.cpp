@@ -2042,8 +2042,8 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   else if((vi.IsYUV() || vi.IsYUVA()) && !vi.IsY()) {
     // make offsets subsampling friendly
     // e.g. for YUY2: ofsX = ofsX & 0xFFFFFFFE; // X offset for YUY2 must be aligned on even pixels
-    ofsX = ofsX & ~(1 << vi.GetPlaneWidthSubsampling(PLANAR_U));
-    ofsY = ofsY & ~(1 << vi.GetPlaneHeightSubsampling(PLANAR_U));
+    ofsX = ofsX & ~((1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1);
+    ofsY = ofsY & ~((1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1);
   }
 
   xdest=(ofsX < 0)? 0: ofsX;
@@ -5178,7 +5178,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         BYTE* src1p = src1->GetWritePtr(plane) + src1_pitch * (ydest >> hs) + (xdest >> ws) * pixelsize; // destination
         const BYTE* src2p = src2->GetReadPtr(plane) + src2_pitch * (ysrc >> hs) + (xsrc >> ws) * pixelsize; // source plane
 
-        const BYTE* maskp = hasAlpha ? src2->GetReadPtr(PLANAR_A) + src2_pitch * (ydest >> hs) + (xdest >> ws) * pixelsize : nullptr; // alpha plane from Overlay
+        const BYTE* maskp = hasAlpha ? src2->GetReadPtr(PLANAR_A) + src2_pitch * (ysrc >> hs) + (xsrc >> ws) * pixelsize : nullptr; // alpha plane from Overlay
         const int mask_pitch = hasAlpha ? src2->GetPitch(PLANAR_A) : 0;
 
         const bool is_chroma = plane != PLANAR_Y;
@@ -5498,7 +5498,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       const int plane = planesRGB[channel];
       dstp[channel] = src1->GetWritePtr(plane) + dstp_pitch * ydest + xdest * pixelsize; // destination
-      ovrp[channel] = src2->GetReadPtr(plane) + ovrp_pitch * ydest + xdest * pixelsize; // overlay
+      ovrp[channel] = src2->GetReadPtr(plane) + ovrp_pitch * ysrc + xsrc * pixelsize; // overlay
     }
 
     if (!lstrcmpi(Op, "Mul"))
