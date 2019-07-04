@@ -117,10 +117,10 @@ AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* 
 template<typename pixel_t>
 static void flip_horizontal_plane_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height) {
   width = width / sizeof(pixel_t); // width is called with GetRowSize value
-  srcp += (width-1) * sizeof(pixel_t);
+  dstp += (width - 1) * sizeof(pixel_t);
   for (int y = 0; y < height; y++) { // Loop planar luma.
     for (int x = 0; x < width; x++) {
-      (reinterpret_cast<pixel_t *>(dstp))[x] = (reinterpret_cast<const pixel_t *>(srcp))[-x];
+      (reinterpret_cast<pixel_t *>(dstp))[-x] = (reinterpret_cast<const pixel_t *>(srcp))[x];
     }
     srcp += src_pitch;
     dstp += dst_pitch;
@@ -136,7 +136,6 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   int height = src->GetHeight();
-  int bpp = vi.BytesFromPixels(1);
   if (vi.IsYUY2()) { // Avoid flipping UV in YUY2 mode.
     srcp += width;
     srcp -= 4;
@@ -152,14 +151,16 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     }
     return dst;
   }
-  if (vi.IsPlanar()) {  //For planar always 1bpp, in AVS16: 1,2,4
-    typedef void(*FlipFuncPtr) (BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height);
-    FlipFuncPtr flip_h_func;
-    switch (bpp) // AVS16
+  
+  typedef void(*FlipFuncPtr) (BYTE * dstp, const BYTE * srcp, int dst_pitch, int src_pitch, int width, int height);
+  FlipFuncPtr flip_h_func;
+
+  if (vi.IsPlanar()) {
+    switch (vi.ComponentSize()) // AVS16
     {
     case 1: flip_h_func = flip_horizontal_plane_c<uint8_t>; break;
     case 2: flip_h_func = flip_horizontal_plane_c<uint16_t>; break;
-    default: // 4
+    default: // 4 float
        flip_h_func = flip_horizontal_plane_c<float>; break;
     }
     flip_h_func(dstp, srcp, dst_pitch, src_pitch, width, height);
@@ -197,27 +198,37 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   // width is GetRowSize
-  srcp += width-bpp;
-  if (vi.IsRGB32() || vi.IsRGB64()) { // fast method
-    for (int y = 0; y<height; y++) {
-      for (int x = 0; x<width/4; x++) {
-        (reinterpret_cast<int*>(dstp))[x] = (reinterpret_cast<const int*>(srcp))[-x];
+  if (vi.IsRGB32()) { // fast method
+    flip_h_func = flip_horizontal_plane_c<uint32_t>;
+    flip_h_func(dstp, srcp, dst_pitch, src_pitch, width, height);
+  }
+  else if (vi.IsRGB64()) {
+    flip_h_func = flip_horizontal_plane_c<uint64_t>;
+    flip_h_func(dstp, srcp, dst_pitch, src_pitch, width, height);
+  }
+  else if (vi.IsRGB24()) {
+    dstp += width - 3;
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x += 3) {
+          dstp[-x + 0] = srcp[x + 0];
+          dstp[-x + 1] = srcp[x + 1];
+          dstp[-x + 2] = srcp[x + 2];
       }
       srcp += src_pitch;
       dstp += dst_pitch;
     }
-    return dst;
   }
-
-  //RGB24/48
-  for (int y = 0; y<height; y++) { 
-    for (int x = 0; x<width; x += bpp) {
-      for (int i = 0; i<bpp; i++) {
-        dstp[x+i] = srcp[-x+i];
+  else if (vi.IsRGB48()) {
+    dstp += width - 3 * sizeof(uint16_t);
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width / sizeof(uint16_t); x += 3) {
+        reinterpret_cast<uint16_t*>(dstp)[-x + 0] = reinterpret_cast<const uint16_t*>(srcp)[x + 0];
+        reinterpret_cast<uint16_t*>(dstp)[-x + 1] = reinterpret_cast<const uint16_t*>(srcp)[x + 1];
+        reinterpret_cast<uint16_t*>(dstp)[-x + 2] = reinterpret_cast<const uint16_t*>(srcp)[x + 2];
       }
+      srcp += src_pitch;
+      dstp += dst_pitch;
     }
-    srcp += src_pitch;
-    dstp += dst_pitch;
   }
   return dst;
 }
