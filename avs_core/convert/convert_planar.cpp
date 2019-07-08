@@ -1625,7 +1625,7 @@ void ConvertYUV444ToRGB::BuildMatrix(double Kr, double Kb, int shift, bool full_
     Oy = full_scale ? 0 : 16; // n/a
 
     Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
-    Suv_f = full_scale ? uv8tof(128) : (uv8tof(240) - uv8tof(16)) / 2;
+    Suv_f = full_scale ? (uv8tof(255) - uv8tof(0)) / 2 : (uv8tof(240) - uv8tof(16)) / 2;
   }
 
 
