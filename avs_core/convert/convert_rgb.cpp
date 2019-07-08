@@ -533,7 +533,7 @@ static void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int s
       __m128i R = _mm_unpacklo_epi64(RA1, RA2);
       _mm_storeu_si128(reinterpret_cast<__m128i *>(dstp[2] + x * sizeof(pixel_t)), R); // R
       if (targetHasAlpha)
-        _mm_store_si128(reinterpret_cast<__m128i *>(dstp[3] + x * sizeof(pixel_t)), max_pixel_value); // A
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(dstp[3] + x * sizeof(pixel_t)), max_pixel_value); // A
     }
     srcp -= src_pitch; // source packed RGB is upside down
     dstp[0] += dst_pitch[0];
