@@ -34,6 +34,7 @@
 
 
 #include "convert_rgb.h"
+#include "convert_rgb_avx2.h"
 #include <tmmintrin.h>
 #include <avs/alignment.h>
 
@@ -673,8 +674,14 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
         convert_rgb_to_rgbp_c<uint8_t, 4>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, 8);
     }
     else {
-      // RGB24->RGBP8, works with 48byte blocks (16xRGB), min width is 16
-      if ((env->GetCPUFlags() & CPUF_SSSE3) && vi.width >= 16) {
+      // RGB24->RGB(A)P8, works with 48byte blocks (16xRGB), min width is 16 (SSSE3, 32 (AVX2)
+      if ((env->GetCPUFlags() & CPUF_AVX2) && vi.width >= 32) {
+        if (targetHasAlpha)
+          convert_rgb_to_rgbp_avx2<uint8_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, 8);
+        else
+          convert_rgb_to_rgbp_avx2<uint8_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, 8);
+      }
+      else if ((env->GetCPUFlags() & CPUF_SSSE3) && vi.width >= 16) {
         if (targetHasAlpha)
           convert_rgb_to_rgbp_ssse3<uint8_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, 8);
         else
@@ -698,8 +705,14 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
       }
     }
     else {
-      // RGB48->RGBP16, works with 48byte blocks (8xRGB), min width is 8
-      if ((env->GetCPUFlags() & CPUF_SSSE3) && vi.width >= 8) {
+      // RGB48->RGB(A)P16, works with 48byte blocks (8xRGB), min width is 8 (SSSE3), 16 (AVX2)
+      if ((env->GetCPUFlags() & CPUF_AVX2) && vi.width >= 16) {
+        if (targetHasAlpha)
+          convert_rgb_to_rgbp_avx2<uint16_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, 16);
+        else
+          convert_rgb_to_rgbp_avx2<uint16_t, false>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, 16);
+      }
+      else if ((env->GetCPUFlags() & CPUF_SSSE3) && vi.width >= 8) {
         if (targetHasAlpha)
           convert_rgb_to_rgbp_ssse3<uint16_t, true>(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, 16);
         else
