@@ -4,8 +4,13 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190701 r28xx
+20190708 r29xx
 --------------
+- Fix: ConvertToRGB from 32bit float YUV w/ full scale matrixes (pc.601, pc.709, average)
+- Fix: FlipHorizontal RGB48/64 artifacts
+- Enhanced: a bit quicker FlipHorizontal
+- Fix: RGB64 Blur leftmost column artifact
+- Enhanced: quicker RGB24/48 to Planar RGB for AVX2 capable processors
 - Fix: Strip alpha channel when origin is YUVA and using ConvertToYV12/ConvertToYV16/ConvertToYV24 funtions
 - Fix: garbage with ConvertToYUY2 from 8 bit YUVA colorspaces
 - Enhanced: Colorbars to accept RGB24, RGB48, YV411 and 4:2:2 formats for pixel_type (now all colorspaces are supported)
@@ -43,7 +48,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   (When you would still stick with RGB24/RGB32/RGB64 export, use OPT_Enable_PlanarToPackedRGB = true)
 - Fix: planar RGBA Alpha on VfW was uninitialized because it wasn't filled.
 - Layer: big update
-  Previously Layer was working only for RGB32 and YUY2. Overlay was used primarily for YUV. Now Layer accept practically all formats (no RGB24).
+  Previously Layer was working only for RGB32 and YUY2. Overlay was used primarily for YUV. Now Layer accepts practically all formats (no RGB24).
   Note that some modes can be similar to Overlay, but the two filters are still different. 
   Overlay accepts mask clip, Layer would use existing A plane.
   Overlay "blend" is Layer "add", Overlay "add" is different.

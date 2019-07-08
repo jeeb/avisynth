@@ -1,4 +1,4 @@
-Avisynth+ v28xx (20190627)
+Avisynth+ v29xx (20190708)
 --------------------------
 
 Use the installer or copy files directly
@@ -30,8 +30,13 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20190628 r28xx
+20190708 r29xx
 --------------
+- Fix: ConvertToRGB from 32bit float YUV w/ full scale matrixes (pc.601, pc.709, average)
+- Fix: FlipHorizontal RGB48/64 artifacts
+- Enhanced: a bit quicker FlipHorizontal
+- Fix: RGB64 Blur leftmost column artifact
+- Enhanced: quicker RGB24/48 to Planar RGB for AVX2 capable processors
 - Fix: Strip alpha channel when origin is YUVA and using ConvertToYV12/ConvertToYV16/ConvertToYV24 funtions
 - Fix: garbage with ConvertToYUY2 from 8 bit YUVA colorspaces
 - Enhanced: Colorbars to accept RGB24, RGB48, YV411 and 4:2:2 formats for pixel_type (now all colorspaces are supported)
