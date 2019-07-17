@@ -57,6 +57,7 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
   bool b64a, bool b48r, bool v210,
   bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
   bool r210, bool R10k,
+  bool v308, bool v408,
   IScriptEnvironment* env)
 {
   int heightY = vi.height;
@@ -66,6 +67,18 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
   { // Y416 packed 4444 U,Y,V,A
     // image_size = vi->width * vi->height * 4 * sizeof(uint16_t);
     pitchY = vi.width * 4 * sizeof(uint16_t); // n/a
+    pitchUV = 0;
+  }
+  else if (v308)
+  { // v308 packed 444
+    // image_size = vi->width * vi->height * 3 * sizeof(uint8_t);
+    pitchY = vi.width * 3; // n/a
+    pitchUV = 0;
+  }
+  else if (v408)
+  { // v408 packed 4444
+    // image_size = vi->width * vi->height * 4 * sizeof(uint8_t);
+    pitchY = vi.width * 4; // n/a
     pitchUV = 0;
   }
   else if (v410)
@@ -102,7 +115,7 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
 
   size_t sizeY = pitchY * heightY;
   size_t sizeUV = pitchUV * heightUV;
-  if(r210 || R10k || Y416 || v410 || v210)
+  if(r210 || R10k || Y416 || v410 || v210 || v308 || v408)
     size = sizeY;
   else if (vi.IsPlanarRGB())
     size = sizeY * 3;
@@ -152,6 +165,7 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
   bool b64a, bool b48r, bool v210, 
   bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
   bool r210, bool R10k,
+  bool v308, bool v408,
   IScriptEnvironment* env)
 {
     auto result = env->NewVideoFrame(vi);
@@ -187,6 +201,14 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
     }
     else if (v410) {
       v410_to_yuv444p10(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
+        frame->GetPtr(), vi.width, vi.height);
+    }
+    else if (v308) {
+      v308_to_yuv444p8(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
+        frame->GetPtr(), vi.width, vi.height);
+    }
+    else if (v408) {
+      v408_to_yuva444p8(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_U), result->GetPitch(PLANAR_A),
         frame->GetPtr(), vi.width, vi.height);
     }
     else {
@@ -503,6 +525,8 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   b48r = false;
   r210 = false;
   R10k = false;
+  v308 = false;
+  v408 = false;
   bMediaPad = false;
   frame = 0;
 
@@ -564,6 +588,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           bool fYV12  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV12" ) == 0;
           bool fYV16  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV16" ) == 0;
           bool fYV24  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV24" ) == 0;
+          bool fv308  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "v308") == 0;
+          bool fv408  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "v408") == 0;
+
           bool fYV411 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV411") == 0;
           bool fYUY2  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YUY2" ) == 0;
           bool fRGB32 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB32") == 0;
@@ -599,7 +626,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           bool fr210 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "r210") == 0;
           bool fR10k = pixel_type[0] == 0 || lstrcmpi(pixel_type, "R10k") == 0;
 
-          // we don't set specifically v210, P010, P016, P210, P216, Y410, Y416 for auto.
+          // we don't set specifically v210, P010, P016, P210, P216, Y410, Y416, v308, v408 for auto.
           // These are set only when negotiated
           if (lstrcmpi(pixel_type, "AUTO") == 0) {
             fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = fRGB48 = fRGB64 = true;
@@ -633,6 +660,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           }
 
           if (!(fY8 || fYV12 || fYV16 || fYV24 || fYV411 || fYUY2 || fRGB32 || fRGB24 || fRGB48 || fRGB64
+            || fv308 || fv408
             || fYUV420P10 || fP010
             || fYUV420P16 || fP016
             || fYUV422P10 || fP210 || fv210
@@ -644,7 +672,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             || fr210 || fR10k
             || fGrayscale
             ))
-            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, Y, RGBP, RGBP10, r210, R10k, RGB24/32/48/64, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y416, AUTO or FULL");
+            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, Y, RGBP, RGBP10, r210, R10k, RGB24/32/48/64, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y416, v308, v408, AUTO or FULL");
 
           // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24, RGB48, RGB64, YUV422P10 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
@@ -740,7 +768,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
             if ((fRGBP10 || fr210) && bOpen) {
               vi.pixel_type = VideoInfo::CS_RGBP10;
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, true, false);
+              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, true, false, false, false);
               biDst.biCompression = MAKEFOURCC('r', '2', '1', '0');
               biDst.biBitCount = 30;
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
@@ -751,7 +779,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
             if ((fRGBP10 || fR10k) && bOpen) {
               vi.pixel_type = VideoInfo::CS_RGBP10;
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, true);
+              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, true, false, false);
               biDst.biCompression = MAKEFOURCC('R', '1', '0', 'k');
               biDst.biBitCount = 30;
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
@@ -777,7 +805,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
             else {
               vi.pixel_type = VideoInfo::CS_RGBP10;
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, true, false);
+              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, true, false, false, false);
               biDst.biCompression = MAKEFOURCC('r', '2', '1', '0');
               biDst.biBitCount = 30;
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
@@ -787,7 +815,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
               }
               else {
                 vi.pixel_type = VideoInfo::CS_RGBP10;
-                biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, true);
+                biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, true, false, false);
                 biDst.biCompression = MAKEFOURCC('R', '1', '0', 'k');
                 biDst.biBitCount = 30;
                 if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
@@ -823,7 +851,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                         vi.pixel_type = VideoInfo::CS_RGBAP10;
                         biDst.biSizeImage = vi.BMPSize();
                         biDst.biCompression = MAKEFOURCC('G', '4', 0, 10); // ffmpeg GBRAP10LE
-                        biDst.biBitCount = 30;
+                        biDst.biBitCount = 30; // FIXME: 4*10 = 40?
                         if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                           _RPT0(0, "AVISource: Opening as G4[0][10].\n");
                           bOpen = false;  // Skip further attempts
@@ -831,7 +859,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                         else {
                           vi.pixel_type = VideoInfo::CS_RGBAP12;
                           biDst.biCompression = MAKEFOURCC('G', '4', 0, 12); // ffmpeg GBRAP12LE
-                          biDst.biBitCount = 36;
+                          biDst.biBitCount = 36; // FIXME: 4*12 = 48?
                           if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                             _RPT0(0, "AVISource: Opening as G4[0][12].\n");
                             bOpen = false;  // Skip further attempts
@@ -839,7 +867,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                           else {
                             vi.pixel_type = VideoInfo::CS_RGBAP14;
                             biDst.biCompression = MAKEFOURCC('G', '4', 0, 14); // ffmpeg GBRAP14LE
-                            biDst.biBitCount = 42;
+                            biDst.biBitCount = 42; // FIXME: 4*14 = 56?
                             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                               _RPT0(0, "AVISource: Opening as G4[0][1].\n");
                               bOpen = false;  // Skip further attempts
@@ -847,7 +875,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                             else {
                               vi.pixel_type = VideoInfo::CS_RGBAP16;
                               biDst.biCompression = MAKEFOURCC('G', '4', 0, 16); // ffmpeg GBRAP16LE
-                              biDst.biBitCount = 48;
+                              biDst.biBitCount = 48; // FIXME: 4*16 = 64?
                               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                                 _RPT0(0, "AVISource: Opening as G4[0][16].\n");
                                 bOpen = false;  // Skip further attempts
@@ -1021,7 +1049,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if ((fYUV422P10 || fv210 || fP210) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV422P10;
             if ((fv210 || fYUV422P10) && bOpen) {
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, true, false, false, false);
+              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, true, false, false, false, false, false);
               biDst.biCompression = MAKEFOURCC('v', '2', '1', '0'); // as v210
               biDst.biBitCount = 30; // should be 30, not 10+(10+10)/2
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
@@ -1111,7 +1139,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           // YUV444P10
           if ((fYUV444P10 || fv410) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV444P10;
-            biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false);
+            biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, false, false);
             biDst.biCompression = MAKEFOURCC('v', '4', '1', '0'); // as v410
             biDst.biBitCount = 30; // 3x16?
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
@@ -1121,6 +1149,38 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
             else if (forcedType) {
               env->ThrowError("AVISource: the video decompressor couldn't produce YUV444P10 output");
+            }
+          }
+
+          // v308 to YUV444P8 aka YV24
+          if ((fv308) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YV24;
+            biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, true, false);
+            biDst.biCompression = MAKEFOURCC('v', '3', '0', '8'); // as v308
+            biDst.biBitCount = 24;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as v308.\n");
+              v308 = true;
+              bOpen = false;  // Skip further attempts
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce v308 output");
+            }
+          }
+
+          // v408 to YUVA444P8
+          if ((fv408) && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUVA444;
+            biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, false, true);
+            biDst.biCompression = MAKEFOURCC('v', '4', '0', '8'); // as v408
+            biDst.biBitCount = 32;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0, "AVISource: Opening as v408.\n");
+              v408 = true;
+              bOpen = false;  // Skip further attempts
+            }
+            else if (forcedType) {
+              env->ThrowError("AVISource: the video decompressor couldn't produce v408 output");
             }
           }
 
@@ -1175,7 +1235,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode != MODE_WAV) {
       bMediaPad = !(!bMediaPad && !vi.IsY8() && vi.IsPlanar());
       int keyframe = pvideo->NearestKeyFrame(0);
-      frame = new TemporalBuffer(vi, bMediaPad, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, env);
+      frame = new TemporalBuffer(vi, bMediaPad, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, v308, v408, env);
 
       LRESULT error = DecompressFrame(keyframe, false, env);
       if (error != ICERR_OK)   // shutdown, if init not succesful.
@@ -1190,7 +1250,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
       }
       last_frame_no=0;
-      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, env);
+      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, v308, v408, env);
     }
   }
   catch (...) {
@@ -1260,7 +1320,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     } while(not_found_yet);
 
     if (frameok) {
-      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, env);
+      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, v308, v408, env);
     }
   }
   return last_frame;

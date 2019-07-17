@@ -40,7 +40,7 @@
 #include <emmintrin.h>
 #include <tmmintrin.h>
 
-int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k) {
+int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k, bool v308, bool v408) {
   int image_size;
   if (vi->pixel_type == VideoInfo::CS_YUV444P16 || vi->pixel_type == VideoInfo::CS_YUVA444P16)
     { // Y416 packed 4444 U,Y,V,A
@@ -53,6 +53,14 @@ int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bo
   else if (vi->pixel_type == VideoInfo::CS_RGBP10 && R10k)
   { // 3x10bit packed RGB, no aligment
     image_size = vi->width * 4 * vi->height; // 4 byte/pixel: 32bits for 3x10 bits
+  }
+  if (vi->pixel_type == VideoInfo::CS_YV24 && v308)
+  { // v308 packed 444
+    image_size = vi->width * vi->height * 3 * sizeof(uint8_t);
+  }
+  if (vi->pixel_type == VideoInfo::CS_YUVA444 && v408)
+  { // v408 packed 4444
+    image_size = vi->width * vi->height * 4 * sizeof(uint8_t);
   }
   else if (vi->pixel_type == VideoInfo::CS_YUV444P10 && v410)
   { // v410 packed 444 U,Y,V
@@ -674,6 +682,68 @@ void v210_to_yuv422p10(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dstp_v, i
         yline[2] = (block2 >> 20) & 0x3FF;
         yline[3] = (block3 >> 10) & 0x3FF;
       }
+    }
+    srcp += srcpitch;
+    yptr += ppitch_y;
+    uptr += ppitch_uv;
+    vptr += ppitch_uv;
+  }
+}
+
+void v408_to_yuva444p8(BYTE* dstp_y, int dstpitch, BYTE* dstp_u, BYTE* dstp_v, BYTE* dstp_a, int dstpitch_uv, int dstpitch_a, const BYTE* srcp, int width, int height)
+{
+  int ppitch_y = dstpitch;
+  int ppitch_uv = dstpitch_uv;
+  int ppitch_a = dstpitch_a;
+  uint8_t* yptr = dstp_y;
+  uint8_t* uptr = dstp_u;
+  uint8_t* vptr = dstp_v;
+  uint8_t* aptr = dstp_a;
+
+  const int srcpitch = width * 4;
+
+  for (int y = 0; y < height; y++) {
+    uint8_t* yline = yptr;
+    uint8_t* uline = uptr;
+    uint8_t* vline = vptr;
+    uint8_t* aline = aptr;
+    const uint32_t* srcline = reinterpret_cast<const uint32_t*>(srcp);
+
+    for (int x = 0; x < width; x++) {
+      uint32_t block = srcline[x]; // 4x8 bit
+      uline[x] = (block) & 0xFF;
+      vline[x] = (block >> 16) & 0xFF;
+      yline[x] = (block >> 8) & 0xFF;
+      aline[x] = (block >> 24) & 0xFF;
+    }
+    srcp += srcpitch;
+    yptr += ppitch_y;
+    uptr += ppitch_uv;
+    vptr += ppitch_uv;
+    aptr += ppitch_a;
+  }
+}
+
+void v308_to_yuv444p8(BYTE* dstp_y, int dstpitch, BYTE* dstp_u, BYTE* dstp_v, int dstpitch_uv, const BYTE* srcp, int width, int height)
+{
+  int ppitch_y = dstpitch;
+  int ppitch_uv = dstpitch_uv;
+  uint8_t* yptr = dstp_y;
+  uint8_t* uptr = dstp_u;
+  uint8_t* vptr = dstp_v;
+
+  const int srcpitch = width * 3;
+
+  for (int y = 0; y < height; y++) {
+    uint8_t* yline = yptr;
+    uint8_t* uline = uptr;
+    uint8_t* vline = vptr;
+    const uint8_t* srcline = srcp;
+
+    for (int x = 0; x < width; x++) {
+      vline[x] = srcline[x * 3 + 0];
+      yline[x] = srcline[x * 3 + 1];
+      uline[x] = srcline[x * 3 + 2];
     }
     srcp += srcpitch;
     yptr += ppitch_y;

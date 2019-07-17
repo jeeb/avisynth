@@ -38,7 +38,7 @@
 #include <avisynth.h>
 #include <stdint.h>
 
-int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k);
+int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k, bool v308, bool v408);
 
 template<bool hasAlpha>
 void ToY416_sse2(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height);
@@ -59,6 +59,8 @@ void bgra_to_argbBE_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int sr
 void bgra_to_argbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height);
 void v410_to_yuv444p10(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dstp_v, int dstpitch_uv, const BYTE *srcp, int width, int height);
 void v210_to_yuv422p10(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dstp_v, int dstpitch_uv, const BYTE *srcp, int width, int height);
+void v308_to_yuv444p8(BYTE* dstp_y, int dstpitch, BYTE* dstp_u, BYTE* dstp_v, int dstpitch_uv, const BYTE* srcp, int width, int height);
+void v408_to_yuva444p8(BYTE* dstp_y, int dstpitch, BYTE* dstp_u, BYTE* dstp_v, BYTE* dstp_a, int dstpitch_uv, int dstpitch_a, const BYTE* srcp, int width, int height);
 void yuv422p10_to_v210(BYTE *dstp, const BYTE *srcp_y, int srcpitch, const BYTE *srcp_u, const BYTE *srcp_v, int srcpitch_uv, int width, int height);
 void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int srcpitch,
   const BYTE *srcp_u, const BYTE *srcp_v, int srcpitch_uv,

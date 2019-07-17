@@ -54,6 +54,7 @@ public:
     bool b64a, bool b48r, bool v210,
     bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
     bool r210, bool R10k,
+    bool v308, bool v408,
     IScriptEnvironment* env);
   ~TemporalBuffer() {}
   int GetPitch(int plane=PLANAR_Y) { 
@@ -99,6 +100,8 @@ class AVISource : public IClip {
   bool R10k;
   bool b64a;
   bool b48r;
+  bool v308;
+  bool v408;
 
   bool utf8;
 
