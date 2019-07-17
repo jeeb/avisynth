@@ -32,6 +32,8 @@ Short info for plugin writers
 
 20190717 r29xx
 --------------
+- New: AviSource support v308 and v408 format (packed 8 bit 444 and 4444)
+- Fix: AviSource v410 source garbage (YUV444P10)
 - Fix: Expr: when using parameter "scale_inputs" and the source bit depth conversion occured, predefined constants
   (ymin/max, cmin/max, range_min/max/half) would not follow the new bit depth
 - Fix: ConvertToRGB from 32bit float YUV w/ full scale matrixes (pc.601, pc.709, average)
