@@ -1,4 +1,4 @@
-Avisynth+ v29xx (20190708)
+Avisynth+ v29xx (20190717)
 --------------------------
 
 Use the installer or copy files directly
@@ -30,8 +30,10 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20190708 r29xx
+20190717 r29xx
 --------------
+- Fix: Expr: when using parameter "scale_inputs" and the source bit depth conversion occured, predefined constants
+  (ymin/max, cmin/max, range_min/max/half) would not follow the new bit depth
 - Fix: ConvertToRGB from 32bit float YUV w/ full scale matrixes (pc.601, pc.709, average)
 - Fix: FlipHorizontal RGB48/64 artifacts
 - Enhanced: a bit quicker FlipHorizontal

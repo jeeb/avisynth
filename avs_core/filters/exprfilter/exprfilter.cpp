@@ -3788,6 +3788,14 @@ static int getSuffix(std::string token, std::string base) {
   return loadIndex;
 }
 
+// if automatic source bit depth conversion takes place, ymax, ymin, range_xxx, etc.. constants are changed accordingly
+static int getEffectiveBitsPerComponent(int bitsPerComponent, bool autoconv_conv_float, bool autoconv_conv_int, int autoScaleSourceBitDepth)
+{
+  if ((autoconv_conv_float && bitsPerComponent == 32) || (autoconv_conv_int && bitsPerComponent != 32))
+    return autoScaleSourceBitDepth;
+  return bitsPerComponent;
+}
+
 static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma, 
   const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float, const bool clamp_float,
   IScriptEnvironment *env)
@@ -4110,7 +4118,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = (float)bitsPerComponent;
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -4130,7 +4138,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? 16.0f / 255 : (16 << (bitsPerComponent - 8)); // scale luma min 16
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -4145,7 +4153,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? 235.0f / 255 : (235 << (bitsPerComponent - 8)); // scale luma max 235
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -4160,7 +4168,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? uv8tof(16) : (16 << (bitsPerComponent - 8)); // scale chroma min 16
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -4175,7 +4183,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? uv8tof(240) : (240 << (bitsPerComponent - 8)); // scale chroma max 240
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -4190,7 +4198,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? 1.0f : (1 << bitsPerComponent); // 1.0, 256, 1024,... 65536
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -4205,7 +4213,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           // 0.0 (or -0.5 for zero based 32bit float chroma)
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) - 0.5f : 0.0f) : 0;
           LOAD_OP(opLoadConst, q, 0);
@@ -4221,7 +4229,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           // 1.0 (or 0.5 for zero based 32bit float chroma), 255, 1023,... 65535
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) + 0.5f : 1.0f) : ((1 << bitsPerComponent) - 1);
           LOAD_OP(opLoadConst, q, 0);
@@ -4237,8 +4245,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
-          int bitsPerComponent = vi[loadIndex]->BitsPerComponent();
           // for chroma: range_half is 0.0 for 32bit float (or 0.5 for old float chroma representation)
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) : 0.5f) : (1 << (bitsPerComponent - 1)); // 0.5f, 128, 512, ... 32768
           LOAD_OP(opLoadConst, q, 0);
         }
