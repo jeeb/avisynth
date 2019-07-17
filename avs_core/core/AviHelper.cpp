@@ -752,28 +752,28 @@ void v308_to_yuv444p8(BYTE* dstp_y, int dstpitch, BYTE* dstp_u, BYTE* dstp_v, in
   }
 }
 
-void v410_to_yuv444p10(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dstp_v, int dstpitch_uv, const BYTE *srcp, int width, int height)
+void v410_to_yuv444p10(BYTE* dstp_y, int dstpitch, BYTE* dstp_u, BYTE* dstp_v, int dstpitch_uv, const BYTE* srcp, int width, int height)
 {
   int ppitch_y = dstpitch / sizeof(uint16_t);
   int ppitch_uv = dstpitch_uv / sizeof(uint16_t);
-  uint16_t *yptr = (uint16_t *)dstp_y;
-  uint16_t *uptr = (uint16_t *)dstp_u;
-  uint16_t *vptr = (uint16_t *)dstp_v;
+  uint16_t* yptr = (uint16_t*)dstp_y;
+  uint16_t* uptr = (uint16_t*)dstp_u;
+  uint16_t* vptr = (uint16_t*)dstp_v;
 
-  const int srcpitch = width * 2;
+  const int srcpitch = width * 4;
 
   for (int y = 0; y < height; y++) {
-    uint16_t *yline = yptr;
-    uint16_t *uline = uptr;
-    uint16_t *vline = vptr;
-    const uint32_t *srcline = reinterpret_cast<const uint32_t *>(srcp);
+    uint16_t* yline = yptr;
+    uint16_t* uline = uptr;
+    uint16_t* vline = vptr;
+    const uint32_t* srcline = reinterpret_cast<const uint32_t*>(srcp);
 
     for (int x = 0; x < width; x++) {
       uint32_t block = srcline[x];
 
-      uline[x] = (block) & 0x3FF;
-      vline[x] = (block >> 20) & 0x3FF;
-      yline[x] = (block >> 10) & 0x3FF;
+      yline[x] = (block >> 12) & 0x3FF;
+      uline[x] = (block >> 2) & 0x3FF;
+      vline[x] = (block >> 22) & 0x3FF;
     }
     srcp += srcpitch;
     yptr += ppitch_y;
