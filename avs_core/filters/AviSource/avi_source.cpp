@@ -619,9 +619,11 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           bool fY416 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y416") == 0;
 
           bool fRGBP = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGBP") == 0; // RGBP means planar RGB 10-16
+          // FIXME: 8 bit planar RGB possible?
+          // FIXME: hint for RGBPA priority?
           bool fGrayscale = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y") == 0; // Y8-16
 
-          // special 10 bit RGB
+          // special 10 bit RGB, multiple formats supported
           bool fRGBP10 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGBP10") == 0;
           bool fr210 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "r210") == 0;
           bool fR10k = pixel_type[0] == 0 || lstrcmpi(pixel_type, "R10k") == 0;
@@ -793,8 +795,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
           }
 
-          // RGBP: planar RGB, no specific bit depth
+          // "RGBP": this is a hint that planar RGB is preferred, no specific bit depth needed
           if (fRGBP && bOpen) {
+            // FIXME: consider putting here G3[0][8] and G4[0][8]
             vi.pixel_type = VideoInfo::CS_RGBP10;
             biDst.biSizeImage = vi.BMPSize();
             biDst.biCompression = MAKEFOURCC('G', '3', 0, 10); // ffmpeg GBRP10LE
@@ -851,7 +854,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                         vi.pixel_type = VideoInfo::CS_RGBAP10;
                         biDst.biSizeImage = vi.BMPSize();
                         biDst.biCompression = MAKEFOURCC('G', '4', 0, 10); // ffmpeg GBRAP10LE
-                        biDst.biBitCount = 30; // FIXME: 4*10 = 40?
+                        biDst.biBitCount = 40; // FIXME: 4*10 = 40?
                         if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                           _RPT0(0, "AVISource: Opening as G4[0][10].\n");
                           bOpen = false;  // Skip further attempts
@@ -859,7 +862,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                         else {
                           vi.pixel_type = VideoInfo::CS_RGBAP12;
                           biDst.biCompression = MAKEFOURCC('G', '4', 0, 12); // ffmpeg GBRAP12LE
-                          biDst.biBitCount = 36; // FIXME: 4*12 = 48?
+                          biDst.biBitCount = 48; // FIXME: 4*12 = 48?
                           if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                             _RPT0(0, "AVISource: Opening as G4[0][12].\n");
                             bOpen = false;  // Skip further attempts
@@ -867,15 +870,15 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                           else {
                             vi.pixel_type = VideoInfo::CS_RGBAP14;
                             biDst.biCompression = MAKEFOURCC('G', '4', 0, 14); // ffmpeg GBRAP14LE
-                            biDst.biBitCount = 42; // FIXME: 4*14 = 56?
+                            biDst.biBitCount = 56; // FIXME: 4*14 = 56?
                             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                              _RPT0(0, "AVISource: Opening as G4[0][1].\n");
+                              _RPT0(0, "AVISource: Opening as G4[0][14].\n");
                               bOpen = false;  // Skip further attempts
                             }
                             else {
                               vi.pixel_type = VideoInfo::CS_RGBAP16;
                               biDst.biCompression = MAKEFOURCC('G', '4', 0, 16); // ffmpeg GBRAP16LE
-                              biDst.biBitCount = 48; // FIXME: 4*16 = 64?
+                              biDst.biBitCount = 64; // FIXME: 4*16 = 64?
                               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                                 _RPT0(0, "AVISource: Opening as G4[0][16].\n");
                                 bOpen = false;  // Skip further attempts
@@ -1141,7 +1144,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             vi.pixel_type = VideoInfo::CS_YUV444P10;
             biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, false, false);
             biDst.biCompression = MAKEFOURCC('v', '4', '1', '0'); // as v410
-            biDst.biBitCount = 30; // 3x16?
+            biDst.biBitCount = 30; // 3x10?
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0, "AVISource: Opening as v410.\n");
               v410 = true;
