@@ -2333,9 +2333,13 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
     std::list<std::pair<YmmReg, YmmReg>> stack;
     std::list<YmmReg> stack1;
 
-    const bool maskIt = (maskUnused && ((planewidth & 7) != 0));
+    // reason of masking: prevent loading 'junk', out of frame pixels, which can be NaN floats for example.
+    // If processingLoop works in dual lane mode (!processSingle), masking occurs only for the high lane,
+    // when there is no need for dual lanes (width mod 16 is <= 8 pixels), processSingle=true is used
+    const bool maskIt = maskUnused && ((planewidth & 7) != 0);
     const int mask = ((1 << (planewidth & 7)) - 1);
-    // mask by zero when we have only 1-7 valid pixels
+
+    // mask by zero when we have only 1-7 valid pixels in the lower (single-lane) or upper (dual-lane)
     // 1: 2-1   = 1   // 00000001
     // 2: 4-1   = 3   // 00000011
     // 7: 128-1 = 127 // 01111111
@@ -5120,12 +5124,15 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       }
     }
 
+    int* plane_enums_d = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
+
     d.maxStackSize = 0;
     for (int i = 0; i < d.vi.NumComponents(); i++) {
-      const int plane_enum = plane_enums[i];
+      const int plane_enum_s = plane_enums[i];
+      const int plane_enum = plane_enums_d[i];
       const int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
       const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
-      const bool chroma = (plane_enum == PLANAR_U || plane_enum == PLANAR_V);
+      const bool chroma = (plane_enum_s == PLANAR_U || plane_enum_s == PLANAR_V);
       d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma, 
         autoconv_full_scale, autoconv_conv_int, autoconv_conv_float, clamp_float,
         env), d.maxStackSize);
@@ -5197,7 +5204,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     for (int i = 0; i < d.vi.NumComponents(); i++) {
       if (d.plane[i] == poProcess) {
 
-        const int plane_enum = plane_enums[i];
+        const int plane_enum = plane_enums_d[i];
         int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
         int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
 
