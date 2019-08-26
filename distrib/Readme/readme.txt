@@ -1,4 +1,4 @@
-Avisynth+ v29xx (20190717)
+Avisynth+ v29xx (20190826)
 --------------------------
 
 Use the installer or copy files directly
@@ -30,8 +30,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20190717 r29xx
+20190826 r29xx
 --------------
+- Fix: Expr: fix non-mod-8 issues for forced RGB output and YUV inputs
 - New: AviSource support v308 and v408 format (packed 8 bit 444 and 4444)
 - Fix: AviSource v410 source garbage (YUV444P10)
 - Fix: Expr: when using parameter "scale_inputs" and the source bit depth conversion occured, predefined constants

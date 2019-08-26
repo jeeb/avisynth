@@ -4,8 +4,9 @@ Source: https://github.com/pinterf/AviSynthPlus/tree/MT
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190717 r29xx
+20190826 r29xx
 --------------
+- Fix: Expr: fix non-mod-8 issues for forced RGB output and YUV inputs
 - New: AviSource support v308 and v408 format (packed 8 bit 444 and 4444)
 - Fix: AviSource v410 source garbage (YUV444P10)
 - Fix: Expr: when using parameter "scale_inputs" and the source bit depth conversion occured, predefined constants
