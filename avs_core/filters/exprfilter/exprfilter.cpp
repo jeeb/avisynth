@@ -475,97 +475,62 @@ orps(x, invalid_mask); }
 YmmReg fx, emm0, etmp, y, mask, z; \
 vminps(x, x, CPTR_AVX(elexp_hi)); \
 vmaxps(x, x, CPTR_AVX(elexp_lo)); \
-/*vmovaps(fx, x);*/ \
-/*vmulps(fx, fx, CPTR_AVX(elcephes_LOG2EF));*/ \
-vmulps(fx, x, CPTR_AVX(elcephes_LOG2EF)); /* simplified above 2 lines */ \
+vmulps(fx, x, CPTR_AVX(elcephes_LOG2EF)); \
 vaddps(fx, fx, CPTR_AVX(elfloat_half)); \
 vcvttps2dq(emm0, fx); \
 vcvtdq2ps(etmp, emm0); \
-vmovaps(mask, etmp); \
-vcmpps(mask, mask, fx, _CMP_GT_OQ); /* cmpnleps */ \
+vcmpps(mask, etmp, fx, _CMP_GT_OQ); /* cmpnleps */ \
 vandps(mask, mask, CPTR_AVX(elfloat_one)); \
-vmovaps(fx, etmp); \
-vsubps(fx, fx, mask); \
-/*vmovaps(etmp, fx);*/ \
-/*vmulps(etmp, etmp, CPTR_AVX(elcephes_exp_C1));*/ \
-vmulps(etmp, fx, CPTR_AVX(elcephes_exp_C1)); /* simplified above 2 lines */ \
-/*vmovaps(z, fx); */\
-/*vmulps(z, z, CPTR_AVX(elcephes_exp_C2));*/ \
-vmulps(z, fx, CPTR_AVX(elcephes_exp_C2));  /* simplified above 2 lines */ \
-vsubps(x, x, etmp); \
-vsubps(x, x, z); \
-/*vmovaps(z, x);*/ \
-/*vmulps(z, z); */ \
-vmulps(z, x, x); /* simplified above 2 lines */ \
+vsubps(fx, etmp, mask); \
+vfnmadd231ps(x, fx, CPTR_AVX(elcephes_exp_C1)); \
+vfnmadd231ps(x, fx, CPTR_AVX(elcephes_exp_C2)); \
+vmulps(z, x, x); \
 vmovaps(y, CPTR_AVX(elcephes_exp_p0)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_exp_p1)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_exp_p2)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_exp_p3)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_exp_p4)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_exp_p5)); \
-vmulps(y, y, z); \
-vaddps(y, y, x); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_exp_p1)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_exp_p2)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_exp_p3)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_exp_p4)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_exp_p5)); \
+vfmadd213ps(y, z, x); \
 vaddps(y, y, CPTR_AVX(elfloat_one)); \
 vcvttps2dq(emm0, fx); \
 vpaddd(emm0, emm0, CPTR_AVX(elc7F)); \
 vpslld(emm0, emm0, 23); \
-vmulps(y, y, emm0); \
-x = y; }
+vmulps(x, y, emm0); \
+}
 
 #define LOG_PS_AVX(x) { \
 YmmReg emm0, invalid_mask, mask, y, etmp, z; \
-vxorps(invalid_mask, invalid_mask, invalid_mask); \
-vcmpps(invalid_mask, invalid_mask, x, _CMP_GT_OQ); /* cmpnleps */ \
+vcmpps(invalid_mask, zero, x, _CMP_GT_OQ); /* cmpnleps. or signalling _CMP_NLE_US? */ \
 vmaxps(x, x, CPTR_AVX(elmin_norm_pos)); \
-vmovaps(emm0, x); \
-vpsrld(emm0, emm0, 23); \
+vpsrld(emm0, x, 23); \
 vandps(x, x, CPTR_AVX(elinv_mant_mask)); \
 vorps(x, x, CPTR_AVX(elfloat_half)); \
 vpsubd(emm0, emm0, CPTR_AVX(elc7F)); \
 vcvtdq2ps(emm0, emm0); \
 vaddps(emm0, emm0, CPTR_AVX(elfloat_one)); \
-vmovaps(mask, x); \
-vcmpps(mask, mask, CPTR_AVX(elcephes_SQRTHF), _CMP_LT_OQ); /* cmpltps */ \
-vmovaps(etmp, x); \
-vandps(etmp, etmp, mask); \
+vcmpps(mask, x, CPTR_AVX(elcephes_SQRTHF), _CMP_LT_OQ); /* cmpltps. or signalling _CMP_LT_OS? */ \
+vandps(etmp, x, mask); \
 vsubps(x, x, CPTR_AVX(elfloat_one)); \
 vandps(mask, mask, CPTR_AVX(elfloat_one)); \
 vsubps(emm0, emm0, mask); \
 vaddps(x, x, etmp); \
-vmovaps(z, x); \
-vmulps(z, z, z); \
+vmulps(z, x, x); \
 vmovaps(y, CPTR_AVX(elcephes_log_p0)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p1)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p2)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p3)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p4)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p5)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p6)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p7)); \
-vmulps(y, y, x); \
-vaddps(y, y, CPTR_AVX(elcephes_log_p8)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p1)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p2)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p3)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p4)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p5)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p6)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p7)); \
+vfmadd213ps(y, x, CPTR_AVX(elcephes_log_p8)); \
 vmulps(y, y, x); \
 vmulps(y, y, z); \
-vmovaps(etmp, emm0); \
-vmulps(etmp, etmp, CPTR_AVX(elcephes_log_q1)); \
-vaddps(y, y, etmp); \
-vmulps(z, z, CPTR_AVX(elfloat_half)); \
-vsubps(y, y, z); \
-vmulps(emm0, emm0, CPTR_AVX(elcephes_log_q2)); \
+vfmadd231ps(y, emm0, CPTR_AVX(elcephes_log_q1)); \
+vfnmadd231ps(y, z, CPTR_AVX(elfloat_half)); \
 vaddps(x, x, y); \
-vaddps(x, x, emm0); \
+vfmadd231ps(x, emm0, CPTR_AVX(elcephes_log_q2)); \
 vorps(x, x, invalid_mask); }
 
 // return (x - std::round(x / d)*d);
