@@ -6,6 +6,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 20190829 r29xx
 --------------
+- Changed: Trim, FreezeFrame, DeleteFrame, DuplicateFrame, Reverse and Loop are using frame cache again (similar to classic Avs 2.6)
+- Enhanced: Expr: faster exp, log, pow for AVX2 (sekrit-twc)
 - ConditionalReader: allow empty value in text file when TYPE string
 - Fix: Expr: fix non-mod-8 issues for forced RGB output and YUV inputs
 - New: AviSource support v308 and v408 format (packed 8 bit 444 and 4444)
