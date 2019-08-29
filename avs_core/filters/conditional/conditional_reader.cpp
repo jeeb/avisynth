@@ -296,7 +296,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
         } else {
           int cframe;
           fields = sscanf(keyword, "%d", &cframe);
-          if (*type && fields == 1) {
+          if ((*type || mode == MODE_STRING) && fields == 1) { // allow empty string
             AVSValue set = ConvertType(type, lines, env);
             SetFrame(cframe, set);
           } else {
