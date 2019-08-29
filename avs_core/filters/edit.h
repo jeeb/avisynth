@@ -41,7 +41,7 @@
 /********************************************************************
 ********************************************************************/
 
-class Trim : public NonCachedGenericVideoFilter 
+class Trim : public GenericVideoFilter 
 /**
   * Class to select a range of frames from a longer clip
  **/
@@ -55,6 +55,11 @@ public:
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);  
   static AVSValue __cdecl CreateA(AVSValue args, void* mode, IScriptEnvironment* env);  
 
@@ -66,7 +71,7 @@ private:
 
 
 
-class FreezeFrame : public NonCachedGenericVideoFilter 
+class FreezeFrame : public GenericVideoFilter 
 /**
   * Class to display a single frame for the duration of several
  **/
@@ -75,6 +80,11 @@ public:
   FreezeFrame(int _first, int _last, int _source, PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env); 
 
@@ -85,7 +95,7 @@ private:
 
 
 
-class DeleteFrame : public NonCachedGenericVideoFilter 
+class DeleteFrame : public GenericVideoFilter 
 /**
   * Class to delete a frame
  **/
@@ -94,6 +104,11 @@ public:
   DeleteFrame(int _frame, PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -104,7 +119,7 @@ private:
 
 
 
-class DuplicateFrame : public NonCachedGenericVideoFilter 
+class DuplicateFrame : public GenericVideoFilter 
 /**
   * Class to duplicate a frame
  **/
@@ -113,6 +128,11 @@ public:
   DuplicateFrame(int _frame, PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -200,7 +220,7 @@ private:
 
 
 
-class Reverse : public NonCachedGenericVideoFilter 
+class Reverse : public GenericVideoFilter 
 /**
   * Class to play a clip backwards
  **/
@@ -211,13 +231,18 @@ public:
   bool __stdcall GetParity(int n);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
 
 
 
-class Loop : public NonCachedGenericVideoFilter {
+class Loop : public GenericVideoFilter {
 /**
   * Class to loop over a range of frames
 **/
@@ -226,6 +251,11 @@ public:
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 	bool __stdcall GetParity(int n);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 
 	static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
