@@ -159,7 +159,9 @@ ELSE()
   # c++17: if constexpr() and others from gcc 7/clang 5
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++17" )
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 " )
+IF(WIN32)
   SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
+ENDIF()
 
 ENDIF()
 
