@@ -40,7 +40,13 @@
 #include <cmath>
 #include <vector>
 #include <io.h>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <avs/minmax.h>
 #include <new>
 #include <clocale>

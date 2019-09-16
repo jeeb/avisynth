@@ -36,7 +36,13 @@
 #include "expression.h"
 #include "../exception.h"
 #include "../internal.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <cassert>
 #include <vector>
 

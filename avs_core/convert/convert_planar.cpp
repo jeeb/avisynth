@@ -40,7 +40,13 @@
 #include "../filters/resample.h"
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <avs/alignment.h>
 #include <tmmintrin.h>
 #include <emmintrin.h>

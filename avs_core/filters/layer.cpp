@@ -38,7 +38,13 @@
 // by "poptones" (poptones@myrealbox.com)
 
 #include "layer.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <avs/minmax.h>
 #include <avs/alignment.h>
 #include "../core/internal.h"

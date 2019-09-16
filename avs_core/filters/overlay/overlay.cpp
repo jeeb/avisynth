@@ -34,7 +34,12 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include <avs/win.h>
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <stdlib.h>
 #include "overlay.h"
 #include <string>

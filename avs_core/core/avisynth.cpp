@@ -49,8 +49,12 @@
 #include <iostream>
 #include <fstream>
 
-#include <avs/win.h>
-#include <objbase.h>
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+    #include <objbase.h>
+#else
+    #include <avs/linux.h>
+#endif
 
 #include <string>
 #include <cstdio>

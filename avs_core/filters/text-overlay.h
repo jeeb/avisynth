@@ -36,7 +36,13 @@
 #define __Text_overlay_H__
 
 #include <avisynth.h>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <cstdio>
 #include <stdint.h>
 

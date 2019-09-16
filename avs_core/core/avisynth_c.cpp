@@ -9,7 +9,13 @@
 
 #include <avisynth.h>
 #include <avisynth_c.h>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <algorithm>
 #include <cstdarg>
 

@@ -39,7 +39,13 @@
 #include <smmintrin.h>
 #include <avs/alignment.h>
 #include <avs/minmax.h>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <stdint.h>
 #include "../convert/convert_planar.h"
 

@@ -35,7 +35,13 @@
 
 #include <avisynth.h>
 #include "internal.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <avs/minmax.h>
 #include "bitblt.h"
 #include "exception.h"

@@ -37,7 +37,13 @@
 #include "../core/info.h"
 #include "../core/internal.h"
 #include "../convert/convert_audio.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <memory>
 #include <avs/minmax.h>
 #include <cstdio>

@@ -34,7 +34,13 @@
 
 
 #include "debug.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include "../core/bitblt.h"
 #include "../core/internal.h"
 

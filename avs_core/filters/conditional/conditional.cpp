@@ -37,7 +37,13 @@
 #include "../../core/parser/scriptparser.h"
 #include "conditional_reader.h"
 #include <cmath>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/linux.h>
+#endif
+
 #include <avs/minmax.h>
 #include "../../core/internal.h"
 
