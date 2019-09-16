@@ -33,6 +33,8 @@
 #ifndef AVSCORE_LINUX_H
 #define AVSCORE_LINUX_H
 
+#include <cstring>
+#include <strings.h>
 
 // Define these MSVC-extension used in Avisynth
 #define __single_inheritance
