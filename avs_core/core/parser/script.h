@@ -39,13 +39,13 @@
 
 #ifdef AVS_WINDOWS
     #include <avs/win.h>
+    #include <tchar.h>
 #else
     #include <avs/linux.h>
 #endif
 
 #include "expression.h"
 #include "scriptparser.h"
-#include <tchar.h>
 
 
 /********************************************************************
