@@ -21,7 +21,7 @@ public:
   size_t NumPrefetchThreads() const;
   virtual PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   virtual bool __stdcall GetParity(int n);
-  virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   virtual int __stdcall SetCacheHints(int cachehints, int frame_range);
   virtual const VideoInfo& __stdcall GetVideoInfo();
 

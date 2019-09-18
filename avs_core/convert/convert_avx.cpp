@@ -33,8 +33,13 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#ifdef AVS_WINDOWS
 #include <avs/alignment.h>
-#include <intrin.h>
+#ifdef AVS_WINDOWS
+    #include <intrin.h>
+#else
+    #include <x86intrin.h>
+#endif
 
 #include "convert_avx.h"
 
@@ -81,3 +86,4 @@ template void convert_uint16_to_uint16_c_avx<false, 6>(const BYTE *srcp, BYTE *d
 template void convert_uint16_to_uint16_c_avx<true, 2>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 template void convert_uint16_to_uint16_c_avx<true, 4>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 template void convert_uint16_to_uint16_c_avx<true, 6>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+#endif

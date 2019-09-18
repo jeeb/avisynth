@@ -32,8 +32,13 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+#ifdef AVS_WINDOWS
 #include <avs/alignment.h>
-#include <intrin.h>
+#ifdef AVS_WINDOWS
+    #include <intrin.h>
+#else
+    #include <x86intrin.h>
+#endif
 
 #ifndef _mm256_set_m128i
 #define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)
@@ -185,4 +190,4 @@ template void convert_rgb_to_rgbp_avx2<uint8_t, false>(const BYTE *srcp, BYTE * 
 template void convert_rgb_to_rgbp_avx2<uint8_t, true>(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int(&dst_pitch)[4], int width, int height, int bits_per_pixel);
 template void convert_rgb_to_rgbp_avx2<uint16_t, false>(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int(&dst_pitch)[4], int width, int height, int bits_per_pixel);
 template void convert_rgb_to_rgbp_avx2<uint16_t, true>(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int(&dst_pitch)[4], int width, int height, int bits_per_pixel);
-
+#endif

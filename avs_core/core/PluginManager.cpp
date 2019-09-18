@@ -1,3 +1,4 @@
+#ifdef AVS_WINDOWS
 #include "PluginManager.h"
 #include <avisynth.h>
 #include <unordered_set>
@@ -1071,3 +1072,4 @@ extern const AVSFunction Plugin_functions[] = {
   {"Load_Stdcall_Plugin", BUILTIN_FUNC_PREFIX, "s+", LoadPlugin },  // for compatibility with older scripts
   { 0 }
 };
+#endif

@@ -336,7 +336,7 @@ public:
 	return child_array[congmod(n, num_children)]->GetFrame(n / num_children, env);
   }
 
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  inline void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     child_array[0]->GetAudio(buf, start, count, env);
   }
 
@@ -414,7 +414,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
 
 };
 

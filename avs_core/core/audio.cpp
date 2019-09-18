@@ -69,13 +69,13 @@
 #define INT64_MIN  (-9223372036854775807LL - 1)
 #endif
 
-static __int64 signed_saturated_add64(__int64 x, __int64 y) {
+static int64_t signed_saturated_add64(int64_t x, int64_t y) {
   // determine the lower or upper bound of the result
-  __int64 ret =  (x < 0) ? INT64_MIN : INT64_MAX;
+  int64_t ret =  (x < 0) ? INT64_MIN : INT64_MAX;
   // this is always well defined:
   // if x < 0 this adds a positive value to INT64_MIN
   // if x > 0 this subtracts a positive value from INT64_MAX
-  __int64 comp = ret - x;
+  int64_t comp = ret - x;
   // the codition is equivalent to
   // ((x < 0) && (y > comp)) || ((x >=0) && (y <= comp))
   if ((x < 0) == (y > comp)) ret = x + y;
@@ -191,7 +191,7 @@ ConvertToMono::ConvertToMono(PClip _clip) :
 }
 
 
-void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall ConvertToMono::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   if (tempbuffer_size) {
     if (tempbuffer_size < count) {
       delete[] tempbuffer;
@@ -210,7 +210,7 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
     signed short* tempsamples = (signed short*)tempbuffer;
     const int rchannels = 65536 / channels;
 
-    for (int i = 0; i < (int)count; i++) { // Defeat slow default "(__int64)i < count"
+    for (int i = 0; i < (int)count; i++) { // Defeat slow default "(int64_t)i < count"
       int tsample = 0;
       for (int j = 0 ; j < channels; j++)
         tsample += *tempsamples++; // Accumulate samples
@@ -222,7 +222,7 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
     SFLOAT* tempsamples = (SFLOAT*)tempbuffer;
     const SFLOAT f_rchannels = SFLOAT(1.0 / channels);
 
-    for (int i = 0; i < (int)count; i++) { // Defeat slow default "(__int64)i < count"
+    for (int i = 0; i < (int)count; i++) { // Defeat slow default "(int64_t)i < count"
       SFLOAT tsample = 0.0f;
       for (int j = 0 ; j < channels; j++)
         tsample += *tempsamples++; // Accumulate samples
@@ -257,11 +257,11 @@ EnsureVBRMP3Sync::EnsureVBRMP3Sync(PClip _clip)
 }
 
 
-void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
 
   if (start != last_end) { // Reread!
-    __int64 bcount = count;
-    __int64 offset = 0;
+    int64_t bcount = count;
+    int64_t offset = 0;
     char* samples = (char*)buf;
     bool bigbuff=false;
 
@@ -356,7 +356,7 @@ MergeChannels::~MergeChannels() {
 }
 
 
-void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall MergeChannels::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   if (tempbuffer_size < count) {
     if (tempbuffer_size) delete[] tempbuffer;
     tempbuffer = new signed char[(unsigned)(count * vi.BytesPerAudioSample())];
@@ -435,7 +435,7 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
     {
       for (int l = 0, k=dst_offset; l < count; l++, k+=bps)
       {
-        *(__int64*)(samples+k) = ((__int64*)src_buf)[l];
+        *(int64_t*)(samples+k) = ((int64_t*)src_buf)[l];
       }
     }
         break;
@@ -496,7 +496,7 @@ GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels) :
 }
 
 
-void __stdcall GetChannel::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall GetChannel::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   if (tempbuffer_size < count) {
     if (tempbuffer_size) delete[] tempbuffer;
     tempbuffer = new char[(unsigned)(count * src_bps)];
@@ -647,7 +647,7 @@ DelayAudio::DelayAudio(double delay, PClip _child)
 }
 
 
-void DelayAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void DelayAudio::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   child->GetAudio(buf, start - delay_samples, count, env);
 }
 
@@ -674,7 +674,7 @@ Amplify::~Amplify()
 }
 
 
-void __stdcall Amplify::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall Amplify::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   child->GetAudio(buf, start, count, env);
   int channels = vi.AudioChannels();
   int countXchannels = (int)count*channels;
@@ -724,8 +724,8 @@ saturate0:
     for (int j = 0; j < channels; j++) {
       samples[i + j] = (short)clamp(
         signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536) >> 17,
-        (__int64)INT16_MIN,
-        (__int64)INT16_MAX);
+        (int64_t)INT16_MIN,
+        (int64_t)INT16_MAX);
     }
   }
 #endif // X86_32
@@ -778,8 +778,8 @@ saturate1:
     for (int j = 0;j < channels;j++) {
       samples[i + j] = (int)clamp(
         signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536) >> 17,
-        (__int64)INT32_MIN,
-        (__int64)INT32_MAX);
+        (int64_t)INT32_MIN,
+        (int64_t)INT32_MAX);
     }
   }
 #endif // X86_32
@@ -849,11 +849,11 @@ Normalize::Normalize(PClip _child, float _max_factor, bool _showvalues) :
 
 
 
-void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall Normalize::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   if (max_volume < 0.0f) {
     // Read samples into buffer and test them
     if (vi.SampleType() == SAMPLE_INT16) {
-      __int64 bcount = count;
+      int64_t bcount = count;
       short* samples = (short*)buf;
       bool bigbuff=false;
 
@@ -868,13 +868,13 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
 	    }
 	  }
 
-      const __int64 passes = vi.num_audio_samples / bcount;
-	  __int64 negpeaksampleno=-1, pospeaksampleno=-1;
+      const int64_t passes = vi.num_audio_samples / bcount;
+	  int64_t negpeaksampleno=-1, pospeaksampleno=-1;
       int i_pos_volume = 0;
       int i_neg_volume = 0;
       const int chanXbcount = (int)bcount * vi.AudioChannels();
 
-      for (__int64 i = 0; i < passes; i++) {
+      for (int64_t i = 0; i < passes; i++) {
         child->GetAudio(samples, bcount*i, bcount, env);
         for (int j = 0; j < chanXbcount; j++) {
 		  const int sample=samples[j];
@@ -898,7 +898,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       }
 	  // Remaining samples
 	  if ((i_pos_volume != 32767) && (i_neg_volume > -32767)) {
-		const __int64 rem_samples = vi.num_audio_samples % bcount;
+		const int64_t rem_samples = vi.num_audio_samples % bcount;
 		const int chanXremcount = (int)rem_samples * vi.AudioChannels();
 
 		child->GetAudio(samples, bcount*passes, rem_samples, env);
@@ -928,7 +928,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       max_factor = max_factor / max_volume;
 
     } else if (vi.SampleType() == SAMPLE_FLOAT) {  // Float
-      __int64 bcount = count;
+      int64_t bcount = count;
       SFLOAT* samples = (SFLOAT*)buf;
       bool bigbuff=false;
 
@@ -944,10 +944,10 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
 	  }
 
       const int chanXbcount = (int)bcount * vi.AudioChannels();
-      const __int64 passes = vi.num_audio_samples / bcount;
-	  __int64 peaksampleno=-1;
+      const int64_t passes = vi.num_audio_samples / bcount;
+	  int64_t peaksampleno=-1;
 
-      for (__int64 i = 0;i < passes;i++) {
+      for (int64_t i = 0;i < passes;i++) {
         child->GetAudio(samples, bcount*i, bcount, env);
         for (int j = 0;j < chanXbcount;j++) {
 		  const SFLOAT sample = fabsf(samples[j]);
@@ -958,7 +958,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
         }
       }
       // Remaining samples
-      const __int64 rem_samples = vi.num_audio_samples % bcount;
+      const int64_t rem_samples = vi.num_audio_samples % bcount;
       const int chanXremcount = (int)rem_samples * vi.AudioChannels();
 
       child->GetAudio(samples, bcount*passes, rem_samples, env);
@@ -1019,8 +1019,8 @@ saturate2:
       // TODO: This is very slow. Right now, it should just work, we'll optimize later.
       samples[i] = (short)clamp(
         signed_saturated_add64(Int32x32To64(samples[i], factor), 65536) >> 17,
-        (__int64)INT16_MIN,
-        (__int64)INT16_MAX);
+        (int64_t)INT16_MIN,
+        (int64_t)INT16_MAX);
     }
 #endif // X86_32
   } else if (vi.SampleType() == SAMPLE_FLOAT) {
@@ -1083,7 +1083,7 @@ MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _tra
 }
 
 
-void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall MixAudio::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   if (tempbuffer_size < count)
   {
     if (tempbuffer_size)
@@ -1147,8 +1147,8 @@ saturate3:
     for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
       samples[i] = (short)clamp(
         signed_saturated_add64(signed_saturated_add64(Int32x32To64(samples[i], track1_factor), Int32x32To64(clip_samples[i], track2_factor)), 65536) >> 17,
-        (__int64)INT16_MIN,
-        (__int64)INT16_MAX);
+        (int64_t)INT16_MIN,
+        (int64_t)INT16_MAX);
     }
 #endif
   } else if (vi.SampleType()&SAMPLE_FLOAT) {
@@ -1190,8 +1190,8 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_
   }
 
   // To avoid overflow, implement as (A*B+C/2)/C = (A/C)*B + ((A%C)*B+C>>1)/C
-  const __int64 den = Int32x32To64(_target_rate_d, vi.audio_samples_per_second);
-  const __int64 num_audio_samples = (vi.num_audio_samples/den) * _target_rate_n + ((vi.num_audio_samples%den)*_target_rate_n + (den>>1))/den;
+  const int64_t den = Int32x32To64(_target_rate_d, vi.audio_samples_per_second);
+  const int64_t num_audio_samples = (vi.num_audio_samples/den) * _target_rate_n + ((vi.num_audio_samples%den)*_target_rate_n + (den>>1))/den;
 
   if (vi.num_audio_samples == num_audio_samples) {
     skip_conversion = true;
@@ -1260,17 +1260,17 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_
 }
 
 
-void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall ResampleAudio::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   if (skip_conversion) {
     child->GetAudio(buf, start, count, env);
     return ;
   }
   auto src_start = int64_t(((long double)start           / factor) * (1 << Np) + 0.5);
   auto src_end   = int64_t(((long double)(start + count) / factor) * (1 << Np) + 0.5);
-  const __int64 source_samples = ((src_end - src_start) >> Np) + 2 * Xoff + 1;
+  const int64_t source_samples = ((src_end - src_start) >> Np) + 2 * Xoff + 1;
   const int source_bytes = (int)vi.BytesFromAudioSamples(source_samples);
 
-  __int64 pos = (int(src_start & Pmask)) + (Xoff << Np);
+  int64_t pos = (int(src_start & Pmask)) + (Xoff << Np);
   short ch = (short)vi.AudioChannels();
   unsigned dtberror = 0;
 
@@ -1295,7 +1295,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 	else if (offset > 0)
 	  memmove(srcbuffer, srcbuffer+offset*ch, overlap*ch<<1); // slow
 
-	last_samples= max<__int64>(overlap, source_samples);                     // Samples for next time
+	last_samples= max<int64_t>(overlap, source_samples);                     // Samples for next time
 
     if (source_samples-overlap > 0)                                 // Get the rest of the source samples
 	  child->GetAudio(&srcbuffer[overlap*ch], last_start+overlap, source_samples-overlap, env);
@@ -1397,7 +1397,7 @@ nofix:
 		for (int q = 0; q < ch; q++) {
 		  short* Xp = &srcbuffer[(pos >> Np) * ch];
 #if 1
-		  __int64 v64 = FilterUD(Xp + q, (short)(pos & Pmask), - ch);  /* Perform left-wing inner product  */
+		  int64_t v64 = FilterUD(Xp + q, (short)(pos & Pmask), - ch);  /* Perform left-wing inner product  */
 		  v64 += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask), ch);  /* Perform right-wing inner product */
           v64 += 1 << (Nh - 1);                                        /* Round only once!                 */
 		  int v32 = int(v64 >> Nh);                                    /* Make guard bits once!            */
@@ -1439,7 +1439,7 @@ nofix:
 	  overlap = 0;
 	else if (offset > 0)
 	  memcpy(fsrcbuffer, fsrcbuffer+offset*ch, overlap*ch<<2);
-	last_samples= max<__int64>(overlap, source_samples);
+	last_samples= max<int64_t>(overlap, source_samples);
 
     if (source_samples-overlap > 0)
 	  child->GetAudio(&fsrcbuffer[overlap*ch], last_start+overlap, source_samples-overlap, env);
@@ -1540,8 +1540,8 @@ donone:
 
 
 // FilterUD SAMPLE_INT16 Version
-__int64 ResampleAudio::FilterUD(short *Xp, short Ph, short Inc) {
-  __int64 v = 0;
+int64_t ResampleAudio::FilterUD(short *Xp, short Ph, short Inc) {
+  int64_t v = 0;
   unsigned Ho = (Ph * (unsigned)dhb) >> Np;
   unsigned End = Nwing;
 

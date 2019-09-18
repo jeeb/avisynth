@@ -332,7 +332,7 @@ bool __stdcall Prefetcher::GetParity(int n)
   return _pimpl->child->GetParity(n);
 }
 
-void __stdcall Prefetcher::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall Prefetcher::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   _pimpl->child->GetAudio(buf, start, count, env);
 }
