@@ -44,10 +44,7 @@
 #define lstrcmpi strcasecmp
 
 // Calling convension
-#define _stdcall __stdcall
-#define _cdecl   __cdecl
-
-#define __stdcall // No calling convension
+#define __stdcall
 #define __cdecl
 
 #endif // AVSCORE_LINUX_H

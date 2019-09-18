@@ -33,12 +33,15 @@
 #ifndef AVS_CAPI_H
 #define AVS_CAPI_H
 
+#include <avs/config.h>
+
 #ifdef __cplusplus
 #  define EXTERN_C extern "C"
 #else
 #  define EXTERN_C
 #endif
 
+#ifdef AVS_WINDOWS
 #ifdef BUILDING_AVSCORE
 #  if defined(GCC) && defined(X86_32)
 #    define AVSC_CC
@@ -60,6 +63,9 @@
 #    define AVSC_CC
 #  endif
 #endif
+#  else
+#    define AVSC_CC
+#endif
 
 // On 64-bit Windows, there's only one calling convention,
 // so there is no difference between MSVC and GCC. On 32-bit,
@@ -79,6 +85,7 @@
 
 #define AVSC_INLINE static __inline
 
+#ifdef AVS_WINDOWS
 #ifdef BUILDING_AVSCORE
 #  define AVSC_EXPORT __declspec(dllexport)
 #  define AVSC_API(ret, name) EXTERN_C AVSC_EXPORT ret AVSC_CC name
@@ -89,6 +96,7 @@
 #  else
 #    define AVSC_API(ret, name) typedef ret (AVSC_CC *name##_func)
 #  endif
+#endif
 #endif
 
 #endif //AVS_CAPI_H

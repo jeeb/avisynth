@@ -221,11 +221,11 @@ static __inline BYTE ScaledPixelClip(int i) {
   return (uint8_t)clamp((i + 32768) >> 16, 0, 255);
 }
 
-static __inline uint16_t ScaledPixelClip(__int64 i) {
+static __inline uint16_t ScaledPixelClip(long long int i) {
     return (uint16_t)clamp((i + 32768) >> 16, 0LL, 65535LL);
 }
 
-static __inline uint16_t ScaledPixelClipEx(__int64 i, int max_value) {
+static __inline uint16_t ScaledPixelClipEx(long long int i, int max_value) {
   return (uint16_t)clamp((int)((i + 32768) >> 16), 0, max_value);
 }
 

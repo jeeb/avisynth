@@ -58,6 +58,9 @@
 #include <avs/capi.h>
 #include <avs/types.h>
 
+#define __stdcall
+#define __cdecl
+
 
 enum { AVISYNTH_INTERFACE_VERSION = 6 };
 
@@ -1195,7 +1198,11 @@ public:
   // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
   virtual char* __stdcall VSprintf(const char* fmt, void* val) = 0;
 
+#ifdef AVS_WINDOWS
   __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
+#else
+  virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
+#endif
 
   class NotFound /*exception*/ {};  // thrown by Invoke and GetVar
 
