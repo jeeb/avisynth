@@ -271,7 +271,7 @@ c8_loop:
 
 /*******************************************/
 
-void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   int channels=vi.AudioChannels();
 
