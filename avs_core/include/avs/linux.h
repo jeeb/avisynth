@@ -35,6 +35,7 @@
 
 #include <cstring>
 #include <strings.h>
+#include <unistd.h>
 
 // Define these MSVC-extension used in Avisynth
 #define __single_inheritance
@@ -42,6 +43,21 @@
 // These things don't exist in Linux
 #define __declspec(x)
 #define lstrcmpi strcasecmp
+#define _strnicmp strncasecmp
+#define _strdup strdup
+
+// Borrowing some compatibility macros from AvxSynth, slightly modified
+#define UInt32x32To64(a, b) ((uint64_t)(((uint64_t)((uint32_t)(a))) * ((uint32_t)(b))))
+#define Int32x32To64(a, b)  ((int64_t)(((int64_t)((long)(a))) * ((long)(b))))
+
+#define InterlockedIncrement(x) __sync_fetch_and_add((x), 1)
+#define InterlockedDecrement(x) __sync_fetch_and_sub((x), 1)
+#define MulDiv(nNumber, nNumerator, nDenominator)   (int32_t) (((int64_t) (nNumber) * (int64_t) (nNumerator) + (int64_t) ((nDenominator)/2)) / (int64_t) (nDenominator))
+
+#define S_FALSE       (0x00000001)
+#define E_FAIL        (0x80004005)
+#define FAILED(hr)    ((hr) & 0x80000000)
+#define SUCCEEDED(hr) (!FAILED(hr))
 
 // Calling convension
 #define __stdcall

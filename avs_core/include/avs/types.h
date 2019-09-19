@@ -35,6 +35,7 @@
 
 // Define all types necessary for interfacing with avisynth.dll
 #include <stdint.h>
+#include <stdbool.h>
 #ifdef __cplusplus
   #include <cstddef>
 #else

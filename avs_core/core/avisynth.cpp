@@ -111,12 +111,12 @@ const _PixelClip PixelClip;
 
 
 // Helper function to count set bits in the processor mask.
-static DWORD CountSetBits(ULONG_PTR bitMask)
+static uint32_t CountSetBits(unsigned long bitMask)
 {
-  DWORD LSHIFT = sizeof(ULONG_PTR)*8 - 1;
-  DWORD bitSetCount = 0;
-  ULONG_PTR bitTest = (ULONG_PTR)1 << LSHIFT;
-  DWORD i;
+  uint32_t LSHIFT = sizeof(unsigned long)*8 - 1;
+  uint32_t bitSetCount = 0;
+  unsigned long bitTest = (unsigned long)1 << LSHIFT;
+  uint32_t i;
 
   for (i = 0; i <= LSHIFT; ++i)
   {
@@ -135,15 +135,15 @@ static size_t GetNumPhysicalCPUs()
   BOOL done = FALSE;
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL;
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION ptr = NULL;
-  DWORD returnLength = 0;
-  DWORD logicalProcessorCount = 0;
-  DWORD numaNodeCount = 0;
-  DWORD processorCoreCount = 0;
-  DWORD processorL1CacheCount = 0;
-  DWORD processorL2CacheCount = 0;
-  DWORD processorL3CacheCount = 0;
-  DWORD processorPackageCount = 0;
-  DWORD byteOffset = 0;
+  uint32_t returnLength = 0;
+  uint32_t logicalProcessorCount = 0;
+  uint32_t numaNodeCount = 0;
+  uint32_t processorCoreCount = 0;
+  uint32_t processorL1CacheCount = 0;
+  uint32_t processorL2CacheCount = 0;
+  uint32_t processorL3CacheCount = 0;
+  uint32_t processorPackageCount = 0;
+  uint32_t byteOffset = 0;
   PCACHE_DESCRIPTOR Cache;
 
   glpi = (LPFN_GLPI) GetProcAddress(
@@ -787,8 +787,8 @@ private:
   const AVSFunction* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                       bool &pstrict, size_t args_names_count, const char* const* arg_names);
   void EnsureMemoryLimit(size_t request);
-  unsigned __int64 memory_max;
-  std::atomic<unsigned __int64> memory_used;
+  uint64_t memory_max;
+  std::atomic<uint64_t> memory_used;
   std::unordered_map<IClip*, ClipDataStore> clip_data;
 
   void ExportBuiltinFilters();
@@ -796,8 +796,8 @@ private:
   IScriptEnvironment2* This() { return this; }
   bool PlanarChromaAlignmentState;
 
-  HRESULT hrfromcoinit;
-  DWORD coinitThreadId;
+  long hrfromcoinit;
+  uint32_t coinitThreadId;
 
   bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
 
@@ -857,9 +857,10 @@ private:
 const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
 
-static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
+static uint64_t ConstrainMemoryRequest(uint64_t requested)
 {
   // Get system memory information
+#ifdef AVS_WINDOWS // needs linux alternative
   MEMORYSTATUSEX memstatus;
   memstatus.dwLength = sizeof(memstatus);
   GlobalMemoryStatusEx(&memstatus);
@@ -867,9 +868,9 @@ static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
   // mem_limit is the largest amount of memory that makes sense to use.
   // We don't want to use more than the virtual address space,
   // and we also don't want to start paging to disk.
-  unsigned __int64 mem_limit = min(memstatus.ullTotalVirtual, memstatus.ullTotalPhys);
+  uint64_t mem_limit = min(memstatus.ullTotalVirtual, memstatus.ullTotalPhys);
 
-  unsigned __int64 mem_sysreserve = 0;
+  uint64_t mem_sysreserve = 0;
   if (memstatus.ullTotalPhys > memstatus.ullTotalVirtual)
   {
     // We are probably running on a 32bit OS system where the virtual space is capped to
@@ -885,6 +886,7 @@ static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
   return clamp(requested, 64*1024*1024ull, mem_limit - mem_sysreserve);
+#endif
 }
 
 IJobCompletion* __stdcall ScriptEnvironment::NewCompletion(size_t capacity)
@@ -906,6 +908,7 @@ ScriptEnvironment::ScriptEnvironment()
     prefetcher(NULL),
     BufferPool(this)
 {
+#ifdef AVS_WINDOWS // needs linux alternative, maybe?
   try {
     // Make sure COM is initialised
     hrfromcoinit = CoInitialize(NULL);
@@ -970,6 +973,7 @@ ScriptEnvironment::ScriptEnvironment()
     // must leak a little memory.
     throw AvisynthError(_strdup(err.msg));
   }
+#endif
 }
 
 MtMode __stdcall ScriptEnvironment::GetDefaultMtMode() const
@@ -1054,12 +1058,14 @@ ScriptEnvironment::~ScriptEnvironment() {
   delete plugin_manager;
   delete [] vsprintf_buf;
 
+#ifdef AVS_WINDOWS // needs linux alternative, maybe?
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
   if(SUCCEEDED(hrfromcoinit) && (coinitThreadId == GetCurrentThreadId())) {
     hrfromcoinit=E_FAIL;
     CoUninitialize();
   }
+#endif
 }
 
 void __stdcall ScriptEnvironment::SetLogParams(const char *target, int level)
@@ -1107,24 +1113,32 @@ void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_l
 
     // Setup string prefixes for output messages
     const char *levelStr = nullptr;
-    WORD levelAttr;
+    uint16_t levelAttr;
     switch (level)
     {
     case LOGLEVEL_ERROR:
         levelStr = "ERROR: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_RED;
+#endif
         break;
     case LOGLEVEL_WARNING:
         levelStr = "WARNING: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_RED;
+#endif
         break;
     case LOGLEVEL_INFO:
         levelStr = "INFO: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE;
+#endif
         break;
     case LOGLEVEL_DEBUG:
         levelStr = "DEBUG: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_RED;
+#endif
         break;
     default:
         this->ThrowError("LogMsg: level argument must be between 1 and 4.");
@@ -1133,16 +1147,28 @@ void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_l
 
     // Prepare message output target
     std::ostream *targetStream = nullptr;
-    HANDLE hConsole = GetStdHandle(STD_ERROR_HANDLE);
+#ifdef AVS_WINDOWS
+    void* hConsole = GetStdHandle(STD_ERROR_HANDLE);
+#else
+    void* hConsole = stderr;
+#endif
 
     if (streqi("stderr", LogTarget.c_str()))
     {
+#ifdef AVS_WINDOWS
         hConsole = GetStdHandle(STD_ERROR_HANDLE);
+#else
+        hConsole = stderr;
+#endif
         targetStream = &std::cerr;
     }
     else if (streqi("stdout", LogTarget.c_str()))
     {
+#ifdef AVS_WINDOWS // linux alternative?
         hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+#else
+        hConsole = stdout;
+#endif
         targetStream = &std::cout;
     }
     else if (LogFileStream.is_open())
@@ -1159,16 +1185,22 @@ void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_l
     // Format our message string
     std::string msg = FormatString(fmt, va);
 
+#ifdef AVS_WINDOWS
     // Save current console attributes so that we can restore them later
     CONSOLE_SCREEN_BUFFER_INFO Info;
     GetConsoleScreenBufferInfo(hConsole, &Info);
+#endif
 
     // Do the output
     std::lock_guard<std::mutex> lock(string_mutex);
     *targetStream << "---------------------------------------------------------------------" << std::endl;
+#ifdef AVS_WINDOWS
     SetConsoleTextAttribute(hConsole, levelAttr);
+#endif
     *targetStream << levelStr;
+#ifdef AVS_WINDOWS
     SetConsoleTextAttribute(hConsole, Info.wAttributes);
+#endif
     *targetStream << msg << std::endl;
     targetStream->flush();
 }
@@ -1835,6 +1867,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   // See if we could benefit from 64-bit Avisynth
   if constexpr(sizeof(void*) == 4)
   {
+#if AVS_WINDOWS
       // Get system memory information
       MEMORYSTATUSEX memstatus;
       memstatus.dwLength = sizeof(memstatus);
@@ -1847,6 +1880,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           OneTimeLogTicket ticket(LOGTICKET_W1007);
           LogMsgOnce(ticket, LOGLEVEL_INFO, "We have run out of memory, but your system still has some free RAM left. You might benefit from a 64-bit build of Avisynth+.");
       }
+#endif
   }
 
   ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%Iu", memory_max, memory_used.load(), vfb_size);
