@@ -341,7 +341,7 @@ typedef struct AVS_VideoInfo {
 
   int audio_samples_per_second;   // 0 means no audio
   int sample_type;
-  INT64 num_audio_samples;
+  int64_t num_audio_samples;
   int nchannels;
 
   // Image type properties
@@ -444,16 +444,16 @@ AVSC_INLINE int avs_bytes_per_channel_sample(const AVS_VideoInfo * p)
 AVSC_INLINE int avs_bytes_per_audio_sample(const AVS_VideoInfo * p)
         { return p->nchannels*avs_bytes_per_channel_sample(p);}
 
-AVSC_INLINE INT64 avs_audio_samples_from_frames(const AVS_VideoInfo * p, INT64 frames)
-        { return ((INT64)(frames) * p->audio_samples_per_second * p->fps_denominator / p->fps_numerator); }
+AVSC_INLINE int64_t avs_audio_samples_from_frames(const AVS_VideoInfo * p, int64_t frames)
+        { return ((int64_t)(frames) * p->audio_samples_per_second * p->fps_denominator / p->fps_numerator); }
 
-AVSC_INLINE int avs_frames_from_audio_samples(const AVS_VideoInfo * p, INT64 samples)
-        { return (int)(samples * (INT64)p->fps_numerator / (INT64)p->fps_denominator / (INT64)p->audio_samples_per_second); }
+AVSC_INLINE int avs_frames_from_audio_samples(const AVS_VideoInfo * p, int64_t samples)
+        { return (int)(samples * (int64_t)p->fps_numerator / (int64_t)p->fps_denominator / (int64_t)p->audio_samples_per_second); }
 
-AVSC_INLINE INT64 avs_audio_samples_from_bytes(const AVS_VideoInfo * p, INT64 bytes)
+AVSC_INLINE int64_t avs_audio_samples_from_bytes(const AVS_VideoInfo * p, int64_t bytes)
         { return bytes / avs_bytes_per_audio_sample(p); }
 
-AVSC_INLINE INT64 avs_bytes_from_audio_samples(const AVS_VideoInfo * p, INT64 samples)
+AVSC_INLINE int64_t avs_bytes_from_audio_samples(const AVS_VideoInfo * p, int64_t samples)
         { return samples * avs_bytes_per_audio_sample(p); }
 
 AVSC_INLINE int avs_audio_channels(const AVS_VideoInfo * p)
@@ -764,7 +764,7 @@ AVSC_API(int, avs_get_parity)(AVS_Clip *, int n);
 // return field parity if field_based, else parity of first field in frame
 
 AVSC_API(int, avs_get_audio)(AVS_Clip *, void * buf,
-                             INT64 start, INT64 count);
+                             int64_t start, int64_t count);
 // start and count are in samples
 
 AVSC_API(int, avs_set_cache_hints)(AVS_Clip *,
@@ -784,7 +784,7 @@ struct AVS_FilterInfo
   AVS_VideoFrame * (AVSC_CC * get_frame)(AVS_FilterInfo *, int n);
   int (AVSC_CC * get_parity)(AVS_FilterInfo *, int n);
   int (AVSC_CC * get_audio)(AVS_FilterInfo *, void * buf,
-                                  INT64 start, INT64 count);
+                                  int64_t start, int64_t count);
   int (AVSC_CC * set_cache_hints)(AVS_FilterInfo *, int cachehints,
                                         int frame_range);
   void (AVSC_CC * free_filter)(AVS_FilterInfo *);

@@ -45,6 +45,8 @@
 #define lstrcmpi strcasecmp
 #define _strnicmp strncasecmp
 #define _strdup strdup
+#define SetCurrentDirectory(x) chdir(x)
+#define _putenv putenv
 
 // Borrowing some compatibility macros from AvxSynth, slightly modified
 #define UInt32x32To64(a, b) ((uint64_t)(((uint64_t)((uint32_t)(a))) * ((uint32_t)(b))))

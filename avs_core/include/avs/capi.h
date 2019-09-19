@@ -97,6 +97,9 @@
 #    define AVSC_API(ret, name) typedef ret (AVSC_CC *name##_func)
 #  endif
 #endif
+#else
+#  define AVSC_EXPORT
+#  define AVSC_API(ret, name) EXTERN_C ret AVSC_CC name
 #endif
 
 #endif //AVS_CAPI_H

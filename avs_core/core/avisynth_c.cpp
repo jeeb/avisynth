@@ -36,7 +36,7 @@ public: // but don't use
 public:
 	C_VideoFilter() {memset(&d,0,sizeof(d));}
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-	void __stdcall GetAudio(void * buf, __int64 start, __int64 count, IScriptEnvironment* env);
+	void __stdcall GetAudio(void * buf, int64_t start, int64_t count, IScriptEnvironment* env);
 	const VideoInfo & __stdcall GetVideoInfo();
 	bool __stdcall GetParity(int n);
 	int __stdcall SetCacheHints(int cachehints,int frame_range);
@@ -351,7 +351,7 @@ PVideoFrame C_VideoFilter::GetFrame(int n, IScriptEnvironment* env)
 	}
 }
 
-void __stdcall C_VideoFilter::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall C_VideoFilter::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
 	if (d.get_audio) {
 		d.error = 0;
@@ -463,7 +463,7 @@ int AVSC_CC avs_get_parity(AVS_Clip * p, int n) // return field parity if field_
 }
 
 extern "C"
-int AVSC_CC avs_get_audio(AVS_Clip * p, void * buf, INT64 start, INT64 count) // start and count are in samples
+int AVSC_CC avs_get_audio(AVS_Clip * p, void * buf, int64_t start, int64_t count) // start and count are in samples
 {
 	try {
 		p->error = 0;

@@ -21,7 +21,13 @@
 #include <avs/cpuid.h>
 #include <avs/config.h>
 #include <stdint.h>
+#ifdef AVS_WINDOWS
 #include <intrin.h>
+#else
+#include <x86intrin.h>
+#include <cpuid.h>
+#define __cpuid __get_cpuid_max
+#endif
 
 #define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
 

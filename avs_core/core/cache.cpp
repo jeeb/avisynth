@@ -214,7 +214,7 @@ void Cache::FillAudioZeros(void* buf, int start_offset, int count) {
     memset(byte_buf + start_offset * bps, 0, count * bps);
 }
 
-void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall Cache::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
     if (count <= 0)
         return;
