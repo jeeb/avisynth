@@ -39,6 +39,7 @@
     #include <avs/win.h>
 #else
     #include <avs/linux.h>
+    #include <ctype.h>
 #endif
 
 

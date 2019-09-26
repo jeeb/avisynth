@@ -45,6 +45,8 @@
     #include <avs/win.h>
 #else
     #include <avs/linux.h>
+    #include "win32_string_compat.h"
+    #include <dirent.h>
 #endif
 
 #include <avs/minmax.h>
@@ -676,7 +678,11 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 #endif
 
     buf[size] = 0;
+#ifdef AVS_WINDOWS
     AVSValue eval_args[] = { buf.data(), script_name };
+#else
+    AVSValue eval_args[] = { buf, script_name };
+#endif
     result = env->Invoke("Eval", AVSValue(eval_args, 2));
   }
 
@@ -1112,7 +1118,11 @@ AVSValue Exist(AVSValue args, void*, IScriptEnvironment*nv) {
   if (f == -1)
       return false;
 
+#if AVS_WINDOWS
   _findclose(f);
+#else
+  closedir(f);
+#endif
 
   return true;
 }

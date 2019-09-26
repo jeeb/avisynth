@@ -42,6 +42,8 @@
 
 // These things don't exist in Linux
 #define __declspec(x)
+#define lstrlen strlen
+#define lstrcmp strcmp
 #define lstrcmpi strcasecmp
 #define _stricmp strcasecmp
 #define _strnicmp strncasecmp
