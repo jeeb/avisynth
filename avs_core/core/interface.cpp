@@ -108,12 +108,12 @@ bool VideoInfo::IsVPlaneFirst() const {return ((pixel_type & CS_YV12) == CS_YV12
 int VideoInfo::BytesFromPixels(int pixels) const { return pixels * (BitsPerPixel()>>3); }   // Will not work on planar images, but will return only luma planes
 int VideoInfo::RowSize() const { return BytesFromPixels(width); }  // Also only returns first plane on planar images
 int VideoInfo::BMPSize() const { if (IsPlanar()) {int p = height * ((RowSize()+3) & ~3); p+=p>>1; return p;  } return height * ((RowSize()+3) & ~3); }
-__int64 VideoInfo::AudioSamplesFromFrames(__int64 frames) const { return (fps_numerator && HasVideo()) ? ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
+int64_t VideoInfo::AudioSamplesFromFrames(int64_t frames) const { return (fps_numerator && HasVideo()) ? ((int64_t)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
    Baked ********************/
-__int64 VideoInfo::AudioSamplesFromFrames(int frames) const { return (fps_numerator && HasVideo()) ? ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
-int VideoInfo::FramesFromAudioSamples(__int64 samples) const { return (fps_denominator && HasAudio()) ? (int)((samples * fps_numerator)/((__int64)fps_denominator * audio_samples_per_second)) : 0; }
-__int64 VideoInfo::AudioSamplesFromBytes(__int64 bytes) const { return HasAudio() ? bytes / BytesPerAudioSample() : 0; }
-__int64 VideoInfo::BytesFromAudioSamples(__int64 samples) const { return samples * BytesPerAudioSample(); }
+int64_t VideoInfo::AudioSamplesFromFrames(int frames) const { return (fps_numerator && HasVideo()) ? ((int64_t)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
+int VideoInfo::FramesFromAudioSamples(int64_t samples) const { return (fps_denominator && HasAudio()) ? (int)((samples * fps_numerator)/((int64_t)fps_denominator * audio_samples_per_second)) : 0; }
+int64_t VideoInfo::AudioSamplesFromBytes(int64_t bytes) const { return HasAudio() ? bytes / BytesPerAudioSample() : 0; }
+int64_t VideoInfo::BytesFromAudioSamples(int64_t samples) const { return samples * BytesPerAudioSample(); }
 int VideoInfo::AudioChannels() const { return HasAudio() ? nchannels : 0; }
 int VideoInfo::SampleType() const{ return sample_type;}
 bool VideoInfo::IsSampleType(int testtype) const{ return !!(sample_type&testtype);}
@@ -297,17 +297,17 @@ void VideoInfo::SetFPS(unsigned numerator, unsigned denominator) {
 
 // Range protected multiply-divide of FPS
 void VideoInfo::MulDivFPS(unsigned multiplier, unsigned divisor) {
-  unsigned __int64 numerator   = UInt32x32To64(fps_numerator,   multiplier);
-  unsigned __int64 denominator = UInt32x32To64(fps_denominator, divisor);
+  uint64_t numerator   = UInt32x32To64(fps_numerator,   multiplier);
+  uint64_t denominator = UInt32x32To64(fps_denominator, divisor);
 
-  unsigned __int64 x=numerator, y=denominator;
+  uint64_t x=numerator, y=denominator;
   while (y) {   // find gcd
-    unsigned __int64 t = x%y; x = y; y = t;
+    uint64_t t = x%y; x = y; y = t;
   }
   numerator   /= x; // normalize
   denominator /= x;
 
-  unsigned __int64 temp = numerator | denominator; // Just looking top bit
+  uint64_t temp = numerator | denominator; // Just looking top bit
   unsigned u = 0;
   while (temp & 0xffffffff80000000) { // or perhaps > 16777216*2
     temp = Int64ShrlMod32(temp, 1);
@@ -922,10 +922,10 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoInfo::BytesFromPixels,              //   int     (VideoInfo::*BytesFromPixels)(int pixels) const;
   &VideoInfo::RowSize,                      //   int     (VideoInfo::*RowSize)(int plane) const;
   &VideoInfo::BMPSize,                      //   int     (VideoInfo::*BMPSize)() const;
-  &VideoInfo::AudioSamplesFromFrames,       //   __int64 (VideoInfo::*AudioSamplesFromFrames)(int frames) const;
-  &VideoInfo::FramesFromAudioSamples,       //   int     (VideoInfo::*FramesFromAudioSamples)(__int64 samples) const;
-  &VideoInfo::AudioSamplesFromBytes,        //   __int64 (VideoInfo::*AudioSamplesFromBytes)(__int64 bytes) const;
-  &VideoInfo::BytesFromAudioSamples,        //   __int64 (VideoInfo::*BytesFromAudioSamples)(__int64 samples) const;
+  &VideoInfo::AudioSamplesFromFrames,       //   int64_t (VideoInfo::*AudioSamplesFromFrames)(int frames) const;
+  &VideoInfo::FramesFromAudioSamples,       //   int     (VideoInfo::*FramesFromAudioSamples)(int64_t samples) const;
+  &VideoInfo::AudioSamplesFromBytes,        //   int64_t (VideoInfo::*AudioSamplesFromBytes)(int64_t bytes) const;
+  &VideoInfo::BytesFromAudioSamples,        //   int64_t (VideoInfo::*BytesFromAudioSamples)(int64_t samples) const;
   &VideoInfo::AudioChannels,                //   int     (VideoInfo::*AudioChannels)() const;
   &VideoInfo::SampleType,                   //   int     (VideoInfo::*SampleType)() const;
   &VideoInfo::IsSampleType,                 //   bool    (VideoInfo::*IsSampleType)(int testtype) const;

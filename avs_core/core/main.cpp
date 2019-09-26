@@ -37,18 +37,20 @@
 #include "internal.h"
 
 #ifdef AVS_WINDOWS
+#ifdef AVS_WINDOWS
     #include <avs/win.h>
+    #include <vfw.h>
+    #include <intrin.h>
 #else
     #include <avs/linux.h>
+    #include <x86intrin.h>
 #endif
 
 #include <avs/minmax.h>
 #include "bitblt.h"
 #include "exception.h"
-#include <vfw.h>
 #include <cstdio>
 #include <new>
-#include <intrin.h>
 #include <codecvt>
 #include "AviHelper.h"
 
@@ -1693,4 +1695,4 @@ STDMETHODIMP CAVIStreamSynth::Write(LONG lStart, LONG lSamples, LPVOID lpBuffer,
 
   return AVIERR_READONLY;
 }
-
+#endif

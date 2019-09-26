@@ -42,6 +42,10 @@
 #include "version.h"
 #include <memory>
 
+#ifdef AVS_LINUX
+#include <limits.h>
+#endif
+
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
 #define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2020 AviSynth+ Project"
 #define BUILTIN_FUNC_PREFIX "AviSynth"
@@ -150,7 +154,11 @@ public:
 
 private:
   void Init(const wchar_t* new_cwd);
+#ifdef AVS_WINDOWS
   std::unique_ptr<wchar_t[]> old_working_directory;
+#else
+  char old_working_directory[PATH_MAX];
+#endif
   bool restore;
 };
 

@@ -39,9 +39,9 @@
 #include <cstdlib>
 #include <cmath>
 #include <vector>
-#include <io.h>
 
 #ifdef AVS_WINDOWS
+    #include <io.h>
     #include <avs/win.h>
 #else
     #include <avs/linux.h>
@@ -346,6 +346,7 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
  *******   wchar_t-utf-ansi   ******
  **********************************/
 
+#ifdef AVS_WINDOWS
 std::unique_ptr<char[]> WideCharToUtf8(const wchar_t *w_string)
 {
   const auto utf8len = WideCharToMultiByte(CP_UTF8, 0, w_string, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
@@ -417,18 +418,20 @@ std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi)
   MultiByteToWideChar(CP_UTF8, 0, s_ansi, -1, w_string.get(), (int)bufsize);
   return w_string;
 }
+#endif
 
 /***********************************
  *******   Helper Functions   ******
  **********************************/
 
-void CWDChanger::Init(const wchar_t* new_cwd) 
+#ifdef AVS_WINDOWS
+void CWDChanger::Init(const wchar_t* new_cwd)
 {
   // works in unicode internally
-  DWORD cwdLen = GetCurrentDirectoryW(0, NULL);
+  uint32_t cwdLen = GetCurrentDirectoryW(0, NULL);
   old_working_directory = std::make_unique<wchar_t[]>(cwdLen); // instead of new wchar_t[cwdLen];
-  DWORD save_cwd_success = GetCurrentDirectoryW(cwdLen, old_working_directory.get());
-  BOOL set_cwd_success = SetCurrentDirectoryW(new_cwd);
+  uint32_t save_cwd_success = GetCurrentDirectoryW(cwdLen, old_working_directory.get());
+  bool set_cwd_success = SetCurrentDirectoryW(new_cwd);
   restore = (save_cwd_success && set_cwd_success);
 }
 
@@ -451,10 +454,10 @@ CWDChanger::~CWDChanger(void)
 
 DllDirChanger::DllDirChanger(const char* new_dir)
 {
-  DWORD len = GetDllDirectory (0, NULL);
+  uint32_t len = GetDllDirectory (0, NULL);
   old_directory = std::make_unique<char[]>(len + 1); // instead of new char[len+1]
-  DWORD save_success = GetDllDirectory (len, old_directory.get());
-  BOOL set_success = SetDllDirectory(new_dir);
+  uint32_t save_success = GetDllDirectory (len, old_directory.get());
+  bool set_success = SetDllDirectory(new_dir);
   restore = (save_success && set_success);
 }
 
@@ -463,6 +466,23 @@ DllDirChanger::~DllDirChanger(void)
   if (restore)
     SetDllDirectory(old_directory.get());
 }
+#else // copied from AvxSynth
+CWDChanger::CWDChanger(const char* new_cwd)
+{
+
+  char* path = getcwd(old_working_directory, FILENAME_MAX);
+  bool save_cwd_success = (NULL != path);
+  bool set_cwd_success = (0 == chdir(new_cwd));
+  restore = (save_cwd_success && set_cwd_success);
+}
+
+CWDChanger::~CWDChanger(void)
+{
+  if (restore)
+    chdir(old_working_directory);
+}
+#endif
+
 
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -537,23 +557,30 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   for (int i = 0; i < args.ArraySize(); ++i) {
     const char* script_name = args[i].AsString();
 
-    wchar_t full_path_w[MAX_PATH];
-    wchar_t *file_part_w;
+#ifdef AVS_WINDOWS
+    /* Linux, macOS, pretty much every OS aside from Windows uses
+       UTF-8 pervasively and by default, making all the Ansi<->Unicode
+       stuff we have to specially handle on Windows (which uses UTF-16
+       when it does 'Unicode', further complicating things if you don't
+       force UTF-8) irrelevant. */
 
       // Handling utf8 and ansi, working in wchar_t internally
       // filename and path can be full unicode
       // unicode input can come from CAVIFileSynth
 
+    wchar_t full_path_w[MAX_PATH];
+    wchar_t *file_part_w;
+
     // make wchar_t full path strnig from either ansi or utf8
     auto script_name_w = !bUtf8 ? AnsiToWideChar(script_name) : Utf8ToWideChar(script_name);
 
     if (wcschr(script_name_w.get(), '\\') || wcschr(script_name_w.get(), '/')) {
-      DWORD len = GetFullPathNameW(script_name_w.get(), MAX_PATH, full_path_w, &file_part_w);
+      uint32_t len = GetFullPathNameW(script_name_w.get(), MAX_PATH, full_path_w, &file_part_w);
       if (len == 0 || len > MAX_PATH)
         env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
     }
     else {
-      DWORD len = SearchPathW(NULL, script_name_w.get(), NULL, MAX_PATH, full_path_w, &file_part_w);
+      uint32_t len = SearchPathW(NULL, script_name_w.get(), NULL, MAX_PATH, full_path_w, &file_part_w);
       if (len == 0 || len > MAX_PATH)
         env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
     }
@@ -591,9 +618,9 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     CWDChanger change_cwd(full_path_w);
     // end of filename parsing / file open things
 
-    DWORD size = GetFileSize(h, NULL);
+    uint32_t size = GetFileSize(h, NULL);
     std::vector<char> buf(size + 1, 0);
-    BOOL status = ReadFile(h, buf.data(), size, &size, NULL);
+    bool status = ReadFile(h, buf.data(), size, &size, NULL);
     CloseHandle(h);
     if (!status)
       env->ThrowError("Import: unable to read \"%s\"", script_name);
@@ -610,6 +637,43 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
         env->ThrowError("Import: UTF-8 source files are not supported, "
           "re-save script with ANSI encoding! : \"%s\"", script_name);
     }
+
+#else // adapted from AvxSynth
+    char full_path[FILENAME_MAX];
+    char *file_part;
+    const char *dir_part = strlen(full_path) - strlen(file_part);
+
+    if(NULL == realpath(script_name, full_path))
+      env->ThrowError("Import: unable to open \"%s\" (path invalid?)", script_name);
+
+    FILE* h = fopen(full_path, "r");
+    if(NULL == h)
+      env->ThrowError("Import: couldn't open \"%s\"", full_path);
+
+    env->SetGlobalVar("$ScriptName$", env->SaveString(full_path));
+    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(dir_part));
+    if (MainScript)
+    {
+      env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path));
+      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part));
+      env->SetGlobalVar("$MainScriptDir$", env->SaveString(dir_part));
+    }
+
+    *file_part = 0; // trunc full_path to dir-only
+    CWDChanger change_cwd(full_path);
+    // end of filename parsing / file open things
+
+//    fseek(h, 0, SEEK_END);
+    uint32_t size = ftell(h);
+//    fseek(h, 0, SEEK_SET);
+
+    char* buf(size+1);
+    if(size != fread(buf, 1, size, h))
+      env->ThrowError("Import: unable to read \"%s\"", script_name);
+
+    fclose(h);
+#endif
 
     buf[size] = 0;
     AVSValue eval_args[] = { buf.data(), script_name };
@@ -1339,7 +1403,15 @@ AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment*) { return VI(args[0
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment*) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
 AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment*) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment*) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
-AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) { char s[32]; return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10)); }
+AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) {
+    char s[32];
+#if AVS_WINDOWS
+    return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10));
+#else
+    sprintf(s,"%ld",VI(args[0]).num_audio_samples);
+    return env->SaveString(s);
+#endif
+}
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment*) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
 AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment*) {
   const VideoInfo& vi = VI(args[0]);
@@ -1382,7 +1454,12 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
   } else {	// standard behaviour
 	  if (args[0].IsInt()) {
 		char s[12];
+#if AVS_WINDOWS
 		return env->SaveString(_itoa(args[0].AsInt(), s, 10));
+#else // copied from AvxSynth
+                sprintf(s,"%d",args[0].AsInt());
+                return env->SaveString(s);
+#endif
 	  }
 	  if (args[0].IsFloat()) {
 		char s[30];
@@ -1627,13 +1704,14 @@ static int ProcessType() {
 
   if constexpr(sizeof(void*) == 8)
     return PROCESS_64_ON_64;
+#ifdef AVS_WINDOWS
   else {
     // IsWow64Process is not available on all supported versions of Windows.
     // Use GetModuleHandle to get a handle to the DLL that contains the function
     // and GetProcAddress to get a pointer to the function if available.
 
-    BOOL bWoW64Process = FALSE;
-    typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+    bool bWoW64Process = FALSE;
+    typedef bool(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, Pbool);
     LPFN_ISWOW64PROCESS fnIsWow64Process;
     HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
     if (hKernel32 == NULL)
@@ -1650,10 +1728,11 @@ static int ProcessType() {
 
     return PROCESS_32_ON_32;
   }
+#endif
 }
 
-AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env) 
-{ 
+AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env)
+{
   int infoType = args[0].AsInt(0);
   if (infoType < 0 || infoType > 1)
     env->ThrowError("GetProcessInfo: type must be 0 or 1");

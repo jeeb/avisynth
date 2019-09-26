@@ -35,6 +35,7 @@
 
 #define INITGUID
 
+#ifdef AVS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 
 #include <objbase.h>
@@ -47,3 +48,4 @@
 #pragma warning( pop )
 
 // Just init the guid tables
+#endif
