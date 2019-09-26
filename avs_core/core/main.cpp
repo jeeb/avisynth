@@ -36,7 +36,7 @@
 #include <avisynth.h>
 #include "internal.h"
 
-#ifdef AVS_WINDOWS
+#ifdef AVS_WINDOWS // inspect for Linux; COM/VfW stuff not needed?
 #ifdef AVS_WINDOWS
     #include <avs/win.h>
     #include <vfw.h>
