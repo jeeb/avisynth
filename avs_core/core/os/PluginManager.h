@@ -4,7 +4,7 @@
 #include <string>
 #include <map>
 #include <vector>
-#include "internal.h"
+#include "../internal.h"
 
 class InternalEnvironment;
 struct PluginFile;

@@ -43,7 +43,7 @@
 #include <unordered_set>
 #include "bitblt.h"
 #include "FilterConstructor.h"
-#include "PluginManager.h"
+#include "os/PluginManager.h"
 #include "MappedList.h"
 #include <vector>
 #include <iostream>
