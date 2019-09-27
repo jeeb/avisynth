@@ -45,7 +45,7 @@
     #include <avs/win.h>
 #else
     #include <avs/linux.h>
-    #include "win32_string_compat.h"
+    #include "os/win32_string_compat.h"
     #include <dirent.h>
 #endif
 

@@ -44,6 +44,9 @@ IF( MSVC OR MINGW )
     "filters/AviSource/*.cpp"
     "filters/AviSource/*.h")
   LIST(APPEND AvsCore_Sources "${AvsCore_Sources_AviSource}")
+ELSE()
+  LIST(APPEND AvsCore_Sources "core/parser/os/win32_string_compat.cpp")
+  LIST(APPEND AvsCore_Sources "core/parser/os/win32_string_compat.h")
 ENDIF()
 
 IF( MSVC OR MINGW )
