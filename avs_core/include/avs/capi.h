@@ -35,6 +35,12 @@
 
 #include <avs/config.h>
 
+#ifdef AVS_LINUX
+// this is also defined in avs/linux.h, but that header is for the core,
+// not external programs
+#define __declspec(x)
+#endif
+
 #ifdef __cplusplus
 #  define EXTERN_C extern "C"
 #else
@@ -85,10 +91,14 @@
 
 #define AVSC_INLINE static __inline
 
-#ifdef AVS_WINDOWS
 #ifdef BUILDING_AVSCORE
+#ifdef AVS_WINDOWS
 #  define AVSC_EXPORT __declspec(dllexport)
 #  define AVSC_API(ret, name) EXTERN_C AVSC_EXPORT ret AVSC_CC name
+#else
+#  define AVSC_EXPORT EXTERN_C
+#  define AVSC_API(ret, name) EXTERN_C ret AVSC_CC name
+#endif
 #else
 #  define AVSC_EXPORT EXTERN_C __declspec(dllexport)
 #  ifndef AVSC_NO_DECLSPEC
@@ -96,10 +106,6 @@
 #  else
 #    define AVSC_API(ret, name) typedef ret (AVSC_CC *name##_func)
 #  endif
-#endif
-#else
-#  define AVSC_EXPORT EXTERN_C
-#  define AVSC_API(ret, name) EXTERN_C ret AVSC_CC name
 #endif
 
 #endif //AVS_CAPI_H
