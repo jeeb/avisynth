@@ -53,6 +53,12 @@
     #include <avs/win.h>
     #include <objbase.h>
 #else
+#if defined(__APPLE__)
+    #include <mach/host_info.h>
+    #include <mach/mach_host.h>
+#elif defined(BSD)
+    #include <sys/sysctl.h>
+#endif
     #include <avs/linux.h>
 #endif
 
@@ -886,6 +892,27 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
   return clamp(requested, 64*1024*1024ull, mem_limit - mem_sysreserve);
+#else // copied over from AvxSynth, check against current code!!!
+    int64_t memory;
+
+    long nPageSize = sysconf(_SC_PAGE_SIZE);
+    int64_t nAvailablePhysicalPages;
+
+  #if defined(__APPLE__)
+    vm_statistics64_data_t vmstats;
+    mach_msg_type_number_t vmstatsz = HOST_VM_INFO64_COUNT;
+    host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
+    nAvailablePhysicalPages = vmstats.free_count;
+  #elif defined(BSD)
+    size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
+    sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
+  #else // Linux
+    nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
+  #endif
+
+    memory = nPageSize * nAvailablePhysicalPages;
+
+    return memory;
 #endif
 }
 
