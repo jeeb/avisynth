@@ -58,9 +58,10 @@
 #include <avs/capi.h>
 #include <avs/types.h>
 
+#if defined(AVS_LINUX)
 #define __stdcall
 #define __cdecl
-
+#endif
 
 enum { AVISYNTH_INTERFACE_VERSION = 6 };
 

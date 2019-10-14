@@ -1867,7 +1867,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   // See if we could benefit from 64-bit Avisynth
   if constexpr(sizeof(void*) == 4)
   {
-#if AVS_WINDOWS
+#ifdef AVS_WINDOWS
       // Get system memory information
       MEMORYSTATUSEX memstatus;
       memstatus.dwLength = sizeof(memstatus);

@@ -78,9 +78,9 @@
 #   define __forceinline inline
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #   define AVS_WINDOWS
-#elif  __linux__
+#elif defined(__linux__)
 #   define AVS_LINUX
 #else
 #   error Operating system unsupported.

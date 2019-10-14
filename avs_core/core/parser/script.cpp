@@ -620,7 +620,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     CWDChanger change_cwd(full_path_w);
     // end of filename parsing / file open things
 
-    uint32_t size = GetFileSize(h, NULL);
+    DWORD size = GetFileSize(h, NULL);
     std::vector<char> buf(size + 1, 0);
     bool status = ReadFile(h, buf.data(), size, &size, NULL);
     CloseHandle(h);
@@ -1118,7 +1118,7 @@ AVSValue Exist(AVSValue args, void*, IScriptEnvironment*nv) {
   if (f == -1)
       return false;
 
-#if AVS_WINDOWS
+#ifdef AVS_WINDOWS
   _findclose(f);
 #else
   closedir(f);
@@ -1415,7 +1415,7 @@ AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment*) { return (int)
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment*) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) {
     char s[32];
-#if AVS_WINDOWS
+#ifdef AVS_WINDOWS
     return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10));
 #else
     sprintf(s,"%ld",VI(args[0]).num_audio_samples);
@@ -1464,7 +1464,7 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
   } else {	// standard behaviour
 	  if (args[0].IsInt()) {
 		char s[12];
-#if AVS_WINDOWS
+#ifdef AVS_WINDOWS
 		return env->SaveString(_itoa(args[0].AsInt(), s, 10));
 #else // copied from AvxSynth
                 sprintf(s,"%d",args[0].AsInt());
@@ -1720,8 +1720,8 @@ static int ProcessType() {
     // Use GetModuleHandle to get a handle to the DLL that contains the function
     // and GetProcAddress to get a pointer to the function if available.
 
-    bool bWoW64Process = FALSE;
-    typedef bool(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, Pbool);
+    BOOL bWoW64Process = FALSE;
+    typedef bool(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
     LPFN_ISWOW64PROCESS fnIsWow64Process;
     HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
     if (hKernel32 == NULL)

@@ -98,7 +98,7 @@
 #  endif
 #endif
 #else
-#  define AVSC_EXPORT
+#  define AVSC_EXPORT EXTERN_C
 #  define AVSC_API(ret, name) EXTERN_C ret AVSC_CC name
 #endif
 
