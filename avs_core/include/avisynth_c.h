@@ -933,6 +933,8 @@ AVSC_API(void, avs_delete_script_environment)(AVS_ScriptEnvironment *);
 AVSC_API(AVS_VideoFrame *, avs_subframe_planar)(AVS_ScriptEnvironment *, AVS_VideoFrame * src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
 // The returned video frame must be be released
 
+#if defined(AVS_WINDOWS)
+// The following stuff is only relevant for Windows DLL handling; Linux does it completely differently.
 #ifdef AVSC_NO_DECLSPEC
 // This part uses LoadLibrary and related functions to dynamically load Avisynth instead of declspec(dllimport)
 // When AVSC_NO_DECLSPEC is defined, you can use avs_load_library to populate API functions into a struct
@@ -1253,5 +1255,7 @@ AVSC_INLINE void avs_free_library(AVS_Library *library) {
   free(library);
 }
 #endif
+
+#endif // AVS_WINDOWS
 
 #endif
