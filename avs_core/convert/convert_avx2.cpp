@@ -33,7 +33,6 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#ifdef AVS_WINDOWS
 #include <avs/alignment.h>
 #ifdef AVS_WINDOWS
     #include <intrin.h>
@@ -57,6 +56,9 @@
 #endif
 
 template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("avx2")))
+#endif
 void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const float *srcp = reinterpret_cast<const float *>(srcp8);
@@ -175,6 +177,9 @@ convert_32_to_uintN_avx2_functions(16)
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
 // shift right or left, depending on expandrange template param
 template<bool expandrange, uint8_t shiftbits>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("avx2")))
+#endif
 void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
@@ -207,4 +212,3 @@ template void convert_uint16_to_uint16_c_avx2<false, 6>(const BYTE *srcp, BYTE *
 template void convert_uint16_to_uint16_c_avx2<true, 2>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 template void convert_uint16_to_uint16_c_avx2<true, 4>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
 template void convert_uint16_to_uint16_c_avx2<true, 6>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-#endif
