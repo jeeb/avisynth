@@ -59,7 +59,7 @@ if (MSVC_IDE)
       file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
       set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " /arch:AVX2 ")
   ENDIF()
-elseif (MINGW)
+else()
   # special SSSE3 option for source files with *_ssse3.cpp pattern
   file(GLOB_RECURSE SRCS_SSSE3 "*_ssse3.cpp")
   set_source_files_properties(${SRCS_SSSE3} PROPERTIES COMPILE_FLAGS " -mssse3 ")
