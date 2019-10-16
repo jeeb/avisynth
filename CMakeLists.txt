@@ -17,6 +17,9 @@ set(CMAKE_C_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 set(CMAKE_CXX_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 
 option(ENABLE_PLUGINS "Build set of default external plugins" ON)
+if (NOT WIN32)
+  set(ENABLE_PLUGINS "OFF")
+endif()
 
 if(CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
@@ -161,6 +164,8 @@ ELSE()
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 " )
 IF(WIN32)
   SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
+ELSE()
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,--no-undefined " )
 ENDIF()
 
 ENDIF()
