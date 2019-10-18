@@ -90,7 +90,7 @@
 #endif
 
 #include <stdlib.h>
-#include "../core/internal.h"
+#include "../../core/internal.h"
 #include "../../convert/convert_planar.h" // fill_plane
 #include "avs/alignment.h"
 

@@ -79,12 +79,19 @@ extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Focus_filters[], Fps_filters[], Histogram_filters[],
                    Layer_filters[], Levels_filters[], Misc_filters[],
                    Plugin_functions[], Resample_filters[], Resize_filters[],
-                   Script_functions[], Source_filters[], Text_filters[],
+                   Script_functions[], Source_filters[],
+#ifdef ENABLE_FILTER_TEXTOVERLAY
+                   Text_filters[],
+#endif
                    Transform_filters[], Merge_filters[], Color_filters[],
                    Debug_filters[], Turn_filters[],
                    Conditional_filters[], Conditional_funtions_filters[],
                    Cache_filters[], Greyscale_filters[],
+#ifdef ENABLE_FILTER_EXPRFILTER
                    Swap_filters[], Overlay_filters[], Exprfilter_filters[];
+#else
+                   Swap_filters[], Overlay_filters[];
+#endif
 
 
 const AVSFunction* const builtin_functions[] = {
@@ -93,13 +100,20 @@ const AVSFunction* const builtin_functions[] = {
                    Focus_filters, Fps_filters, Histogram_filters,
                    Layer_filters, Levels_filters, Misc_filters,
                    Resample_filters, Resize_filters,
-                   Script_functions, Source_filters, Text_filters,
+                   Script_functions, Source_filters,
+#ifdef ENABLE_FILTER_TEXTOVERLAY
+                   Text_filters,
+#endif
                    Transform_filters, Merge_filters, Color_filters,
                    Debug_filters, Turn_filters,
                    Conditional_filters, Conditional_funtions_filters,
                    Plugin_functions, Cache_filters,
-                   Overlay_filters, Greyscale_filters, Swap_filters,
-                   Exprfilter_filters };
+                   Overlay_filters, Greyscale_filters,
+#ifdef ENABLE_FILTER_EXPRFILTER
+                   Swap_filters, Exprfilter_filters };
+#else
+                   Swap_filters };
+#endif
 
 // Global statistics counters
 struct {
