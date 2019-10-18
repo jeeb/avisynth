@@ -52,6 +52,7 @@
 #define SetCurrentDirectoryW(x) chdir(x)
 #define GetCurrentDirectoryW(x) getcwd(x)
 #define _putenv putenv
+#define _alloca alloca
 
 // Borrowing some compatibility macros from AvxSynth, slightly modified
 #define UInt32x32To64(a, b) ((uint64_t)(((uint64_t)((uint32_t)(a))) * ((uint32_t)(b))))

@@ -151,8 +151,8 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
     const pixel_t* src_ptr = src0 + pitch_table[offset] / sizeof(pixel_t);
 
     for (int x = 0; x < width; x++) {
-      // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
-      typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
+      // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need int64_t?)
+      typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, int64_t, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
         result += (src_ptr+pitch_table[i] / sizeof(pixel_t))[x] * current_coeff[i];
@@ -640,8 +640,8 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       current_coeff = (coeff_t *)program->pixel_coefficient_float;
     for (int x = 0; x < width; x++) {
       int begin = program->pixel_offset[x];
-      // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
-      typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
+      // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need int64_t?)
+      typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, int64_t, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
         result += (src0+y*src_pitch)[(begin+i)] * current_coeff[i];

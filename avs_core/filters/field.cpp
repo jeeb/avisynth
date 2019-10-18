@@ -1020,7 +1020,7 @@ static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env
 SelectRangeEvery::SelectRangeEvery(PClip _child, int _every, int _length, int _offset, bool _audio, IScriptEnvironment* env)
 : NonCachedGenericVideoFilter(_child), audio(_audio), achild(_child)
 {
-  const __int64 num_audio_samples = vi.num_audio_samples;
+  const int64_t num_audio_samples = vi.num_audio_samples;
 
   AVSValue trimargs[3] = { _child, _offset, 0};
   PClip c = env->Invoke("Trim",AVSValue(trimargs,3)).AsClip();
@@ -1053,7 +1053,7 @@ bool __stdcall SelectRangeEvery::GetParity(int n)
 }
 
 
-void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall SelectRangeEvery::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   if (!audio) {
 	// Use original unTrim'd child
@@ -1061,21 +1061,21 @@ void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 coun
     return;
   }
 
-  __int64 samples_filled = 0;
+  int64_t samples_filled = 0;
   BYTE* samples = (BYTE*)buf;
   const int bps = vi.BytesPerAudioSample();
   int startframe = vi.FramesFromAudioSamples(start);
-  __int64 general_offset = start - vi.AudioSamplesFromFrames(startframe);  // General compensation for startframe rounding.
+  int64_t general_offset = start - vi.AudioSamplesFromFrames(startframe);  // General compensation for startframe rounding.
 
   while (samples_filled < count) {
     const int iteration = startframe / length;                    // Which iteration is this.
     const int iteration_into = startframe % length;               // How far, in frames are we into this iteration.
     const int iteration_left = length - iteration_into;           // How many frames is left of this iteration.
 
-    const __int64 iteration_left_samples = vi.AudioSamplesFromFrames(iteration_left);
+    const int64_t iteration_left_samples = vi.AudioSamplesFromFrames(iteration_left);
     // This is the number of samples we can get without either having to skip, or being finished.
-    const __int64 getsamples = min(iteration_left_samples, count-samples_filled);
-    const __int64 start_offset = vi.AudioSamplesFromFrames(iteration * every + iteration_into) + general_offset;
+    const int64_t getsamples = min(iteration_left_samples, count-samples_filled);
+    const int64_t start_offset = vi.AudioSamplesFromFrames(iteration * every + iteration_into) + general_offset;
 
     child->GetAudio(&samples[samples_filled*bps], start_offset, getsamples, env);
     samples_filled += getsamples;

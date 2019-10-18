@@ -130,7 +130,7 @@ AVSValue AveragePlane::Create(AVSValue args, void* user_data, IScriptEnvironment
 // Average plane
 template<typename pixel_t>
 static double get_sum_of_pixels_c(const BYTE* srcp8, size_t height, size_t width, size_t pitch) {
-  typedef typename std::conditional < sizeof(pixel_t) == 4, double, __int64>::type sum_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 4, double, int64_t>::type sum_t;
   sum_t accum = 0; // int32 holds sum of maximum 16 Mpixels for 8 bit, and 65536 pixels for uint16_t pixels
   const pixel_t *srcp = reinterpret_cast<const pixel_t *>(srcp8);
   pitch /= sizeof(pixel_t);
@@ -146,7 +146,7 @@ static double get_sum_of_pixels_c(const BYTE* srcp8, size_t height, size_t width
 // sum: sad with zero
 static double get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   size_t mod16_width = width / 16 * 16;
-  __int64 result = 0;
+  int64_t result = 0;
   __m128i sum = _mm_setzero_si128();
   __m128i zero = _mm_setzero_si128();
 
@@ -172,7 +172,7 @@ static double get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t wid
 #ifdef X86_32
 static double get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   size_t mod8_width = width / 8 * 8;
-  __int64 result = 0;
+  int64_t result = 0;
   __m64 sum = _mm_setzero_si64();
   __m64 zero = _mm_setzero_si64();
 
@@ -235,7 +235,7 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
   if (pixelsize == 4)
     sum_in_32bits = false;
   else // worst case
-    sum_in_32bits = ((__int64)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
+    sum_in_32bits = ((int64_t)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
 
   if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
     sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
@@ -281,7 +281,7 @@ static double get_sad_c(const BYTE* c_plane8, const BYTE* t_plane8, size_t heigh
   const pixel_t *t_plane = reinterpret_cast<const pixel_t *>(t_plane8);
   c_pitch /= sizeof(pixel_t);
   t_pitch /= sizeof(pixel_t);
-  typedef typename std::conditional < sizeof(pixel_t) == 4, double, __int64>::type sum_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 4, double, int64_t>::type sum_t;
   sum_t accum = 0; // int32 holds sum of maximum 16 Mpixels for 8 bit, and 65536 pixels for uint16_t pixels
 
   for (size_t y = 0; y < height; y++) {
@@ -301,7 +301,7 @@ static double get_sad_rgb_c(const BYTE* c_plane8, const BYTE* t_plane8, size_t h
   const pixel_t *t_plane = reinterpret_cast<const pixel_t *>(t_plane8);
   c_pitch /= sizeof(pixel_t);
   t_pitch /= sizeof(pixel_t);
-  __int64 accum = 0; // packed rgb: integer type only
+  int64_t accum = 0; // packed rgb: integer type only
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x+=4) {
       accum += std::abs(t_plane[x] - c_plane[x]);
@@ -529,7 +529,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
   if (pixelsize == 4)
     sum_in_32bits = false;
   else // worst case check
-    sum_in_32bits = ((__int64)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
+    sum_in_32bits = ((int64_t)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
 
   double sad = 0.0;
 
@@ -631,7 +631,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
   if (pixelsize == 4)
     sum_in_32bits = false;
   else // worst case check
-    sum_in_32bits = ((__int64)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
+    sum_in_32bits = ((int64_t)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
 
   double sad = 0;
   // for c: width, for sse: rowsize

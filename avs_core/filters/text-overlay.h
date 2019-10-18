@@ -32,6 +32,7 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+#ifdef ENABLE_FILTER_TEXTOVERLAY
 #ifndef __Text_overlay_H__
 #define __Text_overlay_H__
 
@@ -266,3 +267,4 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 
 
 #endif  // __Text_overlay_H__
+#endif // ENABLE_FILTER_TEXTOVERLAY

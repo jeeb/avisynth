@@ -223,7 +223,7 @@ static __inline float c8tof(int color) {
   return color / 255.0f;
 }
 
-static __inline BYTE ScaledPixelClip(int i) {
+static __inline uint8_t ScaledPixelClip(int i) {
   // return PixelClip((i+32768) >> 16);
   // PF: clamp is faster than lut
   return (uint8_t)clamp((i + 32768) >> 16, 0, 255);

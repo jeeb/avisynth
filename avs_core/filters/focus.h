@@ -40,9 +40,9 @@
 template<bool packedRGB3264>
 int calculate_sad_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
 template<typename pixel_t, bool packedRGB3264>
-__int64 calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+long long int calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
 
-class AdjustFocusV : public GenericVideoFilter 
+class AdjustFocusV : public GenericVideoFilter
 /**
   * Class to adjust focus in the vertical direction, helper for sharpen/blue
  **/

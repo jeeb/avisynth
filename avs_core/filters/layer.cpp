@@ -2250,7 +2250,7 @@ static void layer_yuv_mul_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, 
 
   constexpr bool allow_leftminus1 = false; // RFU for SIMD, takes part in templates at other functions
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
   for (int y = 0; y < height; ++y) {
     int mask_right; // used for MPEG2 color schemes
     if constexpr (has_alpha) {
@@ -2565,7 +2565,7 @@ static void layer_yuv_add_subtract_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE*
   overlay_pitch /= sizeof(pixel_t);
   mask_pitch /= sizeof(pixel_t);
 
-  typedef typename std::conditional < bits_per_pixel < 16, int, __int64>::type calc_t;
+  typedef typename std::conditional < bits_per_pixel < 16, int, int64_t>::type calc_t;
 
   constexpr int max_pixel_value = (1 << bits_per_pixel) - 1;
 
@@ -3209,7 +3209,7 @@ static void layer_yuv_lighten_darken_c(
     }
 
     for (int x = 0; x < cwidth; ++x) {
-      typedef typename std::conditional < bits_per_pixel < 16, int, __int64>::type calc_t; // for non-overflowing 16 bit alpha_mul
+      typedef typename std::conditional < bits_per_pixel < 16, int, int64_t>::type calc_t; // for non-overflowing 16 bit alpha_mul
       int alpha_mask;
       int ovr;
       int src;
@@ -3700,7 +3700,7 @@ static void layer_rgb32_mul_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pit
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
@@ -3724,7 +3724,7 @@ static void layer_rgb32_mul_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
@@ -3755,7 +3755,7 @@ static void layer_planarrgb_mul_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitc
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
 
-  typedef typename std::conditional < (bits_per_pixel < 16), int, __int64>::type calc_t;
+  typedef typename std::conditional < (bits_per_pixel < 16), int, int64_t>::type calc_t;
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
@@ -3954,7 +3954,7 @@ static void layer_rgb32_add_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pit
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
@@ -3980,7 +3980,7 @@ static void layer_rgb32_add_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
@@ -4013,7 +4013,7 @@ static void layer_planarrgb_add_subtract_c(BYTE** dstp8, const BYTE** ovrp8, int
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
 
-  typedef typename std::conditional < (bits_per_pixel < 16), int, __int64>::type calc_t;
+  typedef typename std::conditional < (bits_per_pixel < 16), int, int64_t>::type calc_t;
   const int max_pixel_value = (1 << bits_per_pixel) - 1;
 
   constexpr int rounder = 1 << (bits_per_pixel - 1);
@@ -4296,7 +4296,7 @@ static void layer_rgb32_subtract_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int ds
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   const calc_t MAX_PIXEL_VALUE = sizeof(pixel_t) == 1 ? 255 : 65535;
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
@@ -4323,7 +4323,7 @@ static void layer_rgb32_subtract_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   const calc_t MAX_PIXEL_VALUE = sizeof(pixel_t) == 1 ? 255 : 65535;
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
@@ -4481,7 +4481,7 @@ static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
 
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, __int64>::type calc_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
@@ -4520,7 +4520,7 @@ static void layer_planarrgb_lighten_darken_c(BYTE** dstp8, const BYTE** ovrp8, i
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
 
-  typedef typename std::conditional < (bits_per_pixel < 16), int, __int64>::type calc_t;
+  typedef typename std::conditional < (bits_per_pixel < 16), int, int64_t>::type calc_t;
 
   constexpr int rounder = 1 << (bits_per_pixel - 1);
 

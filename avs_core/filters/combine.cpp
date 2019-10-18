@@ -528,12 +528,12 @@ PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env)
   return cache[furthest]->GetFrame(n, env);
 }
 
-void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)  {
+void __stdcall Animate::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)  {
   if (range_limit) {  // Applyrange - hard switch between streams.
 
     const VideoInfo& vi1 = cache[0]->GetVideoInfo();
-    const __int64 start_switch =  vi1.AudioSamplesFromFrames(first);
-    const __int64 end_switch   =  vi1.AudioSamplesFromFrames(last+1);
+    const int64_t start_switch =  vi1.AudioSamplesFromFrames(first);
+    const int64_t end_switch   =  vi1.AudioSamplesFromFrames(last+1);
 
     if ( (start+count <= start_switch) || (start >= end_switch) ) {
       // Everything unfiltered
@@ -545,7 +545,7 @@ void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScrip
 
       // The bit before
       if (start_switch > start) {
-    const __int64 pre_count = start_switch - start;
+    const int64_t pre_count = start_switch - start;
         args_after[0].AsClip()->GetAudio(buf, start, pre_count, env);  // UnFiltered
     start += pre_count;
     count -= pre_count;
@@ -553,7 +553,7 @@ void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScrip
       }
 
       // The bit in the middle
-      const __int64 filt_count = (end_switch < start+count) ? (end_switch - start) : count;
+      const int64_t filt_count = (end_switch < start+count) ? (end_switch - start) : count;
       cache[0]->GetAudio(buf, start, filt_count, env);  // Filtered
       start += filt_count;
       count -= filt_count;

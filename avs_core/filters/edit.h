@@ -52,7 +52,7 @@ public:
   Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
   Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -65,7 +65,7 @@ public:
 
 private:
   int firstframe;
-  __int64 audio_offset;
+  int64_t audio_offset;
 };
 
 
@@ -151,7 +151,7 @@ class Splice : public GenericVideoFilter
 public:
   Splice(PClip _child1, PClip _child2, bool realign_sound, bool passCache, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
@@ -161,7 +161,7 @@ public:
 private:
   PClip child2;
   int video_switchover_point;
-  __int64 audio_switchover_point;
+  int64_t audio_switchover_point;
   const bool passCache;
 };
 
@@ -175,9 +175,9 @@ class Dissolve : public GenericVideoFilter
 {
 public:
   Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScriptEnvironment* env);
-  virtual ~Dissolve(); 
+  virtual ~Dissolve();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -186,7 +186,7 @@ private:
   PClip child2;
   const int overlap;
   int video_fade_start, video_fade_end;
-  __int64 audio_fade_start, audio_fade_end;
+  int64_t audio_fade_start, audio_fade_end;
   int audio_overlap;
   BYTE* audbuffer;
   size_t audbufsize;
@@ -206,7 +206,7 @@ public:
   AudioDub(PClip child1, PClip child2, int mode, IScriptEnvironment* env);
   const VideoInfo& __stdcall GetVideoInfo();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
@@ -229,7 +229,7 @@ public:
   Reverse(PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -250,7 +250,7 @@ public:
 	Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* env);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 	bool __stdcall GetParity(int n);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -260,7 +260,7 @@ public:
 	static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
 	int   frames,    start,     end;
-  __int64 aud_count, aud_start, aud_end;
+  int64_t aud_count, aud_start, aud_end;
 	int convert(int n);
 };
 

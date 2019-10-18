@@ -124,7 +124,7 @@ Trim::Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, ISc
   if (!vi.HasAudio())
     env->ThrowError("AudioTrim: Cannot trim if there is no audio.");
 
-  audio_offset = clamp(int64_t(starttime*vi.audio_samples_per_second + 0.5), 0ll, vi.num_audio_samples);
+  audio_offset = clamp(int64_t(starttime*vi.audio_samples_per_second + 0.5), (int64_t)0ll, vi.num_audio_samples);
 
   switch (mode) {
     case Default:
@@ -244,7 +244,7 @@ Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_m
   if (_padaudio)
     vi.num_audio_samples = vi.AudioSamplesFromFrames(lastframe+1) - audio_offset;
   else {
-	__int64 samples;
+	int64_t samples;
 
     if (_lastframe == 0 && mode == Default)
       samples = vi.num_audio_samples;
@@ -267,7 +267,7 @@ PVideoFrame Trim::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-void __stdcall Trim::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall Trim::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   child->GetAudio(buf, start+audio_offset, count, env);
 }
@@ -499,14 +499,14 @@ PVideoFrame Splice::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-void Splice::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void Splice::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   if (start+count <= audio_switchover_point)
     child->GetAudio(buf, start, count, env);
   else if (start >= audio_switchover_point)
     child2->GetAudio(buf, start - audio_switchover_point, count, env);
   else {
-    const __int64 count1 = audio_switchover_point - start;
+    const int64_t count1 = audio_switchover_point - start;
     child->GetAudio(buf, start, count1, env);
     child2->GetAudio((char*)buf+vi.BytesFromAudioSamples(count1), 0, count-count1, env);
   }
@@ -715,7 +715,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void Dissolve::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   if (start+count <= audio_fade_start) {
     child->GetAudio(buf, start, count, env);
@@ -849,7 +849,7 @@ bool AudioDub::GetParity(int n)
 }
 
 
-void AudioDub::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void AudioDub::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   achild->GetAudio(buf, start, count, env);
 }
@@ -902,7 +902,7 @@ bool Reverse::GetParity(int n)
 }
 
 
-void Reverse::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void Reverse::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   child->GetAudio(buf, vi.num_audio_samples - start - count, count, env);
   int x = vi.BytesPerAudioSample() - 1;
@@ -989,8 +989,8 @@ bool Loop::GetParity(int n)
   return child->GetParity(convert(n));
 }
 
-void Loop::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  __int64 get_count, get_start;
+void Loop::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
+  int64_t get_count, get_start;
   const int bpas = vi.BytesPerAudioSample();
   char* samples = (char*)buf;
 

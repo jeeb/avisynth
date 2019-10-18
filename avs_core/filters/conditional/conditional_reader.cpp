@@ -568,7 +568,11 @@ static const char WplusT[] = "w+t";
 Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _append, bool _flush, IScriptEnvironment* env):
 	GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append), arglist(0)
 {
+#ifdef AVS_WINDOWS
 	_fullpath(filename, _filename, _MAX_PATH);
+#else
+	realpath(_filename, filename);
+#endif
 
 	fout = fopen(filename, append ? AplusT : WplusT);	//append or purge file
 	if (!fout) env->ThrowError("Write: File '%s' cannot be opened.", filename);

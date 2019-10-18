@@ -140,10 +140,10 @@ class Preroll : public GenericVideoFilter
 {
 private:
   const int videopr;
-  const __int64 audiopr;
+  const int64_t audiopr;
 
   int videonext;
-  __int64 audionext;
+  int64_t audionext;
 
 public:
   Preroll( PClip _child, const int _videopr, const double _audiopr, IScriptEnvironment* env )
@@ -177,16 +177,16 @@ public:
     return child->GetFrame(n, env);
   }
 
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     if (start != audionext) {
-      __int64 s = start - audiopr;
+      int64_t s = start - audiopr;
       if (s < 0) s = 0;
 
       // Optimise if start is within pr sample of last
       if (s < audionext && start > audionext) s = audionext;
 
       while (s < start) {
-        __int64 c = start - s;
+        int64_t c = start - s;
         if (c > count) c = count;
 
         child->GetAudio(buf, s, c, env);

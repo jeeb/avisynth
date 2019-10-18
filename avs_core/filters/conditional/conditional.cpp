@@ -156,7 +156,7 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
   if (show) {
     char text[32];
 
-    _snprintf(text, sizeof(text)-1, "Expression Result:%i\n", result.AsInt());
+    snprintf(text, sizeof(text)-1, "Expression Result:%i\n", result.AsInt());
     text[sizeof(text)-1] = '\0';
 
     env->MakeWritable(&dst);
@@ -368,24 +368,24 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   if (show) {
       char text[400];
       if (test_string) {
-        _snprintf(text, sizeof(text)-1,
+        snprintf(text, sizeof(text)-1,
           "Left side Conditional Result:%.40s\n"
           "Right side Conditional Result:%.40s\n"
           "Evaluate result: %s\n",
           e1_result.AsString(), e2_result.AsString(), (state) ? t_TRUE : t_FALSE
         );
       } else if (test_int) {
-        _snprintf(text, sizeof(text)-1,
+        snprintf(text, sizeof(text)-1,
           "Left side Conditional Result:%i\n"
           "Right side Conditional Result:%i\n"
           "Evaluate result: %s\n",
           e1, e2, (state) ? t_TRUE : t_FALSE
         );
       } else {
-        _snprintf(text, sizeof(text)-1,
+        snprintf(text, sizeof(text)-1,
           "Left side Conditional Result:%7.4f\n"
           "Right side Conditional Result:%7.4f\n"
-          "Evaluate result: %s\n", 
+          "Evaluate result: %s\n",
           f1, f2, (state) ? t_TRUE : t_FALSE
         );
       }
@@ -403,7 +403,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   return source2->GetFrame(min(vi1.num_frames-1,n),env);
 }
 
-void __stdcall ConditionalFilter::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+void __stdcall ConditionalFilter::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
   source1->GetAudio(buf, start, count, env);
 }
 

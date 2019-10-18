@@ -23,7 +23,9 @@
 #include <cstdlib>
 #include <string>
 
-
+#ifdef AVS_LINUX
+#include <limits.h>
+#endif
 
 enum {
   MODE_UNKNOWN = -1,
@@ -82,7 +84,11 @@ private:
 	bool flush;
 	bool append;
 
+#ifdef AVS_WINDOWS
 	char filename[_MAX_PATH];
+#else
+	char filename[PATH_MAX];
+#endif
 	int arrsize;
 	struct exp_res {
 		const char* expression;

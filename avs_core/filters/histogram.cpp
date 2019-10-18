@@ -270,20 +270,20 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   int bar_h = vi.height;
 
   // Get audio for current frame.
-  const __int64 start = vi.AudioSamplesFromFrames(n);
+  const int64_t start = vi.AudioSamplesFromFrames(n);
   const int count = (int)(vi.AudioSamplesFromFrames(1));
   signed short* samples = static_cast<signed short*>(_alloca(sizeof(signed short)* count * channels));
 
-  aud_clip->GetAudio(samples, max(0ll,start), count, env);
+  aud_clip->GetAudio(samples, max((int64_t)0ll,start), count, env);
 
   // Find maximum volume and rms.
   int*     channel_max = static_cast<int*>(_alloca(channels * sizeof(int)));
-  __int64* channel_rms = static_cast<__int64*>(_alloca(channels * sizeof(__int64)));;
+  int64_t* channel_rms = static_cast<int64_t*>(_alloca(channels * sizeof(int64_t)));;
 
   const int c = count*channels;
   for (int ch = 0; ch<channels; ch++) {
     int max_vol = 0;
-    __int64 rms_vol = 0;
+    int64_t rms_vol = 0;
 
     for (int i = ch; i < c; i += channels) {
       int sample = samples[i];
@@ -312,7 +312,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   for (int i=0; i<lines; i++) {
     lines_y[i] = (int)(line_every*i);
     if (!(i&1)) {
-      _snprintf(text, sizeof(text), "%3ddB", -i*6);
+      snprintf(text, sizeof(text), "%3ddB", -i*6);
       DrawStringPlanar(src, 0, i ? lines_y[i]-10 : 0, text);
     }
   }
@@ -331,7 +331,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
       ch_db = -8.685889638/2.0 * log((double)max/(32768.0*32768.0));
     }
 
-    __int64 rms = channel_rms[ch] / count;
+    int64_t rms = channel_rms[ch] / count;
     double ch_rms = 96;
     if (rms > 0) {
       ch_rms = -8.685889638/2.0 * log((double)rms/(32768.0*32768.0));
@@ -380,9 +380,9 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
       }
     }
     // Draw text
-    _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_db);
+    snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_db);
     DrawStringPlanar(src, ((ch*2)+1)*bar_w, vi.height-40, text);
-    _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_rms);
+    snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_rms);
     DrawStringPlanar(src, ((ch*2)+1)*bar_w, vi.height-20, text);
 
   }
@@ -395,9 +395,9 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  __int64 start = vi.AudioSamplesFromFrames(n);
-  __int64 end = vi.AudioSamplesFromFrames(n+1);
-  __int64 count = end-start;
+  int64_t start = vi.AudioSamplesFromFrames(n);
+  int64_t end = vi.AudioSamplesFromFrames(n+1);
+  int64_t count = end-start;
   signed short* samples = static_cast<signed short*>(
     env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
   );
@@ -431,7 +431,7 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
     _dstp+=p;
   }
 
-  aud_clip->GetAudio(samples, max(0ll,start), count, env);
+  aud_clip->GetAudio(samples, max((int64_t)0ll,start), count, env);
 
   int c = (int)count;
   for (int i=1; i < c;i++) {
@@ -464,9 +464,9 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
 PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame src = env->NewVideoFrame(vi);
-  __int64 start = vi.AudioSamplesFromFrames(n);
-  __int64 end = vi.AudioSamplesFromFrames(n+1);
-  __int64 count = end-start;
+  int64_t start = vi.AudioSamplesFromFrames(n);
+  int64_t end = vi.AudioSamplesFromFrames(n+1);
+  int64_t count = end-start;
   signed short* samples = static_cast<signed short*>(
     env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
   );
@@ -480,7 +480,7 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
   memset(srcp, 16, imgSize);
   int p = src->GetPitch();
 
-  aud_clip->GetAudio(samples, max(0ll,start), count, env);
+  aud_clip->GetAudio(samples, max((int64_t)0ll,start), count, env);
 
   int c = (int)count;
   for (int i=1; i < c;i++) {

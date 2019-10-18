@@ -58,9 +58,9 @@ public:
   Mask(PClip _child1, PClip _child2, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  inline virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
     { child1->GetAudio(buf, start, count, env); }
-  inline virtual const VideoInfo& __stdcall GetVideoInfo() 
+  inline virtual const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
   inline virtual bool __stdcall GetParity(int n) 
     { return child1->GetParity(n); }
@@ -154,7 +154,7 @@ private:
   bool doB, doG, doR, doA;
   bool doY, doU, doV;
 
-  unsigned __int64 mask64;
+  uint64_t mask64;
   int pixelsize;
   int bits_per_pixel; // 8,10..16
 };
@@ -226,9 +226,9 @@ public:
          int _t, bool _chroma, float _strength, int _placement, IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  inline virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
+  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
     { child1->GetAudio(buf, start, count, env); }
-  inline virtual const VideoInfo& __stdcall GetVideoInfo() 
+  inline virtual const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
   inline virtual bool __stdcall GetParity(int n) 
     { return child1->GetParity(n); }
@@ -265,9 +265,9 @@ public:
   Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  inline virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
+  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
     { child1->GetAudio(buf, start, count, env);  }
-  inline virtual const VideoInfo& __stdcall GetVideoInfo() 
+  inline virtual const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
   inline virtual bool __stdcall GetParity(int n) 
     { return child1->GetParity(n); }
