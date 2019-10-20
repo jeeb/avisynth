@@ -7,7 +7,7 @@
 #define WITH_SDK
 
 ;this section is not up to date, don't include them
-;#define WITH_DOCS
+#define WITH_DOCS
 
 ;!!!Conditional!!!  comment out the following define to include project web url
 ;original Avs+ project page is not maintained at the moment (Dec. 2017) and contains very old content
@@ -17,11 +17,10 @@
 #define AvsFriendlyName "AviSynthPlus"
 #define AvsPublisher "The Public"
 #define AppId "{AC78780F-BACA-4805-8D4F-AE1B52B7E7D3}"
-#define AvsGitURL "https://github.com/pinterf/AviSynthPlus/"
-;#define AvsGitURL "https://github.com/pylorak/avisynth"
+#define AvsGitURL "https://github.com/AviSynth/AviSynthPlus/"
 
 #ifdef WITH_AVSPLUS_URL
-#define AvsWebURL "http://www.avs-plus.net"
+#define AvsWebURL "https://github.com/AviSynth/AviSynthPlus/"
 #endif
 
 ;There is no specific x86/x64 output directory.
@@ -45,17 +44,12 @@
 AppId={{#AppId}
 AppName={#AvsName}
 AppVersion={#Version}.{#RevisionNumber}
-;use a simpler file name convention. e.g. AviSynthPlus-MT-r2570.exe
-AppVerName={#AvsName} {#Version} r{#RevisionNumber}
-OutputBaseFilename={#AvsFriendlyName}-{#Branch}-r{#RevisionNumber}
-#if false
 #if IsRelease == "True"
   AppVerName={#AvsName} {#Version}
-  OutputBaseFilename={#AvsName}-v{#Version}
+  OutputBaseFilename={#AvsFriendlyName}_{#Version}
 #else
   AppVerName={#AvsName} {#Version} r{#RevisionNumber}
-  OutputBaseFilename={#AvsName}-{#Branch}-v{#Version}-r{#RevisionNumber}-{#Revision}
-#endif
+  OutputBaseFilename={#AvsFriendlyName}-r{#RevisionNumber}-{#Branch}-{#Revision}
 #endif
 AppPublisher={#AvsPublisher}
 #ifdef WITH_AVSPLUS_URL
