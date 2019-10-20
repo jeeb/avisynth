@@ -754,9 +754,11 @@ public:
   virtual double  __stdcall GetVar(const char* name, double def) const;
   virtual const char*  __stdcall GetVar(const char* name, const char* def) const;
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
+#ifdef AVS_WINDOWS
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
   virtual void __stdcall ClearAutoloadDirs();
   virtual void __stdcall AutoloadPlugins();
+#endif
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar);
   virtual bool __stdcall InternalFunctionExists(const char* name);
   virtual int __stdcall IncrImportDepth();
@@ -1471,10 +1473,13 @@ bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnE
   // Autoload needed to ensure that manual LoadPlugin() calls always override autoloaded plugins.
   // For that, autoloading must happen before any LoadPlugin(), so we force an
   // autoload operation before any LoadPlugin().
+#ifdef AVS_WINDOWS
   this->AutoloadPlugins();
+#endif
   return plugin_manager->LoadPlugin(filePath, throwOnError, result);
 }
 
+#ifdef AVS_WINDOWS
 void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFront)
 {
   plugin_manager->AddAutoloadDir(dirPath, toFront);
@@ -1489,6 +1494,7 @@ void __stdcall ScriptEnvironment::AutoloadPlugins()
 {
   plugin_manager->AutoloadPlugins();
 }
+#endif
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
 
@@ -3075,9 +3081,10 @@ const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
   return AVS_linkage;
 }
 
-
 void __stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
+#ifdef AVS_WINDOWS //fixme
   ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);
+#endif
 }
 
 

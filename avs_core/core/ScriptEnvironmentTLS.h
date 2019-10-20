@@ -302,6 +302,7 @@ public:
     return core->LoadPlugin(filePath, throwOnError, result);
   }
 
+#ifdef AVS_WINDOWS
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront)
   {
     core->AddAutoloadDir(dirPath, toFront);
@@ -316,6 +317,7 @@ public:
   {
     core->AutoloadPlugins();
   }
+#endif
 
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar)
   {

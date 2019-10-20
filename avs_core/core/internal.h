@@ -173,6 +173,7 @@ private:
   bool restore;
 };
 
+#ifdef AVS_WINDOWS
 std::unique_ptr<char[]> WideCharToUtf8(const wchar_t *w_string);
 std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string);
 std::unique_ptr<char[]> WideCharToAnsiACP(const wchar_t *w_string);
@@ -181,8 +182,9 @@ std::unique_ptr<char[]> WideCharToAnsi_maxn(const wchar_t *w_string, size_t maxn
 std::unique_ptr<wchar_t[]> AnsiToWideChar(const char *s_ansi);
 std::unique_ptr<wchar_t[]> AnsiToWideCharACP(const char *s_ansi);
 std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi);
+#endif
 
-class NonCachedGenericVideoFilter : public GenericVideoFilter 
+class NonCachedGenericVideoFilter : public GenericVideoFilter
 /**
   * Class to select a range of frames from a longer clip
  **/

@@ -247,9 +247,11 @@ extern const AVSFunction Script_functions[] = {
 
   { "PixelType",  BUILTIN_FUNC_PREFIX, "c", PixelType  },
 
+#ifdef AVS_WINDOWS
   { "AddAutoloadDir",     BUILTIN_FUNC_PREFIX, "s[toFront]b", AddAutoloadDir  },
   { "ClearAutoloadDirs",  BUILTIN_FUNC_PREFIX, "", ClearAutoloadDirs  },
   { "AutoloadPlugins",    BUILTIN_FUNC_PREFIX, "", AutoloadPlugins  },
+#endif
   { "FunctionExists",     BUILTIN_FUNC_PREFIX, "s", FunctionExists  },
   { "InternalFunctionExists", BUILTIN_FUNC_PREFIX, "s", InternalFunctionExists  },
 
@@ -276,8 +278,10 @@ extern const AVSFunction Script_functions[] = {
   { "IsVideoFloat", BUILTIN_FUNC_PREFIX, "c", IsVideoFloat }, // r2435+
 
   { "GetProcessInfo", BUILTIN_FUNC_PREFIX, "[type]i", GetProcessInfo }, // 170526-
+#ifdef AVS_WINDOWS
   { "StrToUtf8", BUILTIN_FUNC_PREFIX, "s", StrToUtf8 }, // 170601-
   { "StrFromUtf8", BUILTIN_FUNC_PREFIX, "s", StrFromUtf8 }, // 170601-
+#endif
 
   { "IsFloatUvZeroBased", BUILTIN_FUNC_PREFIX, "", IsFloatUvZeroBased }, // 180516-
   { "BuildPixelType", BUILTIN_FUNC_PREFIX, "[family]s[bits]i[chroma]i[compat]b[oldnames]b[sample_clip]c", BuildPixelType }, // 180517-
@@ -1598,6 +1602,7 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
   }
 }
 
+#ifdef AVS_WINDOWS
 AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -1618,6 +1623,7 @@ AVSValue AutoloadPlugins (AVSValue args, void*, IScriptEnvironment* env)
   env2->AutoloadPlugins();
   return AVSValue();
 }
+#endif
 
 AVSValue FunctionExists (AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -1753,6 +1759,7 @@ AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env)
   return ProcessType();
 }
 
+#ifdef AVS_WINDOWS
 AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env) {
   const char *source = args[0].AsString();
   // in two steps: Ansi -> WideChar -> Utf8
@@ -1772,6 +1779,7 @@ AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env) {
   AVSValue ret = env->SaveString(source_ansi.get());
   return ret;
 }
+#endif
 
 
 AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment*)

@@ -246,9 +246,11 @@ AVSValue ScriptNameUtf8(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptFileUtf8(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptDirUtf8(AVSValue args, void*, IScriptEnvironment* env);
 
+#ifdef AVS_WINDOWS
 AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ClearAutoloadDirs (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AutoloadPlugins (AVSValue args, void*, IScriptEnvironment* env);
+#endif
 AVSValue FunctionExists (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue InternalFunctionExists (AVSValue args, void*, IScriptEnvironment* env);
 
