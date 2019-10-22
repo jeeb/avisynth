@@ -1,10 +1,17 @@
 Avisynth Plus change log
 ------------------------
-Source: https://github.com/pinterf/AviSynthPlus/tree/MT
+Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20190829 r29xx
+20191021 3.4.0
+--------------
+
+- Merges in the MT branch, the current state of pinterf/MT, and packaging fixes
+- Development HEAD is the master repo again in https://github.com/AviSynth/AviSynthPlus
+- Bumps version to 3.4
+
+20190829 r2915
 --------------
 - Changed: Trim, FreezeFrame, DeleteFrame, DuplicateFrame, Reverse and Loop are using frame cache again (similar to classic Avs 2.6)
 - Enhanced: Expr: faster exp, log, pow for AVX2 (sekrit-twc)

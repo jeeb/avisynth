@@ -1,4 +1,4 @@
-Avisynth+ v29xx (20190829)
+Avisynth+ v3.4.0 (20191021)
 --------------------------
 
 Use the installer or copy files directly
@@ -11,7 +11,8 @@ Use the installer or copy files directly
 
 Useful links:
 -------------
-Source: https://github.com/pinterf/AviSynthPlus/tree/MT
+Source (from 3.4): https://github.com/AviSynth/AviSynthPlus
+Source (before 3.4): https://github.com/pinterf/AviSynthPlus/tree/MT
 Forum: https://forum.doom9.org/showthread.php?t=168856
 Forum on some avs+ filters: https://forum.doom9.org/showthread.php?t=169832
 Avisynth+ info page: http://avisynth.nl/index.php/AviSynth%2B
@@ -21,7 +22,7 @@ Avisynth Universal Installer by Groucho2004: https://forum.doom9.org/showthread.
 Short info for plugin writers
 -----------------------------
   Avisynth+ header (and helper headers) are available here, or choose SDK during install:
-  https://github.com/pinterf/AviSynthPlus/tree/MT/avs_core/include
+  https://github.com/AviSynth/AviSynthPlus/tree/master/avs_core/include
 
   Use these headers for building x86/x64 plugins, and to use Avisynth+'s high-bitdepth related VideoInfo functions
   without any concern. When a VideoInfo function is non-existant on a system that uses your plugin, 
@@ -30,7 +31,14 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20190829 r29xx
+20191021 3.4.0
+--------------
+
+- Merges in the MT branch, the current state of pinterf/MT, and packaging fixes
+- Development HEAD is the master repo again in https://github.com/AviSynth/AviSynthPlus
+- Bumps version to 3.4
+
+20190829 r2915
 --------------
 - Changed: Trim, FreezeFrame, DeleteFrame, DuplicateFrame, Reverse and Loop are using frame cache again (similar to classic Avs 2.6)
 - Enhanced: Expr: faster exp, log, pow for AVX2 (sekrit-twc)
