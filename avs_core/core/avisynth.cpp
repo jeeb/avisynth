@@ -161,15 +161,15 @@ static size_t GetNumPhysicalCPUs()
   BOOL done = FALSE;
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL;
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION ptr = NULL;
-  uint32_t returnLength = 0;
-  uint32_t logicalProcessorCount = 0;
-  uint32_t numaNodeCount = 0;
-  uint32_t processorCoreCount = 0;
-  uint32_t processorL1CacheCount = 0;
-  uint32_t processorL2CacheCount = 0;
-  uint32_t processorL3CacheCount = 0;
-  uint32_t processorPackageCount = 0;
-  uint32_t byteOffset = 0;
+  DWORD returnLength = 0;
+  DWORD logicalProcessorCount = 0;
+  DWORD numaNodeCount = 0;
+  DWORD processorCoreCount = 0;
+  DWORD processorL1CacheCount = 0;
+  DWORD processorL2CacheCount = 0;
+  DWORD processorL3CacheCount = 0;
+  DWORD processorPackageCount = 0;
+  DWORD byteOffset = 0;
   PCACHE_DESCRIPTOR Cache;
 
   glpi = (LPFN_GLPI) GetProcAddress(
