@@ -139,13 +139,18 @@ public:
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
+    //               0  1
+    // MODE_WAV:    "s+[utf8]b"
+    //               0  1       2            3        4        5        6    
+    // other modes: "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i[utf8]b"
+
     const avi_mode_e mode = (avi_mode_e)size_t(user_data);
     const bool fAudio = (mode == MODE_WAV) || args[1].AsBool(true);
     const char* pixel_type = (mode != MODE_WAV) ? args[2].AsString("") : "";
     const char* fourCC = (mode != MODE_WAV) ? args[3].AsString("") : "";
-    const int vtrack = args[4].AsInt(0);
-    const int atrack = args[5].AsInt(0);
-    const int utf8 = args[6].AsBool(false);
+    const int vtrack = (mode != MODE_WAV) ? args[4].AsInt(0) : 0;
+    const int atrack = (mode != MODE_WAV) ? args[5].AsInt(0) : 0;
+    const int utf8 = (mode != MODE_WAV) ? args[6].AsBool(false) : args[1].AsBool(false);
 
     PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, utf8, env);
     for (int i=1; i<args[0].ArraySize(); ++i)
