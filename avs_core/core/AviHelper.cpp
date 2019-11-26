@@ -54,11 +54,11 @@ int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bo
   { // 3x10bit packed RGB, no aligment
     image_size = vi->width * 4 * vi->height; // 4 byte/pixel: 32bits for 3x10 bits
   }
-  if (vi->pixel_type == VideoInfo::CS_YV24 && v308)
+  else if (vi->pixel_type == VideoInfo::CS_YV24 && v308)
   { // v308 packed 444
     image_size = vi->width * vi->height * 3 * sizeof(uint8_t);
   }
-  if (vi->pixel_type == VideoInfo::CS_YUVA444 && v408)
+  else if (vi->pixel_type == VideoInfo::CS_YUVA444 && v408)
   { // v408 packed 4444
     image_size = vi->width * vi->height * 4 * sizeof(uint8_t);
   }
