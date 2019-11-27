@@ -198,6 +198,10 @@ AVSValue __cdecl Create_SoundTouch(AVSValue args, void*, IScriptEnvironment* env
 		);
 
 	}
+  catch (const std::runtime_error &error)
+  {
+    env->ThrowError("TimeStretch: %s ",error.what());
+  }
 	catch (...) { throw; }
 }
 
