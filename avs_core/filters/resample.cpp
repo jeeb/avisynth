@@ -2356,6 +2356,15 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, bits_per_pixel, src_pitch_table_chromaV, filter_storage_chroma_aligned);
   }
 
+  if (vi.IsYUVA() || vi.IsPlanarRGBA()) {
+    src_pitch = src->GetPitch(PLANAR_A);
+    dst_pitch = dst->GetPitch(PLANAR_A);
+    srcp = src->GetReadPtr(PLANAR_A);
+    dstp = dst->GetWritePtr(PLANAR_A);
+    // alignment to FRAME_ALIGN is guaranteed
+    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, work_width, vi.height, bits_per_pixel, src_pitch_table_luma, filter_storage_luma_aligned);
+  }
+
   // Free pitch table
   env2->Free(src_pitch_table_luma);
   env2->Free(src_pitch_table_chromaU);
