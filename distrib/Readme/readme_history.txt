@@ -4,6 +4,13 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20191204 (dev 3.4.?)
+--------------------------
+- Fix: Resizers to really resize alpha channel (YUVA, RGBPA)
+- Fix: crash when outputting VfW (e.g. VirtualDub) for YUV444P16, other fixes for r210 and R10k formats
+- WavSource: really use "utf8" parameter, fix some debug asserts
+- TimeStrech: pass internal errors as Avisynth exception text (e.g. proper "Excessive sample rate!" instead of "unhandled C++ error")
+
 20191021 3.4.0
 --------------
 
