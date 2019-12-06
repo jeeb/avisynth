@@ -4,8 +4,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20191204 (dev 3.4.?)
+20191206 (dev 3.4.?)
 --------------------------
+- New: AddBorders, LetterBox: new color_yuv parameter like in BlankClip
 - Fix: Resizers to really resize alpha channel (YUVA, RGBPA)
 - Fix: crash when outputting VfW (e.g. VirtualDub) for YUV444P16, other fixes for r210 and R10k formats
 - WavSource: really use "utf8" parameter, fix some debug asserts

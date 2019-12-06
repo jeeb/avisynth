@@ -1,4 +1,4 @@
-Avisynth+ v3.4.0 (20191021)
+Avisynth+ v3.4.0 (20191206)
 --------------------------
 
 Use the installer or copy files directly
@@ -31,8 +31,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20191204 (dev 3.4.?)
+20191206 (dev 3.4.?)
 --------------------------
+- New: AddBorders, LetterBox: new color_yuv parameter like in BlankClip
 - Fix: Resizers to really resize alpha channel (YUVA, RGBPA)
 - Fix: crash when outputting VfW (e.g. VirtualDub) for YUV444P16, other fixes for r210 and R10k formats
 - WavSource: really use "utf8" parameter, fix some debug asserts
