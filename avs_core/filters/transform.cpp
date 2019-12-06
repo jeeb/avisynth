@@ -50,8 +50,8 @@ extern const AVSFunction Transform_filters[] = {
   { "Crop",           BUILTIN_FUNC_PREFIX, "ciiii[align]b", Crop::Create },              // left, top, width, height *OR*
                                                   //  left, top, -right, -bottom (VDub style)
   { "CropBottom", BUILTIN_FUNC_PREFIX, "ci", Create_CropBottom },      // bottom amount
-  { "AddBorders", BUILTIN_FUNC_PREFIX, "ciiii[color]i", AddBorders::Create },  // left, top, right, bottom [,color]
-  { "Letterbox",  BUILTIN_FUNC_PREFIX, "cii[x1]i[x2]i[color]i", Create_Letterbox },       // top, bottom, [left], [right] [,color]
+  { "AddBorders", BUILTIN_FUNC_PREFIX, "ciiii[color]i[color_yuv]i", AddBorders::Create },  // left, top, right, bottom [,color] [,color_yuv]
+  { "Letterbox",  BUILTIN_FUNC_PREFIX, "cii[x1]i[x2]i[color]i[color_yuv]i", Create_Letterbox },       // top, bottom, [left], [right] [,color] [,color_yuv]
   { 0 }
 };
 
@@ -380,8 +380,8 @@ AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env)
  *******   Add Borders   ******
  *****************************/
 
-AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), xsub(0), ysub(0)
+AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, bool _force_color_as_yuv, PClip _child, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), force_color_as_yuv(_force_color_as_yuv), xsub(0), ysub(0)
 {
   if (vi.IsYUV() || vi.IsYUVA()) {
     if (vi.NumComponents() > 1) {
@@ -424,9 +424,9 @@ static inline pixel_t GetHbdColorFromByte(uint8_t color, bool fullscale, int bit
 }
 
 template<typename pixel_t>
-static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi, int top, int bot, int left, int right, int rgbcolor, bool isYUV, int bits_per_pixel)
+static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi, int top, int bot, int left, int right, int color, bool isYUV, bool force_color_as_yuv, int bits_per_pixel)
 {
-  const unsigned int colr = isYUV ? RGB2YUV(rgbcolor) : rgbcolor;
+  const unsigned int colr = isYUV && !force_color_as_yuv ? RGB2YUV(color) : color;
   const unsigned char YBlack=(unsigned char)((colr >> 16) & 0xff);
   const unsigned char UBlack=(unsigned char)((colr >>  8) & 0xff);
   const unsigned char VBlack=(unsigned char)((colr      ) & 0xff);
@@ -489,10 +489,10 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     int bits_per_pixel = vi.BitsPerComponent();
     bool isYUV = vi.IsYUV() || vi.IsYUVA();
     switch(vi.ComponentSize()) {
-    case 1: addborders_planar<uint8_t>(dst, src, vi, top, bot, left, right, clr, isYUV, bits_per_pixel); break;
-    case 2: addborders_planar<uint16_t>(dst, src, vi, top, bot, left, right,  clr, isYUV, bits_per_pixel); break;
+    case 1: addborders_planar<uint8_t>(dst, src, vi, top, bot, left, right, clr, isYUV, force_color_as_yuv /*like MODE_COLOR_YUV in BlankClip */, bits_per_pixel); break;
+    case 2: addborders_planar<uint16_t>(dst, src, vi, top, bot, left, right,  clr, isYUV, force_color_as_yuv, bits_per_pixel); break;
     default: //case 4: 
-      addborders_planar<float>(dst, src, vi, top, bot, left, right, clr, isYUV, bits_per_pixel); break;
+      addborders_planar<float>(dst, src, vi, top, bot, left, right, clr, isYUV, force_color_as_yuv, bits_per_pixel); break;
     }
     return dst;
   } 
@@ -511,7 +511,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     + (dst_pitch - dst_row_size);
 
   if (vi.IsYUY2()) {
-    const unsigned int colr = RGB2YUV(clr);
+    const unsigned int colr = force_color_as_yuv ? clr : RGB2YUV(clr);
     const unsigned __int32 black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
@@ -649,8 +649,28 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
+  // [0][1][2][3][4]  [5]       [6]
+  //  c  i  i  i  i [color]i[color_yuv]i
+
+  // similar to BlankClip
+  int color = args[5].AsInt(0);
+  bool color_as_yuv = false;
+  if (args[6].Defined()) {
+    if (color != 0) // Not quite 100% test
+      env->ThrowError("AddBorders: color and color_yuv are mutually exclusive");
+    
+    const VideoInfo &vi = args[0].AsClip()->GetVideoInfo();
+
+    if (!vi.IsYUV() && !vi.IsYUVA())
+      env->ThrowError("AddBorders: color_yuv only valid for YUV color spaces");
+    color = args[6].AsInt(); // override
+    color_as_yuv = true;
+    if (!vi.IsYUVA() && (unsigned)color > 0xffffff)
+      env->ThrowError("AddBorders: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
+  }
+
   return new AddBorders( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), 
-                         args[4].AsInt(), args[5].AsInt(0), args[0].AsClip(), env);
+                         args[4].AsInt(), color, color_as_yuv, args[0].AsClip(), env);
 }
 
 
@@ -742,6 +762,24 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
   int right = args[4].AsInt(0);
   int color = args[5].AsInt(0);
   const VideoInfo& vi = clip->GetVideoInfo();
+
+  // [0][1][2][3]   [4]   [5]        [6]
+  //  c  i  i [x1]i [x2]i [color]i [color_yuv]i"  // top, bottom, [left], [right] [,color] [,color_yuv]
+
+  // similar to BlankClip/AddBorders
+  bool color_as_yuv = false;
+  if (args[6].Defined()) {
+    if (color != 0) // Not quite 100% test
+      env->ThrowError("LetterBox: color and color_yuv are mutually exclusive");
+
+    if (!vi.IsYUV() && !vi.IsYUVA())
+      env->ThrowError("LetterBox: color_yuv only valid for YUV color spaces");
+    color = args[6].AsInt(); // override
+    color_as_yuv = true;
+    if (!vi.IsYUVA() && (unsigned)color > 0xffffff)
+      env->ThrowError("LetterBox: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
+  }
+
   if ( (top<0) || (bot<0) || (left<0) || (right<0) ) 
     env->ThrowError("LetterBox: You cannot specify letterboxing less than 0.");
   if (top+bot>=vi.height) // Must be >= otherwise it is interpreted wrong by crop()
@@ -771,7 +809,7 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
     if (bot   & ymask)
       env->ThrowError("LetterBox: YUV images height must be divideable by %d (bottom).", ymask+1);
   }
-  return new AddBorders(left, top, right, bot, color, new Crop(left, top, vi.width-left-right, vi.height-top-bot, 0, clip, env), env);
+  return new AddBorders(left, top, right, bot, color, color_as_yuv, new Crop(left, top, vi.width-left-right, vi.height-top-bot, 0, clip, env), env);
 }
 
 

@@ -118,7 +118,7 @@ class AddBorders : public GenericVideoFilter
  **/
 {  
 public:
-  AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child, IScriptEnvironment* env);
+  AddBorders(int _left, int _top, int _right, int _bot, int _clr, bool _force_color_as_yuv, PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -131,6 +131,7 @@ public:
 private:
   /*const*/ int left, top, right, bot, clr;
   int xsub, ysub;
+  bool force_color_as_yuv;
 };
 
 
