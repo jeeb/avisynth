@@ -241,8 +241,22 @@ Packaging up everything can be quickly done with 7-zip:
 Building with Clang
 -------------------
 
-todo
+Command line: todo
 
+Using Cmake GUI:
+~~~~~~~~~~~~~~~~
+1.) Delete Cache
+2.) Choose optional platform generator (Win32 or x64)
+3.) Configure
+Specify optional toolset to use (-T) for Cmake:
+3.1.) When you have installed LLVM separately, specify "llvm" or "LLVM" as platform toolset.
+3.2.) Since Visual Studio 2019 16.4, Clang-cl 9.0 is embedded in VS. For using that, set "ClangCL" for platform toolset.
+How to install VS support (as it appears in VS2019 16.4):
+Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes 
+       [X] C++ Clang compiler for Windows 
+       [X] C++ Clang-cl for v142 build tools (x64/x86) 
+4.) Fill options, Generate
+5.) Open the generated solution with Visual Studio GUI, build/debug
 
 Building with GCC
 -----------------

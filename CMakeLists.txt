@@ -41,14 +41,16 @@ IF( MSVC )  # Check for Visual Studio
   IF(MSVC_IDE)
     message("Reported CMAKE_GENERATOR_TOOLSET is: ${CMAKE_GENERATOR_TOOLSET}")
     
-    IF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm")
-      if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") # hope: always
+    # For LLVM Clang installed separately, specify llvm or LLVM
+    # Since Visual Studio 2019 v16.4, LLVM 9.0 is integrated, for this use Toolset: ClangCL
+    IF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm" OR CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
+      if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")  # hope: always
         message("LLVM toolset was specified via -T. Compiler ID is: ${CMAKE_CXX_COMPILER_ID}; CMAKE_CXX_COMPILER_VERSION is: ${CMAKE_CXX_COMPILER_VERSION}")
-        # Clang; 8.0.0
+        # Clang; 9.0.0
         # These are probably not supported when clang is downloaded as a ready-made binary: CLANG_VERSION_MAJOR CLANG_VERSION_MINOR CLANG_VERSION_STRING
         # string (REGEX REPLACE ".*clang version ([0-9]+\\.[0-9]+).*" "\\1" CLANG_VERSION_STRING ${clang_full_version_string})
         if( CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0.1 )
-          MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required") # actually we are using 8.0
+          MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required") # as of 2019.december actually we are using 9.0
         endif()
       endif()
       set(CLANG_IN_VS "1")

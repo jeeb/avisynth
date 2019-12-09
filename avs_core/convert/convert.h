@@ -45,7 +45,7 @@ int getMatrix( const char* matrix, IScriptEnvironment* env);
  ****************************************************/
 
 // not used here, but useful to other filters
-inline int RGB2YUV(int rgb) 
+inline int RGB2YUV(int rgb) // limited range
 {
   const int cyb = int(0.114*219/255*65536+0.5);
   const int cyg = int(0.587*219/255*65536+0.5);

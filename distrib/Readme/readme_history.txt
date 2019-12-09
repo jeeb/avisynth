@@ -4,6 +4,20 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20191209 (dev 3.4.?)
+--------------------------
+- Build system: Cmake: use platform toolset "ClangCL" for using built-in Clang support of Visual Studio.
+  Since VS2019 v16.4 there is LLVM 9.0 support.
+  Use: Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes 
+       [X] C++ Clang compiler for Windows 
+       [X] C++ Clang-cl for v142 build tools (x64/x86)
+  (for LLVM Clang installed separately, please use llvm or LLVM - no change in its usage)
+- New: AddBorders, LetterBox: new color_yuv parameter like in BlankClip
+- Fix: Resizers to really resize alpha channel (YUVA, RGBPA)
+- Fix: crash when outputting VfW (e.g. VirtualDub) for YUV444P16, other fixes for r210 and R10k formats
+- WavSource: really use "utf8" parameter, fix some debug asserts
+- TimeStrech: pass internal errors as Avisynth exception text (e.g. proper "Excessive sample rate!" instead of "unhandled C++ error")
+
 20191021 3.4.0
 --------------
 
