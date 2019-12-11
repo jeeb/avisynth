@@ -4,8 +4,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20191209 (dev 3.4.?)
+20191211 (dev 3.4.?)
 --------------------------
+- Fix: Shibatch.DLL Access Violation crash when exit when target rate is the same as vi.audio_samples_per_second or audio_samples_per_second is 0
 - Build system: Cmake: use platform toolset "ClangCL" for using built-in Clang support of Visual Studio.
   Since VS2019 v16.4 there is LLVM 9.0 support.
   Use: Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes 
