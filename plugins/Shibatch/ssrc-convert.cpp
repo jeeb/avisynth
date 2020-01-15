@@ -44,7 +44,8 @@
 SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
   : GenericVideoFilter(_child), target_rate(_target_rate), fast(_fast)
 {
-  srcbuffer = 0;  // If constructor should return
+  srcbuffer = nullptr;  // If constructor should return
+  res = nullptr;
 
   if ((target_rate==vi.audio_samples_per_second)||(vi.audio_samples_per_second==0)) {
 		skip_conversion=true;

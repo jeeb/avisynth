@@ -1,4 +1,4 @@
-Avisynth+ v3.4.0 (20191206)
+Avisynth+ v3.4.1? (20200115)
 --------------------------
 
 Use the installer or copy files directly
@@ -31,8 +31,10 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20191209 (dev 3.4.?)
+20200115 (dev 3.4.1?)
 --------------------------
+- Fix: TemporalSoften possible access violation after SeparateFields (in general: after filters that only change frame pitch)
+- Fix: Shibatch.DLL Access Violation crash when exit when target rate is the same as vi.audio_samples_per_second or audio_samples_per_second is 0
 - Build system: Cmake: use platform toolset "ClangCL" for using built-in Clang support of Visual Studio.
   Since VS2019 v16.4 there is LLVM 9.0 support.
   Use: Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes 

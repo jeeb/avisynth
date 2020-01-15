@@ -2564,16 +2564,16 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       planeP[d++] = frames[radius+i]->GetReadPtr(planes[c].planeId);
     }
 
-    int rowsize = frames[radius]->GetRowSize(planes[c].planeId|PLANAR_ALIGNED);
-    int h = frames[radius]->GetHeight(planes[c].planeId);
-    int pitch = frames[radius]->GetPitch(planes[c].planeId);
+    int rowsize = CenterFrame->GetRowSize(planes[c].planeId|PLANAR_ALIGNED);
+    int h = CenterFrame->GetHeight(planes[c].planeId);
+    int pitch = CenterFrame->GetPitch(planes[c].planeId);
 
     if (scenechange>0) {
       int d2 = 0;
       bool skiprest = false;
       for (int i = radius-1; i>=0; i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
-          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c].planeId), h, pixelsize, bits_per_pixel, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], CenterFrame->GetRowSize(planes[c].planeId), h, pixelsize, bits_per_pixel, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
@@ -2588,7 +2588,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       skiprest = false;
       for (int i = radius; i < 2*radius; i++) { // Check forward frames
         if ((!skiprest)  && (!planeDisabled[i])) {   // Disable this frame on next plane (so that Y can affect UV)
-          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c].planeId), h, pixelsize, bits_per_pixel, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], CenterFrame->GetRowSize(planes[c].planeId), h, pixelsize, bits_per_pixel, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
