@@ -297,12 +297,12 @@ public:
   }
 
   /* IScriptEnvironment2 */
+#ifdef AVS_WINDOWS
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
   {
     return core->LoadPlugin(filePath, throwOnError, result);
   }
 
-#ifdef AVS_WINDOWS
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront)
   {
     core->AddAutoloadDir(dirPath, toFront);

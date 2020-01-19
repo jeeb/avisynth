@@ -5,12 +5,16 @@
 #include "../strings.h"
 #include "../InternalEnvironment.h"
 #include <cassert>
-#include <imagehlp.h>
+
+#ifdef AVS_WINDOWS
+    #include <imagehlp.h>
+#endif
 
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
 typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
 typedef const char* (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
 
+#ifdef AVS_WINDOWS // only Windows has a registry we care about
 const char RegAvisynthKey[] = "Software\\Avisynth";
 #if defined (__GNUC__)
 const char RegPluginDirPlus_GCC[] = "PluginDir+GCC";
@@ -21,6 +25,7 @@ const char RegPluginDirPlus_GCC[] = "PluginDir+GCC";
 const char RegPluginDirClassic[] = "PluginDir2_5";
 const char RegPluginDirPlus[] = "PluginDir+";
 #endif
+#endif // AVS_WINDOWS
 
 /*
 ---------------------------------------------------------------------------------
@@ -30,6 +35,7 @@ const char RegPluginDirPlus[] = "PluginDir+";
 ---------------------------------------------------------------------------------
 */
 
+#ifdef AVS_WINDOWS // translate to Linux error handling
 // Translates a Windows error code to a human-readable text message.
 static std::string GetLastErrorText(DWORD nErrorCode)
 {
@@ -163,6 +169,7 @@ static bool IsValidParameterString(const char* p) {
   // states 0, 1 are the only ending states we accept
   return state == 0 || state == 1;
 }
+#endif // AVS_WINDOWS
 
 /*
 ---------------------------------------------------------------------------------
@@ -435,6 +442,7 @@ bool AVSFunction::ArgNameMatch(const char* param_types, size_t args_names_count,
 ---------------------------------------------------------------------------------
 */
 
+#ifdef AVS_WINDOWS // translate for cross-platform loading
 #include <avs/win.h>
 struct PluginFile
 {
@@ -478,6 +486,7 @@ PluginFile::PluginFile(const std::string &filePath) :
     BaseName = FilePath;
   }
 }
+#endif // AVS_WINDOWS
 
 /*
 ---------------------------------------------------------------------------------
@@ -487,6 +496,7 @@ PluginFile::PluginFile(const std::string &filePath) :
 ---------------------------------------------------------------------------------
 */
 
+#ifdef AVS_WINDOWS // relies on all the previous things
 PluginManager::PluginManager(InternalEnvironment* env) :
   Env(env), PluginInLoad(NULL), AutoloadExecuted(false), Autoloading(false)
 {
@@ -1042,6 +1052,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 
   return true;
 }
+#endif
 
 /*
 ---------------------------------------------------------------------------------
@@ -1051,6 +1062,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 ---------------------------------------------------------------------------------
 */
 
+#ifdef AVS_WINDOWS
 AVSValue LoadPlugin(AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -1071,3 +1083,4 @@ extern const AVSFunction Plugin_functions[] = {
   {"Load_Stdcall_Plugin", BUILTIN_FUNC_PREFIX, "s+", LoadPlugin },  // for compatibility with older scripts
   { 0 }
 };
+#endif

@@ -484,13 +484,13 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   env->ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor);
   return new StaticImage(vi, frame, false);
 };
-#endif
 
 AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(args[0].AsString(), args[1].AsInt(-1),
       args[2].AsInt(-1), VideoInfo::CS_BGR32, args[3].AsBool(false),
       args[4].AsInt(0xFFFFFF), args[5].AsInt(0), args[6].AsInt(0), env);
 }
+#endif
 
 
 /********************************************************************
@@ -1960,9 +1960,11 @@ public:
 };
 
 
+#ifdef AVS_WINDOWS
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(AVS_FULLVERSION AVS_COPYRIGHT, -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
 }
+#endif
 
 
 extern const AVSFunction Source_filters[] = {
@@ -1986,12 +1988,16 @@ extern const AVSFunction Source_filters[] = {
 #endif
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
+#ifdef AVS_WINDOWS
   { "MessageClip", BUILTIN_FUNC_PREFIX, "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
+#endif
   { "ColorBars", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s[staticframes]b", ColorBars::Create, (void*)0 },
   { "ColorBarsHD", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s[staticframes]b", ColorBars::Create, (void*)1 },
   { "Tone", BUILTIN_FUNC_PREFIX, "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
+#ifdef AVS_WINDOWS
   { "Version", BUILTIN_FUNC_PREFIX, "", Create_Version },
+#endif
 
   { NULL }
 };
