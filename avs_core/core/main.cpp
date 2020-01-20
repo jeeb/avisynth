@@ -39,6 +39,7 @@
 #ifdef AVS_WINDOWS // inspect for Linux; COM/VfW stuff not needed?
 #ifdef AVS_WINDOWS
     #include <avs/win.h>
+    #include <initguid.h>
     #include <vfw.h>
     #include <intrin.h>
 #else
