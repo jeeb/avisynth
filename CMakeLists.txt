@@ -1,5 +1,5 @@
-# We need CMake 2.8.11 at least, because we use CMake features
-# "Target Usage Requirements" and "Generator Toolset selection"
+# We need CMake 3.8 at least, because we require
+# CMAKE_CXX_STANDARD to be set to C++17.
 # Visual Studio 2019 is supported from CMake 3.14.1
 
 # Tested generators:
@@ -7,7 +7,7 @@
 # "Visual Studio 15 2017" optional platform generator Win32 and x64
 # "Visual Studio 16 2019" optional platform generator Win32 and x64
 # "Visual Studio 16 2019" + LLVM 8.0 (clang) optional platform generator Win32 and x64
-CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
+CMAKE_MINIMUM_REQUIRED( VERSION 3.8.2 )
 
 project("AviSynth+")
 
@@ -15,6 +15,11 @@ project("AviSynth+")
 set(CMAKE_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 set(CMAKE_C_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 set(CMAKE_CXX_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
+
+# We require C++17 or higher.
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+set(CMAKE_CXX_EXTENSIONS FALSE)
 
 option(ENABLE_PLUGINS "Build set of default external plugins" ON)
 if (NOT WIN32)
@@ -146,10 +151,6 @@ IF( MSVC )  # Check for Visual Studio
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-gcc-compat")
   ENDIF()
 
-# Set C++17 flag
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c++17")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
-
   # Enable standards-conformance mode for MSVC compilers that support this
   # flag (Visual C++ 2017 and later). Default. DirectShowSource will remove if needed.
   if (NOT (MSVC_VERSION LESS 1910))
@@ -161,8 +162,6 @@ IF( MSVC )  # Check for Visual Studio
 
 ELSE()
 
-  # c++17: if constexpr() and others from gcc 7/clang 5
-  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++17" )
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 " )
 IF(WIN32)
   SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
