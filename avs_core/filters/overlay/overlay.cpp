@@ -124,10 +124,17 @@ GenericVideoFilter(_child) {
     if (maskVi.height!=overlayVi.height) {
       env->ThrowError("Overlay: Mask and overlay must have the same image size! (Height is not the same)");
     }
+    if (maskVi.BitsPerComponent() != overlayVi.BitsPerComponent()) {
+      env->ThrowError("Overlay: Mask and overlay must have the same bit depths!");
+    }
   }
 
   pixelsize = vi.ComponentSize();
   bits_per_pixel = vi.BitsPerComponent();
+
+  if (bits_per_pixel != overlayVi.BitsPerComponent()) {
+    env->ThrowError("Overlay: input and mask clip must have the same bit depths!");
+  }
 
   // already filled vi = child->GetVideoInfo();
   // parse and check output format override vi
