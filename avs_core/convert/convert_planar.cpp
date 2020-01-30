@@ -1019,7 +1019,7 @@ static void convert_planarrgb_to_yuv_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
       }
       // *V* ----------------
       m_bg = _mm_set1_epi32(int(((uint16_t)(m.v_g) << 16) | (uint16_t)m.v_b)); // green and blue
-      m_rR = _mm_set1_epi32(int(((uint16_t)(16384 << 16)) | (uint16_t)m.v_r)); // rounding 15 bit >> 1   and red
+      m_rR = _mm_set1_epi32(int(((uint16_t)(16384) << 16) | (uint16_t)m.v_r)); // rounding 15 bit >> 1   and red
 
       bg0123 = _mm_unpacklo_epi16(b, g);
       res1 = _mm_madd_epi16(m_bg, bg0123);
@@ -1499,7 +1499,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
         convert_planarrgb_to_yuv_uint16_sse2<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
       return dst;
     }
-
+    
     switch(bits_per_pixel) {
     case 8: convert_planarrgb_to_yuv_int_c<uint8_t, 8>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
     case 10: convert_planarrgb_to_yuv_int_c<uint16_t, 10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
