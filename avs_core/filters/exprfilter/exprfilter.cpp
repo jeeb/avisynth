@@ -53,6 +53,7 @@
 *                calculation: time = frameno/(total number of frames - 1)
 * 20180614 new parameters: scale_inputs, clamp_float
 *          implement 'clip' three operand operator like in masktools2: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
+* 20191120 yrange_min, yrange_half, yrange_max, clamp_float_UV param, allow "float_UV" for scale_inputs
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -3176,7 +3177,7 @@ generated epilog example (new):
 ********************************************************************/
 
 extern const AVSFunction Exprfilter_filters[] = {
-  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b[optSingleMode]b[optSSE2]b[scale_inputs]s[clamp_float]b", Exprfilter::Create },
+  { "Expr", BUILTIN_FUNC_PREFIX, "c+s+[format]s[optAvx2]b[optSingleMode]b[optSSE2]b[scale_inputs]s[clamp_float]b[clamp_float_UV]b", Exprfilter::Create },
   { 0 }
 };
 
@@ -3278,8 +3279,22 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   next_paramindex++;
 
   const bool clamp_float = args[next_paramindex].AsBool(false);
+  next_paramindex++;
+  
+  const bool clamp_float_UV = args[next_paramindex].AsBool(false);
 
-  return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, scale_inputs, clamp_float, env);
+  // clamp_float clamp_float_uv -> clamp_float_i   clamp range for Y clamp range for UV
+  // false       x                 0               0..1              -0.5..+0.5
+  // true        false             1               0..1              -0.5..+0.5 
+  // true        true              2               0..1              0..1
+
+  int clamp_float_i;
+  if (clamp_float)
+    clamp_float_i = clamp_float_UV ? 2 : 1;
+  else
+    clamp_float_i = 0;
+  
+  return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, scale_inputs, clamp_float_i, env);
 
 }
 
@@ -3766,7 +3781,7 @@ static int getEffectiveBitsPerComponent(int bitsPerComponent, bool autoconv_conv
 }
 
 static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma, 
-  const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float, const bool clamp_float,
+  const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float, const int clamp_float_i, const bool shift_float, 
   IScriptEnvironment *env)
 {
     // vi_output is new in avs+, and is not used yet
@@ -3998,6 +4013,18 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               }
             }
           } // end of scale inputs
+            
+          // "floatUV" - shifts -0.5 .. +0.5 chroma range to 0 .. 1.0 only when no other autoscaling is active
+          // the effect of this pre-shift is reversed at the storage phase
+          if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && realSourceBitdepth == 32) {
+            if (chroma && shift_float) {
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
+              LOAD_OP(opLoadConst, 0.5f, 0);
+              TWO_ARG_OP(opAdd);
+#endif
+            }
+          }
+
         }
         else if (tokens[i].length() == 1 && tokens[i][0] >= 'A' && tokens[i][0] <= 'Z') { // avs+
           // use of a variable: single uppercase letter A..Z
@@ -4138,7 +4165,11 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+
           float q = bitsPerComponent == 32 ? uv8tof(16) : (16 << (bitsPerComponent - 8)); // scale chroma min 16
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
+          if (shift_float && bitsPerComponent) q += 0.5f;
+#endif
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 4) == "cmax") // avs+
@@ -4154,6 +4185,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
 
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? uv8tof(240) : (240 << (bitsPerComponent - 8)); // scale chroma max 240
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
+          if (shift_float && bitsPerComponent == 32) q += 0.5f;
+#endif
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 10) == "range_size") // avs+
@@ -4185,6 +4219,24 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           // 0.0 (or -0.5 for zero based 32bit float chroma)
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) - 0.5f : 0.0f) : 0;
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
+          if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
+#endif
+          LOAD_OP(opLoadConst, q, 0);
+        }
+        else if (tokens[i].substr(0, 10) == "yrange_min")
+        {
+          int loadIndex = -1;
+          std::string toFind = "yrange_min";
+          if (tokens[i].substr(0, toFind.length()) == toFind)
+            loadIndex = getSuffix(tokens[i], toFind);
+          if (loadIndex < 0)
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
+          if (loadIndex >= numInputs)
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
+
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+          float q = bitsPerComponent == 32 ? 0.0f : 0;
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 9) == "range_max") // avs+
@@ -4201,6 +4253,25 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           // 1.0 (or 0.5 for zero based 32bit float chroma), 255, 1023,... 65535
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) + 0.5f : 1.0f) : ((1 << bitsPerComponent) - 1);
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
+          if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
+#endif
+          LOAD_OP(opLoadConst, q, 0);
+        }
+        else if (tokens[i].substr(0, 10) == "yrange_max")
+        {
+          int loadIndex = -1;
+          std::string toFind = "yrange_max";
+          if (tokens[i].substr(0, toFind.length()) == toFind)
+            loadIndex = getSuffix(tokens[i], toFind);
+          if (loadIndex < 0)
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
+          if (loadIndex >= numInputs)
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
+
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+          // 1.0, 255, 1023,... 65535
+          float q = bitsPerComponent == 32 ? 1.0f : ((1 << bitsPerComponent) - 1);
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 10) == "range_half") // avs+
@@ -4217,6 +4288,24 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           // for chroma: range_half is 0.0 for 32bit float (or 0.5 for old float chroma representation)
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) : 0.5f) : (1 << (bitsPerComponent - 1)); // 0.5f, 128, 512, ... 32768
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
+          if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
+#endif
+          LOAD_OP(opLoadConst, q, 0);
+        }
+        else if (tokens[i].substr(0, 11) == "yrange_half") // avs+
+        {
+          int loadIndex = -1;
+          std::string toFind = "yrange_half";
+          if (tokens[i].substr(0, toFind.length()) == toFind)
+            loadIndex = getSuffix(tokens[i], toFind);
+          if (loadIndex < 0)
+            env->ThrowError("Expr: Error in built-in constant expression '%s'", tokens[i].c_str());
+          if (loadIndex >= numInputs)
+            env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
+
+          int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+          float q = bitsPerComponent == 32 ? 0.5f : (1 << (bitsPerComponent - 1)); // 0.5f, 128, 512, ... 32768
           LOAD_OP(opLoadConst, q, 0);
         }
         // "scaleb" and "scalef" functions scale their operand from 8 bit to the bit depth of the first clip.
@@ -4224,10 +4313,12 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // "i8".."f32" keywords can appear anywhere in the expression, but only the last occurence will be effective for the whole expression.
         else if (tokens[i] == "scaleb") // avs+, scale by bit shift
         {
-          if (targetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
+          int effectivetargetBitDepth = getEffectiveBitsPerComponent(targetBitDepth, autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+
+          if (effectivetargetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
           {
             // upscale
-            if (targetBitDepth == 32) { // upscale to float
+            if (effectivetargetBitDepth == 32) { // upscale to float
               // divide by max, e.g. x -> x/255
               // for new 0-based chroma  : x -> (x-src_chroma_middle)/factor;
               // for old 0.5 based chroma: x -> (x-src_chroma_middle)/factor + 0.5;
@@ -4242,6 +4333,11 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
                 LOAD_OP(opLoadConst, 0.5f, 0);
                 TWO_ARG_OP(opAdd);
+#else
+                if (shift_float) { // floatUV
+                  LOAD_OP(opLoadConst, 0.5f, 0);
+                  TWO_ARG_OP(opAdd);
+                }
 #endif
                 // (x-src_middle_chroma)/factor + target_chroma_middle
               }
@@ -4254,13 +4350,13 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
             else {
               // shift left by (targetBitDepth - currentBaseBitDepth), that is mul by (1 << (targetBitDepth - currentBaseBitDepth))
-              int shifts_to_left = targetBitDepth - autoScaleSourceBitDepth;
+              int shifts_to_left = effectivetargetBitDepth - autoScaleSourceBitDepth;
               float q = (float)(1 << shifts_to_left);
               LOAD_OP(opLoadConst, q, 0);
               TWO_ARG_OP(opMul);
             }
           }
-          else if (targetBitDepth < autoScaleSourceBitDepth) // scale constant from 12 bits to 8 bit target: /16
+          else if (effectivetargetBitDepth < autoScaleSourceBitDepth) // scale constant from 12 bits to 8 bit target: /16
           {
             // downscale
             if (autoScaleSourceBitDepth == 32) {
@@ -4273,24 +4369,24 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 LOAD_OP(opLoadConst, 0.5f, 0);
                 TWO_ARG_OP(opSub);
 #endif
-                float q = (float)((1 << targetBitDepth) - 1);
+                float q = (float)((1 << effectivetargetBitDepth) - 1);
                 LOAD_OP(opLoadConst, q, 0);
                 TWO_ARG_OP(opMul);
 
-                int target_middle_chroma = 1 << (targetBitDepth - 1);
+                int target_middle_chroma = 1 << (effectivetargetBitDepth - 1);
                 LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
                 TWO_ARG_OP(opAdd);
               }
               else
               {
-                float q = (float)((1 << targetBitDepth) - 1);
+                float q = (float)((1 << effectivetargetBitDepth) - 1);
                 LOAD_OP(opLoadConst, q, 0);
                 TWO_ARG_OP(opMul);
               }
             }
             else {
               // shift right by (targetBitDepth - currentBaseBitDepth), that is div by (1 << (currentBaseBitDepth - targetBitDepth))
-              int shifts_to_right = autoScaleSourceBitDepth - targetBitDepth;
+              int shifts_to_right = autoScaleSourceBitDepth - effectivetargetBitDepth;
               float q = (float)(1 << shifts_to_right); // e.g. / 4.0  -> mul by 1/4.0 faster
               LOAD_OP(opLoadConst, 1.0f / q, 0);
               TWO_ARG_OP(opMul);
@@ -4302,10 +4398,13 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         }
         else if (tokens[i] == "scalef") // avs+, scale by full scale
         {
-          if (targetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
+          // if scale_float is used then all float input is automatically converted to integer
+          // in this case the targetBitDepth is not 32 for float clips but the actual autoscaleSourceBitDepth
+          int effectivetargetBitDepth = getEffectiveBitsPerComponent(targetBitDepth, autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+          if (effectivetargetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
           {
             // upscale
-            if (targetBitDepth == 32) { // upscale to float
+            if (effectivetargetBitDepth == 32) { // upscale to float
               if (chroma) {
                 int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
                 LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
@@ -4319,6 +4418,10 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 LOAD_OP(opLoadConst, 0.5f, 0);
                 TWO_ARG_OP(opAdd);
 #endif
+                if (shift_float) { // floatUV
+                  LOAD_OP(opLoadConst, 0.5f, 0);
+                  TWO_ARG_OP(opAdd);
+                }
               }
               else {
                 float q = (float)((1 << autoScaleSourceBitDepth) - 1); // divide by max, e.g. x -> x/255
@@ -4328,12 +4431,12 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
             else {
               // keep max pixel value e.g. 8->12 bits: x * 4095.0 / 255.0
-              float q = (float)((1 << targetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
+              float q = (float)((1 << effectivetargetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
               LOAD_OP(opLoadConst, q, 0);
               TWO_ARG_OP(opMul);
             }
           }
-          else if (targetBitDepth < autoScaleSourceBitDepth)
+          else if (effectivetargetBitDepth < autoScaleSourceBitDepth)
           {
             // downscale
             if (autoScaleSourceBitDepth == 32) {
@@ -4347,17 +4450,17 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 LOAD_OP(opLoadConst, 0.5f, 0);
                 TWO_ARG_OP(opSub);
 #endif
-                const float q = (float)((1 << targetBitDepth) - 1);
+                const float q = (float)((1 << effectivetargetBitDepth) - 1);
                 LOAD_OP(opLoadConst, q, 0);
                 TWO_ARG_OP(opMul);
 
-                const int target_middle_chroma = 1 << (targetBitDepth - 1);
+                const int target_middle_chroma = 1 << (effectivetargetBitDepth - 1);
                 LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
                 TWO_ARG_OP(opAdd);
               }
               else
               {
-                const float q = (float)((1 << targetBitDepth) - 1);
+                const float q = (float)((1 << effectivetargetBitDepth) - 1);
                 LOAD_OP(opLoadConst, q, 0);
                 TWO_ARG_OP(opMul);
               }
@@ -4365,7 +4468,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             else {
               // integer->integer
               // keep max pixel value e.g. 12->8 bits: x * 255.0 / 4095.0
-              const float q = (float)((1 << targetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
+              const float q = (float)((1 << effectivetargetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
               LOAD_OP(opLoadConst, q, 0);
               TWO_ARG_OP(opMul);
             }
@@ -4419,6 +4522,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // When scale_inputs option was used for scaling input to a common internal range, 
         // we have to scale pixels before storing them back
         // need any conversion?
+        // or use effectiveTargetBitDepth instead of autoScaleSourceBitDepth 
+
         if (autoScaleSourceBitDepth != targetBitDepth && (autoconv_conv_int || autoconv_conv_float)) {
           // We can be sure that internal source was not 32 bits float: 
           // (was checked during input conversion)
@@ -4476,23 +4581,41 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
           }
         } // end of scale inputs
+        
+        // "floatUV" - 
+        // this reverses the effect of the 0.5 float-type pre-shift is the pixel load phase
+        // pre-shifts chroma pixels by +0.5 before applying the expression (see at pixel load), 
+        // then here the result is shifted back by -0.5
+        // Thus expressions, which rely on a working range of 0..1.0 will work transparently 
+        if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && targetBitDepth == 32) {
+          if (chroma && shift_float) {
+#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
+            LOAD_OP_NOTOKEN(opLoadConst, 0.5f, 0);
+            TWO_ARG_OP_NOTOKEN(opSub);
+#endif
+          }
+        }
 
-        if (clamp_float && targetBitDepth == 32) {
+        if (clamp_float_i > 0 && targetBitDepth == 32) {
           if (chroma) {
+            // clamp_float clamp_float_uv -> clamp_float_i   clamp range for Y clamp range for UV
+            // false       x                 0               0..1              -0.5..+0.5
+            // true        false             1               0..1              -0.5..+0.5 
+            // true        true              2               0..1              0..1
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
             LOAD_OP_NOTOKEN(opLoadConst, 0.0f, 0);
             TWO_ARG_OP_NOTOKEN(opMax);
             LOAD_OP_NOTOKEN(opLoadConst, 1.0f, 0);
             TWO_ARG_OP_NOTOKEN(opMin);
 #else
-            LOAD_OP_NOTOKEN(opLoadConst, -0.5f, 0);
+            LOAD_OP_NOTOKEN(opLoadConst, clamp_float_i == 2 ? 0.0f : -0.5f, 0);
             TWO_ARG_OP_NOTOKEN(opMax);
-            LOAD_OP_NOTOKEN(opLoadConst, 0.5f, 0);
+            LOAD_OP_NOTOKEN(opLoadConst, clamp_float_i == 2 ? 1.0f : 0.5f, 0);
             TWO_ARG_OP_NOTOKEN(opMin);
 #endif
           }
           else
-          {
+          { // luma
             LOAD_OP_NOTOKEN(opLoadConst, 0.0f, 0);
             TWO_ARG_OP_NOTOKEN(opMax);
             LOAD_OP_NOTOKEN(opLoadConst, 1.0f, 0);
@@ -4935,8 +5058,8 @@ static void foldConstants(std::vector<ExprOp> &ops) {
 }
 
 Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
-  const bool _optSingleMode, const bool _optSSE2, const std::string _scale_inputs, const bool _clamp_float, IScriptEnvironment *env) :
-  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2), scale_inputs(_scale_inputs), clamp_float(_clamp_float) {
+  const bool _optSingleMode, const bool _optSSE2, const std::string _scale_inputs, const int _clamp_float_i, IScriptEnvironment *env) :
+  children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2), scale_inputs(_scale_inputs), clamp_float_i(_clamp_float_i) {
 
   vi = children[0]->GetVideoInfo();
   d.vi = vi;
@@ -4945,6 +5068,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   autoconv_full_scale = false;
   autoconv_conv_float = false;
   autoconv_conv_int = false;
+  shift_float = false;
 
   if (scale_inputs == "allf") {
     autoconv_full_scale = true;
@@ -4968,6 +5092,11 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   }
   else if (scale_inputs == "float") {
     autoconv_conv_float = true;
+  }
+  else if (scale_inputs == "floatUV") {
+    autoconv_conv_float = false; // !! really
+    // like in masktools2 2.2.20+
+    shift_float = true; // !!
   }
   else if (scale_inputs != "none") {
     env->ThrowError("Expr: scale_inputs must be 'all','allf','int','intf','float','floatf' or 'none'");
@@ -5099,7 +5228,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
       const bool chroma = (plane_enum_s == PLANAR_U || plane_enum_s == PLANAR_V);
       d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma, 
-        autoconv_full_scale, autoconv_conv_int, autoconv_conv_float, clamp_float,
+        autoconv_full_scale, autoconv_conv_int, autoconv_conv_float, clamp_float_i, shift_float,
         env), d.maxStackSize);
       foldConstants(d.ops[i]);
 
