@@ -168,6 +168,7 @@ AVSValue Default(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue IsVersionOrGreater(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue Int(AVSValue args, void*, IScriptEnvironment* env); 
 AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env); 
