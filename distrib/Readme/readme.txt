@@ -1,4 +1,4 @@
-Avisynth+ v3.5? (20200204)
+Avisynth+ v3.5? (20200205)
 --------------------------
 
 Use the installer or copy files directly
@@ -31,8 +31,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200204 (dev 3.5)
+20200205 (dev 3.5)
 --------------------------
+- Fix: RGBP to 444 8-14bit right side artifacts at specific widths
 - Fix: "scalef" and "scaleb" for 32 bit input, when scale_inputs="floatf" produced wrong result
 - Fix: missing rounder in V channel calculation of PlanarRGB->YUV 8-14bits SSE2 code
 - Overlay: show error when Overlay is fed with clips with different bit depths
