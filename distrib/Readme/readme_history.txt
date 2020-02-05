@@ -4,8 +4,30 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200115 (dev 3.4.1?)
+20200205 (dev 3.5)
 --------------------------
+- Fix: RGBP to 444 8-14bit right side artifacts at specific widths
+- Fix: "scalef" and "scaleb" for 32 bit input, when scale_inputs="floatf" produced wrong result
+- Fix: missing rounder in V channel calculation of PlanarRGB->YUV 8-14bits SSE2 code
+- Overlay: show error when Overlay is fed with clips with different bit depths
+- New function: 
+  bool IsVersionOrGreater(int majorVersion, int minorVersion [,int bugfixVersion]) function 
+  Returns true if the current version is equal or greater than the required one in the parameters. 
+  The function is checking the current version against the given parameters (similar to a Windows API function)
+  e.g. IsVersionOrGreater(3, 4) or IsVersionOrGreater(3, 5, 8)
+- New: "Expr" helpers:
+  - Constants "yrange_min", "yrange_half", "yrange_max"
+    Unlike the luma/chroma plane adaptive "range_min", "range_half", "range_max" these constants always report the luma (Y) values
+  - new parameter: bool clamp_float_UV (default false) 
+    this parameter affects clamping of chroma planes: chroma is clamped between 0..1.0 instead of -0.5..0.5s
+  - "clamp_float" is not ignored (and set to true) when parameter "scale_inputs" auto-scales 32 bit float type pixels
+  - new allowed value "floatUV" for scale_inputs.
+    In short: chroma pre-shift by 0.5 for 32 bit float pixels
+    Affects the chroma plane expressions of 32 bit float formats. 
+    Shifts the input up by 0.5 before processing it in the expression, thus values from -0.5..0.5 (zero centered) range are converted to the 0..1 (0.5 centered) one.
+    Since the expression result internally has 0..1.0 range, this then is shifted back to the original -0.5..0.5 range. (since 2.2.20)
+    Note: predefined constants such as cmin, cmax, range_min, range_max and range_half will be shifted as well, e.g. the expression will see range_half = 0.5
+  - These modifications are similar to Masktools2 2.2.20+
 - Fix: TemporalSoften possible access violation after SeparateFields (in general: after filters that only change frame pitch)
 - Fix: Shibatch.DLL Access Violation crash when exit when target rate is the same as vi.audio_samples_per_second or audio_samples_per_second is 0
 - Build system: Cmake: use platform toolset "ClangCL" for using built-in Clang support of Visual Studio.

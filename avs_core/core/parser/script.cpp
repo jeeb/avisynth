@@ -222,6 +222,7 @@ extern const AVSFunction Script_functions[] = {
 
   { "VersionNumber", BUILTIN_FUNC_PREFIX, "", VersionNumber },
   { "VersionString", BUILTIN_FUNC_PREFIX, "", VersionString },
+  { "IsVersionOrGreater", BUILTIN_FUNC_PREFIX, "[majorversion]i[minorVersion]i[bugfixVersion]i", IsVersionOrGreater },
 
   { "HasVideo", BUILTIN_FUNC_PREFIX, "c", HasVideo },
   { "HasAudio", BUILTIN_FUNC_PREFIX, "c", HasAudio },
@@ -1412,6 +1413,20 @@ AVSValue Defined(AVSValue args, void*, IScriptEnvironment*) {  return args[0].De
 AVSValue Default(AVSValue args, void*, IScriptEnvironment*) {  return args[0].Defined() ? args[0] : args[1]; }
 AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment*) {  return AVS_CLASSIC_VERSION; }
 AVSValue VersionString(AVSValue args, void*, IScriptEnvironment*) {  return AVS_FULLVERSION; }
+AVSValue IsVersionOrGreater(AVSValue args, void*, IScriptEnvironment* env)
+{ 
+  if (!args[0].Defined() || !args[1].Defined()) {
+    env->ThrowError("IsVersionOrGreater error: at least two parameters (majorVersion, minorVersion) required!");
+  }
+
+    // true when current version is at least the same or greater than the given three-part version
+  const int majorVersion = args[0].AsInt(0);
+  const int minorVersion = args[1].AsInt(0);
+  const int bugfixVersion = args[2].AsInt(0);
+  if (majorVersion != AVS_MAJOR_VER) return majorVersion < AVS_MAJOR_VER;
+  if (minorVersion != AVS_MINOR_VER) return minorVersion < AVS_MINOR_VER;
+  return bugfixVersion <= AVS_BUGFIX_VER;
+}
 
 AVSValue Int(AVSValue args, void*, IScriptEnvironment*) {  return int(args[0].AsFloat()); }
 AVSValue Frac(AVSValue args, void*, IScriptEnvironment*) {  return args[0].AsFloat() - int64_t(args[0].AsFloat()); }

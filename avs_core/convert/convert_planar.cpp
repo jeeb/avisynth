@@ -938,9 +938,8 @@ static void convert_planarrgb_to_yuv_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
   __m128i zero = _mm_setzero_si128();
 
   const int rowsize = width * sizeof(pixel_t);
-  int wmod = (rowsize / 8) * 8;
   for (int yy = 0; yy < height; yy++) {
-    for (int x = 0; x < wmod; x += 8 * sizeof(pixel_t)) {
+    for (int x = 0; x < rowsize; x += 8 * sizeof(pixel_t)) {
       __m128i res1, res2;
       __m128i m_bg, m_rR;
       __m128i bg0123, bg4567;
@@ -1044,12 +1043,10 @@ static void convert_planarrgb_to_yuv_uint8_14_sse2(BYTE *(&dstp)[3], int (&dstPi
         _mm_store_si128(reinterpret_cast<__m128i *>(dstp[2]+x), v);
       }
       /*
-      int Y = (m.offset_y + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384)>>15);
-      int U = half + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384) >> 15);
-      int V = half + (int)(((sum_t)m.v_b * b + (sum_t)m.v_g * g + (sum_t)m.v_r * r + 16384) >> 15);
-      reinterpret_cast<pixel_t *>(dstp[0])[x] = (pixel_t)clamp(Y, 0, limit);
-      reinterpret_cast<pixel_t *>(dstp[1])[x] = (pixel_t)clamp(U, 0, limit);
-      reinterpret_cast<pixel_t *>(dstp[2])[x] = (pixel_t)clamp(V, 0, limit);
+        int Y = m.offset_y + (int)(((sum_t)m.y_b * b + (sum_t)m.y_g * g + (sum_t)m.y_r * r + 16384) >> 15);
+        int U = half_i + (int)(((sum_t)m.u_b * b + (sum_t)m.u_g * g + (sum_t)m.u_r * r + 16384) >> 15);
+        int V = half_i + (int)(((sum_t)m.v_b * b + (sum_t)m.v_g * g + (sum_t)m.v_r * r + 16384) >> 15);
+      }
       */
     }
     srcp[0] += srcPitch[0];
