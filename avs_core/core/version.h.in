@@ -8,7 +8,7 @@
 
 #define       AVS_PROJECT       AviSynth+
 #define       AVS_MAJOR_VER     3
-#define       AVS_MINOR_VER     4
+#define       AVS_MINOR_VER     5
 #define       AVS_BUGFIX_VER    0
 #define       AVS_SEQREV        @AVS_SEQREV@		// e.g. 1576
 #define       AVS_BRANCH        @AVS_BRANCH@		// e.g. master
