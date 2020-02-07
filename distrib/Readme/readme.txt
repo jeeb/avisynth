@@ -1,4 +1,4 @@
-Avisynth+ v3.5? (20200205)
+Avisynth+ v3.5 (20200207)
 --------------------------
 
 Use the installer or copy files directly
@@ -31,8 +31,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200205 (dev 3.5)
+20200207 (dev 3.5)
 --------------------------
+- Layer: support RGB24 and RGB48 (internally processed as Planar RGB - lossless pre and post conversion)
 - Fix: RGBP to 444 8-14bit right side artifacts at specific widths
 - Fix: "scalef" and "scaleb" for 32 bit input, when scale_inputs="floatf" produced wrong result
 - Fix: missing rounder in V channel calculation of PlanarRGB->YUV 8-14bits SSE2 code

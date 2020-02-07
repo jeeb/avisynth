@@ -4,8 +4,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200205 (dev 3.5)
+20200207 (dev 3.5)
 --------------------------
+- Layer: support RGB24 and RGB48 (internally processed as Planar RGB - lossless pre and post conversion)
 - Fix: RGBP to 444 8-14bit right side artifacts at specific widths
 - Fix: "scalef" and "scaleb" for 32 bit input, when scale_inputs="floatf" produced wrong result
 - Fix: missing rounder in V channel calculation of PlanarRGB->YUV 8-14bits SSE2 code

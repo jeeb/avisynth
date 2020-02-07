@@ -5710,11 +5710,79 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Layer( args[0].AsClip(), args[1].AsClip(), args[2].AsString("Add"), args[3].AsInt(-1),
-                    args[4].AsInt(0), args[5].AsInt(0), args[6].AsInt(0), args[7].AsBool(true), 
+  const VideoInfo& vi1 = args[0].AsClip()->GetVideoInfo();
+  const VideoInfo& vi2 = args[1].AsClip()->GetVideoInfo();
+
+  // convert old RGB format to planar RGB
+  PClip clip1;
+  if (vi1.IsRGB24() || vi1.IsRGB48()) {
+    AVSValue new_args[1] = { args[0].AsClip() };
+    clip1 = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+  }
+  /* formats handled by Layer core
+  else if (vi1.IsRGB32() || vi1.IsRGB64()) {
+    AVSValue new_args[1] = { args[0].AsClip() };
+    clip1 = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+  }
+  else if (vi1.IsYUY2()) {
+    AVSValue new_args[1] = { args[0].AsClip() };
+    clip1 = env->Invoke("ConvertToYV16", AVSValue(new_args, 1)).AsClip();
+  }
+  */
+  else {
+    clip1 = args[0].AsClip();
+  }
+
+  PClip clip2;
+  if (vi2.IsRGB24() || vi2.IsRGB48()) {
+    AVSValue new_args[1] = { args[1].AsClip() };
+    clip2 = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+  }
+  /* formats handled by Layer core
+  else if (vi2.IsRGB32() || vi2.IsRGB64()) {
+    AVSValue new_args[1] = { args[1].AsClip() };
+    clip2 = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+  }
+  else if (vi_orig.IsYUY2()) {
+    AVSValue new_args[1] = { args[1].AsClip() };
+    clip2 = env->Invoke("ConvertToYV16", AVSValue(new_args, 1)).AsClip();
+  }
+  */
+  else {
+    clip2 = args[1].AsClip();
+  }
+
+  Layer* Result = new Layer(clip1, clip2, args[2].AsString("Add"), args[3].AsInt(-1),
+    args[4].AsInt(0), args[5].AsInt(0), args[6].AsInt(0), args[7].AsBool(true),
     args[8].AsFloatf(-1.0f), // opacity
     getPlacement(args[9], env), // chroma placement
-    env );
+    env);
+
+  if (vi1.IsRGB24()) {
+    AVSValue new_args2[1] = { Result };
+    return env->Invoke("ConvertToRGB24", AVSValue(new_args2, 1)).AsClip();
+  }
+  else if (vi1.IsRGB48()) {
+    AVSValue new_args2[1] = { Result };
+    return env->Invoke("ConvertToRGB48", AVSValue(new_args2, 1)).AsClip();
+  }
+  /* formats handled by Layer core
+  else if (vi1.IsRGB32()) {
+    AVSValue new_args2[1] = { Result };
+    return env->Invoke("ConvertToRGB32", AVSValue(new_args2, 1)).AsClip();
+  }
+  else if (vi1.IsRGB64()) {
+    AVSValue new_args2[1] = { Result };
+    return env->Invoke("ConvertToRGB64", AVSValue(new_args2, 1)).AsClip();
+  }
+  else if (vi1.IsYUY2()) {
+    AVSValue new_args2[1] = { Result };
+    return env->Invoke("ConvertToYUY2", AVSValue(new_args2, 1)).AsClip();
+  }
+  */
+
+  return Result;
+
 }
 
 
