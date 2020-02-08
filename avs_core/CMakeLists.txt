@@ -82,12 +82,14 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Specify preprocessor definitions
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
-# Windows DLL dependencies 
+# Windows DLL dependencies
 if (MSVC OR MINGW)
   target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
+else()
+  target_link_libraries("AvsCore" "pthread")
 endif()
 
-if (MSVC_IDE)    
+if (MSVC_IDE)
   # Copy output to a common folder for easy deployment
   add_custom_command(
     TARGET AvsCore
