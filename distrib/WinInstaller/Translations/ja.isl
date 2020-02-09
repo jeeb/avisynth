@@ -9,7 +9,7 @@
 [LangOptions]
 LanguageName=<65E5><672C><8A9E>
 LanguageID=$0411
-LanguageCodePage=932
+LanguageCodePage=65001
 
 [Messages]
 
