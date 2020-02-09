@@ -173,7 +173,7 @@ Source: "..\Prerequisites\VC_redist.x64.exe"; DestDir: {app}; Components: main\a
 #ifdef WITH_DOCS
 Source: "..\docs\*.css"; DestDir: "{app}\docs"; Components: docs; Flags: ignoreversion
 ;Source: "..\docs\czech\*"; DestDir: "{app}\docs\Czech"; Components: docs\cs; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\english\*"; DestDir: "{app}\docs\English"; Components: docs\en docs\enall; Flags: ignoreversion recursesubdirs 
+Source: "..\docs\english\build\html\*"; DestDir: "{app}\docs\English"; Components: docs\en docs\enall; Flags: ignoreversion recursesubdirs 
 ;Source: "..\docs\french\*"; DestDir: "{app}\docs\French"; Components: docs\fr; Flags: ignoreversion recursesubdirs 
 ;Source: "..\docs\german\*"; DestDir: "{app}\docs\German"; Components: docs\de; Flags: ignoreversion recursesubdirs 
 ;Source: "..\docs\italian\*"; DestDir: "{app}\docs\Italian"; Components: docs\it; Flags: ignoreversion recursesubdirs 
