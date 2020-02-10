@@ -36,6 +36,8 @@
 
 #ifdef ENABLE_FILTER_EXPRFILTER
 
+#include <stdint.h>
+
 #pragma once
 #ifndef JITASM_H
 #define JITASM_H

@@ -4,6 +4,9 @@
 #define __Exprfilter_h
 
 #include <avisynth.h>
+#ifdef AVS_LINUX
+#include <sys/mman.h>
+#endif
 
 #define MAX_EXPR_INPUTS 26
 #define INTERNAL_VARIABLES 2
@@ -173,7 +176,7 @@ public:
   ~Exprfilter();
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  inline void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     children[0]->GetAudio(buf, start, count, env);
   }
 

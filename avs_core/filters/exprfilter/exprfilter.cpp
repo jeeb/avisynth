@@ -95,14 +95,18 @@
 #include "avs/alignment.h"
 
 #define VS_TARGET_CPU_X86
+#ifdef AVS_WINDOWS
 #define VS_TARGET_OS_WINDOWS
+#endif
 #include "exprfilter.h"
 
 #ifdef VS_TARGET_CPU_X86
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#ifdef AVS_WINDOWS // jitasm currently doesn't build on Linux
 #include "jitasm.h"
+#endif
 #ifndef VS_TARGET_OS_WINDOWS
 #include <sys/mman.h>
 #endif
@@ -263,8 +267,8 @@ enum {
 
 #define XCONST(x) { x, x, x, x }
 #define MAKEDWORD(ch0, ch1, ch2, ch3)                              \
-                ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |   \
-                ((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24 ))
+                ((uint32_t)(unsigned char)(ch0) | ((uint32_t)(unsigned char)(ch1) << 8) |   \
+                ((uint32_t)(unsigned char)(ch2) << 16) | ((uint32_t)(unsigned char)(ch3) << 24 ))
 #define XBYTECONST(a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15) \
   { (int)MAKEDWORD(a0,a1,a2,a3), (int)MAKEDWORD(a4,a5,a6,a7), (int)MAKEDWORD(a8,a9,a10,a11), (int)MAKEDWORD(a12,a13,a14,a15) }
 
@@ -561,6 +565,7 @@ vcvtdq2ps(aTmp,aTmp); \
 vmulps(aTmp, aTmp, d); \
 vsubps(x, x, aTmp); }
 
+#ifdef AVS_WINDOWS // jitasm currently doesn't build on Linux
 struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intptr_t *, intptr_t, intptr_t> {
 
   std::vector<ExprOp> ops;
@@ -3180,6 +3185,7 @@ generated epilog example (new):
 };
 
 #endif
+#endif // AVS_WINDOWS
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -5314,6 +5320,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
         int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
 
+#ifdef AVS_WINDOWS
         if (optAvx2 && d.planeOptAvx2[i]) {
 
           // avx2
@@ -5339,6 +5346,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
             memcpy((void *)d.proc[i], ExprObj.GetCode(), ExprObj.GetCodeSize());
           }
         }
+#endif // AVS_WINDOWS
 
 
 #if 0
