@@ -4,7 +4,7 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200207 (dev 3.5)
+20200210 (dev 3.5)
 --------------------------
 - Layer: support RGB24 and RGB48 (internally processed as Planar RGB - lossless pre and post conversion)
 - Fix: RGBP to 444 8-14bit right side artifacts at specific widths
@@ -22,6 +22,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   - new parameter: bool clamp_float_UV (default false) 
     this parameter affects clamping of chroma planes: chroma is clamped between 0..1.0 instead of -0.5..0.5s
   - "clamp_float" is not ignored (and set to true) when parameter "scale_inputs" auto-scales 32 bit float type pixels
+  - New "yscalef" and "yscaleb" keywords similar to "scalef" and "scaleb" but scaling is forced to use rules for Y (non-UV) planes
   - new allowed value "floatUV" for scale_inputs.
     In short: chroma pre-shift by 0.5 for 32 bit float pixels
     Affects the chroma plane expressions of 32 bit float formats. 

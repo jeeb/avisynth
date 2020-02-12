@@ -54,6 +54,7 @@
 * 20180614 new parameters: scale_inputs, clamp_float
 *          implement 'clip' three operand operator like in masktools2: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
 * 20191120 yrange_min, yrange_half, yrange_max, clamp_float_UV param, allow "float_UV" for scale_inputs
+*          yscalef, yscaleb forcing non-chroma rules for scaling even when processing chroma planes
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -3786,7 +3787,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
 {
     // vi_output is new in avs+, and is not used yet
 
-    // optional scaling, scale_from it depth, default scale_to bitdepth, used in scaleb and scalef
+    // optional scaling, scale_from bit depth, default scale_to bitdepth, used in scaleb and scalef (yscaleb, yscalef)
     int targetBitDepth = vi[0]->BitsPerComponent(); // avs+
     int autoScaleSourceBitDepth = 8; // avs+ scalable constants are in 8 bit range by default
 
@@ -4311,9 +4312,10 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // "scaleb" and "scalef" functions scale their operand from 8 bit to the bit depth of the first clip.
         // "i8", "i10", "i14", "i16" and "f32" (typically at the beginning of the expression) sets the scale-base to 8..16 bits or float, respectively.
         // "i8".."f32" keywords can appear anywhere in the expression, but only the last occurence will be effective for the whole expression.
-        else if (tokens[i] == "scaleb") // avs+, scale by bit shift
+        else if (tokens[i] == "scaleb" || tokens[i] == "yscaleb") // avs+, scale by bit shift
         {
           int effectivetargetBitDepth = getEffectiveBitsPerComponent(targetBitDepth, autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+          const bool forceNonUV = (tokens[i] == "yscaleb");
 
           if (effectivetargetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
           {
@@ -4322,7 +4324,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               // divide by max, e.g. x -> x/255
               // for new 0-based chroma  : x -> (x-src_chroma_middle)/factor;
               // for old 0.5 based chroma: x -> (x-src_chroma_middle)/factor + 0.5;
-              if (chroma) {
+              if (chroma && !forceNonUV) {
                 int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
                 LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
                 TWO_ARG_OP(opSub);
@@ -4363,7 +4365,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               // scale 32 bits (0..1.0) -> 8-16 bits
               // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
               // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
-              if (chroma) {
+              if (chroma && !forceNonUV) {
                 // (x-src_middle_chroma)*factor + target_middle_chroma
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
                 LOAD_OP(opLoadConst, 0.5f, 0);
@@ -4396,16 +4398,18 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             // no scaling is needed. Bit depth of constant is the same as of the reference clip 
           }
         }
-        else if (tokens[i] == "scalef") // avs+, scale by full scale
+        else if (tokens[i] == "scalef" || tokens[i] == "yscalef") // avs+, scale by full scale
         {
           // if scale_float is used then all float input is automatically converted to integer
           // in this case the targetBitDepth is not 32 for float clips but the actual autoscaleSourceBitDepth
           int effectivetargetBitDepth = getEffectiveBitsPerComponent(targetBitDepth, autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
+          const bool forceNonUV = (tokens[i] == "yscalef");
+
           if (effectivetargetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
           {
             // upscale
             if (effectivetargetBitDepth == 32) { // upscale to float
-              if (chroma) {
+              if (chroma && !forceNonUV) {
                 int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
                 LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
                 TWO_ARG_OP(opSub);
@@ -4444,7 +4448,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               // scale 32 bits (0..1.0) -> 8-16 bits
               // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
               // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
-              if (chroma) {
+              if (chroma && !forceNonUV) {
                 // (x-src_middle_chroma)*factor + target_middle_chroma
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
                 LOAD_OP(opLoadConst, 0.5f, 0);
