@@ -1,4 +1,4 @@
-Avisynth+ v3.5 (20200207)
+Avisynth+ v3.5 (20200214)
 --------------------------
 
 Use the installer or copy files directly
@@ -31,8 +31,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200207 (dev 3.5)
+20200214 (dev 3.5)
 --------------------------
+- Fix potential crash on exit or cache shrink (linux/gcc only?)
 - Layer: support RGB24 and RGB48 (internally processed as Planar RGB - lossless pre and post conversion)
 - Fix: RGBP to 444 8-14bit right side artifacts at specific widths
 - Fix: "scalef" and "scaleb" for 32 bit input, when scale_inputs="floatf" produced wrong result
@@ -49,6 +50,7 @@ Short info for plugin writers
   - new parameter: bool clamp_float_UV (default false) 
     this parameter affects clamping of chroma planes: chroma is clamped between 0..1.0 instead of -0.5..0.5s
   - "clamp_float" is not ignored (and set to true) when parameter "scale_inputs" auto-scales 32 bit float type pixels
+  - new "yscalef" and "yscaleb" keywords similar to "scalef" and "scaleb" but scaling is forced to use rules for Y (non-UV) planes
   - new allowed value "floatUV" for scale_inputs.
     In short: chroma pre-shift by 0.5 for 32 bit float pixels
     Affects the chroma plane expressions of 32 bit float formats. 
