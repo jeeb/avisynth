@@ -961,8 +961,8 @@ ScriptEnvironment::ScriptEnvironment()
     prefetcher(NULL),
     BufferPool(this)
 {
-#ifdef AVS_WINDOWS // needs linux alternative, maybe?
   try {
+#ifdef AVS_WINDOWS // needs linux alternative
     // Make sure COM is initialised
     hrfromcoinit = CoInitialize(NULL);
 
@@ -979,8 +979,11 @@ ScriptEnvironment::ScriptEnvironment()
     memstatus.dwLength = sizeof(memstatus);
     GlobalMemoryStatusEx(&memstatus);
     memory_max = ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
+#else
+    memory_max = 4096ull*1024*1024; // fixme: win: ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
+#endif
     const bool isX64 = sizeof(void *) == 8;
-    memory_max = min(memory_max, (isX64 ? 4096 : 1024)*(1024*1024ull));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
+    memory_max = min(memory_max, (uint64_t)((isX64 ? 4096 : 1024)*(1024*1024ull)));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
     memory_used = 0ull;
 
     global_var_table = new VarTable(0, 0);
@@ -998,11 +1001,13 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFileUtf8$", AVSValue());
     global_var_table->Set("$ScriptDirUtf8$", AVSValue());
 
+#ifdef AVS_WINDOWS
     plugin_manager = new PluginManager(this);
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
+#endif
 
     global_var_table->Set("LOG_ERROR",   (int)LOGLEVEL_ERROR);
     global_var_table->Set("LOG_WARNING", (int)LOGLEVEL_WARNING);
@@ -1018,15 +1023,16 @@ ScriptEnvironment::ScriptEnvironment()
     LogTickets.max_load_factor(0.8f);
   }
   catch (const AvisynthError &err) {
+#ifdef AVS_WINDOWS
     if(SUCCEEDED(hrfromcoinit)) {
       hrfromcoinit=E_FAIL;
       CoUninitialize();
     }
     // Needs must, to not loose the text we
     // must leak a little memory.
+#endif
     throw AvisynthError(_strdup(err.msg));
   }
-#endif
 }
 
 MtMode __stdcall ScriptEnvironment::GetDefaultMtMode() const
@@ -3139,7 +3145,9 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version)
   * to shut down immediately instead of continuing to spin.
   * This solves our problem at the cost of some performance.
   */
+#ifdef AVS_WINDOWS
   _putenv("OMP_WAIT_POLICY=passive");
+#endif
 
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment();

@@ -47,6 +47,7 @@
     #include <avs/linux.h>
     #include "os/win32_string_compat.h"
     #include <dirent.h>
+    #include <filesystem>
 #endif
 
 #include <avs/minmax.h>
@@ -367,7 +368,7 @@ std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string)
   auto s_ansi = std::make_unique<char[]>(len + 1);
   WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
   // int succ = wcstombs(s_ansi, w_string, len +1); 
-  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
   return s_ansi;
 }
 
@@ -377,7 +378,7 @@ std::unique_ptr<char[]> WideCharToAnsiACP(const wchar_t *w_string)
   auto s_ansi = std::make_unique<char[]>(len + 1);
   WideCharToMultiByte(CP_ACP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
   // int succ = wcstombs(s_ansi, w_string, len +1); 
-  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
   return s_ansi;
 }
 
@@ -645,37 +646,49 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     }
 
 #else // adapted from AvxSynth
-    char full_path[FILENAME_MAX];
-    char *file_part;
-    const char *dir_part = strlen(full_path) - strlen(file_part);
+//    char full_path[FILENAME_MAX];
+//    char *file_part;
+
+    std::string file_part = std::filesystem::path(script_name).filename().string();
+    std::string full_path = std::filesystem::path(script_name).remove_filename();
+    std::string dir_part = std::filesystem::path(script_name).parent_path();
+
+    //env->ThrowError("Import: test scn=%s,file_part=%s,full=%s,dir=%s\n", script_name, file_part.c_str(), full_path.c_str(),dir_part.c_str() );
+    //Import: script_name =./test.avs
+    //        file_part   =test.avs
+    //        full_path   =./
+    //       ,dir_part    =.
+    // PF utf8 needed
+/* PFdebug off    const char *dir_part = strlen(full_path) - strlen(file_part);
 
     if(NULL == realpath(script_name, full_path))
       env->ThrowError("Import: unable to open \"%s\" (path invalid?)", script_name);
-
-    FILE* h = fopen(full_path, "r");
+*/
+//    FILE* h = fopen(full_path, "r");
+    FILE* h = fopen(script_name, "r");
     if(NULL == h)
-      env->ThrowError("Import: couldn't open \"%s\"", full_path);
+      env->ThrowError("Import: couldn't open \"%s\"", script_name );
 
-    env->SetGlobalVar("$ScriptName$", env->SaveString(full_path));
-    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
-    env->SetGlobalVar("$ScriptDir$", env->SaveString(dir_part));
+    env->SetGlobalVar("$ScriptName$", env->SaveString(script_name));
+    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part.c_str()));
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path.c_str()));
     if (MainScript)
     {
-      env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path));
-      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part));
-      env->SetGlobalVar("$MainScriptDir$", env->SaveString(dir_part));
+      env->SetGlobalVar("$MainScriptName$", env->SaveString(script_name));
+      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part.c_str()));
+      env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path.c_str()));
     }
 
-    *file_part = 0; // trunc full_path to dir-only
-    CWDChanger change_cwd(full_path);
+    //*file_part = 0; // trunc full_path to dir-only
+    CWDChanger change_cwd(full_path.c_str());
     // end of filename parsing / file open things
 
-//    fseek(h, 0, SEEK_END);
-    uint32_t size = ftell(h);
-//    fseek(h, 0, SEEK_SET);
+    fseek(h, 0, SEEK_END);
+    size_t size = ftell(h);
+    fseek(h, 0, SEEK_SET);
 
-    char* buf(size+1);
-    if(size != fread(buf, 1, size, h))
+    std::vector<char> buf(size + 1, 0);
+    if(size != fread(buf.data(), 1, size, h))
       env->ThrowError("Import: unable to read \"%s\"", script_name);
 
     fclose(h);
@@ -685,9 +698,10 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 #ifdef AVS_WINDOWS
     AVSValue eval_args[] = { buf.data(), script_name };
 #else
-    AVSValue eval_args[] = { buf, script_name };
+    AVSValue eval_args[] = { buf.data(), script_name };
 #endif
     result = env->Invoke("Eval", AVSValue(eval_args, 2));
+    //env->ThrowError("Import: test %s size %d\n", buf.data(), (int)size);
   }
 
   env->SetGlobalVar("$ScriptName$", lastScriptName);
