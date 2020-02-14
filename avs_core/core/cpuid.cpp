@@ -26,7 +26,13 @@
 #else
 #include <x86intrin.h>
 #include <cpuid.h>
-#define __cpuid __get_cpuid_max
+#undef __cpuid
+
+static inline void __cpuid(int cpuinfo[4], int id) {
+    unsigned int *i = reinterpret_cast<unsigned int *>(cpuinfo);
+    __get_cpuid(id, &i[0], &i[1], &i[2], &i[3]);
+}
+
 #endif
 
 #define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
