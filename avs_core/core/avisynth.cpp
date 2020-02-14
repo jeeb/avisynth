@@ -1022,15 +1022,12 @@ ScriptEnvironment::~ScriptEnvironment() {
       ++it2)
     {
       VideoFrameBuffer *vfb = it2->first;
-      delete vfb;
       // iterate through frames belonging to this vfb
       for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
       it3 != end_it3;
         ++it3)
       {
         VideoFrame *frame = it3->frame;
-
-        frame->vfb = 0;
 
         //assert(0 == frame->refcount);
         if (0 == frame->refcount)
@@ -1042,6 +1039,7 @@ ScriptEnvironment::~ScriptEnvironment() {
           somethingLeaks = true;
         }
       } // it3
+      delete vfb;
     } // it2
   } // it
 
@@ -1797,7 +1795,6 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       if (0 == vfb->refcount) // vfb refcount check
       {
         memory_used -= vfb->GetDataSize(); // frame->vfb->GetDataSize();
-        delete vfb;
         const VideoFrameArrayType::iterator end_it3 = it2->second.end(); // const
         for (VideoFrameArrayType::iterator it3 = it2->second.begin();
           it3 != end_it3;
@@ -1807,6 +1804,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           assert(0 == currentframe->refcount);
           delete currentframe;
         }
+        delete vfb;
         // delete array belonging to this vfb in one step
         it2->second.clear(); // clear frame list
         it2 = (it->second).erase(it2); // clear current vfb
@@ -1939,8 +1937,6 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
           _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%Iu freed=%d\n", request, vfb->GetDataSize());
           memory_used -= vfb->GetDataSize();
           VideoFrameBuffer *_vfb = vfb;
-          delete vfb;
-          ++freed_vfb_count;
           const VideoFrameArrayType::iterator end_it3 = it2->second.end();
           for (VideoFrameArrayType::iterator it3 = it2->second.begin();
             it3 != end_it3;
@@ -1959,6 +1955,8 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
               _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount); // P.F.
             }
           }
+          delete vfb;
+          ++freed_vfb_count;
           // delete array belonging to this vfb in one step
           it2->second.clear(); // clear frame list
           it2 = (it->second).erase(it2); // clear vfb entry
