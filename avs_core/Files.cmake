@@ -16,6 +16,8 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
 
   "core/os/PluginManager_win32.cpp"
   "core/os/PluginManager.h"
+  "core/os/*.cpp"
+  "core/os/*.h"
 
   "core/parser/*.c"
   "core/parser/*.cpp"

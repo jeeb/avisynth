@@ -47,19 +47,3 @@ char *_strlwr(char *str)
 
     return str;
 }
-
-
-intptr_t _findfirst(const char *filespec, struct _finddata_t *fileinfo)
-{
-    DIR* pDir = opendir(".");
-    if(NULL == pDir)
-        return 0;
-
-    char fullFilename[PATH_MAX];
-    memset(fullFilename, 0, PATH_MAX*sizeof(char));
-    char* pRetVal = realpath(filespec, fullFilename);
-    if((NULL == pRetVal) || (0 == strlen(fullFilename)))
-        return -1;
-
-	return 0;
-}

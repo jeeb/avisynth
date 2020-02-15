@@ -1334,12 +1334,10 @@ public:
   virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
 
   // Plugin functions
-#ifdef AVS_WINDOWS
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
   virtual void __stdcall ClearAutoloadDirs() = 0;
   virtual void __stdcall AutoloadPlugins() = 0;
-#endif
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
   virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
 

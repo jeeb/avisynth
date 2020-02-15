@@ -39,6 +39,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <vector>
+#include <fstream>
 
 #ifdef AVS_WINDOWS
     #include <io.h>
@@ -1125,24 +1126,7 @@ AVSValue Undefined(AVSValue args, void*, IScriptEnvironment*) { return AVSValue(
 
 AVSValue Exist(AVSValue args, void*, IScriptEnvironment*nv) {
   const char *filename = args[0].AsString();
-
-  if (strchr(filename, '*') || strchr(filename, '?')) // wildcard
-      return false;
-
-  struct _finddata_t c_file;
-
-  intptr_t f = _findfirst(filename, &c_file);
-
-  if (f == -1)
-      return false;
-
-#ifdef AVS_WINDOWS
-  _findclose(f);
-#else
-  closedir(f);
-#endif
-
-  return true;
+  return std::ifstream(filename).good();
 }
 
 

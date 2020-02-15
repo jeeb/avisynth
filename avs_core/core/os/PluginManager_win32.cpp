@@ -5,6 +5,9 @@
 #include "../strings.h"
 #include "../InternalEnvironment.h"
 #include <cassert>
+#include <filesystem>
+#include "findfirst.h"
+namespace fs = std::filesystem;
 
 #ifdef AVS_WINDOWS
     #include <imagehlp.h>
@@ -27,6 +30,12 @@ const char RegPluginDirPlus[] = "PluginDir+";
 #endif
 #endif // AVS_WINDOWS
 
+#ifdef AVS_LINUX
+#include <dlfcn.h>
+// Redifining these is easier than adding several ifdefs.
+#define HMODULE void*
+#define FreeLibrary dlclose
+#endif
 /*
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
@@ -76,21 +85,11 @@ static bool GetRegString(HKEY rootKey, const char path[], const char entry[], st
     return true;
 }
 
+#endif // AVS_WINDOWS
+
 static std::string GetFullPathNameWrap(const std::string &f)
 {
-  // Get the lenght of the buffer we need
-  DWORD len = GetFullPathName(f.c_str(), 0, NULL, NULL);
-
-  // Reserve space and make call
-  char *fullPathName = new char[len];
-  GetFullPathName(f.c_str(), len, fullPathName, NULL);
-
-  // Wrap into C++ string
-  std::string result(fullPathName);
-
-  // Cleanup and return
-  delete [] fullPathName;
-  return result;
+  return fs::absolute(fs::path(f).lexically_normal());
 }
 
 static bool IsParameterTypeSpecifier(char c) {
@@ -169,7 +168,6 @@ static bool IsValidParameterString(const char* p) {
   // states 0, 1 are the only ending states we accept
   return state == 0 || state == 1;
 }
-#endif // AVS_WINDOWS
 
 /*
 ---------------------------------------------------------------------------------
@@ -441,9 +439,10 @@ bool AVSFunction::ArgNameMatch(const char* param_types, size_t args_names_count,
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 */
-
-#ifdef AVS_WINDOWS // translate for cross-platform loading
+#ifdef AVS_WINDOWS
 #include <avs/win.h>
+#endif
+
 struct PluginFile
 {
   std::string FilePath;             // Fully qualified, canonical file path
@@ -486,7 +485,6 @@ PluginFile::PluginFile(const std::string &filePath) :
     BaseName = FilePath;
   }
 }
-#endif // AVS_WINDOWS
 
 /*
 ---------------------------------------------------------------------------------
@@ -496,7 +494,6 @@ PluginFile::PluginFile(const std::string &filePath) :
 ---------------------------------------------------------------------------------
 */
 
-#ifdef AVS_WINDOWS // relies on all the previous things
 PluginManager::PluginManager(InternalEnvironment* env) :
   Env(env), PluginInLoad(NULL), AutoloadExecuted(false), Autoloading(false)
 {
@@ -515,7 +512,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 {
   if (AutoloadExecuted)
     Env->ThrowError("Cannot modify directory list after the autoload procedure has already executed.");
-
+#ifdef AVS_WINDOWS
   std::string dir(dirPath);
 
   // get folder of our executable
@@ -562,6 +559,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
     AutoloadDirs.insert(AutoloadDirs.begin(), GetFullPathNameWrap(dir));
   else
     AutoloadDirs.push_back(GetFullPathNameWrap(dir));
+#endif // AVS_WINDOWS
 }
 
 void PluginManager::AutoloadPlugins()
@@ -582,16 +580,16 @@ void PluginManager::AutoloadPlugins()
     std::string filePattern = concat(dir, binaryFilter);
 
     // Iterate through all files in directory
-    WIN32_FIND_DATA fileData;
-    HANDLE hFind = FindFirstFile(filePattern.c_str(), &fileData);
-    for (BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
+    _finddata_t fileData;
+    intptr_t hFind = _findfirst(filePattern.c_str(), &fileData);
+    for (bool bContinue = hFind;
           bContinue;
-          bContinue = FindNextFile(hFind, &fileData)
+          bContinue = (_findnext(hFind, &fileData) != -1)
         )
     {
-      if ((fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)  // do not add directories
+      if ((fileData.attrib & _A_SUBDIR) == 0)  // do not add directories
       {
-        PluginFile p(concat(dir, fileData.cFileName));
+        PluginFile p(concat(dir, fileData.name));
 
         // Search for loaded plugins with the same base name.
         for (size_t i = 0; i < AutoLoadedPlugins.size(); ++i)
@@ -609,7 +607,7 @@ void PluginManager::AutoloadPlugins()
         LoadPlugin(p, false, &dummy);
       }
     } // for bContinue
-    FindClose(hFind);
+    _findclose(hFind);
   }
 
   // Load script imports
@@ -621,16 +619,16 @@ void PluginManager::AutoloadPlugins()
     std::string filePattern = concat(dir, scriptFilter);
 
     // Iterate through all files in directory
-    WIN32_FIND_DATA fileData;
-    HANDLE hFind = FindFirstFile(filePattern.c_str(), &fileData);
-    for (BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
+    _finddata_t fileData;
+    intptr_t hFind = _findfirst(filePattern.c_str(), &fileData);
+    for (bool bContinue = hFind;
           bContinue;
-          bContinue = FindNextFile(hFind, &fileData)
+          bContinue = (_findnext(hFind, &fileData) != -1)
         )
     {
-      if ((fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)  // do not add directories
+      if ((fileData.attrib & _A_SUBDIR) == 0)  // do not add directories
       {
-        PluginFile p(concat(dir, fileData.cFileName));
+        PluginFile p(concat(dir, fileData.name));
 
         // Search for loaded imports with the same base name.
         for (size_t i = 0; i < AutoLoadedImports.size(); ++i)
@@ -648,7 +646,7 @@ void PluginManager::AutoloadPlugins()
         AutoLoadedImports.push_back(p);
       }
     } // for bContinue
-    FindClose(hFind);
+    _findclose(hFind);
   }
 
   Autoloading = false;
@@ -721,7 +719,7 @@ bool PluginManager::LoadPlugin(const char* path, bool throwOnError, AVSValue *re
   auto pf = PluginFile { path };
   return LoadPlugin(pf, throwOnError, result);
 }
-
+#ifdef AVS_WINDOWS
 static bool Is64BitDLL(std::string sDLL, bool &bIs64BitDLL)
 {
   bIs64BitDLL = false;
@@ -740,7 +738,7 @@ static bool Is64BitDLL(std::string sDLL, bool &bIs64BitDLL)
 
   return true;
 }
-
+#endif //AVS_WINDOWS
 bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result)
 {
   std::vector<PluginFile>& PluginList = Autoloading ? AutoLoadedPlugins : LoadedPlugins;
@@ -755,6 +753,7 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
     }
   }
 
+#ifdef AVS_WINDOWS
   // Search for dependent DLLs in the plugin's directory too
   size_t slash_pos = plugin.FilePath.rfind('/');
   std::string plugin_dir = plugin.FilePath.substr(0, slash_pos);;
@@ -784,6 +783,12 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
     else
       return false;
   }
+#endif
+#ifdef AVS_LINUX
+  plugin.Library = dlopen(plugin.FilePath.c_str(), RTLD_LAZY);
+  if (plugin.Library == NULL)
+    Env->ThrowError("Cannot load file '%s'.", plugin.FilePath.c_str());
+#endif
 
   // Try to load various plugin interfaces
   if (!TryAsAvs26(plugin, result))
@@ -923,7 +928,9 @@ std::string PluginManager::PluginLoading() const
 bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
 {
   extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
-#ifdef GCC_WIN32
+#ifdef AVS_LINUX
+  AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)dlsym(plugin.Library, "AvisynthPluginInit3");
+#elif defined(GCC_WIN32)
   AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit3");
   if (!AvisynthPluginInit3)
     AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "AvisynthPluginInit3@8");
@@ -947,7 +954,9 @@ bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
 
 bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
 {
-#ifdef GCC_WIN32
+#ifdef AVS_LINUX
+  AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)dlsym(plugin.Library, "AvisynthPluginInit2");
+#elif defined(GCC_WIN32)
   AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit2");
   if (!AvisynthPluginInit2)
     AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "AvisynthPluginInit2@4");
@@ -971,6 +980,7 @@ bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
 
 bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 {
+#ifdef AVS_WINDOWS
 #ifdef _WIN64
   AvisynthCPluginInitFunc AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init");
   if (!AvisynthCPluginInit)
@@ -1051,8 +1061,11 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
   }
 
   return true;
+#else // AVS_LINUX
+  // TODO (Though I doubt anybody wants this)
+  return false;
+#endif // AVS_WINDOWS
 }
-#endif
 
 /*
 ---------------------------------------------------------------------------------
@@ -1062,7 +1075,6 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 ---------------------------------------------------------------------------------
 */
 
-#ifdef AVS_WINDOWS
 AVSValue LoadPlugin(AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -1083,4 +1095,3 @@ extern const AVSFunction Plugin_functions[] = {
   {"Load_Stdcall_Plugin", BUILTIN_FUNC_PREFIX, "s+", LoadPlugin },  // for compatibility with older scripts
   { 0 }
 };
-#endif

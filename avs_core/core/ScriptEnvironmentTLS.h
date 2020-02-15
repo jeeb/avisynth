@@ -297,7 +297,6 @@ public:
   }
 
   /* IScriptEnvironment2 */
-#ifdef AVS_WINDOWS
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
   {
     return core->LoadPlugin(filePath, throwOnError, result);
@@ -317,7 +316,6 @@ public:
   {
     core->AutoloadPlugins();
   }
-#endif
 
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar)
   {

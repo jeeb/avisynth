@@ -78,9 +78,7 @@ extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Convolution_filters[], Edit_filters[], Field_filters[],
                    Focus_filters[], Fps_filters[], Histogram_filters[],
                    Layer_filters[], Levels_filters[], Misc_filters[],
-#ifdef AVS_WINDOWS
                    Plugin_functions[],
-#endif
                    Resample_filters[], Resize_filters[],
                    Script_functions[], Source_filters[],
 #ifdef ENABLE_FILTER_TEXTOVERLAY
@@ -110,9 +108,7 @@ const AVSFunction* const builtin_functions[] = {
                    Transform_filters, Merge_filters, Color_filters,
                    Debug_filters, Turn_filters,
                    Conditional_filters, Conditional_funtions_filters,
-#ifdef AVS_WINDOWS
                    Plugin_functions,
-#endif
                    Cache_filters,
                    Overlay_filters, Greyscale_filters,
 #ifdef ENABLE_FILTER_EXPRFILTER
@@ -759,12 +755,10 @@ public:
   virtual int  __stdcall GetVar(const char* name, int def) const;
   virtual double  __stdcall GetVar(const char* name, double def) const;
   virtual const char*  __stdcall GetVar(const char* name, const char* def) const;
-#ifdef AVS_WINDOWS
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
   virtual void __stdcall ClearAutoloadDirs();
   virtual void __stdcall AutoloadPlugins();
-#endif
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar);
   virtual bool __stdcall InternalFunctionExists(const char* name);
   virtual int __stdcall IncrImportDepth();
@@ -805,9 +799,7 @@ private:
   AtExiter at_exit;
   ThreadPool * thread_pool;
 
-#ifdef AVS_WINDOWS
   PluginManager *plugin_manager;
-#endif
 
   VarTable* global_var_table;
   VarTable* var_table;
@@ -949,9 +941,7 @@ ScriptEnvironment::ScriptEnvironment()
   : at_exit(),
     vsprintf_buf(NULL),
     vsprintf_len(0),
-#ifdef AVS_WINDOWS
     plugin_manager(NULL),
-#endif
     hrfromcoinit(E_FAIL), coinitThreadId(0),
     PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
     closing(false),
@@ -1001,8 +991,8 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFileUtf8$", AVSValue());
     global_var_table->Set("$ScriptDirUtf8$", AVSValue());
 
-#ifdef AVS_WINDOWS
     plugin_manager = new PluginManager(this);
+#ifdef AVS_WINDOWS
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
@@ -1490,7 +1480,6 @@ int __stdcall ScriptEnvironment::DecrImportDepth()
   return ImportDepth;
 }
 
-#ifdef AVS_WINDOWS
 bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
 {
   // Autoload needed to ensure that manual LoadPlugin() calls always override autoloaded plugins.
@@ -1499,9 +1488,7 @@ bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnE
   this->AutoloadPlugins();
   return plugin_manager->LoadPlugin(filePath, throwOnError, result);
 }
-#endif
 
-#ifdef AVS_WINDOWS
 void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFront)
 {
   plugin_manager->AddAutoloadDir(dirPath, toFront);
@@ -1516,7 +1503,6 @@ void __stdcall ScriptEnvironment::AutoloadPlugins()
 {
   plugin_manager->AutoloadPlugins();
 }
-#endif
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
 
@@ -1542,11 +1528,7 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
 }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) {
-#ifdef AVS_WINDOWS
   plugin_manager->AddFunction(name, params, apply, user_data, exportVar);
-#else
-  this->AddFunction(name, params, apply, user_data, exportVar);
-#endif
 }
 
 // Throws if unsuccessfull
@@ -2590,12 +2572,10 @@ const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSV
     for (int strict = 1; strict >= 0; --strict) {
       pstrict = strict&1;
 
-#ifdef AVS_WINDOWS
       // first, look in loaded plugins
       result = plugin_manager->Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
       if (result)
         return result;
-#endif
 
       // then, look for a built-in function
       for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
@@ -2615,13 +2595,11 @@ const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSV
   // If we got here it means the function has not been found.
   // If we haven't done so yet, load the plugins in the autoload folders
   // and try again.
-#ifdef AVS_WINDOWS
   if (!plugin_manager->HasAutoloadExecuted())
   {
     plugin_manager->AutoloadPlugins();
     return Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
   }
-#endif
 
   return NULL;
 }
@@ -3013,7 +2991,6 @@ bool ScriptEnvironment::FunctionExists(const char* name)
   if (InternalFunctionExists(name))
     return true;
 
-#ifdef AVS_WINDOWS
   // Look among plugin functions
   if (plugin_manager->FunctionExists(name))
     return true;
@@ -3024,7 +3001,6 @@ bool ScriptEnvironment::FunctionExists(const char* name)
     plugin_manager->AutoloadPlugins();
     return this->FunctionExists(name);
   }
-#endif
 
   return false;
 }

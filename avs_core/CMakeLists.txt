@@ -86,7 +86,7 @@ target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 if (MSVC OR MINGW)
   target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
 else()
-  target_link_libraries("AvsCore" "pthread")
+  target_link_libraries("AvsCore" "pthread" "dl")
 endif()
 
 if (MSVC_IDE)
