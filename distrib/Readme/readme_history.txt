@@ -4,8 +4,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200214 (dev 3.5)
+20200217 (dev 3.5)
 --------------------------
+- Fix: ConvertBits 32->8 for extremely out of range float pixel values.
+  When pixel value in a 32 bit float format video was way out of range and greater than 128 (e.g. instead of 0 to 1.0 for Y plane) then the ConvertBits(8) had artifacts.
 - Fix potential crash on exit or cache shrink (linux/gcc only?)
 - Layer: support RGB24 and RGB48 (internally processed as Planar RGB - lossless pre and post conversion)
 - Fix: RGBP to 444 8-14bit right side artifacts at specific widths

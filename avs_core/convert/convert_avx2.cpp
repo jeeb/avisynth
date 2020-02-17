@@ -63,7 +63,6 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
   int src_width = src_rowsize / sizeof(float);
 
   const int max_pixel_value = (1 << targetbits) - 1;
-  const __m256i max_pixel_value_256 = _mm256_set1_epi16(max_pixel_value);
 
   const int limit_lo_d = (fulld ? 0 : 16) << (targetbits - 8);
   const int limit_hi_d = fulld ? ((1 << targetbits) - 1) : ((chroma ? 240 : 235) << (targetbits - 8));
@@ -87,6 +86,8 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
   const __m256 halfint_plus_rounder_ps = _mm256_set1_ps(half_i + 0.5f);
   const __m256 limit_lo_s_ps = _mm256_set1_ps(limit_lo_s / 255.0f);
   const __m256 limit_lo_plus_rounder_ps = _mm256_set1_ps(limit_lo_d + 0.5f);
+  const __m256 max_dst_pixelvalue = _mm256_set1_ps((float)max_pixel_value); // 255, 1023, 4095, 16383, 65535.0
+  const __m256 zero = _mm256_setzero_ps();
 
   __m256 factor_ps = _mm256_set1_ps(factor);
 
@@ -119,18 +120,18 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
         src_1 = _mm256_fmadd_ps(src_1, factor_ps, limit_lo_plus_rounder_ps);
         //pixel = (srcp0[x] - limit_lo_s_ps) * factor + half + limit_lo + 0.5f;
       }
+      
+      src_0 = _mm256_max_ps(_mm256_min_ps(src_0, max_dst_pixelvalue), zero);
+      src_1 = _mm256_max_ps(_mm256_min_ps(src_1, max_dst_pixelvalue), zero);
       result_0 = _mm256_cvttps_epi32(src_0); // truncate
       result_1 = _mm256_cvttps_epi32(src_1);
       if constexpr(sizeof(pixel_t) == 2) {
         result = _mm256_packus_epi32(result_0, result_1);
         result = _mm256_permute4x64_epi64(result, (0 << 0) | (2 << 2) | (1 << 4) | (3 << 6));
-        if (targetbits > 8 && targetbits < 16) {
-          result = _mm256_min_epu16(result, max_pixel_value_256); // extra clamp for 10, 12, 14 bits
-        }
-          _mm256_store_si256(reinterpret_cast<__m256i *>(dstp + x), result);
+        _mm256_store_si256(reinterpret_cast<__m256i*>(dstp + x), result);
       }
       else {
-        result = _mm256_packus_epi32(result_0, result_1);
+        result = _mm256_packs_epi32(result_0, result_1);
         result = _mm256_permute4x64_epi64(result, (0 << 0) | (2 << 2) | (1 << 4) | (3 << 6));
         __m128i result128_lo = _mm256_castsi256_si128(result);
         __m128i result128_hi = _mm256_extractf128_si256(result, 1);
