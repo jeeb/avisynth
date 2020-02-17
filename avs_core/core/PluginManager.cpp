@@ -2,11 +2,12 @@
 #include <avisynth.h>
 #include <unordered_set>
 #include <avisynth_c.h>
-#include "../strings.h"
-#include "../InternalEnvironment.h"
+#include "strings.h"
+#include "InternalEnvironment.h"
 #include <cassert>
 #include <filesystem>
 #include "findfirst.h"
+
 namespace fs = std::filesystem;
 
 #ifdef AVS_WINDOWS
