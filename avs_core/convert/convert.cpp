@@ -1592,7 +1592,6 @@ void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, 
   int src_width = src_rowsize / sizeof(float);
 
   constexpr int max_pixel_value = (1 << targetbits) - 1;
-  const __m128i max_pixel_value_128 = _mm_set1_epi16(max_pixel_value);
 
   constexpr int limit_lo_d = (fulld ? 0 : 16) << (targetbits - 8);
   constexpr int limit_hi_d = fulld ? ((1 << targetbits) - 1) : ((chroma ? 240 : 235) << (targetbits - 8));
@@ -1616,6 +1615,8 @@ void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, 
   const __m128 halfint_plus_rounder_ps = _mm_set1_ps(half_i + 0.5f);
   const __m128 limit_lo_s_ps = _mm_set1_ps(limit_lo_s / 255.0f);
   const __m128 limit_lo_plus_rounder_ps = _mm_set1_ps(limit_lo_d + 0.5f);
+  const __m128 max_dst_pixelvalue = _mm_set1_ps((float)max_pixel_value); // 255, 1023, 4095, 16383, 65535.0
+  const __m128 zero = _mm_setzero_ps();
 
   __m128 factor_ps = _mm_set1_ps(factor); // 0-1.0 -> 0..max_pixel_value
 
@@ -1648,17 +1649,17 @@ void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, 
         src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), limit_lo_plus_rounder_ps);
         //pixel = (srcp0[x] - limit_lo_s_ps) * factor + half + limit_lo + 0.5f;
       }
+
+      src_0 = _mm_max_ps(_mm_min_ps(src_0, max_dst_pixelvalue), zero);
+      src_1 = _mm_max_ps(_mm_min_ps(src_1, max_dst_pixelvalue), zero);
       result_0 = _mm_cvttps_epi32(src_0); // truncate
       result_1 = _mm_cvttps_epi32(src_1);
       if constexpr(sizeof(pixel_t) == 2) {
         result = _mm_packus_epi32(result_0, result_1); // sse41
-        if constexpr(targetbits > 8 && targetbits < 16) {
-          result = _mm_min_epu16(result, max_pixel_value_128); // sse41, extra clamp for 10, 12, 14 bits
-        }
         _mm_store_si128(reinterpret_cast<__m128i *>(dstp + x), result);
       }
       else {
-        result = _mm_packus_epi32(result_0, result_1);
+        result = _mm_packs_epi32(result_0, result_1);
         result = _mm_packus_epi16(result, result); // lo 8 byte
         _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp + x), result);
       }
