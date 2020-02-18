@@ -82,11 +82,16 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Specify preprocessor definitions
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
+# stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    set(FSLIB "stdc++fs")
+endif()
+
 # Windows DLL dependencies
 if (MSVC OR MINGW)
   target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
 else()
-  target_link_libraries("AvsCore" "pthread" "dl")
+  target_link_libraries("AvsCore" "pthread" "dl" "${FSLIB}")
 endif()
 
 if (MSVC_IDE)
