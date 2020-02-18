@@ -34,8 +34,6 @@
 // - Fix: false codegen when rearranging multiple working registers in MoveGenerator by
 //   tracking real register usage for an xchg sequence
 
-#ifdef ENABLE_FILTER_EXPRFILTER
-
 #include <stdint.h>
 
 #pragma once
@@ -9725,4 +9723,3 @@ struct function : function_cdecl<R, Derived, A1, A2, A3, A4, A5, A6, A7, A8, A9,
 #endif
 
 #endif	// #ifndef JITASM_H
-#endif // ENABLE_FILTER_EXPRFILTER

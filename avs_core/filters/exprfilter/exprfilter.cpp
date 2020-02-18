@@ -67,8 +67,6 @@
 *   mt_lutspa-like functionality is available through "sx", "sy", "sxr", "syr"
 */
 
-#ifdef ENABLE_FILTER_EXPRFILTER
-
 #include <iostream>
 #include <locale>
 #include <sstream>
@@ -5426,4 +5424,3 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   }
 
 }
-#endif // ENABLE_FILTER_EXPRFILTER

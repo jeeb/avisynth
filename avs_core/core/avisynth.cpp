@@ -88,11 +88,7 @@ extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Debug_filters[], Turn_filters[],
                    Conditional_filters[], Conditional_funtions_filters[],
                    Cache_filters[], Greyscale_filters[],
-#ifdef ENABLE_FILTER_EXPRFILTER
                    Swap_filters[], Overlay_filters[], Exprfilter_filters[];
-#else
-                   Swap_filters[], Overlay_filters[];
-#endif
 
 
 const AVSFunction* const builtin_functions[] = {
@@ -111,11 +107,7 @@ const AVSFunction* const builtin_functions[] = {
                    Plugin_functions,
                    Cache_filters,
                    Overlay_filters, Greyscale_filters,
-#ifdef ENABLE_FILTER_EXPRFILTER
                    Swap_filters, Exprfilter_filters };
-#else
-                   Swap_filters };
-#endif
 
 // Global statistics counters
 struct {

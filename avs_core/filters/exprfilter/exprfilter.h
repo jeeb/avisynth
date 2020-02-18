@@ -1,5 +1,3 @@
-#ifdef ENABLE_FILTER_EXPRFILTER
-
 #ifndef __Exprfilter_h
 #define __Exprfilter_h
 
@@ -196,4 +194,3 @@ public:
 };
 
 #endif //__Exprfilter_h
-#endif // ENABLE_FILTER_EXPRFILTER
