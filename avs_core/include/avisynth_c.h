@@ -54,9 +54,9 @@
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
 
-#include <avs/config.h>
-#include <avs/capi.h>
-#include <avs/types.h>
+#include "avs/config.h"
+#include "avs/capi.h"
+#include "avs/types.h"
 
 #define AVS_FRAME_ALIGN FRAME_ALIGN
 /////////////////////////////////////////////////////////////////////

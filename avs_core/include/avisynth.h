@@ -46,7 +46,7 @@
 // graphical user interfaces.
 
 #ifdef AVS_LINUX
-# include <avs/linux.h>
+# include "avs/linux.h"
 #endif
 
 
@@ -54,9 +54,9 @@
 #ifndef __AVISYNTH_6_H__
 #define __AVISYNTH_6_H__
 
-#include <avs/config.h>
-#include <avs/capi.h>
-#include <avs/types.h>
+#include "avs/config.h"
+#include "avs/capi.h"
+#include "avs/types.h"
 
 #if defined(AVS_LINUX)
 #define __stdcall
@@ -1184,7 +1184,7 @@ public:
 
 
 
-#include <avs/cpuid.h>
+#include "avs/cpuid.h"
 
 
 
@@ -1382,7 +1382,7 @@ AVSC_API(IScriptEnvironment*, CreateScriptEnvironment)(int version = AVISYNTH_IN
 #define VARNAME_Enable_PlanarToPackedRGB "OPT_Enable_PlanarToPackedRGB" // AVS+ convert Planar RGB to packed RGB (VfW)
 
 // C exports
-#include <avs/capi.h>
+#include "avs/capi.h"
 AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version = AVISYNTH_INTERFACE_VERSION);
 
 #ifndef BUILDING_AVSCORE

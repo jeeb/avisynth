@@ -33,7 +33,7 @@
 #ifndef AVS_CAPI_H
 #define AVS_CAPI_H
 
-#include <avs/config.h>
+#include "config.h"
 
 #ifdef AVS_LINUX
 // this is also defined in avs/linux.h, but that header is for the core,
