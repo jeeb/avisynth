@@ -981,7 +981,9 @@ bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
 
 bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 {
-#ifdef AVS_WINDOWS
+#ifdef AVS_LINUX
+  AvisynthCPluginInitFunc AvisynthCPluginInit = (AvisynthCPluginInitFunc)dlsym(plugin.Library, "avisynth_c_plugin_init");
+#else
 #ifdef _WIN64
   AvisynthCPluginInitFunc AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init");
   if (!AvisynthCPluginInit)
@@ -991,6 +993,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
   if (!AvisynthCPluginInit)
     AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init@4");
 #endif
+#endif // AVS_LINUX
 
   if (AvisynthCPluginInit == NULL)
     return false;
@@ -1062,10 +1065,6 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
   }
 
   return true;
-#else // AVS_LINUX
-  // TODO (Though I doubt anybody wants this)
-  return false;
-#endif // AVS_WINDOWS
 }
 
 /*
