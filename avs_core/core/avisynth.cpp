@@ -2611,7 +2611,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   // Unfortunately at this point we do not know who is calling Invoke.
   // If AVSValue was created by a v2.5 interface, we get and exception when trying to free up
   // childs.
-  if (!stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
+  if (!_stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
   {
 //    const_cast<AVSValue *>(&args)->MarkArrayAsC();
   }

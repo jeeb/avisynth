@@ -167,7 +167,8 @@ IF(WIN32)
   SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DENABLE_FILTER_TEXTOVERLAY" )
 ELSE()
-  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,--no-undefined " )
+  # NEW_AVSVALUE = arrays, non-Windows OSes only
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,--no-undefined -DNEW_AVSVALUE" )
 ENDIF()
 
 ENDIF()
