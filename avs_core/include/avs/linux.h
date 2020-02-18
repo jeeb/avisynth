@@ -33,7 +33,9 @@
 #ifndef AVSCORE_LINUX_H
 #define AVSCORE_LINUX_H
 
+#ifdef __cplusplus
 #include <cstring>
+#endif
 #include <strings.h>
 #include <unistd.h>
 
