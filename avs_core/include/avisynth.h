@@ -1165,7 +1165,7 @@ public:
 #undef AVS_LinkCall
 #undef AVS_BakedCode
 
-#define AVS_UNUSED(x) x
+#define AVS_UNUSED(x) (void)(x)
 
 // instantiable null filter
 class GenericVideoFilter : public IClip {
