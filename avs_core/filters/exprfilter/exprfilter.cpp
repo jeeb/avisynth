@@ -92,6 +92,10 @@
 #include "../../convert/convert_planar.h" // fill_plane
 #include "avs/alignment.h"
 
+#if (defined(_WIN64) && (defined(_M_AMD64) || defined(_M_X64))) || defined(__x86_64__)
+#define JITASM64
+#endif
+
 #define VS_TARGET_CPU_X86
 #ifdef AVS_WINDOWS
 #define VS_TARGET_OS_WINDOWS
@@ -102,12 +106,11 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#ifdef AVS_WINDOWS // jitasm currently doesn't build on Linux
 #include "jitasm.h"
 #endif
+
 #ifndef VS_TARGET_OS_WINDOWS
 #include <sys/mman.h>
-#endif
 #endif
 
 //#define TEST_AVX2_CODEGEN_IN_AVX
@@ -563,7 +566,6 @@ vcvtdq2ps(aTmp,aTmp); \
 vmulps(aTmp, aTmp, d); \
 vsubps(x, x, aTmp); }
 
-#ifdef AVS_WINDOWS // jitasm currently doesn't build on Linux
 struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intptr_t *, intptr_t, intptr_t> {
 
   std::vector<ExprOp> ops;
@@ -673,7 +675,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           mov(dy, -iter.dy); // dy = -dy; 
           cmp(dy, sy);
           cmovg(dy, sy); // mov if greater: if (dy > SpatialY) dy = SpatialY;
-#ifdef _M_X64
+#ifdef JITASM64
           imul(dy, qword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
 #else
           imul(dy, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
@@ -688,7 +690,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           mov(dy, iter.dy);
           cmp(dy, sy);
           cmovg(dy, sy); // mov if greater: if (dy > (planeheight - 1) - SpatialY) dy = SpatialY;
-#ifdef _M_X64
+#ifdef JITASM64
           imul(dy, qword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
 #else
           imul(dy, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
@@ -2349,7 +2351,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         if (processSingle) {
           YmmReg r1;
           XmmReg r1x;
-#if _M_X64
+#ifdef JITASM64
           vmovq(r1x, SpatialY);
 #else
           vmovd(r1x, SpatialY);
@@ -2361,7 +2363,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         else {
           YmmReg r1, r2;
           XmmReg r1x;
-#if _M_X64
+#ifdef JITASM64
           vmovq(r1x, SpatialY);
 #else
           vmovd(r1x, SpatialY);
@@ -3183,7 +3185,7 @@ generated epilog example (new):
 };
 
 #endif
-#endif // AVS_WINDOWS
+
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -3263,12 +3265,19 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   }
   next_paramindex++;
 
+#ifdef VS_TARGET_CPU_X86
   // test parameter for avx2-less mode even with avx2 available
 #ifdef TEST_AVX2_CODEGEN_IN_AVX
   bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX);
 #else
   bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX2);
 #endif
+  bool optSSE2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+#else
+  bool optAvx2 = false;
+  bool optSSE2 = false;
+#endif
+
   if (args[next_paramindex].Defined()) {
     if (optAvx2) // disable only
       optAvx2 = args[next_paramindex].AsBool();
@@ -3281,7 +3290,6 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   }
   next_paramindex++;
 
-  bool optSSE2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   if (args[next_paramindex].Defined()) {
     if (optSSE2) // disable only
       optSSE2 = args[next_paramindex].AsBool();
@@ -5318,7 +5326,6 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
         int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
 
-#ifdef AVS_WINDOWS
         if (optAvx2 && d.planeOptAvx2[i]) {
 
           // avx2
@@ -5344,7 +5351,6 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
             memcpy((void *)d.proc[i], ExprObj.GetCode(), ExprObj.GetCodeSize());
           }
         }
-#endif // AVS_WINDOWS
 
 
 #if 0
