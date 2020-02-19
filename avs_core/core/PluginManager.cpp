@@ -90,7 +90,7 @@ static bool GetRegString(HKEY rootKey, const char path[], const char entry[], st
 
 static std::string GetFullPathNameWrap(const std::string &f)
 {
-  return fs::absolute(fs::path(f).lexically_normal());
+  return fs::absolute(fs::path(f).lexically_normal()).generic_string();
 }
 
 static bool IsParameterTypeSpecifier(char c) {
