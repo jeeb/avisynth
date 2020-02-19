@@ -61,8 +61,8 @@
 #define Int64ShrlMod32(a, b) ((uint64_t)((uint64_t)(a) >> (b)))
 #define Int32x32To64(a, b)  ((int64_t)(((int64_t)((long)(a))) * ((long)(b))))
 
-#define InterlockedIncrement(x) __sync_fetch_and_add((x), 1)
-#define InterlockedDecrement(x) __sync_fetch_and_sub((x), 1)
+#define InterlockedIncrement(x) (__sync_fetch_and_add((x), 1), *(x))
+#define InterlockedDecrement(x) (__sync_fetch_and_sub((x), 1), *(x))
 #define MulDiv(nNumber, nNumerator, nDenominator)   (int32_t) (((int64_t) (nNumber) * (int64_t) (nNumerator) + (int64_t) ((nDenominator)/2)) / (int64_t) (nDenominator))
 
 #ifndef TRUE
