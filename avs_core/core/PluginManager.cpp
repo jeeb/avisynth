@@ -513,13 +513,23 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 {
   if (AutoloadExecuted)
     Env->ThrowError("Cannot modify directory list after the autoload procedure has already executed.");
-#ifdef AVS_WINDOWS
+
   std::string dir(dirPath);
 
+#ifdef AVS_WINDOWS
   // get folder of our executable
   TCHAR ExeFilePath[AVS_MAX_PATH];
   memset(ExeFilePath, 0, sizeof(ExeFilePath[0])*AVS_MAX_PATH);  // WinXP does not terminate the result of GetModuleFileName with a zero, so me must zero our buffer
   GetModuleFileName(NULL, ExeFilePath, AVS_MAX_PATH);
+#endif
+#ifdef AVS_LINUX
+  std::string ExeFilePath;
+  char buf[PATH_MAX + 1];
+  if (readlink("/proc/self/exe", buf, sizeof(buf) - 1) != -1)
+  {
+    ExeFilePath = buf;
+  }
+#endif
   std::string ExeFileDir(ExeFilePath);
   replace(ExeFileDir, '\\', '/');
   ExeFileDir = ExeFileDir.erase(ExeFileDir.rfind('/'), std::string::npos);
@@ -530,6 +540,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
   replace_beginning(dir, "PROGRAMDIR", ExeFileDir);
 
   std::string plugin_dir;
+#ifdef AVS_WINDOWS
 #if defined (__GNUC__)
   if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegPluginDirPlus_GCC, &plugin_dir))
     replace_beginning(dir, "USER_PLUS_PLUGINS", plugin_dir);
@@ -544,6 +555,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
     replace_beginning(dir, "USER_CLASSIC_PLUGINS", plugin_dir);
   if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegPluginDirClassic, &plugin_dir))
     replace_beginning(dir, "MACHINE_CLASSIC_PLUGINS", plugin_dir);
+#endif
 #endif
 
   // replace backslashes with forward slashes
@@ -560,7 +572,6 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
     AutoloadDirs.insert(AutoloadDirs.begin(), GetFullPathNameWrap(dir));
   else
     AutoloadDirs.push_back(GetFullPathNameWrap(dir));
-#endif // AVS_WINDOWS
 }
 
 void PluginManager::AutoloadPlugins()
@@ -571,6 +582,94 @@ void PluginManager::AutoloadPlugins()
   AutoloadExecuted = true;
   Autoloading = true;
 
+  // Load binary plugins
+  for (const std::string& dir : AutoloadDirs)
+  {
+    std::error_code ec;
+
+#ifdef AVS_LINUX
+    const char* binaryFilter = ".so";
+#else
+    const char* binaryFilter = ".dll";
+#endif
+    // maybe add std::filesystem::directory_options::follow_directory_symlink
+    for (auto& file : fs::directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied, ec))
+    {
+      const bool extensionsMatch =
+#ifdef AVS_LINUX
+      file.path().extension() == binaryFilter; // case sensitive
+#else
+      streqi(file.path().extension().generic_string().c_str(), binaryFilter);  // case insensitive
+#endif
+
+      fprintf(stdout, " Checking dir %s file %s for ext %s\r\n", dir.c_str(), file.path().generic_string().c_str(), binaryFilter);
+
+      if (extensionsMatch)
+      {
+        PluginFile p(concat(dir, file.path().filename().generic_string()));
+
+        // Search for loaded plugins with the same base name.
+        for (size_t i = 0; i < AutoLoadedPlugins.size(); ++i)
+        {
+#ifdef AVS_LINUX
+          if (AutoLoadedPlugins[i].BaseName == p.BaseName) // case insentitive
+#else
+          if (streqi(AutoLoadedPlugins[i].BaseName.c_str(), p.BaseName.c_str())) // fixme:
+#endif
+          {
+            // Prevent loading a plugin with a basename that is
+            // already loaded (from another autoload folder).
+            continue;
+          }
+        }
+
+        // Try to load plugin
+        AVSValue dummy;
+        LoadPlugin(p, false, &dummy);
+      }
+    }
+
+    const char* scriptFilter = ".avsi";
+    for (auto& file : fs::directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied, ec)) // and not recursive_directory_iterator
+    {
+      const bool extensionsMatch =
+#ifdef AVS_LINUX
+        file.path().extension() == scriptFilter; // case sensitive
+#else
+        streqi(file.path().extension().generic_string().c_str(), scriptFilter);  // case insensitive
+#endif
+      fprintf(stdout, " Checking dir %s file %s for ext %s\r\n", dir.c_str(), file.path().generic_string().c_str(), binaryFilter);
+
+      if (extensionsMatch)
+      {
+        CWDChanger cwdchange(dir.c_str());
+
+        PluginFile p(concat(dir, file.path().filename().generic_string()));
+
+        // Search for loaded plugins with the same base name.
+        for (size_t i = 0; i < AutoLoadedImports.size(); ++i)
+        {
+#ifdef AVS_LINUX
+          if (AutoLoadedPlugins[i].BaseName == p.BaseName) // case insensitive
+#else
+          if (streqi(AutoLoadedImports[i].BaseName.c_str(), p.BaseName.c_str()))
+#endif
+          {
+            // Prevent loading a plugin with a basename that is
+            // already loaded (from another autoload folder).
+            continue;
+          }
+        }
+
+        // Try to load script
+        Env->Invoke("Import", p.FilePath.c_str()); // FIXME: utf8?
+        AutoLoadedImports.push_back(p);
+      }
+    }
+  }
+
+#if 0
+  // pre c++17 plugin enumeration methods
   const char *binaryFilter = "*.dll";
   const char *scriptFilter = "*.avsi";
 
@@ -580,13 +679,13 @@ void PluginManager::AutoloadPlugins()
     // Append file search filter to directory path
     std::string filePattern = concat(dir, binaryFilter);
 
-    // Iterate through all files in directory
+  // Iterate through all files in directory
     _finddata_t fileData;
     intptr_t hFind = _findfirst(filePattern.c_str(), &fileData);
     for (bool bContinue = hFind;
-          bContinue;
-          bContinue = (_findnext(hFind, &fileData) != -1)
-        )
+      bContinue;
+      bContinue = (_findnext(hFind, &fileData) != -1)
+      )
     {
       if ((fileData.attrib & _A_SUBDIR) == 0)  // do not add directories
       {
@@ -623,9 +722,9 @@ void PluginManager::AutoloadPlugins()
     _finddata_t fileData;
     intptr_t hFind = _findfirst(filePattern.c_str(), &fileData);
     for (bool bContinue = hFind;
-          bContinue;
-          bContinue = (_findnext(hFind, &fileData) != -1)
-        )
+      bContinue;
+      bContinue = (_findnext(hFind, &fileData) != -1)
+      )
     {
       if ((fileData.attrib & _A_SUBDIR) == 0)  // do not add directories
       {
@@ -649,6 +748,7 @@ void PluginManager::AutoloadPlugins()
     } // for bContinue
     _findclose(hFind);
   }
+#endif
 
   Autoloading = false;
 }

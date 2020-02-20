@@ -249,11 +249,9 @@ extern const AVSFunction Script_functions[] = {
 
   { "PixelType",  BUILTIN_FUNC_PREFIX, "c", PixelType  },
 
-#ifdef AVS_WINDOWS
   { "AddAutoloadDir",     BUILTIN_FUNC_PREFIX, "s[toFront]b", AddAutoloadDir  },
   { "ClearAutoloadDirs",  BUILTIN_FUNC_PREFIX, "", ClearAutoloadDirs  },
   { "AutoloadPlugins",    BUILTIN_FUNC_PREFIX, "", AutoloadPlugins  },
-#endif
   { "FunctionExists",     BUILTIN_FUNC_PREFIX, "s", FunctionExists  },
   { "InternalFunctionExists", BUILTIN_FUNC_PREFIX, "s", InternalFunctionExists  },
 
@@ -1600,7 +1598,6 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
   }
 }
 
-#ifdef AVS_WINDOWS
 AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -1621,7 +1618,6 @@ AVSValue AutoloadPlugins (AVSValue args, void*, IScriptEnvironment* env)
   env2->AutoloadPlugins();
   return AVSValue();
 }
-#endif
 
 AVSValue FunctionExists (AVSValue args, void*, IScriptEnvironment* env)
 {
