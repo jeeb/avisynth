@@ -17,7 +17,7 @@ private:
   // PF 161223 why do we need thread-local global variables?
   // comment remains here until it gets cleared, anyway, I make it of no use
   VarTable* var_table;
-  BufferPool BufferPool;
+  BufferPool buffer_pool;
 
 public:
   ScriptEnvironmentTLS(size_t _thread_id) :
@@ -25,7 +25,7 @@ public:
     thread_id(_thread_id),
     global_var_table(NULL),
     var_table(NULL),
-    BufferPool(this)
+    buffer_pool(this)
   {
     global_var_table = new VarTable(0, 0);
     var_table = new VarTable(0, global_var_table);
@@ -144,12 +144,12 @@ public:
   {
     if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
       return NULL;
-    return BufferPool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
+    return buffer_pool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
   }
 
   void __stdcall Free(void* ptr)
   {
-    BufferPool.Free(ptr);
+    buffer_pool.Free(ptr);
   }
 
 

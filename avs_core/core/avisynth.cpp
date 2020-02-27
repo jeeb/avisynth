@@ -846,7 +846,7 @@ private:
   VideoFrame* AllocateFrame(size_t vfb_size);
   std::recursive_mutex memory_mutex;
 
-  BufferPool BufferPool;
+  BufferPool buffer_pool;
 
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
@@ -941,7 +941,7 @@ ScriptEnvironment::ScriptEnvironment()
     ImportDepth(0),
     FrontCache(NULL),
     prefetcher(NULL),
-    BufferPool(this)
+    buffer_pool(this)
 {
   try {
 #ifdef AVS_WINDOWS // needs linux alternative
@@ -1396,12 +1396,12 @@ void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, Avs
 {
   if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
     return NULL;
-  return BufferPool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
+  return buffer_pool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
 }
 
 void __stdcall ScriptEnvironment::Free(void* ptr)
 {
-  BufferPool.Free(ptr);
+  buffer_pool.Free(ptr);
 }
 
 /* This function adds information about builtin functions into global variables.
