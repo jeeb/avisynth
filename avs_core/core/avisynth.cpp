@@ -1060,8 +1060,13 @@ ScriptEnvironment::~ScriptEnvironment() {
     prefetcher->Destroy();
   }
 
+#ifdef _DEBUG
+  // LogMsg(LOGLEVEL_DEBUG, "We are before FrameRegistryCleanup");
+  // ListFrameRegistry(0,10000000000000ull, true); // list all
+#endif
   // and deleting the frame buffer from FrameRegistry2 as well
   bool somethingLeaks = false;
+  int leakCount = 0;
   for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
   it != end_it;
     ++it)
@@ -1085,6 +1090,7 @@ ScriptEnvironment::~ScriptEnvironment() {
         }
         else
         {
+          leakCount++;
           somethingLeaks = true;
         }
       } // it3
@@ -1093,7 +1099,7 @@ ScriptEnvironment::~ScriptEnvironment() {
   } // it
 
   if (somethingLeaks) {
-      LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks.");
+      LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks. Leaking count = %d",leakCount);
   }
 
 #ifdef AVS_WINDOWS
@@ -1638,12 +1644,13 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   // no locking here, calling method have done it already
   FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame));
 
-  //_RPT1(0, "ScriptEnvironment::AllocateFrame %Iu frame=%p vfb=%p %I64d\n", vfb_size, newFrame, newFrame->vfb, memory_used); // P.F.
+  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %I64d\n", vfb_size, newFrame, newFrame->vfb, memory_used); // P.F.
 
   return newFrame;
 }
 
 #ifdef _DEBUG
+#ifdef AVS_LINUX
 void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
 {
   int linearsearchcount;
@@ -1653,10 +1660,8 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
   int size1 = 0;
   int size2 = 0;
   int size3 = 0;
-  int inner_frame_count = 0;
-  int inner_frame_count_for_frame_refcount_nonzero = 0;
-  _RPT3(0, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7Iu and %7Iu\n", &FrameRegistry2, min_size, max_size);
-  _RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%Iu \n", FrameRegistry2.size());
+  LogMsg(LOGLEVEL_DEBUG, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7zu and %7zu\n", &FrameRegistry2, min_size, max_size);
+  LogMsg(LOGLEVEL_DEBUG, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%zu \n", FrameRegistry2.size());
   size_t total_vfb_size = 0;
   auto t_end = std::chrono::high_resolution_clock::now();
 
@@ -1666,7 +1671,93 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
     ++it)
   {
     size1++;
-    _RPT3(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7Iu is %7Iu\n", size1, it->first, it->second.size());
+    LogMsg(LOGLEVEL_DEBUG, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7zu is %7zu\n", size1, it->first, it->second.size());
+    for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
+      it2 != end_it2;
+      ++it2)
+    {
+      size2++;
+      VideoFrameBuffer* vfb = it2->first;
+      total_vfb_size += vfb->GetDataSize();
+      size_t inner_frame_count_size = it2->second.size();
+      char buf[128];
+      LogMsg(LOGLEVEL_DEBUG, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
+       // P.F. iterate the frame list of this vfb
+      int inner_frame_count = 0;
+      int inner_frame_count_for_frame_refcount_nonzero = 0;
+      for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
+        it3 != end_it3;
+        ++it3)
+      {
+        size3++;
+        inner_frame_count++;
+#ifdef _DEBUG
+        VideoFrame* frame = it3->frame;
+        std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->timestamp;
+#else
+        VideoFrame* frame = *it3;
+#endif
+        if (0 != frame->refcount)
+          inner_frame_count_for_frame_refcount_nonzero++;
+        if (someframes)
+        {
+          std::chrono::duration<double> elapsed_seconds = t_end - frame_entry_timestamp;
+          if (inner_frame_count <= 2) // list only the first 2. There can be even many thousand of frames!
+          {
+            // log only if frame creation timestamp is too old!
+            // e.g. 100 secs, it must be a stuck frame (but can also be a valid static frame from ColorBars)
+            // if (elapsed_seconds.count() > 100.0f && frame->refcount > 0)
+            if (frame->refcount > 0)
+            {
+              LogMsg(LOGLEVEL_DEBUG, "  >> Frame#%6d: vfb=%p frame=%p frame_refcount=%3d timestamp=%f ago\n", inner_frame_count, vfb, frame, frame->refcount, elapsed_seconds);
+            }
+          }
+          else if (inner_frame_count == inner_frame_count_size)
+          {
+            // log the last one
+            if (frame->refcount > 0)
+            {
+              LogMsg(LOGLEVEL_DEBUG, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount);
+            }
+          }
+          if (inner_frame_count == inner_frame_count_size) {
+            LogMsg(LOGLEVEL_DEBUG, "  == TOTAL of %d frames. Number of nonzero refcount=%d \n", inner_frame_count, inner_frame_count_for_frame_refcount_nonzero);
+          }
+
+          if (0 == vfb->refcount && 0 != frame->refcount)
+          {
+            LogMsg(LOGLEVEL_DEBUG, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n", vfb, frame, frame->refcount);
+          }
+        }
+      }
+    }
+  }
+  LogMsg(LOGLEVEL_DEBUG, ">> >> >> array sizes %d %d %d Total VFB size=%zu\n", size1, size2, size3, total_vfb_size);
+  LogMsg(LOGLEVEL_DEBUG, "  ----------------------------\n");
+}
+
+#else
+void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
+{
+  int linearsearchcount;
+  //#define FULL_LIST_OF_VFBs
+  //#define LIST_ALSO_SOME_FRAMES
+  linearsearchcount = 0;
+  int size1 = 0;
+  int size2 = 0;
+  int size3 = 0;
+  _RPT3(0, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7zu and %7zu\n", &FrameRegistry2, min_size, max_size);
+  _RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%zu \n", FrameRegistry2.size());
+  size_t total_vfb_size = 0;
+  auto t_end = std::chrono::high_resolution_clock::now();
+
+  // list to debugview: all frames up-to vfb_size size
+  for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(min_size), end_it = FrameRegistry2.upper_bound(max_size);
+    it != end_it;
+    ++it)
+  {
+    size1++;
+    _RPT3(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7zu is %7zu\n", size1, it->first, it->second.size());
     for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
       it2 != end_it2;
       ++it2)
@@ -1676,7 +1767,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       total_vfb_size += vfb->GetDataSize();
       size_t inner_frame_count_size = it2->second.size();
       char buf[128];
-      _snprintf(buf, 127, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
+      snprintf(buf, 127, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
       _RPT0(0, buf); // P.F. iterate the frame list of this vfb
       int inner_frame_count = 0;
       int inner_frame_count_for_frame_refcount_nonzero = 0;
@@ -1724,9 +1815,10 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       }
     }
   }
-  _RPT4(0, ">> >> >> array sizes %d %d %d Total VFB size=%Iu\n", size1, size2, size3, total_vfb_size);
+  _RPT4(0, ">> >> >> array sizes %d %d %d Total VFB size=%zu\n", size1, size2, size3, total_vfb_size);
   _RPT0(0, "  ----------------------------\n");
 }
+#endif
 #endif
 
 
@@ -1800,10 +1892,10 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             char buf[256];
             t_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_seconds = t_end - t_start;
-            _snprintf(buf, 255, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7Iu GotSize=%7Iu FrReg.Size=%6Iu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
+            snprintf(buf, 255, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7zu GotSize=%7zu FrReg.Size=%6zu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
             _RPT0(0, buf);
 #ifdef SIZETMOD
-            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%7Iu\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
+            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%7zu\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #else
             _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #endif
@@ -1842,7 +1934,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       }
     } // for it2
   } // for it
-  _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
+  _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%zu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
 
 #ifdef _DEBUG
   //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames. List exact vfb_size
@@ -1930,7 +2022,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 #endif
   }
 
-  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%Iu", memory_max, memory_used.load(), vfb_size);
+  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%zu", memory_max, memory_used.load(), vfb_size);
   return NULL;
 }
 
@@ -2019,7 +2111,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
         VideoFrameBuffer *vfb = it2->first;
         if (0 == vfb->refcount) // vfb refcount check
         {
-          _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%Iu freed=%d\n", request, vfb->GetDataSize());
+          _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%zu freed=%d\n", request, vfb->GetDataSize());
           memory_used -= vfb->GetDataSize();
           VideoFrameBuffer *_vfb = vfb;
           const VideoFrameArrayType::iterator end_it3 = it2->second.end();
