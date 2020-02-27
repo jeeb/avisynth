@@ -432,7 +432,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
           colors_f[i] = args[13][i].AsFloatf(0.0);
         else {
           colors[i] = args[13][i].AsInt(0);
-          if (colors[i] >= (1 << bits_per_pixel) || colors < 0)
+          if (colors[i] >= (1 << bits_per_pixel) || colors[i] < 0)
             env->ThrowError("BlankClip: invalid color value (%d) for %d bits video format", colors[i], bits_per_pixel);
         }
       }
