@@ -58,6 +58,10 @@ public:
 
   enum {max_args=1024};
 
+  static constexpr int CHR2(char a, char b) {
+    return a * 256 + b;
+  }
+
 private:
   IScriptEnvironment2* const env;
   Tokenizer tokenizer;
