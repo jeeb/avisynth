@@ -400,7 +400,7 @@ PExpression ScriptParser::ParseAssignment(void)
 PExpression ScriptParser::ParseAssignmentWithRet(void)
 {
 	PExpression exp = ParseConditional();
-	if (tokenizer.IsOperator(CHR2(':','='))) { // :=
+	if (tokenizer.IsOperator(":="_i)) {
 		const char* name = exp->GetLvalue();
 		if (!name)
 			env->ThrowError("Script error: left operand of `:=' must be a variable name");
@@ -427,7 +427,7 @@ PExpression ScriptParser::ParseConditional(void)
 PExpression ScriptParser::ParseOr(void) 
 {
   PExpression left = ParseAnd();
-  if (tokenizer.IsOperator(CHR2('|','|'))) { // ||
+  if (tokenizer.IsOperator("||"_i)) {
     tokenizer.NextToken();
     PExpression right = ParseOr();
     return new ExpOr(left, right);
@@ -438,7 +438,7 @@ PExpression ScriptParser::ParseOr(void)
 PExpression ScriptParser::ParseAnd(void) 
 {
   PExpression left = ParseComparison();
-  if (tokenizer.IsOperator(CHR2('&','&'))) { // &&
+  if (tokenizer.IsOperator("&&"_i)) {
     tokenizer.NextToken();
     PExpression right = ParseAnd();
     return new ExpAnd(left, right);
@@ -457,13 +457,13 @@ PExpression ScriptParser::ParseComparison(void)
     PExpression right = ParseAddition(false);
     PExpression term;
     switch (op) {
-      case CHR2('=','='): term = new ExpEqual(left, right); break; // ==
-      case CHR2('!','='): term = new ExpNot(new ExpEqual(left, right)); break; // !=
-      case CHR2('<','>'): term = new ExpNot(new ExpEqual(left, right)); break; // <>
+      case "=="_i: term = new ExpEqual(left, right); break;
+      case "!="_i: term = new ExpNot(new ExpEqual(left, right)); break;
+      case "<>"_i: term = new ExpNot(new ExpEqual(left, right)); break;
       case '<': term = new ExpLess(left, right); break;
-      case CHR2('>','='): term = new ExpNot(new ExpLess(left, right)); break; // >=
+      case ">="_i: term = new ExpNot(new ExpLess(left, right)); break;
       case '>': term = new ExpLess(right, left); break;
-      case CHR2('<','='): term = new ExpNot(new ExpLess(right, left)); break; // <=
+      case "<="_i: term = new ExpNot(new ExpLess(right, left)); break;
     }
     result = !result ? term : PExpression(new ExpAnd(result, term));
     left = right;
@@ -478,7 +478,7 @@ PExpression ScriptParser::ParseAddition(bool negationOnHold) //update exterior c
   PExpression left = ParseMultiplication(negationOnHold);
   bool plus = tokenizer.IsOperator('+');
   bool minus = tokenizer.IsOperator('-');
-  bool doubleplus = tokenizer.IsOperator(CHR2('+','+')); // ++
+  bool doubleplus = tokenizer.IsOperator("++"_i);
   if (plus || minus || doubleplus) {
     tokenizer.NextToken();
     PExpression right = ParseAddition(minus);
@@ -713,7 +713,7 @@ int ScriptParser::GetTokenAsComparisonOperator()
   if (!tokenizer.IsOperator())
     return 0;
   int op = tokenizer.AsOperator();
-  if (op == CHR2('=','=') || op == CHR2('!','=') || op == CHR2('<','>') || op == '<' || op == '>' || op == CHR2('<','=') || op == CHR2('>','='))
+  if (op == "=="_i || op == "!="_i || op == "<>"_i || op == '<' || op == '>' || op == "<="_i || op == ">="_i)
     return op;
   else
     return 0;

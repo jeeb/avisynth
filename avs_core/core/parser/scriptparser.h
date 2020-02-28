@@ -58,10 +58,6 @@ public:
 
   enum {max_args=1024};
 
-  static constexpr int CHR2(char a, char b) {
-    return a * 256 + b;
-  }
-
 private:
   IScriptEnvironment2* const env;
   Tokenizer tokenizer;
@@ -100,7 +96,16 @@ private:
   int GetTokenAsComparisonOperator();
 };
 
-
+// The following allows us to write multi-character tokens as string literals.
+// Originally, non-conformant multi-character characters were used.
+// For example: int('012') == 0x303132. Hence, the rightmost character
+// is placed at the least significant byte.
+static constexpr int operator "" _i(const char s[], const size_t len) {
+  int acc = 0;
+  for (size_t i = 0; i < len; ++i)
+    acc = (acc << 8) + (unsigned char) s[i];
+  return acc;
+}
 
 
 #endif  // __ScriptParser_H__
