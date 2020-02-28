@@ -1,4 +1,4 @@
-﻿// original IT0051 by thejam79
+// original IT0051 by thejam79
 // add YV12 mode by minamina 2003/05/01
 //
 // Borrowed from the author of IT.dll, whose name I
@@ -22,7 +22,9 @@
 #ifndef __INFO_H__
 #define __INFO_H__
 
+#ifdef AVS_LINUX
 #include <uchar.h>
+#endif
 #include <sstream>
 #include "internal.h"
 #include <unordered_map>

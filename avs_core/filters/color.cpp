@@ -36,7 +36,7 @@
 
 #include <math.h>
 #include <float.h>
-#ifdef AVS_BSD
+#if defined(AVS_BSD) || defined(AVS_MACOS)
     #include <stdlib.h>
 #else
     #include <malloc.h>

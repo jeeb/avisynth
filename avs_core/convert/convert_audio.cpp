@@ -39,7 +39,7 @@
 #include <avisynth.h>
 #include <avs/alignment.h>
 #include "convert_audio.h"
-#ifdef AVS_BSD
+#if defined(AVS_BSD) || defined(AVS_MACOS)
     #include <stdlib.h>
 #else
     #include <malloc.h>
