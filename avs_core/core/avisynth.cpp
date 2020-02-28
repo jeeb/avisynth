@@ -53,10 +53,10 @@
     #include <avs/win.h>
     #include <objbase.h>
 #else
-#if defined(__APPLE__)
+#if defined(AVS_MACOS)
     #include <mach/host_info.h>
     #include <mach/mach_host.h>
-#elif defined(BSD)
+#elif defined(AVS_BSD)
     #include <sys/sysctl.h>
 #endif
     #include <avs/linux.h>
@@ -935,12 +935,12 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
     long nPageSize = sysconf(_SC_PAGE_SIZE);
     int64_t nAvailablePhysicalPages;
 
-  #if defined(__APPLE__)
+  #if defined(AVS_MACOS)
     vm_statistics64_data_t vmstats;
     mach_msg_type_number_t vmstatsz = HOST_VM_INFO64_COUNT;
     host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
     nAvailablePhysicalPages = vmstats.free_count;
-  #elif defined(BSD)
+  #elif defined(AVS_BSD)
     size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
     sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
   #else // Linux

@@ -36,7 +36,11 @@
 
 #include <math.h>
 #include <float.h>
-#include <malloc.h>
+#ifdef AVS_BSD
+    #include <stdlib.h>
+#else
+    #include <malloc.h>
+#endif
 #include <stdio.h>
 
 #ifdef AVS_WINDOWS

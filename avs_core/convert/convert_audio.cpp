@@ -39,7 +39,11 @@
 #include <avisynth.h>
 #include <avs/alignment.h>
 #include "convert_audio.h"
-#include <malloc.h>
+#ifdef AVS_BSD
+    #include <stdlib.h>
+#else
+    #include <malloc.h>
+#endif
 
 // There are two type parameters. Acceptable sample types and a prefered sample type.
 // If the current clip is already one of the defined types in sampletype, this will be returned.
