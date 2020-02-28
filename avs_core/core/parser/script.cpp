@@ -711,25 +711,10 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     }
 
 #else // adapted from AvxSynth
-//    char full_path[FILENAME_MAX];
-//    char *file_part;
-
     std::string file_part = std::filesystem::path(script_name).filename().string();
     std::string full_path = std::filesystem::path(script_name).remove_filename();
     std::string dir_part = std::filesystem::path(script_name).parent_path();
 
-    //env->ThrowError("Import: test scn=%s,file_part=%s,full=%s,dir=%s\n", script_name, file_part.c_str(), full_path.c_str(),dir_part.c_str() );
-    //Import: script_name =./test.avs
-    //        file_part   =test.avs
-    //        full_path   =./
-    //       ,dir_part    =.
-    // PF utf8 needed
-/* PFdebug off    const char *dir_part = strlen(full_path) - strlen(file_part);
-
-    if(NULL == realpath(script_name, full_path))
-      env->ThrowError("Import: unable to open \"%s\" (path invalid?)", script_name);
-*/
-//    FILE* h = fopen(full_path, "r");
     FILE* h = fopen(script_name, "r");
     if(NULL == h)
       env->ThrowError("Import: couldn't open \"%s\"", script_name );
