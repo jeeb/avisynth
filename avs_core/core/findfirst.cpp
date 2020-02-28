@@ -1,3 +1,4 @@
+#if 0
 /*
  * Copyright (C) 2011 Mathieu Turcotte (mathieuturcotte.ca)
  *
@@ -337,3 +338,4 @@ int _findclose(intptr_t fhandle) {
 
     return 0;
 }
+#endif
