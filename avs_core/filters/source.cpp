@@ -448,28 +448,62 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 /********************************************************************
 ********************************************************************/
 
-#ifdef AVS_WINDOWS // TA_TOP|CENTER is in windgi, this needs porting
+#ifdef AVS_WINDOWS
 // in text-overlay.cpp
 extern bool GetTextBoundingBox(const char* text, const char* fontname,
   int size, bool bold, bool italic, int align, int* width, int* height);
+#endif
+
+extern bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,
+  bool italic, int align, int& width, int& height, bool utf8);
 
 
 PClip Create_MessageClip(const char* message, int width, int height, int pixel_type, bool shrink,
                          int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env) {
   int size;
-  for (size = 24*8; /*size>=9*8*/; size-=4) {
+#ifdef AVS_WINDOWS
+    // MessageClip produces a clip containing a text message.Used internally for error reporting.
+    // The font face is "Arial".
+    // The font size is between 24 points and 9 points - chosen to fit, if possible,
+    // in the width by height clip.
+    // The pixeltype is RGB32.
+
+    for (size = 24*8; /*size>=9*8*/; size-=4) {
     int text_width, text_height;
     GetTextBoundingBox(message, "Arial", size, true, false, TA_TOP | TA_CENTER, &text_width, &text_height);
-    text_width = ((text_width>>3)+8+7) & ~7;
-    text_height = ((text_height>>3)+8+1) & ~1;
-    if (size<=9*8 || ((width<=0 || text_width<=width) && (height<=0 || text_height<=height))) {
-      if (width <= 0 || (shrink && width>text_width))
+    text_width = ((text_width>>3)+8+7) & ~7; // mod 8
+    text_height = ((text_height>>3)+8+1) & ~1; // mod 2
+    if (size <= 9 * 8 || ((width <= 0 || text_width <= width) && (height <= 0 || text_height <= height))) {
+      if (width <= 0 || (shrink && width > text_width))
         width = text_width;
-      if (height <= 0 || (shrink && height>text_height))
+      if (height <= 0 || (shrink && height > text_height))
         height = text_height;
       break;
     }
   }
+#else
+  // FIXME: only one fixed size font
+  size = 20;
+  constexpr int FONT_WIDTH = 10;
+  constexpr int FONT_HEIGHT = 20;
+
+  constexpr int MAX_SIZE = 20;
+  constexpr int MIN_SIZE = 20; //
+  for (size = MAX_SIZE; /*size>=9*/; size -= 1) {
+    int text_width, text_height;
+    bool utf8 = true;
+    GetTextBoundingBoxFixed(message, "n/a", size, true, false, 0 /* align */, text_width, text_height, utf8);
+    text_width = (text_width + 8 + 7) & ~7; // mod 8
+    text_height = (text_height + 8 + 1) & ~1; // mod 2
+    if (size <= MIN_SIZE || ((width <= 0 || text_width <= width) && (height <= 0 || text_height <= height))) {
+      if (width <= 0 || (shrink && width > text_width))
+        width = text_width;
+      if (height <= 0 || (shrink && height > text_height))
+        height = text_height;
+      break;
+    }
+  }
+#endif
 
   VideoInfo vi;
   memset(&vi, 0, sizeof(vi));
@@ -490,7 +524,6 @@ AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* en
       args[2].AsInt(-1), VideoInfo::CS_BGR32, args[3].AsBool(false),
       args[4].AsInt(0xFFFFFF), args[5].AsInt(0), args[6].AsInt(0), env);
 }
-#endif
 
 
 /********************************************************************
@@ -1960,11 +1993,15 @@ public:
 };
 
 
-#ifdef AVS_WINDOWS
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
-  return Create_MessageClip(AVS_FULLVERSION AVS_COPYRIGHT, -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
-}
+  return Create_MessageClip(
+#ifdef AVS_LINUX
+    AVS_FULLVERSION AVS_COPYRIGHT_UTF8
+#else
+    AVS_FULLVERSION AVS_COPYRIGHT
 #endif
+    ,-1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
+}
 
 
 extern const AVSFunction Source_filters[] = {
@@ -1988,16 +2025,12 @@ extern const AVSFunction Source_filters[] = {
 #endif
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
-#ifdef AVS_WINDOWS
   { "MessageClip", BUILTIN_FUNC_PREFIX, "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
-#endif
   { "ColorBars", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s[staticframes]b", ColorBars::Create, (void*)0 },
   { "ColorBarsHD", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s[staticframes]b", ColorBars::Create, (void*)1 },
   { "Tone", BUILTIN_FUNC_PREFIX, "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
-#ifdef AVS_WINDOWS
   { "Version", BUILTIN_FUNC_PREFIX, "", Create_Version },
-#endif
 
   { NULL }
 };

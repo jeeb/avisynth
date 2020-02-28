@@ -42,15 +42,18 @@
     #include <avs/linux.h>
 #endif
 
+#include <inttypes.h>
 #include <sstream>
 #include <cstdint>
 #include <cmath>
 #include <avs/config.h>
 #include <avs/minmax.h>
 #include <emmintrin.h>
+#include "../core/internal.h"
+#include "../core/info.h"
 
 
-
+#ifdef AVS_WINDOWS
 static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0)
 {
   return CreateFont( size, width, angle, angle, bold ? FW_BOLD : FW_NORMAL,
@@ -58,6 +61,7 @@ static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int w
                      CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE | FIXED_PITCH /*FF_DONTCARE | DEFAULT_PITCH*/, name );
   // avs+: force fixed pitch when font is not found by name
 }
+#endif
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -81,11 +85,21 @@ extern const AVSFunction Text_filters[] = {
   { "Subtitle",BUILTIN_FUNC_PREFIX,
 	"cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
 	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b",
-    Subtitle::Create },       // see docs!
+#ifdef AVS_WINDOWS
+    Subtitle::Create
+#else
+    SimpleText::Create // poor man's SubTitle, it's simulated with SimpleText
+#endif
+},       // see docs!
 
   { "Compare",BUILTIN_FUNC_PREFIX,
 	"cc[channels]s[logfile]s[show_graph]b",
 	Compare::Create },
+
+  { "Text",BUILTIN_FUNC_PREFIX,
+  "cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
+  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b",
+    SimpleText::Create },
 
   { 0 }
 };
@@ -94,7 +108,7 @@ extern const AVSFunction Text_filters[] = {
 
 
 
-
+#ifdef AVS_WINDOWS
 /******************************
  *******   Anti-alias    ******
  *****************************/
@@ -1042,7 +1056,7 @@ void Antialiaser::GetAlphaRect()
   xr=w-xr;
 }
 
-
+#endif // AVS_WINDOWS
 
 
 
@@ -1053,10 +1067,14 @@ void Antialiaser::GetAlphaRect()
 ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
  : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
+#ifdef AVS_WINDOWS
   antialiaser(vi.width, vi.height, _fontname, _size,
-               vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
-               vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
-			   font_width, font_angle)
+     vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
+     vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
+     font_width, font_angle),
+#endif
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
 {
   AVS_UNUSED(env);
 }
@@ -1068,34 +1086,68 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   n+=offset;
   if (n < 0) return frame;
 
+#ifdef AVS_WINDOWS
   HDC hdc = antialiaser.GetDC();
   if (!hdc) return frame;
-
+#endif
   env->MakeWritable(&frame);
 
+#ifndef AVS_WINDOWS
+  int size = 20; // fixme: override, one fixed font
+#endif
+
+#ifdef AVS_WINDOWS
   RECT r = { 0, 0, 32767, 32767 };
   FillRect(hdc, &r, (HBRUSH)GetStockObject(BLACK_BRUSH));
+#endif
   char text[16];
-  _snprintf(text, sizeof(text), "%05d", n);
+  snprintf(text, sizeof(text), "%05d", n);
   text[15] = 0;
   if (x!=DefXY || y!=DefXY) {
+#ifdef AVS_WINDOWS
     SetTextAlign(hdc, TA_BASELINE|TA_LEFT);
     TextOut(hdc, x+16, y+16, text, (int)strlen(text));
+#else
+    std::u16string s16 = charToU16string(text, true);
+    SimpleTextOutW(vi, frame, x, y, s16, false, textcolor, halocolor, true, 1);
+#endif
   } else if (scroll) {
     int n1 = vi.IsFieldBased() ? (n/2) : n;
-    int y2 = size + size*(n1%(vi.height*8/size));
+#ifdef AVS_WINDOWS
+    int y2 = size + size * (n1 % (vi.height * 8 / size));
     SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
     TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, (int)strlen(text));
-  } else {
+#else
+    int y2 = size + size * (n1 % (vi.height / size));
+    std::u16string s16 = charToU16string(text, true);
+    if(child->GetParity(n))
+      SimpleTextOutW(vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+    else
+      SimpleTextOutW(vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+#endif
+
+  }
+  else {
+#ifdef AVS_WINDOWS
     SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
     int text_len = (int)strlen(text);
-    for (int y2=size; y2<vi.height*8; y2 += size)
-	    TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, text_len);
+    for (int y2 = size; y2 < vi.height * 8; y2 += size)
+      TextOut(hdc, child->GetParity(n) ? 32 : vi.width * 8 + 8, y2, text, text_len);
+#else
+    std::u16string s16 = charToU16string(text, true);
+    for (int y2 = size; y2 < vi.height; y2 += size) {
+      if (child->GetParity(n))
+        SimpleTextOutW(vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+      else
+        SimpleTextOutW(vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+    }
+#endif
   }
+#ifdef AVS_WINDOWS
   GdiFlush();
 
   antialiaser.Apply(vi, &frame, frame->GetPitch());
-
+#endif
   return frame;
 }
 
@@ -1134,10 +1186,14 @@ AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironmen
 ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset_f, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
   : GenericVideoFilter(_child), x(_x), y(_y),
-    antialiaser(vi.width, vi.height, _fontname, _size,
-                vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
-                vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
-			    font_width, font_angle)
+#ifdef AVS_WINDOWS
+  antialiaser(vi.width, vi.height, _fontname, _size,
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
+      font_width, font_angle),
+#endif
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
 {
   int off_f, off_sec, off_min, off_hour;
 
@@ -1217,8 +1273,10 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   n+=offset_f;
   if (n < 0) return frame;
 
+#ifdef AVS_WINDOWS
   HDC hdc = antialiaser.GetDC();
   if (!hdc) return frame;
+#endif
 
   env->MakeWritable(&frame);
 
@@ -1251,25 +1309,31 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
     int min = sec/60;
     int hour = sec/3600;
 
-    _snprintf(text, sizeof(text),
+    snprintf(text, sizeof(text),
               rate>99 ? "%02d:%02d:%02d:%03d" : "%02d:%02d:%02d:%02d",
               hour, min%60, sec%60, frames);
   }
   else {
-    int ms = (int)(((__int64)n * vi.fps_denominator * 1000 / vi.fps_numerator)%1000);
-    int sec = (int)((__int64)n * vi.fps_denominator / vi.fps_numerator);
+    int ms = (int)(((int64_t)n * vi.fps_denominator * 1000 / vi.fps_numerator)%1000);
+    int sec = (int)((int64_t)n * vi.fps_denominator / vi.fps_numerator);
     int min = sec/60;
     int hour = sec/3600;
 
-    _snprintf(text, sizeof(text), "%02d:%02d:%02d.%03d", hour, min%60, sec%60, ms);
+    snprintf(text, sizeof(text), "%02d:%02d:%02d.%03d", hour, min%60, sec%60, ms);
   }
   text[15] = 0;
 
+#ifdef AVS_WINDOWS
   SetTextAlign(hdc, TA_BASELINE|TA_CENTER);
   TextOut(hdc, x+16, y+16, text, (int)strlen(text));
   GdiFlush();
 
   antialiaser.Apply(vi, &frame, frame->GetPitch());
+#else
+  const bool utf8 = true;
+  auto s16 = charToU16string(text, utf8);
+  SimpleTextOutW(vi, frame, x + 2, y + 2, s16, true, textcolor, halocolor, false, 5);
+#endif
 
   return frame;
 }
@@ -1316,6 +1380,7 @@ AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment*
 
 
 
+#ifdef AVS_WINDOWS
 
 /***********************************
  *******   Subtitle Filter    ******
@@ -1431,8 +1496,6 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
     return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color,
 	                    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, env);
 }
-
-
 
 void Subtitle::InitAntialiaser(IScriptEnvironment* env)
 {
@@ -1550,18 +1613,161 @@ GDIError:
 
 
 
-
-
+#endif
 
 inline int CalcFontSize(int w, int h)
 {
-  enum { minFS=8, FS=128, minH=224, minW=388 };
+#ifdef AVS_WINDOWS
+  enum { minFS = 8, FS = 128, minH = 224, minW = 388 };
+#else
+  enum { minFS = 1, FS = 15, minH = 28, minW = 48 }; // GDI case div 8
+#endif
 
   const int ws = (w < minW) ? (FS*w)/minW : FS;
   const int hs = (h < minH) ? (FS*h)/minH : FS;
   const int fs = (ws < hs) ? ws : hs;
   return ( (fs < minFS) ? minFS : fs );
 }
+
+/***********************************
+ *******   SimpleText Filter   *****
+ ***********************************/
+
+SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _firstframe,
+  int _lastframe, const char _fontname[], int _size, int _textcolor,
+  int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
+  int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), /*antialiaser(0),*/ text(_text), x(_x), y(_y),
+  firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor), // not supported
+  halocolor_orig(_halocolor),
+  align(_align), spc(_spc), multiline(_multiline), lsp(_lsp),
+  font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced), font_filename(_font_filename), utf8(_utf8)
+{
+  if (*font_filename) {
+      env->ThrowError("SimpleText: font_filename not supported");
+  }
+}
+
+
+
+SimpleText::~SimpleText(void)
+{
+  // nothing here yet
+}
+
+
+PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame frame = child->GetFrame(n, env);
+
+  if (n >= firstframe && n <= lastframe) {
+    env->MakeWritable(&frame);
+
+    int real_x = x;
+    int real_y = y;
+
+    // Test:
+    // Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
+
+    std::u16string s16 = charToU16string(text, utf8); // to char16_t either from utf8 (win/linux) or ansi (win)
+
+    if (multiline) { // filter parameter, true when lsp is given
+      // multiline case: string contains '\' and 'n' characters explicitely
+      // SubTitle compatibility: literal "\n" means line break, but "\\n" means that literal "\n" will be printed
+      // Thus we replace two-character literal "\n" to \n (0x0A) then when "\" and \n found, we change it back to literal "\n"
+      size_t index = 0;
+      while (true) {
+        index = s16.find(u"\\n", index);
+        if (index == std::string::npos) break;
+        s16.replace(index, 1, u"\n");
+        s16.erase(index + 1, 1); // two characters replaced by a single one, erase at the second position
+        index += 1; // length of the string to replace
+      }
+      // '\' and '\n' back to literal "\n"
+      index = 0;
+      while (true) {
+        index = s16.find(u"\\\n", index); // yes, \ and \n
+        if (index == std::string::npos) break;
+        s16.replace(index, 2, u"\\n"); // back to "\" + "n"
+        index += 2; // length of the string to replace
+      }
+    }
+
+    // halocolor MSB
+    // FF: fadeIt
+    // 01-FE: no halo
+    // 00: use halocolor
+    SimpleTextOutW_multi(vi, frame, real_x, real_y, s16,
+      halocolor_orig == 0xFF000000, // fadeIt, special halocolor, when MSB byte is FF
+      textcolor, halocolor,
+      (halocolor_orig & 0xFF000000) == 0, // use halocolor when MSB byte is zero
+      align, lsp);
+  }
+
+  return frame;
+}
+
+AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  PClip clip = args[0].AsClip();
+  const char* text = args[1].AsString();
+  const int first_frame = args[4].AsInt(0);
+  const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames - 1);
+  const char* font = args[6].AsString("Arial"); // n/a, we have a single fixed font
+  //const int size = int(args[7].AsFloat(18); // from SubTitle / 18.0 * 20.0 * 8 + 0.5);
+  const int size = 20; // get the default exactly 20 pixel tall, no mul8
+  const int text_color = args[8].AsInt(0xFFFF00);
+  const int halo_color = args[9].AsInt(0);
+  const int align = args[10].AsInt(args[2].AsFloat(0) == -1 ? 2 : 7);
+  const int spc = args[11].AsInt(0);
+  const bool multiline = args[12].Defined();
+  const int lsp = args[12].AsInt(0); // line spacing if multiline
+  const int font_width = int(args[13].AsFloat(0) * 8 + 0.5); // n/a
+  const int font_angle = int(args[14].AsFloat(0) * 10 + 0.5); // n/a
+  const bool interlaced = args[15].AsBool(false); // n/a
+  const char* font_filename = args[16].AsString(""); // n/a
+  const bool utf8 = args[17].AsBool(false); // linux: n/a
+
+  // parameters marked with n/a are ignored; parameter list is currently the same as SubTitle
+
+  if ((align < 1) || (align > 9))
+    env->ThrowError("SimpleText: Align values are 1 - 9 mapped to your numeric pad");
+
+  int defx, defy;
+  switch (align) {
+  case 1: case 4: case 7: defx = 8; break;
+  case 2: case 5: case 8: defx = -1; break;
+  case 3: case 6: case 9: defx = clip->GetVideoInfo().width - 8; break;
+  default: defx = 8; break;
+  }
+  switch (align) {
+  case 1: case 2: case 3: defy = clip->GetVideoInfo().height - 2; break;
+  case 4: case 5: case 6: defy = -1; break;
+  case 7: case 8: case 9: defy = 0; break;
+  default: defy = /*(size + 4) / 8;*/ (size + 1) / 2; break; // no mul 8
+  }
+
+  const bool isXdefined = args[2].Defined();
+  const bool isYdefined = args[3].Defined();
+
+  const int x = int(args[2].AsDblDef(defx) /* * 8 */ + 0.5); // no mul 8 like in SubTitle
+  const int y = int(args[3].AsDblDef(defy) /* * 8 */ + 0.5);
+
+  int real_x = x;
+  int real_y = y;
+  // center check
+  if (defx == -1 && !isXdefined)
+    real_x = (clip->GetVideoInfo().width >> 1) /* * 8 */; // no mul 8 like in SubTitle
+
+  if (defy == -1 && !isYdefined)
+    real_y = (clip->GetVideoInfo().height >> 1) /* * 8 */; // no mul 8 like in SubTitle
+
+  return new SimpleText(clip, text, real_x, real_y, first_frame, last_frame, font, size, text_color,
+    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, env);
+}
+
 
 
 /***********************************
@@ -1570,9 +1776,13 @@ inline int CalcFontSize(int w, int h)
 
 FilterInfo::FilterInfo( PClip _child, bool _font_override, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
 : GenericVideoFilter(_child), vii(AdjustVi()), font_override(_font_override), size(_size),
+#ifdef AVS_WINDOWS
   antialiaser(vi.width, vi.height, _fontname, size,
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
-      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor),
+#endif
+  text_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
+  halo_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
 {
   AVS_UNUSED(env);
 }
@@ -1699,8 +1909,11 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     memset(frame->GetWritePtr(), 0, frame->GetPitch()*frame->GetHeight()); // Blank frame
   }
 
+#ifdef AVS_WINDOWS
   HDC hdcAntialias = antialiaser.GetDC();
-  if (hdcAntialias) {
+  if (!hdcAntialias)
+    return frame;
+#endif
     const char* c_space = "Unknown";
     const char* s_type = t_NONE;
     const char* s_parity;
@@ -1730,7 +1943,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       int vLenInMsecs = (int)(1000.0 * (double)vii.num_frames * (double)vii.fps_denominator / (double)vii.fps_numerator);
       int cPosInMsecs = (int)(1000.0 * (double)n * (double)vii.fps_denominator / (double)vii.fps_numerator);
 
-      tlen = _snprintf(text, sizeof(text),
+      tlen = snprintf(text, sizeof(text),
         "Frame: %8u of %-8u\n"                                //  28
         "Time: %02d:%02d:%02d.%03d of %02d:%02d:%02d.%03d\n"  //  35
         "ColorSpace: %s, BitsPerComponent: %u\n"              //  18=13+5
@@ -1756,7 +1969,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
 );
     }
     else {
-      tlen = _snprintf(text, sizeof(text),
+      tlen = snprintf(text, sizeof(text),
         "Frame: %8u of %-8u\n"
         "Has Video: NO\n"
         "Has Audio: %s\n"
@@ -1772,11 +1985,11 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       else if (vii.SampleType() == SAMPLE_FLOAT) s_type = t_FLOAT32;
 
       int aLenInMsecs = (int)(1000.0 * (double)vii.num_audio_samples / (double)vii.audio_samples_per_second);
-      tlen += _snprintf(text + tlen, sizeof(text) - tlen,
+      tlen += snprintf(text + tlen, sizeof(text) - tlen,
         "Audio Channels: %-8u\n"                              //  25
         "Sample Type: %s\n"                                   //  28=14+14
         "Samples Per Second: %5d\n"                           //  26
-        "Audio length: %I64u samples. %02d:%02d:%02d.%03d\n"  //  57=37+20
+        "Audio length: %" PRIu64 " samples. %02d:%02d:%02d.%03d\n"  //  57=37+20
         , vii.AudioChannels()
         , s_type
         , vii.audio_samples_per_second
@@ -1789,19 +2002,20 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       tlen += 1;
     }
     // CPU capabilities w/o AVX512
-    tlen += _snprintf(text + tlen, sizeof(text) - tlen,
+    tlen += snprintf(text + tlen, sizeof(text) - tlen,
       "CPU: %s\n"
       , GetCpuMsg(env, false).c_str()
     );
     // AVX512 flags in new line (too long)
     std::string avx512 = GetCpuMsg(env, true);
     if (avx512.length() > 0) {
-      tlen += _snprintf(text + tlen, sizeof(text) - tlen,
+      tlen += snprintf(text + tlen, sizeof(text) - tlen,
         "     %s\n"
         , avx512.c_str()
       );
     }
 
+#ifdef AVS_WINDOWS
     // So far RECT dimensions were hardcoded: RECT r = { 32, 16, min(3440,vi.width * 8), 900*2 };
     // More flexible way: get text extent
     RECT r;
@@ -1853,9 +2067,24 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     env->MakeWritable(&frame);
     frame->GetWritePtr(); // Bump sequence_number
     int dst_pitch = frame->GetPitch();
-    antialiaser.Apply(vi, &frame, dst_pitch );
-  }
+    antialiaser.Apply(vi, &frame, dst_pitch);
+#else
+    env->MakeWritable(&frame);
+    frame->GetWritePtr(); // Bump sequence_number
 
+    // AVS_LINUX: utf8 is always true
+    bool utf8 = false;
+    // converting to char16_t either from utf8 (win/linux) or ansi (win)
+    std::u16string s16 = charToU16string(text, utf8);
+
+    int align = 7;
+    int lsp = 0;
+    int fontsize = 20;
+    int x = 4;
+    int y = 2;
+
+    SimpleTextOutW_multi(vi, frame, x, y, s16, false, text_color, halo_color, true, align, lsp);
+#endif
   return frame;
 }
 
@@ -1866,9 +2095,13 @@ AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* en
     PClip clip = args[0].AsClip();
     // new parameters 20160823
     const char* font = args[1].AsString("Courier New");
+#ifdef AVS_WINDOWS
     int size = int(args[2].AsFloat(0) * 8 + 0.5);
+#else
+    int size = int(args[2].AsFloat(0) + 0.5);
+#endif
     if (!args[2].Defined())
-        size = CalcFontSize(clip->GetVideoInfo().width, clip->GetVideoInfo().height);
+      size = CalcFontSize(clip->GetVideoInfo().width, clip->GetVideoInfo().height);
     const int text_color = args[3].AsInt(0xFFFF00);
     const int halo_color = args[4].AsInt(0);
 
@@ -1888,7 +2121,13 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     child2(_child2),
     log(NULL),
     show_graph(_show_graph),
-    antialiaser(vi.width, vi.height, "Courier New", 128, (vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00, (vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
+#ifdef AVS_WINDOWS
+    antialiaser(vi.width, vi.height, "Courier New", 128,
+      (vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00,
+      (vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
+#endif
+    text_color((vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00),
+    halo_color((vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
     framecount(0)
 {
   const VideoInfo& vi2 = child2->GetVideoInfo();
@@ -1977,7 +2216,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
   }
 
   masked_bytes = 0;
-  for (DWORD temp = mask; temp != 0; temp >>=8)
+  for (uint32_t temp = mask; temp != 0; temp >>=8)
     masked_bytes += (temp & 1);
 
   if (fname[0] != 0) {
@@ -2057,9 +2296,9 @@ static void compare_planar_uint16_t_c(
     const BYTE * f1ptr8, int pitch1,
     const BYTE * f2ptr8, int pitch2,
     int rowsize, int height,
-    __int64 &SAD_sum, __int64 &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
+    int64_t&SAD_sum, int64_t &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
 {
-    __int64 row_SSD;
+    int64_t row_SSD;
 
     const uint16_t *f1ptr = reinterpret_cast<const uint16_t *>(f1ptr8);
     const uint16_t *f2ptr = reinterpret_cast<const uint16_t *>(f2ptr8);
@@ -2087,7 +2326,7 @@ static void compare_planar_uint16_t_c(
 }
 
 
-static void compare_c(DWORD mask, int increment,
+static void compare_c(uint32_t mask, int increment,
     const BYTE * f1ptr, int pitch1,
     const BYTE * f2ptr, int pitch2,
     int rowsize, int height,
@@ -2098,8 +2337,8 @@ static void compare_c(DWORD mask, int increment,
     for (int y = 0; y < height; y++) {
         row_SSD = 0;
         for (int x = 0; x < rowsize; x += increment) {
-            DWORD p1 = *(DWORD *)(f1ptr + x) & mask;
-            DWORD p2 = *(DWORD *)(f2ptr + x) & mask;
+            uint32_t p1 = *(uint32_t*)(f1ptr + x) & mask;
+            uint32_t p2 = *(uint32_t*)(f2ptr + x) & mask;
             int d0 = (p1 & 0xff) - (p2 & 0xff);
             int d1 = ((p1 >> 8) & 0xff) - ((p2 & 0xff00) >> 8); // ?PF why not (p2 >> 8) & 0xff as for p1?
             int d2 = ((p1 >> 16) & 0xff) - ((p2 & 0xff0000) >> 16);
@@ -2120,9 +2359,9 @@ static void compare_uint16_t_c(uint64_t mask64, int increment,
     const BYTE * f1ptr8, int pitch1,
     const BYTE * f2ptr8, int pitch2,
     int rowsize, int height,
-    __int64 &SAD_sum, __int64 &SD_sum, int &pos_D, int &neg_D, double &SSD_sum)
+    int64_t& SAD_sum, int64_t &SD_sum, int &pos_D, int &neg_D, double &SSD_sum)
 {
-    __int64 row_SSD;
+    int64_t row_SSD;
 
     const uint16_t *f1ptr = reinterpret_cast<const uint16_t *>(f1ptr8);
     const uint16_t *f2ptr = reinterpret_cast<const uint16_t *>(f2ptr8);
@@ -2152,7 +2391,7 @@ static void compare_uint16_t_c(uint64_t mask64, int increment,
 }
 
 
-static void compare_sse2(DWORD mask, int increment,
+static void compare_sse2(uint32_t mask, int increment,
                          const BYTE * f1ptr, int pitch1,
                          const BYTE * f2ptr, int pitch2,
                          int rowsize, int height,
@@ -2161,7 +2400,7 @@ static void compare_sse2(DWORD mask, int increment,
   // rowsize multiple of 16 for YUV Planar, RGB32 and YUY2; 12 for RGB24
   // increment must be 3 for RGB24 and 4 for others
 
-  __int64 issd = 0;
+  int64_t issd = 0;
   __m128i sad_vector = _mm_setzero_si128(); //sum of absolute differences
   __m128i sd_vector = _mm_setzero_si128(); // sum of differences
   __m128i positive_diff = _mm_setzero_si128();
@@ -2248,7 +2487,7 @@ static void compare_sse2(DWORD mask, int increment,
 
 #ifdef X86_32
 
-static void compare_isse(DWORD mask, int increment,
+static void compare_isse(uint32_t mask, int increment,
                          const BYTE * f1ptr, int pitch1,
                          const BYTE * f2ptr, int pitch2,
                          int rowsize, int height,
@@ -2257,7 +2496,7 @@ static void compare_isse(DWORD mask, int increment,
   // rowsize multiple of 8 for YUV Planar, RGB32 and YUY2; 6 for RGB24
   // increment must be 3 for RGB24 and 4 for others
 
-  __int64 issd = 0;
+  int64_t issd = 0;
   __m64 sad_vector = _mm_setzero_si64(); //sum of absolute differences
   __m64 sd_vector = _mm_setzero_si64(); // sum of differences
   __m64 positive_diff = _mm_setzero_si64();
@@ -2341,9 +2580,9 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame f2 = child2->GetFrame(n, env);
 
   int SD = 0;
-  __int64 SD_64 = 0;
+  int64_t SD_64 = 0;
   int SAD = 0;
-  __int64 SAD_64 = 0;
+  int64_t SAD_64 = 0;
   int pos_D = 0;
   int neg_D = 0;
   double SSD = 0;
@@ -2463,13 +2702,18 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     BYTE* dstp = f1->GetWritePtr();
     int dst_pitch = f1->GetPitch();
 
+#ifdef AVS_WINDOWS
     HDC hdc = antialiaser.GetDC();
-    if (hdc) {
+    if (hdc)
+#endif
+    {
         char text[600];
+#ifdef AVS_WINDOWS
         RECT r = { 32, 16, min((51+(pixelsize==1 ? 0: 12))*67,vi.width * 8), 768 + 128 }; // orig: 3440: 51*67, not enough for 16 bit data
+#endif
         double PSNR_overall = 10.0 * log10(bytecount_overall * factor * factor / SSD_overall);
         if (pixelsize == 1)
-            _snprintf(text, sizeof(text),
+            snprintf(text, sizeof(text),
                 "       Frame:  %-8u(   min  /   avg  /   max  )\n"
                 "Mean Abs Dev:%8.4f  (%7.3f /%7.3f /%7.3f )\n"
                 "    Mean Dev:%+8.4f  (%+7.3f /%+7.3f /%+7.3f )\n"
@@ -2486,7 +2730,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
                 PSNR_overall
             );
         else
-            _snprintf(text, sizeof(text),
+            snprintf(text, sizeof(text),
                 "       Frame:  %-8u   (     min   /     avg   /     max   )\n"
                 "Mean Abs Dev:%11.4f  (%10.3f /%10.3f /%10.3f )\n"
                 "    Mean Dev:%+11.4f  (%+10.3f /%+10.3f /%+10.3f )\n"
@@ -2502,10 +2746,16 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
                 PSNR, PSNR_min, PSNR_tot / framecount, PSNR_max,
                 PSNR_overall
             );
+#ifdef AVS_WINDOWS
         DrawText(hdc, text, -1, &r, 0);
         GdiFlush();
 
         antialiaser.Apply(vi, &f1, dst_pitch);
+#else
+        bool utf8 = true;
+        auto s16 = charToU16string(text, utf8);
+        SimpleTextOutW_multi(vi, f1, 2, 1, s16, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
+#endif
     }
 
     if (show_graph) {
@@ -2647,7 +2897,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 /************************************
  *******   Helper Functions    ******
  ***********************************/
-
+#ifdef AVS_WINDOWS
 bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold,
                          bool italic, int align, int* width, int* height )
 {
@@ -2690,6 +2940,31 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 
   return success;
 }
+#endif
+
+bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,
+  bool italic, int align, int& width, int& height, bool utf8)
+{
+  auto s16 = charToU16string(text, utf8);
+  size_t max_width = 1;
+  height = 1;
+
+  constexpr int FONT_WIDTH = 10;
+  constexpr int FONT_HEIGHT = 20;
+
+  // make list governed by LF separator
+  using u16stringstream = std::basic_stringstream<char16_t>;
+  std::u16string temp;
+  u16stringstream wss(s16);
+  while (std::getline(wss, temp, u'\n')) {
+    max_width = std::max(max_width, temp.size() * FONT_WIDTH);
+    height += FONT_HEIGHT;
+  }
+
+  width = max_width;
+
+  return true;
+}
 
 
 void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
@@ -2701,6 +2976,8 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
     textcolor = RGB2YUV(textcolor);
     halocolor = RGB2YUV(halocolor);
   }
+
+#ifdef AVS_WINDOWS
   Antialiaser antialiaser(vi.width, vi.height, "Arial", size, textcolor, halocolor);
   HDC hdcAntialias = antialiaser.GetDC();
   if  (hdcAntialias)
@@ -2710,5 +2987,23 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 	GdiFlush();
 	antialiaser.Apply(vi, frame, (*frame)->GetPitch());
   }
+#else
+  //env->MakeWritable(&frame);
+  //frame->GetWritePtr(); // Bump sequence_number
+
+  // AVS_LINUX: utf8 is always true
+  bool utf8 = false; // fixme: true for new utf8-avs+
+  // converting to char16_t either from utf8 (win/linux) or ansi (win)
+  std::u16string s16 = charToU16string(message, utf8);
+
+  int align = 7;
+  int lsp = 0;
+  int fontsize = 20;
+  int x = 4;
+  int y = 4;
+
+  SimpleTextOutW_multi(vi, *frame, x, y, s16, false, textcolor, halocolor, true, align, lsp);
+
+#endif
 }
 #endif // ENABLE_FILTER_TEXTOVERLAY

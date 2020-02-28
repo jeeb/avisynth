@@ -463,8 +463,21 @@ std::u16string charToU16string(const char* text, bool utf8)
     // MSVC++ 14.2  _MSC_VER == 1920 (Visual Studio 2019 version 16.0) v142 toolset
     // MSVC++ 14.16 _MSC_VER == 1916 (Visual Studio 2017 version 15.9) v141_xp toolset
     // this one suxx with MSVC v141_xp toolset: unresolved external error
+
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-    s16 = convert.from_bytes(source);
+
+    // crash warning, strings here are considered as being a valid utf8 sequence
+    // which is not the case when our own original VersionString() is passed here with an embedded ansi encoded (C) symbol
+    // Crash occurs: "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2020 AviSynth+ Project"
+    // O.K.: u8"\n\u00A9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\u00A9 2013-2020 AviSynth+ Project"
+    // FIXME: make it crash-tolerant?
+    try {
+      s16 = convert.from_bytes(source);
+    }
+    catch (const std::exception & e) {
+      s16 = u"Error converting utf8 string to utf16\r\n";
+      // FIXME: Throw a proper avs exception
+    }
 #endif
   }
 #ifdef AVS_WINDOWS

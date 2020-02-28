@@ -3168,9 +3168,7 @@ const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
 }
 
 void __stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
-#ifdef AVS_WINDOWS //fixme
   ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);
-#endif
 }
 
 
