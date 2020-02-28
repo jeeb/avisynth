@@ -32,7 +32,6 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifdef ENABLE_FILTER_TEXTOVERLAY
 #include "text-overlay.h"
 #include "../convert/convert.h"  // for RGB2YUV
 
@@ -3006,4 +3005,3 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 
 #endif
 }
-#endif // ENABLE_FILTER_TEXTOVERLAY

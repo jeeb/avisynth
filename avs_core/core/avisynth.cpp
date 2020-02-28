@@ -81,9 +81,7 @@ extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Plugin_functions[],
                    Resample_filters[], Resize_filters[],
                    Script_functions[], Source_filters[],
-#ifdef ENABLE_FILTER_TEXTOVERLAY
                    Text_filters[],
-#endif
                    Transform_filters[], Merge_filters[], Color_filters[],
                    Debug_filters[], Turn_filters[],
                    Conditional_filters[], Conditional_funtions_filters[],
@@ -98,9 +96,7 @@ const AVSFunction* const builtin_functions[] = {
                    Layer_filters, Levels_filters, Misc_filters,
                    Resample_filters, Resize_filters,
                    Script_functions, Source_filters,
-#ifdef ENABLE_FILTER_TEXTOVERLAY
                    Text_filters,
-#endif
                    Transform_filters, Merge_filters, Color_filters,
                    Debug_filters, Turn_filters,
                    Conditional_filters, Conditional_funtions_filters,
