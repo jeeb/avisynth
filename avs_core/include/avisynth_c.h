@@ -946,7 +946,7 @@ AVSC_API(AVS_VideoFrame *, avs_subframe_planar)(AVS_ScriptEnvironment *, AVS_Vid
   void* malloc(size_t)
   void free(void*);
 
-  HMODULE LoadLibrary(const char*);
+  HMODULE LoadLibraryA(const char*);
   void* GetProcAddress(HMODULE, const char*);
   FreeLibrary(HMODULE);
 */
@@ -1098,7 +1098,7 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVS_Library *library = (AVS_Library *)malloc(sizeof(AVS_Library));
   if (library == NULL)
     return NULL;
-  library->handle = LoadLibrary("avisynth");
+  library->handle = LoadLibraryA("avisynth");
   if (library->handle == NULL)
     goto fail;
 
