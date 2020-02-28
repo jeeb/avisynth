@@ -1102,9 +1102,7 @@ ScriptEnvironment::~ScriptEnvironment() {
       LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks. Leaking count = %d",leakCount);
   }
 
-#ifdef AVS_WINDOWS
   delete plugin_manager;
-#endif
   delete [] vsprintf_buf;
 
 #ifdef AVS_WINDOWS // needs linux alternative, maybe?
@@ -1340,15 +1338,11 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
   }
 
   std::string name_to_register;
-#ifdef AVS_WINDOWS
   std::string loading = plugin_manager->PluginLoading();
   if (loading.empty())
-#endif
     name_to_register = filter;
-#ifdef AVS_WINDOWS
   else
     name_to_register = loading.append("_").append(filter);
-#endif
 
   name_to_register = NormalizeString(name_to_register);
 
