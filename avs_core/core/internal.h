@@ -42,7 +42,7 @@
 #include "version.h"
 #include <memory>
 #include <string>
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
 #include <limits.h>
 #endif
 

@@ -31,7 +31,7 @@ const char RegPluginDirPlus[] = "PluginDir+";
 #endif
 #endif // AVS_WINDOWS
 
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
 #include <dlfcn.h>
 // Redifining these is easier than adding several ifdefs.
 #define HMODULE void*
@@ -521,8 +521,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
   TCHAR ExeFilePath[AVS_MAX_PATH];
   memset(ExeFilePath, 0, sizeof(ExeFilePath[0])*AVS_MAX_PATH);  // WinXP does not terminate the result of GetModuleFileName with a zero, so me must zero our buffer
   GetModuleFileName(NULL, ExeFilePath, AVS_MAX_PATH);
-#endif
-#ifdef AVS_LINUX
+#else // AVS_POSIX
   std::string ExeFilePath;
   char buf[PATH_MAX + 1];
   if (readlink("/proc/self/exe", buf, sizeof(buf) - 1) != -1)
@@ -587,15 +586,18 @@ void PluginManager::AutoloadPlugins()
   {
     std::error_code ec;
 
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
     const char* binaryFilter = ".so";
+#ifdef AVS_MACOS
+    const char* binaryFilter = ".dylib";
+#endif
 #else
     const char* binaryFilter = ".dll";
 #endif
     for (auto& file : fs::directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink, ec))
     {
       const bool extensionsMatch =
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
       file.path().extension() == binaryFilter; // case sensitive
 #else
       streqi(file.path().extension().generic_string().c_str(), binaryFilter);  // case insensitive
@@ -608,7 +610,7 @@ void PluginManager::AutoloadPlugins()
         // Search for loaded plugins with the same base name.
         for (size_t i = 0; i < AutoLoadedPlugins.size(); ++i)
         {
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
           if (AutoLoadedPlugins[i].BaseName == p.BaseName) // case insentitive
 #else
           if (streqi(AutoLoadedPlugins[i].BaseName.c_str(), p.BaseName.c_str())) // fixme:
@@ -630,7 +632,7 @@ void PluginManager::AutoloadPlugins()
     for (auto& file : fs::directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink, ec)) // and not recursive_directory_iterator
     {
       const bool extensionsMatch =
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
         file.path().extension() == scriptFilter; // case sensitive
 #else
         streqi(file.path().extension().generic_string().c_str(), scriptFilter);  // case insensitive
@@ -645,7 +647,7 @@ void PluginManager::AutoloadPlugins()
         // Search for loaded plugins with the same base name.
         for (size_t i = 0; i < AutoLoadedImports.size(); ++i)
         {
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
           if (AutoLoadedPlugins[i].BaseName == p.BaseName) // case insensitive
 #else
           if (streqi(AutoLoadedImports[i].BaseName.c_str(), p.BaseName.c_str()))
@@ -880,8 +882,7 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
     else
       return false;
   }
-#endif
-#ifdef AVS_LINUX
+#else // AVS_POSIX
   plugin.Library = dlopen(plugin.FilePath.c_str(), RTLD_LAZY);
   if (plugin.Library == NULL)
     Env->ThrowError("Cannot load file '%s'.", plugin.FilePath.c_str());
@@ -1025,7 +1026,7 @@ std::string PluginManager::PluginLoading() const
 bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
 {
   extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
   AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)dlsym(plugin.Library, "AvisynthPluginInit3");
 #elif defined(GCC_WIN32)
   AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit3");
@@ -1051,7 +1052,7 @@ bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
 
 bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
 {
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
   AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)dlsym(plugin.Library, "AvisynthPluginInit2");
 #elif defined(GCC_WIN32)
   AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit2");
@@ -1077,7 +1078,7 @@ bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
 
 bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 {
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
   AvisynthCPluginInitFunc AvisynthCPluginInit = (AvisynthCPluginInitFunc)dlsym(plugin.Library, "avisynth_c_plugin_init");
 #else
 #ifdef _WIN64
@@ -1089,7 +1090,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
   if (!AvisynthCPluginInit)
     AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init@4");
 #endif
-#endif // AVS_LINUX
+#endif // AVS_POSIX
 
   if (AvisynthCPluginInit == NULL)
     return false;

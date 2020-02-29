@@ -29,7 +29,7 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
 #ifndef AVSCORE_LINUX_H
 #define AVSCORE_LINUX_H
 
@@ -108,4 +108,4 @@
 #define __cdecl
 
 #endif // AVSCORE_LINUX_H
-#endif // AVS_LINUX
+#endif // AVS_POSIX

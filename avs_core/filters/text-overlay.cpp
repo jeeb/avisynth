@@ -2071,7 +2071,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     env->MakeWritable(&frame);
     frame->GetWritePtr(); // Bump sequence_number
 
-    // AVS_LINUX: utf8 is always true
+    // AVS_POSIX: utf8 is always true
     bool utf8 = false;
     // converting to char16_t either from utf8 (win/linux) or ansi (win)
     std::u16string s16 = charToU16string(text, utf8);
@@ -2990,7 +2990,7 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   //env->MakeWritable(&frame);
   //frame->GetWritePtr(); // Bump sequence_number
 
-  // AVS_LINUX: utf8 is always true
+  // AVS_POSIX: utf8 is always true
   bool utf8 = false; // fixme: true for new utf8-avs+
   // converting to char16_t either from utf8 (win/linux) or ansi (win)
   std::u16string s16 = charToU16string(message, utf8);

@@ -2,7 +2,7 @@
 #define __Exprfilter_h
 
 #include <avisynth.h>
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
 #include <sys/mman.h>
 #endif
 

@@ -431,8 +431,8 @@ std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi)
 std::u16string charToU16string(const char* text, bool utf8)
 {
   std::u16string s16;
-  // AVS_LINUX: utf8 is always true, no ANSI here
-#ifdef AVS_LINUX
+  // AVS_POSIX: utf8 is always true, no ANSI here
+#ifdef AVS_POSIX
   utf8 = true;
 #endif
   if (utf8) {

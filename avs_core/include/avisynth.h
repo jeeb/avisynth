@@ -45,7 +45,7 @@
 // Avisynth, such as 3rd-party filters, import and export plugins, or
 // graphical user interfaces.
 
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
 # include "avs/linux.h"
 #endif
 
@@ -58,7 +58,7 @@
 #include "avs/capi.h"
 #include "avs/types.h"
 
-#if defined(AVS_LINUX)
+#if defined(AVS_POSIX)
 #define __stdcall
 #define __cdecl
 #endif

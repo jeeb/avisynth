@@ -1995,7 +1995,7 @@ public:
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
     AVS_FULLVERSION AVS_COPYRIGHT_UTF8
 #else
     AVS_FULLVERSION AVS_COPYRIGHT

@@ -87,12 +87,13 @@
 #   define AVS_WINDOWS
 #elif defined(__linux__)
 #   define AVS_LINUX
+#   define AVS_POSIX
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #   define AVS_BSD
-#   define AVS_LINUX
+#   define AVS_POSIX
 #elif defined(__APPLE__)
 #   define AVS_MACOS
-#   define AVS_LINUX
+#   define AVS_POSIX
 #else
 #   error Operating system unsupported.
 #endif

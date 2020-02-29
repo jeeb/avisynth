@@ -35,7 +35,7 @@
 
 #include "config.h"
 
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
 // this is also defined in avs/linux.h, but that header is for the core,
 // not external programs
 #define __declspec(x)

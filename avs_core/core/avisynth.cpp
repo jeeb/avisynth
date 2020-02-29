@@ -1673,7 +1673,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 }
 
 #ifdef _DEBUG
-#ifdef AVS_LINUX
+#ifdef AVS_POSIX
 void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
 {
   int linearsearchcount;
