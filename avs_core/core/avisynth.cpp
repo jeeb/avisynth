@@ -59,7 +59,7 @@
 #elif defined(AVS_BSD)
     #include <sys/sysctl.h>
 #endif
-    #include <avs/linux.h>
+    #include <avs/posix.h>
 #endif
 
 #include <string>

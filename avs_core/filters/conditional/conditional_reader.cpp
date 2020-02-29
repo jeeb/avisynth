@@ -24,7 +24,7 @@
 #ifdef AVS_WINDOWS
     #include <avs/win.h>
 #else
-    #include <avs/linux.h>
+    #include <avs/posix.h>
 #endif
 
 #include <avs/minmax.h>

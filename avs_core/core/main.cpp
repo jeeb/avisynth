@@ -43,7 +43,7 @@
     #include <vfw.h>
     #include <intrin.h>
 #else
-    #include <avs/linux.h>
+    #include <avs/posix.h>
     #include <x86intrin.h>
 #endif
 

@@ -46,7 +46,7 @@
 // graphical user interfaces.
 
 #ifdef AVS_POSIX
-# include "avs/linux.h"
+# include "avs/posix.h"
 #endif
 
 

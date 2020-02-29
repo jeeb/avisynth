@@ -41,7 +41,7 @@
     #include <avs/win.h>
     #include <tchar.h>
 #else
-    #include <avs/linux.h>
+    #include <avs/posix.h>
 #endif
 
 #include "expression.h"

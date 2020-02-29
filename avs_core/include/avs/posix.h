@@ -30,8 +30,8 @@
 // import and export plugins, or graphical user interfaces.
 
 #ifdef AVS_POSIX
-#ifndef AVSCORE_LINUX_H
-#define AVSCORE_LINUX_H
+#ifndef AVSCORE_POSIX_H
+#define AVSCORE_POSIX_H
 
 #ifdef __cplusplus
 #include <cstring>
@@ -107,5 +107,5 @@
 #define __stdcall
 #define __cdecl
 
-#endif // AVSCORE_LINUX_H
+#endif // AVSCORE_POSIX_H
 #endif // AVS_POSIX
