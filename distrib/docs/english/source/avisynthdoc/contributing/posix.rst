@@ -103,7 +103,7 @@ Building AviSynth+ (GNU Make)
 
     CC=gcc CXX=g++ LD=gcc cmake ../ -DCMAKE_CXX_FLAGS="-fpermissive" -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++" && \
     gmake -j$(nproc) && \
-    sudo gmake install
+    gmake install
 
 
 Building AviSynth+ (Ninja)
@@ -244,6 +244,20 @@ The easiest two scripts to test the installation are Version or Colorbars/Colorb
     Colorbars() # or ColorbarsHD()
 
 
+And running this script in the test build of FFmpeg:
+
+::
+
+    cd ~/ffavx_build/bin
+    [create the script in this directory, for ease of testing]
+
+    # to play the script:
+    ./ffplay -i test.avs
+
+    # to convert as usual:
+    ./ffmpeg -i test.avs [encoding options]
+
+
 Loading actual video sources will require a source filter.  FFMS2 doesn't require any porting
 to these OSes, making it the most straightforward option at the moment.
 
@@ -285,7 +299,7 @@ macOS
 
     CC=gcc CXX=g++ LD=gcc ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
     make -j$(nproc)
-    make install
+    sudo make install
 
 
 FreeBSD
