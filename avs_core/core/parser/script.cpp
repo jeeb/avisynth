@@ -745,11 +745,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 #endif
 
     buf[size] = 0;
-#ifdef AVS_WINDOWS
     AVSValue eval_args[] = { buf.data(), script_name };
-#else
-    AVSValue eval_args[] = { buf.data(), script_name };
-#endif
     result = env->Invoke("Eval", AVSValue(eval_args, 2));
     //env->ThrowError("Import: test %s size %d\n", buf.data(), (int)size);
   }
