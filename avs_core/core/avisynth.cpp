@@ -1134,7 +1134,7 @@ ScriptEnvironment::~ScriptEnvironment() {
   delete plugin_manager;
   delete [] vsprintf_buf;
 
-#ifdef AVS_WINDOWS // needs linux alternative, maybe?
+#ifdef AVS_WINDOWS // COM is Win32-specific
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
   if(SUCCEEDED(hrfromcoinit) && (coinitThreadId == GetCurrentThreadId())) {
