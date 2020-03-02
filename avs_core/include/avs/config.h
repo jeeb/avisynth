@@ -98,4 +98,8 @@
 #   error Operating system unsupported.
 #endif
 
+#if defined(AVS_POSIX)
+#define NEW_AVSVALUE
+#endif
+
 #endif //AVS_CONFIG_H

@@ -167,12 +167,11 @@ IF(WIN32)
   SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
 ELSE()
 if(APPLE)
-  # NEW_AVSVALUE = arrays, non-Windows OSes only
   # macOS uses Clang's linker, doesn't like --no-undefined
-  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,-undefined,error -DNEW_AVSVALUE" )
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,-undefined,error" )
 else()
-  # NEW_AVSVALUE = arrays, non-Windows OSes only
-  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,--no-undefined -DNEW_AVSVALUE" )
+  # make sure there are no undefined symbols
+  SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,--no-undefined" )
 endif()
 ENDIF()
 
