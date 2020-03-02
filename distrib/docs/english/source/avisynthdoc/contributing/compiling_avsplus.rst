@@ -23,7 +23,7 @@ AviSynth+ can be built by a few different compilers:
 
 * Visual Studio 2017 or higher.
 * Clang 7.0.1 or higher.
-* GCC 7 or higher.
+* GCC 8 or higher.
 
 | Download and install Visual Studio Community:
 | `<https://visualstudio.microsoft.com/downloads/>`_
