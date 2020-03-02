@@ -587,9 +587,10 @@ void PluginManager::AutoloadPlugins()
     std::error_code ec;
 
 #ifdef AVS_POSIX
-    const char* binaryFilter = ".so";
 #ifdef AVS_MACOS
     const char* binaryFilter = ".dylib";
+#else
+    const char* binaryFilter = ".so";
 #endif
 #else
     const char* binaryFilter = ".dll";
