@@ -4,8 +4,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200214 (dev 3.5)
---------------------------
+20200302 3.5.0
+--------------
+- New: Native Linux, macOS, and BSD support.
 - Fix potential crash on exit or cache shrink (linux/gcc only?)
 - Layer: support RGB24 and RGB48 (internally processed as Planar RGB - lossless pre and post conversion)
 - Fix: RGBP to 444 8-14bit right side artifacts at specific widths

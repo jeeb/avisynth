@@ -1,5 +1,5 @@
-Avisynth+ v3.5 (20200214)
---------------------------
+Avisynth+ v3.5 (20200302)
+-------------------------
 
 Use the installer or copy files directly
 - 64 bit OS: 
@@ -31,8 +31,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200214 (dev 3.5)
---------------------------
+20200302 3.5.0
+--------------
+- New: Native Linux, macOS, and BSD support.
 - Fix potential crash on exit or cache shrink (linux/gcc only?)
 - Layer: support RGB24 and RGB48 (internally processed as Planar RGB - lossless pre and post conversion)
 - Fix: RGBP to 444 8-14bit right side artifacts at specific widths
