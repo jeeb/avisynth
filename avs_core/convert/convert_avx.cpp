@@ -34,7 +34,11 @@
 
 
 #include <avs/alignment.h>
-#include <intrin.h>
+#ifdef AVS_WINDOWS
+    #include <intrin.h>
+#else
+    #include <x86intrin.h>
+#endif
 
 #include "convert_avx.h"
 
@@ -49,6 +53,9 @@
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
 // shift right or left, depending on expandrange template param
 template<bool expandrange, uint8_t shiftbits>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("avx")))
+#endif
 void convert_uint16_to_uint16_c_avx(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);

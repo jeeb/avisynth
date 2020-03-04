@@ -39,7 +39,11 @@
 #include <avisynth.h>
 #include <avs/alignment.h>
 #include "convert_audio.h"
-#include <malloc.h>
+#if defined(AVS_BSD) || defined(AVS_MACOS)
+    #include <stdlib.h>
+#else
+    #include <malloc.h>
+#endif
 
 // There are two type parameters. Acceptable sample types and a prefered sample type.
 // If the current clip is already one of the defined types in sampletype, this will be returned.
@@ -271,7 +275,7 @@ c8_loop:
 
 /*******************************************/
 
-void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   int channels=vi.AudioChannels();
 

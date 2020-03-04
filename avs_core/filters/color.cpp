@@ -36,9 +36,19 @@
 
 #include <math.h>
 #include <float.h>
-#include <malloc.h>
+#if defined(AVS_BSD) || defined(AVS_MACOS)
+    #include <stdlib.h>
+#else
+    #include <malloc.h>
+#endif
 #include <stdio.h>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/posix.h>
+#endif
+
 #include <avs/minmax.h>
 #include "../core/internal.h"
 #include <algorithm>

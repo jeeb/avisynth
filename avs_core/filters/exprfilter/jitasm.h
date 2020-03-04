@@ -34,6 +34,8 @@
 // - Fix: false codegen when rearranging multiple working registers in MoveGenerator by
 //   tracking real register usage for an xchg sequence
 
+#include <stdint.h>
+
 #pragma once
 #ifndef JITASM_H
 #define JITASM_H

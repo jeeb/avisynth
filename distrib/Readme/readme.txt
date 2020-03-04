@@ -1,5 +1,5 @@
-Avisynth+ v3.5 (20200217)
---------------------------
+Avisynth+ v3.5 (20200302)
+-------------------------
 
 Use the installer or copy files directly
 - 64 bit OS: 
@@ -31,8 +31,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200217 (dev 3.5)
---------------------------
+20200302 3.5.0
+--------------
+- New: Native Linux, macOS, and BSD support.
 - Fix: ConvertBits 32->8 for extremely out of range float pixel values.
   When pixel value in a 32 bit float format video was way out of range and greater than 128 (e.g. instead of 0 to 1.0 for Y plane) then the ConvertBits(8) had artifacts.
 - Fix potential crash on exit or cache shrink (linux/gcc only?)
@@ -943,14 +944,14 @@ Conditional runtime functions have 10-16 bit/float support for YUV, PlanarRGB an
 Since RGB is also available as a planar colorspace, the plane statistics functions logically were expanded.
 
 New functions
-• AverageR, AverageG AverageB like AverageLuma
-• RDifference, GDifference, BDifference like LumaDifference(clip1, clip2)
-• RDifferenceFromPrevious, GDifferenceFromPrevious, BDifferenceFromPrevious
-• RDifferenceToNext, GDifferenceToNext, BDifferenceToNext
-• RPlaneMin, GPlaneMin BPlaneMin like YPlaneMin(clip [, float threshold = 0, int offset = 0])
-• RPlaneMax, GPlaneMax BPlaneMax like YPlaneMax(clip [, float threshold = 0, int offset = 0])
-• RPlaneMinMaxDifference, GPlaneMinMaxDifference BPlaneMinMaxDifference like YPlaneMinMaxDifference(clip [, float threshold = 0, int offset = 0])
-• RPlaneMedian, GPlaneMedian, BPlaneMedian like YPlaneMedian(clip [, int offset = 0])
+â€¢ AverageR, AverageG AverageB like AverageLuma
+â€¢ RDifference, GDifference, BDifference like LumaDifference(clip1, clip2)
+â€¢ RDifferenceFromPrevious, GDifferenceFromPrevious, BDifferenceFromPrevious
+â€¢ RDifferenceToNext, GDifferenceToNext, BDifferenceToNext
+â€¢ RPlaneMin, GPlaneMin BPlaneMin like YPlaneMin(clip [, float threshold = 0, int offset = 0])
+â€¢ RPlaneMax, GPlaneMax BPlaneMax like YPlaneMax(clip [, float threshold = 0, int offset = 0])
+â€¢ RPlaneMinMaxDifference, GPlaneMinMaxDifference BPlaneMinMaxDifference like YPlaneMinMaxDifference(clip [, float threshold = 0, int offset = 0])
+â€¢ RPlaneMedian, GPlaneMedian, BPlaneMedian like YPlaneMedian(clip [, int offset = 0])
 
 For float colorspaces the Min, Max, MinMaxDifference and Median functions populate pixel counts for the internal statistics at a 16 bit resolution internally. 
 
@@ -1045,12 +1046,12 @@ stackvertical(clip8.ConvertToYUV444().Histogram("levels"), Clip16.ConvertBits(8)
 [ColorYUV] 
 Now it works for 10-16 bit clips
 
-• Slightly modified "demo" mode when using ColorYUV(showyuv=true) 
+â€¢ Slightly modified "demo" mode when using ColorYUV(showyuv=true)
 
 #old: draws YV12 with 16-239 U/V image (448x448)
 #new: draws YV12 with 16-240 U/V image (450x450)
  
-• New options for "demo" mode when using ColorYUV(showyuv=true) 
+â€¢ New options for "demo" mode when using ColorYUV(showyuv=true)
 New parameter: bool showyuv_fullrange.
 Description: Draws YV12 with 0-255 U/V image (512x512)
 Usage: ColorYUV(showyuv=true, showyuv_fullrange=true)
@@ -1063,7 +1064,7 @@ ColorYUV(showyuv=true, bits=10).Info()
  
 Luma steps are 16-235-16../0-255-0.. up to 0-65535-0... when bits=16
  
-• Additional infos for ColorYUV
+â€¢ Additional infos for ColorYUV
 
 - Fixed an uninitialized internal variable regarding pc<->tv conversion, 
   resulting in clips sometimes were expanding to pc range when it wasn't asked.

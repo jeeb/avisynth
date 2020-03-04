@@ -34,7 +34,14 @@
 
 
 #include "tokenizer.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/posix.h>
+    #include <ctype.h>
+#endif
+
 
 #include <cfloat>
 #include <climits>

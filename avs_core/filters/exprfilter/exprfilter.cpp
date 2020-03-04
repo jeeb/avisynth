@@ -80,14 +80,26 @@
 #include <unordered_map>
 
 #include <avisynth.h>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/posix.h>
+#endif
+
 #include <stdlib.h>
-#include "../core/internal.h"
+#include "../../core/internal.h"
 #include "../../convert/convert_planar.h" // fill_plane
 #include "avs/alignment.h"
 
+#if (defined(_WIN64) && (defined(_M_AMD64) || defined(_M_X64))) || defined(__x86_64__)
+#define JITASM64
+#endif
+
 #define VS_TARGET_CPU_X86
+#ifdef AVS_WINDOWS
 #define VS_TARGET_OS_WINDOWS
+#endif
 #include "exprfilter.h"
 
 #ifdef VS_TARGET_CPU_X86
@@ -95,9 +107,10 @@
 #define NOMINMAX
 #endif
 #include "jitasm.h"
+#endif
+
 #ifndef VS_TARGET_OS_WINDOWS
 #include <sys/mman.h>
-#endif
 #endif
 
 //#define TEST_AVX2_CODEGEN_IN_AVX
@@ -255,8 +268,8 @@ enum {
 
 #define XCONST(x) { x, x, x, x }
 #define MAKEDWORD(ch0, ch1, ch2, ch3)                              \
-                ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |   \
-                ((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24 ))
+                ((uint32_t)(unsigned char)(ch0) | ((uint32_t)(unsigned char)(ch1) << 8) |   \
+                ((uint32_t)(unsigned char)(ch2) << 16) | ((uint32_t)(unsigned char)(ch3) << 24 ))
 #define XBYTECONST(a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15) \
   { (int)MAKEDWORD(a0,a1,a2,a3), (int)MAKEDWORD(a4,a5,a6,a7), (int)MAKEDWORD(a8,a9,a10,a11), (int)MAKEDWORD(a12,a13,a14,a15) }
 
@@ -662,7 +675,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           mov(dy, -iter.dy); // dy = -dy; 
           cmp(dy, sy);
           cmovg(dy, sy); // mov if greater: if (dy > SpatialY) dy = SpatialY;
-#ifdef _M_X64
+#ifdef JITASM64
           imul(dy, qword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
 #else
           imul(dy, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
@@ -677,7 +690,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           mov(dy, iter.dy);
           cmp(dy, sy);
           cmovg(dy, sy); // mov if greater: if (dy > (planeheight - 1) - SpatialY) dy = SpatialY;
-#ifdef _M_X64
+#ifdef JITASM64
           imul(dy, qword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
 #else
           imul(dy, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_STRIDES)]); // dy * stride
@@ -2338,7 +2351,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         if (processSingle) {
           YmmReg r1;
           XmmReg r1x;
-#if _M_X64
+#ifdef JITASM64
           vmovq(r1x, SpatialY);
 #else
           vmovd(r1x, SpatialY);
@@ -2350,7 +2363,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         else {
           YmmReg r1, r2;
           XmmReg r1x;
-#if _M_X64
+#ifdef JITASM64
           vmovq(r1x, SpatialY);
 #else
           vmovd(r1x, SpatialY);
@@ -3173,6 +3186,7 @@ generated epilog example (new):
 
 #endif
 
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -3251,12 +3265,19 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   }
   next_paramindex++;
 
+#ifdef VS_TARGET_CPU_X86
   // test parameter for avx2-less mode even with avx2 available
 #ifdef TEST_AVX2_CODEGEN_IN_AVX
   bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX);
 #else
   bool optAvx2 = !!(env->GetCPUFlags() & CPUF_AVX2);
 #endif
+  bool optSSE2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+#else
+  bool optAvx2 = false;
+  bool optSSE2 = false;
+#endif
+
   if (args[next_paramindex].Defined()) {
     if (optAvx2) // disable only
       optAvx2 = args[next_paramindex].AsBool();
@@ -3269,7 +3290,6 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   }
   next_paramindex++;
 
-  bool optSSE2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   if (args[next_paramindex].Defined()) {
     if (optSSE2) // disable only
       optSSE2 = args[next_paramindex].AsBool();

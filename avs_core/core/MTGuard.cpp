@@ -155,7 +155,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
   return frame;
 }
 
-void __stdcall MTGuard::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   assert(nThreads > 0);
 
@@ -316,7 +316,7 @@ PVideoFrame __stdcall MTGuardExit::GetFrame(int n, IScriptEnvironment* env)
     return result;
 }
 
-void __stdcall MTGuardExit::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall MTGuardExit::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
     std::mutex *m = (nullptr == guard) ? nullptr : guard->GetMutex();
     reverse_lock<std::mutex> unlock_guard(m);

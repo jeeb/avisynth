@@ -36,16 +36,23 @@
 #define __Text_overlay_H__
 
 #include <avisynth.h>
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/posix.h>
+#endif
+
 #include <cstdio>
 #include <stdint.h>
+#include <string>
 
 
 /********************************************************************
 ********************************************************************/
 
 
-
+#ifdef AVS_WINDOWS
 class Antialiaser 
 /**
   * Helper class to anti-alias text
@@ -82,7 +89,7 @@ private:
 
   void GetAlphaRect();
 };
-
+#endif
 
 
 class ShowFrameNumber : public GenericVideoFilter 
@@ -104,10 +111,13 @@ public:
   }
 
 private:
+#ifdef AVS_WINDOWS
   Antialiaser antialiaser;
+#endif
   const bool scroll;
   const int offset;
   const int size, x, y;
+  const int textcolor, halocolor;
 };
 
 
@@ -132,16 +142,19 @@ public:
   }
 
 private:
+#ifdef AVS_WINDOWS
   Antialiaser antialiaser;
+#endif
   int rate;
   int offset_f;
   const int x, y;
   bool dropframe;
+  const int textcolor, halocolor;
 };
 
 
 
-
+#ifdef AVS_WINDOWS
 class Subtitle : public GenericVideoFilter 
 /**
   * Subtitle creation class
@@ -174,7 +187,42 @@ private:
   const bool utf8;
   Antialiaser* antialiaser;  
 };
+#endif
 
+class SimpleText : public GenericVideoFilter
+  /**
+    * SimpleText creation class
+   **/
+{
+public:
+  SimpleText(PClip _child, const char _text[], int _x, int _y, int _firstframe, int _lastframe,
+    const char _fontname[], int _size, int _textcolor, int _halocolor, int _align,
+    int _spc, bool _multiline, int _lsp, int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, IScriptEnvironment* env);
+  virtual ~SimpleText(void);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+private:
+  const int x, y, firstframe, lastframe;
+  const int size; // n/a
+  const int lsp;
+  const int font_width, font_angle; // n/a
+  const bool multiline;
+  const bool interlaced; // n/a
+  const int textcolor, halocolor, align;
+  const int spc; // n/a
+  const int halocolor_orig;
+  const char* const fontname; // n/a
+  const char* const text;
+  const char* const font_filename; // n/a
+  const bool utf8;
+};
 
 class FilterInfo : public GenericVideoFilter 
 /**
@@ -203,7 +251,10 @@ private:
   const int size;
   const bool font_override;
 
-  Antialiaser antialiaser;  
+  const int text_color, halo_color;
+#ifdef AVS_WINDOWS
+  Antialiaser antialiaser;
+#endif
 };
 
 
@@ -230,9 +281,11 @@ public:
 
 
 private:
+#ifdef AVS_WINDOWS
   Antialiaser antialiaser;
+#endif
   PClip child2;
-  DWORD mask;
+  uint32_t mask;
   uint64_t mask64;
   int masked_bytes;
   FILE* log;
@@ -245,6 +298,7 @@ private:
   int framecount;
   int planar_plane;
   int pixelsize;
+  const int text_color, halo_color;
 
 };
 
@@ -258,5 +312,7 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold, 
                          bool italic, int align, int* width, int* height );
 
+bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,
+  bool italic, int align, int* width, int* height, bool utf8);
 
 #endif  // __Text_overlay_H__

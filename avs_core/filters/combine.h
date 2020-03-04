@@ -55,7 +55,7 @@ public:
   StackVertical(const std::vector<PClip>& child_array, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  inline void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     children[0]->GetAudio(buf, start, count, env);
   }
 
@@ -90,7 +90,7 @@ public:
   StackHorizontal(const std::vector<PClip>& child_array, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  inline void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     children[0]->GetAudio(buf, start, count, env);
   }
 
@@ -122,9 +122,9 @@ public:
   ShowFiveVersions(PClip* children, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
+  inline void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
     { child[0]->GetAudio(buf, start, count, env); }
-  inline const VideoInfo& __stdcall GetVideoInfo() 
+  inline const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
   inline bool __stdcall GetParity(int n) 
     { return child[0]->GetParity(n); }
@@ -162,9 +162,9 @@ public:
            const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env );
   virtual ~Animate() { }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
 
-  inline const VideoInfo& __stdcall GetVideoInfo() 
+  inline const VideoInfo& __stdcall GetVideoInfo()
     { return cache[0]->GetVideoInfo(); }
   bool __stdcall GetParity(int n);
 

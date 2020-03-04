@@ -35,7 +35,11 @@
 
 #include <avisynth.h>
 #include "internal.h"
+#ifdef AVS_WINDOWS
 #include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 #include <smmintrin.h> // SSE4.1
 #include <emmintrin.h>
 #include <tmmintrin.h>

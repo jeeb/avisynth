@@ -41,9 +41,14 @@
 #include <stdint.h>
 #include "version.h"
 #include <memory>
+#include <string>
+#ifdef AVS_POSIX
+#include <limits.h>
+#endif
 
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
 #define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2020 AviSynth+ Project"
+#define AVS_COPYRIGHT_UTF8 u8"\n\u00A9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\u00A9 2013-2020 AviSynth+ Project"
 #define BUILTIN_FUNC_PREFIX "AviSynth"
 
 enum MANAGE_CACHE_KEYS
@@ -150,7 +155,11 @@ public:
 
 private:
   void Init(const wchar_t* new_cwd);
+#ifdef AVS_WINDOWS
   std::unique_ptr<wchar_t[]> old_working_directory;
+#else
+  char old_working_directory[PATH_MAX];
+#endif
   bool restore;
 };
 
@@ -165,6 +174,7 @@ private:
   bool restore;
 };
 
+#ifdef AVS_WINDOWS
 std::unique_ptr<char[]> WideCharToUtf8(const wchar_t *w_string);
 std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string);
 std::unique_ptr<char[]> WideCharToAnsiACP(const wchar_t *w_string);
@@ -173,8 +183,11 @@ std::unique_ptr<char[]> WideCharToAnsi_maxn(const wchar_t *w_string, size_t maxn
 std::unique_ptr<wchar_t[]> AnsiToWideChar(const char *s_ansi);
 std::unique_ptr<wchar_t[]> AnsiToWideCharACP(const char *s_ansi);
 std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi);
+#endif
 
-class NonCachedGenericVideoFilter : public GenericVideoFilter 
+std::u16string charToU16string(const char* text, bool utf8);
+
+class NonCachedGenericVideoFilter : public GenericVideoFilter
 /**
   * Class to select a range of frames from a longer clip
  **/
@@ -215,17 +228,17 @@ static __inline float c8tof(int color) {
   return color / 255.0f;
 }
 
-static __inline BYTE ScaledPixelClip(int i) {
+static __inline uint8_t ScaledPixelClip(int i) {
   // return PixelClip((i+32768) >> 16);
   // PF: clamp is faster than lut
   return (uint8_t)clamp((i + 32768) >> 16, 0, 255);
 }
 
-static __inline uint16_t ScaledPixelClip(__int64 i) {
+static __inline uint16_t ScaledPixelClip(long long int i) {
     return (uint16_t)clamp((i + 32768) >> 16, 0LL, 65535LL);
 }
 
-static __inline uint16_t ScaledPixelClipEx(__int64 i, int max_value) {
+static __inline uint16_t ScaledPixelClipEx(long long int i, int max_value) {
   return (uint16_t)clamp((int)((i + 32768) >> 16), 0, max_value);
 }
 

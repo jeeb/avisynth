@@ -69,7 +69,7 @@ class ConditionalFilter : public GenericVideoFilter
 public:
   ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 

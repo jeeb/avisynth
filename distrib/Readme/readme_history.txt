@@ -4,8 +4,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200217 (dev 3.5)
---------------------------
+20200302 3.5.0
+--------------
+- New: Native Linux, macOS, and BSD support.
 - Fix: ConvertBits 32->8 for extremely out of range float pixel values.
   When pixel value in a 32 bit float format video was way out of range and greater than 128 (e.g. instead of 0 to 1.0 for Y plane) then the ConvertBits(8) had artifacts.
 - Fix potential crash on exit or cache shrink (linux/gcc only?)

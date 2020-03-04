@@ -49,8 +49,18 @@
 #include <iostream>
 #include <fstream>
 
-#include <avs/win.h>
-#include <objbase.h>
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+    #include <objbase.h>
+#else
+#if defined(AVS_MACOS)
+    #include <mach/host_info.h>
+    #include <mach/mach_host.h>
+#elif defined(AVS_BSD)
+    #include <sys/sysctl.h>
+#endif
+    #include <avs/posix.h>
+#endif
 
 #include <string>
 #include <cstdio>
@@ -64,32 +74,69 @@
   #define YieldProcessor() __nop(void)
 #endif
 
-extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
-                   Convolution_filters[], Edit_filters[], Field_filters[],
-                   Focus_filters[], Fps_filters[], Histogram_filters[],
-                   Layer_filters[], Levels_filters[], Misc_filters[],
-                   Plugin_functions[], Resample_filters[], Resize_filters[],
-                   Script_functions[], Source_filters[], Text_filters[],
-                   Transform_filters[], Merge_filters[], Color_filters[],
-                   Debug_filters[], Turn_filters[],
-                   Conditional_filters[], Conditional_funtions_filters[],
-                   Cache_filters[], Greyscale_filters[],
-                   Swap_filters[], Overlay_filters[], Exprfilter_filters[];
+extern const AVSFunction Audio_filters[],
+                         Combine_filters[],
+                         Convert_filters[],
+                         Convolution_filters[],
+                         Edit_filters[],
+                         Field_filters[],
+                         Focus_filters[],
+                         Fps_filters[],
+                         Histogram_filters[],
+                         Layer_filters[],
+                         Levels_filters[],
+                         Misc_filters[],
+                         Plugin_functions[],
+                         Resample_filters[],
+                         Resize_filters[],
+                         Script_functions[],
+                         Source_filters[],
+                         Text_filters[],
+                         Transform_filters[],
+                         Merge_filters[],
+                         Color_filters[],
+                         Debug_filters[],
+                         Turn_filters[],
+                         Conditional_filters[],
+                         Conditional_funtions_filters[],
+                         Cache_filters[],
+                         Greyscale_filters[],
+                         Swap_filters[],
+                         Overlay_filters[],
+                         Exprfilter_filters[];
 
 
 const AVSFunction* const builtin_functions[] = {
-                   Audio_filters, Combine_filters, Convert_filters,
-                   Convolution_filters, Edit_filters, Field_filters,
-                   Focus_filters, Fps_filters, Histogram_filters,
-                   Layer_filters, Levels_filters, Misc_filters,
-                   Resample_filters, Resize_filters,
-                   Script_functions, Source_filters, Text_filters,
-                   Transform_filters, Merge_filters, Color_filters,
-                   Debug_filters, Turn_filters,
-                   Conditional_filters, Conditional_funtions_filters,
-                   Plugin_functions, Cache_filters,
-                   Overlay_filters, Greyscale_filters, Swap_filters,
-                   Exprfilter_filters };
+                         Audio_filters,
+                         Combine_filters,
+                         Convert_filters,
+                         Convolution_filters,
+                         Edit_filters,
+                         Field_filters,
+                         Focus_filters,
+                         Fps_filters,
+                         Histogram_filters,
+                         Layer_filters,
+                         Levels_filters,
+                         Misc_filters,
+                         Resample_filters,
+                         Resize_filters,
+                         Script_functions,
+                         Source_filters,
+                         Text_filters,
+                         Transform_filters,
+                         Merge_filters,
+                         Color_filters,
+                         Debug_filters,
+                         Turn_filters,
+                         Conditional_filters,
+                         Conditional_funtions_filters,
+                         Plugin_functions,
+                         Cache_filters,
+                         Overlay_filters,
+                         Greyscale_filters,
+                         Swap_filters,
+                         Exprfilter_filters };
 
 // Global statistics counters
 struct {
@@ -107,12 +154,12 @@ const _PixelClip PixelClip;
 
 
 // Helper function to count set bits in the processor mask.
-static DWORD CountSetBits(ULONG_PTR bitMask)
+static uint32_t CountSetBits(unsigned long bitMask)
 {
-  DWORD LSHIFT = sizeof(ULONG_PTR)*8 - 1;
-  DWORD bitSetCount = 0;
-  ULONG_PTR bitTest = (ULONG_PTR)1 << LSHIFT;
-  DWORD i;
+  uint32_t LSHIFT = sizeof(unsigned long)*8 - 1;
+  uint32_t bitSetCount = 0;
+  unsigned long bitTest = (unsigned long)1 << LSHIFT;
+  uint32_t i;
 
   for (i = 0; i <= LSHIFT; ++i)
   {
@@ -783,8 +830,8 @@ private:
   const AVSFunction* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                       bool &pstrict, size_t args_names_count, const char* const* arg_names);
   void EnsureMemoryLimit(size_t request);
-  unsigned __int64 memory_max;
-  std::atomic<unsigned __int64> memory_used;
+  uint64_t memory_max;
+  std::atomic<uint64_t> memory_used;
   std::unordered_map<IClip*, ClipDataStore> clip_data;
 
   void ExportBuiltinFilters();
@@ -792,8 +839,8 @@ private:
   IScriptEnvironment2* This() { return this; }
   bool PlanarChromaAlignmentState;
 
-  HRESULT hrfromcoinit;
-  DWORD coinitThreadId;
+  long hrfromcoinit;
+  uint32_t coinitThreadId;
 
   bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
 
@@ -828,7 +875,7 @@ private:
   VideoFrame* AllocateFrame(size_t vfb_size);
   std::recursive_mutex memory_mutex;
 
-  BufferPool BufferPool;
+  BufferPool buffer_pool;
 
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
@@ -853,9 +900,10 @@ private:
 const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
 
-static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
+static uint64_t ConstrainMemoryRequest(uint64_t requested)
 {
   // Get system memory information
+#ifdef AVS_WINDOWS // needs linux alternative
   MEMORYSTATUSEX memstatus;
   memstatus.dwLength = sizeof(memstatus);
   GlobalMemoryStatusEx(&memstatus);
@@ -863,9 +911,9 @@ static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
   // mem_limit is the largest amount of memory that makes sense to use.
   // We don't want to use more than the virtual address space,
   // and we also don't want to start paging to disk.
-  unsigned __int64 mem_limit = min(memstatus.ullTotalVirtual, memstatus.ullTotalPhys);
+  uint64_t mem_limit = min(memstatus.ullTotalVirtual, memstatus.ullTotalPhys);
 
-  unsigned __int64 mem_sysreserve = 0;
+  uint64_t mem_sysreserve = 0;
   if (memstatus.ullTotalPhys > memstatus.ullTotalVirtual)
   {
     // We are probably running on a 32bit OS system where the virtual space is capped to
@@ -881,6 +929,28 @@ static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
   return clamp(requested, 64*1024*1024ull, mem_limit - mem_sysreserve);
+#else // copied over from AvxSynth, check against current code!!!
+    int64_t memory;
+
+    long nPageSize = sysconf(_SC_PAGE_SIZE);
+    int64_t nAvailablePhysicalPages;
+
+  #if defined(AVS_MACOS)
+    vm_statistics64_data_t vmstats;
+    mach_msg_type_number_t vmstatsz = HOST_VM_INFO64_COUNT;
+    host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
+    nAvailablePhysicalPages = vmstats.free_count;
+  #elif defined(AVS_BSD)
+    size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
+    sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
+  #else // Linux
+    nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
+  #endif
+
+    memory = nPageSize * nAvailablePhysicalPages;
+
+    return memory;
+#endif
 }
 
 IJobCompletion* __stdcall ScriptEnvironment::NewCompletion(size_t capacity)
@@ -900,9 +970,10 @@ ScriptEnvironment::ScriptEnvironment()
     ImportDepth(0),
     FrontCache(NULL),
     prefetcher(NULL),
-    BufferPool(this)
+    buffer_pool(this)
 {
   try {
+#ifdef AVS_WINDOWS // needs linux alternative
     // Make sure COM is initialised
     hrfromcoinit = CoInitialize(NULL);
 
@@ -919,8 +990,11 @@ ScriptEnvironment::ScriptEnvironment()
     memstatus.dwLength = sizeof(memstatus);
     GlobalMemoryStatusEx(&memstatus);
     memory_max = ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
+#else
+    memory_max = 4096ull*1024*1024; // fixme: win: ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
+#endif
     const bool isX64 = sizeof(void *) == 8;
-    memory_max = min(memory_max, (isX64 ? 4096 : 1024)*(1024*1024ull));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
+    memory_max = min(memory_max, (uint64_t)((isX64 ? 4096 : 1024)*(1024*1024ull)));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
     memory_used = 0ull;
 
     global_var_table = new VarTable(0, 0);
@@ -939,10 +1013,12 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptDirUtf8$", AVSValue());
 
     plugin_manager = new PluginManager(this);
+#ifdef AVS_WINDOWS
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
+#endif
 
     global_var_table->Set("LOG_ERROR",   (int)LOGLEVEL_ERROR);
     global_var_table->Set("LOG_WARNING", (int)LOGLEVEL_WARNING);
@@ -958,12 +1034,14 @@ ScriptEnvironment::ScriptEnvironment()
     LogTickets.max_load_factor(0.8f);
   }
   catch (const AvisynthError &err) {
+#ifdef AVS_WINDOWS
     if(SUCCEEDED(hrfromcoinit)) {
       hrfromcoinit=E_FAIL;
       CoUninitialize();
     }
     // Needs must, to not loose the text we
     // must leak a little memory.
+#endif
     throw AvisynthError(_strdup(err.msg));
   }
 }
@@ -1011,8 +1089,13 @@ ScriptEnvironment::~ScriptEnvironment() {
     prefetcher->Destroy();
   }
 
+#ifdef _DEBUG
+  // LogMsg(LOGLEVEL_DEBUG, "We are before FrameRegistryCleanup");
+  // ListFrameRegistry(0,10000000000000ull, true); // list all
+#endif
   // and deleting the frame buffer from FrameRegistry2 as well
   bool somethingLeaks = false;
+  int leakCount = 0;
   for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
   it != end_it;
     ++it)
@@ -1036,6 +1119,7 @@ ScriptEnvironment::~ScriptEnvironment() {
         }
         else
         {
+          leakCount++;
           somethingLeaks = true;
         }
       } // it3
@@ -1044,18 +1128,20 @@ ScriptEnvironment::~ScriptEnvironment() {
   } // it
 
   if (somethingLeaks) {
-      LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks.");
+      LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks. Leaking count = %d",leakCount);
   }
 
   delete plugin_manager;
   delete [] vsprintf_buf;
 
+#ifdef AVS_WINDOWS // COM is Win32-specific
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
   if(SUCCEEDED(hrfromcoinit) && (coinitThreadId == GetCurrentThreadId())) {
     hrfromcoinit=E_FAIL;
     CoUninitialize();
   }
+#endif
 }
 
 void __stdcall ScriptEnvironment::SetLogParams(const char *target, int level)
@@ -1103,24 +1189,32 @@ void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_l
 
     // Setup string prefixes for output messages
     const char *levelStr = nullptr;
-    WORD levelAttr;
+    uint16_t levelAttr;
     switch (level)
     {
     case LOGLEVEL_ERROR:
         levelStr = "ERROR: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_RED;
+#endif
         break;
     case LOGLEVEL_WARNING:
         levelStr = "WARNING: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_RED;
+#endif
         break;
     case LOGLEVEL_INFO:
         levelStr = "INFO: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE;
+#endif
         break;
     case LOGLEVEL_DEBUG:
         levelStr = "DEBUG: ";
+#ifdef AVS_WINDOWS // FOREGROUND_* is Windows-specific
         levelAttr = FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_RED;
+#endif
         break;
     default:
         this->ThrowError("LogMsg: level argument must be between 1 and 4.");
@@ -1129,16 +1223,28 @@ void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_l
 
     // Prepare message output target
     std::ostream *targetStream = nullptr;
-    HANDLE hConsole = GetStdHandle(STD_ERROR_HANDLE);
+#ifdef AVS_WINDOWS
+    void* hConsole = GetStdHandle(STD_ERROR_HANDLE);
+#else
+    void* hConsole = stderr;
+#endif
 
     if (streqi("stderr", LogTarget.c_str()))
     {
+#ifdef AVS_WINDOWS
         hConsole = GetStdHandle(STD_ERROR_HANDLE);
+#else
+        hConsole = stderr;
+#endif
         targetStream = &std::cerr;
     }
     else if (streqi("stdout", LogTarget.c_str()))
     {
+#ifdef AVS_WINDOWS // linux alternative?
         hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+#else
+        hConsole = stdout;
+#endif
         targetStream = &std::cout;
     }
     else if (LogFileStream.is_open())
@@ -1155,16 +1261,22 @@ void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_l
     // Format our message string
     std::string msg = FormatString(fmt, va);
 
+#ifdef AVS_WINDOWS
     // Save current console attributes so that we can restore them later
     CONSOLE_SCREEN_BUFFER_INFO Info;
     GetConsoleScreenBufferInfo(hConsole, &Info);
+#endif
 
     // Do the output
     std::lock_guard<std::mutex> lock(string_mutex);
     *targetStream << "---------------------------------------------------------------------" << std::endl;
+#ifdef AVS_WINDOWS
     SetConsoleTextAttribute(hConsole, levelAttr);
+#endif
     *targetStream << levelStr;
+#ifdef AVS_WINDOWS
     SetConsoleTextAttribute(hConsole, Info.wAttributes);
+#endif
     *targetStream << msg << std::endl;
     targetStream->flush();
 }
@@ -1313,12 +1425,12 @@ void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, Avs
 {
   if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
     return NULL;
-  return BufferPool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
+  return buffer_pool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
 }
 
 void __stdcall ScriptEnvironment::Free(void* ptr)
 {
-  BufferPool.Free(ptr);
+  buffer_pool.Free(ptr);
 }
 
 /* This function adds information about builtin functions into global variables.
@@ -1555,12 +1667,13 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   // no locking here, calling method have done it already
   FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame));
 
-  //_RPT1(0, "ScriptEnvironment::AllocateFrame %Iu frame=%p vfb=%p %I64d\n", vfb_size, newFrame, newFrame->vfb, memory_used); // P.F.
+  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %I64d\n", vfb_size, newFrame, newFrame->vfb, memory_used); // P.F.
 
   return newFrame;
 }
 
 #ifdef _DEBUG
+#ifdef AVS_POSIX
 void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
 {
   int linearsearchcount;
@@ -1570,10 +1683,8 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
   int size1 = 0;
   int size2 = 0;
   int size3 = 0;
-  int inner_frame_count = 0;
-  int inner_frame_count_for_frame_refcount_nonzero = 0;
-  _RPT3(0, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7Iu and %7Iu\n", &FrameRegistry2, min_size, max_size);
-  _RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%Iu \n", FrameRegistry2.size());
+  LogMsg(LOGLEVEL_DEBUG, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7zu and %7zu\n", &FrameRegistry2, min_size, max_size);
+  LogMsg(LOGLEVEL_DEBUG, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%zu \n", FrameRegistry2.size());
   size_t total_vfb_size = 0;
   auto t_end = std::chrono::high_resolution_clock::now();
 
@@ -1583,7 +1694,93 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
     ++it)
   {
     size1++;
-    _RPT3(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7Iu is %7Iu\n", size1, it->first, it->second.size());
+    LogMsg(LOGLEVEL_DEBUG, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7zu is %7zu\n", size1, it->first, it->second.size());
+    for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
+      it2 != end_it2;
+      ++it2)
+    {
+      size2++;
+      VideoFrameBuffer* vfb = it2->first;
+      total_vfb_size += vfb->GetDataSize();
+      size_t inner_frame_count_size = it2->second.size();
+      char buf[128];
+      LogMsg(LOGLEVEL_DEBUG, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
+       // P.F. iterate the frame list of this vfb
+      int inner_frame_count = 0;
+      int inner_frame_count_for_frame_refcount_nonzero = 0;
+      for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
+        it3 != end_it3;
+        ++it3)
+      {
+        size3++;
+        inner_frame_count++;
+#ifdef _DEBUG
+        VideoFrame* frame = it3->frame;
+        std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->timestamp;
+#else
+        VideoFrame* frame = *it3;
+#endif
+        if (0 != frame->refcount)
+          inner_frame_count_for_frame_refcount_nonzero++;
+        if (someframes)
+        {
+          std::chrono::duration<double> elapsed_seconds = t_end - frame_entry_timestamp;
+          if (inner_frame_count <= 2) // list only the first 2. There can be even many thousand of frames!
+          {
+            // log only if frame creation timestamp is too old!
+            // e.g. 100 secs, it must be a stuck frame (but can also be a valid static frame from ColorBars)
+            // if (elapsed_seconds.count() > 100.0f && frame->refcount > 0)
+            if (frame->refcount > 0)
+            {
+              LogMsg(LOGLEVEL_DEBUG, "  >> Frame#%6d: vfb=%p frame=%p frame_refcount=%3d timestamp=%f ago\n", inner_frame_count, vfb, frame, frame->refcount, elapsed_seconds);
+            }
+          }
+          else if (inner_frame_count == inner_frame_count_size)
+          {
+            // log the last one
+            if (frame->refcount > 0)
+            {
+              LogMsg(LOGLEVEL_DEBUG, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount);
+            }
+          }
+          if (inner_frame_count == inner_frame_count_size) {
+            LogMsg(LOGLEVEL_DEBUG, "  == TOTAL of %d frames. Number of nonzero refcount=%d \n", inner_frame_count, inner_frame_count_for_frame_refcount_nonzero);
+          }
+
+          if (0 == vfb->refcount && 0 != frame->refcount)
+          {
+            LogMsg(LOGLEVEL_DEBUG, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n", vfb, frame, frame->refcount);
+          }
+        }
+      }
+    }
+  }
+  LogMsg(LOGLEVEL_DEBUG, ">> >> >> array sizes %d %d %d Total VFB size=%zu\n", size1, size2, size3, total_vfb_size);
+  LogMsg(LOGLEVEL_DEBUG, "  ----------------------------\n");
+}
+
+#else
+void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
+{
+  int linearsearchcount;
+  //#define FULL_LIST_OF_VFBs
+  //#define LIST_ALSO_SOME_FRAMES
+  linearsearchcount = 0;
+  int size1 = 0;
+  int size2 = 0;
+  int size3 = 0;
+  _RPT3(0, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7zu and %7zu\n", &FrameRegistry2, min_size, max_size);
+  _RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%zu \n", FrameRegistry2.size());
+  size_t total_vfb_size = 0;
+  auto t_end = std::chrono::high_resolution_clock::now();
+
+  // list to debugview: all frames up-to vfb_size size
+  for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(min_size), end_it = FrameRegistry2.upper_bound(max_size);
+    it != end_it;
+    ++it)
+  {
+    size1++;
+    _RPT3(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7zu is %7zu\n", size1, it->first, it->second.size());
     for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
       it2 != end_it2;
       ++it2)
@@ -1593,7 +1790,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       total_vfb_size += vfb->GetDataSize();
       size_t inner_frame_count_size = it2->second.size();
       char buf[128];
-      _snprintf(buf, 127, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
+      snprintf(buf, 127, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
       _RPT0(0, buf); // P.F. iterate the frame list of this vfb
       int inner_frame_count = 0;
       int inner_frame_count_for_frame_refcount_nonzero = 0;
@@ -1641,9 +1838,10 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       }
     }
   }
-  _RPT4(0, ">> >> >> array sizes %d %d %d Total VFB size=%Iu\n", size1, size2, size3, total_vfb_size);
+  _RPT4(0, ">> >> >> array sizes %d %d %d Total VFB size=%zu\n", size1, size2, size3, total_vfb_size);
   _RPT0(0, "  ----------------------------\n");
 }
+#endif
 #endif
 
 
@@ -1717,10 +1915,10 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             char buf[256];
             t_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_seconds = t_end - t_start;
-            _snprintf(buf, 255, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7Iu GotSize=%7Iu FrReg.Size=%6Iu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
+            snprintf(buf, 255, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7zu GotSize=%7zu FrReg.Size=%6zu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
             _RPT0(0, buf);
 #ifdef SIZETMOD
-            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%7Iu\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
+            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%7zu\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #else
             _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #endif
@@ -1759,7 +1957,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       }
     } // for it2
   } // for it
-  _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
+  _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%zu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
 
 #ifdef _DEBUG
   //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames. List exact vfb_size
@@ -1831,6 +2029,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   // See if we could benefit from 64-bit Avisynth
   if constexpr(sizeof(void*) == 4)
   {
+#ifdef AVS_WINDOWS
       // Get system memory information
       MEMORYSTATUSEX memstatus;
       memstatus.dwLength = sizeof(memstatus);
@@ -1843,9 +2042,10 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
           OneTimeLogTicket ticket(LOGTICKET_W1007);
           LogMsgOnce(ticket, LOGLEVEL_INFO, "We have run out of memory, but your system still has some free RAM left. You might benefit from a 64-bit build of Avisynth+.");
       }
+#endif
   }
 
-  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%Iu", memory_max, memory_used.load(), vfb_size);
+  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%zu", memory_max, memory_used.load(), vfb_size);
   return NULL;
 }
 
@@ -1934,7 +2134,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
         VideoFrameBuffer *vfb = it2->first;
         if (0 == vfb->refcount) // vfb refcount check
         {
-          _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%Iu freed=%d\n", request, vfb->GetDataSize());
+          _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%zu freed=%d\n", request, vfb->GetDataSize());
           memory_used -= vfb->GetDataSize();
           VideoFrameBuffer *_vfb = vfb;
           const VideoFrameArrayType::iterator end_it3 = it2->second.end();
@@ -2526,7 +2726,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   // Unfortunately at this point we do not know who is calling Invoke.
   // If AVSValue was created by a v2.5 interface, we get and exception when trying to free up
   // childs.
-  if (!stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
+  if (!_stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
   {
 //    const_cast<AVSValue *>(&args)->MarkArrayAsC();
   }
@@ -2996,7 +3196,6 @@ const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
   return AVS_linkage;
 }
 
-
 void __stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
   ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);
 }
@@ -3027,7 +3226,9 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version)
   * to shut down immediately instead of continuing to spin.
   * This solves our problem at the cost of some performance.
   */
+#ifdef AVS_WINDOWS
   _putenv("OMP_WAIT_POLICY=passive");
+#endif
 
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment();

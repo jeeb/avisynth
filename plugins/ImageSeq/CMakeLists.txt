@@ -1,6 +1,6 @@
-# We need CMake 2.8.11 at least, because we use CMake features
-# "Target Usage Requirements" and "Generator Toolset selection"
-CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
+# We need CMake 3.8 at least, because we require
+# CMAKE_CXX_STANDARD to be set to C++17.
+CMAKE_MINIMUM_REQUIRED( VERSION 3.8.2 )
 
 set(PluginName "ImageSeq")
 set(ProjectName "Plugin${PluginName}")

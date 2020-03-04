@@ -512,21 +512,21 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsYUY2()) {
     const unsigned int colr = force_color_as_yuv ? clr : RGB2YUV(clr);
-    const unsigned __int32 black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
+    const uint32_t black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int a = 0; a<initial_black; a += 4) {
-      *(unsigned __int32*)(dstp+a) = black;
+      *(uint32_t*)(dstp+a) = black;
     }
     dstp += initial_black + src_row_size;
     for (int y = src_height-1; y>0; --y) {
       for (int b = 0; b<middle_black; b += 4) {
-        *(unsigned __int32*)(dstp+b) = black;
+        *(uint32_t*)(dstp+b) = black;
       }
       dstp += dst_pitch;
     }
     for (int c = 0; c<final_black; c += 4) {
-      *(unsigned __int32*)(dstp+c) = black;
+      *(uint32_t*)(dstp+c) = black;
     }
   } else if (vi.IsRGB24()) {
     const unsigned char  clr0 = (unsigned char)(clr & 0xFF);
@@ -540,27 +540,27 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     /* Cannot use *_black optimisation as pitch may not be mod 3 */
     for (int y = top; y>0; --y) {
       for (int i = 0; i<dst_row_size; i += 3) {
-        dstp[i] = clr0; 
-        *(unsigned __int16*)(dstp+i+1) = clr1;
+        dstp[i] = clr0;
+        *(uint16_t*)(dstp+i+1) = clr1;
       }
       dstp += dst_pitch;
     }
     for (int y = src_height; y>0; --y) {
       for (int i = 0; i<leftbytes; i += 3) {
-        dstp[i] = clr0; 
-        *(unsigned __int16*)(dstp+i+1) = clr1;
+        dstp[i] = clr0;
+        *(uint16_t*)(dstp+i+1) = clr1;
       }
       dstp += leftrow;
       for (int i = 0; i<rightbytes; i += 3) {
-        dstp[i] = clr0; 
-        *(unsigned __int16*)(dstp+i+1) = clr1;
+        dstp[i] = clr0;
+        *(uint16_t*)(dstp+i+1) = clr1;
       }
       dstp += rightrow;
     }
     for (int y = bot; y>0; --y) {
       for (int i = 0; i<dst_row_size; i += 3) {
         dstp[i] = clr0;
-        *(unsigned __int16*)(dstp+i+1) = clr1;
+        *(uint16_t*)(dstp+i+1) = clr1;
       }
       dstp += dst_pitch;
     }
@@ -568,17 +568,17 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
   else if (vi.IsRGB32()) {
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int i = 0; i<initial_black; i += 4) {
-      *(unsigned __int32*)(dstp+i) = clr;
+      *(uint32_t*)(dstp+i) = clr;
     }
     dstp += initial_black + src_row_size;
     for (int y = src_height-1; y>0; --y) {
       for (int i = 0; i<middle_black; i += 4) {
-        *(unsigned __int32*)(dstp+i) = clr;
+        *(uint32_t*)(dstp+i) = clr;
       }
       dstp += dst_pitch;
     } // for y
     for (int i = 0; i<final_black; i += 4) {
-      *(unsigned __int32*)(dstp+i) = clr;
+      *(uint32_t*)(dstp+i) = clr;
     }
   } else if (vi.IsRGB48()) {
     const uint16_t  clr0 = GetHbdColorFromByte<uint16_t>(clr & 0xFF, true, 16, false);

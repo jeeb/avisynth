@@ -129,3 +129,8 @@ ipch/
 Makefile
 build.ninja
 rules.ninja
+.ninja_deps
+.ninja_log
+cmake_uninstall.cmake
+*.pc
+*.so

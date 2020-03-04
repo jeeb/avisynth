@@ -21,7 +21,19 @@
 #include <avs/cpuid.h>
 #include <avs/config.h>
 #include <stdint.h>
+#ifdef AVS_WINDOWS
 #include <intrin.h>
+#else
+#include <x86intrin.h>
+#include <cpuid.h>
+#undef __cpuid
+
+static inline void __cpuid(int cpuinfo[4], int id) {
+    unsigned int *i = reinterpret_cast<unsigned int *>(cpuinfo);
+    __get_cpuid(id, &i[0], &i[1], &i[2], &i[3]);
+}
+
+#endif
 
 #define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
 

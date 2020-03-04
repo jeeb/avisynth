@@ -39,7 +39,13 @@
  */
 
 #include "exception.h"
-#include <avs/win.h>
+
+#ifdef AVS_WINDOWS
+    #include <avs/win.h>
+#else
+    #include <avs/posix.h>
+#endif
+
 #include <cassert>
 
 static const char * const StringSystemError(const unsigned code)
@@ -111,7 +117,10 @@ static const char * const StringSystemError(const unsigned code)
   assert(0);
 }
 
+#ifdef AVS_WINDOWS
+// Seh is Windows-only, right?
 void SehTranslatorFunction(unsigned int code, struct _EXCEPTION_POINTERS *record)
 {
   throw SehException(code, record->ExceptionRecord->ExceptionAddress, StringSystemError(code));
 }
+#endif

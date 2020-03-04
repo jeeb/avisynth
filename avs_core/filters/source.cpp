@@ -36,7 +36,9 @@
 #include "../core/internal.h"
 #include "../convert/convert.h"
 #include "transform.h"
+#ifdef AVS_WINDOWS
 #include "AviSource/avi_source.h"
+#endif
 #include "../convert/convert_planar.h"
 
 #define PI 3.1415926535897932384626433832795
@@ -66,9 +68,9 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
     AVS_UNUSED(n);
     AVS_UNUSED(env);
-    return frame; 
+    return frame;
   }
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     AVS_UNUSED(start);
     AVS_UNUSED(env);
     memset(buf, 0, (size_t)vi.BytesFromAudioSamples(count));
@@ -387,7 +389,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 
   // If we got an Audio only default clip make the default duration the same
   if (!defHasVideo && defHasAudio) {
-    const __int64 denom = Int32x32To64(vi.fps_denominator, vi_default.audio_samples_per_second);
+    const int64_t denom = Int32x32To64(vi.fps_denominator, vi_default.audio_samples_per_second);
     vi_default.num_frames = int((vi_default.num_audio_samples * vi.fps_numerator + denom - 1) / denom); // ceiling
   }
 
@@ -430,7 +432,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
           colors_f[i] = args[13][i].AsFloatf(0.0);
         else {
           colors[i] = args[13][i].AsInt(0);
-          if (colors[i] >= (1 << bits_per_pixel) || colors < 0)
+          if (colors[i] >= (1 << bits_per_pixel) || colors[i] < 0)
             env->ThrowError("BlankClip: invalid color value (%d) for %d bits video format", colors[i], bits_per_pixel);
         }
       }
@@ -446,27 +448,62 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 /********************************************************************
 ********************************************************************/
 
+#ifdef AVS_WINDOWS
 // in text-overlay.cpp
 extern bool GetTextBoundingBox(const char* text, const char* fontname,
   int size, bool bold, bool italic, int align, int* width, int* height);
+#endif
+
+extern bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,
+  bool italic, int align, int& width, int& height, bool utf8);
 
 
 PClip Create_MessageClip(const char* message, int width, int height, int pixel_type, bool shrink,
                          int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env) {
   int size;
-  for (size = 24*8; /*size>=9*8*/; size-=4) {
+#ifdef AVS_WINDOWS
+    // MessageClip produces a clip containing a text message.Used internally for error reporting.
+    // The font face is "Arial".
+    // The font size is between 24 points and 9 points - chosen to fit, if possible,
+    // in the width by height clip.
+    // The pixeltype is RGB32.
+
+    for (size = 24*8; /*size>=9*8*/; size-=4) {
     int text_width, text_height;
     GetTextBoundingBox(message, "Arial", size, true, false, TA_TOP | TA_CENTER, &text_width, &text_height);
-    text_width = ((text_width>>3)+8+7) & ~7;
-    text_height = ((text_height>>3)+8+1) & ~1;
-    if (size<=9*8 || ((width<=0 || text_width<=width) && (height<=0 || text_height<=height))) {
-      if (width <= 0 || (shrink && width>text_width))
+    text_width = ((text_width>>3)+8+7) & ~7; // mod 8
+    text_height = ((text_height>>3)+8+1) & ~1; // mod 2
+    if (size <= 9 * 8 || ((width <= 0 || text_width <= width) && (height <= 0 || text_height <= height))) {
+      if (width <= 0 || (shrink && width > text_width))
         width = text_width;
-      if (height <= 0 || (shrink && height>text_height))
+      if (height <= 0 || (shrink && height > text_height))
         height = text_height;
       break;
     }
   }
+#else
+  // FIXME: only one fixed size font
+  size = 20;
+  constexpr int FONT_WIDTH = 10;
+  constexpr int FONT_HEIGHT = 20;
+
+  constexpr int MAX_SIZE = 20;
+  constexpr int MIN_SIZE = 20; //
+  for (size = MAX_SIZE; /*size>=9*/; size -= 1) {
+    int text_width, text_height;
+    bool utf8 = true;
+    GetTextBoundingBoxFixed(message, "n/a", size, true, false, 0 /* align */, text_width, text_height, utf8);
+    text_width = (text_width + 8 + 7) & ~7; // mod 8
+    text_height = (text_height + 8 + 1) & ~1; // mod 2
+    if (size <= MIN_SIZE || ((width <= 0 || text_width <= width) && (height <= 0 || text_height <= height))) {
+      if (width <= 0 || (shrink && width > text_width))
+        width = text_width;
+      if (height <= 0 || (shrink && height > text_height))
+        height = text_height;
+      break;
+    }
+  }
+#endif
 
   VideoInfo vi;
   memset(&vi, 0, sizeof(vi));
@@ -481,7 +518,6 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   env->ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor);
   return new StaticImage(vi, frame, false);
 };
-
 
 AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(args[0].AsString(), args[1].AsInt(-1),
@@ -1668,7 +1704,7 @@ public:
       }
   };
 
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     AVS_UNUSED(env);
 #if 1
 	const int d_mod = vi.audio_samples_per_second*2;
@@ -1685,10 +1721,10 @@ public:
 	  if (++j >= nsamples) j = 0;
 	}
 #else
-    __int64 Hz=440;
+    int64_t Hz=440;
     // Calculate what start equates in cycles.
     // This is the number of cycles (rounded down) that has already been taken.
-    __int64 startcycle = (start*Hz) /  vi.audio_samples_per_second;
+    int64_t startcycle = (start*Hz) /  vi.audio_samples_per_second;
 
     // Move offset down - this is to avoid float rounding errors
     int start_offset = (int)(start - ((startcycle * vi.audio_samples_per_second) / Hz));
@@ -1738,7 +1774,7 @@ public:
 //    foo();
   }
   PVideoFrame GetFrame(int n, IScriptEnvironment* env) {}
-  void GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {}
+  void GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {}
   const VideoInfo& GetVideoInfo() {}
   bool GetParity(int n) { return false; }
 
@@ -1751,6 +1787,8 @@ public:
 /********************************************************************
 ********************************************************************/
 
+#ifdef AVS_WINDOWS
+// AviSource is Windows-only, because it explicitly relies on Video for Windows
 AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, IScriptEnvironment* env) {
   bool bAudio = !use_directshow && args[1].AsBool(true);
   const char* pixel_type = 0;
@@ -1810,6 +1848,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   }
   return result;
 }
+#endif
 
 /**********************************************************
  *                         TONE                           *
@@ -1895,7 +1934,7 @@ public:
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = _ch;
     vi.audio_samples_per_second = _samplerate;
-    vi.num_audio_samples=(__int64)(_length*vi.audio_samples_per_second+0.5);
+    vi.num_audio_samples=(int64_t)(_length*vi.audio_samples_per_second+0.5);
 
     if (!lstrcmpi(_type, "Sine"))
       s = new SineGenerator();
@@ -1913,7 +1952,7 @@ public:
       env->ThrowError("Tone: Type was not recognized!");
   }
 
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     AVS_UNUSED(env);
     // Where in the cycle are we in?
     const double cycle = (freq * start) / samplerate;
@@ -1955,11 +1994,18 @@ public:
 
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
-  return Create_MessageClip(AVS_FULLVERSION AVS_COPYRIGHT, -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
+  return Create_MessageClip(
+#ifdef AVS_POSIX
+    AVS_FULLVERSION AVS_COPYRIGHT_UTF8
+#else
+    AVS_FULLVERSION AVS_COPYRIGHT
+#endif
+    ,-1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
 }
 
 
 extern const AVSFunction Source_filters[] = {
+#ifdef AVS_WINDOWS
   { "AVISource",     BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i[utf8]b", AVISource::Create, (void*) AVISource::MODE_NORMAL },
   { "AVIFileSource", BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i[utf8]b", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
   { "WAVSource",     BUILTIN_FUNC_PREFIX, "s+[utf8]b", AVISource::Create, (void*) AVISource::MODE_WAV },
@@ -1970,6 +2016,7 @@ extern const AVSFunction Source_filters[] = {
                      "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",
                      Create_SegmentedSource, (void*)1 },
 // args             0         1       2        3            4     5                 6            7        8             9       10          11     12
+#endif
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
 #ifdef NEW_AVSVALUE

@@ -34,7 +34,11 @@
 
 
 #include <avs/alignment.h>
-#include <intrin.h>
+#ifdef AVS_WINDOWS
+    #include <intrin.h>
+#else
+    #include <x86intrin.h>
+#endif
 
 #ifndef _mm256_set_m128i
 #define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)
@@ -52,6 +56,9 @@
 #endif
 
 template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("avx2")))
+#endif
 void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
   const float *srcp = reinterpret_cast<const float *>(srcp8);
@@ -120,7 +127,7 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
         src_1 = _mm256_fmadd_ps(src_1, factor_ps, limit_lo_plus_rounder_ps);
         //pixel = (srcp0[x] - limit_lo_s_ps) * factor + half + limit_lo + 0.5f;
       }
-      
+
       src_0 = _mm256_max_ps(_mm256_min_ps(src_0, max_dst_pixelvalue), zero);
       src_1 = _mm256_max_ps(_mm256_min_ps(src_1, max_dst_pixelvalue), zero);
       result_0 = _mm256_cvttps_epi32(src_0); // truncate
@@ -171,6 +178,9 @@ convert_32_to_uintN_avx2_functions(16)
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
 // shift right or left, depending on expandrange template param
 template<bool expandrange, uint8_t shiftbits>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("avx2")))
+#endif
 void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);

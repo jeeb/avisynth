@@ -28,7 +28,7 @@ struct PrefetcherPimpl
   // Maximum number of frames to prefetch
   const int nPrefetchFrames;
 
-  ThreadPool ThreadPool;
+  ThreadPool thread_pool;
 
   ObjectPool<PrefetcherJobParams> JobParamsPool;
   std::mutex params_pool_mutex;
@@ -64,7 +64,7 @@ struct PrefetcherPimpl
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
     nPrefetchFrames(_nThreads * 2),
-    ThreadPool(_nThreads),
+    thread_pool(_nThreads),
     LockedPattern(1),
     PatternHits(0),
     Pattern(1),
@@ -181,7 +181,7 @@ int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, In
         p->prefetcher = this;
         p->cache_handle = cache_handle;
         ++_pimpl->running_workers;
-        _pimpl->ThreadPool.QueueJob(ThreadWorker, p, env, NULL);
+        _pimpl->thread_pool.QueueJob(ThreadWorker, p, env, NULL);
         break;
       }
     case LRU_LOOKUP_FOUND_AND_READY:      // Fall-through intentional
@@ -332,7 +332,7 @@ bool __stdcall Prefetcher::GetParity(int n)
   return _pimpl->child->GetParity(n);
 }
 
-void __stdcall Prefetcher::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall Prefetcher::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   _pimpl->child->GetAudio(buf, start, count, env);
 }

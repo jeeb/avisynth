@@ -39,8 +39,18 @@
 #include <cstdlib>
 #include <cmath>
 #include <vector>
-#include <io.h>
-#include <avs/win.h>
+#include <fstream>
+
+#ifdef AVS_WINDOWS
+    #include <io.h>
+    #include <avs/win.h>
+#else
+    #include <avs/posix.h>
+    #include "os/win32_string_compat.h"
+    #include <dirent.h>
+    #include <filesystem>
+#endif
+
 #include <avs/minmax.h>
 #include <new>
 #include <clocale>
@@ -48,6 +58,8 @@
 #include "../Prefetcher.h"
 #include "../InternalEnvironment.h"
 #include <map>
+#include <string>
+#include <codecvt>
 
 #ifndef MINGW_HAS_SECURE_API
 #define sprintf_s sprintf
@@ -268,8 +280,10 @@ extern const AVSFunction Script_functions[] = {
   { "IsVideoFloat", BUILTIN_FUNC_PREFIX, "c", IsVideoFloat }, // r2435+
 
   { "GetProcessInfo", BUILTIN_FUNC_PREFIX, "[type]i", GetProcessInfo }, // 170526-
+#ifdef AVS_WINDOWS
   { "StrToUtf8", BUILTIN_FUNC_PREFIX, "s", StrToUtf8 }, // 170601-
   { "StrFromUtf8", BUILTIN_FUNC_PREFIX, "s", StrFromUtf8 }, // 170601-
+#endif
 
   { "IsFloatUvZeroBased", BUILTIN_FUNC_PREFIX, "", IsFloatUvZeroBased }, // 180516-
   { "BuildPixelType", BUILTIN_FUNC_PREFIX, "[family]s[bits]i[chroma]i[compat]b[oldnames]b[sample_clip]c", BuildPixelType }, // 180517-
@@ -340,6 +354,7 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
  *******   wchar_t-utf-ansi   ******
  **********************************/
 
+#ifdef AVS_WINDOWS
 std::unique_ptr<char[]> WideCharToUtf8(const wchar_t *w_string)
 {
   const auto utf8len = WideCharToMultiByte(CP_UTF8, 0, w_string, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
@@ -354,7 +369,7 @@ std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string)
   auto s_ansi = std::make_unique<char[]>(len + 1);
   WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
   // int succ = wcstombs(s_ansi, w_string, len +1); 
-  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
   return s_ansi;
 }
 
@@ -364,7 +379,7 @@ std::unique_ptr<char[]> WideCharToAnsiACP(const wchar_t *w_string)
   auto s_ansi = std::make_unique<char[]>(len + 1);
   WideCharToMultiByte(CP_ACP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
   // int succ = wcstombs(s_ansi, w_string, len +1); 
-  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns –1 cast to type size_t and sets errno to EILSEQ.
+  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
   return s_ansi;
 }
 
@@ -411,18 +426,84 @@ std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi)
   MultiByteToWideChar(CP_UTF8, 0, s_ansi, -1, w_string.get(), (int)bufsize);
   return w_string;
 }
+#endif
+
+std::u16string charToU16string(const char* text, bool utf8)
+{
+  std::u16string s16;
+  // AVS_POSIX: utf8 is always true, no ANSI here
+#ifdef AVS_POSIX
+  utf8 = true;
+#endif
+  if (utf8) {
+    // warning C4996 : 'std::codecvt_utf8_utf16<char16_t,1114111,0>' : warning STL4017 : std::wbuffer_convert, std::wstring_convert,
+    // and the <codecvt> header(containing std::codecvt_mode, std::codecvt_utf8, std::codecvt_utf16, and std::codecvt_utf8_utf16)
+    // are deprecated in C++17.
+    // (The std::codecvt class template is NOT deprecated.)
+    // The C++ Standard doesn't provide equivalent non-deprecated functionality;
+    // consider using MultiByteToWideChar() and WideCharToMultiByte() from <Windows.h> instead.
+    // You can define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+    // utf8 to char16_t
+    std::string source(text);
+#if defined(MSVC_PURE) && (_MSC_VER < 1920)
+    // workround for v141_xp toolset suxxx: unresolved externals
+    auto wsource = Utf8ToWideChar(text);
+    std::wstring wsource2 = wsource.get();
+    s16.assign(wsource2.begin(), wsource2.end());
+
+    // or
+    /*
+    std::wstring_convert<std::codecvt_utf8_utf16<int16_t>, int16_t> convert;
+    auto p = reinterpret_cast<const char*>(source.data());
+    auto str = convert.from_bytes(p, p + source.size());
+    s16.assign(str.begin(), str.end());
+    */
+#else
+    // MSVC++ 14.2  _MSC_VER == 1920 (Visual Studio 2019 version 16.0) v142 toolset
+    // MSVC++ 14.16 _MSC_VER == 1916 (Visual Studio 2017 version 15.9) v141_xp toolset
+    // this one suxx with MSVC v141_xp toolset: unresolved external error
+
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+
+    // crash warning, strings here are considered as being a valid utf8 sequence
+    // which is not the case when our own original VersionString() is passed here with an embedded ansi encoded (C) symbol
+    // Crash occurs: "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2020 AviSynth+ Project"
+    // O.K.: u8"\n\u00A9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\u00A9 2013-2020 AviSynth+ Project"
+    // FIXME: make it crash-tolerant?
+    try {
+      s16 = convert.from_bytes(source);
+    }
+    catch (const std::exception & e) {
+      s16 = u"Error converting utf8 string to utf16\r\n";
+      // FIXME: Throw a proper avs exception
+    }
+#endif
+  }
+#ifdef AVS_WINDOWS
+  else {
+    // ANSI, Windows
+    // in two steps: Ansi -> WideChar -> Utf8
+    auto wsource = AnsiToWideCharACP(text);
+    std::wstring wsource2 = wsource.get();
+    s16.assign(wsource2.begin(), wsource2.end());
+  }
+#endif
+  return s16;
+}
 
 /***********************************
  *******   Helper Functions   ******
  **********************************/
 
-void CWDChanger::Init(const wchar_t* new_cwd) 
+#ifdef AVS_WINDOWS
+void CWDChanger::Init(const wchar_t* new_cwd)
 {
   // works in unicode internally
-  DWORD cwdLen = GetCurrentDirectoryW(0, NULL);
+  uint32_t cwdLen = GetCurrentDirectoryW(0, NULL);
   old_working_directory = std::make_unique<wchar_t[]>(cwdLen); // instead of new wchar_t[cwdLen];
-  DWORD save_cwd_success = GetCurrentDirectoryW(cwdLen, old_working_directory.get());
-  BOOL set_cwd_success = SetCurrentDirectoryW(new_cwd);
+  uint32_t save_cwd_success = GetCurrentDirectoryW(cwdLen, old_working_directory.get());
+  bool set_cwd_success = SetCurrentDirectoryW(new_cwd);
   restore = (save_cwd_success && set_cwd_success);
 }
 
@@ -445,10 +526,10 @@ CWDChanger::~CWDChanger(void)
 
 DllDirChanger::DllDirChanger(const char* new_dir)
 {
-  DWORD len = GetDllDirectory (0, NULL);
+  uint32_t len = GetDllDirectory (0, NULL);
   old_directory = std::make_unique<char[]>(len + 1); // instead of new char[len+1]
-  DWORD save_success = GetDllDirectory (len, old_directory.get());
-  BOOL set_success = SetDllDirectory(new_dir);
+  uint32_t save_success = GetDllDirectory (len, old_directory.get());
+  bool set_success = SetDllDirectory(new_dir);
   restore = (save_success && set_success);
 }
 
@@ -457,6 +538,23 @@ DllDirChanger::~DllDirChanger(void)
   if (restore)
     SetDllDirectory(old_directory.get());
 }
+#else // copied from AvxSynth
+CWDChanger::CWDChanger(const char* new_cwd)
+{
+
+  char* path = getcwd(old_working_directory, FILENAME_MAX);
+  bool save_cwd_success = (NULL != path);
+  bool set_cwd_success = (0 == chdir(new_cwd));
+  restore = (save_cwd_success && set_cwd_success);
+}
+
+CWDChanger::~CWDChanger(void)
+{
+  if (restore)
+    chdir(old_working_directory);
+}
+#endif
+
 
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -531,23 +629,30 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   for (int i = 0; i < args.ArraySize(); ++i) {
     const char* script_name = args[i].AsString();
 
-    wchar_t full_path_w[MAX_PATH];
-    wchar_t *file_part_w;
+#ifdef AVS_WINDOWS
+    /* Linux, macOS, pretty much every OS aside from Windows uses
+       UTF-8 pervasively and by default, making all the Ansi<->Unicode
+       stuff we have to specially handle on Windows (which uses UTF-16
+       when it does 'Unicode', further complicating things if you don't
+       force UTF-8) irrelevant. */
 
       // Handling utf8 and ansi, working in wchar_t internally
       // filename and path can be full unicode
       // unicode input can come from CAVIFileSynth
 
+    wchar_t full_path_w[MAX_PATH];
+    wchar_t *file_part_w;
+
     // make wchar_t full path strnig from either ansi or utf8
     auto script_name_w = !bUtf8 ? AnsiToWideChar(script_name) : Utf8ToWideChar(script_name);
 
     if (wcschr(script_name_w.get(), '\\') || wcschr(script_name_w.get(), '/')) {
-      DWORD len = GetFullPathNameW(script_name_w.get(), MAX_PATH, full_path_w, &file_part_w);
+      uint32_t len = GetFullPathNameW(script_name_w.get(), MAX_PATH, full_path_w, &file_part_w);
       if (len == 0 || len > MAX_PATH)
         env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
     }
     else {
-      DWORD len = SearchPathW(NULL, script_name_w.get(), NULL, MAX_PATH, full_path_w, &file_part_w);
+      uint32_t len = SearchPathW(NULL, script_name_w.get(), NULL, MAX_PATH, full_path_w, &file_part_w);
       if (len == 0 || len > MAX_PATH)
         env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
     }
@@ -587,7 +692,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
     DWORD size = GetFileSize(h, NULL);
     std::vector<char> buf(size + 1, 0);
-    BOOL status = ReadFile(h, buf.data(), size, &size, NULL);
+    bool status = ReadFile(h, buf.data(), size, &size, NULL);
     CloseHandle(h);
     if (!status)
       env->ThrowError("Import: unable to read \"%s\"", script_name);
@@ -605,9 +710,44 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
           "re-save script with ANSI encoding! : \"%s\"", script_name);
     }
 
+#else // adapted from AvxSynth
+    std::string file_part = std::filesystem::path(script_name).filename().string();
+    std::string full_path = std::filesystem::path(script_name).remove_filename();
+    std::string dir_part = std::filesystem::path(script_name).parent_path();
+
+    FILE* h = fopen(script_name, "r");
+    if(NULL == h)
+      env->ThrowError("Import: couldn't open \"%s\"", script_name );
+
+    env->SetGlobalVar("$ScriptName$", env->SaveString(script_name));
+    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part.c_str()));
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path.c_str()));
+    if (MainScript)
+    {
+      env->SetGlobalVar("$MainScriptName$", env->SaveString(script_name));
+      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part.c_str()));
+      env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path.c_str()));
+    }
+
+    //*file_part = 0; // trunc full_path to dir-only
+    CWDChanger change_cwd(full_path.c_str());
+    // end of filename parsing / file open things
+
+    fseek(h, 0, SEEK_END);
+    size_t size = ftell(h);
+    fseek(h, 0, SEEK_SET);
+
+    std::vector<char> buf(size + 1, 0);
+    if(size != fread(buf.data(), 1, size, h))
+      env->ThrowError("Import: unable to read \"%s\"", script_name);
+
+    fclose(h);
+#endif
+
     buf[size] = 0;
     AVSValue eval_args[] = { buf.data(), script_name };
     result = env->Invoke("Eval", AVSValue(eval_args, 2));
+    //env->ThrowError("Import: test %s size %d\n", buf.data(), (int)size);
   }
 
   env->SetGlobalVar("$ScriptName$", lastScriptName);
@@ -1031,20 +1171,7 @@ AVSValue Undefined(AVSValue args, void*, IScriptEnvironment*) { return AVSValue(
 
 AVSValue Exist(AVSValue args, void*, IScriptEnvironment*nv) {
   const char *filename = args[0].AsString();
-
-  if (strchr(filename, '*') || strchr(filename, '?')) // wildcard
-      return false;
-
-  struct _finddata_t c_file;
-
-  intptr_t f = _findfirst(filename, &c_file);
-
-  if (f == -1)
-      return false;
-
-  _findclose(f);
-
-  return true;
+  return std::ifstream(filename).good();
 }
 
 
@@ -1333,7 +1460,15 @@ AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment*) { return VI(args[0
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment*) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
 AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment*) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment*) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
-AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) { char s[32]; return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10)); }
+AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) {
+    char s[32];
+#ifdef AVS_WINDOWS
+    return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10));
+#else
+    sprintf(s,"%ld",VI(args[0]).num_audio_samples);
+    return env->SaveString(s);
+#endif
+}
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment*) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
 AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment*) {
   const VideoInfo& vi = VI(args[0]);
@@ -1376,7 +1511,12 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
   } else {	// standard behaviour
 	  if (args[0].IsInt()) {
 		char s[12];
+#ifdef AVS_WINDOWS
 		return env->SaveString(_itoa(args[0].AsInt(), s, 10));
+#else // copied from AvxSynth
+                sprintf(s,"%d",args[0].AsInt());
+                return env->SaveString(s);
+#endif
 	  }
 	  if (args[0].IsFloat()) {
 		char s[30];
@@ -1621,13 +1761,14 @@ static int ProcessType() {
 
   if constexpr(sizeof(void*) == 8)
     return PROCESS_64_ON_64;
+#ifdef AVS_WINDOWS
   else {
     // IsWow64Process is not available on all supported versions of Windows.
     // Use GetModuleHandle to get a handle to the DLL that contains the function
     // and GetProcAddress to get a pointer to the function if available.
 
     BOOL bWoW64Process = FALSE;
-    typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+    typedef bool(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
     LPFN_ISWOW64PROCESS fnIsWow64Process;
     HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
     if (hKernel32 == NULL)
@@ -1644,10 +1785,11 @@ static int ProcessType() {
 
     return PROCESS_32_ON_32;
   }
+#endif
 }
 
-AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env) 
-{ 
+AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env)
+{
   int infoType = args[0].AsInt(0);
   if (infoType < 0 || infoType > 1)
     env->ThrowError("GetProcessInfo: type must be 0 or 1");
@@ -1658,6 +1800,7 @@ AVSValue GetProcessInfo(AVSValue args, void*, IScriptEnvironment* env)
   return ProcessType();
 }
 
+#ifdef AVS_WINDOWS
 AVSValue StrToUtf8(AVSValue args, void*, IScriptEnvironment* env) {
   const char *source = args[0].AsString();
   // in two steps: Ansi -> WideChar -> Utf8
@@ -1677,6 +1820,7 @@ AVSValue StrFromUtf8(AVSValue args, void*, IScriptEnvironment* env) {
   AVSValue ret = env->SaveString(source_ansi.get());
   return ret;
 }
+#endif
 
 
 AVSValue IsFloatUvZeroBased(AVSValue args, void*, IScriptEnvironment*)

@@ -1,12 +1,16 @@
-# We need CMake 2.8.11 at least, because we use CMake features
-# "Target Usage Requirements" and "Generator Toolset selection"
-CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
+# We need CMake 3.8 at least, because we require
+# CMAKE_CXX_STANDARD to be set to C++17.
+CMAKE_MINIMUM_REQUIRED( VERSION 3.8.2 )
 
 # Create library
 project("AvsCore")
 Include("Files.cmake")
 add_library("AvsCore" SHARED ${AvsCore_Sources})
-set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "AviSynth")
+if (MSVC OR MINGW)
+  set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "AviSynth")
+else()
+  set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "avisynth")
+endif()
 if (MINGW)
   set_target_properties("AvsCore" PROPERTIES PREFIX "")
   set_target_properties("AvsCore" PROPERTIES IMPORT_PREFIX "")
@@ -55,7 +59,7 @@ if (MSVC_IDE)
       file(GLOB_RECURSE SRCS_AVX2 "*_avx2.cpp")
       set_source_files_properties(${SRCS_AVX2} PROPERTIES COMPILE_FLAGS " /arch:AVX2 ")
   ENDIF()
-elseif (MINGW)
+else()
   # special SSSE3 option for source files with *_ssse3.cpp pattern
   file(GLOB_RECURSE SRCS_SSSE3 "*_ssse3.cpp")
   set_source_files_properties(${SRCS_SSSE3} PROPERTIES COMPILE_FLAGS " -mssse3 ")
@@ -78,12 +82,19 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Specify preprocessor definitions
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
-# Windows DLL dependencies 
-if (MSVC OR MINGW)
-  target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
+# stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    set(FSLIB "stdc++fs")
 endif()
 
-if (MSVC_IDE)    
+# Windows DLL dependencies
+if (MSVC OR MINGW)
+  target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
+else()
+  target_link_libraries("AvsCore" "pthread" "dl" "${FSLIB}")
+endif()
+
+if (MSVC_IDE)
   # Copy output to a common folder for easy deployment
   add_custom_command(
     TARGET AvsCore

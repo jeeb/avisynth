@@ -35,6 +35,7 @@
 #ifndef __Convert_Audio_H__
 #define __Convert_Audio_H__
 
+#include <avs/types.h>
 
 class ConvertAudio : public GenericVideoFilter
 /**
@@ -43,7 +44,7 @@ class ConvertAudio : public GenericVideoFilter
 {
 public:
   ConvertAudio(PClip _clip, int prefered_format);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints,int frame_range);  // We do pass cache requests upwards, to the cache!
 
   static PClip Create(PClip clip, int sample_type, int prefered_type);
