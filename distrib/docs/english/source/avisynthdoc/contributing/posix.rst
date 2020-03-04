@@ -33,6 +33,22 @@ Ubuntu 19.10 or higher
 
     sudo apt-get install build-essential cmake git ninja-build checkinstall
 
+
+::
+
+    git clone git://github.com/AviSynth/AviSynthPlus.git && \
+    cd AviSynthPlus && \
+    mkdir avisynth-build && \
+    cd avisynth-build && \
+
+    cmake ../ -G Ninja -DCMAKE_CXX_FLAGS="-fpermissive" && \
+    ninja && \
+        sudo checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
+        Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
+        sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
+        --strip=yes --fstrans=no --default ninja install
+
+
 Ubuntu 18.04 LTS
 ~~~~~~~~~~~~~~~~
 
@@ -44,7 +60,22 @@ installing GCC 9:
 
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test
     sudo apt-get update
-    sudo apt-get install build-essential cmake git ninja-build gcc-9
+    sudo apt-get install build-essential cmake git ninja-build gcc-9 g++-9
+
+
+::
+
+    git clone git://github.com/AviSynth/AviSynthPlus.git && \
+    cd AviSynthPlus && \
+    mkdir avisynth-build && \
+    cd avisynth-build && \
+
+    CC=gcc-9 CXX=gcc-9 LD=gcc-9 cmake ../ -G Ninja -DCMAKE_CXX_FLAGS="-fpermissive" && \
+    ninja && \
+        sudo checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
+        Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
+        sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
+        --strip=yes --fstrans=no --default ninja install
 
 
 macOS
@@ -285,7 +316,8 @@ Ubuntu
 
 ::
 
-    ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
+        PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig ./configure --enable-shared \
+        --enable-pic --enable-avisynth-cpp --enable-vapoursynth
     make -j$(nproc)
         sudo checkinstall --pkgname=ffms2 --pkgversion="1:$(./version.sh)-git" \
         --backup=no --deldoc=yes --delspec=yes --deldesc=yes --strip=yes --stripso=yes \
@@ -297,7 +329,8 @@ macOS
 
 ::
 
-    CC=gcc CXX=g++ LD=gcc ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
+        CC=gcc CXX=g++ LD=gcc PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
     make -j$(nproc)
     sudo make install
 
@@ -307,7 +340,8 @@ FreeBSD
 
 ::
 
-    CC=gcc CXX=g++ LD=gcc ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
+        CC=gcc CXX=g++ LD=gcc PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
     gmake -j$(nproc)
     gmake install
 
@@ -335,4 +369,4 @@ plugin manually:
 
 Back to the :doc:`main page <../../index>`
 
-$ Date: 2020-03-02 17:08:47-05:00 $
+$ Date: 2020-03-04 15:09:23-05:00 $
