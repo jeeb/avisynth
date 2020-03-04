@@ -4,6 +4,11 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20200304 3.5.0 (dev)
+--------------------
+- Enhanced: Planar RGB to YUV 444 10-14 bits: more precision (32 bit float internally)
+- Enhanced: Planar RGB to YUV 444 10-16 bits: AVX2 (speed improvement)
+
 20200302 3.5.0
 --------------
 - New: Native Linux, macOS, and BSD support.
