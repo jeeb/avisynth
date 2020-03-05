@@ -722,11 +722,17 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     env->SetGlobalVar("$ScriptName$", env->SaveString(script_name));
     env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part.c_str()));
     env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path.c_str()));
+    env->SetGlobalVar("$ScriptNameUtf8$", env->SaveString(script_name));
+    env->SetGlobalVar("$ScriptFileUtf8$", env->SaveString(file_part.c_str()));
+    env->SetGlobalVar("$ScriptDirUtf8$", env->SaveString(full_path.c_str()));
     if (MainScript)
     {
       env->SetGlobalVar("$MainScriptName$", env->SaveString(script_name));
       env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part.c_str()));
       env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path.c_str()));
+      env->SetGlobalVar("$MainScriptNameUtf8$", env->SaveString(script_name));
+      env->SetGlobalVar("$MainScriptFileUtf8$", env->SaveString(file_part.c_str()));
+      env->SetGlobalVar("$MainScriptDirUtf8$", env->SaveString(full_path.c_str()));
     }
 
     //*file_part = 0; // trunc full_path to dir-only
