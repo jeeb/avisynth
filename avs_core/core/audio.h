@@ -204,7 +204,7 @@ class KillAudio : public NonCachedGenericVideoFilter
 {
 public:
   KillAudio(PClip _clip);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env) { AVS_UNUSED(buf); AVS_UNUSED(start); AVS_UNUSED(count); AVS_UNUSED(env); };
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) { AVS_UNUSED(buf); AVS_UNUSED(start); AVS_UNUSED(count); AVS_UNUSED(env); };
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
 
