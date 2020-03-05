@@ -1041,7 +1041,8 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     }
 
     // Read conditional variables
-    coloryuv_read_conditional(env, &cY, &cU, &cV, condVarSuffix);
+    if(conditional)
+      coloryuv_read_conditional(env, &cY, &cU, &cV, condVarSuffix);
 
     // no float lut. float will be realtime
     if (pixelsize == 1 || pixelsize == 2) {
