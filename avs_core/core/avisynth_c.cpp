@@ -638,14 +638,14 @@ char * AVSC_CC avs_sprintf(AVS_ScriptEnvironment * p, const char* fmt, ...)
 	p->error = 0;
 	va_list vl;
 	va_start(vl, fmt);
-	char * v = p->env->VSprintf(fmt, (void *)vl);
+	char * v = p->env->VSprintf(fmt, vl);
 	va_end(vl);
 	return v;
 }
 
  // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
 extern "C"
-char * AVSC_CC avs_vsprintf(AVS_ScriptEnvironment * p, const char* fmt, void* val)
+char * AVSC_CC avs_vsprintf(AVS_ScriptEnvironment * p, const char* fmt, va_list val)
 {
 	p->error = 0;
 	return p->env->VSprintf(fmt, val);

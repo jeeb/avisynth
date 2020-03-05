@@ -193,7 +193,7 @@ public:
     return result;
   }
 
-  char* __stdcall VSprintf(const char* fmt, void* val)
+  char* __stdcall VSprintf(const char* fmt, va_list val)
   {
     return core->VSprintf(fmt, val);
   }
