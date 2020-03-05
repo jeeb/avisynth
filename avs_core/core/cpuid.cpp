@@ -30,6 +30,7 @@
 
 static inline void __cpuid(int cpuinfo[4], int leaf) {
   unsigned int eax, ebx, ecx, edx;
+  // for deeper leaves __get_cpuid is not enough
   __get_cpuid_count(leaf, 0, &eax, &ebx, &ecx, &edx);
   cpuinfo[0] = eax;
   cpuinfo[1] = ebx;
