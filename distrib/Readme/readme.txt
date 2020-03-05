@@ -1,4 +1,4 @@
-Avisynth+ v3.5 (20200302)
+Avisynth+ v3.5 (20200305)
 -------------------------
 
 Use the installer or copy files directly
@@ -30,6 +30,15 @@ Short info for plugin writers
   when your plugin calls it on a Classic Avisynth, or pre-high bit depth Avisynth+ host.
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
+
+20200305 3.5.0 (dev)
+--------------------
+- Fix: ColorYUV: really disable variable search when parameter "conditional" is false
+- Development: 
+  ScriptEnvironment::VSprintf: parameter (void *) is changed back to va_list.
+  May affect C interface (avs_vsprintf) and CPP interface (ScriptEnvironment::VSprintf)
+- Enhanced: Planar RGB to YUV 444 10-14 bits: more precision (32 bit float internally)
+- Enhanced: Planar RGB to YUV 444 10-16 bits: AVX2 (speed improvement) 
 
 20200302 3.5.0
 --------------

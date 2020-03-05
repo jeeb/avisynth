@@ -4,8 +4,12 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200304 3.5.0 (dev)
+20200305 3.5.0 (dev)
 --------------------
+- Fix: ColorYUV: really disable variable search when parameter "conditional" is false
+- Development: 
+  ScriptEnvironment::VSprintf: parameter (void *) is changed back to va_list.
+  May affect C interface (avs_vsprintf) and CPP interface (ScriptEnvironment::VSprintf)
 - Enhanced: Planar RGB to YUV 444 10-14 bits: more precision (32 bit float internally)
 - Enhanced: Planar RGB to YUV 444 10-16 bits: AVX2 (speed improvement)
 
