@@ -295,7 +295,6 @@ static void af_horizontal_planar_float_c(BYTE* dstp8, size_t height, size_t pitc
 
 void af_horizontal_planar_avx2(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   size_t mod32_width = (width / 32) * 32;
-  size_t mod16_width = (width / 16) * 16;
   size_t sse_loop_limit = width == mod32_width ? mod32_width - 32 : mod32_width;
   int center_weight_c = int(amount*2);
   int outer_weight_c = int(32768-amount);

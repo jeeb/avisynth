@@ -359,10 +359,6 @@ PVideoFrame WeaveColumns::GetFrame(int n, IScriptEnvironment* env)
       BYTE *_dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
 
-      BYTE *_dstpU = dst->GetWritePtr(PLANAR_U);
-      BYTE *_dstpV = dst->GetWritePtr(PLANAR_V);
-      const int dstpitchUV = dst->GetPitch(PLANAR_U);
-
       const int srcpitch = src->GetPitch();
       const int height = src->GetHeight();
       const int rowsize = src->GetRowSize();
@@ -603,7 +599,6 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
       dstp[p] = dst->GetWritePtr(plane);
     }
 
-    const int dstpitchUV = dst->GetPitch(PLANAR_U);
     for (int i=b; i<e; i++) {
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);

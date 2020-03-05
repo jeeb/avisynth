@@ -230,7 +230,7 @@ class FilterInfo : public GenericVideoFilter
  **/
 {
 public:
-  FilterInfo( PClip _child, bool _font_override, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env);
+  FilterInfo( PClip _child, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env);
   virtual ~FilterInfo(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
@@ -249,7 +249,6 @@ private:
   const VideoInfo &vii;
 
   const int size;
-  const bool font_override;
 
   const int text_color, halo_color;
 #ifdef AVS_WINDOWS

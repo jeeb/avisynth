@@ -28,9 +28,13 @@
 #include <cpuid.h>
 #undef __cpuid
 
-static inline void __cpuid(int cpuinfo[4], int id) {
-    unsigned int *i = reinterpret_cast<unsigned int *>(cpuinfo);
-    __get_cpuid(id, &i[0], &i[1], &i[2], &i[3]);
+static inline void __cpuid(int cpuinfo[4], int leaf) {
+  unsigned int eax, ebx, ecx, edx;
+  __get_cpuid_count(leaf, 0, &eax, &ebx, &ecx, &edx);
+  cpuinfo[0] = eax;
+  cpuinfo[1] = ebx;
+  cpuinfo[2] = ecx;
+  cpuinfo[3] = edx;
 }
 
 #endif

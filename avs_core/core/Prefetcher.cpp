@@ -275,7 +275,6 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 
 
   // Prefetch 1
-  size_t scheduled_Frames = 0;
   int prefetch_pos = SchedulePrefetch(n, n, envI);
 
   // Get requested frame

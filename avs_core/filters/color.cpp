@@ -322,8 +322,6 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
       range_factor = range_factor_tv_to_pc;
   }
 
-  double tv_range_lo_current = (config->plane == PLANAR_Y ? tv_range_lo_luma : tv_range_lo_chroma);
-
   // For gamma pre-post correction. we are in [0..1) working range
   double tv_range_lo_normalized = (config->plane == PLANAR_Y) ? tv_range_lo_luma_8 / 256.0 : tv_range_lo_chroma_8 / 256.0;
 
@@ -637,7 +635,6 @@ static void coloryuv_autogain(const ColorYUVPlaneData* dY, const ColorYUVPlaneDa
   // always 16..235
   int loose_max_limit = (235 + 1) << (bits_per_pixel_for_freq - 8);
   int loose_min_limit = 16 << (bits_per_pixel_for_freq - 8);
-  double gain_corr = 1 << bits_per_pixel_for_freq;
   int maxY = min(dY->loose_max, loose_max_limit);
   int minY = max(dY->loose_min, loose_min_limit);
 

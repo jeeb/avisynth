@@ -116,8 +116,6 @@ public:
 
 private:
   PClip clip, clipY, clipA;
-  int mode;
-  int test;
 };
 
 class CombinePlanes : public GenericVideoFilter

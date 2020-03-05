@@ -120,10 +120,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   char buf[256];
   std::string name = FuncName;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  _snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID));
+  snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID));
 
   LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result);
-  _snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID), (int)LruLookupRes);
+  snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env2->GetProperty(AEP_THREAD_ID), (int)LruLookupRes);
   switch (LruLookupRes)
 #else
   // fill result in lookup before releasing cache handle lock
@@ -154,10 +154,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       char buf[256];
       if (NULL == cache_handle.first->value) {
           // fixed bug but who knows
-          _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: HEY! got nulled! [%s] n=%6d child=%p frame=%p framebefore=%p SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, elapsed_seconds.count()); // P.F.
+          snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: HEY! got nulled! [%s] n=%6d child=%p frame=%p framebefore=%p SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, elapsed_seconds.count()); // P.F.
           _RPT0(0, buf);
       } else {
-          _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: [%s] n=%6d child=%p frame=%p framebefore=%p videoCacheSize=%zu SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+          snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: [%s] n=%6d child=%p frame=%p framebefore=%p videoCacheSize=%zu SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
           _RPT0(0, buf);
       }
 #endif
@@ -178,7 +178,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
       char buf[256];
-      _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)result, (void *)result->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count());
+      snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)result, (void *)result->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count());
       _RPT0(0, buf);
       assert(result != NULL);
 #endif
@@ -192,7 +192,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
       char buf[256];
-      _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NO_CACHE: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)result, (void *)result->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NO_CACHE: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)result, (void *)result->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
       _RPT0(0, buf);
 #endif
       break;

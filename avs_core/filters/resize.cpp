@@ -314,7 +314,7 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
  ***********************************/
 
 HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
-: GenericVideoFilter(_child), mybuffer(0)
+: GenericVideoFilter(_child)
 {
   if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA()) && (vi.NumComponents() > 1)) {
     const int mod  = 2 << vi.GetPlaneWidthSubsampling(PLANAR_U);
@@ -386,7 +386,6 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 
   int src_gap = src->GetPitch() - src->GetRowSize();  //aka 'modulo' in VDub filter terminology
   int dst_gap = dst->GetPitch() - dst->GetRowSize();
-  const int dst_pitch = dst->GetPitch();
 
   BYTE* dstp = dst->GetWritePtr();
 

@@ -84,7 +84,6 @@ public:
   }
 
 private:
-  BYTE *mybuffer;
   int source_width;
   int pixelsize;
 };

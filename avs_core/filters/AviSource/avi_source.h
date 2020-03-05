@@ -103,7 +103,7 @@ class AVISource : public IClip {
   bool v308;
   bool v408;
 
-  bool utf8;
+  //bool utf8;
 
   PVideoFrame last_frame;
   int last_frame_no;

@@ -705,8 +705,6 @@ static void af_horizontal_rgb64_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pi
   // width is really width
   size_t width_bytes = width * 4 * sizeof(uint16_t);
   size_t loop_limit = width_bytes - 16;
-  int center_weight_c = int(amount * 2);
-  int outer_weight_c = int(32768 - amount);
 
   short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi32(t);
@@ -761,8 +759,6 @@ static void af_horizontal_rgb64_sse41(BYTE* dstp, const BYTE* srcp, size_t dst_p
   // width is really width
   size_t width_bytes = width * 4 * sizeof(uint16_t);
   size_t loop_limit = width_bytes - 16;
-  int center_weight_c = int(amount * 2);
-  int outer_weight_c = int(32768 - amount);
 
   short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi32(t);
@@ -1682,7 +1678,7 @@ AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env)
 AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
 {
   const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
-  const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
+  // const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
 
   if (amountH < -1.0 || amountH > 1.5849625 || amountV < -1.0 || amountV > 1.5849625) // log2(3)
     env->ThrowError("Blur: arguments must be in the range -1.0 to 1.58");
@@ -1956,7 +1952,6 @@ static void accumulate_line_ssse3(BYTE* c_plane, const BYTE** planeP, int planes
 {
   // threshold: 8 bits: 2 bytes in a word. for YUY2: luma<<8 | chroma
   // 16 bits: 16 bit value (orig threshold scaled by bits_per_pixel)
-  __m128i halfdiv_vector = _mm_set1_epi32(16384); // for mulhrs
   __m128i div_vector = _mm_set1_epi16(div);
 
   __m128i thresh = _mm_set1_epi16(threshold);
@@ -2009,7 +2004,6 @@ static void accumulate_line_16_sse2(BYTE* c_plane, const BYTE** planeP, int plan
   // 10-16 bits: orig threshold scaled by (bits_per_pixel-8)
   int max_pixel_value = (1 << bits_per_pixel) - 1;
   __m128i limit = _mm_set1_epi16(max_pixel_value); //used for clamping when 10-14 bits
-  // halfdiv_vector = _mm_set1_epi32(1); // n/a
   __m128 div_vector = _mm_set1_ps(1.0f / (planes + 1));
   __m128i thresh = _mm_set1_epi16(threshold);
 

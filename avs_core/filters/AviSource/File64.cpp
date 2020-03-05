@@ -88,7 +88,7 @@ bool File64::_seekFile2(__int64 i64NewPos) {
 	LONG lHi = (LONG)(i64NewPos>>32);
 	DWORD dwError;
 
-//	_RPT1(0,"Seeking to %I64d\n", i64NewPos);
+//	_RPT1(0,"Seeking to %" PRIu64 "\n", i64NewPos);
 
 	if (0xFFFFFFFF == SetFilePointer(hFile, (LONG)i64NewPos, &lHi, FILE_BEGIN))
 		if ((dwError = GetLastError()) != NO_ERROR)

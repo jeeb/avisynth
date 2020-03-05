@@ -1773,8 +1773,8 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
  *******   FilterInfo Filter    ******
  **********************************/
 
-FilterInfo::FilterInfo( PClip _child, bool _font_override, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
-: GenericVideoFilter(_child), vii(AdjustVi()), font_override(_font_override), size(_size),
+FilterInfo::FilterInfo( PClip _child, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
+: GenericVideoFilter(_child), vii(AdjustVi()), size(_size),
 #ifdef AVS_WINDOWS
   antialiaser(vi.width, vi.height, _fontname, size,
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
@@ -2104,7 +2104,7 @@ AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* en
     const int text_color = args[3].AsInt(0xFFFF00);
     const int halo_color = args[4].AsInt(0);
 
-    return new FilterInfo(clip, args[1].Defined(), font, size, text_color, halo_color, env);
+    return new FilterInfo(clip, font, size, text_color, halo_color, env);
     //return new FilterInfo(clip);
 }
 

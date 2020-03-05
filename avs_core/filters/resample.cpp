@@ -1518,8 +1518,6 @@ static void internal_resize_v_sse2_planar_float(BYTE* dst0, const BYTE* src0, in
     filter_size = _filtersize;
   float* current_coeff_float = program->pixel_coefficient_float;
 
-  __m128i zero = _mm_setzero_si128();
-
   const float* src = (float *)src0;
   float* dst = (float *)dst0;
   dst_pitch = dst_pitch / sizeof(float);
@@ -1840,7 +1838,6 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   : GenericVideoFilter(_child),
   resampling_program_luma(0), resampling_program_chroma(0),
   src_pitch_table_luma(0),
-  src_pitch_luma(-1),
   filter_storage_luma(0), filter_storage_chroma(0)
 {
   src_width  = vi.width;
@@ -1871,7 +1868,6 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, bits_per_pixel, env2);
   if (vi.IsPlanar() && !grey && !isRGBPfamily) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
-    const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int div   = 1 << shift;
 
 
@@ -2377,7 +2373,7 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool _aligned_not_used, int pi
 {
   AVS_UNUSED(storage);
 
-  constexpr bool aligned = true; // no unaligned source possible
+  // no unaligned source possible
 
   if (program->filter_size == 1) {
     // Fast pointresize

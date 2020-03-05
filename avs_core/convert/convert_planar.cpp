@@ -1487,8 +1487,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
     BYTE *dstp[3] = { dstY, dstU, dstV };
     int dstPitch[3] = { Ypitch, UVpitch, UVpitch };
 
-    constexpr int integer_arithmetic_max_bits = 8;
-
+    // integer arithmetic restricted to 8 bits
     if (bits_per_pixel == 8 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16))
     {
       // integer arithmetic - quicker for the similar lane width that the float version
@@ -3239,8 +3238,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
       if (getPlacement(args[3], env) == getPlacement(args[5], env))
           if(shouldStripAlpha)
             return new RemoveAlphaPlane(clip, env);
-          else
-            return clip;
+          return clip;
 
     if(converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3260,8 +3258,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     if (vi.Is422())
       if (shouldStripAlpha)
         return new RemoveAlphaPlane(clip, env);
-      else
-        return clip;
+      return clip;
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3280,8 +3277,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     if (vi.Is444())
       if (shouldStripAlpha)
         return new RemoveAlphaPlane(clip, env);
-      else
-        return clip;
+      return clip;
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();

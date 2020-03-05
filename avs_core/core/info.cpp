@@ -4776,7 +4776,7 @@ void BitmapFont::generateOutline(fixedFontRec_t& f, int x) const
   constexpr uint32_t mask = ((1 << 16) - 1) & ~((1 << 6) - 1); // upper 10 bits active in an uint16_t
 
   uint32_t prev_line = 0;
-  uint32_t current_line;
+  uint32_t current_line = 0;
   uint32_t next_line;
   for (int i = 0; i < h - 1; i++)
   {
@@ -7149,6 +7149,7 @@ static void DrawString_internal(const VideoInfo& vi, PVideoFrame& dst, int x, in
   int planecount = vi.IsYUY2() ? 1 : std::min(vi.NumComponents(), 3);
   BYTE* dstps[3];
   int pitches[3];
+
   for (int i = 0; i < planecount; i++)
   {
     int plane = planes[i];
@@ -7289,7 +7290,7 @@ void DrawStringPlanar(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char*
     color = (250 << 16) + (250 << 8) + (250);
   else
     color = (230 << 16) + (128 << 8) + (128);
-  int len = 0; // use strlen
+
   // fadeBackground = true: background letter area is faded instead not being untouched.
 
   std::u16string s16 = charToU16string(s, false);
