@@ -649,10 +649,11 @@ long AudioStreamSource::_Read(void *buffer, long max_samples, long *lplBytes) {
 			ashBuffer.cbDstLengthUsed = 0;
 
 //	VDCHECKPOINT;
-      if (ashBuffer.cbSrcLength)
+      if (ashBuffer.cbSrcLength) {
         res = acmStreamConvert(hACStream, &ashBuffer, (fStart ? ACM_STREAMCONVERTF_START : 0) | ACM_STREAMCONVERTF_BLOCKALIGN);
-				if (res)
-					throw MyError("ACM reported error on audio decompress (%lx)", res);
+        if (res)
+          throw MyError("ACM reported error on audio decompress (%lx)", res);
+      }
 //	VDCHECKPOINT;
 
 			fStart = false;
