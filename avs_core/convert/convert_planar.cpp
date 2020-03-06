@@ -3236,9 +3236,11 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   if (strcmp(filter, "ConvertToYUV420") == 0) {
     if (vi.Is420())
       if (getPlacement(args[3], env) == getPlacement(args[5], env))
-          if(shouldStripAlpha)
-            return new RemoveAlphaPlane(clip, env);
-          return clip;
+      {
+        if (shouldStripAlpha)
+          return new RemoveAlphaPlane(clip, env);
+        return clip;
+      }
 
     if(converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3255,10 +3257,11 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     }
   }
   else if (strcmp(filter, "ConvertToYUV422") == 0) {
-    if (vi.Is422())
+    if (vi.Is422()) {
       if (shouldStripAlpha)
         return new RemoveAlphaPlane(clip, env);
       return clip;
+    }
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3274,10 +3277,11 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     }
   }
   else if (strcmp(filter, "ConvertToYUV444") == 0) {
-    if (vi.Is444())
+    if (vi.Is444()) {
       if (shouldStripAlpha)
         return new RemoveAlphaPlane(clip, env);
       return clip;
+    }
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
