@@ -3134,7 +3134,7 @@ char* ScriptEnvironment::SaveString(const char* s, int len) {
 
 char* ScriptEnvironment::VSprintf(const char* fmt, va_list val) {
   try {
-    std::string str = FormatString(fmt, (va_list)val);
+    std::string str = FormatString(fmt, val);
     std::lock_guard<std::mutex> lock(string_mutex);
     return string_dump.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
   } catch (...) {
