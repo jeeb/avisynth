@@ -57,11 +57,15 @@
 #if defined(AVS_MACOS)
     #include <mach/host_info.h>
     #include <mach/mach_host.h>
+    #include <sys/sysctl.h>
 #elif defined(AVS_BSD)
     #include <sys/sysctl.h>
+#else
+    #include <sys/sysinfo.h>
 #endif
     #include <avs/posix.h>
 #endif
+
 
 #include <string>
 #include <cstdio>
@@ -898,6 +902,55 @@ private:
 };
 const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
+#ifdef AVS_POSIX
+static uint64_t posix_get_physical_memory() {
+  uint64_t ullTotalPhys;
+#if defined(AVS_MACOS)
+  size_t len;
+  sysctlbyname("hw.memsize", nullptr, &len, nullptr, 0);
+  int64_t memsize;
+  sysctlbyname("hw.memsize", (void*)&memsize, &memorySize, nullptr, 0);
+  ullTotalPhys = memory;
+#elif defined(AVS_BSD)
+  size_t len;
+  sysctlbyname("hw.physmem", nullptr, &len, nullptr, 0);
+  int64_t memsize;
+  sysctlbyname("hw.physmem", (void*)&memsize, &memorySize, nullptr, 0);
+  ullTotalPhys = memory;
+#else
+  // linux
+  struct sysinfo info;
+  if (sysinfo(&info) != 0) {
+    throw AvisynthError("sysinfo: error reading system statistics");
+  }
+  ullTotalPhys = (uint64_t)info.totalram * info.mem_unit;
+#endif
+  return ullTotalPhys;
+}
+
+static int64_t posix_get_available_memory() {
+  int64_t memory;
+
+  long nPageSize = sysconf(_SC_PAGE_SIZE);
+  int64_t nAvailablePhysicalPages;
+
+#if defined(AVS_MACOS)
+  vm_statistics64_data_t vmstats;
+  mach_msg_type_number_t vmstatsz = HOST_VM_INFO64_COUNT;
+  host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
+  nAvailablePhysicalPages = vmstats.free_count;
+#elif defined(AVS_BSD)
+  size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
+  sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
+#else // Linux
+  nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
+#endif
+
+  memory = nPageSize * nAvailablePhysicalPages;
+
+  return memory;
+}
+#endif
 
 static uint64_t ConstrainMemoryRequest(uint64_t requested)
 {
@@ -917,38 +970,65 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
   {
     // We are probably running on a 32bit OS system where the virtual space is capped to
     // much less than what the system can use, so it is enough to reserve only a small amount.
-    mem_sysreserve = 128*1024*1024ull;
+    mem_sysreserve = 128 * 1024 * 1024ull;
   }
   else
   {
     // We could probably use up all the RAM in our single application,
     // so reserve more to leave some RAM for other apps and the OS too.
-    mem_sysreserve = 1024*1024*1024ull;
+    mem_sysreserve = 1024 * 1024 * 1024ull;
   }
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
-  return clamp(requested, 64*1024*1024ull, mem_limit - mem_sysreserve);
-#else // copied over from AvxSynth, check against current code!!!
-    int64_t memory;
+  return clamp(requested, (uint64_t)64 * 1024 * 1024, mem_limit - mem_sysreserve);
+#else 
+  // copied over from AvxSynth, check against current code!!!
+  
+  // Check#1
+  // AvxSynth returned simply the actual total_available memory
+  // this part is trying to fine tune it, considering that
+  // - total_available may contain swap area which we do not want to use FIXME: check it!
+  // - leave some memory for other processes (1 GB for x64, 128MB for 32 bit)
 
-    long nPageSize = sysconf(_SC_PAGE_SIZE);
-    int64_t nAvailablePhysicalPages;
+  uint64_t physical_memory = posix_get_physical_memory();
+  uint64_t total_available = posix_get_available_memory();
+  // We don't want to use more than the virtual address space,
+  // and we also don't want to start paging to disk.
+  uint64_t mem_limit = min(total_available, physical_memory);
 
-  #if defined(AVS_MACOS)
-    vm_statistics64_data_t vmstats;
-    mach_msg_type_number_t vmstatsz = HOST_VM_INFO64_COUNT;
-    host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
-    nAvailablePhysicalPages = vmstats.free_count;
-  #elif defined(AVS_BSD)
-    size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
-    sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
-  #else // Linux
-    nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
-  #endif
+  // We could probably use up all the RAM in our single application,
+  // so reserve more to leave some RAM for other apps and the OS too.
+  const bool isX64 = sizeof(void*) == 8;
+  uint64_t mem_sysreserve = isX64 ? (uint64_t) 1024 * 1024 * 1024 : (uint64_t)128 * 1024 * 1024;
 
-    memory = nPageSize * nAvailablePhysicalPages;
-
-    return memory;
+  // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
+  uint64_t allowed_memory = clamp(requested, (uint64_t)64 * 1024 * 1024, mem_limit - mem_sysreserve);
+#if 0
+  const int DIV = 1024 * 1024;
+  fprintf(stdout, "requested= %" PRIu64 " MB\r\n", requested / DIV);
+  fprintf(stdout, "physical_memory= %" PRIu64 " MB\r\n", physical_memory / DIV);
+  fprintf(stdout, "total_available= %" PRIu64 " MB\r\n", total_available / DIV);
+  fprintf(stdout, "mem_limit= %" PRIu64 " MB\r\n", mem_limit / DIV);
+  fprintf(stdout, "mem_sysreserve= %" PRIu64 " MB\r\n", mem_sysreserve / DIV);
+  fprintf(stdout, "allowed_memory= %" PRIu64 " MB\r\n", allowed_memory / DIV);
+  /*For a computer with 16GB RAM, 64 bit OS
+    No SetMemoryMax, where default max request is 4GB on x64
+      requested= 4072 MB
+      physical_memory= 16291 MB
+      total_available= 7640 MB
+      mem_limit= 7640 MB
+      mem_sysreserve= 1024 MB
+      allowed_memory= 4072 MB
+    Using SetmemoryMax(10000)
+      requested= 10000 MB
+      physical_memory= 16291 MB
+      total_available= 7667 MB
+      mem_limit= 7667 MB
+      mem_sysreserve= 1024 MB
+      allowed_memory= 6643 MB
+  */
+#endif
+  return allowed_memory;
 #endif
 }
 
@@ -987,8 +1067,13 @@ ScriptEnvironment::ScriptEnvironment()
     memstatus.dwLength = sizeof(memstatus);
     GlobalMemoryStatusEx(&memstatus);
     memory_max = ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
-#else
-    memory_max = 4096ull*1024*1024; // fixme: win: ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
+#endif
+
+#ifdef AVS_POSIX
+    uint64_t ullTotalPhys = posix_get_physical_memory();
+    memory_max = ConstrainMemoryRequest(ullTotalPhys / 4);
+    // fprintf(stdout, "Total physical memory= %" PRIu64 ", after constraint=%" PRIu64 "\r\n", ullTotalPhys, memory_max);
+    // Total physical memory = 17083355136, after constraint = 7274700800
 #endif
     const bool isX64 = sizeof(void *) == 8;
     memory_max = min(memory_max, (uint64_t)((isX64 ? 4096 : 1024)*(1024*1024ull)));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
