@@ -909,14 +909,14 @@ static uint64_t posix_get_physical_memory() {
   size_t len;
   sysctlbyname("hw.memsize", nullptr, &len, nullptr, 0);
   int64_t memsize;
-  sysctlbyname("hw.memsize", (void*)&memsize, &memorySize, nullptr, 0);
-  ullTotalPhys = memory;
+  sysctlbyname("hw.memsize", (void*)&memsize, &len, nullptr, 0);
+  ullTotalPhys = memsize;
 #elif defined(AVS_BSD)
   size_t len;
   sysctlbyname("hw.physmem", nullptr, &len, nullptr, 0);
   int64_t memsize;
-  sysctlbyname("hw.physmem", (void*)&memsize, &memorySize, nullptr, 0);
-  ullTotalPhys = memory;
+  sysctlbyname("hw.physmem", (void*)&memsize, &len, nullptr, 0);
+  ullTotalPhys = memsize;
 #else
   // linux
   struct sysinfo info;
