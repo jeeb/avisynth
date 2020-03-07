@@ -297,7 +297,6 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   : GenericVideoFilter(_child), mode(_mode)
 {
   bool YUVmode = mode == YToY8 || mode == UToY8 || mode == VToY8 || mode == UToY || mode == VToY || mode == YUY2UToY8 || mode == YUY2VToY8;
-  bool YUVAmode = mode == YToY8 || mode == UToY8 || mode == VToY8;
   bool RGBmode = mode == RToY8 || mode == GToY8 || mode == BToY8;
   bool Alphamode = mode == AToY8;
 

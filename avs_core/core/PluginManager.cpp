@@ -6,7 +6,6 @@
 #include "InternalEnvironment.h"
 #include <cassert>
 #include <filesystem>
-#include "findfirst.h"
 
 namespace fs = std::filesystem;
 

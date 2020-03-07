@@ -179,7 +179,7 @@ public:
 
   //////////// IUnknown
 
-  STDMETHODIMP QueryInterface(const IID& iid, void **ppv);
+  STDMETHODIMP QueryInterface(const IID& iid, void** ppv);
   STDMETHODIMP_(ULONG) AddRef();
   STDMETHODIMP_(ULONG) Release();
 
@@ -1298,8 +1298,6 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   else {
     if (vi.pixel_type == VideoInfo::CS_YUV422P10 && parent->Enable_V210) {
       int width = frame->GetRowSize(PLANAR_Y) / vi.ComponentSize();
-      int ppitch_y = frame->GetPitch(PLANAR_Y) / 2;
-      int ppitch_uv = frame->GetPitch(PLANAR_U) / 2;
       yuv422p10_to_v210((BYTE *)lpBuffer, frame->GetReadPtr(PLANAR_Y), frame->GetPitch(PLANAR_Y),
         frame->GetReadPtr(PLANAR_U), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_U), width, height);
     }

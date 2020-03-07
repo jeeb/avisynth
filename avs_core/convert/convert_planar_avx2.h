@@ -32,64 +32,17 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifndef __Resize_H__
-#define __Resize_H__
+#ifndef __Convert_PLANAR_AVX2_H__
+#define __Convert_PLANAR_AVX2_H__
 
-#include <avisynth.h>
+#include <avs/types.h>
+#include "convert.h"
+#include "convert_planar.h" 
 
-/********************************************************************
-********************************************************************/
+template<int bits_per_pixel>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("avx2")))
+#endif
+void convert_planarrgb_to_yuv_uint16_avx2(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m);
 
-class VerticalReduceBy2 : public GenericVideoFilter
-/** 
-  * This class exposes a video filter for reducing a video's height by half.  Input is one clip,
-  * output is another.
- **/
-{  
-public:
-  VerticalReduceBy2(PClip _child, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)  { 
-    return new VerticalReduceBy2(args[0].AsClip(),env); 
-  }
-
-private:
-  int original_height;
-};
-
-
-class HorizontalReduceBy2 : public GenericVideoFilter 
-/** 
-  * This class exposes a video filter for reducing a video's width by half.  Input is one clip,
-  * output is another.
- **/
-{
-public:
-  HorizontalReduceBy2(PClip _child, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
-    return new HorizontalReduceBy2(args[0].AsClip(), env);
-  }
-
-private:
-  int source_width;
-  int pixelsize;
-};
-
-
-static AVSValue __cdecl Create_ReduceBy2(AVSValue args, void*, IScriptEnvironment* env);
-
-
-#endif  // __Resize_H__
+#endif

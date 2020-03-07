@@ -386,7 +386,6 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
   const __m256i zero = _mm256_setzero_si256();
   const __m256i shifttosigned = _mm256_set1_epi16(-32768); // for 16 bits only
   const __m256i shiftfromsigned = _mm256_set1_epi32(+32768 << FPScale16bits); // for 16 bits only
-  const __m128i rounder = _mm_set_epi32(0, 0, 0, 1 << (FPScale16bits - 1)); // only once
   const __m256i rounder256 = _mm256_set_epi32(0, 0, 0, 1 << (FPScale16bits - 1), 0, 0, 0, 1 << (FPScale16bits - 1)); // only once
 
   const uint16_t *src = reinterpret_cast<const uint16_t *>(src8);
@@ -699,9 +698,6 @@ void internal_resize_v_avx2_planar_float(BYTE* dst0, const BYTE* src0, int dst_p
   float* current_coeff_float = program->pixel_coefficient_float;
 
   int wMod16 = (width / 16) * 16; // float: 16 at a time
-
-  __m128i zero = _mm_setzero_si128();
-  __m256i zero256 = _mm256_setzero_si256();
 
   const float* src = (float *)src0;
   float* dst = (float *)dst0;

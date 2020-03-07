@@ -99,8 +99,6 @@ private:
   int bits_per_pixel; // 8,10..16
   bool use_lut;
 
-  int max_pixel_value;
-  int lut_size;
   int real_lookup_size;
 
   luma_chroma_limits_t limits;
@@ -168,15 +166,9 @@ private:
   bool use_lut;
 
   int max_pixel_value;
-  int lut_size;
   int real_lookup_size;
 
-  int tv_range_low;
-  int tv_range_hi_luma;
-  int range_luma;
-
   float dither_strength;
-  float bias_dither;
 
   unsigned int *accum_r, *accum_g, *accum_b;
 
@@ -229,7 +221,6 @@ private:
     int bits_per_pixel; // 8,10..16
     int max_pixel_value;
     int lut_size;
-    int real_lookup_size;
 
     luma_chroma_limits_t limits;
 
@@ -268,14 +259,12 @@ private:
 
   uint8_t *mapUV;
   // avs+
-  bool realcalc_luma;
   bool realcalc_chroma;
 
   int pixelsize;
   int bits_per_pixel; // 8,10..16
   int max_pixel_value;
   int lut_size;
-  int real_lookup_size;
 
   luma_chroma_limits_t limits;
 

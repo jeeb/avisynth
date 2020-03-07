@@ -522,7 +522,7 @@ long AVIReadCache::Read(void *dest, __int64 chunk_pos, __int64 pos, long len) {
 
 				// cache hit
 
-//				_RPT1(0, "cache hit (offset %I64d)\n", chunk_pos);
+//				_RPT1(0, "cache hit (offset %" PRIu64 ")\n", chunk_pos);
 
 				cache_hit_bytes += len;
 
@@ -564,7 +564,7 @@ long AVIReadCache::Read(void *dest, __int64 chunk_pos, __int64 pos, long len) {
 	} while(source->Stream(psnData, chunk_pos));
 
 //	OutputDebugString("cache miss\n");
-//	_RPT1(0, "cache miss (offset %I64d)\n", chunk_pos);
+//	_RPT1(0, "cache miss (offset %" PRIu64 ")\n", chunk_pos);
 
 	cache_miss_bytes += len;
 
@@ -717,7 +717,7 @@ private:
 	AVIReadHandler *parent;
 	AVIStreamNode *psnData;
 	AVIIndexEntry2 *pIndex;
-	AVIReadCache *rCache;
+	//AVIReadCache *rCache;
 	long& length;
 	long& frames;
 	long sampsize;

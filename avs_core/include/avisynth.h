@@ -10,6 +10,7 @@
 // 20171103: (test with SIZETMOD define: Videoframe offsets to size_t, may affect x64)
 // 20171207: C++ Standard Conformance (no change for plugin writers)
 // 20180525: AVS_UNUSED define to supress parameter not used warnings
+// 20200305: ScriptEnvironment::VSprintf parameter (void *) changed back to va_list
 
 // http://www.avisynth.org
 
@@ -1197,7 +1198,8 @@ public:
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
   virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
   // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
-  virtual char* __stdcall VSprintf(const char* fmt, void* val) = 0;
+  // 20200305: (void *) changed back to va_list
+  virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
 
 #ifdef AVS_WINDOWS
   __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;

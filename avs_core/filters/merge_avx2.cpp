@@ -171,10 +171,8 @@ void weighted_merge_planar_uint16_avx2(BYTE *p1, const BYTE *p2, int p1_pitch, i
   const __m256i signed_shifter = _mm256_set1_epi16(-32768);
 
   auto round_mask = _mm256_set1_epi32(0x4000);
-  auto zero = _mm256_setzero_si256();
 
   auto round_mask_128 = _mm_set1_epi32(0x4000);
-  auto zero_128 = _mm_setzero_si128();
 
   int wMod32 = (rowsize / 32) * 32;
   int wMod16 = (rowsize / 16) * 16;

@@ -221,7 +221,6 @@ private:
   BitDepthConvFuncPtr conv_function;
   BitDepthConvFuncPtr conv_function_chroma; // 32bit float YUV chroma
   BitDepthConvFuncPtr conv_function_a;
-  float float_range;
   int dither_mode;
   int pixelsize;
   int bits_per_pixel;

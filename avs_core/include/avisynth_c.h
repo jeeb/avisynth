@@ -50,6 +50,8 @@
 //         Example#1: e.g. avs_is_444 will call the existing avs_is_yv24 instead
 //         Example#2: avs_bits_per_component will return 8 for all colorspaces (Classic Avisynth supports only 8 bits/pixel)
 //         Thus the Avisynth+ specific API functions are safely callable even when connected to classic Avisynth DLL
+// 202002xx  non-Windows friendly additions
+// 20200305  avs_vsprintf parameter type change: (void *) to va_list
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -860,7 +862,7 @@ AVSC_API(int, avs_check_version)(AVS_ScriptEnvironment *, int version);
 AVSC_API(char *, avs_save_string)(AVS_ScriptEnvironment *, const char* s, int length);
 AVSC_API(char *, avs_sprintf)(AVS_ScriptEnvironment *, const char * fmt, ...);
 
-AVSC_API(char *, avs_vsprintf)(AVS_ScriptEnvironment *, const char * fmt, void* val);
+AVSC_API(char *, avs_vsprintf)(AVS_ScriptEnvironment *, const char * fmt, va_list val);
  // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
 
 AVSC_API(int, avs_add_function)(AVS_ScriptEnvironment *,

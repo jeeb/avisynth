@@ -37,6 +37,7 @@
 
 #include "convert.h"
 #include "convert_planar.h"
+#include "convert_planar_avx2.h"
 #include "../filters/resample.h"
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
@@ -1414,7 +1415,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
   }
 #endif
 
-  //Slow C-code.
+  // SIMD/C for planar RGB and C-code for packed RGB
 
   ConversionMatrix &m = matrix;
   srcp += Spitch * (vi.height-1);  // We start at last line
@@ -1422,6 +1423,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
 
   if(pixel_step==3 || pixel_step==4)
   {
+    // RGB24/32
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
         int b = srcp[0];
@@ -1442,6 +1444,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
     }
   }
   else if(pixel_step==6 || pixel_step==8){
+    // RGB48/64
     // uint16: pixel_step==6,8
     uint16_t *dstY16 = reinterpret_cast<uint16_t *>(dstY);
     uint16_t *dstU16 = reinterpret_cast<uint16_t *>(dstU);
@@ -1483,8 +1486,12 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
 
     BYTE *dstp[3] = { dstY, dstU, dstV };
     int dstPitch[3] = { Ypitch, UVpitch, UVpitch };
-    if (bits_per_pixel < 16 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16))
+
+    // integer arithmetic restricted to 8 bits
+    if (bits_per_pixel == 8 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16))
     {
+      // integer arithmetic - quicker for the similar lane width that the float version
+      // available from 8 to 14 bits, for precision reasons used only for 8 bits. 
       switch (bits_per_pixel) {
       case 8: convert_planarrgb_to_yuv_uint8_14_sse2<uint8_t, 8>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
       case 10: convert_planarrgb_to_yuv_uint8_14_sse2<uint16_t, 10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
@@ -1493,13 +1500,35 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
       }
       return dst;
     }
-    if (bits_per_pixel >= 16 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16)) {
+
+    // float arithmetic - more precision
+    if (bits_per_pixel >= 10 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16)) {
       if (pixelsize == 4) // float 32 bit
         convert_planarrgb_to_yuv_float_sse2(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
-      else if (env->GetCPUFlags() & CPUF_SSE4_1)
-        convert_planarrgb_to_yuv_uint16_sse41<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
-      else
-        convert_planarrgb_to_yuv_uint16_sse2<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
+      else if (env->GetCPUFlags() & CPUF_AVX2) {
+        switch (bits_per_pixel) {
+        case 10: convert_planarrgb_to_yuv_uint16_avx2<10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 12: convert_planarrgb_to_yuv_uint16_avx2<12>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 14: convert_planarrgb_to_yuv_uint16_avx2<14>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 16: convert_planarrgb_to_yuv_uint16_avx2<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        }
+      }
+      else if (env->GetCPUFlags() & CPUF_SSE4_1) {
+        switch (bits_per_pixel) {
+        case 10: convert_planarrgb_to_yuv_uint16_sse41<10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 12: convert_planarrgb_to_yuv_uint16_sse41<12>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 14: convert_planarrgb_to_yuv_uint16_sse41<14>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 16: convert_planarrgb_to_yuv_uint16_sse41<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        }
+      }
+      else {
+        switch (bits_per_pixel) {
+        case 10: convert_planarrgb_to_yuv_uint16_sse2<10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 12: convert_planarrgb_to_yuv_uint16_sse2<12>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 14: convert_planarrgb_to_yuv_uint16_sse2<14>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        case 16: convert_planarrgb_to_yuv_uint16_sse2<16>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
+        }
+      }
       return dst;
     }
     
@@ -3207,10 +3236,11 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   if (strcmp(filter, "ConvertToYUV420") == 0) {
     if (vi.Is420())
       if (getPlacement(args[3], env) == getPlacement(args[5], env))
-          if(shouldStripAlpha)
-            return new RemoveAlphaPlane(clip, env);
-          else
-            return clip;
+      {
+        if (shouldStripAlpha)
+          return new RemoveAlphaPlane(clip, env);
+        return clip;
+      }
 
     if(converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3227,11 +3257,11 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     }
   }
   else if (strcmp(filter, "ConvertToYUV422") == 0) {
-    if (vi.Is422())
+    if (vi.Is422()) {
       if (shouldStripAlpha)
         return new RemoveAlphaPlane(clip, env);
-      else
-        return clip;
+      return clip;
+    }
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
@@ -3247,11 +3277,11 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     }
   }
   else if (strcmp(filter, "ConvertToYUV444") == 0) {
-    if (vi.Is444())
+    if (vi.Is444()) {
       if (shouldStripAlpha)
         return new RemoveAlphaPlane(clip, env);
-      else
-        return clip;
+      return clip;
+    }
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();

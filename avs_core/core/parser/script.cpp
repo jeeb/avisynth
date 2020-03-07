@@ -722,11 +722,17 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     env->SetGlobalVar("$ScriptName$", env->SaveString(script_name));
     env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part.c_str()));
     env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path.c_str()));
+    env->SetGlobalVar("$ScriptNameUtf8$", env->SaveString(script_name));
+    env->SetGlobalVar("$ScriptFileUtf8$", env->SaveString(file_part.c_str()));
+    env->SetGlobalVar("$ScriptDirUtf8$", env->SaveString(full_path.c_str()));
     if (MainScript)
     {
       env->SetGlobalVar("$MainScriptName$", env->SaveString(script_name));
       env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part.c_str()));
       env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path.c_str()));
+      env->SetGlobalVar("$MainScriptNameUtf8$", env->SaveString(script_name));
+      env->SetGlobalVar("$MainScriptFileUtf8$", env->SaveString(file_part.c_str()));
+      env->SetGlobalVar("$MainScriptDirUtf8$", env->SaveString(full_path.c_str()));
     }
 
     //*file_part = 0; // trunc full_path to dir-only
@@ -958,7 +964,7 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
 #endif
 
     // find how many times the _lowercased_ pattern occurs in the _lowercased_ original string
-    for (orig_ptr = original_lower; pattern_location = strstr(orig_ptr, pattern_lower); orig_ptr = pattern_location + pattern_len)
+    for (orig_ptr = original_lower; (pattern_location = strstr(orig_ptr, pattern_lower)); orig_ptr = pattern_location + pattern_len)
     {
       pattern_count++;
     }
@@ -975,7 +981,7 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
     char * result_ptr = result;
     // handling dual pointer set: orig, uppercase
     for (orig_ptr = original, orig_upper_ptr = original_lower;
-      pattern_location = strstr(orig_upper_ptr, pattern_lower);
+      (pattern_location = strstr(orig_upper_ptr, pattern_lower));
       orig_upper_ptr = pattern_location + pattern_len, orig_ptr = original + (orig_upper_ptr - original_lower))
     {
       const size_t skiplen = pattern_location - orig_upper_ptr;
@@ -998,7 +1004,7 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
   // old case sensitive version
 
     // find how many times the pattern occurs in the original string
-  for (orig_ptr = original; pattern_location = strstr(orig_ptr, pattern); orig_ptr = pattern_location + pattern_len)
+  for (orig_ptr = original; (pattern_location = strstr(orig_ptr, pattern)); orig_ptr = pattern_location + pattern_len)
   {
     pattern_count++;
   }
@@ -1012,7 +1018,7 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
   // copy the original string,
   // replacing all the instances of the pattern
   char * result_ptr = result;
-  for (orig_ptr = original; pattern_location = strstr(orig_ptr, pattern); orig_ptr = pattern_location + pattern_len)
+  for (orig_ptr = original; (pattern_location = strstr(orig_ptr, pattern)); orig_ptr = pattern_location + pattern_len)
   {
     const size_t skiplen = pattern_location - orig_ptr;
     // copy the section until the occurence of the pattern

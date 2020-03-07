@@ -933,7 +933,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
 
           pdstb[x] = (uint8_t)min(luma235, limit16_pixel + disp_val);
         }
-        pdstb += dst->GetPitch(PLANAR_Y);
+        pdstb += dstpitch;
       }
     }
     else if (pixelsize == 2) {
@@ -1149,7 +1149,6 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     env->ThrowError("Histogram: Could not reserve memory.");
   std::fill_n(histPlane1, show_size*3, 0);
 
-  const int source_width = origwidth;
   const int xstart = keepsource ? origwidth : 0; // drawing starts at this column
 
   // copy planes
@@ -1242,13 +1241,11 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       }
     } // accumulate end
 
-    int width = source_width;
     int pos_shift = (show_bits - 8);
     int show_middle_pos = (128 << pos_shift);
     // draw planes
     for (int p = 0; p < 3; p++) {
       const int plane = planes[p];
-      const BYTE* srcp = src->GetReadPtr(plane);
 
       int swidth = vi.GetPlaneWidthSubsampling(plane);
       int sheight = vi.GetPlaneHeightSubsampling(plane);
@@ -1614,10 +1611,6 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 
   int internal_bits_per_pixel = (pixelsize == 4) ? 16 : bits_per_pixel; // 16bit histogram simulation for float
 
-  int max_pixel_value = (1 << internal_bits_per_pixel) - 1;
-  int tv_range_low = 16 << (internal_bits_per_pixel - 8); // 16
-  int tv_range_hi_luma = 235 << (internal_bits_per_pixel - 8); // 16-235
-  int range_luma = tv_range_hi_luma - tv_range_low; // 219
   int middle_chroma = 1 << (internal_bits_per_pixel - 1); // 128
 
   const int source_width = origwidth;
@@ -1626,8 +1619,6 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
   const BYTE* srcp = src->GetReadPtr();
   const int srcpitch = src->GetPitch();
-
-  const bool isRGB = vi.IsRGB();
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* pdst = dst->GetWritePtr();

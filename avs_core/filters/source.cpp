@@ -1042,7 +1042,6 @@ static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
   int y = 0;
 
   bool isRGB32 = sizeof(pixel_t) == 1;
-  const int max_pixel_value = isRGB32 ? 255 : 65535;
 
   for (; y < h / 4; ++y) {
     int x = 0;
@@ -1103,7 +1102,6 @@ static void draw_colorbars_rgb2448(uint8_t* p8, int pitch, int w, int h)
   int y = 0;
 
   constexpr bool isRGB24 = sizeof(pixel_t) == 1;
-  const int max_pixel_value = isRGB24 ? 255 : 65535;
   constexpr pixel_t mask = isRGB24 ? 0xFF : 0xFFFF;
   constexpr int shift = isRGB24 ? 8 : 16;
 

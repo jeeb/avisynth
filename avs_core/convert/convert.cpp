@@ -981,7 +981,6 @@ static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rows
   // for test, make it 2,4,6,8. sourcebits-TARGET_DITHER_BITDEPTH cannot exceed 8 bit
   // const int TARGET_DITHER_BITDEPTH = 2;
 
-  const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1;
   const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
   // precheck ensures:
   // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
@@ -1078,7 +1077,6 @@ static void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_r
   // for test, make it 2,4,6,8. sourcebits-TARGET_DITHER_BITDEPTH cannot exceed 8 bit
   // const int TARGET_DITHER_BITDEPTH = 2;
 
-  const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1;
   const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
   // precheck ensures:
   // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
@@ -1346,7 +1344,6 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   int _y = 0; // for ordered dither
 
   const int TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
-  const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1;
   const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
   // precheck ensures:
   // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
@@ -1405,7 +1402,6 @@ static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rows
   int src_width = src_rowsize / sizeof(uint16_t);
   int wmod16 = (src_width / 16) * 16;
 
-  __m128i zero = _mm_setzero_si128();
   // no dithering, no range conversion, simply shift
   for (int y = 0; y < src_height; y++)
   {
@@ -1451,7 +1447,6 @@ static void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int s
   int _y_c = 0; // Bayer matrix shift for ordered dither
 
   const uint8_t TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
-  const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1; // const 255
   const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1; //may be less than 255, e.g. 15 for dither target 4 bits
 
   const __m128i max_pixel_value_dithered_epi8 = _mm_set1_epi8(max_pixel_value_dithered);
@@ -1742,19 +1737,20 @@ static void convert_rgb_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rows
 
     int src_width = src_rowsize / sizeof(uint8_t);
 
+    constexpr int MUL = (targetbits == 16) ? 257 : ((1 << targetbits) - 1);
+    constexpr int DIV = (targetbits == 16) ? 1 : 255;
+
     for(int y=0; y<src_height; y++)
     {
         for (int x = 0; x < src_width; x++)
         {
-            // test
-            if constexpr(targetbits==16)
-                dstp0[x] = srcp0[x] * 257; // full range 0..255 <-> 0..65535 (257 = 65535 / 255)
-            else if constexpr(targetbits==14)
-                dstp0[x] = srcp0[x] * 16383 / 255; // full range 0..255 <-> 0..16384-1
-            else if constexpr(targetbits==12)
-                dstp0[x] = srcp0[x] * 4095 / 255; // full range 0..255 <-> 0..4096-1
-            else if constexpr(targetbits==10)
-                dstp0[x] = srcp0[x] * 1023 / 255; // full range 0..255 <-> 0..1024-1
+          if constexpr (targetbits == 16) {
+            dstp0[x] = (uint16_t)(srcp0[x] * MUL / DIV); // MUL is 257, DIV is 1
+          }
+          else {
+            constexpr float mul_factor = (float)MUL / DIV;
+            dstp0[x] = (uint16_t)(srcp0[x] * mul_factor + 0.5f); // RGB: full range 0..255 <-> 0..16384-1
+          }
         }
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
@@ -1780,7 +1776,6 @@ static void convert_rgb_8_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src
 
   __m128i zero = _mm_setzero_si128();
   __m128i multiplier = _mm_set1_epi16(MUL);
-  __m128i magic255div = _mm_set1_epi32(-2139062143); // 80808081H
   __m128 multiplier_float = _mm_set1_ps((float)MUL / DIV);
   // This is ok, since the default SIMD rounding mode is round-to-nearest unlike c++ truncate
   // in C: 1023 * multiplier = 1022.999 -> truncates.
@@ -1830,7 +1825,13 @@ static void convert_rgb_8_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src
     // rest
     for (int x = wmod16; x < src_width; x++)
     {
-      dstp[x] = srcp[x] * MUL / DIV; // RGB: full range 0..255 <-> 0..16384-1
+      if constexpr (targetbits == 16) {
+        dstp[x] = (uint16_t)(srcp[x] * MUL / DIV); // MUL is 257, DIV is 1
+      }
+      else {
+        constexpr float mul_factor = (float)MUL / DIV;
+        dstp[x] = (uint16_t)(srcp[x] * mul_factor + 0.5f); // RGB: full range 0..255 <-> 0..16384-1
+      }
     }
     dstp += dst_pitch;
     srcp += src_pitch;
@@ -2033,15 +2034,12 @@ static void convert_rgb_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8
   const int src_width = src_rowsize / sizeof(uint16_t);
 
   const int source_max = (1 << sourcebits) - 1;
-  const int target_max = (1 << targetbits) - 1;
 
   int _y = 0; // for ordered dither
 
   const int TARGET_BITDEPTH = targetbits;
   const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1;
-  const float max_pixel_value_f = (float)max_pixel_value;
   const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
-  const float max_pixel_value_dithered_f = (float)max_pixel_value_dithered;
   // precheck ensures:
   // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
   // sourcebits - TARGET_DITHER_BITDEPTH <= 8
@@ -2132,7 +2130,6 @@ static void convert_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, in
   int _y = 0; // for ordered dither
 
   const int TARGET_BITDEPTH = targetbits;
-  const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1;
   const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
   // precheck ensures:
   // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
@@ -2234,8 +2231,6 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   dst_pitch = dst_pitch / sizeof(float);
 
   int src_width = src_rowsize / sizeof(pixel_t);
-
-  const float max_src_pixelvalue = (float)((1<<sourcebits) - 1); // 255, 1023, 4095, 16383, 65535.0
 
   const int limit_lo_s = (fulls ? 0 : 16) << (sourcebits - 8);
   const int limit_hi_s = fulls ? ((1 << sourcebits) - 1) : ((chroma ? 240 : 235) << (sourcebits - 8));
@@ -2930,7 +2925,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
           conv_function_full_scale = sse2 ? convert_rgb_8_to_uint16_sse2<16> : convert_rgb_8_to_uint16_c<16>;
           conv_function_shifted_scale = sse2 ? convert_8_to_uint16_sse2<16> : convert_8_to_uint16_c<16>;
           break;
-        default: env->ThrowError("ConvertTo16bit: unsupported bit depth");
+        default: env->ThrowError("ConvertBits: unsupported bit depth");
         }
       }
       else {
@@ -3021,6 +3016,8 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
             case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<10, 12> : sse2 ? convert_rgb_uint16_to_uint16_sse2<10, 12> : convert_rgb_uint16_to_uint16_c<10, 12>;
               break;
             }
+          } else {
+            env->ThrowError("ConvertBits: unsupported bit depth");
           }
 
           conv_function_full_scale_no_dither = conv_function_full_scale; // save ditherless, used for possible alpha

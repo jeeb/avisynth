@@ -48,6 +48,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <inttypes.h>
 
 #ifdef AVS_WINDOWS
     #include <avs/win.h>
@@ -56,11 +57,15 @@
 #if defined(AVS_MACOS)
     #include <mach/host_info.h>
     #include <mach/mach_host.h>
+    #include <sys/sysctl.h>
 #elif defined(AVS_BSD)
     #include <sys/sysctl.h>
+#else
+    #include <sys/sysinfo.h>
 #endif
     #include <avs/posix.h>
 #endif
+
 
 #include <string>
 #include <cstdio>
@@ -737,7 +742,7 @@ public:
   int __stdcall GetCPUFlags();
   char* __stdcall SaveString(const char* s, int length = -1);
   char* __stdcall Sprintf(const char* fmt, ...);
-  char* __stdcall VSprintf(const char* fmt, void* val);
+  char* __stdcall VSprintf(const char* fmt, va_list val);
   void __stdcall ThrowError(const char* fmt, ...);
   void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data=0);
   bool __stdcall FunctionExists(const char* name);
@@ -814,8 +819,6 @@ private:
   // rely on StringDump elements.
   StringDump string_dump;
   std::mutex string_mutex;
-  char * vsprintf_buf;
-  size_t vsprintf_len;
 
   AtExiter at_exit;
   ThreadPool * thread_pool;
@@ -899,6 +902,55 @@ private:
 };
 const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
+#ifdef AVS_POSIX
+static uint64_t posix_get_physical_memory() {
+  uint64_t ullTotalPhys;
+#if defined(AVS_MACOS)
+  size_t len;
+  sysctlbyname("hw.memsize", nullptr, &len, nullptr, 0);
+  int64_t memsize;
+  sysctlbyname("hw.memsize", (void*)&memsize, &len, nullptr, 0);
+  ullTotalPhys = memsize;
+#elif defined(AVS_BSD)
+  size_t len;
+  sysctlbyname("hw.physmem", nullptr, &len, nullptr, 0);
+  int64_t memsize;
+  sysctlbyname("hw.physmem", (void*)&memsize, &len, nullptr, 0);
+  ullTotalPhys = memsize;
+#else
+  // linux
+  struct sysinfo info;
+  if (sysinfo(&info) != 0) {
+    throw AvisynthError("sysinfo: error reading system statistics");
+  }
+  ullTotalPhys = (uint64_t)info.totalram * info.mem_unit;
+#endif
+  return ullTotalPhys;
+}
+
+static int64_t posix_get_available_memory() {
+  int64_t memory;
+
+  long nPageSize = sysconf(_SC_PAGE_SIZE);
+  int64_t nAvailablePhysicalPages;
+
+#if defined(AVS_MACOS)
+  vm_statistics64_data_t vmstats;
+  mach_msg_type_number_t vmstatsz = HOST_VM_INFO64_COUNT;
+  host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
+  nAvailablePhysicalPages = vmstats.free_count;
+#elif defined(AVS_BSD)
+  size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
+  sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
+#else // Linux
+  nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
+#endif
+
+  memory = nPageSize * nAvailablePhysicalPages;
+
+  return memory;
+}
+#endif
 
 static uint64_t ConstrainMemoryRequest(uint64_t requested)
 {
@@ -918,38 +970,65 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
   {
     // We are probably running on a 32bit OS system where the virtual space is capped to
     // much less than what the system can use, so it is enough to reserve only a small amount.
-    mem_sysreserve = 128*1024*1024ull;
+    mem_sysreserve = 128 * 1024 * 1024ull;
   }
   else
   {
     // We could probably use up all the RAM in our single application,
     // so reserve more to leave some RAM for other apps and the OS too.
-    mem_sysreserve = 1024*1024*1024ull;
+    mem_sysreserve = 1024 * 1024 * 1024ull;
   }
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
-  return clamp(requested, 64*1024*1024ull, mem_limit - mem_sysreserve);
-#else // copied over from AvxSynth, check against current code!!!
-    int64_t memory;
+  return clamp(requested, (uint64_t)64 * 1024 * 1024, mem_limit - mem_sysreserve);
+#else 
+  // copied over from AvxSynth, check against current code!!!
+  
+  // Check#1
+  // AvxSynth returned simply the actual total_available memory
+  // this part is trying to fine tune it, considering that
+  // - total_available may contain swap area which we do not want to use FIXME: check it!
+  // - leave some memory for other processes (1 GB for x64, 128MB for 32 bit)
 
-    long nPageSize = sysconf(_SC_PAGE_SIZE);
-    int64_t nAvailablePhysicalPages;
+  uint64_t physical_memory = posix_get_physical_memory();
+  uint64_t total_available = posix_get_available_memory();
+  // We don't want to use more than the virtual address space,
+  // and we also don't want to start paging to disk.
+  uint64_t mem_limit = min(total_available, physical_memory);
 
-  #if defined(AVS_MACOS)
-    vm_statistics64_data_t vmstats;
-    mach_msg_type_number_t vmstatsz = HOST_VM_INFO64_COUNT;
-    host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
-    nAvailablePhysicalPages = vmstats.free_count;
-  #elif defined(AVS_BSD)
-    size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
-    sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
-  #else // Linux
-    nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
-  #endif
+  // We could probably use up all the RAM in our single application,
+  // so reserve more to leave some RAM for other apps and the OS too.
+  const bool isX64 = sizeof(void*) == 8;
+  uint64_t mem_sysreserve = isX64 ? (uint64_t) 1024 * 1024 * 1024 : (uint64_t)128 * 1024 * 1024;
 
-    memory = nPageSize * nAvailablePhysicalPages;
-
-    return memory;
+  // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
+  uint64_t allowed_memory = clamp(requested, (uint64_t)64 * 1024 * 1024, mem_limit - mem_sysreserve);
+#if 0
+  const int DIV = 1024 * 1024;
+  fprintf(stdout, "requested= %" PRIu64 " MB\r\n", requested / DIV);
+  fprintf(stdout, "physical_memory= %" PRIu64 " MB\r\n", physical_memory / DIV);
+  fprintf(stdout, "total_available= %" PRIu64 " MB\r\n", total_available / DIV);
+  fprintf(stdout, "mem_limit= %" PRIu64 " MB\r\n", mem_limit / DIV);
+  fprintf(stdout, "mem_sysreserve= %" PRIu64 " MB\r\n", mem_sysreserve / DIV);
+  fprintf(stdout, "allowed_memory= %" PRIu64 " MB\r\n", allowed_memory / DIV);
+  /*For a computer with 16GB RAM, 64 bit OS
+    No SetMemoryMax, where default max request is 4GB on x64
+      requested= 4072 MB
+      physical_memory= 16291 MB
+      total_available= 7640 MB
+      mem_limit= 7640 MB
+      mem_sysreserve= 1024 MB
+      allowed_memory= 4072 MB
+    Using SetmemoryMax(10000)
+      requested= 10000 MB
+      physical_memory= 16291 MB
+      total_available= 7667 MB
+      mem_limit= 7667 MB
+      mem_sysreserve= 1024 MB
+      allowed_memory= 6643 MB
+  */
+#endif
+  return allowed_memory;
 #endif
 }
 
@@ -960,8 +1039,6 @@ IJobCompletion* __stdcall ScriptEnvironment::NewCompletion(size_t capacity)
 
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(),
-    vsprintf_buf(NULL),
-    vsprintf_len(0),
     plugin_manager(NULL),
     hrfromcoinit(E_FAIL), coinitThreadId(0),
     PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
@@ -990,8 +1067,13 @@ ScriptEnvironment::ScriptEnvironment()
     memstatus.dwLength = sizeof(memstatus);
     GlobalMemoryStatusEx(&memstatus);
     memory_max = ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
-#else
-    memory_max = 4096ull*1024*1024; // fixme: win: ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
+#endif
+
+#ifdef AVS_POSIX
+    uint64_t ullTotalPhys = posix_get_physical_memory();
+    memory_max = ConstrainMemoryRequest(ullTotalPhys / 4);
+    // fprintf(stdout, "Total physical memory= %" PRIu64 ", after constraint=%" PRIu64 "\r\n", ullTotalPhys, memory_max);
+    // Total physical memory = 17083355136, after constraint = 7274700800
 #endif
     const bool isX64 = sizeof(void *) == 8;
     memory_max = min(memory_max, (uint64_t)((isX64 ? 4096 : 1024)*(1024*1024ull)));  // at start, cap memory usage to 1GB(x86)/4GB (x64)
@@ -1132,7 +1214,6 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
 
   delete plugin_manager;
-  delete [] vsprintf_buf;
 
 #ifdef AVS_WINDOWS // COM is Win32-specific
   // If we init'd COM and this is the right thread then release it
@@ -1667,7 +1748,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   // no locking here, calling method have done it already
   FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame));
 
-  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %I64d\n", vfb_size, newFrame, newFrame->vfb, memory_used); // P.F.
+  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
 
   return newFrame;
 }
@@ -1957,7 +2038,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       }
     } // for it2
   } // for it
-  _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%zu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
+  _RPT3(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%zu memused=%" PRIu64 " memmax=%" PRIu64 "\n", vfb_size, memory_used.load(), memory_max);
 
 #ifdef _DEBUG
   //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames. List exact vfb_size
@@ -1977,7 +2058,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    * Couldn't allocate, try to free up unused frames of any size
    * -----------------------------------------------------------
    */
-  _RPT1(0, "Allocate failed. GC start memory_used=%I64d\n", memory_used.load());
+  _RPT1(0, "Allocate failed. GC start memory_used=%" PRIu64 "\n", memory_used.load());
   // unfortunately if we reach here, only 0 or 1 vfbs or frames can be freed, from lower vfb sizes
   // usually it's not enough
   // yet it is true that it's meaningful only to free up smaller vfb sizes here
@@ -2010,7 +2091,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       else ++it2;
     }
   }
-  _RPT1(0, "End of garbage collection A memused=%I64d\n", memory_used.load()); // P.F.
+  _RPT1(0, "End of garbage collection A memused=%" PRIu64 "\n", memory_used.load()); // P.F.
 
   /* -----------------------------------------------------------
    *   Try to allocate again
@@ -2045,7 +2126,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 #endif
   }
 
-  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%zu", memory_max, memory_used.load(), vfb_size);
+  ThrowError("Could not allocate video frame. Out of memory. memory_max = %" PRIu64 ", memory_used = %" PRIu64 " Request=%zu", memory_max, memory_used.load(), vfb_size);
   return NULL;
 }
 
@@ -2060,7 +2141,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
    // We reserve 15% for unaccounted stuff
   size_t memory_need = size_t((memory_used + request) / 0.85f);
 
-  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used.load(), memory_max);
+  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%" PRIu64 " memory_max=%" PRIu64 "\n", CacheRegistry.size(), memory_need, memory_used.load(), memory_max);
 #ifdef _DEBUG
   // #define LIST_CACHES
   // list all cache_entries
@@ -2118,7 +2199,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
   // Free up in one pass in FrameRegistry2
   if (shrinkcount)
   {
-    _RPT1(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used.load());
+    _RPT1(0, "EnsureMemoryLimit GC start: memused=%" PRIu64 "\n", memory_used.load());
     int freed_vfb_count = 0;
     int freed_frame_count = 0;
     int unfreed_frame_count = 0;
@@ -2136,7 +2217,6 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
         {
           _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%zu freed=%d\n", request, vfb->GetDataSize());
           memory_used -= vfb->GetDataSize();
-          VideoFrameBuffer *_vfb = vfb;
           const VideoFrameArrayType::iterator end_it3 = it2->second.end();
           for (VideoFrameArrayType::iterator it3 = it2->second.begin();
             it3 != end_it3;
@@ -2152,7 +2232,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
             else {
               // there should not be such case: vfb.refcount=0 and frame.refcount!=0
               ++unfreed_frame_count;
-              _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount); // P.F.
+              _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", vfb, frame, frame->refcount);
             }
           }
           delete vfb;
@@ -2164,7 +2244,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
         else ++it2;
       }
     }
-    _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used.load()); // P.F.
+    _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%" PRIu64 "\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used.load()); // P.F.
   }
 }
 
@@ -3137,9 +3217,9 @@ char* ScriptEnvironment::SaveString(const char* s, int len) {
 }
 
 
-char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
+char* ScriptEnvironment::VSprintf(const char* fmt, va_list val) {
   try {
-    std::string str = FormatString(fmt, (va_list)val);
+    std::string str = FormatString(fmt, val);
     std::lock_guard<std::mutex> lock(string_mutex);
     return string_dump.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
   } catch (...) {

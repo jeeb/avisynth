@@ -142,7 +142,7 @@ private:
 	WAVEFORMATEX *pwfexTempOutput;
 	void *inputBuffer;
 	void *outputBuffer;
-	char *outputBufferPtr;
+	//char *outputBufferPtr;
 	void *holdBuffer;
 	long holdBufferSize;
 	long holdBufferOffset;

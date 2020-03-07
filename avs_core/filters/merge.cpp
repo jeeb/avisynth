@@ -448,7 +448,6 @@ template<bool lessthan16bit>
 void weighted_merge_planar_uint16_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight_f, int weight_i, int invweight_i) {
   AVS_UNUSED(weight_f);
   __m128i round_mask = _mm_set1_epi32(0x4000);
-  __m128i zero = _mm_setzero_si128();
   __m128i mask = _mm_set1_epi32((weight_i << 16) + invweight_i);
 
   int wMod16 = (rowsize / 16) * 16;
