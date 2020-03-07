@@ -1,11 +1,11 @@
 prefix=@AVSPREFIX@
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
-includedir=${prefix}/include
+includedir=${prefix}/include/avisynth
 
 Name: AviSynth+
 Description: A powerful nonlinear scripting language for video.
 Version: @AVS_VERSION@
 
 Libs: -L${libdir} @LIBS@
-Cflags: -I${includedir} @CFLAGS@
+Cflags: -I${includedir}

@@ -146,6 +146,8 @@ set(version_bugfix ${CMAKE_MATCH_1})
 set(AVS_VERSION "${version_major}.${version_minor}.${version_bugfix}")
 
 set(AVSPREFIX "${CMAKE_INSTALL_PREFIX}")
+get_target_property(LIB_NAME AvsCore OUTPUT_NAME)
+set(LIBS "-l${LIB_NAME}")
 CONFIGURE_FILE("avisynth.pc.in" "avisynth.pc" @ONLY)
 
 set(RUNTIME_INSTALL_DIR bin CACHE STRING "Install location of Windows DLLs")
@@ -159,3 +161,6 @@ INSTALL(TARGETS AvsCore
 
 INSTALL(DIRECTORY "include/"
         DESTINATION "${CMAKE_INSTALL_PREFIX}/include/avisynth")
+
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/avisynth.pc
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pkgconfig")
