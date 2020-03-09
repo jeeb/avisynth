@@ -39,4 +39,4 @@ if (MSVC_IDE)
 endif()
 
 INSTALL(TARGETS "${ProjectName}"
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/avisynth")
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/avisynth")

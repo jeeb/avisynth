@@ -31,6 +31,8 @@ if(CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING "Reset the configurations to what we need" FORCE)
 endif()
 
+include(GNUInstallDirs)
+
 IF( MSVC )  # Check for Visual Studio
 
   #1800      = VS 12.0 (v120 toolset)
@@ -48,7 +50,7 @@ IF( MSVC )  # Check for Visual Studio
 
   IF(MSVC_IDE)
     message("Reported CMAKE_GENERATOR_TOOLSET is: ${CMAKE_GENERATOR_TOOLSET}")
-    
+
     # For LLVM Clang installed separately, specify llvm or LLVM
     # Since Visual Studio 2019 v16.4, LLVM 9.0 is integrated, for this use Toolset: ClangCL
     IF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm" OR CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
@@ -68,7 +70,7 @@ IF( MSVC )  # Check for Visual Studio
       message("May not work, try LLVM")
       set(CLANG_IN_VS "1")
     ENDIF()
-  
+
     # We want our project to also run on Windows XP
     # Not for LLVM: Clang stopped XP support in 2016
     # 1900 (VS2015) is not supported but we leave here
@@ -106,7 +108,7 @@ IF( MSVC )  # Check for Visual Studio
   ENDIF()
   # Prevent VC++ from complaining about not using MS-specific functions
   add_definitions("/D _CRT_SECURE_NO_WARNINGS /D _SECURE_SCL=0")
-  
+
   # Enable CRT heap debugging - only effective in debug builds
   add_definitions("/D _CRTDBG_MAP_ALLOC")
 

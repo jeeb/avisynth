@@ -1,7 +1,7 @@
-prefix=@AVSPREFIX@
-exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
-includedir=${prefix}/include/avisynth
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${exec_prefix}/@CMAKE_INSTALL_INCLUDEDIR@/avisynth
 
 Name: AviSynth+
 Description: A powerful nonlinear scripting language for video.
