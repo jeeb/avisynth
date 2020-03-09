@@ -134,7 +134,7 @@ void Prefetcher::Destroy()
     _pimpl->EnvI->SetPrefetcher(nullptr);
 
     while (_pimpl->running_workers > 0) {
-#if defined(GCC)
+#if defined(GCC) || defined(CLANG)
       __asm__("");
 #else
       __noop();

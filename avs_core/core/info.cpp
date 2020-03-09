@@ -6505,7 +6505,7 @@ void AVS_FORCEINLINE LightOnePixel(const bool lightIt, pixel_t* dstp, int j, pix
 }
 
 template<typename pixel_t, int bits_per_pixel, bool fadeBackground, bool isRGB>
-static void LightOneUVPixel(const bool lightIt, pixel_t* dstpU, int j, pixel_t& color_u, pixel_t* dstpV, pixel_t& color_v)
+void LightOneUVPixel(const bool lightIt, pixel_t* dstpU, int j, pixel_t& color_u, pixel_t* dstpV, pixel_t& color_v)
 {
   if (lightIt) { // lit if any font pixels are on under the 1-2-4 pixel-wide mask
       dstpU[j] = color_u; // originally: neutral U and V (128)

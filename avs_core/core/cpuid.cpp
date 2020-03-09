@@ -46,7 +46,7 @@ static uint32_t get_xcr0()
 {
     uint32_t xcr0;
     // _XCR_XFEATURE_ENABLED_MASK: 0
-#if defined(GCC)
+#if defined(GCC) || defined(CLANG)
     __asm__("xgetbv" : "=a" (xcr0) : "c" (0) : "%edx");
 #else
     xcr0 = (uint32_t)_xgetbv(0);

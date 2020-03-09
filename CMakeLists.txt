@@ -170,8 +170,10 @@ if(APPLE)
   # macOS uses Clang's linker, doesn't like --no-undefined
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,-undefined,error" )
 else()
+if(GNUC)
   # make sure there are no undefined symbols
   SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,--no-undefined" )
+endif()
 endif()
 ENDIF()
 

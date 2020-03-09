@@ -53,9 +53,9 @@
 #endif
 
 //            VC++  LLVM-Clang-cl   MinGW-Gnu
-// MSVC        x          x 
+// MSVC        x          x
 // MSVC_PURE   x
-// CLANG                  x             
+// CLANG                  x
 // GCC                                  x
 
 #if defined(__clang__)
@@ -66,7 +66,6 @@
 #   define MSVC
 #   define AVS_FORCEINLINE __attribute__((always_inline))
 #else
-#   define GCC
 #   define AVS_FORCEINLINE __attribute__((always_inline)) inline
 #endif
 #elif   defined(_MSC_VER)
