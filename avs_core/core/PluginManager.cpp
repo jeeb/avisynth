@@ -35,7 +35,15 @@ const char RegPluginDirPlus[] = "PluginDir+";
 // Redifining these is easier than adding several ifdefs.
 #define HMODULE void*
 #define FreeLibrary dlclose
+#if defined(AVS_MACOS) || defined(AVS_BSD)
+#include <sys/syslimits.h>
 #endif
+#endif
+
+#ifdef AVS_MACOS
+#include <mach-o/dyld.h>
+#endif
+
 /*
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
@@ -523,7 +531,21 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 #else // AVS_POSIX
   std::string ExeFilePath;
   char buf[PATH_MAX + 1];
+#ifdef AVS_LINUX
   if (readlink("/proc/self/exe", buf, sizeof(buf) - 1) != -1)
+#elif defined(AVS_MACOS)
+  uint32_t size = sizeof(buf) - 1;
+  if (_NSGetExecutablePath(buf, &size) == 0)
+#elif defined(AVS_BSD)
+// The following works under the specific circumstance that
+// you've mounted procfs under a *BSD system that still has
+// that option.
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  if (readlink("/proc/curproc/file", buf, sizeof(buf) - 1) != -1)
+#elif defined(__NetBSD__)
+  if (readlink("/proc/curproc/exe", buf, sizeof(buf) - 1) != -1)
+#endif
+#endif // AVS_LINUX
   {
     ExeFilePath = buf;
   }
