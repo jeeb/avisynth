@@ -52,7 +52,7 @@
 #include "../core/info.h"
 
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
 static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0)
 {
   return CreateFont( size, width, angle, angle, bold ? FW_BOLD : FW_NORMAL,
@@ -84,7 +84,7 @@ extern const AVSFunction Text_filters[] = {
   { "Subtitle",BUILTIN_FUNC_PREFIX,
 	"cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
 	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b",
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     Subtitle::Create
 #else
     SimpleText::Create // poor man's SubTitle, it's simulated with SimpleText
@@ -97,7 +97,7 @@ extern const AVSFunction Text_filters[] = {
 
   { "Text",BUILTIN_FUNC_PREFIX,
   "cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
-  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b",
+  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b[bold]b",
     SimpleText::Create },
 
   { 0 }
@@ -107,7 +107,7 @@ extern const AVSFunction Text_filters[] = {
 
 
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
 /******************************
  *******   Anti-alias    ******
  *****************************/
@@ -1055,7 +1055,7 @@ void Antialiaser::GetAlphaRect()
   xr=w-xr;
 }
 
-#endif // AVS_WINDOWS
+#endif // #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
 
 
 
@@ -1066,7 +1066,7 @@ void Antialiaser::GetAlphaRect()
 ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
  : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   antialiaser(vi.width, vi.height, _fontname, _size,
      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
@@ -1076,6 +1076,20 @@ ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x
   halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
 {
   AVS_UNUSED(env);
+
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+#else
+  // internal font
+  const bool bold = false;
+  current_font = GetBitmapFont(size, "Terminus", bold, false);
+  if (current_font == nullptr)
+  {
+    // size
+    current_font = GetBitmapFont(size, "", bold, false);
+    if (current_font == nullptr)
+      current_font = GetBitmapFont(size, "", !bold, false);
+  }
+#endif
 }
 
 enum { DefXY = (int)0x80000000 };
@@ -1085,17 +1099,16 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   n+=offset;
   if (n < 0) return frame;
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   HDC hdc = antialiaser.GetDC();
   if (!hdc) return frame;
+#else
+  if (current_font == nullptr)
+    return frame;
 #endif
   env->MakeWritable(&frame);
 
-#ifndef AVS_WINDOWS
-  int size = 20; // fixme: override, one fixed font
-#endif
-
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   RECT r = { 0, 0, 32767, 32767 };
   FillRect(hdc, &r, (HBRUSH)GetStockObject(BLACK_BRUSH));
 #endif
@@ -1103,16 +1116,16 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   snprintf(text, sizeof(text), "%05d", n);
   text[15] = 0;
   if (x!=DefXY || y!=DefXY) {
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     SetTextAlign(hdc, TA_BASELINE|TA_LEFT);
     TextOut(hdc, x+16, y+16, text, (int)strlen(text));
 #else
     std::u16string s16 = charToU16string(text, true);
-    SimpleTextOutW(vi, frame, x, y, s16, false, textcolor, halocolor, true, 1);
+    SimpleTextOutW(current_font, vi, frame, x, y, s16, false, textcolor, halocolor, true, 1);
 #endif
   } else if (scroll) {
     int n1 = vi.IsFieldBased() ? (n/2) : n;
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     int y2 = size + size * (n1 % (vi.height * 8 / size));
     SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
     TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, (int)strlen(text));
@@ -1120,14 +1133,14 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     int y2 = size + size * (n1 % (vi.height / size));
     std::u16string s16 = charToU16string(text, true);
     if(child->GetParity(n))
-      SimpleTextOutW(vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+      SimpleTextOutW(current_font, vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
     else
-      SimpleTextOutW(vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+      SimpleTextOutW(current_font, vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
 #endif
 
   }
   else {
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
     int text_len = (int)strlen(text);
     for (int y2 = size; y2 < vi.height * 8; y2 += size)
@@ -1136,13 +1149,13 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     std::u16string s16 = charToU16string(text, true);
     for (int y2 = size; y2 < vi.height; y2 += size) {
       if (child->GetParity(n))
-        SimpleTextOutW(vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+        SimpleTextOutW(current_font, vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
       else
-        SimpleTextOutW(vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+        SimpleTextOutW(current_font, vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
     }
 #endif
   }
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   GdiFlush();
 
   antialiaser.Apply(vi, &frame, frame->GetPitch());
@@ -1156,14 +1169,22 @@ AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironmen
   PClip clip = args[0].AsClip();
   bool scroll = args[1].AsBool(false);
   const int offset = args[2].AsInt(0);
-  const int x = args[3].IsFloat() ? int(args[3].AsFloat()*8+0.5) : DefXY;
-  const int y = args[4].IsFloat() ? int(args[4].AsFloat()*8+0.5) : DefXY;
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  const int x = args[3].IsFloat() ? int(args[3].AsFloat() * 8 + 0.5) : DefXY;
+  const int y = args[4].IsFloat() ? int(args[4].AsFloat() * 8 + 0.5) : DefXY;
   const char* font = args[5].AsString("Arial");
   const int size = int(args[6].AsFloat(24)*8+0.5);
+  const int font_width = int(args[9].AsFloat(0) * 8 + 0.5);
+#else
+  const int x = args[3].IsFloat() ? int(args[3].AsFloat() + 0.5) : DefXY;
+  const int y = args[4].IsFloat() ? int(args[4].AsFloat() + 0.5) : DefXY;
+  const char* font = args[5].AsString("Terminus");
+  const int size = int(args[6].AsFloat(24) + 0.5);
+  const int font_width = int(args[9].AsFloat(0) + 0.5);
+#endif
   const int text_color = args[7].AsInt(0xFFFF00);
   const int halo_color = args[8].AsInt(0);
-  const int font_width = int(args[9].AsFloat(0)*8+0.5);
-  const int font_angle = int(args[10].AsFloat(0)*10+0.5);
+  const int font_angle = int(args[10].AsFloat(0) * 10 + 0.5);
 
   if ((x==DefXY) ^ (y==DefXY))
 	env->ThrowError("ShowFrameNumber: both x and y position must be specified");
@@ -1185,7 +1206,7 @@ AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironmen
 ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset_f, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
   : GenericVideoFilter(_child), x(_x), y(_y),
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   antialiaser(vi.width, vi.height, _fontname, _size,
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
@@ -1194,6 +1215,18 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
   textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
   halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
 {
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+#else
+  const bool bold = false;
+  current_font = GetBitmapFont(_size, "Terminus", bold, false);
+  if (current_font == nullptr)
+  {
+    // size
+    current_font = GetBitmapFont(_size, "", bold, false);
+    if (current_font == nullptr)
+      current_font = GetBitmapFont(_size, "", !bold, false);
+  }
+#endif
   int off_f, off_sec, off_min, off_hour;
 
   rate = int(_rate + 0.5);
@@ -1272,9 +1305,12 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   n+=offset_f;
   if (n < 0) return frame;
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   HDC hdc = antialiaser.GetDC();
   if (!hdc) return frame;
+#else
+  if (current_font == nullptr)
+    return frame;
 #endif
 
   env->MakeWritable(&frame);
@@ -1322,7 +1358,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   }
   text[15] = 0;
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   SetTextAlign(hdc, TA_BASELINE|TA_CENTER);
   TextOut(hdc, x+16, y+16, text, (int)strlen(text));
   GdiFlush();
@@ -1331,7 +1367,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 #else
   const bool utf8 = true;
   auto s16 = charToU16string(text, utf8);
-  SimpleTextOutW(vi, frame, x + 2, y + 2, s16, true, textcolor, halocolor, false, 5);
+  SimpleTextOutW(current_font, vi, frame, x + 2, y + 2, s16, true, textcolor, halocolor, false, 5);
 #endif
 
   return frame;
@@ -1347,13 +1383,21 @@ AVSValue __cdecl ShowSMPTE::CreateSMTPE(AVSValue args, void*, IScriptEnvironment
   const int offset_f = args[3].AsInt(0);
   const int xreal = arg0vi.width/2;
   const int yreal = arg0vi.height-8;
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   const int x = int(args[4].AsDblDef(xreal)*8+0.5);
   const int y = int(args[5].AsDblDef(yreal)*8+0.5);
   const char* font = args[6].AsString("Arial");
   const int size = int(args[7].AsFloat(24)*8+0.5);
+  const int font_width = int(args[10].AsFloat(0) * 8 + 0.5);
+#else
+  const int x = int(args[4].AsDblDef(xreal) + 0.5);
+  const int y = int(args[5].AsDblDef(yreal) + 0.5);
+  const char* font = args[6].AsString("Terminus");
+  const int size = int(args[7].AsFloat(24) + 0.5);
+  const int font_width = int(args[10].AsFloat(0) + 0.5);
+#endif
   const int text_color = args[8].AsInt(0xFFFF00);
   const int halo_color = args[9].AsInt(0);
-  const int font_width = int(args[10].AsFloat(0)*8+0.5);
   const int font_angle = int(args[11].AsFloat(0)*10+0.5);
   return new ShowSMPTE(clip, dfrate, offset, offset_f, x, y, font, size, text_color, halo_color, font_width, font_angle, env);
 }
@@ -1364,13 +1408,21 @@ AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment*
   const int offset_f = args[1].AsInt(0);
   const int xreal = args[0].AsClip()->GetVideoInfo().width/2;
   const int yreal = args[0].AsClip()->GetVideoInfo().height-8;
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   const int x = int(args[2].AsDblDef(xreal)*8+0.5);
   const int y = int(args[3].AsDblDef(yreal)*8+0.5);
   const char* font = args[4].AsString("Arial");
   const int size = int(args[5].AsFloat(24)*8+0.5);
+  const int font_width = int(args[8].AsFloat(0) * 8 + 0.5);
+#else
+  const int x = int(args[2].AsDblDef(xreal) + 0.5);
+  const int y = int(args[3].AsDblDef(yreal) + 0.5);
+  const char* font = args[4].AsString("Terminus");
+  const int size = int(args[5].AsFloat(24) + 0.5);
+  const int font_width = int(args[8].AsFloat(0) + 0.5);
+#endif
   const int text_color = args[6].AsInt(0xFFFF00);
   const int halo_color = args[7].AsInt(0);
-  const int font_width = int(args[8].AsFloat(0)*8+0.5);
   const int font_angle = int(args[9].AsFloat(0)*10+0.5);
   return new ShowSMPTE(clip, 0.0, NULL, offset_f, x, y, font, size, text_color, halo_color, font_width, font_angle, env);
 }
@@ -1379,7 +1431,7 @@ AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment*
 
 
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
 
 /***********************************
  *******   Subtitle Filter    ******
@@ -1468,9 +1520,9 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
     const int spc = args[11].AsInt(0);
     const bool multiline = args[12].Defined();
     const int lsp = args[12].AsInt(0);
-	const int font_width = int(args[13].AsFloat(0)*8+0.5);
-	const int font_angle = int(args[14].AsFloat(0)*10+0.5);
-	const bool interlaced = args[15].AsBool(false);
+    const int font_width = int(args[13].AsFloat(0)*8+0.5);
+    const int font_angle = int(args[14].AsFloat(0)*10+0.5);
+    const bool interlaced = args[15].AsBool(false);
     const char* font_filename = args[16].AsString("");
     const bool utf8 = args[17].AsBool(false);
 
@@ -1614,18 +1666,60 @@ GDIError:
 
 #endif
 
-inline int CalcFontSize(int w, int h)
+static int CalcFontSizeForInfo(int w, int h, bool autolarge, int upper_limit)
 {
-#ifdef AVS_WINDOWS
-  enum { minFS = 8, FS = 128, minH = 224, minW = 388 };
+  // if frame is smaller than minimum then font size will be decreased proportionally
+  // normalized to 640x480 @fontsize=15:
+  // 14 lines @height=15 takes ~480/2 pixels (half vertical screens)
+  // Info screen takes horizontally ~0.6 * 640 pixels at font size 15
+
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  const int min_font_size = 1;
+  const int max_font_size = 255; // n/a
+  const int reference_font_size = 15;
+  const int reference_font_width = 8;
 #else
-  enum { minFS = 1, FS = 15, minH = 28, minW = 48 }; // GDI case div 8
+  const int min_font_size = 12;
+  const int max_font_size = 32;
+  const int reference_font_size = 18; // 16x8 or 18x10, latter is more visible
+  const int reference_font_width = 10;
+#endif
+  // knowing that a usual Info() is 45x15 characters, plus a margin
+  const int reference_min_height = 15 * reference_font_size;
+  const int reference_min_width = 48 * reference_font_width; // (45 + margin) characters
+
+  // 0..reference_min_width      :decrease (as always in Avs)
+  // reference_min_width ... 640 : constant size
+  // 640+                        : enlarge when autolarge is enabled or else constant size
+
+  int w_restricted_font_size;
+  if (w < reference_min_width)
+    w_restricted_font_size = (reference_font_size * w) / reference_min_width;
+  else if (w >= 640 && autolarge)
+    w_restricted_font_size = reference_font_size * w / 640;
+  else
+    w_restricted_font_size = reference_font_size;
+
+  int h_restricted_font_size;
+  if (h < reference_min_height)
+    h_restricted_font_size = (reference_font_size * h) / reference_min_height;
+  else if (h >= 480 && autolarge)
+    h_restricted_font_size = reference_font_size * h / 480;
+  else
+    h_restricted_font_size = reference_font_size;
+
+  int effective_font_size = (w_restricted_font_size < h_restricted_font_size) ? w_restricted_font_size : h_restricted_font_size;
+  
+  effective_font_size = std::max(effective_font_size, min_font_size);
+  if (upper_limit > 0)
+    effective_font_size = std::min(effective_font_size, max_font_size);
+
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  return effective_font_size * 8; // GDI takes *8
+#else
+  return effective_font_size / 2 * 2; // no odd sized fixed fonts atm.
 #endif
 
-  const int ws = (w < minW) ? (FS*w)/minW : FS;
-  const int hs = (h < minH) ? (FS*h)/minH : FS;
-  const int fs = (ws < hs) ? ws : hs;
-  return ( (fs < minFS) ? minFS : fs );
 }
 
 /***********************************
@@ -1635,17 +1729,39 @@ inline int CalcFontSize(int w, int h)
 SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _firstframe,
   int _lastframe, const char _fontname[], int _size, int _textcolor,
   int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
-  int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, IScriptEnvironment* env)
+  int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, const bool _bold, IScriptEnvironment* env)
   : GenericVideoFilter(_child), /*antialiaser(0),*/ text(_text), x(_x), y(_y),
   firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
   textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
   halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor), // not supported
   halocolor_orig(_halocolor),
   align(_align), spc(_spc), multiline(_multiline), lsp(_lsp),
-  font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced), font_filename(_font_filename), utf8(_utf8)
+  font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced),
+  font_filename(_font_filename), utf8(_utf8),
+  bold(_bold)
 {
+
   if (*font_filename) {
-      env->ThrowError("SimpleText: font_filename not supported");
+    // external font file
+    bool debugSave = size < 0;
+    current_font = GetBitmapFont(0, font_filename, false, debugSave); // 0: size n/a
+    if (current_font == nullptr)
+      env->ThrowError("SimpleText: file %s not found or unknown file format", font_filename);
+  }
+  else
+  {
+    // internal font
+    if (fontname) {
+      current_font = GetBitmapFont(size, fontname, bold, false); // 12, "Terminus"
+      if (current_font == nullptr)
+        env->ThrowError("SimpleText: internal font name %s in size %d not found", fontname, size);
+    }
+    else {
+      // size
+      current_font = GetBitmapFont(size, "", bold, false); // 12, ""
+      if (current_font == nullptr)
+        env->ThrowError("SimpleText: fixed font size %d not found", size);
+    }
   }
 }
 
@@ -1698,7 +1814,7 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
     // FF: fadeIt
     // 01-FE: no halo
     // 00: use halocolor
-    SimpleTextOutW_multi(vi, frame, real_x, real_y, s16,
+    SimpleTextOutW_multi(current_font, vi, frame, real_x, real_y, s16,
       halocolor_orig == 0xFF000000, // fadeIt, special halocolor, when MSB byte is FF
       textcolor, halocolor,
       (halocolor_orig & 0xFF000000) == 0, // use halocolor when MSB byte is zero
@@ -1714,9 +1830,8 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   const char* text = args[1].AsString();
   const int first_frame = args[4].AsInt(0);
   const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames - 1);
-  const char* font = args[6].AsString("Arial"); // n/a, we have a single fixed font
-  //const int size = int(args[7].AsFloat(18); // from SubTitle / 18.0 * 20.0 * 8 + 0.5);
-  const int size = 20; // get the default exactly 20 pixel tall, no mul8
+  const char* font = args[6].AsString("Terminus"); // Terminus, info_h are embedded
+  const int size = int(args[7].AsFloat(18)); // height 12, 14, 16, 18, 20, 24, 28, 32
   const int text_color = args[8].AsInt(0xFFFF00);
   const int halo_color = args[9].AsInt(0);
   const int align = args[10].AsInt(args[2].AsFloat(0) == -1 ? 2 : 7);
@@ -1726,8 +1841,9 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   const int font_width = int(args[13].AsFloat(0) * 8 + 0.5); // n/a
   const int font_angle = int(args[14].AsFloat(0) * 10 + 0.5); // n/a
   const bool interlaced = args[15].AsBool(false); // n/a
-  const char* font_filename = args[16].AsString(""); // n/a
+  const char* font_filename = args[16].AsString("");
   const bool utf8 = args[17].AsBool(false); // linux: n/a
+  const bool bold = args[18].AsBool(false); // different from SubTitle
 
   // parameters marked with n/a are ignored; parameter list is currently the same as SubTitle
 
@@ -1764,7 +1880,7 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
     real_y = (clip->GetVideoInfo().height >> 1) /* * 8 */; // no mul 8 like in SubTitle
 
   return new SimpleText(clip, text, real_x, real_y, first_frame, last_frame, font, size, text_color,
-    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, env);
+    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, bold, env);
 }
 
 
@@ -1775,8 +1891,8 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
 
 FilterInfo::FilterInfo( PClip _child, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
 : GenericVideoFilter(_child), vii(AdjustVi()), size(_size),
-#ifdef AVS_WINDOWS
-  antialiaser(vi.width, vi.height, _fontname, size,
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+      antialiaser(vi.width, vi.height, _fontname, size,
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
       vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor),
 #endif
@@ -1784,6 +1900,19 @@ FilterInfo::FilterInfo( PClip _child, const char _fontname[], int _size, int _te
   halo_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
 {
   AVS_UNUSED(env);
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+#else
+  // internal font
+  const bool bold = true; // bold looks better
+  current_font = GetBitmapFont(size, "Terminus", bold, false);
+  if (current_font == nullptr)
+  {
+    current_font = GetBitmapFont(size, "", bold, false);
+    if (current_font == nullptr)
+      current_font = GetBitmapFont(size, "", !bold, false);
+  }
+#endif
+
 }
 
 
@@ -1908,9 +2037,12 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     memset(frame->GetWritePtr(), 0, frame->GetPitch()*frame->GetHeight()); // Blank frame
   }
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   HDC hdcAntialias = antialiaser.GetDC();
   if (!hdcAntialias)
+    return frame;
+#else
+  if (current_font == nullptr)
     return frame;
 #endif
     const char* c_space = "Unknown";
@@ -2014,7 +2146,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       );
     }
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     // So far RECT dimensions were hardcoded: RECT r = { 32, 16, min(3440,vi.width * 8), 900*2 };
     // More flexible way: get text extent
     RECT r;
@@ -2078,11 +2210,10 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
 
     int align = 7;
     int lsp = 0;
-    int fontsize = 20;
     int x = 4;
     int y = 2;
 
-    SimpleTextOutW_multi(vi, frame, x, y, s16, false, text_color, halo_color, true, align, lsp);
+    SimpleTextOutW_multi(current_font, vi, frame, x, y, s16, false, text_color, halo_color, true, align, lsp);
 #endif
   return frame;
 }
@@ -2093,19 +2224,22 @@ AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* en
     // c[font]s[size]f[text_color]i[halo_color]i
     PClip clip = args[0].AsClip();
     // new parameters 20160823
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     const char* font = args[1].AsString("Courier New");
-#ifdef AVS_WINDOWS
     int size = int(args[2].AsFloat(0) * 8 + 0.5);
+    const int upper_limit = -1; // no limit
 #else
-    int size = int(args[2].AsFloat(0) + 0.5);
+    const char* font = args[1].AsString("Terminus");
+    int size = int(args[2].AsFloat(0));
+    const int upper_limit = 32; // max terminus font size is 32
 #endif
-    if (!args[2].Defined())
-      size = CalcFontSize(clip->GetVideoInfo().width, clip->GetVideoInfo().height);
+    if (!args[2].Defined() || size < 0)
+      size = CalcFontSizeForInfo(clip->GetVideoInfo().width, clip->GetVideoInfo().height, size < 0, upper_limit);
+    // size <= 0 means autolarge over 640x480. Fixed font: up to size 32
     const int text_color = args[3].AsInt(0xFFFF00);
     const int halo_color = args[4].AsInt(0);
 
     return new FilterInfo(clip, font, size, text_color, halo_color, env);
-    //return new FilterInfo(clip);
 }
 
 
@@ -2120,10 +2254,10 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     child2(_child2),
     log(NULL),
     show_graph(_show_graph),
-#ifdef AVS_WINDOWS
-    antialiaser(vi.width, vi.height, "Courier New", 128,
-      (vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00,
-      (vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+    antialiaser(vi.width, vi.height, "Courier New", 16*8,
+    (vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00,
+    (vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
 #endif
     text_color((vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00),
     halo_color((vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
@@ -2234,7 +2368,20 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
       for (int i = 0; i < vi.num_frames; i++)
         psnrs[i] = 0;
   }
-
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+#else
+  // internal font
+  const bool bold = false;
+  const int size = 16;
+  current_font = GetBitmapFont(size, "Terminus", bold, false);
+  if (current_font == nullptr)
+  {
+    // size
+    current_font = GetBitmapFont(size, "", bold, false);
+    if (current_font == nullptr)
+      current_font = GetBitmapFont(size, "", !bold, false);
+  }
+#endif
 }
 
 
@@ -2701,13 +2848,15 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     BYTE* dstp = f1->GetWritePtr();
     int dst_pitch = f1->GetPitch();
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     HDC hdc = antialiaser.GetDC();
     if (hdc)
+#else
+    if(current_font != nullptr)
 #endif
     {
         char text[600];
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
         RECT r = { 32, 16, min((51+(pixelsize==1 ? 0: 12))*67,vi.width * 8), 768 + 128 }; // orig: 3440: 51*67, not enough for 16 bit data
 #endif
         double PSNR_overall = 10.0 * log10(bytecount_overall * factor * factor / SSD_overall);
@@ -2745,7 +2894,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
                 PSNR, PSNR_min, PSNR_tot / framecount, PSNR_max,
                 PSNR_overall
             );
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
         DrawText(hdc, text, -1, &r, 0);
         GdiFlush();
 
@@ -2753,7 +2902,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 #else
         bool utf8 = true;
         auto s16 = charToU16string(text, utf8);
-        SimpleTextOutW_multi(vi, f1, 2, 1, s16, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
+        SimpleTextOutW_multi(current_font, vi, f1, 2, 1, s16, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
 #endif
     }
 
@@ -2896,7 +3045,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 /************************************
  *******   Helper Functions    ******
  ***********************************/
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
 bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold,
                          bool italic, int align, int* width, int* height )
 {
@@ -2944,20 +3093,43 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,
   bool italic, int align, int& width, int& height, bool utf8)
 {
+  BitmapFont* current_font;
+  /*
+  if (*font_filename) {
+    // external font file
+    const bool debugSave = false;
+    current_font = GetBitmapFont(0, font_filename, false, debugSave); // 0: size n/a
+    if (current_font == nullptr)
+      env->ThrowError("SimpleText: file %s not found or unknown file format", font_filename);
+  }
+  else
+  */
+  {
+    // internal font
+    if (fontname) {
+      current_font = GetBitmapFont(size, fontname, bold, false); // 12, "Terminus"
+      if (current_font == nullptr)
+        return false; // ("internal font name %s in size %d not found", fontname, size
+    }
+    else {
+      // size
+      current_font = GetBitmapFont(size, "", bold, false); // 12, ""
+      if (current_font == nullptr)
+        return false; // "fixed font size %d not found", size
+    }
+  }
+
   auto s16 = charToU16string(text, utf8);
   size_t max_width = 1;
   height = 1;
-
-  constexpr int FONT_WIDTH = 10;
-  constexpr int FONT_HEIGHT = 20;
 
   // make list governed by LF separator
   using u16stringstream = std::basic_stringstream<char16_t>;
   std::u16string temp;
   u16stringstream wss(s16);
   while (std::getline(wss, temp, u'\n')) {
-    max_width = std::max(max_width, temp.size() * FONT_WIDTH);
-    height += FONT_HEIGHT;
+    max_width = std::max(max_width, temp.size() * current_font->width);
+    height += current_font->height;
   }
 
   width = max_width;
@@ -2976,7 +3148,7 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
     halocolor = RGB2YUV(halocolor);
   }
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser(vi.width, vi.height, "Arial", size, textcolor, halocolor);
   HDC hdcAntialias = antialiaser.GetDC();
   if  (hdcAntialias)
@@ -2987,6 +3159,23 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 	antialiaser.Apply(vi, frame, (*frame)->GetPitch());
   }
 #else
+  BitmapFont2* current_font;
+
+  size = size / 8; // size comes in GDI units (*8)
+
+  // internal font
+  const bool bold = true; // bold terminus has better visibility
+  current_font = GetBitmapFont(size, "Terminus", bold, false);
+  if (current_font == nullptr)
+  {
+    // size
+    current_font = GetBitmapFont(size, "", bold, false);
+    if (current_font == nullptr)
+      current_font = GetBitmapFont(size, "", !bold, false);
+    if (current_font == nullptr)
+      return;
+  }
+
   //env->MakeWritable(&frame);
   //frame->GetWritePtr(); // Bump sequence_number
 
@@ -2997,11 +3186,10 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 
   int align = 7;
   int lsp = 0;
-  int fontsize = 20;
   int x = 4;
   int y = 4;
 
-  SimpleTextOutW_multi(vi, *frame, x, y, s16, false, textcolor, halocolor, true, align, lsp);
+  SimpleTextOutW_multi(current_font, vi, *frame, x, y, s16, false, textcolor, halocolor, true, align, lsp);
 
 #endif
 }

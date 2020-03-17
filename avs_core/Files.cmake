@@ -18,6 +18,9 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "core/parser/*.cpp"
   "core/parser/*.h"
 
+  "core/fonts/*.cpp"
+  "core/fonts/*.h"
+
   "filters/*.c"
   "filters/*.cpp"
   "filters/*.h"
@@ -32,6 +35,7 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
 
   "filters/exprfilter/*.cpp"
   "filters/exprfilter/*.h"
+
 )
 
 IF( MSVC OR MINGW )

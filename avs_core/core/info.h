@@ -30,6 +30,7 @@
 #include <unordered_map>
 #include <array>
 
+#if 0
 // unfortunately this is still specific definition
 // are for maximum 16x20 pixel
 using fixedFontRec_t = struct fixedFontRec_t {
@@ -44,7 +45,6 @@ class BitmapFont
   void makeMapping();
 
 public:
-
   const fixedFontArray* fonts;
   const int w;
   const int h;
@@ -62,9 +62,56 @@ public:
   // generate outline on-the-fly
   void generateOutline(fixedFontRec_t& f, int x) const;
 };
+#endif
 
-void SimpleTextOutW(const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::u16string& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align);
-void SimpleTextOutW_multi(const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::u16string& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align, int lsp);
+class BitmapFont {
+
+  int number_of_chars;
+  std::string font_name;
+  std::string font_filename;
+
+public:
+  const int width;
+  const int height;
+  const bool bold;
+  std::vector<uint16_t> font_bitmaps;
+
+  std::unordered_map<uint16_t, int> charReMap; // unicode code point vs. font image index
+
+  void SaveAsC(const char16_t* _codepoints);
+
+  BitmapFont(int _number_of_chars, const uint16_t* _src_font_bitmaps, const char16_t* _codepoints, int _w, int _h, std::string _font_name, std::string _font_filename, bool _bold, bool debugSave) :
+    number_of_chars(_number_of_chars),
+    //font_bitmaps(_font_bitmaps), 
+    width(_w), height(_h),
+    font_name(_font_name),
+    font_filename(_font_filename),
+    bold(_bold)
+  {
+    //fixme: do not copy data
+    font_bitmaps.resize(height * number_of_chars);
+    std::memcpy(font_bitmaps.data(), _src_font_bitmaps, font_bitmaps.size() * sizeof(uint16_t));
+
+    for (int i = 0; i < _number_of_chars; i++) {
+      charReMap[_codepoints[i]] = i;
+    }
+
+    if (debugSave)
+      SaveAsC(_codepoints);
+  }
+
+  // helper function for remapping a char16_t string to font index entry list
+  std::vector<int> remap(const std::u16string& s16);
+
+  // generate outline on-the-fly
+  void generateOutline(uint16_t* outlined, int fontindex) const;
+};
+
+BitmapFont *GetBitmapFont(int size, const char* name, bool bold, bool debugSave);
+
+
+void SimpleTextOutW(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::u16string& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align);
+void SimpleTextOutW_multi(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::u16string& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align, int lsp);
 
 // legacy function w/o outline, originally with ASCII input, background fading
 void DrawStringPlanar(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char* s);

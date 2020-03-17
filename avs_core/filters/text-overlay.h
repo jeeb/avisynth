@@ -46,14 +46,15 @@
 #include <cstdio>
 #include <stdint.h>
 #include <string>
+#include "../core/info.h"
 
 
 /********************************************************************
 ********************************************************************/
 
 
-#ifdef AVS_WINDOWS
-class Antialiaser 
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+class Antialiaser
 /**
   * Helper class to anti-alias text
  **/
@@ -111,8 +112,10 @@ public:
   }
 
 private:
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
+#else
+  BitmapFont2* current_font;
 #endif
   const bool scroll;
   const int offset;
@@ -142,8 +145,10 @@ public:
   }
 
 private:
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
+#else
+  BitmapFont2* current_font;
 #endif
   int rate;
   int offset_f;
@@ -154,8 +159,8 @@ private:
 
 
 
-#ifdef AVS_WINDOWS
-class Subtitle : public GenericVideoFilter 
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+class Subtitle : public GenericVideoFilter
 /**
   * Subtitle creation class
  **/
@@ -197,7 +202,7 @@ class SimpleText : public GenericVideoFilter
 public:
   SimpleText(PClip _child, const char _text[], int _x, int _y, int _firstframe, int _lastframe,
     const char _fontname[], int _size, int _textcolor, int _halocolor, int _align,
-    int _spc, bool _multiline, int _lsp, int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, IScriptEnvironment* env);
+    int _spc, bool _multiline, int _lsp, int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, const bool _bold, IScriptEnvironment* env);
   virtual ~SimpleText(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -210,7 +215,7 @@ public:
 
 private:
   const int x, y, firstframe, lastframe;
-  const int size; // n/a
+  const int size;
   const int lsp;
   const int font_width, font_angle; // n/a
   const bool multiline;
@@ -218,10 +223,12 @@ private:
   const int textcolor, halocolor, align;
   const int spc; // n/a
   const int halocolor_orig;
-  const char* const fontname; // n/a
+  const char* const fontname; // Terminus or info_h
   const char* const text;
-  const char* const font_filename; // n/a
+  const char* const font_filename; // .BDF files
   const bool utf8;
+  const bool bold;
+  BitmapFont* current_font;
 };
 
 class FilterInfo : public GenericVideoFilter 
@@ -251,8 +258,10 @@ private:
   const int size;
 
   const int text_color, halo_color;
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
+#else
+  BitmapFont2* current_font;
 #endif
 };
 
@@ -280,8 +289,10 @@ public:
 
 
 private:
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
+#else
+  BitmapFont2* current_font;
 #endif
   PClip child2;
   uint32_t mask;
@@ -312,6 +323,6 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
                          bool italic, int align, int* width, int* height );
 
 bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,
-  bool italic, int align, int* width, int* height, bool utf8);
+  bool italic, int align, int& width, int& height, bool utf8);
 
 #endif  // __Text_overlay_H__
