@@ -6,9 +6,27 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 20200317 3.5.? (dev)
 --------------------
+- POSIX: better behaviour under non-Windows because of having multiple sized fixed fonts, not only a single size=20 one.
+  e.g. MessageClip(), Info(), Version(), ColorYUV "show", internal ApplyMessage
+- Text filter: 
+  - font types with 
+    - "Terminus" fixed fonts added (12-14-16-18-20-22-24-28-32, regular + bold)
+    - "Info_h" good old 10x20 fixed font kept under this name
+  - much more international unicode characters (1354), use utf8=true under Windows
+  - use fontname parameter (default "Terminus", other choice is "info_h")
+  - use font_filename parameter (accepts BDF fonts at the moment - import is probably not too smart but worked for Terminus)
+  - use size parameter (12 to 32, if no size is available, a smaller one is chosen but at least the smallest one)
+  - new parameter: bold (default false)
+- Info() filter: when parameter "size" < 0, font is automatically enlarged over 640x480
+  (POSIX limit: minimum size is 12, maximum size is 32 - limited by available fixed fonts)")
+- SIL OPEN FONT LICENSE added because of usage of Terminus fonts)
+- able to build w/o GDI and font rendering engine under Windows, so that text-overlay filters 
+  work like in POSIX version of AviSynth+ (mainly for my development test)
+  Use with NO_WIN_GDI define.
 - Fix: ReplaceStr when the pattern string to be replaced is empty
-- New: another function to have utf8 option:
-  bool utf8 parameter for Exist. 
+- New: 
+  Exist() to have bool utf8 parameter
+  This is another function to have utf8 option:
   Usage: b = Exist("Здравствуй.mkv",utf8=true). Avs file is saved as utf8 w/o BOM
 - Fix: ColorYUV: really disable variable search when parameter "conditional" is false
 - Development: 

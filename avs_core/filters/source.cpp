@@ -448,7 +448,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 /********************************************************************
 ********************************************************************/
 
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
 // in text-overlay.cpp
 extern bool GetTextBoundingBox(const char* text, const char* fontname,
   int size, bool bold, bool italic, int align, int* width, int* height);
@@ -461,7 +461,7 @@ extern bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int 
 PClip Create_MessageClip(const char* message, int width, int height, int pixel_type, bool shrink,
                          int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env) {
   int size;
-#ifdef AVS_WINDOWS
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     // MessageClip produces a clip containing a text message.Used internally for error reporting.
     // The font face is "Arial".
     // The font size is between 24 points and 9 points - chosen to fit, if possible,
@@ -482,17 +482,16 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
     }
   }
 #else
-  // FIXME: only one fixed size font
-  size = 20;
-  constexpr int FONT_WIDTH = 10;
-  constexpr int FONT_HEIGHT = 20;
-
-  constexpr int MAX_SIZE = 20;
-  constexpr int MIN_SIZE = 20; //
-  for (size = MAX_SIZE; /*size>=9*/; size -= 1) {
+  constexpr int MAX_SIZE = 24; // Terminus 12,14,16,18,20,22,24,28,32
+  constexpr int MIN_SIZE = 12;
+  for (size = MAX_SIZE; /*size>=9*/; size -= 2) {
     int text_width, text_height;
+#ifdef AVS_POSIX
     bool utf8 = true;
-    GetTextBoundingBoxFixed(message, "n/a", size, true, false, 0 /* align */, text_width, text_height, utf8);
+#else
+    bool utf8 = false;
+#endif
+    GetTextBoundingBoxFixed(message, "Terminus", size, true, false, 0 /* align */, text_width, text_height, utf8);
     text_width = (text_width + 8 + 7) & ~7; // mod 8
     text_height = (text_height + 8 + 1) & ~1; // mod 2
     if (size <= MIN_SIZE || ((width <= 0 || text_width <= width) && (height <= 0 || text_height <= height))) {
@@ -503,6 +502,8 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
       break;
     }
   }
+
+  size *= 8; // back to GDI units
 #endif
 
   VideoInfo vi;
