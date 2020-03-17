@@ -952,6 +952,9 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
   const char * orig_ptr;
   const char * pattern_location;
 
+  if (0 == pattern_len)
+    return original;
+
   if (case_insensitive) {
     char *original_lower = new(std::nothrow) char[sizeof(char) * (orig_len + 1)];
     if (!original_lower) env->ThrowError("ReplaceStr: malloc failure!");
