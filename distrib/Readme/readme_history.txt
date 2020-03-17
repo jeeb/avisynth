@@ -4,8 +4,12 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200305 3.5.0 (dev)
+20200317 3.5.? (dev)
 --------------------
+- Fix: ReplaceStr when the pattern string to be replaced is empty
+- New: another function to have utf8 option:
+  bool utf8 parameter for Exist. 
+  Usage: b = Exist("Здравствуй.mkv",utf8=true). Avs file is saved as utf8 w/o BOM
 - Fix: ColorYUV: really disable variable search when parameter "conditional" is false
 - Development: 
   ScriptEnvironment::VSprintf: parameter (void *) is changed back to va_list.
