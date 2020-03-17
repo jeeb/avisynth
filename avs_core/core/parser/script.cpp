@@ -40,6 +40,9 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 #ifdef AVS_WINDOWS
     #include <io.h>
@@ -218,7 +221,7 @@ extern const AVSFunction Script_functions[] = {
   { "SetMemoryMax", BUILTIN_FUNC_PREFIX, "[]i", SetMemoryMax },
 
   { "SetWorkingDir", BUILTIN_FUNC_PREFIX, "s", SetWorkingDir },
-  { "Exist",         BUILTIN_FUNC_PREFIX, "s", Exist },
+  { "Exist",         BUILTIN_FUNC_PREFIX, "s[utf8]b", Exist },
 
   { "Chr",    BUILTIN_FUNC_PREFIX, "i", AVSChr },
   { "Ord",    BUILTIN_FUNC_PREFIX, "s", AVSOrd },
@@ -451,7 +454,13 @@ std::u16string charToU16string(const char* text, bool utf8)
     auto wsource = Utf8ToWideChar(text);
     std::wstring wsource2 = wsource.get();
     s16.assign(wsource2.begin(), wsource2.end());
-
+    /*
+    const size_t size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
+    std::wstring wsource;
+    wsource.resize(size - 1);
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wsource.data(), size - 1);
+    s16.assign(wsource.begin(), wsource.end());
+    */
     // or
     /*
     std::wstring_convert<std::codecvt_utf8_utf16<int16_t>, int16_t> convert;
@@ -703,11 +712,11 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
       if ((q[0] == 0xFF && q[1] == 0xFE) || (q[0] == 0xFE && q[1] == 0xFF))
         env->ThrowError("Import: Unicode source files are not supported, "
-          "re-save script with ANSI encoding! : \"%s\"", script_name);
+          "re-save script with ANSI or UTF8 w/o BOM encoding! : \"%s\"", script_name);
 
       if (q[0] == 0xEF && q[1] == 0xBB && q[2] == 0xBF)
-        env->ThrowError("Import: UTF-8 source files are not supported, "
-          "re-save script with ANSI encoding! : \"%s\"", script_name);
+        env->ThrowError("Import: UTF-8 source files with BOM are not supported, "
+          "re-save script with ANSI or UTF8 w/o BOM encoding! : \"%s\"", script_name);
     }
 
 #else // adapted from AvxSynth
@@ -1177,7 +1186,26 @@ AVSValue Undefined(AVSValue args, void*, IScriptEnvironment*) { return AVSValue(
 
 AVSValue Exist(AVSValue args, void*, IScriptEnvironment*nv) {
   const char *filename = args[0].AsString();
-  return std::ifstream(filename).good();
+#ifdef AVS_POSIX
+  constexpr bool utf8default = true;
+#else
+  constexpr bool utf8default = false;
+#endif
+  const bool utf8 = args[1].AsBool(utf8default);
+
+  if (strchr(filename, '*') || strchr(filename, '?')) // wildcard
+    return false;
+
+#ifdef AVS_WINDOWS
+  if (utf8) {
+    // fixme/enhance me: check win codepage 65001 UTF8 and do like posix native utf8
+    // (remark applies to all utf8 in avs+)
+    auto wsource = Utf8ToWideChar(filename);
+    std::wstring filename_w = wsource.get();
+    return fs::exists(filename_w);
+  }
+#endif
+  return fs::exists(filename);
 }
 
 
