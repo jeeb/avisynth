@@ -42,13 +42,38 @@ Once Sphinx is installed, we can build the documentation.
 >make html
 
 
-Libav users:
-------------
+Headers for applications which dynamically load AviSynth+:
+----------------------------------------------------------
 
-CMake isn't really suited to doing header-only installs, so a GNUmakefile is
-provided specifically for this purpose.
+The expected use-case of AviSynth+ is as a dynamically
+loaded library (using LoadLibrary on Windows or dlopen
+everywhere else).
 
-### Using GNUmakefile:
+Due to this, it's not actually necessary to build the
+AviSynth+ library itself in order for applications using
+it this way to find it.
+
+To facilitate this, we offer two ways to install just
+the headers.  The GNUmakefile method has been the way
+to do so for the past few years, but we also support
+using CMake to do a limited install as well.
+
+### Using CMake:
+
+#### To install:
+
+>mkdir avisynth-build && cd avisynth-build
+>cmake ../ -DHEADERS_ONLY:bool=on
+>make install
+
+`-DCMAKE_INSTALL_PREFIX` can be used to override the
+install location if need be.
+
+#### To uninstall:
+
+>make uninstall
+
+### Using GNUmakefile (legacy):
 
 #### To install:
 
