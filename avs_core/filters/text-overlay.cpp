@@ -1121,7 +1121,7 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     TextOut(hdc, x+16, y+16, text, (int)strlen(text));
 #else
     std::u16string s16 = charToU16string(text, true);
-    SimpleTextOutW(current_font, vi, frame, x, y, s16, false, textcolor, halocolor, true, 1);
+    SimpleTextOutW(current_font.get(), vi, frame, x, y, s16, false, textcolor, halocolor, true, 1);
 #endif
   } else if (scroll) {
     int n1 = vi.IsFieldBased() ? (n/2) : n;
@@ -1133,9 +1133,9 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     int y2 = size + size * (n1 % (vi.height / size));
     std::u16string s16 = charToU16string(text, true);
     if(child->GetParity(n))
-      SimpleTextOutW(current_font, vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
     else
-      SimpleTextOutW(current_font, vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
 #endif
 
   }
@@ -1149,9 +1149,9 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     std::u16string s16 = charToU16string(text, true);
     for (int y2 = size; y2 < vi.height; y2 += size) {
       if (child->GetParity(n))
-        SimpleTextOutW(current_font, vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
       else
-        SimpleTextOutW(current_font, vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
     }
 #endif
   }
@@ -1367,7 +1367,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 #else
   const bool utf8 = true;
   auto s16 = charToU16string(text, utf8);
-  SimpleTextOutW(current_font, vi, frame, x + 2, y + 2, s16, true, textcolor, halocolor, false, 5);
+  SimpleTextOutW(current_font.get(), vi, frame, x + 2, y + 2, s16, true, textcolor, halocolor, false, 5);
 #endif
 
   return frame;
@@ -1814,7 +1814,7 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
     // FF: fadeIt
     // 01-FE: no halo
     // 00: use halocolor
-    SimpleTextOutW_multi(current_font, vi, frame, real_x, real_y, s16,
+    SimpleTextOutW_multi(current_font.get(), vi, frame, real_x, real_y, s16,
       halocolor_orig == 0xFF000000, // fadeIt, special halocolor, when MSB byte is FF
       textcolor, halocolor,
       (halocolor_orig & 0xFF000000) == 0, // use halocolor when MSB byte is zero
@@ -2213,7 +2213,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     int x = 4;
     int y = 2;
 
-    SimpleTextOutW_multi(current_font, vi, frame, x, y, s16, false, text_color, halo_color, true, align, lsp);
+    SimpleTextOutW_multi(current_font.get(), vi, frame, x, y, s16, false, text_color, halo_color, true, align, lsp);
 #endif
   return frame;
 }
@@ -2902,7 +2902,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 #else
         bool utf8 = true;
         auto s16 = charToU16string(text, utf8);
-        SimpleTextOutW_multi(current_font, vi, f1, 2, 1, s16, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
+        SimpleTextOutW_multi(current_font.get(), vi, f1, 2, 1, s16, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
 #endif
     }
 
@@ -3093,7 +3093,7 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,
   bool italic, int align, int& width, int& height, bool utf8)
 {
-  BitmapFont* current_font;
+  std::unique_ptr<BitmapFont> current_font;
   /*
   if (*font_filename) {
     // external font file
@@ -3159,7 +3159,7 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 	antialiaser.Apply(vi, frame, (*frame)->GetPitch());
   }
 #else
-  BitmapFont* current_font;
+  std::unique_ptr<BitmapFont> current_font;
 
   size = size / 8; // size comes in GDI units (*8)
 
@@ -3189,7 +3189,7 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   int x = 4;
   int y = 4;
 
-  SimpleTextOutW_multi(current_font, vi, *frame, x, y, s16, false, textcolor, halocolor, true, align, lsp);
+  SimpleTextOutW_multi(current_font.get(), vi, *frame, x, y, s16, false, textcolor, halocolor, true, align, lsp);
 
 #endif
 }

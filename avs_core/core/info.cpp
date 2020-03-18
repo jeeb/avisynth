@@ -1220,7 +1220,7 @@ extern const uint16_t *font_bitmaps[];
 extern const char16_t *font_codepoints[];
 extern const FixedFont_info_t *font_infos[];
 
-BitmapFont *GetBitmapFont(int size, const char *name, bool bold, bool debugSave) {
+std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold, bool debugSave) {
 
   BitmapFont* current_font = nullptr;
 
@@ -1300,7 +1300,7 @@ BitmapFont *GetBitmapFont(int size, const char *name, bool bold, bool debugSave)
       strequals_i(bdf.font_properties.Weight_name, "bold"),
       debugSave);
   }
-  return current_font;
+  return std::unique_ptr<BitmapFont>(current_font);
 }
 
 static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& dst, int x, int y, std::u16string &s16, int color, int halocolor, bool useHalocolor, int align, bool fadeBackground)
@@ -1474,12 +1474,12 @@ void DrawStringPlanar(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char*
 
   int halocolor = 0;
 
-  BitmapFont *current_font = GetBitmapFont(20, "info_h", false, false); // 10x20
+  std::unique_ptr<BitmapFont> current_font = GetBitmapFont(20, "info_h", false, false); // 10x20
 
   if (current_font == nullptr)
     return;
 
-  DrawString_internal(current_font, vi, dst, x, y, s16,
+  DrawString_internal(current_font.get(), vi, dst, x, y, s16,
     color,
     halocolor,
     false, // don't use halocolor
@@ -1487,7 +1487,6 @@ void DrawStringPlanar(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char*
     true // fadeBackGround
   );
 
-  delete current_font;
 }
 
 void DrawStringYUY2(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char* s)

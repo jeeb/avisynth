@@ -107,7 +107,7 @@ public:
   void generateOutline(uint16_t* outlined, int fontindex) const;
 };
 
-BitmapFont *GetBitmapFont(int size, const char* name, bool bold, bool debugSave);
+std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char* name, bool bold, bool debugSave);
 
 
 void SimpleTextOutW(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::u16string& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align);

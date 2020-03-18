@@ -115,7 +115,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont* current_font;
+  std::unique_ptr<BitmapFont> current_font;
 #endif
   const bool scroll;
   const int offset;
@@ -148,7 +148,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont* current_font;
+  std::unique_ptr<BitmapFont> current_font;
 #endif
   int rate;
   int offset_f;
@@ -228,7 +228,7 @@ private:
   const char* const font_filename; // .BDF files
   const bool utf8;
   const bool bold;
-  BitmapFont* current_font;
+  std::unique_ptr<BitmapFont> current_font;
 };
 
 class FilterInfo : public GenericVideoFilter 
@@ -261,7 +261,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont* current_font;
+  std::unique_ptr<BitmapFont> current_font;
 #endif
 };
 
@@ -292,7 +292,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont* current_font;
+  std::unique_ptr<BitmapFont> current_font;
 #endif
   PClip child2;
   uint32_t mask;
