@@ -72,14 +72,14 @@ void BitmapFont::generateOutline(uint16_t* outlined, int fontindex) const
   outlined[height - 1] = value;
 }
 
-// helper function for remapping a char16_t string to font index entry list
-std::vector<int> BitmapFont::remap(const std::u16string& s16)
+// helper function for remapping a wchar_t string to font index entry list
+std::vector<int> BitmapFont::remap(const std::wstring& ws)
 {
   // new vector with characters remapped to table indexes
   std::vector<int> s_remapped;
-  s_remapped.resize(s16.size());
-  for (int i = 0; i < s16.size(); i++) {
-    auto it = charReMap.find(s16[i]);
+  s_remapped.resize(ws.size());
+  for (int i = 0; i < ws.size(); i++) {
+    auto it = charReMap.find(ws[i]);
     if (it != charReMap.end())
       s_remapped[i] = it->second;
     else
@@ -90,7 +90,7 @@ std::vector<int> BitmapFont::remap(const std::u16string& s16)
 
 // Internal function! For creating source code from a previously LoadBDF'd font file
 // see fixedfonts.cpp
-void BitmapFont::SaveAsC(const char16_t* _codepoints)
+void BitmapFont::SaveAsC(const uint16_t* _codepoints)
 {
   if (font_filename == "") return; // no GUS no sound :)
 
@@ -140,7 +140,7 @@ void BitmapFont::SaveAsC(const char16_t* _codepoints)
 
   ss << "};" << std::endl;
   ss << "// codepoints array" << std::endl;
-  ss << "constexpr std::array<char16_t, CHARCOUNT> fixedfont_codepoints = {" << std::endl;
+  ss << "constexpr std::array<uint16_t, CHARCOUNT> fixedfont_codepoints = {" << std::endl;
   for (int charcount = 0; charcount < number_of_chars; charcount++)
   {
     constexpr int LINES_BY_N = 16;
@@ -168,7 +168,7 @@ void BitmapFont::SaveAsC(const char16_t* _codepoints)
     &fixed_font_2::fixedfont_bitmap[0]
     // ...
   };
-  static const char16_t* font_codepoints[PREDEFINED_FONT_COUNT] =
+  static const uint16_t* font_codepoints[PREDEFINED_FONT_COUNT] =
   {
     &fixed_font_1::fixedfont_codepoints[0],
     &fixed_font_2::fixedfont_codepoints[0]
@@ -185,7 +185,7 @@ void BitmapFont::SaveAsC(const char16_t* _codepoints)
 
 typedef struct CharInfo { // STARTCHAR charname
   std::string friendly_name;
-  char16_t encoding;
+  uint16_t encoding;
 } CharDef;
 
 typedef struct FontProperties {
@@ -196,7 +196,7 @@ typedef struct FontProperties {
   int pixel_size;
   int font_ascent; // 12
   int font_descent; // 4
-  char16_t default_char; // 65533
+  uint16_t default_char; // 65533
 } FontProperties;
 
 typedef struct FontInfo {
@@ -214,7 +214,7 @@ public:
   std::string font_filename;
   FontInfo font_info;
   FontProperties font_properties;
-  std::vector<char16_t> codepoints_array;
+  std::vector<uint16_t> codepoints_array;
   std::vector<std::string> charnames_array;
   std::vector<uint16_t> font_bitmaps; // uint16_t: max. width is 16
 };
@@ -1217,7 +1217,7 @@ static bool strequals_i(const std::string& a, const std::string& b)
 
 // in fixedfonts.cpp
 extern const uint16_t *font_bitmaps[];
-extern const char16_t *font_codepoints[];
+extern const uint16_t *font_codepoints[];
 extern const FixedFont_info_t *font_infos[];
 
 std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold, bool debugSave) {
@@ -1303,7 +1303,7 @@ std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold,
   return std::unique_ptr<BitmapFont>(current_font);
 }
 
-static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& dst, int x, int y, std::u16string &s16, int color, int halocolor, bool useHalocolor, int align, bool fadeBackground)
+static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& dst, int x, int y, std::wstring &s16, int color, int halocolor, bool useHalocolor, int align, bool fadeBackground)
 {
   //static BitmapFont_10_20 infoFont1020; // constructor runs once, single instance
 
@@ -1426,20 +1426,21 @@ static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, P
   }
 }
 
-void SimpleTextOutW(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::u16string& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align)
+void SimpleTextOutW(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::wstring& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align)
 {
   DrawString_internal(current_font, vi, frame, real_x, real_y, text, textcolor, halocolor, useHaloColor, align, fadeBackground); // fully transparent background
 }
 
 // additional parameter: lsp line spacing
-void SimpleTextOutW_multi(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::u16string& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align, int lsp)
+void SimpleTextOutW_multi(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::wstring& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align, int lsp)
 {
+
   // make list governed by LF separator
-  using u16stringstream = std::basic_stringstream<char16_t>;
-  std::u16string temp;
-  std::vector<std::u16string> parts;
-  u16stringstream wss(text);
-  while (std::getline(wss, temp, u'\n'))
+  using wstringstream = std::basic_stringstream<wchar_t>;
+  std::wstring temp;
+  std::vector<std::wstring> parts;
+  wstringstream wss(text);
+  while (std::getline(wss, temp, L'\n'))
     parts.push_back(temp);
 
   const int fontSize = current_font->height;
@@ -1451,8 +1452,8 @@ void SimpleTextOutW_multi(BitmapFont *current_font, const VideoInfo& vi, PVideoF
   else if (al & ATA_BASELINE)
     real_y -= fontSize * (parts.size() / 2);
 
-  for (auto s : parts) {
-    SimpleTextOutW(current_font, vi, frame, real_x, real_y, s, fadeBackground, textcolor, halocolor, useHaloColor, align);
+  for (auto ws : parts) {
+    SimpleTextOutW(current_font, vi, frame, real_x, real_y, ws, fadeBackground, textcolor, halocolor, useHaloColor, align);
     real_y += fontSize + lsp;
   }
 }
@@ -1470,7 +1471,7 @@ void DrawStringPlanar(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char*
 
   // fadeBackground = true: background letter area is faded instead not being untouched.
 
-  std::u16string s16 = charToU16string(s, false);
+  std::wstring ws = charToWstring(s, false);
 
   int halocolor = 0;
 
@@ -1479,7 +1480,7 @@ void DrawStringPlanar(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char*
   if (current_font == nullptr)
     return;
 
-  DrawString_internal(current_font.get(), vi, dst, x, y, s16,
+  DrawString_internal(current_font.get(), vi, dst, x, y, ws,
     color,
     halocolor,
     false, // don't use halocolor

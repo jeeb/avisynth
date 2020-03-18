@@ -1120,8 +1120,8 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     SetTextAlign(hdc, TA_BASELINE|TA_LEFT);
     TextOut(hdc, x+16, y+16, text, (int)strlen(text));
 #else
-    std::u16string s16 = charToU16string(text, true);
-    SimpleTextOutW(current_font.get(), vi, frame, x, y, s16, false, textcolor, halocolor, true, 1);
+    std::wstring ws = charToWstring(text, true);
+    SimpleTextOutW(current_font.get(), vi, frame, x, y, ws, false, textcolor, halocolor, true, 1);
 #endif
   } else if (scroll) {
     int n1 = vi.IsFieldBased() ? (n/2) : n;
@@ -1131,11 +1131,11 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, (int)strlen(text));
 #else
     int y2 = size + size * (n1 % (vi.height / size));
-    std::u16string s16 = charToU16string(text, true);
+    std::wstring ws = charToWstring(text, true);
     if(child->GetParity(n))
-      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
     else
-      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
 #endif
 
   }
@@ -1146,12 +1146,12 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     for (int y2 = size; y2 < vi.height * 8; y2 += size)
       TextOut(hdc, child->GetParity(n) ? 32 : vi.width * 8 + 8, y2, text, text_len);
 #else
-    std::u16string s16 = charToU16string(text, true);
+    std::wstring ws = charToWstring(text, true);
     for (int y2 = size; y2 < vi.height; y2 += size) {
       if (child->GetParity(n))
-        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, s16, false, textcolor, halocolor, true, 1); // left
+        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
       else
-        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, s16, false, textcolor, halocolor, true, 3); // right
+        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
     }
 #endif
   }
@@ -1366,8 +1366,8 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   antialiaser.Apply(vi, &frame, frame->GetPitch());
 #else
   const bool utf8 = true;
-  auto s16 = charToU16string(text, utf8);
-  SimpleTextOutW(current_font.get(), vi, frame, x + 2, y + 2, s16, true, textcolor, halocolor, false, 5);
+  auto ws = charToWstring(text, utf8);
+  SimpleTextOutW(current_font.get(), vi, frame, x + 2, y + 2, ws, true, textcolor, halocolor, false, 5);
 #endif
 
   return frame;
@@ -1785,8 +1785,7 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
 
     // Test:
     // Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
-
-    std::u16string s16 = charToU16string(text, utf8); // to char16_t either from utf8 (win/linux) or ansi (win)
+    std::string s(text);
 
     if (multiline) { // filter parameter, true when lsp is given
       // multiline case: string contains '\' and 'n' characters explicitely
@@ -1794,27 +1793,29 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
       // Thus we replace two-character literal "\n" to \n (0x0A) then when "\" and \n found, we change it back to literal "\n"
       size_t index = 0;
       while (true) {
-        index = s16.find(u"\\n", index);
+        index = s.find("\\n", index);
         if (index == std::string::npos) break;
-        s16.replace(index, 1, u"\n");
-        s16.erase(index + 1, 1); // two characters replaced by a single one, erase at the second position
+        s.replace(index, 1, "\n");
+        s.erase(index + 1, 1); // two characters replaced by a single one, erase at the second position
         index += 1; // length of the string to replace
       }
       // '\' and '\n' back to literal "\n"
       index = 0;
       while (true) {
-        index = s16.find(u"\\\n", index); // yes, \ and \n
+        index = s.find("\\\n", index); // yes, \ and \n
         if (index == std::string::npos) break;
-        s16.replace(index, 2, u"\\n"); // back to "\" + "n"
+        s.replace(index, 2, "\\n"); // back to "\" + "n"
         index += 2; // length of the string to replace
       }
     }
+
+    std::wstring ws = charToWstring(s.c_str(), utf8); // to wchar_t either from utf8 (win/linux) or ansi (win)
 
     // halocolor MSB
     // FF: fadeIt
     // 01-FE: no halo
     // 00: use halocolor
-    SimpleTextOutW_multi(current_font.get(), vi, frame, real_x, real_y, s16,
+    SimpleTextOutW_multi(current_font.get(), vi, frame, real_x, real_y, ws,
       halocolor_orig == 0xFF000000, // fadeIt, special halocolor, when MSB byte is FF
       textcolor, halocolor,
       (halocolor_orig & 0xFF000000) == 0, // use halocolor when MSB byte is zero
@@ -2205,15 +2206,15 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
 
     // AVS_POSIX: utf8 is always true
     bool utf8 = false;
-    // converting to char16_t either from utf8 (win/linux) or ansi (win)
-    std::u16string s16 = charToU16string(text, utf8);
+    // converting to wchar_t either from utf8 (win/linux) or ansi (win)
+    std::wstring ws = charToWstring(text, utf8);
 
     int align = 7;
     int lsp = 0;
     int x = 4;
     int y = 2;
 
-    SimpleTextOutW_multi(current_font.get(), vi, frame, x, y, s16, false, text_color, halo_color, true, align, lsp);
+    SimpleTextOutW_multi(current_font.get(), vi, frame, x, y, ws, false, text_color, halo_color, true, align, lsp);
 #endif
   return frame;
 }
@@ -2901,8 +2902,8 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
         antialiaser.Apply(vi, &f1, dst_pitch);
 #else
         bool utf8 = true;
-        auto s16 = charToU16string(text, utf8);
-        SimpleTextOutW_multi(current_font.get(), vi, f1, 2, 1, s16, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
+        auto ws = charToWstring(text, utf8);
+        SimpleTextOutW_multi(current_font.get(), vi, f1, 2, 1, ws, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
 #endif
     }
 
@@ -3119,15 +3120,15 @@ bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, b
     }
   }
 
-  auto s16 = charToU16string(text, utf8);
+  auto s16 = charToWstring(text, utf8);
   size_t max_width = 1;
   height = 1;
 
   // make list governed by LF separator
-  using u16stringstream = std::basic_stringstream<char16_t>;
-  std::u16string temp;
-  u16stringstream wss(s16);
-  while (std::getline(wss, temp, u'\n')) {
+  using wstringstream = std::basic_stringstream<wchar_t>;
+  std::wstring temp;
+  wstringstream wss(s16);
+  while (std::getline(wss, temp, L'\n')) {
     max_width = std::max(max_width, temp.size() * current_font->width);
     height += current_font->height;
   }
@@ -3181,15 +3182,15 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 
   // AVS_POSIX: utf8 is always true
   bool utf8 = false; // fixme: true for new utf8-avs+
-  // converting to char16_t either from utf8 (win/linux) or ansi (win)
-  std::u16string s16 = charToU16string(message, utf8);
+  // converting to wchar_t either from utf8 (win/linux) or ansi (win)
+  std::wstring ws = charToWstring(message, utf8);
 
   int align = 7;
   int lsp = 0;
   int x = 4;
   int y = 4;
 
-  SimpleTextOutW_multi(current_font.get(), vi, *frame, x, y, s16, false, textcolor, halocolor, true, align, lsp);
+  SimpleTextOutW_multi(current_font.get(), vi, *frame, x, y, ws, false, textcolor, halocolor, true, align, lsp);
 
 #endif
 }
