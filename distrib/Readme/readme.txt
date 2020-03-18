@@ -1,4 +1,4 @@
-Avisynth+ v3.5.? (dev-20200317)
+Avisynth+ v3.5.? (dev-20200318)
 -------------------------
 
 Use the installer or copy files directly
@@ -31,8 +31,9 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200317 3.5.? (dev)
+20200318 3.5.? (dev)
 --------------------
+- Fix: BuildPixelType: chroma subsampling of sample clip was ignored.
 - POSIX: better behaviour under non-Windows because of having multiple sized fixed fonts, not only a single size=20 one.
   e.g. MessageClip(), Info(), Version(), ColorYUV "show", internal ApplyMessage
 - Text filter: 
