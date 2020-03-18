@@ -185,7 +185,7 @@ std::unique_ptr<wchar_t[]> AnsiToWideCharACP(const char *s_ansi);
 std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi);
 #endif
 
-std::u16string charToU16string(const char* text, bool utf8);
+std::wstring charToWstring(const char* text, bool utf8);
 
 class NonCachedGenericVideoFilter : public GenericVideoFilter
 /**

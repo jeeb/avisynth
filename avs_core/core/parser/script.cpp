@@ -431,49 +431,33 @@ std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi)
 }
 #endif
 
-std::u16string charToU16string(const char* text, bool utf8)
+std::wstring charToWstring(const char* text, bool utf8)
 {
-  std::u16string s16;
+  std::wstring ws;
   // AVS_POSIX: utf8 is always true, no ANSI here
 #ifdef AVS_POSIX
   utf8 = true;
 #endif
   if (utf8) {
-    // warning C4996 : 'std::codecvt_utf8_utf16<char16_t,1114111,0>' : warning STL4017 : std::wbuffer_convert, std::wstring_convert,
-    // and the <codecvt> header(containing std::codecvt_mode, std::codecvt_utf8, std::codecvt_utf16, and std::codecvt_utf8_utf16)
+    // warning C4996 :
+    // ...and the <codecvt> header(containing std::codecvt_mode, std::codecvt_utf8, std::codecvt_utf16, and std::codecvt_utf8_utf16)
     // are deprecated in C++17.
     // (The std::codecvt class template is NOT deprecated.)
     // The C++ Standard doesn't provide equivalent non-deprecated functionality;
     // consider using MultiByteToWideChar() and WideCharToMultiByte() from <Windows.h> instead.
     // You can define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
 
-    // utf8 to char16_t
-    std::string source(text);
+    // utf8 to wchar_t
 #if defined(MSVC_PURE) && (_MSC_VER < 1920)
     // workround for v141_xp toolset suxxx: unresolved externals
     auto wsource = Utf8ToWideChar(text);
-    std::wstring wsource2 = wsource.get();
-    s16.assign(wsource2.begin(), wsource2.end());
-    /*
-    const size_t size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
-    std::wstring wsource;
-    wsource.resize(size - 1);
-    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wsource.data(), size - 1);
-    s16.assign(wsource.begin(), wsource.end());
-    */
-    // or
-    /*
-    std::wstring_convert<std::codecvt_utf8_utf16<int16_t>, int16_t> convert;
-    auto p = reinterpret_cast<const char*>(source.data());
-    auto str = convert.from_bytes(p, p + source.size());
-    s16.assign(str.begin(), str.end());
-    */
+    ws = wsource.get();
 #else
     // MSVC++ 14.2  _MSC_VER == 1920 (Visual Studio 2019 version 16.0) v142 toolset
     // MSVC++ 14.16 _MSC_VER == 1916 (Visual Studio 2017 version 15.9) v141_xp toolset
     // this one suxx with MSVC v141_xp toolset: unresolved external error
 
-    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
 
     // crash warning, strings here are considered as being a valid utf8 sequence
     // which is not the case when our own original VersionString() is passed here with an embedded ansi encoded (C) symbol
@@ -481,10 +465,10 @@ std::u16string charToU16string(const char* text, bool utf8)
     // O.K.: u8"\n\u00A9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\u00A9 2013-2020 AviSynth+ Project"
     // FIXME: make it crash-tolerant?
     try {
-      s16 = convert.from_bytes(source);
+      ws = convert.from_bytes(text);
     }
     catch (const std::exception & e) {
-      s16 = u"Error converting utf8 string to utf16\r\n";
+      ws = L"Error converting utf8 string to wide string\r\n";
       // FIXME: Throw a proper avs exception
     }
 #endif
@@ -492,13 +476,11 @@ std::u16string charToU16string(const char* text, bool utf8)
 #ifdef AVS_WINDOWS
   else {
     // ANSI, Windows
-    // in two steps: Ansi -> WideChar -> Utf8
     auto wsource = AnsiToWideCharACP(text);
-    std::wstring wsource2 = wsource.get();
-    s16.assign(wsource2.begin(), wsource2.end());
+    ws = wsource.get();
   }
 #endif
-  return s16;
+  return ws;
 }
 
 /***********************************
