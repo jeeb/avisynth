@@ -148,6 +148,9 @@ get_target_property(LIB_NAME AvsCore OUTPUT_NAME)
 set(LIBS "-l${LIB_NAME}")
 CONFIGURE_FILE("avisynth.pc.in" "avisynth.pc" @ONLY)
 
+# Generate avisynth.conf
+CONFIGURE_FILE("avisynth.conf.in" "avisynth.conf" @ONLY)
+
 INSTALL(TARGETS AvsCore
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -158,3 +161,6 @@ INSTALL(DIRECTORY "include/"
 
 INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/avisynth.pc"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+
+INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/avisynth.conf"
+        DESTINATION "/etc/avisynth")
