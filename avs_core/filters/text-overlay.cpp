@@ -3159,7 +3159,7 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 	antialiaser.Apply(vi, frame, (*frame)->GetPitch());
   }
 #else
-  BitmapFont2* current_font;
+  BitmapFont* current_font;
 
   size = size / 8; // size comes in GDI units (*8)
 

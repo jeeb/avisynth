@@ -115,7 +115,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont2* current_font;
+  BitmapFont* current_font;
 #endif
   const bool scroll;
   const int offset;
@@ -148,7 +148,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont2* current_font;
+  BitmapFont* current_font;
 #endif
   int rate;
   int offset_f;
@@ -261,7 +261,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont2* current_font;
+  BitmapFont* current_font;
 #endif
 };
 
@@ -292,7 +292,7 @@ private:
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   Antialiaser antialiaser;
 #else
-  BitmapFont2* current_font;
+  BitmapFont* current_font;
 #endif
   PClip child2;
   uint32_t mask;

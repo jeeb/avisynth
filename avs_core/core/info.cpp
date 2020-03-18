@@ -7588,7 +7588,7 @@ BitmapFont *GetBitmapFont(int size, const char *name, bool bold, bool debugSave)
       }
       info_h_codepoints[i] = font_10_20[i].code;
     }
-    current_font = new BitmapFont2(
+    current_font = new BitmapFont(
       num_of_chars,
       info_h_bitmap.data(),
       info_h_codepoints.data(),
