@@ -9,14 +9,14 @@
 # "Visual Studio 16 2019" + LLVM 8.0 (clang) optional platform generator Win32 and x64
 CMAKE_MINIMUM_REQUIRED( VERSION 3.8.2 )
 
-option(INSTALL_ONLY_HEADERS "Install only the Headers" ${INSTALL_ONLY_HEADER})
+option(HEADERS_ONLY "Install only the Headers" ${INSTALL_ONLY_HEADER})
 if(${INSTALL_ONLY_HEADER})
   set(INSTALL_ONLY_HEADER OFF)
 endif()
 
 include(GNUInstallDirs)
 
-if(NOT INSTALL_ONLY_HEADERS)
+if(NOT HEADERS_ONLY)
 
   project("AviSynth+")
 
@@ -203,8 +203,14 @@ else()
   add_library(AviSynth::Headers ALIAS ${PROJECT_NAME})
 
   install(
-          DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          FILES ${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include/avisynth.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include/avisynth_c.h
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/avisynth
+  )
+
+  install(
+          DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include/avs
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/avisynth
   )
 
 endif()
