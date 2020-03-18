@@ -1940,7 +1940,7 @@ AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env)
   else {
     chroma = 444; // n/a
   }
-  chroma = isYUV || isYUVA ? args[2].AsInt(444) : 444; // only for YUV(A)
+  
   if(chroma != 444 && chroma != 422 && chroma != 420 && chroma != 411)
     env->ThrowError("BuildPixelType error: 'chroma' must be 444, 422, 420 or 411.");
 
