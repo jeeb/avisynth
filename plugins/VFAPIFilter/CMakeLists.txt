@@ -11,7 +11,7 @@ set(DSHOWSRC_BASECLASSES_LIB CACHE FILEPATH "File path to the DirectShow example
 set(DSHOWSRC_DX_INCLUDE_PATH "C:/Program Files/Microsoft DirectX SDK (August 2009)/Include" CACHE STRING "Include folder path to the DirectX headers.")
 
 # Create library
-project(${ProjectName})
+project(${ProjectName} VERSION ${PROJECT_VERSION})
 list (APPEND SourceFiles
     "VFAPIFilter.cpp"
 )

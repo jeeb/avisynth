@@ -9,6 +9,20 @@
 # "Visual Studio 16 2019" + LLVM 8.0 (clang) optional platform generator Win32 and x64
 CMAKE_MINIMUM_REQUIRED( VERSION 3.8.2 )
 
+# Get PROJECT_VERSION property from 'avs_core/core/version.h.in'
+file(READ "avs_core/core/version.h.in" versioning)
+string(REGEX MATCH "AVS_MAJOR_VER     ([0-9]*)" _ ${versioning})
+set(version_major ${CMAKE_MATCH_1})
+string(REGEX MATCH "AVS_MINOR_VER     ([0-9]*)" _ ${versioning})
+set(version_minor ${CMAKE_MATCH_1})
+string(REGEX MATCH "AVS_BUGFIX_VER    ([0-9]*)" _ ${versioning})
+set(version_bugfix ${CMAKE_MATCH_1})
+
+# Get AVISYNTH_INTERFACE_VERSION from avs_core/include/avisynth.h
+file(READ "avs_core/include/avisynth.h" versioning)
+string(REGEX MATCH "AVISYNTH_INTERFACE_VERSION = ([0-9]*)" _ ${versioning})
+set(AVISYNTH_INTERFACE_VERSION ${CMAKE_MATCH_1})
+
 option(HEADERS_ONLY "Install only the Headers" ${INSTALL_ONLY_HEADER})
 if(${INSTALL_ONLY_HEADER})
   set(INSTALL_ONLY_HEADER OFF)
@@ -18,7 +32,7 @@ include(GNUInstallDirs)
 
 if(NOT HEADERS_ONLY)
 
-  project("AviSynth+")
+  project("AviSynth+" VERSION ${version_major}.${version_minor}.${version_bugfix})
 
   # Avoid uselessly linking to unused libraries
   set(CMAKE_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
@@ -195,7 +209,7 @@ if(NOT HEADERS_ONLY)
 
 else()
 
-  project(AviSynth-Headers NONE)
+  project(AviSynth-Headers VERSION ${version_major}.${version_minor}.${version_bugfix})
   message(STATUS "Install Only Headers: ON")
 
   add_library(${PROJECT_NAME} INTERFACE)

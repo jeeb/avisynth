@@ -18,7 +18,7 @@ set(DSHOWSRC_BASECLASSES_PATH "${DEFAULT_BASECLASSES_PATH}" CACHE STRING   "Fold
 set(DSHOWSRC_BASECLASSES_LIB  "${DEFAULT_BASECLASSES_LIB}"  CACHE FILEPATH "File path to the DirectShow example baseclasses precompiled static library ('strmbase.lib').")
 
 # Create library
-project(${ProjectName})
+project(${ProjectName} VERSION ${PROJECT_VERSION})
 list (APPEND SourceFiles
     "directshow_source.cpp"
     "directshow_source.h"

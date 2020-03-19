@@ -10,7 +10,7 @@ if (NOT WIN32)
 endif()
 
 # Create library
-project(${ProjectName})
+project(${ProjectName} VERSION ${PROJECT_VERSION})
 list (APPEND SourceFiles
     "dbesi0.c"
     "fft.h"

@@ -5,7 +5,7 @@ includedir=${exec_prefix}/@CMAKE_INSTALL_INCLUDEDIR@/avisynth
 
 Name: AviSynth+
 Description: A powerful nonlinear scripting language for video.
-Version: @AVS_VERSION@
+Version: @PROJECT_VERSION@
 
 Libs: -L${libdir} @LIBS@
 Cflags: -I${includedir}
