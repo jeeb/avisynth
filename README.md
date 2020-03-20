@@ -37,9 +37,8 @@ Sphinx package.
 
 Once Sphinx is installed, we can build the documentation.
 
->cd distrib/docs/english
-
->make html
+> cd distrib/docs/english
+> <br>make html
 
 
 Headers for applications which dynamically load AviSynth+:
@@ -62,9 +61,9 @@ using CMake to do a limited install as well.
 
 #### To install:
 
->mkdir avisynth-build && cd avisynth-build
->cmake ../ -DHEADERS_ONLY:bool=on
->make install
+> mkdir avisynth-build && cd avisynth-build
+> <br>cmake ../ -DHEADERS_ONLY:bool=on
+> <br>make install
 
 `-DCMAKE_INSTALL_PREFIX` can be used to override the
 install location if need be.
