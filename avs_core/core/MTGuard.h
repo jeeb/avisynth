@@ -4,13 +4,9 @@
 #include "internal.h"
 #include <vector>
 #include <memory>
+#include <mutex>
 
 class InternalEnvironment;
-
-namespace std
-{
-  class mutex;
-}
 
 class FilterConstructor;
 class MTGuard : public IClip
