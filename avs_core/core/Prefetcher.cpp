@@ -28,7 +28,7 @@ struct PrefetcherPimpl
   // Maximum number of frames to prefetch
   const int nPrefetchFrames;
 
-  ThreadPool thread_pool;
+  ThreadPool* thread_pool;
 
   ObjectPool<PrefetcherJobParams> JobParamsPool;
   std::mutex params_pool_mutex;
@@ -63,7 +63,7 @@ struct PrefetcherPimpl
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
     nPrefetchFrames(_nPrefetchFrames),
-    ThreadPool(NULL),
+    thread_pool(NULL),
     LockedPattern(1),
     PatternHits(0),
     Pattern(1),
@@ -77,11 +77,11 @@ struct PrefetcherPimpl
     //EnvTlsMainThread(env2->GetProperty(AEP_THREAD_ID), static_cast<InternalEnvironment*>(env2)),
     EnvI(static_cast<InternalEnvironment*>(env2))
   {
-    ThreadPool = EnvI->NewThreadPool(nThreads);
+    thread_pool = EnvI->NewThreadPool(nThreads);
   }
 ~PrefetcherPimpl()
   {
-		for (void* data : ThreadPool->Finish()) {
+		for (void* data : thread_pool->Finish()) {
 			PrefetcherJobParams *ptr = (PrefetcherJobParams*)data;
 			VideoCache->rollback(&ptr->cache_handle);
 		}
@@ -178,7 +178,7 @@ int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, In
         p->prefetcher = this;
         p->cache_handle = cache_handle;
         ++_pimpl->running_workers;
-        _pimpl->thread_pool.QueueJob(ThreadWorker, p, env, NULL);
+        _pimpl->thread_pool->QueueJob(ThreadWorker, p, env, NULL);
         break;
       }
     case LRU_LOOKUP_FOUND_AND_READY:      // Fall-through intentional
