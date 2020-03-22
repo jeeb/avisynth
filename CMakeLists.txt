@@ -31,9 +31,6 @@ if(NOT HEADERS_ONLY)
   set(CMAKE_CXX_EXTENSIONS FALSE)
 
   option(ENABLE_PLUGINS "Build set of default external plugins" ON)
-  if (NOT WIN32)
-    set(ENABLE_PLUGINS "OFF")
-  endif()
 
   if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
