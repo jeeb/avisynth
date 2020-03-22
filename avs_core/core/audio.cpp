@@ -322,7 +322,7 @@ AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironme
  *******************************************/
 
 MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env) :
-  GenericVideoFilter(_clip), num_children(_num_children), child_array(_child_array), tempbuffer(NULL)
+  GenericVideoFilter(_clip), tempbuffer(NULL), child_array(_child_array), num_children(_num_children)
 {
   clip_channels = new int[num_children];
   clip_offset = new signed char * [num_children];
@@ -488,7 +488,7 @@ AVSValue __cdecl MergeChannels::Create(AVSValue args, void*, IScriptEnvironment*
 
 
 GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels) :
-  GenericVideoFilter(_clip), channel(_channel), numchannels(_numchannels), tempbuffer(NULL)
+  GenericVideoFilter(_clip), tempbuffer(NULL), channel(_channel), numchannels(_numchannels)
 {
   cbps = vi.BytesPerChannelSample();
   src_bps = vi.BytesPerAudioSample();
@@ -843,9 +843,9 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment*) {
 Normalize::Normalize(PClip _child, float _max_factor, bool _showvalues) :
   GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
   max_factor(_max_factor),
-  showvalues(_showvalues),
+  max_volume(-1.0f),
   frameno(0),
-  max_volume(-1.0f)
+  showvalues(_showvalues)
 {
 }
 
@@ -1066,11 +1066,11 @@ AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment*) {
 
 MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env) :
   GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
+  tempbuffer(NULL),
   track1_factor(int(_track1_factor*131072.0 + 0.5)),
   track2_factor(int(_track2_factor*131072.0 + 0.5)),
   t1factor(float(_track1_factor)),
-  t2factor(float(_track2_factor)),
-  tempbuffer(NULL)
+  t2factor(float(_track2_factor))
 {
   clip = ConvertAudio::Create(_clip, vi.SampleType(), vi.SampleType());  // Clip 2 should now be same type as clip 1.
   const VideoInfo vi2 = clip->GetVideoInfo();

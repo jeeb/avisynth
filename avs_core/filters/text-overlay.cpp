@@ -1064,7 +1064,7 @@ void Antialiaser::GetAlphaRect()
 
 ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
- : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
+ : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), size(_size), x(_x), y(_y),
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   antialiaser(vi.width, vi.height, _fontname, _size,
      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
@@ -1729,15 +1729,18 @@ SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _fi
   int _lastframe, const char _fontname[], int _size, int _textcolor,
   int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
   int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, const bool _bold, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), /*antialiaser(0),*/ text(_text), x(_x), y(_y),
-  firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
+  : GenericVideoFilter(_child), x(_x), y(_y),
+  firstframe(_firstframe), lastframe(_lastframe), size(_size), lsp(_lsp),
+  font_width(_font_width), font_angle(_font_angle), multiline(_multiline),
+  interlaced(_interlaced),
   textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
   halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor), // not supported
+  align(_align), spc(_spc),
   halocolor_orig(_halocolor),
-  align(_align), spc(_spc), multiline(_multiline), lsp(_lsp),
-  font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced),
+  fontname(_fontname), text(_text),
   font_filename(_font_filename), utf8(_utf8),
   bold(_bold)
+  /*antialiaser(0),*/
 {
 
   if (*font_filename) {
@@ -2185,17 +2188,17 @@ AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* en
 
 Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char *fname, bool _show_graph, IScriptEnvironment* env)
   : GenericVideoFilter(_child1),
-    child2(_child2),
-    log(NULL),
-    show_graph(_show_graph),
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     antialiaser(vi.width, vi.height, "Courier New", 16*8,
     (vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00,
     (vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
 #endif
+    child2(_child2),
+    log(NULL),
+    show_graph(_show_graph),
+    framecount(0),
     text_color((vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00),
-    halo_color((vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
-    framecount(0)
+    halo_color((vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0)
 {
   const VideoInfo& vi2 = child2->GetVideoInfo();
   psnrs = 0;

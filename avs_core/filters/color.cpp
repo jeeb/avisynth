@@ -776,8 +776,9 @@ ColorYUV::ColorYUV(PClip child,
   const char* condVarSuffix,
   IScriptEnvironment* env)
  : GenericVideoFilter(child),
-   colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional),
-   colorbar_fullrange(showyuv_fullrange), tweaklike_params(tweaklike_params), condVarSuffix(condVarSuffix)
+   colorbar_bits(showyuv ? bits : 0), colorbar_fullrange(showyuv_fullrange),
+   analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional),
+   tweaklike_params(tweaklike_params), condVarSuffix(condVarSuffix)
 {
     luts[0] = luts[1] = luts[2] = nullptr;
 

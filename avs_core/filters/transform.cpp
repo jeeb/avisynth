@@ -391,7 +391,7 @@ AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env)
  *****************************/
 
 AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, bool _force_color_as_yuv, PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), force_color_as_yuv(_force_color_as_yuv), xsub(0), ysub(0)
+ : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), xsub(0), ysub(0), force_color_as_yuv(_force_color_as_yuv)
 {
   if (vi.IsYUV() || vi.IsYUVA()) {
     if (vi.NumComponents() > 1) {

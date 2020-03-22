@@ -75,8 +75,8 @@ struct ResamplingProgram {
   int source_overread_beyond_targetx;
 
   ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment* env)
-    : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), bits_per_pixel(bits_per_pixel),
-    pixel_offset(0), pixel_coefficient(0), pixel_coefficient_float(0), Env(env)
+    : Env(env), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), filter_size(filter_size),
+    pixel_offset(0), bits_per_pixel(bits_per_pixel), pixel_coefficient(0), pixel_coefficient_float(0)
   {
     overread_possible = false;
     source_overread_offset = -1;

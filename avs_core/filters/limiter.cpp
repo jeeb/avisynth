@@ -47,14 +47,14 @@
 
 Limiter::Limiter(PClip _child, float _min_luma, float _max_luma, float _min_chroma, float _max_chroma, int _show, bool paramscale, IScriptEnvironment* env) :
   GenericVideoFilter(_child),
-  min_luma((int)_min_luma),
   max_luma((int)_max_luma),
-  min_chroma((int)_min_chroma),
+  min_luma((int)_min_luma),
   max_chroma((int)_max_chroma),
-  min_luma_f(_min_luma),
+  min_chroma((int)_min_chroma),
   max_luma_f(_max_luma),
-  min_chroma_f(_min_chroma),
+  min_luma_f(_min_luma),
   max_chroma_f(_max_chroma),
+  min_chroma_f(_min_chroma),
   show(show_e(_show))
 {
   if (!vi.IsYUV() && !vi.IsYUVA())

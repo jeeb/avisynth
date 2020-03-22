@@ -402,7 +402,7 @@ AVSValue __cdecl ShowFiveVersions::Create(AVSValue args, void*, IScriptEnvironme
 
 Animate::Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before,
                   const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env )
-   : first(_first), last(_last), name(_name), num_args(_num_args), range_limit(_range_limit)
+   : first(_first), last(_last), num_args(_num_args), name(_name), range_limit(_range_limit)
 {
   if (first > last)
     env->ThrowError("Animate: final frame number must be greater than initial.");

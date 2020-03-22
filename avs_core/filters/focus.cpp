@@ -534,10 +534,10 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
 TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh,
                                 unsigned chroma_thresh, int _scenechange, IScriptEnvironment* env )
   : GenericVideoFilter  (_child),
-    chroma_threshold    (min(chroma_thresh,255u)),
+    scenechange (_scenechange),
     luma_threshold      (min(luma_thresh,255u)),
-    kernel              (2*min(radius,(unsigned int)MAX_RADIUS)+1),
-    scenechange (_scenechange)
+    chroma_threshold    (min(chroma_thresh,255u)),
+    kernel              (2*min(radius,(unsigned int)MAX_RADIUS)+1)
 {
 
   child->SetCacheHints(CACHE_WINDOW,kernel);
@@ -900,8 +900,9 @@ AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment
 
 SpatialSoften::SpatialSoften( PClip _child, int _radius, unsigned _luma_threshold,
                               unsigned _chroma_threshold, IScriptEnvironment* env )
-  : GenericVideoFilter(_child), diameter(_radius*2+1),
-    luma_threshold(_luma_threshold), chroma_threshold(_chroma_threshold)
+  : GenericVideoFilter(_child),
+    luma_threshold(_luma_threshold), chroma_threshold(_chroma_threshold),
+    diameter(_radius * 2 + 1)
 {
   if (!vi.IsYUY2())
     env->ThrowError("SpatialSoften: requires YUY2 input");

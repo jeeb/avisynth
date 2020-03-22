@@ -68,13 +68,13 @@ struct PrefetcherPimpl
     thread_pool(NULL),
     LockedPattern(1),
     PatternHits(0),
+    PatternMisses(0),
     Pattern(1),
+    IsLocked(false),
     LastRequestedFrame(0),
     VideoCache(NULL),
     running_workers(0),
     worker_exception_present(0),
-    IsLocked(false),
-    PatternMisses(0),
     EnvI(static_cast<InternalEnvironment*>(env2))
   {
 		thread_pool = EnvI->NewThreadPool(nThreads);

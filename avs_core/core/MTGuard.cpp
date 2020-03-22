@@ -50,10 +50,10 @@ struct MTGuardChildFilter {
 };
 
 MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env) :
-  MTMode(mtmode),
+  Env(env),
   nThreads(1),
   FilterCtor(std::move(funcCtor)),
-  Env(env)
+  MTMode(mtmode)
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
 

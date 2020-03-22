@@ -416,7 +416,7 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
     rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA);
 }
 
-VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(NULL), data_size(0), sequence_number(0) {}
+VideoFrameBuffer::VideoFrameBuffer() : data(NULL), data_size(0), sequence_number(0), refcount(1) {}
 
 
 VideoFrameBuffer::VideoFrameBuffer(int size, int margin, Device* device) :
@@ -2098,11 +2098,11 @@ IJobCompletion* ScriptEnvironment::NewCompletion(size_t capacity)
 
 ScriptEnvironment::ScriptEnvironment()
   : threadEnv(),
+  thread_pool(NULL),
   at_exit(),
   plugin_manager(NULL),
-  hrfromcoinit(E_FAIL), coinitThreadId(0),
   PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
-  thread_pool(NULL),
+  hrfromcoinit(E_FAIL), coinitThreadId(0),
   EnvCount(0),
   Devices(),
   FrontCache(NULL),

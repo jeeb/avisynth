@@ -586,7 +586,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
   }
 
   ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, int planeheight, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags),
-    planewidth(planewidth), planeheight(planeheight), singleMode(singleMode), labelCount(0) {}
+    planeheight(planeheight), planewidth(planewidth), singleMode(singleMode), labelCount(0) {}
 
   AVS_FORCEINLINE void doMask(XmmReg &r, Reg &constptr, int _planewidth)
   {

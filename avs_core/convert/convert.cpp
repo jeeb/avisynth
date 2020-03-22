@@ -1664,8 +1664,8 @@ BitDepthConvFuncPtr get_convert_to_16_16_down_dither_function(bool full_scale, i
 
 
 ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange),
-  fulls(_fulls), fulld(_fulld), dither_bitdepth(_dither_bitdepth)
+  GenericVideoFilter(_child), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth),
+  dither_bitdepth(_dither_bitdepth), truerange(_truerange), fulls(_fulls), fulld(_fulld)
 {
 
   pixelsize = vi.ComponentSize();
