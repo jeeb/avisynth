@@ -48,6 +48,7 @@
 
 #include <cassert>
 
+#ifdef AVS_WINDOWS
 static const char * StringSystemError(const unsigned code)
 {
   switch (code) {
@@ -117,7 +118,6 @@ static const char * StringSystemError(const unsigned code)
   assert(0);
 }
 
-#ifdef AVS_WINDOWS
 // Seh is Windows-only, right?
 void SehTranslatorFunction(unsigned int code, struct _EXCEPTION_POINTERS *record)
 {
