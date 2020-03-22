@@ -62,6 +62,8 @@
 #elif defined(AVS_BSD)
     #include <sys/sysctl.h>
 #else
+    #include <filesystem>
+    #include <set>
     #include <sys/sysinfo.h>
 #endif
     #include <avs/posix.h>
@@ -193,6 +195,7 @@ static uint32_t CountSetBits(T bitMask)
 
 static size_t GetNumPhysicalCPUs()
 {
+#if defined(AVS_WINDOWS)
 #ifdef MSVC
   typedef BOOL(WINAPI* LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
   LPFN_GLPI glpi;
@@ -319,7 +322,28 @@ static size_t GetNumPhysicalCPUs()
 
   return processorCoreCount;
 #else
-  return 4; // GCC TODO
+  return 4; // TODO: GCC on Windows?
+#endif
+#elif defined(AVS_LINUX)
+  std::set<int> core_ids;
+  for (auto& p : std::filesystem::directory_iterator("/sys/devices/system/cpu")) {
+    if (!p.path().filename().string().rfind("cpu", 0)) {
+      std::ifstream ifs(p.path() / "topology/core_id");
+      int core_id;
+      if (ifs) {
+        ifs >> core_id;
+        if (ifs)
+          core_ids.insert(core_id);
+      }
+    }
+  }
+  return core_ids.size();
+#elif defined(AVS_MACOS)
+  int cpu_cnt = 0;
+  size_t cpu_cnt_size = sizeof(cpu_cnt);
+  return sysctlbyname("hw.physicalcpu", &cpu_cnt, &cpu_cnt_size, NULL, 0) ? 0 : cpu_cnt;
+#else
+  return 4; // AVS_BSD TODO
 #endif
 }
 
