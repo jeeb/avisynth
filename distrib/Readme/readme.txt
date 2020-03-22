@@ -1,4 +1,4 @@
-Avisynth+ v3.5.? (dev-20200318)
+Avisynth+ v3.5.? (dev-20200322)
 -------------------------
 
 Use the installer or copy files directly
@@ -31,8 +31,35 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200318 3.5.? (dev)
+20200322 3.5.? (dev)
 --------------------
+- Fix: Multithreading enhancements and fixes (Nekopanda, from Neo fork)
+  - Fix old ScriptClip (runtime filters) issue
+    In this example "current_frame" variable was not seen by YDifferenceFromPrevious scripted within SubTitle
+    resulting in "ERROR: Plane Difference: This filter can only be used within run-time filters" message
+    Now this script finally works:
+      SetLogParams("log.txt", LOG_DEBUG)
+      ColorBars(width=640, height=480, pixel_type="yv12")
+      ScriptClip(last, "Subtitle(String(YDifferenceFromPrevious))")
+      Prefetch(4)
+  - Fix deadlock of ScriptClip on MT
+  - MT improvement
+    - Allow multiple Prefetchers
+    - Add argument to Prefetch to change # of prefetch frames without changing # of threads
+
+    Prefetch (clip c, int threads, int "frames")
+
+    In the original Plus, you could use only one Prefetch, but you can use any number of CUDA versions.
+    Also, an argument has been added to specify the number of frames to prefetch.
+    Prefetch (1,4) # Make 1 thread stand and prefetch 4 frames
+    By doing so, flexible parallelization configuration is possible, such as pipeline parallelization.
+
+    threads
+    Number of threads. If it is 0, it passes without doing anything.
+
+    frames
+    Number of frames to prefetch.
+    Again, if it is 0, it passes without doing anything.
 - Fix: BuildPixelType: chroma subsampling of sample clip was ignored.
 - POSIX: better behaviour under non-Windows because of having multiple sized fixed fonts, not only a single size=20 one.
   e.g. MessageClip(), Info(), Version(), ColorYUV "show", internal ApplyMessage
