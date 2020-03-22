@@ -17,11 +17,11 @@ $Id: segmentedsource.htm,v 1.4 2008/09/08 16:43:48 fizick Exp $
       float &quot;fps&quot;, bool "seek", bool &quot;audio&quot;, bool &quot;video&quot;,
 	  bool &quot;convertfps&quot;, bool &quot;seekzero&quot;, int &quot;timeout&quot;,
 	  string &quot;pixel_type&quot;</var>)</p>
-<p><code>SegmentedAVISource</code> фильтр автоматически загружает до 100 avi файлов на аргумент 
-(использу€ <code><a href="avisource.htm">AVISource</a></code>) и склеивает их встык вместе 
-(использу€ <code><a href="splice.htm">UnalignedSplice</a></code>). 
+<p><code>SegmentedAVISource</code> фильтр автоматически загружает до 100 avi файлов на аргумент
+(использу€ <code><a href="avisource.htm">AVISource</a></code>) и склеивает их встык вместе
+(использу€ <code><a href="splice.htm">UnalignedSplice</a></code>).
 ≈сли "d:\filename.ext" подано в качестве аргумента, файлы <var>d:\filename.00.ext</var>,
-<var>d:\filename.01.ext</var> и т.д. до <var>d:\filename.99.ext</var> будут загружены. 
+<var>d:\filename.01.ext</var> и т.д. до <var>d:\filename.99.ext</var> будут загружены.
 Ћюбые файлы в этой последовательности, которые не существуют, будут пропущены.
 </p>
 

@@ -4,8 +4,8 @@
 
 
 
-  
-  
+
+
   <title>Filtre AviSynth MergeARGB / MergeRGB</title>
   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 </head>
@@ -15,7 +15,7 @@
 
 
 <h2>
-<a name="MergeRGB"></a>MergeARGB / MergeRGB 
+<a name="MergeRGB"></a>MergeARGB / MergeRGB
 </h2>
 
 
@@ -71,7 +71,7 @@ pr&eacute;cise le format de sortie.
 <pre># Applique un flou sur le canal vert (G:Green) seulement.<br>mpeg2source("c:\apps\avisynth\main.d2v")<br>ConvertToRGB24()<br>MergeRGB(Last, Blur(0.5), Last)<br><br><br># Intervertit les canaux rouge (R:Red) et bleu (B:Blue) <br># et charge le canal alpha d'une autre source.<br>vid1 = avisource("c:\apps\avisynth\main.avi")<br>vid2 = avisource("c:\apps\avisynth\alpha.avi")<br>MergeARGB(vid2, vid1.ShowBlue("YV12"), vid1, vid1.ShowRed("YV12"))<br>AudioDub(vid1)</pre>
 
 
-      
+
 <p><b>Changements:</b></p>
 
 
@@ -89,12 +89,12 @@ pr&eacute;cise le format de sortie.
   </tr>
 
 
-  
+
   </tbody>
 </table>
 
 
-      
+
 <p><kbd>$English Date: 2005/07/08 22:53:16 $<br>
 
 

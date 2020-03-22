@@ -12,8 +12,8 @@
 </h2>
 <p><code>ConditionalReader </code>(<var>clip, string filename, string
 variablename, bool &quot;show&quot;</var>)
-<p><code>ConditionalReader</code> consente di importare informazioni da un text 
-  file, con valori diversi per ogni frame o per ogni range di frames. 
+<p><code>ConditionalReader</code> consente di importare informazioni da un text
+  file, con valori diversi per ogni frame o per ogni range di frames.
 <h3>Parametri</h3>
 <table border="1" width="61%">
   <tr>
@@ -23,7 +23,7 @@ variablename, bool &quot;show&quot;</var>)
   </tr>
   <tr>
     <td width="9%">clip</td>
-    <td width="76%">E' l'input clip. Non viene toccato a meno che non si specifichi 
+    <td width="76%">E' l'input clip. Non viene toccato a meno che non si specifichi
       show=true.</td>
     <td width="15%">Obbligatorio</td>
   </tr>
@@ -39,45 +39,45 @@ variablename, bool &quot;show&quot;</var>)
   </tr>
   <tr>
     <td width="9%">show</td>
-    <td width="76%">Quando impostato a true, il valore attribuito al frame verr&agrave; 
+    <td width="76%">Quando impostato a true, il valore attribuito al frame verr&agrave;
       sovrapposto all'immagine.</td>
     <td width="15%">false</td>
   </tr>
 </table>
 <h3>File format</h3>
-<p>Il file &egrave; un file di testo. Tutte le separazioni sono costituite da 
+<p>Il file &egrave; un file di testo. Tutte le separazioni sono costituite da
   spazi, e newline indica un nuovo data set. NON &egrave; case sensitive!<br>
 <br>
 <b>TYPE (int|float|bool)</b>
-<p>Si pu&ograve; avere un solo tipo di dati in ogni file. Al momento &egrave; 
-  possibile avere valori <i>float</i>, <i>int</i> o <i>bool</i> . Il tutto viene 
-  specificato tramite la keyword<b> TYPE</b> . In ogni caso si deve iniziare specificando 
-  il tipo di dati, visto che nulla viene salvato fintantoch&egrave; tale variabile 
-  non &egrave; stata trovata . Non &egrave; possibile cambiare il tipo d data 
-  una volta che questo &egrave; stato impostato! 
+<p>Si pu&ograve; avere un solo tipo di dati in ogni file. Al momento &egrave;
+  possibile avere valori <i>float</i>, <i>int</i> o <i>bool</i> . Il tutto viene
+  specificato tramite la keyword<b> TYPE</b> . In ogni caso si deve iniziare specificando
+  il tipo di dati, visto che nulla viene salvato fintantoch&egrave; tale variabile
+  non &egrave; stata trovata . Non &egrave; possibile cambiare il tipo d data
+  una volta che questo &egrave; stato impostato!
 <p><b>DEFAULT &lt;value></b>
-<p>Specifica il valore di default per tutti i frames. Si deve impostare subito 
-  dopo il type visto che sovrascrive tutti i frames definiti. Se si omette, bisogna 
-  essere sicuri di specificare un valore per ogni frame, altrimenti si otterrebero 
+<p>Specifica il valore di default per tutti i frames. Si deve impostare subito
+  dopo il type visto che sovrascrive tutti i frames definiti. Se si omette, bisogna
+  essere sicuri di specificare un valore per ogni frame, altrimenti si otterrebero
   dei risultati non voluti.
 <p><b>&lt;framenumber> &lt;value></b>
-<p>Imposta il valore SOLO per il frame&lt;framenumber>. 
+<p>Imposta il valore SOLO per il frame&lt;framenumber>.
 <p><b>R &lt;startframe> &lt;endframe> &lt;value></b>
-<p>Applica un valore ad un range di frames. Da notare che sono compresi sia il 
-  frame start CHE end-frame. 
+<p>Applica un valore ad un range di frames. Da notare che sono compresi sia il
+  frame start CHE end-frame.
 <p><b>I &lt;startframe> &lt;endframe> &lt;startvalue> &lt;stopvalue></b>
-<p>Interpola tra due valori un range di frames. Funziona solo con valori int e 
-  float. Da notare che sono compresi sia il frame start CHE end-frame. 
+<p>Interpola tra due valori un range di frames. Funziona solo con valori int e
+  float. Da notare che sono compresi sia il frame start CHE end-frame.
 <h3>Types</h3>
 <p>Come detto types pu&ograve; essere <i>float</i>, <i>int</i> o<i>bool</i>.&nbsp;<br>
 <br>
   <i>Int</i> &egrave; un numero opzionalmente preceduto dal segno.<br>
 <br>
-  <i>Float</i> &egrave; un numero decimale contenente un punto decimale opzionalmente 
-  preceduto dal segno ed opzionalmente seguito dal caretter e o E e da un numero 
+  <i>Float</i> &egrave; un numero decimale contenente un punto decimale opzionalmente
+  preceduto dal segno ed opzionalmente seguito dal caretter e o E e da un numero
   decimale. Valori validi sono -732.103 o 7.12e4.<br>
 <br>
-  <i>Bool</i> pu&ograve; essere <i>true</i> o <i>false</i>. 
+  <i>Bool</i> pu&ograve; essere <i>true</i> o <i>false</i>.
 <h3>Esempi</h3>
 <h4>Basic usage</h4>
 <p>File.txt:
@@ -87,23 +87,23 @@ Default 3.45567
 R 45 300 76.5654
 2 -671.454
 72 -671.454</pre>
-<p>Il file precedente restituisce valori float. Di default restituisce 3.45567. 
-  Tuttavia per i frames da 45 a 300 restituisce 76.5654. E per i frames 2 e 72 
+<p>Il file precedente restituisce valori float. Di default restituisce 3.45567.
+  Tuttavia per i frames da 45 a 300 restituisce 76.5654. E per i frames 2 e 72
   -671.454.&nbsp;<br>
-  Come si pu&ograve; notare, le modifiche successive prevalgono sulle impostazioni 
-  date in precedenza. Questo &egrave; evidenziato dal frame '72' - che sebbene 
-  all'interno del range 45-300, restituisce l'ultimo valore. D'altra parte - se 
-  il range fose stato specificato DOPO '72 -671.454' - avrebbe restituito il valore 
+  Come si pu&ograve; notare, le modifiche successive prevalgono sulle impostazioni
+  date in precedenza. Questo &egrave; evidenziato dal frame '72' - che sebbene
+  all'interno del range 45-300, restituisce l'ultimo valore. D'altra parte - se
+  il range fose stato specificato DOPO '72 -671.454' - avrebbe restituito il valore
   76.5654.<br>
 <br>
-  Uno script per richiamare questo file potrebbe essere: 
+  Uno script per richiamare questo file potrebbe essere:
 <pre>colorbars(512,512)
 trim(0,500)
 ScriptClip("subtitle(string(myvar))")
 ConditionalReader("file.txt", "myvar", false)</pre>
-<p>Questo carica i valori nella variabile chiamata"myvar", che &egrave; usata 
-  da <a href="subtitle.htm">Subtitle</a>, attivata da <a href="conditionalfilter.htm#ScriptClip">ScriptClip</a> 
-  per mostrare la &quot;conditional value&quot;. 
+<p>Questo carica i valori nella variabile chiamata"myvar", che &egrave; usata
+  da <a href="subtitle.htm">Subtitle</a>, attivata da <a href="conditionalfilter.htm#ScriptClip">ScriptClip</a>
+  per mostrare la &quot;conditional value&quot;.
 <h4>Adjusting Overlay</h4>
 <p><b>AviSynth script:</b>
 <pre>colorbars(512,256)
@@ -126,9 +126,9 @@ Default 0.0
 I 25 50 0.0 1.0
 R 50 250 1.0
 I 250 275 1.0 0.0</pre>
-<p>Sostanzialmente definisce keyframes per x-offset e per opacity. Per i frames 
-  25->50 opacity &egrave; scalata da 0.0 a 1.0, mentre il testo si sta muovendo 
-  da sinistra a destra. Il testo &egrave; quindi mantenuto stabile dal frame 50 
+<p>Sostanzialmente definisce keyframes per x-offset e per opacity. Per i frames
+  25->50 opacity &egrave; scalata da 0.0 a 1.0, mentre il testo si sta muovendo
+  da sinistra a destra. Il testo &egrave; quindi mantenuto stabile dal frame 50
   al 250, in seguito si muove ulteriormente verso destra con una dissolvenza.<br>
   E' molto pi&ugrave; facile verificare visivamente il clip che descriverlo.
 <p><kbd>$Date: 2004/09/26 19:49:40 $</kbd></p>

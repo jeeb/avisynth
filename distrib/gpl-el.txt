@@ -1,12 +1,12 @@
-Αυτή είναι μια ανεπίσημη μετάφραση της Γενικής Άδειας Δημόσιας Χρήσης 
-GNU (GNU GPL) στα ελληνικά. Δεν εκδόθηκε από το Ίδρυμα Ελεύθερου 
-Λογισμικού (Free Software Foundation) και δεν διατυπώνει νομικά τους όρους 
-διανομής λογισμικού που υπάγεται στη Γενική Άδεια Δημόσιας Χρήσης 
-GNU-αυτό γίνεται μόνο από την επίσημη αγγλική έκδοση της Άδειας (GNU GPL). 
-Ωστόσο, ελπίζουμε ότι η μετάφραση αυτή θα βοηθήσει όσους μιλούν την 
-ελληνική να κατανοήσουν καλύτερα την Άδεια GNU GPL. 
+Αυτή είναι μια ανεπίσημη μετάφραση της Γενικής Άδειας Δημόσιας Χρήσης
+GNU (GNU GPL) στα ελληνικά. Δεν εκδόθηκε από το Ίδρυμα Ελεύθερου
+Λογισμικού (Free Software Foundation) και δεν διατυπώνει νομικά τους όρους
+διανομής λογισμικού που υπάγεται στη Γενική Άδεια Δημόσιας Χρήσης
+GNU-αυτό γίνεται μόνο από την επίσημη αγγλική έκδοση της Άδειας (GNU GPL).
+Ωστόσο, ελπίζουμε ότι η μετάφραση αυτή θα βοηθήσει όσους μιλούν την
+ελληνική να κατανοήσουν καλύτερα την Άδεια GNU GPL.
 
-This is an unofficial translation of the GNU General Public License into greek. It was not published by the Free Software Foundation, and does not legally state the distribution terms for software that uses the GNU GPL-only the original English text of the GNU GPL does that. However, we hope that this translation will help greek speakers understand the GNU GPL better. 
+This is an unofficial translation of the GNU General Public License into greek. It was not published by the Free Software Foundation, and does not legally state the distribution terms for software that uses the GNU GPL-only the original English text of the GNU GPL does that. However, we hope that this translation will help greek speakers understand the GNU GPL better.
 
 
 			ΓΕΝΙΚΗ ΑΔΕΙΑ ΔΗΜΟΣΙΑΣ ΧΡΗΣΗΣ GNU
@@ -150,6 +150,6 @@ This is an unofficial translation of the GNU General Public License into greek. 
   Η <επωνυμία_εταιρίας/σχολής> αποκηρύσσει οποιοδήποτε δικαίωμα πνευματικής ιδιοκτησίας επί του προγράμματος <όνομα_προγράμματος>', το οποίο αποτελεί δημιουργία του <όνομα_δημιουργού>.
 
   <υπογραφή_εκπροσώπου_εταιρίας/σχολής>, <ημερομηνία, έτος>
-  
+
 
 Η παρούσα Γενική Άδεια Δημόσιας Χρήσης δεν επιτρέπει την ενσωμάτωση του προγράμματός σας σε ιδιόκτητα προγράμματα.  Εάν το πρόγραμμά σας αποτελεί βιβλιοθήκη υπορουτίνας, θα είναι ενδεχομένως χρησιμότερο να επιτρέπετε σύνδεση ιδιόκτητων εφαρμογών με τη βιβλιοθήκη. Εάν όντως αυτό επιθυμείτε, χρησιμοποιήστε τη Γενική Άδεια Δημόσιας Χρήσης Βιβλιοθήκης GNU (GNU Library General Public License) αντί της παρούσας Άδειας.

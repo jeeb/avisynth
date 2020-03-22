@@ -1,4 +1,4 @@
-<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd"> 
+<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd">
 <htm xmlns="http://www.w3.org/1999/xhtm" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/htm; charset=iso-8859-1" />
@@ -33,7 +33,7 @@ integrated PostProcessing, Luminance Filtering, etc.<br>
 	<code><br>
 	LoadPlugin("MPEG2Dec3.dll") # because Avisynth 2.5 didn't support Autoloading yet<br>
 	</code><br>
-	
+
 	<h3>Basic MPEG2Dec3 usage :</h3>
 	<ul>
 		To do plain YV12 decoding.<br>
@@ -54,7 +54,7 @@ integrated PostProcessing, Luminance Filtering, etc.<br>
 		</code><br>
 		To use custom post processing setting : only deringing here.<br>
 		<code><br>
-		MPEG2Source("dvd.d2v",cpu2="ooooxx") 
+		MPEG2Source("dvd.d2v",cpu2="ooooxx")
 		</code><br>
 	</ul>
 	<h3>Colorspace convertions :</h3>
@@ -134,9 +134,9 @@ integrated PostProcessing, Luminance Filtering, etc.<br>
 	2 : 32 bit SSEMMX<br>
 	3 : 64 bit FPU<br>
 	4 : 64 bit IEEE-1180 Reference<br>
-	5 : 32 bit SSE2 (for P4)<br>	
-	6 : Skal's SSEMMX iDCT (fastest)<br>	
-	7 : SimpleiDCT (Very accurate iDCT from XviD project)<br>	
+	5 : 32 bit SSE2 (for P4)<br>
+	6 : Skal's SSEMMX iDCT (fastest)<br>
+	7 : SimpleiDCT (Very accurate iDCT from XviD project)<br>
 	default : 0
 	</ul><br>
 	<u>iPP</u> :
@@ -166,7 +166,7 @@ integrated PostProcessing, Luminance Filtering, etc.<br>
 	you need to enter a 6 charachter string. each cross (x)<br>
 	would enable the corresponding Post Processing feature :<br>
 	<code><br>
-	example :<br> 
+	example :<br>
 	"oxoxox"<br>
 	 123456<br>
 	would enable chroma only PP<br>
@@ -179,7 +179,7 @@ integrated PostProcessing, Luminance Filtering, etc.<br>
 	6 : chroma deringing<br>
 	default : " " (disabled)<br>
 	</ul><br>
-	
+
 	</ul><h3>LumaFilter :</h3><br><ul>
 	<code>
 	LumaFilter(clip, integer "lumoff", float "lumgain")<br>

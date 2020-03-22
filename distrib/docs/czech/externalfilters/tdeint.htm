@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tdeint.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tdeint.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,9 +12,9 @@ $Id: tdeint.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b> v1.1<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
-<br><b>kategorie:</b>   Odstraòování prokládání &amp; pulldown 
+<br><b>kategorie:</b>   Odstraòování prokládání &amp; pulldown
 <br><b>požadavky:</b>&nbsp;
 <ul>
   <li>YV12 &amp; YUY2 barevné prostøedí</li>
@@ -27,22 +27,22 @@ $Id: tdeint.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <!-- #EndTemplate -->
 <h2>Popis</h2>
 <p>TDeint je dvousmìrový, pohybovì adaptivní, ostrý odstraòovaè prokládání (deinterlacer). Mùže adaptivnì
-volit mezi použitím pohybové adptivity po-polích a po-pixelelech, a mùže použít kubickou interpolaci, 
-jádrovou (kernel) interpolaci (s pøepínáním èasového smìru), nebo jednu ze dvou forem modifikované ELA 
-interpolace která pomùže snížit "vroubkované" hrany v pohybových oblastech, kde musí být použita interpolace.  
-TDeint také podporuje uživatelské pøepisování pomocí vstupního souboru, a mùže pracovat jako smart bobber nebo  
+volit mezi použitím pohybové adptivity po-polích a po-pixelelech, a mùže použít kubickou interpolaci,
+jádrovou (kernel) interpolaci (s pøepínáním èasového smìru), nebo jednu ze dvou forem modifikované ELA
+interpolace která pomùže snížit "vroubkované" hrany v pohybových oblastech, kde musí být použita interpolace.
+TDeint také podporuje uživatelské pøepisování pomocí vstupního souboru, a mùže pracovat jako smart bobber nebo
 deinterlacer se stejnou frekvencí snímkù, stejnì jako IVTC post-processor.</p>
 <h3>Syntaxe</h3>
-<p><code>TDeint</code> (clip, int <var>&quot;mode&quot;</var>, int <var>&quot;order&quot;</var>, 
-int <var>&quot;field&quot;</var>, int <var>&quot;mthreshL&quot;</var>, int <var>&quot;mthreshC&quot;</var>, 
-int <var>&quot;map&quot;</var>, string <var>&quot;ovr&quot;</var>, int <var>&quot;ovrDefault&quot;</var>, 
-int <var>&quot;type&quot;</var>, bool <var>&quot;debug&quot;</var>, int <var>&quot;mtnmode&quot;</var>, 
-bool <var>&quot;sharp&quot;</var>, bool <var>&quot;hints&quot;</var>, PClip <var>&quot;clip2&quot;</var>, 
-bool <var>&quot;full&quot;</var>, int <var>&quot;cthresh&quot;</var>, bool <var>&quot;chroma&quot;</var>, 
-int <var>&quot;MI&quot;</var>, bool <var>&quot;tryWeave&quot;</var>, int <var>&quot;link&quot;</var>, 
-bool <var>&quot;denoise&quot;</var>, int <var>&quot;AP&quot;</var>, int <var>&quot;blockx&quot;</var>, 
-int <var>&quot;blocky&quot;</var>, int <var>&quot;APType&quot;</var>, PClip <var>"edeint"</var>, 
-PClip <var>"emask"</var>, float <var>"blim"</var>, int <var>"metric"</var>, int <var>"expand"</var>, 
+<p><code>TDeint</code> (clip, int <var>&quot;mode&quot;</var>, int <var>&quot;order&quot;</var>,
+int <var>&quot;field&quot;</var>, int <var>&quot;mthreshL&quot;</var>, int <var>&quot;mthreshC&quot;</var>,
+int <var>&quot;map&quot;</var>, string <var>&quot;ovr&quot;</var>, int <var>&quot;ovrDefault&quot;</var>,
+int <var>&quot;type&quot;</var>, bool <var>&quot;debug&quot;</var>, int <var>&quot;mtnmode&quot;</var>,
+bool <var>&quot;sharp&quot;</var>, bool <var>&quot;hints&quot;</var>, PClip <var>&quot;clip2&quot;</var>,
+bool <var>&quot;full&quot;</var>, int <var>&quot;cthresh&quot;</var>, bool <var>&quot;chroma&quot;</var>,
+int <var>&quot;MI&quot;</var>, bool <var>&quot;tryWeave&quot;</var>, int <var>&quot;link&quot;</var>,
+bool <var>&quot;denoise&quot;</var>, int <var>&quot;AP&quot;</var>, int <var>&quot;blockx&quot;</var>,
+int <var>&quot;blocky&quot;</var>, int <var>&quot;APType&quot;</var>, PClip <var>"edeint"</var>,
+PClip <var>"emask"</var>, float <var>"blim"</var>, int <var>"metric"</var>, int <var>"expand"</var>,
 int <var>"slow"</var>, PClip <var>"emtn"</var>, bool <var>"tshints"</var>, int <var>"opt"</var>)</p>
 
 
@@ -77,7 +77,7 @@ int <var>"slow"</var>, PClip <var>"emtn"</var>, bool <var>"tshints"</var>, int <
 
 <p><var>field</var>:</p>
 <ul>
-<p>Když je nastaven mode 0 a 1, pole budou interpolována.  Když je vybrán mode -1, nedìlá 
+<p>Když je nastaven mode 0 a 1, pole budou interpolována.  Když je vybrán mode -1, nedìlá
 toto nastavení nic.</p>
 <ul>
 <li>-1 - nastaví pole rovno order pokud hints = false nebo na 0 pokud hints = true
@@ -90,12 +90,12 @@ toto nastavení nic.</p>
 
 <p><var>mthreshL</var>/<var>mthreshC</var>:</p>
 <ul>
-<p>Prahové hodnoty pohybu pro jas - luma a barevnost - chroma (mthreshL pro jas, mthreshC pro barevnost). Pokud 
-rozdíl mezi dvìma pixely je menší než tato hodnota jsou deklarovány jako statické. 
-Menší hodnoty sníží zbytkové roztøepení, vetší hodnoty zeslabí blikání a 
-zlepší pøesnost konstrukce polí ve statických oblastech.  Prostorovì (spatially) odpovídající 
-èásti jasových a barevnostních ploch jsou provázané (pokud link != 0), takže mthreshC a mthreshL 
-mohou být ponìkud propojeny.  Nastavení obou hodnot na 0 nebo níže vypne pohybovou 
+<p>Prahové hodnoty pohybu pro jas - luma a barevnost - chroma (mthreshL pro jas, mthreshC pro barevnost). Pokud
+rozdíl mezi dvìma pixely je menší než tato hodnota jsou deklarovány jako statické.
+Menší hodnoty sníží zbytkové roztøepení, vetší hodnoty zeslabí blikání a
+zlepší pøesnost konstrukce polí ve statických oblastech.  Prostorovì (spatially) odpovídající
+èásti jasových a barevnostních ploch jsou provázané (pokud link != 0), takže mthreshC a mthreshL
+mohou být ponìkud propojeny.  Nastavení obou hodnot na 0 nebo níže vypne pohybovou
 adaptaci t.j. každý pixel bude deklarován pohybový) což umožní hloupý bob.</p>
 <p>výchozí -&nbsp;&nbsp;<var>mthreshL</var> - 6  (int)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<var>mthreshC</var> - 6  (int)</p>
@@ -118,8 +118,8 @@ adaptaci t.j. každý pixel bude deklarován pohybový) což umožní hloupý bob.</p>
                  <li>230 (použije [1 2 1] prùmìr z pøedch/akt/násl)
                  <li>255 (interpoluje pixely)
                  </ul>
-<li>2 - Slouèená mapa.  Toto vysílá snímek, ve kterém všechny statické èásti snímku (hodnoty 
-        0, 51, 102, 153, 204, a 230 z map=1) byly konstruovány jako by se objevily v 
+<li>2 - Slouèená mapa.  Toto vysílá snímek, ve kterém všechny statické èásti snímku (hodnoty
+        0, 51, 102, 153, 204, a 230 z map=1) byly konstruovány jako by se objevily v
         deinterlovaném snímku a pixely které mají být interpolovány jsou oznaèeny bíle (255).
 <li>3 - Vysílá snímek s odstranìným prokládáním a hodnotou (binární) mapy naskládanou vertikálnì (mapa je dole).
 <li>4 - Vysílá snímek s odstranìným prokládáním a slouèenou mapou naskládanou vertikálnì (mapa je dole).
@@ -132,9 +132,9 @@ adaptaci t.j. každý pixel bude deklarován pohybový) což umožní hloupý bob.</p>
 
 <p><var>ovr</var>:</p>
 <ul>
-<p>Nastavuje jméno a cestu k nadøazovacímu souboru.  Pøi mode=0, mùže být nadøazovací soubor 
-použit pro ovládání hodnot <var>mthreshL</var>, <var>mthreshC</var>, <var>field</var>, <var>order</var>, a 
-<var>type</var> pro jednotlivé snímky nebo pro rozsahy snímkù, a také øízení, které snímky jsou 
+<p>Nastavuje jméno a cestu k nadøazovacímu souboru.  Pøi mode=0, mùže být nadøazovací soubor
+použit pro ovládání hodnot <var>mthreshL</var>, <var>mthreshC</var>, <var>field</var>, <var>order</var>, a
+<var>type</var> pro jednotlivé snímky nebo pro rozsahy snímkù, a také øízení, které snímky jsou
 deinterlovány. Pøi mode=1, mùže být použit nadøazovací soubor pro ovládání hodnot <var>mthreshL</var>,
 <var>mthreshC</var>, a <var>type</var> pro zadané snímky nebo rozsahy snímkù.</p>
 <p>Specifikátory nadøazovacích souborù:</p>
@@ -146,7 +146,7 @@ deinterlovány. Pøi mode=1, mùže být použit nadøazovací soubor pro ovládání hodno
 <li>l = mthreshL
 <li>c = mthreshC
 <li>t = type
-<p>*specifikátory c, f, o, l, t zadávají také požadovanou zmìnu hodnoty, která má být zadána, když jsou použity 
+<p>*specifikátory c, f, o, l, t zadávají také požadovanou zmìnu hodnoty, která má být zadána, když jsou použity
 (podívejte se na syntaxi nadøazení, aby jste vidìli jak je to provedeno)</p>
 </ul>
 <p>Syntaxe nadøazení:</p>
@@ -184,25 +184,25 @@ deinterlovány. Pøi mode=1, mùže být použit nadøazovací soubor pro ovládání hodno
 <ul>
 <ol>
   <li>Rozsahy se zahrnují
-  <li>Pøi mode = 1 (bobbing) všechna nadøazení , kromì mthreshL/mthreshC, a nadøazení type jsou ignorována. 
-        Také èísla snímkù odpovídají vstupnímu klipu a ne výstupnímu, takže jeden snímek bude dvìma snímky 
+  <li>Pøi mode = 1 (bobbing) všechna nadøazení , kromì mthreshL/mthreshC, a nadøazení type jsou ignorována.
+        Také èísla snímkù odpovídají vstupnímu klipu a ne výstupnímu, takže jeden snímek bude dvìma snímky
         na výstupu.
-  <li>Zmìnìná hodnota je vždy nastavena zpìt na pùvodní nastavení poté, kdy se nadøazená hodnota dostane mimo 
-        zadaný rozsah. (t.j. pokud zadáte nadøazenou mthresh pro snímky 600 až 700, po 
-        snímku 700 je mthresh automaticky nastaven zpìt na svou pùvodní hodnotu, nemusíte ho nastavovat zpátky v 
-        nadøazovacím souboru!  Pùvodní hodnota je ta, která byla nastavena pøi naètení (t.j. buï výchozí 
+  <li>Zmìnìná hodnota je vždy nastavena zpìt na pùvodní nastavení poté, kdy se nadøazená hodnota dostane mimo
+        zadaný rozsah. (t.j. pokud zadáte nadøazenou mthresh pro snímky 600 až 700, po
+        snímku 700 je mthresh automaticky nastaven zpìt na svou pùvodní hodnotu, nemusíte ho nastavovat zpátky v
+        nadøazovacím souboru!  Pùvodní hodnota je ta, která byla nastavena pøi naètení (t.j. buï výchozí
         nebo ta, která byla nastavena ve vašem skriptu).
   <li>Èísla snímkù musí být v rozsahu daného souboru.
-  <li>Èísla snímkù pro zadané specifikátory musí být rostoucí (pokud nejsou, tak prvoøadé budou poslední údaje v 
-        souboru t.j. pokud zadáte 300,400 c 10 a pak 350,450 c 12, snímky 350 až 400 
+  <li>Èísla snímkù pro zadané specifikátory musí být rostoucí (pokud nejsou, tak prvoøadé budou poslední údaje v
+        souboru t.j. pokud zadáte 300,400 c 10 a pak 350,450 c 12, snímky 350 až 400
         použijí 12 a ne 10).
-  <li>Èísla snímkù pro specifikátory (+, -) nelze pøekrývat (napø. nedìlejte 300,400 - a pak pozdìji v 
-        souboru psát 350,500 + nebo se stanou divné vìci.  Další specifikátory nemusí splòovat tento 
+  <li>Èísla snímkù pro specifikátory (+, -) nelze pøekrývat (napø. nedìlejte 300,400 - a pak pozdìji v
+        souboru psát 350,500 + nebo se stanou divné vìci.  Další specifikátory nemusí splòovat tento
         požadavek, protože všechny pùsobí na jiné vìci.
   <li>+, - specifikátory nevyžadují žádné zmìny hodnot.
   <li>Mezery jsou dùležité! Podívejte se na pøíklady.
   <li>Jen specifikátory +, - lze použít v zadávací šablonì.
-  <li>Mùžete zmìnit více specifikátorù na stejném rozsahu snímkù pokud budete dodržovat pravidla uvedená výše 
+  <li>Mùžete zmìnit více specifikátorù na stejném rozsahu snímkù pokud budete dodržovat pravidla uvedená výše
         (+, - napøíklad rostoucí èísla snímkù).
   <li>Mùžete okomentovat øádek (t.j. bude ignorován) pøidáním znaku '#' nebo ';' na zaèátek øádku.
   <li>Zadání 0 jako koncový_snímek v rozsahu snímkù znamená, že se bere poslední snímek videa.
@@ -229,8 +229,8 @@ deinterlovány. Pøi mode=1, mùže být použit nadøazovací soubor pro ovládání hodno
 
 <p><var>ovrDefault</var>:</p>
 <ul>
-<p>Pøi použití nadøazovacího souboru v režimu 0, zadává výchozí akci pro všechny snímky ve videu. 
-Použití ovrDefault=1 usnadòuje odstranit prokládání jen v nìkolika zadaných snímcích ve videu.  Když je mode = 1, 
+<p>Pøi použití nadøazovacího souboru v režimu 0, zadává výchozí akci pro všechny snímky ve videu.
+Použití ovrDefault=1 usnadòuje odstranit prokládání jen v nìkolika zadaných snímcích ve videu.  Když je mode = 1,
 neudìlá toto nastavení nic.</p>
 <ul>
 <li>0 - ve všech snímcích nespecifikovaných v nadøazovacím souboru jako '-', se odstraní prokládání
@@ -242,10 +242,10 @@ neudìlá toto nastavení nic.</p>
 
 <p><var>type</var>:</p>
 <ul>
-<p>Nastavuje typ použité interpolace.  Kubická je nejrychlejší, modifikovaná ELA a ELA2 dají 
-hladší, ménì "vroubkované", hrany a jsou nejpomalejší (ELA2 je rychlejší), a jádrová (kernel) interpolace  
-významnì více sníží blikání než kubická nebo ela, když se interpolace použije v témìø statických 
-oblastech.  Modifikované ELA a ELA2 pracují nejlépe s animovaným materiálem... nejsou tak skvìlé u  
+<p>Nastavuje typ použité interpolace.  Kubická je nejrychlejší, modifikovaná ELA a ELA2 dají
+hladší, ménì "vroubkované", hrany a jsou nejpomalejší (ELA2 je rychlejší), a jádrová (kernel) interpolace
+významnì více sníží blikání než kubická nebo ela, když se interpolace použije v témìø statických
+oblastech.  Modifikované ELA a ELA2 pracují nejlépe s animovaným materiálem... nejsou tak skvìlé u
 živých zdrojù (obèas ale jsou, vyzkoušejte sami).</p>
 <ul>
 <li>0 - kubická interpolace
@@ -262,12 +262,12 @@ oblastech.  Modifikované ELA a ELA2 pracují nejlépe s animovaným materiálem... n
 
 <p><var>debug</var>:</p>
 <ul>
-<p>Zapne ladící výstup, který pro každý snímek zapíše hodnoty <var>order</var>, <var>field</var>, 
-<var>mthreshL</var>, <var>mthreshC</var>, a <var>type</var> , pokud je ve snímku odstraòováno prokládání.  Pokud 
-ve snímku není odstraòováno prokládání (kvùli uživatelskému pøepsání, <var>hints</var>, nebo <var>full</var>=false),  
-prostì øekne, že ve snímku se prokládání neodstraòuje a uvede specifický dùvod. Pokud je výstupní snímek složen (weaved), 
-ladící výstup oznámí, se kterým polem bylo aktuální pole spojeno (weaved) (PREV nebo NEXT).  Ladící 
-informace je výstup využívající OutputDebugString().  Pro zobrazení výstupu mùžete použít 
+<p>Zapne ladící výstup, který pro každý snímek zapíše hodnoty <var>order</var>, <var>field</var>,
+<var>mthreshL</var>, <var>mthreshC</var>, a <var>type</var> , pokud je ve snímku odstraòováno prokládání.  Pokud
+ve snímku není odstraòováno prokládání (kvùli uživatelskému pøepsání, <var>hints</var>, nebo <var>full</var>=false),
+prostì øekne, že ve snímku se prokládání neodstraòuje a uvede specifický dùvod. Pokud je výstupní snímek složen (weaved),
+ladící výstup oznámí, se kterým polem bylo aktuální pole spojeno (weaved) (PREV nebo NEXT).  Ladící
+informace je výstup využívající OutputDebugString().  Pro zobrazení výstupu mùžete použít
 <a href="http://www.sysinternals.com/Utilities/DebugView.html">DebugView</a> ze Sysinternals.</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -275,9 +275,9 @@ informace je výstup využívající OutputDebugString().  Pro zobrazení výstupu mùže
 
 <p><var>mtnmode</var>:</p>
 <ul>
-<p>Ovládá zda je použita kontrola pohybu po 4 polích nebo po 5 polích.  5 polová zabrání více 
-artefaktùm a mùže pracovat s duplikovanými prokládanými snímky; nicménì, je docela pomalejší než 4 polová 
-kontrola pohybu.  Režimy 2 a 3 jsou jako 0 a 1 kromì toho, že v oblastech, kde by byl použit prùmìr pøedchozího a následujícího 
+<p>Ovládá zda je použita kontrola pohybu po 4 polích nebo po 5 polích.  5 polová zabrání více
+artefaktùm a mùže pracovat s duplikovanými prokládanými snímky; nicménì, je docela pomalejší než 4 polová
+kontrola pohybu.  Režimy 2 a 3 jsou jako 0 a 1 kromì toho, že v oblastech, kde by byl použit prùmìr pøedchozího a následujícího
 pole). T.j. není použit žádný prùmìr).</p>
 <ul>
 <li>0 - 4 polová kontrola
@@ -291,7 +291,7 @@ pole). T.j. není použit žádný prùmìr).</p>
 
 <p><var>sharp</var>:</p>
 <ul>
-<p>Ovládá zda je použito ostré nebo normální jádro pøi použití jádrové interpolace (<var>type</var> = 2). 
+<p>Ovládá zda je použito ostré nebo normální jádro pøi použití jádrové interpolace (<var>type</var> = 2).
 Ostré jádro zahrnuje více pixelù a vytváøí ostøejší výsledek, ale je mírnì pomalejší.</p>
 <ul>
 <li>true - použije ostré jádro
@@ -303,13 +303,13 @@ Ostré jádro zahrnuje více pixelù a vytváøí ostøejší výsledek, ale je mírnì pomal
 
 <p><var>hints</var>:</p>
 <ul>
-<p>Ète údaje (hints) z telecide nebo tfm udávající, které snímky jsou prokládané a které nejsou, pokud jsou údaje 
-pøítomny ve video streamu.  Aby to takto pracovalo potøebujete nastavit post=1 v telecide nebo PP=1 v tfm 
-a vložit TDeint hned za nì.  TDeint neovlivní údaje (dokud má vaše video šíøku 
-minimálnì 64 pixelù) v pøípadì jakýchkoli filtrù umístìných dále, které potøebují tyto údaje èíst.  Pokud je hints nastaven na true, 
-ale žádné údaje z telecide nebo tfm nejsou ve video stremu detekovány, pak bude odstraòováno prokládání u všech snímkù 
-(TDeint bude pracovat jako pøi hints=false).  Pokud nezadáte hodnotu pro hints výslovnì, pak 
-TDeint zkontroluje jestli jsou údaje hints ve streamu pøítomny pøi naètení a nastaví hints na true pokud pøítomny jsou 
+<p>Ète údaje (hints) z telecide nebo tfm udávající, které snímky jsou prokládané a které nejsou, pokud jsou údaje
+pøítomny ve video streamu.  Aby to takto pracovalo potøebujete nastavit post=1 v telecide nebo PP=1 v tfm
+a vložit TDeint hned za nì.  TDeint neovlivní údaje (dokud má vaše video šíøku
+minimálnì 64 pixelù) v pøípadì jakýchkoli filtrù umístìných dále, které potøebují tyto údaje èíst.  Pokud je hints nastaven na true,
+ale žádné údaje z telecide nebo tfm nejsou ve video stremu detekovány, pak bude odstraòováno prokládání u všech snímkù
+(TDeint bude pracovat jako pøi hints=false).  Pokud nezadáte hodnotu pro hints výslovnì, pak
+TDeint zkontroluje jestli jsou údaje hints ve streamu pøítomny pøi naètení a nastaví hints na true pokud pøítomny jsou
 nebo false pokud pøítomny nejsou (t.j. je nastaven automaticky).</p>
 <p>**Poznámka:  pro IVTC post-processing se ètením údajù hints se doporuèuje použít TDeint v
 následující podobì s použitím parametru clip2.</p>
@@ -328,10 +328,10 @@ TDeint(clip2 = orig)
 
 <p><var>clip2</var>:</p>
 <ul>
-<p>Pokud používáte tdeint jako postprocessor pro telecide nebo tfm pøes údaje parametru hints (nebo jakéhokoli srovnávaèe polí), 
-mùže nastat nesprávné odstranìní prokládání kvùli skuteènosti, že telecide mìní poøadí polí v pùvodním 
-streamu (je to konec koncù srovnávaè snímkù).  To mùže zpùsobit problémy v nìkterých pøípadech protože TDeint 
-opravdu potøebuje mít pùvodní stream.  Aby jste s tím mohli pracovat, mùžete zadat druhý klip "clip2" 
+<p>Pokud používáte tdeint jako postprocessor pro telecide nebo tfm pøes údaje parametru hints (nebo jakéhokoli srovnávaèe polí),
+mùže nastat nesprávné odstranìní prokládání kvùli skuteènosti, že telecide mìní poøadí polí v pùvodním
+streamu (je to konec koncù srovnávaè snímkù).  To mùže zpùsobit problémy v nìkterých pøípadech protože TDeint
+opravdu potøebuje mít pùvodní stream.  Aby jste s tím mohli pracovat, mùžete zadat druhý klip "clip2"
 pro TDeint aby provedl skuteèné odstranìní prokládání.</p>
 <p>Ve skriptu je jak by to mìlo vypadat:</p>
 <pre>
@@ -341,10 +341,10 @@ telecide(guide=1, order=1, hints=true, post=1)
 tdeint(order=1, clip2=orig)
 </pre>
 <p>Tedy TDeint ète výstupní klip z telecide jako obvykle.  Když hints ukazují na prokládaný
-snímek, provádí odstranìní prokládání ve snímku pomocí klipu clip2.  Tato metoda také zachová hints 
+snímek, provádí odstranìní prokládání ve snímku pomocí klipu clip2.  Tato metoda také zachová hints
 ve výstupním streamu takže jakékoli další filtry, které pozdìji potøebují budou stále pracovat.</p>
-<p>Pøidáním full=false, máme další zpùsob použití TDeint jako post-processoru 
-použije svou vlastní detekci roztøepení snímku jako následující (toto také umožòuje aby to pracovalo 
+<p>Pøidáním full=false, máme další zpùsob použití TDeint jako post-processoru
+použije svou vlastní detekci roztøepení snímku jako následující (toto také umožòuje aby to pracovalo
 s jakýmkoli srovnávaèem snímkù, ne jen telecide nebo tfm):</p>
 <pre>
 mpeg2source(&quot;c:\mysource.d2v&quot;)
@@ -359,9 +359,9 @@ tdeint(order=1, full=false, clip2=orig)
 <p><var>full</var>:</p>
 <ul>
 <p>Když je full nastaveno na true, tak jsou všechny snímky zpracovány jako obvykle.  Když full=false, tak jsou všechny snímky
-nejdøív kontrolovány zda jsou roztøepené.  Pokud snímek není roztøepený, tak je vrácen jaký je. 
-Pokud je snímek roztøepený, tak je zpracován jako obvykle.  Parametry, které ovlivòují detekci roztøepeného snímku 
-jsou <var>cthresh</var>, <var>chroma</var>, <var>blockx</var>, <var>blocky</var>, a 
+nejdøív kontrolovány zda jsou roztøepené.  Pokud snímek není roztøepený, tak je vrácen jaký je.
+Pokud je snímek roztøepený, tak je zpracován jako obvykle.  Parametry, které ovlivòují detekci roztøepeného snímku
+jsou <var>cthresh</var>, <var>chroma</var>, <var>blockx</var>, <var>blocky</var>, a
 <var>MI</var>. full=false umožní TDeint aby byl ivtc post-processorem bez potøeby údajù hints.</p>
 <ul>
 <li>true - normální zpracování
@@ -374,9 +374,9 @@ jsou <var>cthresh</var>, <var>chroma</var>, <var>blockx</var>, <var>blocky</var>
 <p><var>cthresh</var>:</p>
 <ul>
 <p>Prahová hodnota oblasti s roztøepením použitá pro detekci roztøepených snímkù.  Je jako dthresh nebo dthreshold
-v telecide() a fielddeinterlace().  Zásadnì ovlivòuje jak "silné" nebo "viditelné" roztøepení 
+v telecide() a fielddeinterlace().  Zásadnì ovlivòuje jak "silné" nebo "viditelné" roztøepení
 musí být, aby bylo detekováno.  Dobré hodnoty jsou od 6 do 12. Pokud víte, že váš zdroj má hodnì roztøepených
-snímkù, nastavte ho blíže ke spodní hranici (6-7). Pokud víte, že váš zdroj má velmi málo roztøepených snímkù 
+snímkù, nastavte ho blíže ke spodní hranici (6-7). Pokud víte, že váš zdroj má velmi málo roztøepených snímkù
 nastavte ho výše (10-12).  Jít níže než 5 až 6 nebo mnohem výše než 12 se nedoporuèuje.</p>
 <p>výchozí -&nbsp;&nbsp;6  (int)</p>
 </ul>
@@ -384,9 +384,9 @@ nastavte ho výše (10-12).  Jít níže než 5 až 6 nebo mnohem výše než 12 se nedopo
 
 <p><var>blockx</var>:</p>
 <ul>
-<p>Nastavení velikosti bloku v ose x, použitého k detekci roztøepení snímku.  Souvisí to s 
-velikostí oblasti, ve které je vyžadován poèet <var>MI</var> pixelù, aby byl snímek detekován jako  
-roztøepený.  Podívejte se na popis parametru <var>MI</var> pro více informací.  Možné  
+<p>Nastavení velikosti bloku v ose x, použitého k detekci roztøepení snímku.  Souvisí to s
+velikostí oblasti, ve které je vyžadován poèet <var>MI</var> pixelù, aby byl snímek detekován jako
+roztøepený.  Podívejte se na popis parametru <var>MI</var> pro více informací.  Možné
 hodnoty jsou jakékoliv èíslo, které je mocninou 2 poèínaje 4 až do 2048 (napø. 4, 8, 16, 32, ... 2048).</p>
 <p>výchozí -&nbsp;&nbsp;16  (int)</p>
 </ul>
@@ -394,9 +394,9 @@ hodnoty jsou jakékoliv èíslo, které je mocninou 2 poèínaje 4 až do 2048 (napø. 4
 
 <p><var>blocky</var>:</p>
 <ul>
-<p>Nastavení velikosti bloku v ose y, použitého k detekci roztøepení snímku.  Souvisí to s  
-velikostí oblasti, ve které je vyžadován poèet <var>MI</var> pixelù, aby byl snímek detekován jako  
-roztøepený.  Podívejte se na popis parametru <var>MI</var> pro více informací.  Možné  
+<p>Nastavení velikosti bloku v ose y, použitého k detekci roztøepení snímku.  Souvisí to s
+velikostí oblasti, ve které je vyžadován poèet <var>MI</var> pixelù, aby byl snímek detekován jako
+roztøepený.  Podívejte se na popis parametru <var>MI</var> pro více informací.  Možné
 hodnoty jsou jakékoliv èíslo, které je mocninou 2 poèínaje 4 až do 2048 (napø. 4, 8, 16, 32, ... 2048).</p>
 <p>výchozí -&nbsp;&nbsp;16  (int)</p>
 </ul>
@@ -404,9 +404,9 @@ hodnoty jsou jakékoliv èíslo, které je mocninou 2 poèínaje 4 až do 2048 (napø. 4
 
 <p><var>chroma</var>:</p>
 <ul>
-<p>Zahrnuje roztøepení barevnosti (chroma) do rozhodování o tom zda je snímek roztøepený.  Použijte ho jen když 
-máte jeden z takových podivných zdrojù, kde mùže být barevnost doèasnì oddìlená od jasu (luma) 
-(t.j. barevnost se v poli hýbe, ale jas ne).  Jinak to vìtšinou pøi pøijetí øešení nadìlá  
+<p>Zahrnuje roztøepení barevnosti (chroma) do rozhodování o tom zda je snímek roztøepený.  Použijte ho jen když
+máte jeden z takových podivných zdrojù, kde mùže být barevnost doèasnì oddìlená od jasu (luma)
+(t.j. barevnost se v poli hýbe, ale jas ne).  Jinak to vìtšinou pøi pøijetí øešení nadìlá
 spíš škodu.</p>
 <ul>
 <li>true - zahrne roztøepení barevnosti
@@ -418,10 +418,10 @@ spíš škodu.</p>
 
 <p><var>MI</var>:</p>
 <ul>
-<p>Poèet požadovaných roztøepených pixelù uvnitø nìkterých blokù s velikostmi <var>blockx</var> na <var>blocky</var>  
-ve snímku, aby byl snímek považovaný za roztøepený.  Zatímco <var>cthresh</var> ovládá jak "viditelné" 
-nebo "silné" musí roztøepení být, toto nastavení ovládá kolik roztøepení musí být v každé lokalizované oblasti (blok o velokosti 
-<var>blockx</var> na <var>blocky</var> ) snímku.  Minimální nastavení = 0, maximální nastavení = 
+<p>Poèet požadovaných roztøepených pixelù uvnitø nìkterých blokù s velikostmi <var>blockx</var> na <var>blocky</var>
+ve snímku, aby byl snímek považovaný za roztøepený.  Zatímco <var>cthresh</var> ovládá jak "viditelné"
+nebo "silné" musí roztøepení být, toto nastavení ovládá kolik roztøepení musí být v každé lokalizované oblasti (blok o velokosti
+<var>blockx</var> na <var>blocky</var> ) snímku.  Minimální nastavení = 0, maximální nastavení =
 <var>blockx</var> x <var>blocky</var> (bod ve kterém žádné snímky nikdy nebudou detekovány jako roztøepené).</p>
 <p>výchozí -&nbsp;&nbsp;64  (int)</p>
 </ul>
@@ -429,10 +429,10 @@ nebo "silné" musí roztøepení být, toto nastavení ovládá kolik roztøepení musí bý
 
 <p><var>tryWeave</var>:</p>
 <ul>
-<p>Pokud je nastaven na true, když TDeint odstraòuje prokládání ve snímku, vypoèítá nejdøív které pole (pøedchozí nebo následující) 
-je nejpodobnìjší aktuálnímu poli.  To pak pøipojí (weave) pro vytvoøení nového snímku a kontroluje tento 
-nový snímek na roztøepení.  Pokud nový snímek není roztøepený, tak ho vrátí. Pokud je, tak v nìm 
-odstraní prokládání s použitím obvyklé pohybové adaptaci po-pixelech.  V podstatì toto nastavení umožní TDeint 
+<p>Pokud je nastaven na true, když TDeint odstraòuje prokládání ve snímku, vypoèítá nejdøív které pole (pøedchozí nebo následující)
+je nejpodobnìjší aktuálnímu poli.  To pak pøipojí (weave) pro vytvoøení nového snímku a kontroluje tento
+nový snímek na roztøepení.  Pokud nový snímek není roztøepený, tak ho vrátí. Pokud je, tak v nìm
+odstraní prokládání s použitím obvyklé pohybové adaptaci po-pixelech.  V podstatì toto nastavení umožní TDeint
 zkusit použít pohybovou adaptaci po polích místo po-pixelech kde je to možné.</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -460,14 +460,14 @@ zkusit použít pohybovou adaptaci po polích místo po-pixelech kde je to možné.</p
 
 <p><var>AP</var>:</p>
 <ul>
-<p>Prahová hodnota ochrany pøed artefakty.  Pokud je AP nastaveno na hodnotu vìtší nebo rovnu 0, tak pøed 
-pøedáním snímku s odstranìným prokládáním TDeint pøeskenuje všechny pøipojené (weaved) pixely, aby poznal jestli nìjaký vytváøí hodnotu 
-vìtší než AP.  Všechny pixely, které budou takové pak budou interpolovány.  Použijte tuto pomoc pro ochranu pøed velmi zøetelnými 
-artefakty souvisejícími s pohybovou adaptavitou. Doporuèuje se velká hodnota AP (25+, neboli èím vìtší tím více odstraní artefaktù,  
-které lze vidìt pøi plné rychlosti pøehrávání), a menší hodnoty nièí 
-výhody pohybové adaptivity ve statických oblastech bohatých na detaily.  AP metrika je stejná jako u <var>cthresh</var> 
-metriky... takže rozsah je 0-255. Pøi nule bude detekováno vše kromì úplnì rovných oblastí jako 
-roztøepení. Pøi 255 nebude detekováno nic. Použití AP zpomalí zpracování. Natavte AP hodnotu menší 
+<p>Prahová hodnota ochrany pøed artefakty.  Pokud je AP nastaveno na hodnotu vìtší nebo rovnu 0, tak pøed
+pøedáním snímku s odstranìným prokládáním TDeint pøeskenuje všechny pøipojené (weaved) pixely, aby poznal jestli nìjaký vytváøí hodnotu
+vìtší než AP.  Všechny pixely, které budou takové pak budou interpolovány.  Použijte tuto pomoc pro ochranu pøed velmi zøetelnými
+artefakty souvisejícími s pohybovou adaptavitou. Doporuèuje se velká hodnota AP (25+, neboli èím vìtší tím více odstraní artefaktù,
+které lze vidìt pøi plné rychlosti pøehrávání), a menší hodnoty nièí
+výhody pohybové adaptivity ve statických oblastech bohatých na detaily.  AP metrika je stejná jako u <var>cthresh</var>
+metriky... takže rozsah je 0-255. Pøi nule bude detekováno vše kromì úplnì rovných oblastí jako
+roztøepení. Pøi 255 nebude detekováno nic. Použití AP zpomalí zpracování. Natavte AP hodnotu menší
 než 0 vìtší než 254 pro vypnutí.</p>
 <p>výchozí -&nbsp;&nbsp;-1 (vypnuto)  (int)</p>
 </ul>
@@ -475,8 +475,8 @@ než 0 vìtší než 254 pro vypnutí.</p>
 
 <p><var>APType</var>:</p>
 <ul>
-<p>Když se má použít <var>AP</var> post-processing (<var>AP</var> bude nastaveno >= 0 a < 255), APType 
-ovládá zda by mìl být zahrnut pohyb okolních pixelù.  Jsou 3 
+<p>Když se má použít <var>AP</var> post-processing (<var>AP</var> bude nastaveno >= 0 a < 255), APType
+ovládá zda by mìl být zahrnut pohyb okolních pixelù.  Jsou 3
 možná nastavení:</p>
 <ul>
 <li>0 = Nezahrnuje okolní pohyb.  Jestli pøipojený (weaved) pixel vytváøí hodnotu, která
@@ -494,10 +494,10 @@ obìtování statických oblastí.</p>
 
 <p><var>edeint</var>:</p>
 <ul>
-<p>Umožòuje zadat externí klip ze kterého budou brány interpolované pixely místo 
-toho aby TDeint použil své interpolaèní metody.  Pokud je klip zadán, pak 
-TDeint zpracuje všechno jako obvykle kromì toho, že místo svého výpoètu interpolovaných pixelù 
-vezme potøebné pixely z odpovídající prostorových (spatial) pozic ve stejném snímku 
+<p>Umožòuje zadat externí klip ze kterého budou brány interpolované pixely místo
+toho aby TDeint použil své interpolaèní metody.  Pokud je klip zadán, pak
+TDeint zpracuje všechno jako obvykle kromì toho, že místo svého výpoètu interpolovaných pixelù
+vezme potøebné pixely z odpovídající prostorových (spatial) pozic ve stejném snímku
 klipu edeint.  Pro vypnutí použití klipu edeint jednoduše nezadávejte hodnotu pro edeint.</p>
 <p>výchozí -&nbsp;&nbsp;NULL (PClip)</p>
 </ul>
@@ -505,10 +505,10 @@ klipu edeint.  Pro vypnutí použití klipu edeint jednoduše nezadávejte hodnotu pr
 
 <p><var>emask</var>:</p>
 <ul>
-<p>Umožòuje zadat externí klip ze kterého bude brána maska pohybu místo 
-vnitøní masky vestavìné v TDeint.  Použití této možnosti zpùsobí, že následující parametry  
-TDeint nebudou mít žádný vliv:  <var>mthreshL</var>, <var>mthreshC</var>, <var>mtnmode</var>, <var>denoise</var>, 
-<var>link</var>.  Hodnoty, které mohou být pøítomny v masce pohybu snímkù jsou definovány 
+<p>Umožòuje zadat externí klip ze kterého bude brána maska pohybu místo
+vnitøní masky vestavìné v TDeint.  Použití této možnosti zpùsobí, že následující parametry
+TDeint nebudou mít žádný vliv:  <var>mthreshL</var>, <var>mthreshC</var>, <var>mtnmode</var>, <var>denoise</var>,
+<var>link</var>.  Hodnoty, které mohou být pøítomny v masce pohybu snímkù jsou definovány
 následovnì:</p>
 <ul>
 <li>10 - Použít pixel z aktuálního snímku
@@ -519,7 +519,7 @@ následovnì:</p>
 <li>60 - Interpolace
 <li>70 - Použít [1 2 1] smíchání (blend)) pixelù z pøedch/akt/násl
 </ul>
-<p>Pro jiné hodnoty je chování nedefinované, ale mìlo by se s nimi skonèit pracovat pøi vnitøním zporování 
+<p>Pro jiné hodnoty je chování nedefinované, ale mìlo by se s nimi skonèit pracovat pøi vnitøním zporování
 že byly rovny 60.</p>
 <p>výchozí -&nbsp;&nbsp;NULL (PClip)</p>
 </ul>
@@ -527,14 +527,14 @@ následovnì:</p>
 
 <p><var>blim</var>:</p>
 <ul>
-<p>Nastavuje maximální hodnotu rozdílu pro režim 2.  Pokud oba rozdíly (zdroj-pøedchozí a zdroj-následující) jsou 
-nad touto hodnotou tak je zdroj vrácen jaký je.  Jinak je zdroj smíchán (blended) s buï pøedchozím nebo následujícím 
-podle toho, který je podobnìjší zdrojovému.  Tato hodnota je v rozsahu 0.0 až 100.0 , na základì rozdílu jasového kanálu. 
-Použijte debug=true aby jste vidìli generované hodnoty rozdílu a limitní hodnotu.  Ladící (debug) 
+<p>Nastavuje maximální hodnotu rozdílu pro režim 2.  Pokud oba rozdíly (zdroj-pøedchozí a zdroj-následující) jsou
+nad touto hodnotou tak je zdroj vrácen jaký je.  Jinak je zdroj smíchán (blended) s buï pøedchozím nebo následujícím
+podle toho, který je podobnìjší zdrojovému.  Tato hodnota je v rozsahu 0.0 až 100.0 , na základì rozdílu jasového kanálu.
+Použijte debug=true aby jste vidìli generované hodnoty rozdílu a limitní hodnotu.  Ladící (debug)
 výstup bude vypadat následovnì:</p>
 <pre>[5776] TDeint:  frame 0:  d1 = 0  d2 = 0  lim = 1513728</pre>
-<p>d1 je rozdíl zdroj-pøedchozí a d2 je rozdíl zdroj-následující.  lim je maximální hodnota 
-pøevedené z desetinné (float) hodnoty do dlouhého celého èísla bez oznaèení.  Nastavte blim na zápornou hodnotu 
+<p>d1 je rozdíl zdroj-pøedchozí a d2 je rozdíl zdroj-následující.  lim je maximální hodnota
+pøevedené z desetinné (float) hodnoty do dlouhého celého èísla bez oznaèení.  Nastavte blim na zápornou hodnotu
 pro vypnutí kontroly (zdroj bude vždy smíchán (blended) s buï pøedchozím nebo následujícím).</p>
 <p>výchozí -&nbsp;&nbsp;-2.0  (float)</p>
 </ul>
@@ -564,7 +564,7 @@ e<br>
     jestli (val > cthresh*cthresh) je roztøepený;
 </pre>
 </ul>
-<p>Metrika 0 je ta, kterou tdeint vždy používal døíve do v1.0 RC7.  Metrika 1 je metrikou roztøepení 
+<p>Metrika 0 je ta, kterou tdeint vždy používal døíve do v1.0 RC7.  Metrika 1 je metrikou roztøepení
 použitou ve funkcích Donalda Grafta FieldDeinterlace()/IsCombed() v pluginu decomb.dll.</p>
 <p>výchozí -&nbsp;&nbsp;0  (int)</p>
 </ul>
@@ -572,8 +572,8 @@ použitou ve funkcích Donalda Grafta FieldDeinterlace()/IsCombed() v pluginu deco
 
 <p><var>expand</var>:</p>
 <ul>
-<p>Nastavuje poèet pixelù pro expanzi masky roztøepení horizontálnì na každé stranì roztøepených pixelù. 
-V podstatì pokud je expanze vìtší než 0 tak TDeint  považuje všechny pixely uvnitø horizontální vzálenosti 'expand' 
+<p>Nastavuje poèet pixelù pro expanzi masky roztøepení horizontálnì na každé stranì roztøepených pixelù.
+V podstatì pokud je expanze vìtší než 0 tak TDeint  považuje všechny pixely uvnitø horizontální vzálenosti 'expand'
 detekovaného roztøepeného pixelu také za roztøepené.</p>
 <p>výchozí -&nbsp;&nbsp;0  (int)</p>
 </ul>
@@ -581,7 +581,7 @@ detekovaného roztøepeného pixelu také za roztøepené.</p>
 
 <p><var>slow</var>:</p>
 <ul>
-<p>Nastavuje, která funkce srovnávání polí bude použita.  Tyto funkce srovnávají odpovídající funkce 
+<p>Nastavuje, která funkce srovnávání polí bude použita.  Tyto funkce srovnávají odpovídající funkce
 v tfm.  Možné hodnoty:</p>
 <ul>
 <li>0 - normální  (mìla by být ménì pøesná)
@@ -594,8 +594,8 @@ v tfm.  Možné hodnoty:</p>
 
 <p><var>emtn</var>:</p>
 <ul>
-<p>Zadává externí klip, který TDeint použije pro detekci pohybu místo té, která bìží na 
-vstupním klipu. Vstupní klip je stále používán pro odstranìní prokládání.  Klip <var>emtn</var> je jednoduše použit pro 
+<p>Zadává externí klip, který TDeint použije pro detekci pohybu místo té, která bìží na
+vstupním klipu. Vstupní klip je stále používán pro odstranìní prokládání.  Klip <var>emtn</var> je jednoduše použit pro
 poèítané zmìny pixelù mezi snímky.</p>
 <p>výchozí -  NULL&nbsp;&nbsp;(PClip)</p>
 </ul>
@@ -603,7 +603,7 @@ poèítané zmìny pixelù mezi snímky.</p>
 
 <p><var>tshints</var>:</p>
 <ul>
-<p>Zapíná vysílání údajù (hints) pro použití v TSwitch().  Pokud je  TSwitch používáno po TDeint tak nastavte toto na 
+<p>Zapíná vysílání údajù (hints) pro použití v TSwitch().  Pokud je  TSwitch používáno po TDeint tak nastavte toto na
 true.  Jinak nastavte false.</p>
 <p>výchozí -  false&nbsp;&nbsp;(bool)</p>
 </ul>
@@ -629,17 +629,17 @@ true.  Jinak nastavte false.</p>
 
 <h2>TSwitch</h2>
 
-<p>TSwitch je schopen èíst údaje (hints) z TDeint které ukazují, ve kterých snímcích bylo odstranìno prokládání nebo ne.  Na základì 
-tìchto hints pak TSwitch doruèí snímky z jednoho ze dvou klipù (<var>c1</var> nebo <var>c2</var>).  Pokud ve vstupním snímku nebylo odstranìno 
-prokládání, tak je vrácen odpovídající snímek z klipu <var>c1</var> .  Pokud ve vstupním snímku bylo odstranìno 
+<p>TSwitch je schopen èíst údaje (hints) z TDeint které ukazují, ve kterých snímcích bylo odstranìno prokládání nebo ne.  Na základì
+tìchto hints pak TSwitch doruèí snímky z jednoho ze dvou klipù (<var>c1</var> nebo <var>c2</var>).  Pokud ve vstupním snímku nebylo odstranìno
+prokládání, tak je vrácen odpovídající snímek z klipu <var>c1</var> .  Pokud ve vstupním snímku bylo odstranìno
 prokládání, tak je vrácen odpovídající snímek z klipu <var>c2</var> .</p>
-<p>Pro použití TSwitch, musíte nastavit <var>tshints</var>=true v TDeint a umístit TSwitch hned za TDeint ve 
+<p>Pro použití TSwitch, musíte nastavit <var>tshints</var>=true v TDeint a umístit TSwitch hned za TDeint ve
 vašem Avisynth skriptu.</p>
-<p>Dùvody proè ve snímcích nemuselo být odstranìno prokládání pomocí TDeint jsou pøepsání (nadøazení), hints, full=false, nebo 
+<p>Dùvody proè ve snímcích nemuselo být odstranìno prokládání pomocí TDeint jsou pøepsání (nadøazení), hints, full=false, nebo
 tryweave=true.</p>
 
 <h3>Syntaxe</h3>
-<p><code>TSwitch</code> (clip, clip <var>&quot;c1&quot;</var>, clip <var>&quot;c2&quot;</var>, 
+<p><code>TSwitch</code> (clip, clip <var>&quot;c1&quot;</var>, clip <var>&quot;c2&quot;</var>,
 bool <var>&quot;debug&quot;</var>)</p>
 
 <h3>PARAMETRY</h3>
@@ -658,9 +658,9 @@ bool <var>&quot;debug&quot;</var>)</p>
 
 <p><var>debug</var>:</p>
 <ul>
-<p>Zapíná ladící výstup, který u každého snímku øekne jestli bylo ve vstupním snímku odstraòováno prokládání nebo ne, a 
-z kterého z klipù (<var>c1</var> nebo <var>c2</var>) je brán výstupní snímek.  Ladící informace 
-je vysílána pomocí OutputDebugString().  Pro zobrazení výstupu mùžete použít 
+<p>Zapíná ladící výstup, který u každého snímku øekne jestli bylo ve vstupním snímku odstraòováno prokládání nebo ne, a
+z kterého z klipù (<var>c1</var> nebo <var>c2</var>) je brán výstupní snímek.  Ladící informace
+je vysílána pomocí OutputDebugString().  Pro zobrazení výstupu mùžete použít
 <a href="http://www.sysinternals.com/Utilities/DebugView.html">DebugView</a> ze Sysinternals.</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -723,7 +723,7 @@ tswitch(c1=last,c2=last.sharpen())</pre></ul>
 <p>   10/16/2006  v1.0 Final<br>
       + added blend deinterlacing option (type = 4)<br>
       - changed denoise default to false<br>
-      - pixels detected as moving, but with absolute difference < 4 to both vertical neighbors are 
+      - pixels detected as moving, but with absolute difference < 4 to both vertical neighbors are
           no longer automatically weaved (should fix problems with slow fades)</p>
 
 <p>   10/04/2006  v1.0 RC8<br>
@@ -736,7 +736,7 @@ tswitch(c1=last,c2=last.sharpen())</pre></ul>
       + added second spatial combing metric and "metric" parameter (same as tfm and is/showcombeditvtc)<br>
       + optimized denoise routines<br>
       + improved the field comparison routine (now equal to slow=0 in tfm)<br>
-      + mode 2 uses the field comparison routine instead of full frame subtract for determining the best 
+      + mode 2 uses the field comparison routine instead of full frame subtract for determining the best
            matching frame (more accurate)<br>
       - directly assign frames from emask clip (no need to copy)<br>
       - changed blim default to -2.0 (disabled)<br>
@@ -754,7 +754,7 @@ tswitch(c1=last,c2=last.sharpen())</pre></ul>
        + output MIC values in debug info when tryweave=true or full=false<br>
        + added value 70 to emask input<br>
        + added mmx versions of isse/sse2 compare/blend routines for mode=2<br>
-       - refactored/rewrote a lot of the code to clean up and simply things, no changes that effect output... 
+       - refactored/rewrote a lot of the code to clean up and simply things, no changes that effect output...
             should give a slight speed up</p>
 
 <p>   03/18/2006  v1.0 RC3<br>
@@ -789,13 +789,13 @@ tswitch(c1=last,c2=last.sharpen())</pre></ul>
        - Small change to denoising routine</p>
 
 <p>   04/20/2005  v0.9.7.2<br>
-       - Fixed not correctly using the field information from tfm's hints when acting as a post-processor for it. 
-            Also fixed not correctly altering the match info of tfm's hints when acting as a post-processor for it 
+       - Fixed not correctly using the field information from tfm's hints when acting as a post-processor for it.
+            Also fixed not correctly altering the match info of tfm's hints when acting as a post-processor for it
             (PP=1 in tfm).<br>
        + Improvements to type 3 interpolation, renamed to modified ELA-2</p>
 
 <p>   03/10/2005  v0.9.7.1<br>
-       + Fixed not correctly reading hints from newer versions of tivtc and if colorimetry hints 
+       + Fixed not correctly reading hints from newer versions of tivtc and if colorimetry hints
             were present from dgdecode.</p>
 
 <p>   01/20/2005  v0.9.7<br>
@@ -809,7 +809,7 @@ tswitch(c1=last,c2=last.sharpen())</pre></ul>
 <p>   10/03/2004  v0.9.6<br>
        + Added full parameter, allows for ivtc post-processing.  full defaults to true.<br>
        + Added cthresh, chroma, and MI parameters... these are used when full=false<br>
-       + Added tryWeave option, allows TDeint to adaptively switch between per-field 
+       + Added tryWeave option, allows TDeint to adaptively switch between per-field
             and per-pixel motion adaptation.  tryWeave defaults to true.<br>
        + Improved field differencing<br>
        + changed mtnmode default to 1</p>
@@ -835,7 +835,7 @@ tswitch(c1=last,c2=last.sharpen())</pre></ul>
        + Changed default motion thresholds to 6</p>
 
 <p>   09/12/2004  v0.9.1<br>
-       - Fixed some really stupid bugs, one motion check was incorrect for the first and last 
+       - Fixed some really stupid bugs, one motion check was incorrect for the first and last
             frame of a clip, and mode = 1 would only work for the first half of the video</p>
 
 <p>   09/12/2004  v0.9<br>

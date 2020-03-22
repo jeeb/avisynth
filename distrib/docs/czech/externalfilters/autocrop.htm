@@ -4,7 +4,7 @@
    <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: autocrop.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: autocrop.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,22 +12,22 @@ $Id: autocrop.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b> Glenn Bussell
 <br><b>verze:</b>  1.2<br>
-<b>stáhnout:</b>   <a href="http://flashvideo.damnfinecoffee.eu/tools/">http://flashvideo.damnfinecoffee.eu/tools/</a>, 
+<b>stáhnout:</b>   <a href="http://flashvideo.damnfinecoffee.eu/tools/">http://flashvideo.damnfinecoffee.eu/tools/</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a><br>
 <b>kategorie:</b> Pluginy pro vysílané video<br>
 <b>požadavky:</b> YV12 &amp; YUY2 Barevné prostøedí<br>
 <b>license:</b> GPL
 <hr>
 <h3>Popis</h3>
-<p>AutoCrop je AviSynth filer, který automaticky oøezává èerné okraje 
-  klipu. Pracuje buï v režimu náhledu, kde pokládá doporuèovanou informaci 
-  na existující klip, nebo v režimu oøezání, kde skuteènì oøezává klip. Mùže také zajistit, 
-  aby šíøka a výška byly násobky zadaného èísla, takže oøezaný klip mùže být  bez problémù poslán 
+<p>AutoCrop je AviSynth filer, který automaticky oøezává èerné okraje
+  klipu. Pracuje buï v režimu náhledu, kde pokládá doporuèovanou informaci
+  na existující klip, nebo v režimu oøezání, kde skuteènì oøezává klip. Mùže také zajistit,
+  aby šíøka a výška byly násobky zadaného èísla, takže oøezaný klip mùže být  bez problémù poslán
   do video kompresoru podle vaší volby.</p>
 <h3>
   Použití</h3>
-<p>AutoCrop bere 12 parametrù, ale ty jsou všechny volitelné, takže mùžete použít prostì AutoCrop() 
-  aby jste vidìli jak filtr pracuje. Parametry mohou být zadány buï v poøadí nebo podle jména. 
+<p>AutoCrop bere 12 parametrù, ale ty jsou všechny volitelné, takže mùžete použít prostì AutoCrop()
+  aby jste vidìli jak filtr pracuje. Parametry mohou být zadány buï v poøadí nebo podle jména.
   Navrhuji zadávat podle jména, protože je zde hodnì parametrù!</p>
 <p>Poøadí parametrù je následující.</p>
 <p><code>AutoCrop</code> (<var>clip, &quot;mode&quot;, &quot;wMultOf&quot;,
@@ -37,9 +37,9 @@ $Id: autocrop.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h3>Syntaxe</h3>
 <p><var>mode</var> - celoèíslený - výchozí 1</p>
 <p>0 - Oøíznutí - Oøízne obraz.<br>
-  1 - Náhled - Navržená oøezávací informace je položena na existující klip, 
+  1 - Náhled - Navržená oøezávací informace je položena na existující klip,
   vèetnì pøíkazu Crop, který mùžete použít jako náhradu za AutoCrop.<br>
-  2 - Log - Loguje (zaznamenává) oøezávací parametry do souboru &quot;AutoCrop.log&quot; 
+  2 - Log - Loguje (zaznamenává) oøezávací parametry do souboru &quot;AutoCrop.log&quot;
   v aktuální složce.<br>
 3 - Oøíznutí &amp; Log - kombinace režimù 0 a 2.</p>
 <p><var>wMultOf</var> - celoèíselný - výchozí 4</p>
@@ -60,7 +60,7 @@ Mùžete tuto možnost použít ve spojení s hMultOf. Užiteèné pro odøíznutí nekvalit
 <p><var>bottomAdd</var> - celoèíselný - výchozí 0</p>
 <p>Viz výše, ale pro spodek.</p>
 <p><var>threshold</var> - celožíselný (0-255) - výchozí 30</p>
-<p>Prahová hodnota je prùmìrný jas, který musí øádek mít pøed tím než je považován jako neprázdný (non blank). 
+<p>Prahová hodnota je prùmìrný jas, který musí øádek mít pøed tím než je považován jako neprázdný (non blank).
 Hodnoty DVD zdrojù i tak nízko jako 20, by mìli pracovat spolehlivì. Pro VHS zdroje bude možná nutné
 zvýšit hodnotu.</p>
 <p><var>samples</var> - celoèíselný - výchozí 5</p>
@@ -76,12 +76,12 @@ vzít oøezávací informace z jednoho snímku, nastavte samplestartframe a sampleend
 <p><var>aspect</var> - desetinný - výchozí 0 - Pomìr stran je ignorován</p>
 <p>-1 - Zachová pomìr stran zdrojového klipu<br>
   0 - Pomìr stran je ignorován<br>
-  &gt;0 - Pomìr stran bude nastaven na stávající. Napøíklad pro pomìr stran 4:3  
+  &gt;0 - Pomìr stran bude nastaven na stávající. Napøíklad pro pomìr stran 4:3
   by jste poslali<br>
-  4.0/3.0 nebo 1.33333333333. Všimnìte si, že 4/3 nefunguje, AviSynthu je potøeba øíci desetinnou 
+  4.0/3.0 nebo 1.33333333333. Všimnìte si, že 4/3 nefunguje, AviSynthu je potøeba øíci desetinnou
   teèku a èíslo za ní .0 , protože se jedná o desetinný parametr.</p>
 <h3>Doporuèené použití</h3>
-<p>Dùraznì doporuèuji použití náhledového režimu, aby jste se vyhnuli provádìní 
+<p>Dùraznì doporuèuji použití náhledového režimu, aby jste se vyhnuli provádìní
   zvláštních  oøíznutí. Je také potøeba poznamenat, že zkopírování navrženého nastavení do standardního
   AviSynth pøíkazu Crop je rychlejší než zpracování pomocí AutoCrop v režimu <var> mode</var> = 0.</p>
 <h3>Zmìny</h3>
@@ -106,7 +106,7 @@ vzít oøezávací informace z jednoho snímku, nastavte samplestartframe a sampleend
     or better performance for DVD sources much quicker.</li>
   <li>Minor documentation updates.</li>
 </ul>
-<p>Tato verze AutoCrop je kompilována pro AviSynth 2.5. Nebude pracovat s žádnou verzí vydání 
+<p>Tato verze AutoCrop je kompilována pro AviSynth 2.5. Nebude pracovat s žádnou verzí vydání
 2.0 . Pokud potøebujete použít AviSynth 2.0, stáhnìte si prosím verzi 0.3 tohoto filtru
 z <a href="http://avisynth.org/warpenterprises/attic.html">http://avisynth.org/warpenterprises/attic.html</a>.</p>
 

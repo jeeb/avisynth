@@ -9,8 +9,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Fix: BuildPixelType: chroma subsampling of sample clip was ignored.
 - POSIX: better behaviour under non-Windows because of having multiple sized fixed fonts, not only a single size=20 one.
   e.g. MessageClip(), Info(), Version(), ColorYUV "show", internal ApplyMessage
-- Text filter: 
-  - font types with 
+- Text filter:
+  - font types with
     - "Terminus" fixed fonts added (12-14-16-18-20-22-24-28-32, regular + bold)
     - "Info_h" good old 10x20 fixed font kept under this name
   - much more international unicode characters (1354), use utf8=true under Windows
@@ -21,16 +21,16 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Info() filter: when parameter "size" < 0, font is automatically enlarged over 640x480
   (POSIX limit: minimum size is 12, maximum size is 32 - limited by available fixed fonts)")
 - SIL OPEN FONT LICENSE added because of usage of Terminus fonts)
-- able to build w/o GDI and font rendering engine under Windows, so that text-overlay filters 
+- able to build w/o GDI and font rendering engine under Windows, so that text-overlay filters
   work like in POSIX version of AviSynth+ (mainly for my development test)
   Use with NO_WIN_GDI define.
 - Fix: ReplaceStr when the pattern string to be replaced is empty
-- New: 
+- New:
   Exist() to have bool utf8 parameter
   This is another function to have utf8 option:
   Usage: b = Exist("Здравствуй.mkv",utf8=true). Avs file is saved as utf8 w/o BOM
 - Fix: ColorYUV: really disable variable search when parameter "conditional" is false
-- Development: 
+- Development:
   ScriptEnvironment::VSprintf: parameter (void *) is changed back to va_list.
   May affect C interface (avs_vsprintf) and CPP interface (ScriptEnvironment::VSprintf)
 - Enhanced: Planar RGB to YUV 444 10-14 bits: more precision (32 bit float internally)
@@ -47,21 +47,21 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Fix: "scalef" and "scaleb" for 32 bit input, when scale_inputs="floatf" produced wrong result
 - Fix: missing rounder in V channel calculation of PlanarRGB->YUV 8-14bits SSE2 code
 - Overlay: show error when Overlay is fed with clips with different bit depths
-- New function: 
-  bool IsVersionOrGreater(int majorVersion, int minorVersion [,int bugfixVersion]) function 
-  Returns true if the current version is equal or greater than the required one in the parameters. 
+- New function:
+  bool IsVersionOrGreater(int majorVersion, int minorVersion [,int bugfixVersion]) function
+  Returns true if the current version is equal or greater than the required one in the parameters.
   The function is checking the current version against the given parameters (similar to a Windows API function)
   e.g. IsVersionOrGreater(3, 4) or IsVersionOrGreater(3, 5, 8)
 - New: "Expr" helpers:
   - Constants "yrange_min", "yrange_half", "yrange_max"
     Unlike the luma/chroma plane adaptive "range_min", "range_half", "range_max" these constants always report the luma (Y) values
-  - new parameter: bool clamp_float_UV (default false) 
+  - new parameter: bool clamp_float_UV (default false)
     this parameter affects clamping of chroma planes: chroma is clamped between 0..1.0 instead of -0.5..0.5s
   - "clamp_float" is not ignored (and set to true) when parameter "scale_inputs" auto-scales 32 bit float type pixels
   - New "yscalef" and "yscaleb" keywords similar to "scalef" and "scaleb" but scaling is forced to use rules for Y (non-UV) planes
   - new allowed value "floatUV" for scale_inputs.
     In short: chroma pre-shift by 0.5 for 32 bit float pixels
-    Affects the chroma plane expressions of 32 bit float formats. 
+    Affects the chroma plane expressions of 32 bit float formats.
     Shifts the input up by 0.5 before processing it in the expression, thus values from -0.5..0.5 (zero centered) range are converted to the 0..1 (0.5 centered) one.
     Since the expression result internally has 0..1.0 range, this then is shifted back to the original -0.5..0.5 range. (since 2.2.20)
     Note: predefined constants such as cmin, cmax, range_min, range_max and range_half will be shifted as well, e.g. the expression will see range_half = 0.5
@@ -70,8 +70,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Fix: Shibatch.DLL Access Violation crash when exit when target rate is the same as vi.audio_samples_per_second or audio_samples_per_second is 0
 - Build system: Cmake: use platform toolset "ClangCL" for using built-in Clang support of Visual Studio.
   Since VS2019 v16.4 there is LLVM 9.0 support.
-  Use: Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes 
-       [X] C++ Clang compiler for Windows 
+  Use: Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes
+       [X] C++ Clang compiler for Windows
        [X] C++ Clang-cl for v142 build tools (x64/x86)
   (for LLVM Clang installed separately, please use llvm or LLVM - no change in its usage)
 - New: AddBorders, LetterBox: new color_yuv parameter like in BlankClip
@@ -128,8 +128,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
     Colorbars(512,256).ConvertToYV12.Trim(0,299)
     ConditionalReader("coloryuvoffset2.txt", "coloryuv_gamma_y", false, condvarsuffix="_a")
-    b=ColorYUV(cont_y=10, conditional=true, condvarsuffix="_a") # will read coloryuv_gain_y_a, coloryuv_gamma_y_a, etc. 
-    
+    b=ColorYUV(cont_y=10, conditional=true, condvarsuffix="_a") # will read coloryuv_gain_y_a, coloryuv_gamma_y_a, etc.
+
     Stackvertical(a,b)
 
 - Fix: ColorBars: pixel_type planar RGB will set alpha to 0 instead of 255, consistent with RGB32 Alpha channel
@@ -140,7 +140,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Fix: planar RGBA Alpha on VfW was uninitialized because it wasn't filled.
 - Layer: big update
   Previously Layer was working only for RGB32 and YUY2. Overlay was used primarily for YUV. Now Layer accepts practically all formats (no RGB24).
-  Note that some modes can be similar to Overlay, but the two filters are still different. 
+  Note that some modes can be similar to Overlay, but the two filters are still different.
   Overlay accepts mask clip, Layer would use existing A plane.
   Overlay "blend" is Layer "add", Overlay "add" is different.
   Lighten and darken is a bit different in Overlay.
@@ -149,7 +149,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   - Support for all 8-32 bit Y and planar YUV/YUVA and planar RGB/RGBA formats
     When overlay clip is YUVA and RGBA, then alpha channels of overlay clip are used (similarly to RGB32 and RGB64 formats)
     Non-alpha plane YUV/planar RGB color spaces act as having a fully transparent alpha channel (like the former YUY2 only working mode)
-  
+
     Note: now if destination is YUVA/RGBA, the overlay clip also has to be Alpha-aware type.
     Now A channel is not updated for YUVA targets, but RGBA targets do get the Alpha updated (like the old RGB32 mode did)
     Todo: allow non-Alpha destination and Alpha-Overlay
@@ -173,16 +173,16 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     Add: "Where overlay is darker by threshold" => e.g. Where overlay is darker by 10 => Where overlay < src - 10
     Calculation: alpha_mask = ovr < (src - thresh) ? level : 0;
     The only correct case of the above was "lighten" for RGB32, even in Classic Avisynth. Note: Threshold=0 was O.K.
-  - (Just an info: existing lighten/darken code for YUY2 is still not correct, messing up chroma a bit, 
+  - (Just an info: existing lighten/darken code for YUY2 is still not correct, messing up chroma a bit,
      since it uses weights from even luma positions (0,2,4,...) for U, and odd luma positions (1,3,5,...) for V)
-- Avisynth C interface header (avisynth_c.h): 
+- Avisynth C interface header (avisynth_c.h):
   - cosmetics: functions regrouped to mix less AVSC_API and AVSC_INLINE, put together Avisynth+ specific stuff
   - cosmetics: remove unused form of avs_get_rowsize and avs_get_height (kept earlier for reference)
   - use #ifndef AVSC_NO_DECLSPEC for AVSC_INLINE functions which are calling API functions
   - define alias AVS_FRAME_ALIGN as FRAME_ALIGN (keep the AVS_xxxx naming convention)
-  - dynamic loader (avs_load_library) uses fallback mechanism for non-existant Avisynth+ specific functions, 
+  - dynamic loader (avs_load_library) uses fallback mechanism for non-existant Avisynth+ specific functions,
     in order to have Avisynth+ specific API functions safely callable even when connected to classic Avisynth DLL
-    The smart fallback mechanism for Avisynth+ specific functions ensures that if the functions are not loadable, 
+    The smart fallback mechanism for Avisynth+ specific functions ensures that if the functions are not loadable,
     they will work in a classic Avisynth compatible mode:
     Example#1: e.g. avs_is_444 will call the existing avs_is_yv24 instead
     Example#2: avs_bits_per_component will return 8 for all colorspaces (Classic Avisynth supports only 8 bits/pixel)
@@ -199,7 +199,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       avs_bits_per_component: returns 8 (8 bits)
 - filter "Version": update year, removed avs-plus.net link
 - Updated: TimeStretch plugin with SoundTouch 2.1.3 (as of 07.Jan 2019)
-- Source/Build system 
+- Source/Build system
   - rst documentation update (qyot27) in distrib\docs\english\source\avisynthdoc\contributing\compiling_avsplus.rst
   - GCC-MinGW build (huge thanks to qyot27)
     - various source fixes for MinGW builds,
@@ -210,12 +210,12 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       of the PluginDir+GCC registry entry to find plugins, and ignore
       PluginDir and PluginDir+.  Vice-versa for MSVC builds.
       C plugins are an exception to this, since those can be loaded with
-      either MSVC- or GCC-built AviSynth+. 
+      either MSVC- or GCC-built AviSynth+.
     - GCC 8.3 support
       (see in distrib\docs\english\source\avisynthdoc\contributing\compiling_avsplus.rst)
-      - Howto: MSYS2/GCC: for windows based build environment see step-by-step instructions: 
+      - Howto: MSYS2/GCC: for windows based build environment see step-by-step instructions:
         https://github.com/orlp/dev-on-windows/wiki/Installing-GCC--&-MSYS2
-      - CMake: choose generator "MinGW Makefiles" from CMakeGUI or 
+      - CMake: choose generator "MinGW Makefiles" from CMakeGUI or
           del CMakeCache.txt
           "c:\Program Files\CMake\bin\cmake.exe" -G "MinGW Makefiles" .
         then build with
@@ -232,7 +232,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       - https://marketplace.visualstudio.com/items?itemName=caphyon.ClangPowerTools
       - https://marketplace.visualstudio.com/items?itemName=LLVMExtensions.llvm-toolchain
     - (When using CMakeGUI) After Configure/Specify generator for this project, type LLVM for "Optional Toolset to use (-T option)"
-    - Known issues: 
+    - Known issues:
       - compiling Avisynth only .lib is generated (used for C api), .exp is missing
       - When generating assembler output linking or other errors can happen
       - LLVM 8.0 has sub-optimal avg_epu8 intrinsic "optimization", which is fixed in LLVM 9.0 (e.g. in snapshot build 21 June 2019)
@@ -246,7 +246,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 --------------
 - New: Expr: allow input clips to have more planes than an implicitely specified output format
   Expr(aYV12Clip, "x 255.0 /", format="Y32") # target is Y only which needs only Y plane from YV12 -> no error
-- New: Expr: Y-plane-only clip(s) can be used as source planes when a non-subsampled (rgb or 444) output format implicitely specified 
+- New: Expr: Y-plane-only clip(s) can be used as source planes when a non-subsampled (rgb or 444) output format implicitely specified
   Expr(Y, "x", "x 2.0 /", "x 3.0 /", format="RGBPS") # r, g and b expression uses Y plane
   Expr(Grey_r, Grey_g, Grey_b, "x", "y 2.0 /", "z 3.0 /", format="RGBPS") # r, g and b expression uses Y plane
 - Fix: ConvertToYUY2() error message for non-8 bit sources.
@@ -265,13 +265,13 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   For 8-16 bit clips the matrix is converted to integer before use.
 - GeneralConvolution: Allow chroma subsampled formats to have their luma _or_ chroma processed. E.g. set chroma=false for a YV12 input.
 - GeneralConvolution: new parameters: boolean luma (true), boolean chroma(true), boolean alpha(true)
-    Default: process all planes. For RGB: luma and chroma parameters are ignored. 
+    Default: process all planes. For RGB: luma and chroma parameters are ignored.
     Unprocessed planes are copied. Using alpha=false makes RGB32 processing faster, usually A channel is not needed.
 - GeneralConvolution: MT friendly parameter parsing
 - New: UTF8 filename support in AviSource, AVIFileSource, WAVSource, OpenDMLSource and SegmentedAVISource
-  All functions above have a new bool utf8 parameter. Default value is false. 
+  All functions above have a new bool utf8 parameter. Default value is false.
 - Experimental: new syntax element (by addewyd): assignment operator ":=" which returns the assigned value itself.
-  (Assignment within an expression) 
+  (Assignment within an expression)
   Examples:
     w := h := 256
 
@@ -289,7 +289,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
         }
     }
 
-    cx = c00.trim(0, 9) + c01.trim(0, 9) + c10.trim(0, 9) + c11.trim(0, 9) 
+    cx = c00.trim(0, 9) + c01.trim(0, 9) + c10.trim(0, 9) + c11.trim(0, 9)
 
     b := overlay(cx, x = 0, y = w * 2)
 
@@ -330,7 +330,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - New: Expr: parameter "scale_inputs" (default "none")
 
     Autoscale any input bit depths to 8-16 bit for internal expression use, the conversion method is either full range or limited YUV range.
-    
+
     Feature is similar to the one in masktools2 v2.2.15
 
     The primary reason of this feature is the "easy" usage of formerly written expressions optimized for 8 bits.
@@ -351,10 +351,10 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     When using autoscale mode, scaleb and scalef keywords are meaningless, because there is nothing to scale.
 
     How it works:
-    - This option scales all 8-32 bit inputs to a common bit depth value, which bit depth is 8 by default and can be 
+    - This option scales all 8-32 bit inputs to a common bit depth value, which bit depth is 8 by default and can be
       set to 10, 12, 14 and 16 bits by the 'i10'..'i16' keywords
-      For example: scale_inputs="all" converts any inputs to 8 bit range. No truncation occurs however (no precision loss), 
-      because even a 16 bit data is converted to 8 bit in floating point precision, using division by 256.0 (2^16/2^8). 
+      For example: scale_inputs="all" converts any inputs to 8 bit range. No truncation occurs however (no precision loss),
+      because even a 16 bit data is converted to 8 bit in floating point precision, using division by 256.0 (2^16/2^8).
       So the conversion is _not_ a simple shift-right-8 in the integer domain, which would lose precision.
     - Calculates expression (lut, lut_xy, lut_xyz, lut_xyza)
     - Scales the result back to the original video bit depth.
@@ -362,7 +362,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
     The predefined constants such as 'range_max', etc. will behave according to the internal working bit depth
 
-    Warning#1 
+    Warning#1
     This feature was created for easy porting earlier 8-bit-video-only lut expressions.
     You have to understand how it works internally.
 
@@ -372,7 +372,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
     Full range 16->8 bits conversion has a factor of 255.0/65535
 
-    Using bit shifts (really it's division and multiplication by 2^8=256.0): 
+    Using bit shifts (really it's division and multiplication by 2^8=256.0):
       result = calculate_lut_value(input / 256.0) * 256.0
     Full scale 16-8-16 bit mode ('intf', 'allf')
       result = calculate_lut_value(input / 65535.0 * 255.0 ) / 255.0 * 65535.0
@@ -399,7 +399,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   Returns true if variable exists even if it holds 'Undefined', false otherwise
 - Fix: RGBAdjust memory leak when used in ScriptClip
 - Enhanced: RGBAdjust new parameter: conditional (like in ColorYUV)
-  The global variables "rgbadjust_xxx" with xxx = r, g, b, a, rb, gb, bb, ab, rg, gg, bg, ag are read each frame, and applied. 
+  The global variables "rgbadjust_xxx" with xxx = r, g, b, a, rb, gb, bb, ab, rg, gg, bg, ag are read each frame, and applied.
   It is possible to modify these variables using FrameEvaluate or ConditionalReader.
 - Enhanced: RGBAdjust: support 32 bit float ('analyze' not supported, 'dither' silently ignored)
 - Enhanced: AviSource to support more formats with 10+ bit depth.
@@ -412,16 +412,16 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
   The 'FourCCs for ICDecompressQuery' column means that when a codec supports the format, it will serve the frame in that one, Avisource then will convert it to the proper colorspace.
 
-  Full support list (* = already supported): 
+  Full support list (* = already supported):
   'pixel_type' Avs+ Format   FourCC(s) for ICDecompressQuery
   YV24         YV24          *YV24
-  YV16         YV16          *YV16 
+  YV16         YV16          *YV16
   YV12         YV12          *YV12
   YV411        YV411         *Y41B
   YUY2         YUY2          *YUY2
   RGBP10       RGBP10        G3[0][10]  r210  R10k
   r210         RGBP10        r210
-  R10k         RGBP10        R10k             
+  R10k         RGBP10        R10k
   RGBP         RGBP10        G3[0][10]  r210  R10k
                RGBP12        G3[0][12]
                RGBP14        G3[0][14]
@@ -432,7 +432,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
                RGBAP16       G4[0][16]
   RGB32        RGB32         *BI_RGB internal constant (0) with bitcount=32
   RGB24        RGB24         *BI_RGB internal constant (0) with bitcount=24
-  RGB48        RGB48         BGR[48]    b48r 
+  RGB48        RGB48         BGR[48]    b48r
   RGB64        RGB64         *BRA[64]   b64a
   Y8           Y8            Y800       Y8[32][32]   GREY
   Y            Y8            Y800       Y8[32][32]   GREY
@@ -451,7 +451,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   P016         YUV422P16     P016
   YUV444P10    YUV444P10     v410
   v410         YUV444P10     v410
-- Changed (finally): 32bit float YUV colorspaces: zero centered chroma channels. 
+- Changed (finally): 32bit float YUV colorspaces: zero centered chroma channels.
   U and V channels are now -0.5..+0.5 (if converted to full scale before) instead of 0..1
   Note: filters that relied on having the U and V channel center as 0.5 will fail.
   Why: the old UV 0..1 range was a very-very early decision in the high-bitdepth transition project. Also it is now
@@ -465,10 +465,10 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - Fix: Rare crash in FrameRegistry
 - Enhanced: Allow ConvertToRGB24-32-48-64 functions for any source bit depths
 - Enhanced: ConvertBits: allow fulls-fulld combinations when either clip is 32bits
-  E.g. after a 8->32 bit fulls=false fulld=true: 
-  Y: 16..235 -> 0..1 
+  E.g. after a 8->32 bit fulls=false fulld=true:
+  Y: 16..235 -> 0..1
   U/V: 16..240 -> -0.5..+0.5
-  Note: now ConvertBits does not assume full range for YUV 32 bit float. 
+  Note: now ConvertBits does not assume full range for YUV 32 bit float.
   Default values of fulls and fulld are now true only for RGB colorspaces.
 - Fix: couldn't see variables in avsi before plugin autoloads (colors_rgb.avsi issue)
 - Fix: LoadVirtualdubPlugin: Fix crash on exit when more than one instances of a filter was used in a script
@@ -498,11 +498,11 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     How it works: the hint will _not_ change the internal VirtualDub colorspace
     constant (e.g. kPixFormat_YUV420_Planar -> kPixFormat_YUV420_Planar_709 will not happen).
     Instead the base color space is kept and colorSpaceMode and colorRangeMode will set in PixmapLayout.formatEx.
-    Filter can either use this information or not, depending on supported API version and its implementation. 
+    Filter can either use this information or not, depending on supported API version and its implementation.
     E.g. Crossfade(20,30) -> Crossfade(20,30,"rec601") though this specific filter won't use it.
 - New function: BuildPixelType
 
-  Creates a video format (pixel_type) string by giving a colorspace family, bit depth, optional chroma subsampling and/or a 
+  Creates a video format (pixel_type) string by giving a colorspace family, bit depth, optional chroma subsampling and/or a
   template clip, from which the undefined format elements are inherited.
   "[family]s[bits]i[chroma]i[compat]b[oldnames]b[sample_clip]c"
 
@@ -514,7 +514,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   clip sample_clip: when supported, its format is overridden by specified parameters (e.g. only change bits=10)
 
   Example#1: define YUV 444 P 10
-   
+
     family = "YUV"
     bits = 10
     chroma = 444
@@ -524,7 +524,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     BlankClip(width=320,height=200,length=len,pixel_type=s,color=$008080).Info()
 
   Example#2: Change only the bit depth of the format to 16
-   
+
     newbits = 16
     c = last
     s = BuildPixelType(bits=newbits, sample_clip=c)
@@ -555,13 +555,13 @@ Not included, preliminary for the near future:
     'Expr' changes are affecting built-in constants/operators when used in chroma plane of a 32bit clip.
     - 'cmin', 'cmax' return the zero-based shifted versions of the 16 and 240 (8 bit) values
     - For U and V planes, constant 'range_half' results in 0.0 instead of the old 0.5
-    - 'scaleb' will also give zero-based result when found in an expression for chroma plane 
+    - 'scaleb' will also give zero-based result when found in an expression for chroma plane
       (e.g. for a 32 bit float clip the '128 scaleb' will result in 0.0 instead of 128/255 for U and V planes)
       But 'scalef' when the target or source of the constant conversion is 32bits, remains independent from the plane type.
     - 'range_max' is 0.5 for 32 bit float chroma
     - new constant 'range_min', which is -0.5 for 32 bit float chroma, (0 otherwise)
-    
-    Additional warning: when you move 32bit float U or V plane to Y using CombinePlane, you have to be sure 
+
+    Additional warning: when you move 32bit float U or V plane to Y using CombinePlane, you have to be sure
     that your filters do not rely on this new Y plane being in 0..1 range. Or else convert it by using Expr("x 0.5 +") to the 0..1 range
     Similarly: ExtractU and ExtractV will simply return the unaltered chroma planes, which are now zero-centered
 
@@ -610,7 +610,7 @@ Not included, preliminary for the near future:
   - New in ColorYUV:
     New parameter: bool f2c="false".
     When f2c=true, the function accepts the Tweak-like parameters for gain, gamma and contrast
-    E.g. use 0/0.5/1.0/1.5/2.0/3.0 instead of -256/-128/0/128/256/512 
+    E.g. use 0/0.5/1.0/1.5/2.0/3.0 instead of -256/-128/0/128/256/512
   - New/Fixed in ColorYUV:
     Parameter "levels" accepts "TV". (can be "TV->PC", "PC->TV", "PC->TV.Y")
     Now gamma calculation is TV-range aware when either
@@ -618,18 +618,18 @@ Not included, preliminary for the near future:
     - coring = true or
     - levels is "TV" (new - no level conversion but gamma will know proper handling)
     Previously gamma was properly calculated only for PC range.
-  - New in ColorYUV: 
-    32 bit float support. 
+  - New in ColorYUV:
+    32 bit float support.
     - 32 bit float uses the Expr filter (8-16 bits is LUT-based). The expression is dynamically assembled for each plane, internal precision is float.
     - One can specify bits=32 when showyuv=true -> test clip in YUV420PS format
-    For 32 bit clips "loose min" and "loose_max" (omitting the extreme 1/256 population from dark and bright pixels) statistics are computed 
+    For 32 bit clips "loose min" and "loose_max" (omitting the extreme 1/256 population from dark and bright pixels) statistics are computed
     by splitting the 0..1 into 65536 uniform ranges.
  - Modded: remove "scale" parameter from ConvertBits.
    It was introduced at the very beginning of the 10+bit development, for 32bit float conversion - never used
  - Enhanced: VfW: exporting Y416 (YUV444P16) to SSE2.
  - 8-16 bit YUV chroma to 32 bit float: keep middle chroma level (e.g. 128 in 8 bits) at 0.5.
    Calculate chroma as (x-128)/255.0 + 0.5 and not x/255.0 (Note: 32 bit float chroma center will be 0.0 in the future)
- - New: Histogram parameter "keepsource"=true (raffriff42) 
+ - New: Histogram parameter "keepsource"=true (raffriff42)
    keepsource = false returns only the Histogram w/o the original picture.
    Affects "classic", "levels" and "color", "color2", ignored (n/a) for the other modes
  - New: Histogram type "color" to accept 8-32bit input and "bits"=8,9,..12 display range
@@ -642,7 +642,7 @@ Not included, preliminary for the near future:
 20171226 r2580
 ----------------
   - Fix (workaround): Merge: Visual Studio 2017 15.5.1/2 generated invalid AVX2 code
-    The x86 path of Merge Average was crashing due to bad code generation in the 8 bit version. Seems that thought 
+    The x86 path of Merge Average was crashing due to bad code generation in the 8 bit version. Seems that thought
     Visual Studio Team was proudly announcing optimizations in their compiler (15.5.x line), it had victims.
   - Fix: Temporalsoften 10-14 bits: an SSE 4.1 instruction was used for SSE2-only CPU-s (Illegal Instruction on Athlon XP)
 
@@ -652,7 +652,7 @@ Not included, preliminary for the near future:
   - Build: changed avisynth.h, strict C++ conformity with Visual Studio 2017 /permissive- flag
   - Installer (finally)
   - Expr:
-    - new: Indexable source clip pixels by relative x,y positions like x[-1,1] 
+    - new: Indexable source clip pixels by relative x,y positions like x[-1,1]
     - new functions: sin cos tan asin acos atan
     - new operator: % (modulo)
     - new: Variables: uppercase letters A..Z for storing and reuse temporary results, frequently used computations.
@@ -665,10 +665,10 @@ Not included, preliminary for the near future:
 
 20171114 r2542
   - New filter: Expr
-    Ported from Vapoursynth, with a lot of additional tweaks 
-    e.g. AVX2, recognize constant fill, spatial absolute and relative coordinates as input, recognize plane copy, 
-         no GetFrame for unused clips, converts ^2, ^3, ^4 into faster multiplication, 
-         converts x^0.5 into sqrt(x), borrow specific syntax elements from masktools2 (scaling, operators - but not all of them) to have partial 
+    Ported from Vapoursynth, with a lot of additional tweaks
+    e.g. AVX2, recognize constant fill, spatial absolute and relative coordinates as input, recognize plane copy,
+         no GetFrame for unused clips, converts ^2, ^3, ^4 into faster multiplication,
+         converts x^0.5 into sqrt(x), borrow specific syntax elements from masktools2 (scaling, operators - but not all of them) to have partial
          compatibility in widely used existing expression strings (see readme.txt)
 
     clip Expr(clip c[,clip c2, ...], string expr [, string expr2[, string expr3[, string expr4]]] [, string format]
@@ -680,10 +680,10 @@ Not included, preliminary for the near future:
   - Fix: RGB ConvertToY when rec601, rec709 (limited range) matrix. Regression since r2266
   - Optimized: Faster RGB (full scale) 10-16 bits to 8 bits conversion when dithering
   - Other: Default frame alignment is 64 bytes (was: 32 bytes). (independently of AVX512 support)
-  - Build: 
+  - Build:
     Built with Visual Studio 2017, v141_xp toolset
     Note that DLL will work When you have VS2015 Update 3 redistributable.
-  
+
     Download Visual Studio 2017 Redistributable from here (replaces and compatible with VS2015 redist)
 
     X64:
@@ -693,7 +693,7 @@ Not included, preliminary for the near future:
     https://go.microsoft.com/fwlink/?LinkId=746571
 
   - Experimental x64 builds for test (internal offsets from int to size_t)
-  - Source: avisynth_c.h (C interface header file) changed: 
+  - Source: avisynth_c.h (C interface header file) changed:
     Optional define SIZETMOD. Experimental. Offsets are size_t instead of int (x64 is different!)
     Fix: avs_get_row_size calls into avs_get_row_size_p, instead of direct field access
     Fix: avs_get_height calls into avs_get_row_size_p, instead of direct field access.
@@ -712,7 +712,7 @@ Not included, preliminary for the near future:
     Such filters sometimes were called in a reentrant way (like being MT_NICE_FILTER), which
     possibly resulted in using their internal buffers parallel.
   - Fix: ImageWriter crash when no '.' in provided filename
-  - Fix: Overlay: correct masked blend: keep exact clip1 or clip2 pixel values for mask extremes 255 or 0. 
+  - Fix: Overlay: correct masked blend: keep exact clip1 or clip2 pixel values for mask extremes 255 or 0.
     Previously 0 became 1 for zero mask, similarly 255 changed into 254 for full transparency (255) mask
   - New: script functions: StrToUtf8, StrFromUtf8: Converting a 8 bit (Ansi) string to UTF8 and back.
   - New: PluginManager always throws error on finding wrong bitness DLL in the autoload directories
@@ -748,13 +748,13 @@ Not included, preliminary for the near future:
   - SubTitle: new parameter bool "utf8" for drawing strings encoded in UTF8.
       Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
       SubTitle(Title,utf8=true)
-  - New script functions: ScriptNameUtf8(), ScriptFileUtf8(), ScriptDirUtf8(), 
+  - New script functions: ScriptNameUtf8(), ScriptFileUtf8(), ScriptDirUtf8(),
     they return variables $ScriptNameUtf8$, $ScriptFileUtf8$ and $ScriptDirUtf8$ respectively
 
-  Knows issues: 
+  Knows issues:
   - Filters with MT_SERIALIZED sometimes can get called in a reentrant way
   - Runtime Script functions under MT
-  
+
 
 20170316 r2455
   - Fix: IsY() script function returned IsY8() (VideoInfo::IsY was not affected)
@@ -786,7 +786,7 @@ Not included, preliminary for the near future:
   - CombinePlanes: silently autoconvert packed RGB/YUY2 inputs to planar
   - ConvertBits: show error message on YV411 conversion attempt: 8 bit only
   - ConvertBits: Don't give error message if dither=-1 (no dithering) is given for currently non-ditherable target formats
-  - Script function: IsVideoFloat. returns True if clip format is 32 bit float. For convenience, same as BitsPerComponent()==32 
+  - Script function: IsVideoFloat. returns True if clip format is 32 bit float. For convenience, same as BitsPerComponent()==32
   - ConvertToDoubleWidth and ConvertFromDoubleWidth: RGB24<->RGB48, RGB32<->RGB64
   - New MT mode: MT_SPECIAL_MT. Specify it for MP_Pipeline like filters, even if no Prefetch is used (MP_Pipeline issue, 2 fps instead of 20)
 
@@ -806,13 +806,13 @@ Not included, preliminary for the near future:
   - fix: SubframePlanarA (available in IScriptEnvironment2)
   - faster: Difference-type conditional functions: Simd for 10-16 bits
   - Fix: MinMax-type conditional functions (min, max, median): return float value for float clips
-  - ConvertToPlanarRGB(A): 
+  - ConvertToPlanarRGB(A):
     PlanarRGB <-> PlanarRGBA is now allowed
   - ConvertToPlanarRGB(A):
     YUY2 source is now allowed (through automatic ConvertToRGB proxy)
   - faster: RemoveAlphaPlane (subframe instead of BitBlt copy)
   - Overlay: "Blend" native greyscale mode: process y plane only w/o conversion
-  - Overlay: automatic use444=false for "blend"/"luma"/"chroma" 
+  - Overlay: automatic use444=false for "blend"/"luma"/"chroma"
     for inputs: 420/422/444 and any RGB, lossless Planar RGB intermediate for PackedRGB
     Overlay/mask auto-follows input clip format.
     For compatibility: when greymask=true (default) and mask is RGB then mask source is the B channel
@@ -838,12 +838,12 @@ Not included, preliminary for the near future:
     Note 1: conversion from and to float is always full-scale
     Note 2: alpha plane is always treated as full scale
     Note 3: At the moment you cannot specify fulld to be different from fulls.
-   
+
 
 20170119 r2397
   - TemporalSoften: Planar RGB support
-  - TemporalSoften: much faster average mode (thres=255) 
-    radius=1 +70%, radius=2 +45%, 
+  - TemporalSoften: much faster average mode (thres=255)
+    radius=1 +70%, radius=2 +45%,
     16bit: generally 7-8x speed (SSE2/4 instead of C)
   - SeparateColumns: 10-16bit,float,RGB48/64
   - WeaveColumns: 10-16bit,float,RGB48/64,PlanarRGB(A)
@@ -856,7 +856,7 @@ Not included, preliminary for the near future:
   - Weave (fields,frames): YUVA,PlanarRGB(A)
   - Crop: Fast crop possible for frames with alpha plane (subframe)
   - AddBorders missing l/r/top/bottom vs. subsampling check for YUVA
-  - Fix: YUVA->PlanarRGBA and YUVA42x->444 missing alpha plane copy 
+  - Fix: YUVA->PlanarRGBA and YUVA42x->444 missing alpha plane copy
   - YUV444->RGB48/64: fast intermediate PlanarRGB(A) then RGB48/64 (not C path)
   - RGB48/64->YUV4xx target: Planar RGB intermediate (instead of C, 10x faster)
 
@@ -865,7 +865,7 @@ Not included, preliminary for the near future:
              Modes Blend,Luma and Chroma now support all bit depths and 444 conversionless (use444=false) mode
   - Overlay: fix SSE2 Blend for mask+opacity for 10-16 bits
   - VfW: (vdubmod14 VfW test)
-    Fix: YUV444P16 or YUVA444P16 to fourcc Y416 
+    Fix: YUV444P16 or YUVA444P16 to fourcc Y416
          if alpha channel is present, it will we copied, else filled with FFFF
     Fix: VDubPlanarHack is checked only for 8 bit YUV planar sources
 20170110 r2372  (vdubmod14 VfW test)
@@ -873,25 +873,25 @@ Not included, preliminary for the near future:
     (needed for automatic planar RGB -> packed RGB VfW conversions)
   - VfW:
     Fixed: Y3[10][10],Y3[10][16] fourcc's byte order
-    New: Planar RGB(A) (MagicYUV) 
+    New: Planar RGB(A) (MagicYUV)
          10,12,14,16 bits: G3[0][10], G4[0][10], G3[0][12], G4[0][12], G3[0][14], G4[0][14], G3[0][16], G4[0][16]
     New: YUV444P16 to fourcc Y416
     New: Automatic conversion of 12, 14 and float YUV formats to 16 bit for 4:2:0 and 4:2:2
          Note: OPT_Enable_Y3_10_16 is still valid as if format was originally 16 bits
     New: Automatic conversion of 10, 12, 14 and float YUV formats to 16 bit for 4:4:4
     New: Conversion of 10, 12, 14 and float planar RGB formats to RGB64
-         when global Avisynth variable Enable_PlanarToPackedRGB is true 
+         when global Avisynth variable Enable_PlanarToPackedRGB is true
     New: Conversion of 8 bit planar RGB formats to RGB24
-         when global Avisynth variable Enable_PlanarToPackedRGB is true 
+         when global Avisynth variable Enable_PlanarToPackedRGB is true
     New: Conversion of 8 bit planar RGBA formats to RGB32
-         when global Avisynth variable Enable_PlanarToPackedRGB is true 
+         when global Avisynth variable Enable_PlanarToPackedRGB is true
 
     Note: use OPT_VDubPlanarHack=true for YV16 and YV24 for old VirtualDub
-    
+
     Supported formats:
     BRA[64],b64a,BGR[48],P010,P016,P210,P216,Y3[10][10],Y3[10][16],v210,Y416
     G3[0][10], G4[0][10], G3[0][12], G4[0][12], G3[0][14], G4[0][14], G3[0][16], G4[0][16]
-    
+
     Default format FourCCs:
     RGB64: BRA[64]
     RGB48: BGR[48]
@@ -911,7 +911,7 @@ Not included, preliminary for the near future:
     Enable_PlanarToPackedRGB = true --> RGBP8->RGB24, RGBAP8->RGB32, all other bit depths to RGB64
 
 20170109 r2367dev
-  - VfW: BRA[64],b64a,BGR[48],P010,P016,P210,P216,Y3[10][10],Y3[10][16],v210 
+  - VfW: BRA[64],b64a,BGR[48],P010,P016,P210,P216,Y3[10][10],Y3[10][16],v210
     experimental!
     Default format FourCCs:
     RGB64: BRA[64]
@@ -936,7 +936,7 @@ Not included, preliminary for the near future:
 
     Parameter is valid only for "blend" at the moment
 
-    When set to false, and base clip/overlay clip is 420/422/Planar RGB, the overlay core 
+    When set to false, and base clip/overlay clip is 420/422/Planar RGB, the overlay core
     does not convert to and back from YV24 (4:4:4 in general)
 
     mask can be either greyscale or can be any planar YUV when greymask=true (default)
@@ -949,7 +949,7 @@ Not included, preliminary for the near future:
     instead of invoking generic core conversion
   - Overlay:
     10-16bit SSE2/SSE4 for 420/422<->444 conversions
-  - Info() made a bit more compact. 
+  - Info() made a bit more compact.
     Bit depth info moved after color space info
     Does not display pre-SSE2 CPU flags when at least AVX is available
     Display AVX512 flags in separate line (would be too long)
@@ -961,7 +961,7 @@ Not included, preliminary for the near future:
   - new script function
     int NumComponents(clip)
     returns 1 for grayscale, 3 for YUVxxx, YUY2, planar RGB or RGB24/RGB48, 4 for YUVAxxx, Planar RGBA or RGB32/64
-  - new script function: 
+  - new script function:
     bool HasAlpha(clip)
     returns true when clip is YUVA, Planar RGBA, or packed RGB32 or RGB64
 
@@ -977,9 +977,9 @@ Not included, preliminary for the near future:
 
 20161211 r2343dev
   - Overlay: use y offset when greymask=true (fix)
-  - Fix DV chroma positioning (UV swapped), interlaced parameter check for 4:2:0 
+  - Fix DV chroma positioning (UV swapped), interlaced parameter check for 4:2:0
     (fix by IanB in classic Avisynth)
-  - BitBlt in 32 bit Avisynth: 
+  - BitBlt in 32 bit Avisynth:
     for processors with AVX or better ignore tricky isse memcpy replacement, trust in memcpy (test)
     (x64 is O.K., it always used memcpy)
   - Merge: use stream_load for AVX2
@@ -1013,7 +1013,7 @@ Not included, preliminary for the near future:
   - ExtractY, PlaneToY("Y") accepts YUY2 clip
   - ExtractR, ExtractG, ExtractB, ExtractA,
     and
-    PlaneToY("R"), PlaneToY("G"), PlaneToY("B"), PlaneToY("A") 
+    PlaneToY("R"), PlaneToY("G"), PlaneToY("B"), PlaneToY("A")
     functions are accepting packed RGB input (RGB24/32/48/64)
     They are converted to planar RGB on-the-fly before plane extraction
   - Histogram "levels" works from Planar RGB.
@@ -1022,7 +1022,7 @@ Not included, preliminary for the near future:
 
 20161201 r2322dev
   - [feature temporarily removed, script arrays are incompatible until 2.5 plugins are supported]
-    constant script arrays 
+    constant script arrays
     (note: feature was temporarily removed in r2443)
     array_variable = [[1,2,3],[4,5,8],"hello"]
     dictionary = [["one",1],["two",2]]
@@ -1039,7 +1039,7 @@ Not included, preliminary for the near future:
     todo: maybe .+ or *+ syntax?
     (note: feature was temporarily removed in r2443)
   - Planar RGB <-> YUV: SSE2 (SSE4)
-  - Planar RGB <-> Packed RGB32/64: SSE2 
+  - Planar RGB <-> Packed RGB32/64: SSE2
 
 20161120:
   make PlanarRGB TurnLeft, TurnRight work again.
@@ -1064,12 +1064,12 @@ New functions
   BToY8 , same as PlaneToY("B") for planar RGB
 
   They work the same way as UToY8 and VToY8 and ConvertToY did.
-  They convert to greyscale keeping the original bit-depth, not only 8 bit! 
+  They convert to greyscale keeping the original bit-depth, not only 8 bit!
   Y8 naming was kept, because UToY and VToY already existed.
 
 Extended function
-  old: YToUV(clip clipU, clip clipV [, clip clipY ] ) 
-  new: YToUV(clip clipU, clip clipV [, clip clipY [, clip clipA] ] ) 
+  old: YToUV(clip clipU, clip clipV [, clip clipY ] )
+  new: YToUV(clip clipU, clip clipV [, clip clipY [, clip clipA] ] )
 
   YToUV accepts optional alpha clip after Y clip
 
@@ -1080,7 +1080,7 @@ Extended function
     A = source.AddAlphaPlane(128).AToY8()
     # swaps V, U and A, Y
     YToUV(V,U,A,Y).Histogram("levels").Info().RemoveAlphaPlane()
-  
+
 New function
   CombinePlanes(clip1 [,clip2, clip3, clip4], string planes [, string source_planes, string pixel_type, string sample_clip])
 
@@ -1090,13 +1090,13 @@ New function
   If no sample_clip is provided, then clip1 provides the template for target clip
   An optional pixel_type string (e.g."YV24", "YUV420PS", "RGBP8") can override the base video format.
 
-  If the source clip count is less than the given planes defined, then the last available clip is 
+  If the source clip count is less than the given planes defined, then the last available clip is
   used as a source.
 
   string planes
     the target plane order (e.g. "YVU", "YYY", "RGB")
     missing target planes will be undefined in the target
-  
+
   string source_planes (optional)
     the source plane order, defaulting to "YUVA" or "RGBA" depending on the video format
 
@@ -1107,7 +1107,7 @@ New function
     Y8 = source.ConvertToY()
     A8 = source.AddAlphaPlane(128).AToY8()
     CombinePlanes(Y8, U8, V8, A8, planes="YUVA", source_planes="YYYY", sample_clip=source) #pixel_type="YUV444P8"
-  
+
   Examples#2
     # Copy planes between planar RGB(A) and YUV(A) without any conversion
     # yuv 4:4:4 <-> planar rgb
@@ -1127,4 +1127,4 @@ New function
     #sourceY is a Y or YUV clip
     #sourceUV is a YUV clip
     grey = CombinePlanes(sourceY, sourceUV, planes="YUV", source_planes="YUV", sample_clip = source)
-  
+

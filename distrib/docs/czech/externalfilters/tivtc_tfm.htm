@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tivtc_tfm.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tivtc_tfm.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: tivtc_tfm.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>       1.0.4<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>    Odstraòování prokládání &amp; pulldown
 <br><b>požadavky:</b>&nbsp;
@@ -50,19 +50,19 @@ $Id: tivtc_tfm.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <var>&quot;mode&quot;</var>, int <var>&quot;PP&quot;</var>. string <var>&quot;ovr&quot;</var>, string
 <var>&quot;input&quot;</var>, string <var>&quot;output&quot;</var>, string
 <var>&quot;outputC&quot;</var>, bool <var>&quot;debug&quot;</var>, bool <var>&quot;display&quot;</var>, int
-<var>&quot;slow&quot;</var>, bool <var>&quot;mChroma&quot;</var>, int <var>&quot;cNum&quot;</var>, int           
+<var>&quot;slow&quot;</var>, bool <var>&quot;mChroma&quot;</var>, int <var>&quot;cNum&quot;</var>, int
 <var>&quot;cthresh&quot;</var>, int <var>&quot;MI&quot;</var>, bool <var>&quot;chroma&quot;</var>, int
 <var>&quot;blockx&quot;</var>, int <var>&quot;blocky&quot;</var>, int <var>&quot;y0&quot;</var>, int
 <var>&quot;y1&quot;</var>, int <var>&quot;mthresh&quot;</var>, PClip <var>&quot;clip2&quot;</var>, string
-<var>&quot;d2v&quot;</var>, int <var>&quot;ovrDefault&quot;</var>, int <var>&quot;flags&quot;</var>, double 
-<var>&quot;scthresh&quot;</var>, int <var>&quot;micout&quot;</var>, int <var>&quot;micmatching&quot;</var>, string 
-<var>&quot;trimIn&quot;</var>, int <var>&quot;hint&quot;</var>, int <var>&quot;metric&quot;</var>, bool 
+<var>&quot;d2v&quot;</var>, int <var>&quot;ovrDefault&quot;</var>, int <var>&quot;flags&quot;</var>, double
+<var>&quot;scthresh&quot;</var>, int <var>&quot;micout&quot;</var>, int <var>&quot;micmatching&quot;</var>, string
+<var>&quot;trimIn&quot;</var>, int <var>&quot;hint&quot;</var>, int <var>&quot;metric&quot;</var>, bool
 <var>&quot;batch&quot;</var>, bool <var>&quot;ubsco&quot;</var>, bool <var>&quot;mmsco&quot;</var>, int <var>&quot;opt&quot;</var>)
 </p>
 <p>Zatímco TFM má nìkolik málo parametrù, pokusil jsem kategorizovat nastavení tak, aby
    byly jednodušší na správu.  Ve skuteènosti jsou jen 3 parametry, o které by se mìla vìtšina uživatelù
    zajímat, aby poznala jejich nastavení.  Jsou to "order", "mode", a "PP" a jsou
-   popsány v kapitole "ZÁKLADNÍ PARAMETRY".  Další nastavení jsou popsána v 
+   popsány v kapitole "ZÁKLADNÍ PARAMETRY".  Další nastavení jsou popsána v
    dalších rùzných kapitolách, které by mìlo být celkem snadné rozpoznat z jejich názvù.
 </p>
 <h2><a name="basic"></a>B.)  Základní parametry:
@@ -72,7 +72,7 @@ $Id: tivtc_tfm.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 </p>
 <p><var>order</var> -&nbsp;
 </p>
-<p>        Nastavuje poøadí polí klipu. Poøadí polí musí být správnì nastaveno 
+<p>        Nastavuje poøadí polí klipu. Poøadí polí musí být správnì nastaveno
 aby se objevilo pøesné uspoøádání polí. Možné hodnoty:
 </p>
 <p>-1 = auto (použije vnitøní hodnotu parity v avisynthu)<br>
@@ -84,7 +84,7 @@ aby se objevilo pøesné uspoøádání polí. Možné hodnoty:
 <p><var>mode</var> -&nbsp;
 </p>
 <p>Nastavuje režim uspoøádání nebo použitou strategii.  Prosté 2-cestné uspoøádání (možnost 0) je
-        nejbezpeènìjší ze všech možností v tom smyslu, že nebude riskovat vytváøení trhání kvùli 
+        nejbezpeènìjší ze všech možností v tom smyslu, že nebude riskovat vytváøení trhání kvùli
         duplikovaným snímkùm, když je to možné, ale pokud jsou zde špatné støihy nebo smíchaná pole
         skonèí vysíláním roztøepených snímkù, když by mìlo ve skuteènosti existovat i dobré uspoøádání.  3-cestné uspoøádání
         + zkoušení 4-tých/5-tých uspoøádání pokud všechny 3 první uspoøádání jsou detekovány jako roztøepené
@@ -97,7 +97,7 @@ aby se objevilo pøesné uspoøádání polí. Možné hodnoty:
         poli, které mají specifickou šablonu.  Režim 7 vyžaduje lineární pøístup, aby pracoval správnì,
         protože jaká uspoøádání/pole jsou použita závisí na pøedchozím rozhodnutí o uspoøádání.
         </p>
-<p>Možná nastavení jsou:      
+<p>Možná nastavení jsou:
 <p>         0 = 2-cestné uspoøádání                                                  (p/c)<br>
             1 = 2-cestné uspoøádání + 3-tí uspoøádání na roztøepených                  (p/c + n)<br>
             2 = 2-cestné uspoøádání + 3-tí uspoøádání (stejné poøadí) na roztøepených                       (p/c + u)<br>
@@ -133,7 +133,7 @@ s jakýmikoli roztøepenými snímky, které vychází z procesu uspoøádání polí.  Možn
              popis parametru clip2 pro více informací a aby jste vidìli jak nastavení PP ovlivní
              operaci s clip2.
 </p>
-<p>* Mùžete ruènì ovládat, které snímky by mìly být oznaèeny jako roztøepené stejnì jako možnost 
+<p>* Mùžete ruènì ovládat, které snímky by mìly být oznaèeny jako roztøepené stejnì jako možnost
 PP pøes nadøazovací soubor (viz. popis parametru ovr)
 </p>
 <p>Výchozít:  6  (int)
@@ -147,7 +147,7 @@ PP pøes nadøazovací soubor (viz. popis parametru ovr)
 <p><var>field</var> -&nbsp;
 </p>
 <p> Nastavuje ze kterého pole se má uspoøádávat.  Doporuèuje se nastavit ho na stejnou hodnotu
-         jako poøadí order kromì pøípadu, kdy máte zkušenost se selháním uspoøádání s takovým nastavením.  Za urèitých 
+         jako poøadí order kromì pøípadu, kdy máte zkušenost se selháním uspoøádání s takovým nastavením.  Za urèitých
          okolností zmìna pole, které je použito jako zaèátek pøi uspoøádání mùže mít velký dopad
          na výkon uspoøádání. Možné hodnoty jsou:</p>
 <p>-1 = auto (TFM nastaví pole na stejnou hodnotu jakou má parametr order)<br>
@@ -167,10 +167,10 @@ PP pøes nadøazovací soubor (viz. popis parametru ovr)
 </p>
 <p><var>mChroma</var> -
 </p>
-<p>Nastavuje zda má a nebo nemá být barevnost zahrnuta pøi porovnávání polí.  Ve vìtšinì 
+<p>Nastavuje zda má a nebo nemá být barevnost zahrnuta pøi porovnávání polí.  Ve vìtšinì
 pøípadù se doporuèuje nechat ho zapnutý.  Pouze, když váš klip má problémy se špatnou barevností
 jako tìžké duhové nebo jiné artefakty, by jste mìli nastavit tento parametr na false.
-Nastavení na false by mohlo být také použito z rychlostních dùvodù za cenu úbytku 
+Nastavení na false by mohlo být také použito z rychlostních dùvodù za cenu úbytku
 pøesnosti.
 </p>
 <p>true = barevnost je zahrnuta<br>
@@ -203,7 +203,7 @@ pøesnosti.
          prahovou hodnotu zmìny scény jako procento maximální zmìny v jasové ploše.  Pro vypnutí
          tohoto (umožní u/b uspoøádání kdekoliv) nastavte ubsco na false.  Nastavení ubsco ovlivòuje jen
          automatické uspoøádání, t.j. u/b uspoøádání pøes nadøazení nebo vstupní soubor se nezmìní.
-         Režimy uspoøádání které pracují s ubsco jsou 2, 3, 5, a 6 (jen ty, které 
+         Režimy uspoøádání které pracují s ubsco jsou 2, 3, 5, a 6 (jen ty, které
          používají u/b uspoøádání).
 
 <p>Výchozí:  true (bool)
@@ -214,7 +214,7 @@ pøesnosti.
          když se rozhoduje jaké uspoøádání použít pro finální uspoøádání.  micmatching má 5 možných nastavení:
 
 <p>0 - vypnuto
-           1 - mic jsou použity jen k urèení zda 5 možných uspoøádání je jedno, 
+           1 - mic jsou použity jen k urèení zda 5 možných uspoøádání je jedno,
                   které má významnì nižší hodnotu mic než ostatní ètyøi uspoøádání.
                   Pøi zapnutí této možnosti je možné v tfm použít jakékoliv uspoøádání (p/c/n/b/u)
                   bez ohledu na režim uspoøádání!<br>
@@ -232,7 +232,7 @@ pøesnosti.
          Aby to tak bylo, nastavte mmsco na true..., pak bude micmatching moci ovlivnit jen snímky na obou stranách
          zmìny scény.
 
-<p>**** Od v0.9.10.0 TFM, je výchozí hodnotou micmatching 1. To znamená, že jakékoliv jedno 
+<p>**** Od v0.9.10.0 TFM, je výchozí hodnotou micmatching 1. To znamená, že jakékoliv jedno
 uspoøádání z pìti by mohlo být použito bez ohledu na režim uspoøádání!  Pokud si nepøejete takové chování
 tak nastavte micmatching na 0!
 
@@ -272,11 +272,11 @@ parametru mmsco.
 <p>Výchozí:  4  (int)
 <p>Zbytek "pokroèilých parametrù" ovládá detekci roztøepených snímkù a odstraòování prokládání,
    a jsou použity jen když je mode nastaven na 1, 2, nebo 4 nebo PP (post-processing) je nastaven na 1 nebo vìtší!
-                                                
+
 <p><var>cthresh</var> -
 </p>
 <p>Toto je prahová hodnota roztøepení oblasti použitá pro detekci roztøepených snímkù.  Je podobná
-         dthresh nebo dthreshold v telecide() a fielddeinterlace().  To v podstatì 
+         dthresh nebo dthreshold v telecide() a fielddeinterlace().  To v podstatì
          ovládá jak "silné" nebo "viditelné" musí být roztøepení, aby bylo detekované.  Vìtší hodnoty
          znamenají, že roztøepení musí být více viditelné a menší hodnoty znamenají, že mùže být ménì
          viditelné nebo silné a pøitom stále detekované.  Platná nastavení jsou od -1 (každý pixel
@@ -286,10 +286,10 @@ parametru mmsco.
 
 <p><var>chroma</var> -
 </p>
-<p>Nastavuje, zda má a nebo nemá být barevnost uvažována pøi rozhodování o roztøepenosti snímku.  Vypnìte  
-         ho jen, když má váš zdroj problémy s barevností (duha, atd...) , které 
+<p>Nastavuje, zda má a nebo nemá být barevnost uvažována pøi rozhodování o roztøepenosti snímku.  Vypnìte
+         ho jen, když má váš zdroj problémy s barevností (duha, atd...) , které
          zpùsobují problémy detekci roztøepení snímku pøi zapnutém chroma.  Ve skuteènosti
-         je jeho nastavení na false obvykle dobré, kromì pøípadu kdy je ve zdroji roztøepená jen 
+         je jeho nastavení na false obvykle dobré, kromì pøípadu kdy je ve zdroji roztøepená jen
          barevnost.</p>
 <p>true = barevnost (chroma) je zahrnuta<br>
    false = barevnost (chroma) není zahrnuta</p>
@@ -297,7 +297,7 @@ parametru mmsco.
 
 <p><var>blockx</var> -
 </p>
-<p>Nastavuje x-ovou velikost okna použitého pøi detekci roztøepení snímku.  	
+<p>Nastavuje x-ovou velikost okna použitého pøi detekci roztøepení snímku.
          To se týká velikosti oblasti, ve které je vyžadován MI poèet pixelù, aby to bylo
          detekováno jako roztøepení pro deklarování roztøepeného snímku.  Viz popis parametru MI
          pro více informací.  Možné hodnoty jsou jakákoliv èísla, která jsou druhými mocninami èísla 2
@@ -306,7 +306,7 @@ parametru mmsco.
 
 <p><var>blocky</var> -
 </p>
-<p>Nastavuje y-ovou velikost okna použitého pøi detekci roztøepení snímku.  	
+<p>Nastavuje y-ovou velikost okna použitého pøi detekci roztøepení snímku.
          To se týká velikosti oblasti, ve které je vyžadován MI poèet pixelù, aby to bylo
          detekováno jako roztøepení pro deklarování roztøepeného snímku.  Viz popis parametru MI
          pro více informací.  Možné hodnoty jsou jakákoliv èísla, která jsou druhými mocninami èísla 2
@@ -348,7 +348,7 @@ parametru mmsco.
          v decomb.dll.
 
 <p>Výchozí:  0  (int)
-         
+
 <p><var>mthresh</var> -&nbsp;<br>
 <br>
 Nastavuje prahovou hodnotu pohybu (rozdíl pixelu) pro odstranìní prokládání pøi použití pohybové
@@ -360,7 +360,7 @@ považován za pohyblivý.
 </p>
 <p><var>clip2</var> -
 </p>
-<p>Pøi použití PP > 1 mùže být použit tento parametr pro zadání klipu odkud vezme snímky s 
+<p>Pøi použití PP > 1 mùže být použit tento parametr pro zadání klipu odkud vezme snímky s
          odstranìným prokládáním místo použití nìkteré metody odstraòování prokládání vestavìné v TFM.  Pokud je PP < 5
          tak budou snímky brány takové jaké jsou z klipu clip2, pokud je PP >= 5 (t.j. použití pohybové adaptace)
          tak TFM vytvoøí masku jako obvykle a z klipu clip2 budou brány jen pixely v pohybových oblastech.
@@ -376,7 +376,7 @@ považován za pohyblivý.
 </p>
 <p>Tato možnost je zamýšlena pro použití v pøípadì, kdy používáte mpeg2source() s d2v souborem.
         Nastavuje jméno a cestu k d2v souboru, který TFM zanalyzuje, aby vidìl jestli tam jsou nìjaké
-        ilegální zmìny poøadí polí a volitelnì nastaví parametr order použitím 
+        ilegální zmìny poøadí polí a volitelnì nastaví parametr order použitím
         poøadí polí d2v souboru.  Pokud je d2v soubor shledán, že má ilegální pøenosy poøadí polí,
         TFM vytvoøí opravený d2v soubor s øetìzcem "-FIXED" pøipojeným na konec názvu souboru.
         Nový soubor bude umístìn do stejné složky jako pùvodní.  Mùžete pak
@@ -399,7 +399,7 @@ považován za pohyblivý.
 <p>Ovládají kolik informací z d2v souboru bude použito, když je nastaven parametr "d2v".
 <p>Možné hodnoty:
 
-<p>0 - Kontroluje d2v soubor na ilegální pøenosy a nastavuje parametr order pokud 
+<p>0 - Kontroluje d2v soubor na ilegální pøenosy a nastavuje parametr order pokud
                   už není nastaven ruènì.  Také pøedává informaci rff flag duplikátù k
                   tdecimate.<br>
            1 - Stejné jako 0, plus použití znakù trf pro uspoøádání polí ve filmovch èástech (èásti
@@ -423,7 +423,7 @@ považován za pohyblivý.
 <p><var>trimIn</var> -&nbsp;
 
 <p>Umožòuje použití možnosti d2v="" se znaky (flags) = 0, 1, 2, 4, a 5 s použitím funkce trim() pøed
-         TFM.  Pro použití trimIn souboru jednoduše vytvoøte nový soubor a nastavte trimIn="CESTA\soubor.txt". 
+         TFM.  Pro použití trimIn souboru jednoduše vytvoøte nový soubor a nastavte trimIn="CESTA\soubor.txt".
          Soubor by mìl udávat seznam rozsahù snímkù, které NEbyly zachovány... napøíklad, øeknìme, že pùvodní
          soubor má 30000 snímkù, ale vy odstraníte prvních 100 použitím trim(100,0) pøed tfm.  Pak by jste
          v souboru trimIn mìli následující údaje:
@@ -443,24 +443,24 @@ považován za pohyblivý.
 
 <p>Mùžete také použít záporná èísla pro provedení relativního adresování snímkù ke konci klipu.
 
-<p>          -1 = poèet_snímkù-1<br>   
-             -2 = poèet_snímkù-2<br>  
+<p>          -1 = poèet_snímkù-1<br>
+             -2 = poèet_snímkù-2<br>
              -3 = poèet_snímkù-3<br>
              atd...
 
 <p>Takže použití  "-2,-1"  by bylo stejné jako zadání dvou posledních snímkù.
 
 <p>Výchozí:  ""  (String)
-         
+
 <p><var>ovr</var> -<br>
 <br>
-Nastavuje jméno a cestu k nadøazovacímu souboru.  Nadøazovací soubor umožòuje ruèní ovládání 
+Nastavuje jméno a cestu k nadøazovacímu souboru.  Nadøazovací soubor umožòuje ruèní ovládání
         toho, která uspoøádání jsou použita pro zadané snímky a rozsahy snímkù, pro zmìnu
         hodnot parametrù field, mode, order, mthresh, PP, a MI pro zadané snímky nebo rozsahy
-        snímkù, a pro zadání zda by snímky mìli a nebo nemìly být považovány za roztøepené nebo 
+        snímkù, a pro zadání zda by snímky mìli a nebo nemìly být považovány za roztøepené nebo
         neroztøepené.  Pro více informací o použití nadøazovacího souboru se podívejte do kapitoly NADØAZOVÁNÍ na
         konci tohoto souboru.  Mùžete zároveò zadat soubor ovr a vstupní soubor.
-        Uspoøádání a roztøepené snímky dané v nadøazovacím souboru mají pøednost pøed tìmi ve 
+        Uspoøádání a roztøepené snímky dané v nadøazovacím souboru mají pøednost pøed tìmi ve
         vstupním souboru.</p>
 <p>Pøíklad:
 <pre>TFM(ovr="myOvrFile.txt")</pre>
@@ -475,9 +475,9 @@ Pro ètení výstupních souborù použijte parametr input.
 <p>Toto je zvláštní možnost, která vám umožní zmìnit výchozí "roztøepenou" práci pøi
         použití souboru ovr.  Ve výchozím stavu, jestliže nezadáte snímek jako roztøepený '+' nebo neroztøepený '-'
         v nadøazovacím souboru tak ho TFM prostì zpracuje jako obvykle.  Nicménì s možností ovrDefault,
-        mùžete vytvoøit TFM oznaèení všech snímkù, které výslovnì nezadáte jako buï roztøepené nebo 
+        mùžete vytvoøit TFM oznaèení všech snímkù, které výslovnì nezadáte jako buï roztøepené nebo
         neroztøepené.  V zásadì je to snadný zpùsob odstranìní prokládání jen v nìkolika zadaných snímcích v
-        souboru a ujištìní, že jiné snímky budou netknuté a naopak.  Pokud není použit žádný soubor ovr, 
+        souboru a ujištìní, že jiné snímky budou netknuté a naopak.  Pokud není použit žádný soubor ovr,
         tak toto nastavení nedìlá nic.  Možná nastavení:
 </p>
 <p>           0 - normální zpracování<br>
@@ -500,7 +500,7 @@ Pro ètení výstupních souborù použijte parametr input.
 </p>
 <p>Tato možnost je zamýšlena pro použití s možností output.  Pokud jste použili možnost output
         v pøedchozím prùchodu tak pro opìtovné použití této informace nastavte parametr input na jméno
-        a cestu výstupního souboru.  Mùžete zároveò zadat jak vstupní soubor (input) tak soubor ovr. 
+        a cestu výstupního souboru.  Mùžete zároveò zadat jak vstupní soubor (input) tak soubor ovr.
         V takovém pøípadì budou uspoøádání v nadøazovacím souboru mít pøednost.
         Možnost input NEMÙŽE èíst ovr soubory!!!  Pro ètení ovr souboru musíte použít parametr ovr !
 </p>
@@ -509,8 +509,8 @@ Pro ètení výstupních souborù použijte parametr input.
 <p><var>outputC</var> -
 </p>
 <p>Tato možnost mùže být použita pro pomoc pøi identifikování èástí progresivního videa s 30fps vysíláním
-        rozsahù, ve kterých nejménì "cNum" následných uspoøádání bylo uspoøádáno jako 'c'.  Tato 
-        možnost není plnì provìøená, protože pomalé nebo statické filmové scény mohou také generovat dlouhé série 
+        rozsahù, ve kterých nejménì "cNum" následných uspoøádání bylo uspoøádáno jako 'c'.  Tato
+        možnost není plnì provìøená, protože pomalé nebo statické filmové scény mohou také generovat dlouhé série
         následných 'c' uspoøádání.</p>
 <p>Výchozí:  ""  (String)
 </p>
@@ -539,7 +539,7 @@ Pro ètení výstupních souborù použijte parametr input.
          (pokud jsou režimy 1, 2, nebo 4 nebo PP > 0), a hodnoty parametrù field, mode, order, a MIC.
          Pro zobrazení tìchto informací mùžete použít utilitu zvanou "DebugView" dostupnou zdarma
          z:</p>
-<p><a href="http://www.sysinternals.com/ntw2k/freeware/debugview.shtml">                
+<p><a href="http://www.sysinternals.com/ntw2k/freeware/debugview.shtml">
 http://www.sysinternals.com/ntw2k/freeware/debugview.shtml</a>
 </p>
 <p>true = zapíná výstup<br>
@@ -587,7 +587,7 @@ a seznam možných nadøazení.
 </h3>
 <p>Než zaèneme, je zde jedna vìc kterou je potøeba pochopit, a tou je
      co k èertu znamenají písmena p, c, n, b, a u a odkud pochází.
-     Dobrá, ve skuteènosti pøed tím potøebujeme vìdìt jaké uspoøádání polí se ve skuteènosti provede. 
+     Dobrá, ve skuteènosti pøed tím potøebujeme vìdìt jaké uspoøádání polí se ve skuteènosti provede.
      Budu pøedpokládat, že ètenáø ví co znamená, když se øekne, že stream byl podroben
      telecine.  Nyní uvažujme, že máme následující metodou telecine zpracovaný stream se
      spodními (bottom - b) a horními (top - t) poli danými následovnì (u obou 1t i 1b se pøedpokládá, že pocházejí ze
@@ -611,8 +611,8 @@ a seznam možných nadøazení.
   </tr>
 </table>
 <p>Teï to co TFM dìlá, stejnì jako ostatní uspoøádávaèe polí, je uspoøádání polí tak, že zùstanou jen
-progresivní snímky; nicménì, nedecimuje duplikáty.  Tedy výše uvedený vstupní stream 
-je transformován do jednoho ze dvou následujících scénáøù (které 
+progresivní snímky; nicménì, nedecimuje duplikáty.  Tedy výše uvedený vstupní stream
+je transformován do jednoho ze dvou následujících scénáøù (které
 závisí na poli od kterého uspoøádáváme, t.j. hodnotì parametru "field"):
 </p>
 <p>field = 0  (Uspoøádání od spodního)
@@ -1016,7 +1016,7 @@ c == c<br>
 </h4>
 <p>* Viz kapitolu pozadí/pøehled pro vizuální pøedvedení uspoøádání.
                 Pro nadøazení rozsahu snímkù mùžete zadat více kódù uspoøádání
-                na stejný øádek a daná šablona bude dále v rozsahu opakována. 
+                na stejný øádek a daná šablona bude dále v rozsahu opakována.
                 </p>
 <p>      p = uspoøádání k pøedchozímu poli<br>
          c = uspoøádání k aktuálnímu poli<br>
@@ -1046,7 +1046,7 @@ c == c<br>
 <h4>referenèní pole:
 </h4>
 <p>Vzhledem k tomu, že kódy uspoøádání mají rùzné významy podle parametru field, mùžete
-         zadat referenèní pole pro nadøazovací soubor.  Všechna uspoøádání daná v souboru 
+         zadat referenèní pole pro nadøazovací soubor.  Všechna uspoøádání daná v souboru
          jsou pak brána s respektem k danému poli.  Pokud není referenèní pole zadáno
          tak jsou vztažena všechna k referenèní vnitøní hodnotì field.</p>
 <p>Pro zadání referenèního pole musíte vložit jeden z následujících øádkù jako
@@ -1068,8 +1068,8 @@ rozsah snímkù =>   poèáteèní_snímek,koncový_snímek kód(y) [zmìnìná_hodnota]
 </h4>
 <table border="1" width="60%">
   <tr>
-    <td width="20%">            0,100 pcpcbuu</td>       
-    <td width="50%">          bude opakovat danou šablonu "pcpcbuu" uspoøádání poèínaje 
+    <td width="20%">            0,100 pcpcbuu</td>
+    <td width="50%">          bude opakovat danou šablonu "pcpcbuu" uspoøádání poèínaje
                               snímkem 0 a konèe snímkem 100</td>
   </tr>
   <tr>
@@ -1118,7 +1118,7 @@ rozsah snímkù =>   poèáteèní_snímek,koncový_snímek kód(y) [zmìnìná_hodnota]
   </tr>
   <tr>
     <td width="20%">           70,97 +--++</td>
-    <td width="50%">         vynutí uvažování snímkù 70 až 97 jako roztøepených nebo neroztøepených                                  
+    <td width="50%">         vynutí uvažování snímkù 70 až 97 jako roztøepených nebo neroztøepených
     tak, jak je dáno šablonou</td>
   </tr>
   <tr>
@@ -1138,21 +1138,21 @@ rozsah snímkù =>   poèáteèní_snímek,koncový_snímek kód(y) [zmìnìná_hodnota]
                nastavena pro snímky za zadaným rozsahem s nadøazením hodnot.
                (t.j. pokud zadáte nadøazení field pro snímky 600 až 700, po snímku
                700 je field automaticky nastaveno zpìt na jeho pùvodní hodnotu, a nemusíte
-               ji nastavovat zpìt v nadøazovacím souboru!  Pùvodní hodnota je ta, která je 
+               ji nastavovat zpìt v nadøazovacím souboru!  Pùvodní hodnota je ta, která je
                nastavena pøi naètení (t.j. buï výchozí nebo vámi nastavená ve vašem
                avisynth skriptu).</p>
 <p>3.) Èísla snímkù musí být uvnitø rozsahu souboru.
 </p>
-<p>4.) Èísla snímkù pro kódy uspoøádání musí být rostoucí, a èísla snímkù pro 
+<p>4.) Èísla snímkù pro kódy uspoøádání musí být rostoucí, a èísla snímkù pro
                nìjaké kódy parametru se nesmí pøekrývat!!!  Jinými slovy, nedìlejte vícenásobné nadøazování
                pro nìkterý parametr na stejném rozsahu snímkù.</p>
 <p>5.) Mezery jsou dùležité!  (žádné mezery mezi èárkou a èíslem snímku,
                jedna mezera mezi èíslem posledního snímku a specifikátorem, jedna mezera mezi
-               specifikátorem a mìnìnou hodnotou pokud nìjakou má). Pro objasnìní se prostì podívejte na 
+               specifikátorem a mìnìnou hodnotou pokud nìjakou má). Pro objasnìní se prostì podívejte na
                pøíklady.</p>
 <p>6.) V šablonových zadáních lze použít jen kódy uspoøádání a kódy roztøepených snímkù.
                Šablonová zadání mohou mít maximálnì do 50 kódù uspoøádání.</p>
-7.) Pro okomentování øádku (TFM je bude ignorovat) v ovr souboru,                
+7.) Pro okomentování øádku (TFM je bude ignorovat) v ovr souboru,
 mùžete vložit buï symbol '#' nebo symbol ';' na zaèátku tohoto øádku.</p>
 <p>8.) Na ukázku je pøiložen pøíklad ovr souboru w/ komentáøù do zip souboru filtru.
 </p>
@@ -1269,7 +1269,7 @@ mùžete vložit buï symbol '#' nebo symbol ';' na zaèátku tohoto øádku.</p>
          + display output now shows when scenechanges are detected when sco > 0<br>
          - changed sco default to 12.0
 
-<p>10/12/2005  v0.9.10.1<br> 
+<p>10/12/2005  v0.9.10.1<br>
          + support dgindex d2vformat v12
 
 <p>09/28/2005  v0.9.10.0<br>
@@ -1326,11 +1326,11 @@ mùžete vložit buï symbol '#' nebo symbol ';' na zaèátku tohoto øádku.</p>
          + Added support for new dgindex d2v's (d2vformat v9)
 </p>
 <p>04/20/2005  v0.9.7.3<br>
-+ Debug and display options now output a value called MIC (the value that is computed              
-and compared against MI to check if a frame is combed) to make tweaking              
-the MI parameter easier.  The MIC value is computed during combed frame detection and              
-is the single highest value computed for any one of the blockx by blocky sized blocks.              
-Previously, combed frame detection exited immediately upon finding the first block              
++ Debug and display options now output a value called MIC (the value that is computed
+and compared against MI to check if a frame is combed) to make tweaking
+the MI parameter easier.  The MIC value is computed during combed frame detection and
+is the single highest value computed for any one of the blockx by blocky sized blocks.
+Previously, combed frame detection exited immediately upon finding the first block
 with an MIC value greater then MI... it now scans all blocks and returns the highest.
 Thus, the white box that is drawn when display=true, PP=1, and a frame is detected
 as combed now corresponds to the block with the highest MIC value and not the first&nbsp;
@@ -1417,7 +1417,7 @@ no longer be read via the ovr option!  You must use the input parameter to read 
 <h2><a name="todo"></a>H.) Na dopracování
 </h2>
 <p>
-  - podle potøeby oprava chyb pro  øadu1.0 
+  - podle potøeby oprava chyb pro  øadu1.0
 </p>
 <p>
 kontakt:   forum.doom9.org  nick = tritical  nebo  email:  <a href="mailto:kes25c@mizzou.edu">kes25c@mizzou.edu</a>

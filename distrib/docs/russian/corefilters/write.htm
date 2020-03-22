@@ -12,21 +12,21 @@ $Id: write.htm,v 1.5 2008/12/06 17:51:58 fizick Exp $
 </head>
 <body >
 <h2>WriteFile / WriteFileIf / WriteFileStart / WriteFileEnd</h2>
-<p><code>WriteFile </code>(<var>clip, string filename, <i>string expression1, 
+<p><code>WriteFile </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
-  <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
-  <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;</i></var>)<br>
-  <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;</i></var>)</p>
-<p><code>WriteFile</code> вычисляет выражения <var>expressionN</var>, превращает результат в строку и записывает её в 
+<p><code>WriteFile</code> вычисляет выражения <var>expressionN</var>, превращает результат в строку и записывает её в
 файл.<br>
 </p>
 <p>Переменная <var>current_frame</var> устанавливается при вычислении выражения равной номеру текущего кадра<br>
   (аналогично работает ScriptClip, за подробностями см. эту документацию).<br>
   <var>current_frame</var> равна -1 при загрузке скрипта и -2 при закрытии скрипта.</p>
-<p><code>WriteFile</code> выдаёт данные для каждого кадра, обрабатываемого фильтром. 
+<p><code>WriteFile</code> выдаёт данные для каждого кадра, обрабатываемого фильтром.
 <code>WriteFileIf</code> действует подобно, но выдаёт их только если первое выражение
 <var>expression1</var> = <code>true</code>. В обоих случаях при открытии и закрытии скрипта данные не выдаются.
 Заметьте, что так как вывод произвотится только для "обрабатываемых" кадров, то вывода не будет,
@@ -38,16 +38,16 @@ $Id: write.htm,v 1.5 2008/12/06 17:51:58 fizick Exp $
   Если <var>flush</var> = <code>true</code>, файл закрывается и снова открывается после каждой записи, т.о. вы можете
   немедленно видеть результаты (может замедлять работу).<br>
   Для фильтров <code>WriteFileStart</code> и <code>WriteFileEnd</code> <var>flush</var> всегда <code>true</code>.<br>
-  По умолчанию <var>append</var> = <code>true</code> для всех фильтров группы, кроме <code>WriteFileStart</code> 
+  По умолчанию <var>append</var> = <code>true</code> для всех фильтров группы, кроме <code>WriteFileStart</code>
   (для него <code>false</code>).</p>
 <h4>Работу фильтров лучше пояснить на простых примерах:</h4>
 
-      
+
 <pre>filename = &quot;c:\myprojects\output.txt&quot;
 # создаём исходный клип
 Version()
 
-# здесь 'выражение' – это только переменная, вычисляемая на каждом кадре 
+# здесь 'выражение' – это только переменная, вычисляемая на каждом кадре
 # и записываемая в файл. Файл будет содержать номера кадров на каждой строке.
 WriteFile(filename, &quot;current_frame&quot;)
 
@@ -56,7 +56,7 @@ WriteFileStart(filename, &quot;&quot;&quot; &quot;Заголовок файла&quot; &quot;&q
 
 # а эта – при закрытии
 WriteFileEnd(filename, &quot;&quot;&quot; &quot;Скрипт закончил работу&quot; &quot;&quot;&quot;)</pre>
-    
+
 <p>Вы можете использовать тройные кавычки, чтобы поместить строку внутрь строки.</p>
 <p>Если выражение не может быть вычислено, вместо него записывается сообщение об ошибке.<br>
 В этом случае в функции <code>WriteFileIf</code> результат считается истинным, т.е. ошибка всегда записывается.</p>
@@ -65,7 +65,7 @@ WriteFile(filename, &quot;this is фуфло&quot;)</pre>
     <hr>
 <h4><b>Есть и более простые способы записать номера кадров в файл, однако:</b></h4>
 <p>... этот пример показывает, как использовать вычисляемую (&quot;runtime&quot;) функцию вместе с FrameEvaluate:</p>
-      
+
 <pre># создаёт исходный клип
 Version.FadeIn(50).ConvertToYV12
 
@@ -73,14 +73,14 @@ Version.FadeIn(50).ConvertToYV12
 colon = &quot;: &quot;
 WriteFile(&quot;F:\text.log&quot;, &quot;current_frame&quot;, &quot;colon&quot;, &quot;AverageLuma&quot;)</pre>
 <p>Можно также напечатать и текущее время:</p>
-      
+
 <pre># создаём исходный клип
 Version.FadeIn(50).ConvertToYV12
 
 # печатает номер кадра, текущее время и среднюю яркость кадра
 # тройные кавычки нужны для того, чтобы поместить строку внутрь строки
 WriteFile(last, filename, &quot;current_frame&quot;, &quot;&quot;&quot; time(&quot; %H:%M:%S&quot;) &quot;&quot;&quot;, &quot;AverageLuma&quot;)</pre>
-    
+
 <hr>
 <h4>Ещё примеры:</h4>
 <p>В функции <code>WriteFileIf</code> первое выражение должно выдавать логическое значение (true или false).<br>

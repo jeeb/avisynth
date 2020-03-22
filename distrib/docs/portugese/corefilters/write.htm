@@ -6,13 +6,13 @@
 </head>
 <body >
 <h2>WriteFile / WriteFileIf / WriteFileStart / WriteFileEnd</h2>
-<p><code>WriteFile </code>(<var>clip, string filename, <i>string expression1, 
+<p><code>WriteFile </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
-  <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
-  <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;</i></var>)<br>
-  <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;</i></var>)</p>
 <p><code>WriteFile</code>  avalia <var>expressionN</var>, <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
@@ -97,7 +97,7 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">Isto é melhor explicado com alguns exemplos
 simples:</span></h4>
 
-      
+
 <pre>filename = &quot;c:\myprojects\output.txt&quot;
 <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
@@ -132,7 +132,7 @@ WriteFileEnd(filename, &quot;&quot;&quot; &quot;<span style="font-size:10.0pt;ms
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Agora o escrito está fechado</span>&quot; &quot;&quot;&quot;)</pre>
-    
+
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
@@ -167,7 +167,7 @@ font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">com este exemplo você pode ver como usar as
 &quot;runtime functions&quot; com FrameEvaluate:</span></p>
-      
+
 <pre><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
@@ -185,7 +185,7 @@ font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Ou talvez você quer a hora atual também
     impressa:</span></p>
-      
+
 <pre><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
@@ -201,7 +201,7 @@ font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA"># as aspas triplas são necessárias para inserir aspas dentro de uma string</span>
 WriteFile(last, filename, &quot;current_frame&quot;, &quot;&quot;&quot; time(&quot; %H:%M:%S&quot;) &quot;&quot;&quot;, &quot;AverageLuma&quot;)</pre>
-    
+
 <hr>
 <h4>Mais exemplos:</h4>
 <p style="margin-left: 0cm; margin-right: 0cm; margin-top: 0; margin-bottom: 0">É

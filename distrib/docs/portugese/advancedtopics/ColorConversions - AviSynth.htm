@@ -47,7 +47,7 @@ PT-BR;mso-bidi-language:AR-SA">Deve cobrir conversões de RGB-&gt;YUV e
             <P>G = Y - U*(1-Kb)*Kb/Kg - V*(1-Kr)*Kr/Kg</P>
             <P>B = Y + U*(1-Kb)</P>
 <H3>Conversão para valores de programação&nbsp;</H3>
-            <P><STRONG>YUV [0,255] &lt;-&gt; RGB [0,255]</STRONG> (0 &lt;= 
+            <P><STRONG>YUV [0,255] &lt;-&gt; RGB [0,255]</STRONG> (0 &lt;=
             [r,g,b] &lt;= 255, 0 &lt;= y &lt;= 255, 0 &lt; [u,v] &lt; 255)</P>
             <P>y = Y * 255</P>
             <P>v = V * 127.5 + 128</P>
@@ -61,15 +61,15 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">Substituindo (Y,V,U,R,G,B) nas equações acima e
             multiplicando com 127.5 e respectivamente 255 dão</span></P>
             <P>y = Kr*r + Kg*g + Kb*b</P>
-            <P>v - 128 = 0.5*(r - y)/(1-Kr) = 0.5 * r - 0.5 * g * Kg/(1-Kr) - 
+            <P>v - 128 = 0.5*(r - y)/(1-Kr) = 0.5 * r - 0.5 * g * Kg/(1-Kr) -
             0.5 * b * Kb/(1-Kr)</P>
-            <P>u - 128 = 0.5*(b - y)/(1-Kb) = - 0.5 * r * Kr/(1-Kb) - 0.5 * g * 
+            <P>u - 128 = 0.5*(b - y)/(1-Kb) = - 0.5 * r * Kr/(1-Kb) - 0.5 * g *
             Kg/(1-Kb) + 0.5 * b</P>
             <P>r = y + 2*(v-128)*(1-Kr)</P>
             <P>g = y - 2*(u-128)*(1-Kb)*Kb/Kg - 2*(v-128)*(1-Kr)*Kr/Kg</P>
             <P>b = y + 2*(u-128)*(1-Kb)</P>
-            <P><STRONG>YUV [16,235] &lt;-&gt; RGB [0,255]</STRONG> (0 &lt;= 
-            [r,g,b] &lt;= 255, 16 &lt;= y &lt;= 235, 16 &lt;= [u,v] &lt;= 
+            <P><STRONG>YUV [16,235] &lt;-&gt; RGB [0,255]</STRONG> (0 &lt;=
+            [r,g,b] &lt;= 255, 16 &lt;= y &lt;= 235, 16 &lt;= [u,v] &lt;=
             240)</P>
             <P>y = Y * 219 + 16</P>
             <P>u = U * 224 + 128</P>
@@ -78,12 +78,12 @@ PT-BR;mso-bidi-language:AR-SA">Substituindo (Y,V,U,R,G,B) nas equações acima e
             <P>g = G * 255</P>
             <P>b = B * 255</P>
             <H2>Referências:</H2>
-            <P><A 
+            <P><A
             href="http://www.poynton.com/notes/colour_and_gamma/ColorFAQ.html">http://www.poynton.com/notes/colour_and_gamma/ColorFAQ.html</A></P>
             <P>ITU BT.601 ...</P>
             <P>ITU BT.709 ...</P>
-      
-    
+
+
 <p><kbd>$Date: 2006/03/26 18:11:19 $ Portuguese translation by RoLon</kbd></p>
 <FORM>
 <INPUT TYPE="Button" VALUE="Back"

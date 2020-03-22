@@ -20,15 +20,15 @@
 音量を下げるために、負の dB 値（もしくは、0 から 1 の間の倍率）を使用することができます。
 負の倍率は、位相を 180 度シフトするでしょう。</p>
 <p>8 ビットと 24 ビットの音声サンプルは、処理過程において浮動小数点数に変換されます。その他の音声フォーマットは保持されます。
-<pre># 左のチャンネルを 3dB 増幅する（3dB 追加する）: 
-video = AviSource(&quot;c:\filename.avi&quot;) 
-stereo = WavSource(&quot;c:\audio.wav&quot;) 
-stereo_amp = AmplifydB(stereo, 3, 0) 
+<pre># 左のチャンネルを 3dB 増幅する（3dB 追加する）:
+video = AviSource(&quot;c:\filename.avi&quot;)
+stereo = WavSource(&quot;c:\audio.wav&quot;)
+stereo_amp = AmplifydB(stereo, 3, 0)
 return AudioDub(video, stereo_amp) </pre><br>
-      <pre># フロント 3 チャンネルを 3dB 増幅する（3dB 追加する）: 
-video = AviSource(&quot;c:\divx_6ch_wav.avi&quot;) 
-audio = WavSource(c:\divx_6ch_wav.avi) 
-multichannel_amp = AmplifydB(audio, 3, 3, 3) 
+      <pre># フロント 3 チャンネルを 3dB 増幅する（3dB 追加する）:
+video = AviSource(&quot;c:\divx_6ch_wav.avi&quot;)
+audio = WavSource(c:\divx_6ch_wav.avi)
+multichannel_amp = AmplifydB(audio, 3, 3, 3)
 return AudioDub(video, multichannel_amp) </pre>
 <p>各チャンネルの配置については、 <a href="getchannel.htm">GetChannel</a> で解説されています。
 

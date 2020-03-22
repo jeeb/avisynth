@@ -12,9 +12,9 @@
 </h2>
 <p><code>ConditionalFilter </code>(<var>clip testclip, clip source1, clip source2,
 string expression1, string operator, string expression2, bool &quot;show&quot;</var>)
-<p><code>ConditionalFilter</code> 
+<p><code>ConditionalFilter</code>
 (podmínkový filtr) vrací <var>source1</var> , kdy¾
-je splnìna podmínka ''expression1+operator+expression2''&nbsp;pro aktuální snímek, jinak vrací&nbsp; <var>source2</var>.&nbsp;Pokud není ¾ádná funkce 
+je splnìna podmínka ''expression1+operator+expression2''&nbsp;pro aktuální snímek, jinak vrací&nbsp; <var>source2</var>.&nbsp;Pokud není ¾ádná funkce
 v&nbsp; <var>expression1</var> nebo v <var>expression2</var>&nbsp;jasnì pou¾ita na&nbsp;nìjaký klip, pou¾ije se filtr
 na&nbsp; <var>testclip</var> . Audio se bere ze <var>source1</var>.
 <p>       Pøíklad. Vybereme snímky z klipu vid_blur kdy¾
@@ -23,7 +23,7 @@ je støední jas snímku men¹í ne¾ 20, jinak bereme snímky z výchozího klipu.
 <pre>vid = AviSource(&quot;file&quot;)
 vid_blur = vid.Blur(1.5)
 ConditionalFilter(vid, vid_blur, vid, &quot;AverageLuma()&quot;, &quot;lessthan&quot;, &quot;20&quot;)</pre>
-<p>Pøidáním&nbsp; <var>show</var>= 
+<p>Pøidáním&nbsp; <var>show</var>=
   "true" zobrazíme aktuální hodnoty parametru na obrazovce.
 </p>
 <p> Øetìzce <var>expression1</var> a <var>expression2</var> mohou být jakékoliv èíselné nebo logické výrazy, a smí zahrnovat&nbsp;vnitøní nebo u¾ivatelské&nbsp;funkce,&nbsp;stejnì  tak nìkteré&nbsp;pøídavné funkce,
@@ -31,8 +31,8 @@ které jsou pøeddefinovány (<A href="#RuntimeFunctions"> Runtime Funkce</A>) a&nb
 
 <br>
  Øetìzec
- &nbsp; <var>operator</var> mù¾e 
- být&nbsp; 
+ &nbsp; <var>operator</var> mù¾e
+ být&nbsp;
 "equals", "greaterthan"&nbsp;nebo "lessthan".&nbsp;Nebo lze
 pou¾ít odpovídající symboly&nbsp;"=", "&gt;"&nbsp;nebo "&lt;" .
 </p>
@@ -40,22 +40,22 @@ pou¾ít odpovídající symboly&nbsp;"=", "&gt;"&nbsp;nebo "&lt;" .
 </h2>
 <p><code>ScriptClip </code>(<var>clip, string function, bool "show", bool
 "after_frame"</var>)
-<p><code>ScriptClip</code>   vrací klip vrácený funkcí&nbsp; <var> function</var> 
-pou¾ité na ka¾dý snímek. Øetìzec&nbsp; <var>filter</var> mù¾e 
+<p><code>ScriptClip</code>   vrací klip vrácený funkcí&nbsp; <var> function</var>
+pou¾ité na ka¾dý snímek. Øetìzec&nbsp; <var>filter</var> mù¾e
 být&nbsp;libovolný vnitøní filtr, ale mohou to být také&nbsp;nìkteré&nbsp;preferované
 filtry, které jsou pøeddefinovány&nbsp;(<A href="#RuntimeFunctions"> Runtime Funkce</A>).&nbsp;Pøidáním
 <var>show</var>=  "true" zobrazíme aktuální hodnoty parametru na obrazovce.
 </p>Nìkolik pøíkladù: <br>
 <pre># Toto tiskne rozdíl mezi pøedchozím a aktuálním snímkem:
-clip = AviSource(&quot;c:\file.avi&quot;) 
-ScriptClip(clip, &quot;Subtitle(String(YDifferenceFromPrevious))&quot;) 
+clip = AviSource(&quot;c:\file.avi&quot;)
+ScriptClip(clip, &quot;Subtitle(String(YDifferenceFromPrevious))&quot;)
 
-# Toto pou¾ívá rozmazání ka¾dého snímku v závislosti na rozdílu od pøedchozího snímku. 
+# Toto pou¾ívá rozmazání ka¾dého snímku v závislosti na rozdílu od pøedchozího snímku.
 # Toto také zobrazí jaké chyby se oznamují na nìkterých snímcích:)
-clip = AviSource(&quot;c:\file.avi&quot;) 
-ScriptClip(clip, &quot;Blur(YDifferenceFromPrevious/20.0)&quot;) 
+clip = AviSource(&quot;c:\file.avi&quot;)
+ScriptClip(clip, &quot;Blur(YDifferenceFromPrevious/20.0)&quot;)
 
-# Toto pou¾ije èasové zmìkèení znaènì statické scény a promìnné rozmazání na pohyblivé scény. 
+# Toto pou¾ije èasové zmìkèení znaènì statické scény a promìnné rozmazání na pohyblivé scény.
 # Také rozmazání je zde øádnì uzavreno. Také pøiøadíme promìnnou - a proto je vlo¾eno pøeru¹ení øádku:
 function fmin(float f1, float f2) {
 &nbsp; return (f1&lt;f2) ? f1 : f2
@@ -64,18 +64,18 @@ clip = AviSource(&quot;c:\file.avi&quot;)
 T = clip.TemporalSoften(2, 7, 7, 3, 2)
 ScriptClip(clip, &quot;diff = YDifferenceToNext()&quot;+chr(13)+&quot;diff&gt;2.5 ? Blur(fmin(diff/20, 1.5)) : T&quot;)
 
-#Zobrazí èíslo snímku v klipu: 
+#Zobrazí èíslo snímku v klipu:
 ScriptClip(&quot;subtitle(string(current_frame))&quot;)
 
 #Zobrazí øetìzec 'frame =    the frame-number':
 ScriptClip(&quot;&quot;&quot;subtitle(&quot;frame = &quot; + string(current_frame))&quot;&quot;&quot;)</pre>
 
-<p>Ve&nbsp;v2.55&nbsp;je pøidán parametr&nbsp; <i><var>after_frame=true/false</var></i>     
+<p>Ve&nbsp;v2.55&nbsp;je pøidán parametr&nbsp; <i><var>after_frame=true/false</var></i>
     . Urèuje má li skript&nbsp;vyhodnocovat pøed&nbsp;(co¾ je základní
 nastavení)&nbsp;nebo&nbsp;a¾ potom, kdy bude snímek doruèen od vý¹e stojících&nbsp;filtrù.</p>
 
 <p>   "Omezení": Výstup skriptu musí být stejného formátu jako vstup
-do filtru&nbsp;&nbsp; <code>ScriptClip</code>      
+do filtru&nbsp;&nbsp; <code>ScriptClip</code>
     &nbsp;(stejné barevné prostøedí, ¹íøka a vý¹ka). Vracený klip mù¾e
 mít jinou délku, ale bude pou¾ita&nbsp;délka výchozího klipu "clip". Audio&nbsp;ze vstupu "clip"&nbsp;zustává
 nedotknuto. Pro dva velmi rozdílné zdroje&nbsp;(MPEG2DEC3 a AviSource) - mù¾e nastat nesoulad
@@ -87,7 +87,7 @@ barevných prostredí. To je známý ¹pek.
 <p>Podobný jako <code>ScriptClip</code>, kromì toho, ¾e výstup z <var>filter</var>
 je&nbsp;ignorován. To mù¾e být u¾iteèné napøíklad pro pøiøazení promìnných, atd. Vrací se
 snímky pøímo ze vstupního klipu.&nbsp;
-<br>Ve 
+<br>Ve
 v2.53&nbsp;je pøidán parametr&nbsp; <var>after_frame</var>=<code>true/false</code>&nbsp;. Urèuje má li skript&nbsp;vyhodnocovat pøed&nbsp;(co¾
 je základní nastavení)&nbsp;nebo&nbsp;a¾ potom, kdy bude snímek doruèen od vý¹e stojících&nbsp;filtrù.
 <h2><a name="ConditionalReader"></a>ConditionalReader</h2>
@@ -110,7 +110,7 @@ nebo barevnými) dvou klipù&nbsp;(vy¾aduje YV12, ISSE):
   <code>LumaDifference </code>(<var>clip1, clip2</var>)<br>
   <code>ChromaUDifference </code>(<var>clip1, clip2</var>)<br>
   <code>ChromaVDifference </code>(<var>clip1, clip2</var>)
-<p>Pøi pou¾ití tìchto funkcí&nbsp;je aktivní "implicit 
+<p>Pøi pou¾ití tìchto funkcí&nbsp;je aktivní "implicit
 last"&nbsp;(pokud není specifikován první parametr), tak¾e
 za první parametr je&nbsp;dosazen&nbsp;testclip (co¾ je poslední zmínìný klip), pøedávaný filtrùm ConditionalFilter, ScriptClip,
 FrameEvaluate.
@@ -125,7 +125,7 @@ FrameEvaluate.
   <code>UDifferenceToNext </code>(<var>clip</var>)<br>
   <code>VDifferenceToNext </code>(<var>clip</var>)<br>
   &nbsp;
-<pre># Nahrazuje poslední snímek pøed zmìnou scény 
+<pre># Nahrazuje poslední snímek pøed zmìnou scény
 # prvním snímkem z nové scény
 ConditionalFilter(last, last, last.trim(1,0), &quot;YDifferenceToNext()&quot;, &quot;&gt;&quot;, &quot;10&quot;, true)</pre>
 <h4>Dal¹í vnitøní funkce:</h4>
@@ -141,7 +141,7 @@ ConditionalFilter(last, last, last.trim(1,0), &quot;YDifferenceToNext()&quot;, &
   <code>YPlaneMinMaxDifference </code>(<var>clip, float threshold</var>)<br>
   <code>UPlaneMinMaxDifference </code>(<var>clip, float threshold</var>)<br>
   <tt><code>VPlaneMinMaxDifference </code></tt>(<i><var>clip, float threshold</var></i>)
-<p><var>Threshold</var>  
+<p><var>Threshold</var>
 je&nbsp;v procentech, urèuje jaký procentuální podíl pixelù mù¾e
 být vìt¹í nebo men¹í ne¾ dané minimum.&nbsp;Threshold (prahová hodnota)&nbsp;je volitelná&nbsp;a její&nbsp;výchozí hodnota
 je 0.
@@ -159,29 +159,29 @@ ColorYUV(analyze=true)
 Histogram()</pre>Pøi otevøení skriptu ve VirtualDubu se stane následující:
 <ul>
 <li>
-Kdy¾ &nbsp;Vdub po¾aduje&nbsp;snímek, AviSynth 
-  po¾aduje&nbsp;tento snímek z&nbsp;Histogramu. 
-  
+Kdy¾ &nbsp;Vdub po¾aduje&nbsp;snímek, AviSynth
+  po¾aduje&nbsp;tento snímek z&nbsp;Histogramu.
+
 
 <li>
-Histogram&nbsp;po¾aduje&nbsp;snímek z&nbsp;ColorYUV, 
-  
+Histogram&nbsp;po¾aduje&nbsp;snímek z&nbsp;ColorYUV,
+
 
 <li>
-   ColorYUV ¾ádá snímek od AviSource, který vytváøí snímek, 
-  a doruèí ho&nbsp;ke ColorYUV.</li> 
-  
+   ColorYUV ¾ádá snímek od AviSource, který vytváøí snímek,
+  a doruèí ho&nbsp;ke ColorYUV.</li>
+
 
 <li>
 ColorYUV zpracuje obraz a posílá ho do&nbsp;Histogramu, který
 ho vrací&nbsp; VirtualDubu.</li>
 </ul>
-<p>Tedy øetìzec 
+<p>Tedy øetìzec
 filtrù pracuje v zásadì&nbsp;pozpátku (výstup je spí¹e 'vyta¾en' ze spodu ne¾ 'protlaèen' z hora) co¾ dává mo¾nost pou¾ít&nbsp;nìkolik snímkù
 i z vý¹e polo¾ených filtrù&nbsp;pro obdr¾ení ¾ádaného snímku.
-<p> Nicménì Podmínìné filtry, potøebují&nbsp;vyhodnocovat&nbsp;skripty&nbsp; pøed tím, ne¾ ¾ádají 
-o snímky z vý¹e polo¾ených filtrù, proto potøebují vìdìt, který 
-filtr&nbsp;volat. Dal¹í dùle¾itá zvlá¹tnost spoèívá v tom, ¾e pouze globální 
+<p> Nicménì Podmínìné filtry, potøebují&nbsp;vyhodnocovat&nbsp;skripty&nbsp; pøed tím, ne¾ ¾ádají
+o snímky z vý¹e polo¾ených filtrù, proto potøebují vìdìt, který
+filtr&nbsp;volat. Dal¹í dùle¾itá zvlá¹tnost spoèívá v tom, ¾e pouze globální
 promìnné v 'prostøedí' podmínìného filtru, lze pou¾ít&nbsp;uvnitø
 i vnì podmínìného filtru&nbsp;. Podívejte se na následující skript</p>
 <pre>v = AviSource(&quot;E:\Temp\Test3\atomic_kitten.avi&quot;).ConvertToYV12
@@ -198,24 +198,24 @@ function g(clip c)
 g(v)</pre>Tento øetìzec filtrù pracuje následovnì:
 <ul>
 <li>
-Pøi ¾ádosti&nbsp;Vdubu&nbsp;o snímek, 
-  AviSynth&nbsp;¾ádá&nbsp;snímek z&nbsp;g(). 
-  
+Pøi ¾ádosti&nbsp;Vdubu&nbsp;o snímek,
+  AviSynth&nbsp;¾ádá&nbsp;snímek z&nbsp;g().
+
 
 <li>
- g() ¾ádá snímek z AviSource(): 
-  
+ g() ¾ádá snímek z AviSource():
+
 
 <ul>
 <li>
-  AviSynth ¾ádá snímek z druhého 
-    operátoru&nbsp;FrameEvaluate. 
-    
+  AviSynth ¾ádá snímek z druhého
+    operátoru&nbsp;FrameEvaluate.
+
 
 <li>
-Druhý FrameEvaluate&nbsp;vyhodnotí &nbsp; <i>YDifferenceFromPrevious(w)</i> a pøiøadí&nbsp;tuto hodnotu&nbsp;promìnné <i>text</i>   , po obdr¾ení 
-    ¾ádaného snímku z AviSource.&nbsp;Potom se ¾ádá snímek u prvního operátoru FrameEvaluate. 
-    
+Druhý FrameEvaluate&nbsp;vyhodnotí &nbsp; <i>YDifferenceFromPrevious(w)</i> a pøiøadí&nbsp;tuto hodnotu&nbsp;promìnné <i>text</i>   , po obdr¾ení
+    ¾ádaného snímku z AviSource.&nbsp;Potom se ¾ádá snímek u prvního operátoru FrameEvaluate.
+
 
 <li>
     První&nbsp;FrameEvaluate ¾ádá snímek ze ScriptClip&nbsp;po 'vyhodnocení
@@ -223,8 +223,8 @@ Druhý FrameEvaluate&nbsp;vyhodnotí &nbsp; <i>YDifferenceFromPrevious(w)</i> a pø
    a pøiøazení&nbsp;této hodnoty promìnné <i>t'.</i>
 
 <li>
-ScriptClip ¾ádá&nbsp;snímek z&nbsp;ConvertToYV12(), a vyhodnocení&nbsp; <i>Subtitle(t)</i>&nbsp;v tomto snímku. 
-    
+ScriptClip ¾ádá&nbsp;snímek z&nbsp;ConvertToYV12(), a vyhodnocení&nbsp; <i>Subtitle(t)</i>&nbsp;v tomto snímku.
+
 
 <li>
  ConvertToYV12() ¾ádá snímek z AviSource().</li>
@@ -234,7 +234,7 @@ ScriptClip ¾ádá&nbsp;snímek z&nbsp;ConvertToYV12(), a vyhodnocení&nbsp; <i>Subti
    AviSource() vytváøí snímek a posílá ho&nbsp;ke g(), který ho vrací
 VirtualDubu.</li>
 </ul>Jak je vidìt,&nbsp; <b>w</b> je definováno&nbsp;jako globální promìnná. Tímto zpùsobem&nbsp;ji mù¾eme pozdìji pou¾ít ve skriptu v podmínìných filtrech. Pokud
-chceme pou¾ít promìnné <b>t</b> a <b>text</b> &nbsp;v     
+chceme pou¾ít promìnné <b>t</b> a <b>text</b> &nbsp;v
  rùzných funkcích (uvnitø nebo vnì podmínìných filtrù) musí být také zadány
 jako globální promìnné.&nbsp;Tak napøíklad:
 <pre>v = AviSource(&quot;E:\Temp\Test3\atomic_kitten.avi&quot;).ConvertToYV12
@@ -269,12 +269,12 @@ V následující kapitole se nauèíme zapisovat do textového souboru informace, patø
 snímku.
 <h2>
 Roz¹íøené podmínìné filtrování:&nbsp;èást II</h2>
-<p>V následujícím pøíkladu, se do textového souboru 
-zapisují nìkteré informace, patøící ke snímku. První promìnná "a" øíká, 
-¾e&nbsp;snímek je prokládaný-zjistí se pou¾itím filtru <FONT face=Courier 
-color=#660033>IsCombed</FONT> z balíku <CODE>Decomb</CODE> &nbsp;(pro            
-         
-             
+<p>V následujícím pøíkladu, se do textového souboru
+zapisují nìkteré informace, patøící ke snímku. První promìnná "a" øíká,
+¾e&nbsp;snímek je prokládaný-zjistí se pou¾itím filtru <FONT face=Courier
+color=#660033>IsCombed</FONT> z balíku <CODE>Decomb</CODE> &nbsp;(pro
+
+
     urèitou mezní hodotu (threshold)).&nbsp;Druhá promìnná&nbsp;"b"
 øíká&nbsp;kolik je ve snímku pohybu.</p>
 <pre>global sep=&quot;.&quot;
@@ -324,7 +324,7 @@ V následující kapitole&nbsp;si prohlédneme&nbsp;pøíklad adaptivní pohybové filtr
 Roz¹íøené podmínìné filtrování:&nbsp;èást III</h2>
 
 <p>
-Na fórech se objevilo nìkolik pohybovì adaptivních filtrù 
+Na fórech se objevilo nìkolik pohybovì adaptivních filtrù
 pro zvìt¹ování a vyhlazování. Tyto filtry rozli¹ují malé, støední a velké mno¾ství
 pohybu v klipu&nbsp;(na základì srovnání snímkù). Podle toho mohou být pou¾ity&nbsp;rùzné druhy filtrù&nbsp;pro
 rùzný druh pohybu. Obecnì,&nbsp;èasové vyhlazování se pou¾ije pro&nbsp;statické scény s malým pohybem, prostorové
@@ -332,15 +332,15 @@ vyhlazení se pou¾ije pro&nbsp;scény s velkým pohybem a ve scénách
 se støedním pohybem se pou¾ívají&nbsp;prostorovì-èasové&nbsp;vyhlazovaèe.
 <br>Ní¾e se nahází zjednodu¹ená verze&nbsp;filtru QUANTIFIED MOTION FILTER v1.5
 b1 (10/07/2003) by HomiE FR,&nbsp;:</p>
-<pre>---------------------------------------------------- 
-# QUANTIFIED MOTION FILTER v1.3 
-# NAÈÍTÁME PLUGIN AVISYNTHU 
-LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\mpeg2dec3.dll&quot;) 
-LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\TemporalCleaner.dll&quot;) 
-LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\FluxSmooth.dll&quot;) 
+<pre>----------------------------------------------------
+# QUANTIFIED MOTION FILTER v1.3
+# NAÈÍTÁME PLUGIN AVISYNTHU
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\mpeg2dec3.dll&quot;)
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\TemporalCleaner.dll&quot;)
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\FluxSmooth.dll&quot;)
 LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\UnFilter.dll&quot;)
 
-# NAÈÍTÁME SKRIPT - QUANTIFIED MOTION FILTER 
+# NAÈÍTÁME SKRIPT - QUANTIFIED MOTION FILTER
 
 Import(&quot;E:\temp\QMF\qmf.avs&quot;)
 
@@ -359,29 +359,29 @@ function Medium_Motion_Filter(clip c)
 {
 &nbsp; c = FluxSmooth(c, 7, 7)
 &nbsp; c = BicubicResize(c, 512, 272, 0.00, 0.50)
-return c } 
+return c }
 
-# FILTRACE PRO VELKÉ MNO®STVÍ POHYBU # 
--&gt; ZMÌKÈOVACÍ ZMÌNA VELIKOSTI + PROSTOROVÁ FILTRACE 
-function  High_Motion_Filter(clip c) 
+# FILTRACE PRO VELKÉ MNO®STVÍ POHYBU #
+-&gt; ZMÌKÈOVACÍ ZMÌNA VELIKOSTI + PROSTOROVÁ FILTRACE
+function  High_Motion_Filter(clip c)
 {
 &nbsp; c = FluxSmooth(c, -1, 14)
 &nbsp; c = UnFilter(c, -30, -30)
-&nbsp; c = BilinearResize(c, 512, 272)  
+&nbsp; c = BilinearResize(c, 512, 272)
 &nbsp; return c
-} 
+}
 
 #  OTEVÍRÁNÍ VIDEO ZDROJE
-AviSource(&quot;E:\temp\QMF\britney-I_love_rock_'n_roll.avi&quot;) 
-ConvertToYV12(interlaced = true) Telecide(0) 
-# POU®ITÍ ADAPTIVNÍHO FILTRU PRO ZMÌNU VELIKOSTI (S POU®ITÍM QMF) 
+AviSource(&quot;E:\temp\QMF\britney-I_love_rock_'n_roll.avi&quot;)
+ConvertToYV12(interlaced = true) Telecide(0)
+# POU®ITÍ ADAPTIVNÍHO FILTRU PRO ZMÌNU VELIKOSTI (S POU®ITÍM QMF)
 QMF()
- 
+
 ----------------------------------------------------
 text souboru gmf.avs
 ----------------------------------------------------
 
-# QUANTIFIED MOTION FILTER (17/08/2003) by HomiE FR (homie.fr@wanadoo.fr) 
+# QUANTIFIED MOTION FILTER (17/08/2003) by HomiE FR (homie.fr@wanadoo.fr)
 # FUNKCE URÈENÍ MÍRY POHYBU function ME()
 { &nbsp;
 &nbsp; # NASTAVUJEME MÍRU POHYBU V SOULADU SE STØEDNÍM ROZDÍLEM SNÍMKÙ [1]
@@ -399,14 +399,14 @@ function QMF(clip c, float &quot;threshold_lm&quot;, float &quot;threshold_hm&qu
 global threshold_lm = threshold_lm &nbsp;
 global threshold_hm = threshold_hm &nbsp;
 
-&nbsp; # POVOLUJEME/ZAKAZUJEME VÝSTUP  LADÍCÍ INFORMACE[3] 
-&nbsp; debug = default(debug, false)  &nbsp; 
+&nbsp; # POVOLUJEME/ZAKAZUJEME VÝSTUP  LADÍCÍ INFORMACE[3]
+&nbsp; debug = default(debug, false)  &nbsp;
 
 &nbsp; # INICIALIZUJEME PROMÌNNOU, OBSAHUJÍCÍ MNO®STVÍ POHYBU
-&nbsp; global motion_level = 0 &nbsp; 
+&nbsp; global motion_level = 0 &nbsp;
 
 &nbsp; # NASTAVENÍ PØÍTOMNÉHO KLIPU[4]
-&nbsp; global clip = c 
+&nbsp; global clip = c
 
 &nbsp; # DOSTÁVÁME VÝSTUPNÍ ROZLI©ENÍ[5]
 &nbsp; width = Width(Low_Motion_Filter(c))
@@ -419,10 +419,10 @@ global threshold_hm = threshold_hm &nbsp;
 &nbsp; c = ConditionalFilter(c, High_Motion_Filter(c), c, &quot;<b>motion_level</b>&quot;, &quot;= &quot;, &quot;2&quot;)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # [6c]
 
 &nbsp; # TISKNEME LADÍCÍ INFORMACE [7]
-&nbsp; c = (debug == true) ? ScriptClip(c, &quot;Debug()&quot;): c &nbsp; 
+&nbsp; c = (debug == true) ? ScriptClip(c, &quot;Debug()&quot;): c &nbsp;
 
-&nbsp; # DOSTÁVÁME MÍRU POHYBU Z ANALÝZY SNÍMKÙ [8] 
-&nbsp;  c = FrameEvaluate(c, &quot;ME()&quot;)  
+&nbsp; # DOSTÁVÁME MÍRU POHYBU Z ANALÝZY SNÍMKÙ [8]
+&nbsp;  c = FrameEvaluate(c, &quot;ME()&quot;)
 
 &nbsp; # DOSTÁVÁME ROZDÍL MEZI PØEDCHOZÍM A SOUÈASNÝM SNÍMKEM [9]
 &nbsp; c = FrameEvaluate(c, &quot;<b>global diff</b> = 0.50*YDifferenceFromPrevious(clip) + 0.25*UDifferenceFromPrevious(clip) + 0.25*VDifferenceFromPrevious(clip)&quot;)
@@ -451,23 +451,23 @@ function Debug(clip c)
 ----------------------------------------------------</pre>Tento øetìzec filtrù pracuje následovnì:
 <ul>
 <li>
-   Kdy¾&nbsp;Vdub ¾ádá snímek, AviSynth ¾ádá snímek 
-  z QMF. 
-  
+   Kdy¾&nbsp;Vdub ¾ádá snímek, AviSynth ¾ádá snímek
+  z QMF.
+
 
 <ul>
 <li>
- QMF ¾ádá snímek z FrameEvaluate [9]. 
-    
+ QMF ¾ádá snímek z FrameEvaluate [9].
+
 
 <li>
-      Poté se vyhodnotí skript [9]&nbsp;, a&nbsp;globální&nbsp;promìnné <i>diff</i> &nbsp;se pøiøadí hodnota&nbsp;po ¾ádosti&nbsp;o snímek&nbsp;z AviSource. FrameEvaluate [9]&nbsp;¾ádá snímek 
-    z&nbsp;FrameEvaluate [8]. 
-    
+      Poté se vyhodnotí skript [9]&nbsp;, a&nbsp;globální&nbsp;promìnné <i>diff</i> &nbsp;se pøiøadí hodnota&nbsp;po ¾ádosti&nbsp;o snímek&nbsp;z AviSource. FrameEvaluate [9]&nbsp;¾ádá snímek
+    z&nbsp;FrameEvaluate [8].
+
 
 <li>
-Je¹tì jednou je&nbsp;skript [8]&nbsp;vyhodnocen: 
-    
+Je¹tì jednou je&nbsp;skript [8]&nbsp;vyhodnocen:
+
 
 <ul>
 <li>
@@ -475,29 +475,29 @@ pøi vyhodnocení&nbsp; me(),&nbsp;dostává globální&nbsp;promìnná <i>motion_level<
 </ul>
 
 <li>
-Je-li&nbsp;debug=  true, snímek je ¾ádán ze 
-    ScriptClip [7], a proto&nbsp;i z&nbsp;Debug(). 
-    
+Je-li&nbsp;debug=  true, snímek je ¾ádán ze
+    ScriptClip [7], a proto&nbsp;i z&nbsp;Debug().
+
 
 <li>
-           
-     Poté (a také&nbsp;kdy¾ je&nbsp;debug&nbsp;nastaveno na&nbsp;false) je snímek ¾ádán z posledního&nbsp;ConditionalFilter 
-    [6c], který ho ¾ádá z&nbsp;[6b], a ten zase ¾ádá snímek z&nbsp;[6a]. 
-    
+
+     Poté (a také&nbsp;kdy¾ je&nbsp;debug&nbsp;nastaveno na&nbsp;false) je snímek ¾ádán z posledního&nbsp;ConditionalFilter
+    [6c], který ho ¾ádá z&nbsp;[6b], a ten zase ¾ádá snímek z&nbsp;[6a].
+
 
 <ul>
 <li>
 Ve výsledku&nbsp;se snímek ¾ádá&nbsp;buï z&nbsp;High_Motion_filter, Medium_Motion_filter,&nbsp;nebo Low_Motion_filter&nbsp;v závislosti na hodnotì&nbsp; <i>motion_level</i>.</li>
 </ul>
-             
-          
+
+
        </li>
 </ul>
 
 <li>
-    QMF ¾ádá&nbsp;snímek z Telecide, 
-  Telecide&nbsp;z ConvertToYV12 a nakonec ConvertToYV12&nbsp;z AviSource. 
-  
+    QMF ¾ádá&nbsp;snímek z Telecide,
+  Telecide&nbsp;z ConvertToYV12 a nakonec ConvertToYV12&nbsp;z AviSource.
+
 
 <li>
   AviSource vytváøí snímek a posílá ho ke&nbsp;ConvertToYV12, atd.</li>

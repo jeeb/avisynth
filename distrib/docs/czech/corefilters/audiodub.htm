@@ -9,10 +9,10 @@
 <h2><a name="AudioDub"></a>AudioDub / AudioDubEx</h2>
 <p><code>AudioDub </code>(<var>video_clip, audio_clip</var>)<br>
 <code>AudioDubEx </code>(<var>video_clip, audio_clip</var>)</p>
-<p><code>AudioDub</code> 
-     
-     bere&nbsp;video stream (tok) z prvního argumentu&nbsp;a&nbsp;audio stream (tok) z druhého&nbsp;argumentu a 
-  spojuje je do jednoho klipu. Jestli nìkterá stopa&nbsp;chybí, filtr zkusí jiné poøadí, a pokud 
+<p><code>AudioDub</code>
+
+     bere&nbsp;video stream (tok) z prvního argumentu&nbsp;a&nbsp;audio stream (tok) z druhého&nbsp;argumentu a
+  spojuje je do jednoho klipu. Jestli nìkterá stopa&nbsp;chybí, filtr zkusí jiné poøadí, a pokud
   ani to nepomù¾e vrátí chybu.</p>
 
 
@@ -21,16 +21,16 @@
 video = AVISource(&quot;capture1.avi&quot;) + AVISource(&quot;capture2.avi&quot;)
 audio = WAVSource(&quot;capture.wav&quot;)
 AudioDub(video, audio)</pre>
-      
-    
-<p><code>AudioDubEx</code>         
+
+
+<p><code>AudioDubEx</code>
     bere&nbsp;video stream z prvního argumentu, pokud&nbsp;je pøítomen,&nbsp;audio stream z
 druhého, pokud je pøítomen, a spojuje je do jednoho klipu. Jestli se mu pøedají na vstup
 dva videoklipy, a druhý z nich nemá zvuk, tak výsledný klip bude obsahovat video z prvního
 klipu a nebude obsahovat zvuk. Jestli pøedáte na vstup dva zvukové klipy, výsledný klip bude obsahovat
 zvuk z druhého klipu a nebude obsahovat video.</p>
-      
-    
+
+
 <p><kbd>$English Date: 2005/11/08 12:37:33 $</kbd></p>
 <P><KBD>Èeský pøeklad:12.3.2008</KBD></P>
 <FORM>

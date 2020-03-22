@@ -19,7 +19,7 @@ z textového souboru, s rùznými hodnotami pro ka¾dý snímek - nebo rozsah snímkù.
   <tr>
     <td width="9%"><b>Parametr</b></td>
     <td width="76%"><b>Popis</b></td>
-    <td width="15%"><b> 
+    <td width="15%"><b>
       Výchozí hodnota</b></td>
   </tr>
   <tr>
@@ -53,7 +53,7 @@ jsou&nbsp;tvoøeny mezerami, a nové øádky&nbsp;oznaèují nová (dal¹í)&nbsp;nastave
 <b>TYPE (int|float|bool)</b>
 <p>V ka¾dém souboru mù¾ete zadat pouze jeden typ dat. V danou chvíli&nbsp;je mo¾né mít&nbsp;&nbsp;
 <i>float</i>, <i>int</i>&nbsp;nebo <i>bool</i> hodnoty. Zadáváte je pou¾itím&nbsp;pøíkazu
-<b>TYPE</b>           
+<b>TYPE</b>
    .&nbsp;Musíte v¾dy&nbsp;zaèít zadáním&nbsp;typu dat,&nbsp;t.j. dokud&nbsp;&nbsp;není&nbsp;urèen typ dat, nic  se nièemu nepøiøazuje.
 Jednou zadaný typ dat nelze v prùbìhu provádìní mìnit!
 <p><b>DEFAULT &lt;value&gt;</b>
@@ -69,7 +69,7 @@ Kdy¾ je zadáno, posune to v¹echna èísla snímkù o konstantní posunutí. Toto je pr
 <p>Nastavuje hodnotu pro zadaný rozsah snímkù. Oba hranièní snímky
 &lt;start-frame&gt;&nbsp;a &lt;end-frame&gt;&nbsp;jsou&nbsp;zahrnuty v daném rozsahu.&nbsp;
 <p><b>I &lt;startframe&gt; &lt;endframe&gt; &lt;startvalue&gt; &lt;stopvalue&gt;</b>
-<p>Interpoluje hodnoty&nbsp;od 
+<p>Interpoluje hodnoty&nbsp;od
 &lt;startvalue&gt;&nbsp;do &lt;stopvalue&gt; v zadaném&nbsp;rozsahu snímkù. Pracuje
 pouze pro celé (int) a desetinné (float) hodnoty. Oba hranièní snímky &lt;start-frame&gt;&nbsp;a &lt;end-frame&gt;&nbsp;jsou&nbsp;zahrnuty v
 daném rozsahu.
@@ -96,7 +96,7 @@ R 45 300 76.5654
 Mù¾ete si v¹imnout&nbsp;-&nbsp;následující&nbsp;nastavení pøepisují pøedchozí. To ilustruje snímek '72' - nehledì na to ¾e&nbsp;
 se nachází uvnitø rozsahu 45-300, bude vrácena pozdìj¹í&nbsp;hodnota. Na druhou stranu, pokud by byl rozsah&nbsp;zadán a¾
 po '72&nbsp; -671.454' - vrátila by se hodnota 76.5654.<br>
-<br>Skript pro 
+<br>Skript pro
 práci s tímto souborem by mohl vypadat takto:
 <pre>colorbars(512,512)
 trim(0,500)
@@ -104,7 +104,7 @@ ScriptClip(&quot;subtitle(string(myvar))&quot;)
 ConditionalReader(&quot;file.txt&quot;, &quot;myvar&quot;, false)</pre>
 <p>Tento skript vkládá hodnoty&nbsp;do promìnné&nbsp;"myvar", která je pou¾ita&nbsp;filtrem
 <A href="subtitle.htm">Subtitle</A>, vyvolaný filtrem
-<A href="conditionalfilter.htm#ScriptClip">ScriptClip</A>&nbsp;pro 
+<A href="conditionalfilter.htm#ScriptClip">ScriptClip</A>&nbsp;pro
 zobrazení&nbsp;podmínìné hodnoty jako titulku.</p>
 <p><b>V¹imnìte si!</b>&nbsp;Øádek ConditionalReader() se nachází <b>po</b>&nbsp;ka¾dém pou¾ití
 "myvar" ve Va¹em skriptu.</p>
@@ -133,7 +133,7 @@ I 250 275 1.0 0.0</pre>
 <p> V zásadì definuje&nbsp;klíèové snímky pro&nbsp;x-offset (horizontální posun) a&nbsp;opacity (neprùhlednost). Ve snímcích 25-&gt;50&nbsp;je neprùhlednost zvìt¹ena&nbsp;z 0.0&nbsp;na 1.0, zatímco text je
 posunut zleva doprava. Potom text stojí na místì od snímku 50 po snímek&nbsp;250, a potom
 jede text dále doprava a¾ postupnì zmizí.<br>
-     Je jednodu¹¹í si klip prohlédnout,&nbsp;ne¾ podrobnì popisovat, co dìlá. 
+     Je jednodu¹¹í si klip prohlédnout,&nbsp;ne¾ podrobnì popisovat, co dìlá.
 <h4><a NAME="Applyrange"></a>Slo¾itý&nbsp;ApplyRange</h4>
 <p>Jak jste si mohli v¹imnout&nbsp;pou¾ívání velkého poètu volání <A href="animate.htm">ApplyRange()</A>&nbsp;ve skriptu&nbsp;mù¾e vést&nbsp;k problémùm s resoursy. Pou¾ití&nbsp; <code>ConditionalReader</code>&nbsp;spolu s&nbsp;
 <A href="conditionalfilter.htm">ConditionalFilter</A>  mù¾e vést k efektivnímu øe¹ení.</p>
@@ -147,7 +147,7 @@ R 45 60 True
 R 200 220 True
 210 False
 315 True</pre>
-<p>            
+<p>
          Uvedený skript&nbsp;vrátí logické hodnoty. Ve&nbsp;výchozím nastavení vrací False. Nicménì pro
 snímky&nbsp;2, 45&nbsp;a¾ 60, 72, 200&nbsp;a¾ 220 a 315&nbsp;kromì 210 vrátí True. Mohli jste
 si v¹imnout,&nbsp;¾e pozdìj¹í zmìny pøepisují nastavení provedená v souboru døíve. To ilustruje snímek&nbsp;'210' - i
@@ -163,10 +163,10 @@ ConditionalFilter(A, B, &quot;MyVar&quot;, &quot;==&quot;, &quot;False&quot;, fa
 ConditionalReader(&quot;File.txt&quot;, &quot;MyVar&quot;, false)</pre>
 
 <p>     To vlo¾í hodnoty do promìnné zvané "MyVar", kterou pou¾ívá
-<A href="conditionalfilter.htm">ConditionalFilter</A>    
+<A href="conditionalfilter.htm">ConditionalFilter</A>
 k výbìru mezi&nbsp;nezpracovanou a otoèenou verzí zdroje.</p>
 
-<p><b>V¹imnìte 
+<p><b>V¹imnìte
 si!</b>&nbsp;Øádek&nbsp; <code>ConditionalReader()</code>&nbsp;je umístìn&nbsp; <b>po</b>&nbsp;ka¾dém
 pou¾ití "MyVar"&nbsp;v na¹em skriptu.</p>
 

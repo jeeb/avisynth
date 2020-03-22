@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tivtc_showcombedtivtc.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tivtc_showcombedtivtc.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -33,7 +33,7 @@ $Id: tivtc_showcombedtivtc.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
    roztøepení snímku pro testování, zda je nebo není snímek roztøepený a vrací true pokud je a
    false pokud není.</p>
 <h3>Syntaxe</h3>
-<p><code>ShowCombedTIVTC</code> (clip, int <var>&quot;cthresh&quot;</var>, bool <var>&quot;chroma&quot;</var>, 
+<p><code>ShowCombedTIVTC</code> (clip, int <var>&quot;cthresh&quot;</var>, bool <var>&quot;chroma&quot;</var>,
 int <var>&quot;MI&quot;</var>, int <var>&quot;blockx&quot;</var>, int <var>&quot;blocky&quot;</var>,
 int <var>&quot;metric&quot;</var>, bool <var>&quot;debug&quot;</var>, int <var>&quot;display&quot;</var>,
 bool <var>&quot;fill&quot;</var>, int <var>&quot;opt&quot;</var>)</p>
@@ -43,11 +43,11 @@ int <var>&quot;metric&quot;</var>, int <var>&quot;opt&quot;</var>)</p>
 <h3>Pøíklad použití IsCombedTIVTC</h3>
 <pre>conditionalfilter(last,source1,source2,&quot;IsCombedTIVTC&quot;,&quot;=&quot;,&quot;true&quot;)</pre>
 <h2>Parametry</h2>
-<p>     Parametry cthresh/MI/chroma/blockx/blocky/metric jsou pøesnì stejné jako 
+<p>     Parametry cthresh/MI/chroma/blockx/blocky/metric jsou pøesnì stejné jako
      odpovídající parametry v TFM takže jsem prostì zkopíroval jejich popisy.</p>
 <p><var>cthresh</var> -</p>
 <p>Toto je prahová hodnota roztøepení oblasti použitá pro detekci roztøepených snímkù.  Je podobná
-         dthresh nebo dthreshold v telecide() a fielddeinterlace().  To v podstatì 
+         dthresh nebo dthreshold v telecide() a fielddeinterlace().  To v podstatì
          ovládá jak "silné" nebo "viditelné" musí být roztøepení, aby bylo detekované.  Vìtší hodnoty
          znamenají, že roztøepení musí být více viditelné a menší hodnoty znamenají, že mùže být ménì
          viditelné nebo silné a pøitom stále detekované.  Platná nastavení jsou od -1 (každý pixel
@@ -62,16 +62,16 @@ int <var>&quot;metric&quot;</var>, int <var>&quot;opt&quot;</var>)</p>
          maximální nastavení = blocky x blockx (což je bod ve kterém nebudou nikdy žádné snímky detekovány jako roztøepené).</p>
 <p>Výchozí:  80  (int)</p>
 <p><var>chroma</var> -</p>
-<p>Nastavuje, zda má a nebo nemá být barevnost uvažována pøi rozhodování o roztøepenosti snímku.  Vypnìte  
-         ho jen, když má váš zdroj problémy s barevností (duha, atd...) , které 
+<p>Nastavuje, zda má a nebo nemá být barevnost uvažována pøi rozhodování o roztøepenosti snímku.  Vypnìte
+         ho jen, když má váš zdroj problémy s barevností (duha, atd...) , které
          zpùsobují problémy detekci roztøepení snímku pøi zapnutém chroma.  Ve skuteènosti
-         je jeho nastavení na false obvykle dobré, kromì pøípadu kdy je ve zdroji roztøepená jen 
+         je jeho nastavení na false obvykle dobré, kromì pøípadu kdy je ve zdroji roztøepená jen
          barevnost.</p>
 <p>true = barevnost (chroma) je zahrnuta<br>
    false = barevnost (chroma) není zahrnuta</p>
 <p>Výchozí:  false  (bool)</p>
 <p><var>blockx</var> -</p>
-<p>Nastavuje x-ovou velikost okna použitého pøi detekci roztøepení snímku.  	
+<p>Nastavuje x-ovou velikost okna použitého pøi detekci roztøepení snímku.
          To se týká velikosti oblasti, ve které je vyžadován MI poèet pixelù, aby to bylo
          detekováno jako roztøepení pro deklarování roztøepeného snímku.  Viz popis parametru MI
          pro více informací.  Možné hodnoty jsou jakákoliv èísla, která jsou druhými mocninami èísla 2
@@ -79,7 +79,7 @@ int <var>&quot;metric&quot;</var>, int <var>&quot;opt&quot;</var>)</p>
 <p>Výchozí:  16  (int)</p>
 
 <p><var>blocky</var> -</p>
-<p>Nastavuje y-ovou velikost okna použitého pøi detekci roztøepení snímku.  	
+<p>Nastavuje y-ovou velikost okna použitého pøi detekci roztøepení snímku.
          To se týká velikosti oblasti, ve které je vyžadován MI poèet pixelù, aby to bylo
          detekováno jako roztøepení pro deklarování roztøepeného snímku.  Viz popis parametru MI
          pro více informací.  Možné hodnoty jsou jakákoliv èísla, která jsou druhými mocninami èísla 2
@@ -142,7 +142,7 @@ int <var>&quot;metric&quot;</var>, int <var>&quot;opt&quot;</var>)</p>
 
             <ul>0 - pixely detekovány jako roztøepené jsou oznaèeny bíle
             <br>1 - blok s nejvyššími hodnotami bude buï ohranièen nebo
-            <br>       vyplnìn bíle, v závislosti na hodnotì parametru "fill" 
+            <br>       vyplnìn bíle, v závislosti na hodnotì parametru "fill"
             <br>2 - všechny bloky s hodnotami nad MI budou buï  ohranièeny nebo
             <br>       vyplnìny bíle , v závislosti na hodnotì parametru "fill"
             <br>3 - 0 + 1

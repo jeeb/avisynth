@@ -13,23 +13,23 @@
   <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1, ... , string expression16, bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
   <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1, ... , string expression16, bool &quot;append&quot;</i></var>)<br>
   <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1,  ... , string expression16, bool &quot;append&quot;</i></var>)</p>
-  
+
 <p><code>WriteFile</code> は、<var>expressionN</var><a href="#footnote_1" class="footnote_link">*1</a> を評価して、その結果を文字列に変換し、ファイルに書き出します。<br></p>
 
 <p>「ランタイム」変数<a href="#footnote_2" class="footnote_link">*2</a>の <var>current_frame</var> は、「式（expression）」の中で使えるように設定されます<br>
 （これは、ScriptClip の場合と同じように動作します。詳しい情報はヘルプで確認してください）。<br>
 <var>current_frame</var> は、スクリプトが読み込まれるときに -1 に設定され、スクリプトがクローズされるときに -2 に設定されます。</p>
-  
+
 <p><code>WriteFile</code> はフレームごとに出力を生成し、 <code>WriteFileIf</code> は最初の式が <code>true</code>（真）の場合にのみ出力を生成します。スクリプトのオープン時またはクローズ時の出力はありません。<br>
 <code>WriteFileStart</code> と <code>WriteFileEnd</code> は、スクリプトのオープン時とクローズ時にのみ出力を生成し、フレームごとのアクションはありません。</p>
-  
+
 <p><var>append</var> = <code>true</code> のとき、結果は既存のファイルに追加されます。<br>
 <var>flush</var> = <code>true</code> のとき、ファイルは毎回実行後にクローズされ、再オープンされます。そのため、結果をすぐに見ることができます（遅くなるかもしれません）。<br>
 <code>WriteFileStart</code> と <code>WriteFileEnd</code> では、 <var>flush</var> はつねに <code>true</code> です。<br>
 <var>append</var> のデフォルトは、 <code>WriteFileStart</code> （デフォルト <code>false</code>） を除き、つねに <code>true</code> です。</p>
 
 <h4>いくつかの簡単な例を使って最もうまく説明することができます:</h4>
-      
+
 <pre>filename = &quot;c:\myprojects\output.txt&quot;
 # フレームを取得するためにテスト用のビデオを作成する
 Version()
@@ -43,7 +43,7 @@ WriteFileStart(filename, &quot;&quot;&quot; &quot;This is the header&quot; &quot
 
 # こちらはスクリプトがクローズされるときに書き込まれる
 WriteFileEnd(filename, &quot;&quot;&quot; &quot;Now the script was closed&quot; &quot;&quot;&quot;)</pre>
-    
+
 <p>どうすればトリプルクォート<a href="#footnote_3" class="footnote_link">*3</a>を使って文字列の中に文字列をタイプすることができるのか確かめてください！</p>
 
 <p>式が評価できない場合は、代わりにエラーメッセージが書き込まれます。<br>
@@ -55,7 +55,7 @@ WriteFile(filename, &quot;this is nonsense&quot;)</pre>
 <hr>
 <h4><b>ファイル内に数字を書き込むより簡単な方法があります。しかし ...</b></h4>
 <p>この例では、「ランタイム関数」を FrameEvaluate と一緒に使用する方法を見ることができます。</p>
-      
+
 <pre># 異なるフレームを取得するためにテスト用のビデオを作成する
 Version.FadeIn(50).ConvertToYV12
 
@@ -63,21 +63,21 @@ Version.FadeIn(50).ConvertToYV12
 WriteFile(&quot;F:\text.log&quot;, &quot;current_frame&quot;, &quot;colon&quot;, &quot;AverageLuma&quot;)</pre>
 
 <p>あるいは、実時間も出力したいと思うかもしれません:</p>
-      
+
 <pre># 異なるフレームを取得するためにテスト用のビデオを作成する
 Version.FadeIn(50).ConvertToYV12
 
 # フレーム番号、現在の時間、および、そのフレームの輝度の平均値を書き込む
 # 文字列の内側に引用符を入れるためにトリプルクォートが必要
 WriteFile(last, filename, &quot;current_frame&quot;, &quot;&quot;&quot; time(&quot; %H:%M:%S&quot;) &quot;&quot;&quot;, &quot;AverageLuma&quot;)</pre>
-    
+
 <hr>
 <h4>その他の使用例:</h4>
 <p><code>WriteFileIf</code> では、1 番最初の式はブーリアン<a href="#footnote_5" class="footnote_link">*5</a>（true または false）であることが期待されています。<br>
 それが TRUE である場合にのみ、その他の式が評価され、その行が書き込まれます。<br>
 （覚えておいて下さい: &amp;&amp; は「かつ」、|| は「または」、== は「等しい」、!= は「等しくない」です。）<br>
 そのようにファイルから完全に行を省くことができます。</p>
-   
+
 <pre># 異なるフレームを取得するためにテスト用のビデオを作成する
 Version.FadeIn(50).ConvertToYV12
 

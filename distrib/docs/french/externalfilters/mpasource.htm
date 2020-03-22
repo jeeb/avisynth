@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: mpasource.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $ 
+$Id: mpasource.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 -->
 </head>
 <body>
@@ -14,19 +14,19 @@ $Id: mpasource.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 <br><b>version:</b> 0.2
 <br><b>category:</b> MPA Decoder (source) Plugins<br>
 <b>download:</b> <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>&nbsp;
-<br><b>requirements:</b> 
+<br><b>requirements:</b>
 <hr>
 <h2>Description</h2>
 Opens mp1/2/3 audio files directly and normalizes output to 100% if requested.
-<p>Take care when testing: by opening the AVS-script the whole file gets scanned 
+<p>Take care when testing: by opening the AVS-script the whole file gets scanned
 in order to return the exact sample number when <i> normalize=false</i> (default) this is done with partial
-decoding (~20sec for 
+decoding (~20sec for
 one hour audio on my PC). When <i> normalize=true</i> it is much slower (~100sec).</p>
-<p>Version 0.2 creates a small file .D2A after the first scan, so there is no multiple 
+<p>Version 0.2 creates a small file .D2A after the first scan, so there is no multiple
 scanning necessary.</p>
-<p>When backward jumps are requested, the seeking is always done in fast mode from 
+<p>When backward jumps are requested, the seeking is always done in fast mode from
 frame 0 to the requested frame.</p>
-<p>Along with the audio, a small 8x8 video is generated, so you always have to put 
+<p>Along with the audio, a small 8x8 video is generated, so you always have to put
 MPASource as SECOND argument in AudioDub.</p>
 <h3>Example&nbsp;</h3>
 <pre>LoadPlugin(&quot;C:\myprojects\mpasource25\release\mpasource.dll&quot;)

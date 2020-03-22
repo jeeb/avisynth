@@ -7,7 +7,7 @@
 </head>
 <body>
 <h2>Subtitle</h2>
-<p><code>Subtitle </code>(<var>clip, string text, 
+<p><code>Subtitle </code>(<var>clip, string text,
     int&nbsp;"x",
   int&nbsp;"y",
   int&nbsp;"first_frame",
@@ -26,15 +26,15 @@
 <p><code>Subtitle </code> (<var>clip, string text</var>)</p>
 
 
-<p>Filtr&nbsp; <code>Subtitle</code>         &nbsp;pøidá&nbsp;vyhlazený&nbsp;(anti-aliased) text do&nbsp;skupiny snímkù. Pokud chcete více ne¾ jedny titulky,&nbsp;musíte&nbsp;filtr&nbsp; <code>Subtitle</code> 
+<p>Filtr&nbsp; <code>Subtitle</code>         &nbsp;pøidá&nbsp;vyhlazený&nbsp;(anti-aliased) text do&nbsp;skupiny snímkù. Pokud chcete více ne¾ jedny titulky,&nbsp;musíte&nbsp;filtr&nbsp; <code>Subtitle</code>
          &nbsp; nìkolikrát pou¾ít (zøetìzit) za sebou. V¹echny&nbsp;parametry&nbsp;kromì samotného textu&nbsp;jsou volitelné a&nbsp;mohou být&nbsp;vynechány nebo zadány mimo poøadí&nbsp;pou¾itím syntaxe&nbsp;
 <i>name</i>=<i>value</i> .</p>
 <h4>Parametry</h4>
 <p><var>text</var>          je text, kterým bude
 pøekryt klip&nbsp;poèínaje&nbsp;snímkem <var>first_frame</var> a&nbsp;konèe&nbsp;snímkem <var>last_frame</var>.</p>
 
-<p>(<var>x</var>,<var>y</var>     ) je 
-pozice textu.&nbsp;Parametry <var>x</var> a <var>y</var> mohou být 
+<p>(<var>x</var>,<var>y</var>     ) je
+pozice textu.&nbsp;Parametry <var>x</var> a <var>y</var> mohou být
 nastaveny na&nbsp;-1&nbsp;pro automatický výpoèet&nbsp;a pou¾ití&nbsp;horizontální&nbsp;nebo vertikální&nbsp;støedové souøadnice. Jiné
 záporné hodnoty ''x'' a ''y'' lze pou¾ít pro umístìní titulkù èásteènì mimo
 obrazovku. <b>Upozornìní:</b> Pokud vá¹ skript pou¾ívá Subtitle s <a href="animate.htm">Animate</a>
@@ -45,12 +45,12 @@ a zápornými hodnotami ''x'' nebo ''y'', pak hodnoty ''x'' nebo
 nainstalované fonty&nbsp;na aktuálním&nbsp;poèítaèi&nbsp;jsou dostupné, jsou nalezeny&nbsp;ve slo¾ce&nbsp;'windows\fonts').</p>
 <p><var>size</var> je    velikost textu v 0.125 jednotkách pixelu.</p>
 
-    <p>Parametry 
+    <p>Parametry
       <var>text_color
-      </var> a 
+      </var> a
       <var>halo_color
-      </var>by mìly být zadány 
-v&nbsp;¹estnáctkových&nbsp;$aarrggbb hodnotách,&nbsp;podobnì jako v HTML--kromì&nbsp;toho ¾e zaèínají&nbsp;na   $ místo # a&nbsp;ètvrtý bajt&nbsp;udává&nbsp;prùhlednost alfa. $00rrggbb&nbsp;je plnì neprùhledné   (opaque), $FF000000&nbsp;je plnì prùhledné&nbsp;(transparent). Mù¾ete vypnout halo&nbsp;výbìrem této barvy.&nbsp;Viz 
+      </var>by mìly být zadány
+v&nbsp;¹estnáctkových&nbsp;$aarrggbb hodnotách,&nbsp;podobnì jako v HTML--kromì&nbsp;toho ¾e zaèínají&nbsp;na   $ místo # a&nbsp;ètvrtý bajt&nbsp;udává&nbsp;prùhlednost alfa. $00rrggbb&nbsp;je plnì neprùhledné   (opaque), $FF000000&nbsp;je plnì prùhledné&nbsp;(transparent). Mù¾ete vypnout halo&nbsp;výbìrem této barvy.&nbsp;Viz
       <A href="../syntax_colors.htm">zde</A>&nbsp;pro více informací o uvedených barvách.
     </p>
 
@@ -83,33 +83,33 @@ v&nbsp;¹estnáctkových&nbsp;$aarrggbb hodnotách,&nbsp;podobnì jako v HTML--kromì&
 </table>
 <p>
     Poznámka:&nbsp;Není ¾ádné vertikální zarovnání støedu.
-<p>Parametr&nbsp; <var>spc</var> vám 
+<p>Parametr&nbsp; <var>spc</var> vám
 umo¾ní upravit&nbsp;mezeru mezi&nbsp;znaky&nbsp;(0=nezmìnìno). Hodnota mù¾e být kladná nebo záporná&nbsp;pro roz¹íøení nebo zú¾ení textu. Podle dokumentace Visual C++&nbsp;k&nbsp;funkci SetTextCharacterExtra(), která provádí tuto úlohu, je tato hodnota&nbsp;v logických jednotkách&nbsp;a zaokrouhlena&nbsp;na nejbli¾¹í&nbsp;pixel. To je u¾iteèné pro&nbsp;pokusy&nbsp;pøizpùsobení&nbsp;typických fontù&nbsp;v PC&nbsp;k fontùm&nbsp;pou¾itým ve&nbsp;filmu a televizi které bývají obvykle ¹ir¹í&nbsp;pøi stejné vý¹ce nebo pro zaplnìní daného pravoúhelníku textem&nbsp;s pevnou&nbsp;mezerou mezi znaky.
-<p>Pou¾ití víceøádkového textu pomocí "\n"&nbsp;je doplnìno ve&nbsp; <em>v2.57</em> a je pou¾ito&nbsp;pokud je nastaven parametr&nbsp; 
-<var>lsp</var> (line spacing). Nastavuje 
+<p>Pou¾ití víceøádkového textu pomocí "\n"&nbsp;je doplnìno ve&nbsp; <em>v2.57</em> a je pou¾ito&nbsp;pokud je nastaven parametr&nbsp;
+<var>lsp</var> (line spacing). Nastavuje
 dodateènou mezeru
       mezi dvìma øádky v jednotkách 0.125 pixelu.</p>
-    <p>Parametr&nbsp; 
+    <p>Parametr&nbsp;
       <var>font_width
-      </var>vám umo¾ní   upravit pomìr vý¹ky a ¹íøky (aspect ratio) znakù v&nbsp;0.125 jednotkách,&nbsp;zapsaných podle dokumentace   funkce&nbsp;CreateFont() ve Visual C++.&nbsp;Souvisí to s parametrem&nbsp; 
+      </var>vám umo¾ní   upravit pomìr vý¹ky a ¹íøky (aspect ratio) znakù v&nbsp;0.125 jednotkách,&nbsp;zapsaných podle dokumentace   funkce&nbsp;CreateFont() ve Visual C++.&nbsp;Souvisí to s parametrem&nbsp;
       <var>size&nbsp;,
       </var>           s výchozím GDI pomìrem stran a&nbsp;pøirozeným&nbsp;pomìrem stran&nbsp;zvoleného fontu.
     </p>
-    <p>Parametr&nbsp; 
+    <p>Parametr&nbsp;
       <var>font_angle
       </var>      vám umo¾ní upravit&nbsp;úhel   natoèení textu v&nbsp;0.1&nbsp;stupních proti smìru hodinových ruèièek.
     </p>
-    <p>Je-li zapnut parametr&nbsp; 
+    <p>Je-li zapnut parametr&nbsp;
       <var>interlaced&nbsp;
-      </var>, sni¾uje se blikání 
+      </var>, sni¾uje se blikání
 (flicker)&nbsp;z&nbsp;pìkných ostrých&nbsp;vertikálních&nbsp;pøenosù&nbsp;v prokládaných zobrazeních. Provádí to zvìt¹ením&nbsp;okna pro&nbsp;anti-aliaser   (vyhlazovaè)&nbsp;do (vèetnì) 0.5&nbsp;váhy pixelu z øádkù&nbsp;nad a pod,&nbsp;efektivnì aplikuje&nbsp;mírné vertikální rozmazání.
     </p>
-    <p>Krátká forma (se v¹emi výchozími parametry) je u¾iteèná, kdy¾ vám po dobu sledování skuteènì nezálezí na vnìj¹ím vzhledu titulkù--napøíklad, kdy¾ pou¾íváte   
-      <A href="stack.htm"> StackVertical</A> &nbsp;pro 
+    <p>Krátká forma (se v¹emi výchozími parametry) je u¾iteèná, kdy¾ vám po dobu sledování skuteènì nezálezí na vnìj¹ím vzhledu titulkù--napøíklad, kdy¾ pou¾íváte
+      <A href="stack.htm"> StackVertical</A> &nbsp;pro
                zobrazení nìkolika variant&nbsp;snímku, a chcete nìjakým zpùsobem oznaèit který je   který.
     </p>
-    <p>Tento&nbsp;filtr je v AviSynthu vnitønì pou¾it&nbsp;v pøíkazu&nbsp; 
-      <A href="version.htm">Version</A>        a pro hlá¹ení&nbsp;chybových zpráv, a   také ve filtru 
+    <p>Tento&nbsp;filtr je v AviSynthu vnitønì pou¾it&nbsp;v pøíkazu&nbsp;
+      <A href="version.htm">Version</A>        a pro hlá¹ení&nbsp;chybových zpráv, a   také ve filtru
       <A href="showframes.htm">ShowFrameNumber</A> a podobných.
     </p>
    <p>
@@ -125,13 +125,13 @@ dodateènou mezeru
   </tr>
   <tr>
     <td width="10%"><var>x</var></td>
-    <td width="50%">            8&nbsp;pokud je&nbsp;align 
+    <td width="50%">            8&nbsp;pokud je&nbsp;align
       (zarovnání)&nbsp;=1,4,7 nebo kdy¾ není ¾ádné align; -1 pokud je&nbsp;align= 2,5,8;&nbsp;nebo width (¹íøka)-8&nbsp;pokud je&nbsp;align=3,6,9&nbsp;</td>
   </tr>
   <tr>
     <td width="10%"><var>y</var></td>
-    <td width="50%">            height (vý¹ka)-1&nbsp;pokud 
-      je&nbsp;align=1,2,3;            size (velikost)&nbsp;pokud 
+    <td width="50%">            height (vý¹ka)-1&nbsp;pokud
+      je&nbsp;align=1,2,3;            size (velikost)&nbsp;pokud
       align=   4,5,6   nebo není ¾ádné
       align;&nbsp;nebo 0&nbsp;pokud je align=7,8,9</td>
   </tr>
@@ -141,7 +141,7 @@ dodateènou mezeru
   </tr>
   <tr>
     <td width="10%"><var>last_frame</var></td>
-    <td width="50%">            framecount(clip)-1&nbsp; (poèet 
+    <td width="50%">            framecount(clip)-1&nbsp; (poèet
       snímkù            -1)</td>
   </tr>
   <tr>
@@ -162,7 +162,7 @@ dodateènou mezeru
   </tr>
   <tr>
     <td width="10%"><var>align</var></td>
-    <td width="50%">             Bì¾nì&nbsp;4 &lt;levý stranovì a 
+    <td width="50%">             Bì¾nì&nbsp;4 &lt;levý stranovì a
       základní vý¹kovì&gt;;&nbsp;pokud je&nbsp;x= -1,&nbsp;pak 5 &lt;vodorovný støed a&nbsp;základní vý¹kovì&gt;</td>
   </tr>
   <tr>
@@ -192,7 +192,7 @@ dodateènou mezeru
 <pre># Nìjaký text ve støedu klipu:
 AviSource(&quot;D:\clip.avi&quot;)
 Subtitle(&quot;Hello world!&quot;, align=5)</pre>
-<pre># Nìjaký text v pravém horním rohu 
+<pre># Nìjaký text v pravém horním rohu
 # klipu se zadaným fontem, velikostí a èervenou barvou:
 AviSource(&quot;D:\clip.avi&quot;)
 Subtitle(&quot;Hello world!&quot;, font=&quot;georgia&quot;, size=24, \
@@ -203,7 +203,7 @@ BlankClip()
 Subtitle( \
   &quot;Nìjaký text v øádku 1\\nDal¹í text v øádku 1\n&quot; + \
   &quot;Nìjaký text v øádku 2&quot;, \
-         lsp=10, halo_color=$ff000000) 
+         lsp=10, halo_color=$ff000000)
 
 # To dává:
 Nìjaký text v øádku 1\nDal¹í text v øádku 1
@@ -225,7 +225,7 @@ Nìjaký text v øádku 2</pre>
     <td width="50%">Pøidány parametry&nbsp;align a spc.<br>
         Nastavení&nbsp;y=
          -1poèítá svislý støed (zarovnání je nedotèeno)&nbsp;<br>
-        Výchozí x a 
+        Výchozí x a
       y&nbsp;hodnoty&nbsp;závisí na&nbsp;zarovnání&nbsp;align&nbsp;(døíve x=8, y=size)&nbsp;</td>
   </tr>
   <tr>

@@ -56,24 +56,24 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">em</span><span style="font-size:
 10.0pt;mso-bidi-font-size:12.0pt;font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:
 &quot;Times New Roman&quot;;mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:
-PT-BR;mso-fareast-language:PT-BR;mso-bidi-language:AR-SA"> 3 dB (aumenta 3 dB):</span> 
-video = AviSource(&quot;c:\filename.avi&quot;) 
-stereo = WavSource(&quot;c:\audio.wav&quot;) 
-stereo_amp = AmplifydB(stereo, 3, 0) 
+PT-BR;mso-fareast-language:PT-BR;mso-bidi-language:AR-SA"> 3 dB (aumenta 3 dB):</span>
+video = AviSource(&quot;c:\filename.avi&quot;)
+stereo = WavSource(&quot;c:\audio.wav&quot;)
+stereo_amp = AmplifydB(stereo, 3, 0)
 return AudioDub(video, stereo_amp) </pre><br>
       <pre><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA"># Amplia os canais dianteiros em 3 dB (aumenta 3 dB):</span>
-video = AviSource(&quot;c:\divx_6ch_wav.avi&quot;) 
-audio = WavSource(c:\divx_6ch_wav.avi) 
-multichannel_amp = AmplifydB(audio, 3, 3, 3) 
+video = AviSource(&quot;c:\divx_6ch_wav.avi&quot;)
+audio = WavSource(c:\divx_6ch_wav.avi)
+multichannel_amp = AmplifydB(audio, 3, 3, 3)
 return AudioDub(video, multichannel_amp) </pre>
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Como os multi-canais são mapeados pode ser
-achado na descrição</span> <a href="getchannel.htm">GetChannel</a>. 
+achado na descrição</span> <a href="getchannel.htm">GetChannel</a>.
 <p><kbd>$Date: 2006/03/26 18:11:19 $ Portuguese translation by RoLon</kbd>
 
 <FORM>

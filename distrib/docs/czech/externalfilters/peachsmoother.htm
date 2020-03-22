@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -19,7 +19,7 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         <h2>Úvod</h2>
         <p>Toto je další filtr, kterı oèišuje obraz zprùmìrováním
         vizuálního šumu mezi snímky i uvnitø snímkù.</p>
-        <p>Peach je navren tak, aby se vypoøádal se zvláštnostmi TV vysílání. 
+        <p>Peach je navren tak, aby se vypoøádal se zvláštnostmi TV vysílání.
         Automaticky se sám jemnì vyladí pro dobrou i pro špatnou kvalitu signálu a
         pøíjmu, a mùe se dokonce rozumnì vypoøádat s nìkterımi druhy interferencí.
         Je to ohromné!</p>
@@ -45,22 +45,22 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         <p><var>NoiseReduction</var><br>
         <i>Celé èíslo od 1 do 200; 35 je vıchozí</i></p>
         <p>Obèas filtr neví jestli zmìna v obrazu pochází
-        od šumu nebo od pohybu. Kdy to nastane, 
+        od šumu nebo od pohybu. Kdy to nastane,
         je na vıbìr&nbsp;— pøedpokládat pohyb, a obraz bude šumìjší pokud se
         zmılíte. Nebo pøedpokládat šum, a chyba pak rozmae pohyb.</p>
-        <p>Nastavení <var>NoiseReduction</var> vás nechá øíci 
+        <p>Nastavení <var>NoiseReduction</var> vás nechá øíci
         filtru jak se rozhodnout. Nastavte ho nízko, a poèítaè
         bude pracovat bezpeènì, vyhne se všem èástem obrazu s monım pohybem.
         Nastavte ho vysoko, a šum bude vıraznì sníen — za cenu rozmazání
-        a ztráty detailù v pomalıch pohybovıch oblastech. Tato volba je 
-        ovlivnìna mnostvím šumu — èím víc šumu je v obrazu, tím víc ho bude nutné 
+        a ztráty detailù v pomalıch pohybovıch oblastech. Tato volba je
+        ovlivnìna mnostvím šumu — èím víc šumu je v obrazu, tím víc ho bude nutné
         rozmazávat aby se redukoval.</p>
         <p>Neexistuje dokonalı zpùsob  jeho vıbìru — prostì zkuste rùzné hodnoty
         a bude vypadat tak hezky jak jen to je moné. Komedie a dramata jsou
         pravdìpodobnì nejlepší materiál pro trefení nastavení, protoe velké zábìry oblièejù
         umoòují opravdu snadno rozeznat rozmazání. (To je proto, e zvláš
         dobøe vidíme poruchy ve tváøích.)</p>
-        <p>Pamatujte, e se tento filtr automaticky upravuje na mnoství 
+        <p>Pamatujte, e se tento filtr automaticky upravuje na mnoství
         šumu v obrazu. Take jakmile máte nastavení, jaké se vám líbí, mùete ho
         pouít jak pro èisté tak pro zašumìlé video.</p>
         <p>Nicménì, existují dva druhy videa, které si zasluhují trochu zvláštní rozvahy:
@@ -69,7 +69,7 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         má sklon mít ménì jemnıch detailù. A u sportu (nebo jiného videa s neustálım
         pohybem) je velmi malı úèinek šumového filtru, take
         ho mùete prostì pøeskoèit.</p>
-        <p>Ne jemnì vyladíte toto nastavení, ujistìte se, e je filtr 
+        <p>Ne jemnì vyladíte toto nastavení, ujistìte se, e je filtr
         schopen odhadnout šum ve vašem klipu. Udìlejte to pouitím parametru <var>Dot</var>,
         popsanım níe.</p>
         <p><var>Stability</var><br>
@@ -80,7 +80,7 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         èistì vypadajícího obrazu pouijte vyšší hodnotu. Nenastavujte ho ale pøíliš vysoko,
         jinak obdríte plakátovitost (posterization).</p>
         <p>Bez ohledu na vaše nastavení <var>Stability</var> ,
-        filtr vdy zachová urèité mnoství variací za úèelem 
+        filtr vdy zachová urèité mnoství variací za úèelem
         zachování barevné hloubky pùvodního obrazu.</p>
         <p><var>DoSpatial</var><br>
         <i>Logickı; TRUE je vıchozí</i></p>
@@ -101,13 +101,13 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         v aktuálním snímku. Zobrazí poblí levého horního rohu obrazu
         — konkrétnì o 16 níe a
         16 doprava od levého horního rohu. Bod (dot) je ukazatelem, e
-        filtr urèil hodnotu šumu. Obecnì se vypne, kdy 
+        filtr urèil hodnotu šumu. Obecnì se vypne, kdy
         je celı obraz v rychlém pohybu — Kdy je tolik pohybu,
         e filtr pøestává vìøit aktuálnímu odhadu. V takovém pøípadì
         filtr pracuje váením pøedchozích dobrıch hodnot.</p>
         <p>Pokud je obraz v neustálém pohybu, bude tak pracovat dokud
         filtr dokáe urèit úroveò šumu. Interference má také sklon
-        prodluovat odhad šumu — èas odhadu závisí 
+        prodluovat odhad šumu — èas odhadu závisí
         na druhu a mnoství interferencí.</p>
         <p><var>Readout</var><br>
         <i>Logickı; FALSE je vıchozí</i></p>
@@ -120,7 +120,7 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         Tyto odhady se budou mìnit podle prùbìhu videa.</p>
         <p>Èísla jsou mìøeny jako pøedpokládané absolutní zmìny v jednotlivém
         pixelu (jak jeho barevnosti tak jasu) mezi dvìma sousedními snímky.</p>
-        <p>To poskytuje objektivní mìøení šumu. To je také zpùsob jak 
+        <p>To poskytuje objektivní mìøení šumu. To je také zpùsob jak
         zjistit hodnoty pro <var>NoiseLevel</var> a monost
         <var>Baseline</var>, popsané níe.</p>
         <p><var>NoiseLevel</var> a <var> Baseline</var><br>
@@ -134,22 +134,22 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         <var> Baseline</var> by nikdy nemìl bıt vìtší ne
         <var>NoiseLevel</var>.</p>
         <p>Proè by jste chtìli zadávat tato èísla? Protoe Peach bere èas
-        kdy zjišuje mnoství šumu. A v øídkıch pøípadech 
+        kdy zjišuje mnoství šumu. A v øídkıch pøípadech
         se mùe ošklivì mılit. (To je obvykle zpùsobeno scénami s mraky kouøe a
         prachu, co mùe Pach chybnì oznaèit za šum.) Zadáním
         hodnot šumu, nebude odhad nikdy kolísat. Pøeskoèení
         odhadu šumu také urychlí zpracování.</p>
-        <p>Na druhou stranu, nìkterá videa opravdu mají rùzné mnoství 
+        <p>Na druhou stranu, nìkterá videa opravdu mají rùzné mnoství
         šumu. V takovém pøípadì vám bude mnohem lépe s obvyklou detekcí šumu filtru Peach.</p>
         <p><var>ShowMotion</var><br>
         <i>Logickı; FALSE je vıchozí</i></p>
-        <p>Toto je jiná obskurní diagnostika. Kdy je to zapnuto, 
+        <p>Toto je jiná obskurní diagnostika. Kdy je to zapnuto,
         filtr bude ukazovat svùj odhad zda se objevil pohyb. Bílé oblasti
         jsou definitivnì pohyblivé, èerné oblasti jsou definitivnì statické. Šedé
         oblasti jsou šedé oblasti.</p>
         <p><var>Debug</var><br>
         <i>Logickı; FALSE je vıchozí</i></p>
-        <p>Tato monost má vıznam jen pro stout of heart. Pro vysvìtlení 
+        <p>Tato monost má vıznam jen pro stout of heart. Pro vysvìtlení
         jeho vıstupu se podívejte na komentáøe dole <a href="http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/deinterlace/DScaler/Plugins/FLT_AdaptiveNoise/"><cite>FLT_AdaptiveNoise.c
         </cite>
         </a>.</p>
@@ -158,12 +158,12 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         <p>A rozhodnou vaše oèi. Já rád udruji nastavení celkem
         nízko — rozmazané tváøe vypadají hùøe ne malé poruchy.</p>
         <p>Pøekvapivì mùe malé mnoství variací barev vylepšit obraz.
-        Pøepnutím zpìt a vpøed mezi barvami je obraz 
+        Pøepnutím zpìt a vpøed mezi barvami je obraz
         schopen dát dojem barvy nìkde mezi. Šum mùe také
         pøekrıt umìlé struktury v obrazu a tím vám usnadòuje
         ignorovat chyby.</p>
         <p>S tímto na mysli, se Peach snaí ponechat malé mnoství
-        barevnıch variací. Ve vısledku vám nikdy nedá plnì stabilní obraz. 
+        barevnıch variací. Ve vısledku vám nikdy nedá plnì stabilní obraz.
         To je pravdìpodobnì špatné pro kompresi, ale zlepší to
         kvalitu obrazu.</p>
         <h3>Vidím hodnì rozmazání v døívìjších èástech
@@ -188,26 +188,26 @@ $Id: peachsmoother.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         <h2>Šum obecnì</h2>
         <h3>Jakı je nejlepší zpùsob odstraòování šumu?</h3>
         <p>Pøesvìdète se, e máte dobrı signál. Šum mùe pocházet ze shlukù kabelù,
-        špatnıch spojení, slabého vıkonu a uzemìní, špatnì navrené video 
+        špatnıch spojení, slabého vıkonu a uzemìní, špatnì navrené video
         karty, elektrickıch pomùcek (cokoli od vypínaèù svìtla a po rùzné
-        poèítaèové komponenty) nebo ze špatného zdroje videa. Tyto problémy jsou 
+        poèítaèové komponenty) nebo ze špatného zdroje videa. Tyto problémy jsou
         mimo rámec tohoto souboru nápovìdy. Navrhl bych podívat se na <a href="http://www.avsforum.com/"><cite>AV
         Science Forum</cite> </a>’s Home Theater Computers FAQ and board, kde
         jsou tyto námìty podrobnì diskutovány.</p>
         <h3><font face="Arial">Mìl bych pouít šumovı filtr?</font></h3>
-        <p>To záleí na tom co sledujete. Sport a pøíroda zobrazující 
-        obecnì — skuteènì cokoli s pohyblivou nízkokontrastní 
+        <p>To záleí na tom co sledujete. Sport a pøíroda zobrazující
+        obecnì — skuteènì cokoli s pohyblivou nízkokontrastní
         texturou — nebıvají dobøe zpracovány èasovımi vyhlazovaèi. To je
         proto, e textura vypadá hodnì jako šum.</p>
-        <p>Peach pracuje dobøe s obtínım materiálem a vypíná se tam kde je 
+        <p>Peach pracuje dobøe s obtínım materiálem a vypíná se tam kde je
         detekován pohyb. To zpùsobuje pøekvapivì málo problémù s polovımi sporty
-        dokud šum pozadí není pøíliš špatnı. Ale to není perfektní 
+        dokud šum pozadí není pøíliš špatnı. Ale to není perfektní
         — Automobilové závody jsou obzvláštì rozmazané. Kdy to nastane,
         je nejlepší pøeskoèit jakékoli èasové vyhlazovaèe.</p>
         <p>Jinak je obecnì dobré pouít šumovı filtr.</p>
         <h3>Kolik šumovıch filtrù bych mìl pouít?</h3>
-        <p>Buïte velmi opatrní pøi pouívání více ne jednoho. Spuštìní více èasovıch 
-        šumovıch filtrù mùe zpùsobit, e další filtry budou pøíliš dùvìøovat 
+        <p>Buïte velmi opatrní pøi pouívání více ne jednoho. Spuštìní více èasovıch
+        šumovıch filtrù mùe zpùsobit, e další filtry budou pøíliš dùvìøovat
         svému odhadu šumu/pohybu. To obvykle vede k plakátovitosti (posterization),
         skvrnitosti (speckling), a pruhovitosti (banding).</p>
         <p>Spuštìní prostorového filtru po Peach Smoother mùe pracovat

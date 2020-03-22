@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: msmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: msmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: msmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>   Donald Graft
 <br><b>verze:</b>      2.02<br>
-<b>stáhnout:</b> <a href="http://neuron2.net/mine.html">http://neuron2.net/mine.html</a>, 
+<b>stáhnout:</b> <a href="http://neuron2.net/mine.html">http://neuron2.net/mine.html</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>   Prostorové vyhlazovaèe
 <br><b>poadavky:</b>&nbsp;
@@ -24,25 +24,25 @@ $Id: msmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 
 <!-- #EndTemplate -->
 <h2>Úvod</h2>
-<p>Tento plugin pro Avisynth implementuje neobvyklı koncept v prostorovém (spatial) vyhlazování. Aèkoliv je navren zvláš pro animované filmy, mùe bıt uiteènı i jinde. 
-Filtr je efektivní pøi odstraòování mosquito šumu a také efektivnì vyhlazuje rovinné oblasti v animovanıch filmech.  Není cennı jen pro redukci šumu, 
+<p>Tento plugin pro Avisynth implementuje neobvyklı koncept v prostorovém (spatial) vyhlazování. Aèkoliv je navren zvláš pro animované filmy, mùe bıt uiteènı i jinde.
+Filtr je efektivní pøi odstraòování mosquito šumu a také efektivnì vyhlazuje rovinné oblasti v animovanıch filmech.  Není cennı jen pro redukci šumu,
 ale pro kódování vısledného klipu pak staèí ménì bitù.</p>
 <p>Tento filtr podporuje RGB32 nebo YV12 barevná prostøedí jako vstup. Filtr ještì není optimalizován pro rychlost. Optimalizace budou zahrnuty v pøíštích verzích.</p>
-<p>Smysl filtru je jednoduchı.  Nejvìtší potíí tøeba u Smart Smoother (napøíklad) je, e pøi nastavení prahové hodnoty dost vysoko,  
-poadované vyhlazení nièí vıznamné mnoství detailù. Potøebujeme oddìlit ovládání detekce detailù od míry pouitého vyhlazení. 
+<p>Smysl filtru je jednoduchı.  Nejvìtší potíí tøeba u Smart Smoother (napøíklad) je, e pøi nastavení prahové hodnoty dost vysoko,
+poadované vyhlazení nièí vıznamné mnoství detailù. Potøebujeme oddìlit ovládání detekce detailù od míry pouitého vyhlazení.
 Ve Smart Smootheru a dalších vyhlazovaèích s prahovımi hodnotami, jedna prahová hodnota ovládá obì tyto funkce.</p>
 <p>Vyhlazování by také nemìlo bıt dìláno napøíè hranami obrazu.</p>
-<p>MSmooth implementuje obì tato doladìní. Aby jste je vyuili, nastavte nejdøíve parametr 'threshold' tak jak vyadujete, aby byly zachovány detaily. Pak nastavte sílu vyhlazení. 
+<p>MSmooth implementuje obì tato doladìní. Aby jste je vyuili, nastavte nejdøíve parametr 'threshold' tak jak vyadujete, aby byly zachovány detaily. Pak nastavte sílu vyhlazení.
 Mùete nastavit vysoké vyhlazovací síly bez znièení zachovávanıch detailù (protoe mapa detailù je pouita jako maska vyhlazování).&nbsp;</p>
 <h2>Funkèní syntaxe MSmooth</h2>
-<p>MSmooth pouívá jmenné parametry. To znamená, e nemusíte mít obavy o poøadí parametrù a mùete jednoduše na nì poukazovat pomocí názvù a vkládat je v jakémkoliv poøadí 
+<p>MSmooth pouívá jmenné parametry. To znamená, e nemusíte mít obavy o poøadí parametrù a mùete jednoduše na nì poukazovat pomocí názvù a vkládat je v jakémkoliv poøadí
 do seznamu parametrù. Kdy vynecháte parametr tak bere své vıchozí hodnoty.  Napøíklad, pokud chcete pouít MSmooth se sílou strengh 7 se zapnutım ladìním (debug), mùete jednoduše øíci:</p>
 <pre>MSmooth(strength=7, debug=true)</pre>
 <p>Je povolena jakákoliv kombinace a poøadí parametrù. Nicménì pamatujte, e by jste mìli vdy vkládat prázdné závorky, pokud nespecifikujete ádné parametry.</p>
 <p>Následující je syntaxe pro MSmooth (nahraïte parameter_list vaším èárkou oddìlenım seznamem jmennıch parametrù).&nbsp;</p>
 <p><b>MSmooth(<i>parameter_list</i>)</b>
 <p><var>threshold</var> (0-255, default 15): Tento parametr urèuje co je detail, kterı má bıt zachován. Aby jste vidìli oblasti detailù, které budou zachovány, pouijte parametr 'mask'.
-<p><var>strength</var> (0-25, vıchozí 3): Tento ukazuje poèet iterací 3x3 prùmìrného rozmazání (blur) které má bıt provedeno ve vyhlazovanıch oblastech.  
+<p><var>strength</var> (0-25, vıchozí 3): Tento ukazuje poèet iterací 3x3 prùmìrného rozmazání (blur) které má bıt provedeno ve vyhlazovanıch oblastech.
 Je to pouito jen na oblasti bez detailù urèené parametrem 'threshold', a vyhlazování nepracuje napøíè detaily obrazu. Filtr se pøi zvyšování síly strength velmi zpomalí.
 <p><var>chroma</var> (true/false, vıchozí false): Kdy je nastaveno true, zapíná vyhlazování barevnosti (chroma) pro YV12 (je vdy zapnuto pro RGB). Práce bez vyhlazování barevnosti je rychlejší.
 <p><var>highq</var> (true/false, vıchozí true): Kdy je nastaveno true, pouije se kvalitnìjší ale mírnì pomalejší algoritmus detekce detailù.

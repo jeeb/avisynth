@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tmonitor.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tmonitor.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: tmonitor.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>        0.9.4<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b> Rùzné pluginy
 <br><b>požadavky:</b>&nbsp;
@@ -26,68 +26,68 @@ $Id: tmonitor.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 
 <!-- #EndTemplate -->
 <h2>Popis</h2>
-<p>      TMonitor je filtr velmi podobný AVSMon.  Zapíná monitoring  
+<p>      TMonitor je filtr velmi podobný AVSMon.  Zapíná monitoring
 AviSynth klipu pøes náhled videa, zobrazuje informace o klipu (jako
 šíøku videa, výšku, barevné prostøedí, poèet snímkù, audio vzorkù, frekvenci vzorkování,
-poèet audio kanálù, a další), a upravuje zpoždìní audio.  Podporuje také  
+poèet audio kanálù, a další), a upravuje zpoždìní audio.  Podporuje také
 více instancí na skript, a umožòuje pøi tom prohlížení rozdílù mezi
 rùznými èástmi øetìzce zpracování.</p>
 <h3>Syntaxe</h3>
-<p><code>TMonitor</code> (clip, string <var>&quot;name&quot;</var>, int 
+<p><code>TMonitor</code> (clip, string <var>&quot;name&quot;</var>, int
 <var>&quot;everyP&quot;</var>, int
 <var>&quot;everyD&quot;</var>, float <var>&quot;delay&quot;</var>, bool
-<var>&quot;esync&quot;</var>, int <var>&quot;range&quot;</var>, int 
+<var>&quot;esync&quot;</var>, int <var>&quot;range&quot;</var>, int
 <var>&quot;offset&quot;</var>, bool
 <var>&quot;audio&quot;</var>)</p>
 <h3>PARAMETRY</h3>
 <p><var>   name </var> -</p>
-<p>Tento volitelný øetìzec mùžete použít pro identifikaci aktuální instance TMonitor.  
-Toto jméno bude zobrazeno ve jménech oken a také v levém spodním 
-rohu hlavního dialogového okna.  Jméno je omezeno na maximálnì 
+<p>Tento volitelný øetìzec mùžete použít pro identifikaci aktuální instance TMonitor.
+Toto jméno bude zobrazeno ve jménech oken a také v levém spodním
+rohu hlavního dialogového okna.  Jméno je omezeno na maximálnì
 20 znakù. Není-li dáno, tak je jméno nastaveno na
 èíslo aktuální instance.</p>
 <p>výchozí -  ""  (string)</p>
 <p><var>everyP</var>, <var> everyD</var> -</p>
-<p>Tyto nastavují intervaly aktualizace.  everyP ovládá jak èasto je video       
-okno náhledu aktualizováno.  everyD ovládá jak èasto je aktualizován rozšíøený 
-informaèní dialog.  Intervaly jsou v # (poètu) snímkù a mohou být nastaveny na       
-následující hodnoty - 0 (nikdy), 1, 5, 10, 20, 50, 100, 200, 500, 1000.       
+<p>Tyto nastavují intervaly aktualizace.  everyP ovládá jak èasto je video
+okno náhledu aktualizováno.  everyD ovládá jak èasto je aktualizován rozšíøený
+informaèní dialog.  Intervaly jsou v # (poètu) snímkù a mohou být nastaveny na
+následující hodnoty - 0 (nikdy), 1, 5, 10, 20, 50, 100, 200, 500, 1000.
 Tyto hodnoty je možné zmìnit/nastavit také pøes gui.</p>
 <p>výchozí - <var>everyP</var> - 1  (int)<br>
              <var>everyD</var> - 0</p>
 <p><var>delay</var> -</p>
-<p>Zpoždìní audia v sekundách.  Toto lze také upravit pøes gui.         
-Jediné omezení je, že to musí být uvnitø rozsahu definovaného pøes       
+<p>Zpoždìní audia v sekundách.  Toto lze také upravit pøes gui.
+Jediné omezení je, že to musí být uvnitø rozsahu definovaného pøes
 nastavení offset/range.</p>
 <p>výchozí -  0.0  (float)</p>
 <p><var>esync</var> -</p>
-<p>Tato možnost zajistí, že synchronizace obrazu a zvuku je pøi upravování zpoždìní audia 
-pøesnì zachována pøi vyhledávání v souborech s vbr mp3 audiem.  Pracuje stejným zpùsobem       
+<p>Tato možnost zajistí, že synchronizace obrazu a zvuku je pøi upravování zpoždìní audia
+pøesnì zachována pøi vyhledávání v souborech s vbr mp3 audiem.  Pracuje stejným zpùsobem
 jako EnsureVBRMP3Sync(), a tak mùže zpùsobit dlouhé pauzy kvùli tomu, že musí
-èíst od zaèátku k aktuální pozici.  
-Proto se doporuèuje nejdøíve dekódovat audio do wav a použít wav       
+èíst od zaèátku k aktuální pozici.
+Proto se doporuèuje nejdøíve dekódovat audio do wav a použít wav
 jako vstup, pokud upravujete zpoždìní audia pro soubory s vbr audiem.</p>
 <p>výchozí -  false  (bool)</p>
 <p><var>range</var>, <var> offset</var> -</p>
-<p>Toto ovládá zpoždìní posuvníku audia v hlavním dialogovém oknì.  Rozsah       
-nastavení urèuje maximální úpravu v millisekundách jednou cestou nebo další       
-(vpøed nebo vzad). Výchozí hodnotou tohoto parametru je 1100, což znamená, že by jste       
-byli schopni zpozdit audio až o 1.1 sekundy nebo uychlyt (posunout napøed) audio až o  1.1       
-sekundy.  Pokud to místo toho nastavíte na 5000, posuvník by umožnil zpoždìní a       
-posunutí napøed až o 5 sekund.  Maximální hodnota pro rozsah je 20000 (20 sekund)       
+<p>Toto ovládá zpoždìní posuvníku audia v hlavním dialogovém oknì.  Rozsah
+nastavení urèuje maximální úpravu v millisekundách jednou cestou nebo další
+(vpøed nebo vzad). Výchozí hodnotou tohoto parametru je 1100, což znamená, že by jste
+byli schopni zpozdit audio až o 1.1 sekundy nebo uychlyt (posunout napøed) audio až o  1.1
+sekundy.  Pokud to místo toho nastavíte na 5000, posuvník by umožnil zpoždìní a
+posunutí napøed až o 5 sekund.  Maximální hodnota pro rozsah je 20000 (20 sekund)
 a minimum je 1.&nbsp;</p>
-<p>       offset nastavuje posun (v ms) od místa zpoždìní 0 ms na které je rozsah        
-vystøedìn.  To znamená, že jestliže nastavíte offset na 5000 a range na 1000, tak       
-posuvník zpoždìní v gui by umožnil úpravu zpoždìní mezi 4 a 6       
-sekundami.  Kombinováním parametrù range a offset mùžete pøesnì upravit celkové       
+<p>       offset nastavuje posun (v ms) od místa zpoždìní 0 ms na které je rozsah
+vystøedìn.  To znamená, že jestliže nastavíte offset na 5000 a range na 1000, tak
+posuvník zpoždìní v gui by umožnil úpravu zpoždìní mezi 4 a 6
+sekundami.  Kombinováním parametrù range a offset mùžete pøesnì upravit celkové
 zpoždìní snadnìji.  offset lze nastavit na jakékoliv obì kladné (zpožïovací) a
 záporné (posun vpøed).</p>
 <p>výchozí - <var>range</var> - 1100  (int)<br>
 <var> offset</var> -   0  (int)</p>
 <p><var>audio</var> -</p>
-<p>Toto umožní vynucení vypnutí posuvníku audia a souvisejících ovládání audia v hlavním 
-dialogu dokonce pokud klip má audio.  Je to pro zabránìní možnosti 
-støídání hodnoty zpoždìní, když to nechcete.  true zapíná 
+<p>Toto umožní vynucení vypnutí posuvníku audia a souvisejících ovládání audia v hlavním
+dialogu dokonce pokud klip má audio.  Je to pro zabránìní možnosti
+støídání hodnoty zpoždìní, když to nechcete.  true zapíná
 ovládání pokud je audio pøítomno, false vypíná ovládání.</p>
 <p>výchozí -  true  (bool)</p>
 
@@ -130,7 +130,7 @@ ovládání pokud je audio pøítomno, false vypíná ovládání.</p>
 
 <p>10/30/2004  v0.9.0<br>
        - Pùvodní vydání
-       
+
 <p><kbd>$English Date: 2005/07/10 16:11:01 $</kbd>
 <p><kbd>Èeský pøeklad:30.3.2009</kbd>
 </p>

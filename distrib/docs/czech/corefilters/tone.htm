@@ -11,10 +11,10 @@
 <p><code>Tone </code>(<var>float "length", float
 "frequency", int "samplerate", int "channels",
 string "type", float "level"</var>)
-<p>Tento filtr bude generovat zvuk&nbsp;(vlnovou køivku) dané frekvence &nbsp; <var>frequency</var>&nbsp;pro danou délku&nbsp; <var>length</var>&nbsp;èasu v sekundách. <var>Type</var> mù¾e být "Silence" - ticho, "Sine" - sinus 
+<p>Tento filtr bude generovat zvuk&nbsp;(vlnovou køivku) dané frekvence &nbsp; <var>frequency</var>&nbsp;pro danou délku&nbsp; <var>length</var>&nbsp;èasu v sekundách. <var>Type</var> mù¾e být "Silence" - ticho, "Sine" - sinus
 (výchozí), "Noise"- ¹um, "Square" - ètverec, "Triangle"
 - trojúhelník, nebo "Sawtooth"
-- pilový zub.&nbsp;  <var>level</var> je 
+- pilový zub.&nbsp;  <var>level</var> je
 amplituda&nbsp;vlnové køivky&nbsp;(která je maximální&nbsp;pøi
   level=1.0).
 </p>
@@ -29,12 +29,12 @@ amplituda&nbsp;vlnové køivky&nbsp;(která je maximální&nbsp;pøi
       channels= 2, type= "sine", level=0.4)</td>
   </tr>
 </table>
-<p>V obrázku vý¹e&nbsp;je&nbsp;generována 
-sinusovka&nbsp;(na ¹edém klipu se snímkovou frekvencí&nbsp;24 fps).&nbsp;Perioda&nbsp;vlnové køivky&nbsp;(ve snímcích)&nbsp;je snímková frekvence podìlená&nbsp; <var>frequency</var> (nebo 
-fps/freq,&nbsp;co¾ je&nbsp;24/2=         
+<p>V obrázku vý¹e&nbsp;je&nbsp;generována
+sinusovka&nbsp;(na ¹edém klipu se snímkovou frekvencí&nbsp;24 fps).&nbsp;Perioda&nbsp;vlnové køivky&nbsp;(ve snímcích)&nbsp;je snímková frekvence podìlená&nbsp; <var>frequency</var> (nebo
+fps/freq,&nbsp;co¾ je&nbsp;24/2=
       12&nbsp;snímkù v na¹em pøíkladu).&nbsp;Èást grafu,
 která je svìtle zelená&nbsp;reprezentuje&nbsp;v¹echny vzorky snímku&nbsp;pod&nbsp;uva¾ovaným (co¾ je zde snímek 1).&nbsp;Poèet vzorkù v konkrétním snímku&nbsp;je dán
-parametrem&nbsp; <var>samplerate</var>&nbsp;podìleným&nbsp;snímkovou 
+parametrem&nbsp; <var>samplerate</var>&nbsp;podìleným&nbsp;snímkovou
 frekvencí&nbsp;(co¾ je 48000/24 = 2000
 vzorkù v na¹em pøíkladu). (v¹imnìte si, ¾e sloupce byly zhotoveny pomocí&nbsp;pluginu&nbsp; <A href="histogram.htm">Histogram</a>
     a&nbsp;graf&nbsp;pomocí <A href="../externalfilters/audiograph.htm">AudioGraph</a>

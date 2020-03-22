@@ -12,7 +12,7 @@ i pod wzglêdem prawnym nie stanowi warunków rozpowszechniania
 oprogramowania stosuj¹cego GNU GPL -- ustanawia je wy³¹cznie oryginalny
 angielski tekst licencji GNU GPL <http://www.fsf.org/copyleft/gpl.html>.
 Jednak mamy nadziejê, ¿e pomo¿e ono lepiej zrozumieæ Licencjê osobom
-mówi¹cym po polsku. 
+mówi¹cym po polsku.
 
 
       Note!
@@ -30,10 +30,10 @@ this translation will help Polish speakers understand the GNU GPL better.
       Wersja 2, czerwiec 1991
 
 Copyright (c) 1989, 1991 Free Software Foundation, Inc., 675 Mass Ave,
-Cambridge, MA 02139 USA. 
+Cambridge, MA 02139 USA.
 
 Zezwala siê na kopiowanie i rozpowszechnianie wiernych kopii niniejszego
-dokumentu licencyjnego, jednak bez prawa wprowadzania zmian. 
+dokumentu licencyjnego, jednak bez prawa wprowadzania zmian.
 
 
       Preambu³a
@@ -219,7 +219,7 @@ i modyfikowania.
         dozwolona jest tylko dla dystrybucji niehandlowej i jedynie
         wtedy, gdy otrzyma³eœ dany program w kodzie wynikowym lub formie
         wykonywalnej wraz z wymienion¹ ofert¹ - zgodnie z podpunktem "b"
-        powy¿ej). 
+        powy¿ej).
 
     Okreœlenie kod Ÿród³owy dla pracy oznacza formê pracy preferowan¹
     dla wprowadzania do niej modyfikacji. Dla wykonanej pracy, kompletny
@@ -392,19 +392,19 @@ znaleŸæ pe³n¹ informacjê.
     /nazwa programu i informacja, do czego on s³u¿y.
     /Copyright (C) 19../20.. /nazwisko autora/
 
-    Niniejszy program jest wolnym oprogramowaniem; mo¿esz go 
+    Niniejszy program jest wolnym oprogramowaniem; mo¿esz go
     rozprowadzaæ dalej i/lub modyfikowaæ na warunkach Powszechnej
     Licencji Publicznej GNU, wydanej przez Fundacjê Wolnego
     Oprogramowania - wed³ug wersji 2-giej tej Licencji lub którejœ
-    z póŸniejszych wersji. 
+    z póŸniejszych wersji.
 
-    Niniejszy program rozpowszechniany jest z nadziej¹, i¿ bêdzie on 
-    u¿yteczny - jednak BEZ JAKIEJKOLWIEK GWARANCJI, nawet domyœlnej 
-    gwarancji PRZYDATNOŒCI HANDLOWEJ albo PRZYDATNOŒCI DO OKREŒLONYCH 
-    ZASTOSOWAÑ. W celu uzyskania bli¿szych informacji - Powszechna 
-    Licencja Publiczna GNU. 
+    Niniejszy program rozpowszechniany jest z nadziej¹, i¿ bêdzie on
+    u¿yteczny - jednak BEZ JAKIEJKOLWIEK GWARANCJI, nawet domyœlnej
+    gwarancji PRZYDATNOŒCI HANDLOWEJ albo PRZYDATNOŒCI DO OKREŒLONYCH
+    ZASTOSOWAÑ. W celu uzyskania bli¿szych informacji - Powszechna
+    Licencja Publiczna GNU.
 
-    Z pewnoœci¹ wraz z niniejszym programem otrzyma³eœ te¿ egzemplarz 
+    Z pewnoœci¹ wraz z niniejszym programem otrzyma³eœ te¿ egzemplarz
     Powszechnej Licencji Publicznej GNU (GNU General Public License);
     jeœli nie - napisz do Free Software Foundation, Inc., 675 Mass Ave,
     Cambridge, MA 02139, USA.
@@ -419,7 +419,7 @@ w tryb interaktywny wyœwietla³ on komunikat jak w poni¿szym przyk³adzie:
 
     Gnomovision wydawany jest ABSOLUTNIE BEZ ¯ADNEJ GWARANCJI -
     w celu uzyskania dalszych szczegó³ów wpisz "show w".
-    To jest wolne oprogramowanie i mile widziane jest dalsze 
+    To jest wolne oprogramowanie i mile widziane jest dalsze
     rozpowszechnianie go przez ciebie na okreœlonych warunkach -
     w celu uzyskania bli¿szych szczegó³ów wpisz "show c".
 

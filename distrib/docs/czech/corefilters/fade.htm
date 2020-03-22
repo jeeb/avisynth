@@ -19,26 +19,26 @@
   <code>FadeIO2 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)<br>
   <code>FadeOut2 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)
 <p>
-<code>FadeOut</code> vytvoøí 
+<code>FadeOut</code> vytvoøí
 plynylý pøechod obrazu videa
 do èerné&nbsp;nebo do zadané&nbsp;RGB&nbsp;barvy&nbsp;na konci videa. Podobnì <code>FadeIn</code> vytvoøí plynylý pøechod obrazu videa&nbsp;od èerné&nbsp;nebo&nbsp;od zadané&nbsp;RGB&nbsp;barvy&nbsp;na&nbsp;zaèátku videa.
 <tt><code>FadeIO</code></tt>    je kombinace funkcí&nbsp;
-<code>FadeIn</code> a <code>FadeOut</code>. Zvuková stopa&nbsp;(je-li pøítomná) také 
-plynule pøechází do nebo z&nbsp;ticha.&nbsp;Efekt (fade=     
+<code>FadeIn</code> a <code>FadeOut</code>. Zvuková stopa&nbsp;(je-li pøítomná) také
+plynule pøechází do nebo z&nbsp;ticha.&nbsp;Efekt (fade=
         stmívání, vytrácení se)&nbsp;se týká jen
 posledních&nbsp; <var>num_frames</var>         &nbsp;snímkù videa.
 Poslední snímek videa je témìø-ale-ne-úplnì èerný (nebo zadané barvy).
 Na konec videa je pøidán jeden zcela èerný (nebo zadané barvy) snímek, tak¾e
 celkový poèet snímkù je o jeden vìt¹í.
 <p>
-<code>FadeIn0</code> / <code>FadeOut0</code> nedoplòují pøídavný snímek. Je to u¾iteèné pøi zpracování samotných 
-Audio klipù nebo pøi spojení dvou nebo více&nbsp;pøechodù stmívání&nbsp;pro obdr¾ení 
-kvadratické nebo kubické funkce efektu pøechodu. Napøíklad 
-&nbsp; <FONT face=Courier 
-color=#660033>Clip.FadeOut0(60).FadeOut0(60).FadeOut(60)</FONT>       
-              
-        
-       
+<code>FadeIn0</code> / <code>FadeOut0</code> nedoplòují pøídavný snímek. Je to u¾iteèné pøi zpracování samotných
+Audio klipù nebo pøi spojení dvou nebo více&nbsp;pøechodù stmívání&nbsp;pro obdr¾ení
+kvadratické nebo kubické funkce efektu pøechodu. Napøíklad
+&nbsp; <FONT face=Courier
+color=#660033>Clip.FadeOut0(60).FadeOut0(60).FadeOut(60)</FONT>
+
+
+
          dají&nbsp;mnohem ostøej¹í zaèátek a mìkèí konec pøechodu.&nbsp;Bod 50%&nbsp;je
 na snímku&nbsp;12&nbsp;pøechodu,&nbsp;na 30 snímku&nbsp;pøechodu je&nbsp;12.5%,&nbsp;na snímku&nbsp;45, 1.6%. Efektifita je více cítit na zvuku.
 <p>
@@ -47,12 +47,12 @@ na snímku&nbsp;12&nbsp;pøechodu,&nbsp;na 30 snímku&nbsp;pøechodu je&nbsp;12.5%,&
 verze, které jsem testoval nepøehrály poslední snímek&nbsp;MPEG&nbsp;souboru - místo toho se zastavily&nbsp;na
 pøedposledním&nbsp;snímku. To nechává na konci filmu zobrazený nehezký&nbsp;témìø-ale-ne-úplnì-èerný (nebo barevný) snímek
 pøi pou¾ití&nbsp; <code>FadeOut</code>. <code>FadeOut2</code> se tomuto problému vyhybá.
-<p>Parametr&nbsp; <var>color</var>&nbsp;je volitelný, výchozí=   
+<p>Parametr&nbsp; <var>color</var>&nbsp;je volitelný, výchozí=
   0 &lt;èerná&gt;, a je specifikovaná jako&nbsp;RGB hodnota bez ohledu je-li formát klipu&nbsp;RGB&nbsp;nebo YUV.&nbsp;Podívejte
 se&nbsp; <A href="../syntax.htm#Colors">sem</A> pro více informací o uvedených barvách.
 <p>
 Parametr&nbsp; <var>fps</var>&nbsp;je volitelný, výchozí=   24.0, a
-poskytuje&nbsp;referenci&nbsp;pro <var>num_frames</var> v 
+poskytuje&nbsp;referenci&nbsp;pro <var>num_frames</var> v
 samotných audio klipech. Je ignorován, je-li
 pøítomen video stream. Nastavte&nbsp;fps=  AudioRate() pokud je po¾adováno pøesné pozicování&nbsp;audia.
 <p>
@@ -65,7 +65,7 @@ pøítomen video stream. Nastavte&nbsp;fps=  AudioRate() pokud je po¾adováno pøesn
 <table border="1" width="61%">
   <tr>
     <td width="15%">Do&nbsp; <em>v2.06 </em></td>
-    <td width="85%">the <code>FadeIn</code> /<code> 
+    <td width="85%">the <code>FadeIn</code> /<code>
       FadeIn2&nbsp; </code>pøíkazy neexistují, ale je mo¾né obdr¾et stejný efekt&nbsp;pøenastavením&nbsp;argumentù&nbsp; Dissolve: Dissolve(Blackness(clip,
 n+1, color=$000000), clip, n).</td>
   </tr>

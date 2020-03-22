@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: greedyhma.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: greedyhma.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: greedyhma.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>  Tom Barry
 <br><b>verze:</b>    0.4.1.0<br>
-<b>stáhnout:</b> <a href="http://www6.impacthosting.com/trbarry/downloads.htm">http://www6.impacthosting.com/trbarry/downloads.htm</a>, 
+<b>stáhnout:</b> <a href="http://www6.impacthosting.com/trbarry/downloads.htm">http://www6.impacthosting.com/trbarry/downloads.htm</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>  Odstraòování prokládání &amp; pulldown
 <br><b>požadavky:</b>  &nbsp;
@@ -41,7 +41,7 @@ vytvoøil jsem podsložku pod Avisynthem, pro jeho oddìlené uložení.<br>
 clip = AviSource(&quot;c:\vcr\bikes.avi&quot;)
 return clip.GreedyHMA(1,0,4,0,0,0,0,0)</pre>
 
-<p>Zadává soubor (zmìòte na váš) a žádá zapnout horní pole první (TopFirst) a AutoPulldown, 
+<p>Zadává soubor (zmìòte na váš) a žádá zapnout horní pole první (TopFirst) a AutoPulldown,
 s decimací (vypouštìním snímkù) na 24 fps.  Dosud jsem ho testoval jen s Avisynth/VirtualDub.&nbsp;</p>
 
 <h3>Upozornìní</h3>
@@ -53,13 +53,13 @@ artefakty prokládání.</p>
 
 <p>V nìkterých zdrojích jsem dostal mírnì lepší výsledky s TopFirst (øeknìme HDTV nahrávky), ale jiné
 jsou lepší když je to vypnuto. Všímám si, že je možné spustit 2 kopie Vdubu a dìlat porovnání snímek po snímku.
-Nezdá se, že je tam velký rozdíl, ale stálé srovnávání dvou snímkù (dívejte se na 
+Nezdá se, že je tam velký rozdíl, ale stálé srovnávání dvou snímkù (dívejte se na
 úhlopøíèky) obvykle zobrazí jeden jako lepší. Mùžete se na to prostì podívat ve vstupech VirtualDubu.
 Opravdu není nutné vytváøet jakékoliv soubory.</p>
 
-<p>Pro verzi 0.4.0.0 jsem pøidal dva nové skriptové filtry do zipu, aby jste mohli s jistotou øíci jestli by jste mìli použít TopFirst. 
+<p>Pro verzi 0.4.0.0 jsem pøidal dva nové skriptové filtry do zipu, aby jste mohli s jistotou øíci jestli by jste mìli použít TopFirst.
 Upravte skript BottomFirst.avs aby ukazoval na váš soubor a naètìte ho
-do VirtualDubu. Pak krokujte po nìkolika jednotlivých snímcích. Ignorujte chvìní nahoru a dolù o jeden øádek, 
+do VirtualDubu. Pak krokujte po nìkolika jednotlivých snímcích. Ignorujte chvìní nahoru a dolù o jeden øádek,
 ale sledujte jestli uvidíte, že každý snímek jde pozpátku. Pokud ano, pravdìpodobnì potøebujete TopFirst.
 Zkuste skript TopFirst.avs , aby jste si to potvrdili. Ani jeden z tìchto dvou skriptù nezávisí na GreedyHMA.</p>
 
@@ -122,15 +122,15 @@ Pracuje ve vìtšinì pøípadù, alespoò pokud odstraním všechny chyby.</p>
 výsledky pokud máte 100% správnì zpracovaný NTSC filmový zdroj bez video èástí a bez velkého poètu støihù. Mùže se pøizpùsobit vìtšinì zmìnám scén a zmìnám v kadenci pulldown, ale ne smíchaným polím.</p>
 
 <p>Nepokoušel jsem se dívat co je z tohoto nejlepší. Pulldown nepracuje ještì
-perfektnì. Ale pokud si nejste jisti, mùžete èasto pøejít na 4 (Auto). Mìlo by správnì zpracovat sporty s velkým pohybem. 
+perfektnì. Ale pokud si nejste jisti, mùžete èasto pøejít na 4 (Auto). Mìlo by správnì zpracovat sporty s velkým pohybem.
 Pokud se pøepne do režimu prokládání pøíliš èasto pøi zpracování filmu, mùžete zkusit trochu zvyšovat
 Bad Pulldown Level.</p>
 
 <p>***** POZNÁMKA!  MEDIAN FILTER JE V TOMTO VYDÁNÍ VYPNUT. *****</p>
 
-<p><var>MedianFilter</var> (èasový - temporal) - pomáhá vyèistit šum pokud je to potøeba, ale zpùsobuje	zpoždìní o        
+<p><var>MedianFilter</var> (èasový - temporal) - pomáhá vyèistit šum pokud je to potøeba, ale zpùsobuje	zpoždìní o
 2 pole. (Jinak je zpoždìní o 1 pole). Zadáním 1
-se zapne použití výchozích 3 (lze zmìnit) ale mùžete také            
+se zapne použití výchozích 3 (lze zmìnit) ale mùžete také
 zadat 2-255 pro pøepsání tohoto nastavení. Ale hodnoty pøes asi 3-5 mohou zpùsobit pohybové
 artefakty ve videu s rychlým pohybem.</p>
 
@@ -146,13 +146,13 @@ prozatím je stále vypnut.</p>
 <p><var>VerticalFilter</var> - Nejen pomáhá snížit šum, ale také nìkteré artefakty odstraòování prokládání
 protože je vykonáván jako poslední, po odstranìní prokládání. Užiteèný pokud chcete zmenšovat. Použijte jen hodnoty 0,1.  Také to pomáhá kompresi.</p>
 
-<p><var>EdgeEnhance</var> (horizontální) - Pøidává malé zostøení pro plné rozlišení videa. Toto mùže  	        
+<p><var>EdgeEnhance</var> (horizontální) - Pøidává malé zostøení pro plné rozlišení videa. Toto mùže
 také použít hodnot 2-100. Výchozí je v souèasnosti 50, jestliže je zadáno 1.
 V budoucnu mohu také podporovat záporné hodnoty, pøetvoøením na horizontální filtr pro zlepšení nastavení pro zmenšování.</p>
 
 <p><var>Good Pulldown Lvl</var> - Toto je èíslo mezi 1-255 , které musí být pøekroèeno než
 GreedyHMA provede pulldown pro snímek. Tento parametr je ctìn jen když je také zapnuto Auto Pulldown (AP=1 nebo 4). Výchozí je možné zmìnit, ale je
-v souèasnosti nastaveno na 90. Ale výchozí hodnotu získáte zadáním 0, což je doporuèeno pro vìtšinu pøípadù. Je to ve skuteènosti jen prùmìr 
+v souèasnosti nastaveno na 90. Ale výchozí hodnotu získáte zadáním 0, což je doporuèeno pro vìtšinu pøípadù. Je to ve skuteènosti jen prùmìr
 ukládaných souèinitelù pomìru comb/weave nìkolika snímkù jejich správným uspoøádáním.</p>
 
 <p><var>Bad Pulldown Lvl</var> - Toto je èíslo mezi 1-255 , které NESMÍ být pøekroèeno než
@@ -187,10 +187,10 @@ v Avisynthu, a je hromada vìcí, které bych mìl kontrolovat.</p>
 
 <p>6)	Existuje zvláštní chyba, které vùbec nerozumím. Pokud pøidáte nový nebo zmìnìný
 GreedyHMA.dll do vašeho poèítaèe, a poprvé rozbìhnete VirtualDub/Avisynth/GreedyHMA,
-tak VirtualDub se mùže zastavit. Pokud pak použijete správce úloh pro pøerušení VirtualDubu, bìží i potom.  
+tak VirtualDub se mùže zastavit. Pokud pak použijete správce úloh pro pøerušení VirtualDubu, bìží i potom.
 Taková èinnost se zdá být pøi prvním otevøení jakéhokoli
 jiného AVI souboru ve VirtualDubu, poprvé nastane po instalaci GreedyHMA,
-pøed otevøením Avisynth skriptù. Pozdìjší poznámka: nezávisí to vùbec na GreedyHMA, 
+pøed otevøením Avisynth skriptù. Pozdìjší poznámka: nezávisí to vùbec na GreedyHMA,
 stává se to na mém stroji, Ale já tomu stále nerozumím.</p>
 
 <p>7)  V souèasnosti pracuje správnì, jen když je šíøka obrazu v pixelech dìlitelná 16.

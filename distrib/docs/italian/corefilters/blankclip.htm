@@ -17,13 +17,13 @@
 &quot;color_yuv&quot;</var>)
 <br>
   <code>Blackness </code>()
-<p>Il filtro <code>BlankClip</code> produce un video clip con colore unico, senza audio e della lunghezza 
-specificata (<var>length</var> in frames). 
-Il clip passato come argumento è usato come template per frame rate, dimensione dell'immagine, e altro, 
-anche se si possono specificare tutte le proprietà del clip senza dover fornire un template. 
-<var>color</var> deve essere dato come valore RGB esadecimale. 
-Senza nessun argomento, <code>BlankClip</code> produce 
-un clip di 10 secondi, 640x480, 24 fps, 16 bit 44100 Hz stereo. 
+<p>Il filtro <code>BlankClip</code> produce un video clip con colore unico, senza audio e della lunghezza
+specificata (<var>length</var> in frames).
+Il clip passato come argumento è usato come template per frame rate, dimensione dell'immagine, e altro,
+anche se si possono specificare tutte le proprietà del clip senza dover fornire un template.
+<var>color</var> deve essere dato come valore RGB esadecimale.
+Senza nessun argomento, <code>BlankClip</code> produce
+un clip di 10 secondi, 640x480, 24 fps, 16 bit 44100 Hz stereo.
 <p>se <var>template</var> è presente, il clip risultante avrà le proprietà del clip template
 (bug!!: eccetto il color-format), a meno delle proprietà definite esplicitamente .
 
@@ -37,7 +37,7 @@ un clip di 10 secondi, 640x480, 24 fps, 16 bit 44100 Hz stereo.
 <p>
   <var>fps</var>:  framerate del clip risultante.
 <p>
-  <var>fps_denominator</var>: si può usare questa opzione se il valore "fps" non è sufficientemente 
+  <var>fps_denominator</var>: si può usare questa opzione se il valore "fps" non è sufficientemente
 accurato. Esempio: fps = 30000, fps_denominator = 1001 (ratio = 29.97)
 oppure fps = 24000, fps_denominator = 1001 (ratio = 23.976). Il valore di default è 1.
 <p>
@@ -47,7 +47,7 @@ oppure fps = 24000, fps_denominator = 1001 (ratio = 23.976). Il valore di defaul
 se "false" l'audio è mono.
 <p>
   <var>sixteen_bit</var>: (valore booleano) true e false producono entrambi 16 bit, eccezion fatta quando
-si usa un template con impostato un valore diverso. 
+si usa un template con impostato un valore diverso.
 <p><var>color</var>: specifica il colore del clip, black (= $000000) di default. Vedere ColorPresets.<br>
 <br>
 <var>color_yuv</var>: aggiunto dalla <em>v2.55</em>, consente di specificare il colore del clip usando
@@ -71,10 +71,10 @@ audio = BlankClip(video, audio_rate=48000)
 AudioDub(video, audio)</pre>
 <p><b>Changes:</b></p>
 <table border="1" width="209">
-  <tbody> 
+  <tbody>
   <tr>
       <td>v2.55</td>
-      
+
     <td>aggiunto color_yuv</td>
     </tr>
   </tbody>

@@ -3,7 +3,7 @@
 <head>
 <!--
 Automatically generated, don't change:
-$Id: twopointfive.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $ 
+$Id: twopointfive.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 -->
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <title>AviSynth 2 - Version 2.5</title>
@@ -58,9 +58,9 @@ Better cache efficiency. Filters can give hints to the cache, if they don't
 want their input cached, so memory can be used more efficiently.</li>
 </ul>
 <h4>C-style plugin support <strong>v2.53</strong></h4>
-<p>Added C-style plugin support (still in testing) to allow plugin writers to 
+<p>Added C-style plugin support (still in testing) to allow plugin writers to
   use other compilers than MSVC.<br>
-  See <a href="http://forum.doom9.org/showthread.php?s=&threadid=58840"><cite>this thread</cite></a> 
+  See <a href="http://forum.doom9.org/showthread.php?s=&threadid=58840"><cite>this thread</cite></a>
   for further info. The C-plugins must be loaded with LoadCPlugin after loading
 avisynth_c.dll. Your script becomes for example
 <pre>LoadPlugin(&quot;...\avisynth_c.dll&quot;)
@@ -68,10 +68,10 @@ LoadCPlugin(&quot;...\smartdecimate.dll&quot;) # notice the C in loadCplugin
 AviSource(...)
 SmartDecimate()</pre>
 <h4>DirectShow audio support <strong>v2.53</strong></h4>
-<p>Using DirectShowSource it is possible to load audio from all sources that can 
+<p>Using DirectShowSource it is possible to load audio from all sources that can
   be opened through DirectShow.<br>
-  For example, formats like: WAV/DTS/AC3/MP3 can be opened. Look <a href="corefilters/directshowsource.htm">here</a> 
-  for more information. 
+  For example, formats like: WAV/DTS/AC3/MP3 can be opened. Look <a href="corefilters/directshowsource.htm">here</a>
+  for more information.
 <h4>Plugins</h4>
 <p>Filters for AviSynth v1.0x and v2.0x do no longer work in v2.5x. When you try to load
 them, they will
@@ -88,7 +88,7 @@ AviSource(&quot;D:\clip.avi&quot;)
 ConvertToYUY2  # v2.0x plugins require YUY2 (or RGB)
 PixieDust(5)</pre>
 <p>I think that you can use the same plugin to load v2.5x plugins in v2.0x,
-however I never have tested this. 
+however I never have tested this.
 <p><kbd>$Date: 2005/10/03 16:49:04 $</kbd>
 </body>
 </html>

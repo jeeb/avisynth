@@ -47,7 +47,7 @@ Pøíruèka</h1>
 <h2><a name=introduction>Úvod</a></h2>
 
 <p>Tento balík plugin funkcí pro Avisynth poskytuje
-prostøedky pro odstranìní  artefaktù roztøepení (combing) z pùvodnì progresivních 
+prostøedky pro odstranìní  artefaktù roztøepení (combing) z pùvodnì progresivních
 streamù podrobených procesu telecine, prokládaných (interlaced)
 streamù, a jejich mixù. Funkce mohou být kombinovány pro implementování inverze
 telecine (IVTC) jak pro NTSC tak i PAL streamy. </p>
@@ -66,7 +66,7 @@ zpoždìní v audio nebo video streamech. </p>
 
 <p>Pro mnohé aplikace existuje nìkolik nastavitelných parametrù, ale nejlepší výsledky
 jsou dosaženy s opatrným nastavením parametrù. Decomb umožòuje uživateli definovat
-jeho vlastní výchozí hodnoty parametrù, pokud si to pøeje (Výchozí hodnoty jsou pøedpokládané 
+jeho vlastní výchozí hodnoty parametrù, pokud si to pøeje (Výchozí hodnoty jsou pøedpokládané
 pokud parametr není zadán explicitnì (konkrétnì). </p>
 
 <p>Mnohá rozhodnutí Decomb lze ruènì pøepsat podle pøání použitím textových
@@ -84,17 +84,17 @@ procedury k použití Decomb, a do Decomb FAQ na odpovìdi na èasto kladené otázky.
 <ul>
 <li><p><b>Telecide()</b>: Obnovuje
 progresivní snímky (nalezením a srovnáním uspoøádávaných polí) ale neodstraòuje
-výsledné duplikáty a nemìní frekvenci snímkù nebo poèet snímkù. 
+výsledné duplikáty a nemìní frekvenci snímkù nebo poèet snímkù.
 Nepoužívejte Telecide na streamy, které neobsahují pùvodnì progresivní snímky
 podrobené telecine, takové jako prokládané video. Všimnìte si, že stream
-PAL progresivních snímkù, které jsou posunuty o jedno pole je vzorovou ukázkou roztøepení 
+PAL progresivních snímkù, které jsou posunuty o jedno pole je vzorovou ukázkou roztøepení
 (combing) a pro úèel obnovení ho lze považovat za stream podrobený telecine;
 Telecide tuto situaci snadnou vyøeší.</p>
 
-<p>Ve výchozím stavu Telecide provádí na obnovovaných snímcích <i>postprocessing</i> 
+<p>Ve výchozím stavu Telecide provádí na obnovovaných snímcích <i>postprocessing</i>
 - doplòkové zpracování. Tento postprocessing kontroluje každý snímek aby vidìl jestli je roztøepený
 (nìkteré roztøepené snímky se mohou objevit pøi procesu porovnávání polí [viz níže]), a
-pokud je snímek roztøepený, je v nìm provedeno odstranìní prokládání, jinak zùstane nedotèený. 
+pokud je snímek roztøepený, je v nìm provedeno odstranìní prokládání, jinak zùstane nedotèený.
 Algoritmus odstranìní prokládání je prostorovì adaptivní, což je, že je odstraòováno prokládání jen
 v tìch èástech snímku, kde se nachází roztøepení. To znamená, že ve statických oblastech
 obrazu jsou zachovány plné detaily. Algoritmus pro rozlišení roztøepených
@@ -148,7 +148,7 @@ pùvodní rozmístìní øádkù, aby správnì detekoval roztøepení. </p>
 této verzi Decomb bude pracovat jen s Avisynthem verze 2.5 a novìjšími. </p>
 
 <p>Je lepší nedìlat pøevody mezi YV12 a YUY2 (obìma smìry) pøed
-použitím Decomb. Použijte Decomb v nativním barevném prostøedí. Takové pøevody mohou 
+použitím Decomb. Použijte Decomb v nativním barevném prostøedí. Takové pøevody mohou
 zpùsobit artefakty kvùli nesprávnému nadvzorkování/podvzorkování barevnosti. </p>
 
 <p>Pro operace v YV12 je podporována jen verze &quot;mpeg2dec&quot; od
@@ -162,7 +162,7 @@ nesprávný výstup. </p>
 <p><b><i>Vyhnìte se
 pøevodùm barevného prostøedí</i></b>&nbsp;&nbsp;Uvìdomte si, že pøevod do YUY2
 z RGB je èasovì znaènì nároèný, takže neukládejte vaše AVI v RGB. Populární kodek
-HUFYUV má možnost pøevést RGB na YUY2 a vy by jste ji mìli zapnout, 
+HUFYUV má možnost pøevést RGB na YUY2 a vy by jste ji mìli zapnout,
 když generujete pomocí HUFYUV taková AVI, která jsou urèena pro zpracování v Decomb. </p>
 
 <p><b><i>Zbyteènì nepoužívejte postprocessing </i></b>&nbsp;&nbsp;Zkuste Telecide
@@ -191,7 +191,7 @@ proè jsou všechny scénáøe níže zapsány takovým zpùsobem. </p>
 snímky do VirtualDubu pro transkódování, a nepotøebujete dìlat žádné filtrování nebo
 jiné zpracování ve VirtualDubu, pak použijte øežim VirtualDubu Rychlá rekomprese (Fast Recompress). </p>
 
-<p><b><i>Vypnìte zobrazování snímkù</i></b>&nbsp;&nbsp;Když se posílá výstup z Decomb 
+<p><b><i>Vypnìte zobrazování snímkù</i></b>&nbsp;&nbsp;Když se posílá výstup z Decomb
 do VirtualDubu (a podobných aplikací), vypnìte zobrazení vstupního i
 výstupního snímku pøi zpracování. To citelnì sníží dobu zpracování.
 </p>
@@ -212,8 +212,8 @@ jednoduše odstraòte prokládání takto: </p>
 &nbsp;&nbsp;AVISource(&quot;nonfilm.avi&quot;)<br>
 &nbsp;&nbsp;FieldDeinterlace() </p>
 
-<p><b><i>Obnovení progresivních snímkù</i></b>&nbsp;&nbsp;Pokud máte film (pùvodnì progresivní zdroj), 
-který byl podroben procesu telecine a chcete obnovit progresivní snímky ale 
+<p><b><i>Obnovení progresivních snímkù</i></b>&nbsp;&nbsp;Pokud máte film (pùvodnì progresivní zdroj),
+který byl podroben procesu telecine a chcete obnovit progresivní snímky ale
 nechcete mìnit frekvenci snímkù pomocí decimování, postupujte následovnì: </p>
 
 <p>&nbsp;&nbsp;LoadPlugin(&quot;decomb.dll&quot;)<br>
@@ -286,7 +286,7 @@ jako zde: </p>
 <h2><a name=fieldmatch>Poznámky k uspoøádávání polí</a></h2>
 
 <p>Telecide
-normálnì dìlá výbornou práci pøi obnovování progresivních snímkù uspoøádáváním polí, 
+normálnì dìlá výbornou práci pøi obnovování progresivních snímkù uspoøádáváním polí,
 za pøedpokladu, že máte nastavené správné poøadí polí. Existují ètyøi známé podmínky zdrojového streamu, které mohou zpùsobit, že Telecide
 pøedá roztøepené snímky: </p>
 <ul>
@@ -298,7 +298,7 @@ pro vyèištìní výstupního streamu. </p>
 <li><p><i>Smíchaná (blended) pole</i>. Nìkteré streamy mají pole, která
 jsou smíchaná ze dvou pùvodních (progresivních) filmových obrázkù! Napøíklad nìkteré NTSC/PAL pøevody
 to mohou zpùsobit. Obvykle mají takové streamy tìchto smíchaných polí hodnì a
-øešením je použít postprocessing blend=true pro vyèištìní výstupního 
+øešením je použít postprocessing blend=true pro vyèištìní výstupního
 streamu. Použití režimu blend=true znamená nejlepší práci a smíchaná
 pole se objeví jako smíchané snímky, což poskytuje druh rozmazání pohybu a odráží
 &quot;význam&quot; vstupního streamu. </p>
@@ -337,9 +337,9 @@ dobrá vìc pro zajištìní toho, že se do výstupu neproplíží roztøepené snímky. </p
 
 <p>Funkce z
 Decomb používají jmenné parametry. To znamená, že nemusíte mít obavy o
-poøadí parametrù. Mùžete jednoduše na nì poukazovat pomocí názvù a vkládat je v 
-jakémkoliv poøadí do seznamu parametrù. Když vynecháte parametr tak bere své 
-výchozí hodnoty. Napøíklad, pokud chcete použít Telecide s 
+poøadí parametrù. Mùžete jednoduše na nì poukazovat pomocí názvù a vkládat je v
+jakémkoliv poøadí do seznamu parametrù. Když vynecháte parametr tak bere své
+výchozí hodnoty. Napøíklad, pokud chcete použít Telecide s
 postprocessingem, a se zapnutým ladìním, mùžete jednoduše øíci: </p>
 
 <p>Telecide(post=2,debug=true) </p>
@@ -354,7 +354,7 @@ parametry. </p>
 
 <p>Pokud
 se vám nelíbí výchozí hodnoty popsané níže, mùžete si nastavit svoje vlastní standartní
-výchozí hodnoty. Pro pøepsání výchozích hodnot, vytvoøte soubory výchozích hodnot tak 
+výchozí hodnoty. Pro pøepsání výchozích hodnot, vytvoøte soubory výchozích hodnot tak
 jak je vyžadováno ve složce pluginù Avisynthu. Napøíklad
 nastavte výchozí post=4 pro Telecide(), vytvoøte soubor pojmenovaný
 Telecide.def a vložte do nìj tento øádek: </p>
@@ -362,7 +362,7 @@ Telecide.def a vložte do nìj tento øádek: </p>
 <p>post=4 </p>
 
 <p>Mùžete uvést tolik záznamù parametrù kolik budete chtít, na každý øádek jeden. Ty,
-které nebudou zadané budou brát výchozí hodnoty takové, jaké jsou uvedeny níže. 
+které nebudou zadané budou brát výchozí hodnoty takové, jaké jsou uvedeny níže.
 Samozøejmì vždy mùžete pøepsat výchozí hodnoty ve vašich skriptech, když vyzvete funkci.
 Poznámka: Øádky v souboru výchozích hodnot nesmí obsahovat žádné mezery nebo tabulátory. </p>
 
@@ -393,7 +393,7 @@ pro pøedchozí snímek a &quot;n&quot; pro následující next). </p>
 
 <p>Telecide(ovr=&quot;tango.tel&quot;) </p>
 
-<p>Nyní zpracujte skript jako obvykle; Zadané nadøazené údaje budou použity jako 
+<p>Nyní zpracujte skript jako obvykle; Zadané nadøazené údaje budou použity jako
 aktuální. Pokud toto uspoøádání selže, mùžeme zkusit nahradit &quot;c&quot; písmenem &quot;n&quot;
 abychom vyzkoušeli následující. </p>
 
@@ -404,7 +404,7 @@ abychom vyzkoušeli následující. </p>
 <p>Mùžeme pøidat doplòkové øádky urèující jakékoliv další nadøazené údaje podle požadavkù.
 Všimnìte si, že poèet snímkù musí být v rostoucím poøadí (od nejnižšího po nejvyšší). </p>
 
-<p>Do vašeho nadøazovacího souboru mùžete také zadat úplné šablony pro vaše uspoøádání 
+<p>Do vašeho nadøazovacího souboru mùžete také zadat úplné šablony pro vaše uspoøádání
 v Telecide. Napøíklad pøedpokládejme, že jste chtìli vynutit šablonu ncccn pro
 snímky 100 až 185. Øádek ve vašem nadøazovacím souboru by byl: </p>
 
@@ -415,7 +415,7 @@ by byl také legální: </p>
 
 <p>100,185 nc </p>
 
-<p>Zadaná šablona bude opakována poèínaje na úvodním snímku a 
+<p>Zadaná šablona bude opakována poèínaje na úvodním snímku a
 konèe na posledním snímku rozsahu. </p>
 
 <p>Tato schopnost umožòuje pružné a pohodlné ruèní ovládání uspoøádání
@@ -445,11 +445,11 @@ oba, tedy úvodní i koneèný snímek rozsahu na požadované èíslo snímku.
 100 b 2<br>
 200,500 b 1
 <p>
-První øádek nahoøe zapíná trojité uspoøádání pro snímek 100. Druhý øádek zapíná 
+První øádek nahoøe zapíná trojité uspoøádání pro snímek 100. Druhý øádek zapíná
 zpìtné uspoøádání roztøepení pro snímky 200 až 500.
 
 <p>Øádky pro nadøazené uspoøádání polí a pro nadøazený postprocessing mohou být
-použity spoleènì ve stejném nadøazovacím souboru tak dlouho, dokud se nenajde 
+použity spoleènì ve stejném nadøazovacím souboru tak dlouho, dokud se nenajde
 požadavek rostoucího èísla snímku. </p>
 
 <p><b><i>Nadøazení pro FieldDeinterlace()</i></b>
@@ -483,9 +483,9 @@ je syntaxe pro funkce Decomb (nahraïte <i>parameter_list</i> vaším
 name=common><b>Bìžnì užívané parametry</b></a> </p>
 
 <p><b><i>Poøadí polí</i></b> Pro správné rendrování je zásadní správné nastavení poøadí polí. Poøadí polí je
-získáno z Avisynthu a mùže být nastaveno funkcemi AssumeTFF() nebo AssumeBFF() 
+získáno z Avisynthu a mùže být nastaveno funkcemi AssumeTFF() nebo AssumeBFF()
 ve vašem skriptu pøed výzvou Telecide(). Nastavte AssumeTFF() pro horní pole první; použijte AssumeBFF()
-pro spodní pole první (bottom field first). Protože správné nastavení je tak dùležité, 
+pro spodní pole první (bottom field first). Protože správné nastavení je tak dùležité,
 dùraznì se vám doporuèuje nedìlat domnìnky o poøadí polí v klipu, ale radìji si poøadí polí
 ovìøit pomocí následující procedury.
 <p>
@@ -506,12 +506,12 @@ poli prvními a musíte použít AssumeTFF(). Pokud není pohyb správný, pak je vaše 
 spodními poli prvními a musíte použít AssumeBFF(). Pokud chcete dvojitou kontrolu, mùžete ještì použít
 AssumeBFF.SeparateFields() pro kontrolu správné operace pro spodní pole první.</p>
 <p>
-Nakonec, všimnìte si, že jestliže je volání AssumeTFF() nebo AssumeBFF() vynecháno, Telecide() získá 
-aktuální informaci o poøadí polí z Avisynthu. Èasto je to správné, jako když Telecide() následuje 
+Nakonec, všimnìte si, že jestliže je volání AssumeTFF() nebo AssumeBFF() vynecháno, Telecide() získá
+aktuální informaci o poøadí polí z Avisynthu. Èasto je to správné, jako když Telecide() následuje
 MPEG2Source() z DGMPGDec, ale obèas je to chybné, takže buïte opatrní s vynecháváním zadání poøadí polí.
 
 <p><b><i>guide</i></b> (0-3, výchozí 0) lze použít k vylepšení uspoøádání
-polí, když je známo, že zdrojový klip je PAL nebo NTSC materiál podrobený telecine. 
+polí, když je známo, že zdrojový klip je PAL nebo NTSC materiál podrobený telecine.
 Pro vypnutí této možnosti (slepé uspoøádání polí), nastavte guide=0. Pro øízení NTSC
 24fps-&gt;30fps telecine, nastavte guide=1. Pro jednoduché øízení PAL (snaží se
 udržet zámek na fázi polí), nastavte guide=2. Pro øízení NTSC 25fps-&gt;30fps
@@ -544,7 +544,7 @@ stále roztøepené:
 <li>post=0: Použijte toto pro úplné vypnutí postprocessingu.
 <li>post=1: Použijte toto pro zapnutí
 metrik kalkulace a k zobrazení hodnot <i>vmetric</i>, ale ne vykonání odstranìní prokládání.
-<li>post=2: Použijte ho pro zapnutí odstraòování prokládání. Všimnìte si, že v tomto režimu  
+<li>post=2: Použijte ho pro zapnutí odstraòování prokládání. Všimnìte si, že v tomto režimu
 probíhá uspoøádání polí normálnì a nejlépe uspoøádaný snímek je podroben odstranìní prokládání a doruèení.
 <li>post=3: Toto je stejné jako post=2 kromì toho, že
 je na deinterlovaných snímcích bíle zobrazena pohybová mapa odstraòování prokládání.
@@ -555,9 +555,9 @@ sekvencí videa v hybridním klipu.
 je na deinterlovaném snímku zobrazena bílá pohybová mapa.
 </ul>
 <p><b><i>vthresh</i></b> (0.0-255.0, výchozí 50.0) nastavuje prahovou hodnotu
-detekce roztøepení snímku pro postprocessing. Mùžete chtít zvýšit tuto hodnotu pokud 
-je odstraòováno prokládání z pøíliš velkého poètu dobrých (neroztøepených) snímkù, 
-nebo ji snížit, když nejsou podchyceny nìkteré roztøepené snímky. 
+detekce roztøepení snímku pro postprocessing. Mùžete chtít zvýšit tuto hodnotu pokud
+je odstraòováno prokládání z pøíliš velkého poètu dobrých (neroztøepených) snímkù,
+nebo ji snížit, když nejsou podchyceny nìkteré roztøepené snímky.
 Výchozí je rozumná obecnì úèelová hodnota. Všimnìte si, že tato
 prahová hodnota urèuje, zda je snímek považován za roztøepený a potøebuje být
 odstranìno prokládání; není to prahová hodnota kterou znáte ze Smart
@@ -568,10 +568,10 @@ prahová hodnota pro odstranìní prokládání ve snímku <i>detekovaném jako roztøepe
 odstranìní prokládání ve snímcích detekovaných jako roztøepených. Všimnìte si, že tato prahová hodnota je
 prahovou hodnotou, kterou dùvìrnì znáte ze Smart Deinterlaceru. </p>
 
-<p><b><i>blend</i></b> (true/false, výchozí false) zapíná  v roztøepených oblastech 
+<p><b><i>blend</i></b> (true/false, výchozí false) zapíná  v roztøepených oblastech
 smíchání (blending) namísto interpolace. Interpolace je rychlejší.</p>
 
-<p><b><i>show</i></b> (true/false, výchozí false) umožòuje zobrazit 
+<p><b><i>show</i></b> (true/false, výchozí false) umožòuje zobrazit
 metriky ve snímku jako pomoc pro nastavení prahových hodnot. Také zobrazuje
 verzi softwaru. </p>
 
@@ -594,19 +594,19 @@ odstranìno prokládání pomocí postprocessingnu. Když je back=1 a pokud je snímek 
 po uspoøádání snímkù (v souladu s testem oproti 'bthresh' -- viz níže),
 pak dojde k pokusu o zpìtné uspoøádání. To vyžaduje post > 0 a
 mùže pomoci nalézt dobrý progresivní snímek pøi špatném støihu.
-Když je back=2, je zpìtné uspoøádání vždy uvažováno. Nìkteré 
+Když je back=2, je zpìtné uspoøádání vždy uvažováno. Nìkteré
 klipy, obzvláštì ty s mnoha smíchanými (blended) poli, lze lépe zpracovat pomocí
 back=2, který testuje uspoøádání s pøedchozím, aktuálním, a následujícím snímkem.
 Ale používejte ho s opatrností, protože mùže vytváøet zadrhávající klipy.</p>
 
 <p><b><i>bthresh</i></b> (0.0-255.0, výchozí 50) nastavuje prahovou hodnotu detekce roztøepení
-pro podmínìné zpìtné uspoøádání (back=1). Zpìtné uspoøádání bude použito 
+pro podmínìné zpìtné uspoøádání (back=1). Zpìtné uspoøádání bude použito
 když kandidát uspoøádání má roztøepení vìtší než 'bthresh'. Typicky nastavte
 vysoké 'vthresh' pro zachycení zbloudilých roztøepených snímkù, spolu s nižší 'bthresh' pro
 podchycení špatných støihù.
 
-<p><b><i>nt</i></b> (integer, výchozí 10) definuje prahovou hodnotu tolerance šumu. 
-Tento parametr by obvykle nemìlo být tøeba upravovat. Nicménì pokud máte zašumìlou nahrávku 
+<p><b><i>nt</i></b> (integer, výchozí 10) definuje prahovou hodnotu tolerance šumu.
+Tento parametr by obvykle nemìlo být tøeba upravovat. Nicménì pokud máte zašumìlou nahrávku
 a setkáváte se s chybami uspoøádání, mùžete ho úspìšnì použít pro vylepšení takové
 situace.</p>
 
@@ -618,14 +618,14 @@ typicky použita pro ignorování titulkù, které mohou jinak odstartovat
 pøeuspoøádání. y0 a y1 musí být oba kladná celá èísla a y0 musí být menší nebo
 rovno y1; pokud tomu tak není, vyskoèí chybová zpráva. </p>
 
-<p><b><i>hints</i></b> (true/false, výchozí true) zapíná pøedávání údajù (hints) z Telecide() 
+<p><b><i>hints</i></b> (true/false, výchozí true) zapíná pøedávání údajù (hints) z Telecide()
 do Decimate(). Decimate používá tyto údaje pro optimalizaci svého chování
 v režimech 1 a 3. </p>
 
-<p><b><i>ovr</i></b> (string, výchozí &quot;&quot;) zapíná specifikaci 
-nadøazovacího souboru (viz kapitola výše, nazvaná &quot;Nadøazená rozhodnutí Decomb&quot;). 
+<p><b><i>ovr</i></b> (string, výchozí &quot;&quot;) zapíná specifikaci
+nadøazovacího souboru (viz kapitola výše, nazvaná &quot;Nadøazená rozhodnutí Decomb&quot;).
 Soubor musí být ve stejné složce jako skriptový soubor
-(aktuální složka Avisynthu) a jméno souboru musí být uzavøeno v uvozovkách, 
+(aktuální složka Avisynthu) a jméno souboru musí být uzavøeno v uvozovkách,
 napø., ovr=&quot;tango.tel&quot;. </p>
 
 <p><b><i>debug</i></b> (true/false, výchozí false) zapíná logovací/ladící
@@ -637,14 +637,14 @@ Pro zachycení tìchto øetìzcù je dostupná Utilita zvaná DebugView. </p>
 <h2><a name=fielddeinterlace>FieldDeinterlace(<i>parameter_list</i>)</a></h2>
 
 <p><b><i>full</i></b> (true/false, výchozí true) volí zda zpracovat všechny
-snímky nebo prostì jen snímky, které jsou detekovány jako roztøepené. Použijte full=true 
+snímky nebo prostì jen snímky, které jsou detekovány jako roztøepené. Použijte full=true
 pro zpracování všech snímkù. </p>
 
 <p><b><i>threshold</i></b> (0-255, výchozí 20) nastavuje prahovou hodnotu detekce
 roztøepení. Pøi práci s full=false, mùžete chtít zvýšit tuto hodnotu pokud
 je odstraòování prokládání podrobeno pøíliš mnoho dobrých snímkù, nebo snížit pokud se
 nepodchytily malé oblasti s roztøepením. Výchozí je dobrá obecnì úèelná hodnota. Všimnìte si, že
-tato prahová hodnota urèuje zda je snímek považován za roztøepený a potøebuje 
+tato prahová hodnota urèuje zda je snímek považován za roztøepený a potøebuje
 odstranit prokládání; není to prahová hodnota, kterou dobøe znáte ze Smart
 Deinterlaceru. Tato prahová hodnota je urèena pomocí <i>dthreshold</i> (níže); je to
 prahová hodnota pro odstraòování prokládání ve snímku <i>detekovaném jako roztøepený</i>. Když je
@@ -674,10 +674,10 @@ nejsou roztøepené, jsou detekovány jako roztøepené pøi chroma=true. Nastavením
 chroma=false, lze efekt interference eliminovat. Tato možnost nemá žádný efekt
 pøi full=true, protože všechny snímky jsou považovány za roztøepené.</p
 
-<p><b><i>ovr</i></b> (string, výchozí &quot;&quot;) zapíná specifikaci 
-nadøazovacího souboru (viz kapitola výše nazvaná &quot;Nadøazená rozhodnutí Decomb&quot;). 
+<p><b><i>ovr</i></b> (string, výchozí &quot;&quot;) zapíná specifikaci
+nadøazovacího souboru (viz kapitola výše nazvaná &quot;Nadøazená rozhodnutí Decomb&quot;).
 Soubor musí být ve stejné složce jako skriptový soubor
-(aktuální složka Avisynthu) a jméno souboru musí být uzavøeno v uvozovkách, 
+(aktuální složka Avisynthu) a jméno souboru musí být uzavøeno v uvozovkách,
 napø., ovr=&quot;tango.fd&quot;. </p>
 
 <p><b><i>show</i></b> (true/false, výchozí false) umožòuje zobrazit
@@ -717,7 +717,7 @@ Telecide() pro filmové sekvence (snímky, které jsou normálnì odstranìny pomocí m
 materiálu. </p>
 
 <p>Pøi mode=2, Decimate() smaže snímek z nejdelšího sledu duplikátù.
-Tento režim je nejspolehlivìjší u animovaných filmù a jiných materiálù kde 
+Tento režim je nejspolehlivìjší u animovaných filmù a jiných materiálù kde
 se mùže objevit pohyb jen v každém druhém, tøetím, nebo ètvrtém (atd.) snímku. pokud
 použijete mode=0 na takové klipy, je nebezpeèí, že se objeví nesprávná decimace,
 zpùsobující zadrhávání. Klipy jako ty zde popsané, obvykle pochází z 8fps nebo
@@ -738,7 +738,7 @@ nejpodobnìjší snímek. První vyžaduje guide=1 pro Telecide (pro deklarování
 šablony pulldown). </p>
 
 <p>Decimate(mode=3) je užiteèný pro hybridní klipy obsahujících hlavnì film. To vám umožní
-decimovat klip na filmové frekvence a zacházet s filmovou èástí normálnì a 
+decimovat klip na filmové frekvence a zacházet s filmovou èástí normálnì a
 na video sekvence použít decimaci smícháním pro zachování jejich hladkého pohybu. </p>
 
 <p>Podívejte se do PØÍLOHY B na více podrobností a ukázání zpracování hybridního
@@ -752,7 +752,7 @@ pøekraèuje threshold. Nastavením vhodné prahové hodnoty (threshold), mùžete
 duplikáty získat smíchané a ponecháte snímky, které mají nový obsah,
 t.j., které se významnì liší od pøedchozího snímku. To umožní aby byly hybridní
 film/nefilm klipy zpracovány inteligentnì: filmové èásti budou smíchané
-a nefilmové èásti nebudou. Použijte show=true (nebo debug=true ve spojení s utilitou DebugView) 
+a nefilmové èásti nebudou. Použijte show=true (nebo debug=true ve spojení s utilitou DebugView)
 pro prohlédnutí rozdílù metrik a tím urèete vhodnou prahovou hodnotu
 threshold pro váš klip.</p>
 <p>Parametr threshold také podobným zpùsobem ovlivní mode=3. Podívejte se do PØÍLOHY B
@@ -781,10 +781,10 @@ kvalitu rùzných detekcí s rychostí. Zde jsou možnosti: </p>
      barevnost uvažována (nejpomalejší). </li>
 </ul>
 
-<p><b><i>ovr</i></b> (string, výchozí &quot;&quot;) zapíná specifikaci 
-nadøazovacího souboru (viz kapitola výše nazvaná &quot;Nadøazená rozhodnutí Decomb&quot;). 
+<p><b><i>ovr</i></b> (string, výchozí &quot;&quot;) zapíná specifikaci
+nadøazovacího souboru (viz kapitola výše nazvaná &quot;Nadøazená rozhodnutí Decomb&quot;).
 Soubor musí být ve stejné složce jako skriptový soubor
-(aktuální složka Avisynthu) a jméno souboru musí být uzavøeno v uvozovkách, 
+(aktuální složka Avisynthu) a jméno souboru musí být uzavøeno v uvozovkách,
 napø., ovr=&quot;tango.dec&quot;. </p>
 
 <p><b><i>show</i></b> (true/false, výchozí false) umožòuje zobrazit
@@ -793,7 +793,7 @@ verzi softwaru. </p>
 
 <p><b><i>debug</i></b> (true/false, výchozí false) zapíná logovací/ladící
 informaci o rozhodnutích filtru pro jejich vytištìní pøes OutputDebugString().
-Pro zachycení tìchto øetìzcù je dostupná Utilita zvaná DebugView. 
+Pro zachycení tìchto øetìzcù je dostupná Utilita zvaná DebugView.
 Zobrazená informace je stejná jako ta, která se zobrazí u možnosti show výše. </p>
 
 <p><hr><h2><a name=iscombed>IsCombed(<i>parameter_list</i>)</a></h2>
@@ -829,7 +829,7 @@ Cb</tt></p>
 
 <p>Nyní jsou oba snímky kontrolovány na roztøepení. Nejménì roztøepený snímek je
 výstupním snímkem (nepøedpokládá se žádné øízení šablony (pattern guidance)). Je to takhle jednoduché. </p>
-<p>Pokud je zapnuté øízení šablony, rozhodnutí popsané výše lze pøepsat 
+<p>Pokud je zapnuté øízení šablony, rozhodnutí popsané výše lze pøepsat
 pøedpovìzeným uspoøádáním založeným na zpozorované šablonì v okolí aktuálního snímku.
 Pøedpovìï je ignorována pokud rozdíl mezi uspoøádáními je pøíliš velký, protože
 toto používá možnou zmìnu fáze šablony, ke které by mìl Telecide()
@@ -867,7 +867,7 @@ OK, ale video sekvence budou decimovány, a objeví se trhání. </p>
 <p><b><i>Pøevážnì filmové klipy (mode=3)</i></b> </p>
 
 <p>Nejdøíve uvažujme pøípad, kde je klip pøevážnì filmový. V tomto pøípadì,
-chceme decimovat filmové èásti normálnì takže budou hladké (plynulé). Pro 
+chceme decimovat filmové èásti normálnì takže budou hladké (plynulé). Pro
 nefilmové èásti, chceme snížit jejich snímkovou frekvenci pomocí (blend) decimace
 smícháním každého cyklu snímkù z 5 na 4 snímky. Video sekvence tak rendrované se jeví
 plynulejší než když jsou decimovány jako film. </p>
@@ -884,7 +884,7 @@ z videa. Aby tento mechanizmus pracoval, Decimate musí ihned následovat za Telec
 Pøesnìji, èím lepší práci udìláte s uzamèením šablony v Telecide (nastavením
 parametrù podle požadavkù), tím lepší práci mùže Decimate udìlat. </p>
 
-<p>Druhým faktorem je prahová hodnota (threshold). Pokud je vidìt cyklus snímkù, který nemá duplikáty, 
+<p>Druhým faktorem je prahová hodnota (threshold). Pokud je vidìt cyklus snímkù, který nemá duplikáty,
 pak je cyklus zpracován jako video. Prahová hodnota
 urèuje jaké procento rozdílu snímkù je považováno za pøítomnost duplikátu.
 Všimnìte si, že threshold=0 vypíná druhý faktor. </p>
@@ -908,7 +908,7 @@ z videa. Aby tento mechanizmus pracoval, Decimate musí ihned následovat za Telec
 Pøesnìji, èím lepší práci udìláte s uzamèením šablony v Telecide (nastavením
 parametrù podle požadavkù), tím lepší práci mùže Decimate udìlat. </p>
 
-<p>Druhým faktorem je prahová hodnota (threshold). Pokud je vidìt cyklus snímkù, který nemá duplikáty, 
+<p>Druhým faktorem je prahová hodnota (threshold). Pokud je vidìt cyklus snímkù, který nemá duplikáty,
 pak je cyklus zpracován jako video. Prahová hodnota
 urèuje jaké procento rozdílu snímkù je považováno za pøítomnost duplikátu.
 Všimnìte si, že threshold=0 vypíná druhý faktor. </p>

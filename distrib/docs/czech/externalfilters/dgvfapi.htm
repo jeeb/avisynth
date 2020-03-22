@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: dgvfapi.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: dgvfapi.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -34,7 +34,7 @@ stejnì tak i D2V soubory z DGIndexu.
 <p>5. Stisknìte Convert pro vytvoøení "falešného" AVI souboru.</p>
 
 <p>Filtry DGIndexu luminance a cropping nejsou podporovány pokud otevøete
-D2V soubor ve VFAPI Converteru. Ale jestliže vytvoøíte AVS skript, který 
+D2V soubor ve VFAPI Converteru. Ale jestliže vytvoøíte AVS skript, který
 používá MPEG2Source() a naètete takový skript do VFAPI Converter (namísto
 D2V souboru), pak tyto filtry budou pracovat.</p>
 
@@ -44,13 +44,13 @@ soubor pomocí MPEG2Source() použitím AVS skriptu, použije se automaticky filtr C
 pro zmenšení velikosti snímku z vnitønì kódované velikosti (která je
 integrálním poètem makroblokù v obou smìrech) na velikost zobrazení.
 To se se NEprovádí pøi pøedávání D2V s VFAPI. Jak bylo popsáno výše pro
-filtry luminance a cropping , mùžete získat správnou velikost zobrazení 
+filtry luminance a cropping , mùžete získat správnou velikost zobrazení
 vytvoøením AVS skriptu, který používá MPEG2Source() a naèíst takový
 skript do VFAPI Converter.</p>
 
 <p>VFAPI nadvzorkuje (upsample) do RGB. U D2V souborù je to ve výchozím stavu provádìno v prokládaném režimu.
 Pro vynucení progresivního nadvzorkování, vložte "_P" pøed pøíponu
-názvu souboru. Pro vynucení nadvzorkování následujícího znak progressive_frame, 
+názvu souboru. Pro vynucení nadvzorkování následujícího znak progressive_frame,
 vložte "_A" pøed pøíponu v názvu souboru. Všimnìte si, že
 použití "_A" také znamená, že bude vrácen YUY2 snímek místo
 YV12 snímku pro vstup 4:2:0.

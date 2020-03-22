@@ -28,7 +28,7 @@ This wavelet transform could be done on each plane of the colorspace.
 This filter uses a wavelets from Brislawn tutorial.</p>
 
 <h2>Syntax of VagueDenoiser filter</h2>
-<p><code>VagueDenoiser</code> (<var>clip, int "threshold", int "method", int "nsteps", float "chromaT", bool "debug", 
+<p><code>VagueDenoiser</code> (<var>clip, int "threshold", int "method", int "nsteps", float "chromaT", bool "debug",
 bool "interlaced", int "wavelet", bool "Wiener", float "wratio", integer "percent", clip "auxclip"</var>)</p>
 
 <h4>Parameters:</h4>
@@ -356,9 +356,9 @@ VagueDenoiser(threshold=7, auxclip=aux, interlaced=true, wiener=true)</pre>
   <li>Improving soft <var>method=1</var> - do not filter lowest level anymore, mean picture intensity is not changed now .</li>
   <li>Re-enabled <var>method=2</var> of multilevel subband adaptive thresholding, implemented as NormalShrink method;</li>
   <li>Added <var>method=4</var> uniformly smooth shrinking function;</li>
-  <li>Replaced partial denoising blend mode by limited shrinking of small coefficients for all thresholding functions;</li> 
+  <li>Replaced partial denoising blend mode by limited shrinking of small coefficients for all thresholding functions;</li>
   <li>Changed default <var>percent=85</var>;</li>
-  <li>Implemented new SSE versions for <var>method=0,3,4</var> and C versions for rest (3DNow disabled with 4% speed decreasing);</li> 
+  <li>Implemented new SSE versions for <var>method=0,3,4</var> and C versions for rest (3DNow disabled with 4% speed decreasing);</li>
   <li>Added 3DNow optimized versions for transform of wavelet 1 and 3 (10% speed).</li>
 </ul>
 </li>
@@ -380,7 +380,7 @@ Lefungus web page: <a href="http://perso.wanadoo.fr/reservoir/avisynth.html"><ci
 Optimization matters are Kurosu's matters.<br>
 Yet it should be obvious, you may reach Kurosu here: <U>kurosu (at) inforezo (dot) org</U><br>
 Fizick is not responsible for anything, but usually strives for perfection :)<br>
-Fizick is accessible at: <U>bag (at) hotmail (dot) ru</U>, 
+Fizick is accessible at: <U>bag (at) hotmail (dot) ru</U>,
 and his web page with latest versions must be at: <a href="http://bag.hotmail.ru"><cite>http://bag.hotmail.ru</cite></a> or its mirror.
 </p>
 

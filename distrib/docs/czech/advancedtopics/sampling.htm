@@ -53,7 +53,7 @@ Chroma Upsampling Error</a>]<br>
 Error - Television and Video Advice</a>]</p>
 <h3>1.1 Chyba nadvzorkování barev (neboli CUE)</h3>
 <p>             Jak u¾ bylo øeèeno, chyba nadvzorkování barev nastane pøi pøevodu z&nbsp;(opravdu)&nbsp;prokládaného YV12 do vìt¹iny jiných formátù kdy si&nbsp;pøevodník&nbsp;myslí, ¾e video je progresivní. Nebo, jiný pøípad, je-li materiál progresivní (nebo&nbsp;prokládaný enkódován jako progresivní), a&nbsp;pøevzorkován jako prokládaný. Ale to není tak ¹patné jako v prvním pøípadì.</p>
-<p> Budete-li prohlí¾et va¹e video ve&nbsp;VirtualDubu, 
+<p> Budete-li prohlí¾et va¹e video ve&nbsp;VirtualDubu,
 budete ho potøebovat pøevést do&nbsp;RGB. Proto¾e&nbsp;AviSynth&nbsp;dodá YV12, VirtualDub ¾ádá&nbsp;kodek (napøíklad XviD&nbsp;nebo DivX) o pøevod&nbsp;z YV12&nbsp;do RGB. Nicménì kodek V®DY nadvzorkovává progresivnì. Odtud obdr¾íte pøi prohlí¾ení&nbsp;ve VirtualDubu&nbsp;artefakty v prokládaném&nbsp;YV12 materiálu. Ale ty se nenachází v&nbsp;YV12 videu (nebo ve výsledném zakódovaném materiálu). Aby jste si to ovìøili&nbsp;proveïte v AviSynthu&nbsp;pøevod pomocí&nbsp;ConvertToRGB(interlaced=  true) na konci va¹eho skriptu.</p>
 <h3>  1.2 Korekce&nbsp;videa s chybou pøevzorkování barev</h3>
 <p> Budete muset&nbsp;nìjakým zpùsobem rozmazat barevnost (jas necháte netknutý).</p>
@@ -69,7 +69,7 @@ AviSynthu.</p>
 <p>             Abychom mohli pochopit jak pøevzorkování YV12 &lt;-&gt; YUY2&nbsp;pracuje&nbsp;a proè má význam, kdy¾ je vá¹ zdroj prokládaný nebo &nbsp;progresivní,&nbsp;budeme nejdøíve diskutovat&nbsp; barevné formáty YV12/YUY2. Není zde dùle¾ité, jak se vám uchovají v pamìti. Informace o tom naleznete zde:
 <font color="#ff0000">ColorSpaces</font>.</p>
 <h4>Barevný formát YUV 4:4:4</h4>
-<p>Termín 4:4:4 znamená, ¾e pro ka¾dé ètyøi 
+<p>Termín 4:4:4 znamená, ¾e pro ka¾dé ètyøi
 vzorky&nbsp;jasu&nbsp;(Y), jsou ètyøi vzorky&nbsp;U a V. Tak¾e ka¾dý pixel má&nbsp;jasovou hodnotu (Y),&nbsp;hodnotu &nbsp;U&nbsp;(vzorek modrého barevného rozdílu neboli&nbsp;Cb) a hodnotu V&nbsp;(vzorek èerveného&nbsp;barevného rozdílu neboli&nbsp; Cr). V¹imnìte si, "C" je právì&nbsp;vzorek barevnosti&nbsp;(UV-vzorek).</p>
 <p>Rozvr¾ení&nbsp;4:4:4&nbsp;kódovaného obrazu vypadá následovnì</p>
 <table border="1" width="50%">
@@ -164,7 +164,7 @@ vzorky&nbsp;jasu&nbsp;(Y), jsou ètyøi vzorky&nbsp;U a V. Tak¾e ka¾dý pixel má&nb
   </tr>
 </table>
 <p><b>prokládané YV12</b></p>
-<p>Ka¾dý&nbsp;pixel,&nbsp;horizontalnì sdílí UV (barevnost 
+<p>Ka¾dý&nbsp;pixel,&nbsp;horizontalnì sdílí UV (barevnost
 neboli C)&nbsp;se sousedním&nbsp;pixelem a vertikálnì sdílí UV s&nbsp;dal¹ím sousedním øádkem&nbsp;(tedy&nbsp;øádek 1t&nbsp;s&nbsp;&nbsp;øádkem 3t,&nbsp;øádek 2b&nbsp;s øádkem&nbsp;4b, atd). Písmeno t (top) zde znaèí horní pole, písmeno b (bottom) dolní pole.</p>
 <p>Rozvr¾ení prokládaného 4:2:0&nbsp;zakódovaného obrazu&nbsp;vypadá následovnì&nbsp;(schema MPEG 2&nbsp;-&nbsp;viz ní¾e)</p>
 <table border="1" width="50%">
@@ -283,7 +283,7 @@ Pøipomeòme si rozvr¾ení 4:4:4 kódovaného obrazu</p>
 <p>V&nbsp;AviSynthu,&nbsp;je ve&nbsp;výchozím re¾imu pou¾ito jádro 1-2-1&nbsp;pro interpolaci barvy, to je</p>
 <p>C1x =    (C1+C1+C1+C2)/4 (C1 je pou¾ito tøikrát,&nbsp;proto¾e je to okraj)<br>
 C3x =
- 
+
   (C2+C3+C3+C4)/4<br>
 C5x = (C4+C5+C5+C6)/4</p>
 <p>4:2:2 kódovaný obraz&nbsp;se skládá</p>
@@ -309,7 +309,7 @@ C5x = (C4+C5+C5+C6)/4</p>
     <td width="50%"> øádek 4</td>
   </tr>
 </table>
-<p> Jiný re¾im <A href="../corefilters/convert.htm">ConvertBackToYUY2</A> 
+<p> Jiný re¾im <A href="../corefilters/convert.htm">ConvertBackToYUY2</A>
 pou¾ije&nbsp;barevnost&nbsp;z levého pixelu, tedy</p>
 <table border="1" width="50%">
   <tr>
@@ -530,7 +530,7 @@ vzorkù.</i></p>
 <p>Pro pøevod&nbsp;4:2:2 -&gt; 4:4:4 jsou chybìjící vzorky barevnosti&nbsp;interpolovány (s pou¾itím&nbsp;jádra 1-1), co¾ je</p>
 <p>C2x = (C1+C3)/2<br>
 C4x =
- 
+
   (C3+C5)/2</p>
 <p>a&nbsp;existující&nbsp;vzorky barevnosti&nbsp;jsou prostì zkopírovány.</p>
 <p>  4:4:4 kódovaný obraz</p>
@@ -1118,7 +1118,7 @@ jiná ne¾ v&nbsp;4:2:0&nbsp;barevnosti&nbsp;u MPEG-1/MPEG-2!</p>
 <p>Nìkteré komentáøe k tìmto formátùm:<br>
    - 4:1:1 je nativnì podporován v AviSynthu v2.6.<br>
 - V¹echny DV dekodéry&nbsp;produkují výstup&nbsp;YUY2&nbsp;nebo RGB (s výjimkou&nbsp;ffdshow, pokud je zapnuto&nbsp;YV12).<br>
-- Pøi výstupu&nbsp;YUY2/RGB (NTSC), 
+- Pøi výstupu&nbsp;YUY2/RGB (NTSC),
 kodek&nbsp;MainConcept&nbsp;duplikuje barevné vzorky místo jejich interpolování. Pro korekci tohoto jevu mù¾e být
 pou¾it&nbsp;[<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">ReInterpolate411
 plugin</a>       ]&nbsp;,&nbsp;vede to k lep¹ímu výsledku.</p>
@@ -1128,8 +1128,8 @@ YUV sampling</a>] Popisuje vìt¹inu bì¾ných metod&nbsp;YUV&nbsp;vzorkování.<br>
 [<a href="http://www.adamwilt.com/pix-sampling.html">DV sampling</a>]</p>
 <h2>4. 4:2:0 Problém prokládané barevnosti (Interlaced Chroma Problem or ICP)</h2>
 <p>Obecnì prokládaný obsah&nbsp;má i statické èásti. Pokud je správnì
-zvìt¹ován poèet vzorkù pomocí prokládaného pøevzorkování, pøece zùstávají&nbsp; <i>problémy barevnosti na 
-&nbsp;diagonálních&nbsp;hranách&nbsp;jasnì barevných&nbsp;objektù ve statických èástech&nbsp;snímku</i>. Dùvodem je, ¾e "Kdy¾ se pozdìji slo¾í dvì 
+zvìt¹ován poèet vzorkù pomocí prokládaného pøevzorkování, pøece zùstávají&nbsp; <i>problémy barevnosti na
+&nbsp;diagonálních&nbsp;hranách&nbsp;jasnì barevných&nbsp;objektù ve statických èástech&nbsp;snímku</i>. Dùvodem je, ¾e "Kdy¾ se pozdìji slo¾í dvì
 pole&nbsp;zpìt dohromady odstraòovaèem prokládání&nbsp;(nebo ve va¹ich oèích&nbsp;a v mozku, kdy¾ sledujete&nbsp;prokládaný obraz na TV), relativní&nbsp; postupné odstupòování&nbsp;barev a&nbsp;kontur&nbsp;ka¾dého pole&nbsp;se lomí&nbsp;mírnì rozdílným souborem odstupòováním barev&nbsp;a kontur z druhého pole." (Citace z prvního odkazu). To se nazývá&nbsp;
 <b>Problém prokládané barevnosti (the Interlaced Chroma Problem)</b> .&nbsp;"Øe¹ením" je pohybovì adaptivní nadvzorkování, ale takový
 filtr v&nbsp;AviSynthu/VDubu, který by se to pokusil provést zatím není.</p>

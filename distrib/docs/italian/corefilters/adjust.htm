@@ -10,18 +10,18 @@
 <p>Questo filtro moltiplica ogni colore per un valore dato, tagliando il risultato a 255 se maggiore.
 		Si noti che <code>RGBAdjust</code>(1, 1, 1, 1) lascia la clip inalterata.<br>
   <br>
-  <var>red </var>(0.0 - 255.0): Questa opzione determina il fattore di scala per il Rosso. Ad esempio un fattore x3 
-  moltiplica il colore rosso di ogni pixel per 3. 
+  <var>red </var>(0.0 - 255.0): Questa opzione determina il fattore di scala per il Rosso. Ad esempio un fattore x3
+  moltiplica il colore rosso di ogni pixel per 3.
 			Allo stesso modo per il Verde ed il Blu.<br>
-  <var>alpha </var>(0.0 - 255.0) 
-  specifica l'alpha channel, che identifica l'informazione di  trasparenza di ogni pixel. 
-            Il valore 0 di alpha  rappresenta la trasparenza completa, mentre il valore 255 rappresenta un pixel 
+  <var>alpha </var>(0.0 - 255.0)
+  specifica l'alpha channel, che identifica l'informazione di  trasparenza di ogni pixel.
+            Il valore 0 di alpha  rappresenta la trasparenza completa, mentre il valore 255 rappresenta un pixel
 			completamente opaco.</p>
             <p>Si tenga presente che i valori NON sono  moltiplicati per adattarsi a quanto fatto su un colore
 			(per la qual cosa si deve usare i "levels")
 			sicchè facendo : </p>
 <pre>RGBAdjust(2, 1, 1, 1)</pre>
-<p>si otterranno frames tutti rossi. Se questo è il vostro obiettivo,OK, altrimenti se volete avere PIU' rosso dovete 
+<p>si otterranno frames tutti rossi. Se questo è il vostro obiettivo,OK, altrimenti se volete avere PIU' rosso dovete
 scrivere</p>
 <pre>Levels(0, 1, 255, 0, 128).RGBAdjust(2, 1, 1, 1)</pre>
 <p>TQuesto dimezza  tutti i livelli (compresa la luminanza) e poi raddoppia  il rosso.</p>

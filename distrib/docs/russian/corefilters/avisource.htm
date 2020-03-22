@@ -27,7 +27,7 @@
 (обработчик). Это включает не только AVI файлы, но также WAV файлы, AVS
 (AviSynth скрипт) файлы, и VDR (фреймсервер ВиртуалДуба) файлы. Если вы
 напечатали несколько имен файлов в качестве аргумента, клипы будут
-срощены вместе с помощью <code><a href="splice.htm">UnalignedSplice</a></code>. 
+срощены вместе с помощью <code><a href="splice.htm">UnalignedSplice</a></code>.
 Логический аргумент  <var>"audio&quot; </var>является опциональным и по умолчанию равен <code>true</code>.
 </p>
 <p><code>AVISource</code> фильтр изучает файл для установления его типа и направляет его подходящему AVIFile или OpenDML обработчику.
@@ -98,7 +98,7 @@ codecs</a></cite>
 
 <pre>AVISource("d:\capture.avi")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # заметка С программистам: бэкслеши не дублируются
 AVISource("c:/capture/00.avi")&nbsp;&nbsp;&nbsp;&nbsp; # прямые слеши работают тоже
-WAVSource("f:\soundtrack.wav")&nbsp;&nbsp;&nbsp;&nbsp; # это работает 
+WAVSource("f:\soundtrack.wav")&nbsp;&nbsp;&nbsp;&nbsp; # это работает
 WAVSource("f:/soundtrack.wav")&nbsp;&nbsp;&nbsp;&nbsp; # и это тоже
 
 # Следующее означает то же, что и AVISource("cap1.avi") + AVISource("cap2.avi")
@@ -110,7 +110,7 @@ AVISource("cap.avi",false,"RGB32")
 # Следующее открывает DV используя Canopus DV кодек
 AviSource(&quot;cap.avi&quot;, false, fourCC=&quot;CDVC&quot;)
 
-# Следующее открывает avi (например DivX3) используя XviD кодек  
+# Следующее открывает avi (например DivX3) используя XviD кодек
 AviSource(&quot;cap.avi&quot;, false, fourCC=&quot;XVID&quot;)
 
 # Соединение двух клипов, где один из них не содержит аудио.
@@ -118,8 +118,8 @@ AviSource(&quot;cap.avi&quot;, false, fourCC=&quot;XVID&quot;)
 A = AviSource(&quot;FileA.avi&quot;)
 B = AviSource(&quot;FileB.avi&quot;) # Нет аудио потока
 A ++ AudioDub(B, BlankClip(A))  </pre>
-<p>Некоторые форматы сжатия накладывают предел числа вызовов AviSource() в скрипте. 
-Некоторые люди достигли этого предела с около 50 вызовами AviSource в скрипте. 
+<p>Некоторые форматы сжатия накладывают предел числа вызовов AviSource() в скрипте.
+Некоторые люди достигли этого предела с около 50 вызовами AviSource в скрипте.
 Смотри <cite><a href="http://forum.doom9.org/showthread.php?t=131687">обсуждение</a></cite>.</p>
 
 <p><b>Изменения:</b></p>

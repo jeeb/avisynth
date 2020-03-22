@@ -10,7 +10,7 @@
 <h2>Pøehled</h2>
 <b>autor:</b> Lefungus, Kurosu, Fizick<br>
 <b>verze:</b> 0.35.1<br>
-<b>stáhnout:</b> <a href="http://avisynth.org.ru">http://avisynth.org.ru</a>, 
+<b>stáhnout:</b> <a href="http://avisynth.org.ru">http://avisynth.org.ru</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a><b><br>
 kategorie:</b> Prostorové vyhlazovaèe<br>
 <b>požadavky:</b>&nbsp;
@@ -22,15 +22,15 @@ kategorie:</b> Prostorové vyhlazovaèe<br>
 <h2>Úvod</h2>
 <p>Toto vlnový (Wavelet) odšumovaè.<br>
 V zásadì pøevádí každý snímek ze vstupního videa do
-vlnové oblasti, použitím rùzných vlnových (wavelet) filtrù. Pak aplikuje nìjaké 
+vlnové oblasti, použitím rùzných vlnových (wavelet) filtrù. Pak aplikuje nìjaké
 filtrování k získaným koeficientùm. Potom provede inverzi vlnového
-pøevodu. Kvùli vlnovým vlastnostem, by mìl dávat pìkný hladký 
+pøevodu. Kvùli vlnovým vlastnostem, by mìl dávat pìkný hladký
 výsledek, a snížit šum, bez rozmazání rysù obrazu.
 Tento vlnový pøevod mùže být udìlán na každé ploše barevného prostøedí.
 Tento filtr používá vlny (wavelets) z Brislawnova tutorialu.</p>
 
 <h2>Syntaxe filtru VagueDenoiser</h2>
-<p><code>VagueDenoiser</code> (<var>clip, int "threshold", int "method", int "nsteps", float "chromaT", bool "debug", 
+<p><code>VagueDenoiser</code> (<var>clip, int "threshold", int "method", int "nsteps", float "chromaT", bool "debug",
 bool "interlaced", int "wavelet", bool "Wiener", float "wratio", integer "percent", clip "auxclip"</var>)</p>
 
 <h4>Parametry:</h4>
@@ -108,8 +108,8 @@ použijte jiný vlnový základ (témìø nekorelovaný) pro filtrování, t.j.
 slabé snížení hodnoty (použitím pøedchozího odhadu). Dodateènì snižte vliv
 "horkých pixelù" mediánovým
 èasovým pøedfiltrováním (undot, degrainmedian),
-a použijte výsledek jako pomocný klip pro odhad šumu. 
-Tento pomocný klip lze silnì filtrovat protože ho 
+a použijte výsledek jako pomocný klip pro odhad šumu.
+Tento pomocný klip lze silnì filtrovat protože ho
 nepoužíváte jako vstup pro Vaguedenoiser.
 (Ostatnì, teï nezískáte pøísnì prostorové vyhlazení).
 Viz pøíklad (pomalý):</p>
@@ -358,9 +358,9 @@ VagueDenoiser(threshold=7, auxclip=aux, interlaced=true, wiener=true)</pre>
   <li>Improving soft <var>method=1</var> - do not filter lowest level anymore, mean picture intensity is not changed now .</li>
   <li>Re-enabled <var>method=2</var> of multilevel subband adaptive thresholding, implemented as NormalShrink method;</li>
   <li>Added <var>method=4</var> uniformly smooth shrinking function;</li>
-  <li>Replaced partial denoising blend mode by limited shrinking of small coefficients for all thresholding functions;</li> 
+  <li>Replaced partial denoising blend mode by limited shrinking of small coefficients for all thresholding functions;</li>
   <li>Changed default <var>percent=85</var>;</li>
-  <li>Implemented new SSE versions for <var>method=0,3,4</var> and C versions for rest (3DNow disabled with 4% speed decreasing);</li> 
+  <li>Implemented new SSE versions for <var>method=0,3,4</var> and C versions for rest (3DNow disabled with 4% speed decreasing);</li>
   <li>Added 3DNow optimized versions for transform of wavelet 1 and 3 (10% speed).</li>
 </ul>
 </li>
@@ -387,7 +387,7 @@ Lefungusova webová stránka: <a href="http://perso.wanadoo.fr/reservoir/avisynth.
 Otázky optimalizace jsou pro Kurosu.<br>
 Ještì by jste mìli vìdìt, že najdete Kurosu zde: <U>kurosu (at) inforezo (dot) org</U><br>
 Fizick není za nic odpovìdný, ale obvykle se snaží o dokonalost :)<br>
-Fizick je k pøístupný na: <U>bag (at) hotmail (dot) ru</U>, 
+Fizick je k pøístupný na: <U>bag (at) hotmail (dot) ru</U>,
 a jeho webová stránka s pozdìjšími verzemi musí být na: <a href="http://avisynth.org.ru"><cite>http://avisynth.org.ru</cite></a> nebo jeho zrcadle.
 </p>
 

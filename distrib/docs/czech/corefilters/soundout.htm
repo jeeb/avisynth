@@ -84,27 +84,27 @@ je vnitønì pøeveden na 16 bit.</p>
 
 <h4>Výstup pøíkazového øádku</h4>
 <p>Tento výstupní modul vám umožní vysílat do jakéhokoli programu, který podporuje vstup z stdin. To vám dává úplnou kontrolu nad vaším enkódováním, pokud použijete nástroje pro pøíkazový øádek.</p>
-<p>Mùžete vybrat formát SoundOut, který by mìl být doruèen aplikaci, kterou používáte. Existují tøi WAV formáty a RAW PCM data. Ty jsou vysílány do stdin aplikace. Program sestaví pøíkazový øádek ze 4 èástí, 
+<p>Mùžete vybrat formát SoundOut, který by mìl být doruèen aplikaci, kterou používáte. Existují tøi WAV formáty a RAW PCM data. Ty jsou vysílány do stdin aplikace. Program sestaví pøíkazový øádek ze 4 èástí,
 <i>výkonné</i>, <i>možností pøíkazového øádku</i> pøed výstupním souborem, <i>výstupního souboru</i> který je vybrán, a <i>možností pøíkazového øádku</i> za jménem výstupního souboru.</p>
 <p>Existují dva zpùsoby zadání výkonné èásti (executable). Buï zadáte úplnou cestu k výkonné aplikaci (executable), nebo jednoduše zadejte
 <i>jméno vykonávajícího souboru</i>, a umístìte ho do podsložky nazvané SoundOut ve vaší složce s pluginy.</p>
 
 
 <h3>Exportování ze skriptu</h3>
-<p>Je možné použít SoundOut jako obyèejný filtr, spuštìním uvnitø skriptu a zadáním parametrù pro každý výstupní režim. Parametry sestávají ze dvou vìcí: Obecných parametrù, které mohou být užiteèné pro všechny filtry, 
+<p>Je možné použít SoundOut jako obyèejný filtr, spuštìním uvnitø skriptu a zadáním parametrù pro každý výstupní režim. Parametry sestávají ze dvou vìcí: Obecných parametrù, které mohou být užiteèné pro všechny filtry,
 a parametrù specifických pro filtr, které zadávají parametry do aktivního výstupního modulu.</p>
 <p>Parametr <b>out</b> urèuje zda bude zobrazeno GUI, pokud je správnì nastaven, filtr zaène exportovat audio jakmile se spustí.</p>
 <p>Pokud <b>není</b> parametr <b>out</b> nastaven, je stále možné nastavit doplòkové parametry. Výchozí hodnoty budou ostatnì získány z registru, ale specifické parametry je pøepíší.</p>
 <h4>Obecné parametry</h4>
 <table class="nav" border="1"><tr><th>Jméno parametru</th><th>Typ</th><th>Hodnoty</th></tr>
-<tr><td>output</td><td>string</td><td>Volí použitý výstupní modul. Možné hodnoty jsou:<br>&quot;WAV&quot;, &quot;AC3&quot;, &quot;MP2&quot;, &quot;MP3&quot;, &quot;OGG&quot;, 
-&quot;FLAC&quot;, &quot;MAC&quot; a &quot;CMD&quot;.<br> 
+<tr><td>output</td><td>string</td><td>Volí použitý výstupní modul. Možné hodnoty jsou:<br>&quot;WAV&quot;, &quot;AC3&quot;, &quot;MP2&quot;, &quot;MP3&quot;, &quot;OGG&quot;,
+&quot;FLAC&quot;, &quot;MAC&quot; a &quot;CMD&quot;.<br>
 Pokud není, nebo je zadána neplatná hodnota, zobrazí se obyèejné GUI.</td></tr>
 <tr><td>filename</td><td>string</td><td>Úplná cesta ke jménu výstupního souboru, vèetnì pøípony.<br>Nejsou vyžadovány žádné zvláštní uvozovky. <br>Pokud není zadán žádný název souboru, zobrazí se okno volby souboru.</td></tr>
 <tr><td>showprogress</td><td>bool</td><td>Zobrazit okno prùbìhu? Výchozí: true</td></tr>
 <tr><td>overwritefile</td><td>string</td><td>&quot;Yes&quot;: Vždy pøepíše soubor.<br>&quot;No&quot;: Nikdy nepøepíše soubor<br>&quot;Ask&quot;: Zeptá se jestli má být soubor pøepsán.</td></tr>
 <tr><td>autoclose</td><td>bool</td><td>Má se okno prùbìhu zpracování automaticky zavøít 5 sekund po dokonèení enkódování?<br>Toto bude také kódovat okno, i když nastane chyba<br>Výchozí: false</td></tr>
-<tr><td>silentblock</td><td>bool</td><td>Pøi zpracování, vrátí zapnutí této možnosti tiché vzorky místo blokování (blocking) žádané aplikace. Je-li vypnuto, 
+<tr><td>silentblock</td><td>bool</td><td>Pøi zpracování, vrátí zapnutí této možnosti tiché vzorky místo blokování (blocking) žádané aplikace. Je-li vypnuto,
 jakákoli žádaná aplikace požadující audio bude blokována, dokud nebude zvuk exportován<br>Výchozí: true</td></tr>
   <tr>
     <td>addvideo</td><td>bool</td><td>Když je zapnuto, pøidá do aktuálního výstupu video, pokud už tam nìjaké není. Video je èerné 32x32 pixelù s 25fps, s délkou podle audia. <br>Výchozí: true</td>
@@ -223,7 +223,7 @@ Zajistí mp3 výstupní modul s CBR pøi 192kbit/sec.
 <h3>Implementaèní poznámky</h3>
 <p>SoundOut je vícevláknový (Multithreaded), a používá jedno vlákno pro vyžádání audia z pøedchozích filtrù, a jiné vlákno pro enkódování. Vlákna mají dánu prioritu "below normal". </p>
 
-<p>Dva exporty najednou mùžete zkusit spustit jen na vlastní nebezpeèí. Je to pravdìpodobnì pomalejší a mùže to vést potenciálnì k pádùm. 
+<p>Dva exporty najednou mùžete zkusit spustit jen na vlastní nebezpeèí. Je to pravdìpodobnì pomalejší a mùže to vést potenciálnì k pádùm.
 Mùžete bezpeènì exportovat zvuk když enkódujete, pokud vaše enkódování neète audio z AviSynthu.</p>
 
 <h3>Seznam zmìn</h3>

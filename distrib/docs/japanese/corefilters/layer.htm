@@ -8,7 +8,7 @@
 </head>
 <body>
 <h2><a name="Layer"></a>Layer<em><a href="#footnote_1" class="footnote_link">*1</a> [yuy2][rgb32]</em></h2>
-<p><code>Layer </code>(<var>base_clip, overlay_clip, string &quot;op&quot;, int &quot;level&quot;, 
+<p><code>Layer </code>(<var>base_clip, overlay_clip, string &quot;op&quot;, int &quot;level&quot;,
   int &quot;x&quot;, int &quot;y&quot;, int &quot;threshold&quot;, bool &quot;use_chroma&quot;</var>)</p>
 <p>このフィルタは、異なるサイズの（だが、同じカラーフォーマットの） 2 つのクリップを、さまざまな演算モードを使ってオーバーレイ<a href="#footnote_2" class="footnote_link">*2</a>することができます。<br>
 ピクセルの透明度情報については、マスクとして RGB32 の第 4 の色チャンネル（A チャンネル、または、アルファチャンネル<a href="#footnote_3" class="footnote_link">*3</a>）が使用されます。</p>
@@ -52,18 +52,18 @@
 
 &quot;lighten&quot;: <i>use_chroma</i> は TRUE である必要があります。&quot;add&quot; と同じ演算を実行しますが、
        結果が base_clip より明るいときのみ新しい値が使われます。<i>threshold</i> が
-       高いほど、この演算が行われる可能性が高くなります。つまり、<i>threshold</i>=255 なら 
+       高いほど、この演算が行われる可能性が高くなります。つまり、<i>threshold</i>=255 なら
        &quot;add&quot; と同じ、threshold=0 なら base_clip と overlay_clip の差によっては
        おそらく base_clip がそのまま変更なしで渡されます。
 
 &quot;darken&quot;: &quot;lighten&quot; と同じですが、結果が base_clip より暗いときにのみ実行されます。</pre>
-    
+
 <p><br>
 生成されるクリップのプロパティについては、<a href="../syntax.htm#multiclip" target="_self">こちら</a>も参照。</p>
 <p>&nbsp;
 </p>
 
-<h2><a name="Mask"></a>Mask 
+<h2><a name="Mask"></a>Mask
   <em>[rgb32]</em></h2>
 <p><code>Mask </code>(<var>clip, mask_clip</var>)</p>
 <p><code>Layer</code> と一緒に使用するために、<var>mask_clip</var> をグレースケールに変換し、それを RGB32 のマスク（アルファチャンネル）に使用することによって、定義されたアルファマスクを <var>clip</var> に適用します。このチャンネルでは、「黒」は完全に透明を意味し、「白」は完全に不透明を意味します。</p>
@@ -77,7 +77,7 @@
 <pre>clip = ResetMask(clip)</pre>
     <p>&nbsp;</p>
 
-<h2><a name="ColorKeyMask"></a>ColorKeyMask 
+<h2><a name="ColorKeyMask"></a>ColorKeyMask
   <em>[rgb32]</em></h2>
 <p><code>ColorKeyMask </code>(<var>clip, int color[, int tolB, int tolG, int tolR]</var>)</p>
 <p><var>color</var> で指定された色（デフォルト 黒）を比較することによって、アルファチャンネル内のピクセルを消去します。色の差が (<var>tolB, tolR, tolG</var>)<a href="#footnote_6" class="footnote_link">*6</a> （デフォルト 10）より小さいピクセルは、それぞれ透明（つまり黒色に）に設定されます。それ以外のピクセルは変更されません。すなわち、不透明には設定され''ません''（白色には設定されません。そのため、このフィルタを適用する前に ResetMask が必要になるかもしれれません）。これは、統合マスクを複数回の呼び出しによって構築することを可能にします。<var>tolR</var> または <var>tolG</var> が設定されないときは、<var>tolB</var> の値が使われます（古いバージョンの挙動を反映）。通常は、まず ResetMask から始めます。それから、関係のある色が現れる透明な穴をつくるために ColorKeyMask を 2、3 回連続して呼び出します。<b>使用例については、<a href="overlay.htm">Overlay</a> を参照してください。</b></p>

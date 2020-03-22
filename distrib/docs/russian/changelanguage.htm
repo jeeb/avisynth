@@ -6,8 +6,8 @@
   <title>AviSynth language</title>
   <link rel="stylesheet" type="text/css" href="../avisynth.css">
 
-<!-- Automatically generated, don't change: 
-$Id: changelanguage.htm,v 1.4 2008/06/10 17:30:28 fizick Exp $ 
+<!-- Automatically generated, don't change:
+$Id: changelanguage.htm,v 1.4 2008/06/10 17:30:28 fizick Exp $
 -->
   <script language="javascript">
 <!--
@@ -17,7 +17,7 @@ function ChangeRussianEnglish()
 {
   var language1 = "russian";
   var language2 = "english";
-  var len1 = language1.length; 
+  var len1 = language1.length;
   var len2 = language2.length;
   var bottomframeurl=new String(parent.frames["overview"].location);
   var rightframeurl= new String(parent.frames["main"].location);
@@ -27,13 +27,13 @@ function ChangeRussianEnglish()
   }
   ind= rightframeurl.toLowerCase().indexOf(language1);
   ind2=rightframeurl.toLowerCase().indexOf(language2);
-  if (ind<=0 && ind2<=0) 
+  if (ind<=0 && ind2<=0)
     return false;
   else if (ind>0) {
     rightframeurl= rightframeurl.substring(0,ind)+language2+rightframeurl.substring(ind+len1,999);
     bottomframeurl=rightframeurl.substring(0,ind)+language2+"/overview.htm";
   }
-  else { // ind2>0 
+  else { // ind2>0
     rightframeurl= rightframeurl.substring(0,ind2)+language1+rightframeurl.substring(ind2+len2,999);
     bottomframeurl=rightframeurl.substring(0,ind2)+language1+"/overview.htm";
   }

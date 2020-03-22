@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tivtc_tdecimate.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tivtc_tdecimate.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,9 +12,9 @@ $Id: tivtc_tdecimate.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>        1.0.3<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
-<br><b>kategorie:</b>    Odstraòování prokládání &amp; pulldown 
+<br><b>kategorie:</b>    Odstraòování prokládání &amp; pulldown
 <br><b>požadavky:</b>&nbsp;
 <ul>
   <li>YV12 &amp; YUY2 Barevné prostøedí</li>
@@ -79,7 +79,7 @@ string <var>&quot;input&quot;</var>, string <var>&quot;tfmIn&quot;</var>, string
                      decimaci videa (30p) pøi hybrid = 1, stejnì tak smíchání (blending) 24p
                      do 30p (hybrid = 3).</p>
 <p>Mode 2 =  Tento režim používá oddìlený decimaèní algoritmus, který mùže dosáhnout jakoukoli
-                     frekvenci snímkù.  Je to užiteèné, když nemùžete dosáhnout žádané 
+                     frekvenci snímkù.  Je to užiteèné, když nemùžete dosáhnout žádané
                      frekvence snímkù s decimací M-z-N. Výstupní frekvence snímkù pro tento režim je
                      nastavena použitím parametru "rate".  Parametr maxndl mùže být použit pro
                      nastavení chování na zdrojích s nerovnomìrnou distribucí duplikátù. V tomto režimu
@@ -99,7 +99,7 @@ string <var>&quot;input&quot;</var>, string <var>&quot;tfmIn&quot;</var>, string
                      nejdelší øetìzce) je ovládán pøes nastavení vfrDec .  Aby tento režim pracoval,
                      musí být všechny pøístupy lineární od zaèátku do konce... pokud je detekován nelineární pøístup
                      bude zobrazena chybová zpráva.</p>
-                <p> Protože vfw potøebují znát poèet snímkù pøed zaèátkem zpracování nedìlá tento režim 
+                <p> Protože vfw potøebují znát poèet snímkù pøed zaèátkem zpracování nedìlá tento režim
                      zmìnu poètu snímkù a jednoduše vycpe výstup podle potøeby
                      èernými snímky.  Poslední skuteèný snímek bude zaznamenán jako poznámka na konci
                      souboru mkv èasových kódù, a bude oznámen ve vycpaných snímcích jakmile
@@ -130,7 +130,7 @@ string <var>&quot;input&quot;</var>, string <var>&quot;tfmIn&quot;</var>, string
                      vstupního souboru generované v režimu mode 4 v pøedchozím prùchodu.  Bude decimovat bit pro bit
                      jen identických snímkù.  Veškerá decimace bude na jednu z následujících frekevencí
                      snímkù:  119.880, 59.940, 39.960, 29.970, 23.976.</p>
-<p>Mode 7 =  Tento režim je podobný režimu 2, ve kterém se používá decimaèní algoritmus, který mùže 
+<p>Mode 7 =  Tento režim je podobný režimu 2, ve kterém se používá decimaèní algoritmus, který mùže
                      docílit libovolné frekvence snímkù. Nicménì, operuje docela jinak
                      než mode 2.  Je užiteèný, když nemùžete dosáhnout žádané frekvence snímkù
                      decimací M-z-N a nemùžete si dovolit jít na dva prùchody v režimu 2 (v takém pøípadì
@@ -144,7 +144,7 @@ string <var>&quot;input&quot;</var>, string <var>&quot;tfmIn&quot;</var>, string
                      rozdílnými hodnotami uprostøed dupthresh a vidthresh jsou klasifikovány jako
                      podobné jestliže nereprezentují descernable lokální minimum nebo maximum v
                      øetìzci rozdílných hodnot.  Ve výchozím stavu je dupthresh nastaven na 0.5 a vidthresh
-                     je nastaven na 4.0 (používají obvyklé normalizované  mìøítko 0 až 100).</p>                  
+                     je nastaven na 4.0 (používají obvyklé normalizované  mìøítko 0 až 100).</p>
 <p>Výchozí:  0  (int)</p>
 
 <p><var>cycleR</var> -</p>
@@ -169,18 +169,18 @@ tato hodnota musí být nastavena na 1!</p>
 <p>Výchozí:  23.976  (float)</p>
 
 <p><var>hybrid</var> -</p>
-<p>Ovládá jak nebo jestli by se mìli brát také video èásti (30p).  Možná 
+<p>Ovládá jak nebo jestli by se mìli brát také video èásti (30p).  Možná
 nastavení:</p>
 <p>         0 - žádné zpracování<br>
             1 - blend decimace (režimy 0 a 1)<br>
             2 - výstup vfr pøes mkv w/ soubor èasových kódù (režimy 3 a 5)<br>
             3 - blend pøevod 24p èástí na 30p a nechá 30p netknuté   (režimy 0 a 1)</p>
-<p>* Možnost hybrid se nepoužije v režmech mode = 2 nebo mode = 4, a v souèasnosti je podporován jen hybrid > 0 
+<p>* Možnost hybrid se nepoužije v režmech mode = 2 nebo mode = 4, a v souèasnosti je podporován jen hybrid > 0
 pro cycleR = 1!</p>
 <p>Výchozí:  0  (int)</p>
 
 <p><var>vfrDec</var> -</p>
-<p>Nastavuje typ decimace pro filmové èásti pøi použití režimù 3 a 5.        
+<p>Nastavuje typ decimace pro filmové èásti pøi použití režimù 3 a 5.
 Možná nastavení:</p>
 <p>          0 - vypustí nejpodobnìjší snímek v cyklu<br>
              1 - decimuje z nejdelšího øetìzce duplikátù</p>
@@ -192,7 +192,7 @@ Možná nastavení:</p>
 <p><var>    dupThresh</var> -&nbsp;</p>
 <p>Toto nastavuje prahovou hodnotu pro detekci duplikátù.  Toto nastavení je použito v režimu 1
         a také v režimech 3 a 5 pokud vfrDec = 1.  Pokud je metrika rozdílu snímku menší
-        nebo rovna této hodnotì, pak je snímek deklarován jako duplikát.  Poznámka:  metriky se budou 
+        nebo rovna této hodnotì, pak je snímek deklarován jako duplikát.  Poznámka:  metriky se budou
         mírnì lišit mezi zpracováním YV12 a YUY2 pokud je chroma=true... metriky byly
         normalizovány, takže by mìly být blízko, ale v prùmìru YUY2 metriky mají snahy být mírnì
         vyšší (5-10%) než YV12 metriky pro stejný snímek pøi chroma=true.
@@ -201,11 +201,11 @@ Možná nastavení:</p>
         Tato hodnota je % maximální zmìny pro blok definovaný hodnotami blockx a
         blocky hodnotami.... takže 1.1 znamená 1.1% maximální možné zmìny.
     <p>V režimu 7, je dupThresh použito pro nastavení prahové hodnoty, pod kterou jsou snímky považovány
-        za absolutní duplikáty.  Použijte display=true, aby jste vidìli jaké jsou vypoètené hodnoty metrik 
+        za absolutní duplikáty.  Použijte display=true, aby jste vidìli jaké jsou vypoètené hodnoty metrik
         pro snímky a jaké jsou prahové hodnoty (pøeložené do nenormalizovaných hodnot).
 <p>Výchozí:  1.1  (pokud je chroma = true)  (float) -- režimy 1, 3, 5<br>
-                  1.4  (pokud je chroma = false)<br> 
-                  
+                  1.4  (pokud je chroma = false)<br>
+
                   0.4  (pokud je = true)  (float) -- režim 7<br>
                   0.5  (pokud je = false)</p>
 <p><var>vidThresh</var> -</p>
@@ -214,17 +214,17 @@ Možná nastavení:</p>
         je cyklus deklarován jako s rozumnými metrikami videa.  Toto nastavení je podobné jako v dupThresh,
         ale mìlo by být nastaveno mírnì výše, pokud máte vidDetect nastaven na 1 a ne 3.
         Pokud víte, že váš zdroj má hodnì video sekvencí, tak toto nastavte níže a naopak pokud
-        víte, že je váš zdroj èistý film, tak to mùžete nastavit opravdu vysoko, aby jste zabránili jakýmkoli 
+        víte, že je váš zdroj èistý film, tak to mùžete nastavit opravdu vysoko, aby jste zabránili jakýmkoli
         možným špatným detekcím.  Tato hodnota je % maximální zmìny pro blok definovaný
         hodnotami blockx a blocky.... takže 1.1 znamená 1.1% maximální možné zmìny.</p>
    <p>V režimu 7 je vidThresh použit pro nastavení prahové hodnoty výše u snímkù, které jsou považovány
         za absolutnì neduplikované.  Aby jste vidìli nenormalizované prahové hodnoty a hodnoty rozdílù snímkù
         nastavte display=true.
 <p>Výchozí:  1.1  (pokud je chroma = true)  (float) -- režimy 1, 3, 5 && hybrid > 0<br>
-                  1.4  (pokud je chroma = false)<br> 
+                  1.4  (pokud je chroma = false)<br>
                   3.5  (pokud je chroma = true)  (float) -- mode 7<br>
                   4.0  (pokud je chroma = false)</p>
-                  
+
 <p><var>sceneThresh</var> -</p>
 <p>Nastavuje prahovou hodnotu pro detekci zmìn scén, pøi použití blend decimace pro video
         èásti (hybrid = 1) nebo blend pøevodu pro 24p->30p (hybrid = 3).  Tato hodnota je
@@ -262,27 +262,27 @@ Možná nastavení:</p>
 <p>conCycle nastavuje požadovaný minimální poèet po sobì jdoucích cyklù detekovaných jako video, aby jakoukoliv
         takovou èást považoval za video pøi hybrid > 0.  To znamená, že když je conCycle nastaven na 2, a
         jednotlivý cyklus je detekován jako video, ale oba cykly - pøed ním i za ním jsou
-        detekovány jako film, pak tento cyklus bude považován také za film.  Pokud byl conCycle v pøedchozím pøíkladu 
+        detekovány jako film, pak tento cyklus bude považován také za film.  Pokud byl conCycle v pøedchozím pøíkladu
         nastaven na  1 , pak samostatný video cyklus by byl považovaný za
         video.  Toto nastavení je použito ve všech pøípadech kromì dvouprùchodového mkv vfr (mode 5) kde
-        je místo nìj použit conCycleTP !  Rozdíl je, že conCycle je omezen na maximální hodnotu 
+        je místo nìj použit conCycleTP !  Rozdíl je, že conCycle je omezen na maximální hodnotu
         2 zatímco conCycleTP není shora omezený.  Možné hodnoty jsou 1 nebo 2.</p>
 <p>Výchozí:  1  pokud vidDetect = 3  (int)<br>
                   jinak 2 </p>
-                  
+
 <p><var>conCycleTP</var> -</p>
 <p>Toto je stejné jako conCycle, ale použito v režimu 5 (dva prùchody) a umožòuje jakoukoli
 hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
 <p>Výchozí:  1  pokud vidDetect = 3  (int)<br>
                jinak   2  </p>
-                  
+
 <p><var>nt</var> -</p>
 <p>Nastavuje prahovou hodnotu šumu použitou pøi výpoètu metrik rozdílù.  Pokud rozdíl abs()
         mezi dvìma pixely je menší nebo roven této hodnotì, tak je rozdíl považován za 0.
         To mùže pomoci snížit metriky skuteènì duplikovaných
-        snímkù takže zvìtšení rozdílu mezi duplikovanými a neduplikovanými snímky usnadní 
+        snímkù takže zvìtšení rozdílu mezi duplikovanými a neduplikovanými snímky usnadní
         nastavení správných hodnot.  Vyhnìte se nastavení této hodnoty pøíliš vysoko, jinak velmi podobné objekty
-        pohybující se pøes jiné nebudou detekovány atd... Dobré hodnoty jsou v 
+        pohybující se pøes jiné nebudou detekovány atd... Dobré hodnoty jsou v
         rozsahu 1-2.  Pro èisté video se zdá, že nejlépe pracuje hodnota 0.
 <p>Výchozí:  0  (int)</p>
 
@@ -316,7 +316,7 @@ hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
 
 <p><var>tcfv1</var> -</p>
 <p>Nastavuje typ formátu èasových kódù (timecode format) pro použití v mkv timecode souborech, když jsou
-        vytváøeny v režimech 3 a 5.  V mkvtoolnix jsou definovány a použity dva typy formátù.  
+        vytváøeny v režimech 3 a 5.  V mkvtoolnix jsou definovány a použity dva typy formátù.
         Verze 1 nastavuje frekvenci snímkù pro rozsahy snímkù zatímco verze 2
         dává èasové kódy pro každý snímek v milisekundách.  Viz dokumentaci mkvtoolnix pro
         více informací o tìchto dvou formátech.</p>
@@ -326,7 +326,7 @@ hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
 
 <p><var>se</var> -</p>
 <p>Použito jen v režimu 3.  Zpùsobí, že TDecimate zobrazí chybovou zprávu jakmile se dosáhne 306-tého
-        vloženého snímku, upozorní uživatele, že to skonèilo, takže nebude utrácen èas 
+        vloženého snímku, upozorní uživatele, že to skonèilo, takže nebude utrácen èas
         na zpracování nepotøebných snímkù.  Tato možnost by nemìla být použita pøi provádìní dávkového
         enkódování nebo nìèem podobném, protože pøi chybì obvykle vyskoèí okno které vyžaduje
         kliknutí uživatele, takže by to zastavilo jakékoli další zpracování.
@@ -369,19 +369,19 @@ hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
 <p><b>ZVLÁŠTNÍ INFORMACE:</b></p>
 <p> Zatímco maxndl znamená "maximální délka neduplikátù", je to ve skuteènosti spíše kompromis mezi
            zachováním video synchronizace a vytváøením hladkého výsledku.  Èím vìtší je maxndl, tím více
-           mùže decimace být nerovnomìrnì rozprostøená v celém videu, což pomáhá 
+           mùže decimace být nerovnomìrnì rozprostøená v celém videu, což pomáhá
            vyhlazení výsledku v pøípadì, kde jsou nerovnomìrnì rozmístìné duplikáty.  Rozhodnì
            experimenujte se zvyšováním maxndl a uvidíte co se stane.</p>
 <p>Možná nastavení pro maxndl jsou jakákoli celá èísla vìtší než 0.</p>
 <p>Výchozí:  nenastaveno  (int)</p>
 
 <p><var>m2PA</var> -</p>
-<p>Pøepíše výchozí max. hodnotu pro ètení vpøed 100 pro režim 2.  To umožní 
+<p>Pøepíše výchozí max. hodnotu pro ètení vpøed 100 pro režim 2.  To umožní
         jednoprùchodový režim (metriky nedostupné ze vstupního souboru) pro vytváøení stejných výsledkù
         jako když jsou metriky dostupné.</p>
 <p>**Poznámka:  velikost cyklu by mohla velmi dobøe být v 1000-cích nebo 10000-cích, takže zde je možnost
-                  nastavení m2PA=true , které by zpùsobilo, že se zpracování pozastaví za nìjaký ten 
-                  èas (5-10 minut nebo víc) když se spouští nový cyklus!!!  Kontrolujte prosím pøed nastavením 
+                  nastavení m2PA=true , které by zpùsobilo, že se zpracování pozastaví za nìjaký ten
+                  èas (5-10 minut nebo víc) když se spouští nový cyklus!!!  Kontrolujte prosím pøed nastavením
                   m2PA=true pomocí debug=true nejvìtší velikost cyklu, která bude použita!</p>
 <p>true = pøepíše výchozí maximum<br>
            false = nepøepíše</p>
@@ -443,7 +443,7 @@ hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
 <p>Umožòuje zadat druhý klip ze kterého se budou brát snímky. Výpoèet metriky
         a decimace jsou stále provádìny na vstupním klipu, ale snímky které tdecimate
         vrací jsou z klipu clip2.  Clip2 musí mít stejný poèet snímkù jako vstupní klip
-        a mít barevné prostøedí YUY2 nebo YV12 (nemusí mít stejné barevné prostøedí jako 
+        a mít barevné prostøedí YUY2 nebo YV12 (nemusí mít stejné barevné prostøedí jako
         vstupní klip).
 <p>Výchozí:  null (PClip)
 
@@ -455,7 +455,7 @@ hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
         pro decimaci oznaèeny v poøadí od nejnižší po nejvyšší metriku rozdílu uvnitø aktuálního cyklu.
         Maximální hodnota pro sdlim je øízena  následující nerovnicí:
 
-<p>(sdlim+1)*(cycleR-1) < cycle 
+<p>(sdlim+1)*(cycleR-1) < cycle
 
 <p>Pøi použití nejdelšího øetìzce decimace (mode 1 nebo mode 3 w/ vfrdec=1), sdlim zasáhne
         do hry jen, když poèet snímkù s metrikami rozdílu < dupthresh a to je < cycleR-1.
@@ -482,7 +482,7 @@ hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
             4 - autodetekce
 
 <p>Výchozí:  4  (int)
-         
+
 <h2><a name="io-par"></a>D.)  Vstupní/výstupní parametry  souboru:
 </h2>
 <p><var>   ovr</var> -</p>
@@ -497,19 +497,19 @@ hodnotu (ne jen 1 nebo 2) a není shora omezeno.</p>
 <p>Nastavuje jméno a cestu pro výstupní soubor.  Tento výstupní soubor bude obsahovat všechny vypoètené
         metriky.  Každý øádek bude obsahovat èíslo snímku, plus metriku rozdílu, a
         metriku zmìny scény.  Tento soubor mùže být pozdìji použit pro vstup (pøes parametr input)
-        v dalším prùchodu, aby se nemusely znovu poèítat metriky nebo pro podporu dvou prùchodù 
+        v dalším prùchodu, aby se nemusely znovu poèítat metriky nebo pro podporu dvou prùchodù
         vfr v režimu 5.
 <p>Výchozí:  ""  (String)</p>
 
 <p><var>input</var> -</p>
-<p>Nastavuje jméno a cestu k souboru metrik pro jeho použití jako vstupu.  Tento soubor by mìl být 
+<p>Nastavuje jméno a cestu k souboru metrik pro jeho použití jako vstupu.  Tento soubor by mìl být
 vytvoøen pomocí parametru "output" pøi pøedchozím prùchodu.</p>
 <p>Výchozí:  ""  (String)&nbsp;</p>
 
 <p><var>   tfmIn</var> -</p>
 <p>Nastavuje jméno a cestu k výstupnímu souboru z TFM.  Tato možnost je užiteèná pøi  použití
         hint=true a když byl vytvoøen tfm výstupní soubor pøi pøedchozím prùchodu.  Tato možnost
-        umožní TDecimate získat informace z tfm bez nutnosti kontrolovat snímky na údaje (hints), 
+        umožní TDecimate získat informace z tfm bez nutnosti kontrolovat snímky na údaje (hints),
         což mùže vést k výraznému urychlení pro velké cykly (dokonce malé velikosti cyklù by mìly
         mít znatelné urychlení). Jediný pøípad, kdy je soubor tfmIn absolutnì vyžadován
         je režim 5!
@@ -527,14 +527,14 @@ vytvoøen pomocí parametru "output" pøi pøedchozím prùchodu.</p>
         rozhodnutích pøes OutputDebugString().  Mùžete použít program zvaný DebugView ze
         System Internals:
 <p><a href="http://www.sysinternals.com/ntw2k/utilities.shtml">http://www.sysinternals.com/ntw2k/utilities.shtml</a></p>
-<p>pro prohlížení tohoto výstupu.  To mùže být užiteèné pro nastavení prahových hodnot a sledování co se 
+<p>pro prohlížení tohoto výstupu.  To mùže být užiteèné pro nastavení prahových hodnot a sledování co se
         dìje.  Aby jste vìdìli co všechno zobrazuje, budete ho muset použít ;)
 <p>Pøi mode = 2 a debug=true, TDecimate vyplivne velikosti cyklù pro série
 decimací M-z-N.  Tento výstup vypadá asi takto:</p>
-<pre>[1004] mode2_cfs 0 = 7 
-[1004] mode2_cfs 1 = 7 
-[1004] mode2_cfs 2 = 14 
-[1004] mode2_cfs 3 = 56 
+<pre>[1004] mode2_cfs 0 = 7
+[1004] mode2_cfs 1 = 7
+[1004] mode2_cfs 2 = 14
+[1004] mode2_cfs 3 = 56
 [1004] mode2_cfs 4 = 392 </pre>
 <p>Poslední øádek "mode2_cfs # = ##" zobrazuje nejvìtší použitou velikost cyklu (èíslo za
         "=").  Tedy když nastavíte m2PA=true, a metriky nejsou dostupné ze
@@ -558,7 +558,7 @@ nebo zadání decimaèních šablon na urèitých rozsazích snímkù.</p>
               a nakonec vložte "v" jako specifikátor.  Tento rozsah je zahrnutý, to znamená, že
               èísla poèáteèního a koncového snímku budou poèítány jako video! Pøipomeòme si, že video
               èásti jsou uvažovány jen když je hybrid > 0!
- 
+
 <pre>pøíklad:10,334 v</pre>
 <p><b>zadání filmových cyklù:</b></p>
 <p>Stejnì jako video ale použijte "f" jako specifikátor.  Rozdíl se pøitom projeví jen
@@ -567,7 +567,7 @@ nebo zadání decimaèních šablon na urèitých rozsazích snímkù.</p>
 <pre>pøíklad: 10,334 f</pre>
 <p><b>zadání vypouštìných snímkù:&nbsp;</b></p>
 <p>Pro zadání vypouštìného snímku zadejte èíslo snímku, který chcete vypustit a vložte specifikátor "-" .
-              Pokud ruènì zadáte více než cycleR vypouštìných snímkù na jeden cyklus, pak budou chronologicky použity ty, 
+              Pokud ruènì zadáte více než cycleR vypouštìných snímkù na jeden cyklus, pak budou chronologicky použity ty,
               které pøijdou nejdøív.  Pokud použijete mode 2, a decimaèní režim, který není M-z-N ,
               platí stejné omezení, ale místo cycleR je limitujícím vnitønì
               vypoètené èíslo.</p>

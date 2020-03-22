@@ -8,12 +8,12 @@
 <body>
 <h2>ShowFiveVersions</h2>
 <p><code>ShowFiveVersions </code>(<var>clip1, clip2, clip3, clip4, clip5</var>)</p>
-<p><code>ShowFiveVersions</code>        
-         bere pìt&nbsp;video streamù a kombinuje je&nbsp;do vystøídaného (cik-cak)&nbsp;uspoøádání 
-  zleva doprava. Jediné mo¾né pou¾ití&nbsp; (jak pøedpokládám) je najít vzor (¹ablonu) NTSC pulldown. Mù¾ete to udìlat 
+<p><code>ShowFiveVersions</code>
+         bere pìt&nbsp;video streamù a kombinuje je&nbsp;do vystøídaného (cik-cak)&nbsp;uspoøádání
+  zleva doprava. Jediné mo¾né pou¾ití&nbsp; (jak pøedpokládám) je najít vzor (¹ablonu) NTSC pulldown. Mù¾ete to udìlat
   pou¾itím takovéhoto kódu: </p>
-<pre># Ukazuje v¹ech pìt vzorù (¹ablon) pulldown najednou 
-DoubleWeave() 
+<pre># Ukazuje v¹ech pìt vzorù (¹ablon) pulldown najednou
+DoubleWeave()
 # vlo¾te sem filtr zmìny velikosti (resize) pokud je to nutné (viz ní¾e)
 a = Pulldown(0,2).Subtitle(&quot;0,2&quot;)
 b = Pulldown(1,3).Subtitle(&quot;1,3&quot;)
@@ -21,15 +21,15 @@ c = Pulldown(2,4).Subtitle(&quot;2,4&quot;)
 d = Pulldown(0,3).Subtitle(&quot;0,3&quot;)
 e = Pulldown(1,4).Subtitle(&quot;1,4&quot;)
 ShowFiveVersions(a,b,c,d,e)</pre>
-<p>Tento kód&nbsp;zobrazí&nbsp;pìt 
+<p>Tento kód&nbsp;zobrazí&nbsp;pìt
 vzorù&nbsp;pulldown&nbsp;s nìjakou textovou&nbsp;identifikací,&nbsp;který je který. Pak si prohlí¾ím film a vybírám&nbsp;vzor,
 který&nbsp;neobsahuje smíchané snímky. (V obyèejném pulldown, budou&nbsp;ve skuteènosti dva, které pracují stejnì
-dobøe. Podívejte se na diagram&nbsp;v popisu filtru&nbsp; <code><A href="pulldown.htm">Pulldown</A></code>     
+dobøe. Podívejte se na diagram&nbsp;v popisu filtru&nbsp; <code><A href="pulldown.htm">Pulldown</A></code>
      &nbsp;proè.) Pokud ¾ádný z pìti nepracuje, tak jste se setkali&nbsp;s
 jednou ze zvrácených forem&nbsp;pulldown a mohli by jste&nbsp;chtít pou¾ít <code><A href="peculiar.htm">PeculiarBlend</A></code>.
 </p>
 <p>Mimochodem, pokud plánujete&nbsp;zachytávat ve vysokém rozli¹ení a potom zmen¹ovat, jak
-jsem doporuèoval jinde,&nbsp;mìli by jste pravdìpodobnì&nbsp;v kódu uvedeném vý¹e umístit <code><A href="reduceby2.htm">ReduceBy2</A></code>&nbsp;nebo <code><A href="resize.htm">BilinearResize</A></code>&nbsp;nebo&nbsp;cokoliv, právì&nbsp;hned po pøíkazu <code><A href="doubleweave.htm">DoubleWeave</A></code> 
+jsem doporuèoval jinde,&nbsp;mìli by jste pravdìpodobnì&nbsp;v kódu uvedeném vý¹e umístit <code><A href="reduceby2.htm">ReduceBy2</A></code>&nbsp;nebo <code><A href="resize.htm">BilinearResize</A></code>&nbsp;nebo&nbsp;cokoliv, právì&nbsp;hned po pøíkazu <code><A href="doubleweave.htm">DoubleWeave</A></code>
     .&nbsp;Pøed <A href="doubleweave.htm"><code>DoubleWeave</code></A>
   nebude pracovat správnì,
 a pokud ho vlo¾íte na&nbsp;místo dále, <code>ShowFiveVersions</code>&nbsp;bude vytváøet&nbsp; <u>opravdu</u>&nbsp;velký snímek.

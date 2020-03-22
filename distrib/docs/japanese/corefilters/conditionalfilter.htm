@@ -88,7 +88,7 @@ v2.53 から、<var>after_frame</var> オプション（true または false）�
   <code>ChromaUDifference </code>(<var>clip1, clip2</var>)<br>
   <code>ChromaVDifference </code>(<var>clip1, clip2</var>)
 </p>
-  
+
 <p>これらの関数を使用するときには、「暗黙の最後の（implicit last）」クリップが存在します（第 1 パラメータを指定する必要がありません）。したがって、第 1 パラメータは <var>testclip</var> に置き換えられます。</p>
 
 <p>シーンチェンジの検出にかなり役立ちます:<br />
@@ -238,11 +238,11 @@ CombingInfo(v)</pre>
 <p>適応型のモーションフィルタやリサイズフィルタが Doom9's Forum に登場しました。これらのフィルタは、クリップにおける動きの少ないシーン、動きの激しいシーン、そしてその中間のシーンを（フレーム単位で）識別します。これにより、クリップにおけるモーションの種類に応じて異なるフィルタを使用することができます。一般的には、動きの少ないシーンでは時間軸の平滑化を、動きの激しいシーンでは空間軸の平滑化を、その中間のシーンでは空間軸＋時間軸の平滑化を使用します。<br />
 下にあるのは、HomiE FR 作 QUANTIFIED MOTION FILTER （QMF） v1.5 b1 （10/07/2003）の簡易版です:</p>
 
-<pre># QUANTIFIED MOTION FILTER v1.3 
-# AviSynth プラグインの読み込み 
-LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\mpeg2dec3.dll&quot;) 
-LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\TemporalCleaner.dll&quot;) 
-LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\FluxSmooth.dll&quot;) 
+<pre># QUANTIFIED MOTION FILTER v1.3
+# AviSynth プラグインの読み込み
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\mpeg2dec3.dll&quot;)
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\TemporalCleaner.dll&quot;)
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\FluxSmooth.dll&quot;)
 LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\UnFilter.dll&quot;)
 
 # QUANTIFIED MOTION FILTER スクリプト（qmf.avs）の読み込み

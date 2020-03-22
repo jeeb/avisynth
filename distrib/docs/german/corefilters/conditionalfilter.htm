@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
@@ -28,7 +28,7 @@
   </td>
  </tr>
 </table>
-<br />    
+<br />
 <i>filter</i> kann jeder interner Filter sein, aber auch einige vordefinierte Funktionen (siehe unten).<br />
 F&uuml;r <i>operator</i> kann man "equals", "morethan" oder "lessthan" w&auml;hlen. Oder nat&uuml;rlich stellvertretend &quot;=&quot;, &quot;&gt;&quot; oder &quot;&lt;&quot;.<br />
 <br />
@@ -61,7 +61,7 @@ Diese Funktionen sollte recht nett sein, wenn man Szenenwechsel erkennen will:<b
 <table border="1">
  <tr>
   <td>Beispiel:<br />
-  <br />      
+  <br />
   Es wird der letzte Frame vor einem Szenenwechsel durch den ersten Frame nach dem Szenenwechsel ersetzt:<br />
   <tt>ConditionalFilter(last, last, last.trim(1,0), &quot;YDifferenceToNext()&quot;, &quot;>&quot;, &quot;10&quot;, true)</tt>
   </td>
@@ -101,7 +101,7 @@ Weitere interne Funktionen:<br />
     Dies zeigt den Unterschied gegen&uuml;ber dem vorherigen Frame im aktuellen Frame an:<br />
     clip = AviSource(&quot;C:\Dateiname.avi&quot;)<br />
     ScriptClip(clip, &quot;Subtitle(String(YDifferenceFromPrevious))&quot;)<br />
-    <br />    
+    <br />
     Hier wird <a href="blur.htm">Blur</a> auf jeden Frame angewendet entsprechend dem Unterschied zum vorherigen Frame.<br />
     Au&szlig;erdem zeigt es, wie Fehler angezeigt werden bei manchen Frames :)<br />
     clip = AviSource(&quot;C:\Dateiname.avi&quot;)<br />

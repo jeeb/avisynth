@@ -4,7 +4,7 @@
    <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: autocrop.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $ 
+$Id: autocrop.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 -->
 </head>
 <body>
@@ -18,16 +18,16 @@ $Id: autocrop.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 <b>license:</b> GPL
 <hr>
 <h3>Description</h3>
-<p>AutoCrop is an AviSynth filter that automatically crops the black borders from 
-  a clip. It operates in either preview mode where it overlays the recommended cropping information 
+<p>AutoCrop is an AviSynth filter that automatically crops the black borders from
+  a clip. It operates in either preview mode where it overlays the recommended cropping information
   on<br>
-  the existing clip, or cropping mode where it really crops the clip. It can also 
-  ensure width and height are multiples of specified numbers so the cropped clip can 
+  the existing clip, or cropping mode where it really crops the clip. It can also
+  ensure width and height are multiples of specified numbers so the cropped clip can
   be passed to the video compressor of your choice without problems.</p>
 <h3>
   Usage</h3>
-<p>AutoCrop takes 12 parameters but they are all optional so you can just do AutoCrop() 
-  to get a feel for how the filter works. Parameters can either be specified in order 
+<p>AutoCrop takes 12 parameters but they are all optional so you can just do AutoCrop()
+  to get a feel for how the filter works. Parameters can either be specified in order
   or by name. I suggest specifying by name as there is a lot of parameters!</p>
 <p>Parameter order follows.</p>
 <p><code>AutoCrop</code> (<var>clip, &quot;mode&quot;, &quot;wMultOf&quot;,
@@ -37,9 +37,9 @@ $Id: autocrop.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 <h3>Syntax</h3>
 <p><var>mode</var> - Integer - default 1</p>
 <p>0 - Crop - Crops the image.<br>
-  1 - Preview - Suggested cropping information is overlayed on the existing clip, 
+  1 - Preview - Suggested cropping information is overlayed on the existing clip,
   including a crop command that you can use to replace AutoCrop with.<br>
-  2 - Log - Logs the cropping parameters to the file &quot;AutoCrop.log&quot; 
+  2 - Log - Logs the cropping parameters to the file &quot;AutoCrop.log&quot;
   in the current directory.<br>
 3 - Crop &amp; Log - combination of modes 0 and 2.</p>
 <p><var>wMultOf</var> - Integer - default 4</p>
@@ -76,13 +76,13 @@ to take the cropping information from a single frame set samplestartframe and sa
 <p><var>aspect</var> - Float - default 0 - Aspect is ignored</p>
 <p>-1 - Maintain aspect ratio of the source clip<br>
   0 - Aspect is ignored<br>
-  &gt;0 - Aspect ratio will be set to this. For example for a 4:3 aspect ratio 
+  &gt;0 - Aspect ratio will be set to this. For example for a 4:3 aspect ratio
   you would pass<br>
-  4.0/3.0 or 1.33333333333. Note 4/3 won't work the .0 is need to tell AviSynth 
+  4.0/3.0 or 1.33333333333. Note 4/3 won't work the .0 is need to tell AviSynth
   the value is a float.</p>
 <h3>Recommended use</h3>
-<p>I strongly suggest using the preview mode before committing to a particular 
-  crop. It's also worth noting that copy the suggested settings in to the standard AviSynth 
+<p>I strongly suggest using the preview mode before committing to a particular
+  crop. It's also worth noting that copy the suggested settings in to the standard AviSynth
   crop command is quicker than running AutoCrop with <var> mode</var> = 0.</p>
 <h3>Changes</h3>
 <p>v1.2, 3rd January 2005 (by len0x)</p>

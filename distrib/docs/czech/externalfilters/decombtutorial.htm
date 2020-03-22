@@ -55,9 +55,9 @@ progresivní snímky podrobené telecine, jako napø. prokládané video.</p>
 <a name="field order"></a>
 <h3>Krok 1. Urèení a nastavení poøadí polí</h3>
 <p>Pro správné rendrování je zásadní správné nastavení poøadí polí. Poøadí polí je
-získáno z Avisynthu a mùže být nastaveno funkcemi AssumeTFF() nebo AssumeBFF() 
+získáno z Avisynthu a mùže být nastaveno funkcemi AssumeTFF() nebo AssumeBFF()
 ve vašem skriptu pøed výzvou Telecide(). Nastavte AssumeTFF() pro horní pole první; použijte AssumeBFF()
-pro spodní pole první (bottom field first). Protože správné nastavení je tak dùležité, 
+pro spodní pole první (bottom field first). Protože správné nastavení je tak dùležité,
 dùraznì se vám doporuèuje nedìlat domnìnky o poøadí polí v klipu, ale radìji si poøadí polí
 ovìøit pomocí následující procedury.</p>
 <p>
@@ -105,7 +105,7 @@ Telecide(guide=2)
 Pokud máme NTSC 29.97fps nebo 30fps zdrojový klip, práce bude ošidnìjší.
 Nejdøíve musíme urèit zda klip obsahuje
 3:2 pulldown materiál. Existuje nìkolik zkoušek, které mùžeme použít. Nejdøíve pøedejme syrový klip
-(žádné zpracování v Decomb nebo jiné) do VirtualDubu. Pak krokujme po snímcích v pohybových pasážích. 
+(žádné zpracování v Decomb nebo jiné) do VirtualDubu. Pak krokujme po snímcích v pohybových pasážích.
 Pokud vidíte opakující se šablonu 3 èistých snímkù následovaných 2 prokládanými snímky, tak je to 3:2 pulldown.
 Obvykle budou filmy používat 3:2 pulldown.
 <p>Hledání šablony 3:2 podle popisu výše, není zcela spolehlivé, protože u animací bývají
@@ -134,11 +134,11 @@ Telecide(guide=1)
 
 <h3><a name="postprocessing">Krok 3. Nastavení postprocessingu</a></h3>
 <p>Postprocessing je proces, kterým snímky vycházející z uspoøádání polí stále
-roztøepené, mohou být detekovány a je v nich odstranìno prokládání. Režimy postprocessingu jsou øízeny parametrem 
+roztøepené, mohou být detekovány a je v nich odstranìno prokládání. Režimy postprocessingu jsou øízeny parametrem
 <i>post</i> : post=0 znamená vypnutý postprocessing; post=1 znamená výpoèet metrik, ale bez odstraòování prokládání;
 post=2 znamená výpoèet metrik a jim odpovídající odstraòování prokládání; a post=3 znamená
 znamená výpoèet metrik a jim odpovídající odstraòování prokládání a zobrazení pohybové mapy odstraòování prokládání
-pro snímky které jsou detekovány jako roztøepené. Existují také dva pokroèilejší režimy; podívejte se prosím do 
+pro snímky které jsou detekovány jako roztøepené. Existují také dva pokroèilejší režimy; podívejte se prosím do
 pøíruèky na více podrobností.
 <p>
 Použijeme standardní proceduru pro nastavení postprocessingu. Nejdøíve zapneme metriky
@@ -154,8 +154,8 @@ Pøedávejte to VirtualDubu, pøehrávejte klip a testujte pøi tom snímky a zobrazov
 hodnoty <i>vmetric</i> . Hodnota, která se použije na snímek jako uspoøádání je ta, která je v hranatých závorkách
 a zaèíná "chosen=", napø., "[chosen=27]". Prostì vyvolejme hodnotu <i>vmetric</i> .
 Každá hodnota <i>vmetric</i> vìtší než <i>vthresh</i>
-definuje snímek jako prokládaný. 
-Chcete najít hodnotu <i>vthresh</i> , která správnì rozliší roztøepené snímky od neroztøepených snímkù 
+definuje snímek jako prokládaný.
+Chcete najít hodnotu <i>vthresh</i> , která správnì rozliší roztøepené snímky od neroztøepených snímkù
 vašeho klipu. Snadno budete moci identifikovat snímky uvažované jako roztøepené protože a) hodnota <i>vmetric</i>
 bude vìtší než <i>vthresh</i>, b) indikátor progresivnosti/prokládání øekne prokládaný, a c) snímek
 bude pøekrytý bílou pohybovou mapou odstraòování prokládání. Není možnost, že by jste si jich nevšimli!
@@ -188,16 +188,16 @@ Telecide(guide=1,post=2,vthresh=30)
 
 <p>Existují ještì dvì dùležitìjší vìci o kterých si øekneme k postprocessingu pøed tím než pùjdeme dál. Za prvé, je
 drobný rozdíl mezi post=2 a post=4 který vás mùže ovlivnit. Pøíruèka popisuje
-rozdíly podrobnì. Nastavení post=2 èasto zabrání tvorbì hrubých smíchání snímkù pøi zmìnì scény, ale 
-mùže vytváøet trhavé video sekvence po odstranìní prokládání. Nastavení post=4 udrží plynulost sekvencí s 
+rozdíly podrobnì. Nastavení post=2 èasto zabrání tvorbì hrubých smíchání snímkù pøi zmìnì scény, ale
+mùže vytváøet trhavé video sekvence po odstranìní prokládání. Nastavení post=4 udrží plynulost sekvencí s
 odstranìným prokládáním, ale mùže vytváøet smíchané snímky pøi zmìnì scény.</p>
 <p>Za druhé, mùžete zjistit, že potøebujete rùzné hodnoty <i>vthresh</i> pro rùzné èásti vašeho klipu. Pokud je
-to tak, použijte ruèní pøepsání (nadøazení) Telecide pro zadání hodnot pro rùzné rozsahy snímkù podle potøeby. 
+to tak, použijte ruèní pøepsání (nadøazení) Telecide pro zadání hodnot pro rùzné rozsahy snímkù podle potøeby.
 Na podrobnosti s podívejte do pøíruèky.
 </p>
 <h2><a name=decimate>Decimate()</a></h2>
 <p>Jako postranní efekt provádìní uspoøádání polí pro 3:2 pulldown, Telecide() vysílá duplikované snímky a
-ponechává klip s jeho pùvodní frekvencí snímkù. Decimate() detekuje a odstraòuje tyto duplikáty a nastavuje 
+ponechává klip s jeho pùvodní frekvencí snímkù. Decimate() detekuje a odstraòuje tyto duplikáty a nastavuje
 frekvenci snímkù odpovídajícím zpùsobem níže.
 <h3><a name="#decimation">Krok 4. Nastavení decimace</a></h3>
 <p>Pokud je váš klip PAL, nevyžadujete decimaci a jste u konce!
@@ -211,7 +211,7 @@ Decimate()
 </pre>
 
 Jedna vìc, které by jste si mìli být vìdomi je, že nemùžete vždy chtít decimovat 30fps materiál. Napøíklad, pokud
-je váš klip hybridem z 3:2 progresivního a normálního prokládaného videa, a pokud ho decimujete vytvoøíte 
+je váš klip hybridem z 3:2 progresivního a normálního prokládaného videa, a pokud ho decimujete vytvoøíte
 èásti videa trhavé. Èasto je u takových klipù lepší, nechat je s jejich pùvodní frekvencí snímkù
 vynecháním Decimate().
 <h2><a name="refinements">Doladìní</a></h2>
@@ -220,9 +220,9 @@ rychlé zvládnutí Decomb. Existuje mnohem více parametrù, které mùžete použít na 
 situace. Podívejte se prosím do pøíruèky Decomb pro zaèátek prùzkumu tìchto pøídavných
 funkcí.
 <p>Zde je jeden pøíklad doladìní, aby jste pochopili o èem zde mluvím: Dejme tomu, že máte
-zašumìlou nahrávku a právì prožíváte selhávání uspoøádání polí. Mùžete pøidat nìjakou zvláštní  
+zašumìlou nahrávku a právì prožíváte selhávání uspoøádání polí. Mùžete pøidat nìjakou zvláštní
 toleranci šumu do Telecide() zvýšením hodnoty parametru
-<i>nt</i>. V pøíruèce najdete øadu takových malých perel. 
+<i>nt</i>. V pøíruèce najdete øadu takových malých perel.
 Je velkou zásobárnou ètiva.
 <p>
 <hr size=2 width="100%" align=center>

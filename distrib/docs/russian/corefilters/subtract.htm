@@ -12,28 +12,28 @@ $Id: subtract.htm,v 1.4 2008/09/08 16:43:48 fizick Exp $
 </head>
 <body>
 <h2>
-<a name="Subtract"></a>Subtract 
+<a name="Subtract"></a>Subtract
 </h2>
 <p><code>Subtract </code>(<var>clip1, clip2</var>)</p>
-<p><code>Subtract</code> формирует выходной клип, в котором каждый пиксел устанавливаетс€ 
-  в соответствии с разницей между соответствующими пикселами входных клипов в 
-  <i>clip1</i> и <i>clip2</i>. Ѕолее определенно, это устанавливает каждый пиксел 
-  в (50%-ый серый тон) + (clip1 пиксел) - (clip2 пиксел). ¬ы можете затем 
+<p><code>Subtract</code> формирует выходной клип, в котором каждый пиксел устанавливаетс€
+  в соответствии с разницей между соответствующими пикселами входных клипов в
+  <i>clip1</i> и <i>clip2</i>. Ѕолее определенно, это устанавливает каждый пиксел
+  в (50%-ый серый тон) + (clip1 пиксел) - (clip2 пиксел). ¬ы можете затем
   использовать <tt><a href="levels.htm">Levels</a></tt>, если хотите увеличить контраст.</p>
-<p>“акже смотрите <a href="../syntax.htm#multiclip" target="_self">сюда</a> дл€ 
+<p>“акже смотрите <a href="../syntax.htm#multiclip" target="_self">сюда</a> дл€
   определени€ свойств результирующего клипа. </p>
-      
+
 <pre># ƒелает различи€ между clip1 и clip2 €вно очевидными
 Subtract(clip1,clip2).Levels(127,1,129,0,255)
 </pre>
-      
-<p>≈сли вы хотите видеть отличи€ между смежными кадрами в одном клипе, вы можете 
+
+<p>≈сли вы хотите видеть отличи€ между смежными кадрами в одном клипе, вы можете
   сделать это так: </p>
       <pre>Subtract(clip.Trim(1,0),clip)
 </pre>
 
 <p><b>ќ смещении диапазона €ркости (offset of luma range):</b></p>
-      
+
 <p>ƒл€ YUV форматов, допустимый диапазон Y есть от 16 до 235 включительно и subtract берет это во внимание.
 Ёто означает, что следующий скрипт</p>
 <pre>Subtract(any_clip, any_clip)</pre>
@@ -41,7 +41,7 @@ Subtract(clip1,clip2).Levels(127,1,129,0,255)
 дл€ YUV данных с диапазоном pc_range, используйте <a href="overlay.htm">Overlay</a>: </p>
 <pre>#Overlay(any_clip, any_clip, mode=&quot;Difference&quot;, pc_range=true) # серый клип с luma = 128
 Overlay(clip1, clip2, mode=&quot;Difference&quot;, pc_range=true)</pre>
-      
+
 <p><kbd>$English Date: 2006/09/27 18:41:25 $<br>
 ѕеревод 17.05.2005 RBF<br>
 ƒополнен 09.06.2005-27.09.2006 Fizick avisynth.rg.ru</kbd></p>

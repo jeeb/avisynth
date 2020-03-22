@@ -4,13 +4,13 @@
 <title>MaskTools v2</title>
 <link rel="stylesheet" type="text/css" href="../../avisynth.css"><!--
 Automatically generated, don't change:
-$Id: masktools2.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: masktools2.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 --></head><body>
 <h1>MaskTools v2</h1>
 <h2>Pøehled</h2>
 <b>Autoøi : </b>Kurosu, Manao, mg262<br>
 <b>Verze : </b>2.0 alfa 36<br>
-<b>Stáhnout : </b><a href="http://manao4.free.fr/">http://manao4.free.fr/</a>, 
+<b>Stáhnout : </b><a href="http://manao4.free.fr/">http://manao4.free.fr/</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a><br>
 <b>Kategorie : </b>Rùzné pluginy<br>
 <b>Požadavky : </b>YV12 barevné prostøedí
@@ -32,13 +32,13 @@ zpracování videa cestou jak dát relativní význam každému pixelu. Mùžete napøíkla
 masku, která vybírá jen zelené èásti videa, a pak nahradí tyto èásti
 jiným videem.</p>
 <p>
-Aby byla co nejvìtší kontrola nad zacházením s maskami, budou filtry využívat fakt, že každá 
-jasová (luma) a barevnostní (chroma) plocha mùže být bez vzájemného vztahu (uncorrelated). To znamená, že jedno video bude vždy  
+Aby byla co nejvìtší kontrola nad zacházením s maskami, budou filtry využívat fakt, že každá
+jasová (luma) a barevnostní (chroma) plocha mùže být bez vzájemného vztahu (uncorrelated). To znamená, že jedno video bude vždy
 považováno filtry za 3 nezávislé plochy. To platí také pro masky, což znamená
 že maskovaný klip bude ve skuteènosti obsahovat 3 masky, jednu pro každou plochu.</p>
 
-<p>Filtry mají sadu bìžných parametrù, které se týkají hlavnì toho jaké zpracování dìlat na  
-každé ploše. Všechny pracují jen v YV12 ( pøestože v Avisynthu 2.6 bude k dispozici podpora 
+<p>Filtry mají sadu bìžných parametrù, které se týkají hlavnì toho jaké zpracování dìlat na
+každé ploše. Všechny pracují jen v YV12 ( pøestože v Avisynthu 2.6 bude k dispozici podpora
 všech planárních formátù ).</p>
 
 <h2><a name="common_parameters"></a>II) Bìžné parametry</h2>
@@ -55,8 +55,8 @@ Cokoli mimo obdélník bude odpadem.<br>
 
 <li><var>int "w" (-1), int "h" (-1)</var><br><br>
 
-<var>w</var> a <var>h</var> jsou šíøkou a výškou zpracovávaného obdélníku. -1 znamená, že obdélník se rozšíøí do 
-spodního pravého rohu videa. To také znamená, že výchozí nastavení jsou zamýšlena ke zpracování 
+<var>w</var> a <var>h</var> jsou šíøkou a výškou zpracovávaného obdélníku. -1 znamená, že obdélník se rozšíøí do
+spodního pravého rohu videa. To také znamená, že výchozí nastavení jsou zamýšlena ke zpracování
 celého obrazu.<br>
 </li>
 
@@ -153,7 +153,7 @@ Zde je vyèerpávající seznam filtrù obsažených v této dll :
 "sobel", "roberts" a "laplace", a mùžete zadat také 3x3 uživatelské jádro. "sobel" používá
 jádro "0 -1 0 -1 0 1 0 1 0", "roberts": "0 0 0 0 2 -1 0 -1 0" a "laplace": "1 1 1 1 -8 1 1 1 1".
 Normalizaèní souèinitel jádra je automaticky vypoèten a nahrazen nejbližší mocninou 2,
-pro umožnìní rychlejšího zpracování. Mùžete zadat váš vlastní normalizaèní faktor, jeho pøidáním do seznamu 
+pro umožnìní rychlejšího zpracování. Mùžete zadat váš vlastní normalizaèní faktor, jeho pøidáním do seznamu
 koeficientù ( napøíklad "1 1 1 1 -8 1 1 1 1 8" ).</li>
 <li><var>thX1</var> je nízká prahová hodnota a <var>thX2</var> je vysoká prahová hodnota. Pod <var>thX1</var>, je pixel nastaven na nulu, nad <var>thX2</var>,
 na 255, a když je mezi zùstane nedotèený.</li>
@@ -247,20 +247,20 @@ je pixel z okolí v klipu <var>clip2</var>, definované parametrem <var>pixels</va
 <li><code>mt_luts( c, c, mode = "std", pixels = mt_square( 1 ), expr = "y" )</code> dává lokální standardní odchylku klipu.</li>
 <li><code>mt_luts( c, c, mode = "max", pixels = mt_square( 1 ), expr = "x y - abs" )</code> dává
 maximální rozdíl mezi okolními pixely a støedovým.</li>
-<li><code>mt_luts( c, c, mode = "med", pixels = mt_square( 1 ), expr = "y" )</code> dává støed (median) pixelù 
+<li><code>mt_luts( c, c, mode = "med", pixels = mt_square( 1 ), expr = "y" )</code> dává støed (median) pixelù
 okolí.</li>
 </ul></li>
 </ul><p></p>
 <h3><a name="mt_lutsx"></a>mt_lutsx</h3>
 <p><code>mt_lutsx</code> : <var>clip clip, clip clip1, clip clip2, string mode("avg"), string mode2("none"), string pixels(""), string expr("x"), string yexpr("x"), string uexpr("x"), string vexpr("x")</var></p>
 <p><ul>
-<li>Poèítá <var>mode</var> na sousedních pixelech v clip1, a <var>mode2</var>  na sousedních pixelech v clip2, 
+<li>Poèítá <var>mode</var> na sousedních pixelech v clip1, a <var>mode2</var>  na sousedních pixelech v clip2,
 pak použije funkci definovanou parametrem <var>expr</var> s y = <var>mode</var> a z = <var>mode2</var>.</li>
 <li><var>mode</var> a <var>mode2</var> mohou brát stejné hodnoty jako pro <code>mt_lutf</code>.</li>
 <li><var>pixels</var> pracuje jako v <code>mt_luts</code>.</li>
 <li>Podívejme se na nìjaké pøíklady :<ul>
-<li><code>mt_lutsx( c, c, c, mode = "min", mode2 = "max", pixels = mt_square( 1 ), expr = "z y -" )</code> poèítá lokální max - min hodnotu.</li>	
-<li><code>mt_lutsx( c, c, c, mode = "min", mode2 = "max", pixels = mt_square( 1 ), expr = "x y - 256 * z y - /" )</code> mìní lokální jasnost a konstrast tak, že lokální minimum je èerné a lokální maximum je bílé.</li>	
+<li><code>mt_lutsx( c, c, c, mode = "min", mode2 = "max", pixels = mt_square( 1 ), expr = "z y -" )</code> poèítá lokální max - min hodnotu.</li>
+<li><code>mt_lutsx( c, c, c, mode = "min", mode2 = "max", pixels = mt_square( 1 ), expr = "x y - 256 * z y - /" )</code> mìní lokální jasnost a konstrast tak, že lokální minimum je èerné a lokální maximum je bílé.</li>
 </ul></li>
 </ul></p>
 <h3><a name="mt_lutspa"></a>mt_lutspa</h3>
@@ -271,7 +271,7 @@ pøíslušným souøadnicím pixelu. <var>relative</var>, je výchozí true, indikuje zd
 x & y by mìly být absolutní (x v rozsahu 0 až šíøka klipu, y od 0 až do výšky klipu), nebo relativní (x & y v rozsahu
 od 0 do 1). Klip je použit jako šablona (pro výpoèet snímku, šíøky, výšky a barevného prostøedí).</li>
 <li>Podívejme se na nìjaké pøíklady :<ul>
-<li><code>mt_lutspa( c, relative = true, "x y + 256 * 2 /", chroma = "128" )</code> vytváøí diagonální gradient.</li>	
+<li><code>mt_lutspa( c, relative = true, "x y + 256 * 2 /", chroma = "128" )</code> vytváøí diagonální gradient.</li>
 </ul></li>
 </ul></p>
 <h3><a name="mt_average"></a>mt_average</h3>
@@ -289,7 +289,7 @@ od 0 do 1). Klip je použit jako šablona (pro výpoèet snímku, šíøky, výšky a bare
 <li>Vynutí, aby byla hodnota  prvního klipu mezi bright_limit + overshoot a dark_limit - undershoot.</li>
 <li>Dává nežádoucí výsledky pokud je bright_limit + overshoot &lt; dark_limit - undershoot.</li>
 </ul><p></p>
-<h3><a name="mt_invert"></a>mt_invert</h3>   
+<h3><a name="mt_invert"></a>mt_invert</h3>
 <p><code>mt_invert</code> : <var>clip c</var></p>
 <p></p><ul>
 <li>Invertuje (obrací) hodnoty pixelù.</li>
@@ -378,28 +378,28 @@ zápisu. Nemusíte být zvyklí na tento zápis, takže zde je nìkolik vodítek :
 Takže, "x + y" v bìžném zápisu se stane v obráceném polském "x y +". "(3 + 5) * x" by se stalo
 "3 5 + x *". </li>
 <ul>
-  <li>Jak jste si všimli v posledním pøíkladu, velkou výhodou tohoto zápisu je, 
-  že nepotøebuje závorky. Výraz, který by byl uzavøen  
-  v závorkách ( "3 + 5" ) je správnì vypoèítán, protože èteme 
-  vyraz zleva doprava, a proto když se setkáme s "+" , jeho dva 
-  operandy jsou neomylnì známy. 
-  <li>Podporované operátory jsou : "+", "-", "*", "/", "%" ( modulo ) a "^" ( 
-  power ) 
-  <li>Podporované funkce jsou : "sin", "cos", "tan", "asin", "acos", "atan", 
-  "exp", "log", "abs", "round", "clip", "min", "max". 
-  <li>Když budeme pøedpokládat, že kladné desetinné (float) èíslo je "true", a záporné 
-  je "false", mùžeme také definovat logické operátory : "&amp;", "|", "&amp;!" ( 
-  a not ), "Â" ( xor ). 
+  <li>Jak jste si všimli v posledním pøíkladu, velkou výhodou tohoto zápisu je,
+  že nepotøebuje závorky. Výraz, který by byl uzavøen
+  v závorkách ( "3 + 5" ) je správnì vypoèítán, protože èteme
+  vyraz zleva doprava, a proto když se setkáme s "+" , jeho dva
+  operandy jsou neomylnì známy.
+  <li>Podporované operátory jsou : "+", "-", "*", "/", "%" ( modulo ) a "^" (
+  power )
+  <li>Podporované funkce jsou : "sin", "cos", "tan", "asin", "acos", "atan",
+  "exp", "log", "abs", "round", "clip", "min", "max".
+  <li>Když budeme pøedpokládat, že kladné desetinné (float) èíslo je "true", a záporné
+  je "false", mùžeme také definovat logické operátory : "&amp;", "|", "&amp;!" (
+  a not ), "Â" ( xor ).
   <li>Mùžeme vytvoøit logické hodnoty s následujícími operátory srovnávání:
-  "&lt;", "&gt;", "&lt;=", "&gt;=", "!=", "==", "=". 
-  <li>Promìnné "x" a "y" ( když je použitelná ) obsahují hodnotu 
-  pixelu. Je to celé èíslo v rozsahu od 0 do 255. 
-  <li>Mùže být použita konstanta "pi" . 
-  <li>Nakonec, existuje trojitý (ternary) operátor : "?", který pracuje jako "if .. then 
+  "&lt;", "&gt;", "&lt;=", "&gt;=", "!=", "==", "=".
+  <li>Promìnné "x" a "y" ( když je použitelná ) obsahují hodnotu
+  pixelu. Je to celé èíslo v rozsahu od 0 do 255.
+  <li>Mùže být použita konstanta "pi" .
+  <li>Nakonec, existuje trojitý (ternary) operátor : "?", který pracuje jako "if .. then
   .. else .." ("jestliže .. pak .. jinak ..")
-  <li>Všechny výpoèty jsou provádìny v desetinných èíslech (floats), a koneèný výsledek je zaokrouhlen  
-  na nejbližší celé èíslo v rozsahu [0..255]. 
-  <li>V celé dokumentaci najdete mnoho 
+  <li>Všechny výpoèty jsou provádìny v desetinných èíslech (floats), a koneèný výsledek je zaokrouhlen
+  na nejbližší celé èíslo v rozsahu [0..255].
+  <li>V celé dokumentaci najdete mnoho
   pøíkladù. </li></ul>
 <h2><a name=changelog></a>VI) Seznam zmìn</h2>
 
@@ -416,7 +416,7 @@ Takže, "x + y" v bìžném zápisu se stane v obráceném polském "x y +". "(3 + 5) * 
 <li>added : mt_lutspa</li>
 </ul>
 </p>
-   
+
 <p>
 <b>Alpha 34 :</b>
 <ul>
@@ -424,7 +424,7 @@ Takže, "x + y" v bìžném zápisu se stane v obráceném polském "x y +". "(3 + 5) * 
 <li>changed : both avisynth 2.5 and 2.6 version are built</li>
 </ul>
 </p>
-   
+
 <p>
 <b>Alpha 32 :</b>
 <ul>
@@ -545,7 +545,7 @@ if used, overrides U and V values. It can be either "process", "copy", "copy fir
 <p><b>Alpha 17 :</b>
 </p><ul>
 <li>changed : behavior of mt_edge with a custom kernel : the automatic normalization factor
-is now the sum of the absolute value of the coefficients, ceiled to the next power of two 
+is now the sum of the absolute value of the coefficients, ceiled to the next power of two
 if that power is &lt;= 128 ( else, it isn't ceiled ).</li>
 <li>added : cartoon mode for mt_edge.</li>
 <li>added : modified mfToon script, for masktools v2. mfToonLite's speed goes from 30 fps
@@ -633,7 +633,7 @@ that arise when cropping ( not my fault this time, though ).</li>
 </ul></li>
 <li>added : helper for lut : consersion from infix to reverse polish notation : <ul>
 <li>mt_polish</li></ul></li>
-</ul><p></p>   
+</ul><p></p>
 
 <p><b>Alpha 4 :</b>
 </p><ul>
@@ -657,7 +657,7 @@ that arise when cropping ( not my fault this time, though ).</li>
 <li>fixed mt_merge behavior for y, u, v = 2.</li>
 <li>added y, u, v = 4, for masked merge : copy the second clip channel. It's worth for any two clips input filters.</li>
 <li>internal changes ( code reorganization ).</li>
- </ul><p></p> 
+ </ul><p></p>
 
 <p><b>Alpha 1 :</b>
 </p><ul><li>Original release.</li></ul><p></p>

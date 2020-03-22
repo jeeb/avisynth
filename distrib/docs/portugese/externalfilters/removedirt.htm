@@ -21,7 +21,7 @@ PT-BR;mso-bidi-language:AR-SA">Suavizadores Temporal</span><br>
 <b><span style="font-size:10.0pt;mso-bidi-font-size:
 12.0pt;font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
-PT-BR;mso-bidi-language:AR-SA">requisitos</span>:</b> 
+PT-BR;mso-bidi-language:AR-SA">requisitos</span>:</b>
 <ul>
   <li>YV12 &amp; YUY2 Colorspace</li>
   <li>Suporte SSEMMX&nbsp;</li>
@@ -742,17 +742,17 @@ um comentário. Vamos ver o exemplo concreto de RemoveDirt.ini seguinte:</span></
 <pre>clensing <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
-PT-BR;mso-bidi-language:AR-SA"># Clensing total, só para quadros selecionados especificados em clensing.rmd,</span> 
+PT-BR;mso-bidi-language:AR-SA"># Clensing total, só para quadros selecionados especificados em clensing.rmd,</span>
 range1 = &quot;clensing.rmd&quot;
 pthreshold1 = 5000
-mthreshold1 = 5000 
-grey = false 
+mthreshold1 = 5000
+grey = false
 bw # modo preto &amp; branco
-grey = true 
-pthreshold = 20 
+grey = true
+pthreshold = 20
 mthreshold =180
 anime # modo para vídeos anime
-pthreshold = 40 
+pthreshold = 40
 cthreshold = 30
 mthreshold = 200 </pre>
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
@@ -917,8 +917,8 @@ cena, porque <font color="#660033">ImproveSceneSwitch</font> é melhor e mais ráp
 Atualmente eu combino <font color="#660033">ImproveSceneSwitch</font> com <font color="#660033">AlignFields</font>
 pela função de Avisynth seguinte</span></p>
 <pre>function AF3(clip input)
-{ 
-dein = AlignFields(input,mode=3, scene=0, topfield=true, 
+{
+dein = AlignFields(input,mode=3, scene=0, topfield=true,
 tff=true) return ImproveSceneSwitch(dein, input, ratio=5, first=true, last=false, field=2, debug=true)
 } </pre>
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;

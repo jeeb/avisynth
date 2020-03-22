@@ -45,69 +45,69 @@
 
 GeneralConvolution(0, &quot;
    10 10 10 10 10
-   10 10 10 10 10 
-   10 10 16 10 10 
-   10 10 10 10 10 
+   10 10 10 10 10
+   10 10 16 10 10
+   10 10 10 10 10
    10 10 10 10 10 &quot;, 256, False)
 </pre>
 <pre># 水平方向のエッジ検出（ゾーベル法）:
 
 GeneralConvolution(128, &quot;
-    1  2  1 
-    0  0  0 
+    1  2  1
+    0  0  0
    -1 -2 -1 &quot;, 8)</pre>
-      
+
 <pre># 垂直方向のエッジ検出（ゾーベル法）:
 
 GeneralConvolution(128, &quot;
-   1  0 -1 
-   2  0 -2 
+   1  0 -1
+   2  0 -2
    1  0 -1 &quot;, 8)</pre>
-      
+
 <pre># 置換（単に「1」の位置を
 # 左、右、上、下へ移動させる）
 
 GeneralConvolution(0,&quot;
-   0 1 0 
-   0 0 0 
+   0 1 0
+   0 0 0
    0 0 0 &quot;)</pre>
-      
+
 <pre># 0.5 ピクセル上と置換<a href="#footnote_2" class="footnote_link">*2</a>（自動スケーリング）:
 
 GeneralConvolution(0,&quot;
-   0 1 0 
-   0 1 0 
+   0 1 0
+   0 1 0
    0 0 0 &quot;)</pre>
-      
+
 <pre># 0.5 ピクセル右と置換<a href="#footnote_3" class="footnote_link">*3</a>（手動スケーリング）:
 
 GeneralConvolution(0,&quot;
-   0   0   0 
-   0 128 128 
+   0   0   0
+   0 128 128
    0   0   0 &quot;, 256, False)</pre>
-      
+
 <pre># シャープフィルタ:
 
 GeneralConvolution(0,&quot;
-   0   -1   0 
-  -1    5  -1 
+   0   -1   0
+  -1    5  -1
    0   -1   0 &quot;, 1, True)
 
 この場合、新しいピクセル値 y(m,n) は、以下の計算式によって与えられる
 y(m,n) = (-1*x(m-1,n) - 1*x(m,n-1) + 5*x(m,n) - 1*x(m,n+1)
          - 1*x(m+1,n))/(-1-1+5-1-1)/1.0 + 0</pre>
-      
+
 <pre># 黒のレベルのクリッピングと 25% の明るさ増を伴う、軽いぼかしフィルタ:
 
 GeneralConvolution(-16,&quot;
-   0   12   0 
-  12  256  12 
+   0   12   0
+  12  256  12
    0   12   0 &quot;, 0.75 ,True)
 
 この場合、新しい画素の値 y(m,n) は、以下の計算式によって与えられる
 y(m,n) = ( 12*x(m-1,n) + 12*x(m,n-1) + 256*x(m,n) + 12*x(m,n+1)
          + 12*x(m+1,n) )/(12+12+256+12+12)/0.75 - 16</pre>
-      
+
 <p>その他のいくつかの例が、<a href="http://www.gamedev.net/reference/programming/features/imageproc/page2.asp"><cite>こちら</cite></a>にあります。</p>
 <p><b>更新履歴:</b></p>
 <table border="1">

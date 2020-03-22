@@ -13,14 +13,14 @@ $Id: descratch.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>  Alexander G. Balachnin aka Fizick<br>
 <b>verze:</b>       0.9.0.0<br>
-<b>stáhnout:</b>  <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>, 
+<b>stáhnout:</b>  <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a> <br>
 <b>kategorie:</b>   Pluginy pro vysílané video<br>
 <b>požadavky:</b> YV12 Barevné prostøedí<hr>
 <h3>Úèel</h3>
 Tento plugin  odstraòuje vertikální škrábance z filmù. Také mùže být
 použit pro odstraòování horizontálních šumových èar, jako pøi výpadku signálu
-z analogových VHS nahrávek (po rotaci obrazu). 
+z analogových VHS nahrávek (po rotaci obrazu).
 <h3>Jak pracuje</h3>
 <p>Plugin nejdøív detekuje škrábance, pak je odstraní.<br>
 Pracuje na každém snímku, používá prostorovou informaci jen z aktuálního snímku.<br>
@@ -44,7 +44,7 @@ Testován je s verzí 2.55beta (nìkteré verze mají chybu pøi Turnleft()! ).<br>
 Verze filtru nad 0.2 už nepotøebují Avisynth C rozhraní (avithynth_c.dll) od Kevina Atkinsona.<br>
 Kompilovano v MS VC++ Toolkit 2003.</p>
 <h3>Syntaxe</h3>
-<p><code>DeScratch</code>(<var>int mindif, int asym, int maxgap, int maxwidth, int minlen, int maxlen, int maxangle, int blurlen, int keep, int border, 
+<p><code>DeScratch</code>(<var>int mindif, int asym, int maxgap, int maxwidth, int minlen, int maxlen, int maxangle, int blurlen, int keep, int border,
 int modeY, int modeU, int modeV, int mindifUV, bool mark</var>)</p>
 <p>Všechny parametry jsou jmenné a volitelné.</p>
 <h3>Parametry pluginu</h3>
@@ -68,9 +68,9 @@ int modeY, int modeU, int modeV, int mindifUV, bool mark</var>)</p>
 <var>mark</var> - oznaèí škrábanec v ladícím (debug) režimu (true nebo false, výchozí = false)<br>
 &nbsp;&nbsp;&nbsp; (nastavuje vylouèené extrémní pixely na šedé, nastavuje pixely škrábancù na bílé nebo èerné)</p>
 <p>
-<var>maxgap</var>, <var>maxwidth</var>, <var>minlen</var>, <var>blurlen</var>, <var>border</var> 
+<var>maxgap</var>, <var>maxwidth</var>, <var>minlen</var>, <var>blurlen</var>, <var>border</var>
 by mìli být zadány v pixelech.</p>
-<p>MUSÍTE vyladit parametry pro vaše konkrétní video.<br> 
+<p>MUSÍTE vyladit parametry pro vaše konkrétní video.<br>
 Použijte pøíkazy AviSynthu <code>Greyscale(), UtoY(), VtoY()</code>, a parametr <var>mark</var> pro vyladìní a nastavení.</p>
 <h3>
 Pøíklady</h3>
@@ -84,7 +84,7 @@ ConvertToYV12()
 DeScratch(mindif=2)</pre>
 <h3>Odstraòování horizontálních šumových èar</h3>
 <p>Takové dlouhé šumové èáry se obèas objeví v analogovém zachytávaném materiálu (vypuštìní TV nebo VHS øádkù, atd).
-Tento problém byl diskutovaný na Doom9, viz. èlánek <a href="http://www.doom9.org/capture/descratch.html"> <cite> Removal of clicks and scratches</cite></a> 
+Tento problém byl diskutovaný na Doom9, viz. èlánek <a href="http://www.doom9.org/capture/descratch.html"> <cite> Removal of clicks and scratches</cite></a>
 (July 10-31, 2004).
 Ale ve èlánku se nejdøíve používal plugin DeSpot, což pro toto není nejvhodnìjší nástroj, kvùli velmi slabé úrovni šumu.
 DeScratch by mohl být efektivnìjší, nicménì také není ideální (staré verze mohou zpracovávat jen jasovou plochu).
@@ -121,14 +121,14 @@ StackVertical(input, last) # Porovná zdrojový snímek a snímek po odstranìní škrá
     <ul>
       <li>changed to sharp extrems;</li>
       <li>added gaps closing</li>
-    </ul> 
-  </li>  
+    </ul>
+  </li>
   <li>Version 0.3, July 14, 2004
     <ul>
       <li> ported to native Avisynth plugin</li>
       <li> Speed increased due to fast blurring by Avisynth resizing functions.</li>
-    </ul> 
-  </li>  
+    </ul>
+  </li>
   <li>Version 0.4, July 17, 2004
     <ul>
       <li>Added chroma processing: <var>modeY, modeU, modeV</var> parameters,</li>

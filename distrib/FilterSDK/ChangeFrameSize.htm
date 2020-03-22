@@ -12,7 +12,7 @@
 
 <pre>public:<br />	ShowPixelValues(PClip _child, IScriptEnvironment* env) :<br />	GenericVideoFilter(_child)<br />	{<br />	// constructor code	<br /> <br />        vi.width = vi.width*2; // width is doubled here<br />        vi.height = vi.height * 2;  // height is also multiplied by 2<br />	}<br />    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);<br />};<br /><br />PVideoFrame __stdcall ShowPixelValues::GetFrame(int n, IScriptEnvironment* env) {<br /><br />		PVideoFrame src = child-&gt;GetFrame(n, env);<br />		PVideoFrame dst = env-&gt;NewVideoFrame(vi); // new frame is double the size of src<br />...<br /></pre>
 
-<p>A Similar approach has to be used for changing colorspace, framerate etc. 
+<p>A Similar approach has to be used for changing colorspace, framerate etc.
 There is a bit more information at <a href="WorkingWithImages.htm">WorkingWithImages</a>.
 
 </p><hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a>

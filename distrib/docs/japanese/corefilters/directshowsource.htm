@@ -51,12 +51,12 @@ bool &quot;audio&quot;, bool &quot;video&quot;, bool &quot;convertfps&quot;, boo
 記録する必要のあるデータの値を足してください。すべてを記録するには -1 を指定してください。デフォルト（35）は、フォーマットネゴシエーションと受信されたサンプルとエラー（すなわち、1+2+32）を記録します。</p>
 <h3>使用例</h3>
 <p>最初に利用可能な RGB フォーマット（音声なし）で AVI ファイルを開く:</p>
-<pre>DirectShowSource(&quot;F:\TestStreams\xvid.avi&quot;, 
+<pre>DirectShowSource(&quot;F:\TestStreams\xvid.avi&quot;,
 \       fps=25, audio=false, pixel_type=&quot;RGB&quot;)</pre>
 <p>Microsoft の DV デコーダを使って DV クリップを開く:</p>
 <pre>DirectShowSource(&quot;F:\DVCodecs\Analysis\Ced_dv.avi&quot;) # MS-DV</pre>
 <p>可変フレームレートの mkv を、フレームを追加することによって（同期を確保して） 119.88 fps として開く:</p>
-<pre>DirectShowSource(&quot;F:\Guides\Hybrid\vfr_startrek.mkv&quot;, 
+<pre>DirectShowSource(&quot;F:\Guides\Hybrid\vfr_startrek.mkv&quot;,
 \       fps=119.88, convertfps=true)</pre>
 <p>RealMedia の *.rmvb<a href="#footnote_8" class="footnote_link">*8</a></p>
 <pre>DirectShowSource(&quot;F:\test.rmvb&quot;, fps=24, convertfps=true)</pre>

@@ -15,7 +15,7 @@ $Id: removedirt.htm,v 1.1 2005/10/03 16:31:31 macpaille Exp $
 <br><b>version:</b>   0.6.1<br>
 <b>download:</b>  <a href="http://www.removedirt.de.tf/">http://www.removedirt.de.tf/</a><br>
 <b>category:</b>  Temporal Smoothers<br>
-<b>requirements:</b> 
+<b>requirements:</b>
 <ul>
   <li>YV12 &amp; YUY2 Colorspace</li>
   <li>SSEMMX support</li>
@@ -266,17 +266,17 @@ looks for the string <i>anime</i>. If it cannot find this string, it terminates 
 <b> after</b> <i> anime</i> and replaces the internal default values by the values in RemoveDirt.ini. The format is</p>
 <p>&nbsp;&nbsp;&nbsp; name of variable = value of variable</p>
 <p>If the variable is a string variable, then the value has to be enclosed in quotes.  The string must not contain the quote character ". If the comment character # appears in the script (outside a string value, of course), then everything after # until the end of the line is considered as a comment. Let us look at the following concrete RemoveDirt.ini example:</p>
-<pre>clensing #total clensing, only for selected frames specified in clensing.rmd 
+<pre>clensing #total clensing, only for selected frames specified in clensing.rmd
 range1 = &quot;clensing.rmd&quot;
 pthreshold1 = 5000
-mthreshold1 = 5000 
-grey = false 
+mthreshold1 = 5000
+grey = false
 bw # black &amp; white mode
-grey = true 
-pthreshold = 20 
+grey = true
+pthreshold = 20
 mthreshold =180
 anime # mode for anime videos
-pthreshold = 40 
+pthreshold = 40
 cthreshold = 30
 mthreshold = 200 </pre>
 <p>In this example RemoveDirt.ini  contains three default modes: <b><i>clensing</i></b>,
@@ -323,8 +323,8 @@ ImproveSceneSwitch(dein, input)</pre>
 <code>ImproveSceneSwitch</code> is better and faster. Currently I combine <code>ImproveSceneSwitch</code>
 with AlignFields through the following Avisynth function</p>
 <pre>function AF3(clip input)
-{ 
-dein = AlignFields(input,mode=3, scene=0, topfield=true, 
+{
+dein = AlignFields(input,mode=3, scene=0, topfield=true,
 tff=true) return ImproveSceneSwitch(dein, input, ratio=5, first=true, last=false, field=2, debug=true)
 } </pre>
 <p>If <var>topfield</var> = true and <var>tff</var> = false, then <var>first</var>

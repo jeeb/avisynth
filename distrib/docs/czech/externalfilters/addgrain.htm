@@ -4,7 +4,7 @@
    <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: addgrain.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: addgrain.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: addgrain.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b> Tom Barry, Foxyshadis
 <br><b>verze:</b>  0.1.0.0 / 1.4
-<br><b>stáhnout: </b><A href="http://www6.impacthosting.com/trbarry/downloads.htm">http://www6.impacthosting.com/trbarry/downloads.htm</A>, 
+<br><b>stáhnout: </b><A href="http://www6.impacthosting.com/trbarry/downloads.htm">http://www6.impacthosting.com/trbarry/downloads.htm</A>,
       <A href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</A><br>
 <b>kategorie:</b> Rùzné pluginy<br>
 <b>požadavky:</b> &nbsp;YV12, YUY2, RGB Barevné prostøedí, SSE CPU
@@ -23,7 +23,7 @@ náhodného šumu do video klipu. Tento šum mùže být volitelnì horizontálnì nebo
 vertikálnì korelován pro vyvolání pruhovitosti.</p>
 <h3>Použití</h3>
 <p>1) Umístìte AddGrain.dll nìkam do složky. Pokud je to složka C:\Program
-Files\AviSynth 2.5\plugins (doporuèeno) pak mùžete ve vašem skriptu vynechat 
+Files\AviSynth 2.5\plugins (doporuèeno) pak mùžete ve vašem skriptu vynechat
 pøíkaz LoadPlugin. Ve vašem Avisynth skriptu použijte pøíkazy jako tyto
 </p>
 <pre>LoadPlugin(&quot;F:\AddGrain\AddGrainC.dll&quot;)
@@ -37,17 +37,17 @@ AddGrain(20, 0, 0)</pre>
 <p><var>var(1.0), uvar(0)</var> = standardní odchylka (síla) generovaného šumu jasu a barevnosti, 0 je zapnuto.<br>
 uvar v režimu RGB nedìlá nic.
  </p>
-<p><var>hcorr(0), vcorr(0)</var> = horizontální a vertikální korelace, která zpùsobuje 
+<p><var>hcorr(0), vcorr(0)</var> = horizontální a vertikální korelace, která zpùsobuje
 steaking efekt. (0.0 až 1.0) </p>
-<p><var>seed (-1)</var> 
+<p><var>seed (-1)</var>
 	Urèuje opakovatelnou sekvenci zrnìní. Nastavte aspoò na 0 aby byl použit.
 </p>
-<p><var>constant (false)</var> 
+<p><var>constant (false)</var>
 	Urèuje konstantní šablonu zrnìní na každý snímek.
 </p>
 <p>Korelaèní faktory jsou ve skuteènosti implementovány jako exponenciální
 vyhlazení, které dává podivné postranní ovlivnìní, které jsem se nepokoušel upravit. Ale
-to znamená, že protože zvyšujete faktor corr budete muset také zvýšit 
+to znamená, že protože zvyšujete faktor corr budete muset také zvýšit
 stddev (množství zrnìní) aby jste dostali stejné viditelné množství
 zrnìní, protože to je trochu vyhlazováno.</p>
 <p>Zvýšení obou corr faktorù mùže dát urèité nahromadìní, nebo vìtší velikost zrnìní. </p>

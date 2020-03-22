@@ -14,7 +14,7 @@ $Id: despot.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>  Alexander G. Balachnin aka Fizick<br>
 <b>verze:</b>      3.6.0 (založeno na Conditional Temporal Median Filter)<br>
-<b>stáhnout:</b>  <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>, <A 
+<b>stáhnout:</b>  <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>, <A
 href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</A><br>
 <b>kategorie:</b>   Pluginy pro vysílané video<br>
 <b>požadavky:</b>
@@ -26,7 +26,7 @@ href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/
 <h4>DeSpot - Podmínìný èasový filtr pro odstraòování skvrn (teèek)</h4
 
 <p>Tento filtr je navržen pro odstraòování èasového šumu ve formì bodù (skvrn) a proužkù nacházejících se v nìkterých videích.
-Filtr je také užiteèný pro restauraci (vyèištìní) starých 8mm (a jiných) pomocí telecine pøevedených filmù  
+Filtr je také užiteèný pro restauraci (vyèištìní) starých 8mm (a jiných) pomocí telecine pøevedených filmù
 od skvrn (pocházejících od pùsobení prachu na filmovém pásu) a nìkterých pruhù (škrábancù).</p>
 <p>Plugin je založen na Conditional Temporal Median Filter v.0.93 (C-plugin pro Avisynth 2.5)<br>
 od Kevina Atkinsona <a href="http://kevin.atkinson.dhs.org/temporal_median/"> http://kevin.atkinson.dhs.org/temporal_median/</a><br>
@@ -84,7 +84,7 @@ nehybné oblasti obrazu.</p>
 <p><code>DeSpot</code>(<var>clip, int "mthres", int "mwidth", int "mheight",
 int "merode", bool "interlaced", bool "median", int "p1", int "p2", int "pwidth",
 int "pheight", bool "ranked", int "sign", int "maxpts", int "p1percent",
-int "dilate", bool "fitluma", int "blur", int "tsmooth", int "show", int "mark_v", 
+int "dilate", bool "fitluma", int "blur", int "tsmooth", int "show", int "mark_v",
 bool "show_chroma", bool "motpn", int "seg", bool "color", int "mscene", int "minpts",
 clip "extmask", bool "planar"</var>)
 </p>
@@ -140,13 +140,13 @@ false - nemìní barvu pixelù na místech odstranìných skvrn.</p>
 <p><var>mscene</var> (od 0 do 100, výchozí=40)<br>
 Nastavuje procento pixelù v pohybu pro detekci zmìny scény a vypnutí odstraòování skvrn ze snímku.</p>
 <p><var>extmask</var> (výchozí none)<br>
-Volitelný klip s externí maskou. Bude binarizován s prahovou hodnotou 127 a logicky pøidán (operací "NEBO") 
-k vnitøní masce pohybu. 
-Mùže být použit pro doplòkovou ochranu dobrých objektù (pokud máte nìjakou vhodnou masku). 
+Volitelný klip s externí maskou. Bude binarizován s prahovou hodnotou 127 a logicky pøidán (operací "NEBO")
+k vnitøní masce pohybu.
+Mùže být použit pro doplòkovou ochranu dobrých objektù (pokud máte nìjakou vhodnou masku).
 </p>
 <h4>Parametry DeSpot spoleèné pro oba režimy jsou:</h4>
 <p><var>mthres</var> (výchozí 16)<br>
-    Pixel se musí lišit od jiného snímku nejménì o 'MTHRES' , aby byl považován za pohyblivý. Toto èíslo by mìlo být 
+    Pixel se musí lišit od jiného snímku nejménì o 'MTHRES' , aby byl považován za pohyblivý. Toto èíslo by mìlo být
 vìtší než 'P2' aby se zabránilo identifikování šumu jako pohybu.</p>
 <p><var>mwidth</var> (výchozí 7)<br>
 <var>mheight</var> (výchozí 5)<br>
@@ -172,16 +172,16 @@ Také je zobrazena mapa pohybu sníženým kontrastem.</p>
 95: Mapa pohybu pro aktuální obraz</p>
 <p><var>show_chroma</var> (true nebo false)<br>
  Použijte pro zobrazení barevných dat klipu v mapì pohybu.</p>
-<p><var>planar</var> : znak pro použití speciálního planárního barevného formátu pro YUY2 klipy, jak na vstupu tak na výstupu funkce. 
-Používá speciální trik pro zachování snímkù s planární barevnou organizací dat 
-(samostatné plochy Y, U, V v pamìti) v normálním prolínaném formátu YUY2 snímkù jako kontejneru. 
+<p><var>planar</var> : znak pro použití speciálního planárního barevného formátu pro YUY2 klipy, jak na vstupu tak na výstupu funkce.
+Používá speciální trik pro zachování snímkù s planární barevnou organizací dat
+(samostatné plochy Y, U, V v pamìti) v normálním prolínaném formátu YUY2 snímkù jako kontejneru.
 Tak se mùžeme vyhnout èetným vnitøním pøevodùm prolínaného formátu do planárního a zvýšíme tím rychlost.
-Mùžete pøevést normální prolínaný YUY2 zdrojový klip do planárního formátu pomocí funkce <code>interleaved2planar</code> 
+Mùžete pøevést normální prolínaný YUY2 zdrojový klip do planárního formátu pomocí funkce <code>interleaved2planar</code>
 z pluginu <a href="http://home.pages.at/kassandro/RemoveGrain/">RemoveGrain od kassandro</a>,
-a pøevést finální výsledek pomocí funkce <code>planar2interleaved</code> . 
+a pøevést finální výsledek pomocí funkce <code>planar2interleaved</code> .
 Tento speciální planární YUY2 formát je podporovaný také v pluginu Removegrain od Kassandro, pluginu MaskTools2 od Manao a nìkterých dalších.
 Tento trik nebude potøeba v Avisynthu v2.6 s nativní podporou planárního YV16 formátu.
-Tento parametr je ignorován u YV12 klipù. 
+Tento parametr je ignorován u YV12 klipù.
 Výchozí je planar=false (a vyskoèí vám pro YUY2 chyba).</p>
 
 <h3>VYLADÌNÍ PARAMETRÙ</h3>
@@ -223,7 +223,7 @@ pro ochranu dobrých objektù. Napøíklad to mùže být maska pohybu invertovaná SAD 
 <p>1a) Nachází pixely, které se liší od jejich sousedù aspoò o <var>p1</var>.<br>
 Pokud je prametr <var>ranked</var> true (nová metoda od verze 1.2), 3 sousedi v pøedchozím snímku (x-1, x, x+1)
 a stejní 3 sousedi v následujícím snímku jsou seøazeni (podle hodnoty), a jejich minimum a maximum se použije pro výpoèet aktuálního rozdílu jasu od pixelu (x).<br>
-    Pokud je parametr <var>ranked</var> false (stará metoda),&nbsp;použije se jen jeden soused v pøedchozím snímku (na stejné pozici x) a jeden soused v následujícím 
+    Pokud je parametr <var>ranked</var> false (stará metoda),&nbsp;použije se jen jeden soused v pøedchozím snímku (na stejné pozici x) a jeden soused v následujícím
 snímku pro výpoèet minima a maxima.<br>
     Pokud není parametr <var>sign</var> roven 0, zahrnuje se také znak (sign) rozdílnosti.<br>
     Tyto pixely jsou slouèeny do horizontálních èárových segmentù.<br>
@@ -245,12 +245,12 @@ Ve fázi eroze je mapa pohybu erodována v rozsahu <var>mwidth</var>/2 a <var>mhei
 a zóny s malou sumární váhou (menší než 3*<var>merode</var>/100)  jsou sníženy nebo úplnì odstranìny z mapy pohybu. Takové zóny odpovídají
 malému relativnímu (v procentech) poètu pohyblivých sousedù uvnitø tohoto rozsahu (nebo vìtšinì šumových pixelù - skvrnám).<br>
 Ve fázi rozšiøování jsou zbývající zóny pohybu zvìtšeny se stejným rozsahem. To jsou pravdìpodobnì nejdùležitìjší kroky (obzvláštì pro <var>motpn</var>=false) .</p>
-<p>4a) Jestliže procento  pohyblivých pixelù je vìtší než parametr <var>mscene</var> , plugin detekuje zmìnu scény, a celá mapa pohybu je nastavena jako pohyblivá.</p> 
-<p>4b) Pøidává volitelnou externí masku pro maskování pohybu.</p> 
+<p>4a) Jestliže procento  pohyblivých pixelù je vìtší než parametr <var>mscene</var> , plugin detekuje zmìnu scény, a celá mapa pohybu je nastavena jako pohyblivá.</p>
+<p>4b) Pøidává volitelnou externí masku pro maskování pohybu.</p>
 <p>5) Odstraòuje jen skvrny, ve kterých nebyl žádný pohyb (v aktuálním snímku nebo následujícím snímku jestliže <var>motpn</var>=false).<br>
 V režimu odstraòování pixelù (<var>seg</var> = 0), provìøuje a odstraòuje jen pixely, které se nepøekrývají zónami pohybu.<br>
 V režimu odstraòování segmentù (<var>seg</var> = 1), provìøuje a odstraòuje jen segmenty, které se nepøekrývají zónami pohybu.<br>
-V režimu odstranìní skvrn (<var>seg</var> = 2), provìøuje a odstraòuje jen skvrny, které se nepøekrývají zónami pohybu. 
+V režimu odstranìní skvrn (<var>seg</var> = 2), provìøuje a odstraòuje jen skvrny, které se nepøekrývají zónami pohybu.
 Je to nejbezpeènìjší režim, s minimem artefaktù chybných odstranìní.</p>
 <p>6) Volitelnì provede korekci jasu v místì odstranìných pixelù a prostorové vyhlazení blízko okrajù skvrn.</p>
 <p>7) Volitelnì provede èasové vyhlazení statických oblastí.</p>
@@ -314,20 +314,20 @@ prefilt=i.DeGrainMedian() # pøedfiltrováno pro lepší analýzu pohybu
 ml = 100     # mìøítko masky
 thscd1 = 400 # zmìna scény
 
-vf = prefilt.MVAnalyse(isb=false, truemotion=true) # dopøedné vektory 
+vf = prefilt.MVAnalyse(isb=false, truemotion=true) # dopøedné vektory
 cf = i.MVFlow(vectors=vf, thscd1 = thscd1) # pøedchozí snímek, kompenzovaný vpøed
 sadf = MVMask(vectors=vf, ml=ml,kind=1,gamma=1, thscd1 = thscd1) # maska SAD vpøed
 msadf=sadf.Binarize() # binární invertovaná maska SAD vpøed
 
-vb = prefilt.MVAnalyse(isb=true, truemotion=true)  # zpìtné vektory 
-cb = i.MVFlow(vectors=vb, thscd1 = thscd1) # následující snímek, kompenzovaný zpìt 
+vb = prefilt.MVAnalyse(isb=true, truemotion=true)  # zpìtné vektory
+cb = i.MVFlow(vectors=vb, thscd1 = thscd1) # následující snímek, kompenzovaný zpìt
 sadb = MVMask(vectors=vb, ml=ml, gamma=1, kind=1, thscd1 = thscd1) # maska SAD zpìt
 msadb = sadb.Binarize() # binární invertovaná maska SAD zpìt
 
 msad = Logic(msadf,msadb,"OR") # kombinovaná invertovaná maska SAD
 msad = msad.Expand() # rozšíøená invertovaná maska SAD
 msadi = Interleave(msad, msad, msad) # 3krát opakovaná invertovaná maska SAD
-# Tato maska je vysoká (255) kde je nejménì jeden odhad pohybu dobrý, 
+# Tato maska je vysoká (255) kde je nejménì jeden odhad pohybu dobrý,
 # takže tyto oblasti budou chránìny
 
 Interleave(cf,i,cb) # prolínáme (øadíme) dopøednì kompenzovaný, zdrojový, a zpìtnì kompenzovaný snímek
@@ -343,7 +343,7 @@ SelectEvery(3,1) # dostaneme filtrovaný zdroj
 <h3>LICENCE</h3>
 <p>Tento program je svobodný software; mùžete ho redistribuovat a/nebo opravovat pod podmínkami GNU General Public License publikované
 Free Software Foundation; buï verze 2 Licence, nebo (podle vaší volby) nìkteré pozdìjší verze.</p>
-<p>Tento program je šíøen v nadìji, že bude užiteèný, ale BEZ JAKÉKOLI ZÁRUKY; dokonce bez pøedpokládané záruky OBCHODOVATELNOSTI  
+<p>Tento program je šíøen v nadìji, že bude užiteèný, ale BEZ JAKÉKOLI ZÁRUKY; dokonce bez pøedpokládané záruky OBCHODOVATELNOSTI
 nebo POUŽITÍ PRO KONKRÉTNÍ ÚÈELY. Viz GNU General Public License pro více podrobností.</p>
 <p>Spolu s tímto programem by jste mìli obdržet kopii GNU General Public License; pokud ne, napište do Free Software Foundation.
 Inc., 675 Mass Ave, Cambridge, MA 02139, USA.</p>
@@ -539,4 +539,3 @@ ConditionalMedianMap to DeSpotMedianMap.</li>
 <p><kbd>Èeský pøeklad:25.2009</kbd></p>
 </body>
 </html>
- 

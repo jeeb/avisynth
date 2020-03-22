@@ -48,7 +48,7 @@ in that regard.
 Second, anime is often rendered at 12 fps and converted to 29.97 fps by duplicating frames in
 a manner similar to that described above. The result is the same: a stream with multiple duplicates
 that is not reliably addressed by 1-in-N decimation.
-<p>  
+<p>
 Third, many silent films are transferred to DVD by adding duplicates in
 unusual patterns, because the original frame rates are not 24 fps. It is not
 unusual to see clips requiring strange decimations such as 20 in 43. Sometimes
@@ -73,7 +73,7 @@ This version supports YUY2 and YV12 for Avisynth 2.5.
 <p>
 If you are wondering how FDecimate() differs from the Avisynth internal filter ChangeFPS(), the answer is
 that FDecimate() can preferentially deliver unique frames, avoiding duplicates where possible.
-<p><hr> 
+<p><hr>
 <h3>How to Use FDecimate()</h3>
 To achieve good results, it is important to set the target frame rate correctly and to set the threshold
 for duplicate detection correctly. Let's first consider the target frame rate.
@@ -176,7 +176,7 @@ as many duplicates as expected by the pattern).
 <p>
 I thus believe that there is no perfect solution for clips with random base rate variations.
 However, I remain receptive to any new thinking that might improve things. Please feel free to
-contact me if you have any ideas for improving FDecimate(). 
+contact me if you have any ideas for improving FDecimate().
 <p><hr>
 <h3>FDecimate() Parameters</h3>
 Following is the syntax for FDecimate() (replace <i>parameter_list</i> with
@@ -198,10 +198,10 @@ for an explanation of how to set this threshold properly.
 to use for duplicate detection. When it is set to true, no decimation occurs and the difference metric for each frame is shown overlaid on the video and in the DebugView output. Refer to the "How to Use FDecimate()"
 section above for an explanation of how to use this parameter to set the threshold properly.
 <P>
-<b><i>show</i></b> (true/false, default false) This parameter enables information to be displayed on the frame. It also displays the software version. 
+<b><i>show</i></b> (true/false, default false) This parameter enables information to be displayed on the frame. It also displays the software version.
 <p>
 <b><i>debug</i></b> (true/false, default false) This parameter
-enables information to be printed via OutputDebugString(). A utility called DebugView is available for catching these strings. The information displayed is the same as shown by the show option above. 
+enables information to be printed via OutputDebugString(). A utility called DebugView is available for catching these strings. The information displayed is the same as shown by the show option above.
 <p><hr>
 <h3>Changing FDecimate() Parameter Defaults</h3>
 <p>If

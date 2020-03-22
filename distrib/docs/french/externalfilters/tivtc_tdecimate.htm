@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tivtc_tdecimate.htm,v 1.1 2005/10/03 16:31:31 macpaille Exp $ 
+$Id: tivtc_tdecimate.htm,v 1.1 2005/10/03 16:31:31 macpaille Exp $
 -->
 </head>
 <body>
@@ -255,10 +255,10 @@ decisions via OutputDebugString().  You can use a program called DebugView from 
 <p>to view this output.  This can be useful in setting thresholds and seeing what is        happening.  To find out exactly what all it shows you'll have to use it ;)</p>
 <p>When mode = 2 and debug=true, TDecimate will spit out the cycle sizes for the
 series of M-in-N decimations.  That output will look something like this:</p>
-<pre>[1004] mode2_cfs 0 = 7 
-[1004] mode2_cfs 1 = 7 
-[1004] mode2_cfs 2 = 14 
-[1004] mode2_cfs 3 = 56 
+<pre>[1004] mode2_cfs 0 = 7
+[1004] mode2_cfs 1 = 7
+[1004] mode2_cfs 2 = 14
+[1004] mode2_cfs 3 = 56
 [1004] mode2_cfs 4 = 392 </pre>
 <p>        The last "mode2_cfs # = ##" line shows the largest cycle size being used (the number
 after the "=").  So if you set m2PA=true, and the metrics are not available from an        input file, TDecimate will be reading that ## frames (392 in the above case) ahead        in the video stream, and will have to process those many frames at each cycle boundary!</p>

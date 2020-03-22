@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: mvtools.htm,v 1.1 2005/10/03 16:31:31 macpaille Exp $ 
+$Id: mvtools.htm,v 1.1 2005/10/03 16:31:31 macpaille Exp $
 -->
 </head>
 <body>
@@ -46,17 +46,17 @@ if you needed them.
 detection thresholds, and the mmx / isse flags. They also use one or
 several vectors stream, which are produced by <code>MVAnalyse</code>.
 </p>
-<p><var>int thSCD1</var> : threshold which decides whether a block has changed 
-between the previous frame and the current one. When a block has changed, it 
-means for me that motion estimation for him isn't relevant at all. It occurs 
-for example at scene changes. So it is one of the thresholds used to tweak the 
-scene changes detection engine. Default is 300. Raising it will lower the 
+<p><var>int thSCD1</var> : threshold which decides whether a block has changed
+between the previous frame and the current one. When a block has changed, it
+means for me that motion estimation for him isn't relevant at all. It occurs
+for example at scene changes. So it is one of the thresholds used to tweak the
+scene changes detection engine. Default is 300. Raising it will lower the
 number of blocks detected as changed. The threshold is compared to the SAD (
 sum of absolute difference, a value which says how good the motion estimation
 was ) value. If you use 4x4 blocks, you should divide that value by 4.
 </p>
-<p><var>int thSCD2</var> : threshold which sets how many blocks have to change 
-for the frame to be considered as a scene change. It is ranged from 0 to 255, 0 
+<p><var>int thSCD2</var> : threshold which sets how many blocks have to change
+for the frame to be considered as a scene change. It is ranged from 0 to 255, 0
 meaning 0 %, 255 meaning 100 %. Default is 130 ( which means 51 % ).
 </p>
 <p><var>bool mmx</var> : flags which allows to disable mmx optimizations if set to false.
@@ -115,8 +115,8 @@ on the same clip ( else, the analysis won't work properly ).</p>
 
 <p><code>MVCompensate</code> (<var>clip, clip "vectors", bool "scbehavior", int "mode", int "idx"</var>)
 </p>
-<p>Do a full motion compensation of the frame. It means that the blocks pointed 
-by the mvs in the reference frame will be moved along the vectors to reach their places 
+<p>Do a full motion compensation of the frame. It means that the blocks pointed
+by the mvs in the reference frame will be moved along the vectors to reach their places
 in the current frame.</p>
 <p><var>scbehavior</var> ( by default true ), decide which frame will be kept on
 a scene change. If true, the frame is left unchanged. Else, the reference frame is
@@ -135,11 +135,11 @@ what you're doing.</p>
 </p>
 <p>Makes a temporal denoising with motion compensation, only on the luma. Reference
 frames are motion compensated and then merged into the current frame.</p>
-<p>The first threshold, <var>thT</var>, decides whether the pixel which comes from 
-the previous or the following frame has to be taken into account. If this pixel 
+<p>The first threshold, <var>thT</var>, decides whether the pixel which comes from
+the previous or the following frame has to be taken into account. If this pixel
 differs more than <var>thT</var> from the pixel of the current frame, it is not used.</p>
-<p>The second one, <var>thSAD</var>, decides whether the block has changed or 
-not ( same principle as <var> thSCD1</var> ). If it has changed, the pixels aren't merged with those of 
+<p>The second one, <var>thSAD</var>, decides whether the block has changed or
+not ( same principle as <var> thSCD1</var> ). If it has changed, the pixels aren't merged with those of
 the previous or following frame.</p>
 <p><var>thMV</var> is the vector's length over which the block isn't used for
 denoising.</p>
@@ -151,19 +151,19 @@ denoising.</p>
 <p><code>MVMask</code> (<var>clip, clip "vectors", int "ml", float "gamma",
 bool "showsad", int "Ysc"</var>)
 </p>
-<p>Creates a motion mask from the motion vectors' length. It builds a better 
-mask than <a href="masktools.htm#motionmask"> MotionMask</a> ( <a href="masktools.htm"> 
-MaskTools</a> ) because motion vectors are a lot more reliable than the 
+<p>Creates a motion mask from the motion vectors' length. It builds a better
+mask than <a href="masktools.htm#motionmask"> MotionMask</a> ( <a href="masktools.htm">
+MaskTools</a> ) because motion vectors are a lot more reliable than the
 algorithm of MotionMask.
 </p>
-<p>The mask is output only on the luma plane. 0 means no motion at all ( the 
-length of the motion vector is null ), whereas 255 means maximum motion, and is 
+<p>The mask is output only on the luma plane. 0 means no motion at all ( the
+length of the motion vector is null ), whereas 255 means maximum motion, and is
 defined by
-<var>ml</var>. When the vector's length is superior or equal to ml, the output 
+<var>ml</var>. When the vector's length is superior or equal to ml, the output
 value is 255.
-<var>gamma</var> is used to defined the relation length / value. 
+<var>gamma</var> is used to defined the relation length / value.
 <var>gamma</var>
-= 1.0 implies a linear relation, whereas <var>gamma</var> = 2.0 gives a 
+= 1.0 implies a linear relation, whereas <var>gamma</var> = 2.0 gives a
 quadratic relation.</p>
 <p><var>showsad</var> allows to build a mask of the SAD values instead of the
 vectors' length. And finally, <var>Ysc</var> is the value taken by the mask on scene change
@@ -179,10 +179,10 @@ vectors' length. And finally, <var>Ysc</var> is the value taken by the mask on s
 vectors, in order for example to gain in accuracy ( when
 <var>pel</var> &gt; 1 and <var>scale</var> = 1, you can't see
 a variation of less than one pixel ).
-<var>sil</var> allows to see a different level of analysis ( when searching for 
-motion vectors, a hierarchal analysis is done, and it may be interesting to see 
+<var>sil</var> allows to see a different level of analysis ( when searching for
+motion vectors, a hierarchal analysis is done, and it may be interesting to see
 what happens at higher levels ).
-<var>tol</var> is a tolerance threshold. If the distorsion induced by the 
+<var>tol</var> is a tolerance threshold. If the distorsion induced by the
 motion vector is over tol the vector isn't shown.
 Finally, <var>showsad</var> allows to show the mean SAD after compensating the
 picture.</p>
@@ -190,7 +190,7 @@ picture.</p>
 20000 and <var>showsad</var> = false ( which shows all vectors ).</p>
 
 <h3>MVChangeCompensate</h3>
-<p><code>MVChangeCompensate</code> (<var>clip vectors, clip</var>)</p> 
+<p><code>MVChangeCompensate</code> (<var>clip vectors, clip</var>)</p>
 <p>Allows to change the compensation stored into the mvs stream.</p>
 
 <h3>Deblock</h3>
@@ -202,7 +202,7 @@ use motion vectors, however, it's usefull to deblock the result of <code>MVCompe
 edges will deblocked.</p>
 <p><var>bOffset</var> : another quant modifier, for block detecting and for deblocking's strength.
 There again, the higher, the stronger.</p>
-<p>Defaults are <var>quant</var> = 25, <var>aOffset</var> = <var>bOffset</var> = 0. If <var>quant</var> + 
+<p>Defaults are <var>quant</var> = 25, <var>aOffset</var> = <var>bOffset</var> = 0. If <var>quant</var> +
 <var>aOffset</var> is inferior to 16, the filter does nothing at all. The same goes for <var>quant</var> +
 <var>bOffset</var>.</p>
 
@@ -229,20 +229,20 @@ is chosen. If none differs by less than <var>th</var>, the output_0 pixel is cho
 
 <h3>MVDepan</h3>
 
-<p><code>MVDepan</code> (<var>clip, clip "vectors", bool "zoom", bool "rot", float 
+<p><code>MVDepan</code> (<var>clip, clip "vectors", bool "zoom", bool "rot", float
 "pixaspect", float "error", bool "info"</var>)
 </p>
-<p>Get the motion vectors,&nbsp; estimate global motion&nbsp; and put data to 
+<p>Get the motion vectors,&nbsp; estimate global motion&nbsp; and put data to
 output frame in special format for <code>DePan</code> plugin (by Fizick).</p>
-<p>Inter-frame global motion (pan, zoom, rotation) is estimated by iterative 
+<p>Inter-frame global motion (pan, zoom, rotation) is estimated by iterative
 procedure, with good blocks only.
 </p>
-<p>Rejected blocks: 1) near frame borders; 2) with big SAD (by <var>thSCD1</var> 
+<p>Rejected blocks: 1) near frame borders; 2) with big SAD (by <var>thSCD1</var>
 parameter); 3) with motion different from global.</p>
 <p><i>zoom</i> and <i>rot</i> parameters switch zoom and rotation estimation, <var>
-pixaspect </var>&nbsp;is pixel aspect (1.094 for standard PAL, 0.911 for 
+pixaspect </var>&nbsp;is pixel aspect (1.094 for standard PAL, 0.911 for
 standard NTSC),&nbsp; <var>error </var>is maximum mean motion difference.</p>
-<p>The frame estimated global motion is switched to null for big motion error or 
+<p>The frame estimated global motion is switched to null for big motion error or
 at scene change&nbsp; (by <var>thSCD1, thSCD2</var> parameters).
 </p>
 <p><var>info</var> parameter allows to type global motion info for debug.
@@ -333,7 +333,7 @@ and which allows speed up when compensating the same frames several times.</li>
 <p>0.9.8</p>
 <ul><li>Yet another little changes in the filters' syntax. The core changed a lot,
 in order to gain speed were it was possible. However, by default, the speed gain won't be
-visible, you'll need to configure correctly the analysis filter through its "idx" 
+visible, you'll need to configure correctly the analysis filter through its "idx"
 parameter in order to gain speed ( in the mode "pel" = 2 ).</li>
 <li>Bugfixes in MVDenoise, and chroma denoising in MVDenoise.</li>
 <li>Now, the filters down the filter's chain tell to the analysis filter if they need
@@ -359,48 +359,48 @@ and will change again before reaching 1.0 ( if it's reached one day ). Changes m
 <p>0.9.4
 </p>
 <ul>
-  <li>Vectors can be saved to a file. In order to do so, add the parameter 
-filename="C:\foo.bar" to the filter MVAnalyse. If the file doesn't exist, 
-vectors will be saved into it. If it exists, vectors will be read from it. But, 
+  <li>Vectors can be saved to a file. In order to do so, add the parameter
+filename="C:\foo.bar" to the filter MVAnalyse. If the file doesn't exist,
+vectors will be saved into it. If it exists, vectors will be read from it. But,
 be warned :
     <ul>
       <li>The file for a whole movie will be around 500 MB</li>
-      <li>Saving / reading from a file need for the moment a linear access to 
-the frames, so it has to be used only when encoding the movie, not when doing 
+      <li>Saving / reading from a file need for the moment a linear access to
+the frames, so it has to be used only when encoding the movie, not when doing
 random access in it.</li>
-      <li>The speed gain is not as great as one may hope, because SADs can't be 
+      <li>The speed gain is not as great as one may hope, because SADs can't be
 saved ( it would take too much space ) and so have to be recomputed.</li>
     </ul>
   </li>
-  <li>The filter MVDenoise now works on 5 frames, and its parameters are now 
-"thT" and "sadT" ( have a look in the documentation to see how they work ). It 
+  <li>The filter MVDenoise now works on 5 frames, and its parameters are now
+"thT" and "sadT" ( have a look in the documentation to see how they work ). It
 works nice ( very good for heavy denoising )</li>
-  <li>The scene change detection thresholds have slightly changed. Now, a block 
-has changed if its SAD it over thSCD1. The default for thSCD1 is 300, and for 
+  <li>The scene change detection thresholds have slightly changed. Now, a block
+has changed if its SAD it over thSCD1. The default for thSCD1 is 300, and for
 thSCD2 it is 130. It orks well ( better than the previous SCD engine ).<br>
   </li>
 </ul>
 <p>0.9.3</p>
 <ul>
-  <li>Last cleanings in the search of the motion vectors. It should be slightly 
+  <li>Last cleanings in the search of the motion vectors. It should be slightly
 faster</li>
-  <li>More search parameters can be set by the user, especially the search 
+  <li>More search parameters can be set by the user, especially the search
 algorithm. See the documentation</li>
-  <li>Server / client implemented. You now first have to use MVAnalyse, and 
-then the filter you want. Look at the documentation and at the examples I'll 
+  <li>Server / client implemented. You now first have to use MVAnalyse, and
+then the filter you want. Look at the documentation and at the examples I'll
 give alter.</li>
-  <li>MVCompensate is separated from MVShow ( it's more logic that way ). For 
-the moment, it doesn't move the chroma ( same behavior as MVShow in the latest 
+  <li>MVCompensate is separated from MVShow ( it's more logic that way ). For
+the moment, it doesn't move the chroma ( same behavior as MVShow in the latest
 releases )</li>
-  <li>Some cleaning in MVBlur / MVInterpolate / MVConvertFPS, but still some 
-work to do. Now, MVBlur blurs around the frame, not between the frame and the 
+  <li>Some cleaning in MVBlur / MVInterpolate / MVConvertFPS, but still some
+work to do. Now, MVBlur blurs around the frame, not between the frame and the
 previous one.</li>
-  <li>Half of the work is done for writing vectors to a file. But the resulting 
+  <li>Half of the work is done for writing vectors to a file. But the resulting
 file will be large ( around 500 MB - 1 GB I guess ).</li>
   <li>MVDenoise is slightly faster ( at least it should )</li>
-  <li>Copies are optimized inside the filter, thanks to avisynth's copy 
+  <li>Copies are optimized inside the filter, thanks to avisynth's copy
 functions.</li>
-  <li>MVShow can display the mean SAD of the compensation ( using showsad = 
+  <li>MVShow can display the mean SAD of the compensation ( using showsad =
 true )</li>
 </ul>
 <p>0.9.2.1</p>
@@ -411,7 +411,7 @@ true )</li>
 <p>0.9.2</p>
 <ul>
   <li>MVInterpolate doesn't exist anymore.</li>
-  <li>MVBlur and MVConvertFPS have been improved. They also have got new 
+  <li>MVBlur and MVConvertFPS have been improved. They also have got new
 parameters, have a look at the documentation.</li>
   <li>MVShow gets back its compensate mode ( MVShow(cm = true) )</li>
 </ul>

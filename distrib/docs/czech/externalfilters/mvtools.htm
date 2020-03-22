@@ -5,7 +5,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: mvtools.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: mvtools.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -13,7 +13,7 @@ $Id: mvtools.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b> Manao, Fizick(Aleksandr Balachnin), Tsp, TSchniede
 <br><b>verze:</b> 1.11.4.5
-<br><b>stáhnout:</b> <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>, 
+<br><b>stáhnout:</b> <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a> <br>
 <b>kategorie:</b>  Rùzné pluginy<br>
 <b>požadavky:</b> YV12 nebo YUY2 Barevné prostøedí<br>
@@ -27,64 +27,64 @@ I) O pluginu MVTools</a>
   </li>
   <li><a href="#functions">II) Popisy funkcí</a></li>
   <li><a href="#examples">III) Pøíklady</a></li>
-  <li><a href="#disclaimer">IV) Odmítnutí záruk (nepøeskakujte tuto èást, ale nenutím vás 
+  <li><a href="#disclaimer">IV) Odmítnutí záruk (nepøeskakujte tuto èást, ale nenutím vás
 to nauèit se)</a></li>
   <li><a href="#revisions">V) Revize</a></li>
 </ul>
 <h2><a name="MVTools"></a>I) O pluginu MVTools
 </h2>
-<p>MVTools - plugin pro AviSynth 2.5 je kolekce funkcí 
+<p>MVTools - plugin pro AviSynth 2.5 je kolekce funkcí
 pro odhadnutí a kompenzaci pohybu objektù ve video klipech.
 Kompenzace pohybu mùže být použita pro silné èasové (temporal) odšumìní, pokroèilé pøevody snímkových frekvencí,
 restauraci obrazu a další úlohy.
 </p>
-<p>Plugin obsahuje server-funkci odhadu pohybu MVAnalyse pro nalezení vektorù pohybu a 
+<p>Plugin obsahuje server-funkci odhadu pohybu MVAnalyse pro nalezení vektorù pohybu a
  nìkolik klient-funkcí kompenzace pohybu (MVCompensate, MVMask a další)
 které používají tyto vektory.
 </p>
-<p>Plugin používá metodu srovnávání blokù pro odhad pohybu (podobné metody jsou použity v MPEG2, MPEG4, atd). 
-Ve fázi analýzy plugin rozdìluje snímky na malé bloky a snaží se najít pro každý blok v aktuálním snímku 
-nejpodobnìjší (odpovídající) blok v druhém snímku (pøedchozím nebo následujícím). 
+<p>Plugin používá metodu srovnávání blokù pro odhad pohybu (podobné metody jsou použity v MPEG2, MPEG4, atd).
+Ve fázi analýzy plugin rozdìluje snímky na malé bloky a snaží se najít pro každý blok v aktuálním snímku
+nejpodobnìjší (odpovídající) blok v druhém snímku (pøedchozím nebo následujícím).
 Relativní posunutí tìchto blokù je vektor pohybu.
-Hlavním mìøítkem podobnosti blokù je souèet absolutních rozdílù (SAD) 
-všech pixelù tìchto dvou porovnávaných blokù. 
-SAD je hodnota, která øíká, jak dobrý byl odhad pohybu. 
+Hlavním mìøítkem podobnosti blokù je souèet absolutních rozdílù (SAD)
+všech pixelù tìchto dvou porovnávaných blokù.
+SAD je hodnota, která øíká, jak dobrý byl odhad pohybu.
 <p>Výstupem MVAnalyse (server) je speciální klip s informacemi o vektorech pohybu v nìjakém formátu.
 </p>
-<p>Ve fázi kompenzace klient-funkce pluginu ètou vektory pohybu 
+<p>Ve fázi kompenzace klient-funkce pluginu ètou vektory pohybu
 a použijí je k vyjmutí blokù a zformování snímku s kompenzovaným pohybem
 (nebo realizuje nìjakou jinou plnou nebo èásteènou kompenzaci pohybu nebo funkci interpolace).
 Každý objekt (blok) v tomto (plnì) kompenzovaném snímku je umístìn na stejnou pozici v jaké je v aktuálním snímku.
-Tedy, mùžeme (napøíklad) použít silné èasové odšumìní dokonce pro docela rychle se pohybující objekty 
-bez vytváøení nepøíjemných artefaktù a duchù 
-(rysy objektu a hrany jsou shodné pokud je kompenzace perfektní). 
-Plugin mùže vytvoøit kompenzované sousední snímky pro každý aktuální snímek, 
-a odstranit v nich šum vnitøní funkcí (MVDenoise). 
-Nebo mùžete použít kompenzované a pùvodní snímky k vytvoøení prolínaného (interleaved) klipu, 
-odstranit v nich šum jakýmkoliv externím èasovým (temporal) filtrem, 
+Tedy, mùžeme (napøíklad) použít silné èasové odšumìní dokonce pro docela rychle se pohybující objekty
+bez vytváøení nepøíjemných artefaktù a duchù
+(rysy objektu a hrany jsou shodné pokud je kompenzace perfektní).
+Plugin mùže vytvoøit kompenzované sousední snímky pro každý aktuální snímek,
+a odstranit v nich šum vnitøní funkcí (MVDenoise).
+Nebo mùžete použít kompenzované a pùvodní snímky k vytvoøení prolínaného (interleaved) klipu,
+odstranit v nich šum jakýmkoliv externím èasovým (temporal) filtrem,
 a vybrat centrální vyèištìné pùvodní snímky pro výstup (viz pøíklady).
 </p>
-<p>Odhad pohybu a jeho kompenzace nejsou samozøejmì ideální a dokonale pøesné. 
-V nìkterých komplikovaných pøípadech (video se stmíváním - fading, ultra-rychlého pohybu, nebo periodických struktur) 
+<p>Odhad pohybu a jeho kompenzace nejsou samozøejmì ideální a dokonale pøesné.
+V nìkterých komplikovaných pøípadech (video se stmíváním - fading, ultra-rychlého pohybu, nebo periodických struktur)
 mùže být odhad pohybu zcela chybný, a kompenzovaný (obzvláštì interpolovaný) snímek mùže být kostkatý a (nebo) ošklivý.
 Tìžké potíže jsou také kvùli vzájemnému zastínìní jednoho objektu druhým nebo obrácenì odkrývání.
-Složité Avisynth skripty s øadou funkcí pro kompenzaci pohybu mohou spotøebovat velký objem pamìti 
+Složité Avisynth skripty s øadou funkcí pro kompenzaci pohybu mohou spotøebovat velký objem pamìti
 a výsledkem je velmi pomalé zpracování.
 Nejedná se o jednoduchý, ale o docela pokroèilý plugin. Používejte ho jen ve vhodných pøípadech a snažte se vyladit jeho parametry.
 Existuje mnoho diskuzí o použití kompenzace pohybu na doom9 Avisynth fóru.
-Pøedevším se podívejte na starší vlákno <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=76041">MVTools</a>, 
-vlákno <a href="http://forum.doom9.org/showthread.php?t=102071">true motion</a>, 
-nové vlákno <a href="http://forum.doom9.org/showthread.php?t=84770">MVTools</a> a nìkterá další. 
+Pøedevším se podívejte na starší vlákno <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=76041">MVTools</a>,
+vlákno <a href="http://forum.doom9.org/showthread.php?t=102071">true motion</a>,
+nové vlákno <a href="http://forum.doom9.org/showthread.php?t=84770">MVTools</a> a nìkterá další.
 Snažte se èíst pøíspìvky jako doplnìk této dokumentace a žádejte zde o pomoc.
-Pokud se skuteènì zajímáte o témata odhadu a kompenzace pohybu, 
+Pokud se skuteènì zajímáte o témata odhadu a kompenzace pohybu,
 mùžete snadno najít øadu vìdeckých publikací (použijte WWW vyhedávání).
 </p>
-<p>Poznámky: Plugin je stále ve vývoji. Aktuální verze má nìkterá omezení. 
-Podporováno je jen progresivní YV12, YUY2 video. 
+<p>Poznámky: Plugin je stále ve vývoji. Aktuální verze má nìkterá omezení.
+Podporováno je jen progresivní YV12, YUY2 video.
 Použijte pøevod barevného formátu a zkuste použít (smart) bob-deinterlace pro prokládané video
 (mùže také pracovat rozdìlení na pole SeparateFields s nebo bez SelectEven/SelectOdd).
-Nìkteré komplikované skripty (MVBOB, MCBOB) používají MVTools pro 
-<a href="http://forum.doom9.org/showthread.php?t=84725">odstranìní prokládání s kompenzací pohybu.</a> 
+Nìkteré komplikované skripty (MVBOB, MCBOB) používají MVTools pro
+<a href="http://forum.doom9.org/showthread.php?t=84725">odstranìní prokládání s kompenzací pohybu.</a>
  </p>
  <p>Alternativnì mùžete zkusit použít <a href="http://forum.doom9.org/showthread.php?t=101859">plugin Motion</a> od mg262.
 </p>
@@ -93,8 +93,8 @@ Nìkteré komplikované skripty (MVBOB, MCBOB) používají MVTools pro
 
 <h3>Bìžné parametry</h3>
 
-<p>Filtry, které používají vektory pohybu mají bìžné parametry. 
-Ty jsou prahovými hodnotami detekce zmìny scény, 
+<p>Filtry, které používají vektory pohybu mají bìžné parametry.
+Ty jsou prahovými hodnotami detekce zmìny scény,
 a mají znaky mmx / isse. Také používají jeden nebo více
 vektorových streamù, které jsou vytváøeny funkcí <code>MVAnalyse</code>.
 </p>
@@ -149,7 +149,7 @@ tvoøenou prostorovou (spatial) interpolací (pøesnìjší ale pomalejší a ne vždy le
 Výchozí je 2 od v1.4.10.</p>
 <p><var>level</var> : je poèet Nepoužitých hrubých úrovní v hierarchické
 analýze provádìné pøi vyhledávání vektorù pohybu. Obvykle èím nižší, tím lepší (lze nalézt vektory s jakoukoliv délkou).
-Promìnná je zachována pro studijní (testovací) úèely. 
+Promìnná je zachována pro studijní (testovací) úèely.
 Nìkdy je <var>level</var> užiteèný pro vylouèení velkých (lživých) vektorù (poèítaèové grafiky, atd).
 Výchozí : 0 (jsou použity všechny úrovnì).</p>
 <p><var>search, searchparam, pelsearch</var> : <var>search</var> urèuje typ vyhledávání v každé úrovni, a
@@ -251,8 +251,8 @@ Použijte 0 pro mìkkou interpolaci (bilineární), 1 pro bikubickou interpolaci (4 
  2 pro ostrou interpolaci Wiener (6 tap, podobná Lanczos).<br>
 Výchozí je 2.
 </p>
-<p><var>rfilter</var>:  metoda snížení hierarchických úrovní. 
-Použijte 0 pro jednoduchý souèet 4 pixelù (prùmìrování, jako BilinearResize, stará metoda), 
+<p><var>rfilter</var>:  metoda snížení hierarchických úrovní.
+Použijte 0 pro jednoduchý souèet 4 pixelù (prùmìrování, jako BilinearResize, stará metoda),
 použijte 1 pro filtr 1/4, 1/2, 1/4 (jako ReduceBy2) pro hladší odhad pohybu.<br>
 Výchozí je 1 (od v1.11.0.2).
 </p>
@@ -261,10 +261,10 @@ Pixely v øádcích a sloupcích dìlitelné pel (0,2,4,... pro pel=2) musí být pùvodn
 ostatní pixely musí být interpolovány.<br>
 Pøíklad pro pel=2: <code>LanczosResize(width*2,height*2,src_left=0.25, src_top=0.25)</code>.
 (Nedávná poznámka: je to správné pro jas, ale ne pøesnì to odpovídá pozicím pixelù barevnosti vnitøní interpolace v MVTools.
-Pøesto vektory a kompenzace pohybu jsou pro obvyklé klipy docela podobné, 
+Pøesto vektory a kompenzace pohybu jsou pro obvyklé klipy docela podobné,
 stejná barevnost by byla s src_left=0.5 pro YUY2 a dodateènì src_top=0.5 pro YV12).<br>
 Další užiteèný pøíklad je EEDI2 hranovì-namíøený resampler.<br>
-Pro správné výsledky musíte použít (stejný) <var>pelclip</var> pro celý øtezec funkcí MVTools  
+Pro správné výsledky musíte použít (stejný) <var>pelclip</var> pro celý øtezec funkcí MVTools
 které používají stejný zdrojový klip (a idx). <br>
 Výchozí není definována.
 </p>
@@ -290,7 +290,7 @@ Výchozí = 0.
 2 - rozdìlit bloky a pøipsat støední (se 2 sousedními) vektory podblokùm;<br>
 Výchozí je = 0. Hodnoty velikosti bloku pøekrytí musí být zvoleny, aby byly pøijatelné po vnitøním dìlení.
 </p>
-<p><var>mc</var>: dodateènì zachovat pohybovì kompenzované snímky ve vektorovém klipu (použije se v MVDenoise). 
+<p><var>mc</var>: dodateènì zachovat pohybovì kompenzované snímky ve vektorovém klipu (použije se v MVDenoise).
 Výchozí je false (neuchovává se pro šetøení pamìti) od v1.11.4.
 </p>
 <p><var>idx</var>: index klipu. Umožòuje vnitøní znovupoužití (sdílení)
@@ -333,15 +333,15 @@ Zkuste použít AssumeFrameBased pokud to nepotøebujete.</p>
 
 <p><code>MVCompensate</code> (<var>clip, clip "vectors", bool "scbehavior", int "mode", int "thSAD",
 bool "fields", clip "pelclip", int "idx"</var>)
-<p>Provádí plnou kompenzaci pohybu ve snímku. To znamená, že bloky ukázané 
-pomocí vektorù pohybu v referenèním snímku budou posunuty podle vektorù k dosažení jejich umístìní 
+<p>Provádí plnou kompenzaci pohybu ve snímku. To znamená, že bloky ukázané
+pomocí vektorù pohybu v referenèním snímku budou posunuty podle vektorù k dosažení jejich umístìní
 v aktuálním snímku.</p>
-<p><var>scbehavior</var> ( výchozí je true ), rozhoduje, který snímek bude zachován 
-pøi zmìnì scény. Je-li true, snímek je ponechán nezmìnìný. Jinak je do aktuálního snímku 
+<p><var>scbehavior</var> ( výchozí je true ), rozhoduje, který snímek bude zachován
+pøi zmìnì scény. Je-li true, snímek je ponechán nezmìnìný. Jinak je do aktuálního snímku
 zkopírován referenèní snímek.</p>
-<p><var>mode</var> mùže být buï 0 nebo 1 (výchozí). Mode=0 døíve znamenal použití kompenzace 
+<p><var>mode</var> mùže být buï 0 nebo 1 (výchozí). Mode=0 døíve znamenal použití kompenzace
 provádìné pøi vyhledávání vektorù. Nyní je to provádìno v režimu mode=1.
-Mode=1 znamená, že pøepoèítává kompenzaci z dat vektorù ( protože mùžete 
+Mode=1 znamená, že pøepoèítává kompenzaci z dat vektorù ( protože mùžete
 chtít použít vektory na jiný klip než ten ve kterém vyhledáváte ). Starý režim mode=2 je nyní vypnutý.</p>
 <p><var>thSAD</var> je prahová hodnota SAD pro bezpeènou (dummy) kompenzaci. Pokud je blok SAD nad thSAD,
 pak je blok špatný, a my použijeme zdrojový blok místo kompenzovaného bloku. Výchozí je 10000 (prakticky vypnuto).
@@ -354,9 +354,9 @@ Výchozí je false.
 <p><var>pelclip</var>: nadvzorkovaný zdrojový klip pro použití místo interní subpixelové interpolace (stejné v MVAnalyse).<br>
 Výchozí není definováno.
 </p>
-<p><var>idx</var> pracuje stejným zpùsobem jako <var>idx</var> v MVAnalyse. 
+<p><var>idx</var> pracuje stejným zpùsobem jako <var>idx</var> v MVAnalyse.
 </p>
-<p>Zpracování pøekrytých blokù je implementováno jako okenní sumarizace blokù  
+<p>Zpracování pøekrytých blokù je implementováno jako okenní sumarizace blokù
 (jako FFT3DFilter, hodnota pøekrytí do blksize/2) pro snížení blocking artefaktù (kostkatìní).
 </p>
 
@@ -366,11 +366,11 @@ Výchozí není definováno.
 </p>
 <p>Provádí èasové (temporal) odšumìní s kompenzací pohybu z nìkolika klipù vektorù mvs. Referenèní snímky
 jsou pohybovì kompenzovány a pak slouèeny s aktuálním snímkem.</p>
-<p>První prahová hodnota, <var>thT</var>, rozhoduje zda pixel, který pøichází z 
-pøedchozího nebo následujícího snímku má být zahrnut do procesu výpoètu. Pokud se tento pixel 
+<p>První prahová hodnota, <var>thT</var>, rozhoduje zda pixel, který pøichází z
+pøedchozího nebo následujícího snímku má být zahrnut do procesu výpoètu. Pokud se tento pixel
 liší více než <var>thT</var> od pixelu v aktuálním snímku, není použit.</p>
-<p>Druhá <var>thSAD</var>, rozhoduje zda blok má být zmìnìn nebo 
-ne ( stejný princip jako <var> thSCD1</var> ). Jestliže se blok zmìnil, pixely nejsou slouèeny s pixely 
+<p>Druhá <var>thSAD</var>, rozhoduje zda blok má být zmìnìn nebo
+ne ( stejný princip jako <var> thSCD1</var> ). Jestliže se blok zmìnil, pixely nejsou slouèeny s pixely
 z pøedchozího nebo následujícího snímku.</p>
 <p><var>thMV</var> je délka vektoru, nad kterou není blok použit pro
 odšumìní.</p>
@@ -386,20 +386,20 @@ Funkce používá data kompenzace pohybu uložené v klipech vektorù. </p>
 <p><code>MVMask</code> (<var>clip, clip "vectors", float "ml", float "gamma",
 int "kind", int "Ysc"</var>)
 </p>
-<p>Vytváøí klip masek z dat vektorù pohybu. 
+<p>Vytváøí klip masek z dat vektorù pohybu.
 Maska je definována daty blokù, ale je interpolovaná, aby zapadla na celou velikost snímku.
 Maska je vytvoøena jak na jasové (luma) tak na barevnostních (chroma) plochách. Hodnoty masky mohou být od 0 (min) do 255 (max).</p>
 <p><var>kind</var> parametr definuje druh masky.
-</p><p>Režim <var>kind=0</var> vytváøí masku pohybu z délek vektorù pohybu. Vytváøí lepší  
-masku než <a href="masktools.htm#motionmask"> MotionMask</a> ( <a href="masktools.htm"> 
-MaskTools</a> ) protože vektory pohybu jsou mnohem víc vìrohodné než 
-algoritmus MotionMask. Hodnota masky 0 znamená nikde žádný pohyb ( délka 
-vektorù pohybu je nulová ). Èím vìtší délka vektoru, tím vìtší hodnota masky (nasycené do 255), 
-mìøítko je definováno pomocí <var>ml</var>.</p> 
+</p><p>Režim <var>kind=0</var> vytváøí masku pohybu z délek vektorù pohybu. Vytváøí lepší
+masku než <a href="masktools.htm#motionmask"> MotionMask</a> ( <a href="masktools.htm">
+MaskTools</a> ) protože vektory pohybu jsou mnohem víc vìrohodné než
+algoritmus MotionMask. Hodnota masky 0 znamená nikde žádný pohyb ( délka
+vektorù pohybu je nulová ). Èím vìtší délka vektoru, tím vìtší hodnota masky (nasycené do 255),
+mìøítko je definováno pomocí <var>ml</var>.</p>
 </p><p><var>kind=1</var> umožní vytvoøit masku hodnot SAD (souèet absolutních rozdílù) místo
 délek vektorù. Mùže to být užiteèné k nalezení problémových oblastí se špatným odhadem pohybu.
 (Je použit vnitøní faktor blocksize*blocksize/4 pro normalizaci mìøítka <var>ml</var>.)
-<p><var>kind=2</var> umožòuje vytvoøit okluzní masku (špatné bloky v dùsledku roztržení, napìtí). 
+<p><var>kind=2</var> umožòuje vytvoøit okluzní masku (špatné bloky v dùsledku roztržení, napìtí).
 V souèasnosti se používá nìjaký normalizovaný souèet kladných rozdílù pohybu blokù. Mùže to být násobeno pomocí mìøítka <var>ml</var>.</p>
 <p><var>kind=3</var> umožòuje vytvoøit masku horizontální komponenty vektoru pohybu v jednotkách pel plus 128.
 Násobené koeficienty se nepoužívají.</p>
@@ -407,11 +407,11 @@ Násobené koeficienty se nepoužívají.</p>
 Násobené koeficienty se nepoužívají.</p>
 <p><var>kind=5</var> - barevná mapa pohybu jako x,y komponent vektorù pohybu zobrazených v U, V barevných plochách
 (v jednotkách pel plus 128, násobené koeficienty se nepoužívají).</p>
-<p><var>ml</var> definuje mìøítko masky pohybu. 
-Když délka vektoru (nebo hodnota jiného typu) je vyšší nebo rovna <var>ml</var>, bude výstupní  
+<p><var>ml</var> definuje mìøítko masky pohybu.
+Když délka vektoru (nebo hodnota jiného typu) je vyšší nebo rovna <var>ml</var>, bude výstupní
 hodnota nasycena do 255. Menší hodnoty vedou k menším výstupùm.
-</p><p><var>gamma</var> je použito pro definování ukazatele závislosti výstupu na vstupu. 
-<var>gamma</var> = 1.0 znamená lineární závislost, zatímco <var>gamma</var> = 2.0 dává 
+</p><p><var>gamma</var> je použito pro definování ukazatele závislosti výstupu na vstupu.
+<var>gamma</var> = 1.0 znamená lineární závislost, zatímco <var>gamma</var> = 2.0 dává
 kvadratickou závislost.</p>
 <p>A nakonec, <var>Ysc</var> je hodnota vzatá maskou pøi zmìnì scény</p>
 <p>Výchozí jsou: <var>kind</var> = 0,  <var>ml</var> = 100, <var>gamma</var> = 1.0, a
@@ -421,7 +421,7 @@ kvadratickou závislost.</p>
 
 <p><code>MVSCDetection</code> (<var>clip, clip "vectors", int "Ysc"</var>)
 </p>
-<p>Vytváøí masku detekce scény z dat vektorù pohybu. 
+<p>Vytváøí masku detekce scény z dat vektorù pohybu.
 Maska je vytvoøena jak na jasové (luma) tak i na barevnostních (chroma) plochách. Výstup beze zmìny scény je 0.</p>
 <p><var>Ysc</var> je hodnota braná maskou pøi zmìnì scény, výchozí je 255.</p>
 
@@ -437,11 +437,11 @@ pohybu, napøíklad za úèelem zvýšení pøesnosti ( když je
 <var>pel</var> &gt; 1 a <var>scale</var> = 1, neuvidíte
 odchylky menší než jeden pixel ).
 </p>
-<p><var>sil</var> umožní vidìt rùzné úrovnì analýzy ( když se pøi vyhledávání 
-vektorù pohybu provádí hierarchická analýza, a mùže to být zajímavé pro pozorování 
+<p><var>sil</var> umožní vidìt rùzné úrovnì analýzy ( když se pøi vyhledávání
+vektorù pohybu provádí hierarchická analýza, a mùže to být zajímavé pro pozorování
 co se dìje ve vyšších úrovních ).
 </p>
-<p><var>tol</var> je prahová hodnota tolerance. Pokud deformace vyvolaná 
+<p><var>tol</var> je prahová hodnota tolerance. Pokud deformace vyvolaná
 vektorem pohybu vìtším než <var>tol</var>, vektor není zobrazen.
 </p>
 <p>Nakonec, <var>showsad</var> umožní zobrazit støední SAD po kompenzaci
@@ -451,7 +451,7 @@ obrazu.
 20000 a <var>showsad</var> = false ( což zobrazí všechny vektory ).</p>
 
 <h3>MVChangeCompensate</h3>
-<p><code>MVChangeCompensate</code> (<var>clip vectors, clip</var>)</p> 
+<p><code>MVChangeCompensate</code> (<var>clip vectors, clip</var>)</p>
 <p>Umožní mìnit kompenzaci uloženou do mvs streamu (streamu vektorù pohybu).</p>
 
 <h3>MVIncrease</h3>
@@ -466,20 +466,20 @@ a výškou zmenšeného klipu.</p>
 
 <h3>MVDepan</h3>
 
-<p><code>MVDepan</code> (<var>clip, clip "vectors", bool "zoom", bool "rot", float 
+<p><code>MVDepan</code> (<var>clip, clip "vectors", bool "zoom", bool "rot", float
 "pixaspect", float "error", bool "info", string "log", float "wrong", float "zerow", int "range"</var>)
 </p>
-<p>Dostává vektory pohybu, odhaduje globální pohyb a vkládá data do 
+<p>Dostává vektory pohybu, odhaduje globální pohyb a vkládá data do
 výstupního snímku ve zvláštním formátu pro plugin <code>DePan</code> (od Fizick).</p>
-<p>Globální pohyb uvnitø snímku (panoramování, zoom, rotace) je odhadnut iterativní 
+<p>Globální pohyb uvnitø snímku (panoramování, zoom, rotace) je odhadnut iterativní
 procedurou, za použití pouze dobrých blokù.
 </p>
-<p>Odmítnuté bloky: 1) poblíž okrajù snímkù; 2) s velkým SAD (podle parametru <var>thSCD1</var> 
+<p>Odmítnuté bloky: 1) poblíž okrajù snímkù; 2) s velkým SAD (podle parametru <var>thSCD1</var>
 ); 3) s pohybem lišícím se od sousedù nebo globálu.</p>
 <p>Parametry <i>zoom</i> a <i>rot</i> pøepínají odhad zoom (pøiblížení, vzdálení)) a rotaci, <var>
-pixaspect </var> je protažení pixelu (1.094 pro standardní PAL, 0.911 pro 
+pixaspect </var> je protažení pixelu (1.094 pro standardní PAL, 0.911 pro
 standardní NTSC), <var>error </var>je maximální støední odchylka pohybu.</p>
-<p>Vyhodnocený globální pohyb ve snímku se pøepne na nulu pro velké chyby pohybu nebo 
+<p>Vyhodnocený globální pohyb ve snímku se pøepne na nulu pro velké chyby pohybu nebo
 pøi zmìnì scény (podle parametrù <var>thSCD1, thSCD2</var> ).
 </p>
 <p>parametr <var>info</var> umožòuje zapsat informace o globálním pohybu pro ladìní.
@@ -581,9 +581,9 @@ Výchozí není definováno.
 "mvbw2", clip "mvfw2", int "num", int "den", int "mask", float "ml",
 clip "pelclip", int "idx", int "idx2"</var>)
 </p><p>Zmìní frekvenci snímkù (fps) klipu (a poèet snímkù) jako MVFlowFps,
-ale s trochu lepší kvalitou (a pomalejším zpracováním) s vnìjším pøekrýváním 
+ale s trochu lepší kvalitou (a pomalejším zpracováním) s vnìjším pøekrýváním
 blokù. <br>
-(Poznámky: MVFlowFps má nyní efektivnìjší vnitøní pøekrývání blokù, 
+(Poznámky: MVFlowFps má nyní efektivnìjší vnitøní pøekrývání blokù,
 a MVFlowFps2 je zastaralý. MVFlowFps2 nepracuje správnì s pøekrýváním v MVAnalyse).<br>
 Navíc ke zpìtnými "mvbw" a dopøednými "mvfw" vektory pohybu pùvodního zdrojového klipu,
 funkce MVFlowFps2 používá zpìtné "mvbw2" a dopøedné "mvfw2" vektory pohybu druhého (upraveného) zdrojového klipu.
@@ -622,9 +622,9 @@ Výchozí není definováno.
 ke zmìnì frekvence snímkù (fps) klipu (a poètu snímkù).
 Používá zpìtné "mvbw" a dopøedné "mvfw" vektory pohybu
 pro vytvoøení interpolovaných obrazù v nìjakém mezièase mezi snímky.
-Pro vytvoøení výstupního obrazu se používají nìkteré vnitøní zpìtné a dopøedné masky 
-a èasovì vážené souèinitele. 
-(Algoritmus je založen na funkci MVInter starých MVTools v1.9.12.) 
+Pro vytvoøení výstupního obrazu se používají nìkteré vnitøní zpìtné a dopøedné masky
+a èasovì vážené souèinitele.
+(Algoritmus je založen na funkci MVInter starých MVTools v1.9.12.)
 Je to rychlejší než MVFlowFps , ale mùže vytváøet kostkatìní a jiné artefakty.
 Pro tuto funkci se dùraznì doporuèuje skuteèný odhad pohybu (true motion).</p>
 <p><var>num</var>:  èitatel fps výstupního klipu. Výchozí=25.</p>
@@ -636,11 +636,11 @@ Když <var>num</var> nebo <var>den</var> je rovno 0, pak je pro výstup brána dvoj
 0 - prùmìr dopøedné a zpìtné èásteèné kompenzace pohybu (nejrychlejší, výchozí).<br>
 1 - statický støed.<br>
 2 - dynamický støed.<br>
-3 - èasovì vážená kombinace pøenesených dopøedných blokù maskovaných posunutými zpìtnými 
+3 - èasovì vážená kombinace pøenesených dopøedných blokù maskovaných posunutými zpìtnými
 a pøenesených zpìtných maskovaných posunutými dopøednými.<br>
 4 - režim 3 smíchaný s jednoduchým statickým èasovým prùmìrem podle masky okluze posunutých blokù.<br>
 5 - maska okluze (pro ladìní).
-</p><p><var>thres</var>: prahová hodnota množství okluzí na blok pro binarizaci masky. 
+</p><p><var>thres</var>: prahová hodnota množství okluzí na blok pro binarizaci masky.
 Výchozí=0, což je vnitønì = blksize*blksizeV/4.
 </p>
 <p><var>idx</var> (možná) pracuje stejným zpùsobem jako <var>idx</var> v MVAnalyse pro zvýšení rychlosti.</p>
@@ -687,7 +687,7 @@ Nízké hodnoty mohou vést k šachovnicovému odšumìní, velké hodnoty mohou vést k d
 <br>
 Výchozí <var>thSAD</var>=400.</p>
 <p><var>"thSADC"</var> je prahová hodnota pro plochy barevnosti (chroma).<br>
-Výchozí (není-li zadána) : <var>thSADC</var>=thSAD. 
+Výchozí (není-li zadána) : <var>thSADC</var>=thSAD.
 Pokud je zadána pak <var>thSADC</var>je použito pro barevnost a <var>thSAD</var> je použito pro jas (luma).</p>
 <p>parametr <var>plane</var> nastavuje zpracovanou barevnou plochu:<br>
 0 - jas, 1 - barevnost U, 2 - barevnost V, 3 - obì barevné roviny, 4 - vše. Výchozí je 4.
@@ -702,19 +702,19 @@ Výchozí není definováno.
 
 <h3>MVRecalculate</h3>
 
-<p><code>MVRecalculate</code> (<var>clip, clip vectors, int "thSAD", int "blksize", int "blksizeV", 
-int "search", int "searchparam", int "lambda", bool "chroma", 
+<p><code>MVRecalculate</code> (<var>clip, clip vectors, int "thSAD", int "blksize", int "blksizeV",
+int "search", int "searchparam", int "lambda", bool "chroma",
 bool "truemotion", int "pnew", int "overlap", int "overlapV",
 string "outfile", int "sharp", clip "pelclip", int "dct", int "divide", bool "mc", int "idx", int "sadx264"</var>)
 </p>
-<p>Upøesòuje a pøepoèítává døíve odhadnutá (z MVAnalyse) data vektorù pohybu  <var>vectors</var> 
+<p>Upøesòuje a pøepoèítává døíve odhadnutá (z MVAnalyse) data vektorù pohybu  <var>vectors</var>
 pro jiný klip <var>clip</var> nebo nastavení nových parametrù (napø. menší velikost bloku), po dìlení, atd.
 Tato dvou fázová metoda mùže být také užiteèná pro stabilnìjší (robustnìjší) odhad pohybu.
-Upøesnìní se provádí jen na nejjemnìjší hierarchické úrovni. 
-Interpolované vektory starých blokù jsou použity jako prediktory pro nové vektory, s pøepoètem SAD. 
-Jen nové vektory špatné kvality se SAD vyšší než prahová hodnota <var>thSAD</var> budou znovu odhadnuty vyhledáváním. 
+Upøesnìní se provádí jen na nejjemnìjší hierarchické úrovni.
+Interpolované vektory starých blokù jsou použity jako prediktory pro nové vektory, s pøepoètem SAD.
+Jen nové vektory špatné kvality se SAD vyšší než prahová hodnota <var>thSAD</var> budou znovu odhadnuty vyhledáváním.
 Zadávejte hodnotu <var>thSAD</var> redukovanou (násobenou) na velikost bloku 8x8. Výchozí <var>thSAD</var>=200.
-Dobré vektory jsou nezmìnìny, ale jejich SAD bude aktualizováno (pøepoèítáno). 
+Dobré vektory jsou nezmìnìny, ale jejich SAD bude aktualizováno (pøepoèítáno).
 </p>
 Další parametry mají stejný význam jako v MVAnalyse (ale mùžete použít jiné hodnoty).
 Použijte jiné hodnoty idx pokud se klip nebo bloky liší.
@@ -776,7 +776,7 @@ Weave()
 
 <p>Rozmazání problémových (kostkatých) oblastí kompenzovaných snímkù s maskou okluze:</p>
 <pre>vectors = source.MVAnalyse(isb = false, lambda = 1000)
-compensation = source.MVCompensate(vectors) # nebo zde použijte funkci MVFlow 
+compensation = source.MVCompensate(vectors) # nebo zde použijte funkci MVFlow
 # pøipravíme rozmazaný snímek s nìjakou silnou funkcí rozmazání nebo deblokování:
 blurred = compensation.DeBlock(quant=51) # použijeme zde funkci DeBlock
 badmask = source.MVMask(vectors, kind = 2, ml=50)
@@ -793,7 +793,7 @@ source.trim(0,49) ++ inter.trim(49,-1) \
 </pre>
 
 <p>Zmìna fps pomocí MVFlowFps:</p>
-<pre># Pøedpokládáme progresivní zdroj PAL 25 fps 
+<pre># Pøedpokládáme progresivní zdroj PAL 25 fps
 backward_vec = source.MVAnalyse(isb = true, truemotion=true, pel=2, idx=1)
 # použijeme explicitní idx pro rychlejší zpracování
 forward_vec = source.MVAnalyse(isb = false, truemotion=true, pel=2, idx=1)
@@ -801,7 +801,7 @@ source.MVFlowFps(backward_vec, forward_vec, num=50, den=1, ml=100, idx=1) # získ
 </pre>
 
 <p>Zdvojnásobení fps pomocí MVFlowFps pro nejrychlejší (témìø) k pøehrávání v reálném èase:</p>
-<pre># Pøedpokládáme progresivní zdroj PAL 25 fps nebo NTSC Film 23.976 
+<pre># Pøedpokládáme progresivní zdroj PAL 25 fps nebo NTSC Film 23.976
 backward_vec = source.MVAnalyse(blksize=16, isb = true, chroma=false, pel=1, searchparam=1, idx=1)
 # použijeme explicitní idx pro rychlejší zpracování
 forward_vec = source.MVAnalyse(blksize=16, isb = false, chroma=false, pel=1, searchparam=1, idx=1)
@@ -1000,7 +1000,7 @@ http://www.videolan.org/developers/x264.html
 </ul>
 <p>1.10.2.1 (28.08.2008 by Fizick)</p>
 <ul>
-<li>MVDegrain1-3: fixed old rounding error resulted in some chroma tint 
+<li>MVDegrain1-3: fixed old rounding error resulted in some chroma tint
 (some thanks to Didee for bugreport, but it could be more persevering in official MVTools forum thread :)</li>
 <li>Made doc about pelclip more accurate (hopely).</li>
 </ul>
@@ -1019,18 +1019,18 @@ http://www.videolan.org/developers/x264.html
 <li>Added MVRecalculate function to update SAD (as requested by Didee).</li>
 <li>Fixed possible memory leaks (thanks to josey_wells for note)</li>
 <li>Other changes of v1.9.6-1.9.7 branch by josey_wells are still not merged -
- too many work to analyse new code and numerous cosmetic rewriting, 
+ too many work to analyse new code and numerous cosmetic rewriting,
  so based on v1.9.5.7</li>
 </ul>
 <p>1.9.6.x-1.9.7.x series branch (01.08.2008-26.08.2008 by josey_wells)</p>
 <ul>
-<li>Added MVAnalyseMulti, MVDegrain, MVMultiExtract functions with internal multitheading 
+<li>Added MVAnalyseMulti, MVDegrain, MVMultiExtract functions with internal multitheading
 (that does not require any special AviSynth, SetMTMode or MT) </li>
 <li>Some bug fixes (memory leaks), code consolidation (rewriting) for stability and performance improvements.
-Also there is a multitude of changes due to the addition of threading class, 
-semaphore class, critical section class, thread files for MVDegrain, MVAnalyseMulti 
+Also there is a multitude of changes due to the addition of threading class,
+semaphore class, critical section class, thread files for MVDegrain, MVAnalyseMulti
 as well as factoring out common code for MVDegrain into a single base class moving out common code etc.
-There are no changes of algorithms. 
+There are no changes of algorithms.
 See <a href="http://forum.doom9.org/showthread.php?t=84770">messages at forum</a> since August 2008 for download, syntax and discussion.</li>
 </ul>
 <p>1.9.5.7 public beta (03.07.2008 by Fizick)</p>
@@ -1620,7 +1620,7 @@ parameters, have a look at the documentation.</li>
 
 <h3><a href="http://www.avisynth.org.ru/mvtools/mvtools-v1.11.4.5.zip">Stáhnout MVTools v.1.11.4.5</a></h3>
 
-<h3>Existuje také nová vìtev <a href="http://www.avisynth.org.ru/mvtools/mvtools2.html">MVTools v2.0</a> , která je ve vývoji.</h3> 
+<h3>Existuje také nová vìtev <a href="http://www.avisynth.org.ru/mvtools/mvtools2.html">MVTools v2.0</a> , která je ve vývoji.</h3>
 
 <p>Starší MVTools v.0.9.9.1 mùžete stáhnout z <a href="http://manao4.free.fr/">Manaových stránek</a></p>
 

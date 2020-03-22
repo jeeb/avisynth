@@ -6,8 +6,8 @@
 <title>DePan Plugin for AviSynth.</title>
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
-Automatically generated, don't change: 
-$Id: depan.htm,v 1.7 2006/09/17 17:41:38 fizick Exp $ 
+Automatically generated, don't change:
+$Id: depan.htm,v 1.7 2006/09/17 17:41:38 fizick Exp $
 -->
 </head>
 <body>
@@ -67,9 +67,9 @@ DePanEstimate (сервер) - оценивает глобальное движение и пишет его в
 специальный служебный клип<br>
 
 DePan (клиент) - делает полную или частичную компенсацию глобального
-движения<br> 
+движения<br>
 
-DePanInterleave (клиент) - генерирует длинный клип с чередующимися 
+DePanInterleave (клиент) - генерирует длинный клип с чередующимися
 компенсированными кадрами<br>
 
 DePanStabilize (клиент) - делает частичную стабилизацию движения<br>
@@ -103,8 +103,8 @@ DePanEstimate</h3>
 </h4>
 
 <p><code>DePanEstimate</code> ( <var>clip,
-int "range", float "trust", int "winx", int "winy", int "dxmax", int "dymax", 
-float "zoommax", bool "improve", float "stab", float "pixaspect", bool "info", 
+int "range", float "trust", int "winx", int "winy", int "dxmax", int "dymax",
+float "zoommax", bool "improve", float "stab", float "pixaspect", bool "info",
 string "log", bool "debug", bool "show", bool "fftw"</var>)</p>
 
 <h4>Параметры DePanEstimate:</h4>
@@ -222,7 +222,7 @@ DePan зарегистрирует смену сцены для текущего кадра, если текущая
 <h4>Вызов:
 </h4>
 
-<p><code>DePan</code> (<var>clip, clip "data", float "offset", int "subpixel", float "pixaspect", 
+<p><code>DePan</code> (<var>clip, clip "data", float "offset", int "subpixel", float "pixaspect",
 bool "matchfields", int "mirror", int "blur", bool "info", string "inputlog"</var>)</p>
 
 <h4>&nbsp;Параметры DePan:</h4>
@@ -461,9 +461,9 @@ DePanStabilize<br>
 </h4>
 
 <p><code>DePanStabilize</code> (<var>clip,
-clip "data", float "cutoff", float "damping", float "initzoom", bool "addzoom", int "prev", 
-int "next", int "mirror", int "blur", int "dxmax", int "dymax", float "zoommax", 
-float "rotmax", int "subpixel", float "pixaspect", int "fitlast", float "tzoom", 
+clip "data", float "cutoff", float "damping", float "initzoom", bool "addzoom", int "prev",
+int "next", int "mirror", int "blur", int "dxmax", int "dymax", float "zoommax",
+float "rotmax", int "subpixel", float "pixaspect", int "fitlast", float "tzoom",
 bool "info", string "inputlog"</var>)<br>
 
 <h4>Параметры DePanStabilize:</h4>
@@ -673,7 +673,7 @@ FFTW версии 3 (<cite><a href="http://www.fftw.org">http://www.fftw.org</a></cite
 Massaro),<br>
 которая поодерживает нити и&nbsp; AMD K7 (3dNow!) в добавок к
 SSE/SSE2.<br>
-Она может быть загружена с 
+Она может быть загружена с
 <cite><a href="ftp://ftp.fftw.org/pub/fftw/fftw3win32mingw.zip">ftp://ftp.fftw.org/pub/fftw/fftw3win32mingw.zip</a></cite><br>
 Для использования <var>fftw</var>
 , вы должны положить FFTW3.DLL файл из пакета в некоторый каталог в
@@ -864,7 +864,7 @@ i=converttoYV12()
 mdata=DePanEstimate(i)
 DePanStabilize(i,data=mdata)</pre>
 
-<p>Вы можете добавить и настроить параметры,  
+<p>Вы можете добавить и настроить параметры,
 определяющие частоту среза (<var>Cutoff</var>),
 метод заполнения пустых краев и т.д., наиболее
 соответствующие вашему клипу.</p>
@@ -886,7 +886,7 @@ Deshaker может быть загружен в Depan и наоборот. Depan также может
 компенсировать зум и вращение.</p>
 
 <p>Следовательно,
-вы можете загрузить подобные AVS скрипт файлы в VirtualDub, 
+вы можете загрузить подобные AVS скрипт файлы в VirtualDub,
 и выполнить второй проход Deshaker для продвинутой стабилизации
 движения (и кодирования) отфильтрованного клипа. Конечно,
 перед этим вы должны прогнать первый проход DePanEstimate чтобы сделать
@@ -905,7 +905,7 @@ Deshaker может быть загружен в Depan и наоборот. Depan также может
 
 <p>
 &nbsp;&nbsp;&nbsp; В течение первого прохода, Deshaker
-пытается найти величины перемещений, поворота и зума, которые, 
+пытается найти величины перемещений, поворота и зума, которые,
 приложенныек текущему кадру, делают его похожим на предыдущий.<br>
 В файле информация записана по строке на кадр, в фиксированном текстовом
 формате (слева направо):<br>
@@ -1161,7 +1161,7 @@ DepanStabilize.</li>
 Версия 1.4, 7 мая 2005 (обнародована 29 мая) - DePanStabilize: Улучшен режим адаптивного зума <var>addzoom</i></var>.
 Теперь скорость снижения адаптивного зума более медленная, чем скорость
 увеличения. Таким образом, уменьшаются пустые черные бордюры, и
-величина зума теперь более стабильна. 
+величина зума теперь более стабильна.
   </li>
 
   <li>Версия
@@ -1172,9 +1172,9 @@ DepanStabilize.</li>
 задания времени подъема адаптивного зума (был равен 1/<var>cutoff</var>).
   </li>
   <li>
-Версия 1.6, 5 августа 2005 - добавлена поддержка YUY2; отменен режим <var>improved=true</var> (был неисправен); 
-изменено значение по умолчанию <var>subpixel</var>=1 для DepanInterleave 
-как достаточное для понижения шума и более быстрое.<br> 
+Версия 1.6, 5 августа 2005 - добавлена поддержка YUY2; отменен режим <var>improved=true</var> (был неисправен);
+изменено значение по умолчанию <var>subpixel</var>=1 для DepanInterleave
+как достаточное для понижения шума и более быстрое.<br>
   </li>
   <li>
 Версия 1.7, 5 сентября 2005 - DePanStabilize: добавлен параметр <var>initzoom</var> для минимального зума; <br>

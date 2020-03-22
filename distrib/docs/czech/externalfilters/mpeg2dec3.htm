@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: mpeg2dec3.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: mpeg2dec3.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -20,7 +20,7 @@ $Id: mpeg2dec3.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 Tento filtr je schopen vysílat barevné formáty RGB, YUY2 a YV12.<br>
 Je to MPEG-2 dekodér a je schopen dekódovat jakékoli MPEG-2 streamy èitelné v
 dvd2avi 1.76 / 1.77.3 / 1.83x (a dalších). Také podporuje hdtv streamy,
-ale k tomu potøebujete <a href="http://www.trbarry.com/DVD2AVIT3.zip"><cite>dvd2avi 1.83.5</cite></a>. 
+ale k tomu potøebujete <a href="http://www.trbarry.com/DVD2AVIT3.zip"><cite>dvd2avi 1.83.5</cite></a>.
 (Toto je upravená verze MPEG2Dec2 ze save-oe (smart audio video encoder).)<br>
 Další doplòky jsou (napøíklad): YV12, YUY2 a RGB32 výstup (aèkoliv se doporuèuje
 použít rutiny pøevodù barev AviSynthu), øízení prokládání,
@@ -29,7 +29,7 @@ integrovaný PostProcessing, Jasové filtrování, atd.
 	(všechny øádky avisynth skriptu zde jsou jen pøíklady)<br>
 	Nejdøíve vložte následující øádek do vašeho .avs skriptu :
 <pre>LoadPlugin (&quot;MPEG2Dec3.dll&quot;)</pre>
-	
+
 	<h3>Základní použití MPEG2Dec3</h3>
 		Pro provedení plošného (plain) YV12 dekódování.
 <pre>MPEG2Source(&quot;dvd.d2v&quot;)</pre>
@@ -87,9 +87,9 @@ iDCT : použitý iDCT algoritmus.<br>
 	2 : 32 bit SSEMMX<br>
 	3 : 64 bit FPU<br>
 	4 : 64 bit IEEE-1180 Reference<br>
-	5 : 32 bit SSE2 (pro P4)<br>	
-	6 : Skal's SSEMMX iDCT (nejrychlejší)<br>	
-	7 : SimpleiDCT (velmi pøesná iDCT z projektu XviD)<br>	
+	5 : 32 bit SSE2 (pro P4)<br>
+	6 : Skal's SSEMMX iDCT (nejrychlejší)<br>
+	7 : SimpleiDCT (velmi pøesná iDCT z projektu XviD)<br>
 	výchozí : 0</p>
 <p><var>iPP</var> :<br>
 Pro použití na polích založeného (Field-Based) Post-Processingu.<br>

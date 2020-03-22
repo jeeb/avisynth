@@ -8,15 +8,15 @@
 <body>
 <h2><a name="DeleteFrame"></a>DeleteFrame</h2>
 <p><code>DeleteFrame </code>(<var>clip, int frame [, ...]</var>)</p>
-<p><code>DeleteFrame</code>&nbsp;sma¾e 
-nastavené snímky, zadané jako 
+<p><code>DeleteFrame</code>&nbsp;sma¾e
+nastavené snímky, zadané jako
 èísla v&nbsp;argumentu. Zvuková stopa není modifikována, tak¾e pokud pou¾ijete tento filtr pro smazání hodnì snímkù, mù¾ete zaznamenat&nbsp;viditelnou
 desynchronizaci videa a zvuku.
 </p>
 <p><b>Pøíklady:</b>
 </p>
 <pre>DeleteFrame(3, 9, 21, 42) # sma¾e snímky 3, 9, 21 a 42</pre>
-<p>Pokud chcete&nbsp;smazat rozsah snímkù&nbsp;(øeknìme&nbsp;<i>a</i>&nbsp;a¾ <i>b</i>   
+<p>Pokud chcete&nbsp;smazat rozsah snímkù&nbsp;(øeknìme&nbsp;<i>a</i>&nbsp;a¾ <i>b</i>
   ) spolu s odpovídající zvukovou èástí, mù¾ete to udìlat&nbsp;pomocí <A href="trim.htm">Trim</A>&nbsp;jako zde:</p>
 <pre>Trim(0,a-1) ++ Trim(b+1,0)</pre>
 <p>Nebo jako zde:</p>

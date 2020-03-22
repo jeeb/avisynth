@@ -11,37 +11,37 @@
 </h2>
 <p><code>Levels </code>(<var>clip, int input_low, float gamma, int input_high,
 int output_low, int output_high, bool "coring"</var>)
-<p>Il filtro <code>Levels</code> regola luminosità (brightness), contrasto (contrast), 
-  e gamma (che deve essere &gt; 0). I parametri <var>input_low</var> e <var>input_high</var> 
-  determinano quali valori del pixel di input sono trattati come nero puro o come 
-  bianco puro; I parametri <var>output_low</var> e <var>output_high</var> determinano 
-  i valori di output correspondenti al nero e al bianco ; e il parametro <var>gamma</var> 
-  controlla il livello di non linearità nella conversione. Per essere precisi, 
+<p>Il filtro <code>Levels</code> regola luminosità (brightness), contrasto (contrast),
+  e gamma (che deve essere &gt; 0). I parametri <var>input_low</var> e <var>input_high</var>
+  determinano quali valori del pixel di input sono trattati come nero puro o come
+  bianco puro; I parametri <var>output_low</var> e <var>output_high</var> determinano
+  i valori di output correspondenti al nero e al bianco ; e il parametro <var>gamma</var>
+  controlla il livello di non linearità nella conversione. Per essere precisi,
   la funzione di conversione è: <br>
 <blockquote>output = [(input - input_low) / (input_high -
 input_low)]<sup>1/gamma</sup>
 (output_high - output_low) + output_low</blockquote>
-Questo è uno di quei filtri per cui sarebbe veramente bello avere una GUI. Poichè 
-questa GUI non c'è (almeno non nella versione corrente di AviSynth), si è deciso 
-di rendere questo filtro almeno compatibile con quello di VirtualDub quando il 
-clip &egrave; RGB. Si dovrebbe riuscire a prendere i valori dalla GUI Levels in 
-VirtualDub e passarli come parametri al filtro <code>Levels</code> ed ottenere 
-lo stesso risultato. Tuttavia, i parametri di input e di output possono essere 
-maggiori di 255. 
-<p>Quando si elaborano dati in YUY2,<code>Levels</code> corregge solo l'informazione 
-  luma, e non chroma. Gamma correction è in realtà un concetto RGB, e non si sa 
-  come realizzarlo in modo corretto in YUY2. Tuttavia, se <var>gamma</var> = 1.0, 
-  il filtro dovrebbe avere lo stesso effetto sia in RGB che in YUY2. Per correggere 
-  brightness o contrast &egrave; meglio usare <a href="tweak.htm">Tweak</a> o 
-  <a href="coloryuv.htm">ColorYUV</a>, perch&eacute; <code>Levels</code> cambia 
-  anche il chroma del clip. 
-<p>In <em>v2.53</em> &egrave; stato aggiunto un parametro opzionale <var>coring</var> 
-  = <var>true/false</var> (true di default, che riflette il comportamento delle 
-  versioni precedenti ) . Impostato a true, significa che il range del luma &egrave; 
-  limitato a [16,235] sia in input che in output (il che vuol dire che [0,16] 
-  &egrave; mappato a 16, e [235,output_high] a 235). Impostato a false significa 
-  che il range del luma &egrave; limitato a [0,255] (il che vuol dire che l'output 
-  [255,output_high] &egrave; mappato 255). 
+Questo è uno di quei filtri per cui sarebbe veramente bello avere una GUI. Poichè
+questa GUI non c'è (almeno non nella versione corrente di AviSynth), si è deciso
+di rendere questo filtro almeno compatibile con quello di VirtualDub quando il
+clip &egrave; RGB. Si dovrebbe riuscire a prendere i valori dalla GUI Levels in
+VirtualDub e passarli come parametri al filtro <code>Levels</code> ed ottenere
+lo stesso risultato. Tuttavia, i parametri di input e di output possono essere
+maggiori di 255.
+<p>Quando si elaborano dati in YUY2,<code>Levels</code> corregge solo l'informazione
+  luma, e non chroma. Gamma correction è in realtà un concetto RGB, e non si sa
+  come realizzarlo in modo corretto in YUY2. Tuttavia, se <var>gamma</var> = 1.0,
+  il filtro dovrebbe avere lo stesso effetto sia in RGB che in YUY2. Per correggere
+  brightness o contrast &egrave; meglio usare <a href="tweak.htm">Tweak</a> o
+  <a href="coloryuv.htm">ColorYUV</a>, perch&eacute; <code>Levels</code> cambia
+  anche il chroma del clip.
+<p>In <em>v2.53</em> &egrave; stato aggiunto un parametro opzionale <var>coring</var>
+  = <var>true/false</var> (true di default, che riflette il comportamento delle
+  versioni precedenti ) . Impostato a true, significa che il range del luma &egrave;
+  limitato a [16,235] sia in input che in output (il che vuol dire che [0,16]
+  &egrave; mappato a 16, e [235,output_high] a 235). Impostato a false significa
+  che il range del luma &egrave; limitato a [0,255] (il che vuol dire che l'output
+  [255,output_high] &egrave; mappato 255).
 <pre># Questo non fa nulla su un clip [16,235] , ma fissa un clip [0,255] a [16,235]:
 Levels(0, 1, 255, 0, 255)
 

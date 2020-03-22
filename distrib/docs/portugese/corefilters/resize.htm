@@ -8,7 +8,7 @@
 <h2>BicubicResize / BilinearResize / LanczosResize / Lanczos4Resize /
 PointResize</h2>
 <p><code>BicubicResize </code>(<var>clip, int target_width, int target_height,
-float 
+float
   &quot;b&quot;, float &quot;c&quot;</var>)<br>
   <code>BilinearResize </code>(<var>clip, int target_width, int target_height</var>)<br>
   <code>LanczosResize </code>(<var>clip, int target_width, int target_height,
@@ -20,11 +20,11 @@ int &quot;taps&quot;</var>)<br>
 &quot;p&quot;</var>)<br>
   <code>PointResize </code>(<var>clip, int target_width, int target_height</var>)</p>
 <p><code>BicubicResize </code>(<var>clip, int target_width, int target_height,
-float 
+float
   &quot;b&quot;, float &quot;c&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;,
 float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
   <code>BilinearResize </code>(<var>clip, int target_width, int target_height,
-float 
+float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;,
 float &quot;src_height&quot;, int &quot;taps&quot;</var>)<br>
   <code>LanczosResize </code>(<var>clip, int target_width, int target_height,
@@ -55,7 +55,7 @@ diferença de velocidade.</span></p>
 <pre>Crop(10,10,200,300).BilinearResize(100,150)
   é igual a
 BilinearResize(100,150,10,10,200,300)</pre>
-    
+
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
@@ -69,7 +69,7 @@ PT-BR;mso-bidi-language:AR-SA">Qual é chamado primeiro, é determinado pelo que
 tiver a menor relação diminuída. Isto é feito para preservar máxima
 qualidade, assim o 2º <b>resizer</b> tem o melhor quadro possível para
 trabalhar.</span></p>
-<h3><b> <a href="filters/blur.html"></a></b> 
+<h3><b> <a href="filters/blur.html"></a></b>
  BilinearResize
 </h3>
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
@@ -137,7 +137,7 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA"># para encher todo o quadro</span>
 BilinearResize(320,240,160,0,160,120)
 </pre>
-    
+
 <h3>BicubicResize
 </h3>
 <p><tt><code>BicubicResize</code></tt> <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
@@ -227,7 +227,7 @@ PT-BR;mso-bidi-language:AR-SA">nome correto</span>: Lanczos3Resize). <span style
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Os usos de lóbulos posteriores 2*3=6 e os
-anteriores 2*4=8 para fazer o resizing. O resultado é que</span> <code>Lanczos4Resize</code>  
+anteriores 2*4=8 para fazer o resizing. O resultado é que</span> <code>Lanczos4Resize</code>
 <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
@@ -255,11 +255,11 @@ sucessivamente.</span><br>
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Assim o número total de tampas que você precisa
-para downsampling é a relação de downsampling, </span> 
+para downsampling é a relação de downsampling, </span>
 <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
-PT-BR;mso-bidi-language:AR-SA">vezes </span> 
+PT-BR;mso-bidi-language:AR-SA">vezes </span>
 <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:

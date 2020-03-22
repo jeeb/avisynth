@@ -4,7 +4,7 @@
    <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: bordercontrol.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: bordercontrol.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,13 +12,13 @@ $Id: bordercontrol.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>  Simon Walters
 <br><b>verze:</b>  1.4<br>
-<b>stáhnout:</b>   <a href="http://www.geocities.com/siwalters_uk/bdrcntrl.html">http://www.geocities.com/siwalters_uk/bdrcntrl.html</a>, 
+<b>stáhnout:</b>   <a href="http://www.geocities.com/siwalters_uk/bdrcntrl.html">http://www.geocities.com/siwalters_uk/bdrcntrl.html</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a><br>
 <b>kategorie:</b> Pluginy pro vysílané video<br>
 <b>požadavky:</b> YV12 &amp; YUY2 Barevné prostøedí
 <hr>
 <h3>Popis</h3>
-<p><b>Poznámka:</b>Levé a pravé parametry 
+<p><b>Poznámka:</b>Levé a pravé parametry
 jsou filtrem dublovány, protože jsem si ještì nevybral, jak správnì pracovat s
 1 barevnostním vzorkem na 2 jasové vzorky :-(</p>
 <p>Vykonává to stejné funkce
@@ -31,12 +31,12 @@ nutnosti oøíznutí a zmìny velikosti celého snímku kvùli nìkolika pixelùm. S Každ
 LoadPlugin(&quot;BorderControl&quot;)
 AVISource(&quot;Test.avi&quot;)
 BorderControl(YBB=16, YTS=32)</pre>
-<p>Toto by vložilo jednolitý èerný pruh na spodek a rozmazalo nìkolik øádkù 
+<p>Toto by vložilo jednolitý èerný pruh na spodek a rozmazalo nìkolik øádkù
 na vrchu obrazu. Plugin pøijímá 16 parametrù, 4 pro každý pruh.<br>
 Jsou 4 pøedpony: <var>YB</var>, <var>YT</var>, <var>XL</var> a <var> XR</var> oznaèující
 spodní (bottom), horní (top), levý (left) a pravý (right) pruh.</p>
 <p>Jsou 4 pøípony: <var> B</var> oznaèující
-pruh (border) - to nastavuje šíøku souvislého pruhu, <var> F</var> oznaèující 
+pruh (border) - to nastavuje šíøku souvislého pruhu, <var> F</var> oznaèující
 šíøku stmívání-pøechod do èerna (fade), <var> S</var> oznaèující šíøku rozmazání (smear) a
 <var> SF</var> oznaèující rozšíøené rozmazání (SmearFactor).</p>
 <p>Zvyšování rozšíøeného rozmazání SF (nejdøíve je potøeba

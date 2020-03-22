@@ -8,7 +8,7 @@
 </head>
 <body>
 <h2>
-<a name="Merge"></a>Merge / MergeChroma / MergeLuma 
+<a name="Merge"></a>Merge / MergeChroma / MergeLuma
 </h2>
 
 <p><code>Merge </code>(<var>clip1, clip2, float weight=0.5</var>)&nbsp;<code><br>
@@ -33,7 +33,7 @@ MergeLuma(lumvid)
 # 色差チャンネルで空間軸平滑化を行う。色差チャンネルは、
 # オリジナルの画像と 50 対 50 の割合で混ぜ合わされる。
 mpeg2source(&quot;c:\apps\avisynth\main.d2v&quot;)
-chromavid = SpatialSmoother(2,3) 
+chromavid = SpatialSmoother(2,3)
 MergeChroma(chromavid,0.5)
 
 # 輝度チャンネルには TemporalSmoother （時間軸平滑化）と
@@ -53,16 +53,16 @@ MergeChroma(chroma)
 avisource(&quot;c:\apps\avisynth\main.avi&quot;)
 vid2 = avisource(&quot;c:\apps\avisynth\main2.avi&quot;)
 Merge(vid2)</pre>
-      
+
 <p><b>更新履歴:</b></p>
-      
+
 <table border="1" width="12%">
   <tr>
     <td width="5%">v2.56</td>
     <td width="95%">Merge を追加</td>
   </tr>
 </table>
-      
+
 <p><kbd>原文 Date: 2005/07/08 22:53:16</kbd><br />
 <kbd>日本語訳 $Date: 2008/06/22 07:41:16 $</kbd></p>
 <form>

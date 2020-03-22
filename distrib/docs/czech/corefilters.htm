@@ -3,7 +3,7 @@
 <head>
 <!--
 Not automatically generated, has been changed:
-$Id: corefilters.htm,v 1.2 2010/02/27 14:50:13 wilbertd Exp $ 
+$Id: corefilters.htm,v 1.2 2010/02/27 14:50:13 wilbertd Exp $
 -->
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-2">
    <meta name="Keywords" content="Avisynth 2 Filter Reference">
@@ -18,9 +18,9 @@ $Id: corefilters.htm,v 1.2 2010/02/27 14:50:13 wilbertd Exp $
 Úvod</h2>
 
 <p>
-          
+
   Zde
-          
+
   jsou uvedeny dostupné (vnitřní) filtry a jsou zde rozděleny
 do kategorií. Je přidán krátký popis, včetně podporovaných barevných formátů (a typů
 vzorků&nbsp;pro audio filtry). Existuje několik funkcí, které&nbsp;různými způsoby kombinují&nbsp;dva&nbsp;nebo&nbsp;více klipů. Jak je obsah videa
@@ -416,7 +416,7 @@ prvního do posledního.</td>
 <h2>
 <a NAME="interlaced"></a><span class="mw-headline">Filtry pro prokládání</span></h2>
 
-<p>   Tyto filtry mohou být 
+<p>   Tyto filtry mohou být
 použity pro vytvoření a&nbsp;zpracování materiálu založeného na polích&nbsp;(což je&nbsp;materiál&nbsp;založený na
 snímcích&nbsp;rozdělených do polí). AviSynth je schopen vypořádat se jak s progresivním tak&nbsp;s
 prokládaným&nbsp;materiálem. Hlavním problémem je, že často není známo co je doručováno ze zdrojových filtrů.&nbsp;To
@@ -430,7 +430,7 @@ se s prokládaným&nbsp;materiálem.&nbsp;Více informací o videu založeném na políc
     <td WIDTH="30%"><A href="corefilters/parity.htm">AssumeFrameBased
 / AssumeFieldBased
       </A></td>
-    <td WIDTH="70%"> Vynutí materiál založený na 
+    <td WIDTH="70%"> Vynutí materiál založený na
       snímcích (frame-based)&nbsp;nebo na polích (field-based).
           </td>
   </tr>
@@ -444,7 +444,7 @@ se s prokládaným&nbsp;materiálem.&nbsp;Více informací o videu založeném na políc
 
   <tr>
     <td WIDTH="30%"><A href="corefilters/bob.htm">Bob</A></td>
-    <td WIDTH="70%">Bob bere klip a 
+    <td WIDTH="70%">Bob bere klip a
       provádí&nbsp;bob-deinterlace (odstranění prokládání).</td>
   </tr>
 
@@ -494,7 +494,7 @@ snímku.</td>
 
 <h2>
 <a NAME="audio"></a><span class="mw-headline">Filtry pro zpracování audia</span></h2>
-<p>Tyto filtry mohou být použity pro zpracování audia. Audio 
+<p>Tyto filtry mohou být použity pro zpracování audia. Audio
 vzorky
 z klipu budou&nbsp;automaticky&nbsp;převedeny pokud&nbsp;nějaké filtry&nbsp;vyžadují&nbsp;speciální&nbsp;typ vzorku.&nbsp;To znamená, že&nbsp;pokud filtr nepodporuje&nbsp;typ&nbsp;daného vzorku,&nbsp;tak&nbsp;automaticky&nbsp;převede
 vzorky na takové, které podporuje. Vnitřní formáty podporované&nbsp;každým filtrem jsou uvedeny&nbsp;ve sloupci&nbsp;- typ vzorku.
@@ -521,7 +521,7 @@ převede je do 16 bit,&nbsp;protože float nelze použít jako platná data pro AVI.&
 <tr>
 <td WIDTH="30%"><A href="corefilters/audiodub.htm">AudioDub / AudioDubEx</A></td>
 
-<td WIDTH="70%">        
+<td WIDTH="70%">
       AudioDub bere&nbsp;video stream (tok) z prvního argumentu
   a&nbsp;audio stream&nbsp;z&nbsp;druhého&nbsp;argumentu a combinuje je. AudioDubEx je podobný, ale nemá výhrady jestli oba klipy nemají&nbsp;video&nbsp;nebo
   audio stream.</td>
@@ -598,7 +598,7 @@ možné.</td>
 <tr>
 <td WIDTH="30%"><A href="corefilters/ssrc.htm">SSRC</A></td>
 
-<td WIDTH="70%">Provádí vysoce kvalitní změnu 
+<td WIDTH="70%">Provádí vysoce kvalitní změnu
       vzorkovací frekvence&nbsp;zvuku.
   Využívá&nbsp;SSRC od Naoki Shibaty, která poskytuje nejlepší dostupnou kvalitu převzorkování (resamplování).</td>
 </tr>
@@ -612,7 +612,7 @@ možné.</td>
 <tr>
 <td WIDTH="30%"><A href="corefilters/timestretch.htm">TimeStretch</A></td>
 
-<td WIDTH="70%">          
+<td WIDTH="70%">
   Tento filtr mění rychlost&nbsp;zvuku bez změny výšky (pitch), a mění výšku zvuku&nbsp;bez změny jeho délky.</td>
 </tr>
 
@@ -626,7 +626,7 @@ možné.</td>
 
   <tr>
     <td WIDTH="30%"><A href="corefilters/animate.htm">Animate / ApplyRange</A></td>
-    <td WIDTH="70%">Animate (ApplyRange) 
+    <td WIDTH="70%">Animate (ApplyRange)
       je&nbsp;meta-filtr který vyhodnocuje činnost nějakého filtru
 (který je jeho parametrem)&nbsp;s postupně měnícími se&nbsp;(stejnými) argumenty.</td>
   </tr>
@@ -647,7 +647,7 @@ bylo obtížné&nbsp;nebo nemožné&nbsp;vykonat normálním skriptem&nbsp;AviSynthu.</
   <tr>
     <td WIDTH="30%"><A href="corefilters/conditionalfilter.htm">ConditionalFilters / FrameEvaluate
 / ScriptClip</A> </td>
-    <td WIDTH="70%">         
+    <td WIDTH="70%">
       Animate (ApplyRange) je&nbsp;meta-filtr který vyhodnocuje činnost nějakého filtru
       (který je jeho paramatrem)&nbsp;s postupně měnícími se&nbsp;(stejnými) argumenty.</td>
   </tr>
@@ -658,7 +658,7 @@ bylo obtížné&nbsp;nebo nemožné&nbsp;vykonat normálním skriptem&nbsp;AviSynthu.</
   <tr>
     <td WIDTH="30%"><A href="corefilters/write.htm">WriteFile / WriteFileIf /
     WriteFileStart / WriteFileEnd</A></td>
-    <td WIDTH="70%">Tyto 
+    <td WIDTH="70%">Tyto
       filtry&nbsp;vyhodnocují&nbsp;výrazy a&nbsp;vypouští výsledky do&nbsp;textového
       souboru.</td>
   </tr>
@@ -722,7 +722,7 @@ a kombinuje je &nbsp;v cik cak pořadí zleva doprava.</td>
 <td WIDTH="70%">ShowFrameNumber nakreslí text&nbsp;v každém
 snímku, který udává&nbsp;pod jakým&nbsp;číslem jej&nbsp;vidí&nbsp;Avisynth.<br>
   ShowSMPTE&nbsp;zobrazí SMPTE čas. <b>hh:mm:ss:ff</b><br>
-ShowTime 
+ShowTime
 zobrazí dobu trvání s přesností na milisekundy. <b>hh:mm:ss.sss</b></td>
 </tr>
 

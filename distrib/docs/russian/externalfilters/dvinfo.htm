@@ -7,7 +7,7 @@
   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: dvinfo.htm,v 1.3 2007/12/03 18:56:30 fizick Exp $ 
+$Id: dvinfo.htm,v 1.3 2007/12/03 18:56:30 fizick Exp $
 -->
 </head>
 <body>
@@ -37,12 +37,12 @@ the frame). Обратите внимание: функция НЕ загружает видео или звуковое
 с помощью <code>AviSource</code>!</p>
 <p>Код времени и служебная информация о записи затем впечатывается в
 кадр как-будто вы используется функция субтитров <code>Subtitle()</code> и параметры
-<var>x, y, font</var>(шрифт), <var>size</var> (размер), 
+<var>x, y, font</var>(шрифт), <var>size</var> (размер),
 <var>text_color</var> (цвет шрифта) и <var>halo_color</var> (цвет гало-обрамления)
  подаются непосредственно в субтитры.</p>
 <p>Переменные "времени исполнения" ("run-time"): "current_frame",
 "tc_time", "rec_time" устанавливаются таким образом, что Вы можете
-использовать их в выражениях для вывода 
+использовать их в выражениях для вывода
 <var>"output"</var> (это работает как со скрипт-клипом
 (<code>ScriptClip</code>), загляните в документацию за подробностями).</p>
 <p>Можно установить генерируемый формат информации о времени с помощью
@@ -64,7 +64,7 @@ the frame). Обратите внимание: функция НЕ загружает видео или звуковое
     <tr>
       <td>
       <pre>LoadPlugin("c:\myprojects\dvinfo\release\dvinfo.dll")
-      
+
 file = "c:\myprojects\type2.avi" # чтобы не вводить имя файла дважды
 
 Avisource(file)          # открыть видео файл
@@ -132,7 +132,7 @@ Avisource(file1).DVInfo(file1, "rec_time") + Avisource(file2).DVInfo(file2, "rec
     <tr>
       <td>
       <pre>LoadPlugin("c:\myprojects\dvinfo\release\dvinfo.dll")
-      
+
 file1 = "c:\myprojects\type2a.avi"
 
 Avisource(file1)
@@ -148,7 +148,7 @@ DVInfo(file1, "rec_time")  # здесь DVInfo берет неверные номера кадров</pre>
     <tr>
       <td>
       <pre>LoadPlugin("c:\myprojects\dvinfo\release\dvinfo.dll")
-      
+
 file1 = "c:\myprojects\type2a.avi"
 file2 = "c:\myprojects\type2b.avi"
 

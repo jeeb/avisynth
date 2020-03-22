@@ -17,18 +17,18 @@ podobny do tego co w VD. Skrypty s± proste do napisania, poniewa¿, je¶li nie chc
 Dla próby, stwórz plik o nazwie <i> test.avs</i> i umie¶æ w nim nastêpuj±c± pojedyncz± liniê tekstu:
 <div align="center">
   <center>
-  
+
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>Version</p1>
     </p></td>
   </tr>
 </table>
-  
+
   </center>
 </div>
-  
+
 <p>Teraz otwórz ten plik w jakim¶ odtwarzaczu video (chocia¿by w Windows
 Media Player'ze). Powiniene¶ zobaczyæ dziesiêciosekundowy klip video wy¶wietlaj±cy
 numer wersji u¿ywanego AviSynth&#8217;a oraz notkê o prawach autorskich.&nbsp;<br>
@@ -42,17 +42,17 @@ Do poprzedniego skryptu dodaj drug± linijkê poleceñ, tak by skrypt wygl±da³ nast
   <center>
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>Version<br>
       ReduceBy2</p1>
     </p></td>
   </tr>
 </table>
-  
+
   </center>
 </div>
-  
+
 <p>Ponownie odtwórz skrypt w jakim¶ player'ze. Tym razem równie¿ powiniene¶
 zobaczyæ notkê o prawach autorskich, jednak¿e w zmniejszon± o po³owê
 rozdzielczo¶ci. <b> ReduceBy2</b> jest <i> "filtrem transformacyjnym&quot;</i>,
@@ -63,18 +63,18 @@ Dodaj kolejn± linijkê skryptu, powoduj±c± ¶ciemnienie siê klipu video do czerni 
   <center>
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>Version<br>
       ReduceBy2<br>
       FadeOut(24)</p1>
     </p></td>
   </tr>
 </table>
-  
+
   </center>
 </div>
-  
+
 <p>Ponownie odtwórz skrypt. Klip powinien byæ taki sam jak poprzedni, ale
 tylko przez dziewiêæ pierwszych sekund, w ostatniej sekundzie, powinien spokojnie ¶ciemniaæ siê do uzyskania czerni.<br>
 Filtr <b> FadeOut</b> przyjmie numeryczny argument, który wskazuje liczb± klatek podlegaj±ce ¶ciemnianiu. Video wytworzone przez filtr
@@ -91,8 +91,8 @@ By pozbyæ siê pierwszych 192 klatek (8 sekund, 192/24=8), zmodyfikuj poprzedni s
   <center>
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>Version<br>
       ReduceBy2<br>
       FadeOut(24)<br>
@@ -100,10 +100,10 @@ By pozbyæ siê pierwszych 192 klatek (8 sekund, 192/24=8), zmodyfikuj poprzedni s
     </p></td>
   </tr>
 </table>
-  
+
   </center>
 </div>
-  
+
 <p>Po raz pierwszy u¿yli¶my komentarza. Komentarz rozpoczyna siê od znaku # i jest aktywny do koñca linii
 (AviSynth ignoruje wszystko co jest po znaku #).<br>
 Filtr <b> Trim</b> przyjmuje dwa argumenty oddzielone przecinkiem: pierwsz± i
@@ -121,8 +121,8 @@ klipu:
   <center>
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>AVISource("d:\capture.avi")   # oczywi¶cie podajesz swoj± ¶cie¿kê dostêpu&nbsp;<br>
  ReduceBy2&nbsp;<br>
  FadeOut(15)&nbsp;<br>
@@ -130,25 +130,25 @@ klipu:
     </td>
   </tr>
 </table>
-  
+
   </center>
 </div>
-  
+
 <p>Nawet pojedyncza linia skryptu zawieraj±ca tylko polecenie <b> AVISource</b> mo¿e byæ przydatna
 przy korzystaniu z aplikacji przyjmuj±cych pliki AVI, które maj± wielko¶æ poni¿ej 2 GB, dziêki temu skryptowi zabezpieczenie to zostanie ominiête
 (najczê¶ciej dotyczy to materia³u DV).
 <p><u><b>Edycja nieliniowa<br>
 </b>
-</u>Stwórz plik AVS z nastêpuj±cym skryptem: 
+</u>Stwórz plik AVS z nastêpuj±cym skryptem:
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>StackVertical(Version, Version)</p1>
     </p></td>
   </tr>
 </table>
-  
+
 <p>Teraz odtwórz go. Rezultat: wyj¶ciowy materia³ video zawiera dwie identyczne notki o prawach autorskich, przy czym jedna jest nad drug±.&nbsp;<br>
 Zamiast przyjmowania argumentu numerycznego lub znakowego, <b> StackVertical</b>
 przyjmuje, jako argumenty, klipy video. W tym skrypcie filtr <b> Version</b> jest okre¶lony dwa razy. Ka¿de powtórzenie zwróci kopie klipu
@@ -158,43 +158,43 @@ Jednym z przydatniejszych <i> filtrów ³±cz±cych</i> jest <b> UnalignedSplice</b>
 razem:
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>UnalignedSplice(AVISource("d:\capture.00.avi"), AVISource("d:\capture.01.avi"), AVISource("d:\capture.02.avi"))</p1>
     </p></td>
   </tr>
 </table>
-  
+
 <p>Oba filtry, <b> StackVertical</b> i <b> UnalignedSplice</b>, mog± przyj±æ wiêcej ni¿ dwa argumenty, ale nie wiêcej ni¿ sze¶ædziesi±t. Jako
 skrót dla filtra <b> UnalignedSplice</b> mo¿esz u¿yæ operatora dodawania (+). Dla przyk³adu, stwórz podobny skrypt do poni¿szego
 (ma on identyczne dzia³anie jak powy¿szy przyk³ad):
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>AVISource("d:\capture.00.avi") + AVISource("d:\capture.01.avi") + AVISource("d:\capture.02.avi")</p1>
     </p></td>
   </tr>
 </table>
-  
+
 <p>Teraz przypu¶æmy, ¿e przechwytujesz video w aplikacji, która równie¿ umo¿liwia zapis pliku AVI podzielonego na czê¶ci, ale audio jest w
 jednym, oddzielnym pliku WAV. Czy mo¿emy co¶ zaproponowaæ? Oczywi¶cie:
 
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>AudioDub(AVISource("d:\capture.00.avi")+AVISource("d:\capture.01.avi")+AVISource("d:\capture.02.avi"), WAVSource("d:\audio.wav"))</p1>
     </p></td>
   </tr>
 </table>
-  
+
 <br>
 <h1><span class="titresmall"><a name="Syntax">Sk³adnia</h1>
 <p><u><b>Przypisanie do zmiennej<br>
 </b></u>Skrypt AviSynth sk³ada siê z ró¿nych poleceñ, równie¿ podobnych do tego:
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>zmienna = wyra¿enie</p1>
     </td>
   </tr>
@@ -202,8 +202,8 @@ jednym, oddzielnym pliku WAV. Czy mo¿emy co¶ zaproponowaæ? Oczywi¶cie:
 <p>W przyk³adzie tym, <i> wyra¿enie</i> jest oceniane i w rezultacie przydzielone do
 <i>zmienna</i>.</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>wyra¿enie</p1>
     </td>
   </tr>
@@ -211,16 +211,16 @@ jednym, oddzielnym pliku WAV. Czy mo¿emy co¶ zaproponowaæ? Oczywi¶cie:
 <p>Natomiast tym razem, <i> wyra¿enie</i> jest oceniane i w rezultacie przydzielone do specjalnej zmiennej klipu -
 <i> last</i>. Oznacza to samo co:&nbsp;</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>last = wyra¿enie</p1>
     </td>
   </tr>
 </table>
 <p>Koniec takiego skryptu zawsze wygl±da tak:&nbsp;</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td><p> 
+  <tr>
+    <td><p>
       <p1>return zmienna</p1>
     </td>
   </tr>
@@ -228,7 +228,7 @@ jednym, oddzielnym pliku WAV. Czy mo¿emy co¶ zaproponowaæ? Oczywi¶cie:
 <p>Powy¿ej <i>zmienna</i> zostanie oceniano i u¿ywana jako: <i>&quot;zwróæ warto¶æ</i><i>"</i> skryptu - jest to klip video, który bêdzie widziany przez aplikacjê podczas otwarcia pliku AVS.&nbsp;<br>
 Podstawowa forma wyra¿enia która wywo³uje funkcjê jest nastêpuj±ca:&nbsp;</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td><p><p1>funkcja(args)</p1>
     </td>
   </tr>
@@ -238,7 +238,7 @@ Podstawowa forma wyra¿enia która wywo³uje funkcjê jest nastêpuj±ca:&nbsp;</p>
 <i> last</i>.&nbsp;<br>
 Filtry AviSynth mog± przyjmowaæ nazwy argumentów. Nazwy argumentów mog± byæ okre¶lone w obojêtnie jakiej kolejno¶ci, a filtr wybierze domy¶ln± warto¶æ dla ka¿dego, który zostanie ominiêty. Nazwy argumentów s± dodatkowe, ale przy ich wpisaniu wiadomo czego dotyczy dana warto¶æ.</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td> <p>
       <p1>Subtitle(&quot;Hello, World!&quot;, 100, 200, 0, 999999, &quot;Arial&quot;,
       24, $00FF00)</p1>
@@ -248,7 +248,7 @@ Filtry AviSynth mog± przyjmowaæ nazwy argumentów. Nazwy argumentów mog± byæ okre
 <p>poni¿szy skrypt jest bardziej czytelny dla osoby czytaj±cej skrypt (równie¿
 w przypadku edycji skryptu, np. nastêpnego dnia):</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td> <p>
       <p1>Subtitle(&quot;Hello, World!&quot;, text_color=$00FF00, x=100,
       y=200)</p1>
@@ -261,7 +261,7 @@ dodaniu nazw argumentom ich kolejno¶æ nie jest istotna.<br>
 <br>
 Alternatywn± sk³adni± (zwan± <i>&quot;notacja OOP&quot;</i>) dla funkcji klipów jest:&nbsp;</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td> <p>
       <p1>wyra¿enie.funkcja(args), np.: Version.ReduceBy2.FadeOut(15)</p1>
     </td>
@@ -269,7 +269,7 @@ Alternatywn± sk³adni± (zwan± <i>&quot;notacja OOP&quot;</i>) dla funkcji klipów 
 </table>
 <p>jest to równowa¿ne do:</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td> <p>
       <p1>funkcja(wyra¿enie, args), np.: FadeOut(15, ReduceBy2(Version))</p1>
     </td>
@@ -290,8 +290,8 @@ linijka tekstu i chcemy go <i>&quot;przerzuciæ&quot; </i>do nastêpnej linii w
 okre¶lonym miejscu, najlepiej odwzorowuj± to poni¿sze przyk³ady (wszystkie
 trzy mo¿liwe wywo³ania tego skryptu, ze znakiem \ i bez, s± sobie równowa¿ne):</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
-    <td height="18", width="25%"> 
+  <tr>
+    <td height="18", width="25%">
       <p><p1>Subtitle
       (&quot;Test-Text&quot;) </p1>
     </td>
@@ -333,7 +333,7 @@ zdefiniowane przez u¿ytkownika w skrypcie g³ównym<br>
 <br>
 Poni¿ej s± dwa przyk³ady wykonuj±ce t± sam± czynno¶æ, z t± ró¿nic±, ¿e drugi u¿ywa zmiennej globalnej:</p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td> <p>
       <p1>AudioDub(AVISource("d:\capture.00.avi")+AVISource("d:\capture.01.avi")+AVISource("d:\capture.02.avi"), WAVSource("d:\audio.wav"))<br>
       <br>
@@ -376,7 +376,7 @@ Dla typów numerycznych (int, float):&nbsp;<br>
 </b>
 > <b> wiêksze&nbsp;</b></p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td><p><p1>We wcze¶niejszych wersjach AviSynth, wylicza³ wyra¿enia od prawej do lewej co dawa³o b³êdne wyniki:&nbsp;<br>
       <br>
       a = 10 - 5 - 5 w rezultacie 10 - (5 - 5) = 10 zamiast (10 - 5) - 5 = 0 !&nbsp;&nbsp;<br>
@@ -404,7 +404,7 @@ dla typu bool:&nbsp;<br>
 ?: <b> wykonanie kodu warunkowego&nbsp;</b>
 </p>
 <table width="99%" border="1" cellspacing="0" cellpadding="4">
-  <tr> 
+  <tr>
     <td><p><p1>b = (a==true) ? 1 : 2<br>
       <br>
       oznacza to samo co poni¿szy zapis:<br>

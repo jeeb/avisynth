@@ -29,11 +29,11 @@ license:</b> GPL</p>
 <h3>Technical info</h3>
 
 <p>
-FFT3DFilter uses Fast Fourier Transform method for image processing in frequency domain. 
+FFT3DFilter uses Fast Fourier Transform method for image processing in frequency domain.
 It is based on some advanced mathematical algorithmes of optimal filtration.
-It works not locally, but makes some delocalized (block) processing. 
+It works not locally, but makes some delocalized (block) processing.
 In 3D mode, it results in effect similar to partial motion compensation.
-This filter can reduce noise without visible quality loss and artefactes, 
+This filter can reduce noise without visible quality loss and artefactes,
 even with quite strong settings.
 It can greatly improve compression and reduce encoded file size.<br>
 Also it has option of limited sharpening without both noise amplifying and oversharpening (haloing).<br>
@@ -96,40 +96,40 @@ process algorithm. The filter starts work with small (=1) gain (degree of
 noise reducing), and than gradually (in frames sequence) increases the
 gain if inter-frame local spectrum (noise) variation is small.
 So, Kalman filter can provide stronger noise reduction than Wiener filter.
-The Kalman filter gain is limited by some given noise value. 
-The local gain (and filter work) is reset to 1 
-when local variation exceeds the given threshold 
+The Kalman filter gain is limited by some given noise value.
+The local gain (and filter work) is reset to 1
+when local variation exceeds the given threshold
 (due to motion, scene change, etc). So, the Kalman filter output is history-dependent
 (on frame taken as a start filtered frame).</li>
 </ul>
 
 <h4>Using noise pattern</h4>
-<p>Since v1.5 it is possible to get noise pattern (shape) 
-by spectrum analyisis of some empty block (without any objects), 
-and then to reduce the noise with the same pattern in whole frame and in whole clip. 
+<p>Since v1.5 it is possible to get noise pattern (shape)
+by spectrum analyisis of some empty block (without any objects),
+and then to reduce the noise with the same pattern in whole frame and in whole clip.
 It may be useful for removal of film (especialy amateur 8 mm) grain and analog TV capture interference.
 
 <h4>Sharpening</h4>
 <p> At sharpening stage (after denoising) the plugin amplifies high spectrum (spatial, 2D) frequencies .<br>
 There is also sharpen-only mode without denoising (<var>bt</var>=-1).<br>
-Since version 1.1, some special limited sharpening method is used :</p> 
+Since version 1.1, some special limited sharpening method is used :</p>
 <ul>
-<li>the weakest frequencies (with small amplitudes) are not amplifyed  
+<li>the weakest frequencies (with small amplitudes) are not amplifyed
 to prevent noise increasing;</li>
-<li>the strongest frequencies (with large amplitudes) are not amplifyed  
+<li>the strongest frequencies (with large amplitudes) are not amplifyed
 to prevent oversharping and haloing.</li>
 </ul>
-<p>The sharpening strength is maximal for frequencies with middle-range amplitudes. 
+<p>The sharpening strength is maximal for frequencies with middle-range amplitudes.
 Of course, you can control both these margins and general sharpening strength.</p>
 <p>Since v.1.7, Gaussian High Pass Filter with variable cutoff frequency is used for sharpening.</p>
 
 <h3>Syntax</h3>
 
 <p><code>FFT3DFilter</code>(<var>clip,
-float "sigma", float "beta", int "plane", int "bw", int "bh", int "bt", int "ow", int "oh", 
-float "kratio", float "sharpen", float "scutoff", float "svr", float "smin", float "smax", 
-bool "measure", bool "interlaced", int "wintype", 
-int "pframe", int "px", int "py", bool "pshow", float "pcutoff", float "pfactor", 
+float "sigma", float "beta", int "plane", int "bw", int "bh", int "bt", int "ow", int "oh",
+float "kratio", float "sharpen", float "scutoff", float "svr", float "smin", float "smax",
+bool "measure", bool "interlaced", int "wintype",
+int "pframe", int "px", int "py", bool "pshow", float "pcutoff", float "pfactor",
 float "sigma2", float "sigma3", float "sigma4"</var>)</p>
 
 <p>All parameters are named.</p>
@@ -168,7 +168,7 @@ filter, so max filter noise attenuation = <var>
 good value is about from 1.5 to 3.0;<br>
 <var>sharpen</var>
 - sharpening strength (default=0 - not sharpen)<br>
-&nbsp;&nbsp; &nbsp;&nbsp; good values about 0.3 to 1.0 (negative values results in 
+&nbsp;&nbsp; &nbsp;&nbsp; good values about 0.3 to 1.0 (negative values results in
 reverse effect)<br>
 <var>scutoff</var>
 - sharpening cutoff frequency, relative to max (default=0.3)<br>
@@ -210,32 +210,32 @@ longer init stage)<br>
 - given noise value at lowest frequencies (float&gt;0, default=<var>sigma</var>)<br>
 </p>
 
-<p>The most important parameter is a given noise value <var>sigma</var>. 
-You must use reasonable value based on a priori info for current clip.<br> 
+<p>The most important parameter is a given noise value <var>sigma</var>.
+You must use reasonable value based on a priori info for current clip.<br>
 Typical value for digital sources is about 1.5 to 2.5, and about 3 and above for analog captured video.<br>
 The good value of overlapping size is about quarter to half of block size. The half is the best, but slower.<br>
 Good values of block size are about 32 to 64.</p>
 <p>Filter can produce some grid artifacts for large <var>sigma</var>
  and small <var>bw, bh, ow, oh</var> or small relative overlap sizes, especially with sharpening enabled.<br>
 Filter can produce ghosting for large <var>sigma</var> (and <var>kratio</var>) for 3D modes.</p>
-<p>Weighting window <var>wintype</var>=0 can produce the worst grid artifactes, 
+<p>Weighting window <var>wintype</var>=0 can produce the worst grid artifactes,
 window type <var>wintype</var>=2 do not produce grid artifactes, but can produce some ringing,
 <var>wintype</var>=1 is intermediate case.</p>
 <p>Sharpening will result in worse clip compression.</>
 <p>In order to use noise pattern method in place of ordinary (blind) method you must: <br>
 Firstly switch show mode <var>pshow</var>=true, and set some non-zero value <var>pfactor</var>=1.0. <br>
-Then select  frame number and some block position, 
+Then select  frame number and some block position,
 thus the block shown must not contain any objects beside typical noise pattern.<br>
 The switch off show mode <var>pshow</var>=false, <br>
 and set noise reduction strength, recomended value <var>pfactor</var>= 0.5 to 1.0.<br>
 The best windows type for this method is <var>wintype</var>=2.<br>
-The <var>sigma</var> and <var>beta</var> parameters are not used in this denoising method, 
-but you can use this method in show mode <var>pshow</var>=true 
-to estimate <var>sigma</var> value for ordinary denoising method 
+The <var>sigma</var> and <var>beta</var> parameters are not used in this denoising method,
+but you can use this method in show mode <var>pshow</var>=true
+to estimate <var>sigma</var> value for ordinary denoising method
 (it is not strictly the same, but similar value).</p>
 
-<p>There is also combined method, when you can directly set different noise values 
- <var>sigma</var> for highest and <var>sigma2, sigma3, sigma4</var> for lower frequencies. 
+<p>There is also combined method, when you can directly set different noise values
+ <var>sigma</var> for highest and <var>sigma2, sigma3, sigma4</var> for lower frequencies.
  The pattern coefficients will be created internally from these sigmas values by interpolation.
  Set pfactor=0 for this method (internally it will be  =1).</p>
 
@@ -273,7 +273,7 @@ versions are simple slow :-).<br>
 loadplugin(&quot;c:\plugins\fft3dfilter.dll&quot;)
 FFT3DFilter(sigma=3)</pre>
 <p>Of course, you must replace "c:\plugins" by your plugins folder path (and set your video pathname too :).
-You can skip LoadPlugin command if you put fft3dfilter.dll file to autoloading plugins folder 
+You can skip LoadPlugin command if you put fft3dfilter.dll file to autoloading plugins folder
 (C:\Program Files\Avisynth 2.5\plugins). </p>
 
 <h4>To sharpen only:</h4>
@@ -287,8 +287,8 @@ loadplugin(&quot;fft3dfilter.dll&quot;)
 FFT3DFilter(sigma=3, sharpen=0.3, interlaced=true)</pre>
 
 <h4>To denoise all color planes (both luma and chroma)</h4>
-<p>Note: The processing speed will be decreased more, 
-so you can consider other (simpler and faster) filters using for chroma denosing 
+<p>Note: The processing speed will be decreased more,
+so you can consider other (simpler and faster) filters using for chroma denosing
 (<code>CNR2</code>, <code>DeGrainMedian</code>, etc).</p>
 <pre>Avisource(&quot;input.avi&quot;)
 loadplugin(&quot;fft3dfilter.dll&quot;)
@@ -305,7 +305,7 @@ in postscript format (use GSview with Ghostscript to read).<br>
 Search more info about Wiener and Kalman filters in special literature
 or Googles.</p>
 
-<p>Filter discussion is at DOOM9 Avisynth forum, thread 
+<p>Filter discussion is at DOOM9 Avisynth forum, thread
 "New very slow FFT denoiser:"<br>
 <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=85790">http://forum.doom9.org/showthread.php?s=&amp;threadid=85790</a>.</p>
 
@@ -358,12 +358,12 @@ added <var>svr</var> parameter to control vertical sharpening<br>
 </li>
 <li>Version 1.0.1 - July 05, 2005 - fixed bug for chroma planes for YUY2 (introduced in v.1.0)
 </li>
-<li>Version 1.1 - July 8, 2005 - improved sharpening method to prevent grid artifactes and to limit sharpening  
+<li>Version 1.1 - July 8, 2005 - improved sharpening method to prevent grid artifactes and to limit sharpening
 (added parameters <var>smin, smax</var>); <br>
 renamed parameter <var>ratio</var> to <var>kratio</var>.
 </li>
-<li>Version 1.2 - July 12, 2005 - changed default block sizes <var>bw=bh=48</var> 
-and overlap sizes <var>ow=bw/3, oh=bh/3</var> 
+<li>Version 1.2 - July 12, 2005 - changed default block sizes <var>bw=bh=48</var>
+and overlap sizes <var>ow=bw/3, oh=bh/3</var>
 to finally prevent grid artifactes in sharpen mode (but speed is decreased).
 </li>
 <li>Version 1.3 - July 20, 2005 - added <var>interlaced</var> parameter for interlaced video processing.
@@ -373,14 +373,14 @@ to finally prevent grid artifactes in sharpen mode (but speed is decreased).
 <li>Version 1.4 - July 23, 2005 - corrected neutral level for chroma processing, <br>
  changed weighting window type with new <var>wintype</var> parameter
 </li>
-<li>Version 1.5 - July 26, 2005 - added noise pattern method 
+<li>Version 1.5 - July 26, 2005 - added noise pattern method
 and its parameters <var>pframe, px, py, pshow, pcutoff, pfactor</var>
 </li>
 <li>Version 1.5.1 - July 29, 2005 - fixed bug with <var>pshow</var>
 </li>
 <li>Version 1.5.2 - July 31, 2005 - fixed bug with Kalman mode (<var>bt</var>=0) for Athlon (introduced in v1.5)
 </li>
-<li>Version 1.6 - August 03, 2005 - added mode <var>bt</var>=4; added optimized SSE version for <var>bt</var>=2,3; 
+<li>Version 1.6 - August 03, 2005 - added mode <var>bt</var>=4; added optimized SSE version for <var>bt</var>=2,3;
 added <var>sigma2,sigma3,sigma4</var> parameters for combined method.
 </li>
 <li>Version 1.7 - August 29, 2005 - changed sharpening to Gaussian filter with new parameter <var>scutoff</var>;<br>

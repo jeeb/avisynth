@@ -1,4 +1,4 @@
-<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd"> 
+<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd">
 <htm xmlns="http://www.w3.org/1999/xhtm" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/htm; charset=iso-8859-1" />
@@ -160,8 +160,8 @@ Ein AviSynth Skript besteht aus mehreren Zeilen, die folgende Form haben:<br />
 <br />
 </p>
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>Variablenname = Ausdruck</tt>
   </td>
  </tr>
@@ -172,8 +172,8 @@ In diesem Beispiel wird <tt>Ausdruck</tt> ausgewertet und das Ergebnis einer Var
 In diesem Zusammenhang ist die Kurzform daf&uuml;r wichtig:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>Ausdruck</tt>
   </td>
  </tr>
@@ -183,8 +183,8 @@ In diesem Fall wird <tt>Ausdruck</tt> ausgewertet und der speziellen Variablen <
 Das ist das gleiche wie:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>last = Ausdruck</tt>
   </td>
  </tr>
@@ -193,8 +193,8 @@ Das ist das gleiche wie:<br />
 Das Ende eines Skripts schaut immer so aus:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>return Ausdruck</tt>
   </td>
  </tr>
@@ -205,8 +205,8 @@ Hier wird <tt>Ausdruck</tt> ausgewertet und als R&uuml;ckgabewert des Skripts ve
 Die einfachste Form eines Ausdrucks, der eine Funktion aufruft, ist:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>Funktion(Argumente)</tt>
   </td>
  </tr>
@@ -221,8 +221,8 @@ Bei manchen AviSynth Filtern k&ouml;nnen auch &quot;benannte Argumente&quot; ver
 Das vereinfacht die Benutzung mancher Filter stark.<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    Man kann schreiben:<br />
    <tt>Subtitle(&quot;Hallo, Leute!&quot;, text_color=$00FF00, x=100, y=200)</tt><br />
    anstatt von<br />
@@ -234,8 +234,8 @@ Das vereinfacht die Benutzung mancher Filter stark.<br />
 Eine alternative Syntax (&quot;OOP-Notation") f&uuml;r Clip Funktionen ist<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    Ausdruck.Funktion(Argumente), z.B.:<br />
    <tt>Version.ReduceBy2.FadeOut(15)</tt>
   </td>
@@ -245,8 +245,8 @@ Eine alternative Syntax (&quot;OOP-Notation") f&uuml;r Clip Funktionen ist<br />
 Das ist das gleiche wie:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    Funktionen(Ausdruck, Argumente), z.B.:<br />
    <tt>FadeOut(15, ReduceBy2(Version))</tt>
   </td>
@@ -265,19 +265,19 @@ Dies geschieht beim &Ouml;ffnen des Skripts. Nur das Filtern an sich geschieht z
 <b>Kommentare</b>: AviSynth ignoriert alles ab einem # Zeichen bis zum Ende der Zeile.<br />
 <br />
 <b>Gro&szlig;- und Kleinschreibung wird ignoriert</b>: <tt>aViSouRCe</tt> ist das gleiche wie <tt>AviSource</tt>.<br />
-<br />  
+<br />
 <b>Fortsetzen</b> auf der n&auml;chsten oder von der vorherigen Zeile durch einen Schr&auml;gstrich \:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td width="33%"> 
+ <tr>
+  <td width="33%">
    <tt>Subtitle(&quot;Test-Text&quot;)</tt><br />
   </td>
-  <td width="33%"> 
+  <td width="33%">
    <tt>Subtitle (            \<br />
    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;Test-Text&quot;)</tt>
   </td>
-  <td width="33%"> 
+  <td width="33%">
    <tt>Subtitle (<br />
    \&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;Test-Text&quot;)</tt>
   </td>
@@ -306,8 +306,8 @@ Folgende Variablen-Typen k&ouml;nnen verwendet werden:<br />
 So schaut eine andere Version des Beispiels von oben aus, die besser handhabbar und leichter verst&auml;ndlich ist:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>a = AVISource(&quot;C:\Datei1.avi&quot;)<br />
        b = AVISource(&quot;C:\Datei2.avi&quot;)<br />
        c = AVISource(&quot;C:\Datei3.avi&quot;)<br />
@@ -341,8 +341,8 @@ Nur mit numerischen Operanden (int, float):<br />
 <br />
 </p>
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    In fr&uuml;heren Versionen von AviSynth wurden Ausdr&uuml;cke von rechts nach links zerlegt, was zu ungewohnten Ergebnissen f&uuml;hrte:<br />
    <tt>a = 10 - 5 - 5</tt> ergab 10 - (5 - 5) = 10 anstatt von (10 - 5) - 5 = 0 !<br />
    <br />
@@ -366,8 +366,8 @@ Mit Operanden vom Typ bool:<br />
 <tt>?:</tt> bedingte Ausf&uuml;hrung von Code:<br />
 <br />
 <table border="1" width="75%" cellspacing="1" cellpadding="4">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>b = (a==true) ? 1 : 2</tt><br />
    <br />
    &Uuml;bersetzt in Pseudo-Basic:<br /><br />
@@ -502,7 +502,7 @@ Mit Operanden vom Typ bool:<br />
       %% Prozent Zeichen<br />
       <br />
       Das # Zeichen kann vor jeden Formatierungs-Code vorangestellt werden. In diesem Fall wird die Deutung des Formatierungs-Codes wie folgt ge&auml;ndert:<br />
-      <br />         
+      <br />
       %#a, %#A, %#b, %#B, %#p, %#X, %#z, %#Z, %#% # Zeichen werden ignoriert.<br />
       %#c Long date and time representation, appropriate for current locale. For example: &quot;Tuesday, March 14, 1995, 12:41:29&quot;.<br />
       %#x Long date representation, appropriate to current locale. For example: &quot;Tuesday, March 14, 1995&quot;.<br />
@@ -540,8 +540,8 @@ Mit Operanden vom Typ bool:<br />
 <tt>Apply(func-string,arg,...)</tt>: Eval(&quot;f(x)&quot;) ist &auml;quivalent zu f(x) ist &auml;quivalent zu Apply("f", x).<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    Man kann Eval f&uuml;r sowas verwenden:<br />
    <br />
    <tt>settings = &quot;352, 288&quot;<br />
@@ -560,8 +560,8 @@ F&uuml;r Fehlermeldungen und das Auffangen von falschen Benutzereingaben kann fo
 Es gibt auch eine Funktion, mit der man &uuml;berpr&uuml;fen kann, ob ein Fehler auftreten WIRD:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>Try {<br />
    &nbsp;&nbsp; AviSource(&quot;C:\Dateiname.avi&quot;)<br />
    }<br />
@@ -580,7 +580,7 @@ Es gibt f&uuml;r diverse Anwendungen mehrere <a href="corefilters/conditionalfil
 <br />
 </p>
 <table border="1">
- <tr> 
+ <tr>
   <td>
    Ein einfaches Beispiel, um die durchschnittliche Helligkeit eines Frames zu ermitteln und diese anzuzeigen.<br />
    <br />
@@ -602,7 +602,7 @@ Es gibt f&uuml;r diverse Anwendungen mehrere <a href="corefilters/conditionalfil
 In manchen Versionen ist die Standardgr&ouml;&szlig;e 5MB, was recht wenig ist. Wenn Probleme auftreten (besonders langsame Geschwindigkeit), sollte dieser Wert auf mindestens 32MB gesetzt werden.<br />
 <tt>SetWorkingDir(string)</tt>: Setzt das Standard-Verzeichnis f&uuml;r AviSynth (normalerweise sonst das Verzeichnis in dem sich das Skript befindet). <font face="Courier New, Courier, mono" color="#FFFF66" size="4"><b>v2</b></font><br />
 Das kann vor allem f&uuml;r das einfache Laden von Quell-Clips verwendet werden und hat keinerlei Auswirkung auf das automatische Laden der Plugins. Das Ergebnis ist 0 wenn erfolgreich, sonst -1 (wenn z.B. der Pfad nicht existiert)<br />
-<br />  
+<br />
 </p>
 <hr />
 <h2>
@@ -630,8 +630,8 @@ Das kann vor allem f&uuml;r das einfache Laden von Quell-Clips verwendet werden 
 <br />
 </p>
 <table border="1" width="100%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    Nicht vergessen: die Clip-Eigenschaften k&ouml;nnen auch mit der impliziten Variablen LAST oder mit der OOP-Notation verwendet werden:<br />
    <br />
    <tt>BilinearResize(Width/2, Height/2)</tt><br />
@@ -652,8 +652,8 @@ Funktionen</b></span></h2>
 <br />
 </p>
 <table border="1" width="87%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>
     function NTSC2PAL(clip c) {<br />
     &nbsp;&nbsp; # Ziemlich gut für NTSC-&gt;PAL Konvertierungen. Noch besser w&auml;re es mit Smart Bob. :-)<br />
@@ -668,8 +668,8 @@ Funktionen</b></span></h2>
 Sogar rekursive Funktionen k&ouml;nnen definiert werden:<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>function TRANSITION(clip clip, int &quot;start&quot;, int &quot;expo&quot;, int &quot;overlap&quot;)<br />
    {<br />
    &nbsp;&nbsp; return ( start &gt;= clip.framecount-expo ?<br />
@@ -761,7 +761,7 @@ L&auml;dt ein oder mehrere externe AviSynth Plugins (Dll`s).<br />
 So wird ein Plugin geladen, das f&uuml;r VirtualDub geschrieben wurde. "Dateiname" ist der Name der .vdf-Datei. Nach dem Aufruf dieser Funktion kann das Filter mit "Filtername" in AviSynth benutzt werden. VirtualDub Filter unterst&uuml;tzen nur den RGB32-Farbraum. Wenn das Video in einem anderen Format vorliegt, muss man <tt>ConvertToRGB32</tt> verwenden (<tt>ConvertToRGB</tt> reicht nicht aus).<br />
 <br />
 Das Ergebnis mancher Filter h&auml;ngt von vorhergehenden Frames ab, f&uuml;r diese muss <tt>preroll</tt> mindestens die Anzahl der Frames sein, die der Filter zum Auff&uuml;llen seiner internen Speicher ben&ouml;tigt und/oder um seine internen Variablen zu aktualisieren.<br />
-<br />  
+<br />
 <hr />
 <br />
 <tt>LoadVFAPIPlugin</tt>(&quot;Dateiname&quot;, &quot;Filtername&quot;)<br />
@@ -773,14 +773,14 @@ So k&ouml;nnen VFAPI Plugins (TMPGEnc Import Plugins) verwendet werden.<br />
 <a name="autoloading"></a><b>Automatisches Laden von Plugins und Funktionsnamen Priorit&auml;t</b> <font face="Courier New, Courier, mono" color="#FFFF66" size="+1"><b>v2</b></font><br />
 <br />
 Es ist m&ouml;glich, alle Plugins und Skripte mit benutzerdefinierten Funktionen oder globalen Variablen in einem Verzeichnis abzulegen, aus dem dann alle Dateien mit den Endungen .AVS and .DLL beim Starten von AviSynth geladen werden (dynamisch, d.h. wenn sie wirklich vom Skript ben&ouml;tigt werden).<br />
-<br />  
+<br />
 Skripte in diesem Verzeichnis sollten nur Funktions-Definitionen und globale Variable, aber nicht den Teil der Videobearbeitung beinhalten (also kein <tt>AviSource</tt> usw.), sonst k&ouml;nnen seltsame Fehler auftreten. Auch sollten keine anderen Dateien in diesem Verzeichnis gespeichert werden.<br />
 <br />
 Der Verzeichnisname ist in der Registry gespeichert (der Registry-Schl&uuml;ssel hat sich bei <font face="Courier New, Courier, mono" color="#FFFF66" size="+1"><b>v2.5</b></font> ge&auml;ndert). Man kann eine .REG-Datei mit folgendem Inhalt doppelklicken, um den Pfad zu setzen (nat&uuml;rlich vorher den wirklichen Pfad einsetzen):<br />
 <br />
 <table border="1" width="75%">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>REGEDIT4<br />
    <br />
    [HKEY_LOCAL_MACHINE\SOFTWARE\AviSynth]<br />

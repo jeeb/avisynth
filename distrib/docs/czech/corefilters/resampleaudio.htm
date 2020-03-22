@@ -14,7 +14,7 @@
 vysoce kvalitní zmìnu&nbsp;vzorkovací frekvence audia. Pøevod je pøeskoèen, pokud u¾ audio zadanou frekvenci má.</p>
 <p>Pøi pou¾ití frakèního pøevzorkování je výstupní vzorkovací frekvence audia&nbsp;dána takto&nbsp;:<br>
 <pre>int(new_rate_numerator / new_rate_denominator + 0.5)</pre>Nicménì uvnitø filtru se pou¾ívá tento souèinitel pøevzorkování :
-<pre>new_rate_numerator / (new_rate_denominator * old_sample_rate)</pre> 
+<pre>new_rate_numerator / (new_rate_denominator * old_sample_rate)</pre>
     To vede k mírné zmìnì délky&nbsp;audia&nbsp;(co¾ je obecnì ¾ádoucí).
 <p> Od <em>v2.53</em>&nbsp; <tt>ResampleAudio</tt> pøijímá jakýkoliv poèet kanálù.&nbsp;
 <br> Od <em>v2.56</em> <tt>ResampleAudio</tt> zpracovává desetinné vzorky

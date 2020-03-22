@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: smoothuv.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: smoothuv.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -33,7 +33,7 @@ bool HQY, bool HQC, bool field</var>)</p>
     Èím vìtší tím vìtší vyhlazení.</li>
   <li><var>tY</var> a <var>tC</var> jsou prahové hodnoty - thresholds (citlivost na detaily). Èím vìtší, tím vìtší vyhlazení (ne pøesnì to samé jako fpr jiných
     SSHiQ filtrù).</li>
-  <li><var>str</var> je síla (použito jen v HiQ režimu), t.j. kolik vyhlazené verze by mìlo být maximálnì použito pro výpoèet nového 
+  <li><var>str</var> je síla (použito jen v HiQ režimu), t.j. kolik vyhlazené verze by mìlo být maximálnì použito pro výpoèet nového
     pixelu</li>
   <li><var>HQY</var> a <var>HQC</var> øíká jestli použít HiQ (vysoká kvalita) režim, kde informace o hranách automaticky snižuje hodnotu síly.<br>
     (HQ == 0) ? smoothed_pixel : ( (strength-edge)*smoothed_pixel + (256-(strength-edge))*pixel_in )/256</li>
@@ -46,7 +46,7 @@ bool HQY, bool HQC, bool field</var>)</p>
   <li><var>threshold</var> je ten samý jako ve smartsmoothIQ</li>
   <li><var>field</var> stejnì jako výše</li>
 </ul>
-<p>Tento filtr vùbec nezpracovává jas (luma), a dá se na nìj dívat jako na zkrácenou verzi 
+<p>Tento filtr vùbec nezpracovává jas (luma), a dá se na nìj dívat jako na zkrácenou verzi
 SSHiQ(rY, radius, -1, threshold, 255, false, false, field)</p>
 <p><kbd>$English Date: 2004/08/17 20:31:19 $</kbd></p>
 <p><kbd>Èeský pøeklad:17.2.2009</kbd></p>

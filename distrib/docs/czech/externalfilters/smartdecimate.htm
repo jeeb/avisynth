@@ -12,15 +12,15 @@ $Id: smartdecimate.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b> SmartDecimate by Kevin Atkinson<br>
 <b>verze:</b>     v0.23 (C plugin, naèítá se pomocí LoadCPlugin)<br>
-<b>dowload:</b> <a href="http://kevin.atkinson.dhs.org/tel/">http://kevin.atkinson.dhs.org/tel/</a>, 
+<b>dowload:</b> <a href="http://kevin.atkinson.dhs.org/tel/">http://kevin.atkinson.dhs.org/tel/</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>   Odstraòování prokládání &amp; pulldown
 <br><b>poadavky:</b> YV12 &amp;&nbsp; YUY2 Barevné prostøedí
 <hr>
 <p>
 Smart Decimate odstraòuje telecine kombinováním telecine polí a
-decimováním ve stejném èase, co se liší od tradièního 
-pøístupu uspoøádávání telecine snímkù a teprve poté následujícího odstraòování duplikátù. 
+decimováním ve stejném èase, co se liší od tradièního
+pøístupu uspoøádávání telecine snímkù a teprve poté následujícího odstraòování duplikátù.
 Poslední verze Smart Decimate mùete najít na <a
 href="http://kevin.atkinson.dhs.org/tel/"
 >http://kevin.atkinson.dhs.org/tel/</a>.
@@ -53,12 +53,12 @@ SmartDecimate()</pre>
 Všimnìte si, e druhı plugin je LoadCPlugin a ne LoadPlugin. (Za Load je
 umístìno písmeno C)
 <p>
-<b>JE VELMI DÙLEITÉ, ABY BYLO POØADÍ POLÍ SPRÁVNÉ.</b> 
+<b>JE VELMI DÙLEITÉ, ABY BYLO POØADÍ POLÍ SPRÁVNÉ.</b>
 
 <a name="guide"><h2>Prùvodce pouitím</h2></a>
 
 V tomto prùvodci budu pøedpokládat, e váš materiál je 3:2 pulldown s
-monım zamíchanım videem. Nicménì, SmartDecimate mùe zpracovat jakıkoli 
+monım zamíchanım videem. Nicménì, SmartDecimate mùe zpracovat jakıkoli
 pevnı decimaèní pomìr.
 <p>
 Pro pouití tohoto filtru, musíte nejdøíve urèit správné poøadí polí.
@@ -102,12 +102,12 @@ snímkù, pak by jste mohli zkusit zvìtšit "tel" a na 0.75. To zpùsobí,
 polí. Nicménì, asi pøestane odstraòovat váné
 artefakty roztøepení za ním, pokud je nìjaké èisté video ve vašem klipu.
 <p>
-Pokud máte hodnì zašumìlé video, pak by jste mohli potøebovat zvıšit 
+Pokud máte hodnì zašumìlé video, pak by jste mohli potøebovat zvıšit
 parametr noise jako zde:
 <pre>SmartDecimate(noise=0.80)</pre>
-Vıchozí hodnota je 0.50. Nechte ho na vıchozí pokud váš klip není hodnì zašumìlı. 
-Vyšší hodnoty noise za sebou èasto zanechávají více artefaktù roztøepení pro èisté 
-video snímky. 
+Vıchozí hodnota je 0.50. Nechte ho na vıchozí pokud váš klip není hodnì zašumìlı.
+Vyšší hodnoty noise za sebou èasto zanechávají více artefaktù roztøepení pro èisté
+video snímky.
 <p>
 Pokud máte opravdu èistı klip a všimli jste si nìkterıch artefaktù roztøepení
 v èistıch video snímcích, pak by jste mohli chtít sníit parametr noise.
@@ -116,13 +116,13 @@ uspoøádat progresivní pole a bude je tedy bobovat (duplikovat).
 <p>
 Nakonec, pokud máte hybridní video (mix 3:2 pulldown a skuteèného
 videa), mìli by jste zváit nahrazení dumb (hloupı) bob nìèím jako
-DgBob nebo SmoothDeinterlace.  Aby jste to udìlali, pouijte monost "bob". 
+DgBob nebo SmoothDeinterlace.  Aby jste to udìlali, pouijte monost "bob".
 Napøíklad:
 <pre>SmartDecimate(bob=DgBob(...))</pre>
 To vıraznì zlepší kvalitu èistıch video snímkù. Všimnìte si,
 e bob zdroj ovlivní jen jak jsou bobbované snímky rendrovány. Není
-to pouito pro porovnání polí. Ani to není vyuito jinou èástí 
-SmartDecimate. 
+to pouito pro porovnání polí. Ani to není vyuito jinou èástí
+SmartDecimate.
 
 <a name="ref"><h2>Popis filtru</h2></a>
 
@@ -132,7 +132,7 @@ Pouití je:
 <p><code>SmartDecimate</code> (<var>[numr, denm], monosti</var>)</p>
 
 Jmenovatel a èitatel udávají decimaèní pomìr pro
-video <b>po</b> jeho rozdìlení na pole. 
+video <b>po</b> jeho rozdìlení na pole.
 Vıchozí je 24 a 60 pro <var>numr</var> respektive <var>denm</var>.
 
 <p>
@@ -140,7 +140,7 @@ Následující monosti mohou bıt pouity pro vyladìní <code>SmartDecimate</code>:
 
 <p>
 <var>bob<br>
-</var>alternativní zdroj snímkù s odstranìnım prokládáním metodou bob. Vıchozí je &quot;<a href="../corefilters/bob.htm">Bob</a>()&quot; 
+</var>alternativní zdroj snímkù s odstranìnım prokládáním metodou bob. Vıchozí je &quot;<a href="../corefilters/bob.htm">Bob</a>()&quot;
 co je v AviSynthu vestavìnı dumb (hloupı) bob filtr. Pro lepší vısledky
   pouijte smart (chytrı) bob jako <a href="dgbob.htm"> DgBob</a> nebo SmoothDeinterlace. Bobbovanı zdroj
   je pouit kdykoli SmartDecimate urèí, e pole není èástí
@@ -153,9 +153,9 @@ co je v AviSynthu vestavìnı dumb (hloupı) bob filtr. Pro lepší vısledky
 </var>èíslo mezi 0 a 1, které ovládá jak agresivní je filtr
   pøi uspoøádání polí. 0.50 (vıchozí) pracuje dobøe s vìtšinou
   klipù. Èím vyšší hodnota tím více se riskuje zanechání
-  artefaktù roztøepení ve skuteènì prokládaném materiálu. Èím niší hodnota, tím víc 
+  artefaktù roztøepení ve skuteènì prokládaném materiálu. Èím niší hodnota, tím víc
   se riskuje bobbing (nebo v extrémním pøípadì pøeskoèení nebo
-  duplikování) Telecine snímkù. 
+  duplikování) Telecine snímkù.
   <br>
   <br>
   V souèasnosti <var>tel
@@ -172,11 +172,11 @@ co je v AviSynthu vestavìnı dumb (hloupı) bob filtr. Pro lepší vısledky
 <p><var>cpu<br>
 </var>Vynutí CPU na urèitı typ.  Normálnì je to autodetekováno.
   Aby jste se podívali jestli je to detekováno správnì zapnìte logování.  Prní øádek
-  vıstupu zobrazí typ CPU.  Aktuální platné hodnoty  
+  vıstupu zobrazí typ CPU.  Aktuální platné hodnoty
   jsou: 0 - Generic, 2 - Integer SSE, 3 - SSE, 4 - SSE2.</p>
 <p><var>unaligned<br>
-</var>Umoní èíst nezarovnaná data. Normálnì <code>SmartDecimate</code> mùe ignorovat nìkolik 
-  pixelù na zaèátku nebo na konci kadého øádku, take ète jen ty pìknì zarovnané. 
+</var>Umoní èíst nezarovnaná data. Normálnì <code>SmartDecimate</code> mùe ignorovat nìkolik
+  pixelù na zaèátku nebo na konci kadého øádku, take ète jen ty pìknì zarovnané.
   Nastavení této hodnoty na true tomu zabrání.</p>
 <p>
 Následující monosti mohou bıt pouity pro ovládání tištìní uiteènıch informací:
@@ -188,11 +188,11 @@ Následující monosti mohou bıt pouity pro ovládání tištìní uiteènıch informací
 </var>Pokud je nastaven, celı vıstup bude pøipojen k zadanému jménu souboru.
 <p>
 <var>console<br>
-</var>Pøi nastavení na true, vyskoèí okno konsole window a celı vıstup bude 
+</var>Pøi nastavení na true, vyskoèí okno konsole window a celı vıstup bude
   posílán do ní.
 <p>
 <var>debug_print<br>
-</var>Pokud je nastaven, tak celı vıstup bude vytištìn pøes systémovou vızvu OutputDebugString. 
+</var>Pokud je nastaven, tak celı vıstup bude vytištìn pøes systémovou vızvu OutputDebugString.
   Tento vıstup mùete zobrazit pomocí utility jako DebugView.
 <p>
 Vıznam vytištìnıch informací je následující:
@@ -203,12 +203,12 @@ pøipojeno nelineárním zpùsobem.</li>
   <li>"FRAME 3 = [3, 4]"
 ukazuje jak je snímek èíslo 3 (napøíklad)
 rendrován.  3 zde ukazuje primární zdrojové pole, které je
-vybráno.  Pokud má bıt snímek rendrován sloením (weaving) dvou polí dohromady, 
+vybráno.  Pokud má bıt snímek rendrován sloením (weaving) dvou polí dohromady,
 èísla v [] ukazují která pole zdroje jsou vybrána.  Pokud má bıt ve snímku
 odstranìno prokládání metodou bob pak místo [] bude "BOB".</li>
   <li>"Diff NUM: WHAT DIFF"
 ukazuje rozdíl mezi poli zdroje
-NUM a NUM+1.  WHAT je klasifikace rozdílu 
+NUM a NUM+1.  WHAT je klasifikace rozdílu
 0 co znamená stejné, 1 podobné, a 2 rùzné.  DIFF je numerickı
 rozdíl.</li>
 </ul>
@@ -228,41 +228,41 @@ Mohou bıt zmìny mezi vydáními.
 
 <a name="works"><h2>Pochopení jak SmartDecimate pracuje</h2></a>
 
-Tato diskuze pøedpokládá, e ètenáø zná prokládané 
+Tato diskuze pøedpokládá, e ètenáø zná prokládané
 video, a zná vıznam takovıch termínù jako snímek, pole, horní pole,
 spodní pole, BFF, TFF, telecide, telecine, 3:2 pulldown, atd..
 <p>
 Jiné telecide filtry obecnì odstraòují telecine ve dvou krocích
-zpracování. Nejprve jsou telecine pole uspoøádány, ale frekvence snímkù 
+zpracování. Nejprve jsou telecine pole uspoøádány, ale frekvence snímkù
 není zmìnìna, pak jsou duplikované snímky odstranìny. SmartDecimate takto
 nepracuje. SmartDecimate namísto toho, kombinuje telecine pole a
 decimuje frekvenci snímkù v jednom okamiku.
 <p>
 První vìc, kterou SmartDecimate dìlá je, e pouije "SeparateFields()",
-kterı rozdìlí video na samostatná pole, co také zdvojuje 
+kterı rozdìlí video na samostatná pole, co také zdvojuje
 frekvenci snímkù. Tedy pole èíslo 9 je ve skuteènosti spodní pole
 snímku 4 (pøedpokládám, e video je TFF) pøed jeho rozdìlením na
-pole. Pro jednoduchost se budu odkazovat vdy na pole ze zdrojového 
+pole. Pro jednoduchost se budu odkazovat vdy na pole ze zdrojového
 videa tímto zpùsobem.
 <p>
 SmartDecimate pak vybírá pole v pravidelné šablonì a snaí se
-vyhnout vybírání duplikovanıch polí. Pøesnìji, a je N 
+vyhnout vybírání duplikovanıch polí. Pøesnìji, a je N
 èíslem umístìní snímku a R bude pomìr, kterı pro 3:2 pulldown
 bude 24/60 = 2/5, pak SmartDecimate volí mezi polem
 floor(N/R) a floor(N/R) + 1. Napøíklad, pro èíslo umístìní snímku
-5, pouití typického 3:2 pulldown, SmartDecimate volí mezi 
-poli 12 a 13. Kterı zvolí je docela komplikované a 
+5, pouití typického 3:2 pulldown, SmartDecimate volí mezi
+poli 12 a 13. Kterı zvolí je docela komplikované a
 nìco co sem u nedostanu.
 <p>
 Poté kdy je zdrojové pole vybráno, musí rozhodnout jak ho rendrovat
-SmartDecimate volí mezi: 1) jeho uspøádáním s pøedchozím 
+SmartDecimate volí mezi: 1) jeho uspøádáním s pøedchozím
 polem, 2) jeho uspøádáním s následujícím polem, nebo 3) jeho bob deinterlace.
 Kterı zvolí, je zaloeno na tom jak podobné je pole k
 pøedchozímu nebo následujícímu. Pokud je pole stejné jako pøedchozí nebo
 následující pole, uspoøádá ho s tímto polem sloením tìchto
 dvou polí dohromady. Pokud nemùe najít pole pro uspoøádání, provede odstranìní prokládání
 metodou bob v aktuálním poli. SmartDecimate ve skuteènosti nedìlá koneèné
-rendrování. Místo toho pouívá jinı AviSynth filtr, kterı to udìlá. 
+rendrování. Místo toho pouívá jinı AviSynth filtr, kterı to udìlá.
 V pøípadì skládání (weaving) pouije DoubleWeave(), a v
 pøípadì bobbingu pouije Bob() nebo smart (chytrı) bob filtr pokud
 je nìjakı k dispozici a zadanı.
@@ -271,9 +271,9 @@ je nìjakı k dispozici a zadanı.
 
 Aby odkryl, která pole se liší jedno od druhého a
 která jsou stejná, SmartDecimate hledá špièky v øetìzci rozdílù.
-To je dáno tøemi hodnotami reprezentujícími rozdíl mezi 
+To je dáno tøemi hodnotami reprezentujícími rozdíl mezi
 ètyømi po sobì jdoucími poli A B C D, pokud BC (t.j. rozdíl mezi B
-a C) &gt; AB a BC &gt; CD a AB a CD mají podobné hodnoty, pak 
+a C) &gt; AB a BC &gt; CD a AB a CD mají podobné hodnoty, pak
 pole A a B by mohly bıt stejné, pole B a C by mohly
 bıt rozdílné, a pole C a D by mohly bıt stejné.
 <p>
@@ -282,14 +282,14 @@ pohyblivé scény, kdy podobné hodnoty rozdílù mezi snímky (to je
 AB a CD jsou podobné), e by mohli bıt stejné. Take pro øízení tohoto,
 SmartDecimate jednoduše pøedpokládá, e všechna pole s rozdílem vìtším ne
 pevná prahová hodnota nemohou bıt stejná. Naneštìstí neexistuje
-optimální hodnota pro tuto prahovou hodnotu, take je nastavena na rozumnou hodnotu, 
+optimální hodnota pro tuto prahovou hodnotu, take je nastavena na rozumnou hodnotu,
 která by mìla pracovat dobøe ve vìtšinì klipù, které nejsou extrémnì zašumìlé.
 Nicménì, tato hodnota obecnì nechá nìkterá rozdílná pole
 nedotèená, co povede k artefaktùm roztøepení. Aby jste se tomu vyhnuli, mìla by
 bıt prahová hodnota "t_max" nastavena co moná nejníe.
 <p>
 Pro objevení nejlepší hodnoty "t_max" je pro konkrétní klip
-budete potøebovat znát jaké jsou rozdíly mezi snímky.  
+budete potøebovat znát jaké jsou rozdíly mezi snímky.
 Nejsnadnìjší zpùsob jak to udìlat je nastavit monost "log_file" (s log
 level nastavenou na 2 nebo vyšší) a spustit SmartDecimate na znaèné èásti vašeho
 klipu.  Jakmile je to udìláno, mìli by jste v log souboru vidìt nìco podobného
@@ -310,9 +310,9 @@ Diff 834: 0 3.54472e-008
 Øádky, které vás zajímají jsou ty které zaèínají "Diff
 ...".  První èíslo za Diff je zdrojové èíslo pole.
 Druhé èíslo je klasifikace rozdílu s 0
-znamenající shodnost, 1 podobnost, a 2 rozdílnost.  Koneèné èíslo je 
+znamenající shodnost, 1 podobnost, a 2 rozdílnost.  Koneèné èíslo je
 skuteènı rozdíl.  To co vás v nìm zajímá je rozdíl
-snímkù klasifikovanıch jako shodné.  Chcete nastavit t_max mírnì 
+snímkù klasifikovanıch jako shodné.  Chcete nastavit t_max mírnì
 nad maximální hodnotu všech rozdílù klasifikovanıch jako stejné.
 Pro tento klip by 7.0e-8 mìla bıt dobrou hodnotou.  Ale protoe jsem se podíval jen na
 malou èást klipu mùe bıt potøeba vyšší protoe rozdíly
@@ -362,25 +362,25 @@ klipù, zatímco 0.80 mùe bıt pouito pro opravdu zašumìlé klipy, atd.
 Ideálnì by pole rendrována filtrem SmartDecimate nemìla potøebovat
 odstranit prokládání, pokud jsou parametry správnì vyladìny. Reálnì mùe bıt
 post deinterlacer uiteènı. Nicménì protoe SmartDecimate pracuje
-spíše na úrovni polí ne na úrovni snímkù, jsou vìci, kterıch by jste si 
+spíše na úrovni polí ne na úrovni snímkù, jsou vìci, kterıch by jste si
 mìli bıt vìdomi.
 <p>
 Vìtšina deinterlacerù (odstraòovaèù prokládání) pøi práci vdy volí horní pole (nebo snad
 spodní) jako dominantní pole a vıbìrovì hází informaci
 do druhého pole a pak je interpoluje nebo smíchává (blending). Pro normální
-30 fps (nebo 25 fps pal) je to správnì. Nicménì pro 
+30 fps (nebo 25 fps pal) je to správnì. Nicménì pro
 vıstup ze SmartDecimate to není správné, protoe dominantní
 pole není vdy stejné. To závisí na tom které pole
 SmartDecimate pùvodnì vybíral ze zdrojového videa, a mùe to bıt buï
-horní nebo spodní pole. Proto tradi¨èní deinterlacer mùe 
+horní nebo spodní pole. Proto tradi¨èní deinterlacer mùe
 vzít nesprávné pole. Nemusí to bıt dokonce ani pozorovatelné, ale mìli
 by jste si toho bıt vìdomi.
 <p>
 Autoøi filtrù pro odstraòování prokládání mohou opravit tento problém za cenu
 dohlíení na paritu snímku. SmartDecimate vdy zahlásí
 paritu pùvodního vybraného pole jako paritu finálního
-rendrovaného snímku. Pokud je parity true, pak by mìlo bıt vybráno 
-horní pole. Pokud je to false, bude vybráno spodní pole.  Také bude ochotnı 
+rendrovaného snímku. Pokud je parity true, pak by mìlo bıt vybráno
+horní pole. Pokud je to false, bude vybráno spodní pole.  Také bude ochotnı
 pøedávat údaje hints do deinterlaceru pro indikaci která pole jsou bobbována
 pokud mi nìkdo øekne jak.
 
@@ -398,7 +398,7 @@ Pak nebude vıstupní video oøíznuté, ale posledních 64 øádkù nebude vidìt
 filtr SmartDecimate. Pokud pouijte tuto metodu, pak bob
 zdroj musí bıt také zadán. Pokud nezadáte bob zdroj, tak
 se pokusí pouít vstupní klip pro "Bob()". Ale vıslednı klip
-nebude mít stejné rozmìry jako sloenı (weave) zdroj. 
+nebude mít stejné rozmìry jako sloenı (weave) zdroj.
 
 <a name="decomb"><h2>Smart Decimate proti Decomb</h2></a>
 
@@ -426,7 +426,7 @@ processingem je Smart Decimate o hodnì rychlejší.
 
 Pokud si z nìjakıch dùvodù pøejete nechat video na 30fps, tak pouijte
 Decomb.  Smart Decimate by byl schopen uspoøádat telecine snímky, pøi
-pøevodu z 60 -&gt; 30fps , ale bude také duplikovat snímky. Decomb 
+pøevodu z 60 -&gt; 30fps , ale bude také duplikovat snímky. Decomb
 má speciální reim pro práci s tímto pomocí rozmazání snímkù dohromady, co mùe vést
 ke hladšímu pohybu.
 <p>
@@ -452,7 +452,7 @@ snímkù. Tento pøístup povede k extrémnì trhavım vısledkùm. Druhá vìc, kterou
 mùe udìlat je smíchat snímky dohromady. Tento pøístup
 povede k hladšímu videu ne u pøístupu Smart Decimate, ale ne bez
 neádoucích artefaktù. Pohybové oblasti obrazu budou obecnì
-rozmazané. U velkého pohybu se mohou objevit duplikované obrázky, 
+rozmazané. U velkého pohybu se mohou objevit duplikované obrázky,
 které mohou ztìovat oku sledování pohybu. Rozmazání
 snímkù dohromady také negativnì ovlivní kompresi protoe dìlá
 sledování pohybu obtínìjší.
@@ -464,10 +464,10 @@ pak pochodíte lépe s Decomb. Z povahy toho jak mùj filtr
 pracuje, vypustí jeden snímek z kadıch 5 pøi pøevodu na
 24 fps.
 <p>
-Decomb na druhou stranu vidí prokládané video a progresivní 30 fps 
+Decomb na druhou stranu vidí prokládané video a progresivní 30 fps
 jako stejnou vìc a bude tak  schopen rozmazat snímky dohromady pro hladší
 pohyb.  Pokud je váš klip hlavnì video/30 fps progresivní s nìjakım
-3:2 pulldown, Decomb mùe také udret 30 fps a smíchat 
+3:2 pulldown, Decomb mùe také udret 30 fps a smíchat
 pulldown materiál pro lepší vısledky.
 <p>
 <h3>Zvláštní šablony Telecine</h3>
@@ -508,7 +508,7 @@ pøesto bych si to myslel v pøípadì, e by to nìkoho zajímalo.
 Kdy jsou pouity optimalizace MMX/SSE , SmartDecimate mùe ignorovat do 6 (14
 pro SSE2) pixelù na zaèátku nebo na konci kadého øádku, protoe ètení v pamìti
 jsou zarovnaná.   Pokud vás to obtìuje, nastavte "unaligned" na true,
-co donutí SmartDecimate pouít neoptimalizovanı kód pøi 
+co donutí SmartDecimate pouít neoptimalizovanı kód pøi
 ètení dat snímkù.
 <p>
 SmartDecimate upozorní na jakékoli ignorované pixely pokud je logging level

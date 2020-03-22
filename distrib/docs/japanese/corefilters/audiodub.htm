@@ -18,11 +18,11 @@
 video = AVISource(&quot;capture1.avi&quot;) + AVISource(&quot;capture2.avi&quot;)
 audio = WAVSource(&quot;capture.wav&quot;)
 AudioDub(video, audio)</pre>
-      
-    
+
+
 <p><code>AudioDubEx</code> は、1 つ目の実引数からビデオストリームを（それが存在すれば）取り、2 つ目の実引数からオーディオストリームを（それが存在すれば）取って、それらを 1 本のクリップに合成します。したがって、もしあなたが 2 本のビデオクリップを実引数として与え、その 2 本目のクリップが音声を持たないなら、生成されるクリップは、1 本目のクリップの映像のみを持ち、音声を含みません。もし 2 本のオーディオクリップを実引数として与えるなら、生成されるクリップは、2 本目のクリップの音声のみを持ち、映像を含みません。</p>
-      
-    
+
+
 <p><kbd>原文 Date: 2005/11/08 12:37:33</kbd><br />
 <kbd>日本語訳 $Date: 2008/06/22 07:41:09 $</kbd></p>
 <FORM>

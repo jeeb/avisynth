@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tivtc_requestlinear.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tivtc_requestlinear.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,9 +12,9 @@ $Id: tivtc_requestlinear.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>         1.2<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
-<br><b>kategorie:</b>    Odstraòování prokládání &amp; pulldown 
+<br><b>kategorie:</b>    Odstraòování prokládání &amp; pulldown
 <br><b>požadavky:</b>&nbsp;
 <ul>
   <li>Všechna barevná prostøedí</li>
@@ -46,7 +46,7 @@ $Id: tivtc_requestlinear.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
     zaplòována a pro specifikaci kolik snímkù by mìlo být kešováno.</p>
 
 <h2>Syntaxe</h2>
-<p><code>RequestLinear</code>(clip, int <var>&quot;rlim&quot;</var>, int <var>&quot;clim&quot;</var>, 
+<p><code>RequestLinear</code>(clip, int <var>&quot;rlim&quot;</var>, int <var>&quot;clim&quot;</var>,
 int <var>&quot;elim&quot;</var>, bool <var>&quot;rall&quot;</var>, bool <var>&quot;debug&quot;</var>)
 </p>
 
@@ -55,9 +55,9 @@ int <var>&quot;elim&quot;</var>, bool <var>&quot;rall&quot;</var>, bool <var>&qu
 <p><var>rlim</var> -</p>
 <p>Pokud se žádá aktuální snímek, který je vìtší než poslední doruèený snímek
          a rozdíl mezi tìmi dvìma je menší nebo roven rlim, pak
-         všechny snímky mezi poslední žádostí a aktuální žádostí budou 
-         žádány.  Pokud je aktuální žádost menší nebo rovna  
-         poslední žádosti tak je vzdálenost mìøena od 0 do aktuální žádosti. 
+         všechny snímky mezi poslední žádostí a aktuální žádostí budou
+         žádány.  Pokud je aktuální žádost menší nebo rovna
+         poslední žádosti tak je vzdálenost mìøena od 0 do aktuální žádosti.
          rlim musí být >= 0.</p>
 <p>Výchozí:  50  (int)</p>
 
@@ -69,7 +69,7 @@ int <var>&quot;elim&quot;</var>, bool <var>&quot;rall&quot;</var>, bool <var>&qu
 
 <p><var>elim</var> -</p>
 <p>Pokud aktuální snímek konèí tím, že je žádán bez žádaných pøedchozích snímkù
-         (kvùli nedostateènì velkému rlim , nedostateènì velkému clim 
+         (kvùli nedostateènì velkému rlim , nedostateènì velkému clim
          atd...), elim nastavuje poèet snímkù pøed aktuálním snímkem, které budou žádány
          v lineárním poøadí pøed žádostí o aktuální snímek.</p>
 <p>Výchozí:  5  (int)</p>
@@ -138,13 +138,13 @@ int <var>&quot;elim&quot;</var>, bool <var>&quot;rall&quot;</var>, bool <var>&qu
 
 <p>v1.1 - (4/09/2006)
 <ul>
-<li>- opraveno netestované pokud n <= rlim pokud aktuální žádost byla <= poslední 
+<li>- opraveno netestované pokud n <= rlim pokud aktuální žádost byla <= poslední
 žádosti (bylo to testováno jen pøi rall=true)
 </ul>
- 
+
 <p>v1.0 - (3/23/2006)
 <ul>
-<li>- pùvodní vydání 
+<li>- pùvodní vydání
 </ul>
 
 <p>Kontakt:   forum.doom9.org  nick = tritical  nebo  email:  <a href="mailto:kes25c@mizzou.edu">kes25c@mizzou.edu</a>

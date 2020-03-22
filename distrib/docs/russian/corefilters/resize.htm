@@ -5,8 +5,8 @@
   <meta content="text/html;charset=windows-1251" http-equiv="Content-Type">
   <title>Resize Avisynth Filters</title>
   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
-<!-- Automatically generated, don't change: 
-$Id: resize.htm,v 1.10 2008/12/14 15:29:07 fizick Exp $ 
+<!-- Automatically generated, don't change:
+$Id: resize.htm,v 1.10 2008/12/14 15:29:07 fizick Exp $
 -->
 </head>
 
@@ -16,32 +16,32 @@ Lanczos4Resize / PointResize / Spline16Resize / Spline36Resize / Spline64Resize<
 
 <p>Фильтры группы Resize (изменение размеров кадра, масштабирование, ресайз)</p>
 
-<p><code>BicubicResize </code>(<var>clip, int target_width, int target_height, float 
-  &quot;b&quot;, float &quot;c&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, 
+<p><code>BicubicResize </code>(<var>clip, int target_width, int target_height, float
+  &quot;b&quot;, float &quot;c&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;,
   float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
-  <code>BilinearResize </code>(<var>clip, int target_width, int target_height, float 
-  &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, 
+  <code>BilinearResize </code>(<var>clip, int target_width, int target_height, float
+  &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;,
   float &quot;src_height&quot;</var>)<br>
-  <code>BlackmanResize </code>(<var>clip, int target_width, int target_height, float 
+  <code>BlackmanResize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float "src_width", float "src_height", int &quot;taps&quot;</var>)<br>
-  <code>GaussResize </code>(<var>clip, int target_width, int target_height, float 
+  <code>GaussResize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float "src_width", float "src_height", float &quot;p&quot;</var>)<br>
-  <code>LanczosResize </code>(<var>clip, int target_width, int target_height, float 
+  <code>LanczosResize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float "src_width", float "src_height", int &quot;taps&quot;</var>)<br>
-  <code>Lanczos4Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Lanczos4Resize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float "src_width", float "src_height"</var>)<br>
-   <code>PointResize </code>(<var>clip, int target_width, int target_height, float "src_left", 
+   <code>PointResize </code>(<var>clip, int target_width, int target_height, float "src_left",
   float "src_top", float "src_width", float "src_height"</var>)<br>
-  <code>Spline16Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Spline16Resize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float "src_width", float "src_height"</var>)<br>
-  <code>Spline36Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Spline36Resize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float "src_width", float "src_height"</var>)<br>
-  <code>Spline64Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Spline64Resize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float "src_width", float "src_height"</var>)
 </p>
 <p>С <em>v2.56</em> вы можете использовать смещения (как в <a href="crop.htm">Crop</a>) для всех этих функций:</p>
 <p>
-<code>GaussResize </code>(<var>clip, int target_width, int target_height, float 
+<code>GaussResize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float -&quot;src_right&quot;, float
 -&quot;src_top&quot;</var>)</p>
 
@@ -143,7 +143,7 @@ BilinearResize даст лучший конечный результат.</p>
 <pre>b + 2 * c = 1</pre>
 Тогда получаем максимальное значение c = 0.5, когда b = 0 , что
 представляет из себя метод криволинейной интерполяции - сплайн
-Катмула-Рома (Catmull-Rom spline). Что является хорошим предложением 
+Катмула-Рома (Catmull-Rom spline). Что является хорошим предложением
 для резкости. </p>
 
 <p>Начиная с c&gt;0.6 то фильтр начинает "звенеть" ("ring"). Это не настоящая
@@ -163,7 +163,7 @@ BilinearResize даст лучший конечный результат.</p>
 <p>Использует для изменения размеров кривые Гаусса, имеет регулируемый
 параметр резкости '<var>p</var>' (по умолчанию 30).  <var>p</var>
 может изменяться от 1 до 100, где 1 дает слишком размытую картинку,
-тогда как 100 - очень резкую. 
+тогда как 100 - очень резкую.
 <code>GaussResize</code> использует 4 опорные точки, и по скорости примерно такой же, что и <code>Lanczos4Resize</code>.
 (добавлен в версии <em>2.56</em>)</p>
 
@@ -187,11 +187,11 @@ Lanczos3Resize).
 <p><b>Замечание: входной аргумент названный taps должен реально быть lobes (в действительности
 это половина числа lobes). При обсуждении ресайзеров, taps имеет другой смысл, как описывается ниже.</b></p>
 
-<h4>Количество опорных точек интерполяции 
+<h4>Количество опорных точек интерполяции
 (параметр taps)
 </h4>
 
-<p>Пусть Taps=4. 
+<p>Пусть Taps=4.
 "Для повышения разрешения отсчетов (upsampling) (увеличения изображения),
 размер фильтра подбирается
 так, что его уравнение охватывает (falls across) 4 входных отсчета,
@@ -236,15 +236,15 @@ pixel drawings).<br>
 Очень удобен для увеличения маленьких площадей для их внимательного анализа. </p>
 
 <h3>Spline16Resize/Spline36Resize/Spline64Resize</h3>
-<p>Три основанных на сплайнах ресайзера (добавлены в <em>v2.56/v2.58</em>). 
+<p>Три основанных на сплайнах ресайзера (добавлены в <em>v2.56/v2.58</em>).
 Целесообразность сплайнов - быть резкими насколько возможно с меньшими волновыми артефактами чем
 производит <code>LanczosResize</code>. <code>Spline16Resize</code> использует
 sqrt(16)=4 опорные точки, <code>Spline36Resize</code> использует 6 опорных точек, и т.д.
-... Чем больше опорных точек использовано, тем резче будет ваш клип. Сравнение 
+... Чем больше опорных точек использовано, тем резче будет ваш клип. Сравнение
 некоторых ресайзеров приведено
 <a href="http://web.archive.org/web/20060827184031/http://www.path.unimelb.edu.au/~dersch/interpolator/interpolator.html">
 <cite>там</cite></a>.</p>
-<p>На сегодня, авторы AviSynth не знают, как получены коэффициенты сплайновых ресайзеров. 
+<p>На сегодня, авторы AviSynth не знают, как получены коэффициенты сплайновых ресайзеров.
 Если вы в курсе, пожалуйста дайте нам знать.</p>
 
 <p><b>Изменения:</b></p>

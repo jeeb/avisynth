@@ -1,4 +1,4 @@
-<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd"> 
+<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd">
 <htm xmlns="http://www.w3.org/1999/xhtm" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/htm; charset=iso-8859-1" />
@@ -37,7 +37,7 @@ However, if no D2V file is supplied, it creates one itself<BR><BR>
 
 The parameters for 'MPEGSource' are as follows:<br>
 
-<u>For normal use:</u><br><br> 
+<u>For normal use:</u><br><br>
 <B>MPEGSource("e:\rip\spiderman.d2v")</b><BR>
 Which will load a d2v as normal<br>
 <br>
@@ -47,10 +47,10 @@ Here the first thing that MPEGDecoder.dll will do is to check for a e:\rip\VTs_0
 if a file with that name exists it will load that and assume that the d2v is for the three files.<BR><BR>
 if e:\rip\VTs_01_1.d2v does not exist, it will be created and then loaded automatically.<br>
 
-<BR>For D2V files created automatically by MPEGDecoder.dll it does not know if force film should be turned on. 
+<BR>For D2V files created automatically by MPEGDecoder.dll it does not know if force film should be turned on.
 <BR>If it should then put "ff" as the third parameter<BR>
 i.e.<BR>
-MPEGSource("e:\rip\big.vob", 0, "ff") 
+MPEGSource("e:\rip\big.vob", 0, "ff")
 <BR>
 <HR>
 <h4>Detailed Parameter Description</h4>
@@ -66,7 +66,7 @@ A value of -2 can also be written here. This means no d2v can be used and theref
 
 <b><i>commands</i></b><BR>
 The only two commands at present are "ff" which forces film. (as described above) and "nod2v".<BR>
-"nod2v" is similar to the -2 command in that you can only specify files and nod2v is used or created. But it 
+"nod2v" is similar to the -2 command in that you can only specify files and nod2v is used or created. But it
 allows you to specify a number of frames in the "number of frames" parameter.
 <HR>
 <h4>Misc/Notes</h4>

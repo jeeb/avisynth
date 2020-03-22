@@ -7,11 +7,11 @@
 <body>
 <h2>Trim</h2>
 <p><code>Trim </code>(<var>clip, int first_frame, int last_frame [, bool pad_audio]</var>)</p>
-<p><code>Trim</code> trims a video clip so that it includes only the frames <var>first_frame</var> 
-  through <var>last_frame</var>. The audio is similarly trimmed so that it stays synchronized. 
+<p><code>Trim</code> trims a video clip so that it includes only the frames <var>first_frame</var>
+  through <var>last_frame</var>. The audio is similarly trimmed so that it stays synchronized.
   If you pass <tt>0</tt> for <var>last_frame</var> it means "end of clip." A negative value of
-  last_frame returns the frames from <var>first_frame</var> to 
-  <var>first_frame</var> + (- <var>last_frame</var>-1). This is the only way to get the 
+  last_frame returns the frames from <var>first_frame</var> to
+  <var>first_frame</var> + (- <var>last_frame</var>-1). This is the only way to get the
   very first frame!</p>
 <p><var>pad_audio </var>(default true) causes the audio stream to be padded to align
   with the video stream. Otherwise the tail of a short audio stream is left so. When

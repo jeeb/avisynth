@@ -2,7 +2,7 @@
 <html lang="ru"><head>
 <meta http-equiv="Content-Language" content="ru">
    <meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
-   
+
    <title>AddBorders Avisynth Filter</title><link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
@@ -14,12 +14,12 @@ $Id: addborders.htm,v 1.10 2008/09/08 16:43:47 fizick Exp $
 <h2>
 <a name="AddBorders"></a>AddBorders
 </h2>
-<p><code>AddBorders </code>(<var>clip, int left, int top, int right, int 
-  bottom, int "color"</var>) 
+<p><code>AddBorders </code>(<var>clip, int left, int top, int right, int
+  bottom, int "color"</var>)
 </p><p><code>AddBorders</code> добавляет черные границы (бордюры) указанной ширины (в пикселях) вокруг изображения.
 (<var>left</var> - слева, <var>top</var> - вверху, <var>right</var> - справа, <var>bottom</var> - внизу).
 
-</p><p>См <a href="convert.htm">фильтры преобразования цветового пространства</a> 
+</p><p>См <a href="convert.htm">фильтры преобразования цветового пространства</a>
 про ограничения при использовании разных цветовых форматов.
 
 </p><p>Параметр <var>color</var> является опциональным (добавлено в
@@ -27,13 +27,13 @@ v2.07), по умолчанию = 0 &lt;черный&gt;, и указывается как RGB величина
 независимо от формата клипа RGB или YUV. Предустановки (presets) цветов
 могут быть найдены в файле colors_rgb.avsi, который должен
 присутствовать в Вашей папке плагинов.
-Дополнительную информацию о указании цветов смотри 
+Дополнительную информацию о указании цветов смотри
 <a href="../syntax.htm#Colors">здесь</a>.
 </p><p>Необходимо знать, что многие алгоритмы компреcсии с потерями
 недостаточно хорошо работают с границами однородного цвета, за
 исключением случая, когда ширина границы кратна размеру блока (16
 пикселов для MPEG).
-</p><p>Можно использовать этот фильтр в комбинации с <code><a href="crop.htm">Crop</a></code> 
+</p><p>Можно использовать этот фильтр в комбинации с <code><a href="crop.htm">Crop</a></code>
 для сдвига изображения без изменения размера кадра. Например:
 </p><pre># Сдвигает 352х240 изображения на 2 пиксела вправо
 Crop(0,0,350,240).AddBorders(2,0,0,0)</pre>

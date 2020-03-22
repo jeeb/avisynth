@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: dvinfo.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: dvinfo.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -32,9 +32,9 @@ string &quot;tc_format&quot;, bool &quot;show_error&quot;, float
 
 <p>DVInfo otvírá DV-AVI soubor (Typ-1 a Typ-2, legacy a openDML &gt; 4GB
 jsou podporovány) a ète èasový kód a èasové znaèky snímku, který prochází.
-Pozor: NENAÈÍTÁ video nebo audio obsah 
+Pozor: NENAÈÍTÁ video nebo audio obsah
 AVI, to musí být provedeno PØÍMO PØEDTÍM pomocí AviSource!</p>
-<p>Èasový kód a èas nahrávky jsou pak vytištìny do snímku jako by jste použili 
+<p>Èasový kód a èas nahrávky jsou pak vytištìny do snímku jako by jste použili
 filtr Subtitle() a parametry x, y, font, size, text_color, halo_color jsou
 pøedávány právì do Subtitle.</p>
 <p>&quot;Run-time&quot; promìnné &quot;current_frame&quot;,
@@ -48,14 +48,14 @@ tc_format.</p>
 data nahrávky aktuálního a pøedchozího snímku vìtší než
 &quot;threshold&quot; v sekundách. Po projetí poètu &quot;autoframes&quot; snímkù
 je výstup vypnut. Tak dostanete údaje o nahrání jen pøi zmìnách scén.<br>
-Pozor: použije se poslední <i>zpracovaný (processed)</i> snímek, což není pøedchozí 
+Pozor: použije se poslední <i>zpracovaný (processed)</i> snímek, což není pøedchozí
 snímek pøi vyhledávání (seekování) v klipu (pracuje jen pøi lineárním pøehrávání).<br>
 S napø. threshold=0.5 a autoframes=2 mùžete zobrazit údaje každou sekundu v délce 2
 snímkù.</p>
 
-<p><b>2005-12-23:</b> Mùžete použít "fix_format" ke spuštìní vysílání v pevných intervalech (t.j. každou hodinu). 
-Tento formátový øetìzec má stejnou syntaxi jako jiné, ale je použit jen vnitønì, pokud výsledek jeho 
-zmìní má stejný efekt jako threshold. T.j. fix_format = "%H%M" zobrazí formát 
+<p><b>2005-12-23:</b> Mùžete použít "fix_format" ke spuštìní vysílání v pevných intervalech (t.j. každou hodinu).
+Tento formátový øetìzec má stejnou syntaxi jako jiné, ale je použit jen vnitønì, pokud výsledek jeho
+zmìní má stejný efekt jako threshold. T.j. fix_format = "%H%M" zobrazí formát
 zadaný rec_format a tc_format pro autoframes snímkù pøi každé zmìnì minuty.</p>
 
 

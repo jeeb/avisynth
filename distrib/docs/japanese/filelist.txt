@@ -3,7 +3,7 @@ Docs:
   - avisynth.css
   - style.css
   - style2.css
-  
+
   japanese:
     - corefilters.htm
     - index.htm
@@ -12,7 +12,7 @@ Docs:
     - syntax.htm
     - syntax_clip_properties.htm
     - syntax_internal_functions.htm
-    
+
     corefilters:
       - addborders.htm
       - adjust.htm

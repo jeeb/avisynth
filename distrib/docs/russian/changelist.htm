@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
 <!--
-Aautomatically generated, don't change: 
-$Id: changelist.htm,v 1.36 2008/12/26 23:27:48 fizick Exp $ 
+Aautomatically generated, don't change:
+$Id: changelist.htm,v 1.36 2008/12/26 23:27:48 fizick Exp $
 -->
     <meta http-equiv="Content-Language" content="ru">
 <meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
@@ -55,14 +55,14 @@ $Id: changelist.htm,v 1.36 2008/12/26 23:27:48 fizick Exp $
 * Исправлено проверка перекрывающихся диапазонов аргументов Dissolve (gzarkadas).<br>
 * Исправлена проблема многопоточности OpenDMLSource(). (QuaddiMM).<br>
 * Исправлено несохраняемая строка имени переменной variableName в ConditionalReader.<br>
-* Исправлены пропущенные обязательные аргументы в распознавателе FunctionTable::TypeMatch(). 
+* Исправлены пропущенные обязательные аргументы в распознавателе FunctionTable::TypeMatch().
 Ошибки в Dissolve (различные).<br>
-* Исправлено DirectShowSource() QueryId() использование CoTaskMemAlloc как 
+* Исправлено DirectShowSource() QueryId() использование CoTaskMemAlloc как
 возвращаемой величины (Dean Pavlekovic).<br>
-* Исправлено DirectShowSource() использование GraphBuilder объект для управление 
+* Исправлено DirectShowSource() использование GraphBuilder объект для управление
 медиа (Avery Lee).<br>
 * Исправлено DirectShowSource() удален вызов PulseEvent (Avery Lee).<br>
-* Исправлено DirectShowSource() QueryAccept() модификация VideoInfo в 
+* Исправлено DirectShowSource() QueryAccept() модификация VideoInfo в
 выполняемом скрипте (Haali).<br>
 * Исправлено распознавание аргумента Blankclip clip=.<br>
 * Исправлено ImageReader неполностью инициировавшееся videoInfo.<br>
@@ -84,9 +84,9 @@ $Id: changelist.htm,v 1.36 2008/12/26 23:27:48 fizick Exp $
 <h3>Оптимизация</h3>
 
 <p>
-* DirectShowSource() convertfps=true добавить 0.5ms округление к ожидаемому времени отсчета. 
+* DirectShowSource() convertfps=true добавить 0.5ms округление к ожидаемому времени отсчета.
 Улучшает выполнение с миллисекундно базированными DS сплиттерами.<br>
-* DirectShowSource() FPS попробовать длительность 1-го кадра как последняя 
+* DirectShowSource() FPS попробовать длительность 1-го кадра как последняя
 попытка.<br>
 * DirectShowSource() convertfps зависит только от начального времени образца.<br>
 * Переделан горизонтальный планарный масштабировщик, без ограничений на ширину или переписывания 2 байтов.<br>
@@ -112,7 +112,7 @@ $Id: changelist.htm,v 1.36 2008/12/26 23:27:48 fizick Exp $
   Fizick, gzarkadas, Malow, manusse, niiyan, talen9, TiGR, Underground78, WarpEnterprises, Wracko.<br>
 * FunctionTable::Lookup() теперь рассматривает именованные аргументы при выборе.<br>
 * ImageWriter поддерживает отрицательные величины как -count для параметра End.<br>
-* ChanegFPS() использует отбрасывание дробной части (floor) вместо округления (round) 
+* ChanegFPS() использует отбрасывание дробной части (floor) вместо округления (round)
 при вычислениях номера кадра источника.<br>
 * Переделан в Динамически собираемый код преобразования rgb в yuy2.<br>
 * Avisynth_c.h логические функции возвращают 1 для true вместо произвольного ненулевого.<br>
@@ -143,10 +143,10 @@ WAVE_FORMAT_EXTENSIBLE аудио, корректирует данные и принимает их.<br>
 * Blur()/Sharpen() MMX=False опция для вынужденного использования C++ функций.<br>
 * Попытка явно запросить входную частоту отсчетов от аудио кодека (Tritical).<br>
 * Опция инсталлятора для avisynth.lib, avisynth.exp и avisynth.map файлов.<br>
-* DirectShowSource() теперь устанавливает _HIRESOUTPUT свойство WMAudio Decoder DMO.	
-  Позволяет 24 битные отсчеты и 6 канальное декодирование.<br>	
-* Avisynth COM объект теперь поддерживает IAVIStreaming интерфейс. Многие приложения слепо	
-  ожидают это и не могут загрузить AVS скрипты.<br>	
+* DirectShowSource() теперь устанавливает _HIRESOUTPUT свойство WMAudio Decoder DMO.
+  Позволяет 24 битные отсчеты и 6 канальное декодирование.<br>
+* Avisynth COM объект теперь поддерживает IAVIStreaming интерфейс. Многие приложения слепо
+  ожидают это и не могут загрузить AVS скрипты.<br>
 * Conditional Reader теперь также принимает T, F, Yes и No для логических данных.<br>
 * DirectShowSource() протоколирует отладочные сообщения в лог-файл.<br>
 * DirectShowSource() вынужденная установка числа кадров.<br>
@@ -158,7 +158,7 @@ WAVE_FORMAT_EXTENSIBLE аудио, корректирует данные и принимает их.<br>
 * Явный запрос всех каналов, доступных в аудиопотоке [acm AC3]<br>
 * Явная попытка запросить float, 32 bit затем 24 bit отсчеты от аудио кодека.<br>
 * Принимает сырые аудиопотоки типа WAVE_FORMAT_IEEE_FLOAT.<br>
-* Добавлена опция установки, чтобы добавить пункт "Avisynth Script" в оболочку Explorer 
+* Добавлена опция установки, чтобы добавить пункт "Avisynth Script" в оболочку Explorer
   для создания нового .avs файла.<br>
 * Добавлены avs_delete_script_environment и avs_subframe_planar в avisynth_c интерфейс.<br>
 * Трюк чтобы допустить работу Fraunhoffer MP3 кодека при wBitPerSample==16. (Squid_80)<br>
@@ -216,10 +216,10 @@ WAVE_FORMAT_EXTENSIBLE аудио, корректирует данные и принимает их.<br>
 * Исправлена Info() метрика автовыбора шрифта.<br>
 * Исправлена ошибочная условная проверка float RHS.<br>
 * Исправлены цвета в YUV ColorBars, теперь согласуются с BT.801-1.<br>
-* TCPDeliver обновления: Клиент: Исправлено аварийное завершение, если клиент отсоединен.<br>	
+* TCPDeliver обновления: Клиент: Исправлено аварийное завершение, если клиент отсоединен.<br>
 * TCPDeliver обновления: Сервер: Помнит отсоединить клиентов при завершении.<br>
-* Исправлены Turn*() YUY2 mod 2 высоты тесты.<br>	
-* Исправлены AVISource() поврежденные сообщения об ошибках.<br>	
+* Исправлены Turn*() YUY2 mod 2 высоты тесты.<br>
+* Исправлены AVISource() поврежденные сообщения об ошибках.<br>
 * Исправлена AVISource() прямая обработка пропущенных кадров (дропов).
 </p>
 
@@ -293,13 +293,13 @@ WAVE_FORMAT_EXTENSIBLE аудио, корректирует данные и принимает их.<br>
 * Добавлен метод VideoInfo.MulDivFPS(целый множитель, целый делитель), делающий
 рациональное масштабирование с нормализацией и защитой от переполнения ствойства FPS.<br>
 * Добавлены параметры offsets, gamma и analyze (подобно ColorYUV) в RGBAdjust.<br>
-* Добавлена предварительная поддержка фильмов 23.976fps с прореженными (drop) кадрами к ShowSMPTE(), 
+* Добавлена предварительная поддержка фильмов 23.976fps с прореженными (drop) кадрами к ShowSMPTE(),
   кто-нибудь знает предлагаемый алгоритм SMPTE?<br>
 * Добавлены Spline16Resize, Spline36Resize, GaussResize и LanczosResize(tap=xx)<br>
-* Добавлены параметры в ShowFrameNumber: ShowFrameNumber(offset=10, x=360, y=576, 
+* Добавлены параметры в ShowFrameNumber: ShowFrameNumber(offset=10, x=360, y=576,
  font="georgia", size=24, text_color=$ff0000)<br>
 * Добавлено целый отступ в ShowSMPTE: ShowSMPTE(offset_f=10)<br>
-* Добавлены параметры к ShowSMPTE: ShowSMPTE(offset="00:00:00:30", x=360, y=576, 
+* Добавлены параметры к ShowSMPTE: ShowSMPTE(offset="00:00:00:30", x=360, y=576,
  font="georgia", size=24, text_color=$ff0000)<br>
 * Добавлен опциональный параметр FPS=24 в Dissolve и Fade*() для обработки клипов содержащих только аидио.<br>
 * Добавлены FadeIn0(), FadeOut0(), FadeIO0() варианты, которые не добавляют дополнительного кадра.<br>
@@ -312,7 +312,7 @@ WAVE_FORMAT_EXTENSIBLE аудио, корректирует данные и принимает их.<br>
 * Добавлена 16 байт охранная зона защиты/детектирования VideoFrameBuffer в режиме отладки.<br>
 * Добавлена защита от EBX ошибки компилятора / короткий обход в Cache::GetFrame().<br>
 * Добавлена поддержка YV12 для ShowFiveVersions().<br>
-* Добавлен пареметр "[sse]b" в Tweak, чтобы разрешить (медленый) SSE код 
+* Добавлен пареметр "[sse]b" в Tweak, чтобы разрешить (медленый) SSE код
  (возможно AMD могут выполнять его быстрее).<br>
 * Добавлен Limiter(show=show_luma/show_luma_grey/show_chroma/show_chroma_grey),
 что показывает выходящие за пределы яркость/цветность; *_grey делает
@@ -325,7 +325,7 @@ WAVE_FORMAT_EXTENSIBLE аудио, корректирует данные и принимает их.<br>
 <h3>Исправления ошибок</h3>
 
 <p>
-* Исправлено повреждение в конце таблицы IScriptEnvironment vtable.<br>	
+* Исправлено повреждение в конце таблицы IScriptEnvironment vtable.<br>
 * Исправлена утечка памяти в Overlay и AVSChar/AVSTime.<br>
 * Исправлен End_of_Stream сброс при поиске в AudioStreamSource::<br>
 * Исправлен SegmentedDirectShowSource() разбор аргументов.<br>
@@ -424,7 +424,7 @@ source.cpp<br>
 <p>
 * Улучшение производительности в функцияя передачи в TCPDeliver.<br>
 * Normalize() для 16 bit останавливается, когда найдена величина максимального целого отсчета .<br>
-* Выполнена сортировка -unique|detab в color_rgb.avsi, удалены все дубликаты.<br>	
+* Выполнена сортировка -unique|detab в color_rgb.avsi, удалены все дубликаты.<br>
 * YV12 MergeLuma(), MergeChroma() включают очень быстрый iSSE pavgb код для веса=0.5<br>
 * Очищена коллекция мусора VideoFrame  по закрытии скрипта (Спасибо TSP).<br>
 * Text overlay antialiaser tweaked, 8% faster <em>Work in progress, more to come</em>.<br>
@@ -466,10 +466,10 @@ source.cpp<br>
 * Инсталлятор теперь заполняет "All Users" дерево  оболочки на вариантах NT.
   Admin/Uninstaller пункты добавляются только к текущему пользователю.<br>
 * Анинсталлятор теперь удаляет DirectShowSource.dll и TCPDeliver.dll из папки плагинов.<br>
-* ImageReader атоматически не падает к DevIL для DIB/BMP типа файлов.(DevIL аварийно завершается на палитровых BMP)<br>	
+* ImageReader атоматически не падает к DevIL для DIB/BMP типа файлов.(DevIL аварийно завершается на палитровых BMP)<br>
 * ImageWriter теперь вызывает исключение для не RGB24 формата с обработкой DevIL.<br>
 * Заменено VideoFrame::SubFrame() на env->SubFrame() (Готовность к многопоточности, Спасибо TSP).<br>
-* Опция выравнивание планарных форматов (по умолчанию 16 байт) должна быть 
+* Опция выравнивание планарных форматов (по умолчанию 16 байт) должна быть
 основана на плоскостях цветности, выравнивание яркости равно (все еще)
 удвоенному цветности. Станет по умолчанию в следующей версии.<br>
 * Поддержка для <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=90938"> vfr контента в

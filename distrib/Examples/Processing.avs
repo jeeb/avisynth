@@ -13,5 +13,5 @@ Crop(16, 16, -16, -16)
 
 # Convert to greyscale
 
-Greyscale() 
+Greyscale()
 

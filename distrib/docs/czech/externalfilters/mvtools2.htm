@@ -27,64 +27,64 @@ I) O pluginu MVTools</a>
   <li><a href="#version2">Ia) O verzi 2 MVTools</a></li>
   <li><a href="#functions">II) Popisy funkcí</a></li>
   <li><a href="#examples">III) Pøíklady</a></li>
-  <li><a href="#disclaimer">IV) Odmítnutí záruk (nepøeskakujte tuto èást, ale nenutím vás 
+  <li><a href="#disclaimer">IV) Odmítnutí záruk (nepøeskakujte tuto èást, ale nenutím vás
 to nauèit se)</a></li>
   <li><a href="#revisions">V) Revize</a></li>
 </ul>
 <h2><a name="MVTools"></a>I) O pluginu MVTools
 </h2>
-<p>MVTools - plugin pro AviSynth 2.5 je kolekce funkcí 
+<p>MVTools - plugin pro AviSynth 2.5 je kolekce funkcí
 pro odhadnutí a kompenzaci pohybu objektù ve video klipech.
 Kompenzace pohybu mùže být použita pro silné èasové (temporal) odšumìní, pokroèilé pøevody snímkových frekvencí,
 restauraci obrazu a další úlohy.
 </p>
-<p>Plugin obsahuje server-funkci odhadu pohybu MAnalyse pro nalezení vektorù pohybu a 
+<p>Plugin obsahuje server-funkci odhadu pohybu MAnalyse pro nalezení vektorù pohybu a
  nìkolik klient-funkcí kompenzace pohybu (MCompensate, MMask a další)
 které používají tyto vektory.
 </p>
-<p>Plugin používá metodu srovnávání blokù pro odhad pohybu (podobné metody jsou použity v MPEG2, MPEG4, atd). 
-Ve fázi analýzy plugin rozdìluje snímky na malé bloky a snaží se najít pro každý blok v aktuálním snímku 
-nejpodobnìjší (odpovídající) blok v druhém snímku (pøedchozím nebo následujícím). 
+<p>Plugin používá metodu srovnávání blokù pro odhad pohybu (podobné metody jsou použity v MPEG2, MPEG4, atd).
+Ve fázi analýzy plugin rozdìluje snímky na malé bloky a snaží se najít pro každý blok v aktuálním snímku
+nejpodobnìjší (odpovídající) blok v druhém snímku (pøedchozím nebo následujícím).
 Relativní posunutí tìchto blokù je vektor pohybu.
-Hlavním mìøítkem podobnosti blokù je souèet absolutních rozdílù (SAD) 
-všech pixelù tìchto dvou porovnávaných blokù. 
-SAD je hodnota, která øíká, jak dobrý byl odhad pohybu. 
+Hlavním mìøítkem podobnosti blokù je souèet absolutních rozdílù (SAD)
+všech pixelù tìchto dvou porovnávaných blokù.
+SAD je hodnota, která øíká, jak dobrý byl odhad pohybu.
 <p>Výstupem MAnalyse (server) je speciální klip s informacemi o vektorech pohybu v nìjakém formátu.
 </p>
-<p>Ve fázi kompenzace klient-funkce pluginu ètou vektory pohybu 
+<p>Ve fázi kompenzace klient-funkce pluginu ètou vektory pohybu
 a použijí je k vyjmutí blokù a zformování snímku s kompenzovaným pohybem
 (nebo realizuje nìjakou jinou plnou nebo èásteènou kompenzaci pohybu nebo funkci interpolace).
 Každý objekt (blok) v tomto (plnì) kompenzovaném snímku je umístìn na stejnou pozici v jaké je v aktuálním snímku.
-Tedy, mùžeme (napøíklad) použít silné èasové odšumìní dokonce pro docela rychle se pohybující objekty 
-bez vytváøení nepøíjemných artefaktù a duchù 
-(rysy objektu a hrany jsou shodné pokud je kompenzace perfektní). 
-Plugin mùže vytvoøit kompenzované sousední snímky pro každý aktuální snímek, 
-a odstranit v nich šum vnitøní funkcí (MDenoise). 
-Nebo mùžete použít kompenzované a pùvodní snímky k vytvoøení prolínaného (interleaved) klipu, 
-odstranit v nich šum jakýmkoliv externím èasovým (temporal) filtrem, 
+Tedy, mùžeme (napøíklad) použít silné èasové odšumìní dokonce pro docela rychle se pohybující objekty
+bez vytváøení nepøíjemných artefaktù a duchù
+(rysy objektu a hrany jsou shodné pokud je kompenzace perfektní).
+Plugin mùže vytvoøit kompenzované sousední snímky pro každý aktuální snímek,
+a odstranit v nich šum vnitøní funkcí (MDenoise).
+Nebo mùžete použít kompenzované a pùvodní snímky k vytvoøení prolínaného (interleaved) klipu,
+odstranit v nich šum jakýmkoliv externím èasovým (temporal) filtrem,
 a vybrat centrální vyèištìné pùvodní snímky pro výstup (viz pøíklady).
 </p>
-<p>Odhad pohybu a jeho kompenzace nejsou samozøejmì ideální a dokonale pøesné. 
-V nìkterých komplikovaných pøípadech (video se stmíváním - fading, ultra-rychlého pohybu, nebo periodických struktur) 
+<p>Odhad pohybu a jeho kompenzace nejsou samozøejmì ideální a dokonale pøesné.
+V nìkterých komplikovaných pøípadech (video se stmíváním - fading, ultra-rychlého pohybu, nebo periodických struktur)
 mùže být odhad pohybu zcela chybný, a kompenzovaný (obzvláštì interpolovaný) snímek mùže být kostkatý a (nebo) ošklivý.
 Tìžké potíže jsou také kvùli vzájemnému zastínìní jednoho objektu druhým nebo obrácenì odkrývání.
-Složité Avisynth skripty s øadou funkcí pro kompenzaci pohybu mohou spotøebovat velký objem pamìti 
+Složité Avisynth skripty s øadou funkcí pro kompenzaci pohybu mohou spotøebovat velký objem pamìti
 a výsledkem je velmi pomalé zpracování.
 Nejedná se o jednoduchý, ale o docela pokroèilý plugin. Používejte ho jen ve vhodných pøípadech a snažte se vyladit jeho parametry.
 Existuje mnoho diskuzí o použití kompenzace pohybu na doom9 Avisynth fóru.
-Pøedevším se podívejte na starší vlákno <a href="http://forum.doom9.org/showthread.php?t=76041">MVTools</a>, 
-vlákno <a href="http://forum.doom9.org/showthread.php?t=102071">true motion</a>, 
-nové vlákno <a href="http://forum.doom9.org/showthread.php?t=84770">MVTools</a> a nìkterá další. 
+Pøedevším se podívejte na starší vlákno <a href="http://forum.doom9.org/showthread.php?t=76041">MVTools</a>,
+vlákno <a href="http://forum.doom9.org/showthread.php?t=102071">true motion</a>,
+nové vlákno <a href="http://forum.doom9.org/showthread.php?t=84770">MVTools</a> a nìkterá další.
 Snažte se èíst pøíspìvky jako doplnìk této dokumentace a žádejte zde o pomoc.
-Pokud se skuteènì zajímáte o témata odhadu a kompenzace pohybu, 
+Pokud se skuteènì zajímáte o témata odhadu a kompenzace pohybu,
 mùžete snadno najít øadu vìdeckých publikací (použijte WWW vyhedávání).
 </p>
-<p>Poznámky: Plugin je stále ve vývoji. Aktuální verze má nìkterá omezení. 
-Podporováno je jen progresivní YV12, YUY2 video. 
+<p>Poznámky: Plugin je stále ve vývoji. Aktuální verze má nìkterá omezení.
+Podporováno je jen progresivní YV12, YUY2 video.
 Použijte pøevod barevného formátu a zkuste použít (smart) bob-deinterlace pro prokládané video
 (mùže také pracovat rozdìlení na pole SeparateFields s nebo bez SelectEven/SelectOdd).
-Nìkteré komplikované skripty (MVBOB, MCBOB, TempGaussMC) používají MVTools pro 
-<a href="http://forum.doom9.org/showthread.php?t=84725">odstranìní prokládání s kompenzací pohybu.</a> 
+Nìkteré komplikované skripty (MVBOB, MCBOB, TempGaussMC) používají MVTools pro
+<a href="http://forum.doom9.org/showthread.php?t=84725">odstranìní prokládání s kompenzací pohybu.</a>
  </p>
  <p>Alternativnì mùžete zkusit použít <a href="http://forum.doom9.org/showthread.php?t=101859">plugin Motion</a> od mg262.
 </p>
@@ -93,13 +93,13 @@ Nìkteré komplikované skripty (MVBOB, MCBOB, TempGaussMC) používají MVTools pro
 <p>MVTools verze 2 je významnou vnitøní i vnìjší aktualizací.
 Hlavními cíly MVTools v2.X jsou jasnost a stabilita
 (pøedevším pro vícevláknová prostøedí na vícejádrových CPU) a samozøejmì zlepšení výkonu i využití pamìti.</p>
-<p>Hlavní prostøedek k dosažení cílù je odstranìní vnitøního bufferu MVTools 
-s mysteriózním (pro øadu lidí) indexem (idx) a dále nìkteré další vnitøní triky 
+<p>Hlavní prostøedek k dosažení cílù je odstranìní vnitøního bufferu MVTools
+s mysteriózním (pro øadu lidí) indexem (idx) a dále nìkteré další vnitøní triky
 (viz vlákno <a href="http://forum.doom9.org/showthread.php?t=131033">MVTools without idx</a>).
 Pro implementování tohoto bez snížení výkonu používáme normální efektivní snímkový keš (cache) Avisynthu
 a uvadíme nové povinné pøípravné stadium (pøed odhadem pohybu pomocí <code>MAnalyse</code>).
-V tomto stadiu bude nová funkce <code>MSuper</code> dostávat zdrojový klip a pøipraví speciální klip "super" 
-s víceúrovòovými (hierarchicky upavovanými) daty snímkù 
+V tomto stadiu bude nová funkce <code>MSuper</code> dostávat zdrojový klip a pøipraví speciální klip "super"
+s víceúrovòovými (hierarchicky upavovanými) daty snímkù
 (V pøedchozích verzích MVTools 0.X-1.X byla tato víceúrovòová data pøipravena, uložena a kešována vnitønì
 pomocí idx jako indexem pseudo-klipu tìchto "supersnímkù" ).
 Super klip je pak použit jak ve funkci <code>MAnalyse</code> tak klientských funkcí kompenzace pohybu.</p>
@@ -125,8 +125,8 @@ Vítají se oznámení možných chyb a návrhy (požadavky na funkce).</p>
 
 <h3>Bìžné parametry</h3>
 
-<p>Filtry, které používají vektory pohybu mají bìžné parametry. 
-Ty jsou prahovými hodnotami detekce zmìny scény, 
+<p>Filtry, které používají vektory pohybu mají bìžné parametry.
+Ty jsou prahovými hodnotami detekce zmìny scény,
 a mají znaky isse mmx. Také používají jeden nebo více
 vektorových streamù, které jsou vytváøeny funkcí <code>MAnalyse</code>.
 </p>
@@ -156,7 +156,7 @@ znamená 0 %, 255 znamená 100 %. výchozí je 130 ( což znamená 51 % ).
 Výchozí je true. Pokud váš procesor nepodporuje ISSE MMX optimalizace, bude to každopádnì
 vypnuto ( a vy nebudete schopni je aktivovat )</p>
 <p><var>bool "planar"</var> : znak pro použití speciálního planárního barevného formátu pro YUY2 klipy, jak pro vstup tak pro výstup funkce.
-Využívá zvláštní trik pro uchování snímkù s planární organizací dat barev 
+Využívá zvláštní trik pro uchování snímkù s planární organizací dat barev
 (oddìlené Y, U, V plochy v pamìti) v normálním prolínaném (interleaved) formátu YUY2 jako kontejneru.
 Tak se mùžeme vyhnout øadì vnitøních pøevodù prolínaného (interleaved) formátu do planárního a tím zvýšíme rychlost.
 Mùžete pøevést normalní prolínaný YUY2 zdrojový klip na planární formát pomocí funkce <code>Interleaved2planar</code>
@@ -241,7 +241,7 @@ Vìtší bloky jsou ménì citlivé na šum, jsou rychlejší, ale také ménì pøesné.</p>
 Doplòkové možnosti: 4 pro blksize=8 a 8 nebo 2 pro blksize=16.</p>
 <p><var>level</var> : je poèet Nepoužitých hrubých úrovní v hierarchické
 analýze provádìné pøi vyhledávání vektorù pohybu. Obvykle èím nižší, tím lepší (lze nalézt vektory s jakoukoliv délkou).
-Promìnná je zachována pro studijní (testovací) úèely. 
+Promìnná je zachována pro studijní (testovací) úèely.
 Nìkdy je <var>level</var> užiteèný pro vylouèení velkých (lživých) vektorù (poèítaèové grafiky, atd).
 Výchozí = 1 odv.2.3 (jsou použity všechny úrovnì kromì jedné).</p>
 <p><var>search, searchparam, pelsearch</var> : <var>search</var> urèuje typ vyhledávání v každé úrovni, a
@@ -399,13 +399,13 @@ Zkuste použít AssumeFrameBased pokud to nepotøebujete.</p>
 <p><code>MCompensate</code> (<var>clip source, clip super, clip vectors, bool "scbehavior", float "recursion", int "thSAD",
 bool "fields", int "thSCD1", int "thSCD2", bool "isse", bool "planar"</var>)
 </p>
-<p>Provádí plnou kompenzaci pohybu ve snímku. To znamená, že bloky ukázané 
-pomocí vektorù pohybu v referenèním snímku budou posunuty podle vektorù k dosažení jejich umístìní 
+<p>Provádí plnou kompenzaci pohybu ve snímku. To znamená, že bloky ukázané
+pomocí vektorù pohybu v referenèním snímku budou posunuty podle vektorù k dosažení jejich umístìní
 v aktuálním snímku.</p>
 <p><var>super</var> (nejmenný) je víceúrovòový superklip pøipravený funkcí MSuper.</p>
 <p><var>vectors</var> (nejmenný) je klip s daty vektorù pohybu vytváøený funkcí MAnalyse.</p>
-<p><var>scbehavior</var> ( výchozí je true ), rozhoduje, který snímek bude zachován 
-pøi zmìnì scény. Je-li true, snímek je ponechán nezmìnìný. Jinak je do aktuálního snímku 
+<p><var>scbehavior</var> ( výchozí je true ), rozhoduje, který snímek bude zachován
+pøi zmìnì scény. Je-li true, snímek je ponechán nezmìnìný. Jinak je do aktuálního snímku
 zkopírován referenèní snímek.</p>
 <p><var>recursion</var> je procentuální šíøe døíve kompenzovaných snímkù použitých pro novou kompenzaci
 ve speciálním rekurzivním režimu. Zbylá šíøka je brána (uniformì) z daného referenèního snímku (použitého v obyèejném režimu).
@@ -419,7 +419,7 @@ pak je blok špatný, a my použijeme zdrojový blok místo kompenzovaného bloku. Výc
  Zkuste to použít pro odstranìní prokládání (ne pro odšumìní).<br>
 Výchozí je false.
 </p>
-<p>Zpracování pøekrytých blokù je implementováno jako okenní sumarizace blokù  
+<p>Zpracování pøekrytých blokù je implementováno jako okenní sumarizace blokù
 (jako FFT3DFilter, hodnota pøekrytí do blksize/2) pro snížení blocking artefaktù (kostkatìní).
 </p>
 
@@ -432,15 +432,15 @@ int "kind", int "Ysc", int "thSCD1", int "thSCD2", bool "isse", bool "planar"</v
 Maska je definována daty blokù, ale je interpolovaná, aby zapadla na celou velikost snímku.
 Maska je vytvoøena jak na jasové (luma) tak na barevnostních (chroma) plochách. Hodnoty masky mohou být od 0 (min) do 255 (max).</p>
 <p><var>kind</var> parametr definuje druh masky.
-</p><p>Režim <var>kind=0</var> vytváøí masku pohybu z délek vektorù pohybu. Vytváøí lepší 
+</p><p>Režim <var>kind=0</var> vytváøí masku pohybu z délek vektorù pohybu. Vytváøí lepší
 masku než funkce <code>MotionMask</code> pluginu MaskTools protože vektory pohybu jsou mnohem víc vìrohodné než
 algoritmus MotionMask. Hodnota masky 0 znamená nikde žádný pohyb ( délka
-vektorù pohybu je nulová ). Èím vìtší délka vektoru, tím vìtší hodnota masky (nasycené do 255), 
+vektorù pohybu je nulová ). Èím vìtší délka vektoru, tím vìtší hodnota masky (nasycené do 255),
 mìøítko je definováno pomocí <var>ml</var>.</p>
 </p><p><var>kind=1</var> umožní vytvoøit masku hodnot SAD (souèet absolutních rozdílù) místo
 délek vektorù. Mùže to být užiteèné k nalezení problémových oblastí se špatným odhadem pohybu.
 (Je použit vnitøní faktor blocksize*blocksize/4 pro normalizaci mìøítka <var>ml</var>.)
-<p><var>kind=2</var> umožòuje vytvoøit okluzní masku (špatné bloky v dùsledku roztržení, napìtí). 
+<p><var>kind=2</var> umožòuje vytvoøit okluzní masku (špatné bloky v dùsledku roztržení, napìtí).
 V souèasnosti se používá nìjaký normalizovaný souèet kladných rozdílù pohybu blokù. Mùže to být násobeno pomocí mìøítka <var>ml</var>.</p>
 <p><var>kind=3</var> umožòuje vytvoøit masku horizontální komponenty vektoru pohybu v jednotkách pel plus 128.
 Násobené koeficienty se nepoužívají.</p>
@@ -448,11 +448,11 @@ Násobené koeficienty se nepoužívají.</p>
 Násobené koeficienty se nepoužívají.</p>
 <p><var>kind=5</var> - barevná mapa pohybu jako x,y komponent vektorù pohybu zobrazených v U, V barevných plochách
 (v jednotkách pel plus 128, násobené koeficienty se nepoužívají).</p>
-<p><var>ml</var> definuje mìøítko masky pohybu. 
-Když délka vektoru (nebo hodnota jiného typu) je vyšší nebo rovna <var>ml</var>, bude výstupní  
+<p><var>ml</var> definuje mìøítko masky pohybu.
+Když délka vektoru (nebo hodnota jiného typu) je vyšší nebo rovna <var>ml</var>, bude výstupní
 hodnota nasycena do 255. Menší hodnoty vedou k menším výstupùm.
-</p><p><var>gamma</var> je použito pro definování ukazatele závislosti výstupu na vstupu. 
-<var>gamma</var> = 1.0 znamená lineární závislost, zatímco <var>gamma</var> = 2.0 dává 
+</p><p><var>gamma</var> je použito pro definování ukazatele závislosti výstupu na vstupu.
+<var>gamma</var> = 1.0 znamená lineární závislost, zatímco <var>gamma</var> = 2.0 dává
 kvadratickou závislost.</p>
 <p>A nakonec, <var>Ysc</var> je hodnota vzatá maskou pøi zmìnì scény</p>
 <p>Výchozí jsou: <var>kind</var> = 0,  <var>ml</var> = 100, <var>gamma</var> = 1.0, a
@@ -462,7 +462,7 @@ kvadratickou závislost.</p>
 
 <p><code>MSCDetection</code> (<var>clip source, clip vectors, int "Ysc", int "thSCD1", int "thSCD2", bool "isse"</var>)
 </p>
-<p>Vytváøí masku detekce scény z dat vektorù pohybu. 
+<p>Vytváøí masku detekce scény z dat vektorù pohybu.
 Maska je vytvoøena jak na jasové (luma) tak i na barevnostních (chroma) plochách. Výstup beze zmìny scény je 0.</p>
 <p><var>Ysc</var> je hodnota braná maskou pøi zmìnì scény, výchozí je 255.</p>
 
@@ -478,14 +478,14 @@ pohybu, napøíklad za úèelem zvýšení pøesnosti ( když je
 <var>pel</var> &gt; 1 a <var>scale</var> = 1, neuvidíte
 odchylky menší než jeden pixel ).
 </p>
-<p><var>sil</var> umožní vidìt rùzné úrovnì analýzy ( když se pøi vyhledávání 
-vektorù pohybu provádí hierarchická analýza, a mùže to být zajímavé pro pozorování 
+<p><var>sil</var> umožní vidìt rùzné úrovnì analýzy ( když se pøi vyhledávání
+vektorù pohybu provádí hierarchická analýza, a mùže to být zajímavé pro pozorování
 co se dìje ve vyšších úrovních ).
 </p>
-<p><var>tol</var> je prahová hodnota tolerance. Pokud deformace vyvolaná 
+<p><var>tol</var> je prahová hodnota tolerance. Pokud deformace vyvolaná
 vektorem pohybu vìtším než <var>tol</var>, vektor není zobrazen.
 </p>
-<p><var>showsad</var> umožní zobrazit støední (pøepoèítanou na blok 8x8) SAD po kompenování 
+<p><var>showsad</var> umožní zobrazit støední (pøepoèítanou na blok 8x8) SAD po kompenování
 obrazu a množství (ThSCD1) špatných (ThSCD1) blokù.
 </p>
 <p><var>number</var> umožòuje oznaèit daný blok (jeho èíslem) bíle. Výchozí=-1.
@@ -495,17 +495,17 @@ obrazu a množství (ThSCD1) špatných (ThSCD1) blokù.
 
 <h3>MDepan</h3>
 
-<p>Dostává vektory pohybu, odhaduje globální pohyb a vkládá data do 
+<p>Dostává vektory pohybu, odhaduje globální pohyb a vkládá data do
 výstupního snímku ve zvláštním formátu pro plugin <code>DePan</code> (od Fizick).</p>
-<p>Globální pohyb uvnitø snímku (panoramování, zoom, rotace) je odhadnut iterativní 
+<p>Globální pohyb uvnitø snímku (panoramování, zoom, rotace) je odhadnut iterativní
 procedurou, za použití pouze dobrých blokù.
 </p>
-<p>Odmítnuté bloky: 1) poblíž okrajù snímkù; 2) s velkým SAD (podle parametru <var>thSCD1</var> 
+<p>Odmítnuté bloky: 1) poblíž okrajù snímkù; 2) s velkým SAD (podle parametru <var>thSCD1</var>
 ); 3) s pohybem lišícím se od sousedù nebo globálu.</p>
 <p>Parametry <i>zoom</i> a <i>rot</i> pøepínají odhad zoom (pøiblížení, vzdálení)) a rotaci, <var>
-pixaspect </var> je protažení pixelu (1.094 pro standardní PAL, 0.911 pro 
+pixaspect </var> je protažení pixelu (1.094 pro standardní PAL, 0.911 pro
 standardní NTSC), <var>error </var>je maximální støední odchylka pohybu.</p>
-<p>Vyhodnocený globální pohyb ve snímku se pøepne na nulu pro velké chyby pohybu nebo 
+<p>Vyhodnocený globální pohyb ve snímku se pøepne na nulu pro velké chyby pohybu nebo
 pøi zmìnì scény (podle parametrù <var>thSCD1, thSCD2</var> ).
 </p>
 <p>parametr <var>info</var> umožòuje zapsat informace o globálním pohybu pro ladìní.
@@ -616,9 +616,9 @@ bool "blend", int "thSCD1", int "thSCD2", bool "isse", bool "planar"</var>)
 ke zmìnì frekvence snímkù (fps) klipu (a poètu snímkù).
 Používá zpìtné "mvbw" a dopøedné "mvfw" vektory pohybu
 pro vytvoøení interpolovaných obrazù v nìjakém mezièase mezi snímky.
-Pro vytvoøení výstupního obrazu se používají nìkteré vnitøní zpìtné a dopøedné masky 
-a èasovì vážené souèinitele. 
-(Algoritmus je založen na funkci MVInter starých MVTools v1.9.12.) 
+Pro vytvoøení výstupního obrazu se používají nìkteré vnitøní zpìtné a dopøedné masky
+a èasovì vážené souèinitele.
+(Algoritmus je založen na funkci MVInter starých MVTools v1.9.12.)
 Je to obvykle rychlejší než MFlowFps , ale mùže vytváøet kostkatìní a jiné artefakty.
 Pro tuto funkci se dùraznì doporuèuje skuteèný odhad pohybu (true motion).</p>
 <p><var>super</var> (nejmenný) je víceúrovòový superklip pøipravený funkcí MSuper.</p>
@@ -632,11 +632,11 @@ Když <var>num</var> nebo <var>den</var> je rovno 0, pak je pro výstup brána dvoj
 0 - prùmìr dopøedné a zpìtné èásteèné kompenzace pohybu (nejrychlejší, výchozí).<br>
 1 - statický støed.<br>
 2 - dynamický støed.<br>
-3 - èasovì vážená kombinace pøenesených dopøedných blokù maskovaných posunutými zpìtnými 
+3 - èasovì vážená kombinace pøenesených dopøedných blokù maskovaných posunutými zpìtnými
 a pøenesených zpìtných maskovaných posunutými dopøednými.<br>
 4 - režim 3 smíchaný s jednoduchým statickým èasovým prùmìrem podle masky okluze posynutých blokù.<br>
 5 - maska okluze (pro ladìní).
-</p><p><var>thres</var>: prahová hodnota množství okluzí na blok pro binarizaci masky. 
+</p><p><var>thres</var>: prahová hodnota množství okluzí na blok pro binarizaci masky.
 Výchozí=0, což je vnitønì = blksize*blksizeV/4.
 </p>
 <p><var>blend</var>: smíchá snímky na zmìnì scény jako když je ConvertFps true,
@@ -689,7 +689,7 @@ Nízké hodnoty mohou vést k šachovnicovému odšumìní, velké hodnoty mohou vést k d
 <br>
 Výchozí <var>thSAD</var>=400.</p>
 <p><var>"thSADC"</var> je prahová hodnota pro plochy barevnosti (chroma).<br>
-Výchozí (není-li zadána) : <var>thSADC</var>=<var>thSAD</var>. 
+Výchozí (není-li zadána) : <var>thSADC</var>=<var>thSAD</var>.
 Pokud je zadána pak <var>thSADC</var>je použito pro barevnost a <var>thSAD</var> je použito pro jas (luma).</p>
 <p>parametr <var>plane</var> nastavuje zpracovanou barevnou plochu:<br>
 0 - jas, 1 - barevnost U, 2 - barevnost V, 3 - obì barevné roviny, 4 - vše. Výchozí je 4.
@@ -705,14 +705,14 @@ int "search", int "searchparam", int "lambda", bool "chroma",
 bool "truemotion", int "pnew", int "overlap", int "overlapV",
 string "outfile", int "dct", int "divide", bool "mc", int "sadx264", bool "isse", bool "planar"</var>)
 </p>
-<p>Upøesòuje a pøepoèítává døíve odhadnutá (z MAnalyse) data vektorù pohybu  <var>vectors</var> 
+<p>Upøesòuje a pøepoèítává døíve odhadnutá (z MAnalyse) data vektorù pohybu  <var>vectors</var>
 pro jiný klip <var>super</var> nebo nastavení nových parametrù (napø. menší velikost bloku), po dìlení, atd.
 Tato dvou fázová metoda mùže být také užiteèná pro stabilnìjší (robustnìjší) odhad pohybu.
-Upøesnìní se provádí jen na nejjemnìjší hierarchické úrovni. 
-Interpolované vektory starých blokù jsou použity jako prediktory pro nové vektory, s pøepoètem SAD. 
-Jen nové vektory špatné kvality se SAD vyšší než prahová hodnota <var>thSAD</var> budou znovu odhadnuty vyhledáváním. 
+Upøesnìní se provádí jen na nejjemnìjší hierarchické úrovni.
+Interpolované vektory starých blokù jsou použity jako prediktory pro nové vektory, s pøepoètem SAD.
+Jen nové vektory špatné kvality se SAD vyšší než prahová hodnota <var>thSAD</var> budou znovu odhadnuty vyhledáváním.
 Zadávejte hodnotu <var>thSAD</var> redukovanou (násobenou) na velikost bloku 8x8. Výchozí <var>thSAD</var>=200.
-Dobré vektory jsou nezmìnìny, ale jejich SAD bude aktualizováno (pøepoèítáno). 
+Dobré vektory jsou nezmìnìny, ale jejich SAD bude aktualizováno (pøepoèítáno).
 </p>
 <p><var>smooth</var> je metoda jak rozdìlit hrubé bloky na menší.
 0 - použije pohyb na nejbližší blok, 1 - bilineární interpolace 4 sousedù. Výchozí 1.</p>

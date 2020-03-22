@@ -14,15 +14,15 @@
 int "max_barevnost", string "show"</var>)
 <p>Tento&nbsp;filtr&nbsp;je pøítomen od&nbsp; <em>v2.5</em>.&nbsp;Standard&nbsp;známý jako&nbsp;CCIR-601 definuje&nbsp;rozsah
 hodnot pixelù&nbsp;&nbsp;pova¾ovaných za legální pro&nbsp;zobrazení na TV. tyto rozsahy jsou&nbsp;16-235&nbsp;jasovou&nbsp;slo¾ku a 16-240&nbsp;pro slo¾ku&nbsp;barevnosti.
-<p>  Pixely mimo tento rozsah&nbsp;jsou známé tím, 
+<p>  Pixely mimo tento rozsah&nbsp;jsou známé tím,
 ¾e dìlají problémy u nìkterých TV pøijímaèù, a proto je nejlep¹í&nbsp;odstranit je&nbsp;pøed kódováním&nbsp;pokud&nbsp;je to zaøízení
 na kterém chcete video sledovat. Ve výchozím stavu&nbsp; tento filtr&nbsp;oøízne (nebo
 "omezí") pixely pod&nbsp;16&nbsp;na 16&nbsp;a pixely pøes 235 (nebo 240)&nbsp;na 235 (nebo 240).
 <p> Do&nbsp; <em>v2.53</em>&nbsp;(nesprávná)&nbsp;výchozí hodnota byla&nbsp;236.&nbsp;Pou¾ijte
 Limiter(16, 235, 16, 240)&nbsp;pro kompatibilní digitální video podle CCIR-601.
-<p>Ve&nbsp; <em>v2.56</em>, je pøidána volba <var>show</var> (pracuje jen pro RGB, YUY2 a YV12). Pokud ji 
+<p>Ve&nbsp; <em>v2.56</em>, je pøidána volba <var>show</var> (pracuje jen pro RGB, YUY2 a YV12). Pokud ji
 nastavíte,&nbsp;tak&nbsp;zvýrazní pixely, které budou mimo&nbsp;zadaný rozsah&nbsp;[min_jas,max_jas]&nbsp;nebo
-[min_barevnost,max_barevnost]. <var>show</var>          
+[min_barevnost,max_barevnost]. <var>show</var>
        mù¾e být "luma" (zobrazí meze
 jasu&nbsp;èervenì/zelenì), "luma_grey" (zobrazí meze jasu&nbsp;a udìlá&nbsp;oèekávané pixely èernobílé), "chroma" (zobrazí meze barevnosti ¾lutì),
 "chroma_grey" (zobrazí meze barevnosti a udìlá&nbsp;oèekávané pixely èernobílé). Barevné zvýraznìní je provedeno následovnì:

@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tivtc_mergehints.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tivtc_mergehints.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: tivtc_mergehints.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>         1.2<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>    Odstranìní prokládání &amp; pulldown
 <br><b>požadavky:</b>&nbsp;
@@ -27,18 +27,18 @@ $Id: tivtc_mergehints.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <!-- #EndTemplate -->
 <h2>Popis
 </h2>
-<p>MergeHints je jednoduchý filtr, který pøenáší údaje (hints) pøítomné v jednom klipu do druhého. 
+<p>MergeHints je jednoduchý filtr, který pøenáší údaje (hints) pøítomné v jednom klipu do druhého.
 Bude pracovat s jakýmkoliv filtrem, který používá metodu ukrývání údajù v
 nejménì významném bitu prvních 64 pixelù v ploše Y  obrazu (decomb, dgdecode, tfm, atd...).&nbsp;</p>
-<p>Poznámka: toto pouze umožní použití filtrù, které nemìní poèet snímkù nebo poøadí snímkù/polí 
-uprostøed míst údajù, které jsou pøenášeny. To znamená, že odšumovaèe, opravy barev, a podobné budou fungovat, 
+<p>Poznámka: toto pouze umožní použití filtrù, které nemìní poèet snímkù nebo poøadí snímkù/polí
+uprostøed míst údajù, které jsou pøenášeny. To znamená, že odšumovaèe, opravy barev, a podobné budou fungovat,
 ale nebudou fungovat selectevery(), convertfps(), atd...</p>
 
 <h3>Syntaxe</h3>
 <p><code>MergeHints</code> (clip <var>hintClip</var>, bool <var>&quot;debug&quot;</var>)</p>
 
 <h3>Pøíklady</h3>
-<p>Toto je skript kde by byly údaje (hints) z TFM normálnì znièeny a nikdy by se nedostalo na 
+<p>Toto je skript kde by byly údaje (hints) z TFM normálnì znièeny a nikdy by se nedostalo na
 TDecimate:</p>
 <pre>mpeg2source(d2v=&quot;source.d2v&quot;)
 tfm(d2v=&quot;source.d2v&quot;)
@@ -66,7 +66,7 @@ tdecimate(mode=1)</pre>
 
 <p><var>debug</var> -
 </p>
-<p>Vychrlí nìkteré informace za použití OutputDebugString(). Mùžete použít utilitu "DebugView" ze 
+<p>Vychrlí nìkteré informace za použití OutputDebugString(). Mùžete použít utilitu "DebugView" ze
 sysinternals pro prohlížení této informace.  Informace je právì
 specifikátor (prvních 32 lsbs) a údaj (druhých 32 lsbs) , které MergeHints najde v hintClip.
 </p>
@@ -84,7 +84,7 @@ specifikátor (prvních 32 lsbs) a údaj (druhých 32 lsbs) , které MergeHints najde
 
 <ul><li>- frame copy nahrazeno makewritable
 </ul>
-      
+
 <p><kbd>$English Date: 2005/07/10 16:11:01 $</kbd>
 <p><kbd>Èeský pøeklad:20.2.2009</kbd>
 </p>

@@ -9,16 +9,16 @@
 <a name="MaskHS"></a>MaskHS
 </h2>
 <p><code>MaskHS </code>(<var>clip, float &quot;startHue&quot;, float &quot;endHue&quot;, float &quot;maxSat&quot;, float &quot;minSat&quot;, bool &quot;coring&quot;</var>)
-<p>Pøidáno ve <em>v2.6</em>. 
+<p>Pøidáno ve <em>v2.6</em>.
 Tento filtr vrací masku (jako Y8) klipu použitím daného rozsahu odstínu (hue) a sytosti (saturation).
-<p><var>startHue</var> (výchozí 0), <var>endHue</var> (výchozí 360): (oba od 0 do 360; dáno ve stupních). Odstín a sytost budou upraveny pro hodnoty v rozsahu [startHue, endHue] když startHue&lt;endHue. 
+<p><var>startHue</var> (výchozí 0), <var>endHue</var> (výchozí 360): (oba od 0 do 360; dáno ve stupních). Odstín a sytost budou upraveny pro hodnoty v rozsahu [startHue, endHue] když startHue&lt;endHue.
 Všimnìte si, že odstín je periodický, takže odstín 360 stupòù odpovídá odstínu s nula stupni. Pokud je endHue&lt;startHue , pak bude vybrán rozsah [endHue,
-360] a [0, startHue] (tedy proti smìru hodinových ruèièek). Pokud potøebujete vybrat napøíklad rozsah [350, 370], musíte zadat startHue=370 a endHue=350. 
+360] a [0, startHue] (tedy proti smìru hodinových ruèièek). Pokud potøebujete vybrat napøíklad rozsah [350, 370], musíte zadat startHue=370 a endHue=350.
 Tedy pøi použití výchozích hodnot budou zpracovány všechny pixely.
-<p><var>maxSat</var> (výchozí 150), <var>minSat</var> (výchozí 0): (oba od 0 do 150 s minSat&lt;maxSat; dáno v procentech). 
-Odstín a sytost budou upraveny pro hodnoty v rozsahu [minSat, maxSat]. Prakticky bude sytost pixelu v rozsahu [0,100] 
-(tedy 0-100%), protože to odpovídá platným RGB pixelùm (100% odpovídá R=255, G=B=0, což má sytost 119). 
-Pøestøelení (až do 150%) je umožnìno pro ne-platné RGB pixely (150% odpovídá U=V=255, který má sytost odmocnina z (127^2+127^2) = 180). 
+<p><var>maxSat</var> (výchozí 150), <var>minSat</var> (výchozí 0): (oba od 0 do 150 s minSat&lt;maxSat; dáno v procentech).
+Odstín a sytost budou upraveny pro hodnoty v rozsahu [minSat, maxSat]. Prakticky bude sytost pixelu v rozsahu [0,100]
+(tedy 0-100%), protože to odpovídá platným RGB pixelùm (100% odpovídá R=255, G=B=0, což má sytost 119).
+Pøestøelení (až do 150%) je umožnìno pro ne-platné RGB pixely (150% odpovídá U=V=255, který má sytost odmocnina z (127^2+127^2) = 180).
 Tedy pøi použití výchozích hodnot budou zpracovány všechny pixely.
 <p><var>coring</var> = true/false (výchozí false). Když je nastaveno na true, jas  - luma (Y) je oøíznuto do [16,235]; když je nastaveno na false, jas je ponechán nedotèený.
 <p>Pøedpokládejme, že chceme vytvoøit masku kùže dívky. Správný zpùsob jak to udìlat je použít pohled do vectorscopu filtru

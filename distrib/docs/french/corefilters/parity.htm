@@ -24,9 +24,9 @@ that the clip is frame-based, with the bottom (even) field dominant in each
 frame. (This happens to be what the source filters guess.) If you want the top
 field dominant, use <code>ComplementParity</code> afterwards.
 </p>
-<p><code>AssumeFieldBased</code> throws away the existing information and assumes 
-  that the clip is field-based, with the even-numbered fields being bottom fields 
-  and the odd-numbered fields being top fields. If you want it the other way around, 
+<p><code>AssumeFieldBased</code> throws away the existing information and assumes
+  that the clip is field-based, with the even-numbered fields being bottom fields
+  and the odd-numbered fields being top fields. If you want it the other way around,
   use <code>ComplementParity</code> afterwards.</p>
 <h2><a name="assumefieldfirst"></a>AssumeTFF / AssumeBFF</h2>
 <p><code>AssumeTFF </code>(<var>clip</var>)<br>
@@ -34,8 +34,8 @@ field dominant, use <code>ComplementParity</code> afterwards.
 <p>Forcing the field order regardless of current value.</p>
 <h2><a name="complementparity"></a>ComplementParity</h2>
 <p><code>ComplementParity </code>(<var>clip</var>)</p>
-<p>If the input clip is field-based, <code>ComplementParity</code> changes top fields 
-  to bottom fields and vice-versa. If the input clip is frame-based, it changes 
+<p>If the input clip is field-based, <code>ComplementParity</code> changes top fields
+  to bottom fields and vice-versa. If the input clip is frame-based, it changes
   each frame's dominant field (bottom-dominant to top-dominant and vice-versa). </p>
 <p><kbd>$Date: 2005/10/03 16:31:31 $</kbd></p>
 <FORM>

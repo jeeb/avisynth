@@ -1,4 +1,4 @@
-<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd"> 
+<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd">
 <htm xmlns="http://www.w3.org/1999/xhtm" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/htm; charset=iso-8859-1" />
@@ -18,16 +18,16 @@
 <b>Anforderungen:</b> YV12 oder YUY2 Farbformat<br />
 <hr>
 <h3><strong>Description</strong></h3>
-<p>AutoCrop is an AVISynth filter that automatically crops the black borders from 
-  a clip. It operates in either preview mode where it overlays the recommended cropping information 
+<p>AutoCrop is an AVISynth filter that automatically crops the black borders from
+  a clip. It operates in either preview mode where it overlays the recommended cropping information
   on<br>
-  the existing clip, or cropping mode where it really crops the clip. It can also 
-  ensure width and height are multiples of specified numbers so the cropped clip can 
+  the existing clip, or cropping mode where it really crops the clip. It can also
+  ensure width and height are multiples of specified numbers so the cropped clip can
   be passed to the video compressor of your choice without problems.</p>
 <h3>
   <strong>Usage</strong></h3>
-<p>AutoCrop takes 10 parameters but they are all optional so you can just do AutoCrop() 
-  to get a feel for how the filter works. Parameters can either be specified in order 
+<p>AutoCrop takes 10 parameters but they are all optional so you can just do AutoCrop()
+  to get a feel for how the filter works. Parameters can either be specified in order
   or by name. I suggest specifying by name as there is a lot of parameters!</p>
 <p>Parameter order follows.</p>
 <p>AutoCrop(mode, wMultOf, hMultOf, leftAdd, rightAdd, topAdd, bottomAdd,
@@ -35,46 +35,46 @@ threshold, samples, aspect)</p>
 <h3><strong>Syntax</strong></h3>
 <p><strong><em>mode</em></strong> - Integer - default 1</p>
 <p>0 - Crop - Crops the image<br>
-  1 - Preview - Suggested cropping information is overlayed on the existing clip, 
+  1 - Preview - Suggested cropping information is overlayed on the existing clip,
   including a crop command that you can use to replace AutoCrop with.<br>
-  2 - Log - Logs the cropping parameters to the file &quot;AutoCrop.log&quot; 
+  2 - Log - Logs the cropping parameters to the file &quot;AutoCrop.log&quot;
   in the current directory.</p>
 <p><strong><em>wMultOf</em></strong> - Integer - default 4</p>
-<p>Ensures that the width of the cropped clip will be a multiple of the number 
-  specified. Use this to ensure that clip is a valid for whatever codec you are going to compress 
+<p>Ensures that the width of the cropped clip will be a multiple of the number
+  specified. Use this to ensure that clip is a valid for whatever codec you are going to compress
   with.</p>
 <p><strong><em>hMultOf</em></strong> - Integer - default 2</p>
 <p>As above but for height</p>
 <p><strong><em>leftAdd</em></strong> - Integer - default 0</p>
-<p>Forces autocrop to crop and additional 'leftAdd' pixels after it completes 
-  auto detection. You can use this option in conjunction with wMultOf. Useful for cropping out 
+<p>Forces autocrop to crop and additional 'leftAdd' pixels after it completes
+  auto detection. You can use this option in conjunction with wMultOf. Useful for cropping out
   bad quality lines on the side of VHS captures.</p>
 <p><strong><em>rightAdd</em></strong> - Integer - default 0</p>
 <p>See above but for the right.</p>
 <p><em><strong>topAdd</strong></em> - Integer - default 0</p>
-<p>Forces autocrop to crop and additional 'topAdd' pixels after it completes auto 
-  detection. You can use this option in conjunction with hMultOf. Useful for cropping out 
+<p>Forces autocrop to crop and additional 'topAdd' pixels after it completes auto
+  detection. You can use this option in conjunction with hMultOf. Useful for cropping out
   bad quality<br>
   lines on the top of VHS captures.</p>
 <p><strong><em>bottomAdd</em></strong> - Integer - default 0</p>
 <p>See above but for the bottom.</p>
 <p><strong><em>threshold</em></strong> - Integer (0-255) - default 40</p>
-<p>Threshold is the average luminance a line must have before it's considered 
+<p>Threshold is the average luminance a line must have before it's considered
   non blank.</p>
 <p><em><strong>samples</strong></em> - Integer - default 10</p>
-<p>The number of frames to examine when determining the cropping information. 
-  This directly affects the startup time of the filter. In general 10 seems to be plenty, if 
+<p>The number of frames to examine when determining the cropping information.
+  This directly affects the startup time of the filter. In general 10 seems to be plenty, if
   the slow startup is bothering you make the number lower.</p>
 <p><strong><em>aspect</em></strong> - Float - default 0 - Aspect is ignored</p>
 <p>-1 - Maintain aspect ratio of the source clip<br>
   0 - Aspect is ignored<br>
-  &gt;0 - Aspect ratio will be set to this. For example for a 4:3 aspect ratio 
+  &gt;0 - Aspect ratio will be set to this. For example for a 4:3 aspect ratio
   you would pass<br>
-  4.0/3.0 or 1.33333333333. Note 4/3 won't work the .0 is need to tell AVISynth 
+  4.0/3.0 or 1.33333333333. Note 4/3 won't work the .0 is need to tell AVISynth
   the value is a float.</p>
 <h3><strong>Recommended use</strong></h3>
-<p>I strongly suggest using the preview mode before committing to a particular 
-  crop. It's also worth noting that copy the suggested settings in to the standard AviSynth 
+<p>I strongly suggest using the preview mode before committing to a particular
+  crop. It's also worth noting that copy the suggested settings in to the standard AviSynth
   crop command is quicker than running AutoCrop with mode = 0.</p>
 <h3><strong>Source</strong></h3>
 <p>Source is included in the distribution.</p>
@@ -84,7 +84,7 @@ threshold, samples, aspect)</p>
 
 <p><font size="-1">Copyright (c) 2002 Glenn Bussell. All rights reserved.<br>
   glenn@videofringe.com </font></p>
-<p><font size="-1">This file is subject to the terms of the GNU General Public 
+<p><font size="-1">This file is subject to the terms of the GNU General Public
   License as published by the Free Software Foundation. A copy of this license is
 included with this software distribution in the file COPYING. If you do not have a copy, you may obtain a copy by writing to the Free
 Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.</font></p>

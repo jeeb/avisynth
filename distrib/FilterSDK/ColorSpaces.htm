@@ -11,15 +11,15 @@
 	</h1>
 
 <h2>RGB and YUV colorspaces</h2>
-<p>RGB and YUV are two different ways to represent colors. 
-In YUV colorspace there is one component that represent lightness (luma) 
-and two other components that represent color (chroma). 
-As long as the luma is conveyed with full detail, detail in the chroma components 
-can be reduced by subsampling (filtering, or averaging) which can be done in several ways 
-(thus there are multiple formats for storing a picture in YUV colorspace). 
-In RGB colorspace there are three components, one for the amount of Red, 
-one for the amount of Green and one for the amount of Blue. 
-Also in this colorspace there are multiple formats for storing a picture 
+<p>RGB and YUV are two different ways to represent colors.
+In YUV colorspace there is one component that represent lightness (luma)
+and two other components that represent color (chroma).
+As long as the luma is conveyed with full detail, detail in the chroma components
+can be reduced by subsampling (filtering, or averaging) which can be done in several ways
+(thus there are multiple formats for storing a picture in YUV colorspace).
+In RGB colorspace there are three components, one for the amount of Red,
+one for the amount of Green and one for the amount of Blue.
+Also in this colorspace there are multiple formats for storing a picture
 which differ in the amount of samples are used for one of the three colors.</p>
 
 <h3>RGB Colorspaces</h3>
@@ -27,30 +27,30 @@ which differ in the amount of samples are used for one of the three colors.</p>
 
 <p>Both of them contain three components, R,G and B - short for Red, Green and Blue.</p>
 
-<p>RGB24 and RGB32 are both an <a href="InterleavedImageFormat.htm">InterleavedImageFormat</a>. 
+<p>RGB24 and RGB32 are both an <a href="InterleavedImageFormat.htm">InterleavedImageFormat</a>.
 The only difference between the two are that RGB32 contains an extra byte for each pixel.</p>
 
-<p>The extra byte RGB32 contains is known as an alpha pixel, but it is actually quite seldom used. 
-The reason RGB32 is considered the "best" format is purely from a programmers view. 
-Handling RGB32 material is much easier than RGB24 material, 
+<p>The extra byte RGB32 contains is known as an alpha pixel, but it is actually quite seldom used.
+The reason RGB32 is considered the "best" format is purely from a programmers view.
+Handling RGB32 material is much easier than RGB24 material,
 because most processors operate on 32bits at the time, and not 24.</p>
 
 <h2>YUV colorspace</h2>
-<p>There are several YUV formats. There are <a href="InterleavedImageFormat.htm">interleaved formats</a> 
-and <a href="PlanarImageFormat.htm">planar formats</a> (also called packed formats). 
+<p>There are several YUV formats. There are <a href="InterleavedImageFormat.htm">interleaved formats</a>
+and <a href="PlanarImageFormat.htm">planar formats</a> (also called packed formats).
 The main difference is how they are stored in memory.</p>
 
-<p>Interleaved images have all color components needed to represent a pixel placed at the same place in memory. 
-For planar formats the data is not interleaved, but stored separately for each color channel (also called color plane). 
-For filter writers this means that they can write one simple function that is called three times, 
-one for each color channel, assuming that the operations are channel-independent (which is not always the case). 
-Again, using aligned for both color and luma channels will allow easy memory access. 
-The use of a planar format gives in most cases a significant speedup, 
-since all bytes of each plane can be treated the same way. 
-It can also give a speedup because your filter doesn't have to work on all planes, 
+<p>Interleaved images have all color components needed to represent a pixel placed at the same place in memory.
+For planar formats the data is not interleaved, but stored separately for each color channel (also called color plane).
+For filter writers this means that they can write one simple function that is called three times,
+one for each color channel, assuming that the operations are channel-independent (which is not always the case).
+Again, using aligned for both color and luma channels will allow easy memory access.
+The use of a planar format gives in most cases a significant speedup,
+since all bytes of each plane can be treated the same way.
+It can also give a speedup because your filter doesn't have to work on all planes,
 if it only modifies one or two of them.</p>
 
-<h3>YUY2 Colorformat</h3><p>YUY2 is an <a href="InterleavedImageFormat.htm">InterleavedImageFormat</a>. 
+<h3>YUY2 Colorformat</h3><p>YUY2 is an <a href="InterleavedImageFormat.htm">InterleavedImageFormat</a>.
 Bytes are arranged in memory like this:</p>
 
 
@@ -64,21 +64,21 @@ Bytes are arranged in memory like this:</p>
 
 
 <h3>YV12 Colorformat</h3>
-<p>The YV12 colorformat is very different from RGB and YUY2 colorformats. 
-The main different is that it is a <a href="PlanarImageFormat.htm">PlanarImageFormat</a>. 
+<p>The YV12 colorformat is very different from RGB and YUY2 colorformats.
+The main different is that it is a <a href="PlanarImageFormat.htm">PlanarImageFormat</a>.
 That means that the different color components are lying separate in memory.</p>
 
 
-<p>This can in most cases give a significant speedup, since all bytes of each plane can be treated the same way. 
-It can also give a speedup because your filter doesn't have to work on all planes, 
+<p>This can in most cases give a significant speedup, since all bytes of each plane can be treated the same way.
+It can also give a speedup because your filter doesn't have to work on all planes,
 if it only modifies one or two of them.</p>
 
 
 
-<p>All images are given a pitch. The pitch is basically what can be described as "length of a line". 
+<p>All images are given a pitch. The pitch is basically what can be described as "length of a line".
 What's funny is that the pitch does not have to be equal to the width of the image.</p>
 
-<p>For instance, if you crop something off your image, the only thing that changes 
+<p>For instance, if you crop something off your image, the only thing that changes
 is the width of your image; the pitch and the actual byte-count of a line remains the same.</p>
 
 
@@ -94,8 +94,8 @@ is the width of your image; the pitch and the actual byte-count of a line remain
 
 <p>Where 'r' are the pixels inside the image used, and 'p' is the padding inserted after each line.</p>
 
-<p>In YV12 the Y-plane always has a byte-count that is a multiple of 16, 
-but it is still possible to have mod2 width images, because the rowsize is different from the pitch. 
+<p>In YV12 the Y-plane always has a byte-count that is a multiple of 16,
+but it is still possible to have mod2 width images, because the rowsize is different from the pitch.
 Similar the UV-planes always have a pitch that is a multiple of 8.</p>
 
 
@@ -104,7 +104,7 @@ When you request <code>frame-&gt;GetRowSize(PLANAR_Y_ALIGNED)</code> you will AL
 a rowsize that is a multiple of 16 (multiple of 8 on UV planes).</p>
 
 
-<p>The reason for you to use pitch to get from one line to another is 
+<p>The reason for you to use pitch to get from one line to another is
 that pitch can be even larger than the aligned rowsize - for instance after a crop.</p>
 
 
@@ -121,10 +121,10 @@ that pitch can be even larger than the aligned rowsize - for instance after a cr
 
 <h4>YV12 interlacing</h4>
 
-<p>YV12 handles interlaced chroma differently than compared to YUY2, 
+<p>YV12 handles interlaced chroma differently than compared to YUY2,
 since YV12 only contains chroma information for every second line. </p>
 
-<p>To enable interlacing, chroma is stretched across two luma lines in the same field!  
+<p>To enable interlacing, chroma is stretched across two luma lines in the same field!
 That means that luma and chroma aren't directly mappable to lumaline/2 and lumaline/2+1 as with frame based images.</p>
 
 
@@ -162,18 +162,18 @@ That means that luma and chroma aren't directly mappable to lumaline/2 and lumal
 <p><code>C2C2C2C2C2C2C2C2C2C2C2</code></p>
 
 
-<p>Since luma L1 and L3 are in the same field, the chroma information in C1 
-is used for these lines and NOT line L1 + L2 as when the image is frame-based. 
+<p>Since luma L1 and L3 are in the same field, the chroma information in C1
+is used for these lines and NOT line L1 + L2 as when the image is frame-based.
 C2 is used for lines 2+4 and so on.</p>
 
 
-<p>This is something that deinterlacers and similar programs need to take into consideration. 
-Other filters might rely on the use of Separatefields() and Weave(), to produce framebased images. 
-You can use the VideoInfo.IsFieldBased() to check your source, and maybe decide to throw an error, 
+<p>This is something that deinterlacers and similar programs need to take into consideration.
+Other filters might rely on the use of Separatefields() and Weave(), to produce framebased images.
+You can use the VideoInfo.IsFieldBased() to check your source, and maybe decide to throw an error,
 or shift to another processing mode.</p>
 
 
-<p>If your video is fieldbased your vertical resolution (height) must be divisible by 4, 
+<p>If your video is fieldbased your vertical resolution (height) must be divisible by 4,
 otherwise AviSynth will not create a new VideoFrame, but will throw an error.</p>
 
 

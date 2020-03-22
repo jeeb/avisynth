@@ -11,21 +11,21 @@
 </h2>
 <p><code>ColorBars </code>(<var>int "width", int "height", string
 "pixel_type"</var>)
-<p>Filtr&nbsp; <code>ColorBars</code>&nbsp;vytváøí videoklip 
+<p>Filtr&nbsp; <code>ColorBars</code>&nbsp;vytváøí videoklip
 obsahující&nbsp;barevné pruhy SMPTE&nbsp;s mo¾nou&nbsp;zmìnou velikosti na libovolný rozmìr.&nbsp;Vytvoøený klip&nbsp;má následující parametry 640x480,
 RGB32 [16,235], 29.97 fps, délka 1&nbsp;hodina.
 <p>  Také se generuje testovací tón. Testovací tón je sinusoida
 s 440Hz&nbsp;pøi 48KHz vzorkování, 16 bit, stereo. Testovací&nbsp;tón zní v&nbsp;PRAVÉM&nbsp;reproduktoru, a zapíná i
 vypíná se ka¾dou vteøinu.
 <p>
-Ve verzi <em>v2.56</em>, 
-je&nbsp;pøidán parametr&nbsp; <var>pixel_type</var> =   
+Ve verzi <em>v2.56</em>,
+je&nbsp;pøidán parametr&nbsp; <var>pixel_type</var> =
 "YUY2"&nbsp;nebo "YV12"&nbsp;(výchozí je&nbsp;"RGB32"). V¹imnìte si, ¾e je témìø ekvivalentní s
 <pre>ColorBars().ConvertToYUY2(matrix=&quot;PC.601&quot;)#  nemìní (nezvìt¹uje, nezmen¹uje) se rozsah jasu</pre>
 <p>Kdy¾ se&nbsp;data generují pøímo ve formátu&nbsp;YUV, uspoøádávají se data&nbsp;pøenosu barvy&nbsp;tak
 aby do¹lo k zarovnání&nbsp;na hranicícpìt barevnosti.</p>
-<p> Spodní&nbsp;èást ColorBars se nazývá&nbsp;pluge 
-(picture line-up generating equipment &nbsp;-&nbsp;generátor 
+<p> Spodní&nbsp;èást ColorBars se nazývá&nbsp;pluge
+(picture line-up generating equipment &nbsp;-&nbsp;generátor
 pro&nbsp;nastavení videoimportù). Zleva doprava se skládá z&nbsp;: -I, bílá, +Q, èerná,
 -4/0/+4 IRE&nbsp;úrovnì a&nbsp;èerná.&nbsp;-4/0/4 IRE úrovnì&nbsp;mohou být&nbsp; pou¾ity&nbsp;k nastavení&nbsp;správného jasu.&nbsp;-4 IRE a 0 IRE by mìly
 mít stejný jas, a +4 IRE by mìlo být trochu jasnìj¹í&nbsp;ne¾&nbsp;-4/0 IRE.&nbsp;Úrovnì -I/+Q&nbsp;nejsou v

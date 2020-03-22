@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
@@ -43,7 +43,7 @@
 <tt>ChangeFPS(</tt><i>clip, int numerator [, int denominator, bool linear]</i><tt>)</tt><br />
 <br />
 Dieses Filter &auml;ndert die Framerate, indem Frames gel&ouml;scht oder dupliziert werden.<br />
-<br />  
+<br />
 <table border="0" cellspacing="5">
  <tr><th colspan="2"><b>Parameter:</b></th></tr>
  <tr><td><i>fps</i></td><td>Gibt die neue Framerate als Dezimalzahl an.</td></tr>
@@ -91,26 +91,26 @@ Der Ton wird nicht ver&auml;ndert, er bleibt synchron, die L&auml;nge des Tones 
 <br />
 <b>Parameter:</b><br />
 <table>
- <tr valign="top"> 
+ <tr valign="top">
   <td width="80"><i>new_rate</i></td>
   <td>Die Ziel-Framerate (Ganz- oder Dezimalzahl). Im Modus &quot;Mischen&quot; muss <i>new_rate</i> mindestens 2/3 der Quell-Framerate sein. Ansonsten wird ein Fehler ausgegeben. F&uuml;r st&auml;rkeres Herabsetzen der Famerate muss man den Modus &quot;Schalten&quot; verwenden.</td>
  </tr>
- <tr valign="top"> 
+ <tr valign="top">
   <td><i>zone</i></td>
   <td>(Optional) Wenn angegeben, wird der Filter im Modus &quot;Schalten&quot; betrieben, der Wert ist eine Ganzzahl gr&ouml;&szlig;er 0. Falls er dennoch auf 0 steht, wird ein Extrem-&quot;Schalten&quot; durchgef&uuml;hrt, d.h. es wird augenblicklich der n&auml;chste Frame vor dem Schalten genommen. Ist der Wert gr&ouml;szlig;er als 0, gibt er die H&ouml;he der Zone an, in der die Frames ineinander &uuml;bergeblendet werden. Ein Wert von 80 ergibt gute Ergebnisse bei Vollbild (480/576 Linien). Der Wert von <i>zone</i> muss kleiner oder gleich der Anzahl der Linien des Ziel-Frames sein, die der Dauer eines Quell-Frames entsprechen. Das sind normalerweise 5/6 oder 6/5 von der Ziel-Frameh&ouml;he, also einige hundert Linien. Ein Fehler wird erzeugt, wenn ein zu gro&szlig;er Wert gew&auml;hlt wird.</td>
  </tr>
- <tr valign="top"> 
+ <tr valign="top">
   <td><i>vbi</i></td>
   <td>(Optional) Im Modus &quot;Schalten&quot; wird damit eine Korrektur f&uuml;r die vertikale Austastl&uuml;cke angegeben. Der Wert gibt die H&ouml;he beim Zielframe in Zeilen an, typische Werte sind vbi=49 bei PAL und vbi=45 bei NTSC (der Wert ist nicht kritisch). Wird ignoriert im &quot;Mischen&quot; Modus.</td>
  </tr>
 </table>
 <br />
 <table border="1">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>
     Beispiel NTSC-&gt;PAL Umwandlung:<br />
-    <br />    
+    <br />
     AVISource("NTSC_clip.avi")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Clip laden<br />
     Bob() &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Felder trennen und auf volle H&ouml;he bringen<br />
     BicubicResize(768,576) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Gr&ouml;&szlig;e auf PAL (quadratische Pixel) anpassen<br />
@@ -119,7 +119,7 @@ Der Ton wird nicht ver&auml;ndert, er bleibt synchron, die L&auml;nge des Tones 
     SeparateFields.SelectEvery(4,0,3) # Bob r&uuml;ckg&auml;ngig machen, &quot;Even Field First&quot;.<br />
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SelectEvery(4,1,2) f&uuml;r &quot;Odd Field first&quot;<br />
     Weave &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # zur&uuml;ckwandeln von Feldern in Frames<br />
-    <br />      
+    <br />
     Dieses Beispiel funtioniert auch bei frame-basiertem NTSC-Material und telecine-Film.<br />
     Bei Filmmaterial ist aber das Ergebnis bei einem inverse-telecine Filter und einer Anpassung der Framerate von 23.976 auf 25fps besser.
    </tt>

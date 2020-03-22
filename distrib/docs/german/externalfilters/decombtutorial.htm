@@ -116,7 +116,7 @@ or continuously jumps in and out of pattern lock, then it is not locking onto a 
 If you determine that your clip has a lot of 3:2 content, then you should go ahead and set guide=1.
 If there is not a lot of 3:2 content, or you have any doubts about the nature of the clip, then you
 should set guide=0. We will assume that we have a lot of 3:2 content for the next steps. Therefore, our
-script so far looks like this: 
+script so far looks like this:
 <pre>
 AviSource(&quot;your_clip.avi&quot;)
 Telecide(order=1,guide=1)
@@ -143,7 +143,7 @@ Serve this into VirtualDub and play through the clip while examining frames and 
 <i>vmetric</i> values. The value that applies to the frame as matched is the one in brackets that
 starts with "chosen=", e.g., "[chosen=27]". Let's just call that the <i>vmetric</i> value.
 Any <i>vmetric</i> value greater than <i>vthresh</i>
-defines the frame as interlaced. 
+defines the frame as interlaced.
 You want to find the <i>vthresh</i> value that correctly distinguishes combed frames from non-combed frames
 for your clip. You'll easily be able to identify the frames thought to be combed because a) the <i>vmetric</i>
 value will be greater than <i>vthresh</i>, b) the progressive/interlaced indicator will say interlaced, and c) the

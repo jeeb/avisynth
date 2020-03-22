@@ -19,96 +19,96 @@
   </tr>
   <tr>
     <td width="34%"><var>matrix</var> (default &quot;0 0 0 0 1 0 0 0 0&quot;) </td>
-    <td width="66%">pu&ograve; essere una matrice 3x3 o 5x5 con 9 o 25 numeri 
+    <td width="66%">pu&ograve; essere una matrice 3x3 o 5x5 con 9 o 25 numeri
       interi compresi tra -256 e 256</td>
   </tr>
   <tr>
     <td width="34%"> <var>divisor</var> (default 1.0)</td>
-    <td width="66%">divide l'output della convolution (calculato prima di aggiungere 
+    <td width="66%">divide l'output della convolution (calculato prima di aggiungere
       il bias)</td>
   </tr>
   <tr>
     <td width="34%"><var>auto</var> (default true)</td>
-    <td width="66%">Abilita la funzionalit&agrave; di auto scaling. Divide il 
-      risultato per la somma degli elementi della matrice. Il valore di <var>divisor</var> 
-      &egrave; applicato in aggiunta a questo fattore di auto scaling. Se la somma 
+    <td width="66%">Abilita la funzionalit&agrave; di auto scaling. Divide il
+      risultato per la somma degli elementi della matrice. Il valore di <var>divisor</var>
+      &egrave; applicato in aggiunta a questo fattore di auto scaling. Se la somma
       degli elementi &egrave; zero, auto viene disabilitato.</td>
   </tr>
 </table>
-<p><var>divisor</var> &egrave; normalmente la somma degli elementi della matrice. 
-  Se questa somma &egrave; zero, si devono usare <var>divisor</var> e le impostazioni 
-  di <var>bias</var> per correggere i valori dei pixel. <var>bias</var> potrebbe 
-  servire se i valori del pixel fossero negativi a causa di convolution. Dopo 
-  aver aggiunto il bias, i pixels vengono tagliati a zero (o a 255 se pi&ugrave; 
+<p><var>divisor</var> &egrave; normalmente la somma degli elementi della matrice.
+  Se questa somma &egrave; zero, si devono usare <var>divisor</var> e le impostazioni
+  di <var>bias</var> per correggere i valori dei pixel. <var>bias</var> potrebbe
+  servire se i valori del pixel fossero negativi a causa di convolution. Dopo
+  aver aggiunto il bias, i pixels vengono tagliati a zero (o a 255 se pi&ugrave;
   grandi di 255). </p>
 <p>Alcuni esempi: </p>
 <pre># Blur:
 
 GeneralConvolution(0, &quot;
    10 10 10 10 10
-   10 10 10 10 10 
-   10 10 16 10 10 
-   10 10 10 10 10 
+   10 10 10 10 10
+   10 10 16 10 10
+   10 10 10 10 10
    10 10 10 10 10 &quot;, 256, False)
 </pre>
 <pre># Horizontal (Sobel) edge detection:
 
 GeneralConvolution(128, &quot;
-    1  2  1 
-    0  0  0 
+    1  2  1
+    0  0  0
    -1 -2 -1 &quot;, 8)</pre>
-      
+
 <pre># Vertical (Sobel) Edge Detection:
 
 GeneralConvolution(128, &quot;
-   1  0 -1 
-   2  0 -2 
+   1  0 -1
+   2  0 -2
    1  0 -1 &quot;, 8)</pre>
-      
+
 <pre># Displacement (simply move the position
 # of the &quot;1&quot; for left, right, up, down)
 
 GeneralConvolution(0,&quot;
-   0 1 0 
-   0 0 0 
+   0 1 0
+   0 0 0
    0 0 0 &quot;)</pre>
-      
+
 <pre># Displacement by half pixel up (auto scaling):
 
 GeneralConvolution(0,&quot;
-   0 1 0 
-   0 1 0 
+   0 1 0
+   0 1 0
    0 0 0 &quot;)</pre>
-      
+
 <pre># Displacement by half pixel right (manual scaling):
 
 GeneralConvolution(0,&quot;
-   0   0   0 
-   0 128 128 
+   0   0   0
+   0 128 128
    0   0   0 &quot;, 256, False)</pre>
-      
+
 <pre># Sharpness filter:
 
 GeneralConvolution(0,&quot;
-   0   -1   0 
-  -1    5  -1 
+   0   -1   0
+  -1    5  -1
    0   -1   0 &quot;, 1, True)
 
 In this case, the the new pixel values y(m,n) are given by
 y(m,n) = (-1*x(m-1,n) - 1*x(m,n-1) + 5*x(m,n) - 1*x(m,n+1)
          - 1*x(m+1,n))/(-1-1+5-1-1)/1.0 + 0</pre>
-      
+
 <pre># Slight blur filter with black level clipping and 25% brightening:
 
 GeneralConvolution(-16,&quot;
-   0   12   0 
-  12  256  12 
+   0   12   0
+  12  256  12
    0   12   0 &quot;, 0.75 ,True)
 
 In this case, the the new pixel values y(m,n) are given by
 y(m,n) = ( 12*x(m-1,n) + 12*x(m,n-1) + 256*x(m,n) + 12*x(m,n+1)
          + 12*x(m+1,n) )/(12+12+256+12+12)/0.75 - 16</pre>
-      
+
 <p>Ulteriori esempi si trovano <a href="http://www.gamedev.net/reference/programming/features/imageproc/page2.asp"><cite>qui</cite></a>.</p>
 <p><b>Changelog:</b></p>
 <table border="1">

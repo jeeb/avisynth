@@ -55,7 +55,7 @@ b = B * 255</p>
 <p>   Dosazení&nbsp;(Y,V,U,R,G,B) do vý¹e uvedených rovnic a násobení èíslem&nbsp;127.5 a&nbsp;pøípadnì 255 dává</p>
 <p>y = Kr*r + Kg*g + Kb*b<br>
 v - 128 =
-   
+
     0.5*(r - y)/(1-Kr) = 0.5 * r - 0.5 * g * Kg/(1-Kr) - 0.5 * b * Kb/(1-Kr)<br>
 u - 128 = 0.5*(b - y)/(1-Kb) = - 0.5 * r * Kr/(1-Kb) - 0.5 * g * Kg/(1-Kb) + 0.5 * b</p>
 <p>r = y + 2*(v-128)*(1-Kr)<br>

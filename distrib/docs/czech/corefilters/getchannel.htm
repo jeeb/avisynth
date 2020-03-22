@@ -12,10 +12,10 @@
 <p><code>GetChannel </code>(<var>clip, int ch1 [, int ch2, ...]</var>)<br>
   <code>GetChannels </code>(<var>clip, int ch1 [, int ch2, ...]</var>)
 <p>Døíve, do&nbsp;v2.5 <code>GetLeftChannel</code>
- vracel levý a&nbsp; <code>GetRightChannel</code> vracel   
-pravý kanál&nbsp;ze stereo signálu. <code><tt>GetChannel</tt></code>      
+ vracel levý a&nbsp; <code>GetRightChannel</code> vracel
+pravý kanál&nbsp;ze stereo signálu. <code><tt>GetChannel</tt></code>
   je doplnìn od&nbsp;v2.5 a vrací&nbsp;jeden nebo více kanálù&nbsp;vícekanálového&nbsp;signálu. <code>GetChannels</code>&nbsp;je toto¾ný s&nbsp; <code>GetChannel</code>.
-<p>       
+<p>
       Poøadí&nbsp;kanálù je urèeno poøadím ze vstupního
 souboru, proto¾e&nbsp;AviSynth&nbsp;neurèuje ¾ádné poøadí. V pøípadì&nbsp;stereo 2.0 WAV a 5.1 WAV souborù by mìlo
 být poøádí následující:
@@ -78,17 +78,17 @@ být poøádí následující:
 video = AviSource(&quot;c:\filename.avi&quot;)
 stereo = WavSource(&quot;c:\afx-ab3_t4.wav&quot;)
 mono = GetLeftChannel(stereo)
-return  AudioDub(video,mono) 
+return  AudioDub(video,mono)
 
 # Od v2.5 se to provede takto:
 video = AviSource(&quot;c:\filename.avi&quot;)
 stereo = WavSource(&quot;c:\afx-ab3_t4.wav&quot;)
 mono = GetChannel(stereo, 1)
-return AudioDub(video, mono) 
+return AudioDub(video, mono)
 
 # Mù¾ete také získat kanály ze samotného avi souboru:
-video = AviSource(&quot;c:\filename.avi&quot;) 
-return GetChannel(video,1) 
+video = AviSource(&quot;c:\filename.avi&quot;)
+return GetChannel(video,1)
 
 # Pøevádí avi s &quot;nekomprimovaným 5.1 wav&quot; zvukem na stereo signál:
 video = AviSource(&quot;c:\divx_wav.avi&quot;)
@@ -208,7 +208,7 @@ MPEG2).
 <h4>Poznámka2:
 </h4>
 <p>   V dobì psaní má Besweet stále&nbsp; <a href="http://forum.doom9.org/showthread.php?s=&amp;postid=305084">2GB
-omezení</a>. Tak¾e si ovìøte, ¾e velikost 
+omezení</a>. Tak¾e si ovìøte, ¾e velikost
 Va¹eho&nbsp;5.1
 WAV&nbsp;je men¹í&nbsp;ne¾ 2GB, jinak kódujte&nbsp;¹est samostatných&nbsp;wav nebo pou¾ijte&nbsp;HeadAC3he.
 <p><kbd>$English Date: 2006/10/24 19:47:56 $</kbd></p>

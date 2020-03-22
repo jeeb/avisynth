@@ -3,7 +3,7 @@
 <head>
 <!--
 Automatically generated, don't change:
-$Id: externalplugins.htm,v 1.1 2004/10/13 21:46:22 alex_e_basta Exp $ 
+$Id: externalplugins.htm,v 1.1 2004/10/13 21:46:22 alex_e_basta Exp $
 -->
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <meta name="Keywords" content="Avisynth 2 Filter Reference">
@@ -16,7 +16,7 @@ $Id: externalplugins.htm,v 1.1 2004/10/13 21:46:22 alex_e_basta Exp $
 
 <h2><a name="general_info"></a>Informazioni Generali</h2>
 
-<p>La descrizione di un plugin inizia con alcune informazioni generali sul plugin 
+<p>La descrizione di un plugin inizia con alcune informazioni generali sul plugin
   stesso. Ad esempio</p>
 
 <p><b>author:</b>  Rainer Wittmann (aka kassandro)<br>
@@ -28,29 +28,29 @@ $Id: externalplugins.htm,v 1.1 2004/10/13 21:46:22 alex_e_basta Exp $
 </p>
 
 <ul>
-  <li> 
+  <li>
     YV12 &amp; YUY2 Colorspace
  </li>
-  <li> 
+  <li>
     SSEMMX support
  </li>
   <li> la larghezza e l'altezza del clip devono essere multipli di 8</li>
 </ul>
 
-La prima riga &quot;<b>author</b>&quot; fornisce l'autore del plugin. Pu&ograve; 
+La prima riga &quot;<b>author</b>&quot; fornisce l'autore del plugin. Pu&ograve;
 essere un nome reale, un nickname, o entrambi.<br>
-La seconda riga &quot;<b>version</b>&quot; fornisce la versione del plugin descritto 
-in <i>questa</i> documentazione. Notare che potrebbe non essere la versione pi&ugrave; 
+La seconda riga &quot;<b>version</b>&quot; fornisce la versione del plugin descritto
+in <i>questa</i> documentazione. Notare che potrebbe non essere la versione pi&ugrave;
 recente.<br>
 La terza riga &quot;<b>download</b>&quot; fornisce la pagina di download del plugin.<br>
-La quarta riga&quot;<b>category</b>&quot;,&egrave; la categoria sotto la quale 
+La quarta riga&quot;<b>category</b>&quot;,&egrave; la categoria sotto la quale
 si trova il plugin.<br>
-L'ultima riga &quot;<b>requirements</b>&quot;, indica i requisiti necessari per 
-far funzionare il plugin. Requisiti possono essere il color space supportato (YV12 
-e YUY2 in questo caso), la CPU supportata ( SSEMMX) o che la larghezza e l'altezza 
-del clip devono essere multipli di qualche numero (di solito 8 o 16). 
-<p>Una nota finale circa la CPU che pu&ograve; essere richiesta per un plugin. 
-  Se non conoscete che tipo di istruioni ottimizzate sono usate dalla vostra CPU, 
+L'ultima riga &quot;<b>requirements</b>&quot;, indica i requisiti necessari per
+far funzionare il plugin. Requisiti possono essere il color space supportato (YV12
+e YUY2 in questo caso), la CPU supportata ( SSEMMX) o che la larghezza e l'altezza
+del clip devono essere multipli di qualche numero (di solito 8 o 16).
+<p>Una nota finale circa la CPU che pu&ograve; essere richiesta per un plugin.
+  Se non conoscete che tipo di istruioni ottimizzate sono usate dalla vostra CPU,
   date un'occhiata a questa tabella
 <br>
 <table border="1" width="75%">
@@ -64,7 +64,7 @@ del clip devono essere multipli di qualche numero (di solito 8 o 16).
   </tr>
   <tr>
     <td width="25%"> iSSE (detta anche SSEMMX)</td>
-    <td width="50%"> Pentium III, tutti i Duron (detta estensione 3DNow), tutti 
+    <td width="50%"> Pentium III, tutti i Duron (detta estensione 3DNow), tutti
       gli Athlon ( 3DNow )</td>
   </tr>
   <tr>
@@ -85,11 +85,11 @@ SSE3</td>
 
 <h2><a NAME="deinterlacing"></a>Deinterlacing &amp; Pulldown Removal</h2>
 
-<p> <i>Tutti i video PAL, NTSC, e SECAM sono interlacciati, il ch&egrave; significa 
-  una sola riga su due &egrave; inviata ad ogni intervallo di refresh.&nbsp; I 
-  filtri di deinterlacciamento permettono di farsi carico di tutti i problemi 
-  generati da questo fatto. I filtri di IVTC (inverse telecine, detto anche pulldown 
-  removal) annullano il processo di telecine , che deriva dalle differenze di 
+<p> <i>Tutti i video PAL, NTSC, e SECAM sono interlacciati, il ch&egrave; significa
+  una sola riga su due &egrave; inviata ad ogni intervallo di refresh.&nbsp; I
+  filtri di deinterlacciamento permettono di farsi carico di tutti i problemi
+  generati da questo fatto. I filtri di IVTC (inverse telecine, detto anche pulldown
+  removal) annullano il processo di telecine , che deriva dalle differenze di
   timing tra il vostro video e l'originale.</i> </p>
 
 <table BORDER="1" CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
@@ -99,19 +99,19 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/decomb.htm">Decomb Filter package (by
   Donald Graft)</a></td>
 
-    <td WIDTH="70%">Questo package di funzioni per AviSynth fornisce gli strumenti 
-      per rimuovere gli artefatti di combing dagli streams progressivi sottoposti 
-      a telecine , dagli streams interlacciati , e dal misto dei due. Le funzioni 
-      possono essere combinate per effettuare l' inverse telecine sia per NTSC 
+    <td WIDTH="70%">Questo package di funzioni per AviSynth fornisce gli strumenti
+      per rimuovere gli artefatti di combing dagli streams progressivi sottoposti
+      a telecine , dagli streams interlacciati , e dal misto dei due. Le funzioni
+      possono essere combinate per effettuare l' inverse telecine sia per NTSC
       che per PAL . [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=76456">discussioni</a>].</td>
 </tr>
 
 <tr>
 <td WIDTH="30%"><a href="ExternalFilters/dgbob.htm">DGBob (by Donald Graft)</a></td>
 
-    <td WIDTH="70%">Questo filtro separa ogni campo della sorgente generando per 
-      ognuno il suo frame e successivamente ricrea opportunamente le righe omesse 
-      o interpolando il field corrente o usando le informazioni del field precedente. 
+    <td WIDTH="70%">Questo filtro separa ogni campo della sorgente generando per
+      ognuno il suo frame e successivamente ricrea opportunamente le righe omesse
+      o interpolando il field corrente o usando le informazioni del field precedente.
       [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=55598">discussion</a>i].</td>
 </tr>
 
@@ -119,9 +119,9 @@ SSE3</td>
 <td WIDTH="30%"><a href="externalfilters/fdecimate.htm">FDecimate (by Donald
   Graft)</a></td>
 
-    <td WIDTH="70%">Questo filtro fornisce capacit&agrave; estese di decimazione 
-      non disponibili con Decimate(). Pu&ograve; rimuovere frames da un clip per 
-      ottenere il frame rate desiderato, pur mantenendo la sincronizzazione audio/video. 
+    <td WIDTH="70%">Questo filtro fornisce capacit&agrave; estese di decimazione
+      non disponibili con Decimate(). Pu&ograve; rimuovere frames da un clip per
+      ottenere il frame rate desiderato, pur mantenendo la sincronizzazione audio/video.
       Di preferenza toglie, se possibile, i frames doppi. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=77798">discussion</a>i].</td>
 </tr>
 
@@ -129,8 +129,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/kerneldeint.htm">KernelDeint (by Donald
   Graft)</a></td>
 
-    <td WIDTH="70%">Questo filtro deinterlaccia usando un approccio di tipo kernel. 
-      Nelle aree deinterlacciate, produce risoluzioni verticali di gran lunga 
+    <td WIDTH="70%">Questo filtro deinterlaccia usando un approccio di tipo kernel.
+      Nelle aree deinterlacciate, produce risoluzioni verticali di gran lunga
       migliori rispetto alla semplice eliminazione di un field. [<a href="http://neuron2.net/ipw-web/bulletin/bb/viewtopic.php?t=57">discussioni</a>].</td>
 </tr>
 
@@ -138,14 +138,14 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/multidecimate.htm">MultiDecimate (by
   Donald Graft)</a></td>
 
-    <td WIDTH="70%">Rimuove N ogni M frames, scegliendo i frames più simili ai 
+    <td WIDTH="70%">Rimuove N ogni M frames, scegliendo i frames più simili ai
       precedenti. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=51901&amp;perpage=20&amp;pagenumber=2">discussioni</a>].</td>
 </tr>
 
 <tr>
 <td><a href="externalfilters/ibob.htm">IBob (by Kevin Atkinson)</a></td>
 
-    <td>Questo filtro lavora esattamente come il filtro interno Bob eccetto che 
+    <td>Questo filtro lavora esattamente come il filtro interno Bob eccetto che
       usa una interpolazione lineare al posto di un bicubic resizing. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=62142">discussioni</a>].</td>
 </tr>
 
@@ -153,15 +153,15 @@ SSE3</td>
 <td><a href="externalfilters/smartdecimate.htm">SmartDecimate (by Kevin
   Atkinson)</a></td>
 
-    <td>Questo filtro rimuove il telecine unendo i fields telecined e contemporaneamente 
-      decimando, cosa diversa dall'approccio tradizionale che consiste nel ricomporre 
+    <td>Questo filtro rimuove il telecine unendo i fields telecined e contemporaneamente
+      decimando, cosa diversa dall'approccio tradizionale che consiste nel ricomporre
       i frames e successivamente rimuovere i duplicati. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=60031">discussion</a>].</td>
 </tr>
 
 <tr>
 <td><a href="ExternalFilters/greedyhma.htm">GreedyHMA (by Tom Barry)</a></td>
 
-    <td>L'algoritmo di DScaler Greedy/HM serve per realizzare il matching del 
+    <td>L'algoritmo di DScaler Greedy/HM serve per realizzare il matching del
       &quot;pulldown&quot; , il filtraggio ed il video deinterlacing. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=45995">discussioni</a>].</td>
 </tr>
 
@@ -169,27 +169,27 @@ SSE3</td>
 <td><a href="ExternalFilters/tomsmocomp.htm">Motion compensated deinterlace
   filter &quot;TomsMoComp&quot; (by Tom Barry)</a></td>
 
-    <td>Questo filtro usa un processo di &quot;motion compensation&quot; e di 
-      &quot;adaptive processing&quot; per deinterallacciare le sorgenti video 
+    <td>Questo filtro usa un processo di &quot;motion compensation&quot; e di
+      &quot;adaptive processing&quot; per deinterallacciare le sorgenti video
       (non per film NTSC ). [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=37915">discussioni</a>].</td>
 </tr>
 
 <tr>
 <td><a href="ExternalFilters/uncomb.htm">UnComb IVTC (by Tom Barry)</a></td>
 
-    <td>Filtro per accoppiare fields pari e dispari di una sorgente video NTSC 
+    <td>Filtro per accoppiare fields pari e dispari di una sorgente video NTSC
       o PAL correttamente telecined. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=52333">discussioni</a>].</td>
 </tr>
 </table>
 
 <h2><a NAME="spatio-temp-smoothers"></a>Spatio-Temporal Smoothers</h2>
 
-<p> <i>Questi filtri usano le somiglianze e le differenze di colore sia dentro 
+<p> <i>Questi filtri usano le somiglianze e le differenze di colore sia dentro
 
-  che tra i frames pe ridurre il rumore ed aumentare la compressibilit&amp;agrave;. 
-  
-  Essi possono migliorare notevolmente i video rumorosi , ma si deve prestare 
- 
+  che tra i frames pe ridurre il rumore ed aumentare la compressibilit&amp;agrave;.
+
+  Essi possono migliorare notevolmente i video rumorosi , ma si deve prestare
+
   attenzione per evitare sfocamenti e perdita di dettagli.</i></p>
 
 <table BORDER="1" CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
@@ -199,9 +199,9 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/peachsmoother.htm">PeachSmoother
   (by Lindsey Dubb)</a></td>
 
-    <td WIDTH="70%">Un filtro &quot;adaptive smoother&quot; ottimizzato per trasmissioni 
-      TV. Il Peach lavora cercando i pixels buoni e dedudendo da essi quanto &quot;orange 
-      smoke&quot; ci sia. Una volta determinata la quantit&agrave; di &quot;orange 
+    <td WIDTH="70%">Un filtro &quot;adaptive smoother&quot; ottimizzato per trasmissioni
+      TV. Il Peach lavora cercando i pixels buoni e dedudendo da essi quanto &quot;orange
+      smoke&quot; ci sia. Una volta determinata la quantit&agrave; di &quot;orange
       smoke&quot;, lo spalma sui pixels errati migliorandoli (??). [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=36575">discussioni</a>].</td>
 </tr>
 
@@ -209,7 +209,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/fluxsmooth.htm">FluxSmooth
   (by SansGrip)</a></td>
 
-    <td WIDTH="70%">I pixels ondeggianti are liquidati mediandoli con i pixels 
+    <td WIDTH="70%">I pixels ondeggianti are liquidati mediandoli con i pixels
       vicini. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=38296">discussioni</a>].</td>
 </tr>
 
@@ -222,10 +222,10 @@ SSE3</td>
 <tr>
 <td><a href="ExternalFilters/mipsmooth.htm">MipSmooth (by Sh0dan)</a></td>
 
-    <td>Prende il frame sorgente, e crea 3 nuove versioni , ognuna di dimensioni 
-      la met&agrave; della precedente. Queste vengono poi riadattate alla dimensione 
-      originale, sono confrontate con l'originale e se la differenza è al di sotto 
-      di una certa soglia, l'informazione è usata per creare il pixel finale. 
+    <td>Prende il frame sorgente, e crea 3 nuove versioni , ognuna di dimensioni
+      la met&agrave; della precedente. Queste vengono poi riadattate alla dimensione
+      originale, sono confrontate con l'originale e se la differenza è al di sotto
+      di una certa soglia, l'informazione è usata per creare il pixel finale.
       [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=63153">discussioni</a>].</td>
 </tr>
 
@@ -233,7 +233,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/stmedianfilter.htm">SpatioTemporal
   Median Filter &quot;STMedianFilter&quot; (by Tom Barry)</a></td>
 
-    <td WIDTH="70%">STMedianFilter &egrave; uno spatial/temporal median filter 
+    <td WIDTH="70%">STMedianFilter &egrave; uno spatial/temporal median filter
       (leggermente motion compensated).</td>
 </tr>
 
@@ -241,7 +241,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/convolution3d.htm">Convolution3D
   / Convolution3DYV12 (by Vlad59)</a></td>
 
-    <td WIDTH="70%">Convolution3D è uno smoother spatio-temporale. Applica una 
+    <td WIDTH="70%">Convolution3D è uno smoother spatio-temporale. Applica una
       convoluzione 3D ai pixels che risultano simili in frames consecutivi. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=38281">discussion</a>i].</td>
 </tr>
 
@@ -249,9 +249,9 @@ SSE3</td>
 
 <h2><a NAME="spatial-smoothers"></a>Spatial Smoothers</h2>
 
-<p><i>Questi filtri usano le somiglianze e le differenze di colore all'interno 
-  del frame per migliorare l'immagine e ridurre le dimensioni del file compresso. 
-  Essi possono togliere molto bene il rumore, ma settaggi troppo aggressivi possono 
+<p><i>Questi filtri usano le somiglianze e le differenze di colore all'interno
+  del frame per migliorare l'immagine e ridurre le dimensioni del file compresso.
+  Essi possono togliere molto bene il rumore, ma settaggi troppo aggressivi possono
   causare perdita di dettagli.</i> </p>
 
 <table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH="90%" style="" >
@@ -261,7 +261,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/msmooth.htm">Masked Smoother
   &quot;MSmooth&quot; (by Donald Graft)</a></td>
 
-    <td WIDTH="70%">Questo è un valido filtro per rimuovere il "mosquito noise" 
+    <td WIDTH="70%">Questo è un valido filtro per rimuovere il "mosquito noise"
       così come per perfezionare la aree piatte delle anime. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=43976">discussioni</a>].</td>
 </tr>
 
@@ -269,7 +269,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/smoothuv.htm">SmoothUV
   (by Kurosu)</a></td>
 
-    <td WIDTH="70%">Questo filtro può essere usato per rimuovere rainbows come 
+    <td WIDTH="70%">Questo filtro può essere usato per rimuovere rainbows come
       fa anche SmartSmoothIQ. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=60631">discussioni</a>].</td>
 </tr>
 
@@ -283,7 +283,7 @@ SSE3</td>
 <tr>
 <td WIDTH="30%"><a href="ExternalFilters/deen.htm">Deen (by Marc FD)</a></td>
 
-    <td WIDTH="70%">Numerosi denoisers. Questo filtro può produrre dispersioni 
+    <td WIDTH="70%">Numerosi denoisers. Questo filtro può produrre dispersioni
       di memoria, lo usate a vistro rischio. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=41643">discussioni</a>]&nbsp;</td>
 </tr>
 
@@ -292,9 +292,9 @@ SSE3</td>
 <h2>
 <a NAME="temporal-smoothers"></a>Temporal Smoothers</h2>
 
-<p> <i>TQuesti filtri usano le somiglianze e le differenze di colore fra i frames 
-  per migliorare l'immagine e ridurre le dimensioni del file compresso. Essi possono 
-  togliere molto bene il rumore nelle aree statiche senza perdita di dettagli, 
+<p> <i>TQuesti filtri usano le somiglianze e le differenze di colore fra i frames
+  per migliorare l'immagine e ridurre le dimensioni del file compresso. Essi possono
+  togliere molto bene il rumore nelle aree statiche senza perdita di dettagli,
   ma settaggi troppo aggressivi possono causare perdita di dettagli</i> <i>.</i></p>
 
 <table BORDER="1" CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
@@ -304,7 +304,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/temporalcleaner.htm">TemporalCleaner
   (by Jim Casaburi; ported to AviSynth by Vlad59)</a></td>
 
-    <td WIDTH="70%">Un semplice ,ma veloce temporal denoiser, che punta ad aumentare 
+    <td WIDTH="70%">Un semplice ,ma veloce temporal denoiser, che punta ad aumentare
       la compressibilit&agrave;.</td>
 </tr>
 
@@ -318,10 +318,10 @@ SSE3</td>
 <tr>
 <td WIDTH="30%"><a href="ExternalFilters/grapesmoother.htm">GrapeSmoother (by Lindsey Dubb)</a></td>
 
-    <td WIDTH="70%">Quando i colori cambiano solo un p&ograve;, questo filtro 
-      decide che si tratta probabilmente di rumore, e ritocca appena il colore 
-      del frame. All'aumentare delle variazioni di colore il filtro si convince 
-      che si tratta di movimento e non di rumore ed i colori vengono rafforzati. 
+    <td WIDTH="70%">Quando i colori cambiano solo un p&ograve;, questo filtro
+      decide che si tratta probabilmente di rumore, e ritocca appena il colore
+      del frame. All'aumentare delle variazioni di colore il filtro si convince
+      che si tratta di movimento e non di rumore ed i colori vengono rafforzati.
       [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=37196">discussioni</a>].</td>
 </tr>
 
@@ -329,15 +329,15 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/cnr2.htm">Chroma
   Noise Reducer &quot;Cnr2&quot; (by Marc FD)</a></td>
 
-    <td WIDTH="70%">Reduce il rumore del canale chroma (UV) senza toccare il luma 
+    <td WIDTH="70%">Reduce il rumore del canale chroma (UV) senza toccare il luma
       (Y). [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=78905">discussion</a>i].</td>
 </tr>
 
 </table>
 
 <h2><a NAME="sharpen"></a>Sharpen/Soften Plugins</h2>
-<p><i>Sono strettamente correlati agli Spatial Smoothers. Cercano di migliorare 
-  la qualit&agrave; dell'immagine intensificando o attenuando i contorni.</i> 
+<p><i>Sono strettamente correlati agli Spatial Smoothers. Cercano di migliorare
+  la qualit&agrave; dell'immagine intensificando o attenuando i contorni.</i>
 </p>
 <table BORDER="1" CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
 
@@ -345,9 +345,9 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/msharpen.htm">MSharpen (by Donald
   Graft)</a></td>
 
-    <td WIDTH="70%">TQuesto plugin per Avisynth implementa un concetto inusuale 
-      nello spatial sharpening. Sebbene disegnato specificatamente per le anime, 
-      lavora piuttosto bene anche su video normali . Il filtro è veramente efficace 
+    <td WIDTH="70%">TQuesto plugin per Avisynth implementa un concetto inusuale
+      nello spatial sharpening. Sebbene disegnato specificatamente per le anime,
+      lavora piuttosto bene anche su video normali . Il filtro è veramente efficace
       nell'intensificare contorni importanti senza aumentare il rumore. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=42839">discussioni</a>].</td>
 </tr>
 
@@ -367,9 +367,9 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/unfilter.htm">Unfilter
   plugin (by Tom Barry)</a></td>
 
-    <td WIDTH="70%">Un filtro che aumenta/diminuisce il contrasto: &nbsp; Implementa 
-      filtri orizzontali e verticali progettati per rovesciare (leggermente) i 
-      precedenti tentativi di softening o intensificazione dei contorni cosa comune 
+    <td WIDTH="70%">Un filtro che aumenta/diminuisce il contrasto: &nbsp; Implementa
+      filtri orizzontali e verticali progettati per rovesciare (leggermente) i
+      precedenti tentativi di softening o intensificazione dei contorni cosa comune
       (ma sgradevole) nella masterizzazione dei DVD. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=28197&amp;pagenumber=3">discussion</a>].</td>
 </tr>
 
@@ -382,7 +382,7 @@ SSE3</td>
 <tr>
     <td WIDTH="30%" height="29"><a href="ExternalFilters/xsharpen.htm"> Xsharpen</a></td>
 
-    <td WIDTH="70%" height="29">Questo filtro genera un debole ma utile effetto 
+    <td WIDTH="70%" height="29">Questo filtro genera un debole ma utile effetto
       di sharpening .</td>
 </tr>
 
@@ -398,8 +398,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/bicublinresize.htm">BicublinResize (by
   Marc FD)</a></td>
 
-    <td WIDTH="70%">Si tratta dell'insieme di diversi resamplers: FastBilinear 
-      (simile al simpleresize di tbarry ), FastBicubic (un Bicubic resampler unfiltered) 
+    <td WIDTH="70%">Si tratta dell'insieme di diversi resamplers: FastBilinear
+      (simile al simpleresize di tbarry ), FastBicubic (un Bicubic resampler unfiltered)
       e Bicublin (usa un bicubic sul piano Y e un bilinear sui piani UV ). [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=43207">discussioni</a>].</td>
 </tr>
 
@@ -407,7 +407,7 @@ SSE3</td>
 <td><a href="ExternalFilters/simpleresize.htm">SimpleResize
   (by Tom Barry)</a></td>
 
-    <td>Un semplice e veloce filtro di interpolazione lineare .&nbsp; E' "unfiltered" 
+    <td>Un semplice e veloce filtro di interpolazione lineare .&nbsp; E' "unfiltered"
       il che significa che non attenua troppo.</td>
 </tr>
 
@@ -415,7 +415,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/yv12interlacedreduceby2.htm">YV12InterlacedReduceBy2
   (by Tom Barry)</a></td>
 
-    <td WIDTH="70%">InterlacedReduceBy2 è un veloce filtro Reduce By 2 , utile 
+    <td WIDTH="70%">InterlacedReduceBy2 è un veloce filtro Reduce By 2 , utile
       per una veloce riduzione di un clip interlacciato. [<a href="http://forum.doom9.org/showthread.php?s=&amp;postid=271863">discussion</a>].</td>
 </tr>
 
@@ -438,7 +438,7 @@ SSE3</td>
 
 <h2><a NAME="mpeg-decoders"></a>MPEG Decoder (source) Plugins</h2>
 
-<p><i>Plugins che consentono di importare files mpeg2 (compresi hdtv transport 
+<p><i>Plugins che consentono di importare files mpeg2 (compresi hdtv transport
   files).</i></p>
 
 <table BORDER CELLSPACING=0 CELLPADDING=4 WIDTH="90%" style="" >
@@ -449,7 +449,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/mpeg2dec.htm">MPEG2Dec
   (by dividee and others)</a></td>
 
-    <td WIDTH="70%">Mpeg2dec è un plugin che consente ad AviSynth di importare files 
+    <td WIDTH="70%">Mpeg2dec è un plugin che consente ad AviSynth di importare files
       MPEG2. (outputs to YUY2)</td>
 </tr>
 
@@ -457,8 +457,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/mpeg2dec3.htm">MPEG2Dec3
   (by Marc FD and others)</a></td>
 
-    <td WIDTH="70%"> Un MPEG2DEC.DLL modificato con deblocking e deringing. Da notare 
-      che le informazioni sul colorspace di dvd2avi non sono tenute in considerazione 
+    <td WIDTH="70%"> Un MPEG2DEC.DLL modificato con deblocking e deringing. Da notare
+      che le informazioni sul colorspace di dvd2avi non sono tenute in considerazione
       quando si usa mpeg2dec. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=53164">discussioni]</a>.</td>
 </tr>
 
@@ -466,7 +466,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/MPEGDecoder.htm">Mpegdecoder
   (by Nic)</a></td>
 
-    <td WIDTH="70%">Questa DLL consente di caricare files VOB/MPEG-2/MPEG-1 direttamente 
+    <td WIDTH="70%">Questa DLL consente di caricare files VOB/MPEG-2/MPEG-1 direttamente
       in Avisynth. [<a href="http://forum.doom9.org/showthread.php?s=&amp;postid=240354#post240354">discussioni</a>].</td>
 </tr>
 
@@ -499,7 +499,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/ssim.htm">SSIM
   (by Lefungus)</a></td>
 
-    <td WIDTH="70%">Filtro per confrontare la video quality (simile al psnr, ma 
+    <td WIDTH="70%">Filtro per confrontare la video quality (simile al psnr, ma
       con una diversa metodologia di misura ). [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=61128">discussione</a>].</td>
 </tr>
 
@@ -507,7 +507,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/vqmcalc.htm">VqmCalc
   (by Lefungus)</a></td>
 
-    <td WIDTH="70%">Filtro per confrontare la video quality (simile al psnr, ma 
+    <td WIDTH="70%">Filtro per confrontare la video quality (simile al psnr, ma
       con una diversa metodologia di misura ). [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=56081">discussione</a>].</td>
 </tr>
 
@@ -515,9 +515,9 @@ SSE3</td>
 
 <h2><a NAME="broadcast"></a>Broadcast Video Plugins</h2>
 
-<p><i>Questi filtri sono destinati ad occuparsi dei vari problemi che si presentano 
-  quando si catturano immagini da TV. Forniscono qualche aiuto con la separazione 
-  di luma/chroma; altri riducono i problemi di interferenza o compensano l'effetto 
+<p><i>Questi filtri sono destinati ad occuparsi dei vari problemi che si presentano
+  quando si catturano immagini da TV. Forniscono qualche aiuto con la separazione
+  di luma/chroma; altri riducono i problemi di interferenza o compensano l'effetto
   di overscan.</i> </p>
 
 <table BORDER="1" CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
@@ -533,10 +533,10 @@ SSE3</td>
 <tr>
 <td WIDTH="30%"><a href="externalfilters/despot.htm">DeSpot (by Fizick)</a></td>
 
-    <td WIDTH="70%">Questo filtro &egrave; stato progettato per rimuovere il temporal 
-      noise in forma di punti e strisce che si trovano in alcuni video. Questo 
-      filtro &egrave; anche utile per il restauro e la pulizia di vecchi films 
-      telecined 8mm (e altri) da punti (dovuti alla polvere) e strisce (graffi). 
+    <td WIDTH="70%">Questo filtro &egrave; stato progettato per rimuovere il temporal
+      noise in forma di punti e strisce che si trovano in alcuni video. Questo
+      filtro &egrave; anche utile per il restauro e la pulizia di vecchi films
+      telecined 8mm (e altri) da punti (dovuti alla polvere) e strisce (graffi).
       [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=59388">discussioni</a>].</td>
 </tr>
 
@@ -550,8 +550,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/guavacomb.htm">Guava
   Comb (by Lindsey Dubb)</a></td>
 
-    <td WIDTH="70%">questo &egrave; un filtro &quot;comb&quot;, studiato per sbarazzarsi 
-      dell'effetto &quot;rainbows&quot;, punti vaganti , e scintillio nelle parti 
+    <td WIDTH="70%">questo &egrave; un filtro &quot;comb&quot;, studiato per sbarazzarsi
+      dell'effetto &quot;rainbows&quot;, punti vaganti , e scintillio nelle parti
       statiche dell'immagine. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=37456">discussioni</a>].</td>
 </tr>
 
@@ -559,9 +559,9 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/bordercontrol.htm">BorderControl
   (by Simon Walters)</a></td>
 
-    <td WIDTH="70%">Dopo aver catturato un video potremmo volerlo croppare per 
-      togliere spazzatura. BorderControl consente di sfumare i bordi anzich&egrave; 
-      croppare ed aggiungere bordi decisi. Questo pu&ograve; risultare visivamente 
+    <td WIDTH="70%">Dopo aver catturato un video potremmo volerlo croppare per
+      togliere spazzatura. BorderControl consente di sfumare i bordi anzich&egrave;
+      croppare ed aggiungere bordi decisi. Questo pu&ograve; risultare visivamente
       pi&ugrave; gradevole e produce meno artifatti di compressione. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=45670">discussioni</a>].</td>
 </tr>
 
@@ -576,8 +576,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/reinterpolate411.htm">Reinterpolate411
   (by Tom Barry)</a></td>
 
-    <td WIDTH="70%">Sembra che i pixels chroma pari siano duplicati dal codec 
-      MainConcept (in NTSC). Questo nuovo filtro aiuta scartando i pixels dispari 
+    <td WIDTH="70%">Sembra che i pixels chroma pari siano duplicati dal codec
+      MainConcept (in NTSC). Questo nuovo filtro aiuta scartando i pixels dispari
       e ricreandoli come media di 2 pixels pari adiacenti. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=58294&amp;pagenumber=2">discussioni</a>].</td>
 </tr>
 
@@ -592,17 +592,17 @@ SSE3</td>
 <tr>
 <td WIDTH="30%"><a href="ExternalFilters/dup.htm">Dup (by Donald Graft)</a></td>
 
-    <td WIDTH="70%">Questo &egrave; stato studiato per usarlo in clips che hanno 
-      un significativo numero di frames doppi, ma che differiscono a causa del 
-      rumore . Thanno molti di questi doppioni. Rimpiazzando i doppioni contenenti 
-      rumore con il doppione esatto si ottiene una riduzione delle dimensioni. 
+    <td WIDTH="70%">Questo &egrave; stato studiato per usarlo in clips che hanno
+      un significativo numero di frames doppi, ma che differiscono a causa del
+      rumore . Thanno molti di questi doppioni. Rimpiazzando i doppioni contenenti
+      rumore con il doppione esatto si ottiene una riduzione delle dimensioni.
       [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=41850">discussioni</a>].</td>
 </tr>
 
 <tr>
 <td WIDTH="30%"><a href="externalfilters/depan.htm">DePan (by Fizick)</a></td>
 
-    <td WIDTH="70%"> I tools DePan valutano la global motion (pan) nei frames, 
+    <td WIDTH="70%"> I tools DePan valutano la global motion (pan) nei frames,
       e operano una completa o parziale global motion compensation. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=66686">discussioni</a>].</td>
 </tr>
 
@@ -610,7 +610,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/avsmon.htm">AviSynth
   monitor &quot;avsmon&quot; (by johann.Langhofer)</a></td>
 
-    <td WIDTH="70%">Questo plugin consente una preview del video durante la conversione 
+    <td WIDTH="70%">Questo plugin consente una preview del video durante la conversione
       e di determinare il corretto delay audio. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=32125">discussioni</a>].</td>
 </tr>
 
@@ -618,23 +618,23 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/masktools.htm">MaskTools
   (by Kurosu and Manao)</a></td>
 
-    <td WIDTH="70%">Questo plugin si occupa della creazione, del miglioramento 
-      e della manipolazione di tali maschere per ogni componente del colorspace 
+    <td WIDTH="70%">Questo plugin si occupa della creazione, del miglioramento
+      e della manipolazione di tali maschere per ogni componente del colorspace
       YV12 . [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=67232">discussioni</a>].</td>
 </tr>
 
 <tr>
 <td WIDTH="30%"><a href="externalfilters/mvtools.htm">MVTools (by Manao)</a></td>
 
-    <td WIDTH="70%">Raccolta di filtri (Blur, ConvertFPS, Denoise, Interpolate, 
+    <td WIDTH="70%">Raccolta di filtri (Blur, ConvertFPS, Denoise, Interpolate,
       Mask e altri) che usano i motion vectors generati da questo plugin. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=76041">discussioni</a>].</td>
 </tr>
 
 <tr>
 <td WIDTH="30%"><a href="externalfilters/vscope.htm">VideoScope (by Randy French)</a></td>
 
-    <td WIDTH="70%">Si pu&ograve; usare questo plugin per tracciare un grafico 
-      dei colori di un frame. Mostra waveform monitor (wfm) e un vectorscope. 
+    <td WIDTH="70%">Si pu&ograve; usare questo plugin per tracciare un grafico
+      dei colori di un frame. Mostra waveform monitor (wfm) e un vectorscope.
       [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=76238">discussioni</a>].</td>
 </tr>
 
@@ -649,8 +649,8 @@ SSE3</td>
 <td><a href="ExternalFilters/blockbuster.htm">Blockbuster
   (by Sansgrip)</a></td>
 
-    <td>WCon questo filtro si possono scegliere diversi metodi per ridurre od 
-      eliminare i blocchetti dovuti alla DCT : aggiungendo rumore(con distribuzione 
+    <td>WCon questo filtro si possono scegliere diversi metodi per ridurre od
+      eliminare i blocchetti dovuti alla DCT : aggiungendo rumore(con distribuzione
       Gaussiana), contrastando o sfocando. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=44927">discussioni</a>].</td>
 </tr>
 
@@ -665,7 +665,7 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/chromashift.htm">ChromaShift
   (by Simon Walters)</a></td>
 
-    <td WIDTH="70%">ChromaShift shifta le informazioni di crominanza in ogni direzione 
+    <td WIDTH="70%">ChromaShift shifta le informazioni di crominanza in ogni direzione
       per compensare una registrazione Y/UV non corretta . [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=33302">discussioni</a>].</td>
 </tr>
 
@@ -673,8 +673,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/addgrain.htm">AddGrain
   (by Tom Barry)</a></td>
 
-    <td WIDTH="70%">AddGrain genera una grana tipo film ed altri effetti (tipo pioggia) 
-      aggiungendo rumore al video. Questo rumore può essere a scelta correlato 
+    <td WIDTH="70%">AddGrain genera una grana tipo film ed altri effetti (tipo pioggia)
+      aggiungendo rumore al video. Questo rumore può essere a scelta correlato
       orizzontalmente o verticalmene in modo da generare striature.</td>
 </tr>
 
@@ -682,8 +682,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/dctfilter.htm">DctFilter
   (by Tom Barry)</a></td>
 
-    <td WIDTH="70%">Riduce le componenti ad alta frequenza del rumore usando Discrete 
-      Cosine Transform e il suo inverso. Ne deriva un alto guadagno in compressibilit&agrave; 
+    <td WIDTH="70%">Riduce le componenti ad alta frequenza del rumore usando Discrete
+      Cosine Transform e il suo inverso. Ne deriva un alto guadagno in compressibilit&agrave;
       . Height/width devono essere multipli di 16. [<a href="http://forum.doom9.org/showthread.php?s=&amp;postid=252451">discussioni</a>].</td>
 </tr>
 
@@ -691,9 +691,9 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/undot.htm">Undot
   (by Tom Barry)</a></td>
 
-    <td WIDTH="70%">UnDot &egrave; un filtro per ridurre l'effetto &quot;dot&quot;, 
-      ovvero pixels orfani e rumore &quot;mosquito&quot;. In sostanza pareggia 
-      il valore dei pixels in modo tale che rientrino in un range minimo e massimo 
+    <td WIDTH="70%">UnDot &egrave; un filtro per ridurre l'effetto &quot;dot&quot;,
+      ovvero pixels orfani e rumore &quot;mosquito&quot;. In sostanza pareggia
+      il valore dei pixels in modo tale che rientrino in un range minimo e massimo
       degli otto pixels circostanti. [<a href="http://forum.doom9.org/showthread.php?s=&amp;postid=205442#post205442">discussioni</a>].</td>
 </tr>
 
@@ -701,8 +701,8 @@ SSE3</td>
 <td WIDTH="30%"><a href="ExternalFilters/dvinfo.htm">DVinfo
   (by WarpEnterprises)</a></td>
 
-    <td WIDTH="70%"> Questo filtro tira fuori il timestamp e la recording date da 
-      un DV-AVI. Dovrebbe funzionare con i formati Type-1 e Type-2, standard AVI 
+    <td WIDTH="70%"> Questo filtro tira fuori il timestamp e la recording date da
+      un DV-AVI. Dovrebbe funzionare con i formati Type-1 e Type-2, standard AVI
       e openDML. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=61688">discussioni</a>].</td>
 </tr>
 

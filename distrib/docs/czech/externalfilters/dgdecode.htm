@@ -110,7 +110,7 @@ licence:</b>  GPL
 <ul>
 	<br>
 	<br>
-	<A href="#WhatIsDGDecode">Co 
+	<A href="#WhatIsDGDecode">Co
   je&nbsp;DGDecode?</A><br>
 	<br>
 
@@ -149,8 +149,8 @@ licence:</b>  GPL
 
 <ul id="justify">
 	<p>DGDecode,&nbsp;èást balíku&nbsp;<a href="dgmpgdec_quickstart.htm">DGMPGDec</a>,&nbsp;je to MPEG-1/2 dekodér (plug-in)&nbsp;navr¾ený pro&nbsp; <a href="http://www.avisynth.org/"
-	 target="blank">AviSynth</a> 
-  v2.5 nebo vy¹¹í. Je schopen dekódovat&nbsp;jakýkoliv MPEG-1&nbsp;nebo MPEG-2 
+	 target="blank">AviSynth</a>
+  v2.5 nebo vy¹¹í. Je schopen dekódovat&nbsp;jakýkoliv MPEG-1&nbsp;nebo MPEG-2
   stream&nbsp;èitelný v&nbsp;DGIndexu.&nbsp;Dal¹í funkce zahrnují: YV12, I420, a YUY2 výstupní barevné
 	prostøedí (a RGB24&nbsp;pøes <a href="dgvfapi.htm">DGVfapi</a>), optimalizovaná iDCT, post-process deblocking (odstraòování kostkatìní) a
         deringing (odstraòování zvonìní, chvìní hran), jasové (luminosity)
@@ -160,9 +160,9 @@ licence:</b>  GPL
 	názvech&nbsp;a&nbsp;pro jasnìj¹í&nbsp;spojení s&nbsp;neuron2 verzí&nbsp;programu DVD2AVI&nbsp;zvanou DGIndex. Neuron2 chce vynalo¾it velké úsilí pro&nbsp;uznání&nbsp;pùvodu DGDecode,&nbsp;jak je popsáno ní¾e od&nbsp;MarcFD! Ano, neuron2 pokraèoval ve vývoji
 	a&nbsp;udìlal nìkteré opravy, ale&nbsp;stojí na ramenou&nbsp;obrù uvedených ní¾e&nbsp;v kapitole podìkování.</p>
 	<p>Poslední verze programu a zdrojového kódu&nbsp;DGMPGDec&nbsp;mù¾ete stáhnout na <a href="http://neuron2.net/dgmpgdec/dgmpgdec.html"
-	 target="blank" 
+	 target="blank"
  >http://neuron2.net/dgmpgdec/dgmpgdec.html</a></p>
-	<p>Toto je svobodný (free) software&nbsp;¹íøený pod 
+	<p>Toto je svobodný (free) software&nbsp;¹íøený pod
   podmínkami GNU GPL v2 license.&nbsp;Musíte&nbsp;souhlasit s podmínkami této licence ne¾ zaènete&nbsp;tento
 	plug-in&nbsp;nebo jeho&nbsp;zdrojový kód pou¾ívat. Pro podrobnosti se podívejte prosím do kapitoly <A href="#License">Licence</A>   .</p>
 </ul>
@@ -197,7 +197,7 @@ licence:</b>  GPL
 		<ul>
 			<i>DGIndex Projektový soubor.<br>
 			vy¾adovaný&nbsp;parametr!<br>
-			<u>Poznámka&nbsp;1:</u>&nbsp;CESTA mù¾e být 
+			<u>Poznámka&nbsp;1:</u>&nbsp;CESTA mù¾e být
       ignorována&nbsp;pokud "projekt.d2v" je ve stejné&nbsp;slo¾ce jako vá¹&nbsp;
 			<a href="http://www.avisynth.org/" target="blank">AviSynth</a> (*.avs)	skript.</i><br>
 		</ul>
@@ -207,7 +207,7 @@ licence:</b>  GPL
 		<ul>
 			<i>iDCT Algoritmus.<br>
 			Pro více infomací&nbsp;o iDCTs se podívejte do <A href="#AppendixB">Pøílohy B</A>.<br>
-			Podívejte se 
+			Podívejte se
 			prosím do <A href="#AppendixC">Pøílohy C</A> na podporované CPU.</i><br>
 			- 0:&nbsp;Pou¾ije hodnotu zadanou DGIndexem<br>
 			- 1: 32-bit MMX<br>
@@ -222,9 +222,9 @@ licence:</b>  GPL
 
 		<b>cpu</b>: 0&nbsp;a¾ 6  (výchozí: 0)<br>
 		<ul>
-			<i>Mo¾nosti rychlého 
+			<i>Mo¾nosti rychlého
       nastavení zpracování (Post-Processing).<br>
-			(Y=luma - 
+			(Y=luma -
       jas, C=chroma -barevnost, H=horizontální, V=vertikální)</i><br>
 			- 0: VYPNUTÉ ZPRACOVÁNÍ (POST-PROCESSING)<br>
 			- 1: DEBLOCK_Y_H<br>
@@ -239,23 +239,23 @@ licence:</b>  GPL
 		<b>iPP</b>: true/false  (VÝCHOZÍ: auto)<br>
 		<ul>
 			<i>Re¾im zpracování.<br>
-			DGDecode 
-			automaticky pou¾ívá PROGRESSIVE_FRAME&nbsp;flag 
+			DGDecode
+			automaticky pou¾ívá PROGRESSIVE_FRAME&nbsp;flag
       (znak progresivního snímku)&nbsp;pro pøepínání&nbsp;mezi zpracováním
 			zalo¾eném na polích/snímcích&nbsp; <u> podle skladby snímkù</u>.<br>
-			Mìli 
-			by jste zadat parametr iPP <u>pouze</u> 
+			Mìli
+			by jste zadat parametr iPP <u>pouze</u>
       pokud chcete&nbsp;vynutit, aby&nbsp;DGDecode&nbsp;pou¾il&nbsp;konkrétní
 			re¾im zpracování.</i><br>
 			 - [nezadané]: následuje PROGRESSIVE_FRAME flag<br>
-			- 
+			-
 			true:&nbsp;vynutí na  polích zalo¾ené (prokládané) zpracování<br>
 			- false:&nbsp;vynutí na&nbsp;snímcích zalo¾ené&nbsp;(progresivní) zpracování<br>
 		</ul>
 		<br>
 
 
-		<b>moderate_h</b>,<b> moderate_v</b>: 
+		<b>moderate_h</b>,<b> moderate_v</b>:
     0&nbsp;a¾ 255  (výchozí: moderate_h=20, moderate_v=40)<br>
 		<ul>
 			<i>Citlivost detekce blokù.<br>
@@ -270,18 +270,18 @@ licence:</b>  GPL
 			   Zadává&nbsp;¹estiznakový øetìzec "x" a "o" v souladu se seznamem ní¾e. (case-insensitive)<br>
 			   Ka¾dý&nbsp;"x"&nbsp;zapíná odpovídající funkci zpracování.<br>
 			   Ka¾dý&nbsp;"o"&nbsp;vypíná odpovídající funkci zpracování.</i><br>
-				znak&nbsp;1: 
-      luma 
-				horizontal deblocking (horizontální 
+				znak&nbsp;1:
+      luma
+				horizontal deblocking (horizontální
       odstranìní kostkatìní jasu - deblokování)<br>
 				znak 2: luma vertical deblocking (vertikální odstranìní kostkatìní jasu)<br>
-				znak 3: chroma horizontal 
+				znak 3: chroma horizontal
       deblocking (horizontální odstranìní kostkatìní barevnosti)<br>
 				znak 4: chroma vertical deblocking (vitikální odstranìní kostkatìní barevnosti)<br>
-				znak 5: luma 
-      deringing 
+				znak 5: luma
+      deringing
 				(odstranìní zvonìní hran jasu)<br>
-				znak 6: 
+				znak 6:
       chroma deringing (odstranìní zvonìní hran barevnosti)<br>
 			<br>
 			Napøíklad, pro zapnutí zpracování jen barevnosti&nbsp;(chroma) pou¾ijte:<br>
@@ -302,15 +302,15 @@ licence:</b>  GPL
 		<b>iCC</b>: true/false  (výchozí: auto)<br>
 		<ul>
 			<i>Re¾im nadvzorkování.<br>
-			DGDecode automaticky pou¾ívá PROGRESSIVE_FRAME flag 
-      (znak progresivního snímku) pro pøepínání mezi&nbsp;nadvzorkováním 
+			DGDecode automaticky pou¾ívá PROGRESSIVE_FRAME flag
+      (znak progresivního snímku) pro pøepínání mezi&nbsp;nadvzorkováním
       zalo¾eném na polích/snímcích&nbsp;<U>podle skladby snímkù</U>.<br>
-			Mìli by 
-			jste zadat&nbsp; <u>jen</u> 
+			Mìli by
+			jste zadat&nbsp; <u>jen</u>
       iCC parametr&nbsp;pokud chcete vynutit, aby&nbsp;DGDecode pou¾il
 			konkrétní&nbsp;re¾im nadvzorkování.</i><br>
 			  - [nezadáné]:&nbsp;následuje PROGRESSIVE_FRAME flag<br>
-			- 
+			-
       true:vynutí&nbsp;na  polích zalo¾ené (prokládané) nadvzorkování<br>
 			- false: vynutí&nbsp;na snímcích zalo¾ené (progresivní) nadvzorkování<br>
 		</ul>
@@ -321,7 +321,7 @@ licence:</b>  GPL
 			<i>Pøedává&nbsp;I420 barevné prostøedí.<br>
 			Mù¾e být vy¾adováno nìkterými&nbsp;legacy aplikacemi.<br>
 			Ignorováno&nbsp;jestli¾e vstup není&nbsp;YV12 (4:2:0),&nbsp;nebo&nbsp;pøi nadvorkování s <b>upConv</b>=1&nbsp;nebo 2.</i><br>
-			- 
+			-
       true:&nbsp;Pøedává I420<br>
 			- false:&nbsp;Pøedává YV12<br>
 		</ul>
@@ -371,12 +371,12 @@ licence:</b>  GPL
 		<br>
 		<br>
 
-		  Tato funkce nesouvisí s&nbsp; <i>Jasovým filtrem (Luminance Filter)</i> 
+		  Tato funkce nesouvisí s&nbsp; <i>Jasovým filtrem (Luminance Filter)</i>
     DGIndexu.<br>
 		 Transformace je: <code>Y =  (y * lumgain) + lumoff</code><br>
 		<br>
 		  LumaYV12() pøedává rozsah&nbsp;0-&gt;255 YUV , a&nbsp;ne CCIR-601 rozsah 16-&gt;235. Pou¾ijte
-		místo nìj vestavìný filtr AviSynthu&nbsp; <a href="http://www.avisynth.org/ColorYUV" target="blank">ColorYUV()</a></I>, 
+		místo nìj vestavìný filtr AviSynthu&nbsp; <a href="http://www.avisynth.org/ColorYUV" target="blank">ColorYUV()</a></I>,
     jestli¾e potøebujete&nbsp;vynutit rozsah 16-&gt;235.&nbsp;Functionality&nbsp;LumaYV12() lze dosáhnout&nbsp;pou¾itím
 		filtru AviviSyntu ColorYUV(),&nbsp;který má více mo¾ností,&nbsp;ale LumaYV12() je optimalizována pro&nbsp;rychlost&nbsp;
     pøi&nbsp;provádìní základních úprav
@@ -392,7 +392,7 @@ licence:</b>  GPL
 
 		<b>lumgain</b>: 0.0&nbsp;a¾ 2.0  (výchozí: 1.0)<br>
 		<ul>
-			<i>Zesílení 
+			<i>Zesílení
       (násobení)&nbsp;jasnosti.<br>
 			Upraví jas (luma)&nbsp;v¹ech pixelù&nbsp;o proporcionální hodnotu.</i><br>
 		</ul>
@@ -417,13 +417,13 @@ licence:</b>  GPL
 
 		Deblokuje a/nebo&nbsp;odstraòuje zvonìní&nbsp;jakéhokoliv video zdroje.<br>
 		Vy¾aduje YUY2&nbsp;nebo YV12 vstup.<br>
-		Podívejte se 
+		Podívejte se
     prosím&nbsp;do&nbsp; <A href="#AppendixA">Pøílohy A</A> na u¾ivatelské poznámky.<br>
 		<br>
 
 		<b>quant</b>: 0&nbsp;a¾ 31 (výchozí: 2) <br>
 		<ul>
-			<i>Emulovaný 
+			<i>Emulovaný
       (napodobený)&nbsp;kvantizer.<br>
 			Urèuje&nbsp; <u>intenzitu</u>   procesu deblokování.</i><br>
 		</ul>
@@ -467,14 +467,14 @@ licence:</b>  GPL
 
 		Manaùv H.264 Deblokovací filtr. (v0.9.5)<br>
 		Vy¾aduje&nbsp;YV12 vstup.<br>
-		 
-    
+
+
 		Oba&nbsp;(quant + aOffset) A (quant + bOffset) musí být &gt; =    16 jinak filtr nic neudìlá.<br>
 		<br>
 
 		<b>quant</b>: 0&nbsp;a¾ 51 (výchozí: 25) <br>
 		<ul>
-			<i>Emulovaný 
+			<i>Emulovaný
       (napodobený)&nbsp;kvantizer.<br>
 			Urèuje&nbsp;<U>intenzitu</U>   procesu deblokování.</i><br>
 		</ul>
@@ -505,7 +505,7 @@ licence:</b>  GPL
 		<b>isse</b>: true/false (výchozí: true)<br>
 		<ul>
 			<i>Automaticky&nbsp;se vypne, kdy¾ ji&nbsp;CPU nepodporuje.<br>
-			Podívejte se 
+			Podívejte se
       prosím&nbsp;do&nbsp; <A href="#AppendixC">Pøílohy C</A> na podporované CPU.</i><br>
 			 -  true:&nbsp;Zapne SSE optimalizaci<br>
 			 - false:&nbsp;Vypne SSE optimalizaci<br>
@@ -531,11 +531,11 @@ licence:</b>  GPL
 	</h3>
 
 	<ul><ul>
-		Funkce 
-		AviSynthu <i><a href="http://www.avisynth.org/AviSynthPlugins" target="blank">LoadPlugin()</a></i> musí být&nbsp;volána pøed&nbsp;pou¾itím funkcí&nbsp;DGDecode.<br> Pro 
+		Funkce
+		AviSynthu <i><a href="http://www.avisynth.org/AviSynthPlugins" target="blank">LoadPlugin()</a></i> musí být&nbsp;volána pøed&nbsp;pou¾itím funkcí&nbsp;DGDecode.<br> Pro
     splnìní této podmínky,&nbsp;pøidejte&nbsp;na zaèátek va¹eho&nbsp; AviSynth (*.avs) skriptu následující øádek:<br>
 		<pre>LoadPlugin("[PATH\]DGDecode.dll")</pre>
-		<u>Poznámka:</u> PATH (CESTA) mù¾e být 
+		<u>Poznámka:</u> PATH (CESTA) mù¾e být
     ignorována&nbsp;pokud DGDecode.dll&nbsp;je&nbsp;ve výchozí slo¾ce pluginù&nbsp; <a href="http://www.avisynth.org/" target="blank">AviSynthu</a>
 		   &nbsp;,&nbsp;jinak musí být&nbsp;PATH zadána.<br>
 		<br>
@@ -556,7 +556,7 @@ licence:</b>  GPL
 
 		   Prosté&nbsp;YV12 dekódování:<br>
 		<pre>MPEG2Source("[PATH\]project.d2v")</pre>
-		<u>Poznámka:</u> PATH&nbsp;mù¾e 
+		<u>Poznámka:</u> PATH&nbsp;mù¾e
     být&nbsp;ignorována&nbsp;jestli¾e "project.d2v"&nbsp;je ve stejné slo¾ce jako vá¹&nbsp;
 		<a href="http://www.avisynth.org/" target="blank">AviSynth</a> (*.avs) skript.<br>
 		<br>
@@ -596,7 +596,7 @@ licence:</b>  GPL
 	</h3>
 
 	<ul><ul>
-		Následující pøíklady&nbsp; <A href="#LumaYV12">LumaYV12()</A>    jsou samozøejmì zcela&nbsp;subjektivní.<br> 
+		Následující pøíklady&nbsp; <A href="#LumaYV12">LumaYV12()</A>    jsou samozøejmì zcela&nbsp;subjektivní.<br>
 		Upravte si je poble libosti.<br>
 		<br>
 
@@ -657,7 +657,7 @@ licence:</b>  GPL
 	</h3>
 
 	<ul><ul>
-		<A href="#Deblock">Deblock()</A>&nbsp;mù¾e být pou¾ito s&nbsp;MPEG-2 video&nbsp;zdrojem z&nbsp; <A href="#MPEG2Source" >MPEG2Source()</A>&nbsp;pokud 
+		<A href="#Deblock">Deblock()</A>&nbsp;mù¾e být pou¾ito s&nbsp;MPEG-2 video&nbsp;zdrojem z&nbsp; <A href="#MPEG2Source" >MPEG2Source()</A>&nbsp;pokud
     to&nbsp;upøednostòujete&nbsp;pøed&nbsp;zpracováním pomocí&nbsp;MPEG2Source(),&nbsp;nebo
 to mù¾e být pou¾ito s jinými zdroji&nbsp;videa. V
 		druhém pøípadì&nbsp;to obyèejnì znamená&nbsp;otvírání videa pomocí filtrù&nbsp;AviSynthu
@@ -687,9 +687,9 @@ to mù¾e být pou¾ito s jinými zdroji&nbsp;videa. V
 </h2>
 
 <ul id="justify">
-	<p>Bloky (kostkatìní 
-  obrazu)&nbsp;jsou dùsledkem 8x8-pixel DCT&nbsp;pou¾ívané MPEG 
-  enkodéry.&nbsp;Tak¾e za prvé,&nbsp;musíte&nbsp;si být jisti, ¾e&nbsp;bloky 
+	<p>Bloky (kostkatìní
+  obrazu)&nbsp;jsou dùsledkem 8x8-pixel DCT&nbsp;pou¾ívané MPEG
+  enkodéry.&nbsp;Tak¾e za prvé,&nbsp;musíte&nbsp;si být jisti, ¾e&nbsp;bloky
   které chcete deblokovat (vyhladit,
 	tzn. zbavit se kostkatìní) jsou stále zarovnány na&nbsp;8-pixelových hranicích. To znamená,&nbsp;neprovádìt ¾ádné oøezání obrazu (cropping) a&nbsp;¾ádné zmìny velikosti (resizing) pøed&nbsp;pou¾itím
 	<A href="#BlindPP">BlindPP()</A>.&nbsp;Pokud je vá¹ zdroj kódován prokládanì,&nbsp;nastavte <b>iPP</b>=true,&nbsp;pokud
@@ -699,17 +699,17 @@ to mù¾e být pou¾ito s jinými zdroji&nbsp;videa. V
 
 	<p><b>quant</b>  &nbsp;udává celkovou <u>sílu</u>   se kterou je deblokovací proces provádìn.</p>
 
-	<p>Nastavte&nbsp; <b>cpu2</b>&nbsp;na 
+	<p>Nastavte&nbsp; <b>cpu2</b>&nbsp;na
   "xxxxoo"&nbsp;pro horizontální a vertikální deblokování&nbsp;jasu
 	a barevnosti,&nbsp;na "xooxoo"&nbsp;pro horizontální&nbsp;jasové a vertikální barevnostní&nbsp;deblokování, atd.&nbsp;Jak budete chtít.</p>
 
-	<p><b>moderate_h</b> a <b>moderate_v</b>&nbsp;urèuje&nbsp;horizontální a vertikální citlivosti,&nbsp;to je,&nbsp; <u>kde</u> 
+	<p><b>moderate_h</b> a <b>moderate_v</b>&nbsp;urèuje&nbsp;horizontální a vertikální citlivosti,&nbsp;to je,&nbsp; <u>kde</u>
 	      provést deblokování, a&nbsp;kde ho neprovádìt. Ovládají citlivost&nbsp;rozpoznávání zda jsou bloky pøítomny.</p>
 
 	<p><b>quant</b>=2, <b>moderate_h</b>=35-45, <b>moderate_v</b>=45-55 vám dá&nbsp;velmi jemné zmìkèení&nbsp;pouze na silných,&nbsp;jasnì viditelných&nbsp;blocích. To zachová velmi mnoho detailù&nbsp;a ostrosti,&nbsp;ale&nbsp;také nechá nedotkuté
 	slabé&nbsp;bloky, a&nbsp;ne zcela znièí ty silnìj¹í.</p>
 
-	<p><b>quant</b>=16, <b>moderate_h</b>=15-20, <b>moderate_v</b>=       
+	<p><b>quant</b>=16, <b>moderate_h</b>=15-20, <b>moderate_v</b>=
 	20-30 provede spí¹e silné deblokování&nbsp;na témìø&nbsp;v¹em co by snad mohlo být blokem,&nbsp;ale také vyhladí hodnì detailù a ostrosti.</p>
 
 	<p>Zbytek je u¾ na vás,&nbsp;va¹em vkusu a va¹em zdrojovém&nbsp;materiálu.</p>
@@ -720,7 +720,7 @@ to mù¾e být pou¾ito s jinými zdroji&nbsp;videa. V
 	<pre>PixieDust(2).BlindPP(quant=8, cpu2="xxxxoo", moderate_h=45, moderate_v=55)</pre>
 
 	<p>Toto odstraní slu¹né mno¾ství nejvíce viditelného kostkatìní,&nbsp;pokud a&nbsp;pouze jestli¾e&nbsp; <i>PixieDust()</i>    &nbsp;nìjaké
-	vytváøí. Na zbývajících 99.8%&nbsp;kde <i>PixieDust()</i>&nbsp;neudìlal 
+	vytváøí. Na zbývajících 99.8%&nbsp;kde <i>PixieDust()</i>&nbsp;neudìlal
   bloky,&nbsp;toto neprovede témìø nic, tak jak to právì potøebujete.</p>
 </ul>
 
@@ -736,20 +736,20 @@ to mù¾e být pou¾ito s jinými zdroji&nbsp;videa. V
 	<p>       Textový soubor&nbsp;FlasKMPEG&nbsp;obsahuje výborný technický popis&nbsp;iDCT. Cituji:</p>
 
 	<ul id="quote">
-		<p>"Video informace uvnitø MPEG&nbsp;souborù&nbsp;jsou 
-    uchovány&nbsp;spí¹e ve frekvenèním pásmu ne¾ v prostorovém 
+		<p>"Video informace uvnitø MPEG&nbsp;souborù&nbsp;jsou
+    uchovány&nbsp;spí¹e ve frekvenèním pásmu ne¾ v prostorovém
     (spatial)&nbsp;pásmu (obrazy, které vidíme).&nbsp;Tak se stávají informace kompaktní a&nbsp;kompaktnost mù¾e
 		být vyu¾ita ke kompresi (sní¾ení)&nbsp;mno¾ství informací, které musíte poslat&nbsp;pøes pøenosový kanál. MPEG pou¾ívá DCT
 		(Discrete Cosine Transform - Diskrétní kosinová transformace)&nbsp;pro pøeklad prostorové&nbsp;informace&nbsp;na frekvenèní&nbsp;informaci. Pro navrácení&nbsp;prostorové informace&nbsp;z MPEG streamu&nbsp;musíte pou¾ít&nbsp;iDCT,&nbsp;to je,&nbsp;Inverse Discrete
 		Cosine Transform (Inverzní diskrétní kosinová transformace),&nbsp;která obrátí&nbsp;DCT&nbsp;, jen¾ byla pou¾ita&nbsp;pøi kódování."</p>
 
-		<p>"Aèkoli MPEG&nbsp;je&nbsp;témìø deterministický 
+		<p>"Aèkoli MPEG&nbsp;je&nbsp;témìø deterministický
     (výstup daného MPEG streamu by mìl
 		být identický&nbsp;ve v¹ech dekodérech),&nbsp;standard&nbsp;má urèitou volnosti&nbsp;pøi volbì&nbsp;pou¾itého iDCT.&nbsp;Tak,&nbsp;dekodér&nbsp;mù¾e být&nbsp;snadnìji implementován&nbsp;v závislosti&nbsp;na hardwaru&nbsp;pod ním. To co&nbsp;standard&nbsp;od dekodéru vy¾aduje, je aby iDCT&nbsp;splòovala
 		IEEE-1180 specifikace,&nbsp;neboli prostými slovy, aby&nbsp;chyba z&nbsp;iDCT&nbsp;nepøekraèovala&nbsp;tyto specifikace uvedené v IEEE-1180."</p>
 	</ul>
 
-	<p>Kterou&nbsp;iDCT&nbsp;by jste mìli pou¾ít&nbsp;závisí primárnì&nbsp;na&nbsp;CPU&nbsp;a&nbsp;v men¹í míøe na pøesnosti iDCT kterou si pøejete. 
+	<p>Kterou&nbsp;iDCT&nbsp;by jste mìli pou¾ít&nbsp;závisí primárnì&nbsp;na&nbsp;CPU&nbsp;a&nbsp;v men¹í míøe na pøesnosti iDCT kterou si pøejete.
   Vìt¹ina lidí nebude schopna øíci&nbsp;rozdíl v kvalitì mezi&nbsp;tìmito
 	algoritmy, ale&nbsp;lze ho snadno pozorovat&nbsp;kombinováním filtrù&nbsp;AviSynthu&nbsp; <i><a href="http://www.avisynth.org/Subtract" target="blank">Subtract()</a></i>
 	a <i><a href="http://www.avisynth.org/Levels" target="blank">Levels()</a></i>       .&nbsp;V¹echny
@@ -801,7 +801,7 @@ to mù¾e být pou¾ito s jinými zdroji&nbsp;videa. V
 				<td>V¹echny&nbsp;AMD CPU
 				<td>V¹echny&nbsp;AMD CPU
 				<td>Athlon XP, Athlon 64
-				<td>Athlon 64</td> </tr> 
+				<td>Athlon 64</td> </tr>
 		</table>
 	</ul>
 </ul>

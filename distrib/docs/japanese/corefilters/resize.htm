@@ -9,32 +9,32 @@
 <body>
 <h2>BicubicResize / BilinearResize / BlackmanResize / GaussResize / LanczosResize /
 Lanczos4Resize / PointResize / Spline16Resize / Spline36Resize / Spline64Resize</h2>
-<p><code>BicubicResize </code>(<var>clip, int target_width, int target_height, float 
-  &quot;b=1./3.&quot;, float &quot;c=1./3.&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, 
+<p><code>BicubicResize </code>(<var>clip, int target_width, int target_height, float
+  &quot;b=1./3.&quot;, float &quot;c=1./3.&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;,
   float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
-  <code>BilinearResize </code>(<var>clip, int target_width, int target_height, float 
-  &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, 
+  <code>BilinearResize </code>(<var>clip, int target_width, int target_height, float
+  &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;,
   float &quot;src_height&quot;</var>)<br>
-  <code>BlackmanResize </code>(<var>clip, int target_width, int target_height, float 
+  <code>BlackmanResize </code>(<var>clip, int target_width, int target_height, float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;, int &quot;taps=4&quot;</var>)<br>
-  <code>GaussResize </code>(<var>clip, int target_width, int target_height, float 
+  <code>GaussResize </code>(<var>clip, int target_width, int target_height, float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;, float &quot;p=30.&quot;</var>)<br>
-  <code>LanczosResize </code>(<var>clip, int target_width, int target_height, float 
+  <code>LanczosResize </code>(<var>clip, int target_width, int target_height, float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;, int &quot;taps=3&quot;</var>)<br>
-  <code>Lanczos4Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Lanczos4Resize </code>(<var>clip, int target_width, int target_height, float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
-   <code>PointResize </code>(<var>clip, int target_width, int target_height, float &quot;src_left&quot;, 
+   <code>PointResize </code>(<var>clip, int target_width, int target_height, float &quot;src_left&quot;,
   float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
-  <code>Spline16Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Spline16Resize </code>(<var>clip, int target_width, int target_height, float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
-  <code>Spline36Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Spline36Resize </code>(<var>clip, int target_width, int target_height, float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
-  <code>Spline64Resize </code>(<var>clip, int target_width, int target_height, float 
+  <code>Spline64Resize </code>(<var>clip, int target_width, int target_height, float
   &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</var>)
 </p>
 <p><em>v2.56</em> から、すべてのリサイザに対して（<a href="crop.htm">Crop</a> と同様に）オフセット<a href="#footnote_1" class="footnote_link">*1</a>を使用することができます:<br>
 すなわち、<br>
-<code>GaussResize </code>(<var>clip, int target_width, int target_height, float 
+<code>GaussResize </code>(<var>clip, int target_width, int target_height, float
   "src_left", float "src_top", float -&quot;src_right&quot;, float
 -&quot;src_top&quot;</var>)</p>
 <p>すべてのリサイザに関して、リサイズ前にクロップを行う拡張シンタックスを使用することができます。リサイズの前に Crop フィルタを置くのと同じ演算が実行されますが、両者にはわずかにスピードの違いがあります。</p>
@@ -47,7 +47,7 @@ Lanczos4Resize / PointResize / Spline16Resize / Spline36Resize / Spline64Resize<
 
 # 上記のスクリプトは、以下とほぼ同じ
 BilinearResize(100,150,10,10,200,300)</pre>
-    
+
 <p>重要: AviSynth は、完全に独立した垂直と水平のリサイザを備えています。もし 1 つの軸に関して入力が出力と同じなら、リサイザはスキップされます。どちらが最初に呼び出されるかは、どちらが最も小さい縮小率かによって決定されます。これは、最大限の品質を保持するために行われます。これにより、2 番目のリサイザは、処理すべき最高のピクチャを得ます。</p>
 
 <h3>BilinearResize</h3>
@@ -70,7 +70,7 @@ AviSource(&quot;dv.avi&quot;).BilinearResize(352, 240, 8, 0, -8, -0)
 # フレーム全体を埋める
 BilinearResize(320,240,160,0,160,120)
 </pre>
-    
+
 <h3>BicubicResize</h3>
 
 <p>線形フィルタリングの代わりに Mitchell-Netravali の 2 つのパラメータを取るキュービック・フィルタ<a href="#footnote_5" class="footnote_link">*5</a>を使用するということを除けば、<tt><code>BicubicResize</code></tt><a href="#footnote_6" class="footnote_link">*6</a> は <tt><code>BilinearResize</code></tt> に似ています。パラメータ <i>b</i> と <i>c</i>  は、3 次式のプロパティを調整するために使用することができます。それぞれ、「ぼかし」と「リンギング」<a href="#footnote_7" class="footnote_link">*7</a>と呼ばれることがあります。</p>

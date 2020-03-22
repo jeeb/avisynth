@@ -69,12 +69,12 @@ TCPServer
 Sharpener
 TCPServer
 
-# Poèítaè 3: 
+# Poèítaè 3:
 TCPSource
 # klientova aplikace (editor) -&gt; video kodek -&gt; finální soubor</pre>
 <h3>Poznámky pro pou¾ití</h3>
 <p>Jakmile pøidáte TCPServer, nemù¾ete&nbsp;pøidávat do øetìzce dal¹í filtry, nebo pou¾ívat výstup z filtru.&nbsp;Server&nbsp;bì¾í na oddìleném vláknì, ale&nbsp;proto¾e AviSynth&nbsp;není na vláknì úplnì bezpeèný (thread-safe) nemù¾ete&nbsp;spolehlivì spustit&nbsp;více serverù.&nbsp;Následující by
-<b>nemìlo</b> být 
+<b>nemìlo</b> být
 pou¾íváno:</p>
 <pre>AviSource(&quot;avi.avi&quot;) TCPServer(1001) TCPServer(1002) # Toto NENÍ dobrý nápad</pre>
 <p>Tak¾e základním pravidlem je <b>nikdy víc ne¾ jeden TCPServer na skript</b>.</p>

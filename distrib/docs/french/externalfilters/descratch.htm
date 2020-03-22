@@ -19,7 +19,7 @@ $Id: descratch.htm,v 1.1 2005/10/03 16:31:31 macpaille Exp $
 <h3>Purpose</h3>
 This plugin  removes vertical scratches from films. Also it
 can be used for removing of horizontal noise lines such as drop-outs
-from analog VHS captures (after image rotation). 
+from analog VHS captures (after image rotation).
 <h3>How it works</h3>
 <p>The plugin firstly detects scratches, then removes them.<br>
 It works with every frame, uses spatial information only from current frame.<br>
@@ -43,7 +43,7 @@ Tested with version 2.55beta (some versions have bug with Turnleft()! ).<br>
 Filter versions above 0.2 is no more needed in Avisynth C Interface (avithynth_c.dll) by Kevin Atkinson.<br>
 Compiled with  MS VC++ Toolkit 2003.</p>
 <h3>Calling syntax</h3>
-<p><code>DeScratch</code>(<var>int mindif, int asym, int maxgap, int maxwidth, int minlen, int maxlen, int maxangle, int blurlen, int keep, int border, 
+<p><code>DeScratch</code>(<var>int mindif, int asym, int maxgap, int maxwidth, int minlen, int maxlen, int maxangle, int blurlen, int keep, int border,
 int modeY, int modeU, int modeV, int mindifUV, bool mark</var>)</p>
 <p>All parameters are named and optional.</p>
 <h3>Plugin Parameters</h3>
@@ -68,9 +68,9 @@ int modeY, int modeU, int modeV, int mindifUV, bool mark</var>)</p>
 <var>mark</var> - mark scratch in debug mode (true or false, default = false)<br>
 &nbsp;&nbsp;&nbsp; (set rejected extrems pixels to grey, set scratches pixels to white or black)</p>
 <p>
-<var>maxgap</var>, <var>maxwidth</var>, <var>minlen</var>, <var>blurlen</var>, <var>border</var> 
+<var>maxgap</var>, <var>maxwidth</var>, <var>minlen</var>, <var>blurlen</var>, <var>border</var>
 should be given in pixels.</p>
-<p>You MUST tune parameters for your video.<br> 
+<p>You MUST tune parameters for your video.<br>
 Use AviSynth commands <code>Greyscale(), UtoY(), VtoY()</code>, and <var>mark</var> parameter for debug and tuning.</p>
 <h3>
 Examples</h3>
@@ -84,7 +84,7 @@ ConvertToYV12()
 DeScratch(lumadif=2)</pre>
 <h3>Horizontal noisy lines removing</h3>
 <p>Such long thin noisy lines sometimes appears in analog capture material (TV or VHS line drop-out, etc).
-This problem was discussed at Doom9, see article <a href="http://www.doom9.org/capture/descratch.html"> <cite> Removal of clicks and scratches</cite></a> 
+This problem was discussed at Doom9, see article <a href="http://www.doom9.org/capture/descratch.html"> <cite> Removal of clicks and scratches</cite></a>
 (July 10-31, 2004).
 But in the article DeSpot plugin was used, what is not most appropriate tool for this, due to very weak noise level.
 DeScratch could be more effective, however is not ideal too (old versions can process luma plane only).
@@ -122,14 +122,14 @@ In case of commercial using, make a reference to it.</p>
     <ul>
       <li>changed to sharp extrems;</li>
       <li>added gaps closing</li>
-    </ul> 
-  </li>  
+    </ul>
+  </li>
   <li>Version 0.3, July 14, 2004
     <ul>
       <li> ported to native Avisynth plugin</li>
       <li> Speed increased due to fast blurring by Avisynth resizing functions.</li>
-    </ul> 
-  </li>  
+    </ul>
+  </li>
   <li>Version 0.4, July 17, 2004
     <ul>
       <li>Added chroma processing: <var>modeY, modeU, modeV</var> parameters,</li>

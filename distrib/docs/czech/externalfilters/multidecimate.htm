@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: multidecimate.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: multidecimate.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: multidecimate.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b> Donald A. Graft
 <br><b>verze:</b>    1.0.7<br>
-<b>stáhnout:</b> <a href="http://neuron2.net/mine.html">http://neuron2.net/mine.html</a>, 
+<b>stáhnout:</b> <a href="http://neuron2.net/mine.html">http://neuron2.net/mine.html</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>  Odstraòování prokládání &amp; pulldown
 <br><b>poadavky:</b>  YUY2 Barevné prostøedí
@@ -31,7 +31,7 @@ Napøíklad, øada nìmıch filmù je pøevádìna na DVD s pøidáváním duplikátù s
 neobvyklımi šablonami, proto pùvodní frekvence snímkù nejsou 24 fps. Není
 neobvyklé vidìt klipy vyadující zvláštní decimace jako 20 ze 43. Obèas
 lze tìchto zvláštních decimací dosáhnout nebo témìø dosáhnout, opakovanım
-pouitím Decimate() vyuívajícím rùznıch cyklù, ale to je tìkopádnı 
+pouitím Decimate() vyuívajícím rùznıch cyklù, ale to je tìkopádnı
 pøístup, kterı ne vdy dosáhne pøesnıch poadovanıch decimaèních pomìrù. Tento
 filtr se snaí pøistupovat k problému více pøímo, ale za cenu 2-prùchodové
 operace.
@@ -52,10 +52,10 @@ MultiDecimate.exe a ProcessMD.exe do sloky s vaším skriptem.
 (neskákejte sem a tam po èasové ose!). To vytvoøí soubor metrik, <i>mfile.txt</i>,
 ve vaší sloce se skriptem. Pokud chcete vyzkoušet vaše video na šablonu duplikátù,
 okomentujte vızvu MultiDecimate(), nesnate se to dìlat bìhem 1. prùchodu,
-protoe jakékoliv skoky po èasové ose pokazí soubor metrik. Nakonec, po dokonèení 
+protoe jakékoliv skoky po èasové ose pokazí soubor metrik. Nakonec, po dokonèení
 prùchodu 1, ihned ukonèete VirtualDub; nic si neprohlíejte.
-<p>Je ztráta èasu, zahrnovat jakékoliv filtry za vızvu MultiDecimate() 
-do prvního prùchodu. Zahròte je formou komentáøù aby bylo zpracování rychlejší. Pro druhı 
+<p>Je ztráta èasu, zahrnovat jakékoliv filtry za vızvu MultiDecimate()
+do prvního prùchodu. Zahròte je formou komentáøù aby bylo zpracování rychlejší. Pro druhı
 prùchod pak funkce zbavte znakù pro komentáøe.
 <p><b>Krok 2.</b> Spuste MultiDecimate.exe pro spuštìní GUI. Nalistujte soubor
 <i>mfile.txt</i> . Vyberte poadovanı reim (viz níe na popis reimù).
@@ -63,7 +63,7 @@ Nastavte ostatní konfiguraèní poloky jak poadujete (viz níe). Pak
 kliknìte na tlaèítko Create. Tím se vytvoøí soubory <i>cfile.txt</i> a <i>dfile.txt</i>
 ve sloce vašeho skriptu.
 <p><b>Krok 3.</b> Upravte skript pro zmìnu prùchodu pass=1 na pass=2. Nyní mùete naèíst
-skript a ten bude mít správnì decimované video, a náhodnı pøístup po èasové ose 
+skript a ten bude mít správnì decimované video, a náhodnı pøístup po èasové ose
 bude podporován. Pass 2 ète soubor <i>dfile.txt</i> do pamìti
 a pouívá ho pro stanovení, které snímky mají bıt doruèeny.
 <h2>GUI Decimaèní reimy a konfigurace</h2>
@@ -71,7 +71,7 @@ Jsou dostupné následující reimy:
 <ul>
   <li>&quot;Remove duplicates : Global: Naive&quot;:(Odstranit duplikáty:Globálnì:Naivnì) - Tento reim
     odstraní všechny snímky urèené jako duplikáty podle definované prahové hodnoty Threshold.
-    Snímky s metrikou menší ne prahová hodnota budou povaovány za 
+    Snímky s metrikou menší ne prahová hodnota budou povaovány za
     duplikáty. Provìøte si v souboru <i>mfile.txt</i> jaké mají snímky metriky.
     <p>&nbsp;
   <li>&quot;Remove duplicates: Global: Protect static scenes&quot;: (Odstranit duplikáty:Globálnì:Ochránit statické scény) - Tento reim
@@ -113,7 +113,7 @@ kvalitu detekce rozdílù s rychlostí. Zde jsou monosti:
 <var>quality</var> = 1: Podvzorkováno pro rychlost a barevnost uvaována.<br>
 <var>quality</var> = 2: Plné vzorkování a barevnost neuvaována.<br>
 <var>quality</var> = 3: Plné vzorkování a barevnost uvaována (nejpomalejší).
-<p><var>show</var> (true/false, vıchozí false) zapíná zobrazení informací 
+<p><var>show</var> (true/false, vıchozí false) zapíná zobrazení informací
 do snímku. Také zobrazuje verzi softwaru.
 <p><var>debug</var> (true/false, vıchozí false) zapíná tisk informací pøes
 OutputDebugString(). Pro zachycení tìchto øetìzcù je dostupná utilita zvaná DebugView.

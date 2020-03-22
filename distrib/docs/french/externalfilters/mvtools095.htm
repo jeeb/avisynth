@@ -40,33 +40,33 @@ but without motion interpolation functions (MVBlur, MVConvertFPS, MVInterpolate)
 </h2>
 <h3>Common parameters
 </h3>
-<p>The filters which use motion vectors have common parameters. They allow for 
-example to set the scene change detection thresholds. Moreover, filters may 
-need one or two motion vectors stream. When two are needed, one is backward ( 
+<p>The filters which use motion vectors have common parameters. They allow for
+example to set the scene change detection thresholds. Moreover, filters may
+need one or two motion vectors stream. When two are needed, one is backward (
 obtained by
-<code>MVAnalyse</code>(isb = true) ), and the other is forward ( 
-<code>MVAnalyse</code>(isb = false) ). By convention, the backward one has to 
+<code>MVAnalyse</code>(isb = true) ), and the other is forward (
+<code>MVAnalyse</code>(isb = false) ). By convention, the backward one has to
 be given first.
 </p>
 <p><var>mvsbw</var> : the backword motion vector
 </p>
 <p><var>mvsfw</var> : the forword motion vector
 </p>
-<p><var>int thSCD1</var> : threshold which decides whether a block has changed 
-between the previous frame and the current one. When a block has changed, it 
-means for me that motion estimation for him isn't relevant at all. It occurs 
-for example at scene changes. So it is one of the thresholds used to tweak the 
-scene changes detection engine. Default is 300. Raising it will lower the 
+<p><var>int thSCD1</var> : threshold which decides whether a block has changed
+between the previous frame and the current one. When a block has changed, it
+means for me that motion estimation for him isn't relevant at all. It occurs
+for example at scene changes. So it is one of the thresholds used to tweak the
+scene changes detection engine. Default is 300. Raising it will lower the
 number of blocks detected as changed.
 </p>
-<p><var>int thSCD2</var> : threshold which sets how many blocks have to change 
-for the frame to be considered as a scene change. It is ranged from 0 to 255, 0 
+<p><var>int thSCD2</var> : threshold which sets how many blocks have to change
+for the frame to be considered as a scene change. It is ranged from 0 to 255, 0
 meaning 0 %, 255 meaning 100 %. Default is 130 ( which means 51 % ).
 </p>
 <h3>MVAnalyse
 </h3>
 <p><code>MVAnalyse</code> (<var>clip, int &quot;bw&quot;, int &quot;bh&quot;, int
-&quot;pel&quot;, int &quot;lv&quot;, int &quot;fth&quot;, 
+&quot;pel&quot;, int &quot;lv&quot;, int &quot;fth&quot;,
 int &quot;sadt&quot;, int &quot;mpt&quot;,
 int &quot;st&quot;, int &quot;stp&quot;, bool &quot;isb&quot;, int &quot;lambda&quot;</var>)
 </p>
@@ -144,64 +144,64 @@ and <var>wf </var>= "uniform".</p>
 </h3>
 <p><code>MVCompensate</code> (<var>clip, clip vectors</var>)
 </p>
-<p>Do a full motion compensation of the frame. It means that the blocks pointed 
+<p>Do a full motion compensation of the frame. It means that the blocks pointed
 by MV in the previous frame ( or following, it depends on the setting of
-<code>MVAnalyse</code> ) will be moved along the vectors to reach their places 
+<code>MVAnalyse</code> ) will be moved along the vectors to reach their places
 in the current frame.
 </p>
-<p>It differs from filters like MVinterpolate because here, the rebuilding is 
-complete ( meaning by that that the blocks once moved aren't overlapping, and 
+<p>It differs from filters like MVinterpolate because here, the rebuilding is
+complete ( meaning by that that the blocks once moved aren't overlapping, and
 cover the whole picture ).
 </p>
-<p>For the moment, it doesn't move the chroma ( because it needs a spatial 
+<p>For the moment, it doesn't move the chroma ( because it needs a spatial
 interpolation algorithm to do so
 ).
 </p>
 <h3>MVConvertFPS
 </h3>
 <p><code>MVConvertFPS</code> (<var>clip, clip mvbw, clip mvfw, int
-&quot;nb&quot;, float &quot;rl&quot;, int &quot;fbw&quot;, int &quot;sbw&quot;, 
+&quot;nb&quot;, float &quot;rl&quot;, int &quot;fbw&quot;, int &quot;sbw&quot;,
 int
 &quot;rbw&quot;, int &quot;bvt&quot; [, int num, int den], float
 &quot;fps&quot;, string &quot;wf&quot;</var>)
 </p>
-<p>Will change the framerate of the clip, without changing its length. As with 
+<p>Will change the framerate of the clip, without changing its length. As with
 <code>MVBlur</code>,
-<var> nb</var> is the number of frames built in order to create one interpolate 
+<var> nb</var> is the number of frames built in order to create one interpolate
 frame.
-<var> rl</var> camera's shutter speed and <var> wf</var> is the normalization 
+<var> rl</var> camera's shutter speed and <var> wf</var> is the normalization
 function.
-<var>fbw</var>, <var> sbw</var> and <var> rbw</var> allows to increase the size 
+<var>fbw</var>, <var> sbw</var> and <var> rbw</var> allows to increase the size
 of the blocks moved.
-<var> bvt</var> is a threshold which decides whether a motion vector is valid 
+<var> bvt</var> is a threshold which decides whether a motion vector is valid
 or not. The default value makes all vectors valid.
-<var> num</var> and <var> den</var> are the numerator and the denominator of 
+<var> num</var> and <var> den</var> are the numerator and the denominator of
 the new framerate. You can also give this number using the
 <var> fps</var> parameters.
 </p>
-<p>Defaults are : <var>nb</var> = 1, <var>rl</var> = 0, <var>fbw</var> = 4, 
+<p>Defaults are : <var>nb</var> = 1, <var>rl</var> = 0, <var>fbw</var> = 4,
 <var>sbw</var>
 = 0, <var>rbw</var> = 0, <var>bvt</var> = 35000 and <var>wf</var> =
 &quot;uniform&quot;.
 </p>
 <h3>MVDenoise
 </h3>
-<p><code>MVDenoise</code> (<var>clip, clip mvbw, clip mvfw, int 
+<p><code>MVDenoise</code> (<var>clip, clip mvbw, clip mvfw, int
 &quot;thT&quot;, int
 &quot;sadT&quot;</var>)
 </p>
-<p>Makes a basic temporal denoising with motion compensation. Both previous and 
-following frames are motion compensated and then merged into the current frame. 
+<p>Makes a basic temporal denoising with motion compensation. Both previous and
+following frames are motion compensated and then merged into the current frame.
 The two thresholds are used to prevent artifacts.
 </p>
-<p>The first one, <var>thT</var>, decides whether the pixel which comes from 
-the previous or the following frame has to be taken into account. If this pixel 
+<p>The first one, <var>thT</var>, decides whether the pixel which comes from
+the previous or the following frame has to be taken into account. If this pixel
 differs more than
 <var>thT</var> from the pixel of the current frame, it is not used.
 </p>
-<p>The second one, <var>sadT</var>, decides whether the block has changed or 
+<p>The second one, <var>sadT</var>, decides whether the block has changed or
 not ( same principle as
-<var> thSCD1</var> ). If it has changed, the pixel aren't merged with those of 
+<var> thSCD1</var> ). If it has changed, the pixel aren't merged with those of
 the previous or following frame.
 </p>
 <p>Defaults are : <var>thT</var> = 10 and <var>sadT</var> = 160.
@@ -217,24 +217,24 @@ I would say ( without much testing ) that :
 <h3>MVInterpolate
 </h3>
 <p><code>MVInterpolate</code> (<var>clip, clip mvbw, clip mvfw, int
-&quot;nb&quot;, float &quot;bl&quot;, float &quot;el&quot;, int 
+&quot;nb&quot;, float &quot;bl&quot;, float &quot;el&quot;, int
 &quot;fbw&quot;, int
-&quot;sbw&quot;, int &quot;rbw&quot;, int &quot;bvt&quot;, string 
+&quot;sbw&quot;, int &quot;rbw&quot;, int &quot;bvt&quot;, string
 &quot;wf&quot;</var>)
 </p>
-<p>Allows to shift temporally the video from a non integer number of frames, 
+<p>Allows to shift temporally the video from a non integer number of frames,
 between 0.0 and 1.0. Works the same way
-<code> MVBlur</code> and <code> MVConvertFPS</code> do, which means 
+<code> MVBlur</code> and <code> MVConvertFPS</code> do, which means
 <var>nb</var>,
 <var>fbw</var>, <var>sbw</var>, <var>rbw</var>, <var>bvt</var> and <var>wf</var>
-work the same way. <var>bl</var> and <var>el</var> define the beginning and the 
-end of the interpolation. If <var>bl</var>  is different from <var>el</var>, the created frame is 
-slightly blured. The interpolation is made between the current frame and the 
+work the same way. <var>bl</var> and <var>el</var> define the beginning and the
+end of the interpolation. If <var>bl</var>  is different from <var>el</var>, the created frame is
+slightly blured. The interpolation is made between the current frame and the
 previous one.
 </p>
-<p>Defaults are <var>nb</var> = 5, <var>bl</var> = 0.4, <var>el</var> = 0.6, 
+<p>Defaults are <var>nb</var> = 5, <var>bl</var> = 0.4, <var>el</var> = 0.6,
 <var>fbw</var>
-= 4, <var>sbw</var> = 0, <var>rbw</var> = 0, <var>bvt</var> = 35000 and 
+= 4, <var>sbw</var> = 0, <var>rbw</var> = 0, <var>bvt</var> = 35000 and
 <var>wf</var>
 = &quot;uniform&quot;.
 </p>
@@ -243,20 +243,20 @@ previous one.
 <p><code>MVMask</code> (<var>clip, clip vectors, int &quot;ml&quot;, float
 &quot;gamma&quot;, bool &quot;showsad&quot;, int &quot;Ysc&quot;</var>)
 </p>
-<p>Creates a motion mask from the motion vectors' length. It builds a better 
+<p>Creates a motion mask from the motion vectors' length. It builds a better
 mask than
-<a href="masktools.htm#motionmask"> MotionMask</a> ( <a href="masktools.htm"> 
-MaskTools</a> ) because motion vectors are a lot more reliable than the 
+<a href="masktools.htm#motionmask"> MotionMask</a> ( <a href="masktools.htm">
+MaskTools</a> ) because motion vectors are a lot more reliable than the
 algorithm of MotionMask.
 </p>
-<p>The mask is output only on the luma plane. 0 means no motion at all ( the 
-length of the motion vector is null ), whereas 255 means maximum motion, and is 
+<p>The mask is output only on the luma plane. 0 means no motion at all ( the
+length of the motion vector is null ), whereas 255 means maximum motion, and is
 defined by
-<var>ml</var>. When the vector's length is superior or equal to ml, the output 
+<var>ml</var>. When the vector's length is superior or equal to ml, the output
 value is 255.
-<var>gamma</var> is used to defined the relation length - value. 
+<var>gamma</var> is used to defined the relation length - value.
 <var>gamma</var>
-= 1.0 implies a linear relation, whereas <var>gamma</var> = 2.0 gives a 
+= 1.0 implies a linear relation, whereas <var>gamma</var> = 2.0 gives a
 quadratic relation.
 </p>
 <p><var>showsad</var> allows to build a mask of the SAD values instead of the
@@ -272,10 +272,10 @@ vectors' length. And finally, <var>Ysc</var> is the value taken by the mask on s
 vectors, in order for example to gain in accuracy ( when
 <var>pel</var> &gt; 1 and <var>scale</var> = 1, you can't see
 a variation of less than one pixel ).
-<var>sil</var> allows to see a different level of analysis ( when searching for 
-motion vectors, a hierarchal analysis is done, and it may be interesting to see 
+<var>sil</var> allows to see a different level of analysis ( when searching for
+motion vectors, a hierarchal analysis is done, and it may be interesting to see
 what happens at higher levels ).
-<var>tol</var> is a tolerance threshold. If the distorsion induced by the 
+<var>tol</var> is a tolerance threshold. If the distorsion induced by the
 motion vector is over tol the vector isn't shown.
 Finally, <var>showsad</var> allows to show the mean SAD after compensating the
 picture.</p>
@@ -301,7 +301,7 @@ return source.MVMask(vectors)</pre>
 <pre>vectorsfw = source.MVAnalyse(isb = false)
 vectorsbw = source.MVAnalyse(isb = true)
 return source.MVBlur(vectorsbw, vectorsfw)</pre>
-<p>It's the same for <code>MVInterpolate</code>, <code> MVDenoise</code> and 
+<p>It's the same for <code>MVInterpolate</code>, <code> MVDenoise</code> and
 <code>MVConvertFPS</code>.
 </p>
 <p>To denoise :
@@ -370,48 +370,48 @@ MVConvert60ito24p(x)</pre>
 <p>0.9.4
 </p>
 <ul>
-  <li>Vectors can be saved to a file. In order to do so, add the parameter 
-filename="C:\foo.bar" to the filter MVAnalyse. If the file doesn't exist, 
-vectors will be saved into it. If it exists, vectors will be read from it. But, 
+  <li>Vectors can be saved to a file. In order to do so, add the parameter
+filename="C:\foo.bar" to the filter MVAnalyse. If the file doesn't exist,
+vectors will be saved into it. If it exists, vectors will be read from it. But,
 be warned :
     <ul>
       <li>The file for a whole movie will be around 500 MB</li>
-      <li>Saving / reading from a file need for the moment a linear access to 
-the frames, so it has to be used only when encoding the movie, not when doing 
+      <li>Saving / reading from a file need for the moment a linear access to
+the frames, so it has to be used only when encoding the movie, not when doing
 random access in it.</li>
-      <li>The speed gain is not as great as one may hope, because SADs can't be 
+      <li>The speed gain is not as great as one may hope, because SADs can't be
 saved ( it would take too much space ) and so have to be recomputed.</li>
     </ul>
   </li>
-  <li>The filter MVDenoise now works on 5 frames, and its parameters are now 
-"thT" and "sadT" ( have a look in the documentation to see how they work ). It 
+  <li>The filter MVDenoise now works on 5 frames, and its parameters are now
+"thT" and "sadT" ( have a look in the documentation to see how they work ). It
 works nice ( very good for heavy denoising )</li>
-  <li>The scene change detection thresholds have slightly changed. Now, a block 
-has changed if its SAD it over thSCD1. The default for thSCD1 is 300, and for 
+  <li>The scene change detection thresholds have slightly changed. Now, a block
+has changed if its SAD it over thSCD1. The default for thSCD1 is 300, and for
 thSCD2 it is 130. It orks well ( better than the previous SCD engine ).<br>
   </li>
 </ul>
 <p>0.9.3</p>
 <ul>
-  <li>Last cleanings in the search of the motion vectors. It should be slightly 
+  <li>Last cleanings in the search of the motion vectors. It should be slightly
 faster</li>
-  <li>More search parameters can be set by the user, especially the search 
+  <li>More search parameters can be set by the user, especially the search
 algorithm. See the documentation</li>
-  <li>Server / client implemented. You now first have to use MVAnalyse, and 
-then the filter you want. Look at the documentation and at the examples I'll 
+  <li>Server / client implemented. You now first have to use MVAnalyse, and
+then the filter you want. Look at the documentation and at the examples I'll
 give alter.</li>
-  <li>MVCompensate is separated from MVShow ( it's more logic that way ). For 
-the moment, it doesn't move the chroma ( same behavior as MVShow in the latest 
+  <li>MVCompensate is separated from MVShow ( it's more logic that way ). For
+the moment, it doesn't move the chroma ( same behavior as MVShow in the latest
 releases )</li>
-  <li>Some cleaning in MVBlur / MVInterpolate / MVConvertFPS, but still some 
-work to do. Now, MVBlur blurs around the frame, not between the frame and the 
+  <li>Some cleaning in MVBlur / MVInterpolate / MVConvertFPS, but still some
+work to do. Now, MVBlur blurs around the frame, not between the frame and the
 previous one.</li>
-  <li>Half of the work is done for writing vectors to a file. But the resulting 
+  <li>Half of the work is done for writing vectors to a file. But the resulting
 file will be large ( around 500 MB - 1 GB I guess ).</li>
   <li>MVDenoise is slightly faster ( at least it should )</li>
-  <li>Copies are optimized inside the filter, thanks to avisynth's copy 
+  <li>Copies are optimized inside the filter, thanks to avisynth's copy
 functions.</li>
-  <li>MVShow can display the mean SAD of the compensation ( using showsad = 
+  <li>MVShow can display the mean SAD of the compensation ( using showsad =
 true )</li>
 </ul>
 <p>0.9.2.1</p>
@@ -422,7 +422,7 @@ true )</li>
 <p>0.9.2</p>
 <ul>
   <li>MVInterpolate doesn't exist anymore.</li>
-  <li>MVBlur and MVConvertFPS have been improved. They also have got new 
+  <li>MVBlur and MVConvertFPS have been improved. They also have got new
 parameters, have a look at the documentation.</li>
   <li>MVShow gets back its compensate mode ( MVShow(cm = true) )</li>
 </ul>

@@ -10,17 +10,17 @@
 <p>Pøi pøehrávání obsahu videa se mùe objevit nìkolik problémù. Mohly by bıt špatné
 úrovnì, vedoucí k vypranım barvám (èerná je zobrazena jako tmavì šedá
 a bílá je zobrazena jako svìtle šedá). To je podrobnìji popsáno <a href="luminance_levels.htm" title="Luminance levels">zde</a>.
-Dalším problémem je mírná deformace barev (co èasto vypadá jako malá zmìna v jasu) 
+Dalším problémem je mírná deformace barev (co èasto vypadá jako malá zmìna v jasu)
 a to bude popsáno v tomto èlánku.</p>
 <p>Problém by mohl nastat pokud je váš obsah vytvoøen v jiném barevném prostøedí
-ne v jakém je pozdìji uloenı. Obvykle je vytvoøen v RGB, ale uloen jako YCbCr. Pøi 
-zobrazení bude znovu pøeveden zpìt na RGB. To znamená, e se pouijí dva barevné pøevody. 
+ne v jakém je pozdìji uloenı. Obvykle je vytvoøen v RGB, ale uloen jako YCbCr. Pøi
+zobrazení bude znovu pøeveden zpìt na RGB. To znamená, e se pouijí dva barevné pøevody.
 Problém je, e existují rùzné zpùsoby jak provést tento pøevod.
 Pokud nejsou dva barevné pøevody stejné, zobrazenı obsah
-nebude stejnı jako pùvodní obsah. Existuje mnoho dalších barevnıch prostøedí, 
+nebude stejnı jako pùvodní obsah. Existuje mnoho dalších barevnıch prostøedí,
 ale nebudou zde diskutovány. Viz pøíklad <a href="http://www.poynton.com/notes/colour_and_gamma/ColorFAQ.html" class="external text" title="http://www.poynton.com/notes/colour_and_gamma/ColorFAQ.html" rel="nofollow">zde</a>.</p>
 <p>Tedy pøi pøevádìní YCbCr na RGB pøed zobrazením, musí bıt pouit správnı
-standard (Rec.601 nebo Rec.709) pøevodu barev, a to ten, kterı byl pouit pøi 
+standard (Rec.601 nebo Rec.709) pøevodu barev, a to ten, kterı byl pouit pøi
 ukládání obsahu. (Rec.709 a Rec.601 jsou zkratkami pro ITU-R BT.709 a ITU-R BT.601.)</p>
 <h2>Obsah</h2>
 <ul>
@@ -67,7 +67,7 @@ ukládání obsahu. (Rec.709 a Rec.601 jsou zkratkami pro ITU-R BT.709 a ITU-R BT.6
 </ul>
 <a name="What_are_color_conversion_standards.3F"></a>
 <h2><span class="mw-headline">Jaké jsou standardy pøevodu barev?</span></h2>
-<p>Existuje více zpùsobù provedení pøevodu YCbCr &lt;-&gt; RGB . 
+<p>Existuje více zpùsobù provedení pøevodu YCbCr &lt;-&gt; RGB .
 Obecnı pøevod je dán vztahy</p>
 <pre>Y = Kr*R + Kg*G + Kb*B
 Cb = (B-Y)/(1-Kb)
@@ -79,7 +79,7 @@ B = Y + Cb*(1-Kb)</pre>
 <p>s (0.0 &lt;= [Y,R,G,B] &lt;= 1.0)&nbsp;; (-1.0 &lt;= [Cb,Cr] &lt;= 1.0)
 a Kr + Kg + Kb = 1.</p>
 <p>Koeficienty èervené, zelené a modré (Kr,Kg,Kb) jsou standardizovány ve
-specifikacích a existuje jich nìkolik. Pro pøíklady se podívejte se na 
+specifikacích a existuje jich nìkolik. Pro pøíklady se podívejte se na
 <a href="color_conversions.htm" title="Pøevody barev">Pøevody barev</a>.</p>
 <a name="How_can_I_see_if_the_correct_standard_is_used_upon_playback.3F"></a>
 <h2><span class="mw-headline">Jak poznám, e je pøed pøehráváním pouit správnı standard?</span></h2>
@@ -88,7 +88,7 @@ specifikacích a existuje jich nìkolik. Pro pøíklady se podívejte se na
 Podívejte se na následující obrázek:</p>
 <p><img border="0" src="../pictures/advancedtopics/colorimetry.jpg" width="720" height="736"></p>
 <p>Horní obrázek je zobrazen správnì (pouitím Rec.601), a pro spodní byl pouit
-nesprávnı standard (Rec.709) pøi pøehrávání. Všimnete si, e 
+nesprávnı standard (Rec.709) pøi pøehrávání. Všimnete si, e
 spodní obrázek je sytìjší (tedy má vıraznìjší barvy ne horní
 obrázek). Ale také je posunuta èervená trochu ke luté. [Opaènı zpùsob
 vede k ménì sytému klipu, posunu èervené smìrem k purpurové (magenta) a modré
@@ -119,15 +119,15 @@ vıška enkódovaného videa &gt;= 720p). Vytvoøte následující skript:</p>
 <pre># ColorMatrix provede pøevod Rec.601 -&gt; Rec.709 , pokud je váš zdroj Rec.601:
 DGDecode_mpeg2source(&quot;D:\source.d2v&quot;, info=3)
 ColorMatrix(hints=true, dest=0, interlace=false) # pouijte interlace=true pro prokládanı obsah</pre>
-<p>Pokud není informace o colorimetrech uloena v hlavièce (jako napøíklad u DivX/XviD), 
-není ve skuteènosti moné øíci které colorimetry jsou pouity pro 
-jeho vytvoøení. Vše co mùete udìlat je pøedpokládat, e Rec.601 je pouito pro SD obsah a 
+<p>Pokud není informace o colorimetrech uloena v hlavièce (jako napøíklad u DivX/XviD),
+není ve skuteènosti moné øíci které colorimetry jsou pouity pro
+jeho vytvoøení. Vše co mùete udìlat je pøedpokládat, e Rec.601 je pouito pro SD obsah a
 Rec.709 je pouito pro HD obsah, a doufejte, e tento pøedpoklad je správnı. V tomto pøípadì mùete pouít
 parametr <i>hints</i> pluginu ColorMatrix, ale musíte zadat
 pøevod explicitnì pouitím parametru <i>mode</i>.</p>
 <a name="How_can_I_use_the_correct_standard_upon_playback.3F"></a>
 <h2><span class="mw-headline">Jak mohu pouít správnı standard pøi pøehrávání?</span></h2>
-<p>Zda je to moné (za pøedpokladu, e je pøi pøehrávání pouit špatnı standard) 
+<p>Zda je to moné (za pøedpokladu, e je pøi pøehrávání pouit špatnı standard)
 závisí na tom jak je váš obsah pøehráván. Pokud pouíváte sofwarovı
 pøehrávaè, musíte zkontrolovat zda má monost to opravit. Pokud pouíváte pøehrávaè
 zaloenı na directshow (jako WMP nebo MPC) jsou rùzné monosti,
@@ -150,17 +150,17 @@ na informace o rùznıch rendererech.</p>
 <h3><span class="mw-headline">Metoda #2: Pøevod do RGB32 pomocí ffdshow</span></h3>
 <p>Donucení ffdshow vysílat RGB32 mùe pomoci zabránit problémùm s colorimetry. Stinnou stránkou
 této metody, e provádìní tohoto pøevodu v softwaru zvyšuje zatíení CPU.</p>
-<p>Pro vynucení RGB32 vıstupu v ffdshow by jste mìli zrušit zatrení 
-všech barevnıch prostøedí kromì RGB32 na vıstupní stranì (Output page) v ffdshow konfiguraci. 
-Také se doporuèuje zapnout &quot;High quality YV12 to RGB conversion&quot; 
-(Vysoce kvalitní pøevod YV12 do RGB). Na stranì 
+<p>Pro vynucení RGB32 vıstupu v ffdshow by jste mìli zrušit zatrení
+všech barevnıch prostøedí kromì RGB32 na vıstupní stranì (Output page) v ffdshow konfiguraci.
+Také se doporuèuje zapnout &quot;High quality YV12 to RGB conversion&quot;
+(Vysoce kvalitní pøevod YV12 do RGB). Na stranì
 pøevodu RGB, mùete zvolit kterı standard by mìl bıt pøedpokládán, BT.601 nebo BT709. Vyberte
 první pro materiál s nízkım rozlišením, a druhı pro HD video</p>
 <a name="Method_.233:_Pixelshader_in_Media_Player_Classic"></a>
 <h3><span class="mw-headline">Metoda #3: Pixelshader v Media Player Classic</span></h3>
 <p>Pixelshader je malı program, kterı bìí na vašich grafickıch kartách a
 zpracovává nìjaká grafická data. V tomto pøípadì kadı snímek vašeho videa.</p>
-<p>Media Player Classic má speciální pixelshader zvanı &quot;BT.601 -&gt; BT.709&quot;. 
+<p>Media Player Classic má speciální pixelshader zvanı &quot;BT.601 -&gt; BT.709&quot;.
 Shader , kterı dìlá pøevod jinım zpùsobem stále není dostupnı.
 Pokud je potøeba pouijte tento.</p>
 <p>Nìkteré poadavky pro pixelshadery v MPC:</p>
@@ -168,7 +168,7 @@ Pokud je potøeba pouijte tento.</p>
   <li>Musíte pouít kompatibilní video renderer: VMR-7 (renderless), VMR-9
     (renderless), nebo EVR Custom Presenter.</li>
   <li>Nastavení plochy (surface) musí bıt nastaveno na &quot;3D surfaces&quot;.</li>
-  <li>Vyaduje nìkteré DirectX komponenty, které nejsou zahrnuty ve vıchozí 
+  <li>Vyaduje nìkteré DirectX komponenty, které nejsou zahrnuty ve vıchozí
     Windows instalaci. Spuste DirectX Web Installer aby jste získali poadované
     DirectX aktualizace.</li>
 </ul>
@@ -176,7 +176,7 @@ Pokud je potøeba pouijte tento.</p>
 <h3><span class="mw-headline">Metoda #4: Pouití AviSynth skriptu v ffdshow video
         dekodéru</span></h3>
 <p>Existují dva zpùsoby jak to udìlat. Prvním je pouití pluginu ColorMatrix
-jak je vysvìtleno v jedné z pøedchozích kapitol, a druhım je 
+jak je vysvìtleno v jedné z pøedchozích kapitol, a druhım je
 pøevod do RGB pouitím vhodné matice (matrix):</p>
 <p><img border="0" src="../pictures/advancedtopics/ffdshow_avisynth2.jpg" width="578" height="296"></p>
 <p>Zde pøevede ffdshow váš obsah do RGB pouitím Rec.601.</p>
@@ -189,21 +189,21 @@ pøevod do RGB pouitím vhodné matice (matrix):</p>
 Je tìce zaloena na H.261. Informace o colorimetrech není zapsána v hlavièce.</p>
 <a name="DVD.2FMPEG-2"></a>
 <h3><span class="mw-headline">DVD/MPEG-2</span></h3>
-<p>Specifikace DVD nejsou veøejnì dostupné zdarma, a nevím kdo èetl tyto specifikace. 
+<p>Specifikace DVD nejsou veøejnì dostupné zdarma, a nevím kdo èetl tyto specifikace.
 Specifikace DVD by mìli bıt podskupinou MPEG-2 specifikací (ano
 vím, to je velkı pøedpoklad), a ty jsou dostupné zdarma. Øíkají
 následující:</p>
 <p><i>Starší 1995 MPEG-2 specifikace (ISO/IEC 13818-2: 1995 (E)) øíká</i></p>
 <p>&quot;V pøípadì, e sequence_display_extension() není pøítomno v
-bitstreamu nebo colour_description je nula, koeficienty matice (matrix) 
-jsou pøedpokládány takové, e odpovídají matrix_coefficients (koeficientùm matice) 
-mající hodnotu 1.&quot; Hodnota 1 znamená &quot;1 Recommendation ITU-R BT.709&quot;. 
-Všimnìte si, e v roce 1995 vyšly první tituly DVD, take pøi vytváøení tìchto specifikací, 
+bitstreamu nebo colour_description je nula, koeficienty matice (matrix)
+jsou pøedpokládány takové, e odpovídají matrix_coefficients (koeficientùm matice)
+mající hodnotu 1.&quot; Hodnota 1 znamená &quot;1 Recommendation ITU-R BT.709&quot;.
+Všimnìte si, e v roce 1995 vyšly první tituly DVD, take pøi vytváøení tìchto specifikací,
 DVD ještì neexistovaly. V roce 2000, byla specifikace MPEG-2 zmìnìna s ohledem na toto:</p>
 <p><i>Novìjší <a href="http://www.itu.int/rec/T-REC-H.262/en" class="external text" title="http://www.itu.int/rec/T-REC-H.262/en" rel="nofollow">2000
 MPEG-2 specifikace (ITU-T Rec.H262 (2000 E))</a> øíká</i></p>
 <p>&quot;V pøípadì, e sequence_display_extension() není pøítomno v
-bitstreamu nebo colour_description koeficienty matice (matrix) 
+bitstreamu nebo colour_description koeficienty matice (matrix)
 jsou pøedpokládány takové, e jsou implicitnì definované aplikací.&quot; Koeficienty matice (matrix)
 jsou popsány v &quot;Tabulce 6-9 – Matrix
 coefficients&quot;.</p>
@@ -219,7 +219,7 @@ matrix_coefficients by mìly bıt explicitnì indikovány v
 sequence_display_extension. Zatímco všechny hodnoty pro color_primaries,
 transfer_characteristics, a matrix_coefficients definované v Tabulkách 6-7, 6-8,
 a 6-9 ISO/IEC 13818-2 [16, 18] jsou povoleny v pøenášeném bit streamu,
-poznamenává se, e ITU-R BT.709 [27] a SMPTE 170M jsou v bìnıch pøípadech 
+poznamenává se, e ITU-R BT.709 [27] a SMPTE 170M jsou v bìnıch pøípadech
 pouity nejpravdìpodobnìji.</p>
 <p>Poznámka: Nìkterı døíve-enkódovanı legacy materiál nemusí mít colorimetry
 (t.j., color_primaries, transfer_characteristics, a matrix_coefficients)
@@ -272,11 +272,11 @@ Kód:
 <p><a href="http://forum.doom9.org/showthread.php?p=1089979#post1089979" class="external text" title="http://forum.doom9.org/showthread.php?p=1089979#post1089979" rel="nofollow">dragongodz</a>
 tvrzení této tabulky vykládá následovnì:<br>
 <i>Po té co jsem koneènì uslyšel od osoby, která je v profesionálním enkodérovém
-prùmyslu (ne, neøeknu kdo), mám spolehlivìjší informaci.: &quot;Tabulka je ve skuteènosti 
+prùmyslu (ne, neøeknu kdo), mám spolehlivìjší informaci.: &quot;Tabulka je ve skuteènosti
 omezením toho co mùete pouít. Jinımi slovy pokud nastavíte
 sequence_display_extension na Rec.709 pro dvd je to nelegální. To neznamená, e to nebude
 hrát atd. , prostì to znamená, e to není podporováno a jakıkoliv pøehrávaè,
-kterı pøísnì následuje specifikace to bude nejspíš prostì ignorovat jako kdyby 
+kterı pøísnì následuje specifikace to bude nejspíš prostì ignorovat jako kdyby
 nebyla nastavena vùbec ádná hodnota.&quot;</i></p>
 <a name="References"></a>
 <h2>

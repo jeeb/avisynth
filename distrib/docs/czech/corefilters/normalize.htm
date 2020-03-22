@@ -15,12 +15,12 @@
 je klip&nbsp;zesílen na 1.0, co¾ je&nbsp;maximum&nbsp;bez oøezání&nbsp;- vy¹¹í hodnoty jsou jistotou oøezání, a
 vytvoøení zkreslení. Pokud je dodán jeden parametr hlasitosti volume,&nbsp;druhý&nbsp;kanál bude zesílen&nbsp;stejnì.
 <p>Výpoèet ¹pièkových hodnot (píkù)&nbsp;je proveden pøi prvním vy¾ádání audia, tak¾e&nbsp;AviSynth pak bude pokraèovat a¾ po nìkolika sekundách.
-<p> Od&nbsp; <em>v2.08</em> je zde 
+<p> Od&nbsp; <em>v2.08</em> je zde
 volitelný&nbsp;argument show, pokud je&nbsp;nastaven na <code>true</code>
      , zobrazí&nbsp;maximální&nbsp;mo¾né zesílení&nbsp;bez zkreslení.
-<p>  
+<p>
 Více kanálù nikdy není tímto filtrem zesilováno oddìlenì, dokonce ani kdy¾ je jejich
-hlasitost velmi odli¹ná. Hlasitost je pou¾ita&nbsp;PO&nbsp;nalezení&nbsp;nejhlasitìj¹ího místa, a pracuje podobnì jako&nbsp;samostatný <A href="amplify.htm"><code>Amplify</code></A>. To 
+hlasitost velmi odli¹ná. Hlasitost je pou¾ita&nbsp;PO&nbsp;nalezení&nbsp;nejhlasitìj¹ího místa, a pracuje podobnì jako&nbsp;samostatný <A href="amplify.htm"><code>Amplify</code></A>. To
 znamená, ¾e pokud máte&nbsp;dva kanály, které jsou&nbsp;velmi rozdílné, hlasitìj¹í kanál&nbsp;bude také ¹pièkou pro ti¹¹í
 kanál. Pokud chcete&nbsp;normalizovat&nbsp;ka¾dý kanál oddìlenì&nbsp;musíte pou¾ít <A href="getchannel.htm"><code>GetChannel</code></A>&nbsp;pro rozdìlení&nbsp;stereo zdroje.
 <p>Typ&nbsp;audio&nbsp;vzorkù je pøeveden&nbsp;na float&nbsp;nebo je&nbsp;ponechán&nbsp;nedotknutý je-li&nbsp;16 bitový.

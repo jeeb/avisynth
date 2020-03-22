@@ -13,27 +13,27 @@
 string "logfile", bool "show_graph"</var>)
 
 <p>Tento filtr&nbsp;srovnává pùvodní klip&nbsp; <var>clip_original</var> a&nbsp;jeho
-filtrovanou verzi <var>clip_filtered</var>. Filtrovaná verze bude vrácena&nbsp;s 
+filtrovanou verzi <var>clip_filtered</var>. Filtrovaná verze bude vrácena&nbsp;s
 výsledky&nbsp;porovnání.&nbsp;Po snímcích jsou ukazovány&nbsp;Mean
 Absolute Difference, Mean Difference a Peak signal-to-noise ratio - PSNR (Støední&nbsp;absolutní rozdíl, Støední rozdíl&nbsp;a PSNR),&nbsp;stejnì tak&nbsp;min (minimální), avg (prùmìrné) a max (maximální) PSNR&nbsp;tohoto snímku&nbsp;(poèítáno frame-wise). Od <em>v2.53</em>,&nbsp;se ve výstupním klipu zobrazuje také&nbsp;'Overall PSNR' (poèítáno pøes v¹echny pixely&nbsp;ve v¹ech snímcích).</p>
-<p>Øetìzec&nbsp; <var>channels</var> 
+<p>Øetìzec&nbsp; <var>channels</var>
 (výchozí &quot;&quot;) je kombinací R,G,B [,A]&nbsp;nebo
 Y,U,V, v
 závislosti na zdrojovém klipu. Je-li prázdný,&nbsp;znamená to buï&nbsp;"YUV"&nbsp;kdy¾
 jsou vstupní kipy&nbsp;YCbCr&nbsp;nebo "RGB"&nbsp;kdy¾ je ve&nbsp;vstupních klipech&nbsp;RGB.</p>
-<p>Pokud je&nbsp; <var>show_graph</var> 
-(výchozí 
+<p>Pokud je&nbsp; <var>show_graph</var>
+(výchozí
 false)&nbsp;true, pak&nbsp;je
 také&nbsp;vykreslen Marcùv PSNR graph.</p>
-<p>Pokud je zadán <var>logfile</var>    
-   
+<p>Pokud je zadán <var>logfile</var>
+
 ,&nbsp;tak budou výsledky zapsány do&nbsp;souboru s&nbsp;daným jménem a&nbsp;nebudou vykreslovány do klipu.&nbsp;Je to mnohem rychlej¹í kdy¾ potøebujete porovnat hodnì
 snímkù.</p>
 <p><b>Pøíklady:</b>
 <pre># Zobrazuje rozdíly na obrazovce
-Compare(clip1, clip2) 
-# pro vytvoøení log souboru: 
-Compare(clip1, clip2, &quot;&quot;,&quot;compare.log&quot;) 
+Compare(clip1, clip2)
+# pro vytvoøení log souboru:
+Compare(clip1, clip2, &quot;&quot;,&quot;compare.log&quot;)
 # bude porovnávat pouze barevné kanály YUY2 klipù.
 Compare(clip1, clip2, &quot;UV&quot;)</pre>
 

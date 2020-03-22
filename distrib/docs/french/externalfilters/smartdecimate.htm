@@ -51,7 +51,7 @@ SmartDecimate()</pre>
 Note that the second plugin is LoadCPlugin not LoadPlugin. (There is a
 C after load)
 <p>
-<b>IT IS VERY IMPORTANT THAT THE FIELD ORDER IS CORRECT.</b> 
+<b>IT IS VERY IMPORTANT THAT THE FIELD ORDER IS CORRECT.</b>
 
 <a name="guide"><h2>Guide to Usage</h2></a>
 
@@ -104,9 +104,9 @@ artifacts behind if there is any pure video in your clip.
 If you have a really noisy video, then you might need to raise the
 noise factor such as:
 <pre>SmartDecimate(noise=0.80)</pre>
-The default value is 0.50. Leave it at the default unless your clip is very noisy. 
-Higher values of noise will often leave behind more combing artifacts for pure 
-video frames. 
+The default value is 0.50. Leave it at the default unless your clip is very noisy.
+Higher values of noise will often leave behind more combing artifacts for pure
+video frames.
 <p>
 If you have a really clean clip and you notice some combing artifacts
 in pure video frames, then you might want to lower the noise
@@ -121,7 +121,7 @@ example:
 This will greatly improve the quality of the pure video frames. Note
 that the bob source only affects how bobbed frames are rendered. It is
 not used to compare fields. Nor is it used by any other part of
-SmartDecimate. 
+SmartDecimate.
 
 <a name="ref"><h2>Filter Reference</h2></a>
 
@@ -153,7 +153,7 @@ The following options may be used to fine tune <code>SmartDecimate</code>:
   clips. The higher the value, the more risk there is of leaving combing
   artifacts in true interlaced material. The lower the value the more
   risk there is to bobbing (or in the extreme case skipping or
-  duplicating) Telecine frames. 
+  duplicating) Telecine frames.
   <br>
   <br>
   Currently <var>tel
@@ -170,11 +170,11 @@ The following options may be used to fine tune <code>SmartDecimate</code>:
 <p><var>cpu<br>
 </var>Force the CPU to a particular type.  It is normally auto detected.
   To see if it is detected correctly turn logging on.  The first line
-  of the output will display the CPU type.  Current valid values for 
+  of the output will display the CPU type.  Current valid values for
   this value are: 0 - Generic, 2 - Integer SSE, 3 - SSE, 4 - SSE2.</p>
 <p><var>unaligned<br>
-</var>Allow reading of unaligned data. Normally <code>SmartDecimate</code> may ignore a few 
-  pixels at the beginning or end of each row, so that reads are aligned 
+</var>Allow reading of unaligned data. Normally <code>SmartDecimate</code> may ignore a few
+  pixels at the beginning or end of each row, so that reads are aligned
   nicely. Setting this value to true will prevent this.</p>
 <p>
 The following options can be used to control the printing of useful information:
@@ -186,11 +186,11 @@ The following options can be used to control the printing of useful information:
 </var>If set, all output will be appended to the filename specified.
 <p>
 <var>console<br>
-</var>If set to true, then a console window will pop up and all output will be 
+</var>If set to true, then a console window will pop up and all output will be
   sent to it.
 <p>
 <var>debug_print<br>
-</var>If set, then all output will be printed using the OutputDebugString system 
+</var>If set, then all output will be printed using the OutputDebugString system
   call. You can view this output with a utility such as DebugView.
 <p>
 The meaning of the information printed is as follows:
@@ -201,7 +201,7 @@ is accessed in a non-linear way.</li>
   <li>"FRAME 3 = [3, 4]"
 indicates how frame number 3 (for example)
 is being rendered.  Here 3 indicates the primary source field that is
-chosen.  If the frame is to be rendered by weaving two fields together, 
+chosen.  If the frame is to be rendered by weaving two fields together,
 the numbers in [] indicate which source fields are chosen.  If the frame
 is to be bob deinterlaced that the [] will instead be "BOB".</li>
   <li>"Diff NUM: WHAT DIFF"
@@ -396,7 +396,7 @@ Then, the output video will not be cropped, but the last 64 lines will
 not be seen by SmartDecimate. If you use this method, then the bob
 source must also be specified. If you don't specify a bob source, then
 it will attempt to use the input clip for "Bob()". But the resulting
-clip will not have the same dimensions as the weave source. 
+clip will not have the same dimensions as the weave source.
 
 <a name="decomb"><h2>Smart Decimate vs Decomb</h2></a>
 

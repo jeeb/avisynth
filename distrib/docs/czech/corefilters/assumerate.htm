@@ -7,24 +7,24 @@
 </HEAD>
 <BODY>
 <h2>
-<A 
-name=AssumeSampleRate></A>AssumeSampleRate 
+<A
+name=AssumeSampleRate></A>AssumeSampleRate
 </h2>
 <P><code>AssumeSampleRate </code>(<var>clip, int samplerate</var>)
-<P><code>AssumeSampleRate</code> (byl 
- pøidán ve verzi <em>v2.07</em> )  mìní rychlost vzorkování 
+<P><code>AssumeSampleRate</code> (byl
+ pøidán ve verzi <em>v2.07</em> )  mìní rychlost vzorkování
   zvuku - sample rate (rychlost pøehrávání). <BR>
     Pokud
     je pou¾it sám, povede to k desynchronizaci s videem, proto¾e èas pøehrávání videa se nezmìní.
 <P>
 <pre> # Pøehrávejme tento videoklip s 25fps (snímky zasekundu), 44100hz.
-AviSource(&quot;video_audio.avi&quot;) 
+AviSource(&quot;video_audio.avi&quot;)
 
 # Zpomalíme zvuk na polovièní rychlost:
-AssumeSampleRate(22050)&nbsp; 
+AssumeSampleRate(22050)&nbsp;
 
 # Zpomalíme video na polovièní rychlost:
-AssumeFPS(12.5) 
+AssumeFPS(12.5)
 
 # Video a audio jsou nyní synchronizovány, a pøehrávají se zpomalenì.</pre>
 

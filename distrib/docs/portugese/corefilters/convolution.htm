@@ -68,9 +68,9 @@ eles forem maiores de 255).</span>
 
 GeneralConvolution(0, &quot;
    10 10 10 10 10
-   10 10 10 10 10 
-   10 10 16 10 10 
-   10 10 10 10 10 
+   10 10 10 10 10
+   10 10 16 10 10
+   10 10 10 10 10
    10 10 10 10 10 &quot;, 256, False)
 </pre>
 <pre># <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
@@ -79,20 +79,20 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">Detecção de extremidade Horizontal (Sobel):</span>
 
 GeneralConvolution(128, &quot;
-    1  2  1 
-    0  0  0 
+    1  2  1
+    0  0  0
    -1 -2 -1 &quot;, 8)</pre>
-      
+
 <pre># <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Detecção de extremidade Vertical (Sobel):</span>
 
 GeneralConvolution(128, &quot;
-   1  0 -1 
-   2  0 -2 
+   1  0 -1
+   2  0 -2
    1  0 -1 &quot;, 8)</pre>
-      
+
 <pre># <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
@@ -103,38 +103,38 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">do &quot;1&quot; para esquerda, direita, para cima, para baixo)</span>
 
 GeneralConvolution(0,&quot;
-   0 1 0 
-   0 0 0 
+   0 1 0
+   0 0 0
    0 0 0 &quot;)</pre>
-      
+
 <pre># <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Deslocamento de meio píxel acima (auto escala):</span>
 
 GeneralConvolution(0,&quot;
-   0 1 0 
-   0 1 0 
+   0 1 0
+   0 1 0
    0 0 0 &quot;)</pre>
-      
+
 <pre># <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Deslocamento de meio píxel à direita (escalamento manual):</span>
 
 GeneralConvolution(0,&quot;
-   0   0   0 
-   0 128 128 
+   0   0   0
+   0 128 128
    0   0   0 &quot;, 256, False)</pre>
-      
+
 <pre># <span lang="EN-US" style="font-size:10.0pt;mso-bidi-font-size:
 12.0pt;font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:EN-US;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Filtro de agudez:</span>
 
 GeneralConvolution(0,&quot;
-   0   -1   0 
-  -1    5  -1 
+   0   -1   0
+  -1    5  -1
    0   -1   0 &quot;, 1, True)
 
 <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
@@ -143,15 +143,15 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">Neste caso, o valor do novo píxel y(m,n) é determinado por</span>
 y(m,n) = (-1*x(m-1,n) - 1*x(m,n-1) + 5*x(m,n) - 1*x(m,n+1)
          - 1*x(m+1,n))/(-1-1+5-1-1)/1.0 + 0</pre>
-      
+
 <pre># <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:
 PT-BR;mso-bidi-language:AR-SA">Filtro de borrar levemente com recorte de nível preto e 25% de claro:</span>
 
 GeneralConvolution(-16,&quot;
-   0   12   0 
-  12  256  12 
+   0   12   0
+  12  256  12
    0   12   0 &quot;, 0.75 ,True)
 
 <span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
@@ -160,7 +160,7 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">Neste caso, o valor do novo píxel y(m,n) é determinado por</span>
 y(m,n) = ( 12*x(m-1,n) + 12*x(m,n-1) + 256*x(m,n) + 12*x(m,n+1)
          + 12*x(m+1,n) )/(12+12+256+12+12)/0.75 - 16</pre>
-      
+
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
 font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:&quot;Times New Roman&quot;;
 mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-fareast-language:

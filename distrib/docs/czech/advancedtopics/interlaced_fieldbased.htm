@@ -8,45 +8,45 @@
 </HEAD>
 <BODY>
 <h2>Prokládané (Interlaced) a na polích zalo¾ené (Field-based)video</h2>
-<p>V souèasnosti (v2.5x a star¹í&nbsp;verze) AviSynth nemá 
+<p>V souèasnosti (v2.5x a star¹í&nbsp;verze) AviSynth nemá
 znak prokládání, který mù¾e být pou¾it pro prokládané video. Existuje znak pro video zalo¾ené na polích&nbsp;(fieldbased flag), ale&nbsp;proti va¹emu oèekávání, se tento znak nevztahuje k prokládanému videu. Ve skuteènosti je ka¾dé video&nbsp;(progresivní nebo prokládané)&nbsp;zalo¾ené na snímcích (framebased), pokud nevyu¾ijete speciální filtry&nbsp;AviSynthu, aby jste to zmìnili. Jsou dva filtry, které pøevádí video zalo¾ené na snímcích na video zalozené na polích:
 <A href="../corefilters/separatefields.htm"> SeparateFields</A> a <A href="../corefilters/parity.htm">AssumeFieldBased</A>.</p>
 <ul>
   <li>SeparateFields / Weave
     <ul>
-      <li>SeparateFields (oddìlit pole): Pokud je potøeba (napøíklad 
-    odstraòovaèe ¹umu&nbsp;vy¾adují&nbsp;progresivní vstup), mù¾ete oddìlit&nbsp;prokládané streamy na pole pou¾itím&nbsp;SeparateFields. Výstupní klip&nbsp;bude mít 
-    dvojnásobnou snímkovou frekvenci oproti&nbsp;originálnímu klipu. 
+      <li>SeparateFields (oddìlit pole): Pokud je potøeba (napøíklad
+    odstraòovaèe ¹umu&nbsp;vy¾adují&nbsp;progresivní vstup), mù¾ete oddìlit&nbsp;prokládané streamy na pole pou¾itím&nbsp;SeparateFields. Výstupní klip&nbsp;bude mít
+    dvojnásobnou snímkovou frekvenci oproti&nbsp;originálnímu klipu.
       <li>Weave (spojit pole): Po pou¾ití&nbsp;prostorových odstraòovaèù ¹umu (pro èasové odstraòovaèe je&nbsp;situace
         trochu&nbsp;[<a href="http://www.doom9.org/index.html?/capture/postprocessing_avisynth.html">slo¾itìj¹í</a>]), mù¾e být filtr&nbsp;Weave pou¾it pro&nbsp;opìtovné spojení polí do prokládaných snímkù.</li>
     </ul>
   <li>AssumeFieldBased / AssumeFrameBased
     <ul>
-      <li>AssumeFieldBased (pøedpokládej zalo¾ené na polích): Pou¾ití tohoto filtru vytvoøí klip zalo¾ený 
-    na polích. Mù¾e to být u¾iteèné pro vytváøení&nbsp;"umìlých" na polích 
-    zalo¾ených&nbsp;klipù. 
-      <li>AssumeFrameBased (pøedpokládej zalo¾ené na 
+      <li>AssumeFieldBased (pøedpokládej zalo¾ené na polích): Pou¾ití tohoto filtru vytvoøí klip zalo¾ený
+    na polích. Mù¾e to být u¾iteèné pro vytváøení&nbsp;"umìlých" na polích
+    zalo¾ených&nbsp;klipù.
+      <li>AssumeFrameBased (pøedpokládej zalo¾ené na
     snímcích):&nbsp;Pou¾ití tohoto filtru vytvoøí klip zalo¾ený na snímcích. Mù¾e to být u¾iteèné pro vytváøení "umìlých"
         na&nbsp;snímcích zalo¾ených&nbsp;klipù.</li>
     </ul>
   </li>
 </ul>
 <h3>Pøevody barev a&nbsp;prokládané / na polích zalo¾ené video</h3>
-<p>Pøedpokládejme, ¾e máte&nbsp; <b> prokládané video</b>, chcete pracovat v 
+<p>Pøedpokládejme, ¾e máte&nbsp; <b> prokládané video</b>, chcete pracovat v
 re¾imu&nbsp;zalo¾eném na polích (napøíklad pro aplikování nìkterých&nbsp;filtrù) a také k tomu potøebujete&nbsp;nìkterý z pøevodù barev. Potøebujete&nbsp;udìlat pøevod na videu zalo¾eném na snímcích nebo na videu zalo¾eném na polích? Tedy, to&nbsp; závisí na tipu&nbsp;
 <A href="../corefilters/convert.htm"> pøevodu barev</A>&nbsp;, který pou¾ijete:</p>
-<p> *YUY2&lt;-&gt;RGB&nbsp;pøevody mohou být provádìny v 
-obou re¾imech. (V¹imnìte si, ¾e v tomto pøípadì, nastavení&nbsp;interlaced=      
-       true/false (prokládané=      
-        
+<p> *YUY2&lt;-&gt;RGB&nbsp;pøevody mohou být provádìny v
+obou re¾imech. (V¹imnìte si, ¾e v tomto pøípadì, nastavení&nbsp;interlaced=
+       true/false (prokládané=
+
                  ano/ne)  nedìlá nic. Je prostì ignorováno).<br>
      *YV12&lt;-&gt;YUY2/RGB
      pøevody mohou být provádìny v klipu zalo¾eném na snímcích (s nastavením&nbsp;
 <b> interlaced=true</b>                ). Provedením pøevodu v klipu zalo¾eném na polích povede k nesprávným výsledkùm. Pøesná pøíèina je&nbsp;mimo rámec tohoto pojednání, ale&nbsp;obecnì je to dùsledek toho jak je definován&nbsp;formát YV12. Hlavním problémem je, ¾e barva je sdílena dvìma pixely ze dvou rùzných øádkù snímku. Více informací naleznete
 <A href="sampling.htm">zde</A>.</p>
-<p> Zku¹enìj¹í u¾ivatelé by se mìli zamyslet nad 
+<p> Zku¹enìj¹í u¾ivatelé by se mìli zamyslet nad
 následujícím. Obecnì, prokládané&nbsp;video má&nbsp;èásti, ve kterých není a nebo je málo pohybu. Proto,&nbsp;sotva uvidíte&nbsp;nìjaké prokládané efekty&nbsp;(také nazývané&nbsp;combing) v tìchto èástech. Mù¾eme na nì pohlí¾et jako na progresivní, a pøi provádìní&nbsp; pøevodu YV12&lt;-&gt;YUY2/RGB&nbsp;na progresivním videu by jste mìli&nbsp;pou¾ít nastavení
-<b> interlaced=false</b>&nbsp;pro dosa¾ení lep¹ích 
+<b> interlaced=false</b>&nbsp;pro dosa¾ení lep¹ích
 výsledkù. Je mo¾né provádìt pøevody YV12&lt;-&gt;YUY2/RGB&nbsp;na klipech zalo¾ených na snímcích pøi pøepínání nastavení&nbsp;interlaced=true a interlaced=         false. Zde je ukázka jak to provést (budete potøebovat&nbsp;nainstalovaný plugin decomb&nbsp;pro mo¾nost pou¾ití&nbsp;funkce IsCombed)</p>
 <pre>function ConvertHybridToYUY2(clip a, int &quot;threshold&quot;, bool &quot;debug&quot;)
 {
@@ -72,12 +72,12 @@ AviSource(&quot;D:\captures\interlaced-clip.avi&quot;) # prokládané YV12
 #ConvertHybridToYUY2(debug=true)
 ConvertHybridToYUY2()</pre>
 <p>Nicménì, stinnou stránkou tohoto je, ¾e&nbsp;to mù¾e vést k&nbsp;[<a href="http://forum.doom9.org/showthread.php?s=&amp;postid=476199#post476199">chroma
-shimmering</a>]&nbsp;pøi pøechodech od 
+shimmering</a>]&nbsp;pøi pøechodech od
 "roztøepeného-combed" (prokládaného) snímku&nbsp;k progresivnímu. Tak¾e to není dokonalé øe¹ení.</p>
 <h3>Pøevody barev,&nbsp;prokládaného / na polích zalo¾eného videa a&nbsp;znak prokládání&nbsp;z dvd2avi</h3>
-<p>  Pro zku¹enìj¹í u¾ivatele. Dvd2avi&nbsp;informuje 
+<p>  Pro zku¹enìj¹í u¾ivatele. Dvd2avi&nbsp;informuje
 je-li&nbsp;snímek&nbsp;prokládaný nebo progresivní&nbsp;(s pou¾itím znaku prokládání). V principu, mù¾e být dvd2avi&nbsp;modifikován k ukládání&nbsp;údajù do&nbsp;textového&nbsp;souboru a AviSynth&nbsp;je mù¾e èíst&nbsp;a pou¾ít&nbsp;je po snímcích. Nicménì to není u¾iteèné.&nbsp;Problém je v tom, ¾e&nbsp;progresivní video&nbsp;je nìkdy zakódováno jako prokládané, a tak ho&nbsp;dvd2avi detekuje jako prokládané. V pøedchozí kapitole&nbsp;je vysvìtleno, ¾e v takovém pøípadì musíte pou¾ít&nbsp;interlaced=    false&nbsp;pøi pøevodu YV12&lt;-&gt;YUY2/RGB&nbsp;(proto¾e zde není pohyb) pro dosa¾ení pøesnìj¹ích výsledkù.
-<b> Tak¾e, pro pøevod 
+<b> Tak¾e, pro pøevod
 YV12&lt;-&gt;YUY2/RGB je dùle¾ité brát v úvahu skuteènou pøítomnost roztøepení obrazu (høebínkový obraz), a ne to ¾e se snímek zdá prokládaný podle znaku ve snímku.</b></p>
 <h3>    Zmìna poøadí polí v klipu</h3>
 <p>Existuje filtr&nbsp;který prohodí&nbsp;sudá/lichá&nbsp;pole <A href="../corefilters/swapfields.htm">SwapFields</A>

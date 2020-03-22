@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tcomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tcomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: tcomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>v2.0 Beta<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>  Pluginy pro vysílané video
 <br><b>požadavky:</b>&nbsp;
@@ -30,7 +30,7 @@ $Id: tcomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <p>TComb je èasový kombinovaný filtr (snižuje cross-luminance - poruchy jasu (duhu) a cross-chrominance - poruchy barevnosti
    (dot crawl - lezoucí body) pro artefakty ve statických oblastech obrazu).  Bude pracovat JEN s NTSC materiálem, a
    NEBUDE pracovat s materiálem zpracovaným telecine, kde duhy/lezoucí body byly pøítomny pøed
-   procesem telecine!  Aby byl funkèní, musí být použit pøed ivtc nebo odstranìním prokládání.  Podle toho co dìlá je 
+   procesem telecine!  Aby byl funkèní, musí být použit pøed ivtc nebo odstranìním prokládání.  Podle toho co dìlá je
    podobný filtrùm guavacomb/dedot.
 <p>TComb podporuje vyhledávání (seekování)... to je, pøeskakování na náhodný snímek vytvoøí stejný výsledek
    jako by jste lineárnì došly k tomuto snímku.  Pro odstranìní dot crawl (lezoucích bodù) tcomb vyžaduje nejménì 3
@@ -38,8 +38,8 @@ $Id: tcomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
    stejné parity.
 
 <h3>Syntaxe</h3>
-<p><code>TComb</code> (clip, <var>&quot;mode&quot;</var>, int <var>&quot;fthreshL</var>&quot;, 
-int <var>&quot;fthreshC</var>&quot;, int <var>&quot;othreshL&quot;</var>, int <var>&quot;othreshC&quot;</var>, 
+<p><code>TComb</code> (clip, <var>&quot;mode&quot;</var>, int <var>&quot;fthreshL</var>&quot;,
+int <var>&quot;fthreshC</var>&quot;, int <var>&quot;othreshL&quot;</var>, int <var>&quot;othreshC&quot;</var>,
 bool <var>&quot;map&quot;</var>, double <var>&quot;scthresh&quot;</var>, bool <var>&quot;debug&quot;</var>,
 int <var>&quot;opt&quot;</var>)</p>
 
@@ -63,11 +63,11 @@ int <var>&quot;opt&quot;</var>)</p>
             <var>fthreshC</var> -> 7</p>
 
 <p><var>othreshL</var>/<var>othreshC</var> - (prahové hodnoty vysoké frekvence)</p>
-<p>Jednou z vìcí, které TComb kontroluje je korelace mezi pùvodními hodnotami pixelu z každého jiného 
+<p>Jednou z vìcí, které TComb kontroluje je korelace mezi pùvodními hodnotami pixelu z každého jiného
        pole stejné parity.  Kvùli oscilaèní periodì by tyto hodnoty mìly být shodné
        nebo velmi podobné ve statických oblastech obsahujících lezoucí body nebo duhu.  Pokud se hodnoty pixelu
        liší o ménì než othreshL (pro jas) nebo othreshC (pro barevnost), tak jsou pixely považovány
-       za korelované.   Vìtší hodnoty umožní více filtrování (bude efektivnìjší pøi odstraòování 
+       za korelované.   Vìtší hodnoty umožní více filtrování (bude efektivnìjší pøi odstraòování
        duhy/lezoucích bodù - rainbowing/dot crawl), ale vytvoøí
        také více artefaktù.  Menší hodnoty vytváøí ménì artefaktù, ale budou ménì efektivní
        pøi odstraòování duhy/lezoucích bodù. Dobrý rozsah hodnot je mezi 4 a 8.</p>
@@ -88,14 +88,14 @@ int <var>&quot;opt&quot;</var>)</p>
 
 <p><var>scthresh</var> - (prahová hodnota zmìny scény)
 <p>Nastavuje prahovou hodnotu detekce zmìny scény jako procento maximální zmìny v jasové
-       ploše.  Použijte ladìní (debug) výstupu aby jste vidìly, které snímky jsou detekovány jako zmìna scény a 
+       ploše.  Použijte ladìní (debug) výstupu aby jste vidìly, které snímky jsou detekovány jako zmìna scény a
        statistiky zmìny scén.
 <p>výchozí:  12.0  (float)
 
 
 <p><var>debug</var> -
 <p>Zapne ladící (debug) výstup.  Jediná vìc, kterou zobrazuje jsou statistiky zmìn scény.  Informace
-       je vysílána pøes OutputDebugString().  Pro zobrazení výstupu mùžete použít utilitu "DebugView" ze sysinternals. 
+       je vysílána pøes OutputDebugString().  Pro zobrazení výstupu mùžete použít utilitu "DebugView" ze sysinternals.
        Èísla snímkù v debug výstupu odpovídají vstupnímu klipu
        po výzvì separatefields().  TComb vnitønì vyzývá separatefields() pøed sebou samým
        a weave() po sobì.
@@ -147,7 +147,7 @@ int <var>&quot;opt&quot;</var>)</p>
 <pre>Jakmile jsou nastaveny parametry mode, fthreshL/fthreshC, a othreshL/othreshC, pøidejte
    nezbytný øádek tcomb() do vašeho skriptu a pøehrajte jeho èást.  Jestliže uvidíte jakékoliv
    artefakty, zkuste snížit hodnoty fthresh/othresh.</pre>
-   
+
 <h2>Seznam zmìn</h2>
 <p>05/16/2006  v2.0 Beta 2<br>
        + Pøísnìjší kontrola othreshL/othreshC pøi hledání oscilace<br>
@@ -156,7 +156,7 @@ int <var>&quot;opt&quot;</var>)</p>
 
 <p>03/31/2006  v2.0 Beta 1<br>
        - kompletnì pøepsáno
-       
+
 <p>   06/24/2005  v0.9.0<br>
 - Pùvodní vydání</p>
 
@@ -165,7 +165,7 @@ int <var>&quot;opt&quot;</var>)</p>
 <p>- odstranit buffering snímkù/informací, které nejsou ve skuteènosti využívány (bylo pro
          vývojové/testovací úèely). Mìlo by ušetøit hodnì využití RAM.
 <p>- vydání v2.0 final
-     
+
 <p><kbd>$English Date: 2005/07/10 16:11:01 $</kbd>
 <p><kbd>Èeský pøeklad:31.3.2009</kbd></p>
 </body>

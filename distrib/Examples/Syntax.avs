@@ -16,8 +16,8 @@ Grey = Greyscale()
 
 Grey_Half_Size = VerticalReduceBy2(Grey)
 
-# If we specify more parameters, but don't want it used on the current clip, 
-#  we can either specify the clip in front of the filter, using '.' 
+# If we specify more parameters, but don't want it used on the current clip,
+#  we can either specify the clip in front of the filter, using '.'
 #  or specify the clip as the first parameter.
 
 Grey_Same_Size = Grey_half_size.AddBorders(0,60,0,60)

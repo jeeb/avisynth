@@ -34,50 +34,50 @@
   - 2008-07-18:
    - 追加: timestretch.htm, tweak.htm, write.htm
    - 修正: blur.htm
-  - 2008-07-08: 
+  - 2008-07-08:
    - 追加: tone.htm, trim.htm, turn.htm, version.htm, weave.htm
    - 修正: fade.htm
    - 変更: ja.css に font-family 指定を追加。
-  - 2008-07-01: 
+  - 2008-07-01:
    - 追加: conditionalreader.htm, tcpdeliver.htm
-  - 2008-06-28: 
+  - 2008-06-28:
    - 追加: syntax_clip_properties.htm, syntax_internal_functions.htm,
-           conditionalfilter.htm, subtitle.htm, subtract.htm, supereq.htm, 
+           conditionalfilter.htm, subtitle.htm, subtract.htm, supereq.htm,
            swap.htm, swapfields.htm
    - 修正: compare.htm, convertaudio.htm, overlay.htm, resize.htm, soften.htm
-  - 2008-06-12: 
+  - 2008-06-12:
    - 追加: corefilters.htm, index.htm, overview.htm, syntax.htm ('japanese' フォルダ),
-           showalpha.htm, showfive.htm, showframes.htm, soften.htm, splice.htm, 
+           showalpha.htm, showfive.htm, showframes.htm, soften.htm, splice.htm,
            ssrc.htm, stack.htm ('corefilters' フォルダ)
    - 変更: 翻訳のベースを v2.5.8 RC1 に更新。
-  - 2008-05-29: 
+  - 2008-05-29:
    - 追加 resize.htm, reverse.htm, segmentedsource.htm, select.htm,
            selectevery.htm, selectrangeevery.htm, separetefields.htm
-  - 2008-03-31: 
+  - 2008-03-31:
    - 追加: peculiar.htm, pulldown.htm, reduceby2.htm, resampleaudio.htm
-  - 2008-03-02: 
+  - 2008-03-02:
    - 追加: mixaudio.htm, monotostereo.htm, normalize.htm, overlay.htm, parity.htm
    - 修正: colorbars.htm
    - 変更: スタイルシートの構造を変更（ja.cssの追加）。
-  - 2008-02-03: 
+  - 2008-02-03:
    - 追加: limiter.htm, levels.htm, letterbox.htm, loop.htm, merge.htm,
            mergechannels.htm, mergergb.htm, message.htm
    - 修正: adjust.htm, colorbars.htm, coloryuv.htm, convert.htm
-  - 2007-12-10: 
+  - 2007-12-10:
    - 追加: greyscale.htm, histogram.htm, imagereader.htm, imagewriter.htm, import.htm,
            info.htm, interleave.htm, invert.htm, killaudio.htm, layer.htm
-  - 2007-09-29: 
+  - 2007-09-29:
    - 追加: flip.htm、fps.htm、freezeframe.htm と getchannel.htm
    - 変更: クリエイティブ・コモンズ 表示-継承 3.0 ライセンスの下でライセンス。
-  - 2007-08-01: 
+  - 2007-08-01:
    - 追加: ensuresync.htm、fade.htm、fixbrokenchromaupsampling.htm と fixluminance.htm
-  - 2007-06-01: 
+  - 2007-06-01:
    - 追加: directshowsource.htm、dissolve.htm、doubleweave.htm と duplicateframe.htm
-  - 2007-04-30: 
+  - 2007-04-30:
    - 追加: convolution.htm、crop.htm、delayaudio.htm と deleteframe.htm
-  - 2007-04-01: 
+  - 2007-04-01:
    - 追加: convert.htm、convertaudio.htm と converttomono.htm
-  - 2007-03-02: 
+  - 2007-03-02:
    - 追加: coloryuv.htm と compare.htm
    - 更新: animate.htm、blankclip.htm、blur.htm、bob.htm（2.5.7 の英語版ベースに変更）
   - 2007-01-01: bob.htm と colorbars.htm を追加（2.5.7 RC1 の英語版をベースに翻訳）。

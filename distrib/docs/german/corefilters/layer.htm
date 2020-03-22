@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
@@ -33,8 +33,8 @@ Es gibt einige Unterschiede im Verhalten und der erlaubten Parameter, die vom Fa
 
 Diese Operationen verhalten sich f&uuml;r RGB32 und YUY2 gleich:<br />
 <table border="1">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>
     &quot;fast&quot;: <i>use_chroma</i> muss TRUE sein, <i>level</i> und <i>threshold</i> werden nicht verwendet.<br />
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   Das Ergebnis ist einfach der Mittelwert zwischen <i>base_clip</i> und <i>overlay_clip</i>.<br />
@@ -52,8 +52,8 @@ Diese Operationen verhalten sich f&uuml;r RGB32 und YUY2 gleich:<br />
 <br />
 Diese Operationen arbeiten (anscheinend) nur in YUY2 korrekt:<br />
 <table border="1">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>
     &quot;mul&quot;: <i>threshold</i> wird nicht verwendet. Der <i>base_clip</i> wird so wie der <i>overlay_clip</i> &quot;eingef&auml;rbt&quot;,<br />
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <i>use_chroma</i> sollte also true sein. alpha=0 -&gt; nur der <i>base_clip</i> sichtbar, alpha=255 -&gt;<br />

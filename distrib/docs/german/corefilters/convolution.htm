@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
@@ -19,12 +19,12 @@ Dieser Filter f&uuml;hrt eine Matrix-Multiplikation (Konvolution, Faltung) durch
 <i>clip</i> muss im RGB32 Farbraum vorliegen.<br /><br />
 
 <table border="1" width="75%">
-  <tr> 
-    <td> 
+  <tr>
+    <td>
       <pre>
        <tt>
 Einige Beispiele:
-       
+
 Unsch&auml;rfe:
 GeneralConvolution(0,&quot;
    10 10 10 10 10
@@ -32,35 +32,35 @@ GeneralConvolution(0,&quot;
    10 10 10 16 10
    10 10 10 10 10
    10 10 10 10 10 &quot;)
-       
-Horizontaler (Sobel) Kanten-Detektor: 
+
+Horizontaler (Sobel) Kanten-Detektor:
 GeneralConvolution(0,&quot;
-   1  2  1 
-   0  0  0 
+   1  2  1
+   0  0  0
   -1 -2 -1 &quot;)
 
-Vertikaler (Sobel) Kanten-Detektor: 
+Vertikaler (Sobel) Kanten-Detektor:
 GeneralConvolution(0,&quot;
-  1  0 -1 
-  2  0 -2 
+  1  0 -1
+  2  0 -2
   1  0 -1 &quot;)
-  
+
 Verschiebung um ein Pixel (die &quot;1&quot; kann entsprechend f&uuml;r Links, Rechts, Unten, Oben verschoben werden)
 GeneralConvolution(0,&quot;
-  0 1 0 
-  0 0 0 
+  0 1 0
+  0 0 0
   0 0 0 &quot;)
 
-Verschiebung um einen halben Pixel nach oben: 
+Verschiebung um einen halben Pixel nach oben:
 GeneralConvolution(0,&quot;
-  0 128   0 
-  0 128   0 
+  0 128   0
+  0 128   0
   0   0   0 &quot;)
 
-Verschiebung um einen halben Pixel nach rechts: 
+Verschiebung um einen halben Pixel nach rechts:
 GeneralConvolution(0,&quot;
-  0   0   0 
-  0 128 128 
+  0   0   0
+  0 128 128
   0   0   0 &quot;)
     </tt>
    </pre>

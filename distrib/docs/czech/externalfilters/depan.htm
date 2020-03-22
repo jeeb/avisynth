@@ -13,7 +13,7 @@
 <b>
 verze:</b> 1.10.1<br>
 <b>
-stáhnout:</b> <a href="http://avisynth.org.ru">http://avisynth.org.ru</a>, 
+stáhnout:</b> <a href="http://avisynth.org.ru">http://avisynth.org.ru</a>,
 <A href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</A><br>
 <b>
 kategorie:</b> Rùzné pluginy<br>
@@ -34,7 +34,7 @@ poadavky:</b> YV12 nebo YUY2 Barevné prostøedí<br>
 </ul>
 <p>Plugin DePan nahradil mùj experimentální GenMotion C-plugin
 (kterı pouívá data pohybu z log souboru VirtualDub pluginu Deshaker).</p>
-<p>Balík mùe pracovat v jednom prùchodu, obsahuje serverovou èást (funkce DePanestimate) 
+<p>Balík mùe pracovat v jednom prùchodu, obsahuje serverovou èást (funkce DePanestimate)
 a jednu nebo více klientskıch èástí (funkcí nebo jejich instancí).
 Serverová funkce odhaduje data pohybu snímkù a vysílá je do klientskıch funkcí na poádání.
 Jako kontejner pro data pohybu se pouívá speciální sluební klip.</p>
@@ -48,9 +48,9 @@ Pouívá nìkteré centrální oblasti kadého snímku (nebo pole) jako FFT okno pro
 nalezení mezisnímkové korelace
 a pro vıpoèet nejvhodnìjších hodnot vertikálního a horizontálního
 posunutí, které pøizpùsobí aktuální snímek pøedchozímu.
-Jako míra dùvìry je pouit nìjakı relativní korelaèní parametr a ten je také pouit pro 
+Jako míra dùvìry je pouit nìjakı relativní korelaèní parametr a ten je také pouit pro
 detekci zmìny scény.
-V zoom reimu plugin pouívá levá a pravá podokna pro odhad jak 
+V zoom reimu plugin pouívá levá a pravá podokna pro odhad jak
 posunutí tak pøiblíení. Vıstupem je speciální sluební klip se zakódovanımi
 daty pohybu ve snímcích, a volitelnì log soubor.<br>
 </p>
@@ -162,7 +162,7 @@ subpixel</var> - pøesnost interpolace pixelu (vıchozí = 2)<br>
 pixaspect</var> - protaení pixelu (vıchozí = 1.0)<br>
 
 <var>
-matchfields</var> - zarovnat vertikální pozici prokládanıch polí pro zachování poøadí polí,  
+matchfields</var> - zarovnat vertikální pozici prokládanıch polí pro zachování poøadí polí,
 lepší odšumìní atd. (vıchozí=true)<br>
 
 <var>
@@ -189,7 +189,7 @@ inputlog</var> - jméno vstupního log souboru v Deshaker formátu (vıchozí - není,
 snímky pohybovì kompenzované (uvnitø nìjakého rozsahu), pùvodní snímek,
 následují pohybovì kompenzované snímky (uvnitø rozsahu), a stejné skupiny pro
 všechny následující snímky.
-Ve skuteènosti kombinuje funkci <code>DePan</code> a vnitøní AviSynth funkci <code>Interleave</code> 
+Ve skuteènosti kombinuje funkci <code>DePan</code> a vnitøní AviSynth funkci <code>Interleave</code>
 pro usnadnìní následujícího èasového odšumìní, s následující funkcí SelectEvery(prev+next+1, prev) pro vıbìr jen pùvodních oèištìnıch zdrojovıch snímkù.<br>
 </p>
 <h4>Vızva funkce:</h4>
@@ -219,7 +219,7 @@ subpixel</var> - pøesnost interpolace pixelu (vıchozí = 2)<br>
 pixaspect</var> - protaení pixelu (vıchozí = 1.0)<br>
 
 <var>
-matchfields</var> - zarovnat vertikální pozici prokládanıch polí pro zachování poøadí polí,  
+matchfields</var> - zarovnat vertikální pozici prokládanıch polí pro zachování poøadí polí,
 lepší odšumìní atd. (vıchozí=true)<br>
 
 <var>
@@ -365,13 +365,13 @@ odšumìní, nastavte parametr <var>MatchFields</var>=true.<br>
 &nbsp;&nbsp;&nbsp; 5. <var>Mirror</var> reim je jedineènı, ale trochu divnı :-). Pouijte <var>blur</var> pro skrytí ostrıch zrcadlenıch detailù.<br>
 &nbsp;&nbsp;&nbsp; 6. Ne pøíliš rychlı, bez assembler optimalizace.<br>
 &nbsp;&nbsp;&nbsp; 7. Testováno s Avisynthem 2.5.3, 2.5.4, 2.5.5, 2.5.6, 2.5.7.<br>
-&nbsp;&nbsp;&nbsp; 8. Staré verze DePanEstimate pouívali free FFT2D kód od Takuya Ooura 
+&nbsp;&nbsp;&nbsp; 8. Staré verze DePanEstimate pouívali free FFT2D kód od Takuya Ooura
 (<cite><a href="http://momonga.t.u-tokyo.ac.jp/%7Eooura/index.html">http://momonga.t.u-tokyo.ac.jp/~ooura/index.html</a></cite>)<br>
 Teï DePanEstimate pouívá jen rychlejší FFTW knihovnu verze 3 (<cite><a href="http://www.fftw.org">http://www.fftw.org</a></cite>)<br>
 jako Windows binární DLL (kompilovanou v gcc pod MinGW od Alessio Massaro),<br>
 která podporuje vlákna a má navíc podporu AMD K7 (3dNow!) k SSE/SSE2.<br>
 Mùete ho stáhnout z <cite><a href="ftp://ftp.fftw.org/pub/fftw/fftw3win32mingw.zip">ftp://ftp.fftw.org/pub/fftw/fftw3win32mingw.zip</a></cite><br>
-<font color="#ff0000">Aby jste ji mohli pouít musíte vloit soubor FFTW3.DLL z tohoto balíku do nìkteré sloky na cestì pøi prozkoumávání (napøíklad C:\WINDOWS\SYSTEM32). 
+<font color="#ff0000">Aby jste ji mohli pouít musíte vloit soubor FFTW3.DLL z tohoto balíku do nìkteré sloky na cestì pøi prozkoumávání (napøíklad C:\WINDOWS\SYSTEM32).
 DePanEstimate bez toho NEPRACUJE!</font><br>
 &nbsp;&nbsp;&nbsp; 9. Pro nejlepší vısledky, mùete doèasnì pøidat parametr Info, analyzovat informace a vyladit nìkteré parametry (<var>Trust</var>, <var>dxmax</var> atd).<br>
 &nbsp;&nbsp;&nbsp; 10. Mùete pouít ne pøísnì stejné klipy pro
@@ -504,7 +504,7 @@ LoadPlugin("depanestimate.dll") # nebo pouijte autonaèítání
 LoadPlugin("depan.dll")         # nebo pouijte autonaèítání
 ConvertToYV12()
 fps3to5()</pre>
-<p>Poznámky. Existuje jednodušší a obecnìjší metoda: 
+<p>Poznámky. Existuje jednodušší a obecnìjší metoda:
 zkuste <code>ChangeFPS</code> následovanou <code>DePanStabilize</code>.</p>
 
 <h3>Stabilizace pohybu</h3>
@@ -540,20 +540,20 @@ jako GenMotion,
 bez DepanEstimate, klip s daty je ignorován, a zdrojovı klip mùe bıt pouit
 jako datovı klip).
 Deshaker log mùe bıt naèten do Depan a naopak. Depan mùe
-také kompenzovat pøiblíení (zoom) a rotaci. 
+také kompenzovat pøiblíení (zoom) a rotaci.
 Proto mùete naèíst podobné AVS skriptové soubory do VirtualDubu, a
 spustit druhı prùchod Deshaker pro pokroèilou stabilizaci obrazu (a
 kódování) filtrovaného klipu.
 Samozøejmì, pøed tím musíte spustit první prùchod DePanEstimate pro vytvoøení
 Depan.log souboru,
-kterı musí bıt vybrán v Deshaker. Místo toho, mùete do skriptu pøidat funkci 
+kterı musí bıt vybrán v Deshaker. Místo toho, mùete do skriptu pøidat funkci
 DePanStabilize(i,data) a spustit vše v jednom prùchodu !</p>
 <p>Od v1.9.2 je moné zapsat rozšíøenı log soubor s pøídavnımi daty "Trust" po snímku.</p>
 
 <h3>Formát Deshaker log souboru (Gunnar Thalin)</h3>
 <p>V prùbìhu 1. prùchodu zkouší plugin Deshaker najít hodnoty posunutí,
 rotace a pøiblíení
-které, kdy se pouijí na aktuální obraz, vytváøí to, e vypadá jako 
+které, kdy se pouijí na aktuální obraz, vytváøí to, e vypadá jako
 pøedchozí obraz (témìø).
 Hodnoty v kadém øádku souboru jsou (z leva do prava): èíslo snímku
 (nebo èíslo pole), x- a y-posunutí (v pixelech), rotace (ve
@@ -566,7 +566,7 @@ Pokud existují øádky se stejnımi èísly snímkù, pouije se poslední øádek.</p>
 <p>Poznámka: Pro prokládanı zdroj je informace pro kadé pole (A - první, B - druhé v èase)</p>
 
 <h3>Formát snímkového bufferu DePan & DepanEstimate pro klient-server (hlavnì pro programátory)</h3>
-<p>Depan & DepanEstimate pouívají snímkovı buffer speciálního klipu pro uchování dat pohybu. 
+<p>Depan & DepanEstimate pouívají snímkovı buffer speciálního klipu pro uchování dat pohybu.
 Kdy klient (Depan) ádá data pohybu pro snímek <code>n</code> z tohoto klipu,
 server (DepanEstimate) vytvoøí snímek a zapíše do nìj taková data (na zaèátku snímkového bufferu):
 jeden záznam hlavièky, a záznamy dat pohybu nìkolika snímkù, od <code>n-rozsah</code> do <code>n+rozsah</code> (<code>nsnímkù = 2*rozsah+1</code> pro ne-krajní snímky).
@@ -592,17 +592,17 @@ Poznámka 2. Vıstup z DepanEstimate je oøíznut, pokud není v zobrazovacím nebo in
 Viz. depanio.cpp zdrojovı kód pro podrobnosti.</p>
 
 <h3>Alternativní metoda pro odhad globálního pohybu</h3>
-<p>Pøed nìjakım èasem jsem pøidal do odhadu lokálního pohybu pluginu <code>MVTools</code> od Manaa (od verze 0.9.8.2) 
+<p>Pøed nìjakım èasem jsem pøidal do odhadu lokálního pohybu pluginu <code>MVTools</code> od Manaa (od verze 0.9.8.2)
 novou funkci <code>MVDepan</code> pro odhad globálního pohybu.
 Je zaloen na analıze vektorù pohybu lokálních blokù, podobné prvnímu prùchodu v pluginu DeShaker.
-Funkce <code>MVDepan</code> mùe bıt pouita místo <code>DepanEstimate</code>. 
-Mùe odhadovat posunutí, pøiblíení a rotaci. 
+Funkce <code>MVDepan</code> mùe bıt pouita místo <code>DepanEstimate</code>.
+Mùe odhadovat posunutí, pøiblíení a rotaci.
 </p>
 
 <h3>Více informací o Depan</h3>
-<p>Trocha diskuze o pluginech GenMotion a DePan je v AviSynth fóru na<br> 
+<p>Trocha diskuze o pluginech GenMotion a DePan je v AviSynth fóru na<br>
 <cite><a href="http://forum.doom9.org/forumdisplay.php?s=&amp;forumid=33"> http://forum.doom9.org/forumdisplay.php?s=&amp;forumid=33</a></cite><br>
-zvláš ve vláknì 
+zvláš ve vláknì
 <cite><a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=66686"> http://forum.doom9.org/showthread.php?s=&amp;threadid=66686</a></cite></p>
 <h3>Podìkování</h3>
 <p>Dìkuji Gunnaru Thalinovi za detailní informaci o formátu Deshaker log souboru a velmi uiteènou diskuzi.</p>
@@ -619,7 +619,7 @@ Díky Takuyaovi Oouraovi za free a rychlı FFT2D kód pouitı v prvních verzích DeP
       fixed bug for non-integer <var>Offset</var> values.</li>
   <li>Version 0.3, May 15, 2004 -
       fixed bug with DePanStabilize input parameters, set <var>subpixel</var>=2 as default;<br>
-      added zoom estimation and <var>ZoomMax</var> parameter, zoom and rotation compensation,        
+      added zoom estimation and <var>ZoomMax</var> parameter, zoom and rotation compensation,
       log file input, <var>MatchFields</var> parameter.<br>
   </li>
   <li>Version 0.4, May 16, 2004
@@ -664,12 +664,12 @@ parameter in DePanStabilize is now variable (was&nbsp; accidentally
 fixed =0.9 in all previous versions :-),&nbsp;&nbsp;&nbsp;&nbsp; added
 notes about MVDepan to documentation.<br>
   </li>
-  <li>Version 1.1.5, December 31, 2004 -&nbsp; bug fixed in DepanEstimate (erroneous motion data) 
+  <li>Version 1.1.5, December 31, 2004 -&nbsp; bug fixed in DepanEstimate (erroneous motion data)
   for <var>fftw</var>=true with <var>show</var>=false and <var>info</var>=false<br>
   </li>
   <li>Version 1.2, April 1, 2005 - added&nbsp; <var>fitlast</var> parameter to fit some last frames range to original position<br>
   </li>
-  <li>Version 1.3, April 29, 2005 - added&nbsp; <var>blur</var> parameter 
+  <li>Version 1.3, April 29, 2005 - added&nbsp; <var>blur</var> parameter
   to somewhat hide the sharp mirrored details;  blur is horizontal only, at left and right border.<br>
   </li>
   <li>Version 1.4, May 7, 2005 (published May 29)- DePanStabilize: Zoom adaptive mode <var>addzoom</var>
@@ -681,11 +681,11 @@ zoom value is more stable now. <br>
 file (A and B symbols swapped) for BFF (all previous versions). Thanks
 to eugvas for report. <br>
   </li>
-  <li>Version 1.5, June 4, 2005 - improved adaptive zoom; 
+  <li>Version 1.5, June 4, 2005 - improved adaptive zoom;
   added <var>tzoom</var> parameter for the zoom rise time (was equal to 1/<var>cutoff</var>)<br>
   </li>
   <li>Version 1.6, August 5, 2005 - added YUY2 support; disabled <var>improved=true</var> mode (was broken);
-  changed default <var>subpixel</var>=1 for DepanInterleave as sufficient for denoising and more fast<br> 
+  changed default <var>subpixel</var>=1 for DepanInterleave as sufficient for denoising and more fast<br>
   </li>
   <li>
 Version 1.7, September 5, 2005 - DePanStabilize: added parameter <var>initzoom</var> - minimal zoom; <br>
@@ -713,11 +713,11 @@ Version 1.9.0, November 13, 2006 - Isolated DePanEstimate function to separate p
 removed non-fftw code (now always fftw=true).
   </li>
   <li>
-Version 1.9.1, November 27, 2006 - DePanEstimate: more correct processing of dxmax=0 or dymax=0 
+Version 1.9.1, November 27, 2006 - DePanEstimate: more correct processing of dxmax=0 or dymax=0
   </li>
   <li>
 DePanEstimate Version 1.9.2, March 25, 2007 - DePanEstimate: parameter <var>extlog</var>
- to write extended log file with Trust data (as requested by David). 
+ to write extended log file with Trust data (as requested by David).
   </li>
   <li>
 DePan Version 1.10 beta, May 8, 2007 - DepanStabilize:  added new average <var>method</var>,<br>

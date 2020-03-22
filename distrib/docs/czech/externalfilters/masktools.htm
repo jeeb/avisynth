@@ -4,14 +4,14 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: masktools.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: masktools.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 --></head>
 <body>
 <h1>MaskTools</h1>
 <h2>Pøehled</h2>
 <b>autor:</b>  kurosu and Manao
 <br><b>verze:</b>      1.5.8
-<br><b>stáhnout:</b>   <a href="http://manao4.free.fr/">http://manao4.free.fr/</a>, 
+<br><b>stáhnout:</b>   <a href="http://manao4.free.fr/">http://manao4.free.fr/</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a><br>
 <b>kategorie:</b>  Rùzné pluginy<br>
 <b>poadavky:</b> YV12 Barevné prostøedí<br>
@@ -35,7 +35,7 @@ I) O pluginu MaskTools</a>
       <li><a href="#rainbow">3) Redukce duhy</a></li>
       <li><a href="#fxtoon">4) Supervzorkovanı fxtoon</a></li>
       <li><a href="#warpsharp">5) Warpsharp pro tmavı jas (luma)</a></li>
-      <li><a href="#deinterlacer">6) Pseudo-deinterlacer (barevnost bude stále 
+      <li><a href="#deinterlacer">6) Pseudo-deinterlacer (barevnost bude stále
 problematická)</a></li>
       <li><a href="#rect_overlay">7) Nepravoúhlá pøekrıvání</a></li>
       <li><a href="#backgournd">8) Náhrada pozadí</a></li>
@@ -43,7 +43,7 @@ problematická)</a></li>
     </ul>
   </li>
   <li><a href="#todo">IV) Na dopracování</a></li>
-  <li><a href="#disclaimer">V) Odmítnutí záruk (nepøeskakujte tuto èást, ale nenutím vás 
+  <li><a href="#disclaimer">V) Odmítnutí záruk (nepøeskakujte tuto èást, ale nenutím vás
 to nauèit se)</a></li>
   <li><a href="#revisions">VI) Revize</a></li>
   <li><a href="#developer">VII) Pro vıvojáøe</a></li>
@@ -52,97 +52,97 @@ to nauèit se)</a></li>
 </h2>
 <h3><a name="simple"></a>1) Obecnì
 </h3>
-<p>Po zpracování mùete potøebovat zachovat jen èást vıstupu. Øeknìme,  
+<p>Po zpracování mùete potøebovat zachovat jen èást vıstupu. Øeknìme,
 máte
-klip nazvanı smooth, kterı je vısledkem vyhlazování (blur() napøíklad) 
+klip nazvanı smooth, kterı je vısledkem vyhlazování (blur() napøíklad)
 klipu nazvaného source.<br>
-Vìtšina šumu z klipu source v klipu smooth zmizela, Ale také má detaily. 
-Proto by jste mohli chtít zachovat jen filtované pixely a zahodit ty, ve kterıch je 
-velkı rozdíl barev nebo svìtlosti. To je to co dìlá napøíklad MSmooth od D. 
+Vìtšina šumu z klipu source v klipu smooth zmizela, Ale také má detaily.
+Proto by jste mohli chtít zachovat jen filtované pixely a zahodit ty, ve kterıch je
+velkı rozdíl barev nebo svìtlosti. To je to co dìlá napøíklad MSmooth od D.
 Grafta. Nyní uvaujme, e zapíšete pixely obrazu ze smooth,
-které chcete zachovat jako bílé pixely, a ty druhé z klipu source jako èerné 
+které chcete zachovat jako bílé pixely, a ty druhé z klipu source jako èerné
 pixely. Získáne to co se nazıvá maskou. MaskTools jsou o vytváøení,
 pøemìnách a manipulaci s takovımi maskami pro kadou komponentu barevného prostøedí YV12.</p>
 <h3><a name="description"></a>2) Popis
 </h3>
-<p>Tento plugin pro Avisynth 2.5, kterı je urèen jen pro YV12 nabízí nìkolik funkcí manipulace 
+<p>Tento plugin pro Avisynth 2.5, kterı je urèen jen pro YV12 nabízí nìkolik funkcí manipulace
 s klipy
 jako maskami:
 </p>
 <ul>
-  <li><a href="#binarize">Binarize</a> bude binarizovat vstupní obraz 
+  <li><a href="#binarize">Binarize</a> bude binarizovat vstupní obraz
 podle prahové hodnoty a pøíkazu.</li>
-  <li><a href="#combmask">CombMask</a> vytváøí masku, která dává oblasti, kde se nachází 
+  <li><a href="#combmask">CombMask</a> vytváøí masku, která dává oblasti, kde se nachází
 prokládání (combing).</li>
-  <li><a href="#dedgemask">DEdgeMask / DEdgeMask2</a> vytváøí masku hran  
+  <li><a href="#dedgemask">DEdgeMask / DEdgeMask2</a> vytváøí masku hran
 klipu, pouitím vymezení prahovıch hodnot (dané hodnoty je zapínají nebo vypínají).</li>
-  <li><a href="#edgemask">EdgeMask</a> vytváøí masku hran 
+  <li><a href="#edgemask">EdgeMask</a> vytváøí masku hran
 klipu, pouitím vymezení prahovıch hodnot - thresholding (dané hodnoty je zapínají nebo vypínají).
     Podobná s DEdgeMask s pøeddefinovanımi jádry.</li>
-  <li><a href="#expand">Expand</a> 'expanduje' vysoké hodnoty v ploše,  
-vkládáním maximální hodnoty v okolí 3x3 kolem 
-vstupního pixelu do vıstupu. 
+  <li><a href="#expand">Expand</a> 'expanduje' vysoké hodnoty v ploše,
+vkládáním maximální hodnoty v okolí 3x3 kolem
+vstupního pixelu do vıstupu.
     Opaèná funkce se nazıvá <a href="#expand">Inpand</a>.</li>
-  <li><a href="#fitplane">FitY2UV/FitY2U/FitY2V</a> mìní velikost plochy Y a nahrazuje  
-UV/U/V plochy vısledkem zmìny velikosti (mùete zadat svùj filtr zmìny velikosti, 
-dokonce takovı, kterı není 
-    vestavìn v AviSynthu); opaèné funkce jsou FitU2Y a 
+  <li><a href="#fitplane">FitY2UV/FitY2U/FitY2V</a> mìní velikost plochy Y a nahrazuje
+UV/U/V plochy vısledkem zmìny velikosti (mùete zadat svùj filtr zmìny velikosti,
+dokonce takovı, kterı není
+    vestavìn v AviSynthu); opaèné funkce jsou FitU2Y a
 FitV2Y.</li>
-  <li><a href="#inflate">Inflate</a> 'nafoukne' vysoké hodnoty v ploše, 
+  <li><a href="#inflate">Inflate</a> 'nafoukne' vysoké hodnoty v ploše,
 vloením do vıstupní
-    plochy buï prùmìr 8 sousedù, pokud je vyšší ne 
+    plochy buï prùmìr 8 sousedù, pokud je vyšší ne
 pùvodní hodnota, jinak pùvodní hodnotu. Opaèná funkce
     se nazıvá <a href="#expand"> Deflate</a> (vìnováno Philu Katzovi).</li>
-  <li><a href="#invert">Invert</a> invertuje pixel (t.j. out = 255 - in); 
+  <li><a href="#invert">Invert</a> invertuje pixel (t.j. out = 255 - in);
 toto mùe bıt také pouito pro
     aplikaci 'solarize' efektu na obraz.</li>
-  <li><a href="#logic">Logic</a> vykoná nejtypiètìjší logické operace 
-(ve skuteènosti, ty samé jako nabízí MMX mnemonics, tøebae jsou C funkce stále  
+  <li><a href="#logic">Logic</a> vykoná nejtypiètìjší logické operace
+(ve skuteènosti, ty samé jako nabízí MMX mnemonics, tøebae jsou C funkce stále
 dostupné, hlavnì
     kvùli omezení rozmìrù obrazu).</li>
   <li><a href="#LUT">RGBLUT/YV12LUT/YV12LUTxy</a> jsou tabulky, umoòující aplikovat
 rychle funkci na všechny pixely obrazu.</li>
-  <li><a href="#maskedmerge">MaskedMerge</a> vezme 3 klipy a pouije 
-váené slouèení mezi prvním a druhım klipem podle masky reprezentované 
+  <li><a href="#maskedmerge">MaskedMerge</a> vezme 3 klipy a pouije
+váené slouèení mezi prvním a druhım klipem podle masky reprezentované
 klipem3.</li>
-  <li><a href="#motionmask">MotionMask</a> vytvoøí masku pohybu v 
+  <li><a href="#motionmask">MotionMask</a> vytvoøí masku pohybu v
 obrazu.</li>
-  <li>OverlayMask porovná 2 klipy zaloené na prahovıch hodnotách jasu a  
+  <li>OverlayMask porovná 2 klipy zaloené na prahovıch hodnotách jasu a
 barevnosti, a øíká zda jsou pixely blízké nebo ne (podobné tomu co dìlá
     ColorKeyMask).</li>
-  <li><a href="#convolution">YV12Convolution</a> vám umoní convole (svinout) 
+  <li><a href="#convolution">YV12Convolution</a> vám umoní convole (svinout)
 obraz maticí podle vaší volby.</li>
   <li>YV12Layer je ekvivalent k OverLay.</li>
-  <li><a href="#subtract">YV12Substract</a> je stejná jako Subtract, také pracuje 
+  <li><a href="#subtract">YV12Substract</a> je stejná jako Subtract, také pracuje
 v YV12, ale *mìla by* bıt
     trochu rychlejší (protoe má MMX optimalizaci).</li>
 </ul>
 <p>Dále, všechny funkce berou 3 parametry: Y, U a V (kromì FitPlane
-funkcí, kde jména jasnì øíkají co je zpracováno). Podle 
+funkcí, kde jména jasnì øíkají co je zpracováno). Podle
 jejich hodnoty (value), jsou aplikovány rùzné operace na kadou plochu:</p>
 <ul>
   <li>value = 3 udìlá skuteèné zpracování filtrem,</li>
-  <li>value = 2 zkopíruje 2.video plochu (je-li pouitelná) do vıstupu  
+  <li>value = 2 zkopíruje 2.video plochu (je-li pouitelná) do vıstupu
 odpovídající plochy</li>
-  <li>value = 1 to nezpracuje (t.j., nejèastìji, nechá to s 1.plochou klipu 
+  <li>value = 1 to nezpracuje (t.j., nejèastìji, nechá to s 1.plochou klipu
     nebo smetím - provìøte to sami)</li>
-  <li>value = [-255...0] zaplní vıstup plochy zápornou hodnotou (t.j. aby jsme mìli 
+  <li>value = [-255...0] zaplní vıstup plochy zápornou hodnotou (t.j. aby jsme mìli
 šedé
     úrovnì, pouijte U=128,V=128)</li>
 </ul>
-<p>Posledním bodem je schopnost nìkterıch funkcí zpracovat jen èást  
+<p>Posledním bodem je schopnost nìkterıch funkcí zpracovat jen èást
 snímku:</p>
 <ul>
-  <li>toto chování je nastaveno parametry (offX, offY) (pozice  
+  <li>toto chování je nastaveno parametry (offX, offY) (pozice
 poèáteèního
-    bodu) a (w,h) (šíøka a vıška zpracované oblasti); filtry by mìli 
+    bodu) a (w,h) (šíøka a vıška zpracované oblasti); filtry by mìli
 upravovat tyto parametry, tak e zpracovaná oblast je uvnitø 2 obrazù</li>
-  <li>v pøípadì filtru (kromì YV12Layer) pouívajícího 2 klipy, musí mít 2 klipy  
+  <li>v pøípadì filtru (kromì YV12Layer) pouívajícího 2 klipy, musí mít 2 klipy
     stejné rozmìry</li>
   <li>ve všech pøípadech, musí bıt rozmìry obrazu dìlitelné minimálnì 8 (nìkdy 16) aby
     se zapnulo vyuití MMX funkcí (t.j. práce plnou rychlostí)</li>
 </ul>
-<p>Toto bylo zamıšleno pro modularitu a atomické operace (nebo uiteèné, jak je to  
+<p>Toto bylo zamıšleno pro modularitu a atomické operace (nebo uiteèné, jak je to
 moné), a ne právì pro rychlost. Stala se z toho nafouklá a pomalá vìc. Nechám na vás
 rozhodnutí zda je toto tvrzení zcela pravdivé, nebo trochu ménì... Pøíklady v kapitole
 III) jsou s nejvìtší pravdìpodobností mnohem rychleji aplikovány pùvodními filtry.<br>
@@ -154,33 +154,33 @@ III) jsou s nejvìtší pravdìpodobností mnohem rychleji aplikovány pùvodními filtr
 <p><code>Binarize</code> (<var>clip, int "threshold", bool
 "upper"</var>)<br>
 <br>
-Filtr <code> Binarize</code> umoòuje základní vymezení prahovıch hodnot (thresholding) obrazu. Jestlie 
+Filtr <code> Binarize</code> umoòuje základní vymezení prahovıch hodnot (thresholding) obrazu. Jestlie
 <var>upper</var>=true, pixel jeho hodnota je striktnì vìtší ne prahová hodnota threshold
 bude nastavena na nulu, jinak na 255. Naproti tomu, jestlie
-<var>upper</var>=false, pixel jeho hodnota je striktnì vìtší ne <var> 
+<var>upper</var>=false, pixel jeho hodnota je striktnì vìtší ne <var>
 threshold</var> bude nastaveno na 255, jinak na nulu.<br>
 <br>
 Vıchozí hodnoty jsou <var>threshold </var>= 20 and <var>upper </var>= true.
 </p>
 <h3><a name="combmask"></a>CombMask
 </h3>
-<p><code>CombMask</code> (<var>clip, int "thY1", int 
+<p><code>CombMask</code> (<var>clip, int "thY1", int
 "thY2"</var>)
 </p>
-<p>Tento filtr produkuje masku zobrazující oblasti, které jsou prokládané (combed). Prahové hodnoty 
-fungují jako u jinıch 
-filtrù: je-li po vıpoètu hodnoty prokládání tato hodnota ní ne 
-<var>thY1</var>, nastaví se pixel 
-na 0, kdy je nad <var>thY2</var>, nastaví se na 255, a mezitím je nastavená  
+<p>Tento filtr produkuje masku zobrazující oblasti, které jsou prokládané (combed). Prahové hodnoty
+fungují jako u jinıch
+filtrù: je-li po vıpoètu hodnoty prokládání tato hodnota ní ne
+<var>thY1</var>, nastaví se pixel
+na 0, kdy je nad <var>thY2</var>, nastaví se na 255, a mezitím je nastavená
 hodnota prokládání podìlena 256.
 </p>
-<p>Hodnota prokládání je (vyšší_pixel - pixel)*(niší_pixel - pixel). Tedy, není 
+<p>Hodnota prokládání je (vyšší_pixel - pixel)*(niší_pixel - pixel). Tedy, není
 to normalizováno
-do rozsahu 0..255, protoe, kdyby to tak bylo, by byla blízko 1 nebo 2, ne 
+do rozsahu 0..255, protoe, kdyby to tak bylo, by byla blízko 1 nebo 2, ne
 víc. To znamená
 mùete pouít prahovou hodnotu vyšší ne 255, dokonce, i kdyby nemìly bıt uiteèné.
 </p>
-<p>Vıchozí jsou <var>thY1</var> = 10 a <var>thY2</var> = 10 ( tedy vytvoøení 
+<p>Vıchozí jsou <var>thY1</var> = 10 a <var>thY2</var> = 10 ( tedy vytvoøení
 binární masky ).
 </p>
 <h3><a name="dedgemask"></a>DEdgeMask / DEdgeMask2
@@ -191,11 +191,11 @@ binární masky ).
 <code>DEdgeMask2</code> (<var>clip source, clip low_thres, clip high_thres, string
 "matrix", float "divisor", bool "setdivisor", bool "vmode"</var>)<br>
 <br>
-Tento filtr vytváøí masku hran obrazu. Algoritmus nalezení hran 
-pouívá konvoluèní jádro, a vısledek konvoluce je pak 
+Tento filtr vytváøí masku hran obrazu. Algoritmus nalezení hran
+pouívá konvoluèní jádro, a vısledek konvoluce je pak
 vymezen pomocí prahovıch hodnot
-<var> thY1</var> a <var> thY2</var> ( jas - luma ) a <var> thC1</var> a <var> 
-thC2</var> ( barevnost - chroma ). Vymezení nastane takto ( r je vısledek 
+<var> thY1</var> a <var> thY2</var> ( jas - luma ) a <var> thC1</var> a <var>
+thC2</var> ( barevnost - chroma ). Vymezení nastane takto ( r je vısledek
 konvoluce )
 :
 </p>
@@ -205,37 +205,37 @@ konvoluce )
   <li>th2 &lt; r dává 255.</li>
 </ul>
 <p>Za úèelem vytvoøení binární masky, musíte nastavit th1=th2.</p>
-<p>Volba konvoluèního jádra se provede <var>maticí - matrix</var>.  
-matice musí bıt 3 na 3, její koeficienty jsou celoèíselné, oddìlené 
-jednou mezerou. Proto øetìzece "-1 -1 -1 -1 8 -1 -1 -1 -1" a "0 -1 0 -1 0 1 
+<p>Volba konvoluèního jádra se provede <var>maticí - matrix</var>.
+matice musí bıt 3 na 3, její koeficienty jsou celoèíselné, oddìlené
+jednou mezerou. Proto øetìzece "-1 -1 -1 -1 8 -1 -1 -1 -1" a "0 -1 0 -1 0 1
 0 1 0" dají jádra "laplace" a "sobel" filtru
 <a href="#edgemask">EdgeMask</a>.</p>
-<p>Koeficienty musí bıt celoèíselné, <var> divisor</var> je pouit pro oèištìní vısledku 
+<p>Koeficienty musí bıt celoèíselné, <var> divisor</var> je pouit pro oèištìní vısledku
 konvoluce. Tento vısledek bude jednoduše podìlen parametrem
-<var>divisor</var>. Jestlie <var> divisor</var> není definovanı, vyjde se ze 
-souètu kladnıch koeficientù matice, èím se umoní klasická 
+<var>divisor</var>. Jestlie <var> divisor</var> není definovanı, vyjde se ze
+souètu kladnıch koeficientù matice, èím se umoní klasická
 normalizace. Mùe bıt buï desetinnı nebo celoèíselnı, z nich ten druhı je rychlejší.<br>
 <var>setdivisor </var> je pøítomen jen pro zpìtnou kompatibilitu. Nepouívejte ho.
 <br>
 A nakonec <var>vmode</var> umoní vytváøet masku støedìnou na 128 místo nuly.
-Vıchozí hodnoty jsou : <var>thY1 </var>= 0, <var>thY2 </var>= 20, <var>thC1 </var>= 0, 
+Vıchozí hodnoty jsou : <var>thY1 </var>= 0, <var>thY2 </var>= 20, <var>thC1 </var>= 0,
 <var>thC2
 </var>= 20, <var>matrix </var>= "-1 -1 -1 -1 8 -1 -1 -1 -1" a <var>vmode</var>=false.</p>
-<p>DEdgemask2 v zásadì pracuje jako DEdgeMask, kromì toho, e místo 2 nízkıch / vysokıch prahovıch hodnot 
+<p>DEdgemask2 v zásadì pracuje jako DEdgeMask, kromì toho, e místo 2 nízkıch / vysokıch prahovıch hodnot
 bere 2 další klipy. Kadı klip obsahuje lokální prahové hodnoty pro kadı pixel.
-Øeknìme, e chcete adaptivní prahové hodnoty beroucí lokální kontrast do své hodnoty. Dobrá, lokální min &amp; max 
-lze získat pøes inpand() a expand(). Rozdíl mùe bıt vytvoøen pomocí YV12LUTxy nebo YV12Subtract. 
+Øeknìme, e chcete adaptivní prahové hodnoty beroucí lokální kontrast do své hodnoty. Dobrá, lokální min &amp; max
+lze získat pøes inpand() a expand(). Rozdíl mùe bıt vytvoøen pomocí YV12LUTxy nebo YV12Subtract.
 A voila, máte prahovı klip obsahující lokální kontrasty.</p>
 <h3><a name="edgemask"></a>EdgeMask</h3>
-<p><code>EdgeMask</code> (<var>clip, int "thY1", int 
+<p><code>EdgeMask</code> (<var>clip, int "thY1", int
 "thY2", int
 "thC1", int "thC2", string "type"</var>)<br>
 <br>
-Tento filtr vytváøí masku hran v obrazu. Algoritmus nalezení hran 
-pouívá konvoluèní jádro, a vısledek konvoluce je pak 
+Tento filtr vytváøí masku hran v obrazu. Algoritmus nalezení hran
+pouívá konvoluèní jádro, a vısledek konvoluce je pak
 vymezen prahovımi hodnotami
-<var> thY1</var> a <var> thY2</var> ( jas ) a <var> thC1</var> a <var> 
-thC2</var> ( barevnost ). Vymezení prahovıch hodnot nastane takto ( r je vısledek 
+<var> thY1</var> a <var> thY2</var> ( jas ) a <var> thC1</var> a <var>
+thC2</var> ( barevnost ). Vymezení prahovıch hodnot nastane takto ( r je vısledek
 konvoluce ) :
 </p>
 <ul>
@@ -328,7 +328,7 @@ konvoluce ) :
     </tbody></table>
   </li>
 </ul>
-<p>A nakonec, existují dvì další moné hodnoty pro <var> type</var> ( 
+<p>A nakonec, existují dvì další moné hodnoty pro <var> type</var> (
 "cartoon" a "line" ), které mají chování v této dokumentaci neuvedené.</p>
 <p>Vıchozí hodnoty jsou : <var>thY1 </var>= 0, <var>thY2 </var>= 20, <var>thC1 </var>=
 0, <var>thC2 </var>= 20 a <var>type </var>= "sobel".</p>
@@ -336,11 +336,11 @@ konvoluce ) :
 FitU2V / FitV2U</h3>
 <p><code>FitPlane</code> (<var>clip, string resizer</var>) </p>
 <p><code>FitPlane</code> má následující inkarnace:<br>
-   - jas do barevnosti: <code>FitY2U</code>, <code>FitY2V</code>, <code> 
+   - jas do barevnosti: <code>FitY2U</code>, <code>FitY2V</code>, <code>
 FitY2UV</code><br>
    - barevnost do jasu: <code>FitU2Y</code>, <code> FitV2Y</code><br>
    - barevnost do barevnosti: <code>FitU2V</code>, <code> FitV2U</code></p>
-<p>Tímto filtrem mùete rozšíøit (pouít) masku vytvoøenou na jedné ploše do 
+<p>Tímto filtrem mùete rozšíøit (pouít) masku vytvoøenou na jedné ploše do
 do jiné plochy.</p>
 <h3><a name="expand"></a>Inpand / Expand / Deflate / Inflate
 </h3>
@@ -349,21 +349,21 @@ do jiné plochy.</p>
 <code>Deflate</code> (<var>clip</var>)<br>
 <code>Inflate</code> (<var>clip</var>)
 </p>
-<p>Tyto filtry umoòují zvìtšit / sníit masku. <code>Expand</code> nahradí 
+<p>Tyto filtry umoòují zvìtšit / sníit masku. <code>Expand</code> nahradí
 hodnotu pixelu nejvìtší okolní hodnotou.
-<code>Inpand</code> ji naopak nahradí nejniší okolní 
+<code>Inpand</code> ji naopak nahradí nejniší okolní
 hodnotou.
-<code>Inflate</code> vypoèítá prùmìr okolních pixelù, a 
-nahradí hodnotu pixelu vypoètenou jen, kdy je tento prùmìr vyšší ne 
+<code>Inflate</code> vypoèítá prùmìr okolních pixelù, a
+nahradí hodnotu pixelu vypoètenou jen, kdy je tento prùmìr vyšší ne
 pùvodní hodnota pixelu.
-<code>Deflate</code> Udìlá to samé jen kdy je prùmìr niší ne 
+<code>Deflate</code> Udìlá to samé jen kdy je prùmìr niší ne
 pùvodní hodnota.
 </p>
-<p>Obraz vrácenı funkcemi <code>Expand</code> / <code>Inflate</code> bude 
+<p>Obraz vrácenı funkcemi <code>Expand</code> / <code>Inflate</code> bude
 vdy vyšší ne pùvodní obraz. Naopak, obraz vrácenı funkcemi
 <code>Inpand</code> / <code>Deflate</code> bude vdy niší.
 </p>
-<p>Zvìtšení / sníení vytváøené pomocí <code>Deflate</code> / 
+<p>Zvìtšení / sníení vytváøené pomocí <code>Deflate</code> /
 <code>Inflate</code>
 je mìkèí ne to, které vytváøí <code>Expand</code> / <code>Inpand</code>.
 </p>
@@ -371,15 +371,15 @@ je mìkèí ne to, které vytváøí <code>Expand</code> / <code>Inpand</code>.
 </h3>
 <p><code>HysteresyMask</code> (<var>mask_clip1, mask_clip2</var>)
 </p>
-<p>Tento filtr vytváøí masku ze dvou masek. Teoreticky, první maska 
-by mìla bıt uvnitø té druhé, ale mùe to fungovat i pokud tomu tak není ( aèkoli 
-vısledky budou ménì zajímavé ). Principem filtru je zvìtšení 
+<p>Tento filtr vytváøí masku ze dvou masek. Teoreticky, první maska
+by mìla bıt uvnitø té druhé, ale mùe to fungovat i pokud tomu tak není ( aèkoli
+vısledky budou ménì zajímavé ). Principem filtru je zvìtšení
 èástí, které patøí k obìma maskám, uvnitø druhé masky.
 </p>
-<p>Tento algoritmus je zajímavı protoe umoòuje napøíklad získat 
+<p>Tento algoritmus je zajímavı protoe umoòuje napøíklad získat
 masku hran se všemi zajímavımi hranami, ale bez šumu. Sestavíte dvì
 masky hran, jednu s hodnì hranami a šumem, a druhou s málo hranami
-a témìø bez šumu. Pak, pouijete tento filtr, a mìli by jste obdret 
+a témìø bez šumu. Pak, pouijete tento filtr, a mìli by jste obdret
 hrany bez šumu, protoe šum ve druhé masce nebyl.
 </p>
 <h3><a name="invert"></a>Invert
@@ -394,37 +394,37 @@ hrany bez šumu, protoe šum ve druhé masce nebyl.
 </p>
 <h3><a name="logic"></a>Logic
 </h3>
-<p><code>Logic</code> (<var>mask_clip1, mask_clip2, string 
+<p><code>Logic</code> (<var>mask_clip1, mask_clip2, string
 "mode"</var>)
 </p>
-<p>Tento filtr produkuje novou masku, která je vısledkem binární operace 
+<p>Tento filtr produkuje novou masku, která je vısledkem binární operace
 mezi dvìma maskami. Operace je zvolena parametrem
 <var>mode</var>.
 </p>
 <ul>
-  <li><var>mode</var>="and" : pracuje jen s binárními maskami ( jen 
-pixel na 0 nebo 255 ). Vıstupní maska je prùnikem dvou masek. To 
-znamená, e pokud oba odpovídající pixely jsou 255, vıslednı pixel bude 
+  <li><var>mode</var>="and" : pracuje jen s binárními maskami ( jen
+pixel na 0 nebo 255 ). Vıstupní maska je prùnikem dvou masek. To
+znamená, e pokud oba odpovídající pixely jsou 255, vıslednı pixel bude
 255, jinak 0.</li>
-  <li><var>mode</var>="or" : pracuje jen s binárními maskami. Vıstupní 
-maska je sjednocením dvou masek.  To znamená, e pokud jeden z odpovídajících 
+  <li><var>mode</var>="or" : pracuje jen s binárními maskami. Vıstupní
+maska je sjednocením dvou masek.  To znamená, e pokud jeden z odpovídajících
 pixelù je 255, vıslednı pixel bude 255, jinak 0.</li>
-  <li><var>mode</var>="xor" : pracuje jen s binárními maskami. Vıstupní 
-maska je rozdílem (odlišností) mezi dvìma maskami. To znamená, e pokud ( vıhradnì ) jeden z 
-odpovídajících pixelù je 255, vıslednı pixel bude 
+  <li><var>mode</var>="xor" : pracuje jen s binárními maskami. Vıstupní
+maska je rozdílem (odlišností) mezi dvìma maskami. To znamená, e pokud ( vıhradnì ) jeden z
+odpovídajících pixelù je 255, vıslednı pixel bude
 255, jinak 0.</li>
-  <li><var>mode</var>="andn" : pracuje jen s binárními maskami. Vıstupní 
-maska je rozdílem (odeètením) druhé masky od první. To znamená, e 
-pokud pixel první masky je 255 a druhá je 0, vrátí 
+  <li><var>mode</var>="andn" : pracuje jen s binárními maskami. Vıstupní
+maska je rozdílem (odeètením) druhé masky od první. To znamená, e
+pokud pixel první masky je 255 a druhá je 0, vrátí
 255, jinak 0.</li>
-  <li><var>mode</var>="min" : vrací pro kadı pixel minimální 
+  <li><var>mode</var>="min" : vrací pro kadı pixel minimální
 hodnotu mezi dvìma pixely vstupních masek. Jako
     <var>mode</var>="and", ale pro nebinární masky.</li>
-  <li><var>mode</var>="max" : vrací pro kadı pixel maximální 
+  <li><var>mode</var>="max" : vrací pro kadı pixel maximální
 hodnotu mezi dvìma pixely vstupních masek. Jako
     <var>mode</var>="or", ale pro nebinární masky.</li>
 </ul>
-<p>Pokud je logickı operátor pouit s nebinární maskou, vısledky jsou 
+<p>Pokud je logickı operátor pouit s nebinární maskou, vısledky jsou
 nepøedvídatelné.
 </p>
 <p>Vıchozí : <var>mode </var>= "and".
@@ -441,24 +441,24 @@ nepøedvídatelné.
 "uexpr", string "vexpr"</var>)
 </p>
 <p>Tyto filtry aplikují funkci na kadı pixel obrazu. Aby byl umonìn
-rychlı vıpoèet, kadá moná hodnota funkce je pøedvypoètena 
-a uloena v tabulce Look-Up Table ( udtud jména funkcí LUT ). To dìlá tyto filtry slušnì 
+rychlı vıpoèet, kadá moná hodnota funkce je pøedvypoètena
+a uloena v tabulce Look-Up Table ( udtud jména funkcí LUT ). To dìlá tyto filtry slušnì
 rychlımi.
 <code>RGBLUT</code>  pracuje pøesnì stejnì jako <code>YV12LUT</code>, kromì
-toho, e má pøidanı argument <var>AMPFile</var>. Umoní vám naèíst 
+toho, e má pøidanı argument <var>AMPFile</var>. Umoní vám naèíst
 photoshop barevnı profil. 
 </p>
-<p>Aby bylo moné aplikovat témìø kadou monou funkci, je toto 
-dáno øetìzcem, kterı reprezentuje vıraz v obráceném polském zápisu (reverse polish notation). 
-Principem tohoto zápisu je zapisovat nejdøíve operandy / parametry  
-operátoru / funkce, a pak operátor / funkci samotnou. Proto, "3 + 7" 
+<p>Aby bylo moné aplikovat témìø kadou monou funkci, je toto
+dáno øetìzcem, kterı reprezentuje vıraz v obráceném polském zápisu (reverse polish notation).
+Principem tohoto zápisu je zapisovat nejdøíve operandy / parametry
+operátoru / funkce, a pak operátor / funkci samotnou. Proto, "3 + 7"
 se stane "3 7 +", a "sin(3)" se stane "3 sin". Pùjdeme dále ve vysvìtlování,
-"3 * 7 + 5" se stane "3 7 * 5 +", a "(3 + 7) * 5" : "3 7 + 5 *". 
+"3 * 7 + 5" se stane "3 7 * 5 +", a "(3 + 7) * 5" : "3 7 + 5 *".
 Nyní rozumíte hlavnímu kladu tohoto zápisu (notation) : ádná potøeba závorek.
 </p>
 <p>Vıpoèty jsou vedeny v reálnıch èíslech. Kladná èísla pøedstavují
-pravdivé tvrzení, zatímco záporná èísla pøedstavují nepravdivé tvrzení.  
-Symbol "x" v øetìzci je hodnota pixelu pøed pouitím  
+pravdivé tvrzení, zatímco záporná èísla pøedstavují nepravdivé tvrzení.
+Symbol "x" v øetìzci je hodnota pixelu pøed pouitím
 funkce. Pro <code>YV12LUTxy</code> máte také symbol "y", kterı  pøedstavuje
 hodnotu vázaného pixelu v druhém klipu. Symboly musí bıt
 oddìleny jednou mezerou.
@@ -466,25 +466,25 @@ oddìleny jednou mezerou.
 <p>Jsou imlementovány nìkteré operátory a funkce :
 </p>
 <ul>
-  <li>+, -, /, *, ^, % jsou operátory plus, minus, dìleno, krát, mocnina 
+  <li>+, -, /, *, ^, % jsou operátory plus, minus, dìleno, krát, mocnina
 a modulo.</li>
-  <li>&amp;, |, °, !&amp; jsou logické operátory and, or, xor, a not. Pokud 
+  <li>&amp;, |, °, !&amp; jsou logické operátory and, or, xor, a not. Pokud
 je vısledek pravda, pak vrací 1.0, jinak -1.0.</li>
-  <li>&lt;, &lt;=, &gt;, &gt;=, =, != jsou relaèní operátory menší ne, menší nebo 
-rovno, vìtší ne, vìtší nebo rovno, rovná se, nerovná se. Pokud je vısledek 
+  <li>&lt;, &lt;=, &gt;, &gt;=, =, != jsou relaèní operátory menší ne, menší nebo
+rovno, vìtší ne, vìtší nebo rovno, rovná se, nerovná se. Pokud je vısledek
 pravda, pak vrátí 1.0, jinak -1.0.</li>
-  <li>cos, sin, tan, acos, asin, atan, exp, log, abs jsou funkce kosinus, 
-sinus, tangens, arckosinus, arcsinus, arctangens, exponenciální, napierùv (pøirozenı) 
+  <li>cos, sin, tan, acos, asin, atan, exp, log, abs jsou funkce kosinus,
+sinus, tangens, arckosinus, arcsinus, arctangens, exponenciální, napierùv (pøirozenı)
 logaritmus, absolutní hodnota.</li>
-  <li>? umoní provést podmínkovı test. Je to trojitı operátor, prvním 
-operandem bıvá podmínka, druhım hodnota jestli je podmínka pravdivá (true),  
+  <li>? umoní provést podmínkovı test. Je to trojitı operátor, prvním
+operandem bıvá podmínka, druhım hodnota jestli je podmínka pravdivá (true),
 tøetím je hodnota jestlie je podmínka nepravdivá (false).</li>
 </ul>
 <p>Nìkolik pøíkladù :
 </p>
-<p>* Binarizace obrazu pomocí prahové hodnoty 128 : "x 128 &lt; 0 255 
+<p>* Binarizace obrazu pomocí prahové hodnoty 128 : "x 128 &lt; 0 255
 ?". Je to pøeloeno jako : "(x &lt; 128) ? 0 : 255".<br>
-    * Levels(il, gamma, ih, ol, oh) ( Podívejte se na filtr <a href="http://jourdan.madism.org/corefilters/levels.htm"> Levels</a> ) : "x il - ih il - / 1 gamma / ^ 
+    * Levels(il, gamma, ih, ol, oh) ( Podívejte se na filtr <a href="http://jourdan.madism.org/corefilters/levels.htm"> Levels</a> ) : "x il - ih il - / 1 gamma / ^
 oh
 ol - *".
 To je pøeloeno jako "(((x - il) / (ih - il)) ^ (1 / gamma)) * (oh - ol)".
@@ -496,43 +496,43 @@ To je pøeloeno jako "(((x - il) / (ih - il)) ^ (1 / gamma)) * (oh - ol)".
 </h3>
 <p><code>MaskedMerge</code> (<var>base_clip, overlay_clip, mask_clip</var>)
 </p>
-<p>Tento filtr aplikuje klip <var>overlay_clip</var> na klip 
+<p>Tento filtr aplikuje klip <var>overlay_clip</var> na klip
 <var>base_clip</var>, s ohledem na klip
-<var>mask_clip</var>. Pøesnìji, s <i>bc</i>, <i> oc</i> a <i> mc</i> 
-hodnotami tøí pixelù vzatıch z <var>base_clip</var>, 
+<var>mask_clip</var>. Pøesnìji, s <i>bc</i>, <i> oc</i> a <i> mc</i>
+hodnotami tøí pixelù vzatıch z <var>base_clip</var>,
 <var>overlay_clip</var>
 a <var>mask_clip</var>, bude vısledek :
 </p>
 <pre>v = ((256 - <i>mc</i>) * <i>bc</i> + <i>mc</i> * <i>oc</i> + 128) / 256</pre>
-<p>128 je zde ke sníení chyby pøi zaokrouhlování celoèíselného 
+<p>128 je zde ke sníení chyby pøi zaokrouhlování celoèíselného
 dìlení.
 </p>
-<p>Tedy, kdy je maska 255, pixel bude pixelem z 
+<p>Tedy, kdy je maska 255, pixel bude pixelem z
 <var>overlay_clip</var>, kdy je maska 0, pixel bude z
 <var>base_clip</var>, a mezitím bude smíchán z obou klipù.
 </p>
 <h3><a name="motionmask"></a>MotionMask
 </h3>
-<p><code>MotionMask</code> (<var>clip, int "thY1", int "thY2', 
+<p><code>MotionMask</code> (<var>clip, int "thY1", int "thY2',
 int
 "thC1", int "thC2", int "thSD"</var>)
 </p>
-<p>Tento filtr vytváøí masku pohybu obrazu. Jako u jinıch filtrù  
+<p>Tento filtr vytváøí masku pohybu obrazu. Jako u jinıch filtrù
 vytváøejících masky, jakmile je pohyb
-vypoèítán, je vymezen dvìma prahovımi hodnotami. Tento filtr bude také provìøovat 
+vypoèítán, je vymezen dvìma prahovımi hodnotami. Tento filtr bude také provìøovat
 zmìnu scény, a nevytváøí masku jestlie u je nìjaká detekována.
 </p>
-<p>Detekce zmìny scény se provádí vıpoètem souètù absolutních rozdílù 
+<p>Detekce zmìny scény se provádí vıpoètem souètù absolutních rozdílù
 v obrazu a jeho pøedchozího. Tento souèet je zprùmìrován a pak porovnán s
 <var>thSD</var>. Pokud je to víc ne <var>thSD</var>, je detekována zmìna scény.
 </p>
-<p>Pohyb je vypoèítán stejnım zpùsobem <a href="http://jourdan.madism.org/%7Emanao/nomosmooth.htm">NoMoSmooth</a>, 
+<p>Pohyb je vypoèítán stejnım zpùsobem <a href="http://jourdan.madism.org/%7Emanao/nomosmooth.htm">NoMoSmooth</a>,
 co znamená, e pro kadı pixel budeme poèítat absolutní souèet rozdílù
-mezi pixelem a jeho okolím, a pixel a okolí v 
-pøedchozím obrazu. Vısledná hodnota je podìlena èíslem 9, aby 
+mezi pixelem a jeho okolím, a pixel a okolí v
+pøedchozím obrazu. Vısledná hodnota je podìlena èíslem 9, aby
 byl vısledek normalizován do rozsahu 0 a 255.
 </p>
-<p>Tento algoritmus dává pouze pøiblíení (aproximaci) pohybu. Bude dobøe pracovat 
+<p>Tento algoritmus dává pouze pøiblíení (aproximaci) pohybu. Bude dobøe pracovat
 na hranách objektu, ale ne uvnitø.
 </p>
 <p>Vıchozí hodnoty jsou : <var>thY1</var>= 20, <var>thY2</var> = 20, <var>thC1</var> =
@@ -540,33 +540,33 @@ na hranách objektu, ale ne uvnitø.
 </p>
 <h3><a name="convolution"></a>YV12Convolution
 </h3>
-<p><code>YV12Convolution</code> (<var>clip, string "horizontal", 
+<p><code>YV12Convolution</code> (<var>clip, string "horizontal",
 string
 "vertical", int "total", bool "automatic", bool
 "saturate"</var>)
 </p>
-<p>Tento filtr vypoèítá konvoluèní souèin mezi obrazem a  
-jádrem definovanım násobením hodnot <var>horizontal</var> a 
+<p>Tento filtr vypoèítá konvoluèní souèin mezi obrazem a
+jádrem definovanım násobením hodnot <var>horizontal</var> a
 <var>vertical</var>. Tyto dva øetìzce pøedstavují vektory. Musí mít lichı poèet
 celıch nebo reálnıch èísel, oddìlenıch jednou mezerou. <var>total</var>
 je normalizaèní faktor, kterım je vısledek souèinu podìlen.
-Jestlie je <var> automatic</var> nastaveno na 'true', total je souètem koeficientù 
-matice. To znamená, e touto cestou celková svìtlost obrazu není 
+Jestlie je <var> automatic</var> nastaveno na 'true', total je souètem koeficientù
+matice. To znamená, e touto cestou celková svìtlost obrazu není
 dotèena.
-<var>Saturate</var> umoní vybrat chování filtru, kdy je vısledkem 
+<var>Saturate</var> umoní vybrat chování filtru, kdy je vısledkem
 záporné èíslo.
 </p>
 <ul>
   <li><var>saturate</var> = true : záporné hodnoty jsou vynulovány.</li>
   <li><var>saturate</var> = false : záporné hodnoty jsou invertovány. </li>
 </ul>
-<p>Pokud není total definován, je nastaven na souèet koeficientù  
+<p>Pokud není total definován, je nastaven na souèet koeficientù
 konvoluèního jádra, èím se umoní dobrá normalizace jader pro rozmazání (bluring) / zostøení (sharpening).
 </p>
-<p>Pokud jeden z koeficientù horizontal nebo vertical je reálné èíslo, všechny 
+<p>Pokud jeden z koeficientù horizontal nebo vertical je reálné èíslo, všechny
 vıpoèty budou provedeny jako floats (desetinné), take filtr bude pomalejší.
 </p>
-<p>Vıchozí hodnoty jsou : <var>horizontal</var> = "1 1 1", <var>vertical</var> = 
+<p>Vıchozí hodnoty jsou : <var>horizontal</var> = "1 1 1", <var>vertical</var> =
 "1 1 1" a
 <var>automatic</var> = false, <var>saturate</var> = true.
 </p>
@@ -575,20 +575,20 @@ vıpoèty budou provedeny jako floats (desetinné), take filtr bude pomalejší.
 <p><code>YV12Subtract</code> (<var>clip1, clip2, int tol, bool
 "widerange"</var>)
 </p>
-<p>Tento filtr vypoèítá rozdíl mezi dvìma klipy. Existuje nìkolik zpùsobù 
+<p>Tento filtr vypoèítá rozdíl mezi dvìma klipy. Existuje nìkolik zpùsobù
 vıpoètu tohoto rozdílu, závisejících na hodnotách <var>widerange</var> a
 <var>tol</var>.
 </p>
 <ul>
   <li><var>widerange</var> = true : vypoèítáme rozdíl ( n ) mezi
 dvìma klipy, a vrátíme r = 128 + 128 * pow(n / 255,1 /
-    <var>tol</var>). Pokud <var>tol</var> &lt; 0, 1 / <var>tol</var> se stane 
+    <var>tol</var>). Pokud <var>tol</var> &lt; 0, 1 / <var>tol</var> se stane
 0.5.</li>
   <li><var>widerange</var> = false :
     <ul>
-      <li><var>tol</var> &lt; 0 : vypoèítáme absolutní rozdíl ( n ) 
+      <li><var>tol</var> &lt; 0 : vypoèítáme absolutní rozdíl ( n )
 mezi dvìma klipy, a vrátíme r = n / 2 + 128.</li>
-      <li><var>tol</var> &gt;= 0 : vypoèítáme absolutní rozdíl ( n ) 
+      <li><var>tol</var> &gt;= 0 : vypoèítáme absolutní rozdíl ( n )
 mezi dvìma klipy, a vrátíme 0 pokud n je niší ne tol, jinak n - tol. </li>
     </ul>
   </li>
@@ -597,14 +597,14 @@ mezi dvìma klipy, a vrátíme 0 pokud n je niší ne tol, jinak n - tol. </li>
 </p>
 <h2><a name="examples"></a>III) Nìkterá praktická pouití (ne moc testované)
 </h2>
-<p>Tyto pøíklady nechtìjí vytváøet pøesnì stejné vısledky jako pùvodní filtry, snaí se je 
+<p>Tyto pøíklady nechtìjí vytváøet pøesnì stejné vısledky jako pùvodní filtry, snaí se je
 napodobit, navíc jsou o dost pomalejší. Pøes øadu dalších
 funkcí, ádná nová myšlenka.
 </p>
 <p>Poznámky: <br>
-- Jsem pøíliš línı aktualizovat syntaxi, obzvláš pokud jde o to jak pracuje mode=2, a 
+- Jsem pøíliš línı aktualizovat syntaxi, obzvláš pokud jde o to jak pracuje mode=2, a
 jak bylo aktualizováno EdgeMask (nyní u napøíklad nepotøebuje Binarize)<br>
-- Nìkteré filtry popisované jako 'na vytvoøení' u existují (imagereader, úrovnì pro 
+- Nìkteré filtry popisované jako 'na vytvoøení' u existují (imagereader, úrovnì pro
 sevøení, ...).
 </p>
 <h4><a name="msharpen"></a>1) MSharpen
@@ -613,9 +613,9 @@ sevøení, ...).
 # Aplikuje zostøovací filtr na clip1 a vloí ho do clip2
 ...
 return MaskMerge(clip1, clip2, clip3)</pre>
-<p>Zostøené hrany klipu clip2 vyšší ne prahová hodnota dané do Binarize 
+<p>Zostøené hrany klipu clip2 vyšší ne prahová hodnota dané do Binarize
 budou zostøeny a pouity pro nahrazení jejich pùvodních hodnot v klipu clip1.
-Mohli by jste také napsat filtr s oddìlenou Look-up table (nejlépe by vypadala 
+Mohli by jste také napsat filtr s oddìlenou Look-up table (nejlépe by vypadala
 jako zvon), nahradit jí Binarize, a mìli by jste váené zostøení
 podle hodnoty hrany: to je HiQ èást ve SmartSmoothHiQ
 </p>
@@ -626,7 +626,7 @@ clip3 = clip1.EdgeMask(15, 60, &quot;roberts&quot;, Y=3, U=1, V=1)
 return MaskedMerge(clip1, clip2, clip3)</pre>
 <h4><a name="msoften"></a>2) MSoften
 </h4>
-<p>Nahraïte EdgeEnhancer prostorovım zmìkèovaèem (kaskádová rozmazání? 
+<p>Nahraïte EdgeEnhancer prostorovım zmìkèovaèem (kaskádová rozmazání?
 prostorové zmìkèení MMX?) a pouijte upper=true pro vıbìr blízkıch pixelù v ploše.
 </p>
 <h4><a name="rainbow"></a>3) Redukce duhy (jak se popisuje v tomto <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=48167"><cite>vláknì</cite></a>
@@ -646,9 +646,9 @@ return MaskedMerge(clip1, clip2, clip3, Y=1, U=3, V=3)</pre>
 </h4>
 <p>Netestováno
 </p>
-<pre>. Pouijte tweak ke ztmavení obrazu nebo pouijte plugin, kterı sníí hodnoty Y 
+<pre>. Pouijte tweak ke ztmavení obrazu nebo pouijte plugin, kterı sníí hodnoty Y
 -&gt; clip2
-. Sestavte masku hran, Supersamplujte tuto masku, Binarizujte ji vysokou prahovou hodnotou 
+. Sestavte masku hran, Supersamplujte tuto masku, Binarizujte ji vysokou prahovou hodnotou
 (sevøení zní lépe), zahustìte (inflate) ji klipem -&gt; clip3
 . Pouijte tmavší pixely klipu clip2 podle hodnot klipu clip3</pre>
 <h4><a name="warpsharp"></a>5) Warpsharp pro tmavı jas
@@ -657,7 +657,7 @@ return MaskedMerge(clip1, clip2, clip3, Y=1, U=3, V=3)</pre>
 </p>
 <pre>. Pouijte warpsharp -&gt; clip2 (nahrazení pixelù)
 . Vytvoøte omezovací filtr nebo low-luma bypass filtr -&gt; clip3 (mask)</pre>
-<h4><a name="deinterlacer"></a>6) Pseudo-deinterlacer (barevnost bude stále 
+<h4><a name="deinterlacer"></a>6) Pseudo-deinterlacer (barevnost bude stále
 problematická)
 </h4>
 <p>Netestováno
@@ -687,7 +687,7 @@ MaskedMerge(clip, image, mask, Y=3, U=3, V=3)
 #*øešení: mask = OverlayMask(image, image.BlankClip(&quot;$xxxxxx&quot;), 1, 1)</pre>
 <h4><a name="backgournd"></a>8) Náhrada pozadí
 </h4>
-<p>Tento pøíklad by jistì vypadala lépe v RGB. Abyste se vyhnuly typickım problémùm kvùli 
+<p>Tento pøíklad by jistì vypadala lépe v RGB. Abyste se vyhnuly typickım problémùm kvùli
 šumu nebo kompresi, radìji pouijte rozmazané verze klipu
 a obrazu.
 </p>
@@ -703,10 +703,10 @@ mask = OverlayMask(clip, overlay.ConvertToYV12(), 10, 10)
 MaskedMerge(source, new.ConvertToYV12(), mask, Y=3, U=3, V=3)</pre>
 <h4><a name="mftoon"></a>9) K-mfToon
 </h4>
-<p>Potøebuje zahrnout více informací (pùvodní url/pøíspìvky) ale prozatím si myslím, 
+<p>Potøebuje zahrnout více informací (pùvodní url/pøíspìvky) ale prozatím si myslím,
 e pùvodní autor filtru mfToon, mf (mf@onthanet.net) na to nebude reagovat
 moc vehementnì, zatím to stále není adresováno.<br>
-Vıstup funkce uvnitø K-mfToon.avs by mìl bıt identickı s  
+Vıstup funkce uvnitø K-mfToon.avs by mìl bıt identickı s
 vıstupem pùvodního mftoon.avs (také zahrnutı), s dvojnásobnou rychlostí.<br>
 Poadavky jsou:<br>
 - Pro mfToon:<br>
@@ -721,10 +721,10 @@ Poadavky jsou:<br>
 <p>Tento plugin je vydáván pod GPL licencí. Musíte souhlasit s podmínkami uvedenımi v
 'Copying.txt' pøed pouitím pluginu nebo jeho zdrojového kódu.<br>
 <br>
-Také se vám doporuèuje pouívat ho ve filantropickém (lidumilném) rozpoloení, t.j. ne ve smyslu "Budu si 
+Také se vám doporuèuje pouívat ho ve filantropickém (lidumilném) rozpoloení, t.j. ne ve smyslu "Budu si
 tohle tajemství dret pro sebe".<br>
 <br>
-V neposlední øadì, velmi malá èást všech monıch pouití kadého filtru byla 
+V neposlední øadì, velmi malá èást všech monıch pouití kadého filtru byla
 testována (moná 5% - zbıvá spousta strávenıch hodin pøi ladìní ;-). Proto je
 zpìtná vazba velmi vítána (naproti tomu - nedostatek zpìtné vazby - je také skuteèností...)
 </p>
@@ -768,59 +768,59 @@ v1.5.5 - 6 November 2004
 <p>1.4.16
 </p>
 <ul>
-  <li>Bugfixes : Logic "min" &amp; "max" modes weren't properly working, it's 
+  <li>Bugfixes : Logic "min" &amp; "max" modes weren't properly working, it's
 corrected.</li>
-  <li>Bugfixes : Logic &amp; Subtract weren't using MMX &amp; iSSE 
+  <li>Bugfixes : Logic &amp; Subtract weren't using MMX &amp; iSSE
 optimizations, due to a very silly bug.
     It's Corrected.</li>
 </ul>
 <p>1.4.15.3</p>
 <ul>
-  <li>RGBLUT added : works the same as YV12LUT ( except R, G and B replace Y, U 
+  <li>RGBLUT added : works the same as YV12LUT ( except R, G and B replace Y, U
 and V ).</li>
-  <li>In addition, you can specify an AMP file ( arbitrary color mapping file 
+  <li>In addition, you can specify an AMP file ( arbitrary color mapping file
 format from photoshop ).</li>
 </ul>
 <p>1.4.15.2</p>
 <ul>
   <li>Bug finally solved on YV12LUT. Silly programming bug, as always...</li>
-  <li>In YV12LUT, logical and relationnal operators added ( &lt;, &lt;=, &gt;, &gt;=, 
+  <li>In YV12LUT, logical and relationnal operators added ( &lt;, &lt;=, &gt;, &gt;=,
 ==, !=, &amp;, !&amp;, |, ° ( xor ) )</li>
   <li>In YV12LUT, a ternary operator added : ? ( works as in C )</li>
 </ul>
 <p>1.4.15.1</p>
 <ul>
-  <li>In YV12LUT, another bug which was still preventing it from working fine. 
+  <li>In YV12LUT, another bug which was still preventing it from working fine.
 Hopefully, it should
     really work now.</li>
 </ul>
 <p>1.4.15</p>
 <ul>
-  <li>New Filter : HysteresyMask. It will allow you to build a new edge mask 
+  <li>New Filter : HysteresyMask. It will allow you to build a new edge mask
 from two edge masks,
-    one only having a few edges ( but we're sure they indeed are edges ), the 
+    one only having a few edges ( but we're sure they indeed are edges ), the
 other having two
-    much edges ( due to a too low thresholding for example ). Look in the 
+    much edges ( due to a too low thresholding for example ). Look in the
 documentation to have
     further explanations.</li>
 </ul>
 <p>1.4.14.2</p>
 <ul>
-  <li>Several bugfixes concerning the behavior of negative values for Y, U and 
+  <li>Several bugfixes concerning the behavior of negative values for Y, U and
 V ( edgemask,
     dedgemask, motionmask, combmask, logic )</li>
-  <li>Several bugfixes concerning the use of offX / offY / w and h ( filters 
+  <li>Several bugfixes concerning the use of offX / offY / w and h ( filters
 than can use it are :
     maskedmerge, binarize, expand, YV12subtract, yv12lut )</li>
-  <li>In YV12LUT, a bug prevented to use it with some filter. It should work 
+  <li>In YV12LUT, a bug prevented to use it with some filter. It should work
 now.</li>
-  <li>In YV12Convolution, float coefficients can be used now. If none is used, 
+  <li>In YV12Convolution, float coefficients can be used now. If none is used,
 all the processing
-    will take place with integer, so it will be faster than if you use a float. 
+    will take place with integer, so it will be faster than if you use a float.
 Moreover, if<br>
-    there is the possibility of overflow ( giving a result over 255 or under 0 
+    there is the possibility of overflow ( giving a result over 255 or under 0
 ) during computation,
-    a slower but safe function will be used to saturate computation to 0 and 
+    a slower but safe function will be used to saturate computation to 0 and
 255.</li>
 </ul>
 <p>1.4.14.1</p>
@@ -829,10 +829,10 @@ Moreover, if<br>
 </ul>
 <p>1.4.14</p>
 <ul>
-  <li>Bugfix : In YV12Layer, a useless test could prevent the filter to work. 
+  <li>Bugfix : In YV12Layer, a useless test could prevent the filter to work.
 The test has been
     removed</li>
-  <li>Bugfix : In DEdgeMask, threshold weren't taken into account. They are 
+  <li>Bugfix : In DEdgeMask, threshold weren't taken into account. They are
 now</li>
   <li>Bugfix : Logic filter is now fully functionnal, in C and MMX</li>
   <li>Added : documentation to Logic filter</li>
@@ -842,46 +842,46 @@ now</li>
 </ul>
 <p>1.4.13</p>
 <ul>
-  <li>Bugfix : One more, in the MotionMask ( the last row was not correctly 
+  <li>Bugfix : One more, in the MotionMask ( the last row was not correctly
 computed )</li>
-  <li>Optimizations : MaskedMerge gives now the same output in MMX and C, so 
+  <li>Optimizations : MaskedMerge gives now the same output in MMX and C, so
 MMX optimizations
     for it are back by default.</li>
-  <li>Added : In EdgeMask, you now can use the laplace kernel. See the 
+  <li>Added : In EdgeMask, you now can use the laplace kernel. See the
 documentation on that
     filter</li>
-  <li>Added : 'New' filter, DEdgeMask, which allows you to choose your kernel ( 
+  <li>Added : 'New' filter, DEdgeMask, which allows you to choose your kernel (
 at a cost : 
     speed )</li>
 </ul>
 <p>1.4.12</p>
 <ul>
-  <li>Behavior modifications : MotionMask and EdgeMask now also computes pixels 
+  <li>Behavior modifications : MotionMask and EdgeMask now also computes pixels
 on the borders
     mainly by extending the mask to these pixels.</li>
-  <li>Bugfix : Inflate / Inpand / Expand / Deflate, when using negative 
+  <li>Bugfix : Inflate / Inpand / Expand / Deflate, when using negative
 parameters for y,u and v, 
     some weird problems could occur.</li>
   <li>Added functionnality : In YV12LUT, the function abs is now defined.</li>
 </ul>
 <p>1.4.11</p>
 <ul>
-  <li>Bugfix : EdgeMask, MMX optimizations give different results. They are 
+  <li>Bugfix : EdgeMask, MMX optimizations give different results. They are
 disabled by default.
-    To activate them, use usemmx = true. They'll be used only with mod 16 
+    To activate them, use usemmx = true. They'll be used only with mod 16
 resolution</li>
-  <li>Bugfix : EdgeMask : first and last lines weren't always 
+  <li>Bugfix : EdgeMask : first and last lines weren't always
 computed. </li>
-  <li>Bugfix : MaskedMerge : MMX optimizations darken slightly the picture. 
+  <li>Bugfix : MaskedMerge : MMX optimizations darken slightly the picture.
 They are disabled by
-    default. To activate them, use usemmx = true. They'll be used only with mod 
+    default. To activate them, use usemmx = true. They'll be used only with mod
 16 resolution.</li>
 </ul>
 <p>1.4.10</p>
 <ul>
-  <li>Bugfix : first and last lines were not correctly computed with inflate / 
+  <li>Bugfix : first and last lines were not correctly computed with inflate /
 deflate</li>
-  <li>Invert is no longer a filter of the Masktools, it has been moved inside 
+  <li>Invert is no longer a filter of the Masktools, it has been moved inside
 AviSynth.</li>
 </ul>
 <p>1.4.9</p>
@@ -890,51 +890,51 @@ AviSynth.</li>
 </ul>
 <p>1.4.8</p>
 <ul>
-  <li>YV12Convolution now supports negative coefficients in the matrix. It 
+  <li>YV12Convolution now supports negative coefficients in the matrix. It
 allows to use the
     filter has an edge detecter.</li>
-  <li>YV12Convolution has now a new parameter : bool saturate, which, if set to 
+  <li>YV12Convolution has now a new parameter : bool saturate, which, if set to
 true, 
-    or if there is a possibility of getting out of the range [0..255] during 
+    or if there is a possibility of getting out of the range [0..255] during
 calculation,
     clips each pixel into that range ( which means it's slightly slower )</li>
-  <li>A new filter : LUT. Read further for more information on how to use 
+  <li>A new filter : LUT. Read further for more information on how to use
 it.</li>
 </ul>
 <p>1.4.7</p>
 <ul>
-  <li>Rename MotionDetection to MotionMask. I know it's kind of silly, but it's 
+  <li>Rename MotionDetection to MotionMask. I know it's kind of silly, but it's
 a lot
     more logical that way.</li>
   <li>Add the check of the width for the use MMX in MotionMask</li>
   <li>Slightly modify MMX optimizations in Binarize.</li>
-  <li>Add a new filter : YV12Convolution. It allows you to convole the picture 
+  <li>Add a new filter : YV12Convolution. It allows you to convole the picture
 by
-    a matrix of (almost) any size. Look further in the readme to learn how to 
+    a matrix of (almost) any size. Look further in the readme to learn how to
 use it</li>
 </ul>
 <p>1.4.6</p>
 <ul>
-  <li>Made the scenechange detection in MotionDetection iSSE optimized ( 
+  <li>Made the scenechange detection in MotionDetection iSSE optimized (
 meaning you
-    need an Athlon XP / Pentium IV ). It works with an Athlon XP, it is not 
+    need an Athlon XP / Pentium IV ). It works with an Athlon XP, it is not
 tested with<br>
-    an Pentium IV, it is possible to disable it by using usemmx = false in the 
+    an Pentium IV, it is possible to disable it by using usemmx = false in the
 paremeters
     of the filter.</li>
-  <li>Optimized the calculation of the motion, without using MMX ( just by 
+  <li>Optimized the calculation of the motion, without using MMX ( just by
 avoiding to do 
-    3 times the same calculations... ). So the filter should be more or less 
+    3 times the same calculations... ). So the filter should be more or less
 three times
     faster.</li>
 </ul>
 <p>1.4.5</p>
 <ul>
-  <li>Added MotionDetection filter, no MMX / assembler optimizations for it 
+  <li>Added MotionDetection filter, no MMX / assembler optimizations for it
 yet. Look
-    further in the Readme to learn how to use it. It takes the idea of 
+    further in the Readme to learn how to use it. It takes the idea of
 Sansgrip's filter
-    (NoMoSmooth) and outputs the motion mask directly in the correct colorspace 
+    (NoMoSmooth) and outputs the motion mask directly in the correct colorspace
 for the
     MaskTools.</li>
 </ul>
@@ -946,18 +946,18 @@ for the
 <p>1.4.3</p>
 <ul>
   <li>Made some MMX optimizations ( binarize, invert )</li>
-  <li>Corrected some MMX optimizations ( which means mostly 'disabled some MMX 
+  <li>Corrected some MMX optimizations ( which means mostly 'disabled some MMX
 optimizations' ). It should now work with P4.</li>
 </ul>
 <p>1.4.2</p>
 <ul>
-  <li>Fixed bugs concerning the inpand / expand / inflate / deflate 
+  <li>Fixed bugs concerning the inpand / expand / inflate / deflate
 functions</li>
 </ul>
 <p>1.4.1
 </p>
 <ul>
-  <li>Fixed the dreadly bug "multiple instances of a filter with different 
+  <li>Fixed the dreadly bug "multiple instances of a filter with different
 functions needed"</li>
 </ul>
 <p>1.4.0
@@ -968,43 +968,43 @@ functions needed"</li>
 <p>1.3.0 (private version)
 </p>
 <ul>
-  <li>Made usable the FitPlane function (still an overload of work when only 
+  <li>Made usable the FitPlane function (still an overload of work when only
 one plane has to be resized) which was previously undocumented;
-therefore, added FastFitPlane functions (corresponding FitPlane ones should be 
+therefore, added FastFitPlane functions (corresponding FitPlane ones should be
 useless now, except for the resizers settings)</li>
-  <li>Allowed the specification of a processing area for many filters; however, 
+  <li>Allowed the specification of a processing area for many filters; however,
 this should not produce any noticable speed increase.</li>
-  <li>Cleaned YV12Layer (in particular the unusable "Darken"/"Lighten" 
+  <li>Cleaned YV12Layer (in particular the unusable "Darken"/"Lighten"
 modes)</li>
-  <li>Added OverlayMask, a function that compares 2 clips, and outputs a mask 
+  <li>Added OverlayMask, a function that compares 2 clips, and outputs a mask
 of the parts that are identical (slow and far from perfect).</li>
 </ul>
 <p>1.2.0 (private version)
 </p>
 <ul>
-  <li>YV12Layer: no more useless RGB32 conversion! Approximately the same as 
+  <li>YV12Layer: no more useless RGB32 conversion! Approximately the same as
 Arithmetic (except a third clip is not used), so that one is gone...</li>
-  <li>YV12Substract: hey, why only a C version? Masks are really an underused 
+  <li>YV12Substract: hey, why only a C version? Masks are really an underused
 feature of AviSynth |-[</li>
 </ul>
 <p>1.1.0 (private version)
 </p>
 <ul>
-  <li>Older inflate/deflate are renamed expand/inpand while newer functions 
+  <li>Older inflate/deflate are renamed expand/inpand while newer functions
 replace them</li>
-  <li>Logic and Arithmetic functions added (shouldn't produce the expected 
+  <li>Logic and Arithmetic functions added (shouldn't produce the expected
 results because of no debugging)</li>
-  <li>Edgemask now takes 4 thresholds (2 for luma and 2 for chroma). They are 
+  <li>Edgemask now takes 4 thresholds (2 for luma and 2 for chroma). They are
 used for:
-    setting to 0 or leaving as is a value depending on first threshold,  
+    setting to 0 or leaving as is a value depending on first threshold, 
 setting to 255 or leaving as is a value depending on the second one.</li>
 </ul>
 <p>1.0.2 (last version - public project dropped):
 </p>
 <ul>
-  <li>Fix the shift for edgemask using sobel and roberts (misplaced MMX 
+  <li>Fix the shift for edgemask using sobel and roberts (misplaced MMX
 instruction)</li>
-  <li>MaskMerge now works (mask cleared before being used... check with 
+  <li>MaskMerge now works (mask cleared before being used... check with
 MaskMerge(clip3,clip3) for instance)</li>
 </ul>
 <p>1.0.1: Initial release
@@ -1013,34 +1013,34 @@ MaskMerge(clip3,clip3) for instance)</li>
 </h2>
 <p>Pøeskoète na V) jestlie vás nezajímá vıvoj dostupnıch nástrojù.<br>
 <br>
-The project is a VC++ 6 basic project. Each filter has its own folder which 
+The project is a VC++ 6 basic project. Each filter has its own folder which
 stores the header used by the interface, the source for the function
-members, the source for processing functions and its header. Let's look at 
+members, the source for processing functions and its header. Let's look at
 EdgeMask:<br>
-- EdgeMask.h is included by the interface to know what the filter 'looks like' 
+- EdgeMask.h is included by the interface to know what the filter 'looks like'
 (but interface.cpp still holds the definition of the
 calling conventions and exported functions)<br>
-- EM_func.h describes the different processing functions (they should all have 
+- EM_func.h describes the different processing functions (they should all have
 the same prototype/parameters):<br>
   . Line_MMX and Line_C<br>
   . Roberts_MMX and Roberts_C<br>
   . Sobel_MMX and Sobel_C<br>
-- EM_func.cpp, as all &lt;filter's initials&gt;_func.cpp, stores the 
+- EM_func.cpp, as all &lt;filter's initials&gt;_func.cpp, stores the
 implementation of the processing functions, and sometimes their MMX
 equivalents.<br>
-- EdgeMask.cpp implements the class; the constructor select the appropriate 
+- EdgeMask.cpp implements the class; the constructor select the appropriate
 processing function (MMX? C? Roberts? Line? Sobel?) and uses
 it to fill the generic protected function pointer used in GetFrame<br>
 <br>
-Interface.cpp stores the export function and all of the calling functions 
+Interface.cpp stores the export function and all of the calling functions
 (AVSValue ... Create_&lt;filter&gt;).<br>
 <br>
-ChannelMode.cpp defines the Channel operating modes. There could be added the 
+ChannelMode.cpp defines the Channel operating modes. There could be added the
 equivalent of a debugprintf.<br>
 <br>
-This quick walkthrough won't probably help most developers, as the examples of 
+This quick walkthrough won't probably help most developers, as the examples of
 V) for users, but that's the best I've come with so far. It will improve
-of course over time depending on the success of the idea, which main drawback, 
+of course over time depending on the success of the idea, which main drawback,
 speed, will probably make it scarcely used, if ever. &lt;g&gt;
 </p>
 <p><kbd>$English Date: 2005/10/05 18:12:43 $</kbd>

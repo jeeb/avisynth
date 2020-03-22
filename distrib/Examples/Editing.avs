@@ -25,7 +25,7 @@ substream = Trim (0, -1000)
 # Loop the substream 25 times
 
 substream = Loop(substream, 25)
- 
+
 # Put the substream on bottom of the original
 
 Stackvertical(substream)

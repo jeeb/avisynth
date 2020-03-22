@@ -3,7 +3,7 @@
 <head>
 <!--
 Automatically generated, don't change:
-$Id: faq_loading_clips.htm,v 1.3 2008/07/18 06:27:18 fizick Exp $ 
+$Id: faq_loading_clips.htm,v 1.3 2008/07/18 06:27:18 fizick Exp $
 -->
     <meta http-equiv="Content-Language" content="ru">
    <meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
@@ -46,7 +46,7 @@ AviSynth?</a></li>
 
 <a name="Which_media_formats_can_be_loaded_into_AviSynth.3F"></a>
 <h3>Какие медиа форматы могут быть загружены в AviSynth?</h3>
-<p>Большинство видео и аудио форматов может быть загружено в AviSynth, но существуют и некоторые 
+<p>Большинство видео и аудио форматов может быть загружено в AviSynth, но существуют и некоторые
 исключения такие как flv4 (VP6) и dvr-ms. Если невозможно загрузить
 клип в AviSynth, вы должны сконвертировать его в некоторый другой формат, который
 может быть загружен. Помните выбрать такой формат, для которого вы будете иметь минимальные потери
@@ -62,8 +62,8 @@ AviSynth?</h3>
     (ныне плагин).</li>
 </ol>
 <p>Удостоверьтесь, что ваш клип содержит максимум один видео и (или) один аудио поток
-(таким образом удалите субтитры и удалите другие видео/аудио потоки). 
-Если вы хотите загрузить клип, который содержит видео и аудио, 
+(таким образом удалите субтитры и удалите другие видео/аудио потоки).
+Если вы хотите загрузить клип, который содержит видео и аудио,
 у вас есть две возможности:
 <ul>
   <li>Выделите (demux) аудио поток и загрузите потоки отдельно в AviSynth.</li>
@@ -96,7 +96,7 @@ AviSynth?</h3>
 <ul>
   <li>Он менее надежный, чем AviSource и плагины ввода специфических видео и аудио.</li>
   <li>Проблемы поиска (прокрутки).</li>
-  <li>Может быть проблемой получить требуемый DirectShow фильтр выполняющим 
+  <li>Может быть проблемой получить требуемый DirectShow фильтр выполняющим
     декодирование. Во многих случаях вы имеете несколько декодеров, которые могут
     декодировать тот же специфический формат. Фильтр, который будет использован, это тот,
     что имеет наивысший приоритет (merit). Может оказаться проблемным
@@ -123,7 +123,7 @@ VirtualDub?</h3>
 <pre>AviSource(&quot;d:\filename.avi&quot;, false)</pre>
 <p>Если AviSynth ругается о неспособности загрузить ваш avi (couldn't
 decompress ...), вам необходимо установить соответствующий кодек. <a href="http://www.headbands.com/gspot/">GSpot</a>,
-в частности, подскажет вам, какой кодек вам необходимо установить для возможности 
+в частности, подскажет вам, какой кодек вам необходимо установить для возможности
 открытия вашего avi.</p>
 <p>Явное указание декодера, который будет использован для загрузки клипа в AviSynth:</p>
 <pre># загрузить avi используя кодек XviD:
@@ -148,8 +148,8 @@ Manager) кодек, чтобы открыть аудио в AviSynth. Для многих видео и аудио формато
 <h3>Как мне загрузить MPEG-1/MPEG-2/DVD VOB/TS/PVA в
 AviSynth?</h3>
 <p>DGDecode является внешним плагином
-и поддерживает MPEG-1, MPEG-2 / VOB, TS и PVA потоки. 
-Откройте их сначала в DGIndex  
+и поддерживает MPEG-1, MPEG-2 / VOB, TS и PVA потоки.
+Откройте их сначала в DGIndex
 и создайте d2v файл, который может быть открыт в AviSynth (заметьте,
 что это будет открывать только видео в AviSynth):</p>
 <p>Немного примеров:</p>
@@ -158,18 +158,18 @@ LoadPlugin(&quot;d:\dgecode.dll&quot;)
 mpeg2source(&quot;d:\filename.d2v&quot;) </pre>
 
 <p>Если ваш транспортный поток (*.TS) содержит MPEG-4 AVC
-видео, вам необходимо выделить (demux) неформатированный (raw) видео поток из него, 
+видео, вам необходимо выделить (demux) неформатированный (raw) видео поток из него,
 и использовать <a href="http://forum.doom9.org/showthread.php?p=959013">DGAVCDec</a>
 для его открытия в AviSynth. Смотри <a href="#How_do_I_load_MP4.2FMKV.2FM2TS_into_AviSynth.3F">здесь</a>
 о его использовании.</p>
 
 <a name="How_do_I_load_QuickTime_files_into_AviSynth.3F"></a>
 <h3>Как мне загрузить файлы QuickTime в AviSynth?</h3>
-<p>Есть два способа загрузить ваши quicktime mov видео в AviSynth 
-(и еще RawSource для несжатых mov): QTSource и QTReader. 
-Первый появился недавно и способен открыть многие форматы quicktime 
-(с возможностью открыть их как YUY2), но вам необходимо установить 
-проигрыватель QuickTime player для возможности использовать данный плагин. 
+<p>Есть два способа загрузить ваши quicktime mov видео в AviSynth
+(и еще RawSource для несжатых mov): QTSource и QTReader.
+Первый появился недавно и способен открыть многие форматы quicktime
+(с возможностью открыть их как YUY2), но вам необходимо установить
+проигрыватель QuickTime player для возможности использовать данный плагин.
 Второй (QTReader) - очень старый, не требуется установка проигрывателя
 для открытия форматов quicktime в AviSynth.</p>
 <p><i>QTSource:</i></p>
@@ -195,8 +195,8 @@ QTReader(&quot;C:\quicktime.mov&quot;) </pre>
 <a name="How_do_I_load_raw_source_video_files_into_AviSynth.3F"></a>
 <h3>Как мне загрузить бесформатные (сырые, raw) видео файлы в
 AviSynth?</h3>
-<p>Внешний плагин RawSource поддерживает все виды бесформатных (raw) 
- видео файлов с заголовком YUV4MPEG2 или без заголовка (видео файлы, 
+<p>Внешний плагин RawSource поддерживает все виды бесформатных (raw)
+ видео файлов с заголовком YUV4MPEG2 или без заголовка (видео файлы,
 которые содержат YUV2, YV16, YV12, RGB или Y8 видео данные, записанные
 кадр за кадром без сжатия).</p>
 <p>Примеры:</p>
@@ -208,17 +208,17 @@ RawSource(&quot;d:\src6_625.raw&quot;,720,576,&quot;BGRA&quot;)
 
 # Вы можете указать байтовую позицию видеокадров в файле прямо
 # (что может быть найдено  с помощью yuvscan.exe).
-# Это полезно, если это видео не сосем неформатированное, 
+# Это полезно, если это видео не сосем неформатированное,
 № но например несжатые файлы MOV или файлы с некоторым специфичным заголовком:
 RawSource(&quot;d:\yuv.mov&quot;, 720, 576, &quot;UYVY&quot;, index=&quot;0:192512 1:1021952 25:21120512 50:42048512 75:62976512&quot;)</pre>
 
 <a name="How_do_I_load_RealMedia_files_into_AviSynth.3F"></a>
 <h3>Как мне загрузить файлы RealMedia в AviSynth?</h3>
 <p>RM/RMVB (RealMedia / RealMedia с переменным битрейтом; обычно содержит
-Real Video/Audio): установите 
+Real Video/Audio): установите
 <a href="http://sourceforge.net/projects/guliverkli/">rmvb splitter</a>
  и Real кодеки путем устанвки
-RealPlayer/<a href="http://www.free-codecs.com/download/Real_Alternative.htm">RealAlternative</a>. 
+RealPlayer/<a href="http://www.free-codecs.com/download/Real_Alternative.htm">RealAlternative</a>.
 Создайте скрипт:</p>
 <pre>DirectShowSource(&quot;d:\clip.rmvb&quot;, fps=25, convertfps=true) # подстройте fps при необходимости</pre>
 
@@ -230,9 +230,9 @@ WMV/WMA): этот формат не полностью поддерживается ffdshow,
 Возьмите <a href="http://msdn.microsoft.com/windowsmedia/downloads/default.aspx">
  WMF SDK v9 для W2K или позже для XP/Vista</a> который содержит кодеки
  (и DMO упаковщики (wrappers) необходимые для использования DMO фильтров
-в DirectShow). Вы можете также получить эти кодеки с Windows Media Player 9 Series или позже, 
-Windows Media Format runtime (WMFDist.exe), Codec Installation Package (WM9Codecs.exe) 
-с сайта Microsoft или другого места. 
+в DirectShow). Вы можете также получить эти кодеки с Windows Media Player 9 Series или позже,
+Windows Media Format runtime (WMFDist.exe), Codec Installation Package (WM9Codecs.exe)
+с сайта Microsoft или другого места.
 (Заметьте, что собственный кодек Microsoft VC1 не поддерживается
 в W2K так как вам необходим WMF SDK v11.) Создайте скрипт:</p>
 <pre>DirectShowSource(&quot;d:\clip.wmv&quot;, fps=25, convertfps=true) # подстройте fps при необходимости</pre>
@@ -252,13 +252,13 @@ FFmpegSource(&quot;D:\file_aac.mp4&quot;, vtrack = -1, atrack = -1, timecodes=&q
 <p>Важно сгенерировать файл временных кодов, для проверки
 имеет ли видео постоянную частоту кадров. В этом случае вы не должны
 использовать файла временных кодов и вы можете обрабатывать виде любым способом по вашему желанию.
-Однако, многие не-AVI файлы содержат видео с переменной частотой кадров (AVI файлы 
+Однако, многие не-AVI файлы содержат видео с переменной частотой кадров (AVI файлы
 всегда имеют постоянную), и в этом случая вам надо удостовериться в двух вещах:</p>
 <ol>
-  <li><i>Не меняйте частоту и число кадров 
+  <li><i>Не меняйте частоту и число кадров
     в AviSynth.</i> Если вы не выполните этого (и вы не изменили файл временных кодов
     вручную), то ваше видео и аудио будут несинхронны.</li>
-  <li><i>Используйте временные коды снова, когд вы мультиплексируете 
+  <li><i>Используйте временные коды снова, когд вы мультиплексируете
     кодированное видео и аудио.</i> Если вы не выполните этого, то ваше видео и аудио будут несинхронны.</li>
 </ol>
 <p>Основная причина этого в том, что FFmpegSource открывает
@@ -274,7 +274,7 @@ FFmpegSource(&quot;D:\file_aac.mp4&quot;, vtrack = -1, atrack = -1, timecodes=&q
 and MP4.</p>
 <p>2) Возьмите <a href="http://forum.doom9.org/showthread.php?p=959013">DGAVCDec</a>.
 В настоящее время вам сначала необходимо выделить бесформатный (raw) поток (*.264) из
-контейнера (используя MKVExtract, MPlayer, TSRemux или другую программу). 
+контейнера (используя MKVExtract, MPlayer, TSRemux или другую программу).
 Откройте бесформатный (raw) файл потока в DGAVCIndex, чтобы создать индексный файл
 (скажем track1.dga). Откоройте индексный файл в AviSynth:</p>
 <pre># raw video demuxed from M2TS (Blu-ray BDAV MPEG-2 transport streams)
@@ -283,7 +283,7 @@ AVCSource(&quot;D:\track1.dga&quot;)</pre>
 
 <a name="How_do_I_load_WAVE_PCM_files_into_AviSynth.3F"></a>
 <h3>Как мне загрузить аудио файлы WAVE PCM в AviSynth?</h3>
-<p>Используйте WavSource для открытия WAVE PCM файлов (предполагая, 
+<p>Используйте WavSource для открытия WAVE PCM файлов (предполагая,
 что они меньше 4 Гб):</p>
 <pre>WavSource(&quot;D:\file.wav&quot;)</pre>
 
@@ -317,7 +317,7 @@ AudioDub(V, A)</pre>
 <h3>Как мне загрузить файлы aac/flac/ogg в AviSynth?</h3>
 <p>Используйте ffdshow (установите AAC как libfaad или realaac), и используйте</p>
 <pre>DirectShowSource(&quot;d:\audio.aac&quot;)</pre>
-<p>Для WAVE_FORMAT_EXTENSIBLE, ogg, flac, wma, и других форматов, 
+<p>Для WAVE_FORMAT_EXTENSIBLE, ogg, flac, wma, и других форматов,
 может быть использовано <a href="http://forum.doom9.org/showthread.php?t=108254">BassAudio
 и соответствующие библиотеки и дополнения</a>. Заметьте, что
 BassAudioSource может декодировать стерео aac/mp4, но не может декодировать многоканальный aac.</p>
@@ -335,7 +335,7 @@ BassAudioSource может декодировать стерео aac/mp4, но не может декодировать мног
 изображений.</p>
 <pre># одиночное изобрвжение:
 immareadpic(&quot;x:\path\pic.bmp&quot;)
- 
+
 # анимация:
 immareadanim(&quot;x:\path\anim.gif&quot;)
 

@@ -17,23 +17,23 @@
   <code>VToY8 </code>(<var>clip</var>)<br>
   <code>YToUV</code> (<var>clipU, clipV [, clipY]</var>)
 <p> Tyto ètyøi filtry jsou dostupné od <em>v2.5</em>.
-<p><code>SwapUV</code> zamìní barevné 
+<p><code>SwapUV</code> zamìní barevné
 kanály&nbsp;(U a V)&nbsp;v klipu. Nìkdy&nbsp;jsou pøi naèítání
 DivX nebo MJPEG klipù do AviSynthu barvy&nbsp;zdeformované (modré oblièeje&nbsp;místo èervených, atd)&nbsp;, kvùli&nbsp;chybì v DivX (5.00-5.02). Mù¾ete pou¾ít
 tento filtr pro nápravu této chyby.
-<p><code>UToY</code>   
+<p><code>UToY</code>
  kopíruje barevnou
 U&nbsp;plochu&nbsp;do plochy Y, výsledný obraz pak bude polovièní.&nbsp;V¹echny barevné&nbsp;(chroma) informace jsou odstranìny, tak¾e obraz
 je nyní èernobílý.
-<p>Podobnì&nbsp; <code>VToY</code> 
+<p>Podobnì&nbsp; <code>VToY</code>
   kopíruje
 barevnou&nbsp;V&nbsp;plochu&nbsp;do plochy Y, výsledný obraz pak bude polovièní. V¹echny barevné&nbsp;(chroma) informace jsou odstranìny,
 tak¾e obraz je nyní èernobílý.
-<p><code>YToUV</code>  
+<p><code>YToUV</code>
 &nbsp;umístí&nbsp;jasové (luma) kanály&nbsp;dvou klipù
 jako&nbsp;U a V kanály. Obraz je nyní&nbsp;dvakrát vìt¹í, a jas&nbsp;je tvoøen&nbsp;50% ¹edou.&nbsp;Pou¾ijte <A href="merge.htm"><code>MergeLuma</code></A>, pokud chcete&nbsp;pøidat hodnoty jasu (luma).
 <br>
-   Od <em>v2.51</em>&nbsp;je zde volitelný argument&nbsp; <i>clipY</i> který 
+   Od <em>v2.51</em>&nbsp;je zde volitelný argument&nbsp; <i>clipY</i> který
 pøedá&nbsp;jasovou slo¾ky tohoto klipu&nbsp;kanálu Y výsledného klipu.
 <p> Od <em>v2.53</em> pracují také v&nbsp;YUY2.
 <p>

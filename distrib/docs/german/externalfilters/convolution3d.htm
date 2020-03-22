@@ -1,4 +1,4 @@
-<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd"> 
+<!DOCTYPE htm PUBLIC "-//W3C//DTD Xhtm 1.0 Transitional//EN" "DTD/xhtm1-transitional.dtd">
 <htm xmlns="http://www.w3.org/1999/xhtm" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/htm; charset=iso-8859-1" />
@@ -23,10 +23,10 @@
 </ul>
 <hr>
 <h2>Description</h2>
-Convolution3D is an avisynth filter that will apply a 3D convolution to all pixel 
+Convolution3D is an avisynth filter that will apply a 3D convolution to all pixel
 of a frame.<br>
 <p><strong>1 - How to use it</strong> : <br>
-  Convolution3d (matrix=0, ythresh=3, cthresh=4, t_ythresh=3, t_cthresh=4, influence=3, 
+  Convolution3d (matrix=0, ythresh=3, cthresh=4, t_ythresh=3, t_cthresh=4, influence=3,
   debug=0)</p>
 <p><strong>Matrix choice</strong> : <br>
   0 : original matrix : <br>
@@ -38,14 +38,14 @@ of a frame.<br>
   1 1 1&nbsp;&nbsp; 1 1 1&nbsp;&nbsp; 1 1 1<br>
   1 1 1&nbsp;&nbsp; 1 1 1&nbsp;&nbsp; 1 1 1<br>
   1 1 1&nbsp;&nbsp; 1 1 1&nbsp;&nbsp; 1 1 1<br>
-  This matrix is much usefull with animes or bad quality sources because it blur 
+  This matrix is much usefull with animes or bad quality sources because it blur
   a little more (so removing more noise)</p>
 <p><strong>Temporal influence</strong> :<br>
-  It's used especially to speed up a little this filter and to avoid using temporal 
+  It's used especially to speed up a little this filter and to avoid using temporal
   informations when not needed <br>
   (scene change, fade, ...)<br>
   I first build a limit = Temporal Luma Threshold * Temporal influence<br>
-  For each 2 pixel computed (due to MMX, 2 pixel at the same time), I first check 
+  For each 2 pixel computed (due to MMX, 2 pixel at the same time), I first check
   this :<br>
   if <br>
   (Abs (Y0 - Y0[Previous frame]) +<br>
@@ -56,45 +56,45 @@ of a frame.<br>
   do Spacial work (only 3*3 matrix)<br>
   Else<br>
   do Spacial and Temporal work (3*3*3 matrix)<br>
-  The lower it is -&gt; the faster will be the filter but compressibility should 
+  The lower it is -&gt; the faster will be the filter but compressibility should
   be lower<br>
-  The higher it is -&gt; the slower will be the filter but compressibility should 
+  The higher it is -&gt; the slower will be the filter but compressibility should
   be higher<br>
   if temporal influence is set to -1 then only spatial work is done (high speed).<br>
   This parameter is a float.</p>
 <p><strong>2 - Parameters sample</strong></p>
 <p>I build the following presets to make things easier :<br>
-  <em><strong>Convolution3d (preset=&quot;movieHQ&quot;)</strong></em><strong> 
+  <em><strong>Convolution3d (preset=&quot;movieHQ&quot;)</strong></em><strong>
   </strong>// Movie Hi Quality (good DVD source)<br>
   is an alias for Convolution3D (0, 3, 4, 3, 4, 2.8, 0) <br>
-  <em><strong>Convolution3d (preset=&quot;movieLQ&quot;) </strong></em>// Movie 
+  <em><strong>Convolution3d (preset=&quot;movieLQ&quot;) </strong></em>// Movie
   Low Quality (noisy DVD source)<br>
   is an alias for Convolution3D (0, 6, 10, 6, 8, 2.8, 0) <br>
-  <em><strong>Convolution3d (preset=&quot;animeHQ&quot;)</strong></em> // Anime 
+  <em><strong>Convolution3d (preset=&quot;animeHQ&quot;)</strong></em> // Anime
   Hi Quality (good DVD source)<br>
   is an alias for Convolution3D (0, 6, 12, 6, 8, 2.8, 0) <br>
-  <em><strong>Convolution3d (preset=&quot;animeLQ&quot;) </strong></em>// Anime 
+  <em><strong>Convolution3d (preset=&quot;animeLQ&quot;) </strong></em>// Anime
   Low Quality (noisy DVD source)<br>
   is an alias for Convolution3D (1, 8, 16, 8, 8, 2.8, 0) <br>
-  <em><strong>Convolution3d (preset=&quot;animeBQ&quot;)</strong></em> // Anime 
+  <em><strong>Convolution3d (preset=&quot;animeBQ&quot;)</strong></em> // Anime
   Bad Quality (???)<br>
   is an alias for Convolution3D (1, 12, 22, 8, 8, 2.8, 0) <br>
-  <em><strong>Convolution3d (preset=&quot;vhsBQ&quot;) </strong></em>// VHS capture 
+  <em><strong>Convolution3d (preset=&quot;vhsBQ&quot;) </strong></em>// VHS capture
   Bad Quality (???)<br>
   is an alias for Convolution3D (0, 32, 128, 16, 64, 10, 0) </p>
 <p></p>
 <p>I had to test Convolution3d with bad quality TV capture and in this case<br>
-  you'll have to higher especially the chroma tresholds (causing some ghosting 
+  you'll have to higher especially the chroma tresholds (causing some ghosting
   but the overall quality seems to be better).<br>
   I personnaly use these parameters : <br>
   Convolution3D (0, 32, 128, 32, 128, 10, 0) </p>
 <p><br>
-  The thresholds of Convolution3d are only here to take care of edges and scene 
-  change. You can increase the spatial one (especially the chroma threshold) but 
-  stop as soon as you see some blurring around the edges (if you want quality). 
+  The thresholds of Convolution3d are only here to take care of edges and scene
+  change. You can increase the spatial one (especially the chroma threshold) but
+  stop as soon as you see some blurring around the edges (if you want quality).
   With the settings proposed you shouldn't have this problem. <br>
   The Temporal one should be left below 10 to avoid ghosting.<br>
-  You should especially take care of the threshold with matrix 1, because with 
+  You should especially take care of the threshold with matrix 1, because with
   this matrix the current frame has less weight so it's easier to have ghosting.</p>
 <p>You can find some informations about how it works in : <a href="http://forum.doom9.org/showthread.php?s=&threadid=29829">http://forum.doom9.org/showthread.php?s=&amp;threadid=29829<br>
 </a><br>
@@ -102,7 +102,7 @@ of a frame.<br>
 </strong> <br>
   - Work only with YUV2, CHECKED.<br>
   - require a Integer SSE capable CPU (no PII and K6-II), CHECKED.</p>
-<p>WARNING : it's slow, I know it and I try to make it faster so don't rush me 
+<p>WARNING : it's slow, I know it and I try to make it faster so don't rush me
   about it, thanks in advance.</p>
 <p><strong>4 - Credits</strong></p>
 <p>Thanks to<br>

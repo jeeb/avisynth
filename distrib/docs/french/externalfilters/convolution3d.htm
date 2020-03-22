@@ -4,7 +4,7 @@
    <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: convolution3d.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $ 
+$Id: convolution3d.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 -->
 </head>
 <body>
@@ -23,7 +23,7 @@ $Id: convolution3d.htm,v 1.2 2005/10/03 16:49:04 macpaille Exp $
 </ul>
 <hr>
 <h2>Description</h2>
-Convolution3D is an avisynth filter that will apply a 3D convolution to all pixel 
+Convolution3D is an avisynth filter that will apply a 3D convolution to all pixel
 of a frame.
 <h2>1 - How to use it</h2>
 <p><code>Convolution3d</code> (<var>matrix=0, ythresh=3, cthresh=4, t_ythresh=3, t_cthresh=4, influence=3,
@@ -38,14 +38,14 @@ debug=0</var>)</p>
   1 1 1&nbsp;&nbsp; 1 1 1&nbsp;&nbsp; 1 1 1<br>
   1 1 1&nbsp;&nbsp; 1 1 1&nbsp;&nbsp; 1 1 1<br>
   1 1 1&nbsp;&nbsp; 1 1 1&nbsp;&nbsp; 1 1 1<br>
-  This matrix is much usefull with animes or bad quality sources because it blur 
+  This matrix is much usefull with animes or bad quality sources because it blur
   a little more (so removing more noise)</p>
 <p><b>Temporal influence</b> :<br>
-  It's used especially to speed up a little this filter and to avoid using temporal 
+  It's used especially to speed up a little this filter and to avoid using temporal
   informations when not needed <br>
   (scene change, fade, ...)<br>
   I first build a limit = Temporal Luma Threshold * Temporal influence<br>
-  For each 2 pixel computed (due to MMX, 2 pixel at the same time), I first check 
+  For each 2 pixel computed (due to MMX, 2 pixel at the same time), I first check
   this :<br>
   if <br>
   (Abs (Y0 - Y0[Previous frame]) +<br>
@@ -56,9 +56,9 @@ debug=0</var>)</p>
   do Spacial work (only 3*3 matrix)<br>
   Else<br>
   do Spacial and Temporal work (3*3*3 matrix)<br>
-  The lower it is -&gt; the faster will be the filter but compressibility should 
+  The lower it is -&gt; the faster will be the filter but compressibility should
   be lower<br>
-  The higher it is -&gt; the slower will be the filter but compressibility should 
+  The higher it is -&gt; the slower will be the filter but compressibility should
   be higher<br>
   if temporal influence is set to -1 then only spatial work is done (high speed).<br>
   This parameter is a float.</p>
@@ -67,34 +67,34 @@ debug=0</var>)</p>
 <b>Convolution3d (preset=&quot;movieHQ&quot;)</b><strong> </strong>// Movie Hi Quality (good DVD source)<br>
   is an alias for Convolution3D (0, 3, 4, 3, 4, 2.8, 0) <br>
 <b>Convolution3d (preset=&quot;movieLQ&quot;)</b><strong>
-  <em> </em> </strong>// Movie 
+  <em> </em> </strong>// Movie
   Low Quality (noisy DVD source)<br>
   is an alias for Convolution3D (0, 6, 10, 6, 8, 2.8, 0) <br>
-<b>Convolution3d (preset=&quot;animeHQ&quot;)</b> // Anime 
+<b>Convolution3d (preset=&quot;animeHQ&quot;)</b> // Anime
   Hi Quality (good DVD source)<br>
   is an alias for Convolution3D (0, 6, 12, 6, 8, 2.8, 0) <br>
 <b>Convolution3d (preset=&quot;animeLQ&quot;)</b><strong>
-  <em> </em> </strong>// Anime 
+  <em> </em> </strong>// Anime
   Low Quality (noisy DVD source)<br>
   is an alias for Convolution3D (1, 8, 16, 8, 8, 2.8, 0) <br>
-<b>Convolution3d (preset=&quot;animeBQ&quot;)</b> // Anime 
+<b>Convolution3d (preset=&quot;animeBQ&quot;)</b> // Anime
   Bad Quality (???)<br>
   is an alias for Convolution3D (1, 12, 22, 8, 8, 2.8, 0) <br>
 <b>Convolution3d (preset=&quot;vhsBQ&quot;)</b><strong>
-  <em> </em> </strong>// VHS capture 
+  <em> </em> </strong>// VHS capture
   Bad Quality (???)<br>
   is an alias for Convolution3D (0, 32, 128, 16, 64, 10, 0)</p>
 <p>I had to test Convolution3d with bad quality TV capture and in this case<br>
-  you'll have to higher especially the chroma tresholds (causing some ghosting 
+  you'll have to higher especially the chroma tresholds (causing some ghosting
   but the overall quality seems to be better).<br>
   I personnaly use these parameters :</p>
 <pre>Convolution3D (0, 32, 128, 32, 128, 10, 0)</pre>
-<p>The thresholds of Convolution3d are only here to take care of edges and scene 
-  change. You can increase the spatial one (especially the chroma threshold) but 
-  stop as soon as you see some blurring around the edges (if you want quality). 
+<p>The thresholds of Convolution3d are only here to take care of edges and scene
+  change. You can increase the spatial one (especially the chroma threshold) but
+  stop as soon as you see some blurring around the edges (if you want quality).
   With the settings proposed you shouldn't have this problem. <br>
   The Temporal one should be left below 10 to avoid ghosting.<br>
-  You should especially take care of the threshold with matrix 1, because with 
+  You should especially take care of the threshold with matrix 1, because with
   this matrix the current frame has less weight so it's easier to have ghosting.</p>
 <p>You can find some informations about how it works in : <a href="http://forum.doom9.org/showthread.php?s=&threadid=29829">http://forum.doom9.org/showthread.php?s=&amp;threadid=29829</a></p>
 <h2>3 - Current limitations or known problems</h2>
@@ -102,7 +102,7 @@ debug=0</var>)</p>
   <li>Work only with YUV2, CHECKED.</li>
   <li>requires a Integer SSE capable CPU (no PII and K6-II), CHECKED.</li>
 </ul>
-<p>WARNING : it's slow, I know it and I try to make it faster so don't rush me 
+<p>WARNING : it's slow, I know it and I try to make it faster so don't rush me
   about it, thanks in advance.</p>
 <h2>4 - Credits</h2>
 <p>Thanks to<br>

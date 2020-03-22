@@ -10,21 +10,21 @@
   <code>Blur </code>(<var>clip, float amountH, float amountV</var>)<br>
   <code>Sharpen </code>(<var>clip, float amount</var>)<br>
   <code>Sharpen </code>(<var>clip, float amountH, float amountV</var>)</p>
-<p>Questo &egrave; un semplice filtro blurring 3x3. Il valore pi&ugrave; grande 
-  ammesso per l' argumento del <code> Blur</code> &egrave; circa 1.58, che corresponde 
-  ad un blur di 3x3-pixel. Il valore 1.0 produce un kernel (1/4,1/2,1/4). Se si 
-  desidera un blur Gaussiano a pi&ugrave; ampio raggio, raccomando di contatenare 
-  assieme diverse copie di <code> Blur</code>(1.0) . ( Nessuno ricorda il triangolo 
+<p>Questo &egrave; un semplice filtro blurring 3x3. Il valore pi&ugrave; grande
+  ammesso per l' argumento del <code> Blur</code> &egrave; circa 1.58, che corresponde
+  ad un blur di 3x3-pixel. Il valore 1.0 produce un kernel (1/4,1/2,1/4). Se si
+  desidera un blur Gaussiano a pi&ugrave; ampio raggio, raccomando di contatenare
+  assieme diverse copie di <code> Blur</code>(1.0) . ( Nessuno ricorda il triangolo
   di Pascal ?)&nbsp;<br>
   <br>
-  Valori negativi degli argumenti del <code> Blur</code> intensificano l' immagine, 
-  ed in effetti <code>Sharpen</code>(n) &egrave; un alias di<code> Blur</code>(-n). 
-  Il valore pi&ugrave; basso utilizzabile come argomento di<code> Blur</code> 
+  Valori negativi degli argumenti del <code> Blur</code> intensificano l' immagine,
+  ed in effetti <code>Sharpen</code>(n) &egrave; un alias di<code> Blur</code>(-n).
+  Il valore pi&ugrave; basso utilizzabile come argomento di<code> Blur</code>
   &egrave; -1.0 ed il pi&ugrave; grande per <code>Sharpen</code> &egrave; 1.0.&nbsp;<br>
   <br>
-  Si possono usare 2 argumenti per settare valori indipendenti Verticali e Orizzontali. 
-  In questo modo, si pu&ograve; usare<code> Blur</code>(0,1) per filtrare solo 
-  Verticalmente, per esempio per fondere assieme linee interallacciate. Di default 
+  Si possono usare 2 argumenti per settare valori indipendenti Verticali e Orizzontali.
+  In questo modo, si pu&ograve; usare<code> Blur</code>(0,1) per filtrare solo
+  Verticalmente, per esempio per fondere assieme linee interallacciate. Di default
   <i>amountV</i>=<i>amountH</i>.<br>
 </p>
 <kbd>$Date: 2004/09/07 22:07:18 $</kbd>

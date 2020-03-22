@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -21,7 +21,7 @@ $Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         blikání. Efekt je nejviditelnìjší na poèítaèovì generovaných obrazech
         jako titulky, mapy poèasí, a loga stanic pøi použití kompozitního nebo
         slabì oddìleného S-Video signálu. Normální video je zlepšeno jemnìji.</p>
-        <p>Všimnìte si, že tento filtr se nijak nevztahuje ke “comb - roztøepení” ve smyslu 
+        <p>Všimnìte si, že tento filtr se nijak nevztahuje ke “comb - roztøepení” ve smyslu
         používaném mnoha uživateli! Vùbec neslouží k redukci artefaktù roztøepení
         (posunutých horizontálních øádkù). Na to se musíte podívat
         po filtru urèeném k odstraòování prokládání - deinterlacing.</p>
@@ -64,7 +64,7 @@ $Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         hodnotu.</i></p>
         <p>Mùžete pravdìpodobnì odhadnout co zvolit —
         &quot;NTSC&quot; pro Japonsko a severní Ameriku, &quot;PAL&quot;
-        pro vìtšinu ostatního materiálu. Pokud ho vyberete špatnì, filtr bude víc škodlivý než 
+        pro vìtšinu ostatního materiálu. Pokud ho vyberete špatnì, filtr bude víc škodlivý než
         užiteèný.</p>
         <p>Také je zde tøetí režim zvaný
         &quot;Progressive&quot;. Ten je zamýšlen pro testování, aby bylo vidìt zda tento
@@ -72,7 +72,7 @@ $Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         jestli skuteènì udìlá nìco dobrého.</p>
         <p><var>Recall</var><br>
         <i>Celé èíslo od 0 do 99; 85 je výchozí</i></p>
-        <p>Toto je opravdu dùležité nastavení. Rozhoduje jak daleko zpìt 
+        <p>Toto je opravdu dùležité nastavení. Rozhoduje jak daleko zpìt
         se Guava bude dívat, aby potvrdil, že tam skuteènì je nìjaké
         blikání. Nastavte ho vysoko (kolem 75%) , aby jste se vyhnuli
         artefaktùm ve scénách s pohybem. Nastavte ho výše (kolem 85%), aby
@@ -111,7 +111,7 @@ $Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         </ul>
         <p>&nbsp;</p>
         <p><var>Activation</var></p>
-        <p>Toto nastavení má mnohem jemnìjší efekt. Pokud ho nastavíte vysoko, 
+        <p>Toto nastavení má mnohem jemnìjší efekt. Pokud ho nastavíte vysoko,
         filtr bude opravovat jen nepøetržité blikání.
         Nastavte ho níže a filtr bude tolerovat více pøerušení — ale
         bude také trochu více vnímavý na artefakty.</p>
@@ -121,11 +121,11 @@ $Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         lezoucí body zrovna ztratily. Pokud vám nezáleží na blikání a
         chcete odstranit lezoucí body, mùžete toto bezpeènì nastavit blízko 100%.</p>
         <p><b>Pohled na problémy</b></p>
-        <p>Existuje pár hlavních druhù problémù, na které je potøeba dát pozor. 
+        <p>Existuje pár hlavních druhù problémù, na které je potøeba dát pozor.
         Nejdùležitìjší nastává v pøechodech scén, kde oblasti které zobrazovaly
         lezoucí body mohou být potenciálnì zprùmìrovány s prvním polem po pøechodu.
         Druhý nejviditelnìjší artefakt jsou zbloudilé
-        nespránì smíchané pixely, kde je rychlý pohyb. Oba mohou být významnì 
+        nespránì smíchané pixely, kde je rychlý pohyb. Oba mohou být významnì
         redukovány snížením vašeho nastavení <var>MaxVariation</var>.
         <p>Poslední (ale obecnì nejménì významné) místo pro kontrolu je s
         opakovaným pohybem — Pokud se stane, že se vyskytují se špatnou frekvencí,
@@ -138,7 +138,7 @@ $Id: guavacomb.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
         <p>Obecnì je nejlepší spustit høebenové filtrování ihned po jakýchkoli
         vyhlazovacích filtrech. Výjimkou je Peach Smoother, který pracuje
         nejlépe právì po høebenovém filtru. To je proto, že Peach bude jinak
-        interpretovat barevné pøeslechové poruchy (crosstalk) jako šum, a bude bránit 
+        interpretovat barevné pøeslechové poruchy (crosstalk) jako šum, a bude bránit
         vyhlazení kolem nìho.</p>
         <p>Høebenové filtrování by mìlo být urèitì spuštìno pøed jakýmkoli krokem inverse telecine.
         Barevné pøeslechové poruchy mohou ošklivì ovlivnit inverse telecine, takže je dobré

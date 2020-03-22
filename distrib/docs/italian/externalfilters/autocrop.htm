@@ -4,7 +4,7 @@
    <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: autocrop.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $ 
+$Id: autocrop.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $
 -->
 </head>
 <body>
@@ -17,16 +17,16 @@ $Id: autocrop.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $
 <b>requirements:</b> YV12 &amp; YUY2 Colorspace
 <hr>
 <h3>Descrizione</h3>
-<p>AutoCrop &egrave; un filtro di AVISynth che automaticamente croppa i bordi 
-  neri di un clip. Opera sia in modo preview (dove sovrappone le informazioni 
-  per il cropping consigliato) , che in modo cropping col quale croppa realmente 
-  il clip. Pu&ograve; inoltre garantire che larghezza ed altezza siano multipli 
-  di un valore specificato in modo tale che il clip croppato possa essere passato 
+<p>AutoCrop &egrave; un filtro di AVISynth che automaticamente croppa i bordi
+  neri di un clip. Opera sia in modo preview (dove sovrappone le informazioni
+  per il cropping consigliato) , che in modo cropping col quale croppa realmente
+  il clip. Pu&ograve; inoltre garantire che larghezza ed altezza siano multipli
+  di un valore specificato in modo tale che il clip croppato possa essere passato
   senza problemi al compressore video.</p>
 <h3> Uso</h3>
-<p>AutoCrop accetta 10 parametri tutti opzionali sicch&eacute; basta AutoCrop() 
-  per abituarsi a come lavora il filtro. I parametri possono essere specificati 
-  come posizionali o per nome. Suggerisco di specificarli per nome visto che sono 
+<p>AutoCrop accetta 10 parametri tutti opzionali sicch&eacute; basta AutoCrop()
+  per abituarsi a come lavora il filtro. I parametri possono essere specificati
+  come posizionali o per nome. Suggerisco di specificarli per nome visto che sono
   tanti!</p>
 <p>Orine dei parametri.</p>
 <p><code>AutoCrop</code> (<var>&quot;mode&quot;, &quot;wMultOf&quot;,
@@ -36,48 +36,48 @@ $Id: autocrop.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $
 <h3>Sintassi</h3>
 <p><var>mode</var> - Intero - default 1</p>
 <p>0 - Crop - Croppa l'immagine<br>
-  1 - Preview - Le informazioni di cropping consigliate vengono sovrapposte al 
+  1 - Preview - Le informazioni di cropping consigliate vengono sovrapposte al
   clip, incluso un comando di crop che pu&ograve; essere usato al posto di AutoCrop.<br>
-  2 - Log - Crea un logs dei parametri di cropping nel file &quot;AutoCrop.log&quot; 
+  2 - Log - Crea un logs dei parametri di cropping nel file &quot;AutoCrop.log&quot;
   nella directory currente.</p>
 <p><var>wMultOf</var> - Intero- default 4</p>
-<p>Garantisce che la larghezza sia un multiplo di un valore specificato in modo 
-  tale che il clip croppato possa essere passato senza problemi al compressore 
+<p>Garantisce che la larghezza sia un multiplo di un valore specificato in modo
+  tale che il clip croppato possa essere passato senza problemi al compressore
   video.</p>
 <p><var>hMultOf</var> - Intero - default 2</p>
 <p>Idem per l'altezza.</p>
 <p><var>leftAdd</var> - Intero - default 0</p>
-<p>Forza autocrop a croppare ulteriori <var>leftAdd</var> pixels dopo aver completato 
-  la auto individuazione. Si pu&ograve; usare questa opzione congiuntamente a 
-  <var>wMultOf</var>. Utile per croppare le linee di pessima qualit&agrave; a 
+<p>Forza autocrop a croppare ulteriori <var>leftAdd</var> pixels dopo aver completato
+  la auto individuazione. Si pu&ograve; usare questa opzione congiuntamente a
+  <var>wMultOf</var>. Utile per croppare le linee di pessima qualit&agrave; a
   lato delle catture VHS.</p>
 <p><var>rightAdd</var> - Intero - default 0</p>
 <p>Come sopra riferito al lato destro.</p>
 <p><var>topAdd</var> - Intero - default 0</p>
-<p>Forza autocrop a croppare ulteriori <var>topAdd</var> pixels dopo aver completato 
-  la auto individuazione. Si pu&ograve; usare questa opzione congiuntamente a 
-  <var>hMultOf</var>. Utile per croppare le linee di pessima qualit&agrave; in 
+<p>Forza autocrop a croppare ulteriori <var>topAdd</var> pixels dopo aver completato
+  la auto individuazione. Si pu&ograve; usare questa opzione congiuntamente a
+  <var>hMultOf</var>. Utile per croppare le linee di pessima qualit&agrave; in
   cima alle catture VHS.</p>
 <p><var>bottomAdd</var> - Intero - default 0</p>
 <p>Come sopra riferito al lato inferiore.</p>
 <p><var>threshold</var> - Intero (0-255) - default 40</p>
-<p>Threshold &egrave; la luminanza media che una riga deve avere prima di essere 
+<p>Threshold &egrave; la luminanza media che una riga deve avere prima di essere
   considerata non nera.</p>
 <p><var>samples</var> - Intero - default 10</p>
-<p>Numero di frames da esaminare per determinare le informazioni di cropping. 
-  Questo influenza direttamente il tempo di inizio lavoro del filtro. In generale 
+<p>Numero di frames da esaminare per determinare le informazioni di cropping.
+  Questo influenza direttamente il tempo di inizio lavoro del filtro. In generale
   10 sembra essere tanto, se questo ritardo vi infastidisce, abbassatelo.</p>
 <p><var>aspect</var> - Float - default 0 - L'aspetto &egrave; ignorato.</p>
 <p>-1 - Mantiene l'aspect ratio del clip<br>
   0 - L'aspetto &egrave; ignorato.<br>
-  &gt;0 - L'aspect ratio sar&agrave; impostato a questo valore. Ad esempio per 
+  &gt;0 - L'aspect ratio sar&agrave; impostato a questo valore. Ad esempio per
   una aspect ratio 4:3 si deve passare<br>
-  4.0/3.0 o 1.33333333333. Notare che 4/3 non funziona e che .0 &egrave; richiesto 
+  4.0/3.0 o 1.33333333333. Notare che 4/3 non funziona e che .0 &egrave; richiesto
   per dire ad AviSynth che il valore &egrave; float.</p>
 <h3>Uso consigliato</h3>
-<p>Suggerisco vivamente di usare il modo preview prima di sottomettere un crop 
-  particulare . Vale la pena di notare che copiare i settaggi suggeriti nel comando 
-  di crop standard di AviSynth &egrave; pi&ugrave; veloce che usare AutoCrop con<var> 
+<p>Suggerisco vivamente di usare il modo preview prima di sottomettere un crop
+  particulare . Vale la pena di notare che copiare i settaggi suggeriti nel comando
+  di crop standard di AviSynth &egrave; pi&ugrave; veloce che usare AutoCrop con<var>
   mode</var> = 0.</p>
 <h3>Sorgenti</h3>
 <p>I sorgenti sono inclusi nella distribuzione.</p>
@@ -87,7 +87,7 @@ $Id: autocrop.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $
 
 <p><font size="-1">Copyright (c) 2002 Glenn Bussell. All rights reserved.<br>
   glenn@videofringe.com </font></p>
-<p><font size="-1">This file is subject to the terms of the GNU General Public 
+<p><font size="-1">This file is subject to the terms of the GNU General Public
   License as published by the Free Software Foundation. A copy of this license is
 included with this software distribution in the file COPYING. If you do not have a copy, you may obtain a copy by writing to the Free
 Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.</font></p>

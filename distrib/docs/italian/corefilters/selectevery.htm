@@ -11,14 +11,14 @@
 </h2>
 <p><code>SelectEvery </code>(<var>clip, int step_size, int offset1 [, int offset2
 [, ...]]</var>)
-<p><code>SelectEvery</code> è una generalizzazione di filtri come <code><a href="select.htm">SelectEven</a></code> 
-  e <code><a href="pulldown.htm">Pulldown</a></code>. Il modo migliore per spiegare 
-  l'uso di questo filtro è fare degli esempi: 
+<p><code>SelectEvery</code> è una generalizzazione di filtri come <code><a href="select.htm">SelectEven</a></code>
+  e <code><a href="pulldown.htm">Pulldown</a></code>. Il modo migliore per spiegare
+  l'uso di questo filtro è fare degli esempi:
 <pre>SelectEvery(clip,2,0)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # identico a SelectEven(clip)
 SelectEvery(clip,2,1)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # identico a SelectOdd(clip)
-SelectEvery(clip,10,3,6,7) # seleziona i frames 3, 6, 7, 13, 16, 17, ... 
+SelectEvery(clip,10,3,6,7) # seleziona i frames 3, 6, 7, 13, 16, 17, ...
 SelectEvery(clip,9,0)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # seleziona i frames 0, 9, 18, ... </pre>
-Ed ora questo: 
+Ed ora questo:
 <pre># <font face="Courier New, Courier, mono">Ad un clip progressive 24fps applichiamo un pulldown 3:2 ,</font>
 # <font face="Courier New, Courier, mono">producendo un output interlacciato a 30fps</font>
 AssumeFrameBased

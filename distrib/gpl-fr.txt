@@ -4,14 +4,14 @@ This is an unofficial translation of the GNU General Public License into
 French. It was not published by the Free Software Foundation, and does not
 legally state the distribution terms for software that uses the GNU GPL--only
 the original English text of the GNU GPL does that. However, we hope that this
-translation will help French speakers understand the GNU GPL better. 
+translation will help French speakers understand the GNU GPL better.
 
 Voici (http://www.linux-france.org/article/these/gpl.html) une adaptation non
 officielle de la Licence Publique Générale du projet GNU. Elle n'a pas été
 publiée par la Free Software Foundation et son contenu n'a aucune portée légale
 car seule la version anglaise de ce document détaille le mode de distribution
 des logiciels sous GNU GPL. Nous espérons cependant qu'elle permettra aux
-francophones de mieux comprendre la GPL. 
+francophones de mieux comprendre la GPL.
 
                       Licence Publique Générale GNU
                       Version 2, Juin 1991
@@ -21,7 +21,7 @@ francophones de mieux comprendre la GPL.
   États-Unis, 1989, 1991.
 
 La copie et la distribution de copies exactes de ce document sont autorisées,
-mais aucune modification n'est permise. 
+mais aucune modification n'est permise.
 
                               Préambule
 
@@ -48,7 +48,7 @@ Afin de garantir ces droits, nous avons dû introduire des restrictions
 interdisant à quiconque de vous les refuser ou de vous demander d'y renoncer.
 Ces restrictions vous imposent en retour certaines obligations si vous
 distribuez ou modifiez des copies de programmes protégés par la Licence. En
-d'autre termes, il vous incombera en ce cas de : 
+d'autre termes, il vous incombera en ce cas de :
 
 transmettre aux destinataires tous les droits que vous possédez, expédier aux
 destinataires le code source ou bien tenir celui-ci à leur disposition, leur
@@ -70,7 +70,7 @@ nous stipulons bien que tout dépôt éventuel de brevet doit accorder
 expressément à tout un chacun le libre usage du produit.
 
 Les dispositions précises et les conditions de copie, de distribution et de
-modification de nos logiciels sont les suivantes : 
+modification de nos logiciels sont les suivantes :
 
 Stipulations et conditions relatives à la copie, la distribution et la
 modification
@@ -118,14 +118,14 @@ Article 2.
 Vous pouvez modifier votre copie ou vos copies du Programme ou partie de
 celui-ci, ou d'un travail basé sur ce Programme, et copier et distribuer ces
 modifications selon les termes de l'article 1, à condition de Vous conformer
-également aux conditions suivantes : 
+également aux conditions suivantes :
 
   a) Ajouter aux fichiers modifiés l'indication très claire des modifications
-     effectuées, ainsi que la date de chaque changement. 
+     effectuées, ainsi que la date de chaque changement.
 
   b) Distribuer sous les termes de la Licence Publique Générale l'ensemble de
      toute réalisation contenant tout ou partie du Programme, avec ou sans
-     modifications. 
+     modifications.
 
   c) Si le Programme modifié lit des commandes de manière interactive lors de
      son exécution, faire en sorte qu'il affiche, lors d'une invocation
@@ -136,7 +136,7 @@ modifications selon les termes de l'article 1, à condition de Vous conformer
      utilisateur comment lire une copie de celle-ci (exception : si le Programme
      original est interactif mais n'affiche pas un tel message en temps normal,
      tout travail dérivé de ce Programme ne sera pas non plus contraint de
-     l'afficher). 
+     l'afficher).
 
 Toutes ces conditions s'appliquent à l'ensemble des modifications. Si des
 éléments identifiables de ce travail ne sont pas dérivés du Programme et
@@ -164,22 +164,22 @@ Article 3.
 Vous pouvez copier et distribuer le Programme (ou tout travail dérivé selon les
 conditions énoncées dans l'article 1) sous forme de code objet ou exécutable,
 selon les termes des articles 0 et 1, à condition de respecter l'une des
-clauses suivantes : 
+clauses suivantes :
 
   a) Fournir le code source complet du Programme, sous une forme lisible par
      un ordinateur et selon les termes des articles 0 et 1, sur un support
-     habituellement utilisé pour l'échange de données ; ou, 
+     habituellement utilisé pour l'échange de données ; ou,
 
   b) Faire une offre écrite, valable pendant au moins trois ans, prévoyant de
      donner à tout tiers qui en fera la demande une copie, sous forme lisible
      par un ordinateur, du code source correspondant, pour un tarif n'excédant
      pas le coût de la copie, selon les termes des articles 0 et 1, sur un
-     support couramment utilisé pour l'échange de données informatiques ; ou, 
+     support couramment utilisé pour l'échange de données informatiques ; ou,
 
   c) Informer le destinataire de l'endroit où le code source peut être obtenu
      (cette solution n'est recevable que dans le cas d'une distribution non
      commerciale, et uniquement si Vous avez reçu le Programme sous forme de
-     code objet ou exécutable avec l'offre prévue à l'alinéa b ci-dessus). 
+     code objet ou exécutable avec l'offre prévue à l'alinéa b ci-dessus).
 
 Le code source d'un travail désigne la forme de cet ouvrage sous laquelle les
 modifications sont les plus aisées. Sont ainsi désignés la totalité du code
@@ -317,7 +317,7 @@ Programme comme il est permis ci-dessus ne pourra être tenu pour responsable de
 tout dommage direct, indirect, secondaire ou accessoire (pertes financières
 dues au manque à gagner, à l'interruption d'activités ou à la perte de données,
 etc., découlant de l'utilisation du Programme ou de l'impossibilité d'utiliser
-celui-ci). 
+celui-ci).
 
                       FIN DES TERMES ET CONDITIONS
 --------------------------------------------------------------------------------
@@ -331,7 +331,7 @@ Générale.
 Pour cela, insérez les indications suivantes dans votre programme (il est
 préférable et plus sûr de les faire figurer au début de chaque fichier source ;
 dans tous les cas, chaque module source devra comporter au minimum la ligne de
-« copyright » et indiquer où résident toutes les autres indications) : 
+« copyright » et indiquer où résident toutes les autres indications) :
 
 --------------------------------------------------------------------------------
   ((une ligne pour donner le nom du programme et donner une idée de sa finalité))
@@ -350,7 +350,7 @@ dans tous les cas, chaque module source devra comporter au minimum la ligne de
   Vous devez avoir reçu une copie de la Licence Publique Générale GNU en même
   temps que ce programme ; si ce n'est pas le cas, écrivez à la Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
-  États-Unis. 
+  États-Unis.
 
 --------------------------------------------------------------------------------
 
@@ -358,7 +358,7 @@ Ajoutez également votre adresse électronique, le cas échéant, ainsi que votre
 adresse postale.
 
 Si le programme est interactif, faites-lui afficher un court avertissement du
-type de celui-ci à chaque invocation : 
+type de celui-ci à chaque invocation :
 
 --------------------------------------------------------------------------------
 
@@ -367,7 +367,7 @@ type de celui-ci à chaque invocation :
   Pour plus de détails, tapez `g'.
 
   Ce programme est libre et vous êtes encouragé à le redistribuer sous
-  certaines conditions ; tapez `c' pour plus de détails. 
+  certaines conditions ; tapez `c' pour plus de détails.
 
 --------------------------------------------------------------------------------
 
@@ -378,7 +378,7 @@ accessibles d'un clic de souris, etc., tout dépend de votre programme.
 
 Si vous officiez en tant que programmeur, n'omettez pas de demander à votre
 employeur, votre établissement scolaire ou autres de signer une décharge
-stipulant leur renoncement aux droits qu'ils pourraient avoir sur le programme : 
+stipulant leur renoncement aux droits qu'ils pourraient avoir sur le programme :
 
 --------------------------------------------------------------------------------
   ...((employeur, école...)) déclare par la présente ne pas revendiquer de
@@ -391,7 +391,7 @@ La Licence Publique Générale ne permet pas d'inclure votre programme dans des
 logiciels sous licence commerciale spécifique. Si votre programme est une
 fonction de bibliothèque, vous jugerez probablement plus judicieux de le faire
 relever de la Licence Générale de Bibliothèque GNU (LGPL) plutôt que de la
-présente. 
+présente.
 
 --------------------------------------------------------------------------------
 Last modified: Tue Sep 29 22:41:45 MET DST 1998

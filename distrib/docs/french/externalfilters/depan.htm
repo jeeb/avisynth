@@ -146,7 +146,7 @@ subpixel</var> - pixel interpolation accuracy (default = 2)<br>
 pixaspect</var> - pixel aspect (default = 1.0)<br>
 
 <var>
-matchfields</var> - match vertical position of interlaced fields for preserve fields order,  
+matchfields</var> - match vertical position of interlaced fields for preserve fields order,
 better denoising etc (default=true)<br>
 
 <var>
@@ -341,7 +341,7 @@ denoising, set parameter <var>MatchFields</var>=true.<br>
 5. <var>Mirror</var> mode is unique but slightly strange :-). The <var>blur</var> is some workaround to hide sharp mirrored details.<br>
 6. Not very fast, not assembler optimized.<br>
 7. Tested with Avisynth 2.5.3 and 2.55.<br>
-8. The plugin function DePanEstimate uses free FFT2D code by Takuya Ooura 
+8. The plugin function DePanEstimate uses free FFT2D code by Takuya Ooura
 (<cite><a href="http://momonga.t.u-tokyo.ac.jp/%7Eooura/index.html">http://momonga.t.u-tokyo.ac.jp/~ooura/index.html</a></cite>)<br>
 Since version 1.0, DePan can also use more fast FFTW library version 3 (<cite><a href="http://www.fftw.org">http://www.fftw.org</a></cite>)<br>
 as Windows binary DLL (compiled with gcc under MinGW by Alessio Massaro),<br>
@@ -476,7 +476,7 @@ AviSource(&quot;e:\video.avi&quot;)
 LoadPlugin(&quot;depan.dll&quot;)
 ConvertToYV12()
 fps3to5()</pre>
-<p>Notes. There is more simple and general alternative method: 
+<p>Notes. There is more simple and general alternative method:
 try <code>ChangeFPS</code> with following <code>DePanStabilize</code>.</p>
 
 <h3>Using DePan for motion stabilization</h3>
@@ -546,20 +546,20 @@ float rot; // rotation (in degrees), (now =0 - no rotation estimated data in cur
 Note 2. DepanEstimate output is cropped if not in show or info mode.</p>
 
 <h3>Alternative method for Global motion estimation</h3>
-<p>Recently I added to local motion estimation <code>MVTools</code> plugin by Manao (to version 0.9.8.2) 
+<p>Recently I added to local motion estimation <code>MVTools</code> plugin by Manao (to version 0.9.8.2)
 a new function <code>MVDepan</code> for global motion estimation.
 It is based on local block motion vectors analysis, similar to first pass of DeShaker plugin.
-<code>MVDepan</code> function can be used instead of <code>DepanEstimate</code> function. 
-It can estimate pan, zoom and rotation, but at present it is still experimental beta version. 
-Search for newest <code>MVTools</code>  and its documentation at Manao's site 
+<code>MVDepan</code> function can be used instead of <code>DepanEstimate</code> function.
+It can estimate pan, zoom and rotation, but at present it is still experimental beta version.
+Search for newest <code>MVTools</code>  and its documentation at Manao's site
 <cite><a href="http://manao4.free.fr/">http://manao4.free.fr/</a></cite>.
 Discussion is at AviSynth doom9 forum.
 </p>
 
 <h3>More info about Depan</h3>
-<p>Some discussion about GenMotion and DePan plugins may be found in AviSynth forum at<br> 
+<p>Some discussion about GenMotion and DePan plugins may be found in AviSynth forum at<br>
 <cite><a href="http://forum.doom9.org/forumdisplay.php?s=&amp;forumid=33"> http://forum.doom9.org/forumdisplay.php?s=&amp;forumid=33</a></cite><br>
-in particular in thread 
+in particular in thread
 <cite><a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=66686"> http://forum.doom9.org/showthread.php?s=&amp;threadid=66686</a></cite></p>
 <h3>Acknowledgments</h3>
 <p>Thanks to Gunnar Thalin for detailed info about Deshaker log file format and very useful discussions.</p>
@@ -576,7 +576,7 @@ Thanks to Takuya Ooura for free and fast FFT2D code.</p>
       fixed bug for non-integer <var>Offset</var> values.</li>
   <li>Version 0.3, May 15, 2004 -
       fixed bug with DePanStabilize input parameters, set <var>subpixel</var>=2 as default;<br>
-      added zoom estimation and <var>ZoomMax</var> parameter, zoom and rotation compensation,        
+      added zoom estimation and <var>ZoomMax</var> parameter, zoom and rotation compensation,
       log file input, <var>MatchFields</var> parameter.<br>
   </li>
   <li>Version 0.4, May 16, 2004
@@ -621,12 +621,12 @@ parameter in DePanStabilize is now variable (was&nbsp; accidentally
 fixed =0.9 in all previous versions :-),&nbsp;&nbsp;&nbsp;&nbsp; added
 notes about MVDepan to documentation.<br>
   </li>
-  <li>Version 1.1.5, December 31, 2004 -&nbsp; bug fixed in DepanEstimate (erroneous motion data) 
+  <li>Version 1.1.5, December 31, 2004 -&nbsp; bug fixed in DepanEstimate (erroneous motion data)
   for <var>fftw</var>=true with <var>show</var>=false and <var>info</var>=false<br>
   </li>
   <li>Version 1.2, April 1, 2005 - added&nbsp; <var>fitlast</var> parameter to fit some last frames range to original position<br>
   </li>
-  <li>Version 1.3, April 29, 2005 - added&nbsp; <var>blur</var> parameter 
+  <li>Version 1.3, April 29, 2005 - added&nbsp; <var>blur</var> parameter
   to somewhat hide the sharp mirrored details;&nbsp; blur is horizontal only, at left and right border.<br>
   </li>
   <li>Version 1.4, May 7, 2005 (published May 29)- DePanStabilize: Zoom adaptive mode <var>addzoom</var>
@@ -638,11 +638,11 @@ zoom value is more stable now. <br>
 file (A and B symbols swapped) for BFF (all previous versions). Thanks
 to eugvas for report. <br>
   </li>
-  <li>Version 1.5, June 4, 2005 - improved adaptive zoom; 
+  <li>Version 1.5, June 4, 2005 - improved adaptive zoom;
   added <var>tzoom</var> parameter for the zoom rise time (was equal to 1/<var>cutoff</var>)<br>
   </li>
   <li>Version 1.6, August 5, 2005 - added YUY2 support; disabled <var>improved=true</var> mode (was broken);
-  changed default <var>subpixel</var>=1 for DepanInterleave as sufficient for denoising and more fast<br> 
+  changed default <var>subpixel</var>=1 for DepanInterleave as sufficient for denoising and more fast<br>
   </li>
   <li>
 Version 1.7, September 5, 2005 - DePanStabilize: added parameter <var>initzoom</var> - minimal zoom; <br>

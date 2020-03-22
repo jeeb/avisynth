@@ -65,11 +65,11 @@ e_16 = tone(len_16, 329.5/freq_mul, 44100, 1, s_type)	#   E
 d_16 = tone(len_16, 293.7/freq_mul, 44100, 1, s_type)	#   D
 c_16 = tone(len_16, 261.6/freq_mul, 44100, 1, s_type)	#   C
 
-p1 = dis_16 ++ sil_16 ++ e_16 ++ dis_16 ++ dis_16 ++ e_16 ++ dis_16 ++ dis_16 ++ e_16 ++ dis_16 ++ dis_16 ++ dis_16 ++ d_16 ++ dis_16 ++ dis_16 ++ dis_16 
+p1 = dis_16 ++ sil_16 ++ e_16 ++ dis_16 ++ dis_16 ++ e_16 ++ dis_16 ++ dis_16 ++ e_16 ++ dis_16 ++ dis_16 ++ dis_16 ++ d_16 ++ dis_16 ++ dis_16 ++ dis_16
 p2= cis_16 ++ sil_16 ++ d_16 ++ cis_16 ++ cis_16 ++ d_16 ++ cis_16 ++ cis_16 ++ d_16 ++ cis_16 ++ cis_16 ++ cis_16 ++ c_16 ++ cis_16 ++ cis_16 ++ cis_16
 
 p1 ++ p1 ++ p2 ++ p2
-last ++ last ++ last 
+last ++ last ++ last
 #convertaudioto16bit()
 v_low = timestretch(pitch=50).amplifydb(-6)
 v_high = timestretch(pitch=200).amplifydb(-12)

@@ -7,11 +7,11 @@
 <body >
 <h2><a name="EnsureVBRMP3Sync"></a>EnsureVBRMP3Sync</h2>
 <P><code>EnsureVBRMP3Sync </code>(<var>clip</var>)
-<p>Corregge gli AVI con audio MP3 fuori syncro in fase di seeking o trimming. 
-<p><code>EnsureVBRMP3Sync</code> è utile per evitare i dissincronismi delle tracce 
-  MP3 codificate VBR. Questo rallenta considerevolmente il seeking, ma è utilissimo 
-  quando si usa <code><a href="trim.htm">Trim</a></code> . E' da usare SEMPRE 
-  PRIMA del <code>Trim</code>. 
+<p>Corregge gli AVI con audio MP3 fuori syncro in fase di seeking o trimming.
+<p><code>EnsureVBRMP3Sync</code> è utile per evitare i dissincronismi delle tracce
+  MP3 codificate VBR. Questo rallenta considerevolmente il seeking, ma è utilissimo
+  quando si usa <code><a href="trim.htm">Trim</a></code> . E' da usare SEMPRE
+  PRIMA del <code>Trim</code>.
 <pre># Garantisce che l'audio sia in sync dopo il  trim
 AviSource(&quot;movie.avi&quot;)
 EnsureVBRMP3Sync()

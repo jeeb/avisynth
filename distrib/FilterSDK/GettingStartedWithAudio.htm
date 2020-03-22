@@ -17,7 +17,7 @@
 
 <p>Basically you override GetAudio(...) instead of GetFrame, and fill the
   buffer with data. A simple filter could look like this:</p>
-<h4>Filter creation - skip if no audio:</h4> 
+<h4>Filter creation - skip if no audio:</h4>
 <pre>AVSValue __cdecl HalfVolume::Create(AVSValue args, void*, IScriptEnvironment* env) {
   if (!args[0].AsClip()-&gt;GetVideoInfo().HasAudio())
       return args[0];
@@ -35,7 +35,7 @@
 <pre>HalfVolume::HalfVolume(PClip _child)
     : GenericVideoFilter(_child) { // Provide null GetFrame, GetParity, etc
 } </pre>
-<h4>GetAudio override:</h4> 
+<h4>GetAudio override:</h4>
 <pre>void __stdcall HalfVolume::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   child-&gt;GetAudio(buf, start, count, env);
   int channels = vi.AudioChannels();
@@ -58,8 +58,8 @@
   }
 }</pre>
 <p>Implementation of a half volume filter. Very explicit, so it isn't going to
-  be the fastest possible, but it should serve the purpose. Furthermore have a look 
-  <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=72760&amp;highlight=ConvertAudiohere">discussion here</a> 
+  be the fastest possible, but it should serve the purpose. Furthermore have a look
+  <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=72760&amp;highlight=ConvertAudiohere">discussion here</a>
   and look also at
   <a href="http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/audio.cpp?view=markup"><code>audio.cpp</code></a>
   for a bunch of more advanced stuff. A lot of technical details are also to be

@@ -2,7 +2,7 @@
 <html>
 <head>
 <!--
-$Id: externalplugins.htm,v 1.2 2010/02/27 14:50:13 wilbertd Exp $ 
+$Id: externalplugins.htm,v 1.2 2010/02/27 14:50:13 wilbertd Exp $
 -->
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-2">
    <link rel="stylesheet" type="text/css" href="../avisynth.css">
@@ -13,7 +13,7 @@ $Id: externalplugins.htm,v 1.2 2010/02/27 14:50:13 wilbertd Exp $
 <h1> Vybrané externí pluginy Avisynthu 2.5</h1>
 <h2>Obsah</h2>
 <ul>
-<li><A href="#general_info">Obecné informace</A> 
+<li><A href="#general_info">Obecné informace</A>
 <li><A href="#deinterlacing">Odstranění prokládání (deinterlacing) &amp; pulldown</A>
 <li><A href="#spatio-temp-smoothers">Prostorově-časové&nbsp;vyhlazovače (Spatio-temporal Smoothers)</A>
 <li><A href="#spatial-smoothers">Prostorové vyhlazovače (Spatial Smoothers)</A>
@@ -28,29 +28,29 @@ $Id: externalplugins.htm,v 1.2 2010/02/27 14:50:13 wilbertd Exp $
 <li><A href="#misc">Různé pluginy (Misc Plugins)</A></li>
 </ul>
 <h2><a NAME="general_info"></a>Obecné informace</h2>
-<p>Pluginy AviSynthu&nbsp;jsou externí 
-připojované&nbsp;moduly (knihovny) implementující jednu 
+<p>Pluginy AviSynthu&nbsp;jsou externí
+připojované&nbsp;moduly (knihovny) implementující jednu
 nebo více doplňkových funkcí (filtrů) pro odstranění prokládání
-(deinterlacing), redukci šumu (noise reduction), atd. Bylo napsáno velké množství&nbsp;pluginů (200&nbsp;nebo více) nezávislými tvůrci jako 
-svobodný software. Můžete je získat&nbsp;na <a href="http://avisynth.org/warpenterprises">collection by WarpEnterprises</a> 
+(deinterlacing), redukci šumu (noise reduction), atd. Bylo napsáno velké množství&nbsp;pluginů (200&nbsp;nebo více) nezávislými tvůrci jako
+svobodný software. Můžete je získat&nbsp;na <a href="http://avisynth.org/warpenterprises">collection by WarpEnterprises</a>
            &nbsp;nebo (nejaktuálnější) na&nbsp;domovských
 stránkách&nbsp;autorů (viz také Web AviSynthu a fóra). Tato dokumentace zahrnuje autorské popisy oblíbených
 pluginů s typickými užitečnými funkcemi. Může vám&nbsp;být užitečná také pokud budete používat jiné&nbsp;(podobné) pluginy.
 </p>
-<P>Poznámka k české verzi - Překlad dokumentace všech uvedených externích 
-pluginů není v silách překladatele, a proto přeložil a upravil seznam filtrů z 
-již zmíněné kolekce pluginů od WarpEnterprises. V české verzi této kolekce jsou 
-doplněny stručné popisy pluginů tak, aby si v ní mohl český uživalel vybrat 
-vhodný plugin. Pro úplnost je zde také kolekce s pluginy pro starý AviSynth 
+<P>Poznámka k české verzi - Překlad dokumentace všech uvedených externích
+pluginů není v silách překladatele, a proto přeložil a upravil seznam filtrů z
+již zmíněné kolekce pluginů od WarpEnterprises. V české verzi této kolekce jsou
+doplněny stručné popisy pluginů tak, aby si v ní mohl český uživalel vybrat
+vhodný plugin. Pro úplnost je zde také kolekce s pluginy pro starý AviSynth
 2.0</P>
 
 <p>Popis&nbsp;pluginu začíná&nbsp;nějakou obecnou
 informací&nbsp;o pluginu.&nbsp;Například:</p>
 
 <p><b>author (autor):</b>  Rainer Wittmann (aka kassandro)<br>
-<b>version 
+<b>version
 (verze):</b>  0.6.1<br>
-<b>download 
+<b>download
 (stažení):</b> <a href="http://www.removedirt.de.tf/">http://www.removedirt.de.tf/</a>
 <br>
 <b>category (kategorie):</b>  Temporal Smoothers<br>
@@ -58,11 +58,11 @@ informací&nbsp;o pluginu.&nbsp;Například:</p>
 </p>
 
 <ul>
-  <li> 
+  <li>
     YV12 &amp; YUY2 Colorspace (barevné formáty)
-  <li> 
+  <li>
     SSEMMX support (podpora)
-  <li> 
+  <li>
          šířka a výška klipu musí být násobek 8
  </li>
 </ul>
@@ -74,12 +74,12 @@ to být jeho/její skutečné jméno,&nbsp;pseudonym z fóra (nickname), nebo obojí.<b
   Druhý řádek&nbsp;"<b>version</b> "      uvádí verzi&nbsp;pluginu,
 která je popisována&nbsp; v <i>dané</i>     dokumentaci. Všiměte si že
 to nemusí být nejnovější verze pluginu.<br>
- Třetí řádek "<b>download</b>" uvádí 
+ Třetí řádek "<b>download</b>" uvádí
 stránky, ze&nbsp;kterých můžete plugin
 stáhnout.<br>
   Čtvrtý řádek&nbsp;"<b>category</b>  ", je kategorie pod kterou
 se může plugin nacházet.<br>
-  Pátý řádek&nbsp;"<b>requirements</b>     
+  Pátý řádek&nbsp;"<b>requirements</b>
             ", jsou
 požadavky pro možné použití pluginu&nbsp;. Požadavkem může být podporované barevné&nbsp;prostředí&nbsp; (YV12 a YUY2 v
 daném případě), podporovaný typ CPU (zde SSEMMX) nebo, že šířka/výška musí být násobkem nějakého čísla
@@ -124,8 +124,8 @@ SSE3</td>
 
 <p>
  Všechny&nbsp;TV systémy
-<i>&nbsp;PAL, 
-NTSC, a SECAM&nbsp;jsou prokládané (interlaced), což znamená že&nbsp;každý druhý 
+<i>&nbsp;PAL,
+NTSC, a SECAM&nbsp;jsou prokládané (interlaced), což znamená že&nbsp;každý druhý
 řádek se vysílá v každém následujícím&nbsp;časovém intervalu obnovení.&nbsp; Filtry
 pro odstranění prokládání vám umožňují řešit tento problém. Filtry IVTC (inverse telecine, zpětné
 přeměny telecine, také zvaného&nbsp;odstranění pulldown)&nbsp;obrací proces telecine (přeměna kina na
@@ -140,7 +140,7 @@ zdroje.</i>
 <td WIDTH="30%"><A href="externalfilters/decomb.htm">Decomb Filter package (by
   Donald Graft)</A></td>
 
-<td WIDTH="70%">Tento balík&nbsp;plugin-funkcí 
+<td WIDTH="70%">Tento balík&nbsp;plugin-funkcí
       pro&nbsp;AviSynth poskytuje prostředky pro odstranění&nbsp;roztřepených "combing" artefaktů progresivních streamů podrobených
   telecine, prokládaných (interlaced) streamů, a&nbsp;smíšených. Funkce mohou být kombinovány k provedení
   zpětného telecine pro oba -&nbsp;NTSC&nbsp;i PAL streamy. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=76456">diskuze</a>].</td>
@@ -158,7 +158,7 @@ zdroje.</i>
 <td WIDTH="30%"><A href="externalfilters/fdecimate.htm">FDecimate (by Donald
   Graft)</A></td>
 
-<td WIDTH="70%"> Tento filtr&nbsp;poskytuje&nbsp;pokročilé možnosti&nbsp;decimace 
+<td WIDTH="70%"> Tento filtr&nbsp;poskytuje&nbsp;pokročilé možnosti&nbsp;decimace
       (prořezávání, decimation)&nbsp;nedostupné v&nbsp;Decimate(). Může odstranit snímky z klipu&nbsp;k dosažení žádané frekvence snímků, při současném zachování&nbsp;audio/video synchronizace. Přednostně odstraňuje duplikáty snímků, kde je to možné.
   [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=77798">diskuze</a>].</td>
 </tr>
@@ -213,8 +213,8 @@ zdroje.</i>
 <tr>
 <td><A href="externalfilters/tdeint.htm">TDeint (by tritical)</A></td>
 
-<td>TDeint&nbsp;je dvousměrný, adaptivní k pohybu&nbsp;(ostrý) deinterlacer. 
-      Může také adaptivně vybírat mezi použitím adaptace 
+<td>TDeint&nbsp;je dvousměrný, adaptivní k pohybu&nbsp;(ostrý) deinterlacer.
+      Může také adaptivně vybírat mezi použitím adaptace
       k pohybu&nbsp; podle polí nebo podle pixelů. Může použít&nbsp;kubickou interpolaci, jádrovou (kernel) interpolaci (s přepnutím časového směru), nebo jednou ze dvou forem&nbsp;modifikované ELA interpolatce, která pomáhá snížit vroubkované ("jaggy")  hrany v pohyblivých oblastech, kde musí být interpolace použita. TDeint také podporuje uživatelskou korekci&nbsp;(overrides)&nbsp;přes vstupní soubor, a může pracovat&nbsp;jako&nbsp;smart bob nebo deinterlacer zachovávající&nbsp;snímkovou frekvenci, stejně jako&nbsp;IVTC post-processor.
   [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=82264">diskuze</a>].</td>
 </tr>
@@ -243,35 +243,35 @@ zdroje.</i>
 <tr>
 <td><A href="externalfilters/yadif.htm">Yadif (by Fizick)</A></td>
 
-<td>Port filtru YADIF (Yet Another DeInterlacing Filter) z MPlayeru. 
+<td>Port filtru YADIF (Yet Another DeInterlacing Filter) z MPlayeru.
 [<a href="http://forum.doom9.org/showthread.php?t=124284">diskuze</a>].</td>
 </tr>
 
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#area">Area</a>, <a href="ext_filters_warp.htm#blendbob">BlendBob</a>, <a href="ext_filters_warp.htm#Bruteivtc">BruteIVTC</a>, 
-<a href="ext_filters_warp.htm#ediupsizer">EDIUpsizer</a>, <a href="ext_filters_warp.htm#eedi2">EEDI2</a>, 
-<a href="ext_filters_warp.htm#fastediupsizer">FastEDIUpsizer</a>, <a href="ext_filters_warp.htm#interpolationbob">Interpolation Bob</a>, 
-<a href="ext_filters_warp.htm#it">IT (InverseTelecine)</a>, <a href="ext_filters_warp.htm#nnedi">nnedi</a>, 
-<a href="ext_filters_warp.htm#pfr">PFR</a>, <a href="ext_filters_warp.htm#rematch">ReMatch</a>, 
-<a href="ext_filters_warp.htm#removeblend">RemoveBlend</a>, <a href="ext_filters_warp.htm#repal">RePal</a>, 
-<a href="ext_filters_warp.htm#reverseblend">ReverseBlend</a>, <a href="ext_filters_warp.htm#sangnom">SangNom</a>, 
-<a href="ext_filters_warp.htm#sbdeint">SBDeint</a>, <a href="ext_filters_warp.htm#smoothdeinterlacer">SmoothDeinterlacer</a>, 
-<a href="ext_filters_warp.htm#tprivtc">TPRivtc</a>, <a href="ext_filters_warp.htm#unblend">Unblend</a>, 
+<td><a href="ext_filters_warp.htm#area">Area</a>, <a href="ext_filters_warp.htm#blendbob">BlendBob</a>, <a href="ext_filters_warp.htm#Bruteivtc">BruteIVTC</a>,
+<a href="ext_filters_warp.htm#ediupsizer">EDIUpsizer</a>, <a href="ext_filters_warp.htm#eedi2">EEDI2</a>,
+<a href="ext_filters_warp.htm#fastediupsizer">FastEDIUpsizer</a>, <a href="ext_filters_warp.htm#interpolationbob">Interpolation Bob</a>,
+<a href="ext_filters_warp.htm#it">IT (InverseTelecine)</a>, <a href="ext_filters_warp.htm#nnedi">nnedi</a>,
+<a href="ext_filters_warp.htm#pfr">PFR</a>, <a href="ext_filters_warp.htm#rematch">ReMatch</a>,
+<a href="ext_filters_warp.htm#removeblend">RemoveBlend</a>, <a href="ext_filters_warp.htm#repal">RePal</a>,
+<a href="ext_filters_warp.htm#reverseblend">ReverseBlend</a>, <a href="ext_filters_warp.htm#sangnom">SangNom</a>,
+<a href="ext_filters_warp.htm#sbdeint">SBDeint</a>, <a href="ext_filters_warp.htm#smoothdeinterlacer">SmoothDeinterlacer</a>,
+<a href="ext_filters_warp.htm#tprivtc">TPRivtc</a>, <a href="ext_filters_warp.htm#unblend">Unblend</a>,
 <a href="ext_filters_warp.htm#viewfields">ViewFields/UnViewFields</a>, <a href="ext_filters_warp.htm#yadifmod">YadifMod</a></td>
 </tr>
 
 <tr>
 <td>Další skriptové funkce</td>
 
-<td><a href="ext_filters_warp.htm#c_deblend">C_Deblend</a>, <a href="ext_filters_warp.htm#fixblendivtc">FixBlendIVTC</a>, 
-<a href="ext_filters_warp.htm#mcbob">MCBob</a>, <a href="ext_filters_warp.htm#mvbob">MVBob</a>, 
+<td><a href="ext_filters_warp.htm#c_deblend">C_Deblend</a>, <a href="ext_filters_warp.htm#fixblendivtc">FixBlendIVTC</a>,
+<a href="ext_filters_warp.htm#mcbob">MCBob</a>, <a href="ext_filters_warp.htm#mvbob">MVBob</a>,
 <a href="ext_filters_warp.htm#restore24">Restore24</a>, <a href="ext_filters_warp.htm#restorefps">RestoreFPS</a></td>
 </tr>
 </table>
 
-<h2>Prostorově-časové&nbsp;vyhlazovače (Spatio-temporal 
+<h2>Prostorově-časové&nbsp;vyhlazovače (Spatio-temporal
 Smoothers)<a NAME="spatio-temp-smoothers"></a> </h2>
 
 <p>
@@ -338,7 +338,7 @@ rozmazaným pohybům a ztrátě detailů.</i></p>
 <td WIDTH="30%"><A href="externalfilters/peachsmoother.htm">PeachSmoother
   (by Lindsey Dubb)</A></td>
 
-<td WIDTH="70%">            Adaptivní vyhlazovač&nbsp;(smoother) 
+<td WIDTH="70%">            Adaptivní vyhlazovač&nbsp;(smoother)
       optimalizovaný pro televizní            pořady. Filtr Peach pracuje cestou vyhledávání dobrých pixelů
   a hromadění oranžového kouře z nich, a po nahromadění jeho dostatečného množství&nbsp;ho vrhá&nbsp;na špatné
   pixely čímž je vylepšuje. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=36575">diskuze</a>].</td>
@@ -356,7 +356,7 @@ rozmazaným pohybům a ztrátě detailů.</i></p>
   "SpatioTemporal
   Median Filter" (by Tom Barry)</A></td>
 
-<td WIDTH="70%">  
+<td WIDTH="70%">
       STMedianFilter&nbsp;je (mírně pohybově
   kompenzovaný) prostorově-časový&nbsp;mediánový filtr.</td>
 </tr>
@@ -364,21 +364,21 @@ rozmazaným pohybům a ztrátě detailů.</i></p>
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#adaptivemedian">AdaptiveMedian</a>, <a href="ext_filters_warp.htm#avscurveflow">AVSCurveFlow</a>, 
-<a href="ext_filters_warp.htm#celforeground">CelForeground</a>, <a href="ext_filters_warp.htm#colourizesmooth">ColourizeSmooth</a>, 
-<a href="ext_filters_warp.htm#dctfilter">DctFilter</a>, <a href="ext_filters_warp.htm#dctfun4b">DCTFun4b</a>, 
-<a href="ext_filters_warp.htm#DCTFun5">DCTFun5</a>, <a href="ext_filters_warp.htm#degrainmedian">DeGrainMedian</a>, 
-<a href="ext_filters_warp.htm#denoise">DeNoise</a>, <a href="ext_filters_warp.htm#desaltpepper">DeSaltPepper</a>, 
-<a href="ext_filters_warp.htm#deveed">DeVeed</a>, <a href="ext_filters_warp.htm#dfttest">dfttest</a>, 
-<a href="ext_filters_warp.htm#frfun">FRFun</a>, <a href="ext_filters_warp.htm#hqdn3d">HQdn3d</a>, 
-<a href="ext_filters_warp.htm#tisophote">TIsophote</a>, <a href="ext_filters_warp.htm#tnlmeans">TNLMeans</a>, 
+<td><a href="ext_filters_warp.htm#adaptivemedian">AdaptiveMedian</a>, <a href="ext_filters_warp.htm#avscurveflow">AVSCurveFlow</a>,
+<a href="ext_filters_warp.htm#celforeground">CelForeground</a>, <a href="ext_filters_warp.htm#colourizesmooth">ColourizeSmooth</a>,
+<a href="ext_filters_warp.htm#dctfilter">DctFilter</a>, <a href="ext_filters_warp.htm#dctfun4b">DCTFun4b</a>,
+<a href="ext_filters_warp.htm#DCTFun5">DCTFun5</a>, <a href="ext_filters_warp.htm#degrainmedian">DeGrainMedian</a>,
+<a href="ext_filters_warp.htm#denoise">DeNoise</a>, <a href="ext_filters_warp.htm#desaltpepper">DeSaltPepper</a>,
+<a href="ext_filters_warp.htm#deveed">DeVeed</a>, <a href="ext_filters_warp.htm#dfttest">dfttest</a>,
+<a href="ext_filters_warp.htm#frfun">FRFun</a>, <a href="ext_filters_warp.htm#hqdn3d">HQdn3d</a>,
+<a href="ext_filters_warp.htm#tisophote">TIsophote</a>, <a href="ext_filters_warp.htm#tnlmeans">TNLMeans</a>,
 <a href="ext_filters_warp.htm#varianslim">VarianSlim</a></td>
 </tr>
 
 <tr>
 <td>Další skriptové funkce</td>
 
-<td><a href="ext_filters_warp.htm#ltsmc">LTSMC</a>, <a href="ext_filters_warp.htm#mcnr_simple2">MCNR_simple2</a>, 
+<td><a href="ext_filters_warp.htm#ltsmc">LTSMC</a>, <a href="ext_filters_warp.htm#mcnr_simple2">MCNR_simple2</a>,
 <a href="ext_filters_warp.htm#seesaw">SeeSaw</a></td>
 </tr>
 </table>
@@ -396,7 +396,7 @@ velmi dobře, ale při příliš agresivním nastavení mohou být ztraceny detaily.</i>
 <td WIDTH="30%"><A href="externalfilters/msmooth.htm">MSmooth "Masked Smoother"
   (by Donald Graft)</A></td>
 
-<td WIDTH="70%">Tento&nbsp;filtr&nbsp;je efektivní 
+<td WIDTH="70%">Tento&nbsp;filtr&nbsp;je efektivní
       pro odstranění šumu typu komár (mosquito noise), a také pro efektivní
   vyhlazení stejnorodých oblastí v animovaných filmech. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=43976">diskuze</a>].</td>
 </tr>
@@ -413,7 +413,7 @@ velmi dobře, ale při příliš agresivním nastavení mohou být ztraceny detaily.</i>
 <td WIDTH="30%"><A href="externalfilters/smoothuv.htm">SmoothUV
   (by Kurosu)</A></td>
 
-<td WIDTH="70%"> Tento&nbsp;filtr&nbsp;může být 
+<td WIDTH="70%"> Tento&nbsp;filtr&nbsp;může být
       použit se snížení&nbsp;duhových&nbsp;pruhů (rainbows),&nbsp;stejně jako
   filtr&nbsp;SmartSmoothIQ. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=60631">diskuze</a>].</td>
 </tr>
@@ -436,10 +436,10 @@ velmi dobře, ale při příliš agresivním nastavení mohou být ztraceny detaily.</i>
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#2dcleanyuy2">2DCleanYUY2</a>, <a href="ext_filters_warp.htm#edeen">eDeen</a>, 
-<a href="ext_filters_warp.htm#extendedbilateral">ExtendedBilateral</a>, <a href="ext_filters_warp.htm#hblur">HBlur</a>, 
-<a href="ext_filters_warp.htm#medianblur">MedianBlur</a>, <a href="ext_filters_warp.htm#ml3dex">ML3Dex</a>, 
-<a href="ext_filters_warp.htm#removegrainhd">RemoveGrainHD</a>, <a href="ext_filters_warp.htm#smoothhiq">SmoothHiQ</a>, 
+<td><a href="ext_filters_warp.htm#2dcleanyuy2">2DCleanYUY2</a>, <a href="ext_filters_warp.htm#edeen">eDeen</a>,
+<a href="ext_filters_warp.htm#extendedbilateral">ExtendedBilateral</a>, <a href="ext_filters_warp.htm#hblur">HBlur</a>,
+<a href="ext_filters_warp.htm#medianblur">MedianBlur</a>, <a href="ext_filters_warp.htm#ml3dex">ML3Dex</a>,
+<a href="ext_filters_warp.htm#removegrainhd">RemoveGrainHD</a>, <a href="ext_filters_warp.htm#smoothhiq">SmoothHiQ</a>,
 <a href="ext_filters_warp.htm#variableblur">VariableBlur</a>, <a href="ext_filters_warp.htm#weedfn">WeedFN</a></td>
 </tr>
 
@@ -450,9 +450,9 @@ velmi dobře, ale při příliš agresivním nastavení mohou být ztraceny detaily.</i>
 <a NAME="temporal-smoothers"></a> </h2>
 
 <p>
-<i>         
-      Tyto filtry&nbsp;využívají 
-barevné podobnosti         
+<i>
+      Tyto filtry&nbsp;využívají
+barevné podobnosti
       a rozdíly mezi snímky&nbsp;ke zlepšení obrazu a
 komprimovatelnosti.&nbsp;Mohou&nbsp;odstranit velkou část šumu ve statických oblastech bez ztráty detailů, ale příliš
 silné nastavení může rozmazat pohyblivé oblasti.</i></p>
@@ -464,8 +464,8 @@ silné nastavení může rozmazat pohyblivé oblasti.</i></p>
 <td WIDTH="30%"><A href="externalfilters/cnr2.htm">Cnr2 "Chroma
   Noise Reducer" (by Marc FD)</A></td>
 
-<td WIDTH="70%">Redukuje šum&nbsp;barevných 
-      kanálů&nbsp;- chroma 
+<td WIDTH="70%">Redukuje šum&nbsp;barevných
+      kanálů&nbsp;- chroma
       (UV) a zachovává&nbsp;beze změny jas - luma(Y).
   [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=78905">diskuze</a>].</td>
 </tr>
@@ -498,9 +498,9 @@ silné nastavení může rozmazat pohyblivé oblasti.</i></p>
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#atc">Atc</a>, <a href="ext_filters_warp.htm#blendweight">BlendWeight</a>, <a href="ext_filters_warp.htm#celbackground">CelBackground</a>, 
-<a href="ext_filters_warp.htm#conditionaltemporalmedian">ConditionalTemporalMedian</a>, <a href="ext_filters_warp.htm#deflicker">DeFlicker</a>, 
-<a href="ext_filters_warp.htm#dnr2">DNR2</a>, <a href="ext_filters_warp.htm#grainopt">GrainOptimizer</a>, 
+<td><a href="ext_filters_warp.htm#atc">Atc</a>, <a href="ext_filters_warp.htm#blendweight">BlendWeight</a>, <a href="ext_filters_warp.htm#celbackground">CelBackground</a>,
+<a href="ext_filters_warp.htm#conditionaltemporalmedian">ConditionalTemporalMedian</a>, <a href="ext_filters_warp.htm#deflicker">DeFlicker</a>,
+<a href="ext_filters_warp.htm#dnr2">DNR2</a>, <a href="ext_filters_warp.htm#grainopt">GrainOptimizer</a>,
 <a href="ext_filters_warp.htm#nirmalam">NirMalam</a></td>
 </tr>
 
@@ -511,7 +511,7 @@ silné nastavení může rozmazat pohyblivé oblasti.</i></p>
 </tr>
 </table>
 
-<h2><a NAME="sharpen"></a>Pluginy pro 
+<h2><a NAME="sharpen"></a>Pluginy pro
 zostření /změkčení (Sharpen/Soften)</h2>
 <p><i>Jsou úzce spojeny s prostorovými vyhlazovači (Spatial Smoothers), popisovanými
 výše. Snaží se zlepšit kvalitu obrazu zostřením nebo změkčením hran.</i></p>
@@ -540,7 +540,7 @@ výše. Snaží se zlepšit kvalitu obrazu zostřením nebo změkčením hran.</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/tunsharp.htm">TUnsharp (by tritical)</A></td>
 
-<td WIDTH="70%">TUnsharp je základní zostřovací 
+<td WIDTH="70%">TUnsharp je základní zostřovací
       filtr, který využívá několik různých variací masky&nbsp;neostrosti (unsharpmasking) a&nbsp;dovoluje řízené zvýšení ostrosti, založené na&nbsp;významu hrany a minimálním&nbsp;i maximálním ohraničení&nbsp;sousední hodnoty. Reálný důvod jeho existence je oživení grafického rozhraní s prohlížením v reálném čase.
   [<a href="http://forum.doom9.org/showthread.php?t=84344">diskuze</a>].</td>
 </tr>
@@ -549,7 +549,7 @@ výše. Snaží se zlepšit kvalitu obrazu zostřením nebo změkčením hran.</i></p>
 <td WIDTH="30%"><A href="externalfilters/unfilter.htm">Unfilter
   plugin (by Tom Barry)</A></td>
 
-<td WIDTH="70%"> Tento filtr 
+<td WIDTH="70%"> Tento filtr
       změkčuje/zostřuje&nbsp;klip.&nbsp; Používá horizontální a vertikální filtry, vypracované tak, aby
   zlehka&nbsp;obrátily&nbsp;předchozí pokusy na změkčení nebo zesílení hran, které jsou běžné (ale ošklivé)&nbsp;při tovární
   výrobě&nbsp;DVD. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=28197&amp;pagenumber=3">diskuze</a>].</td>
@@ -558,14 +558,14 @@ výše. Snaží se zlepšit kvalitu obrazu zostřením nebo změkčením hran.</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/warpsharp.htm">WarpSharp package</A></td>
 
-<td WIDTH="70%">Tento plugin obsahuje řadu filtrů mezi nimiž jsou tři známé zostřovací filtry z VirtualDubu - 
+<td WIDTH="70%">Tento plugin obsahuje řadu filtrů mezi nimiž jsou tři známé zostřovací filtry z VirtualDubu -
 <code>WarpSharp</code> od Avery Lee, <code>Xsharpen</code> a <code>UnsharpMask</code> od Donalda Grafta.</td>
 </tr>
 
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#avsshock">AVSShock</a>, <a href="ext_filters_warp.htm#fqsharp">FQSharp</a>, <a href="ext_filters_warp.htm#segmentedamp">SegmentedAmp</a>, 
+<td><a href="ext_filters_warp.htm#avsshock">AVSShock</a>, <a href="ext_filters_warp.htm#fqsharp">FQSharp</a>, <a href="ext_filters_warp.htm#segmentedamp">SegmentedAmp</a>,
 <a href="ext_filters_warp.htm#warpsharpyv12">WarpSharp YV12</a></td>
 </tr>
 
@@ -576,10 +576,10 @@ výše. Snaží se zlepšit kvalitu obrazu zostřením nebo změkčením hran.</i></p>
 </tr>
 </table>
 
-<h2><a NAME="resizers"></a>Pluginy pro 
+<h2><a NAME="resizers"></a>Pluginy pro
 změnu velikosti (Resizers)</h2>
 
-<p><i>Pluginy&nbsp;pro změnu 
+<p><i>Pluginy&nbsp;pro změnu
 velikosti&nbsp;snímků vašeho klipu.</i></p>
 
 <table BORDER =1 CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
@@ -588,7 +588,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <td WIDTH="30%"><A href="externalfilters/bicublinresize.htm">BicublinResize (by
   Marc FD)</A></td>
 
-<td WIDTH="70%">Toto je sada funcí pro přepočtení 
+<td WIDTH="70%">Toto je sada funcí pro přepočtení
       rozměrů&nbsp;(resamplers):&nbsp;FastBilinear (podobný k&nbsp;simpleresize od Toma Barryho), FastBicubic
   (nefiltrovaný&nbsp;bikubický přepočet) a Bicublin (používá&nbsp;bicubický na ploše Y&nbsp;a bilineární&nbsp;na plochách&nbsp;UV). [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=43207">diskuze</a>].</td>
 </tr>
@@ -605,7 +605,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <td WIDTH="30%"><A href="externalfilters/yv12interlacedreduceby2.htm">YV12InterlacedReduceBy2
   (by Tom Barry)</A></td>
 
-<td WIDTH="70%">InterlacedReduceBy2 je 
+<td WIDTH="70%">InterlacedReduceBy2 je
       rychlý&nbsp;filtr, který zmenšuje rozměry na polovinu,
   užitečný pro velmi rychlé zmenšení prokládaného klipu. [<a href="http://forum.doom9.org/showthread.php?s=&amp;postid=271863">diskuze</a>].</td>
 </tr>
@@ -613,7 +613,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#flips">Flips</a>, <a href="ext_filters_warp.htm#reform">Reform</a>, <a href="ext_filters_warp.htm#rotate">Rotate</a>,   
+<td><a href="ext_filters_warp.htm#flips">Flips</a>, <a href="ext_filters_warp.htm#reform">Reform</a>, <a href="ext_filters_warp.htm#rotate">Rotate</a>,
 <a href="ext_filters_warp.htm#zoom">Zoom</a></td>
 </tr>
 
@@ -621,7 +621,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 
 <h2><a NAME="subtitles"></a>Pluginy pro titulky-zdroje</h2>
 
-<p><i>   
+<p><i>
   Pluginy, které umožňují importovat různé formáty titulků (tvrdě kódovaných do obrazu).</i></p>
 
 <table BORDER =1 CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
@@ -660,7 +660,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/ffms2.htm">FFmpegSource (by Myrsloik)</A></td>
 
-<td WIDTH="70%">Plugin, který otvírá media soubory (video i audio) pomocí knihoven ffmpeg. 
+<td WIDTH="70%">Plugin, který otvírá media soubory (video i audio) pomocí knihoven ffmpeg.
 [<a href="http://forum.doom9.org/showthread.php?t=127037">diskuze</a>].</td>
 </tr>
 
@@ -676,16 +676,16 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <td WIDTH="30%"><A href="externalfilters/mpeg2dec3.htm">MPEG2Dec3
   (by Marc FD and others)</A></td>
 
-<td WIDTH="70%">Modifikace&nbsp;MPEG2Dec2.dll s 
+<td WIDTH="70%">Modifikace&nbsp;MPEG2Dec2.dll s
       deblokováním a potlačením zvonění obrazu (deringing). Všimněte si&nbsp;informace&nbsp;o barevném prostředí&nbsp;z dvd2avi&nbsp;jsou&nbsp;při použití&nbsp;mpeg2dec ignorovány. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=53164">diskuze</a>].</td>
 </tr>
 
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#dgavcdecode">DGAVCDecode</a>, 
-<a href="ext_filters_warp.htm#imagesequence">ImageSequence</a>, <a href="ext_filters_warp.htm#immaread">Immaavs</a>, <a href="ext_filters_warp.htm#iuf">IUF</a>, 
-<a href="ext_filters_warp.htm#mpeg2dec">Mpeg2dec</a>, <a href="ext_filters_warp.htm#mpeg2dec">Mpeg2dec3</a>, <a href="ext_filters_warp.htm#mpegdecoder">Mpegdecoder</a>, 
+<td><a href="ext_filters_warp.htm#dgavcdecode">DGAVCDecode</a>,
+<a href="ext_filters_warp.htm#imagesequence">ImageSequence</a>, <a href="ext_filters_warp.htm#immaread">Immaavs</a>, <a href="ext_filters_warp.htm#iuf">IUF</a>,
+<a href="ext_filters_warp.htm#mpeg2dec">Mpeg2dec</a>, <a href="ext_filters_warp.htm#mpeg2dec">Mpeg2dec3</a>, <a href="ext_filters_warp.htm#mpegdecoder">Mpegdecoder</a>,
 <a href="ext_filters_warp.htm#omfimport">OmfSource</a>, <a href="ext_filters_warp.htm#quicktime">QTSource</td>
 </tr>
 
@@ -705,7 +705,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/ffms2.htm">FFmpegSource (by Myrsloik)</A></td>
 
-<td WIDTH="70%">Plugin, který otvírá media soubory (video i audio) pomocí knihoven ffmpeg. 
+<td WIDTH="70%">Plugin, který otvírá media soubory (video i audio) pomocí knihoven ffmpeg.
 [<a href="http://forum.doom9.org/showthread.php?t=127037">diskuze</a>].</td>
 </tr>
 
@@ -719,7 +719,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/nicaudio.htm">NicAudio (by Nic)</A></td>
 
-<td WIDTH="70%">  Audio pluginy&nbsp;pro 
+<td WIDTH="70%">  Audio pluginy&nbsp;pro
       MPEG Audio/AC3/DTS/LPCM. NicLPCMSource očekává syrové&nbsp;(raw) LPCM&nbsp;nebo LPCM WAV soubory. Nicméně v současnosti&nbsp;podporuje pouze&nbsp;2-kanálové LPCM WAV soubory.
   [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=89629pagenumber=2">diskuze</a>].</td>
 </tr>
@@ -727,8 +727,8 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#bassaudio">BassAudio</a>, <a href="ext_filters_warp.htm#befa">BeFa</a>, <a href="ext_filters_warp.htm#evilmpasource">EvilMPASource</a>, 
-<a href="ext_filters_warp.htm#minmaxaudio">MinMaxAudio</a>, <a href="ext_filters_warp.htm#rawav">RaWav</a>, <a href="ext_filters_warp.htm#sidsource">SidSource</a>, 
+<td><a href="ext_filters_warp.htm#bassaudio">BassAudio</a>, <a href="ext_filters_warp.htm#befa">BeFa</a>, <a href="ext_filters_warp.htm#evilmpasource">EvilMPASource</a>,
+<a href="ext_filters_warp.htm#minmaxaudio">MinMaxAudio</a>, <a href="ext_filters_warp.htm#rawav">RaWav</a>, <a href="ext_filters_warp.htm#sidsource">SidSource</a>,
 <a href="ext_filters_warp.htm#soxfilter">SoxFilter</a>, <a href="ext_filters_warp.htm#viewaudio">ViewAudio</a></td>
 </tr>
 
@@ -764,7 +764,7 @@ velikosti&nbsp;snímků vašeho klipu.</i></p>
 
 <h2><a NAME="broadcast"></a>Pluginy pro televizní pořady</h2>
 
-<p><i> Jsou předurčeny, aby se 
+<p><i> Jsou předurčeny, aby se
 staraly o různé problémy, které se objevují při zachytávání analogového
 vysílaného videa.&nbsp;Některé pomáhají bojovat s&nbsp;oddělením jasu/barev (luma/chroma separation); Jiné řeší problémy
 interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
@@ -791,13 +791,13 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/defreq.htm">DeFreq (by Fizick)</A></td>
 
-<td WIDTH="70%">Prostorový filtr odstraňující některé frekvence z 
-      video snímků. Může být použit pro odstranění některých frekvenčních 
-      interferenčních rušení (pravidelných šikmých pruhů), které jsou v 
-      některých zachycených televizních klipech a také pro dodateční snížení 
+<td WIDTH="70%">Prostorový filtr odstraňující některé frekvence z
+      video snímků. Může být použit pro odstranění některých frekvenčních
+      interferenčních rušení (pravidelných šikmých pruhů), které jsou v
+      některých zachycených televizních klipech a také pro dodateční snížení
       vysokofrekvenčních šumů. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=82978">diskuze</a>].</td>
 </tr>
- 
+
 <tr>
 <td WIDTH="30%"><A href="externalfilters/descratch.htm">DeScratch (by Fizick)</A></td>
 
@@ -807,7 +807,7 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/despot.htm">DeSpot (by Fizick)</A></td>
 
-<td WIDTH="70%">Tento filtr&nbsp;je určen pro 
+<td WIDTH="70%">Tento filtr&nbsp;je určen pro
       odstranění časového šumu ve formě teček (skvrn) a pásů nacházejících se v některých videích.&nbsp;Filtr&nbsp;je užitečný při restaurování&nbsp;(čistění)&nbsp;starých kinofilmů&nbsp;8mm (a dalších)&nbsp;odstraněním náhodných poruch v podobě tmavých skvrn od prachu a některých pruhů od rýh na filmech.
   [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=59388">diskuze</a>].</td>
 </tr>
@@ -832,7 +832,7 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <td WIDTH="30%"><A href="externalfilters/reinterpolate411.htm">Reinterpolate411
   (by Tom Barry)</A></td>
 
-<td WIDTH="70%">          
+<td WIDTH="70%">
     Zdá se, že sudé barevné pixely jsou v kodeku&nbsp;MainConcept&nbsp;(NTSC) duplikovány.&nbsp;Nový filtr&nbsp;tomu
   pomůže zahozením lichých barevných pixelů a jejich novým vytvořením jako středu&nbsp;ze dvou sousedních sudých
   pixelů. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=58294&amp;pagenumber=2">diskuze</a>].</td>
@@ -847,23 +847,23 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#bifrost">BiFrost</a></a>, <a href="ext_filters_warp.htm#bt709tobt601">bt709tobt601</a>, 
-<a href="ext_filters_warp.htm#declick">DeClick</a>, <a href="ext_filters_warp.htm#decrawl">DeCrawl</a>, <a href="ext_filters_warp.htm#dedot">DeDot</a>, 
-<a href="ext_filters_warp.htm#dejitter">DeJitter</a>, <a href="ext_filters_warp.htm#fanfilter">FanFilter</a>, 
-<a href="ext_filters_warp.htm#fixvhsoversharp">FixVHSOversharp</a>, <a href="ext_filters_warp.htm#reinterpolate420">ReInterpolate420</a>, <a href="ext_filters_warp.htm#ssiq">SSIQ</a>, 
+<td><a href="ext_filters_warp.htm#bifrost">BiFrost</a></a>, <a href="ext_filters_warp.htm#bt709tobt601">bt709tobt601</a>,
+<a href="ext_filters_warp.htm#declick">DeClick</a>, <a href="ext_filters_warp.htm#decrawl">DeCrawl</a>, <a href="ext_filters_warp.htm#dedot">DeDot</a>,
+<a href="ext_filters_warp.htm#dejitter">DeJitter</a>, <a href="ext_filters_warp.htm#fanfilter">FanFilter</a>,
+<a href="ext_filters_warp.htm#fixvhsoversharp">FixVHSOversharp</a>, <a href="ext_filters_warp.htm#reinterpolate420">ReInterpolate420</a>, <a href="ext_filters_warp.htm#ssiq">SSIQ</a>,
 <a href="ext_filters_warp.htm#tcombmask">TCombMask</a>, <a href="ext_filters_warp.htm#xlogo">Xlogo</td>
 </tr>
 
 <tr>
 <td>Další skriptové funkce</td>
 
-<td><a href="ext_filters_warp.htm#dekafka">DeKafka</a>, <a href="ext_filters_warp.htm#delogo">DeLogo</a>, <a href="ext_filters_warp.htm#derainbow">DeRainbow</a>, 
-<a href="ext_filters_warp.htm#dmfderainbow">DMFDeRainbow</a>, <a href="ext_filters_warp.htm#lutderainbow">LutDeRainbow</a>, 
+<td><a href="ext_filters_warp.htm#dekafka">DeKafka</a>, <a href="ext_filters_warp.htm#delogo">DeLogo</a>, <a href="ext_filters_warp.htm#derainbow">DeRainbow</a>,
+<a href="ext_filters_warp.htm#dmfderainbow">DMFDeRainbow</a>, <a href="ext_filters_warp.htm#lutderainbow">LutDeRainbow</a>,
 <a href="ext_filters_warp.htm#mfrainbow">mfRainbow</a>, <a href="ext_filters_warp.htm#smartssiq">SmartSSIQ</a></td>
 </tr>
 </table>
 
-<h2><a NAME="misc"></a>Různé pluginy 
+<h2><a NAME="misc"></a>Různé pluginy
 (Misc Plugins)</h2>
 
 <table BORDER="1" CELLSPACING=0 CELLPADDING=4 WIDTH="90%" >
@@ -903,7 +903,7 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <td WIDTH="30%"><A href="externalfilters/colormatrix.htm">ColorMatrix (by
   Wilbert Dijkhof/tritical)</A></td>
 
-<td WIDTH="70%"> ColorMatrix opravuje barvy 
+<td WIDTH="70%"> ColorMatrix opravuje barvy
       streamů MPEG-2. Správněji, mnohé&nbsp;MPEG-2 streamy používají mírně rozdílné koeficienty&nbsp;(zvané Rec.709) pro uchování barevné informace, než to dělají&nbsp;procesy přeměny barvy v&nbsp;AviSynthu&nbsp;nebo &nbsp;XviD/DivX decodérech (zvané Rec.601), s takovým výsledkem, že&nbsp;DivX/XviD klipy nebo MPEG-2 klipy&nbsp;zakódované pomocí&nbsp;TMPGEnc/QuEnc jsou zabrazovány&nbsp;s mírně posunutými barvami. To může být ověřeno otevřením&nbsp;MPEG-2 streamu přímo ve&nbsp;VirtualDubMod.
   [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=82217">diskuze</a>].</td>
 </tr>
@@ -970,7 +970,7 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/mt.htm">MT (by tsp)</A></td>
 
-<td WIDTH="70%">Filtr, který umožní pracovat jiným filtrům na více vláknech procesoru současně a tím pomáhá zvýšit rychlost zpracování. 
+<td WIDTH="70%">Filtr, který umožní pracovat jiným filtrům na více vláknech procesoru současně a tím pomáhá zvýšit rychlost zpracování.
 [<a href="http://forum.doom9.org/showthread.php?t=94996">diskuze</a>].</td>
 </tr>
 
@@ -1002,7 +1002,7 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <tr>
 <td WIDTH="30%"><A href="externalfilters/tmonitor.htm">TMonitor (by tritical)</A></td>
 
-<td WIDTH="70%"> TMonitor je&nbsp;filtr 
+<td WIDTH="70%"> TMonitor je&nbsp;filtr
       velmi podobný&nbsp;AVSMon. Umožňuje kontrolu klipu AviSynthu cestou prohlížení videa, zobrazení informací&nbsp;o klipu&nbsp;(jako&nbsp;šířka, výška, barevný formát, počet snímků, vzorkování zvuku, vzorkovací frekvence,&nbsp;počet zvukových kanálů, a další), a&nbsp;nastavení zpoždění zvuku. Také podporuje několik svých exemplářů v jednom skriptu, a umožňuje&nbsp;sledování rozdílů&nbsp;mezi různými částmi&nbsp;řetězce filtrů zpracování.</td>
 </tr>
 <tr>
@@ -1024,55 +1024,55 @@ interference nebo kompenzují nečinnou oblast obrazovky (overscan).</i></p>
 <tr>
 <td>Další pluginy</td>
 
-<td><a href="ext_filters_warp.htm#adjust">Adjust</a>, <a href="ext_filters_warp.htm#allcolours">AllColours</a>, <a href="ext_filters_warp.htm#alternate">Alternate</a>, 
-<a href="ext_filters_warp.htm#antiflicker">Antiflicker</a>, <a href="ext_filters_warp.htm#applyevery">ApplyEvery</a>, 
-<a href="ext_filters_warp.htm#autoyuy2">AutoYUY2</a>, <a href="ext_filters_warp.htm#aviinfo">AVIInfo</a>, 
-<a href="ext_filters_warp.htm#avishader">AviShader</a>, <a href="ext_filters_warp.htm#avstimer">AvsTimer</a>, 
-<a href="ext_filters_warp.htm#badframes">BadFrames</a>, <a href="ext_filters_warp.htm#bergfiltercollection">BergFilterCollection</a>, 
-<a href="ext_filters_warp.htm#blockoverlap">BlockOverlap</a>, <a href="ext_filters_warp.htm#call">Call</a>, 
-<a href="ext_filters_warp.htm#checkmask">CheckMask</a>, <a href="ext_filters_warp.htm#colordiff">ColorDiff</a>, 
-<a href="ext_filters_warp.htm#colorit">ColorIt</a>, <a href="ext_filters_warp.htm#colorkeyframe">ColorKeyFrame</a>, 
-<a href="ext_filters_warp.htm#compareyv12">CompareYV12</a>, <a href="ext_filters_warp.htm#colourlike">ColourLike</a>, 
-<a href="ext_filters_warp.htm#colourmask">ColourMask</a>, <a href="ext_filters_warp.htm#corrector">Corrector</a>, 
-<a href="ext_filters_warp.htm#dct">DCT</a>, <a href="ext_filters_warp.htm#deblock">DeBlock</a>, 
-<a href="ext_filters_warp.htm#deblot">DeBlot</a>, <a href="ext_filters_warp.htm#dedup">DeDup</a>, 
-<a href="ext_filters_warp.htm#demosaic">DeMosaic</a>, <a href="ext_filters_warp.htm#dumppixelvalues">DumpPixelValues</a>, 
-<a href="ext_filters_warp.htm#dvtimestampex">DVTimeStampEx</a>, <a href="ext_filters_warp.htm#effectsmany">EffectsMany</a>, 
-<a href="ext_filters_warp.htm#equlines">EquLines</a>, <a href="ext_filters_warp.htm#expsat">ExpSat</a>, 
-<a href="ext_filters_warp.htm#fftquiver">FFTQuiver</a>, <a href="ext_filters_warp.htm#fquiver">FQuiver</a>, 
-<a href="ext_filters_warp.htm#framedbl">FrameDbl</a>, <a href="ext_filters_warp.htm#freeframe">FreeFrame</a>, 
-<a href="ext_filters_warp.htm#genmotion">GenMotion</a>, <a href="ext_filters_warp.htm#getdups">GetDups</a>, 
-<a href="ext_filters_warp.htm#getsystemenv">GetSystemEnv</a>, <a href="ext_filters_warp.htm#gnoise">GNoise</a>, 
-<a href="ext_filters_warp.htm#gradfun2db">GradFun2DB</a>, <a href="ext_filters_warp.htm#graintools">Graintools</a>, 
-<a href="ext_filters_warp.htm#gramama">GraMaMa</a>, <a href="ext_filters_warp.htm#grid">Grid</a>, <a href="ext_filters_warp.htm#hdragc">HdrAgc</a>, 
-<a href="ext_filters_warp.htm#histogramadjust">HistogramAdjust</a>, <a href="ext_filters_warp.htm#hollywoodsq">HollywoodSquares</a>, 
-<a href="ext_filters_warp.htm#hotspot">HotSpot</a>, <a href="ext_filters_warp.htm#kronos">Kronos</a>, 
-<a href="ext_filters_warp.htm#limitedsuppor">LimitedSupport</a>, <a href="ext_filters_warp.htm#lineupscenes">LineUpScenes</a>, 
-<a href="ext_filters_warp.htm#loaddll">LoadDLL</a>, <a href="ext_filters_warp.htm#matchclips">MatchClips</a>, 
-<a href="ext_filters_warp.htm#mdeblock">MDeblock</a>, <a href="ext_filters_warp.htm#mergeclips">MergeClips</a>, 
-<a href="ext_filters_warp.htm#minmax">MinMax</a>, <a href="ext_filters_warp.htm#motion">Motion</a>, 
-<a href="ext_filters_warp.htm#neuralnet">NeuralNet</a>, <a href="ext_filters_warp.htm#noisegenerator">NoiseGenerator</a>, 
-<a href="ext_filters_warp.htm#pixelinfo">PixelInfo</a>, <a href="ext_filters_warp.htm#planeminmax">PlaneMinMax</a>, 
-<a href="ext_filters_warp.htm#pseudocolor">PseudoColor</a>, <a href="ext_filters_warp.htm#prewit">Prewitt</a>, 
-<a href="ext_filters_warp.htm#remapframes">RemapFrames</a>, <a href="ext_filters_warp.htm#repan">RePan</a>, 
-<a href="ext_filters_warp.htm#rgbhack">RGBHack</a>, <a href="ext_filters_warp.htm#rgbmanipulate">RGBManipulate</a>, 
-<a href="ext_filters_warp.htm#run">Run</a>, <a href="ext_filters_warp.htm#saa">SAA</a>, 
-<a href="ext_filters_warp.htm#scanlines">Scanlines</a>, <a href="ext_filters_warp.htm#sclavc">SClavc</a>, 
-<a href="ext_filters_warp.htm#selectbystring">SelectByString</a>, <a href="ext_filters_warp.htm#showpixelvalues">ShowPixelValues</a>, 
-<a href="ext_filters_warp.htm#shuffle">Shuffle</a>, <a href="ext_filters_warp.htm#smoothd">SmoothD</a>, 
-<a href="ext_filters_warp.htm#tedgemask">TEdgeMask</a>, <a href="ext_filters_warp.htm#testharness">TestHarness</a>, <a href="ext_filters_warp.htm#threshold">Threshold</a>, 
-<a href="ext_filters_warp.htm#tcnampadjust">TCNAmpAdjust</a>, <a href="ext_filters_warp.htm#transall">TransAll</a>, 
-<a href="ext_filters_warp.htm#transition">Transition</a>, <a href="ext_filters_warp.htm#transition_">Transition</a>, 
-<a href="ext_filters_warp.htm#tweak3">Tweak3</a>, <a href="ext_filters_warp.htm#tweakcolor">TweakColor</a>, 
-<a href="ext_filters_warp.htm#watershed">WaterShed</a>, <a href="ext_filters_warp.htm#xstatimport">XStatImport</a>, 
+<td><a href="ext_filters_warp.htm#adjust">Adjust</a>, <a href="ext_filters_warp.htm#allcolours">AllColours</a>, <a href="ext_filters_warp.htm#alternate">Alternate</a>,
+<a href="ext_filters_warp.htm#antiflicker">Antiflicker</a>, <a href="ext_filters_warp.htm#applyevery">ApplyEvery</a>,
+<a href="ext_filters_warp.htm#autoyuy2">AutoYUY2</a>, <a href="ext_filters_warp.htm#aviinfo">AVIInfo</a>,
+<a href="ext_filters_warp.htm#avishader">AviShader</a>, <a href="ext_filters_warp.htm#avstimer">AvsTimer</a>,
+<a href="ext_filters_warp.htm#badframes">BadFrames</a>, <a href="ext_filters_warp.htm#bergfiltercollection">BergFilterCollection</a>,
+<a href="ext_filters_warp.htm#blockoverlap">BlockOverlap</a>, <a href="ext_filters_warp.htm#call">Call</a>,
+<a href="ext_filters_warp.htm#checkmask">CheckMask</a>, <a href="ext_filters_warp.htm#colordiff">ColorDiff</a>,
+<a href="ext_filters_warp.htm#colorit">ColorIt</a>, <a href="ext_filters_warp.htm#colorkeyframe">ColorKeyFrame</a>,
+<a href="ext_filters_warp.htm#compareyv12">CompareYV12</a>, <a href="ext_filters_warp.htm#colourlike">ColourLike</a>,
+<a href="ext_filters_warp.htm#colourmask">ColourMask</a>, <a href="ext_filters_warp.htm#corrector">Corrector</a>,
+<a href="ext_filters_warp.htm#dct">DCT</a>, <a href="ext_filters_warp.htm#deblock">DeBlock</a>,
+<a href="ext_filters_warp.htm#deblot">DeBlot</a>, <a href="ext_filters_warp.htm#dedup">DeDup</a>,
+<a href="ext_filters_warp.htm#demosaic">DeMosaic</a>, <a href="ext_filters_warp.htm#dumppixelvalues">DumpPixelValues</a>,
+<a href="ext_filters_warp.htm#dvtimestampex">DVTimeStampEx</a>, <a href="ext_filters_warp.htm#effectsmany">EffectsMany</a>,
+<a href="ext_filters_warp.htm#equlines">EquLines</a>, <a href="ext_filters_warp.htm#expsat">ExpSat</a>,
+<a href="ext_filters_warp.htm#fftquiver">FFTQuiver</a>, <a href="ext_filters_warp.htm#fquiver">FQuiver</a>,
+<a href="ext_filters_warp.htm#framedbl">FrameDbl</a>, <a href="ext_filters_warp.htm#freeframe">FreeFrame</a>,
+<a href="ext_filters_warp.htm#genmotion">GenMotion</a>, <a href="ext_filters_warp.htm#getdups">GetDups</a>,
+<a href="ext_filters_warp.htm#getsystemenv">GetSystemEnv</a>, <a href="ext_filters_warp.htm#gnoise">GNoise</a>,
+<a href="ext_filters_warp.htm#gradfun2db">GradFun2DB</a>, <a href="ext_filters_warp.htm#graintools">Graintools</a>,
+<a href="ext_filters_warp.htm#gramama">GraMaMa</a>, <a href="ext_filters_warp.htm#grid">Grid</a>, <a href="ext_filters_warp.htm#hdragc">HdrAgc</a>,
+<a href="ext_filters_warp.htm#histogramadjust">HistogramAdjust</a>, <a href="ext_filters_warp.htm#hollywoodsq">HollywoodSquares</a>,
+<a href="ext_filters_warp.htm#hotspot">HotSpot</a>, <a href="ext_filters_warp.htm#kronos">Kronos</a>,
+<a href="ext_filters_warp.htm#limitedsuppor">LimitedSupport</a>, <a href="ext_filters_warp.htm#lineupscenes">LineUpScenes</a>,
+<a href="ext_filters_warp.htm#loaddll">LoadDLL</a>, <a href="ext_filters_warp.htm#matchclips">MatchClips</a>,
+<a href="ext_filters_warp.htm#mdeblock">MDeblock</a>, <a href="ext_filters_warp.htm#mergeclips">MergeClips</a>,
+<a href="ext_filters_warp.htm#minmax">MinMax</a>, <a href="ext_filters_warp.htm#motion">Motion</a>,
+<a href="ext_filters_warp.htm#neuralnet">NeuralNet</a>, <a href="ext_filters_warp.htm#noisegenerator">NoiseGenerator</a>,
+<a href="ext_filters_warp.htm#pixelinfo">PixelInfo</a>, <a href="ext_filters_warp.htm#planeminmax">PlaneMinMax</a>,
+<a href="ext_filters_warp.htm#pseudocolor">PseudoColor</a>, <a href="ext_filters_warp.htm#prewit">Prewitt</a>,
+<a href="ext_filters_warp.htm#remapframes">RemapFrames</a>, <a href="ext_filters_warp.htm#repan">RePan</a>,
+<a href="ext_filters_warp.htm#rgbhack">RGBHack</a>, <a href="ext_filters_warp.htm#rgbmanipulate">RGBManipulate</a>,
+<a href="ext_filters_warp.htm#run">Run</a>, <a href="ext_filters_warp.htm#saa">SAA</a>,
+<a href="ext_filters_warp.htm#scanlines">Scanlines</a>, <a href="ext_filters_warp.htm#sclavc">SClavc</a>,
+<a href="ext_filters_warp.htm#selectbystring">SelectByString</a>, <a href="ext_filters_warp.htm#showpixelvalues">ShowPixelValues</a>,
+<a href="ext_filters_warp.htm#shuffle">Shuffle</a>, <a href="ext_filters_warp.htm#smoothd">SmoothD</a>,
+<a href="ext_filters_warp.htm#tedgemask">TEdgeMask</a>, <a href="ext_filters_warp.htm#testharness">TestHarness</a>, <a href="ext_filters_warp.htm#threshold">Threshold</a>,
+<a href="ext_filters_warp.htm#tcnampadjust">TCNAmpAdjust</a>, <a href="ext_filters_warp.htm#transall">TransAll</a>,
+<a href="ext_filters_warp.htm#transition">Transition</a>, <a href="ext_filters_warp.htm#transition_">Transition</a>,
+<a href="ext_filters_warp.htm#tweak3">Tweak3</a>, <a href="ext_filters_warp.htm#tweakcolor">TweakColor</a>,
+<a href="ext_filters_warp.htm#watershed">WaterShed</a>, <a href="ext_filters_warp.htm#xstatimport">XStatImport</a>,
 <a href="ext_filters_warp.htm#yv12torgb24hq">YV12toRGB24HQ</a></td>
 </tr>
 
 <tr>
 <td>Další skriptové funkce</td>
 
-<td><a href="ext_filters_warp.htm#camembert">Camembert</a>, <a href="ext_filters_warp.htm#deblock_qed">DeBlock_QED</a>, <a href="ext_filters_warp.htm#fastlinedarken">FastLineDarken</a>, 
-<a href="ext_filters_warp.htm#fixchromableeding">FixChromaBleeding</a>, <a href="ext_filters_warp.htm#hqdering">HQDering</a>, 
+<td><a href="ext_filters_warp.htm#camembert">Camembert</a>, <a href="ext_filters_warp.htm#deblock_qed">DeBlock_QED</a>, <a href="ext_filters_warp.htm#fastlinedarken">FastLineDarken</a>,
+<a href="ext_filters_warp.htm#fixchromableeding">FixChromaBleeding</a>, <a href="ext_filters_warp.htm#hqdering">HQDering</a>,
 <a href="ext_filters_warp.htm#mftoon">mfToon</a>, <a href="ext_filters_warp.htm#subaa">SubAA</a>, <a href="ext_filters_warp.htm#ylevels">YLevels</a></td>
 </tr>
 </table>

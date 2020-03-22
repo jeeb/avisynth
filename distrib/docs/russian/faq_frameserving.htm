@@ -1,13 +1,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html lang="ru"><head><!-- 
-Automatically generated, don't change: 
-$Id: faq_frameserving.htm,v 1.5 2008/07/18 17:54:11 fizick Exp $ 
+<html lang="ru"><head><!--
+Automatically generated, don't change:
+$Id: faq_frameserving.htm,v 1.5 2008/07/18 17:54:11 fizick Exp $
 -->
 
     <meta http-equiv="Content-Language" content="ru">
 <meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
-  
-  
+
+
   <title>Часто задаваемые вопросы - Открытие скриптов</title><style type="text/css"></style>
   <link rel="stylesheet" type="text/css" href="../avisynth.css"></head>
 <body>
@@ -21,17 +21,17 @@ $Id: faq_frameserving.htm,v 1.5 2008/07/18 17:54:11 fizick Exp $
   <li><a href="#How_do_I_frameserve_my_AVS-file_to_encoder.2Fapplication_X.3F">Как мне загрузить мой AVS файл в кодировщик/приложение X ?</a>
     <ul>
       <li><a href="#Direct_frameserving_to_compatible_applications">Прямая передача кадров (фреймсервинг) в совместимые приложения</a></li>
-      <li><a href="#Direct_frameserving_to_applications_using_additional_plugins">Прямая передача кадров в приложение, 
+      <li><a href="#Direct_frameserving_to_applications_using_additional_plugins">Прямая передача кадров в приложение,
       используя дополнительные плагины</a></li>
-      <li><a href="#Direct_frameserving_to_special_or_modified_versions_of_encoders">Прямая передача кадров 
+      <li><a href="#Direct_frameserving_to_special_or_modified_versions_of_encoders">Прямая передача кадров
       в специальные или модифицированные версии кодировщиков</a></li>
-      <li><a href="#Frameserving_to_applications_via_fake_AVI_files_and_proxy_utilities">Передача кадров приложению 
+      <li><a href="#Frameserving_to_applications_via_fake_AVI_files_and_proxy_utilities">Передача кадров приложению
       через фальшивые AVI файлы и прокси-утилиты</a></li>
       <li><a href="#Frameserving_via_pipe_from_auxiliary_program_to_application-encoders">Передача кадров через конвейер
        из дополнительной программы в приложения-кодировщики</a></li>
     </ul>
   </li>
-  <li><a href="#How_do_I_solve_problems_when_opening.2Freading_scripts_in_encoders_and_players.3F">Как мне решить проблемы 
+  <li><a href="#How_do_I_solve_problems_when_opening.2Freading_scripts_in_encoders_and_players.3F">Как мне решить проблемы
   с открытием (чтением) скриптов в кодировщиках и проигрывателях?</a></li>
   <li><a href="#How_do_I_frameserve_from_Premiere.2FUlead.2FVegas_to_AviSynth.3F">Как мне передавать кадры из Premiere/Ulead/Vegas
 в AviSynth ?</a></li>
@@ -99,7 +99,7 @@ $Id: faq_frameserving.htm,v 1.5 2008/07/18 17:54:11 fizick Exp $
 
 <p>Напишите скрипт, используя текстовый редактор. Загрузите Ваш клип (смотри <a href="faq_loading_clips.htm">Загрузка клипов</a>)
 в AviSynth, сделайте необходимую фильтрацию и загрузите файл AVS в кодировщик/приложение
-X (это должен быть кодировщик или приложение, которое может читать файлы AVI, смотри 
+X (это должен быть кодировщик или приложение, которое может читать файлы AVI, смотри
 <a href="#How_do_I_frameserve_my_AVS-file_to_encoder.2Fapplication_X.3F">здесь</a>).
 </p>
 
@@ -129,11 +129,11 @@ Studio, xvid_encraw, FFMpeg (новые версии), Nero 6, Nero 7 (только перетащи_и_бр
   <li>Для передачи кадров в Premiere существует плагин импорта
     &quot;IM-Avisynth.prm&quot;.</li>
 </ul>
-<p>Оригинальная версия размещалась на <a href="http://math.berkeley.edu/~benrg/avisynth-premiere.html">сайте Бена</a>, 
-смотри <a href="http://neuron2.net/www.math.berkeley.edu/benrg/avisynth-premiere.html">зеркало</a>. 
+<p>Оригинальная версия размещалась на <a href="http://math.berkeley.edu/~benrg/avisynth-premiere.html">сайте Бена</a>,
+смотри <a href="http://neuron2.net/www.math.berkeley.edu/benrg/avisynth-premiere.html">зеркало</a>.
 Значительно усовершенствованная версия может быть загружена со страницы <a href="http://sourceforge.net/projects/videoeditorskit/">Video
 Editors Kit на sourceforge</a>. Он работает для Premiere 5.x, 6.x и Pro в настоящее время.
-Версия 1.5 также работает для Premier CS3. Для установки плагина импорта, поместите файл IM-Avisynth.prm file в 
+Версия 1.5 также работает для Premier CS3. Для установки плагина импорта, поместите файл IM-Avisynth.prm file в
 каталог Premiere &quot;Plug-ins&quot;.</p>
 <a name="Direct_frameserving_to_special_or_modified_versions_of_encoders"></a>
 <h4>Прямая передача кадров в специальные или модифицированные версии кодировщиков</h4>
@@ -143,10 +143,10 @@ Editors Kit на sourceforge</a>. Он работает для Premiere 5.x, 6.x и Pro в настоя
   <li>Mencoder</li>
   <li>FFMpeg: версии ранее чем SVN-r6129 используют &quot;AVSredirect.dll&quot;
     для связи с Avisynth. Начиная с SVN-r6129, код AVS redirect
-    интегрирован в исполняемый файл FFmpeg (как опция при компиляции). Используйте сборки на 
+    интегрирован в исполняемый файл FFmpeg (как опция при компиляции). Используйте сборки на
     <a href="http://ffdshow.faireal.net/mirror/ffmpeg/">http://ffdshow.faireal.net/mirror/ffmpeg/</a></li>
   <li>Windows Media 9 Encoder: загрузите Windows Media 9 Encoder от Nic и удостоверьтесь,
-    что вы также установили Windows Media 9 кодек. Оба могут быть найдены 
+    что вы также установили Windows Media 9 кодек. Оба могут быть найдены
     <a href="http://nic.dnsalias.com/WM9Enc.html">там</a>.</li>
 </ul>
 <a name="Frameserving_to_applications_via_fake_AVI_files_and_proxy_utilities"></a>
@@ -173,10 +173,10 @@ Editors Kit на sourceforge</a>. Он работает для Premiere 5.x, 6.x и Pro в настоя
   <li>MakeAVIS - включен в ffvfw и <a href="http://sourceforge.net/project/showfiles.php?group_id=173941">FFDShow</a>.</li>
 </ul>
 <p>Особенности - вывод в любой цветовой формат. Распакованное несжатое аудио работает правильно только
-в старом ffvfw и недавнем (с 13 ноября 2007) ffdshow (только 8 и 16 бит, используйте 
+в старом ffvfw и недавнем (с 13 ноября 2007) ffdshow (только 8 и 16 бит, используйте
 <a href="corefilters/convertaudio.htm">ConvertAudioTo16bit</a> при необходимости).</p>
 <ul>
-  <li><a href="http://hmd.c58.ru/files.html">Proxy-codec AVS2AVI</a>. (Заметьте, что одноименная утилита Moitah и других 
+  <li><a href="http://hmd.c58.ru/files.html">Proxy-codec AVS2AVI</a>. (Заметьте, что одноименная утилита Moitah и других
     является кодировщиком, а не AVI-враппером.)</li>
 </ul>
 <p>Особенности - видео выход тот же, что и входной формат, без аудио.</p>
@@ -185,7 +185,7 @@ CCE SP v2.62-2.64, Windows Media Encoder vx.x. (старее чем v9), Ulead
 VideoStudio 5-11, MediaStudio 6-8, Pinnacle Studio, Sony Vegas, Nero 8,
 ImageMixer и другие.</p>
 <a name="Frameserving_via_pipe_from_auxiliary_program_to_application-encoders"></a>
-<h4>Передача кадров через конвейер из дополнительной программы в 
+<h4>Передача кадров через конвейер из дополнительной программы в
 приложения-кодировщики</h4>
 <p><a href="http://akuvian.org/src/avisynth/avs2yuv/">Avs2YUV</a>
 является программы командной строки, предназначенная для использования под Wine, для интерфейса между AviSynth
@@ -208,7 +208,7 @@ ImageMixer и другие.</p>
 /<a href="http://www.avisynth.org/index.php?page=DivX">DivX5</a>
 кодек, так чтобы он мог делать декомпрессию при загрузке AVI в
 TMPGEnc.</li>
-<li>Установите плагин <a href="http://www.math.berkeley.edu/~benrg/avisynth/tmpgenc-readavs.zip">ReadAVS</a> для TMPGEnc. 
+<li>Установите плагин <a href="http://www.math.berkeley.edu/~benrg/avisynth/tmpgenc-readavs.zip">ReadAVS</a> для TMPGEnc.
         Просто скопируйте ReadAVS.dll в каталог VFAPI reader, откройте
         reg-файл ReadAVS.reg в Блокноте и измените соответствующий путь.
         Сохраните его, и дважды щелкните на нем чтобы добавить это к вашему системному реестру.</li>
@@ -225,7 +225,7 @@ TMPGEnc.</li>
 </ul>
 </li>
 <li>Мой кодировщик или проигрыватель не открывает AVS файлы, что мне делать ?</li>
-В этом случае вы можете попробовать другой способ, например AVI враппер (подстановщик), 
+В этом случае вы можете попробовать другой способ, например AVI враппер (подстановщик),
 <a href="http://avisynth.org/mediawiki/Vfapi" title="Vfapi">vfapi</a>
         или <a href="http://avisynth.org/mediawiki/MakeAVIS" title="MakeAVIS">makeAVIS</a>.</li>
 </ul>
@@ -250,14 +250,14 @@ TMPGEnc.</li>
       <li>Чтобы использовать AviSynth как источник с WME9, вам необходимо установить
         источник кодировщика в &quot;Both device and file&quot; в меню Session Properties,
         смотри <a href="http://forum.doom9.org/showthread.php?t=48477">обсуждение</a>
-        и <a href="http://forum.doom9.org/showthread.php?t=112634">WMV faq</a>. 
+        и <a href="http://forum.doom9.org/showthread.php?t=112634">WMV faq</a>.
         Или используйте <a href="http://nic.dnsalias.com/WM9Enc.html">Nic WMV encoder</a>.</li>
     </ul>
   </li>
   <li>WMP11 в Vista не проигрывает AVS, что делать?
     <ul>
       <li>Вы можете <a href="http://forum.doom9.org/showthread.php?t=121674">отредактировать реестр</a>
-       чтобы добавить .avs как известное расширение. Скопируйте ключ реестра (и его подключи) 
+       чтобы добавить .avs как известное расширение. Скопируйте ключ реестра (и его подключи)
         <b>HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Multimedia\WMPlayer\Extensions\.avi</b>
         в <b>HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Multimedia\WMPlayer\Extensions\.avs</b></li>
     </ul>
@@ -267,16 +267,16 @@ TMPGEnc.</li>
 
 <a name="How_do_I_frameserve_from_Premiere.2FUlead.2FVegas_to_AviSynth.3F"></a>
 <h3>Как мне передавать кадры из&nbsp;Premiere/Ulead/Vegas в AviSynth ?</h3>
-<p>Установите совместимый с AviSynth фрейм-сервер (импорта) 
+<p>Установите совместимый с AviSynth фрейм-сервер (импорта)
 [<a href="http://www.debugmode.com/frameserver/">Debugmode frameserver (by Satish Kumar)</a>, старое название PluginPac]:
  для передачи кадров от SonicFoundry Vegas (и более ранних версий Vegas Video/VideoFactory), Adobe Premiere
 или Ulead MediaStudio Pro или Wax в AviSynth. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=51242">обсуждение</a>].
 </p>
 <p>|<a href="faq_sections.htm" title="AviSynth FAQ">
-Содержание FAQ</a> | <a href="faq_general_info.htm">Общая 
-информация</a> | <a href="faq_loading_clips.htm">Загрузка клипов</a> | <b>Открытие 
-скриптов</b> | <a href="faq_common_errors.htm">Общие сообщения об 
-ошибках</a> | <a href="faq_different_types_content.htm">Обработка различного 
+Содержание FAQ</a> | <a href="faq_general_info.htm">Общая
+информация</a> | <a href="faq_loading_clips.htm">Загрузка клипов</a> | <b>Открытие
+скриптов</b> | <a href="faq_common_errors.htm">Общие сообщения об
+ошибках</a> | <a href="faq_different_types_content.htm">Обработка различного
 контента</a> | <a href="faq_yv12.htm">Работа с YV12</a> | <a href="faq_using_virtualdub_plugins.htm">Обработка с
 плагинами от Virtualdub</a> |</p>
 

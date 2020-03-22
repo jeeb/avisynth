@@ -223,7 +223,7 @@ During erode phase, the motion map is eroded with range <var>mwidth</var>/2 and 
 and zones with small summary weight (less than 3*<var>merode</var>/100)  are decreased or completely removed from motion map. Such zones correspond to
 small relative (in percent) numbers of motion neighbors within this range (or mostly noisy pixels -spots).<br>
 During dilate phase,&nbsp; remained motion zones are enlarged with same range. These are probably the most important steps (especially for <var>motpn</var>=false) .</p>
-<p>4a) If percent of pixels in motion is more than  <var>mscene</var> parameter, the plugin detects scenechange, and whole motion map is set as motion.</p> 
+<p>4a) If percent of pixels in motion is more than  <var>mscene</var> parameter, the plugin detects scenechange, and whole motion map is set as motion.</p>
 <p>5) Only remove the specks in which there was no motion (in the current frame or  next frame if <var>motpn</var>=false).<br>
     In pixel removing mode (<var>seg</var> = 0), test and reject all noise candidate pixels which has overlap with motion zones,
 rest candidates will be removed.<br>

@@ -12,7 +12,7 @@ $Id: tbilateral.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>       0.9.11<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>   Prostorové vyhlazovaèe
 <br><b>požadavky:</b>&nbsp;
@@ -26,7 +26,7 @@ $Id: tbilateral.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 
 <!-- #EndTemplate -->
 <h2>Popis</h2>
-<p>      TBilateral je prostorový vyhlazovací filtr, který používá dvousmìrový (bilateral) filtraèní algoritmus.  
+<p>      TBilateral je prostorový vyhlazovací filtr, který používá dvousmìrový (bilateral) filtraèní algoritmus.
 Dìlá hezké vyhlazování a pøitom zachovává strukturu obrazu.  V souèasnosti podporuje barevná prostøedí YV12 a YUY2&nbsp;<br>
    a má gui s náhledem pro pomoc pøi nastavování.</p>
 <h3>Syntaxe</h3>
@@ -40,12 +40,12 @@ Dìlá hezké vyhlazování a pøitom zachovává strukturu obrazu.  V souèasnosti podpo
 <p><var>diameterL</var>/<var>diameterC</var> -  (prostorové prùmìry)</p>
 <p>Toto nastavuje velikost prùmìru filtraèního okna.  Vìtší hodnoty znamenají, že více pixelù
 bude zahrnuto do prùmìru, ale jsou také pomalejší.  Musí být jen liché èíslo vìtší než 1.<br>
-      diameterL je pro jas (luma) a diameterC je pro barevnost (chroma) , pokud je zpracovávána.  Toto musí být 
+      diameterL je pro jas (luma) a diameterC je pro barevnost (chroma) , pokud je zpracovávána.  Toto musí být
 menší než šíøka videa a menší než výška videa.</p>
 <p>výchozí - <var>diameterL</var> = 5 (int)<br>
 <var>diameterL</var> = 5 (int)</p>
 <p><var>sDevL</var>/<var>sDevC</var> - (prostorová (domain) odchylka)</p>
-<p>Toto nastavuje prostorové odchylky.  Èím je sDev vìtší, tím menší vliv bude mít vzdálenost na vážení pixelù v prùmìru. 
+<p>Toto nastavuje prostorové odchylky.  Èím je sDev vìtší, tím menší vliv bude mít vzdálenost na vážení pixelù v prùmìru.
 To je, jak zvýšíte sDev, vzdálené pixely budou mít vìtší váhu.  sDevL je pro jas a sDevC je pro barevnost.  Musí být vìtší než 0.
 Aby jste lépe pochopily tato nastavení, zkuste nastavit iDevL/iDevC na vysoké hodnoty, a pak
       postupnì zvìtšujte sDevL/sDevC od 0 nahoru a pøitom držte iDevL/iDevC konstantní.  Zvyšování tìchto nastavení
@@ -56,37 +56,37 @@ zvýší sílu vyhlazování.</p>
 <p>Tyto nastavují odchylky intenzity pixelu (nebo odchylky barvy v pøípadì barevnostních ploch).
 Èím vìtší je iDev , tím menší vliv bude mít rozdíl pixelu pøi vážení pixelù v prùmìru.
 To je, když zvyšujete iDev, pixely které se velmi liší od aktuálního pixelu budou mít
-vìtší váhu.  iDevL je pro jas a iDevC je pro barevnost.  Musí být vìtší než 0. 
-Zkuste zvyšovat toto nastavení a pøi tom držet sDev/sDevC konstantní, aby jste získali lepší pøedstavu co      
+vìtší váhu.  iDevL je pro jas a iDevC je pro barevnost.  Musí být vìtší než 0.
+Zkuste zvyšovat toto nastavení a pøi tom držet sDev/sDevC konstantní, aby jste získali lepší pøedstavu co
 dìlají.  Zvyšování tìchto nastavení zvýší sílu vyhlazení.</p>
 <p>výchozí - <var>iDevL</var> = 7.0  (float)<br>
 <var>iDevC</var> = 7.0 (float)</p>
 <p><var>csL</var>/<var>csC</var> - (souèinitele váhy støedového pixelu)</p>
 <p>Tyto hodnoty jsou násobeny prostorovou váženou hodnotou støedových pixelù. Hodnota 1 nedìlá
 nic, &lt; 1 znamená, že støedový pixel bude mít menší váhu než normálnì, > 1 znamená, že støedový pixel
-      bude mít vìtší váhu než normálnì, 0 nedává støedovému pixelu žádnou váhu.  Musí být nejménì      
+      bude mít vìtší váhu než normálnì, 0 nedává støedovému pixelu žádnou váhu.  Musí být nejménì
       0.  Nastavení csL/csC to 0 vám dá odšumìní jako v SUSAN.</p>
 <p>výchozí - <var>csL</var> = 1.0  (float)<br>
 <var>csC</var> = 1.0  (float)</p>
 <p><var>d2</var> - (druhá odvozenina nebo první odvozenina)</p>
-<p>Toto nastavení zpùsobí, že TBilateral použije druhou odvozeninu místo první, když provádí       
+<p>Toto nastavení zpùsobí, že TBilateral použije druhou odvozeninu místo první, když provádí
 výpoèty intenzity.  Použití d2 by mìlo dát lepší výsledky v hladších gradientech nebo èemkoli co
 vypadá jako kusovì-lineární model.  Nastavení d2 na false dá lepší výsledky v obrazech,
 které mají jednolitì (uniformì) vybarvené oblasti s ostrými hranami (cokoli co vypadá jako kusovì-konstantní model).<br>
-      Skuteèný rozdíl mezi tìmito dvìma není pro vìtšinu zdrojù obvykle velký.  
+      Skuteèný rozdíl mezi tìmito dvìma není pro vìtšinu zdrojù obvykle velký.
 Efekt je spíše mírný.</p>
 <p>výchozí - false  (bool)</p>
 <p><var>chroma</var> - (zapíná zpracování barevnosti)</p>
-<p>Je-li nastaven na true, jsou zpracovány plochy barevnosti. Je-li nastaven na false, tak jsou plochy barevnosti 
+<p>Je-li nastaven na true, jsou zpracovány plochy barevnosti. Je-li nastaven na false, tak jsou plochy barevnosti
 ze zdroje jednoduše zkopírovány do výstupního snímku.</p>
 <p>výchozí - true  (bool)</p>
 <p><var>gui</var> - (gui rozhraní)</p>
 <p>Když je nastaven na true, tak se tato instance TBilateral spustí s gui.  Jen jedna instance
 TBilateral na skript mùže mít gui.  Gui vám umožní zmìnit hodnoty<br>
-      diameterL/diameterC/sDevL/sDevC/iDevL/iDevC/csL/csC/d2/chroma/kernS/kernI/resType (v podstatì      
-      veškeré nastavení). Gui má také náhled aktualizovaný v reálném èase, který vám umožní prohlédnout si efekt      
+      diameterL/diameterC/sDevL/sDevC/iDevL/iDevC/csL/csC/d2/chroma/kernS/kernI/resType (v podstatì
+      veškeré nastavení). Gui má také náhled aktualizovaný v reálném èase, který vám umožní prohlédnout si efekt
       zmìn, které jste udìlali.</p>
-<p>      Gui má však nìkolik omezení. Hodnoty diameterL/diameterC jsou v souèasnosti omezeny      
+<p>      Gui má však nìkolik omezení. Hodnoty diameterL/diameterC jsou v souèasnosti omezeny
 na maximálnì 21 pøi použití gui rozhraní.  Také posuvníky Dev mají maximální
 limity vztažené k tomu, aby umožnili použít posuvníky pro jejich nastavení. Nicménì, tyto
 maxima by mìly být dostateènì vysoká pro umožnìní velmi silného filtrování.</p>

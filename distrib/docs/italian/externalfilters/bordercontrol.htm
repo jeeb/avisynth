@@ -4,7 +4,7 @@
    <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: bordercontrol.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $ 
+$Id: bordercontrol.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $
 -->
 </head>
 <body>
@@ -17,30 +17,30 @@ $Id: bordercontrol.htm,v 1.1 2004/10/17 16:30:51 alex_e_basta Exp $
 <b>requirements:</b> YV12 &amp; YUY2 Colorspace
 <hr>
 <h3>Descrizione</h3>
-<p><b>Note:</b>I parametri left e right vengono duplicati dal filtro sicch&egrave; 
-  non si riesce a capire come comportarsi correttamente aevndo ancora 1 chroma 
+<p><b>Note:</b>I parametri left e right vengono duplicati dal filtro sicch&egrave;
+  non si riesce a capire come comportarsi correttamente aevndo ancora 1 chroma
   per ogni 2 luma.:-(</p>
-<p>Realizza le stesse funzioni della versione VirtualDub visto che si pu&ograve; 
-  impostare un bordo nero, una border region cui applicare una dissolvenza, oppure 
-  spalma il bordo da conservare dovendo croppare e ridimensionare l'intero frame 
-  solo per pochi pixels. Ogni bordo (superiore, inferiore, sonostro e destro) 
+<p>Realizza le stesse funzioni della versione VirtualDub visto che si pu&ograve;
+  impostare un bordo nero, una border region cui applicare una dissolvenza, oppure
+  spalma il bordo da conservare dovendo croppare e ridimensionare l'intero frame
+  solo per pochi pixels. Ogni bordo (superiore, inferiore, sonostro e destro)
   possono essere manipolati in modo indipendente.</p>
 <h3>Sintassi</h3>
 <pre>#Example
 LoadPlugin(&quot;BorderControl&quot;)
 AVISource(&quot;Test.avi&quot;)
 BorderControl(YBB=16, YTS=32)</pre>
-<p>Questo piazza inferiormente un bordo nero e spalma alcune righe nella parte 
-  superiore dell'immagine. Il plugins accetta fino a 16 parametri, 4 per ogni 
+<p>Questo piazza inferiormente un bordo nero e spalma alcune righe nella parte
+  superiore dell'immagine. Il plugins accetta fino a 16 parametri, 4 per ogni
   lato.<br>
-  Ci sono 4 prefissi: <var>YB</var>, <var>YT</var>, <var>XL</var> e<var> XR</var> 
+  Ci sono 4 prefissi: <var>YB</var>, <var>YT</var>, <var>XL</var> e<var> XR</var>
   per il bordo inferiore (bottom), superiore (top), sinistro (left) e destro (right).</p>
-<p>Ci sono4 suffissi: <var> B</var> per Border - che imposta la dimensione del 
-  bordo , <var> F</var> per Fade, <var> S</var> per Smear e<var> SF</var> per 
+<p>Ci sono4 suffissi: <var> B</var> per Border - che imposta la dimensione del
+  bordo , <var> F</var> per Fade, <var> S</var> per Smear e<var> SF</var> per
   SmearFactor.</p>
-<p>Aumentare SmearFactor (avendo prima impostato correttamente il valore Smear) 
-  pu&ograve; aiutare a mascherare la regione di smear region al costo dell'aumento 
-  dell'area da processare. Suggerisco di usare valori pari per YTSF e YBSF quando 
+<p>Aumentare SmearFactor (avendo prima impostato correttamente il valore Smear)
+  pu&ograve; aiutare a mascherare la regione di smear region al costo dell'aumento
+  dell'area da processare. Suggerisco di usare valori pari per YTSF e YBSF quando
   si ha a che fare con materiale interlacciato.</p>
 <p>I parametri sono:<br>
 <code>BorderControl</code> (<var>clip, &quot;YBB&quot;, &quot;YBF&quot;,

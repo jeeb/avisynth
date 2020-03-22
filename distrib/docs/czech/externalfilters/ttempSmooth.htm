@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: ttempSmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: ttempSmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: ttempSmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>        0.9.4<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b> Èasové vyhlazovaèe
 <br><b>požadavky:</b>&nbsp;
@@ -40,28 +40,28 @@ bool <var>&quot;fp&quot;</var>, int <var>&quot;vis_blur&quot;</var>, bool <var>&
 <p><var>   maxd</var> -  (maximální èasový-temporal prùmìr)</p>
 <p>Toto nastavuje maximální èasový rádius. TTempSmooth ostatnì automaticky mìní
       použitý rádius... toto nastavuje maximální meze.  Možné hodnoty jsou 1 až 7.  Pøi 1 TTempSmooth
-      zahrne pixely z (maximálnì) 1 snímku dále nebo blíže od støedního (celkem budou uvažovány 3 snímky 
-      vèetnì aktuálního).  Pøi 7 by byly zahrnuty pixely ze snímkù vzdálených až o 7 snímkù 
-      (celkem bude uvažováno 15 snímkù).  S kontrolou pohybu není moc nebezpeèné 
-      jeho vyšší nastavení, je to v podstatì možnost upøednostnìní kvality proti rychlosti.  Nižší nastavení jsou rychlejší, zatímco 
+      zahrne pixely z (maximálnì) 1 snímku dále nebo blíže od støedního (celkem budou uvažovány 3 snímky
+      vèetnì aktuálního).  Pøi 7 by byly zahrnuty pixely ze snímkù vzdálených až o 7 snímkù
+      (celkem bude uvažováno 15 snímkù).  S kontrolou pohybu není moc nebezpeèné
+      jeho vyšší nastavení, je to v podstatì možnost upøednostnìní kvality proti rychlosti.  Nižší nastavení jsou rychlejší, zatímco
       vìtší hodnoty smìøují k vytvoøení stabilnìjšího obrazu.</p>
 <p>výchozí = 3 (int)</p>
 <p><var>LThresh</var>/<var>CThresh</var> - (prahové hodnoty jasu - luma a barevnosti - chroma)</p>
 <p>Vaše standardní prahové hodnoty jasu a barevnosti pro rozdíly pixelù mezi snímky.  lthresh je
       pro jas a cthresh je pro barevnost. TTempSmooth kontroluje vzdálenost 2 snímkù a také jednoho snímku,
-      takže mohou být obvykle nastaveny mírnì výše, než u vìtšiny jiných èasových vyhlazovaèù a poøád 
-      se ještì vyhnete artefaktùm.  Platná nastavení jsou od 1 do 256.  Také je dùležitý fakt, že dokud je 
-      "mdiff" menší než hodnota prahové hodnoty tak pixely s vìtšími rozdíly od pùvodního 
-      budou mít menší váhu v prùmìru.  Tak dokonce i s dost velkými prahovými hodnotami, právì pixely pod 
+      takže mohou být obvykle nastaveny mírnì výše, než u vìtšiny jiných èasových vyhlazovaèù a poøád
+      se ještì vyhnete artefaktùm.  Platná nastavení jsou od 1 do 256.  Také je dùležitý fakt, že dokud je
+      "mdiff" menší než hodnota prahové hodnoty tak pixely s vìtšími rozdíly od pùvodního
+      budou mít menší váhu v prùmìru.  Tak dokonce i s dost velkými prahovými hodnotami, právì pixely pod
       prahovými hodnotami nebudou mít velkou váhu, a to napomáhá snížení artefaktù.</p>
 <p>výchozí - <var>LThresh</var> = 4  (int)<br>
 <var>CThresh</var> = 5  (int)</p>
 <p><var>lmdiff</var>/<var>cmdiff</var> - (stálý rozdíl) - (použito jen v TTempSmooth ne v TTempSmoothF)</p>
-<p>Jakékoli pixely s rozdíly menšími nebo rovnými "mdiff" budou maximálnì rozmazány.  Obvykle 
-      èím vìtší rozdíl od støedového pixelu tím menší váha v prùmìru.  mdiff nutí 
-      TTempSmooth zpracovávat pixely takové, které se liší ménì nebo stejnì jako "mdiff" tak, jako by mìli 
-      rozdíl 0.  Jinými slovy, posouvá bod nulového rozdílu dále. Nastavte "mdiff" 
-      na hodnotu rovnou nebo vìtší než lthresh-1/cthresh-1 aby jste úplnì vypnuly vážení pøevráceného (1/x)) rozdílu pixelu. 
+<p>Jakékoli pixely s rozdíly menšími nebo rovnými "mdiff" budou maximálnì rozmazány.  Obvykle
+      èím vìtší rozdíl od støedového pixelu tím menší váha v prùmìru.  mdiff nutí
+      TTempSmooth zpracovávat pixely takové, které se liší ménì nebo stejnì jako "mdiff" tak, jako by mìli
+      rozdíl 0.  Jinými slovy, posouvá bod nulového rozdílu dále. Nastavte "mdiff"
+      na hodnotu rovnou nebo vìtší než lthresh-1/cthresh-1 aby jste úplnì vypnuly vážení pøevráceného (1/x)) rozdílu pixelu.
       Platné hodnoty jsou od 0 do 255. lmdiff je pro jas a cmdiff je pro
       barevnost.</p>
 <p>      výchozí - <var>lmdiff</var> = 2  (int)<br>
@@ -86,7 +86,7 @@ bool <var>&quot;fp&quot;</var>, int <var>&quot;vis_blur&quot;</var>, bool <var>&
 
 
 <p>      Zobrazené hodnoty jsou pro maxr = 7, pøi použití menších hodnot rádiusu váhy mimo
-      tento rozsah jsou jednoduše vypuštìny.  Tedy, nastavení strength na hodnotu maxr+1 nebo vyšší 
+      tento rozsah jsou jednoduše vypuštìny.  Tedy, nastavení strength na hodnotu maxr+1 nebo vyšší
       vám dá stejné prostorové vážení všech pixelù v jádøe.  Verze pøed v0.9.3 vždy
       používali vážení podle strength = 2.</p>
 
@@ -102,7 +102,7 @@ bool <var>&quot;fp&quot;</var>, int <var>&quot;vis_blur&quot;</var>, bool <var>&
 
 <p>      výchozí =  12.0 (float)</p>
 
- 
+
 <p>   <var>fp</var> - (regulární nebo zakotvené zprùmìrování podle poètu)</p>
 
 <p>      Nastavení fp=true pøidá nìjakou váhu nedodanou vnìjším pixelùm zpìt k centrálnímu pixelu,
@@ -114,13 +114,13 @@ bool <var>&quot;fp&quot;</var>, int <var>&quot;vis_blur&quot;</var>, bool <var>&
 
 <p>   <var>vis_blur</var> - (vizualizace rozmazání)</p>
 
-<p>       Tato možnost vysílá mapu, která ukazuje které pixely jsou filtrovány a jak moc. Pro 
-      každý pixel poèítá jaká váha byla dána vnìjším pixelùm (t.j. ne centrálnímu pixelu) 
-      z maximální možné váhy, která by vnìjším pixelùm mohla být dána.  Pak pøevádí tento výsledek 
-      do rozsahu 0 až 255, takže oblasti kde nebyla dána žádná váha vnìjším pixelùm 
-      (neprovádí se žádné vyhlazování) zobrazí èernì, a oblasti, kde byla dána celá možná váha 
-      vnìjším pixelùm (maximální vyhlazení) zobrazuje bíle.  Jinými slovy, 
-      èím temnìjší hodnota tím slabší vyhlazení, èím svìtlejší hodnota, tím silnìjší vyhlazení.  
+<p>       Tato možnost vysílá mapu, která ukazuje které pixely jsou filtrovány a jak moc. Pro
+      každý pixel poèítá jaká váha byla dána vnìjším pixelùm (t.j. ne centrálnímu pixelu)
+      z maximální možné váhy, která by vnìjším pixelùm mohla být dána.  Pak pøevádí tento výsledek
+      do rozsahu 0 až 255, takže oblasti kde nebyla dána žádná váha vnìjším pixelùm
+      (neprovádí se žádné vyhlazování) zobrazí èernì, a oblasti, kde byla dána celá možná váha
+      vnìjším pixelùm (maximální vyhlazení) zobrazuje bíle.  Jinými slovy,
+      èím temnìjší hodnota tím slabší vyhlazení, èím svìtlejší hodnota, tím silnìjší vyhlazení.
       Možné hodnoty jsou:</p>
 
 <p>          0 - bez mapy<br>
@@ -143,15 +143,15 @@ bool <var>&quot;fp&quot;</var>, int <var>&quot;vis_blur&quot;</var>, bool <var>&
 <p>   <var>interlaced</var> - (prokládaný yv12 vstup)</p>
 
 <p>      Nastavte ho na true, pokud používáte ttempsmooth na prokládaný YV12 klip... jinak ho nastavujte
-      na false.  Toto nastavení ovlivní jen YV12 vstup a nemá vliv na vstup YUY2 protože 
+      na false.  Toto nastavení ovlivní jen YV12 vstup a nemá vliv na vstup YUY2 protože
       prokládané YUY2 nepotøebuje žádné zvláštní zacházení.
 
 <p>      výchozí =  false (bool)</p>
- 
+
 <p>   <var>pfclip</var> -  (pøedfiltrovaný klip k použití rozdílù pixelù)</p>
 
       Toto vám umožní zadat jiný klip pro ttempsmooth k použití pøi výpoètu
-      rozdílù pixelù.  Platí to pro kontrolu prahových hodnot pohybu, výpoèet 
+      rozdílù pixelù.  Platí to pro kontrolu prahových hodnot pohybu, výpoèet
       pøevrácených vah rozdílù, a detekci zmìny scén.  V zásadì, pfclip bude
       použit pro urèení vah zprùmìrované hodnoty, ale budou použity na
       hodnoty pùvodních pixelù klipu.  Tato možnost je podobná jako "ppClip" v
@@ -178,7 +178,7 @@ bool <var>&quot;fp&quot;</var>, int <var>&quot;vis_blur&quot;</var>, bool <var>&
        + Added strength option to adjust spatial weights<br>
        + Rewrote all the code (vastly reduced the total source size)<br>
        + 10% speed increase for TTempSmooth()<br>
-       - Changed to maxr instead of maxd, increased max possible radius value from 4 to 7 
+       - Changed to maxr instead of maxd, increased max possible radius value from 4 to 7
              and decreased the min possible radius from 2 to 1<br>
        - Changed some of the parameter names (mdiff=lmdiff,mdiffc=cmdiff)<br>
        - Changed default lmdiff/cmdiff values to 2/3 (were 3/4)<br>

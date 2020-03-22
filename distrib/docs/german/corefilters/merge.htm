@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
@@ -25,21 +25,21 @@ Der Parameter <i>weight</i> definiert, wie viel Einfluss <i>clip2</i> haben soll
 Siehe auch <a href="../syntax.htm#multiclip" target="_self">hier</a> zu den entstehenden Clip-Eigenschaften.<br /><br />
 
 <table border="1">
- <tr> 
-  <td> 
+ <tr>
+  <td>
    <tt>
     Beispiele:<br />
-    <br />    
+    <br />
     # Unsch&auml;rfe nur im Helligkeitskanal:<br />
     Mpeg2Source(&quot;C:\DVD2AVI.d2v&quot;)<br />
     lumvid = Blur(1.0)<br />
     MergeLuma(lumvid)<br />
-    <br />    
+    <br />
     # SpatialSmoother (r&auml;umliche Unsch&auml;rfe) nur im Farbkanal, gemischt zu 50% mit dem Original:<br />
     Mpeg2Source(&quot;C:\DVD2AVI.d2v&quot;)<br />
     chromavid = SpatialSmoother(2,3)<br />
     MergeChroma(chromavid,0.5)<br />
-    <br />    
+    <br />
     # Ein TemporalSmoother (zeitliche Unsch&auml;rfe) und ein leichter SpatialSmoother im Helligkeitskanal,<br />
     # einen st&auml;rkeren SpatialSmoother im Farbkanal<br />
     # der urspr&uuml;ngliche Hellgkeitskanal wird dann zu 75% zu der gegl&auml;tteten Version gemischt<br />
@@ -50,7 +50,7 @@ Siehe auch <a href="../syntax.htm#multiclip" target="_self">hier</a> zu den ents
     chroma = SpatialSmoother(3,40,40)<br />
     MergeLuma(luma2,0.75)<br />
     MergeChroma(chroma)<br />
-    <br />    
+    <br />
     # So k&ouml;nnen zwei Videos gemittelt werden:<br />
     AviSource(&quot;C:\Dateiname1.avi&quot;)<br />
     vid2 = AviSource(&quot;C:\Dateiname2.avi&quot;)<br />

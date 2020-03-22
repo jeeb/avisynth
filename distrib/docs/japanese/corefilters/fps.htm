@@ -109,7 +109,7 @@ SSRC(44100)                            # 音声サンプリング周波数を標
    <code>ChangeFPS </code>(<var>clip, int numerator [, int denominator], bool &quot;linear&quot;</var>)<br>
    <code>ChangeFPS </code>(<var>clip1, clip2, bool &quot;linear&quot;</var>)<br>
    <code>ChangeFPS </code>(<var>clip, string preset, bool &quot;linear&quot;</var>)</p>
-<p><code>ChangeFPS</code></tt> は、フレームを削除するか複製することによって、フレームレートを変更します。</p> 
+<p><code>ChangeFPS</code></tt> は、フレームを削除するか複製することによって、フレームレートを変更します。</p>
 <p><em>v2.05</em> までのバージョンでは、再生速度と再生時間を保持するために、ビデオは切り捨てられるか、もしくは補填されます（フレーム数は変更されませんでした）。<em>v2.05</em> より後のバージョンでは、フィルタの挙動が変更され、フレーム数は <code>ConvertFPS</code> のように増加または減少されます。</p>
 <p><em>v2.54</em> において、<code>ChangeFPS</code> に <var>linear</var> オプション（true または false）が追加されました。これは、フレームをスキップするときに、AviSynth に線形的にフレームをリクエストさせます。</p>
 <p><em>v2.56</em> から、<var>clip2</var> が指定されている場合、<var>clip1</var> のフレームレートは <var>clip2</var> のそれに合わせて調節されます。</p>
@@ -123,7 +123,7 @@ SeparateFields.SelectEvery(4,0,3)      # Bob を取り消して、偶数フィ�
 Weave                                  # Bob の取り消しを終了する。</pre>
 <p>この効果は、3-2 テレシネプルダウンに似ています。PAL 素材の正規の視聴者は、NTSC 素材の視聴者がテレシネ化されたフィルムに関して簡単に無視するような、動きのカクカクに気づくかもしれません。</p>
 
-<h2><a name="ConvertFPS"></a>ConvertFPS 
+<h2><a name="ConvertFPS"></a>ConvertFPS
 </h2>
 <p><code>ConvertFPS </code>(<var>clip, float new_rate, int &quot;zone&quot;, int &quot;vbi&quot;</var>)<br>
    <code>ConvertFPS </code>(<var>clip, int numerator [, int denominator], int &quot;zone&quot;, int &quot;vbi&quot;</var>)<br>
@@ -141,20 +141,20 @@ Weave                                  # Bob の取り消しを終了する。</
 <p>音声データは、このフィルタによって影響を受けません。音声は同期されたままですが、変換後、音声データの長さはビデオデータの長さとわずかに異なるかもしれません。これは、出力が整数のフレームのみを含むことができるからです。この影響は、短いクリップほどより顕著になります。長さの違いは、無視されるべきです。</p>
 <p>パラメータ:
 <table>
-  <tbody> 
-  <tr valign="top"> 
+  <tbody>
+  <tr valign="top">
     <td width="80"><i>new_rate</i></td>
     <td>目標のフレームレート。整数または浮動小数点数。ブレンドモードでは、<i>new_rate</i> は、少なくともソースのフレームレートの 2/3（66.7%）でなければなりません。さもなければ、エラーが発生します。これは、フレームのスキップを防ぐためのものです。もしそれよりもフレームレートを落とす必要があるのなら、スイッチモードを使用してください。</td>
   </tr>
-  <tr valign="top"> 
+  <tr valign="top">
     <td>zone</td>
     <td>（オプション）指定された場合、このフィルタをスイッチモードにします。0 以上の整数。もし 0 なら、ハードスイッチを実行します。すなわち、スイッチラインの下にすぐに次のフレームを表示します。0 より大きい場合は、トランジション領域の高さ（ライン単位）を指定します。トランジション領域では、1 つのフレームが徐々に次のフレームにブレンドされます。フルサイズのビデオ（有効走査線数 480/576）の場合は、zone=80 が好結果をもたらします。トランジションは、PeculiarBlend() と同じ方法で行われます。<i>zone</i> は、ソースフレームの持続時間に相当する、目標フレームの走査線数以下でなければなりません。これは、一般的には目標フレームの高さの 5/6 ないし 6/5、すなわち、数百ラインです。これより大きな値が選択された場合、エラーが発生します。</td>
   </tr>
-  <tr valign="top"> 
+  <tr valign="top">
     <td><i>vbi</i></td>
     <td>（オプション）スイッチモードにおいて、このフィルタが垂直帰線消去期間（VBI）<a href="#footnote_6" class="footnote_link">*6</a>に対してタイミング補正を適用すべきであることを明示します。目標フレームの VBI の高さを示す 0 より大きな整数（ライン単位）。一般的には、PAL は vbi=49、NTSC は vbi=45 ですが、これらの値は決定的ではありません。ブレンドモードでは無視されます。</td>
   </tr>
-  </tbody> 
+  </tbody>
 </table>
 <p> <b>使用例 NTSC-&gt;PAL 変換:</b></p>
 <pre>AVISource(&quot;NTSC_clip.avi&quot;)             # クリップの取得

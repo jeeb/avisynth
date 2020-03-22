@@ -6,18 +6,18 @@
 </head>
 <body >
 <h2>WriteFile / WriteFileIf / WriteFileStart / WriteFileEnd</h2>
-<p><code>WriteFile </code>(<var>clip, string filename, <i>string expression1, 
+<p><code>WriteFile </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
-  <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
-  <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;</i></var>)<br>
-  <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1, 
+  <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1,
   ... , string expression16, bool &quot;append&quot;</i></var>)</p>
-<p><code>WriteFile</code> evaluates <var>expressionN</var>, converts the result to a string and puts 
+<p><code>WriteFile</code> evaluates <var>expressionN</var>, converts the result to a string and puts
   the result into a file.<br>
 </p>
-<p>The &quot;run-time&quot; variable <var>current_frame</var> is set so that 
+<p>The &quot;run-time&quot; variable <var>current_frame</var> is set so that
   you can use it in an &quot;expression&quot;<br>
   (this works similar as with ScriptClip, look there in the docu for more infos).<br>
   <var>current_frame</var> is set to -1 when the script is loaded and to -2 when the script is closed.</p>
@@ -29,7 +29,7 @@
   The default for <var>append</var> is always <code>true</code>, except for <code>WriteFileStart</code> (here it is <code>false</code>).</p>
 <h4>This is best explained with some simple examples:</h4>
 
-      
+
 <pre>filename = &quot;c:\myprojects\output.txt&quot;
 # create a test video to get frames
 Version()
@@ -43,7 +43,7 @@ WriteFileStart(filename, &quot;&quot;&quot; &quot;This is the header&quot; &quot
 
 # and this when the script is closed
 WriteFileEnd(filename, &quot;&quot;&quot; &quot;Now the script was closed&quot; &quot;&quot;&quot;)</pre>
-    
+
 <p>Look how you can use triple-quotes to type a string in a string!</p>
 <p>If the expression cannot be evaluated, the error message is written instead.<br>
   In case this happens with the If-expression in <code>WriteFileIf</code>
@@ -52,9 +52,9 @@ the result is assumed to be <code>true</code>.</p>
 WriteFile(filename, &quot;this is nonsense&quot;)</pre>
     <hr>
 <h4><b>There are easier ways to write numbers in a file, BUT:</b></h4>
-<p>... with this example you can see how to use the &quot;runtime functions&quot; 
+<p>... with this example you can see how to use the &quot;runtime functions&quot;
   together with FrameEvaluate:</p>
-      
+
 <pre># create a test video to get different frames
 Version.FadeIn(50).ConvertToYV12
 
@@ -62,17 +62,17 @@ Version.FadeIn(50).ConvertToYV12
 colon = &quot;: &quot;
 WriteFile(&quot;F:\text.log&quot;, &quot;current_frame&quot;, &quot;colon&quot;, &quot;AverageLuma&quot;)</pre>
     <p>Or maybe you want the actual time printed too:</p>
-      
+
 <pre># create a test video to get different frames
 Version.FadeIn(50).ConvertToYV12
 
 # this will print the frame number, the current time and the average luma for that frame
 # the triple quotes are necessary to put quotes inside a string
 WriteFile(last, filename, &quot;current_frame&quot;, &quot;&quot;&quot; time(&quot; %H:%M:%S&quot;) &quot;&quot;&quot;, &quot;AverageLuma&quot;)</pre>
-    
+
 <hr>
 <h4>More examples:</h4>
-<p>In <code>WriteFileIf</code> the FIRST expression is expected to be boolean (true 
+<p>In <code>WriteFileIf</code> the FIRST expression is expected to be boolean (true
   or false).<br>
   Only if it is TRUE the other expressions are evaluated and the line is printed.<br>
   (Remember: &amp;&amp; is AND, || is OR, == is EQUAL, != is NOT EQUAL)<br>

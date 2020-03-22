@@ -26,22 +26,22 @@ Nel mezzo, gli argumenti sonointerpolati linearmente per una transizione dolce.
 dove <var>start_args</var>
 = <var>end_args</var>, ed e' presente dalla <em>v2.51</em>. Può essere usato quando si vuole applicare
 un certo filtro ad un intervallo di frames.
-Altra differenza rispetto ad <code>Animate</code> è che <var>args</var> NON può contenere una clip. A 
+Altra differenza rispetto ad <code>Animate</code> è che <var>args</var> NON può contenere una clip. A
 partire dalla  <em>v2.53</em> supporta l'audio, e <var>start_frame</var> può essere uguale a <var>end_frame</var>
 (in modo tale che venga elaborato UN SOLO frame).
-<p>ll filtro deve essere compreso fra &quot;virgolette&quot; (si tratta di una 
-  stringa), e le due liste di argomenti non sono racchiuse fra parentesi. Le stringhe 
-  ed i clips video non possono essere interpolate, e quindi devono essere identiche 
-  nelle due liste di argomenti. Con questo filtro non si possono usare notazioni 
-  OOP (Object Oriented Programming) o <code>last</code> impliciti , anche se il 
-  filtro indicato come argumento <var>filtername</var> normalmente lo consentirebbe. 
-<p>Il filtro non gestisce correttamente la traccia audio, sicch&eacute; 
-                non ne consiglio l'uso con filtri che modificano la traccia audio. 
-                E per l'amor di Dio fate in modo che i parametri iniziali e finali 
+<p>ll filtro deve essere compreso fra &quot;virgolette&quot; (si tratta di una
+  stringa), e le due liste di argomenti non sono racchiuse fra parentesi. Le stringhe
+  ed i clips video non possono essere interpolate, e quindi devono essere identiche
+  nelle due liste di argomenti. Con questo filtro non si possono usare notazioni
+  OOP (Object Oriented Programming) o <code>last</code> impliciti , anche se il
+  filtro indicato come argumento <var>filtername</var> normalmente lo consentirebbe.
+<p>Il filtro non gestisce correttamente la traccia audio, sicch&eacute;
+                non ne consiglio l'uso con filtri che modificano la traccia audio.
+                E per l'amor di Dio fate in modo che i parametri iniziali e finali
 				non producano dimensioni del frame diverse.
-<p>Gli argumenti <var>filtername</var> possono essere anche <code>Animate</code> stesso se si desidera 
-                una interpolazione quadratica anzich&egrave; lineare,ma non sto a pensarci troppo : 
-				potrebbe scoppiarmi il cervello. 
+<p>Gli argumenti <var>filtername</var> possono essere anche <code>Animate</code> stesso se si desidera
+                una interpolazione quadratica anzich&egrave; lineare,ma non sto a pensarci troppo :
+				potrebbe scoppiarmi il cervello.
 <p>&nbsp;
 <pre># Come produrre una scrolling version del video  &quot;Version&quot; :
 ver = Version()
@@ -56,12 +56,12 @@ AviSource(&quot;E:\pdwork\DO-Heaven.AVI&quot;)
 Animate(100,200,&quot;Levels&quot;, 0,1,255,0,255, 0,1,255,255,255)
 
 # Produrre uno zoom graduale nel centro di un video 320x240 , partendo con ingrandimento
-# 1:1 al frame 100 e terminando con un ingrandimento 4:1 
+# 1:1 al frame 100 e terminando con un ingrandimento 4:1
 # al frame 200
 clip = AviSource(&quot;E:\pdwork\DO-Heaven.AVI&quot;)
 Animate(100,200,&quot;BicubicResize&quot;,clip,320,240,0,0,320,240, clip,320,240,120,90,80,60)
 
-# Zoomare &quot;Hello, World!&quot; al centro di un video 320x240 
+# Zoomare &quot;Hello, World!&quot; al centro di un video 320x240
 Animate(0,48,&quot;Subtitle&quot;, last,&quot;Hello, World!&quot;,160,120,0,99999,&quot;Arial&quot;,0,
 &nbsp; \&nbsp; last,&quot;Hello, World!&quot;,25,130,0,99999,&quot;Arial&quot;,48)
 

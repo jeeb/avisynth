@@ -94,7 +94,7 @@ significa 0%, 255 significa 100%. O padrão é 130 (que significa 51%).</span>
 <h3>MVAnalyse
 </h3>
 <p><code>MVAnalyse</code> (<var>clip, int &quot;bw&quot;, int &quot;bh&quot;, int
-&quot;pel&quot;, int &quot;lv&quot;, int &quot;fth&quot;, 
+&quot;pel&quot;, int &quot;lv&quot;, int &quot;fth&quot;,
 int &quot;sadt&quot;, int &quot;mpt&quot;,
 int &quot;st&quot;, int &quot;stp&quot;, bool &quot;isb&quot;, int &quot;lambda&quot;</var>)
 </p>
@@ -272,7 +272,7 @@ de um algoritmo de interpolação de espaço para fazer isso).</span>
 <h3>MVConvertFPS
 </h3>
 <p><code>MVConvertFPS</code> (<var>clip, clip mvbw, clip mvfw, int
-&quot;nb&quot;, float &quot;rl&quot;, int &quot;fbw&quot;, int &quot;sbw&quot;, 
+&quot;nb&quot;, float &quot;rl&quot;, int &quot;fbw&quot;, int &quot;sbw&quot;,
 int
 &quot;rbw&quot;, int &quot;bvt&quot; [, int num, int den], float
 &quot;fps&quot;, string &quot;wf&quot;</var>)
@@ -304,14 +304,14 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">Padrões</span><span lang="EN-US" style="font-size:
 10.0pt;mso-bidi-font-size:12.0pt;font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:
 &quot;Times New Roman&quot;;mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:
-EN-US;mso-fareast-language:PT-BR;mso-bidi-language:AR-SA"> são:</span> <var>nb</var> = 1, <var>rl</var> = 0, <var>fbw</var> = 4, 
+EN-US;mso-fareast-language:PT-BR;mso-bidi-language:AR-SA"> são:</span> <var>nb</var> = 1, <var>rl</var> = 0, <var>fbw</var> = 4,
 <var>sbw</var>
 = 0, <var>rbw</var> = 0, <var>bvt</var> = 35000 e <var>wf</var> =
 &quot;uniform&quot;.
 </p>
 <h3>MVDenoise
 </h3>
-<p><code>MVDenoise</code> (<var>clip, clip mvbw, clip mvfw, int 
+<p><code>MVDenoise</code> (<var>clip, clip mvbw, clip mvfw, int
 &quot;thT&quot;, int
 &quot;sadT&quot;</var>)
 </p>
@@ -371,9 +371,9 @@ PT-BR;mso-bidi-language:AR-SA">denoising</span> forte&nbsp;</li>
 <h3>MVInterpolate
 </h3>
 <p><code>MVInterpolate</code> (<var>clip, clip mvbw, clip mvfw, int
-&quot;nb&quot;, float &quot;bl&quot;, float &quot;el&quot;, int 
+&quot;nb&quot;, float &quot;bl&quot;, float &quot;el&quot;, int
 &quot;fbw&quot;, int
-&quot;sbw&quot;, int &quot;rbw&quot;, int &quot;bvt&quot;, string 
+&quot;sbw&quot;, int &quot;rbw&quot;, int &quot;bvt&quot;, string
 &quot;wf&quot;</var>)
 </p>
 <p><span style="font-size:10.0pt;mso-bidi-font-size:12.0pt;
@@ -412,7 +412,7 @@ mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:PT-BR;mso-far
 PT-BR;mso-bidi-language:AR-SA">Padrões</span><span lang="EN-US" style="font-size:
 10.0pt;mso-bidi-font-size:12.0pt;font-family:&quot;Microsoft Sans Serif&quot;;mso-fareast-font-family:
 &quot;Times New Roman&quot;;mso-bidi-font-family:&quot;Times New Roman&quot;;mso-ansi-language:
-EN-US;mso-fareast-language:PT-BR;mso-bidi-language:AR-SA"> são:</span> <var>nb</var> = 5, <var>bl</var> = 0.4, <var>el</var> = 0.6, 
+EN-US;mso-fareast-language:PT-BR;mso-bidi-language:AR-SA"> são:</span> <var>nb</var> = 5, <var>bl</var> = 0.4, <var>el</var> = 0.6,
 <var>fbw</var>
 = 4, <var>sbw</var> = 0, <var>rbw</var> = 0, <var>bvt</var> = 35000 e <var>wf</var>
 = &quot;uniform&quot;.
@@ -611,48 +611,48 @@ fonte.</span>
 <p>0.9.4
 </p>
 <ul>
-  <li>Vectors can be saved to a file. In order to do so, add the parameter 
-filename="C:\foo.bar" to the filter MVAnalyse. If the file doesn't exist, 
-vectors will be saved into it. If it exists, vectors will be read from it. But, 
+  <li>Vectors can be saved to a file. In order to do so, add the parameter
+filename="C:\foo.bar" to the filter MVAnalyse. If the file doesn't exist,
+vectors will be saved into it. If it exists, vectors will be read from it. But,
 be warned :
     <ul>
       <li>The file for a whole movie will be around 500 MB</li>
-      <li>Saving / reading from a file need for the moment a linear access to 
-the frames, so it has to be used only when encoding the movie, not when doing 
+      <li>Saving / reading from a file need for the moment a linear access to
+the frames, so it has to be used only when encoding the movie, not when doing
 random access in it.</li>
-      <li>The speed gain is not as great as one may hope, because SADs can't be 
+      <li>The speed gain is not as great as one may hope, because SADs can't be
 saved ( it would take too much space ) and so have to be recomputed.</li>
     </ul>
   </li>
-  <li>The filter MVDenoise now works on 5 frames, and its parameters are now 
-"thT" and "sadT" ( have a look in the documentation to see how they work ). It 
+  <li>The filter MVDenoise now works on 5 frames, and its parameters are now
+"thT" and "sadT" ( have a look in the documentation to see how they work ). It
 works nice ( very good for heavy denoising )</li>
-  <li>The scene change detection thresholds have slightly changed. Now, a block 
-has changed if its SAD it over thSCD1. The default for thSCD1 is 300, and for 
+  <li>The scene change detection thresholds have slightly changed. Now, a block
+has changed if its SAD it over thSCD1. The default for thSCD1 is 300, and for
 thSCD2 it is 130. It orks well ( better than the previous SCD engine ).<br>
   </li>
 </ul>
 <p>0.9.3</p>
 <ul>
-  <li>Last cleanings in the search of the motion vectors. It should be slightly 
+  <li>Last cleanings in the search of the motion vectors. It should be slightly
 faster</li>
-  <li>More search parameters can be set by the user, especially the search 
+  <li>More search parameters can be set by the user, especially the search
 algorithm. See the documentation</li>
-  <li>Server / client implemented. You now first have to use MVAnalyse, and 
-then the filter you want. Look at the documentation and at the examples I'll 
+  <li>Server / client implemented. You now first have to use MVAnalyse, and
+then the filter you want. Look at the documentation and at the examples I'll
 give alter.</li>
-  <li>MVCompensate is separated from MVShow ( it's more logic that way ). For 
-the moment, it doesn't move the chroma ( same behavior as MVShow in the latest 
+  <li>MVCompensate is separated from MVShow ( it's more logic that way ). For
+the moment, it doesn't move the chroma ( same behavior as MVShow in the latest
 releases )</li>
-  <li>Some cleaning in MVBlur / MVInterpolate / MVConvertFPS, but still some 
-work to do. Now, MVBlur blurs around the frame, not between the frame and the 
+  <li>Some cleaning in MVBlur / MVInterpolate / MVConvertFPS, but still some
+work to do. Now, MVBlur blurs around the frame, not between the frame and the
 previous one.</li>
-  <li>Half of the work is done for writing vectors to a file. But the resulting 
+  <li>Half of the work is done for writing vectors to a file. But the resulting
 file will be large ( around 500 MB - 1 GB I guess ).</li>
   <li>MVDenoise is slightly faster ( at least it should )</li>
-  <li>Copies are optimized inside the filter, thanks to avisynth's copy 
+  <li>Copies are optimized inside the filter, thanks to avisynth's copy
 functions.</li>
-  <li>MVShow can display the mean SAD of the compensation ( using showsad = 
+  <li>MVShow can display the mean SAD of the compensation ( using showsad =
 true )</li>
 </ul>
 <p>0.9.2.1</p>
@@ -663,7 +663,7 @@ true )</li>
 <p>0.9.2</p>
 <ul>
   <li>MVInterpolate doesn't exist anymore.</li>
-  <li>MVBlur and MVConvertFPS have been improved. They also have got new 
+  <li>MVBlur and MVConvertFPS have been improved. They also have got new
 parameters, have a look at the documentation.</li>
   <li>MVShow gets back its compensate mode ( MVShow(cm = true) )</li>
 </ul>

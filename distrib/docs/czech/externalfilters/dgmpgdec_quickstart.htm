@@ -5,7 +5,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: dgmpgdec_quickstart.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: dgmpgdec_quickstart.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <BODY><hr><h1><center>DGMPGDec -Rychlý úvodní prùvodce</center></h1><hr><p>Tento&nbsp;dokument je
@@ -18,7 +18,7 @@ dekódování MPEG1&nbsp;nebo MPEG2 streamù z takových zdrojù jako DVD VOBù,
 zachytávaných transportních streamù, *.mpg/*.m2v/*.pva souborù, atd. Jeho nejbì¾nìj¹ím pou¾itím je asi
 dekódování VOBù&nbsp;z DVD.
 <p><hr><p>
-<h2>Co potøebuji k jeho pou¾ití?</h2>Potøebujete 
+<h2>Co potøebuji k jeho pou¾ití?</h2>Potøebujete
 sadu&nbsp;DGMPGDec a Avisynth.&nbsp;Nejdøív si stáhnete&nbsp;Avisynth
 2.5 (nebo novìj¹í) a nainstalujte ho:
 <p>
@@ -34,12 +34,12 @@ Také si stáhnìte&nbsp;VirtualDub, proto¾e ho budeme pou¾ívat pro náhled dekódova
 Budeme pøedpokládat, ¾e máte VOB, který jste získali z DVD (pøípadnì pomocí
 Smart Ripper, nebo jiného podobného nástroje).
 <p><hr><p>
-<h2>OK. Co nyní?</h2>Spus»te DGIndex.&nbsp;Pou¾itím pøíkazu 
+<h2>OK. Co nyní?</h2>Spus»te DGIndex.&nbsp;Pou¾itím pøíkazu
 Soubor/Otevøít&nbsp;(File/Open), otevøete vá¹ VOB.&nbsp;Mìli by jste vidìt&nbsp;video.&nbsp;Nyní vyberte Audio/Výstupní metoda/Demuxovat v¹echny stopy&nbsp;(Audio/Output Method/Demux All
 Tracks). Tím nastavíte ulo¾ení va¹eho audia do souboru(ù) pøi ulo¾ení projektu.
 <p>
-Nyní vyberte 
-Soubor/Ulo¾it projekt (File/Save Project) a zadejte jméno&nbsp;indexového&nbsp;souboru 
+Nyní vyberte
+Soubor/Ulo¾it projekt (File/Save Project) a zadejte jméno&nbsp;indexového&nbsp;souboru
 (D2V soubor), který je generován.&nbsp;Dejme tomu, ¾e
 vá¹&nbsp;VOB&nbsp;se nazývá&nbsp;'myvob.vob';&nbsp;mù¾ete vybrat jméno 'myvob',&nbsp;proto¾e DGIndex automaticky&nbsp;pøipojí pøíponu&nbsp;'.d2v'. Dobrá. Dejte Ulo¾it (Save). Spustí
 se proces indexování a&nbsp;uvidíte ukazatel pohybující se&nbsp;podél èasové osy, který ukazuje prùbìh indexování. Pokud
@@ -49,9 +49,9 @@ je va¹e video velké, buïte trpìliví .&nbsp;Jakmile zpracování skonèí, zavøete&nb
 jen informaci, která øíká souboru&nbsp;DGDecode&nbsp;kde je ka¾dý snímek umístìn&nbsp;a nìkteré informace o ka¾dém
 snímku.
 <p>
-   
+
         Ale nemù¾ete spoustìt&nbsp;DGDecode pøímo!&nbsp;Musí to být
-provedeno pøes&nbsp;Avisynth. Vytvoøíme skriptový soubor&nbsp;nazvaný myvob.avs&nbsp;za pou¾ití textového editoru. Dále v tomto dokumentu vám 
+provedeno pøes&nbsp;Avisynth. Vytvoøíme skriptový soubor&nbsp;nazvaný myvob.avs&nbsp;za pou¾ití textového editoru. Dále v tomto dokumentu vám
 uká¾u, jak nastavit DGIndex pro automatické vytvoøení skriptu, ale nyní potøebujete znát staromódní zpùsob.&nbsp;Tedy
 vlo¾te text do nového textového souboru, který&nbsp;nazvete 'myvob.avs':
 <p><tt>
@@ -103,7 +103,7 @@ template.avs by pak mìl vypadat následovnì:
 &nbsp;&nbsp;mpeg2source("__vid__",cpu=6)<br>
 &nbsp;&nbsp;fielddeinterlace()
 </tt><p>
-Vidíte, DGIndex to pak pou¾ije jako ¹ablonu a vlo¾í 
+Vidíte, DGIndex to pak pou¾ije jako ¹ablonu a vlo¾í
 správné jméno&nbsp;souboru kdykoliv&nbsp;uvidí __vid__. Skvìlé, ¾e?
 Také mù¾ete pou¾ít __aud__&nbsp;pro generování&nbsp;jména souboru pro&nbsp;audio;&nbsp;na podrobnìj¹í popis se podívejte&nbsp;do u¾ivatelského manuálu&nbsp;DGIndex.
 <p>OK,&nbsp;v¹e co teï musíte udìlat, je&nbsp;spustit DGIndex,&nbsp;vybrat&nbsp;soubor&nbsp;s va¹í
@@ -114,7 +114,7 @@ kdy¾ ulo¾íte&nbsp;DGIndex projekt.
 <h2>Výbornì.&nbsp;Je¹tì poslední otázka...</h2>
 Trefa!
 <p><hr><p>
-<h2>Proè&nbsp;to provádíme&nbsp;ve dvou krocích?&nbsp;Proè to v¹echno nemù¾u udìlat v&nbsp;DGIndexu?</h2>Dobrá otázka! Chceme udìlat na¹e 
+<h2>Proè&nbsp;to provádíme&nbsp;ve dvou krocích?&nbsp;Proè to v¹echno nemù¾u udìlat v&nbsp;DGIndexu?</h2>Dobrá otázka! Chceme udìlat na¹e
 video&nbsp;dostupné pro jakýkoliv&nbsp;program, o kterém si myslíme, ¾e by mohl být u¾iteèný.&nbsp;Jistì nemù¾eme&nbsp;do
 DGIndexu vlo¾it v¹echny mo¾né funkce. Tak¾e místo toho&nbsp;vytváøíme zpùsob&nbsp;'pøedávání'&nbsp;videa&nbsp;do v¹ech takových&nbsp;programù. Avisynth&nbsp;je server AVI&nbsp;souborù.&nbsp;Vytváøí
 'fale¹né AVI' a o¹álí&nbsp;programy tak, ¾e&nbsp;si myslí, ¾e mají skuteèné&nbsp;AVI kdy¾ otevøou&nbsp;*.avs soubor.
@@ -122,7 +122,7 @@ DGIndexu vlo¾it v¹echny mo¾né funkce. Tak¾e místo toho&nbsp;vytváøíme zpùsob&nbs
 Pokud chcete z va¹eho videa vytvoøit AVI,&nbsp;je to
 snadné.&nbsp;Otevøete AVS&nbsp;ve VirtualDubu, nastavte&nbsp;va¹i kompresi, a&nbsp;ulo¾te AVI.
 <p>
-               
+
 Existuje i&nbsp;jiný zpùsob pøedávání videa&nbsp;zvaný&nbsp;'VFAPI' , který je také podporovaný,&nbsp;ale napadne vás: prostì nastavujeme pøedávání dekódovaného
 MPEG2 videa&nbsp;pomocí DGMPGDec.&nbsp;Program, který ho&nbsp;pak obdr¾í ani neví, ¾e byl o¹álen.
 <p><hr><p>

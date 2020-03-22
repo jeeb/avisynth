@@ -74,7 +74,7 @@ Directx 9.0b
 <code>FFT3DFilter</code>. По умолчанию = 1.</p>
 
 <p><var>bw,bh</var>: ширина и высота блока. Должны быть степенью 2-ки, т.е.
-правильные величины 4,8,16,32,64,128,256,512. 
+правильные величины 4,8,16,32,64,128,256,512.
 (Заметьте, что <var>bw,bh</var> должно быть больше, чем 4 для наилучшего результата). По умолчанию = 32</p>
 
 <p><var>bt</var>: способ фильтрации.<br>
@@ -120,7 +120,7 @@ Directx 9.0b
 <var>precision</var>=2, и <var>precision</var>=1 быстрее 1.33 раза, чем
 <var>precision</var>=2. По умолчанию 0.</p>
 
-<p><var>NVPerf</var>: Включает поддержку 
+<p><var>NVPerf</var>: Включает поддержку
 <a href="http://developer.nvidia.com/object/nvperfhud_home.html">
 <cite>NVPerfHUD</cite></a>. По умолчанию = false. </p>
 
@@ -219,7 +219,7 @@ Radeon 9700
 Radeon 9800
 Radeon Xxxx
 
-где x - любая цифра. 	 
+где x - любая цифра.
 </pre>
 
 
@@ -287,7 +287,7 @@ fft3dgpu.hlsl</li>
 <li>0.51 Исправлена ошибка с параметрами после того, как NVPerf был перемещен.
 т.е. <var>degrid=scutoff, scutoff=svr</var>. Улучшенная скорость загрузки из
 GPU. На GeForce FX 5xxx теперь работает фильтр Кальмана.</li>
-	
+
 <li>0.6 Добавлены <var>wintypes</var>, <var>plane</var>=4 и переменный размер
 перекрытия (<var>ow,ох</var>). Изменен параметр <var>useFloat16</var> на
 <var>precision</var>. Изменено значение по умолчанию для <var>mode</var> на

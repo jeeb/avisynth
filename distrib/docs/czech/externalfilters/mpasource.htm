@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: mpasource.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: mpasource.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -14,21 +14,21 @@ $Id: mpasource.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <br><b>verze:</b> 0.4
 <br><b>kategorie:</b> MPA Dekoder - Zdrojové pluginy<br>
 <b>stáhnout:</b> <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>&nbsp;
-<br><b>požadavky:</b> 
+<br><b>požadavky:</b>
 <hr>
 <h2>Popis</h2>
-<p><code>MPASource</code> (<var>string &quot;filename&quot;,  
+<p><code>MPASource</code> (<var>string &quot;filename&quot;,
   bool &quot;normalize&quot;</var>)<br>
 </p>
 Otvírá mp1/2/3 audio soubory pøímo a pokud je to požadováno normalizuje výstup na 100%.
-<p>Pøi zkoušení buïte opatrní: otevøením AVS-skriptu je skenován celý soubor 
+<p>Pøi zkoušení buïte opatrní: otevøením AVS-skriptu je skenován celý soubor
 za úèelem vrátit pøesný poèet vzorkù.<br>
-Když je <i> normalize=false</i> (výchozí) tak je to provádìno èásteèným dekódováním (~20sec na jednu hodinu audia na mém PC).<br> 
+Když je <i> normalize=false</i> (výchozí) tak je to provádìno èásteèným dekódováním (~20sec na jednu hodinu audia na mém PC).<br>
 Pøi <i> normalize=true</i> je to mnohem pomalejší (~100sec).<br>
 Výsledek skenování je ukládán do malého souboru .D2A .</p>
-<p>Když se žádají pøeskoèení zpìt v èase, vyhledávání je vždy provádìno v rychlém režimu od 
+<p>Když se žádají pøeskoèení zpìt v èase, vyhledávání je vždy provádìno v rychlém režimu od
 snímku 0 k žádanému snímku. Tak je garantovaná pøesnost vzorku.<br>
-Podél audia, je generováno malé 8x8 video pro ulehèení testování, takže vždy musíte vložit 
+Podél audia, je generováno malé 8x8 video pro ulehèení testování, takže vždy musíte vložit
 MPASource jako DRUHÝ argument do AudioDub.</p>
 <h3>Pøíklad&nbsp;</h3>
 <pre>V = BlankClip(height=100, width=100, length=20000, fps=25)

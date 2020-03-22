@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: stmedianfilter.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: stmedianfilter.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -28,7 +28,7 @@ $Id: stmedianfilter.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Popis</h2>
 <p>STMedianFilter je (mírnì pohybovì kompenzovaný) prostorovì/èasový mediánový filtr.</p>
 <p>Je docela jemnozrnný, používá jen sousední pixely v prostoru a èasu, takže se dívá na
-26 sousedních pozic pro filtrování každé pozice. Nyní filtruje jak jas, tak barevnost, ale filtrování 
+26 sousedních pozic pro filtrování každé pozice. Nyní filtruje jak jas, tak barevnost, ale filtrování
 barevnosti je trochu více omezené, jak je popsáno níže.</p>
 <p><b>POUŽITÍ - Pro použití prostì:</b></p>
 <p>1) Umístìte STMedianFilter.dll do nìjaké složky. Mùžete ho získat z
@@ -42,21 +42,21 @@ Platné hodnoty pro každý z nich jsou od 0 do 255.</p>
 <p>S a T výše oznaèují prostorový (spatial) a èasový (temporal) režim.</p>
 <p>Dobrým startovním místem pro hodnoty parametrù by mohly být</p>
 <pre>STMedianFilter(8,15,4,7)</pre>
-<p>Vìtší hodnoty zpùsobí více filtrování, ale více artefaktù. 
+<p>Vìtší hodnoty zpùsobí více filtrování, ale více artefaktù.
 <h3>Popis parametrù:</h3>
 <p><var>S_FilterThreshHold</var> - nefiltruje pixel prostorovì, pokud by se mìnil více než o tuto hodnotu.
 Vìtší hodnoty mohou zpùsobit ztrátu pìknì podrobných obrysù, ale není to pøíliš citlivé.</p>
-<p><var>S_EdgeThreshHold</var> - nefiltruje pixel prostorovì, pokud se hodnoty na hranách mìní více    
+<p><var>S_EdgeThreshHold</var> - nefiltruje pixel prostorovì, pokud se hodnoty na hranách mìní více
 než tato hodnota. Zdá se, že je docela shovívavý, takže mùže být podle pøání hodnì zvyšován.</p>
 <p><var>T_FilterThreshHold</var> - nefiltruje pixel èasovì, pokud by se mìnil více než o tuto hodnotu.
 Vìtší hodnoty zpùsobí duchy. Nenastavujte pøes 5-10 , aby jste se vyhnuli duchùm.</p>
-<p><var>T_MotionThreshHold</var> - nefiltruje pixel èasovì, pokud se nekompenzované hodnoty pohybu mìní více než    
+<p><var>T_MotionThreshHold</var> - nefiltruje pixel èasovì, pokud se nekompenzované hodnoty pohybu mìní více než
 o tuto hodnotu. Nenastavujte pøes 10, aby jste se vyhnuli duchùm.</p>
 <h2>Metoda práce</h2>
-<p>Pokud tomu správnì rozumím, jednoduchý mediánový filtr je prostì oøezávací krok, kde se nastavuje hodnota tak, 
+<p>Pokud tomu správnì rozumím, jednoduchý mediánový filtr je prostì oøezávací krok, kde se nastavuje hodnota tak,
 aby nevyšla z urèitých mezí - vysoké i nízké jeho sousedù.&nbsp;
 </p>
-<p>Napøíklad, pokud jste mìli 3 pixely v øádku, které mìli hodnoty &lt;5,8,7> mohli by jste oøíznout støedovou hodnotu 
+<p>Napøíklad, pokud jste mìli 3 pixely v øádku, které mìli hodnoty &lt;5,8,7> mohli by jste oøíznout støedovou hodnotu
 aby nebyla mimo mezí - zespoda 5 , nebo shora 7,
 takže by jste ho nastavili na 7.&nbsp;
 </p>
@@ -64,10 +64,10 @@ takže by jste ho nastavili na 7.&nbsp;
 byl spodní vrstvou kostky, aktuální snímek
 byl støední vrstvou, následující snímek byl horní.&nbsp;
 </p>
-<p>Pak aktuální støedový pixel by byl právì ve støedu Rubikovy kostky a bylo by 13 zpùsobù 
+<p>Pak aktuální støedový pixel by byl právì ve støedu Rubikovy kostky a bylo by 13 zpùsobù
 jakými by jste mohli nakreslit èáru pøes nìj s jeho nejbližšími dvìma sousedy.
 </p>
-<p>Já jsem porovnal každý z tìchto párù sousedù, abych vidìl který pár nejvíce odpovídal hodnotì. 
+<p>Já jsem porovnal každý z tìchto párù sousedù, abych vidìl který pár nejvíce odpovídal hodnotì.
 Použil jsem tento pár k oøíznutí hodnoty støedového pixelu.
 </p>
 <p>Také jsem oøíznul hodnotu pixelu jestliže:

@@ -14,12 +14,12 @@
   <code>AVIFileSource </code>(<var>string filename [, ...], bool "audio" = true,
   string "pixel_type" = YV12, [string fourCC]</var>)<br>
   <code>WAVSource </code>(<var>string filename [, ...]</var>)
-<p><code>AVISource</code> 
+<p><code>AVISource</code>
 bere&nbsp;jako argument jedno nebo více jmen&nbsp;souborù v uvozovkách, a ète&nbsp;soubor(y) s pou¾itím buï rozhraní&nbsp;"AVIFile"
 Video-for-Windows, nebo&nbsp;v AviSynthu vestaveným&nbsp;OpenDML kódem&nbsp;(pøevzatého z VirtualDubu). Tento filtr mù¾e èíst&nbsp;jakýkoliv soubor&nbsp;pro který
 existuje&nbsp;AVIFile handler (zpracovatel). To zahrnuje nejen&nbsp;AVI soubory ale také&nbsp;WAV soubory, AVS (skripty AviSynthu)
 soubory, a VDR (VirtualDub frameserver) soubory. Pokud zadáte jako argumenty
-nìkolik jmen souborù, klipy budou&nbsp;spojeny&nbsp;dohromady pomocí &nbsp; <code><A href="splice.htm">UnalignedSplice</A></code>. Logický <var>bool</var> argument <EM><FONT 
+nìkolik jmen souborù, klipy budou&nbsp;spojeny&nbsp;dohromady pomocí &nbsp; <code><A href="splice.htm">UnalignedSplice</A></code>. Logický <var>bool</var> argument <EM><FONT
 color=#660033>"audio"</FONT></EM>  &nbsp;je volitelný&nbsp;a výchozí je <code>true</code>.
 <p>Filtr&nbsp; <code>AVISource</code>&nbsp;zkoumá soubor, aby urèil jeho typ a posílá ho pøíslu¹nému zpracovateli
 - buï&nbsp; AVIFile&nbsp;nebo OpenDML. V pøípadì ¾e máte problémy&nbsp;s jedním nebo s&nbsp;druhým zpracovatelem, mù¾ete také&nbsp;pou¾ít
@@ -35,19 +35,19 @@ není podporována va¹ím systémem.</p>
 <p>Parametr <var>pixel_type</var>&nbsp;(výchozí je YV12) vám umo¾ní&nbsp;vybrat výstupní
 formát dekompresoru. Dovolené hodnoty&nbsp;jsou&nbsp;"YV12", "YV411", "YV16", "YV24", "YUY2", "Y8", "RGB32" a "RGB24". Pokud je parametr vynechán,
 AviSynth pou¾ije&nbsp;první formát&nbsp;podporovaný dekompresorem (v následujícím poøadí: YV12, YV411, YV16, YV24, YUY2, Y8, RGB32 a RGB24). Tento parametr nemá
-efekt pokud je&nbsp;video&nbsp;nekomprimovaném formátu (YUY2, RGB32&nbsp;nebo RGB24), proto¾e nebude pou¾it ¾ádný dekompresor. 
-Jinými slovy: jestli¾e&nbsp;nìco nespecifikujete, zkusí&nbsp;výstupní AVI&nbsp;jako YV12, pokud&nbsp;to není mo¾né zkusí&nbsp; 
+efekt pokud je&nbsp;video&nbsp;nekomprimovaném formátu (YUY2, RGB32&nbsp;nebo RGB24), proto¾e nebude pou¾it ¾ádný dekompresor.
+Jinými slovy: jestli¾e&nbsp;nìco nespecifikujete, zkusí&nbsp;výstupní AVI&nbsp;jako YV12, pokud&nbsp;to není mo¾né zkusí&nbsp;
 YV411 a pokud ani to není mo¾né zkusí YV16, atd ...
 <p>Pokud naèteme DivX
 klip Avisynthem v2.5 budou barvy&nbsp;nìkdy zdeformovány (barevné kanály&nbsp;U a V jsou prohozené), kvùli chybì&nbsp;DivX (5.02 a
 star¹í). K nápravì mù¾ete pou¾ít&nbsp; <A href="swap.htm"><code>SwapUV</code></A>.
 <p>Od&nbsp; <em>v2.53</em> <code>AVISource</code> mù¾e&nbsp;také otevøít&nbsp;vstupní video DV typ
 1&nbsp;(pouze video,&nbsp;ne audio).
-<p>Od&nbsp; <em>v2.55</em>,&nbsp;je 
-pøidána volba <var> fourCC</var>&nbsp;. FourCC,&nbsp;je FOUR Character 
+<p>Od&nbsp; <em>v2.55</em>,&nbsp;je
+pøidána volba <var> fourCC</var>&nbsp;. FourCC,&nbsp;je FOUR Character
 Code (ètyøpísmenný kód) na zaèátku obsahu mediálního souboru, vìt¹inou&nbsp;spojovaný s avi, který øíká&nbsp;va¹emu systému, který
 kodek&nbsp;má být pou¾it pro dekódování souboru. Mù¾ete ho pou¾ít pro&nbsp;vynucení AviSource k otevøení&nbsp;avi&nbsp;souboru s pou¾itím jiného kodeku. Seznam&nbsp;FOURCC najdete
-<a href="http://www.fourcc.org/index.php?http%3A//www.fourcc.org/codecs.php"><cite>zde</cite></a> . Jako 
+<a href="http://www.fourcc.org/index.php?http%3A//www.fourcc.org/codecs.php"><cite>zde</cite></a> . Jako
 výchozí se pou¾ije&nbsp;fourCC&nbsp;z avi&nbsp;souboru.
 <p>Nìkteré&nbsp;MJPEG/DV kodeky nedávají&nbsp;správný výstup odpovídající standardu&nbsp;CCIR 601&nbsp;pøi
 pou¾ití&nbsp; <code>AVISource</code>. Problém mù¾e vznikat, je-li barevný formát&nbsp;vstupu
@@ -68,7 +68,7 @@ codecs</a></cite>
 <p><b>Napøíklad:</b></p>
 
 <pre># poznámka programátora C : obrácená lomítka nejsou dublovány; klasická lomítka také fungují
-AVISource(&quot;d:\capture.avi&quot;) 
+AVISource(&quot;d:\capture.avi&quot;)
 AVISource(&quot;c:/capture/00.avi&quot;)
 WAVSource(&quot;f:\soundtrack.wav&quot;)
 WAVSource(&quot;f:/soundtrack.wav&quot;)
@@ -79,10 +79,10 @@ AVISource(&quot;cap1.avi&quot;,&quot;cap2.avi&quot;)
 # vypíná audio a po¾aduje RGB32 dekompresi
 AVISource(&quot;cap.avi&quot;,false,&quot;RGB32&quot;)
 
-# otvírá DV s pou¾itím Canopus DV kodeku 
+# otvírá DV s pou¾itím Canopus DV kodeku
 AviSource(&quot;cap.avi&quot;, false, fourCC=&quot;CDVC&quot;)
 
-# otvírá avi (napøíklad DivX3) s pou¾itím XviD kodeku 
+# otvírá avi (napøíklad DivX3) s pou¾itím XviD kodeku
 AviSource(&quot;cap.avi&quot;, false, fourCC=&quot;XVID&quot;)
 
 # spojuje dva klipy z nich¾ jeden nemá audio;
@@ -90,9 +90,9 @@ AviSource(&quot;cap.avi&quot;, false, fourCC=&quot;XVID&quot;)
 A = AviSource(&quot;FileA.avi&quot;)
 B = AviSource(&quot;FileB.avi&quot;) # ®ádný audio stream
 A ++ AudioDub(B, BlankClip(A)) </pre>
-<p>Nìkteré&nbsp; kompresní formáty stanovují omezení na poèet&nbsp;volání AviSource()&nbsp;, která mohou 
-být&nbsp;umístìna ve&nbsp;skriptu.&nbsp;Nìkteøí lidé 
-mají zku¹enost s tímto omezením s ménì ne¾&nbsp;50 pøíkazy AviSource().&nbsp;Viz&nbsp; <CITE><A 
+<p>Nìkteré&nbsp; kompresní formáty stanovují omezení na poèet&nbsp;volání AviSource()&nbsp;, která mohou
+být&nbsp;umístìna ve&nbsp;skriptu.&nbsp;Nìkteøí lidé
+mají zku¹enost s tímto omezením s ménì ne¾&nbsp;50 pøíkazy AviSource().&nbsp;Viz&nbsp; <CITE><A
 href="http://forum.doom9.org/showthread.php?t=131687">diskuze</A></CITE>.</p>
 
 

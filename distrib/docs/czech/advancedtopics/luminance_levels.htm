@@ -7,7 +7,7 @@
 <BODY>
 <h1>Úrovnì jasu</h1>
 <p>Špatné úrovnì jsou bìnım pøehrávacím problémem. Je to pøedmìt, kterı je stále znovu
-diskutován. Cílem tohoto tématu je soustøedit kolektivní znalosti Doom9 komunity 
+diskutován. Cílem tohoto tématu je soustøedit kolektivní znalosti Doom9 komunity
 tıkající se tohoto pøedmìtu. Podìlte se prosím všichni o své vìdomosti.
 Budu aktualizovat informace níe abych zaøadil vaše moudra.</p>
 <h2>Obsah</h2>
@@ -44,7 +44,7 @@ Budu aktualizovat informace níe abych zaøadil vaše moudra.</p>
 
 <a name="What_are_luminance_levels.3F"></a>
 <h2><span class="mw-headline">Co to jsou úrovnì jasu?</span></h2>
-<p>Digitální video je typicky enkódováno v YCbCr formátu. YCbCr je rodina 
+<p>Digitální video je typicky enkódováno v YCbCr formátu. YCbCr je rodina
 barevnıch prostøedí (YV12, YUY2, atd.), která enkóduje barevnou informaci (chroma)
 oddìlenì od jasové informace (luma).</p>
 <p>Existují dva standardy pro enkódování jasu (luminance). Pro
@@ -54,23 +54,23 @@ standarddefinition TV (SDTV) je standard BT.601, a pro high-definition TV
 Existují dva bìnì pouívané rozsahy: 0-255 (aka PC levels) a 16-235 (aka TV
 levels). (Vysvìtlit proè ...) To platí jak pro YCbCr tak pro RGB formát.
 Obvykle je vaše video uloeno v rozsahu 16-235 YCbCr, ale je pøehráváno zpìt v 0-255
-RGB. To znamená, e úrovnì potøebují bıt v urèitém okamiku rozšíøeny (expandovány). Ale v 
+RGB. To znamená, e úrovnì potøebují bıt v urèitém okamiku rozšíøeny (expandovány). Ale v
 nìkterıch pøípadech bude vaše video uloeno jako 0-255 YCbCr (DV je takovı pøíklad), a
 není potøeba ádné expandování.</p>
-<p>Proto pøi pøevádìní YCbCr barevného prostøedí na RGB, musí bıt pouit správnı standard 
+<p>Proto pøi pøevádìní YCbCr barevného prostøedí na RGB, musí bıt pouit správnı standard
 (BT.601 nebo BT.709) a správnı rozsah (TV nebo PC levels).</p>
 <p>Vıše uvedené nemusí bıt vdy provedeno správnì. Mùe to bıt špatnì kvùli urèitım
 kombinacím video rendererù, rozlišení videa a nastavení grafického ovladaèe.</p>
 <a name="How_can_I_see_if_the_levels_are_wrong.3F"></a>
 <h2><span class="mw-headline">Jak poznám jestli jsou úrovnì špatné?</span></h2>
-<p>Video vypadá vyprané a barvy nejsou ivé. Èerná je zobrazena jako tmavì šedá. 
+<p>Video vypadá vyprané a barvy nejsou ivé. Èerná je zobrazena jako tmavì šedá.
 Bílá je zobrazena jako svìtle šedá.</p>
 <p>Také je monı opak, ale je to ménì èasté. V takovém pøípadì jsou tmavé barvy
 zobrazeny pøíliš tmavì, a svìtlé barvy jsou zobrazeny pøíliš jasnì.</p>
 <a name="Which_combinations_give_wrong_levels.3F"></a>
 <h2><span class="mw-headline">Které kombinace dávají špatné úrovnì?</span></h2>
 <p>Roli hraje mnoho faktorù, take není moné dát seznam
-kombinací, které vdy dají špatné úrovnì pro kadého. Níe je 
+kombinací, které vdy dají špatné úrovnì pro kadého. Níe je
 (neúplnı) seznam situací ve kterıch se mohou špatné úrovnì vyskytnout (pøi sledování
 PC monitoru). To znamená, e pøevádìjí YCbCr [16,235] na RGB
 [16,235] (tedy úrovnì nejsou expandovány). Ale obecnì dejte prostì na své oèi.</p>
@@ -92,7 +92,7 @@ YCbCr) na PC monitor nebo LCD TV, tedy zaøízení, které potøebuje RGB plného rozs
 <a name="Method_.231:_Adjusting_graphics_driver_settings"></a>
 <h3><span class="mw-headline">Metoda #1: Úprava nastavení grafického ovladaèe</span></h3>
 <p><b>NVIDIA</b></p>
-<p>Od verze 177.84, ovladaèe NVIDIA mají monost konfigurace 
+<p>Od verze 177.84, ovladaèe NVIDIA mají monost konfigurace
 rozsahu jasu (luma range).</p>
 <p>Monost najdete zde: NVIDIA Control Panel -&gt; Video &amp;
 Television -&gt; Adjust video color settings -&gt; Select &quot;With the NVIDIA
@@ -110,16 +110,16 @@ Nastavení UseBT601CSC je to, které se vztahuje k úrovním jasu.</p>
 <h3><span class="mw-headline">Metoda #2: Pøevod do RGB32 pomocí ffdshow</span></h3>
 <p>Donucení ffdshow vysílat RGB32 mùe pomoci zabránit problémùm s úrovní jasu.
 Stinnou stránkou této metody je, e provádìní tohoto pøevodu v softwaru zvyšuje zatíení CPU.</p>
-<p>Pro vynucení RGB32 vıstupu v ffdshow by jste mìli zrušit zatrení 
-všech barevnıch prostøedí kromì RGB32 na vıstupní stranì (Output page) v ffdshow konfiguraci. 
-Také se doporuèuje zapnout &quot;High quality YV12 to RGB conversion&quot; 
-(Vysoce kvalitní pøevod YV12 do RGB). Na stranì 
+<p>Pro vynucení RGB32 vıstupu v ffdshow by jste mìli zrušit zatrení
+všech barevnıch prostøedí kromì RGB32 na vıstupní stranì (Output page) v ffdshow konfiguraci.
+Také se doporuèuje zapnout &quot;High quality YV12 to RGB conversion&quot;
+(Vysoce kvalitní pøevod YV12 do RGB). Na stranì
 pøevodu RGB, mùete zvolit kterı standard by mìl bıt pøedpokládán, BT.601 nebo BT709. Vyberte
 první pro materiál s nízkım rozlišením, a druhı pro HD video.</p>
-<p>Poznámka: monost automatického vıbìru zaloená na rozlišení videa 
+<p>Poznámka: monost automatického vıbìru zaloená na rozlišení videa
 snad bude pøidána v blízké budoucnosti.</p>
 <p>Tip: monost Profiles/Presets v ffdshow lze pouít pro vytvoøení rùznıch sad
-nastavení. Dokonce mùete autonaèítat profily zaloené na podmínkách jako 
+nastavení. Dokonce mùete autonaèítat profily zaloené na podmínkách jako
 rozlišení formátu videa. Mohli by jste napøíklad vytvoøit profil specificky
 pro video s HD rozlišením, a pouít profil 'standard' pro videa s nízkım rozlišením.</p>
 <p>Poznámka: Pøi vysílání do CRT TV, musíte vybrat &quot;Full Range&quot;
@@ -128,7 +128,7 @@ správné.</p>
 <a name="Method_.233:_Levels_filter_in_ffdshow_video_decoder"></a>
 <h3><span class="mw-headline">Metoda #3: Filtr Levels v ffdshow video dekodéru</span></h3>
 <p>ffdshow má speciální filtr pro úpravu jasovıch (luminance) úrovní. Pro opravu
-špatnıch úrovní jasu na PC monitorech nebo LCD TV obvykle potøebujete pøevést do 
+špatnıch úrovní jasu na PC monitorech nebo LCD TV obvykle potøebujete pøevést do
 PC úrovní. Pro opravu špatnıch úrovní pro CRT TV, obvykle potøebujete pøevést do
 TV úrovní.</p>
 <p>Pro pøevod TV úrovní do PC úrovní pouijte 16-235 jako vstupní rozsah a 0-255 jako
@@ -151,7 +151,7 @@ povede k neoptimálním vısledkùm.</p>
   <li>Musíte pouít kompatibilní video renderer: VMR-7 (renderless), VMR-9
     (renderless), nebo EVR Custom Presenter.</li>
   <li>Nastavení plochy (surface) musí bıt nastaveno na &quot;3D surfaces&quot;.</li>
-  <li>Vyaduje nìkteré DirectX komponenty, které nejsou zahrnuty ve vıchozí 
+  <li>Vyaduje nìkteré DirectX komponenty, které nejsou zahrnuty ve vıchozí
     Windows instalaci. Spuste DirectX Web Installer aby jste získali poadované
     DirectX aktualizace.</li>
 </ul>

@@ -11,12 +11,12 @@
 </h2>
 <p><code>GetChannel </code>(<var>clip, int ch1 [, int ch2, ...]</var>)<br>
   <code>GetChannels </code>(<var>clip, int ch1 [, int ch2, ...]</var>)
-<p>Prima della v2.5 <code>GetLeftChannel</code> restituiva il canale sinistro 
-  di un segnale stereo e <code>GetRightChannel</code> quello destro. <code><tt>GetChannel</tt></code> 
-  presente a partire dalla v2.5 e restituisce 1 o + canali da un segnale multichannel. 
-  <code>GetChannels</code> &egrave; un alias <code>GetChannel</code>. 
-<p> L'ordine dei canali dipende dall'input in quanto AviSynth non fa considerazioni 
-  su tale ordine. Nel caso di WAV 2.0 stereo e WAV 5.1 l'ordinamento dovrebbe 
+<p>Prima della v2.5 <code>GetLeftChannel</code> restituiva il canale sinistro
+  di un segnale stereo e <code>GetRightChannel</code> quello destro. <code><tt>GetChannel</tt></code>
+  presente a partire dalla v2.5 e restituisce 1 o + canali da un segnale multichannel.
+  <code>GetChannels</code> &egrave; un alias <code>GetChannel</code>.
+<p> L'ordine dei canali dipende dall'input in quanto AviSynth non fa considerazioni
+  su tale ordine. Nel caso di WAV 2.0 stereo e WAV 5.1 l'ordinamento dovrebbe
   essere il seguente:
 <p><b>WAV 2 ch (stereo):</b>
 <table BORDER COLS=2 WIDTH="50%" >
@@ -96,7 +96,7 @@ stereo = GetChannel(audio, 1, 2)
 return AudioDub(video, stereo)</pre>
 
 <h4>Nota1:</h4>
-<p>Ogni formato ha un diverso ordinamento dei canali. La tavola seguente fornisce 
+<p>Ogni formato ha un diverso ordinamento dei canali. La tavola seguente fornisce
   l'ordinamento di alcuni fra i + noti formati (utile per i programmatori di plugin:))</p>
 
 <table BORDER COLS=7 WIDTH="75%" >
@@ -202,11 +202,11 @@ AIFF</a></td>
 </table>
 
 <p>* 5.1 DTS: l' LFE è su uno stream separato(simile all' MPEG2 multichannel).<br>
-  * Le specifiche dell'AAC non sono disponibili su internet (a quando una free 
-  version)? 
+  * Le specifiche dell'AAC non sono disponibili su internet (a quando una free
+  version)?
 <h4>Nota2: </h4>
-<p>Al momento della scrittura di questa pagina, Besweet ha ancora la <a href="http://forum.doom9.org/showthread.php?s=&postid=305084">2GB 
-  barrier</a>. Assicuratevi che la dimensione di un WAV 5.1 sia inferiore ai 2GB, 
+<p>Al momento della scrittura di questa pagina, Besweet ha ancora la <a href="http://forum.doom9.org/showthread.php?s=&postid=305084">2GB
+  barrier</a>. Assicuratevi che la dimensione di un WAV 5.1 sia inferiore ai 2GB,
   in caso contrario encodate in sei wav separate o usate HeadAC3he.
 <p><kbd>$Date: 2004/09/26 19:49:40 $</kbd></p>
 <form>

@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: warpsharp.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: warpsharp.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -14,7 +14,7 @@ $Id: warpsharp.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <br><b>verze:</b> warpsharp_2003_1103.cab<br>
 <b>stáhnout:</b>  <a href="http://www.geocities.co.jp/SiliconValley-PaloAlto/2382/">http://www.geocities.co.jp/SiliconValley-PaloAlto/2382/</a>
 (<a href="http://niiyan.s8.xrea.com/avisynth/en/warpsharp_introduction_en.html">english
-intro</a>), 
+intro</a>),
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a><br>
 <b>kategorie:</b> Pluginy pro zostøení/zmìkèení<br>
 <b>požadavky:</b>  YUY2 &amp; YV12 Barevné prostøedí
@@ -22,7 +22,7 @@ intro</a>),
 <p>Také budete potøebovat zkopírovat <a href="../faq.htm#JapanesePlugin">msvcp71.dll a msvcr71.dll</a>
 do vaší systémové složky.</p>
 <h2>Úvod</h2>
-<p>Tento plugin obsahuje øadu filtrù (jejichž seznam je <a href="../faq.htm#JapanesePlugin">zde</a> a nebo 
+<p>Tento plugin obsahuje øadu filtrù (jejichž seznam je <a href="../faq.htm#JapanesePlugin">zde</a> a nebo
 <a href="http://www.avisynth.info/?warpsharp%A5%D1%A5%C3%A5%B1%A1%BC%A5%B8#ubb12bdb">zde</a>) portovaných z VirtualDubu a AviUtl.</p>
 <p>Mezi nimi jsou tøi známé zostøovací filtry z VirtualDubu - <code>WarpSharp</code> od Avery Lee, <code>Xsharpen</code> a <code>UnsharpMask</code> od Donalda Grafta.</p>
 <h2>Popis filtrù</h2>
@@ -38,7 +38,7 @@ Poèet rozmazání (blur). Zpracování se zpomalí, když bude tato hodnota zvyšována.
 <p><var>bump</var><br>
 Prahová hodnota detekce nestejnosti. Bude dosaženo ostøejšího efektu pøi jejím zvyšování.</p>
 <p><var>cubic</var><br>
-Koeficient deformaèní (warp) hodnoty (kubická interpolace). Není potøeba mìnit toto 
+Koeficient deformaèní (warp) hodnoty (kubická interpolace). Není potøeba mìnit toto
 nastavení.</p>
 <p>Pøíklad</p>
 <pre>WarpSharp(128, 3, 128, -0.6)</pre>
@@ -49,11 +49,11 @@ nastavení.</p>
 <p>Tento filtr vytváøí subtilní, ale užiteèný efekt zostøování. Pracuje tak, že malé okno bìží pøes snímek a každý støedový pixel je buï ponechán netknutý (podle nastavené
 <var>threshold</var> - prahové hodnoty), nebo mapován na nejjasnìjší nebo nejmatnìjší pixel v oknì podle toho, který je nejblíže støedovému pixelu.
 Pokud je støedový pixel mapován, aplikuje se také alfa-smíchání s hodnotou pùvodního pixelu použitím konfigurovatelného nastavení
-<var> strength</var>. Výsledkem je zostøovací efekt, který nejen brání zesílení šumu, ale také má snahu ho snižovat. Vítaným postranním efektem je, že soubory zpracované tímto filtrem 
+<var> strength</var>. Výsledkem je zostøovací efekt, který nejen brání zesílení šumu, ale také má snahu ho snižovat. Vítaným postranním efektem je, že soubory zpracované tímto filtrem
 se lépe komprimují.</p>
 <p>Popis parametrù</p>
 <p><var>strength</var><br>
-Když je tato hodnota 255, mapované pixely nejsou smíchány s hodnotami pùvodního pixelu, takže je získán nejsilnìjší efekt. Jak se hodnota snižuje, každý mapovaný pixel je smíchán s 
+Když je tato hodnota 255, mapované pixely nejsou smíchány s hodnotami pùvodního pixelu, takže je získán nejsilnìjší efekt. Jak se hodnota snižuje, každý mapovaný pixel je smíchán s
 vìtší èástí pùvodního pixelu. Pøi hodnotì 0, jsou pùvodní pixely ponechány nedotèené a filtr nemá žádný zostøovací efekt.</p>
 <p><var>threshold</var><br>
 Tato hodnota urèuje jak blízko musí být pixel do nejjasnìjšího  nebo nejmatnìjšího pixelu pro mapování. Pokud je pixel vzdálen více než o
@@ -81,7 +81,7 @@ jako 3 a 5 jsou vhodné pro vìtšinu pøípadù.</p>
 Tato možnost nastavuje jak se musí lišit pixely od jejich okolního prùmìru než jsou podrobeny zostøení. Napøíklad obèas pøi
 silném zostøování by se mohly v hladkých oblastech (jako kùže)
 vytváøet nežádoucí rysy kontur. Nastavením vhodné prahové hodnoty threshold mohou být
-tyto oblasti vylouèeny ze zostøovacího procesu.  
+tyto oblasti vylouèeny ze zostøovacího procesu.
 </p>
 <p>Pøíklad</p>
 <pre>UnsharpMask(64, 3, 8)</pre>
@@ -90,4 +90,3 @@ tyto oblasti vylouèeny ze zostøovacího procesu.
 <p><kbd>Èeský pøeklad:3.7.2009</kbd></p>
 </body>
 </html>
- 

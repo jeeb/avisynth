@@ -5,7 +5,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: yadif.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: yadif.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -13,18 +13,18 @@ $Id: yadif.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b> Fizick (Alexandr Balachnin)
 <br><b>verze:</b> 0.9
-<br><b>stáhnout:</b> <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>, 
+<br><b>stáhnout:</b> <a href="http://avisynth.org.ru/">http://avisynth.org.ru/</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a><br>
 <b>kategorie:</b>  Odstraòování prokládání & pulldown<br>
 <b>požadavky:</b> YUY2, YV12 barevný formát<br>
 <b>licence:</b> GPL
 <hr>
 
-<p> 
+<p>
 Port filtru YADIF (Yet Another DeInterlacing Filter) z MPlayeru by Michael Niedermayer (http://www.mplayerhq.hu).
-Provìøuje pixely pøedchozího, aktuálního a následujícího snímku pro znovu-vytvoøení vynechaného pole 
+Provìøuje pixely pøedchozího, aktuálního a následujícího snímku pro znovu-vytvoøení vynechaného pole
 nìjakou lokální adaptivní metodou (edge-directed interpolation (interpolace vyrovnávající obrysy)) a používá
-prostorovou (spatial) kontrolu pro odvrácení vìtšiny artefaktù. 
+prostorovou (spatial) kontrolu pro odvrácení vìtšiny artefaktù.
 </p>
 
 <h2>Syntaxe a parametry</h2>
@@ -39,7 +39,7 @@ prostorovou (spatial) kontrolu pro odvrácení vìtšiny artefaktù.
 <p> = 1 : Horní pole první.</p>
 
 <h2>Možnosti a omezení</h2>
-<p>Implementováno jako Avisynth C-plugin (ne klasický Avisynth plugin).<br> 
+<p>Implementováno jako Avisynth C-plugin (ne klasický Avisynth plugin).<br>
 Musí být naèten pomocí Load_Stdcall_plugin("yadif.dll") nebo LoadCplugin("yadif.dll") (ne LoadPlugin !).
 Nepoužívejte autonaèítání.
 (Poznámka: v Avisynthu v2.5.7 nemusí uživatel výslovnì naèítat Avisynth_c.dll pro takovéto pluginy.)
@@ -109,4 +109,3 @@ Nepoužívejte autonaèítání.
 <p><kbd>Èeský pøeklad:29.6.2009</kbd></p>
 </body>
 </html>
-  

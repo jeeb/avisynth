@@ -14,7 +14,7 @@
 class GradientMask&nbsp;: public IClip {
 public:
   GradientMask(int _w, int _h, int _color, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env); 
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {};
   bool __stdcall GetParity(int n) { return false; };
   int __stdcall SetCacheHints(int cachehints, int frame_range) { return 0; };
@@ -90,20 +90,20 @@ by line breakdown </span></h3>
 </p>
 <p>As explained in the <a href="InvertNeg.htm" title="Filter SDK/InvertNeg">InvertNeg</a>
  filter, an Avisynth filter is simply a C++ class implementing the IClip
- interface. The class GenericVideoFilter is a simple do-nothing filter 
-defined in avisynth.h. It derives from IClip and implements all four 
-methods (being being GetFrame, GetAudio, GetParity and SetCacheHints). 
-Filters that have a parent clip and thus can inherit from 
-GenericVideoFilter rather than directly from IClip; this saves you from 
-having to implement methods that you don't care about. Source filters 
+ interface. The class GenericVideoFilter is a simple do-nothing filter
+defined in avisynth.h. It derives from IClip and implements all four
+methods (being being GetFrame, GetAudio, GetParity and SetCacheHints).
+Filters that have a parent clip and thus can inherit from
+GenericVideoFilter rather than directly from IClip; this saves you from
+having to implement methods that you don't care about. Source filters
 don't have a parent clip and need to derive them from IClip.
 </p>
-<p>Since we are developing a source filter we need to derive from 
-IClip, fill out a VideoInfo and implement all four methods (instead of 
+<p>Since we are developing a source filter we need to derive from
+IClip, fill out a VideoInfo and implement all four methods (instead of
 overriding the ones we need).
 </p>
-<p>In the example below a gradientmask is created. It fades from a 
-fully saturated color to white. The gradientmask will be created in the 
+<p>In the example below a gradientmask is created. It fades from a
+fully saturated color to white. The gradientmask will be created in the
 constructor and returned only once.
 </p>
 
@@ -170,9 +170,9 @@ GradientMask::GradientMask(int _w, int _h, int _color, IScriptEnvironment* env)&
 </pre>
 
 <p>First memory is allocated for VideoInfo and then the video parameters
- of vi are filled. In our example, the width and height are taken from 
+ of vi are filled. In our example, the width and height are taken from
 the input parameters and the remaining ones are given default values. So
- an one-frame RGB24 gradient will be returned with width 'w' and height 
+ an one-frame RGB24 gradient will be returned with width 'w' and height
 'h'.
 </p>
 <p>In our example, the frame is filled here in the constructor since the clip consists of only one frame.
@@ -194,8 +194,8 @@ If it would have multiple different frames you should fill them in GetFrame().
   red = max(col[0] - luma,0);
 </pre>
 
-<p>First we calculate the luma (being the average of the color 
-components and subtract it from the color components. So we get the 
+<p>First we calculate the luma (being the average of the color
+components and subtract it from the color components. So we get the
 fully saturated color.
 </p>
 

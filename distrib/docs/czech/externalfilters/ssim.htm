@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: ssim.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: ssim.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -25,15 +25,15 @@ Byl kódován s velkou pomocí od Mfa, který pracoval na funkcích jádra.
 metriky kvality, založené na vnímaném vizuálním zkreslení. Na rozdíl od dobøe známého
 mìøení PSNR, toto není èistì matematické, a mìlo by mnohem lépe odpovídat
 lidskému vnímání.<br>
-Nìkolik pøíkladù mùžete najít 
+Nìkolik pøíkladù mùžete najít
  <a href="http://www.cns.nyu.edu/~zwang/files/research/ssim/index.html" target="_blank"><cite>zde</cite></a>.<br>
 Vyšší MSE (a také nižší PSNR) by mìli znamenat, že komprimovaný klip má horší
 obraz, ale MSE a PSNR jsou v tomto ohledu chybné, jak ukazuje øada testù.
 Nicménì u SSIM, podle testù provedených VQEG, vyšší
-Q (hodnota SSIM) má mnohem lepší vztah k vizuální kvalitì 
+Q (hodnota SSIM) má mnohem lepší vztah k vizuální kvalitì
 komprimovaného klipu. Navzdory tomu, mìjte na pamìti, že SSIM metrika není stále dokonalá.
-<p>Tento filtr je navržen pro výpoèet hodnoty SSIM dvìma metodami, pùvodní, 
-a &quot;vylepšenou&quot; , která váží výsledky maskováním jasu. 
+<p>Tento filtr je navržen pro výpoèet hodnoty SSIM dvìma metodami, pùvodní,
+a &quot;vylepšenou&quot; , která váží výsledky maskováním jasu.
 V seznamu Na dopracování je zahrnuto pohybové vážení.
 <p>Tento filtr má pìt parametrù:
 <p><code>SSIM</code> (<var>clip1, clip2, &quot;results.csv&quot;, &quot;averageSSIM.txt&quot;,

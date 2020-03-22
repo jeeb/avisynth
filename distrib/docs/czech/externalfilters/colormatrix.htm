@@ -27,26 +27,26 @@ ColorMatrix v2.0 je založen na pùvodním filtru ColorMatrix od Wilberta Dijkhofa.
 </p>
 <p>
 Pøi pøevodu RGB do YUV a naopak, existuje více sad koeficientù, které je možné použít.
-Nejbìžnìjší jsou Rec.709, FCC, Rec.601 (aka SMPTE 170M nebo ITU-R BT.470-2), a SMPTE 240M.  Úèel 
-filtru ColorMatrix je pøepoèítat hodnoty YUV videa, které bylo pøevedeno z RGB použitím jedné sady 
-koeficientù na takové hodnoty na jaké by mìly být pøevedeny z RGB pøi použití jiné sady  
-koeficientù.  Dùvod proè je to užiteèné je ten, že nìkteré MPEG-2 streamy typicky používají Rec.709, zatímco vìtšina poèítaèového  
-softwaru (XviD/DivX dekodéry, atd...) pøedpokládají Rec.601. Proto, pokud berete MPEG-2 stream použitím Rec.709 a 
-pøedáte ho jako YUV do dekodéru, který nadvzorkuje do RGB použitím Rec.601 , barvy budou mírnì mimo.  V takovém pøípadì 
-by jste mohli použít ColorMatrix pro pøevod videa z Rec.709 do Rec.601 a jeho pøedání  
-dekodéru.  Další pøíklad je, pokud zachytáváte video softwarem, který používá Rec.601 a pak chcete enkódovat 
+Nejbìžnìjší jsou Rec.709, FCC, Rec.601 (aka SMPTE 170M nebo ITU-R BT.470-2), a SMPTE 240M.  Úèel
+filtru ColorMatrix je pøepoèítat hodnoty YUV videa, které bylo pøevedeno z RGB použitím jedné sady
+koeficientù na takové hodnoty na jaké by mìly být pøevedeny z RGB pøi použití jiné sady
+koeficientù.  Dùvod proè je to užiteèné je ten, že nìkteré MPEG-2 streamy typicky používají Rec.709, zatímco vìtšina poèítaèového
+softwaru (XviD/DivX dekodéry, atd...) pøedpokládají Rec.601. Proto, pokud berete MPEG-2 stream použitím Rec.709 a
+pøedáte ho jako YUV do dekodéru, který nadvzorkuje do RGB použitím Rec.601 , barvy budou mírnì mimo.  V takovém pøípadì
+by jste mohli použít ColorMatrix pro pøevod videa z Rec.709 do Rec.601 a jeho pøedání
+dekodéru.  Další pøíklad je, pokud zachytáváte video softwarem, který používá Rec.601 a pak chcete enkódovat
 do MPEG-2 použitím enkodéru, který pøedpokládá Rec.709.
 </P>
 <P>
 Na první pohled by se zdálo, že ke splnìní svého úkolu by ColorMatrix potøeboval vnitønì
-pøevést na RGB použitím zdrojových koeficientù a pak pøevést zpìt na YUV použitím nových koeficientù. 
-Ale není to tento pøípad. To co Colormatrix ve skuteènosti dìlá, je pøepoèítání inverzní matice (matrix) zdrojových 
-koeficientù (dává matici pro provedení YUV->RGB) a pak násobí takovou matici novou maticí koeficientù. 
+pøevést na RGB použitím zdrojových koeficientù a pak pøevést zpìt na YUV použitím nových koeficientù.
+Ale není to tento pøípad. To co Colormatrix ve skuteènosti dìlá, je pøepoèítání inverzní matice (matrix) zdrojových
+koeficientù (dává matici pro provedení YUV->RGB) a pak násobí takovou matici novou maticí koeficientù.
 To dává sadu koeficientù pro provedení pøevodu pøímo z YUV do YUV.
 </P>
 <P>
 ColorMatrix podporuje YV12 a YUY2 barevná prostøedí, a umí pøevádìt mezi Rec.709, FCC, Rec.601, a SMPTE 240M.
-ColorMatrix je také schopen provádìt rozšíøení a zúžení rozsahu   
+ColorMatrix je také schopen provádìt rozšíøení a zúžení rozsahu
 ([16,235/240]->[0,255] nebo [0,255]->[16,235/240]) jako èást pøevodu colorimetrù nebo jako samotné.
 </P>
 </ul>
@@ -55,10 +55,10 @@ ColorMatrix je také schopen provádìt rozšíøení a zúžení rozsahu
 <h3>Syntaxe</h3>
 <ul>
 <P>
-<code>ColorMatrix </code>(clip, string <var>&quot;mode&quot;</var>, int <var>&quot;source&quot;</var>, 
-int <var>&quot;dest&quot;</var>, int <var>&quot;clamp&quot;</var>, bool <var>&quot;interlaced&quot;</var>, 
-bool <var>&quot;inputFR&quot;</var>, bool <var>&quot;outputFR&quot;</var>, bool <var>&quot;hints&quot;</var>, 
-string <var>&quot;d2v&quot;</var>, bool <var>&quot;debug&quot;</var>, int <var>&quot;threads&quot;</var>, 
+<code>ColorMatrix </code>(clip, string <var>&quot;mode&quot;</var>, int <var>&quot;source&quot;</var>,
+int <var>&quot;dest&quot;</var>, int <var>&quot;clamp&quot;</var>, bool <var>&quot;interlaced&quot;</var>,
+bool <var>&quot;inputFR&quot;</var>, bool <var>&quot;outputFR&quot;</var>, bool <var>&quot;hints&quot;</var>,
+string <var>&quot;d2v&quot;</var>, bool <var>&quot;debug&quot;</var>, int <var>&quot;threads&quot;</var>,
 int <var>&quot;thrdmthd&quot;</var>, int <var>&quot;opt&quot;</var>)
 </P>
 </ul>
@@ -70,7 +70,7 @@ int <var>&quot;thrdmthd&quot;</var>, int <var>&quot;opt&quot;</var>)
 
 <p><var>mode</var>:</p>
 <ul>
-<p>Mùže být øetìzec jako <code>"source->dest"</code>, kde <code>source</code> a <code>dest</code> jsou 
+<p>Mùže být øetìzec jako <code>"source->dest"</code>, kde <code>source</code> a <code>dest</code> jsou
 každý nahrazen jedním z následujících (velká písmena nevadí):</p>
 <ul>
 <li>Rec.709
@@ -85,7 +85,7 @@ každý nahrazen jedním z následujících (velká písmena nevadí):</p>
 <li>ColorMatrix(mode="SMPTE 240M->Rec.601")
 <li>ColorMatrix(mode="Rec.709->FCC")
 </ul>
-<p><var>source</var> a <var>dest</var> nemohou být stejné jestliže <var>inputFR</var> a 
+<p><var>source</var> a <var>dest</var> nemohou být stejné jestliže <var>inputFR</var> a
 <var>outputFR</var> jsou také stejné.</p>
 <p>výchozí -&nbsp;&nbsp;""  (string)</p>
 </ul>
@@ -93,7 +93,7 @@ každý nahrazen jedním z následujících (velká písmena nevadí):</p>
 
 <p><var>source</var>:</p>
 <ul>
-<p>Umožòuje nastavit zdrojový formát v celoèíselné formì.  Pokud je zadán parametr <var>mode</var>, 
+<p>Umožòuje nastavit zdrojový formát v celoèíselné formì.  Pokud je zadán parametr <var>mode</var>,
 tak pøepíše <var>source</var>.  Možná nastavení:</p>
 <ul>
 <li>0 - Rec.709
@@ -101,7 +101,7 @@ tak pøepíše <var>source</var>.  Možná nastavení:</p>
 <li>2 - Rec.601
 <li>3 - SMPTE 240M
 </ul>
-<p>Parametry <var>source</var> a <var>dest</var> nemohou být stejné jestliže 
+<p>Parametry <var>source</var> a <var>dest</var> nemohou být stejné jestliže
 <var>inputFR</var> a <var>outputFR</var> jsou také stejné.</p>
 <p>výchozí -&nbsp;&nbsp;0  (int)</p>
 </ul>
@@ -109,7 +109,7 @@ tak pøepíše <var>source</var>.  Možná nastavení:</p>
 
 <p><var>dest</var>:</p>
 <ul>
-<p>Umožòuje nastavit cílový formát v celoèíselné formì.   Pokud je zadán parametr <var>mode</var>, 
+<p>Umožòuje nastavit cílový formát v celoèíselné formì.   Pokud je zadán parametr <var>mode</var>,
 tak pøepíše <var>dest</var>.  Možná nastavení:</p>
 <ul>
 <li>0 - Rec.709
@@ -117,7 +117,7 @@ tak pøepíše <var>dest</var>.  Možná nastavení:</p>
 <li>2 - Rec.601
 <li>3 - SMPTE 240M
 </ul>
-<p>Parametry <var>source</var> a <var>dest</var> nemohou být stejné jestliže 
+<p>Parametry <var>source</var> a <var>dest</var> nemohou být stejné jestliže
 <var>inputFR</var> a <var>outputFR</var> jsou také stejné..</p>
 <p>výchozí -&nbsp;&nbsp;2  (int)</p>
 </ul>
@@ -139,9 +139,9 @@ tak pøepíše <var>dest</var>.  Možná nastavení:</p>
 
 <p><var>interlaced</var>:</p>
 <ul>
-<p>Prokládané video YV12 vyžaduje zvláštní zacházení... takže pokud je vaše video YV12 a je prokládané, 
-potøebujete nastavit tento parametr na true.  Jinak ho nechte na false.  Pro prokládané zpracování  
-vstupního klipu v ColorMatrix nesmí být klip založen na polích (fieldbased).  Pokud je, ColorMatrix vyhodí chybu, 
+<p>Prokládané video YV12 vyžaduje zvláštní zacházení... takže pokud je vaše video YV12 a je prokládané,
+potøebujete nastavit tento parametr na true.  Jinak ho nechte na false.  Pro prokládané zpracování
+vstupního klipu v ColorMatrix nesmí být klip založen na polích (fieldbased).  Pokud je, ColorMatrix vyhodí chybu,
 která to ukáže a øekne, že by jste mìli pøed tím použít AssumeFrameBased().</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -150,7 +150,7 @@ která to ukáže a øekne, že by jste mìli pøed tím použít AssumeFrameBased().</p>
 <p><var>inputFR</var>:</p>
 <ul>
 <p>Øíká ColorMatrix jestli je vstupní video v plném rozsahu [0-255] nebo v omezeném rozsahu [16-235/240].
-Toto nastavení nemá žádný efekt, jestliže je nastaveno stejnì jako <var>outputFR</var>. Hodnota true indikuje 
+Toto nastavení nemá žádný efekt, jestliže je nastaveno stejnì jako <var>outputFR</var>. Hodnota true indikuje
 plný rozsah a false indikuje omezený rozsah.</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -159,7 +159,7 @@ plný rozsah a false indikuje omezený rozsah.</p>
 <p><var>outputFR</var>:</p>
 <ul>
 <p>Øíká ColorMatrix jestli vysílat plný rozsah [0-255] nebo omezený rozsah [16-235/240] YUV hodnot.
-Toto nastavení nemá žádný efekt, jestliže je nastaveno stejnì jako <var>inputFR</var>. Hodnota true indikuje 
+Toto nastavení nemá žádný efekt, jestliže je nastaveno stejnì jako <var>inputFR</var>. Hodnota true indikuje
 plný rozsah a false indikuje omezený rozsah.</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -168,23 +168,23 @@ plný rozsah a false indikuje omezený rozsah.</p>
 <p><var>hints</var>:</p>
 <ul>
 <p>
-DGDecode v1.20 nebo novìjší mùže vysílat údaje (hints) colorimetry ve video streamu které mùže ColorMatrix èíst,  
-aby automaticky urèil zdrojové koeficienty. Pro zapnutí tohoto, nastavte <code>info=3</code> v 
+DGDecode v1.20 nebo novìjší mùže vysílat údaje (hints) colorimetry ve video streamu které mùže ColorMatrix èíst,
+aby automaticky urèil zdrojové koeficienty. Pro zapnutí tohoto, nastavte <code>info=3</code> v
 <code>mpeg2source()</code> a nastavte <code>hints=true</code> v <code>ColorMatrix()</code> jak je ukázáno níže:</p>
 <ul><pre>Mpeg2source(&quot;F:\TestStreams\avs\AguileraGrammies.d2v&quot;, info=3)
 ColorMatrix(hints=true)</pre></ul>
-<p>Pokud by jste rádi zobrazily info o colorimetrech, použijte <code>info=1</code> v <code>mpeg2source()</code> 
+<p>Pokud by jste rádi zobrazily info o colorimetrech, použijte <code>info=1</code> v <code>mpeg2source()</code>
 jak je ukázáno níže:</p>
 <ul><pre>Mpeg2source(&quot;F:\TestStreams\avs\AguileraGrammies.d2v&quot;, info=1)</pre></ul>
-<p>Pokud není ColorMatrix schopen detekovat údaje hints ve streamu (napøíklad protože používáte nesprávnou  
-verzi dgdecode) vyhodí chybu.  Pøi používání hints=true, pøevod zadaný parametrem <var>mode</var> 
-(nebo <var>source</var> a <var>dest</var> pokud není nastaven <var>mode</var>) bude aplikován jen když 
-colorimetry vstupního videa neodpovídají cílovým colorimetrùm. Napøíklad, pokud je <var>mode</var> 
-nastaven na "Rec.709->Rec.601" (nebo je <var>mode</var> ponechán prázný a <var>source</var>=0 a <var>dest</var>=2), 
-pak pøevod bude použit pouze pokud colorimetry vstupního videa nejsou už "Rec.601".  Pokud už odpovídají  
-colorimetry vstupního videa cílovým colorimetrùm, pak jsou snímky pøedány nedotknuté 
-(kromì pøípadu kdy omezení <var>clamp</var>>0 nebo pro rozsah pøevodu kdy <var>inputFR</var> a 
-<var>outputFR</var> nejsou stejné). Které scénáøe nastávají vidíte pøi použití 
+<p>Pokud není ColorMatrix schopen detekovat údaje hints ve streamu (napøíklad protože používáte nesprávnou
+verzi dgdecode) vyhodí chybu.  Pøi používání hints=true, pøevod zadaný parametrem <var>mode</var>
+(nebo <var>source</var> a <var>dest</var> pokud není nastaven <var>mode</var>) bude aplikován jen když
+colorimetry vstupního videa neodpovídají cílovým colorimetrùm. Napøíklad, pokud je <var>mode</var>
+nastaven na "Rec.709->Rec.601" (nebo je <var>mode</var> ponechán prázný a <var>source</var>=0 a <var>dest</var>=2),
+pak pøevod bude použit pouze pokud colorimetry vstupního videa nejsou už "Rec.601".  Pokud už odpovídají
+colorimetry vstupního videa cílovým colorimetrùm, pak jsou snímky pøedány nedotknuté
+(kromì pøípadu kdy omezení <var>clamp</var>>0 nebo pro rozsah pøevodu kdy <var>inputFR</var> a
+<var>outputFR</var> nejsou stejné). Které scénáøe nastávají vidíte pøi použití
 <var>debug</var>=true.</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -192,22 +192,22 @@ colorimetry vstupního videa cílovým colorimetrùm, pak jsou snímky pøedány nedotk
 
 <p><var>d2v</var>:</p>
 <ul>
-<p>Novìjší verze DGIndexu (v1.20+) zapisují informaci o colorimetrech do d2v projektového souboru. 
-ColorMatrix je schopen provést rozbor d2v souboru a automaticky urèit zdrojové koeficienty z 
-této informace. Pro zapnutí této možnosti, nastavte parametr <var>d2v</var> roven cestì a jménu 
+<p>Novìjší verze DGIndexu (v1.20+) zapisují informaci o colorimetrech do d2v projektového souboru.
+ColorMatrix je schopen provést rozbor d2v souboru a automaticky urèit zdrojové koeficienty z
+této informace. Pro zapnutí této možnosti, nastavte parametr <var>d2v</var> roven cestì a jménu
 d2v projektového souboru jak je ukázáno níže:</p>
 <ul><pre>Mpeg2source(&quot;F:\TestStreams\avs\AguileraGrammies.d2v&quot;)
 ColorMatrix(d2v=&quot;AguileraGrammies.d2v&quot;)</pre></ul>
-<p>Pokud je d2v soubor umístìn v jiné složce než Avisynth skript budete muset zadat 
-plnou cestu. Operace filtru, když je parametr <var>d2v</var> zadán 
-je stejná jako s <var>hints</var>=true. Pokud colorimetry vstupního videa už souhlasí 
-s cílovými colorimetry zadanými v parametru <var>mode</var> (nebo v <var>source</var> a 
-<var>dest</var>), pak pøevod není aplikován. Pokud colorimetry nesouhlasí, pak je pøevod aplikován. 
+<p>Pokud je d2v soubor umístìn v jiné složce než Avisynth skript budete muset zadat
+plnou cestu. Operace filtru, když je parametr <var>d2v</var> zadán
+je stejná jako s <var>hints</var>=true. Pokud colorimetry vstupního videa už souhlasí
+s cílovými colorimetry zadanými v parametru <var>mode</var> (nebo v <var>source</var> a
+<var>dest</var>), pak pøevod není aplikován. Pokud colorimetry nesouhlasí, pak je pøevod aplikován.
 Použití parametru <var>d2v</var> je rychlejší než použití <var>hints</var>.</p>
-<p>Je možné, že se colorimetry v klipu mìni.  Pokud je to tento pøípad, pak možnost <var>d2v</var> 
+<p>Je možné, že se colorimetry v klipu mìni.  Pokud je to tento pøípad, pak možnost <var>d2v</var>
 bude pracovat jen když neprovádíte støih - trim() nebo nepøeuspoøádáte snímky (napøíklad ivtc) pøed výzvou ColorMatrix.  Pokud
-ColorMatrix detekuje, že colorimetry v d2v souboru se mìní, bude žádat, aby èísla snímkù 
-zadaných v d2v souboru byl roven èíslùm snímkù ve vstupním klipu.  Možnost <var>hints</var>  
+ColorMatrix detekuje, že colorimetry v d2v souboru se mìní, bude žádat, aby èísla snímkù
+zadaných v d2v souboru byl roven èíslùm snímkù ve vstupním klipu.  Možnost <var>hints</var>
 nemá toto omezení.</p>
 <p>Pro lidi, které to zajímá, je to tento (a následný) øádek(ky) v d2v
 souboru</p>
@@ -220,9 +220,9 @@ pro vysvìtlující informace.</p>
 
 <p><var>debug</var>:</p>
 <ul>
-<p>Pokud je nastaven na true, vysílá se ladící (debug) informace pøes OutputDebugString().  Mùžete použít utilitu 
-<a href="http://www.sysinternals.com/Utilities/DebugView.html">DebugView</a> ze Systeminternals 
-pro prohlížení této informace. Informace zahrnují detekované údaje (hints), použité rutiny (c, mmx, nebo sse), 
+<p>Pokud je nastaven na true, vysílá se ladící (debug) informace pøes OutputDebugString().  Mùžete použít utilitu
+<a href="http://www.sysinternals.com/Utilities/DebugView.html">DebugView</a> ze Systeminternals
+pro prohlížení této informace. Informace zahrnují detekované údaje (hints), použité rutiny (c, mmx, nebo sse),
 atd...</p>
 <p>výchozí -&nbsp;&nbsp;false  (bool)</p>
 </ul>
@@ -230,8 +230,8 @@ atd...</p>
 
 <p><var>threads</var>:</p>
 <ul>
-<p>Nastavuje poèet vláken, která Colormatrix použije pro zpracování.  Mùže být jakákoli hodnota vìtší než 0 a, 
-pro YUY2, menší než výška snímku, pro YV12, menší než výška snímku dìlená 2.  Je-li nastaven na 0, 
+<p>Nastavuje poèet vláken, která Colormatrix použije pro zpracování.  Mùže být jakákoli hodnota vìtší než 0 a,
+pro YUY2, menší než výška snímku, pro YV12, menší než výška snímku dìlená 2.  Je-li nastaven na 0,
 ColorMatrix automaticky detekuje poèet volných procesorù a nastaví threads rovno této hodnotì.</p>
 <p>výchozí -&nbsp;&nbsp;1  (int)</p>
 </ul>
@@ -239,9 +239,9 @@ ColorMatrix automaticky detekuje poèet volných procesorù a nastaví threads rovno
 
 <p><var>thrdmthd</var>:</p>
 <ul>
-<p>Urèuje jak bude snímek rozdìlen mezi pracující vlákna, když je threads vìtší než 1.  
-Možnost 0 rozdìlí snímek na sousední díly (každé vlákno bude zpracovávat blok øádkù výška/threads).  
-Možnost 1 rozdìlí snímek na nesousední díly (každé vlákno bude zpracovávat každý 
+<p>Urèuje jak bude snímek rozdìlen mezi pracující vlákna, když je threads vìtší než 1.
+Možnost 0 rozdìlí snímek na sousední díly (každé vlákno bude zpracovávat blok øádkù výška/threads).
+Možnost 1 rozdìlí snímek na nesousední díly (každé vlákno bude zpracovávat každý
 threads - ový øádek).</p>
 <p>výchozí -&nbsp;&nbsp;0  (int)</p>
 </ul>
@@ -249,11 +249,11 @@ threads - ový øádek).</p>
 
 <p><var>opt</var>:</p>
 <ul>
-<p>Kvùli zaokrouhlování rozdílù, výstup z mmx a sse2 rutin (pøítomné jen pro YV12) není 
-pøesnì stejný jako výstup z c rutin (c rutina je pøesnìjší). Maximální rozdíl 
-mezi simd a c rutinami je +-1 na plochách Y/U/V .  Rutiny mmx a sse2  
-vytváøí srovnatelný výstup. Pokud nastane rozsah pøevodu (<var>inputFR</var> a <var>outputFR</var> jsou 
-rùzné), tak se použijí jen c rutiny.  Parametr <var>opt</var> je zahrnutý do vypnutí  
+<p>Kvùli zaokrouhlování rozdílù, výstup z mmx a sse2 rutin (pøítomné jen pro YV12) není
+pøesnì stejný jako výstup z c rutin (c rutina je pøesnìjší). Maximální rozdíl
+mezi simd a c rutinami je +-1 na plochách Y/U/V .  Rutiny mmx a sse2
+vytváøí srovnatelný výstup. Pokud nastane rozsah pøevodu (<var>inputFR</var> a <var>outputFR</var> jsou
+rùzné), tak se použijí jen c rutiny.  Parametr <var>opt</var> je zahrnutý do vypnutí
 použití simd optimalizací, jestliže to chcete.  Možná nastavení:</p>
 <ul>
 <li>0 - vynutí c rutinu
@@ -329,17 +329,17 @@ AviSynthu, VirtualDubu a XviD/DivX. Pøi pøehrávání XviD/DivX
 je stream pøeveden na RGB použitím Rec.601 koeficientù. Hlavním problémem je, že
 obèas jsou použity jiné koeficienty pro pøevod YUV do RGB (další dva jsou
 koeficienty Rec.709 a FCC koeficienty). Problém nastává pokud je stream
-enkódován použitím jedné sady koeficientù (napøíklad Rec.709 koeficientù pro mnohé dvd streamy), 
+enkódován použitím jedné sady koeficientù (napøíklad Rec.709 koeficientù pro mnohé dvd streamy),
 a nìkde v øetìzci pøekomprimování-zpracování-pøehrávání je pøedpokládána odlišná
 sada koeficientù (Rec.601 koeficienty pro XviD/DivX dekodér nebo
 FCC koeficienty pro TMPGEnc/QuEnc nebo Rec.709 koeficienty pro CCE). Tak získáte mírnì deformované barvy, což vypadá
-jako zmìna ve svìtlosti (ve skuteènosti to není zmìna svìtlosti, 
+jako zmìna ve svìtlosti (ve skuteènosti to není zmìna svìtlosti,
 barvy jsou prostì trochu mimo).
 <P>Jak poznáte, která sada koeficientù je použitá
 pøi enkódování MPEG-2 streamu? Obèas jsou koeficienty uchovány v hlavièce
 MPEG-2 souboru (pole "matrix coefficients" v "sequence display extension").
 Novìjší verze GSpot bude schopná pøeèíst tuto èást hlavièky, ale také
-DGDecode (s Mpeg2source(info=1)) mùže být k tomuto použit. Pokud toto 
+DGDecode (s Mpeg2source(info=1)) mùže být k tomuto použit. Pokud toto
 rozšíøené pole není pøítomno v hlavièce MPEG-2 souboru, specifikace øíká, že pøedpokládáme použití výchozích
 Rec.709 koeficientù.
 </ul>

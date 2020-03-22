@@ -11,15 +11,15 @@
 </h2>
 <p><code>Compare </code>(<var>clip_filtered, clip_original, string "channels",
 string "logfile", bool "show_graph"</var>)
-<p><code>Compare</code> genera in output la clip filtrata (primo argomento) con 
-  un testo (Mean Absolute Difference, Mean Difference &amp; PSNR) ed il grafico 
-  del PSNR fatto da MarcFD (se show_graph è impostato a true). A partire dalla 
-  <em>v2.53</em> viene mostrato sullo schermo anche l 'Overal PSNR' , ma non ancora 
-  nel logfile. La "channels string" è una combinazione di R,G,B[,A] o Y,U,V, in 
-  funzione delle caratteristiche della clip sorgenre. La stringa vuota (default) 
-  significa o "YUV" o "RGB". Se logfile non è "null", i risultati saranno scritti 
-  su un file con questo nome e non visualizzati sul clip: &egrave;' molto più 
-  veloce se si devono confrontare molti frames. 
+<p><code>Compare</code> genera in output la clip filtrata (primo argomento) con
+  un testo (Mean Absolute Difference, Mean Difference &amp; PSNR) ed il grafico
+  del PSNR fatto da MarcFD (se show_graph è impostato a true). A partire dalla
+  <em>v2.53</em> viene mostrato sullo schermo anche l 'Overal PSNR' , ma non ancora
+  nel logfile. La "channels string" è una combinazione di R,G,B[,A] o Y,U,V, in
+  funzione delle caratteristiche della clip sorgenre. La stringa vuota (default)
+  significa o "YUV" o "RGB". Se logfile non è "null", i risultati saranno scritti
+  su un file con questo nome e non visualizzati sul clip: &egrave;' molto più
+  veloce se si devono confrontare molti frames.
 <p>&nbsp;
 <pre># Mostra le differenze sullo schermo
 Compare(clip1, clip2)

@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: msharpen.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: msharpen.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: msharpen.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b> Donald A. Graft
 <br><b>verze:</b> 1.10 beta 2<br>
-<b>stáhnout:</b> <a href="http://neuron2.net/mine.html">http://neuron2.net/mine.html</a>, 
+<b>stáhnout:</b> <a href="http://neuron2.net/mine.html">http://neuron2.net/mine.html</a>,
 <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a><br>
 <b>kategorie:</b> Pluginy pro zostøení/zmìkèení<br>
 <b>požadavky:</b> YV12 &amp; YUY2 &amp; RGB Barevné prostøedí
@@ -36,11 +36,11 @@ zostøení dùležitých hran také zesiluje šum a malý detail.
 MSharpen øeší tento problém efektivnì detekcí dùležitých oblastí hran
 a následným aplikováním zostøení jen na tyto oblasti.
 Nejdøíve nastavíte parametr 'threshold' tak, že jsou vybrány žádané
-hrany. 
+hrany.
 Pak nastavíte sílu zostøení. Mùžete nastavit velmi vysoké zostøovací síly
 bez zesilování šumu nebo pìkných detailù (protože  pro masku zostøování je použito mapování hran).
 <h3>MSharpen - Funkèní syntaxe</h3>
-MSharpen používá jmenné parametry. To znamená, že nemusíte mít obavy o 
+MSharpen používá jmenné parametry. To znamená, že nemusíte mít obavy o
 poøadí parametrù a mùžete jednoduše na nì poukazovat pomocí názvù a vkládat je v jakémkoliv poøadí
 do seznamu parametrù. Když vynecháte parametr tak bere své výchozí hodnoty.  Napøíklad, pokud
 chcete použít MSharpen se sílou strenght 100 se zapnutým ladìním (debug), mùžete jednoduše øíci:
@@ -72,11 +72,11 @@ je potøeba ve složce pluginù. Napøíklad, k nastavení výchozí hodnoty highq=false
 <var>highq</var> = false
 <p>
 Mùžete sepsat tolik pøiøazení parametrù kolik chcete, na každý øádek jeden.
-Nespecifikovaným zùstanou hodnoty 
-uvedené níže. Samozøejmì mùžete vždy pøepsat tyto výchozí jinými hodnotami uvedenými ve vašem skriptu, když vyvoláváte 
+Nespecifikovaným zùstanou hodnoty
+uvedené níže. Samozøejmì mùžete vždy pøepsat tyto výchozí jinými hodnotami uvedenými ve vašem skriptu, když vyvoláváte
 funkci. Poznámka: Øádky ve výchozím souboru nesmí obsahovat žádné mezery nebo tabulátory.
-<p> 
-Následující je syntaxe pro MSharpen (nahraïte <i>parameter_list</i> 
+<p>
+Následující je syntaxe pro MSharpen (nahraïte <i>parameter_list</i>
 vaším èárkou oddìlovaným seznamem jmenných parametrù):
 <p>
 <b>MSharpen(<i>parameter_list</i>)</b>
@@ -90,14 +90,14 @@ bude použita na oblasti detailù hran. Je použita jen
 na detaily hran podle zadaného parametru 'threshold'. Strenght 255
 je nejsilnìjší zostøení.
 <p>
-<var>mask</var> (true/false, výchozí false): Když je nastaven na true, oblasti pro zostøení jsou 
+<var>mask</var> (true/false, výchozí false): Když je nastaven na true, oblasti pro zostøení jsou
 zobrazeny bíle na èerném pozadí. Použijte ho pro nastavení úrovnì
 detailu pro zostøení. Tato funkce také dìlá základní detekci hran filtru.
 <p>
 <var>highq</var> (true/false, výchozí true): Tento parametr vás nechá upravit rychlost a kvalitu
 detekce detailù. Nastavte ho na true pro nejlepší detekci detailù. Nastavte ho na false pro maximální rychlost.
 <p>
-<var>debug</var> (true/false, výchozí false): Tento parametr zapíná ladìní výstupu do utility DebugView. 
+<var>debug</var> (true/false, výchozí false): Tento parametr zapíná ladìní výstupu do utility DebugView.
 V souèasnosti je výstupem jen verze filtru.
 <h3>Autorská práva</h3>
 <p>

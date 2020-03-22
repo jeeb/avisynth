@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: tunsharp.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: tunsharp.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -12,7 +12,7 @@ $Id: tunsharp.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 <h2>Pøehled</h2>
 <b>autor:</b>    tritical
 <br><b>verze:</b>         0.9.3<br>
-<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>, 
+<b>stáhnout:</b>   <a href="http://bengal.missouri.edu/~kes25c/">http://bengal.missouri.edu/~kes25c/</a>,
 <a href="http://avisynth.org/warpenterprises/">http://avisynth.org/warpenterprises/</a>
 <br><b>kategorie:</b>  Pluginy pro zostøení/zmìkèení
 <br><b>požadavky:</b>&nbsp;
@@ -26,8 +26,8 @@ $Id: tunsharp.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 
 <!-- #EndTemplate -->
 <h2>Popis</h2>
-<p>      TUnsharp je základní zostøovací filtr, který používá pár rùzných druhù unsharp maskování   
-a umožòuje øízené zostøování založené na amplitudì hran a oøezání min/max sousedních hodnot.   
+<p>      TUnsharp je základní zostøovací filtr, který používá pár rùzných druhù unsharp maskování
+a umožòuje øízené zostøování založené na amplitudì hran a oøezání min/max sousedních hodnot.
 Skuteèný dùvod pro jeho existenci je, že podporuje gui s real time náhledem.</p>
 <h3>Syntaxe</h3>
 <p><code>TUnsharp</code> (clip, int <var>&quot;strength&quot;</var>, int <var>&quot;thresholdL&quot;</var>, int
@@ -36,11 +36,11 @@ Skuteèný dùvod pro jeho existenci je, že podporuje gui s real time náhledem.</p>
 <h3>PARAMETRY</h3>
 <p><var>strength</var> - Síla zostøování. Rozsah je od 0 do 512.</p>
 <p>výchozí = 100  (int)</p>
-<p><var>thresholdL</var> - Prahová hodnota spodní amplitudy hran.  Pokud je amplituda hrany pro pixel rovna nebo vìtší 
+<p><var>thresholdL</var> - Prahová hodnota spodní amplitudy hran.  Pokud je amplituda hrany pro pixel rovna nebo vìtší
 než thresholdL, pak bude pixel zostøen.  Rozsah je 0 až 255.</p>
 <p>výchozí = 2  (int)</p>
-<p><var>thresholdU</var> - Prahová hodnota horní amplitudy hran.  Pokud je amplituda hrany pro pixel rovna nebo vìtší 
-než thresholdU, pak bude pixel zostøen.  Rozsah je 0 až 255 a hodnota musí být rovna nebo 
+<p><var>thresholdU</var> - Prahová hodnota horní amplitudy hran.  Pokud je amplituda hrany pro pixel rovna nebo vìtší
+než thresholdU, pak bude pixel zostøen.  Rozsah je 0 až 255 a hodnota musí být rovna nebo
 vìtší než thresholdL nebo se filtr zpomalí.</p>
 <p>výchozí = 40  (int)</p>
 <p><var>type</var> - Nastavuje typ zostøování nebo operátor unsharp maskování.  Aktuální možnosti:</p>
@@ -58,10 +58,10 @@ vìtší než thresholdL nebo se filtr zpomalí.</p>
              zostøované pixely nastaveny na 255, ostatní v jasové ploše na 0... veškerá barevnost na 128.  -  2<br>
 </p>
 <p>výchozí = 0  (int)</p>
-<p><var>   lim</var> - Pokud je type menší než 6, lim nastavuje, maximální hodnotu možného odchýlení finálního zostøeného pixelu od         
+<p><var>   lim</var> - Pokud je type menší než 6, lim nastavuje, maximální hodnotu možného odchýlení finálního zostøeného pixelu od
 minima/maxima pùvodních 9 okolních pixelù z pùvodního obrazu.  Rozsah je od 0 do 256.</p>
 <p>Pokud <var> type</var> = 6 (XSharpen), pak lim nastaví maximální rozdíl mezi aktuálním pixelem a
-minimem nebo maximem z okolí (cokoli je blíže hodnotì aktuálního pixelu) , který tam mùže být 
+minimem nebo maximem z okolí (cokoli je blíže hodnotì aktuálního pixelu) , který tam mùže být
 a stále mít pixel mapovaný. Pokud je rozdíl vìtší než lim, pixel
 je ponechán nedotèený a nemapován do minima nebo maxima z okolí.</p>
 <p>výchozí = 2  (int)</p>
@@ -69,7 +69,7 @@ je ponechán nedotèený a nemapován do minima nebo maxima z okolí.</p>
 detekci amplitudy hran a pro získání hodnot operátorù unsharp maskování.  Vìtší hodnoty
 budou pomalejší, ale efektivnìjší proti šumu.  Možná nastavení jsou 1, 2, 3.</p>
 <p>výchozí = 2</p>
-<p><var>gui</var> - Nastavuje zda by mìla a nebo nemìla mít tato instance TUnsharp gui.  GUI mùže mít v daném okamžiku jen jedna 
+<p><var>gui</var> - Nastavuje zda by mìla a nebo nemìla mít tato instance TUnsharp gui.  GUI mùže mít v daném okamžiku jen jedna
 instance TUnsharp, ale mùže být nìkolik instancí skriptových (tak dlouho dokud ostatní
 nemají gui, pokud se pokusíte vytvoøit druhou instanci s gui zobrazí se chybová zpráva).</p>
 <p>Možnosti zahrnuté v gui jsou:</p>
@@ -80,7 +80,7 @@ ve vdubu, aby jste vidìli efekt zmìny. Nicménì, pokud kliknete na tlaèítko PREVI
 otevøe se nové okno s aktuálním snímkem a umožní vidìt zmìny v reálném èase podle toho, jak
 upravíte parametry filtru.  Pro zmìnu aktuálního snímku real time náhledu musíte
 zmìnit snímek v oknì vdubu.</p>
-<p>Tlaèítko DEFAULTS (výchozí) resetuje všechny hodnoty na hodnoty se kterými byl filtr konstruován (t.j.         
+<p>Tlaèítko DEFAULTS (výchozí) resetuje všechny hodnoty na hodnoty se kterými byl filtr konstruován (t.j.
 buï výchozí nebo hodnoty, které nastavíte ve vašem avisynth skriptu).</p>
 <p>Tlaèítko OK uzavøe dialogové okno a okno náhledu, pokud je otevøené.</p>
 <p>výchozí = false  (bool)</p>

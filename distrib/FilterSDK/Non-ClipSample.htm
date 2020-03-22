@@ -12,11 +12,11 @@
 <h2>Non-clip functions in plugins</h2>
 
 Unlike usual clip functions, non-clip functions return not frames of clip but single (scalar) value
-as AVSValue (variant of float, integer, boolean, string).  
+as AVSValue (variant of float, integer, boolean, string).
 
 <h2>Numeric function example</h2>
 
-Here's a sample from script.cpp, edited for external use (by foxyshadis, 
+Here's a sample from script.cpp, edited for external use (by foxyshadis,
 see <a href="http://forum.doom9.org/showthread.php?t=132026"> discussion</a>):
 
 <pre> AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
@@ -27,15 +27,15 @@ see <a href="http://forum.doom9.org/showthread.php?t=132026"> discussion</a>):
     return "sin";
  }
 </pre>
-You don't even need a class/constructor, come to think of it. 
+You don't even need a class/constructor, come to think of it.
 Include avisynth.h and that could be a whole plugin right there. (If not a terribly useful one.)
 
 <h2>Clip to float function example</h2>
 
-There are Avisynth 
+There are Avisynth
 <a href="../Docs/english/corefilters/conditionalfilter.htm#RuntimeFunctions">
-Runtime functions</a> that evaluated at every frame. 
-They can be used inside the scripts  passed to runtime filters 
+Runtime functions</a> that evaluated at every frame.
+They can be used inside the scripts  passed to runtime filters
 (<a href="../Docs/english/corefilters/conditionalfilter.htm">ConditionalFilter, ScriptClip, FrameEvaluate</a>)
 to return information for a frame.
 
@@ -146,11 +146,11 @@ Compile it as DLL like other AviSynth plugins
 
 <h2>Not processing frames plugin with Avisynth AtExit function</h2>
 
-This plugin does not process frames. 
-It loads a font into Windows and automatically unloads it 
-after avisynth is done running. 
+This plugin does not process frames.
+It loads a font into Windows and automatically unloads it
+after avisynth is done running.
 To run code at the end of the script, it registers an <code>env-&gt;AtExit</code> procedure.
-See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>. 
+See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>.
 (MessageBox debug lines were removed.)
 <pre> /* LoadFont for avisynth
 
@@ -167,18 +167,18 @@ See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>.
 
  #include <windows.h>
  #include "avisynth.h"
- 
+
  void __cdecl UnLoadFont(void* user_data, IScriptEnvironment* env);
- 
+
  AVSValue __cdecl Create_LoadFont(AVSValue args, void* user_data, IScriptEnvironment* env) {
- 
+
    char *file = args[1].AsString("");
- 
+
    // and now load the font
    if ( (AddFontResource( file )) &gt; 0 )
    {
       SendMessage(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
- 
+
       env-&gt;AtExit(UnLoadFont, strdup(file) ); // register the procedure
    }
    else
@@ -187,19 +187,19 @@ See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>.
    }
    return args[0];
  }
- 
+
  extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
  {
     env-&gt;AddFunction("LoadFont", "c[FONT]s", Create_LoadFont, 0);
- 
+
     return "'LoadFont' LoadFont plugin";
     // A freeform name of the plugin.
  }
- 
+
  void __cdecl UnLoadFont(void* user_data, IScriptEnvironment* env)
  {
    char *loadedFont = (char*)user_data;
- 
+
    if (loadedFont &amp;&amp; *loadedFont)
    {
       if ( RemoveFontResource(loadedFont) &gt; 0 )

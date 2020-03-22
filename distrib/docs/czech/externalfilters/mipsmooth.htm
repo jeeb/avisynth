@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="../../avisynth.css">
 <!--
 Automatically generated, don't change:
-$Id: mipsmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $ 
+$Id: mipsmooth.htm,v 1.1 2010/02/27 14:50:14 wilbertd Exp $
 -->
 </head>
 <body>
@@ -38,7 +38,7 @@ také docela pìknì pomáhá obyèejným filmùm.</p>
 <p>Rozšíøená syntaxe:</p>
 <p><code>MipSmooth</code> (<var>clip, optional arguments</var>)
 </p>
-<p>Je øada 
+<p>Je øada
 argumentù, které øídí jak silné vyhlazení bude použito:
 </p>
 <p><var>pøednastavení</var> = &quot;MovieHQ&quot; / &quot;MovieLQ&quot; / &quot;AnimeHQ&quot; /
@@ -107,11 +107,11 @@ velmi pomalý.
 <p><var>weigh</var>
 = true / false<br>
 Tato možnost volí
-zda by mìly být mipy vážené, podle toho jak jsou rozmazané.&nbsp; Nejvíce 
+zda by mìly být mipy vážené, podle toho jak jsou rozmazané.&nbsp; Nejvíce
 rozmazané mipy jsou váženy nejníže.&nbsp; Tato možnost je shodná s &quot;Weighed
 Average&quot; v SmoothHiQ, nebo &quot;soft&quot; maticí (matrix) v Convolution3D.
 </p>
-<p>Tato možnost má efekt jen, když je použit režim SuperMip.&nbsp; Snižuje objem 
+<p>Tato možnost má efekt jen, když je použit režim SuperMip.&nbsp; Snižuje objem
 rozmazání pokud je zapnuta, takže mùže být použita pro dosažení vyšších prahových hodnot
 bez artefaktù.
 </p>
@@ -123,7 +123,7 @@ Toto nastavení nebude mít žádný efekt v režimu RGB24 - použijte místo nìj RGB32!
 </p>
 <p><var>storecustom</var>
 = true / false<br>
-Toto zachová použitá 
+Toto zachová použitá
 nastavení v registru.<br>
 Pro opìtovné vyvolání tìchto pøednastavení
 pozdìji použijte parametr <var>preset</var> = &quot;custom&quot; parameter.<br>
@@ -208,7 +208,7 @@ Scalefactor: 0.60
 Weigh = true
 </pre>
 <b>AnimeHQ</b>
-<p>Toto je pro mírné odstranìní blokù a restauraci gradientu. Má více prostorového 
+<p>Toto je pro mírné odstranìní blokù a restauraci gradientu. Má více prostorového
 vyhlazení než obyèejné video, aby pomohlo obnovit rovinnost a gradient ploch.</p>
 <pre>Spatial: 6
 Temporal: 8
@@ -260,11 +260,11 @@ což uloží aktuální nastavení do registru, a ta budou pak
 použita jako uživatelské parametry</p>
 <h2>Pøíklady &amp;
 Triky:</h2>
-Zkuste experimentovat s docela tvrdým zmìkèováním s velmi nízkými prahovými hodnotami. 
+Zkuste experimentovat s docela tvrdým zmìkèováním s velmi nízkými prahovými hodnotami.
 Napøíklad:
 <pre>MipSmooth(spatial=2, temporal=2, method=&quot;superstrong&quot;, scalefactor=0.75, weigh=true)</pre>
 <p>Toto je docela dobré nastavení pro velmi kvalitní materiál, které bude stabilizovat
-obraz a umožní mnohem lepší kompresi a stále udržuje docela vysoké množství 
+obraz a umožní mnohem lepší kompresi a stále udržuje docela vysoké množství
 detailù. Tyto režimy jsou implementovány jako pøednastavení &quot;MovieHQ2&quot; a
 &quot;MovieLQ2&quot; .</p>
 <pre>MipSmooth(spatial=255, scenechange=0, method=&quot;soft&quot;)
@@ -290,7 +290,7 @@ nebo volitelného <a href="../corefilters/resize.htm">resizeru</a>. Tyto snímky j
 velikost pomocí BilinearResize.&nbsp;
 Tyto snímky jsou pak porovnány s pùvodním, a pokud je rozdíl pod
 prahovou hodnotou, je informace použita pro výsledný pixel.</p>
-<p>To samé se provádí pro 
+<p>To samé se provádí pro
 pøedchozí a následující snímek - a všechny tyto tøi snímky a jejich
 &quot;rozmazané&quot; mipmapy jsou použity pro rekonstrukci každého pixelu.<br>
 Prahová hodnota je pøizpùsobena tak,
