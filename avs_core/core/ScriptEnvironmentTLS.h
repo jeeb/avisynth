@@ -188,7 +188,7 @@ public:
     va_list val;
     va_start(val, fmt);
     // do not call core->Sprintf, because cannot pass ... further
-    char* result = core->VSprintf(fmt, val); 
+    char* result = core->VSprintf(fmt, val);
     va_end(val);
     return result;
   }

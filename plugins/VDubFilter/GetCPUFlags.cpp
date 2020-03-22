@@ -53,24 +53,24 @@ static int CPUCheckForExtensions()
   if (xgetbv_supported && avx_supported)
   {
     if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 0x6ull) == 0x6ull)
-      result |= CPUF_AVX;   
+      result |= CPUF_AVX;
   }
 #endif
 
   // 3DNow!, 3DNow!, and ISSE
-  __cpuid(cpuinfo, 0x80000000);   
-  if (cpuinfo[0] >= 0x80000001) 
+  __cpuid(cpuinfo, 0x80000000);
+  if (cpuinfo[0] >= 0x80000001)
   {
-    __cpuid(cpuinfo, 0x80000001);   
-   
+    __cpuid(cpuinfo, 0x80000001);
+
     if (IS_BIT_SET(cpuinfo[3], 31))
-      result |= CPUF_3DNOW;   
-   
+      result |= CPUF_3DNOW;
+
     if (IS_BIT_SET(cpuinfo[3], 30))
-      result |= CPUF_3DNOW_EXT;   
-   
+      result |= CPUF_3DNOW_EXT;
+
     if (IS_BIT_SET(cpuinfo[3], 22))
-      result |= CPUF_INTEGER_SSE;   
+      result |= CPUF_INTEGER_SSE;
   }
 
   return result;

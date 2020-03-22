@@ -136,7 +136,7 @@ static void af_vertical_sse2_float(BYTE* line_buf, BYTE* dstp, const int height,
 
   __m128 center_weight_simd = _mm_set1_ps(center_weight);
   __m128 outer_weight_simd = _mm_set1_ps(outer_weight);
-  
+
   for (int y = 0; y < height - 1; ++y) {
     for (int x = 0; x < row_size; x += 16) {
       __m128 upper = _mm_load_ps(reinterpret_cast<const float*>(line_buf + x));
@@ -260,7 +260,7 @@ static AVS_FORCEINLINE __m128i af_unpack_blend_uint16_t_sse41(__m128i &left, __m
 static void af_vertical_uint16_t_sse2(BYTE* line_buf, BYTE* dstp, int height, int pitch, int row_size, int amount) {
   // amount was: half_amount (32768). Full: 65536 (2**16)
   // now it becomes 2**(16-9)=2**7 scale
-  int t = (amount + 256) >> 9; // 16-9 = 7 -> shift in 
+  int t = (amount + 256) >> 9; // 16-9 = 7 -> shift in
   __m128i center_weight = _mm_set1_epi32(t);
   __m128i outer_weight = _mm_set1_epi32(64 - t);
   __m128i round_mask = _mm_set1_epi32(0x40);
@@ -316,7 +316,7 @@ static void af_vertical_uint16_t_sse41(BYTE* line_buf, BYTE* dstp, int height, i
 {
   // amount was: half_amount (32768). Full: 65536 (2**16)
   // now it becomes 2**(16-9)=2**7 scale
-  int t = (amount + 256) >> 9; // 16-9 = 7 -> shift in 
+  int t = (amount + 256) >> 9; // 16-9 = 7 -> shift in
   __m128i center_weight = _mm_set1_epi32(t);
   __m128i outer_weight = _mm_set1_epi32(64 - t);
   __m128i round_mask = _mm_set1_epi32(0x40);
@@ -908,7 +908,7 @@ static AVS_FORCEINLINE __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center
 
   right_luma = _mm_or_si128(
     _mm_srli_si128(center_luma, 2),//0 0  0 Y7 0 Y6 0 Y5 0 Y4 0 Y3 0 Y2 0 Y1
-    _mm_slli_si128(right_luma, 2)  //0 Y8 0 Y7 0 Y6 0 Y5 0 Y4 0 Y3 0 Y2 0 0 
+    _mm_slli_si128(right_luma, 2)  //0 Y8 0 Y7 0 Y6 0 Y5 0 Y4 0 Y3 0 Y2 0 0
     ); // Y8..Y1
 
   __m128i result_luma = af_blend_sse2(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask);
@@ -1025,7 +1025,7 @@ static AVS_FORCEINLINE __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64
   __m64 right_chroma = _mm_srli_pi16(right, 8); //0 V 0 U 0 V 0 U
 
   __m64 result_chroma = af_blend_mmx(left_chroma, center_chroma, right_chroma, center_weight, outer_weight, round_mask);
-  
+
   __m64 lo_lu_hi_co = _m_packuswb(result_luma, result_chroma); // U1 V1 U0 V0 Y3 Y2 Y1 Y0
   __m64 result = _mm_unpacklo_pi8(lo_lu_hi_co, _mm_srli_si64(lo_lu_hi_co, 32)); // U1 Y3 V1 Y2 U0 Y1 V0 Y0
   return result;
@@ -1569,10 +1569,10 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 #endif
         if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_AVX2) && IsPtrAligned(q, 32) && row_size > 32) {
           af_horizontal_planar_uint16_t_avx2(q, height, pitch, row_size, half_amount, bits_per_pixel);
-        } 
+        }
         else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(q, 16) && row_size > 16) {
           af_horizontal_planar_uint16_t_sse41(q, height, pitch, row_size, half_amount, bits_per_pixel);
-        } 
+        }
         else if (pixelsize == 2 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size > 16) {
           af_horizontal_planar_uint16_t_sse2(q, height, pitch, row_size, half_amount, bits_per_pixel);
         }

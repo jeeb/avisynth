@@ -126,7 +126,7 @@ static int CPUCheckForExtensions()
   }
 
   // 3DNow!, 3DNow!, ISSE, FMA4
-  __cpuid(cpuinfo, 0x80000000);   
+  __cpuid(cpuinfo, 0x80000000);
   if (cpuinfo[0] >= 0x80000001)
   {
     __cpuid(cpuinfo, 0x80000001);

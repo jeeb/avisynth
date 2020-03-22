@@ -644,7 +644,7 @@ Turn::Turn(PClip c, int direction, IScriptEnvironment* env) : GenericVideoFilter
 void Turn::SetUVSource(int mod_h, int mod_v, IScriptEnvironment* env)
 {
     MitchellNetravaliFilter filter(1.0 / 3, 1.0 / 3);
-    AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
+    AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 };
 
     bool isRGB = vi.IsRGB(); // can be planar
 

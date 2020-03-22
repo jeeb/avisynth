@@ -27,22 +27,22 @@ public:
 
 	inline operator const char * () const {return get_ptr();}
 
-	
+
 	inline void reset() {truncate(0);}
-	
+
 	//for compatibility
-	inline void add_string_n(const char * ptr,unsigned len) {add_string(ptr,len);}	
+	inline void add_string_n(const char * ptr,unsigned len) {add_string(ptr,len);}
 	inline void set_string_n(const char * ptr,unsigned len) {set_string(ptr,len);}
 
 	inline void add_byte(char c) {add_string_n(&c,1);}
 	inline bool is_empty() {return *get_ptr()==0;}
-	
+
 	void add_char(unsigned c);//adds unicode char to the string
 	void skip_trailing_char(unsigned c = ' ');
 
 	inline void add_chars(unsigned c,unsigned count) {for(;count;count--) add_char(c);}
 
-	
+
 	void add_int(signed __int64 val,unsigned base = 10);
 	void add_uint(unsigned __int64 val,unsigned base = 10);
 	void add_float(double val,unsigned digits);
@@ -132,7 +132,7 @@ public:
 	unsigned scan_filename();
 	void fix_filename_chars(char def = '_',char leave=0);//replace "bad" characters, leave can be used to keep eg. path separators
 	void fix_dir_separator(char c);
-	void _xor(char x);//renamed from "xor" to keep weird compilers happy	
+	void _xor(char x);//renamed from "xor" to keep weird compilers happy
 	void remove_chars(unsigned first,unsigned count); //slow
 	void insert_chars(unsigned first,const char * src, unsigned count);//slow
 	void insert_chars(unsigned first,const char * src);
@@ -226,7 +226,7 @@ public:
 			unsigned mul = 1, n;
 			for(n=0;n<extra;n++) mul *= 10;
 
-			
+
 			unsigned val = (unsigned)((__int64)(s*mul) % mul);
 			char fmt[16];
 			sprintf(fmt,".%%0%uu",extra);
@@ -285,7 +285,7 @@ protected:
 public:
 	inline operator const T * () const {return ptr;}
 	inline const T * get_ptr() const {return ptr;}
-	
+
 	inline unsigned length()
 	{
 		unsigned ret = 0;
@@ -507,7 +507,7 @@ public:
 			ptr[old_len+len]=0;
 		}
 	}
-	
+
 	void set_string(const T * param,unsigned len = -1)
 	{
 		len = t_strlen(param,len);
@@ -587,7 +587,7 @@ public:
 	}
 	inline ~make_string_n() {*ptr0 = old;}
 	inline const char * get_ptr() const {return ptr;}
-	inline operator const char * () const {return ptr;}	
+	inline operator const char * () const {return ptr;}
 };
 
 void pfc_float_to_string(char * out,double val,unsigned precision,bool force_sign = false);//doesnt add E+X etc, has internal range limits, useful for storing float numbers as strings without having to bother with international coma/dot settings BS

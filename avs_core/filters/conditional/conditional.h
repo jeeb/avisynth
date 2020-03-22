@@ -56,7 +56,7 @@ private:
 
 class ConditionalFilter : public GenericVideoFilter
 /**
-  * Conditional 
+  * Conditional
  **/
 {
   enum Eval {

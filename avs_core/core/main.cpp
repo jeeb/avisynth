@@ -622,7 +622,7 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
   // szFile: 0x0018f198 "C:\\unicode\\SNH48 - ??????.avs"
   // lpSzFileName 0x02631cc8 L"C:\\unicode\\SNH48 - unicode_chars_here.avs"
   // use utf8 in DelayInit2 instead of szScriptName
-  std::wstring ScriptNameW = lpszFileName; 
+  std::wstring ScriptNameW = lpszFileName;
 
   // wide -> utf8
   int utf8len = WideCharToMultiByte(CP_UTF8, 0, ScriptNameW.c_str(), -1/*null terminated src*/, NULL, 0/*returns the required buffer size*/, 0, 0) + 1; // with \0 terminator

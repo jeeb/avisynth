@@ -50,21 +50,21 @@ class TemporalBuffer {
   int pitchUV;
   size_t size;
 public:
-  TemporalBuffer(const VideoInfo& vi, bool bMediaPad, 
+  TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
     bool b64a, bool b48r, bool v210,
     bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
     bool r210, bool R10k,
     bool v308, bool v408,
     IScriptEnvironment* env);
   ~TemporalBuffer() {}
-  int GetPitch(int plane=PLANAR_Y) { 
+  int GetPitch(int plane=PLANAR_Y) {
     return (plane == PLANAR_Y || plane == PLANAR_G || plane == PLANAR_B || plane == PLANAR_R || plane == PLANAR_A) ? pitchY : pitchUV; }
   size_t GetSize() { return size; }
   BYTE* GetPtr(int plane=PLANAR_Y)
   {
-    switch (plane) { 
-    case PLANAR_U: return pU; 
-    case PLANAR_V: return pV; 
+    switch (plane) {
+    case PLANAR_U: return pU;
+    case PLANAR_V: return pV;
     case PLANAR_G: return pY;
     case PLANAR_B: return pU;
     case PLANAR_R: return pV;
@@ -141,7 +141,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     //               0  1
     // MODE_WAV:    "s+[utf8]b"
-    //               0  1       2            3        4        5        6    
+    //               0  1       2            3        4        5        6
     // other modes: "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i[utf8]b"
 
     const avi_mode_e mode = (avi_mode_e)size_t(user_data);

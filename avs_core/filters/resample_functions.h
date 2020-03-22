@@ -117,7 +117,7 @@ typedef struct ResamplingProgram ResamplingProgram;
  *******************************************/
 
 
-class ResamplingFunction 
+class ResamplingFunction
 /**
   * Pure virtual base class for resampling functions
   */
@@ -129,29 +129,29 @@ public:
   virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment2* env);
 };
 
-class PointFilter : public ResamplingFunction 
+class PointFilter : public ResamplingFunction
 /**
   * Nearest neighbour (point sampler), used in PointResize
  **/
 {
 public:
-  double f(double x);  
+  double f(double x);
   double support() { return 0.0001; }  // 0.0 crashes it.
 };
 
 
-class TriangleFilter : public ResamplingFunction 
+class TriangleFilter : public ResamplingFunction
 /**
   * Simple triangle filter, used in BilinearResize
  **/
 {
 public:
-  double f(double x);  
+  double f(double x);
   double support() { return 1.0; }
 };
 
 
-class MitchellNetravaliFilter : public ResamplingFunction 
+class MitchellNetravaliFilter : public ResamplingFunction
 /**
   * Mitchell-Netraveli filter, used in BicubicResize
  **/

@@ -320,7 +320,7 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
 
     pos += pos_step;
   }
-  
+
   // aligned as 8, now fill with safe values for 8 pixels/cycle simd loop
   for (int i = target_size; i < AlignNumber(target_size, ALIGN_RESIZER_TARGET_SIZE); ++i)
     program->pixel_offset[i] = source_size - fir_filter_size;

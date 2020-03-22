@@ -30,14 +30,14 @@ if (MINGW)
   set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
 endif()
 
-# Library dependencies 
+# Library dependencies
 add_subdirectory("PFC")
 target_link_libraries(${ProjectName} "PFC")
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR})
 
-if (MSVC_IDE)    
+if (MSVC_IDE)
   # Copy output to a common folder for easy deployment
   add_custom_command(
     TARGET ${ProjectName}

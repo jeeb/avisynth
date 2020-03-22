@@ -34,7 +34,7 @@
 
 
 // Avisynth filter: Plane Swap
-// by Klaus Post 
+// by Klaus Post
 
 
 
@@ -53,7 +53,7 @@ class SwapUV : public GenericVideoFilter
  **/
 {
 public:
-  SwapUV(PClip _child, IScriptEnvironment* env);  
+  SwapUV(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -72,7 +72,7 @@ class SwapUVToY : public GenericVideoFilter
  **/
 {
 public:
-  SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env);  
+  SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {

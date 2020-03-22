@@ -382,7 +382,7 @@ static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m1
     avg1 = _mm_avg_epu8(src_line0_p0, src_line1_p0);
     avg2 = _mm_avg_epu8(src_line0_p1, src_line1_p1);
   }
-  else { // if constexpr(sizeof(pixel_t) == 2) 
+  else { // if constexpr(sizeof(pixel_t) == 2)
     avg1 = _mm_avg_epu16(src_line0_p0, src_line1_p0);
     avg2 = _mm_avg_epu16(src_line0_p1, src_line1_p1);
   }
@@ -426,7 +426,7 @@ static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv12_sse41(const __m
     avg1 = _mm_avg_epu8(src_line0_p0, src_line1_p0);
     avg2 = _mm_avg_epu8(src_line0_p1, src_line1_p1);
   }
-  else { // if constexpr(sizeof(pixel_t) == 2) 
+  else { // if constexpr(sizeof(pixel_t) == 2)
     avg1 = _mm_avg_epu16(src_line0_p0, src_line1_p0);
     avg2 = _mm_avg_epu16(src_line0_p1, src_line1_p1);
   }
@@ -681,7 +681,7 @@ static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m1
     avg1 = _mm_avg_epu8(src_line0_p0, avg1_sh);
     avg2 = _mm_avg_epu8(src_line0_p1, avg2_sh);
   }
-  else { // if constexpr(sizeof(pixel_t) == 2) 
+  else { // if constexpr(sizeof(pixel_t) == 2)
     __m128i avg1_sh = _mm_srli_epi32(src_line0_p0, 16);
     __m128i avg2_sh = _mm_srli_epi32(src_line0_p1, 16);
 
@@ -695,7 +695,7 @@ static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv16_sse2(const __m1
   __m128i packed;
   if constexpr(sizeof(pixel_t) == 1)
     packed = _mm_packus_epi16(avg1, avg2);
-  else { // if constexpr(sizeof(pixel_t) == 2) 
+  else { // if constexpr(sizeof(pixel_t) == 2)
     packed = _MM_PACKUS_EPI32(avg1, avg2); // SSE4.1 simul for SSE2
   }
   return packed;
@@ -716,7 +716,7 @@ static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv16_sse41(const __m
     avg1 = _mm_avg_epu8(src_line0_p0, avg1_sh);
     avg2 = _mm_avg_epu8(src_line0_p1, avg2_sh);
   }
-  else { // if constexpr(sizeof(pixel_t) == 2) 
+  else { // if constexpr(sizeof(pixel_t) == 2)
     __m128i avg1_sh = _mm_srli_epi32(src_line0_p0, 16);
     __m128i avg2_sh = _mm_srli_epi32(src_line0_p1, 16);
 
@@ -730,7 +730,7 @@ static AVS_FORCEINLINE __m128i convert_yv24_chroma_block_to_yv16_sse41(const __m
   __m128i packed;
   if constexpr (sizeof(pixel_t) == 1)
     packed = _mm_packus_epi16(avg1, avg2);
-  else { // if constexpr(sizeof(pixel_t) == 2) 
+  else { // if constexpr(sizeof(pixel_t) == 2)
     packed = _mm_packus_epi32(avg1, avg2); // SSE4
   }
   return packed;
@@ -856,7 +856,7 @@ void ConvertYToYV12Chroma(BYTE *dst, BYTE *src, int dstpitch, int srcpitch, int 
 
 void ConvertYToYV16Chroma(BYTE *dst, BYTE *src, int dstpitch, int srcpitch, int pixelsize, int w, int h, IScriptEnvironment* env)
 {
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src, 16) && IsPtrAligned(dst, 16) 
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src, 16) && IsPtrAligned(dst, 16)
     && w * pixelsize >= 16) // last chunk is also simd, but working on a right-aligned 32 bytes -> 8 bytes. Also simd but unaligned.
   {
     if (pixelsize == 1)

@@ -176,7 +176,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
         case 1:
           memset(dstp, val_i, size);
           break;
-        case 2: 
+        case 2:
           val_i = clamp(val_i, 0, (1 << vi.BitsPerComponent()) - 1);
           std::fill_n((uint16_t *)dstp, size / sizeof(uint16_t), (uint16_t)val_i);
           break; // 2 pixels at a time
@@ -668,7 +668,7 @@ static void draw_colorbars_420_422_411(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8,
   static const BYTE top_two_thirdsY[] = { 0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
   static const BYTE top_two_thirdsU[] = { 0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
   static const BYTE top_two_thirdsV[] = { 0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
-  
+
   if(is420 || is422)
     w >>= 1; // 4:2:0, 4:2:2 !!!
   if (is411)
@@ -697,7 +697,7 @@ static void draw_colorbars_420_422_411(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8,
       }
     }
     if constexpr(is420)
-      pY += pitchY * 2; 
+      pY += pitchY * 2;
     else
       pY += pitchY; // no vertical subsampling
     pU += pitchUV; pV += pitchUV;
@@ -1686,7 +1686,7 @@ public:
 
   bool __stdcall GetParity(int n) {
     AVS_UNUSED(n);
-    return false; 
+    return false;
   }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   int __stdcall SetCacheHints(int cachehints,int frame_range)

@@ -290,7 +290,7 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 
       *reinterpret_cast<__m64*>(p1+x) = result;
     }
-    
+
     // Leftover value
     for (int x = wMod8; x < width; x++) {
       BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(mask[x]));
@@ -344,7 +344,7 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 
       __m128i unpacked_mask_l = _mm_unpacklo_epi8(msk, zero);
       __m128i unpacked_mask_h = _mm_unpackhi_epi8(msk, zero);
-        
+
       __m128i unpacked_p1_l = _mm_unpacklo_epi8(dst, zero);
       __m128i unpacked_p1_h = _mm_unpackhi_epi8(dst, zero);
 
@@ -355,7 +355,7 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
       __m128i result_h = overlay_blend_sse2_uint8_core(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
 
       result = _mm_packus_epi16(result_l, result_h);
-        
+
       // when mask is FF, keep src
       // when mask is 00, keep dst
       //auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
@@ -367,7 +367,7 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
     }
-    
+
     // Leftover value
 
     for (int x = wMod16/sizeof(uint8_t); x < width; x++) {
@@ -462,8 +462,8 @@ void overlay_blend_sse41_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask
           result = _mm_min_epi16(result, max_pixel_value); // SSE2 epi16 is enough
 
         __m128i mask_FFFF;
-        if constexpr (bits_per_pixel < 16) // paranoia 
-          mask_FFFF = _MM_CMPLE_EPU16(max_pixel_value, msk); // mask >= max_value ? FFFF : 0000 -> max_value <= mask 
+        if constexpr (bits_per_pixel < 16) // paranoia
+          mask_FFFF = _MM_CMPLE_EPU16(max_pixel_value, msk); // mask >= max_value ? FFFF : 0000 -> max_value <= mask
         else
           mask_FFFF = _mm_cmpeq_epi16(msk, max_pixel_value); // mask == max ? FFFF : 0000
         auto mask_zero = _mm_cmpeq_epi16(msk, zero);
@@ -1274,7 +1274,7 @@ AVS_FORCEINLINE void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, co
   __m64 zero = _mm_setzero_si64();
 
   int wMod8 = (width/8) * 8;
-  
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod8; x+=8) {
       // Load Y Plane
@@ -1291,14 +1291,14 @@ AVS_FORCEINLINE void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, co
       // Process U plane
       __m64 p1_u = *(reinterpret_cast<const __m64*>(p1U+x));
       __m64 p2_u = *(reinterpret_cast<const __m64*>(p2U+x));
-      
+
       __m64 result_u = overlay_blend_opaque_mmx_core(p1_u, p2_u, cmp_result);
       *reinterpret_cast<__m64*>(p1U+x) = result_u;
 
       // Process V plane
       __m64 p1_v = *(reinterpret_cast<const __m64*>(p1V+x));
       __m64 p2_v = *(reinterpret_cast<const __m64*>(p2V+x));
-      
+
       __m64 result_v = overlay_blend_opaque_mmx_core(p1_v, p2_v, cmp_result);
       *reinterpret_cast<__m64*>(p1V+x) = result_v;
     }
@@ -1329,7 +1329,7 @@ void overlay_darklighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, 
   __m128i zero = _mm_setzero_si128();
 
   int wMod16 = (width/16) * 16;
-  
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod16; x+=16) {
       // Load Y Plane
@@ -1346,14 +1346,14 @@ void overlay_darklighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, 
       // Process U plane
       __m128i p1_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1U+x));
       __m128i p2_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2U+x));
-      
+
       __m128i result_u = overlay_blend_opaque_sse2_core(p1_u, p2_u, cmp_result);
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1U+x), result_u);
 
       // Process V plane
       __m128i p1_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1V+x));
       __m128i p2_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2V+x));
-      
+
       __m128i result_v = overlay_blend_opaque_sse2_core(p1_v, p2_v, cmp_result);
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
     }

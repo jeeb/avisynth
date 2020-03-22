@@ -1003,7 +1003,7 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   else
   {
       newFunc = new AVSFunction(name, NULL, params, apply, user_data, NULL);
-      /* 
+      /*
          // Comment out but kept for reference.
          // This assert is false when AddFunction is called from a cpp non-plugin.
          // e.g. a "master" that directly loads avisynth

@@ -1040,7 +1040,7 @@ SeekExit:
     FreeMediaType(*pmt);
     CopyMediaType(pmt, am_media_type);
     dssRPT0(dssCMD, "GetSample::ConnectionMediaType()\n");
-    
+
     return S_OK;
   }
 

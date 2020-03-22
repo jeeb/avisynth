@@ -33,7 +33,7 @@ public:
 
 protected:
 	cfg_var(const char * name) : var_name(name) {next=list;list=this;notify_list=0;};
-	
+
 	const char * var_get_name() const {return var_name;}
 
 	//override me
@@ -75,7 +75,7 @@ class cfg_string : public cfg_var
 {
 private:
 	string_simple val,def;
-	
+
 	virtual void get_raw_data(write_config_callback * out)
 	{
 		out->write((const char*)val,strlen(val) * sizeof(char));
@@ -103,7 +103,7 @@ class cfg_string_mt : public cfg_var//multithread-safe version
 private:
 	critical_section sync;
 	string8 val,def;
-	
+
 	virtual void get_raw_data(write_config_callback * out)
 	{
 		insync(sync);

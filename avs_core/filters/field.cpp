@@ -115,7 +115,7 @@ SeparateColumns::SeparateColumns(PClip _child, int _interval, IScriptEnvironment
 }
 
 
-PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
 {
   const int m = n%interval;
   const int f = n/interval;
@@ -269,7 +269,7 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl SeparateColumns::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl SeparateColumns::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[1].AsInt() == 1)
     return args[0];
@@ -300,7 +300,7 @@ WeaveColumns::WeaveColumns(PClip _child, int _period, IScriptEnvironment* env)
 }
 
 
-PVideoFrame WeaveColumns::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame WeaveColumns::GetFrame(int n, IScriptEnvironment* env)
 {
   const int b = n * period;
 
@@ -459,7 +459,7 @@ PVideoFrame WeaveColumns::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl WeaveColumns::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl WeaveColumns::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[1].AsInt() == 1)
     return args[0];
@@ -501,7 +501,7 @@ SeparateRows::SeparateRows(PClip _child, int _interval, IScriptEnvironment* env)
 }
 
 
-PVideoFrame SeparateRows::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame SeparateRows::GetFrame(int n, IScriptEnvironment* env)
 {
   const int m = (vi.IsRGB() && !vi.IsPlanar())? interval-1 - n%interval : n%interval; // RGB upside-down
   const int f = n/interval;
@@ -531,11 +531,11 @@ PVideoFrame SeparateRows::GetFrame(int n, IScriptEnvironment* env)
     }
   }
   const int pitch = frame->GetPitch();
-  return env->Subframe(frame, pitch * m, pitch * interval, frame->GetRowSize(), vi.height);  
+  return env->Subframe(frame, pitch * m, pitch * interval, frame->GetRowSize(), vi.height);
 }
 
 
-AVSValue __cdecl SeparateRows::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl SeparateRows::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[1].AsInt() == 1)
     return args[0];
@@ -566,7 +566,7 @@ WeaveRows::WeaveRows(PClip _child, int _period, IScriptEnvironment* env)
 }
 
 
-PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
 {
   const int b = n * period;
   const int e = b + period;
@@ -615,7 +615,7 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl WeaveRows::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl WeaveRows::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[1].AsInt() == 1)
     return args[0];
@@ -651,7 +651,7 @@ SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
 }
 
 
-PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n>>1, env);
   if (vi.IsPlanar()) {
@@ -677,11 +677,11 @@ PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
     }
   }
   return env->Subframe(frame,(GetParity(n) ^ vi.IsYUY2()) ? frame->GetPitch() : 0,
-                         frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1);  
+                         frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1);
 }
 
 
-AVSValue __cdecl SeparateFields::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl SeparateFields::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsFieldBased())
@@ -707,14 +707,14 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
   vi = child_array[0]->GetVideoInfo();
   vi.MulDivFPS(num_children, 1);
   vi.num_frames = (vi.num_frames - 1) * num_children + 1;
-  for (int i=1; i<num_children; ++i) 
+  for (int i=1; i<num_children; ++i)
   {
     const VideoInfo& vi2 = child_array[i]->GetVideoInfo();
     if (vi.width != vi2.width || vi.height != vi2.height)
       env->ThrowError("Interleave: videos must be of the same size.");
     if (!vi.IsSameColorspace(vi2))
       env->ThrowError("Interleave: video formats don't match");
-    
+
     vi.num_frames = max(vi.num_frames, (vi2.num_frames - 1) * num_children + i + 1);
   }
   if (vi.num_frames < 0)
@@ -736,7 +736,7 @@ int __stdcall Interleave::SetCacheHints(int cachehints,int frame_range)
   }
 }
 
-AVSValue __cdecl Interleave::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Interleave::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   args = args[0];
   const int num_args = args.ArraySize();
@@ -769,7 +769,7 @@ SelectEvery::SelectEvery(PClip _child, int _every, int _from, IScriptEnvironment
 }
 
 
-AVSValue __cdecl SelectEvery::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl SelectEvery::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   const int num_vals = args[2].ArraySize();
   if (num_vals <= 1)
@@ -794,7 +794,7 @@ AVSValue __cdecl SelectEvery::Create(AVSValue args, void*, IScriptEnvironment* e
  *************************************/
 
 DoubleWeaveFields::DoubleWeaveFields(PClip _child)
-  : GenericVideoFilter(_child) 
+  : GenericVideoFilter(_child)
 {
   vi.height *= 2;
   vi.SetFieldBased(false);
@@ -830,7 +830,7 @@ void copy_field(const PVideoFrame& dst, const PVideoFrame& src, bool yuv, bool p
 }
 
 
-PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame a = child->GetFrame(n, env);
   PVideoFrame b = child->GetFrame(n+1, env);
@@ -851,8 +851,8 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
  ********   DoubleWeaveFrames   *******
  *************************************/
 
-DoubleWeaveFrames::DoubleWeaveFrames(PClip _child) 
-  : GenericVideoFilter(_child) 
+DoubleWeaveFrames::DoubleWeaveFrames(PClip _child)
+  : GenericVideoFilter(_child)
 {
   vi.num_frames *= 2;
   if (vi.num_frames < 0)
@@ -894,12 +894,12 @@ void copy_alternate_lines(const PVideoFrame& dst, const PVideoFrame& src, bool y
 }
 
 
-PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
 {
-  if (!(n&1)) 
+  if (!(n&1))
   {
     return child->GetFrame(n>>1, env);
-  } 
+  }
   else {
     PVideoFrame a = child->GetFrame(n>>1, env);
     PVideoFrame b = child->GetFrame((n+1)>>1, env);
@@ -908,11 +908,11 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     if (a->IsWritable()) {
       copy_alternate_lines(a, b,  vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), !parity, env);
       return a;
-    } 
+    }
     else if (b->IsWritable()) {
       copy_alternate_lines(b, a,  vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), parity, env);
       return b;
-    } 
+    }
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
       copy_alternate_lines(result, a, vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), parity, env);
@@ -930,12 +930,12 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
  ********   Bob Filter   *******
  *******************************/
 
-Fieldwise::Fieldwise(PClip _child1, PClip _child2) 
+Fieldwise::Fieldwise(PClip _child1, PClip _child2)
 : NonCachedGenericVideoFilter(_child1), child2(_child2)
   { vi.SetFieldBased(false); } // Make FrameBased, leave IT_BFF and IT_TFF alone
 
 
-PVideoFrame __stdcall Fieldwise::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall Fieldwise::GetFrame(int n, IScriptEnvironment* env)
 {
   return (child->GetParity(n) ? child2 : child)->GetFrame(n, env);
 }
@@ -956,7 +956,7 @@ bool __stdcall Fieldwise::GetParity(int n)
  ********   Factory Methods   *******
  ***********************************/
 
-static AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env)
 {
   AVS_UNUSED(env);
   PClip clip = args[0].AsClip();
@@ -996,19 +996,19 @@ static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironme
 static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
-  if (!clip->GetVideoInfo().IsFieldBased()) 
+  if (!clip->GetVideoInfo().IsFieldBased())
     clip = new SeparateFields(clip, env);
-  
+
   const VideoInfo& vi = clip->GetVideoInfo();
 
   const double b = args[1].AsDblDef(1./3.);
   const double c = args[2].AsDblDef(1./3.);
   const int new_height = args[3].AsInt(vi.height*2);
   MitchellNetravaliFilter filter(b, c);
-  return new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height, 
+  return new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height,
                                            new_height, &filter, env),
-                       new FilteredResizeV(clip, +0.25, vi.height, 
-                                           new_height, &filter, env));  
+                       new FilteredResizeV(clip, +0.25, vi.height,
+                                           new_height, &filter, env));
 }
 
 

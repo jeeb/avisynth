@@ -172,7 +172,7 @@ SwapUV::SwapUV(PClip _child, IScriptEnvironment* env) : GenericVideoFilter(_chil
 PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-  
+
   if (vi.IsPlanar()) {
     // Abuse subframe to flip the UV plane pointers -- extremely fast but a bit naughty!
 #ifdef SIZETMOD
@@ -517,7 +517,7 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, PClip _clipA, IScr
     env->ThrowError("YToUV: Clips do not have the same height (U & V mismatch) !");
   if (vi.width != vi2.width)
     env->ThrowError("YToUV: Clips do not have the same width (U & V mismatch) !");
-  if (vi.IsYUY2() != vi2.IsYUY2()) 
+  if (vi.IsYUY2() != vi2.IsYUY2())
     env->ThrowError("YToUV: YUY2 Clips must have same colorspace (U & V mismatch) !");
 
   // no third parameter: no Y clip
@@ -543,7 +543,7 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, PClip _clipA, IScr
 
   // Y clip parameter exists, Y channel will be copied from that
   const VideoInfo& vi3 = clipY->GetVideoInfo();
-  if (vi.IsYUY2() != vi3.IsYUY2()) 
+  if (vi.IsYUY2() != vi3.IsYUY2())
     env->ThrowError("YToUV: YUY2 Clips must have same colorspace (UV & Y mismatch) !");
 
   if (vi.IsYUY2()) {
@@ -653,7 +653,7 @@ static void yuy2_ytouv_c(const BYTE* src_y, const BYTE* src_u, const BYTE* src_v
 PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
-  
+
   if (vi.IsYUY2()) {
     const BYTE* srcp_u = src->GetReadPtr();
     const int pitch_u = src->GetPitch();
@@ -687,7 +687,7 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   // Planar:
   env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U),
               src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
-  
+
   src = clip->GetFrame(n, env);
   env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
               src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));

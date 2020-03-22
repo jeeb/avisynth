@@ -110,7 +110,7 @@ static void greyscale_rgb32_sse2(BYTE *srcp, size_t /*width*/, size_t height, si
 
   BYTE* end_point = srcp + pitch * height;
 
-  while(srcp < end_point) { 
+  while(srcp < end_point) {
     __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp));
     __m128i alpha = _mm_and_si128(src, alpha_mask);
     __m128i pixel01 = _mm_unpacklo_epi8(src, zero);
@@ -122,12 +122,12 @@ static void greyscale_rgb32_sse2(BYTE *srcp, size_t /*width*/, size_t height, si
     __m128i tmp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel01), _mm_castsi128_ps(pixel23), _MM_SHUFFLE(3, 1, 3, 1))); // r3*cyr | r2*cyr | r1*cyr | r0*cyr
     __m128i tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel01), _mm_castsi128_ps(pixel23), _MM_SHUFFLE(2, 0, 2, 0)));
 
-    tmp = _mm_add_epi32(tmp, tmp2); 
-    tmp = _mm_add_epi32(tmp, round_mask); 
+    tmp = _mm_add_epi32(tmp, tmp2);
+    tmp = _mm_add_epi32(tmp, round_mask);
     tmp = _mm_srli_epi32(tmp, 15); // 0 0 0 p3 | 0 0 0 p2 | 0 0 0 p1 | 0 0 0 p0
 
     //todo: pshufb?
-    __m128i result = _mm_or_si128(tmp, _mm_slli_si128(tmp, 1)); 
+    __m128i result = _mm_or_si128(tmp, _mm_slli_si128(tmp, 1));
     result = _mm_or_si128(result, _mm_slli_si128(tmp, 2));
     result = _mm_or_si128(alpha, result);
 
@@ -216,7 +216,7 @@ static void greyscale_yuy2_mmx(BYTE *srcp, size_t width, size_t height, size_t p
 
 static AVS_FORCEINLINE __m64 greyscale_rgb32_core_mmx(__m64 &src, __m64 &alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
   __m64 alpha = _mm_and_si64(src, alpha_mask);
-  __m64 pixel0 = _mm_unpacklo_pi8(src, zero); 
+  __m64 pixel0 = _mm_unpacklo_pi8(src, zero);
   __m64 pixel1 = _mm_unpackhi_pi8(src, zero);
 
   pixel0 = _mm_madd_pi16(pixel0, matrix); //a0*0 + r0*cyr | g0*cyg + b0*cyb

@@ -47,8 +47,8 @@
 
 extern const AVSFunction Misc_filters[] = {
   { "FixLuminance",  BUILTIN_FUNC_PREFIX, "cif", FixLuminance::Create },    // clip, intercept, slope
-  { "PeculiarBlend", BUILTIN_FUNC_PREFIX, "ci", PeculiarBlend::Create },   // clip, cutoff    
-  { "SkewRows",      BUILTIN_FUNC_PREFIX, "ci", SkewRows::Create },   // clip, skew    
+  { "PeculiarBlend", BUILTIN_FUNC_PREFIX, "ci", PeculiarBlend::Create },   // clip, cutoff
+  { "SkewRows",      BUILTIN_FUNC_PREFIX, "ci", SkewRows::Create },   // clip, skew
   { "FixBrokenChromaUpsampling", BUILTIN_FUNC_PREFIX, "c", FixBrokenChromaUpsampling::Create },
   { NULL }
 };
@@ -71,13 +71,13 @@ FixLuminance::FixLuminance(PClip _child, int _vertex, int _slope, IScriptEnviron
 }
 
 
-PVideoFrame FixLuminance::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame FixLuminance::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
   BYTE* p = frame->GetWritePtr();
   const int pitch = frame->GetPitch();
-  for (int y=0; y<=vertex-slope/16; ++y) 
+  for (int y=0; y<=vertex-slope/16; ++y)
   {
     const int subtract = (vertex-y)*16/slope;
     for (int x=0; x<vi.width; ++x)
@@ -102,15 +102,15 @@ AVSValue __cdecl FixLuminance::Create(AVSValue args, void*, IScriptEnvironment* 
  *******   Fix Broken Chroma Upsampling   ******
  ***********************************************/
 
-FixBrokenChromaUpsampling::FixBrokenChromaUpsampling(PClip _clip, IScriptEnvironment* env) 
-  : GenericVideoFilter(_clip) 
+FixBrokenChromaUpsampling::FixBrokenChromaUpsampling(PClip _clip, IScriptEnvironment* env)
+  : GenericVideoFilter(_clip)
 {
   if (!vi.IsYUY2())
     env->ThrowError("FixBrokenChromaUpsampling: requires YUY2 input");
 }
 
 
-PVideoFrame __stdcall FixBrokenChromaUpsampling::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall FixBrokenChromaUpsampling::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
@@ -128,8 +128,8 @@ PVideoFrame __stdcall FixBrokenChromaUpsampling::GetFrame(int n, IScriptEnvironm
 }
 
 
-AVSValue __cdecl FixBrokenChromaUpsampling::Create( AVSValue args, void*, 
-                                                    IScriptEnvironment* env ) 
+AVSValue __cdecl FixBrokenChromaUpsampling::Create( AVSValue args, void*,
+                                                    IScriptEnvironment* env )
 {
   return new FixBrokenChromaUpsampling(args[0].AsClip(), env);
 }
@@ -179,7 +179,7 @@ PVideoFrame PeculiarBlend::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-AVSValue __cdecl PeculiarBlend::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl PeculiarBlend::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new PeculiarBlend(args[0].AsClip(), args[1].AsInt(), env);
 }
@@ -245,7 +245,7 @@ PVideoFrame SkewRows::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-AVSValue __cdecl SkewRows::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl SkewRows::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new SkewRows(args[0].AsClip(), args[1].AsInt(), env);
 }

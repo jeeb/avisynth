@@ -41,11 +41,11 @@
 ********************************************************************/
 
 class VerticalReduceBy2 : public GenericVideoFilter
-/** 
+/**
   * This class exposes a video filter for reducing a video's height by half.  Input is one clip,
   * output is another.
  **/
-{  
+{
 public:
   VerticalReduceBy2(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -55,8 +55,8 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)  { 
-    return new VerticalReduceBy2(args[0].AsClip(),env); 
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)  {
+    return new VerticalReduceBy2(args[0].AsClip(),env);
   }
 
 private:
@@ -64,8 +64,8 @@ private:
 };
 
 
-class HorizontalReduceBy2 : public GenericVideoFilter 
-/** 
+class HorizontalReduceBy2 : public GenericVideoFilter
+/**
   * This class exposes a video filter for reducing a video's width by half.  Input is one clip,
   * output is another.
  **/

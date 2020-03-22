@@ -981,9 +981,9 @@ static uint64_t ConstrainMemoryRequest(uint64_t requested)
 
   // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
   return clamp(requested, (uint64_t)64 * 1024 * 1024, mem_limit - mem_sysreserve);
-#else 
+#else
   // copied over from AvxSynth, check against current code!!!
-  
+
   // Check#1
   // AvxSynth returned simply the actual total_available memory
   // this part is trying to fine tune it, considering that

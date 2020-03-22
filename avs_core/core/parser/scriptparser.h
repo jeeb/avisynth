@@ -46,7 +46,7 @@
 
 
 
-class ScriptParser 
+class ScriptParser
 /**
   * Insert intelligent comment here
  **/
@@ -68,7 +68,7 @@ private:
   void Expect(int op, const char* msg);
 
   void ParseFunctionDefinition(void);
-  
+
   PExpression ParseBlock(bool braced, bool *empty);
   PExpression ParseStatement(bool* stop);
   PExpression ParseAssignment(void);

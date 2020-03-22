@@ -152,12 +152,12 @@ void OL_MultiplyImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayIn
       maskV += maskpitch;
     }
   }
-  
+
 }
 
 template<typename pixel_t>
 void OL_MultiplyImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
-        
+
   pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
   pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
   pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));

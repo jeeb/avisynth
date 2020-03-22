@@ -283,7 +283,7 @@ Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float 
 
     if(need_chroma)
       mapchroma = map + pixelsize * real_lookup_size * scale; // pointer offset
-    
+
     for (int i = 0; i < lookup_size*scale; ++i) {
       double p;
 
@@ -967,8 +967,8 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
       if (dither) one_bufsize *= 256;
 
       map_holder = new uint8_t[one_bufsize * number_of_maps];
-      /* 
-      // left here intentionally: 
+      /*
+      // left here intentionally:
       // for some reason, AtExit does not get called from within ScriptClip, causing no free thus memory leak
       // We are using new here and delete in destructor
       auto env2 = static_cast<IScriptEnvironment2*>(env);

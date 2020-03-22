@@ -27,7 +27,7 @@ framerate to use.
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 Variable framerate and hybrid video

@@ -96,7 +96,7 @@ avisynth.dll via loadlibrary() and getprocaddress(). Then creating a
 scriptenvironment and importing a script using invoke(). At that point
 you will have a clip from which you can call getframe() to access the
 video and getaudio() to access the audio.
- 
+
 Below are some examples that have a script as input and raw video or
 audio as output:
 

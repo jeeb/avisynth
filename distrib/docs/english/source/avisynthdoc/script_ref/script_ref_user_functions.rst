@@ -10,7 +10,7 @@ rules for effective code development.
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 The function declaration (header)

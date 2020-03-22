@@ -507,7 +507,7 @@ public:
 
 class VDXFilterActivation {
 public:
-	const VDXFilterDefinition *filter;		// 
+	const VDXFilterDefinition *filter;		//
 	void *filter_data;
 	VDXFBitmap&	dst;
 	VDXFBitmap&	src;
@@ -571,7 +571,7 @@ public:
 
 #define CPUF_SUPPORTS_SSE3			(0x00000100L) //  PIV+, K8 Venice
 #define CPUF_SUPPORTS_SSSE3			(0x00000200L) //  Core 2
-#define CPUF_SUPPORTS_SSE41			(0x00000400L) //  Penryn, Wolfdale, Yorkfield 
+#define CPUF_SUPPORTS_SSE41			(0x00000400L) //  Penryn, Wolfdale, Yorkfield
 #define CPUF_SUPPORTS_AVX			(0x00000800L) //  Sandy Bridge, Bulldozer
 #define CPUF_SUPPORTS_SSE42			(0x00001000L) //  Nehalem
 

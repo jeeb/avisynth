@@ -49,7 +49,7 @@
 *****************************************/
 
 
-class GeneralConvolution : public GenericVideoFilter 
+class GeneralConvolution : public GenericVideoFilter
 /** This class exposes a video filter that applies general convolutions -- up to a 5x5
   * kernel -- to a clip.  Smaller (3x3) kernels have their own code path.  SIMD support forthcoming.
  **/
@@ -70,7 +70,7 @@ public:
 protected:
     void setMatrix(const char * _matrix, bool _isinteger, IScriptEnvironment* env);
 
-private:      
+private:
     double divisor;
     size_t nSize;
     int nBias;

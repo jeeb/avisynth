@@ -52,7 +52,7 @@ public:
 	inline void * get_ptr() {return data;}
 
 	void * set_size(unsigned new_used);
-  
+
 	inline void * check_size(unsigned new_size)
 	{
 		if (used<new_size) return set_size(new_size);
@@ -74,7 +74,7 @@ public:
 };
 
 template<class T>
-class mem_block_t //: public mem_block	
+class mem_block_t //: public mem_block
 {
 	mem_block theBlock;//msvc7 sucks
 public:
@@ -235,7 +235,7 @@ public:
 		for(;n;n--) *(dst++) = val;
 	}
 
-	inline void zeromemory() {data.zeromemory();}	
+	inline void zeromemory() {data.zeromemory();}
 	inline const T * get_ptr() const {return ptr_aligned;}
 	inline T * get_ptr() {return ptr_aligned;}
 	inline operator const T * () const {return get_ptr();}

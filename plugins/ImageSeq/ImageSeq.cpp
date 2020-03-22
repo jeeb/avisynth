@@ -108,7 +108,7 @@ const AVS_Linkage * AVS_linkage = 0;
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
 	AVS_linkage = vectors;
-  
+
   // clip, base filename, start, end, image format/extension, info
   env->AddFunction("ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", Create_ImageWriter, 0);
 

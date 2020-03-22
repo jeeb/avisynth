@@ -42,7 +42,7 @@
 // experimental simd includes for avx2 compiled files
 #if defined (__GNUC__) && ! defined (__INTEL_COMPILER)
 #include <x86intrin.h>
-// x86intrin.h includes header files for whatever instruction 
+// x86intrin.h includes header files for whatever instruction
 // sets are specified on the compiler command line, such as: xopintrin.h, fma4intrin.h
 #else
 #include <immintrin.h> // MS version of immintrin.h covers AVX, AVX2 and FMA3
@@ -59,8 +59,8 @@
 #endif
 // FMA3 instruction set
 #if defined (__FMA__) && (defined(__GNUC__) || defined(__clang__))  && ! defined (__INTEL_COMPILER)
-#include <fmaintrin.h> 
-#endif // __FMA__ 
+#include <fmaintrin.h>
+#endif // __FMA__
 
 #include "merge_avx2.h"
 #include "../core/internal.h"

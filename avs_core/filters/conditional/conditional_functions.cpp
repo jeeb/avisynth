@@ -228,7 +228,7 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
     env->ThrowError("Average Plane: plane does not exist!");
 
   double sum = 0.0;
-  
+
 
   int total_pixels = width*height;
   bool sum_in_32bits;
@@ -239,11 +239,11 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
 
   if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
     sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
-  } else 
+  } else
 #ifdef X86_32
   if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
     sum = get_sum_of_pixels_isse(srcp, height, width, pitch);
-  } else 
+  } else
 #endif
   {
     if(pixelsize==1)
@@ -544,7 +544,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
-      } else 
+      } else
 #endif
       {
         if (pixelsize == 1)
@@ -562,7 +562,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
-      } else 
+      } else
 #endif
       {
         if(pixelsize==1)
@@ -645,7 +645,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
-      } else 
+      } else
 #endif
       {
         if(pixelsize==1)
@@ -662,7 +662,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
 #ifdef X86_32
       if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
         sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
-      } else 
+      } else
 #endif
       {
         if(pixelsize==1)
@@ -872,7 +872,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
     else {
       return AVSValue((double)retval / (real_buffersize - 1)); // convert back to float, /65535
     }
-  } 
+  }
   else
     return AVSValue(retval);
 }

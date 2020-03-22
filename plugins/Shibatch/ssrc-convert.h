@@ -44,7 +44,7 @@ typedef float REAL;
 AVSValue __cdecl Create_SSRC(AVSValue args, void*, IScriptEnvironment* env);
 
 
-class SSRC : public GenericVideoFilter 
+class SSRC : public GenericVideoFilter
 /**
   * Class to resample the audio stream
  **/

@@ -21,7 +21,7 @@ The following paragraphs examine each phase in more detail.
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 Runtime environment initialisation

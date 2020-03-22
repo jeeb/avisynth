@@ -1,4 +1,4 @@
-// Avisynth v2.5. 
+// Avisynth v2.5.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -47,7 +47,7 @@
 using namespace soundtouch;
 
 
-class AVSsoundtouch : public GenericVideoFilter 
+class AVSsoundtouch : public GenericVideoFilter
 {
 private:
   SoundTouch* sampler;
@@ -111,7 +111,7 @@ static void setSettings(SoundTouch* sampler, const AVSValue* args, IScriptEnviro
 	else
 	  sampler->setSetting(SETTING_USE_AA_FILTER,    0);
   }
-  
+
 }
 
 void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
@@ -132,7 +132,7 @@ void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
     if (dst_samples_filled) {
       int copysamples = min((int)count-samples_filled, dst_samples_filled);
       // Copy finished samples
-      if (copysamples) { 
+      if (copysamples) {
         memcpy((BYTE*)buf+vi.BytesFromAudioSamples(samples_filled), (BYTE*)dstbuffer, (size_t)vi.BytesFromAudioSamples(copysamples));
         samples_filled += copysamples;
 
@@ -189,10 +189,10 @@ AVSValue __cdecl Create_SoundTouch(AVSValue args, void*, IScriptEnvironment* env
 			env->ThrowError("Input audio sample format to TimeStretch must be float.");
 
 		return new AVSsoundtouch(
-			args[0].AsClip(), 
-			args[1].AsFloatf(100.0f), 
-			args[2].AsFloatf(100.0f), 
-			args[3].AsFloatf(100.0f), 
+			args[0].AsClip(),
+			args[1].AsFloatf(100.0f),
+			args[2].AsFloatf(100.0f),
+			args[3].AsFloatf(100.0f),
 			&args[4],
 			env
 		);

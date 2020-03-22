@@ -68,7 +68,7 @@ typedef struct {
   float middle_chroma_f;
 } luma_chroma_limits_t;
 
-class Levels : public GenericVideoFilter 
+class Levels : public GenericVideoFilter
 /**
   * Class for adjusting levels in a clip
  **/
@@ -129,7 +129,7 @@ struct RGBAdjustConfig
   RGBAdjustPlaneConfig rgba[4];
 };
 
-class RGBAdjust : public GenericVideoFilter 
+class RGBAdjust : public GenericVideoFilter
 /**
   * Class for adjusting and analyzing colors in RGBA space
  **/
@@ -205,7 +205,7 @@ private:
     int Sin, Cos;
     int Sat, Bright, Cont;
     bool coring, sse, dither;
-    
+
     const bool realcalc; // no lookup, realtime calculation, always for 16/32 bits
     double dhue, dsat, dbright, dcont, dstartHue, dendHue, dmaxSat, dminSat, dinterp;
 

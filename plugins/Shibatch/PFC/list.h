@@ -104,14 +104,14 @@ public:
 	void add_items_fromptr(const T* source,unsigned num)
 	{
 		unsigned count = get_count();
-		buffer.set_size(count+num);		
+		buffer.set_size(count+num);
 		unsigned n;
 		for(n=0;n<num;n++)
 		{
 			buffer[count++]=source[n];
 		}
 	}
-	
+
 	void get_items_mask(mem_block_list_t<T> & out,const bit_array & mask)
 	{
 		unsigned n,count = get_count();
@@ -148,7 +148,7 @@ public:
 		qsort((void*)get_ptr(),get_count(),sizeof(T),(int (__cdecl *)(const void *, const void *) )compare);
 	}
 
-	bool bsearch(int (__cdecl *compare )(T elem1, T elem2 ),T item,int * index) const 
+	bool bsearch(int (__cdecl *compare )(T elem1, T elem2 ),T item,int * index) const
 	{
 		int max = get_count();
 		int min = 0;
@@ -160,7 +160,7 @@ public:
 			int result = compare(test,item);
 			if (result<0) min = ptr + 1;
 			else if (result>0) max = ptr;
-			else 
+			else
 			{
 				if (index) *index = ptr;
 				return 1;
@@ -182,7 +182,7 @@ public:
 			int result = compare(test,item);
 			if (result<0) min = ptr + 1;
 			else if (result>0) max = ptr;
-			else 
+			else
 			{
 				if (index) *index = ptr;
 				return 1;
@@ -193,19 +193,19 @@ public:
 	}
 
 
-	bool bsearch_range(int (__cdecl *compare )(T elem1, T elem2 ),T item,int * index,int * count) const 
+	bool bsearch_range(int (__cdecl *compare )(T elem1, T elem2 ),T item,int * index,int * count) const
 	{
 		int max = get_count();
 		int min = 0;
 		int ptr;
 		while(min<max)
 		{
-			ptr = min + (max-min) / 2;		
+			ptr = min + (max-min) / 2;
 			T& test = buffer[ptr];
 			int result = compare(test,item);
 			if (result<0) min = ptr + 1;
 			else if (result>0) max = ptr;
-			else 
+			else
 			{
 				int num = 1;
 				while(ptr>0 && !compare(buffer[ptr-1],item)) {ptr--;num++;}
@@ -219,7 +219,7 @@ public:
 		return 0;
 	}
 
-	bool bsearch_param(int (__cdecl *compare )(T elem1, const void * param ),const void * param,int * index) const 
+	bool bsearch_param(int (__cdecl *compare )(T elem1, const void * param ),const void * param,int * index) const
 	{
 		int max = get_count();
 		int min = 0;
@@ -231,7 +231,7 @@ public:
 			int result = compare(test,param);
 			if (result<0) min = ptr + 1;
 			else if (result>0) max = ptr;
-			else 
+			else
 			{
 				if (index) *index = ptr;
 				return 1;
@@ -249,7 +249,7 @@ public:
 		assert(count==get_count());
 		buffer.apply_order(order,count);
 	}
-	
+
 	void remove_mask(const bit_array & mask) {filter_mask(bit_array_not(mask));}
 
 	void remove_mask(const bool * mask) {remove_mask(bit_array_table(mask,get_count()));}
@@ -277,7 +277,7 @@ public:
 		mem_block_t<bool> mask(max);
 		for(n=0;n<max;n++)
 			mask[n] = get_item(n)==item;
-		remove_mask(bit_array_table(mask));		
+		remove_mask(bit_array_table(mask));
 	}
 
 	int find_item(T item) const//returns index of first occurance, -1 if not found

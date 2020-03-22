@@ -62,7 +62,7 @@ private:
 };
 
 
-class AdjustFocusH : public GenericVideoFilter 
+class AdjustFocusH : public GenericVideoFilter
 /**
   * Class to adjust focus in the horizontal direction, helper for sharpen/blue
  **/
@@ -87,7 +87,7 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env);
 
 /*** Soften classes ***/
 
-class TemporalSoften : public GenericVideoFilter 
+class TemporalSoften : public GenericVideoFilter
 /**
   * Class to soften the focus on the temporal axis
  **/
@@ -120,7 +120,7 @@ private:
 };
 
 
-class SpatialSoften : public GenericVideoFilter 
+class SpatialSoften : public GenericVideoFilter
 /**
   * Class to soften the focus on the spatial axis
  **/
@@ -136,7 +136,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-private:  
+private:
   const unsigned luma_threshold, chroma_threshold;
   const int diameter;
 

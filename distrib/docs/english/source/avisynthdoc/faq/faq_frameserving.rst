@@ -7,7 +7,7 @@ AviSynth FAQ - Opening scripts in encoder and player applications
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 What is frameserving and what is it good for?

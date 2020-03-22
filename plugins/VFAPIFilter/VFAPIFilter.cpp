@@ -1,4 +1,4 @@
-// Avisynth v2.5. 
+// Avisynth v2.5.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -107,7 +107,7 @@ struct VF_PluginFunc {
   HRESULT (_stdcall *CloseFile)( VF_FileHandle hFileHandle );
   HRESULT (_stdcall *GetFileInfo)( VF_FileHandle hFileHandle, VF_FileInfo* lpFileInfo );
   HRESULT (_stdcall *GetStreamInfo)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpStreamInfo );
-  HRESULT (_stdcall *ReadData)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpData ); 
+  HRESULT (_stdcall *ReadData)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpData );
 };
 
 struct VFAPI_PluginRefs
@@ -126,7 +126,7 @@ void CheckHresult(IScriptEnvironment* env, HRESULT hr) {
 }
 
 void DeleteVFPluginFunc(void* vfpf, IScriptEnvironment*) {
-  
+
   VFAPI_PluginRefs *ref = (VFAPI_PluginRefs*)vfpf;
   FreeLibrary(ref->Library);
   delete ref;

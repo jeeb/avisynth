@@ -408,7 +408,7 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 			case 0: oFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
 					oFormat->nChannels = iFormat->nChannels;
 					oFormat->nSamplesPerSec = iFormat->nSamplesPerSec;
-					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | 
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS |
 						ACM_FORMATSUGGESTF_NSAMPLESPERSEC;
 					break;
 			case 1: oFormat->nSamplesPerSec = 0;
@@ -421,11 +421,11 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 					oFormat->nChannels = iFormat->nChannels;
 					oFormat->wBitsPerSample = 32;
 					oFormat->nSamplesPerSec = iFormat->nSamplesPerSec;
-					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | 
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS |
 						ACM_FORMATSUGGESTF_WBITSPERSAMPLE | ACM_FORMATSUGGESTF_NSAMPLESPERSEC;
 					break;
 			case 4: oFormat->nSamplesPerSec = 0;
-					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | 
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS |
 						ACM_FORMATSUGGESTF_WBITSPERSAMPLE;
 					break;
 			case 5: oFormat->wBitsPerSample = 24;
@@ -448,7 +448,7 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 						break;
 					}
 					continue;
-			default: 
+			default:
 					break;
 			}
 			if (acmFormatSuggest(NULL, iFormat, oFormat, dwOutputFormatSize, dwSuggest)) continue;
@@ -1226,7 +1226,7 @@ AudioStreamResampler::AudioStreamResampler(AudioStream *src, long new_rate, bool
 	if (integral_conversion)
 		if (new_rate > long(iFormat->nSamplesPerSec))
 //			samp_frac = MulDiv(0x10000, new_rate + iFormat->nSamplesPerSec/2, iFormat->nSamplesPerSec);
-			samp_frac = 0x80000 / ((new_rate + iFormat->nSamplesPerSec/2) / iFormat->nSamplesPerSec); 
+			samp_frac = 0x80000 / ((new_rate + iFormat->nSamplesPerSec/2) / iFormat->nSamplesPerSec);
 		else
 			samp_frac = 0x80000 * ((iFormat->nSamplesPerSec + new_rate/2) / new_rate);
 	else

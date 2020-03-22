@@ -19,7 +19,7 @@ if (MINGW)
 endif()
 
 # Automatically group source files according to directory structure
-foreach(FILE ${AvsCore_Sources}) 
+foreach(FILE ${AvsCore_Sources})
   get_filename_component(PARENT_DIR "${FILE}" PATH)
 
   string(REGEX REPLACE "(\\./)" "" GROUP "${PARENT_DIR}")

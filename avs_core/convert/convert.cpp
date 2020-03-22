@@ -1033,7 +1033,7 @@ static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rows
         // vvv for the non-fullscale version: int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
         int new_pixel;
 
-        const float mulfactor = 
+        const float mulfactor =
           DITHER_BIT_DIFF == 8 ? (1.0f / 257.0f) :
           DITHER_BIT_DIFF == 6 ? (255.0f / 16383.0f) :
           DITHER_BIT_DIFF == 4 ? (255.0f / 4095.0f) :
@@ -1102,7 +1102,7 @@ static void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_r
   }
 
   // 20171024: given up integer division, rounding problems
-  const float mulfactor = 
+  const float mulfactor =
     sourcebits == 16 ? (1.0f / 257.0f) :
     sourcebits == 14 ? (255.0f / 16383.0f) :
     sourcebits == 12 ? (255.0f / 4095.0f) :
@@ -1153,7 +1153,7 @@ static void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_r
         // vvv for the non-fullscale version: int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
 
         // no integer division, rounding problems
-        const float mulfactor_dith = 
+        const float mulfactor_dith =
           DITHER_BIT_DIFF == 8 ? (1.0f / 257.0f) :
           DITHER_BIT_DIFF == 6 ? (255.0f / 16383.0f) :
           DITHER_BIT_DIFF == 4 ? (255.0f / 4095.0f) :
@@ -1689,7 +1689,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   constexpr int limit_lo_s = fulls ? 0 : 16;
   constexpr float limit_lo_s_ps = limit_lo_s / 255.0f;
   constexpr int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
-  constexpr float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f; 
+  constexpr float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f;
 
   // fulls fulld luma             luma_new   chroma                          chroma_new
   // true  false 0..1              16-235     -0.5..0.5                      16-240       Y = Y * ((235-16) << (bpp-8)) + 16, Chroma= Chroma * ((240-16) << (bpp-8)) + 16
@@ -2351,7 +2351,7 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
   // for RGB48 and RGB64 source
   func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 3, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
   func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 4, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
-  
+
   //-----------
   // full scale, no dither, SSE2
   func_copy[make_tuple(true, 10, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, -1, DITHER_TARGET_BITDEPTH_8, 1>;
@@ -2829,16 +2829,16 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
       {
         switch (bits_per_pixel)
         {
-        case 10: 
+        case 10:
           convert_uintN_to_float_functions(uint16_t, 10);
           break;
-        case 12: 
+        case 12:
           convert_uintN_to_float_functions(uint16_t, 12);
           break;
-        case 14: 
+        case 14:
           convert_uintN_to_float_functions(uint16_t, 14);
           break;
-        case 16: 
+        case 16:
           convert_uintN_to_float_functions(uint16_t, 16);
           break;
         default: env->ThrowError("ConvertToFloat: unsupported bit depth");
@@ -2851,7 +2851,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
     else
       env->ThrowError("ConvertToFloat: internal error 32->32 is not valid here");
 
-    conv_function_a = conv_function; 
+    conv_function_a = conv_function;
 
     if (vi.NumComponents() == 1)
       vi.pixel_type = VideoInfo::CS_Y32;
@@ -3082,13 +3082,13 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         case 10:
           convert_32_to_uintN_functions(uint16_t, 10); // all variations of fulls fulld
           break;
-        case 12: 
+        case 12:
           convert_32_to_uintN_functions(uint16_t, 12);
           break;
-        case 14: 
+        case 14:
           convert_32_to_uintN_functions(uint16_t, 14);
           break;
-        case 16: 
+        case 16:
           convert_32_to_uintN_functions(uint16_t, 16);
           break;
         }
@@ -3209,7 +3209,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
 
 AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  //0   1        2        3         4         5           6    
+  //0   1        2        3         4         5           6
   //c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
 
   const VideoInfo &vi = clip->GetVideoInfo();

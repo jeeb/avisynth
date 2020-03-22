@@ -7,7 +7,7 @@ AviSynth FAQ - General information
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 .. _What is AviSynth:

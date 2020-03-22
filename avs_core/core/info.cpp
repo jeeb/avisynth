@@ -47,7 +47,7 @@ void BitmapFont::generateOutline(uint16_t* outlined, int fontindex) const
 
   // font bitmap is left (msb) aligned, if width is less than 16
   // fixme: why? because having 0x8000 as a fixed position rendering mask?
-  const uint16_t mask = ((1 << width) - 1) << (16 - width); 
+  const uint16_t mask = ((1 << width) - 1) << (16 - width);
   // 5432109876543210
   // 0000001111111111
 
@@ -458,7 +458,7 @@ static BdfFont LoadBMF(std::string name, bool bold) {
           // charlines are left aligned. Over 8 bits they come on 2 bytes
           if(fnt.font_info.font_bounding_box_x<=8)
             charline <<= 8; // less than 8 bits is on a single byte. Make it uint16_t left aligned
-            
+
           fnt.font_bitmaps[line_counter++] = charline;
         }
       }
@@ -1281,7 +1281,7 @@ std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold,
       found = true;
     }
   }
-  
+
   if (!found) {
     // fixme: make cache
     BdfFont bdf;

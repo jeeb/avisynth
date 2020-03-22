@@ -57,7 +57,7 @@ IF( MSVC OR MINGW )
       LIST(APPEND AvsCore_Sources "core/avisynth64.def")
     else()
       LIST(APPEND AvsCore_Sources "core/avisynth.def")
-    endif() 
+    endif()
 ENDIF()
 
 IF( MSVC_IDE )

@@ -61,7 +61,7 @@ public:
 			(*p)->gain  = q->gain;
 		}
 	}
-		
+
 	paramlistelm *newelm(void)
 	{
 		paramlistelm **e;
@@ -80,7 +80,7 @@ public:
 
 		return i;
 	}
-	
+
 	void delelm(paramlistelm *p)
 	{
 		paramlistelm **e;

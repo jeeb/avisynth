@@ -42,7 +42,7 @@
 // experimental simd includes for avx2 compiled files
 #if defined (__GNUC__) && ! defined (__INTEL_COMPILER)
 #include <x86intrin.h>
-// x86intrin.h includes header files for whatever instruction 
+// x86intrin.h includes header files for whatever instruction
 // sets are specified on the compiler command line, such as: xopintrin.h, fma4intrin.h
 #else
 #include <immintrin.h> // MS version of immintrin.h covers AVX, AVX2 and FMA3
@@ -59,8 +59,8 @@
 #endif
 // FMA3 instruction set
 #if defined (__FMA__) && (defined(__GNUC__) || defined(__clang__))  && ! defined (__INTEL_COMPILER)
-#include <fmaintrin.h> 
-#endif // __FMA__ 
+#include <fmaintrin.h>
+#endif // __FMA__
 
 
 #include "resample_avx2.h"
@@ -117,7 +117,7 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
         process_two_16pixels_h_uint8_t(src, begin3, begin4, i, current_coeff, filter_size_numOfBlk16, result3, result4);
       current_coeff += 16 * filter_size_numOfBlk16; // because of dual pixel processing
 
-      __m256i sumQuad1234 = _mm256_hadd_epi32(_mm256_hadd_epi32(result1, result2), _mm256_hadd_epi32(result3, result4)); 
+      __m256i sumQuad1234 = _mm256_hadd_epi32(_mm256_hadd_epi32(result1, result2), _mm256_hadd_epi32(result3, result4));
       // L1L1L1L1 L1L1L1L1 + L2L2L2L2 L2L2L2L2 = L1L1 L2L2 L1L1 L2L2
       // L3L3L3L3 L3L3L3L3 + L4L4L4L4 L4L4L4L4 = L3L3 L4L4 L3L3 L4L4
       // L1L1 L2L2 L1L1 L2L2 + L3L3 L4L4 L3L3 L4L4 = L1L2 L3L4 L1L2 L3L4
@@ -588,7 +588,7 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
   const __m256i shifttosigned = _mm256_set1_epi16(-32768); // for 16 bits only
   const __m256i shiftfromsigned = _mm256_set1_epi32(32768 << FPScale16bits); // for 16 bits only
   const __m256i rounder = _mm256_set1_epi32(1 << (FPScale16bits - 1));
-  
+
   const uint16_t* src = (uint16_t *)src0;
   uint16_t* dst = (uint16_t *)dst0;
   dst_pitch = dst_pitch / sizeof(uint16_t);
@@ -601,7 +601,7 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
     int offset = program->pixel_offset[y];
     const uint16_t* src_ptr = src + pitch_table[offset] / sizeof(uint16_t);
 #ifdef NON32_BYTES_ALIGNMENT
-    for (int x = 0; x < wMod16; x += 16) { // 32 byte alignment guaranteed in avs+ no need 
+    for (int x = 0; x < wMod16; x += 16) { // 32 byte alignment guaranteed in avs+ no need
 #else
     for (int x = 0; x < width; x += 16) { // 2x16 words, safe to read/write anywhere
 #endif
@@ -842,7 +842,7 @@ void resize_v_avx2_planar_float(BYTE* dst0, const BYTE* src0, int dst_pitch, int
 {
   // 1..8: special case for compiler optimization
   switch (program->filter_size) {
-  case 1: 
+  case 1:
     internal_resize_v_avx2_planar_float<1>(dst0, src0, dst_pitch, src_pitch, program, width, target_height, bits_per_pixel, pitch_table, storage);
     break;
   case 2:

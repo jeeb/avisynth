@@ -17,7 +17,7 @@ void * mem_block::set_size(UINT new_used)
 		{
 			new_size = size;
 			if (new_size < 1) new_size = 1;
-			while(new_size < new_used) new_size <<= 1; 
+			while(new_size < new_used) new_size <<= 1;
 			if (mem_logic!=ALLOC_FAST_DONTGODOWN) while(new_size>>1 > new_used) new_size >>= 1;
 		}
 		else
@@ -39,7 +39,7 @@ void * mem_block::set_size(UINT new_used)
 				if (new_data) memcpy(new_data,data,new_size>size ? size : new_size);
 				if (size >= 4) *(DWORD*)data = 0xDEADBEEF;
 				free(data);
-				data = new_data;				
+				data = new_data;
 #else
 				new_data = realloc(data,new_size);
 				if (new_data==0) free(data);
@@ -67,11 +67,11 @@ void* mem_block::copy(const void *ptr, unsigned bytes,unsigned start)
 {
 	check_size(bytes+start);
 
-	if (ptr) 
+	if (ptr)
 		memcpy((char*)get_ptr()+start,ptr,bytes);
-	else 
+	else
 		memset((char*)get_ptr()+start,0,bytes);
-	
+
 	return (char*)get_ptr()+start;
 }
 

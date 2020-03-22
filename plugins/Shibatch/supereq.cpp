@@ -50,7 +50,7 @@ static void setup_bands(const eq_config & src,double dst[N_BANDS])
 }
 
 
-class AVSsupereq : public GenericVideoFilter 
+class AVSsupereq : public GenericVideoFilter
 {
 private:
 	std::vector<supereq_base*> eqs;
@@ -71,10 +71,10 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
 {
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
   const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
-  
+
   FILE *settingsfile;
-  settingsfile = fopen(filename, "r");		
-  
+  settingsfile = fopen(filename, "r");
+
   if (settingsfile != NULL) {
     int n;
     for(n=0;n<N_BANDS;n++) {
@@ -87,7 +87,7 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
   } else {
     env->ThrowError("SuperEQ: Could not open file");
   }
-  
+
   unsigned n;
   for(n=0;n<last_nch;n++)
     eqs.push_back(new supereq<float>);
@@ -111,12 +111,12 @@ AVSsupereq(PClip _child, int* values, IScriptEnvironment* env)
 {
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
   const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
-  
+
   unsigned n;
   for(n=0; n<N_BANDS; n++) {
       my_eq.bands[n] = (-values[n]+20);
   }
-  
+
   for(n=0; n<last_nch; n++)
     eqs.push_back(new supereq<float>);
 
@@ -222,7 +222,7 @@ void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
           db[r] = data_out[s];
       }}
       dst_samples_filled = samples_out;
-    }  
+    }
   } while (!buffer_full);
   next_sample += count;
 }

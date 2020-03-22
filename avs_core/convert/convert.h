@@ -67,7 +67,7 @@ inline int RGB2YUV(int rgb) // limited range
  *******************************************************/
 
 // YUY2 only
-class ConvertToRGB : public GenericVideoFilter 
+class ConvertToRGB : public GenericVideoFilter
 /**
   * Class to handle conversion to RGB & RGBA
  **/
@@ -75,7 +75,7 @@ class ConvertToRGB : public GenericVideoFilter
 public:
   ConvertToRGB(PClip _child, bool rgb24, const char* matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  
+
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
@@ -89,7 +89,7 @@ private:
 };
 
 // YUY2 only
-class ConvertToYV12 : public GenericVideoFilter 
+class ConvertToYV12 : public GenericVideoFilter
 /**
   * Class for conversions to YV12
  **/

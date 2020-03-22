@@ -83,7 +83,7 @@ bool VideoInfo::IsColorSpace(int c_space) const { return ((pixel_type & c_space)
 bool VideoInfo::IsColorSpace(int c_space) const {
   // This function will check if the colorspace (VideoInfo.pixel_type) is the same as given c_space (or more general it checks for a Colorspace property (see avisynth.h)).
   // So it's not only for exact colorspace comparison but checking properties also.
-  return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == (c_space & CS_PLANAR_FILTER)) : 
+  return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == (c_space & CS_PLANAR_FILTER)) :
     // support exact individual flag checking
     c_space == CS_YUVA ? ((c_space & CS_YUVA) == CS_YUVA) :
     c_space == CS_BGR ? ((c_space & CS_BGR) == CS_BGR) :
@@ -178,10 +178,10 @@ int VideoInfo::RowSize(int plane) const {
     case PLANAR_U_ALIGNED: case PLANAR_V_ALIGNED:
       return ((NumComponents() > 1) && IsPlanar() && !IsPlanarRGB() && !IsPlanarRGBA()) ? ((rowsize>>GetPlaneWidthSubsampling(plane))+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
 
-    case PLANAR_Y_ALIGNED: 
+    case PLANAR_Y_ALIGNED:
       return (rowsize+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
-    
-    case PLANAR_R: case PLANAR_G: case PLANAR_B: 
+
+    case PLANAR_R: case PLANAR_G: case PLANAR_B:
         return ((NumComponents() > 1) && (IsPlanarRGB() || IsPlanarRGBA())) ? rowsize : 0;
 
     case PLANAR_R_ALIGNED: case PLANAR_G_ALIGNED: case PLANAR_B_ALIGNED:
@@ -190,9 +190,9 @@ int VideoInfo::RowSize(int plane) const {
     case PLANAR_A:
         return ((NumComponents() == 4) && IsPlanar()) ? rowsize : 0;
 
-    case PLANAR_A_ALIGNED: 
+    case PLANAR_A_ALIGNED:
         return ((NumComponents() == 4) && IsPlanar()) ? (rowsize+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
- 
+
   }
   return rowsize;
 }
@@ -263,7 +263,7 @@ int VideoInfo::BitsPerPixel() const {
       case CS_Y14:
       case CS_Y16: // AVS16
         return 16;
-      case CS_Y32: 
+      case CS_Y32:
         return 32;
       case CS_BGR48:
         return 48;
@@ -527,7 +527,7 @@ int VideoFrame::GetHeight(int plane) const {
 // Generally you should not be using these two
 VideoFrameBuffer* VideoFrame::GetFrameBuffer() const { return vfb; }
 #ifdef SIZETMOD
-size_t VideoFrame::GetOffset(int plane) const { 
+size_t VideoFrame::GetOffset(int plane) const {
 #else
 int VideoFrame::GetOffset(int plane) const {
 #endif
@@ -536,7 +536,7 @@ int VideoFrame::GetOffset(int plane) const {
     case PLANAR_V: case PLANAR_R: return offsetV;
     case PLANAR_A: return offsetA;
     default: return offset; // PLANAR Y, PLANAR_G
-    }; 
+    };
 }
 
 const BYTE* VideoFrame::GetReadPtr(int plane) const { return vfb->GetReadPtr() + GetOffset(plane); }
@@ -635,13 +635,13 @@ void PVideoFrame::Set(VideoFrame* x) {
 
 PVideoFrame::PVideoFrame()                               { CONSTRUCTOR0(); }
 void PVideoFrame::CONSTRUCTOR0()                         { p = 0; }
-                                                        
+
 PVideoFrame::PVideoFrame(const PVideoFrame& x)           { CONSTRUCTOR1(x); }
 void PVideoFrame::CONSTRUCTOR1(const PVideoFrame& x)     { Init(x.p); }
-                                                        
+
 PVideoFrame::PVideoFrame(VideoFrame* x)                  { CONSTRUCTOR2(x); }
 void PVideoFrame::CONSTRUCTOR2(VideoFrame* x)            { Init(x); }
-                                                        
+
 void PVideoFrame::operator=(VideoFrame* x)               { OPERATOR_ASSIGN0(x); }
 void PVideoFrame::OPERATOR_ASSIGN0(VideoFrame* x)        { Set(x); }
 
@@ -660,25 +660,25 @@ void PVideoFrame::DESTRUCTOR()                           { if (p) p->Release(); 
 
 AVSValue::AVSValue()                                     { CONSTRUCTOR0(); }
 void AVSValue::CONSTRUCTOR0()                            { type = 'v'; array_size = 0; clip = NULL; }
-                                                        
+
 AVSValue::AVSValue(IClip* c)                             { CONSTRUCTOR1(c); }
 void AVSValue::CONSTRUCTOR1(IClip* c)                    { type = 'c'; array_size = 0; clip = c; if (c) c->AddRef(); }
-                                                        
+
 AVSValue::AVSValue(const PClip& c)                       { CONSTRUCTOR2(c); }
 void AVSValue::CONSTRUCTOR2(const PClip& c)              { type = 'c'; array_size = 0; clip = c.GetPointerWithAddRef(); }
-                                                        
+
 AVSValue::AVSValue(bool b)                               { CONSTRUCTOR3(b); }
 void AVSValue::CONSTRUCTOR3(bool b)                      { type = 'b'; array_size = 0; clip = NULL; boolean = b; }
-                                                        
+
 AVSValue::AVSValue(int i)                                { CONSTRUCTOR4(i); }
 void AVSValue::CONSTRUCTOR4(int i)                       { type = 'i'; array_size = 0; clip = NULL; integer = i; }
-                                                        
+
 AVSValue::AVSValue(float f)                              { CONSTRUCTOR5(f); }
 void AVSValue::CONSTRUCTOR5(float f)                     { type = 'f'; array_size = 0; clip = NULL; floating_pt = f; }
 
 AVSValue::AVSValue(double f)                             { CONSTRUCTOR6(f); }
 void AVSValue::CONSTRUCTOR6(double f)                    { type = 'f'; array_size = 0; clip = NULL; floating_pt = float(f); }
-                                                        
+
 AVSValue::AVSValue(const char* s)                        { CONSTRUCTOR7(s); }
 void AVSValue::CONSTRUCTOR7(const char* s)               { type = 's'; array_size = 0; string = s; }
 

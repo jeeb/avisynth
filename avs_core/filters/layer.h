@@ -35,7 +35,7 @@
 
 
 
-// Avisynth filter: Layer 
+// Avisynth filter: Layer
 // by "poptones" (poptones@myrealbox.com)
 
 
@@ -49,11 +49,11 @@
 /********************************************************************
 ********************************************************************/
 
-class Mask : public IClip 
+class Mask : public IClip
 /**
   * Class for overlaying a mask clip on a video clip
  **/
-{ 
+{
 public:
   Mask(PClip _child1, PClip _child2, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -62,11 +62,11 @@ public:
     { child1->GetAudio(buf, start, count, env); }
   inline virtual const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
-  inline virtual bool __stdcall GetParity(int n) 
+  inline virtual bool __stdcall GetParity(int n)
     { return child1->GetParity(n); }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  
+
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
@@ -216,13 +216,13 @@ private:
 
 
 
-class Layer: public IClip 
+class Layer: public IClip
 /**
   * Class for layering two clips on each other, combined by various functions
- **/ 
-{ 
+ **/
+{
 public:
-  Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y, 
+  Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y,
          int _t, bool _chroma, float _strength, int _placement, IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -230,9 +230,9 @@ public:
     { child1->GetAudio(buf, start, count, env); }
   inline virtual const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
-  inline virtual bool __stdcall GetParity(int n) 
+  inline virtual bool __stdcall GetParity(int n)
     { return child1->GetParity(n); }
-  
+
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
@@ -256,7 +256,7 @@ private:
 
 
 
-class Subtract : public IClip 
+class Subtract : public IClip
 /**
   * Class for subtracting one clip from another
  **/
@@ -269,14 +269,14 @@ public:
     { child1->GetAudio(buf, start, count, env);  }
   inline virtual const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
-  inline virtual bool __stdcall GetParity(int n) 
+  inline virtual bool __stdcall GetParity(int n)
     { return child1->GetParity(n); }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
-  
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:

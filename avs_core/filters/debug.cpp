@@ -61,7 +61,7 @@ public:
     : GenericVideoFilter(_child),
 	  mode(_mode ?  IScriptEnvironment::PlanarChromaAlignmentOff  // Legacy PLANAR_Y alignment
 			      : IScriptEnvironment::PlanarChromaAlignmentOn)  // New PLANAR_UV priority alignment
-  { 
+  {
     AVS_UNUSED(env);
   }
 

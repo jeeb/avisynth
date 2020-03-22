@@ -43,7 +43,7 @@
 // experimental simd includes for avx2 compiled files
 #if defined (__GNUC__) && ! defined (__INTEL_COMPILER)
 #include <x86intrin.h>
-// x86intrin.h includes header files for whatever instruction 
+// x86intrin.h includes header files for whatever instruction
 // sets are specified on the compiler command line, such as: xopintrin.h, fma4intrin.h
 #else
 #include <immintrin.h> // MS version of immintrin.h covers AVX, AVX2 and FMA3
@@ -60,8 +60,8 @@
 #endif
 // FMA3 instruction set
 #if defined (__FMA__) && (defined(__GNUC__) || defined(__clang__))  && ! defined (__INTEL_COMPILER)
-#include <fmaintrin.h> 
-#endif // __FMA__ 
+#include <fmaintrin.h>
+#endif // __FMA__
 
 
 #ifndef _mm256_set_m128i
@@ -131,7 +131,7 @@ static AVS_FORCEINLINE __m256i af_unpack_blend_uint16_t_avx2(__m256i &left, __m2
 void af_vertical_uint16_t_avx2(BYTE* line_buf, BYTE* dstp, int height, int pitch, int row_size, int amount) {
   // amount was: half_amount (32768). Full: 65536 (2**16)
   // now it becomes 2**(16-9)=2**7 scale
-  int t = (amount + 256) >> 9; // 16-9 = 7 -> shift in 
+  int t = (amount + 256) >> 9; // 16-9 = 7 -> shift in
   __m256i center_weight = _mm256_set1_epi32(t);
   __m256i outer_weight = _mm256_set1_epi32(64 - t);
   __m256i round_mask = _mm256_set1_epi32(0x40);

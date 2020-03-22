@@ -7,7 +7,7 @@ AviSynth FAQ - Some common error messages
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 I got the message "LoadPlugin: unable to load "xxx (some plugin)" is not an AviSynth 1.0/AviSynth 2.0 plugin"?

@@ -122,7 +122,7 @@ class _PixelClip {
   enum { buffer=320 };
   BYTE lut[256+buffer*2];
 public:
-  _PixelClip() {  
+  _PixelClip() {
     memset(lut, 0, buffer);
     for (int i=0; i<256; ++i) lut[i+buffer] = (BYTE)i;
     memset(lut+buffer+256, 255, buffer);
@@ -143,11 +143,11 @@ static __inline void Relink(ListNode* newprev, ListNode* me, ListNode* newnext) 
   me->prev->next = me->next->prev = me;
 }
 
-class CWDChanger 
+class CWDChanger
 /**
   * Class to change the current working directory
  **/
-{  
+{
 public:
   CWDChanger(const char* new_cwd);
   CWDChanger(const wchar_t* new_cwd);
@@ -163,11 +163,11 @@ private:
   bool restore;
 };
 
-class DllDirChanger 
-{  
+class DllDirChanger
+{
 public:
-  DllDirChanger(const char* new_cwd);  
-  ~DllDirChanger(void);  
+  DllDirChanger(const char* new_cwd);
+  ~DllDirChanger(void);
 
 private:
   std::unique_ptr<char[]> old_directory;
@@ -242,7 +242,7 @@ static __inline uint16_t ScaledPixelClipEx(long long int i, int max_value) {
   return (uint16_t)clamp((int)((i + 32768) >> 16), 0, max_value);
 }
 
-static __inline bool IsClose(int a, int b, unsigned threshold) 
+static __inline bool IsClose(int a, int b, unsigned threshold)
   { return (unsigned(a-b+threshold) <= threshold*2); }
 
 static __inline bool IsCloseFloat(float a, float b, float threshold)

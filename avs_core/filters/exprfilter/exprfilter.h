@@ -57,7 +57,7 @@ Container& split(
 }
 
 typedef enum {
-  opLoadSrc8, opLoadSrc16, opLoadSrcF32, opLoadSrcF16, 
+  opLoadSrc8, opLoadSrc16, opLoadSrcF32, opLoadSrcF16,
   opLoadRelSrc8, opLoadRelSrc16, opLoadRelSrcF32,
   opLoadConst,
   opLoadSpatialX, opLoadSpatialY,
@@ -144,7 +144,7 @@ struct ExprData {
 
 class Exprfilter : public IClip
 /**
-  * 
+  *
 **/
 {
 private:
@@ -168,7 +168,7 @@ private:
   bool shift_float;
 
 public:
-  Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
+  Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2,
     const bool _optSingleMode2, const bool _optSSE2, const std::string _scale_inputs, const int _clamp_float, IScriptEnvironment *env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
   ~Exprfilter();

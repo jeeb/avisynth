@@ -10,7 +10,7 @@ elsewhere), the ``try..catch`` statement.
     :maxdepth: 2
 
 .. contents:: Table of contents
-    
+
 
 
 The ``try..catch`` statement

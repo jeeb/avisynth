@@ -344,7 +344,7 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
   // Applying contrast
   //  value = (value - 0.5) * contrast + 0.5;
   if (f32) {
-    // Although it is possible, it doesn't make sense to apply this setting to the luma of the signal. 
+    // Although it is possible, it doesn't make sense to apply this setting to the luma of the signal.
     if (config->plane == PLANAR_Y) {
       ss << " 0.5 - " << contrast << " * 0.5 +";
     }
@@ -778,7 +778,7 @@ ColorYUV::ColorYUV(PClip child,
   const char* condVarSuffix,
   IScriptEnvironment* env)
  : GenericVideoFilter(child),
-   colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional), 
+   colorbar_bits(showyuv ? bits : 0), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional),
    colorbar_fullrange(showyuv_fullrange), tweaklike_params(tweaklike_params), condVarSuffix(condVarSuffix)
 {
     luts[0] = luts[1] = luts[2] = nullptr;
@@ -926,7 +926,7 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
 
     PVideoFrame src = child->GetFrame(n, env);
     PVideoFrame dst;
-    
+
     int pixelsize = vi.ComponentSize();
     int bits_per_pixel = vi.BitsPerComponent();
 

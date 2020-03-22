@@ -189,7 +189,7 @@ void OL_SoftLightImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayI
           U = ((U*(over32 - multiplier)) + (half_pixel_value*(       multiplier)))>>SHIFT;
           V = ((V*(over32 - multiplier)) + (half_pixel_value*(       multiplier)))>>SHIFT;
           Y = 0;
-        }    
+        }
         baseY[x] = (pixel_t)Y;
         baseU[x] = (pixel_t)clamp(U, 0, max_pixel_value);
         baseV[x] = (pixel_t)clamp(V, 0, max_pixel_value);

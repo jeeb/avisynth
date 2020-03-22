@@ -39,12 +39,12 @@
 /********************************
  *******   Script Parser   ******
  *******************************/
- 
+
 
 ScriptParser::ScriptParser(IScriptEnvironment* _env, const char* _code, const char* _filename)
    : env(static_cast<IScriptEnvironment2*>(_env)), tokenizer(_code, _env), code(_code), filename(_filename), loopDepth(0) {}
 
-PExpression ScriptParser::Parse(void) 
+PExpression ScriptParser::Parse(void)
 {
   try {
     return new ExpRootBlock(ParseBlock(false, NULL));
@@ -61,7 +61,7 @@ PExpression ScriptParser::Parse(void)
 }
 
 
-void ScriptParser::Expect(int op, const char* msg=0) 
+void ScriptParser::Expect(int op, const char* msg=0)
 {
   if (tokenizer.IsOperator(op))
     tokenizer.NextToken();
@@ -78,7 +78,7 @@ void ScriptParser::Expect(int op, const char* msg=0)
 }
 
 
-void ScriptParser::ParseFunctionDefinition(void) 
+void ScriptParser::ParseFunctionDefinition(void)
 {
   if (!tokenizer.IsIdentifier())
     env->ThrowError("Script error: expected a function name");
@@ -158,7 +158,7 @@ void ScriptParser::ParseFunctionDefinition(void)
 }
 
 
-PExpression ScriptParser::ParseBlock(bool braced, bool *empty) 
+PExpression ScriptParser::ParseBlock(bool braced, bool *empty)
 {
   if (braced) {
     // allow newlines (and hence comments) before '{' -- Gavino 7 Dec 2009
@@ -232,7 +232,7 @@ PExpression ScriptParser::ParseBlock(bool braced, bool *empty)
 
 
 
-PExpression ScriptParser::ParseStatement(bool* stop) 
+PExpression ScriptParser::ParseStatement(bool* stop)
 {
   *stop = false;
   // null statement
@@ -290,8 +290,8 @@ PExpression ScriptParser::ParseStatement(bool* stop)
   }
 }
 
-PExpression ScriptParser::ParseIf(void) 
-{  
+PExpression ScriptParser::ParseIf(void)
+{
   bool blockEmpty;
 
   PExpression If, Then, Else = 0;
@@ -323,8 +323,8 @@ PExpression ScriptParser::ParseIf(void)
   return new ExpBlockConditional(If, Then, Else);
 }
 
-PExpression ScriptParser::ParseWhile(void) 
-{  
+PExpression ScriptParser::ParseWhile(void)
+{
   tokenizer.NextToken();
   Expect('(');
   const PExpression cond = ParseAssignmentWithRet();
@@ -340,8 +340,8 @@ PExpression ScriptParser::ParseWhile(void)
   return new ExpWhileLoop(cond, body);
 }
 
-PExpression ScriptParser::ParseFor(void) 
-{  
+PExpression ScriptParser::ParseFor(void)
+{
   tokenizer.NextToken();
   Expect('(');
   if (!tokenizer.IsIdentifier())
@@ -372,7 +372,7 @@ PExpression ScriptParser::ParseFor(void)
   return new ExpForLoop(id, init, limit, step, body);
 }
 
-PExpression ScriptParser::ParseAssignment(void) 
+PExpression ScriptParser::ParseAssignment(void)
 {
   if (tokenizer.IsIdentifier("global")) {
     tokenizer.NextToken();
@@ -411,7 +411,7 @@ PExpression ScriptParser::ParseAssignmentWithRet(void)
 	return exp;
 }
 
-PExpression ScriptParser::ParseConditional(void) 
+PExpression ScriptParser::ParseConditional(void)
 {
   PExpression a = ParseOr();
   if (tokenizer.IsOperator('?')) {
@@ -424,7 +424,7 @@ PExpression ScriptParser::ParseConditional(void)
   return a;
 }
 
-PExpression ScriptParser::ParseOr(void) 
+PExpression ScriptParser::ParseOr(void)
 {
   PExpression left = ParseAnd();
   if (tokenizer.IsOperator("||"_i)) {
@@ -435,7 +435,7 @@ PExpression ScriptParser::ParseOr(void)
   return left;
 }
 
-PExpression ScriptParser::ParseAnd(void) 
+PExpression ScriptParser::ParseAnd(void)
 {
   PExpression left = ParseComparison();
   if (tokenizer.IsOperator("&&"_i)) {
@@ -490,7 +490,7 @@ PExpression ScriptParser::ParseAddition(bool negationOnHold) //update exterior c
   return left;
 }
 
-PExpression ScriptParser::ParseMultiplication(bool negationOnHold) 
+PExpression ScriptParser::ParseMultiplication(bool negationOnHold)
 {
   PExpression left = ParseUnary();
 
@@ -498,11 +498,11 @@ PExpression ScriptParser::ParseMultiplication(bool negationOnHold)
     bool mult = tokenizer.IsOperator('*');
     bool div = tokenizer.IsOperator('/');
     bool mod = tokenizer.IsOperator('%');
-    
+
     if (mult || div || mod)
       tokenizer.NextToken();
     else break;                                 //exits the while if not a mult op
- 
+
     PExpression right = ParseUnary();
     if (mult)
       left = new ExpMult(left, right);
@@ -536,7 +536,7 @@ PExpression ScriptParser::ParseUnary(void) {
   }
 }
 
-PExpression ScriptParser::ParseOOP(void) 
+PExpression ScriptParser::ParseOOP(void)
 {
 #ifndef NEW_AVSVALUE
   PExpression left = ParseFunction(0);

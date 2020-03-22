@@ -66,7 +66,7 @@ private:
   void Release() { if (--refcnt <= 0) delete this; }
 };
 
-class PExpression 
+class PExpression
 {
 public:
   PExpression() { Init(0); }
@@ -94,7 +94,7 @@ private:
 
 /**** Object classes ****/
 
-class ExpRootBlock : public Expression 
+class ExpRootBlock : public Expression
 {
 public:
   ExpRootBlock(const PExpression& e) : exp(e) {}
@@ -104,7 +104,7 @@ private:
   const PExpression exp;
 };
 
-class ExpConstant : public Expression 
+class ExpConstant : public Expression
 {
 public:
 #ifdef NEW_AVSVALUE
@@ -124,104 +124,104 @@ private:
 };
 
 
-class ExpSequence : public Expression 
+class ExpSequence : public Expression
 {
 public:
   ExpSequence(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
-  virtual AVSValue Evaluate(IScriptEnvironment* env);  
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
 private:
   const PExpression a, b;
 };
 
 
-class ExpExceptionTranslator : public Expression 
+class ExpExceptionTranslator : public Expression
 {
 public:
   ExpExceptionTranslator(const PExpression& _exp) : exp(_exp) {}
   AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression exp;
   void TrapEval(AVSValue&, unsigned &excode, IScriptEnvironment*);
 };
 
 
-class ExpTryCatch : public ExpExceptionTranslator 
+class ExpTryCatch : public ExpExceptionTranslator
 {
 public:
   ExpTryCatch(const PExpression& _try_block, const char* _id, const PExpression& _catch_block)
     : ExpExceptionTranslator(_try_block), id(_id), catch_block(_catch_block) {}
-  AVSValue Evaluate(IScriptEnvironment* env);  
+  AVSValue Evaluate(IScriptEnvironment* env);
 
 private:
   const char* const id;
   const PExpression catch_block;
 };
 
-class ExpLine : public ExpExceptionTranslator 
+class ExpLine : public ExpExceptionTranslator
 {
 public:
   ExpLine(const PExpression& _exp, const char* _filename, int _line)
     : ExpExceptionTranslator(_exp), filename(_filename), line(_line) {}
   AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const char* const filename;
   const int line;
 };
 
 
-class ExpBlockConditional : public Expression 
+class ExpBlockConditional : public Expression
 {
 public:
   ExpBlockConditional(const PExpression& _If, const PExpression& _Then, const PExpression& _Else)
    : If(_If), Then(_Then), Else(_Else) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression If, Then, Else;
 };
 
 
-class ExpWhileLoop : public Expression 
+class ExpWhileLoop : public Expression
 {
 public:
   ExpWhileLoop(const PExpression& _condition, const PExpression& _body)
    : condition(_condition), body(_body) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression condition, body;
 };
 
 
-class ExpForLoop : public Expression 
+class ExpForLoop : public Expression
 {
 public:
   ExpForLoop(const char* const _id, const PExpression& _init, const PExpression& _limit,
              const PExpression& _step, const PExpression& _body)
    : id(_id), init(_init), limit(_limit), step(_step), body(_body) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const char* const id;
   const PExpression init, limit, step, body;
 };
 
-class ExpBreak : public Expression 
+class ExpBreak : public Expression
 {
 public:
   ExpBreak() {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
 };
 
-class ExpConditional : public Expression 
+class ExpConditional : public Expression
 {
 public:
   ExpConditional(const PExpression& _If, const PExpression& _Then, const PExpression& _Else)
    : If(_If), Then(_Then), Else(_Else) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression If, Then, Else;
 };
@@ -240,51 +240,51 @@ private:
 
 /**** Operator classes ****/
 
-class ExpOr : public Expression 
+class ExpOr : public Expression
 {
 public:
   ExpOr(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpAnd : public Expression 
+class ExpAnd : public Expression
 {
 public:
   ExpAnd(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpEqual : public Expression 
+class ExpEqual : public Expression
 {
 public:
   ExpEqual(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpLess : public Expression 
+class ExpLess : public Expression
 {
 public:
   ExpLess(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
-  virtual AVSValue Evaluate(IScriptEnvironment* env); 
-  
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpPlus : public Expression 
+class ExpPlus : public Expression
 {
 public:
   ExpPlus(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
@@ -295,29 +295,29 @@ private:
 };
 
 
-class ExpDoublePlus : public Expression 
+class ExpDoublePlus : public Expression
 {
 public:
   ExpDoublePlus(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpMinus : public Expression 
+class ExpMinus : public Expression
 {
 public:
   ExpMinus(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpMult : public Expression 
+class ExpMult : public Expression
 {
 public:
   ExpMult(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
@@ -328,29 +328,29 @@ private:
 };
 
 
-class ExpDiv : public Expression 
+class ExpDiv : public Expression
 {
 public:
   ExpDiv(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-    
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpMod : public Expression 
+class ExpMod : public Expression
 {
 public:
   ExpMod(const PExpression& _a, const PExpression& _b) : a(_a), b(_b) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const PExpression a, b;
 };
 
 
-class ExpNegate : public Expression 
+class ExpNegate : public Expression
 {
 public:
   ExpNegate(const PExpression& _e) : e(_e) {}
@@ -361,7 +361,7 @@ private:
 };
 
 
-class ExpNot : public Expression 
+class ExpNot : public Expression
 {
 public:
   ExpNot(const PExpression& _e) : e(_e) {}
@@ -372,12 +372,12 @@ private:
 };
 
 
-class ExpVariableReference : public Expression 
+class ExpVariableReference : public Expression
 {
 public:
   ExpVariableReference(const char* _name) : name(_name) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
   virtual const char* GetLvalue() { return name; }
 
 private:
@@ -385,7 +385,7 @@ private:
 };
 
 
-class ExpAssignment : public Expression 
+class ExpAssignment : public Expression
 {
 public:
   ExpAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs) {}
@@ -400,27 +400,27 @@ private:
 };
 
 
-class ExpGlobalAssignment : public Expression 
+class ExpGlobalAssignment : public Expression
 {
 public:
   ExpGlobalAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const char* const lhs;
   PExpression rhs;
 };
 
 
-class ExpFunctionCall : public Expression 
+class ExpFunctionCall : public Expression
 {
 public:
   ExpFunctionCall( const char* _name, PExpression* _arg_exprs,
-                   const char** _arg_expr_names, int _arg_expr_count, bool _oop_notation );  
+                   const char** _arg_expr_names, int _arg_expr_count, bool _oop_notation );
   ~ExpFunctionCall(void);
-  
+
   virtual AVSValue Evaluate(IScriptEnvironment* env);
-  
+
 private:
   const char* const name;
   PExpression* arg_exprs;

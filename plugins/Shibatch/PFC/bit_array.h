@@ -68,7 +68,7 @@ class bit_array_range : public bit_array
 	bool state;
 public:
 	bit_array_range(int first,int count,bool p_state = true) : begin(first), end(first+count), state(p_state) {}
-	
+
 	virtual bool get(int n) const
 	{
 		bool rv = n>=begin && n<end;
@@ -215,7 +215,7 @@ public:
 
 	inline bit_array_bittable(unsigned p_count) {count=0;data=0;resize(p_count);}
 	inline ~bit_array_bittable() {free(data);}
-	
+
 	virtual void set(int n,bool val)
 	{
 		if ((unsigned)n<count)

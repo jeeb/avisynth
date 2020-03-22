@@ -77,7 +77,7 @@ ConditionalSelect::ConditionalSelect(PClip _child, const char _expression[],
                                      bool _show, IScriptEnvironment* env) :
   GenericVideoFilter(_child), expression(_expression),
   num_args(_num_args), child_array(_child_array), show(_show) {
-    
+
   for (int i=0; i<num_args; i++) {
     const VideoInfo& vin = child_array[i]->GetVideoInfo();
 
@@ -124,7 +124,7 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
     if (!result.IsInt())
       env->ThrowError("Conditional Select: Expression must return an integer!");
   }
-  catch (const AvisynthError &error) {    
+  catch (const AvisynthError &error) {
     env->SetVar("last", prev_last);                   // Restore implicit last
     env->SetVar("current_frame", prev_current_frame); // Restore current_frame
 
@@ -141,7 +141,7 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
   env->SetVar("current_frame", prev_current_frame); // Restore current_frame
 
   const int i = result.AsInt();
-  
+
   PVideoFrame dst;
 
   if (i < 0 || i >= num_args) {
@@ -208,7 +208,7 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
                                      bool _show, IScriptEnvironment* env) :
   GenericVideoFilter(_child), source1(_source1), source2(_source2),
   eval1(_condition1), eval2(_condition2), show(_show) {
-    
+
     evaluator = NONE;
 
     if (lstrcmpi(_evaluator.AsString(), "equals") == 0 ||
@@ -246,7 +246,7 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
     vi.sample_type = vi1.sample_type;
   }
 
-const char* const t_TRUE="TRUE"; 
+const char* const t_TRUE="TRUE";
 const char* const t_FALSE="FALSE";
 
 int __stdcall ConditionalFilter::SetCacheHints(int cachehints, int frame_range)
@@ -276,8 +276,8 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
     ScriptParser parser2(env, eval2.AsString(), "[Conditional Filter, Expression 2]");
     exp = parser2.Parse();
     e2_result = exp->Evaluate(env);
-  } catch (const AvisynthError &error) {    
-    const char* error_msg = error.msg;  
+  } catch (const AvisynthError &error) {
+    const char* error_msg = error.msg;
 
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
@@ -326,14 +326,14 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
     } else if (e1_result.IsFloat()) {
       f1 = (float)e1_result.AsFloat();
-      if (!e2_result.IsFloat()) 
+      if (!e2_result.IsFloat())
         env->ThrowError("Conditional filter: Second expression did not return a float or an integer, as in first float expression.");
       f2 = (float)e2_result.AsFloat();
     } else {
       env->ThrowError("ConditionalFilter: First expression did not return an integer, bool or float!");
     }
-  } catch (const AvisynthError &error) {    
-    const char* error_msg = error.msg;  
+  } catch (const AvisynthError &error) {
+    const char* error_msg = error.msg;
 
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
@@ -345,24 +345,24 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   bool state = false;
 
   if (test_int) { // String and Int compare
-    if (evaluator&EQUALS) 
+    if (evaluator&EQUALS)
       if (e1 == e2) state = true;
 
-    if (evaluator&GREATERTHAN) 
+    if (evaluator&GREATERTHAN)
       if (e1 > e2) state = true;
 
-    if (evaluator&LESSTHAN) 
+    if (evaluator&LESSTHAN)
       if (e1 < e2) state = true;
 
   } else {  // Float compare
-    if (evaluator&EQUALS) 
+    if (evaluator&EQUALS)
       if (fabs(f1-f2)<0.000001) state = true;   // Exact equal will sometimes be rounded to wrong values.
 
-    if (evaluator&GREATERTHAN) 
+    if (evaluator&GREATERTHAN)
       if (f1 > f2) state = true;
 
-    if (evaluator&LESSTHAN) 
-      if (f1 < f2) state = true;    
+    if (evaluator&LESSTHAN)
+      if (f1 < f2) state = true;
   }
 
   if (show) {
@@ -397,9 +397,9 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
     return dst;
   }
 
-  if (state) 
+  if (state)
     return source1->GetFrame(min(vi1.num_frames-1,n),env);
-  
+
   return source2->GetFrame(min(vi1.num_frames-1,n),env);
 }
 
@@ -473,8 +473,8 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
     ScriptParser parser(env, script.AsString(), "[ScriptClip]");
     PExpression exp = parser.Parse();
     result = exp->Evaluate(env);
-  } catch (const AvisynthError &error) {    
-    const char* error_msg = error.msg;  
+  } catch (const AvisynthError &error) {
+    const char* error_msg = error.msg;
 
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
@@ -489,7 +489,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
 
   if (eval_after && only_eval) return eval_return;
   if (only_eval) return child->GetFrame(n,env);
-  
+
   const char* error = NULL;
   VideoInfo vi2 = vi;
   if (!result.IsClip()) {
@@ -509,7 +509,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
       error = "ScriptClip: Function did not return a video clip! (type is unknown)";
   } else {
     vi2 = result.AsClip()->GetVideoInfo();
-    if (!vi.IsSameColorspace(vi2)) { 
+    if (!vi.IsSameColorspace(vi2)) {
       error = "ScriptClip: Function did not return a video clip of the same colorspace as the source clip!";
     } else if (vi2.width != vi.width) {
       error = "ScriptClip: Function did not return a video clip with the same width as the source clip!";

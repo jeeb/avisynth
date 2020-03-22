@@ -218,14 +218,14 @@ PVideoFrame __stdcall RGBtoRGBA::GetFrame(int n, IScriptEnvironment* env)
       convert_rgb24_to_rgb32_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     else
       convert_rgb48_to_rgb64_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-  } 
+  }
   else
 #ifdef X86_32
     if (pixelsize==1 && (env->GetCPUFlags() & CPUF_MMX))
     {
       convert_rgb24_to_rgb32_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     }
-    else 
+    else
 #endif
     {
       if (pixelsize == 1)
@@ -420,14 +420,14 @@ PVideoFrame __stdcall RGBAtoRGB::GetFrame(int n, IScriptEnvironment* env)
       convert_rgb32_to_rgb24_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
     else
       convert_rgb64_to_rgb48_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-  } 
+  }
   else
 #ifdef X86_32
   if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX))
   {
     convert_rgb32_to_rgb24_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
   }
-  else 
+  else
 #endif
   {
     if(pixelsize==1)

@@ -12,7 +12,7 @@ typedef struct _GUID {          // size is 16
 } GUID;
 
 // {B296CF59-4D51-466f-8E0B-E57D3F91D908}
-static const GUID <<name>> = 
+static const GUID <<name>> =
 { 0xb296cf59, 0x4d51, 0x466f, { 0x8e, 0xb, 0xe5, 0x7d, 0x3f, 0x91, 0xd9, 0x8 } };
 
 */
@@ -62,7 +62,7 @@ GUID_from_text::GUID_from_text(const char * text)
 
 	(GUID)*this = mem_ops<GUID>::make_null_item();
 
-	
+
 	do {
 		if (text+8>max) break;
 		Data1 = read_dword(text);

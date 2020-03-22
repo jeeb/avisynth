@@ -7,7 +7,7 @@ Getting started
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 Basically, AviSynth works like this: First, you create a simple text document

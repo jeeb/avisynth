@@ -244,10 +244,10 @@ static void convert_rgb_line_to_yuy2_sse2(const BYTE *srcp, BYTE *dstp, int widt
 
     __m128i luma = _mm_add_epi32(r_temp, gb_temp); //r4*cyr + g4*cyg + b4*cyb | r3*cyr + g3*cyg + b3*cyb | r2*cyr + g2*cyg + b2*cyb | r1*cyr + g1*cyg + b1*cyb
     luma = _mm_add_epi32(luma, luma_round_mask); //r4*cyr + g4*cyg + b4*cyb + round | r3*cyr + g3*cyg + b3*cyb + round | r2*cyr + g2*cyg + b2*cyb + round | r1*cyr + g1*cyg + b1*cyb + round
-    luma = _mm_srli_epi32(luma, 15); //0000 00y4 | 0000 00y3 | 0000 00y2 | 0000 00y1   
+    luma = _mm_srli_epi32(luma, 15); //0000 00y4 | 0000 00y3 | 0000 00y2 | 0000 00y1
 
 
-    __m128i y13 = _mm_shuffle_epi32(luma, _MM_SHUFFLE(2, 2, 0, 0)); //0000 00y3 | 0000 00y3 | 0000 00y1 | 0000 00y1  
+    __m128i y13 = _mm_shuffle_epi32(luma, _MM_SHUFFLE(2, 2, 0, 0)); //0000 00y3 | 0000 00y3 | 0000 00y1 | 0000 00y1
     __m128i y02 = _mm_castps_si128(_mm_shuffle_ps(
       _mm_castsi128_ps(y0),
       _mm_castsi128_ps(luma),
@@ -330,10 +330,10 @@ static void convert_rgb_line_to_yuy2_mmx(const BYTE *srcp, BYTE *dstp, int width
     }
     __m64 rgb_p2 = _mm_unpackhi_pi8(src, zero); //00xx 00r1 00g1 00b1
 
-    __m64 rb  = _mm_add_pi16(rgb_p1, rgb_p1); 
+    __m64 rb  = _mm_add_pi16(rgb_p1, rgb_p1);
     __m64 rb_part2 = _mm_add_pi16(rgb_p2, rb_prev);
     rb_prev = rgb_p2;
-    rb = _mm_add_pi16(rb, rb_part2); 
+    rb = _mm_add_pi16(rb, rb_part2);
     rb = _mm_slli_pi32(rb, 16); //00 r0+r1*2+r2 00 00 || 00 b0 + b1*2 + b2  00 00
 
     __m64 t1 = _mm_madd_pi16(rgb_p1, luma_coefs); //xx*0 + r0*cyr | g0*cyg + b0*cyb
@@ -390,7 +390,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
 
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {
-    PVideoFrame dst = env->NewVideoFrame(vi,32); 
+    PVideoFrame dst = env->NewVideoFrame(vi,32);
     BYTE* dstp = dst->GetWritePtr();
     const BYTE* srcp_y = src->GetReadPtr(PLANAR_Y);
     const BYTE* srcp_u = src->GetReadPtr(PLANAR_U);
@@ -748,7 +748,7 @@ static void convert_rgb_back_to_yuy2_c(BYTE* yuv, const BYTE* rgb, int rgb_offse
 
 
 template<int matrix, int rgb_bytes, bool aligned>
-static AVS_FORCEINLINE __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* srcp, const __m128i &luma_coefs, const __m128i &chroma_coefs, const __m128i &upper_dword_mask, 
+static AVS_FORCEINLINE __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* srcp, const __m128i &luma_coefs, const __m128i &chroma_coefs, const __m128i &upper_dword_mask,
                                                                  const __m128i &chroma_round_mask, __m128i &luma_round_mask, const __m128i &tv_scale, const __m128i &zero) {
   __m128i rgb_p1, rgb_p2;
   if constexpr(rgb_bytes == 4) {
@@ -809,7 +809,7 @@ static AVS_FORCEINLINE __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* s
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Optimization note: matrix is a template argument only to avoid subtraction for PC matrices. Compilers tend to generate ~10% faster code in this case. 
+// Optimization note: matrix is a template argument only to avoid subtraction for PC matrices. Compilers tend to generate ~10% faster code in this case.
 // MMX version is not optimized this way because who'll be using MMX anyway?
 // todo: check if mod4 width is actually needed. we might be safe without it
 //////////////////////////////////////////////////////////////////////////
@@ -877,7 +877,7 @@ static void convert_rgb_line_back_to_yuy2_mmx(const BYTE *srcp, BYTE *dstp, int 
   __m64 upper_dword_mask = _mm_set1_pi32(0xFFFF0000);
   __m64 zero = _mm_setzero_si64();
   __m64 tv_scale = _mm_set1_pi32((matrix == Rec601 || matrix == Rec709) ? 16 : 0);
-  
+
   for (int x = 0; x < width; x+=2) {
     __m64 src = *reinterpret_cast<const __m64*>(srcp+x*rgb_bytes); //xxr1 g1b1 xxr0 g0b0
 
@@ -937,7 +937,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 {
   PVideoFrame src = child->GetFrame(n, env);
 
-  if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24) 
+  if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24)
   {
     PVideoFrame dst = env->NewVideoFrame(vi);
     BYTE* dstp = dst->GetWritePtr();
@@ -953,14 +953,14 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcY, 16) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16))
     {  // Use MMX
       convert_yv24_back_to_yuy2_sse2(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
-    } 
-    else 
+    }
+    else
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_MMX)
     {  // Use MMX
       convert_yv24_back_to_yuy2_mmx(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
-    } 
-    else 
+    }
+    else
 #endif
     {
       convert_yv24_back_to_yuy2_c(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
@@ -972,7 +972,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
   BYTE* yuv = dst->GetWritePtr();
 
 
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) 
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
   {
     if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
       if (theMatrix == Rec601) {

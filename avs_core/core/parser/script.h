@@ -51,14 +51,14 @@
 /********************************************************************
 ********************************************************************/
 
-class ScriptFunction 
+class ScriptFunction
 /**
   * Executes a script
  **/
 {
 public:
   ScriptFunction(const PExpression& _body, const bool* _param_floats, const char** _param_names, int param_count);
-  virtual ~ScriptFunction() 
+  virtual ~ScriptFunction()
     {
       delete[] param_floats;
       delete[] param_names;
@@ -173,12 +173,12 @@ AVSValue Defined(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Default(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsVersionOrGreater(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Int(AVSValue args, void*, IScriptEnvironment* env); 
-AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env); 
-AVSValue Float(AVSValue args, void*,IScriptEnvironment* env); 
+AVSValue Int(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue Float(AVSValue args, void*,IScriptEnvironment* env);
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
 

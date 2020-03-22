@@ -7,7 +7,7 @@ Block statements
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 Background

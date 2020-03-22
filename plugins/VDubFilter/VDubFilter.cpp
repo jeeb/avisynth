@@ -1,4 +1,4 @@
-// Avisynth v2.5. 
+// Avisynth v2.5.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -67,10 +67,10 @@
 //     ""      : not defined (same as not given)
 //   Parameter will be ignored when clip is non-YUV
 //   How it works: the hint will _not_ change the internal VirtualDub colorspace
-//   constant (e.g. kPixFormat_YUV420_Planar -> kPixFormat_YUV420_Planar_709) but keeps 
+//   constant (e.g. kPixFormat_YUV420_Planar -> kPixFormat_YUV420_Planar_709) but keeps
 //   the basic color space and sets colorSpaceMode and colorRangeMode in PixmapLayout.formatEx.
 //   Filter can either use this information or not, depending on supported API version
-//   and its implementation. 
+//   and its implementation.
 //   E.g. Crossfade(20,30) -> Crossfade(20,30,"rec601") though this specific filter won't use it.
 
 
@@ -572,7 +572,7 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////
-// prefetchProc2 implementation 
+// prefetchProc2 implementation
 // (multiple source frames from the same clip)
 
 #if 0
@@ -770,7 +770,7 @@ void VDXAPIENTRY VideoPrefetcher::PrefetchFrameSymbolic(sint32 srcIndex, sint64 
 }
 
 // End of VideoPrefetcher help from FilterInstance.cpp
-/////////////////////////////////////////////////////////////////////////// 
+///////////////////////////////////////////////////////////////////////////
 
 // filter instance
 class VirtualdubFilterProxy : public GenericVideoFilter {
@@ -951,13 +951,13 @@ public:
     }
 
 /*  https://github.com/shekh/VirtualDub2/wiki/videofilt_processingvideoframes
-    The source frame buffers are specified by the src field of the VDXFilterActivation structure, 
-    and the output frame buffer is specified by the dst field.The task of runProc is to process 
-    the source image and write the result into the output image.The host has already allocated 
-    both frame buffers and fetched the source frame by the time the filter is invoked, 
+    The source frame buffers are specified by the src field of the VDXFilterActivation structure,
+    and the output frame buffer is specified by the dst field.The task of runProc is to process
+    the source image and write the result into the output image.The host has already allocated
+    both frame buffers and fetched the source frame by the time the filter is invoked,
     so the only thing that needs to happen is to process the image data.
 
-    Note that if paramProc specified that the filter is operating in in-place mode, the source 
+    Note that if paramProc specified that the filter is operating in in-place mode, the source
     and output frame buffers will point to the same memory.
 */
 
@@ -1037,8 +1037,8 @@ public:
     pvb->palette = 0; // Not used for video filters.
 
     /*
-    depth: Indicates the bit depth of the image. For video filters (RGB32), this is typically 32, 
-    indicating 24-bit RGB with an unused 8 - bit alpha channel in the high byte(fourth byte in 
+    depth: Indicates the bit depth of the image. For video filters (RGB32), this is typically 32,
+    indicating 24-bit RGB with an unused 8 - bit alpha channel in the high byte(fourth byte in
     memory order).
     If this is zero, it means the bitmap uses an alternate format and the mpPixmap field must be used.
         For multi-plane (e.g. UV) we should pass info in mpPixmapLayout
@@ -1047,23 +1047,23 @@ public:
     pvb->depth = hasNewPixelFormats ? 0 : vi.BitsPerComponent() * vi.NumComponents(); // // 8*4=32 or 16*4=64
     pvb->w = vi.width;
     pvb->h = pvf->GetHeight();
-    
+
     /* pitch:
     V12+ only: Bitmaps can be stored top - down as well as bottom-up.
-    The pitch value value is positive if the image is stored bottom-up 
-    in memory and negative if the image is stored top-down. This is only 
-    permitted if the filter declares support for flexible formats by 
-    returning FILTERPARAM_SUPPORTS_ALTFORMATS from paramProc; otherwise, 
-    the host ensures that the filter receives a bottom-up orientation 
+    The pitch value value is positive if the image is stored bottom-up
+    in memory and negative if the image is stored top-down. This is only
+    permitted if the filter declares support for flexible formats by
+    returning FILTERPARAM_SUPPORTS_ALTFORMATS from paramProc; otherwise,
+    the host ensures that the filter receives a bottom-up orientation
     with a positive pitch, flipping the bitmap beforehand if necessary.
     */
     pvb->pitch = pvf->GetPitch();
 
     /*
-    Distance from the end of one scanline to the beginning of the next, 
-    in bytes. This value is positive or zero if the image is stored bottom-up 
-    in memory and negative if the image is stored top-down. A value of zero 
-    indicates that the image is stored bottom-up with no padding between 
+    Distance from the end of one scanline to the beginning of the next,
+    in bytes. This value is positive or zero if the image is stored bottom-up
+    in memory and negative if the image is stored top-down. A value of zero
+    indicates that the image is stored bottom-up with no padding between
     scanlines. For a 32-bit bitmap, modulo is equal to pitch - 4*w
     */
     pvb->modulo = pvf->GetPitch() - pvf->GetRowSize(); //   (pvb->w*pvb->depth + 7) / 8; // pvb->Modulo();
@@ -1416,7 +1416,7 @@ public:
 
     fsi.flags = 0;
     fsi.mOutputFrame = n; // (V13/V1.8.2+) current output frame
-    
+
     vbDst.mFrameNumber = n;
 
     fd->runProc(&fa, &g_VDFilterCallbacks);
@@ -1447,7 +1447,7 @@ public:
     for (int i=0; i<count; ++i) {
       if (args[i].IsInt()) {
         // the 64 bitness of an 'l' parameters is lost here, since avs has only as 32 bit Int, so we better fill up the whole 64 bits
-        sylia_args[i] = (sint64)args[i].AsInt(); 
+        sylia_args[i] = (sint64)args[i].AsInt();
       } else if (args[i].IsFloat()) { // new from 160420 double support
         sylia_args[i] = args[i].AsFloat();
       } else if (args[i].IsString()) {
@@ -1460,7 +1460,7 @@ public:
         sylia_args[i] = (char**)&sylia_args[i].lpVoid;
         */
       } else if (args[i].IsArray()) {
-        return i+ConvertArgs(&args[i][0], sylia_args+i, sylia_args_string_helper+i, args[i].ArraySize()); 
+        return i+ConvertArgs(&args[i][0], sylia_args+i, sylia_args_string_helper+i, args[i].ArraySize());
       } else {
         return -1000;
       }
@@ -1486,7 +1486,7 @@ public:
           // match
           MyScriptInterpreter si(env);
           VDXScriptValue sylia_args[30];
-          CScriptValueStringHelper sylia_args_string_helper[30]; // helper class. x64 char ** helper did not fit into CScriptValue class size 
+          CScriptValueStringHelper sylia_args_string_helper[30]; // helper class. x64 char ** helper did not fit into CScriptValue class size
           //int sylia_arg_count = ConvertArgs(&args[1], sylia_args, sylia_args_string_helper, args.ArraySize() - 1);
           int sylia_arg_count = ConvertArgs(&args[1], sylia_args, sylia_args_string_helper, args.ArraySize()-1 - skipLastN);
           if (sylia_arg_count < 0)
@@ -1588,7 +1588,7 @@ static void FilterBaseAdd_CreateAvsFnByParams(MyVDXFilterModule * fm2, FilterDef
   char converted_paramlist[MAX_PARAMS + 1];
 
   // send actual filter definition list as 'user_data' for create
-  // add optinal rangehint parameter, which is seen only by avisynth. 
+  // add optinal rangehint parameter, which is seen only by avisynth.
   // See also skipLastN references, which should match the number of extra parameters here
   fm2->env->AddFunction(fm2->avisynth_function_name, "c", VirtualdubFilterProxy::Create, fdl);
   if (fd->script_obj && fd->script_obj->func_list) {
@@ -1736,7 +1736,7 @@ AVSValue __cdecl LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* 
       errorNo = 1;
     }
     else {
-      _RPT5(0, "VDub2 filter added %s FILTERDEF_VER compat:%d hi:%d, FILTERMOD_VER lo:%d hi:%d \r\n", 
+      _RPT5(0, "VDub2 filter added %s FILTERDEF_VER compat:%d hi:%d, FILTERMOD_VER lo:%d hi:%d \r\n",
         szModule, fm->filterdef_ver_lo, fm->filterdef_ver_hi, fm->filtermod_ver_lo, fm->filtermod_ver_hi);
       // Check if the plugin's minimal requirement is higher than used by this Avs+ simulation
       if (fm->filtermod_ver_lo > FILTERMOD_VERSION) {

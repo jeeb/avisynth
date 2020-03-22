@@ -50,7 +50,7 @@ public:
 #define profiler(name) \
 	static profiler_static profiler_static_##name(#name); \
 	profiler_local profiler_local_##name(&profiler_static_##name);
-	
+
 
 
 

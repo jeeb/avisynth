@@ -48,7 +48,7 @@ public:
 
   BitmapFont(int _number_of_chars, const uint16_t* _src_font_bitmaps, const uint16_t* _codepoints, int _w, int _h, std::string _font_name, std::string _font_filename, bool _bold, bool debugSave) :
     number_of_chars(_number_of_chars),
-    //font_bitmaps(_font_bitmaps), 
+    //font_bitmaps(_font_bitmaps),
     width(_w), height(_h),
     font_name(_font_name),
     font_filename(_font_filename),

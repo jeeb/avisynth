@@ -597,7 +597,7 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
     unsigned char* pdstb = pdst;
     unsigned char* pdstbU = dst->GetWritePtr(PLANAR_U);
     unsigned char* pdstbV = dst->GetWritePtr(PLANAR_V);
-    
+
     if (keepsource)
       pdstb += src->GetRowSize(PLANAR_Y);
 
@@ -964,7 +964,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
       for (int y = 0; y < show_size; y++) {
         const bool ylimited = y < limit16 || y>limit240;
         for (int x = 0; x < show_size; x++) {
-          int disp_val = (histUV[x + y * show_size]) / maxval; // float was 16 bit 
+          int disp_val = (histUV[x + y * show_size]) / maxval; // float was 16 bit
           if (ylimited || x < limit16 || x>limit240)
             disp_val -= limit16_pixel;
 
@@ -1110,7 +1110,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
   const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
   const int *planes = vi.IsYUV() || vi.IsYUVA() ? planesYUV : planesRGB;
-  
+
   if (keepsource) {
     if (src->GetHeight() < dst->GetHeight()) {
       // fill empty area in the right bottom part
@@ -1276,7 +1276,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         int color_i = color_usz << color_shift;
         float color_f = color_unsafeZones_f[p];
         ptr = pdstb + 0 * dstPitch;;
-        
+
         for (int y = 0; y <= 64 >> sheight; y++) {
           int x = 0;
           for (; x < (16 << pos_shift) >> swidth; x++) {

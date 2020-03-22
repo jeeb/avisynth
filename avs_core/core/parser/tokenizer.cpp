@@ -52,8 +52,8 @@
  *******   Tokenizer   ******
  ***************************/
 
-Tokenizer::Tokenizer(const char* pc, IScriptEnvironment* _env) 
-  : env(_env) 
+Tokenizer::Tokenizer(const char* pc, IScriptEnvironment* _env)
+  : env(_env)
 {
   this->pc = pc;
   this->line = 1;
@@ -61,15 +61,15 @@ Tokenizer::Tokenizer(const char* pc, IScriptEnvironment* _env)
   NextToken();
 }
 
-Tokenizer::Tokenizer(Tokenizer* old) 
-  : env(old->env) 
+Tokenizer::Tokenizer(Tokenizer* old)
+  : env(old->env)
 {
   pc = old->pc;
   line = old->line;
   NextToken();
-}  
+}
 
-bool Tokenizer::IsIdentifier(const char* id) const 
+bool Tokenizer::IsIdentifier(const char* id) const
 {
   return IsIdentifier() && !lstrcmpi(id, identifier);
 }
@@ -208,7 +208,7 @@ void Tokenizer::NextToken() {
 			SetToOperator(*pc++);
 		}
 		break;
- 
+
     case '+':    // these operators have single and double (++, &&, ||, ==) versions
     case '&':
     case '|':
@@ -271,13 +271,13 @@ void Tokenizer::NextToken() {
           start = pc+1;
           end = strchr(start, '"');
           if (!end)
-            env->ThrowError("Parse error: string missing closing quotation mark");          
-          
+            env->ThrowError("Parse error: string missing closing quotation mark");
+
           /* I like the ability to have newlines in strings, thanks */
-          // const char *cr = strchr(start, '\r'), *lf = strchr(start, '\n');          
+          // const char *cr = strchr(start, '\r'), *lf = strchr(start, '\n');
           // if ((cr && cr < end) || (lf && lf < end))
           //   env->ThrowError("Parse error: newline found in string");
-          
+
           pc = end+1;
         }
         for (const char *cp = start; cp < end; cp++) {
@@ -318,15 +318,15 @@ int Tokenizer::GetColumn(const char* start_of_string) const
 }
 
 
-void Tokenizer::SkipWhitespace() 
+void Tokenizer::SkipWhitespace()
 {
   while (*pc == ' ' || *pc == '\t')
     pc++;
 }
 
-void Tokenizer::SkipNewline() 
+void Tokenizer::SkipNewline()
 {
-  if (*pc == '\n' || *pc == '\r') 
+  if (*pc == '\n' || *pc == '\r')
   {
     pc++;
     line++;
@@ -335,13 +335,13 @@ void Tokenizer::SkipNewline()
   }
 }
 
-void Tokenizer::AssertType(char expected_type) const 
+void Tokenizer::AssertType(char expected_type) const
 {
   if (type != expected_type)
     ThrowTypeMismatch(expected_type, type, env);
 }
 
-void Tokenizer::GetNumber() 
+void Tokenizer::GetNumber()
 {
   // start by assuming an int and switch to float if necessary
   type = 'i';
@@ -380,7 +380,7 @@ void Tokenizer::GetNumber()
 }
 
 
-void Tokenizer::SetToOperator(int o) 
+void Tokenizer::SetToOperator(int o)
 {
   type = 'o';
   op = o;
@@ -390,9 +390,9 @@ void Tokenizer::SetToOperator(int o)
 
 /**** Helper Functions ****/
 
-static const char* GetTypeName(char type) 
+static const char* GetTypeName(char type)
 {
-  switch (type) 
+  switch (type)
   {
     case 0:   return "undefined";
     case 'a': return "array";
@@ -408,7 +408,7 @@ static const char* GetTypeName(char type)
 }
 
 
-void ThrowTypeMismatch(char expected, char actual, IScriptEnvironment* env) 
+void ThrowTypeMismatch(char expected, char actual, IScriptEnvironment* env)
 {
   env->ThrowError("Tokenizer: expected type '%s' doesn't match actual type '%s' (this is a bug)",
       GetTypeName(expected), GetTypeName(actual));

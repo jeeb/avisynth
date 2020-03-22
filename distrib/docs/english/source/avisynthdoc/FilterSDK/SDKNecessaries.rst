@@ -125,7 +125,7 @@ Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2015/03/30 06:08:10 $
 
-.. _[1]: 
+.. _[1]:
    http://www.google.nl/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&ved=0CCoQFjAA&url=http://go.microsoft.com/?linkid=7729279&ei=HfWhUuTjL8Og0wW7wYDwBw&usg=AFQjCNEulTGchEeozkLGRH8LZELiTKlC5A&sig2=Mi7Rwn_jNL5Qffi7LiGS3w&bvm=bv.57752919,d.d2k
 .. _[5]: http://www.visualstudio.com/en-us/downloads/
 .. _[6]: http://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/ad4e4015-6867-4ff1-845e-143e6052834e/windows-platform-sdk-feb-2003?forum=windowssdk

@@ -705,7 +705,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
     int          a_pitch = a->GetPitch(plane);
     int          row_size = a->GetRowSize(plane);
     int          height = a->GetHeight(plane);
-    
+
     int weight_i;
     int invweight_i;
     MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, env->GetCPUFlags(), a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);

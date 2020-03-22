@@ -149,7 +149,7 @@ struct VDXPluginConfigEntry {
 	uint32		type;
 	const wchar_t *name;
 	const wchar_t *label;
-	const wchar_t *desc;	
+	const wchar_t *desc;
 };
 
 struct VDXRect {

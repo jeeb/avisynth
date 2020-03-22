@@ -51,7 +51,7 @@ public:
 };
 
 
-class FlipVertical : public GenericVideoFilter 
+class FlipVertical : public GenericVideoFilter
 /**
   * Class to vertically flip a video
  **/
@@ -69,7 +69,7 @@ public:
 };
 
 
-class FlipHorizontal : public GenericVideoFilter 
+class FlipHorizontal : public GenericVideoFilter
 /**
   * Class to Horizontally flip a video
  **/
@@ -87,11 +87,11 @@ public:
 };
 
 
-class Crop : public GenericVideoFilter 
+class Crop : public GenericVideoFilter
 /**
   * Class to crop a video
  **/
-{  
+{
 public:
   Crop(int _left, int _top, int _width, int _height, bool _align, PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -112,11 +112,11 @@ private:
 
 
 
-class AddBorders : public GenericVideoFilter 
+class AddBorders : public GenericVideoFilter
 /**
   * Class to add borders to a video
  **/
-{  
+{
 public:
   AddBorders(int _left, int _top, int _right, int _bot, int _clr, bool _force_color_as_yuv, PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);

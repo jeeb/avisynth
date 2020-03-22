@@ -43,7 +43,7 @@
 ********************************************************************/
 
 
-class FixLuminance : public GenericVideoFilter 
+class FixLuminance : public GenericVideoFilter
 /**
   * Class to progressively darken the top of a YUY2 clip to compensate for bad VCRs
  **/
@@ -64,7 +64,7 @@ private:
 };
 
 
-class FixBrokenChromaUpsampling : public GenericVideoFilter 
+class FixBrokenChromaUpsampling : public GenericVideoFilter
 /**
   * Class to correct for the incorrect chroma upsampling done by the MS DV codec
  **/
@@ -82,7 +82,7 @@ public:
 };
 
 
-class PeculiarBlend : public GenericVideoFilter 
+class PeculiarBlend : public GenericVideoFilter
 /**
   * Class to remove nasty telecining effect (see docs)
  **/
@@ -96,14 +96,14 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   const int cutoff;
 };
 
 
-class SkewRows : public GenericVideoFilter 
+class SkewRows : public GenericVideoFilter
 /**
   * Class to recast the row alignment of a frame
  **/

@@ -2125,10 +2125,10 @@ ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, i
     } else
       return resize_h_c_planar<uint16_t>;
   } else { //if (pixelsize == 4)
-    
+
     if (CPU & CPUF_SSSE3) {
       resize_h_prepare_coeff_8or16(program, env, ALIGN_FLOAT_RESIZER_COEFF_SIZE); // alignment of 8 is enough for AVX2 float as well
-      
+
       const int filtersizealign8 = AlignNumber(program->filter_size, 8);
       const int filtersizemod8 = program->filter_size & 7;
 

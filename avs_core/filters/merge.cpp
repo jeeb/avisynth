@@ -62,11 +62,11 @@ static void weighted_merge_chroma_yuy2_sse2(BYTE *src, const BYTE *chroma, int p
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wMod16; x += 16) {
-      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x)); 
-      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(chroma+x)); 
+      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x));
+      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(chroma+x));
 
-      __m128i src_lo = _mm_unpacklo_epi16(px1, px2); 
-      __m128i src_hi = _mm_unpackhi_epi16(px1, px2); 
+      __m128i src_lo = _mm_unpacklo_epi16(px1, px2);
+      __m128i src_hi = _mm_unpackhi_epi16(px1, px2);
 
       src_lo = _mm_srli_epi16(src_lo, 8);
       src_hi = _mm_srli_epi16(src_hi, 8);
@@ -113,10 +113,10 @@ static void weighted_merge_chroma_yuy2_mmx(BYTE *src, const BYTE *chroma, int pi
       __m64 px2 = *reinterpret_cast<const __m64*>(chroma+x); //v1 y3 u1 y2 v0 y1 u0 y0
 
       __m64 src_lo = _mm_unpacklo_pi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
-      __m64 src_hi = _mm_unpackhi_pi16(px1, px2); 
+      __m64 src_hi = _mm_unpackhi_pi16(px1, px2);
 
       src_lo = _mm_srli_pi16(src_lo, 8); //00 v0 00 V0 00 u0 00 U0
-      src_hi = _mm_srli_pi16(src_hi, 8); 
+      src_hi = _mm_srli_pi16(src_hi, 8);
 
       src_lo = _mm_madd_pi16(src_lo, mask);
       src_hi = _mm_madd_pi16(src_hi, mask);
@@ -180,10 +180,10 @@ static void weighted_merge_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch
       __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(luma+x)); //v1 y3 u1 y2 v0 y1 u0 y0
 
       __m128i src_lo = _mm_unpacklo_epi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
-      __m128i src_hi = _mm_unpackhi_epi16(px1, px2); 
+      __m128i src_hi = _mm_unpackhi_epi16(px1, px2);
 
       src_lo = _mm_and_si128(src_lo, luma_mask); //00 v0 00 V0 00 u0 00 U0
-      src_hi = _mm_and_si128(src_hi, luma_mask); 
+      src_hi = _mm_and_si128(src_hi, luma_mask);
 
       src_lo = _mm_madd_epi16(src_lo, mask);
       src_hi = _mm_madd_epi16(src_hi, mask);
@@ -230,10 +230,10 @@ static void weighted_merge_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch,
       __m64 px2 = *reinterpret_cast<const __m64*>(luma+x); //v1 y3 u1 y2 v0 y1 u0 y0
 
       __m64 src_lo = _mm_unpacklo_pi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
-      __m64 src_hi = _mm_unpackhi_pi16(px1, px2); 
+      __m64 src_hi = _mm_unpackhi_pi16(px1, px2);
 
       src_lo = _mm_and_si64(src_lo, luma_mask); //00 v0 00 V0 00 u0 00 U0
-      src_hi = _mm_and_si64(src_hi, luma_mask); 
+      src_hi = _mm_and_si64(src_hi, luma_mask);
 
       src_lo = _mm_madd_pi16(src_lo, mask);
       src_hi = _mm_madd_pi16(src_hi, mask);
@@ -797,7 +797,7 @@ static void merge_plane(BYTE* srcp, const BYTE* otherp, int src_pitch, int other
         average_plane_c_float(srcp, otherp, src_pitch, other_pitch, src_rowsize, src_height);
     }
 
-  } 
+  }
   else
   {
     int weight_i;
@@ -850,7 +850,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       BYTE* srcp = src->GetWritePtr();
       const BYTE* chromap = chroma->GetReadPtr();
 
-      int src_pitch = src->GetPitch(); 
+      int src_pitch = src->GetPitch();
       int chroma_pitch = chroma->GetPitch();
 
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(chromap, 16))
@@ -895,8 +895,8 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       env->MakeWritable(&chroma);
       BYTE* chromap = chroma->GetWritePtr();
 
-      int src_pitch = src->GetPitch();  
-      int chroma_pitch = chroma->GetPitch(); 
+      int src_pitch = src->GetPitch();
+      int chroma_pitch = chroma->GetPitch();
 
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(chromap, 16) && IsPtrAligned(srcp, 16))
       {
@@ -925,7 +925,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       }
       else { // avoid the cost of 2 chroma blits
         PVideoFrame dst = env->NewVideoFrame(vi);
-        
+
         env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
         env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),chroma->GetReadPtr(PLANAR_U),chroma->GetPitch(PLANAR_U),chroma->GetRowSize(PLANAR_U),chroma->GetHeight(PLANAR_U));
         env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),chroma->GetReadPtr(PLANAR_V),chroma->GetPitch(PLANAR_V),chroma->GetRowSize(PLANAR_V),chroma->GetHeight(PLANAR_V));
@@ -993,7 +993,7 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
     BYTE* srcp = src->GetWritePtr();
     const BYTE* lumap = luma->GetReadPtr();
 
-    int isrc_pitch = src->GetPitch(); 
+    int isrc_pitch = src->GetPitch();
     int iluma_pitch = luma->GetPitch();
 
     int h = src->GetHeight();
@@ -1053,7 +1053,7 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
     }
     else { // avoid the cost of 2 chroma blits
       PVideoFrame dst = env->NewVideoFrame(vi);
-      
+
       env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),luma->GetReadPtr(PLANAR_Y),luma->GetPitch(PLANAR_Y),luma->GetRowSize(PLANAR_Y),luma->GetHeight(PLANAR_Y));
       if (src->GetRowSize(PLANAR_U) && dst->GetRowSize(PLANAR_U)) {
         env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U),src->GetHeight(PLANAR_U));

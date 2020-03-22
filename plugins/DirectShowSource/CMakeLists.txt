@@ -30,13 +30,13 @@ if (MINGW)
   set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
 endif()
 
-# Library dependencies 
+# Library dependencies
 target_link_libraries(${ProjectName} "Winmm.lib" "Quartz.lib" "Ole32.lib" "User32.lib" "Oleaut32.lib" "Advapi32.lib" ${DSHOWSRC_BASECLASSES_LIB})
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR} ${DSHOWSRC_BASECLASSES_PATH})
 
-if (MSVC_IDE)    
+if (MSVC_IDE)
   # Old v7 SDK code won't compile otherwise
   set(DELETE_THIS "/permissive-")
   STRING( REPLACE "${DELETE_THIS}" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")

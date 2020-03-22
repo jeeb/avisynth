@@ -373,7 +373,7 @@ void PresetToFPS(const char *name, const char *p, uint32_t &num, uint32_t &den, 
 	else if (lstrcmpi(p, "drop25"           ) == 0) { num = 25000; den = 1001; }
 	else if (lstrcmpi(p, "drop50"           ) == 0) { num = 50000; den = 1001; }
 	else if (lstrcmpi(p, "drop100"          ) == 0) { num =100000; den = 1001; }
-	
+
 	else if (lstrcmpi(p, "nondrop24"        ) == 0) { num =    24; den =    1; }
 	else if (lstrcmpi(p, "nondrop25"        ) == 0) { num =    25; den =    1; }
 	else if (lstrcmpi(p, "nondrop30"        ) == 0) { num =    30; den =    1; }
@@ -627,17 +627,17 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
   // n = 0x7FFFFFFF; // 31 bits
   // fa = 1001 * 60000ULL // 26 bits
   // summa 57 bits, too much, modf((double)n * fa / fb, &nsrc_f); is not enough
-  int64_t modulo = (n * fa) % fb; 
+  int64_t modulo = (n * fa) % fb;
   double frac_f = (double)modulo / fb;
   int nsrc = int(n * fa / fb);
 
   if (zone < 0) {
 
     // Mode 1: Blend full frames
- 
-    constexpr double threshold_f = 1.0 / 16.0; 
+
+    constexpr double threshold_f = 1.0 / 16.0;
     // was: 1 << (resolution - 4); // 64/1024
-    
+
     // Don't bother if the blend ratio is small
     if (frac_f < threshold_f)
       return child->GetFrame(nsrc, env);
@@ -683,7 +683,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 	// Mode 2: Switch to next frame at the scan line corresponding to the source frame's timing.
 	// If zone > 0, perform a gradual transition, i.e. blend one frame into the next
 	// over the given number of lines.
-	
+
 		PVideoFrame a = child->GetFrame(nsrc, env);
 		PVideoFrame b = child->GetFrame(nsrc+1, env);
 		const BYTE*  b_data   = b->GetReadPtr();

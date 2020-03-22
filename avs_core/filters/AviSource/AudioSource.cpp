@@ -82,7 +82,7 @@ BOOL AudioSourceWAV::init() {
 
 int AudioSourceWAV::_read(LONG lStart, LONG lCount, LPVOID buffer, LONG cbBuffer, LONG *lBytesRead, LONG *lSamplesRead) {
 	LONG lBytes = lCount * bytesPerSample;
-	
+
 	if (buffer) {
 		if (lStart != lCurrentSample)
 			if (-1 == mmioSeek(hmmioFile, chunkDATA.dwDataOffset + bytesPerSample*lStart, SEEK_SET))
@@ -190,7 +190,7 @@ int AudioSourceAVI::_read(LONG lStart, LONG lCount, LPVOID lpBuffer, LONG cbBuff
 	//
 	// AVISTREAMREAD_CONVENIENT will tell us if we're actually encountering a
 	// true read error or not.  At least for the AVI handler, it returns
-	// AVIERR_ERROR if we've broached the end.  
+	// AVIERR_ERROR if we've broached the end.
 
 	*lpBytesRead = *lpSamplesRead = 0;
 

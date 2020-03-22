@@ -7,7 +7,7 @@ AviSynth FAQ - The color format YV12 and related processing and encoding issues
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 What is YV12?

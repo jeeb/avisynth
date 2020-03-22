@@ -41,7 +41,7 @@ typedef struct {
     WORD		wPriority;
     WORD		wLanguage;
     DWORD		dwInitialFrames;
-    DWORD		dwScale;	
+    DWORD		dwScale;
     DWORD		dwRate;
     DWORD		dwStart;
     DWORD		dwLength;

@@ -41,14 +41,14 @@
 /********************************************************************
 ********************************************************************/
 
-class Trim : public GenericVideoFilter 
+class Trim : public GenericVideoFilter
 /**
   * Class to select a range of frames from a longer clip
  **/
 {
 public:
   typedef enum { Invalid = 0, Default, Length, End } trim_mode_e;
-    
+
   Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
   Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -60,8 +60,8 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);  
-  static AVSValue __cdecl CreateA(AVSValue args, void* mode, IScriptEnvironment* env);  
+  static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateA(AVSValue args, void* mode, IScriptEnvironment* env);
 
 private:
   int firstframe;
@@ -71,7 +71,7 @@ private:
 
 
 
-class FreezeFrame : public GenericVideoFilter 
+class FreezeFrame : public GenericVideoFilter
 /**
   * Class to display a single frame for the duration of several
  **/
@@ -86,7 +86,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env); 
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   const int first, last, source;
@@ -95,11 +95,11 @@ private:
 
 
 
-class DeleteFrame : public GenericVideoFilter 
+class DeleteFrame : public GenericVideoFilter
 /**
   * Class to delete a frame
  **/
-{  
+{
 public:
   DeleteFrame(int _frame, PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -119,11 +119,11 @@ private:
 
 
 
-class DuplicateFrame : public GenericVideoFilter 
+class DuplicateFrame : public GenericVideoFilter
 /**
   * Class to duplicate a frame
  **/
-{  
+{
 public:
   DuplicateFrame(int _frame, PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -143,7 +143,7 @@ private:
 
 
 
-class Splice : public GenericVideoFilter 
+class Splice : public GenericVideoFilter
 /**
   * Class to splice together video clips
  **/
@@ -168,7 +168,7 @@ private:
 
 
 
-class Dissolve : public GenericVideoFilter 
+class Dissolve : public GenericVideoFilter
 /**
   * Class to smoothly transition from one video clip to another
  **/
@@ -198,7 +198,7 @@ private:
 
 
 
-class AudioDub : public IClip {  
+class AudioDub : public IClip {
 /**
   * Class to mux the audio track of one clip with the video of another
  **/
@@ -220,7 +220,7 @@ private:
 
 
 
-class Reverse : public GenericVideoFilter 
+class Reverse : public GenericVideoFilter
 /**
   * Class to play a clip backwards
  **/

@@ -161,8 +161,8 @@ mmioFOURCC('G', '4', 00, 12); // ffmpeg GBRAP12LE
 mmioFOURCC('G', '4', 00, 14); // ffmpeg GBRAP14LE
 mmioFOURCC('G', '4', 00, 16); // ffmpeg GBRAP16LE
 */
-static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& vi, bool bInvertFrames, 
-  bool b64a, bool b48r, bool v210, 
+static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& vi, bool bInvertFrames,
+  bool b64a, bool b48r, bool v210,
   bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
   bool r210, bool R10k,
   bool v308, bool v408,
@@ -219,7 +219,7 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
         int srcpitch = frame->GetPitch();
         const BYTE *src = frame->GetPtr();
         const bool ssse3 = (env->GetCPUFlags() & CPUF_SSSE3) != 0;
-        const bool sse2 = (env->GetCPUFlags() & CPUF_SSE2) != 0; 
+        const bool sse2 = (env->GetCPUFlags() & CPUF_SSE2) != 0;
         if (ssse3)
           bgra_to_argbBE_ssse3(pdst, pitch, src, srcpitch, vi.width, vi.height);
         else if (sse2)
@@ -474,7 +474,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   } else if (pbiSrc->biCompression == MAKEFOURCC('U', 'Q', 'Y', '2')) {
     vi.pixel_type = VideoInfo::CS_YUV422P10;*/
   /* UT Video codec
-    UQRA	UtVideo Pro RGBA 10bit   RGBA 4:4:4 10bit full-range b64a 
+    UQRA	UtVideo Pro RGBA 10bit   RGBA 4:4:4 10bit full-range b64a
     UQRG	UtVideo Pro RGB 10bit    RGB  4:4:4 10bit full-range b48r (b64a)
     UQY2	UtVideo Pro YUV422 10bit YCbCr 4:2:2 10bit limited   v210
   */
@@ -634,7 +634,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = fRGB48 = fRGB64 = true;
             fYUV420P10 = true;
             fYUV420P16 = true;
-            fYUV422P10 = true; 
+            fYUV422P10 = true;
             fYUV422P16 = true;
             fYUV444P10 = true;
             fYUV444P16 = true;
@@ -1355,7 +1355,7 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
 
 bool AVISource::GetParity(int n) {
   AVS_UNUSED(n);
-  return false; 
+  return false;
 }
 
 int __stdcall AVISource::SetCacheHints(int cachehints,int frame_range)

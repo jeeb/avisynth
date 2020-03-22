@@ -16,7 +16,7 @@ class chain_list
 	};
 
 	elem * first, * last;
-	
+
 public:
 	class enumerator;
 
@@ -60,7 +60,7 @@ public:
 	{
 		modify_enum(en,first);
 	}
-	
+
 	inline T get_item(const enumerator & en) const
 	{
 		return parse_enum(en)->item;
@@ -70,7 +70,7 @@ public:
 	{
 		return parse_enum(en)->item;
 	}
-	
+
 	inline T& get_item_var(const enumerator & en)
 	{
 		return parse_enum(en)->item;
@@ -129,18 +129,18 @@ public:
 		init_first(ptr);
 		return ptr->item;
 	}
-	
+
 	class enumerator
 	{
 		const chain_list<T> & list;
 		void * ptr;
 		friend class chain_list<T>;
 	public:
-		explicit enumerator(const chain_list<T> & p_list) : list(p_list), ptr(0) {reset();}		
+		explicit enumerator(const chain_list<T> & p_list) : list(p_list), ptr(0) {reset();}
 
 		inline void reset() {list.reset(*this);}
 		inline void advance() {list.advance(*this);}
-		
+
 		inline T get_item() const {return list.get_item(*this);}
 		inline const T& get_item_ref() const {return list.get_item(*this);}
 
@@ -151,7 +151,7 @@ public:
 		inline const T& next_ref() {advance();return get_item_ref();}
 
 		inline operator bool() const {return !!ptr;}
-		
+
 	};
 
 };

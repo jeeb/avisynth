@@ -7,7 +7,7 @@ AviSynth Frequently Asked Questions
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 General information

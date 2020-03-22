@@ -52,12 +52,12 @@
  * AviSynth on what to expect - unfortunately it is not that easy.
  *
  * GetParity is made to distinguish TFF and BFF. When a given frame is
- * returning true, it means that this frame should be considered 
+ * returning true, it means that this frame should be considered
  * top field.
  * So an interlaced image always returning true must be interpreted as
  * TFF.
  *
- * SeparateFields splits out Top and Bottom frames. It returns true on 
+ * SeparateFields splits out Top and Bottom frames. It returns true on
  * GetParity for Top fields and false for Bottom fields.
  *
  **********************************************************************/
@@ -289,7 +289,7 @@ class DoubleWeaveFields : public GenericVideoFilter
 public:
   DoubleWeaveFields(PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  
+
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
@@ -391,11 +391,11 @@ private:
 
 
 
-class Fieldwise : public NonCachedGenericVideoFilter 
+class Fieldwise : public NonCachedGenericVideoFilter
 /**
   * Helper class for Bob filter
  **/
-{  
+{
 public:
   Fieldwise(PClip _child1, PClip _child2);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);

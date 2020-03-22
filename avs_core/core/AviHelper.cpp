@@ -168,7 +168,7 @@ template void ToY416_c<false>(uint8_t *outbuf, int out_pitch, const uint8_t *ypt
 template void ToY416_c<true>(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height);
 
 template<bool hasAlpha>
-void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, 
+void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch,
   const uint8_t *srcp8, int srcpitch,
   int width, int height)
 {
@@ -787,7 +787,7 @@ void v410_to_yuv444p10(BYTE* dstp_y, int dstpitch, BYTE* dstp_u, BYTE* dstp_v, i
 }
 
 void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int srcpitch,
-  const BYTE *srcp_u, const BYTE *srcp_v, int srcpitch_uv, 
+  const BYTE *srcp_u, const BYTE *srcp_v, int srcpitch_uv,
   int width, int height, int cheight, bool semi_packed_p16, IScriptEnvironment *env)
 {
   // P010/P016/P210/P216 format:
@@ -796,7 +796,7 @@ void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int s
   // n/2 lines UVUVUVUVUVUVUV (4:2:0)
   // or n lines UVUVUVUVUVUVUV (4:2:2)
   // Pitch is common. P010/P210 is upshifted to 16 bits
-  
+
   const bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
 
   // luma

@@ -20,7 +20,7 @@ public:
 	inline T* remove_by_idx(unsigned idx) {return reinterpret_cast<T*>(_ptr_list_remove_by_idx(idx));}
 	inline void filter_mask(const bit_array & mask) {_ptr_list_filter_mask(mask);}
 	inline void insert_item(T* item,unsigned idx) {_ptr_list_insert_item(const_cast<void*>(reinterpret_cast<const void*>(item)),idx);}
-	
+
 	inline unsigned add_item(T* item) {unsigned idx = get_count();insert_item(item,idx);return idx;}
 	inline void remove_mask(const bit_array & mask) {filter_mask(bit_array_not(mask));}
 	inline void remove_all() {filter_mask(bit_array_false());}
@@ -40,7 +40,7 @@ private:
 	virtual void* _ptr_list_remove_by_idx(unsigned idx) {return void_cast(remove_by_idx(idx));}
 	virtual void _ptr_list_filter_mask(const bit_array & mask) {filter_mask(mask);}
 	virtual void _ptr_list_insert_item(void* item,unsigned idx) {insert_item(item,idx);}
-public:	
+public:
 	using mem_block_list<void*>::get_count;
 	using mem_block_list<void*>::get_item;
 	using mem_block_list<void*>::remove_by_idx;
@@ -94,7 +94,7 @@ public:
 
 	inline void delete_item(T* ptr) {remove_item(ptr);delete ptr;}
 
-	inline void delete_by_idx(unsigned idx) 
+	inline void delete_by_idx(unsigned idx)
 	{
 		T* ptr = remove_by_idx(idx);
 		assert(ptr);
@@ -131,23 +131,23 @@ public:
 	{
 		ptr_list::sort((int (__cdecl *)(const void ** elem1, const void ** elem2 )) compare);
 	}
-	
-	inline bool bsearch(int (__cdecl *compare )(T* elem1, T* elem2 ),T* item,int * index) const 
+
+	inline bool bsearch(int (__cdecl *compare )(T* elem1, T* elem2 ),T* item,int * index) const
 	{
 		return ptr_list::bsearch((int (__cdecl *)(void* elem1, void* elem2 ))compare,void_cast(item),index);
 	}
 
-	inline bool bsearch_ref(int (__cdecl *compare )(T* &elem1, T* &elem2 ),T* &item,int * index) const 
+	inline bool bsearch_ref(int (__cdecl *compare )(T* &elem1, T* &elem2 ),T* &item,int * index) const
 	{
 		return ptr_list::bsearch_ref((int (__cdecl *)(void* &elem1, void* &elem2 ))compare,*(const void**)&item,index);
 	}
 
-	inline bool bsearch_range(int (__cdecl *compare )(T* elem1, T* elem2 ),T* item,int * index,int * count) const 
+	inline bool bsearch_range(int (__cdecl *compare )(T* elem1, T* elem2 ),T* item,int * index,int * count) const
 	{
 		return ptr_list::bsearch_range((int (__cdecl *)(void* elem1, void* elem2 ))compare,void_cast(item),index,count);
 	}
 
-	inline bool bsearch_param(int (__cdecl *compare )(T* elem1, const void * param ),const void * param,int * index) const 
+	inline bool bsearch_param(int (__cdecl *compare )(T* elem1, const void * param ),const void * param,int * index) const
 	{
 		return ptr_list::bsearch_param((int (__cdecl *)(void* elem1, const void* param))compare,param,index);
 	}

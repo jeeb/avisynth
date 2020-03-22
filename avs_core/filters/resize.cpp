@@ -91,12 +91,12 @@ static void vertical_reduce_sse2(BYTE* dstp, const BYTE* srcp, int dst_pitch, in
       __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x));
       __m128i src_next = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_next+x));
       __m128i src_next2 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_next2+x));
-     
+
       __m128i avg = vertical_reduce_sse2_blend(src, src_next, src_next2, zero, two);
 
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), avg);
     }
-    
+
     dstp += dst_pitch;
     srcp += src_pitch*2;
     srcp_next += src_pitch*2;
@@ -248,10 +248,10 @@ void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_p
       switch (pixelsize) {
       case 1: vertical_reduce_c<uint8_t>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
       case 2: vertical_reduce_c<uint16_t>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
-      default: //case 4: 
+      default: //case 4:
         vertical_reduce_c<float>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
       }
-    
+
 }
 
 
@@ -267,7 +267,7 @@ VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
     const int mod  = 2 << vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int mask = mod - 1;
     if (vi.height & mask)
-      env->ThrowError("VerticalReduceBy2: Planar source height must be divisible by %d.", mod);    
+      env->ThrowError("VerticalReduceBy2: Planar source height must be divisible by %d.", mod);
   }
 
   if (vi.height & 1)
@@ -277,7 +277,7 @@ VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
   vi.height >>= 1;
 
   if (vi.height<3) {
-    env->ThrowError("VerticalReduceBy2: Image too small to be reduced by 2.");    
+    env->ThrowError("VerticalReduceBy2: Image too small to be reduced by 2.");
   }
 }
 
@@ -320,7 +320,7 @@ HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
     const int mod  = 2 << vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int mask = mod - 1;
     if (vi.width & mask)
-      env->ThrowError("HorizontalReduceBy2: Planar source width must be divisible by %d.", mod);    
+      env->ThrowError("HorizontalReduceBy2: Planar source width must be divisible by %d.", mod);
   }
 
   if (vi.width & 1)
@@ -333,7 +333,7 @@ HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
   source_width = vi.width;
   vi.width >>= 1;
 }
- 
+
 template<typename pixel_t>
 static void horizontal_reduce_core(PVideoFrame& dst, PVideoFrame& src, int plane) {
 
@@ -377,12 +377,12 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       switch (pixelsize) {
         case 1: horizontal_reduce_core<uint8_t>(dst, src, plane); break;
         case 2: horizontal_reduce_core<uint16_t>(dst, src, plane); break;
-        default: // case 4: 
+        default: // case 4:
           horizontal_reduce_core<float>(dst, src, plane); break;
       }
     }
     return dst;
-  } 
+  }
 
   int src_gap = src->GetPitch() - src->GetRowSize();  //aka 'modulo' in VDub filter terminology
   int dst_gap = dst->GetPitch() - dst->GetRowSize();
@@ -516,9 +516,9 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 /**************************************
  *****  ReduceBy2 Factory Method  *****
  *************************************/
- 
 
-AVSValue __cdecl Create_ReduceBy2(AVSValue args, void*, IScriptEnvironment* env) 
+
+AVSValue __cdecl Create_ReduceBy2(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new HorizontalReduceBy2(new VerticalReduceBy2(args[0].AsClip(), env),env);
 }

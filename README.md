@@ -2,7 +2,7 @@ AviSynth+
 =========
 
 **AviSynth+** is an improved version of the [AviSynth frameserver](http://avisynth.nl/index.php/Main_Page), with improved
-features and developer friendliness. 
+features and developer friendliness.
 
 Visit our [forum thread](http://forum.doom9.org/showthread.php?t=168856) for compilation instructions and support.
 The original [homepage of the project](http://avs-plus.net) is not functional at the moment (June, 2018).
@@ -10,7 +10,7 @@ Development branch: https://github.com/AviSynth/AviSynthPlus/tree/master
 
 Building the documentation:
 ---------------------------
-(note, that the bundled documentation was not following the numerous changes in Avisynth+. 
+(note, that the bundled documentation was not following the numerous changes in Avisynth+.
 You can always check the online documentation at http://avisynth.nl/index.php/Main_Page)
 
 AviSynth+'s documentation can be generated into HTML by using Sphinx.

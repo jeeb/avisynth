@@ -51,7 +51,7 @@ class BreakStmtException
 {
 };
 
-AVSValue ExpRootBlock::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpRootBlock::Evaluate(IScriptEnvironment* env)
 {
   AVSValue retval;
 
@@ -65,14 +65,14 @@ AVSValue ExpRootBlock::Evaluate(IScriptEnvironment* env)
   return retval;
 }
 
-AVSValue ExpSequence::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
 {
     AVSValue last = a->Evaluate(env);
     if (last.IsClip()) env->SetVar("last", last);
     return b->Evaluate(env);
 }
 
-AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
 {
   try {
     SehGuard seh_guard;
@@ -103,7 +103,7 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpTryCatch::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpTryCatch::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
   try {
@@ -116,7 +116,7 @@ AVSValue ExpTryCatch::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpLine::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpLine::Evaluate(IScriptEnvironment* env)
 {
   try {
     return ExpExceptionTranslator::Evaluate(env);
@@ -127,7 +127,7 @@ AVSValue ExpLine::Evaluate(IScriptEnvironment* env)
   return 0;
 }
 
-AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -150,7 +150,7 @@ AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env)
   return result;
 }
 
-AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -180,11 +180,11 @@ AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env)
     }
   }
   while (true);
-  
+
   return result;
 }
 
-AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
 {
   const AVSValue initVal = init->Evaluate(env),
                  limitVal = limit->Evaluate(env),
@@ -228,16 +228,16 @@ AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
       env->ThrowError("for: loop variable '%s' has been assigned a non-int value", id);
     i = idVal.AsInt() + iStep;
     env->SetVar(id, i);
-  }  
+  }
   return result;  // overall result is that of final body evaluation (if any)
 }
 
-AVSValue ExpBreak::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpBreak::Evaluate(IScriptEnvironment* env)
 {
   throw BreakStmtException();
 }
 
-AVSValue ExpConditional::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpConditional::Evaluate(IScriptEnvironment* env)
 {
   AVSValue cond = If->Evaluate(env);
   if (!cond.IsBool())
@@ -256,7 +256,7 @@ AVSValue ExpReturn::Evaluate(IScriptEnvironment* env)
 
 /**** Operators ****/
 
-AVSValue ExpOr::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpOr::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   if (!x.IsBool())
@@ -270,7 +270,7 @@ AVSValue ExpOr::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpAnd::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpAnd::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   if (!x.IsBool())
@@ -284,7 +284,7 @@ AVSValue ExpAnd::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpEqual::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpEqual::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   AVSValue y = b->Evaluate(env);
@@ -361,7 +361,7 @@ AVSValue ExpDoublePlus::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpMinus::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpMinus::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   AVSValue y = b->Evaluate(env);
@@ -376,7 +376,7 @@ AVSValue ExpMinus::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpMult::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpMult::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   AVSValue y = b->Evaluate(env);
@@ -409,7 +409,7 @@ AVSValue ExpDiv::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpMod::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpMod::Evaluate(IScriptEnvironment* env)
 {
   AVSValue x = a->Evaluate(env);
   AVSValue y = b->Evaluate(env);
@@ -451,7 +451,7 @@ AVSValue ExpNot::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -473,7 +473,7 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
       {
         // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
         if (env2->GetVar(name, &result)) {
-          return result; 
+          return result;
         }
         env->ThrowError("I don't know what '%s' means.", name);
         return 0;
@@ -491,7 +491,7 @@ AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
   if (withret) {
 	  AVSValue last;
 	  AVSValue result;
-	  
+
 	  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 	  if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
 	  {
@@ -507,7 +507,7 @@ AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
 }
 
 
-AVSValue ExpGlobalAssignment::Evaluate(IScriptEnvironment* env) 
+AVSValue ExpGlobalAssignment::Evaluate(IScriptEnvironment* env)
 {
   env->SetGlobalVar(lhs, rhs->Evaluate(env));
   return AVSValue();
@@ -551,7 +551,7 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
   } catch(const IScriptEnvironment::NotFound&){}
 
   // if that fails, try with implicit "last" (except when OOP notation was used)
-  if (!oop_notation) 
+  if (!oop_notation)
   {
     try
     {

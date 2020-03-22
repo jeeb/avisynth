@@ -53,7 +53,7 @@ class MergeChroma : public GenericVideoFilter
  **/
 {
 public:
-  MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
+  MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -77,7 +77,7 @@ class MergeLuma : public GenericVideoFilter
  **/
 {
 public:
-  MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
+  MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -101,7 +101,7 @@ class MergeAll : public GenericVideoFilter
  **/
 {
 public:
-  MergeAll(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
+  MergeAll(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {

@@ -30,7 +30,7 @@ ITU-R BT.601.)
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 What are color conversion standards?

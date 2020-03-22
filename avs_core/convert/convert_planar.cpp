@@ -188,7 +188,7 @@ ConvertToY::ConvertToY(PClip src, int in_matrix, IScriptEnvironment* env) : Gene
     // Anti-Overflow correction
     if (matrix.offset_y == 0 && matrix.g + matrix.r + matrix.b != 32768)
       matrix.g = 32768 - (matrix.r + matrix.b);
-    
+
     return;
   }
 
@@ -251,19 +251,19 @@ static AVS_FORCEINLINE __m128i convert_rgb_to_y8_sse2_core(const __m128i &pixel0
   __m128i pixel_0123 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel01m), _mm_castsi128_ps(pixel23m), _MM_SHUFFLE(2, 0, 2, 0)));
   __m128i pixel_4567 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel45m), _mm_castsi128_ps(pixel67m), _MM_SHUFFLE(2, 0, 2, 0)));
 
-  pixel_0123 = _mm_add_epi32(pixel_0123, pixel_0123_r); 
-  pixel_4567 = _mm_add_epi32(pixel_4567, pixel_4567_r); 
+  pixel_0123 = _mm_add_epi32(pixel_0123, pixel_0123_r);
+  pixel_4567 = _mm_add_epi32(pixel_4567, pixel_4567_r);
 
   pixel_0123 = _mm_add_epi32(pixel_0123, round_mask);
   pixel_4567 = _mm_add_epi32(pixel_4567, round_mask);
 
-  pixel_0123 = _mm_srai_epi32(pixel_0123, 15); 
-  pixel_4567 = _mm_srai_epi32(pixel_4567, 15); 
+  pixel_0123 = _mm_srai_epi32(pixel_0123, 15);
+  pixel_4567 = _mm_srai_epi32(pixel_4567, 15);
 
   __m128i result = _mm_packs_epi32(pixel_0123, pixel_4567);
-  
+
   result = _mm_adds_epi16(result, offset);
-  result = _mm_packus_epi16(result, zero); 
+  result = _mm_packus_epi16(result, zero);
 
   return result;
 }
@@ -279,10 +279,10 @@ static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //pixels 0, 1, 2 and 3
       __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16));//pixels 4, 5, 6 and 7
 
-      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero); 
-      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero); 
-      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
-      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
+      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero);
+      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero);
+      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero);
+      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero);
 
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
     }
@@ -306,7 +306,7 @@ static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       __m128i pixel45 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+12)); //pixels 4 and 5
       __m128i pixel67 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+18)); //pixels 6 and 7
 
-      
+
       //0 0 0 0 0 0 0 0 | x x r1 g1 b1 r0 g0 b0  -> 0 x 0 x 0 r1 0 g1 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 g1 0 b1 0 r0 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 r1 0 g1 0 b1 | 0 b1 0 r0 0 g0 0 b0
       pixel01 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel01, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
       pixel23 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel23, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
@@ -328,7 +328,7 @@ static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
 #pragma warning(disable: 4799)
 static AVS_FORCEINLINE int convert_rgb_to_y8_mmx_core(const __m64 &pixel0, const __m64 &pixel1, const __m64 &pixel2, const __m64 &pixel3, __m64& zero, __m64 &matrix, __m64 &round_mask, __m64 &offset) {
   //int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
-  
+
   __m64 pixel0m = _mm_madd_pi16(pixel0, matrix); //a0*0 + r0*cyr | g0*cyg + b0*cyb
   __m64 pixel1m = _mm_madd_pi16(pixel1, matrix); //a1*0 + r1*cyr | g1*cyg + b1*cyb
   __m64 pixel2m = _mm_madd_pi16(pixel2, matrix); //a2*0 + r2*cyr | g2*cyg + b2*cyb
@@ -396,7 +396,7 @@ static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
       __m64 pixel1 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+3)); //pixel 1
       __m64 pixel2 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+6)); //pixel 2
       __m64 pixel3 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+9)); //pixel 3
-      
+
       pixel0 = _mm_unpacklo_pi8(pixel0, zero);
       pixel1 = _mm_unpacklo_pi8(pixel1, zero);
       pixel2 = _mm_unpacklo_pi8(pixel2, zero);
@@ -440,7 +440,7 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
     if (env->GetCPUFlags() & CPUF_MMX) {
       convert_yuy2_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, width, height);
     } else
-#endif 
+#endif
     {
       for (int y=0; y < height; y++) {
         for (int x=0; x < width; x++) {
@@ -614,7 +614,7 @@ ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, int in_matrix, IScriptEnvironm
 
 
   const int shift = 15; // internally 15 bits precision, still no overflow in calculations
-  
+
   int bits_per_pixel = vi.BitsPerComponent();
 
   if (in_matrix == Rec601) {
@@ -755,10 +755,10 @@ static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
       __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //pixels 0, 1, 2 and 3
       __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16));//pixels 4, 5, 6 and 7
 
-      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero); 
-      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero); 
-      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
-      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
+      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero);
+      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero);
+      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero);
+      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero);
 
       __m128i result_y = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_y, round_mask, offset);
       __m128i result_u = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_u, round_mask, v128);
@@ -821,7 +821,7 @@ static void convert_rgb24_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
       pixel01 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel01, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
       pixel23 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel23, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
       pixel45 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel45, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
-      pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1)); 
+      pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
 
       __m128i result_y = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_y, round_mask, offset);
       __m128i result_u = convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_u, round_mask, v128);
@@ -1491,7 +1491,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
     if (bits_per_pixel == 8 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp[0], 16) && IsPtrAligned(dstp[0], 16))
     {
       // integer arithmetic - quicker for the similar lane width that the float version
-      // available from 8 to 14 bits, for precision reasons used only for 8 bits. 
+      // available from 8 to 14 bits, for precision reasons used only for 8 bits.
       switch (bits_per_pixel) {
       case 8: convert_planarrgb_to_yuv_uint8_14_sse2<uint8_t, 8>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
       case 10: convert_planarrgb_to_yuv_uint8_14_sse2<uint16_t, 10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
@@ -1531,7 +1531,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
       }
       return dst;
     }
-    
+
     switch(bits_per_pixel) {
     case 8: convert_planarrgb_to_yuv_int_c<uint8_t, 8>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
     case 10: convert_planarrgb_to_yuv_int_c<uint16_t, 10>(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix); break;
@@ -2068,25 +2068,25 @@ static AVS_FORCEINLINE __m128i convert_yuv_to_rgb_sse2_core(const __m128i &px01,
 
   __m128i low_lo  = _mm_madd_epi16(px01, matrix); //xx*0 + v1*m2 | u1*m1 + y1*m0 | xx*0 + v0*m2 | u0*m1 + y0*m0
   __m128i low_hi  = _mm_madd_epi16(px23, matrix); //xx*0 + v3*m2 | u3*m1 + y3*m0 | xx*0 + v2*m2 | u2*m1 + y2*m0
-  __m128i high_lo = _mm_madd_epi16(px45, matrix); 
-  __m128i high_hi = _mm_madd_epi16(px67, matrix); 
+  __m128i high_lo = _mm_madd_epi16(px45, matrix);
+  __m128i high_hi = _mm_madd_epi16(px67, matrix);
 
   __m128i low_v  = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(low_lo), _mm_castsi128_ps(low_hi), _MM_SHUFFLE(3, 1, 3, 1))); // v3*m2 | v2*m2 | v1*m2 | v0*m2
-  __m128i high_v = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(high_lo), _mm_castsi128_ps(high_hi), _MM_SHUFFLE(3, 1, 3, 1))); 
+  __m128i high_v = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(high_lo), _mm_castsi128_ps(high_hi), _MM_SHUFFLE(3, 1, 3, 1)));
 
   __m128i low_yu  = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(low_lo), _mm_castsi128_ps(low_hi), _MM_SHUFFLE(2, 0, 2, 0))); // u3*m1 + y3*m0 | u2*m1 + y2*m0 | u1*m1 + y1*m0 | u0*m1 + y0*m0
   __m128i high_yu = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(high_lo), _mm_castsi128_ps(high_hi), _MM_SHUFFLE(2, 0, 2, 0)));
 
   __m128i t_lo = _mm_add_epi32(low_v, low_yu); // v3*m2 + u3*m1 + y3*m0...
-  __m128i t_hi = _mm_add_epi32(high_v, high_yu); 
+  __m128i t_hi = _mm_add_epi32(high_v, high_yu);
 
   t_lo = _mm_add_epi32(t_lo, round_mask); // v3*m2 + u3*m1 + y3*m0 + 4096...
   t_hi = _mm_add_epi32(t_hi, round_mask);
 
   t_lo = _mm_srai_epi32(t_lo, 13); // (v3*m2 + u3*m1 + y3*m0 + 4096) >> 13...
-  t_hi = _mm_srai_epi32(t_hi, 13); 
+  t_hi = _mm_srai_epi32(t_hi, 13);
 
-  __m128i result = _mm_packs_epi32(t_lo, t_hi); 
+  __m128i result = _mm_packs_epi32(t_lo, t_hi);
   result = _mm_packus_epi16(result, zero); //00 00 00 00 00 00 00 00 b7 b6 b5 b4 b3 b2 b1 b0
   return result;
 }
@@ -2132,12 +2132,12 @@ static void convert_yv24_to_rgb_ssse3(BYTE* dstp, const BYTE* srcY, const BYTE* 
       __m128i px23 = _mm_unpackhi_epi8(low, zero);  //xx xx 00 V3 00 U3 00 Y3 xx xx 00 V2 00 U2 00 Y2
       __m128i px45 = _mm_unpacklo_epi8(high, zero); //xx xx 00 V5 00 U5 00 Y5 xx xx 00 V4 00 U4 00 Y4
       __m128i px67 = _mm_unpackhi_epi8(high, zero); //xx xx 00 V7 00 U7 00 Y7 xx xx 00 V6 00 U6 00 Y6
-      
-      px01 = _mm_add_epi16(px01, offset); 
-      px23 = _mm_add_epi16(px23, offset); 
+
+      px01 = _mm_add_epi16(px01, offset);
+      px23 = _mm_add_epi16(px23, offset);
       px45 = _mm_add_epi16(px45, offset);
       px67 = _mm_add_epi16(px67, offset);
-      
+
       __m128i result_b = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_b, round_mask); //00 00 00 00 00 00 00 00 b7 b6 b5 b4 b3 b2 b1 b0
       __m128i result_g = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_g, round_mask); //00 00 00 00 00 00 00 00 g7 g6 g5 g4 g3 g2 g1 g0
       __m128i result_r = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_r, round_mask); //00 00 00 00 00 00 00 00 r7 r6 r5 r4 r3 r2 r1 r0
@@ -2315,25 +2315,25 @@ static AVS_FORCEINLINE __m64 convert_yuv_to_rgb_mmx_core(const __m64 &px0, const
 
   __m64 low_lo  = _mm_madd_pi16(px0, matrix); //xx*0 + v1*m2 | u1*m1 + y1*m0 | xx*0 + v0*m2 | u0*m1 + y0*m0
   __m64 low_hi  = _mm_madd_pi16(px1, matrix); //xx*0 + v3*m2 | u3*m1 + y3*m0 | xx*0 + v2*m2 | u2*m1 + y2*m0
-  __m64 high_lo = _mm_madd_pi16(px2, matrix); 
-  __m64 high_hi = _mm_madd_pi16(px3, matrix); 
+  __m64 high_lo = _mm_madd_pi16(px2, matrix);
+  __m64 high_hi = _mm_madd_pi16(px3, matrix);
 
   __m64 low_v = _mm_unpackhi_pi32(low_lo, low_hi); // v1*m2 | v0*m2
   __m64 high_v = _mm_unpackhi_pi32(high_lo, high_hi);
 
   __m64 low_yu = _mm_unpacklo_pi32(low_lo, low_hi); // u1*m1 + y1*m0 | u0*m1 + y0*m0
-  __m64 high_yu = _mm_unpacklo_pi32(high_lo, high_hi); 
+  __m64 high_yu = _mm_unpacklo_pi32(high_lo, high_hi);
 
   __m64 t_lo = _mm_add_pi32(low_v, low_yu); // v3*m2 + u3*m1 + y3*m0...
-  __m64 t_hi = _mm_add_pi32(high_v, high_yu); 
+  __m64 t_hi = _mm_add_pi32(high_v, high_yu);
 
   t_lo = _mm_add_pi32(t_lo, round_mask); // v3*m2 + u3*m1 + y3*m0 + 4096...
   t_hi = _mm_add_pi32(t_hi, round_mask);
 
   t_lo = _mm_srai_pi32(t_lo, 13); // (v3*m2 + u3*m1 + y3*m0 + 4096) >> 13...
-  t_hi = _mm_srai_pi32(t_hi, 13); 
+  t_hi = _mm_srai_pi32(t_hi, 13);
 
-  __m64 result = _mm_packs_pi32(t_lo, t_hi); 
+  __m64 result = _mm_packs_pi32(t_lo, t_hi);
   result = _mm_packs_pu16(result, zero); //00 00 00 00 b3 b2 b1 b0
   return result;
 }
@@ -2372,8 +2372,8 @@ static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* sr
       __m64 px2 = _mm_unpacklo_pi8(high, zero); //xx xx 00 V2 00 U2 00 Y2
       __m64 px3 = _mm_unpackhi_pi8(high, zero); //xx xx 00 V3 00 U3 00 Y3
 
-      px0 = _mm_add_pi16(px0, offset); 
-      px1 = _mm_add_pi16(px1, offset); 
+      px0 = _mm_add_pi16(px0, offset);
+      px1 = _mm_add_pi16(px1, offset);
       px2 = _mm_add_pi16(px2, offset);
       px3 = _mm_add_pi16(px3, offset);
 
@@ -2791,7 +2791,7 @@ static void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_
 {
   width /= 2;
 
-  for (size_t y = 0; y < height; ++y) { 
+  for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; x += 4) {
       __m64 p0 = *reinterpret_cast<const __m64*>(srcp + x * 4);     // V1 Y3 U1 Y2 V0 Y1 U0 Y0
       __m64 p1 = *reinterpret_cast<const __m64*>(srcp + x * 4 + 8); // V3 Y7 U3 Y6 V2 Y5 U2 Y4
@@ -2821,7 +2821,7 @@ static void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u,
 {
   width /= 2;
 
-  for (size_t y = 0; y < height; ++y) { 
+  for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
       dstp_y[x * 2]     = srcp[x * 4 + 0];
       dstp_y[x * 2 + 1] = srcp[x * 4 + 2];
@@ -2847,17 +2847,17 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
 
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
     convert_yuy2_to_yv16_sse2(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
-  } 
+  }
   else
 #ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX) { 
+  if (env->GetCPUFlags() & CPUF_MMX) {
     convert_yuy2_to_yv16_mmx(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
   } else
 #endif
   {
     convert_yuy2_to_yv16_c(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
   }
-  
+
   return dst;
 }
 
@@ -2885,9 +2885,9 @@ void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYT
 {
   width /= 2;
 
-  for (size_t yy=0; yy<height; yy++) { 
+  for (size_t yy=0; yy<height; yy++) {
     for (size_t x=0; x<width; x+=8) {
-      
+
       __m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_y + x*2));
       __m128i u = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp_u + x));
       __m128i v = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp_v + x));
@@ -2912,7 +2912,7 @@ void convert_yv16_to_yuy2_mmx(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE
 {
   width /= 2;
 
-  for (size_t y=0; y<height; y++) { 
+  for (size_t y=0; y<height; y++) {
     for (size_t x=0; x<width; x+=4) {
       __m64 y = *reinterpret_cast<const __m64*>(srcp_y + x*2);
       __m64 u = *reinterpret_cast<const __m64*>(srcp_u + x);
@@ -2965,14 +2965,14 @@ PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env
     convert_yv16_to_yuy2_sse2(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   } else
 #ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX) { 
+  if (env->GetCPUFlags() & CPUF_MMX) {
     convert_yv16_to_yuy2_mmx(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   } else
 #endif
   {
     convert_yv16_to_yuy2_c(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), vi.width, vi.height);
   }
-  
+
   return dst;
 }
 

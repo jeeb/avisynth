@@ -43,7 +43,7 @@
 *********************************************************/
 
 
-class Tokenizer 
+class Tokenizer
 /**
   * Breaks up scripts into tokens
  **/
@@ -66,7 +66,7 @@ public:
   inline bool IsEOF() const { return type == 0; }
 
   bool IsIdentifier(const char* id) const;
-  inline bool IsOperator(int o) const 
+  inline bool IsOperator(int o) const
     { return IsOperator() && o == op; }
 
   const char* AsIdentifier() const { AssertType('d'); return identifier; }
@@ -87,13 +87,13 @@ private:
   void GetNumber();
   void AssertType(char expected_type) const;
   void SetToOperator(int o);
-  
+
   IScriptEnvironment* const env;
   const char* token_start;
   const char* pc;
   int line;
   char type;   // i'd'entifier, 'o'perator, 'i'nt, 'f'loat, 's'tring, 'n'ewline, 'a'rray, 0=eof
-  union 
+  union
   {
     const char* identifier;
     const char* string;

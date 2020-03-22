@@ -77,4 +77,3 @@ EXPORTS
   avs_is_yuva
   avs_is_planar_rgb
   avs_is_planar_rgba
-  

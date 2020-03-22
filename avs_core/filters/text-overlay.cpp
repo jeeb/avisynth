@@ -1581,7 +1581,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
   if (y==-7) real_y = (vi.height>>1)*8;
 
   if (utf8) {
-    // Test: 
+    // Test:
     // Title="Cherry blossom "+CHR($E6)+CHR($A1)+CHR($9C)+CHR($E3)+CHR($81)+CHR($AE)+CHR($E8)+CHR($8A)+CHR($B1)
     // SubTitle(Title, utf8 = true)
     auto textw = Utf8ToWideChar(text);
@@ -1709,7 +1709,7 @@ static int CalcFontSizeForInfo(int w, int h, bool autolarge, int upper_limit)
     h_restricted_font_size = reference_font_size;
 
   int effective_font_size = (w_restricted_font_size < h_restricted_font_size) ? w_restricted_font_size : h_restricted_font_size;
-  
+
   effective_font_size = std::max(effective_font_size, min_font_size);
   if (upper_limit > 0)
     effective_font_size = std::min(effective_font_size, max_font_size);

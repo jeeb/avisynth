@@ -58,14 +58,14 @@ class Antialiaser
 /**
   * Helper class to anti-alias text
  **/
-{  
+{
 public:
   Antialiaser(int width, int height, const char fontname[], int size,
 	  int textcolor, int halocolor, int font_width=0, int font_angle=0, bool _interlaced=false);
   virtual ~Antialiaser();
   HDC GetDC();
   void FreeDC();
-  
+
   void Apply(const VideoInfo& vi, PVideoFrame* frame, int pitch);
 
 private:
@@ -75,7 +75,7 @@ private:
   void ApplyPlanar(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU, int shiftX, int shiftY, int pixelsize, bool isRGB);
   void ApplyYUY2(BYTE* buf, int pitch);
   void ApplyRGB24_48(BYTE* buf, int pitch, int pixelsize);
-  void ApplyRGB32_64(BYTE* buf, int pitch, int pixelsize);  
+  void ApplyRGB32_64(BYTE* buf, int pitch, int pixelsize);
 
   void* lpAntialiasBits;
   unsigned short* alpha_calcs;
@@ -93,11 +93,11 @@ private:
 #endif
 
 
-class ShowFrameNumber : public GenericVideoFilter 
+class ShowFrameNumber : public GenericVideoFilter
 /**
   * Class to display frame number on a video clip
  **/
-{  
+{
 public:
   ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[], int _size,
 			int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env);
@@ -125,7 +125,7 @@ private:
 
 
 
-class ShowSMPTE : public GenericVideoFilter 
+class ShowSMPTE : public GenericVideoFilter
 /**
   * Class to display SMPTE codes on a video clip
  **/
@@ -166,13 +166,13 @@ class Subtitle : public GenericVideoFilter
  **/
 {
 public:
-  Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe, int _lastframe, 
-            const char _fontname[], int _size, int _textcolor, int _halocolor, int _align, 
+  Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe, int _lastframe,
+            const char _fontname[], int _size, int _textcolor, int _halocolor, int _align,
             int _spc, bool _multiline, int _lsp, int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, IScriptEnvironment* env);
   virtual ~Subtitle(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -182,7 +182,7 @@ public:
 
 private:
   void InitAntialiaser(IScriptEnvironment* env);
-  
+
   const int x, y, firstframe, lastframe, size, lsp, font_width, font_angle;
   const bool multiline, interlaced;
   const int textcolor, halocolor, align, spc;
@@ -190,7 +190,7 @@ private:
   const char* const text;
   const char* const font_filename;
   const bool utf8;
-  Antialiaser* antialiaser;  
+  Antialiaser* antialiaser;
 };
 #endif
 
@@ -231,7 +231,7 @@ private:
   std::unique_ptr<BitmapFont> current_font;
 };
 
-class FilterInfo : public GenericVideoFilter 
+class FilterInfo : public GenericVideoFilter
 /**
   * FilterInfo creation class
  **/
@@ -241,8 +241,8 @@ public:
   virtual ~FilterInfo(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
-  
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -316,10 +316,10 @@ private:
 
 /**** Helper functions ****/
 
-void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, 
+void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
                    int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env );
 
-bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold, 
+bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold,
                          bool italic, int align, int* width, int* height );
 
 bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, bool bold,

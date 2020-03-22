@@ -50,14 +50,14 @@ SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
   if ((target_rate==vi.audio_samples_per_second)||(vi.audio_samples_per_second==0)) {
 		skip_conversion=true;
 		return;
-	} 
+	}
 
   skip_conversion = false;
   source_rate = vi.audio_samples_per_second;
 
   factor = double(target_rate) / vi.audio_samples_per_second;
   vi.num_audio_samples = (vi.num_audio_samples * target_rate + vi.audio_samples_per_second - 1) / vi.audio_samples_per_second; // Ceil
- 
+
   res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2,1, fast);
 
   if (!res)
@@ -78,9 +78,9 @@ SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
 
  /***************************************
  * Implementation notes:
- * - For some strange reason SSRC delivers a 
+ * - For some strange reason SSRC delivers a
  * loud click in the very beginning of the sample.
- *   Therefore we preroll a second of audio whenever 
+ *   Therefore we preroll a second of audio whenever
  * a new instance is created.
  ****************************************/
 
@@ -103,7 +103,7 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
       }
     }
 
-    if (!skip_restart)  { 
+    if (!skip_restart)  {
       inputReadOffset = (start * source_rate / target_rate) -  input_samples;  // Floor, Reset at new read position minus ONE second.
       res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2, 1, fast);
       _RPT2(0, "SSRC: Resetting position. Next_sample: %d. Start:%d.!\n", (int)next_sample, (int)start);

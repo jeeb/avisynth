@@ -51,7 +51,7 @@ private:
   void FillAudioZeros(void* buf, int start_offset, int count);
 
 public:
-#ifdef _DEBUG  
+#ifdef _DEBUG
   std::string FuncName = ""; // P.F. Invoked function's name whose queue owns the cache object
 #endif
   Cache(const PClip& child, IScriptEnvironment* env);

@@ -6,7 +6,7 @@ Parity
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 .. _AssumeFrameField:

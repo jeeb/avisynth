@@ -59,11 +59,11 @@ void* BufferPool::PrivateAlloc(size_t nBytes, size_t alignment, void* user)
 
   size_t offset = NUM_EXTRA_FIELDS * sizeof(void*) + alignment - 1;
   nBytes += offset;
-  
+
   void *orig = malloc(nBytes);
   if (orig == NULL)
     return NULL;
-   
+
   void **aligned = (void**)(((uintptr_t)orig + (uintptr_t)offset) & (~(uintptr_t)(alignment-1)));
   aligned[-5] = (void*)BUFFER_GUARD_VALUE;
   aligned[-4] = user;

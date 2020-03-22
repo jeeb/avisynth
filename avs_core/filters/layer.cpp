@@ -149,18 +149,18 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
 static AVS_FORCEINLINE __m128i mask_core_sse2(__m128i &src, __m128i &alpha, __m128i &not_alpha_mask, __m128i &zero, __m128i &matrix, __m128i &round_mask) {
   __m128i not_alpha = _mm_and_si128(src, not_alpha_mask);
 
-  __m128i pixel0 = _mm_unpacklo_epi8(alpha, zero); 
+  __m128i pixel0 = _mm_unpacklo_epi8(alpha, zero);
   __m128i pixel1 = _mm_unpackhi_epi8(alpha, zero);
 
-  pixel0 = _mm_madd_epi16(pixel0, matrix); 
-  pixel1 = _mm_madd_epi16(pixel1, matrix); 
+  pixel0 = _mm_madd_epi16(pixel0, matrix);
+  pixel1 = _mm_madd_epi16(pixel1, matrix);
 
   __m128i tmp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel0), _mm_castsi128_ps(pixel1), _MM_SHUFFLE(3, 1, 3, 1)));
   __m128i tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel0), _mm_castsi128_ps(pixel1), _MM_SHUFFLE(2, 0, 2, 0)));
 
   tmp = _mm_add_epi32(tmp, tmp2);
-  tmp = _mm_add_epi32(tmp, round_mask); 
-  tmp = _mm_srli_epi32(tmp, 15); 
+  tmp = _mm_add_epi32(tmp, round_mask);
+  tmp = _mm_srli_epi32(tmp, 15);
   __m128i result_alpha = _mm_slli_epi32(tmp, 24);
 
   return _mm_or_si128(result_alpha, not_alpha);
@@ -177,15 +177,15 @@ static void mask_sse2(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_p
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width_mod16; x+=16) {
-      __m128i src    = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x)); 
-      __m128i alpha  = _mm_load_si128(reinterpret_cast<const __m128i*>(alphap+x)); 
+      __m128i src    = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x));
+      __m128i alpha  = _mm_load_si128(reinterpret_cast<const __m128i*>(alphap+x));
       __m128i result = mask_core_sse2(src, alpha, not_alpha_mask, zero, matrix, round_mask);
 
       _mm_store_si128(reinterpret_cast<__m128i*>(srcp+x), result);
     }
 
     if (width_mod16 < width_bytes) {
-      __m128i src    = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width_bytes-16)); 
+      __m128i src    = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width_bytes-16));
       __m128i alpha  = _mm_loadu_si128(reinterpret_cast<const __m128i*>(alphap+width_bytes-16));
       __m128i result = mask_core_sse2(src, alpha, not_alpha_mask, zero, matrix, round_mask);
 
@@ -202,7 +202,7 @@ static void mask_sse2(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_p
 static AVS_FORCEINLINE __m64 mask_core_mmx(__m64 &src, __m64 &alpha, __m64 &not_alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
   __m64 not_alpha = _mm_and_si64(src, not_alpha_mask);
 
-  __m64 pixel0 = _mm_unpacklo_pi8(alpha, zero); 
+  __m64 pixel0 = _mm_unpacklo_pi8(alpha, zero);
   __m64 pixel1 = _mm_unpackhi_pi8(alpha, zero);
 
   pixel0 = _mm_madd_pi16(pixel0, matrix); //a0*0 + r0*cyr | g0*cyg + b0*cyb
@@ -231,15 +231,15 @@ static void mask_mmx(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pi
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width_mod8; x+=8) {
       __m64 src    = *reinterpret_cast<const __m64*>(srcp+x); //pixels 0 and 1
-      __m64 alpha  = *reinterpret_cast<const __m64*>(alphap+x); 
+      __m64 alpha  = *reinterpret_cast<const __m64*>(alphap+x);
       __m64 result = mask_core_mmx(src, alpha, not_alpha_mask, zero, matrix, round_mask);
 
       *reinterpret_cast<__m64*>(srcp+x) = result;
     }
 
     if (width_mod8 < width_bytes) {
-      __m64 src    = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width_bytes-4)); 
-      __m64 alpha  = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(alphap+width_bytes-4)); 
+      __m64 src    = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width_bytes-4));
+      __m64 alpha  = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(alphap+width_bytes-4));
 
       __m64 result = mask_core_mmx(src, alpha, not_alpha_mask, zero, matrix, round_mask);
 
@@ -413,8 +413,8 @@ static void colorkeymask_sse2(BYTE* pf, int pitch, int color, int height, int wi
   while (pf < endp)
   {
     __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(pf));
-    __m128i gt = _mm_subs_epu8(colorv, src); 
-    __m128i lt = _mm_subs_epu8(src, colorv); 
+    __m128i gt = _mm_subs_epu8(colorv, src);
+    __m128i lt = _mm_subs_epu8(src, colorv);
     __m128i absdiff = _mm_or_si128(gt, lt); //abs(color - src)
 
     __m128i not_passed = _mm_subs_epu8(absdiff, tolerance);
@@ -431,8 +431,8 @@ static void colorkeymask_sse2(BYTE* pf, int pitch, int color, int height, int wi
 #ifdef X86_32
 
 static AVS_FORCEINLINE __m64 colorkeymask_core_mmx(const __m64 &src, const __m64 &colorv, const __m64 &tolerance, const __m64 &zero) {
-  __m64 gt = _mm_subs_pu8(colorv, src); 
-  __m64 lt = _mm_subs_pu8(src, colorv); 
+  __m64 gt = _mm_subs_pu8(colorv, src);
+  __m64 lt = _mm_subs_pu8(src, colorv);
   __m64 absdiff = _mm_or_si64(gt, lt); //abs(color - src)
 
   __m64 not_passed = _mm_subs_pu8(absdiff, tolerance);
@@ -790,7 +790,7 @@ static void invert_frame_uint16_sse2(BYTE* frame, int pitch, int width, int heig
 #ifdef X86_32
 
 //mod4 width (in bytes) is required
-static void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int mask) 
+static void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int mask)
 {
   __m64 maskv = _mm_set1_pi32(mask);
   int mod8_width = width / 8 * 8;
@@ -801,7 +801,7 @@ static void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int 
       __m64 inv = _mm_xor_si64(src, maskv);
       *reinterpret_cast<__m64*>(frame+x) = inv;
     }
-    
+
     if (mod8_width != width) {
       //last four pixels
       __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(frame+width-4));
@@ -813,7 +813,7 @@ static void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int 
   _mm_empty();
 }
 
-static void invert_plane_mmx(BYTE* frame, int pitch, int width, int height) 
+static void invert_plane_mmx(BYTE* frame, int pitch, int width, int height)
 {
 #pragma warning(push)
 #pragma warning(disable: 4309)
@@ -920,7 +920,7 @@ static void invert_frame(BYTE* frame, int pitch, int rowsize, int height, int ma
     invert_frame_mmx(frame, pitch, rowsize, height, mask);
   }
 #endif
-  else 
+  else
   {
     if(pixelsize == 1)
       invert_frame_c(frame, pitch, rowsize, height, mask);
@@ -943,7 +943,7 @@ static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pi
     invert_plane_mmx(frame, pitch, rowsize, height);
   }
 #endif
-  else 
+  else
   {
     if(pixelsize == 1)
       invert_plane_c(frame, pitch, rowsize, height);
@@ -1288,8 +1288,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           switch (pixelsize) {
           case 1: fill_chroma<BYTE>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
-          case 4: 
-            fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, chroma_center_f); 
+          case 4:
+            fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, chroma_center_f);
             break;
           }
         }
@@ -1477,7 +1477,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           switch (pixelsize) {
           case 1: fill_chroma<uint8_t>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
-          case 4: 
+          case 4:
             fill_chroma<float>(dstp_u, dstp_v, dstheight, dstpitch, chroma_center_f);
             break;
           }
@@ -1804,7 +1804,7 @@ MergeRGB::MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _a
     env->ThrowError("MergeRGB: supports the following output pixel types: RGB24, RGB32, RGB48, RGB64");
   }
 
-  if ((vi.ComponentSize() != viB.ComponentSize()) || (vi.ComponentSize() != viG.ComponentSize()) || 
+  if ((vi.ComponentSize() != viB.ComponentSize()) || (vi.ComponentSize() != viG.ComponentSize()) ||
       (vi.ComponentSize() != viR.ComponentSize()) || (vi.ComponentSize() != viA.ComponentSize()))
       env->ThrowError("%s: All clips must have the same bit depth.", myname);
 
@@ -1995,7 +1995,7 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
 AVSValue MergeRGB::Create(AVSValue args, void* mode, IScriptEnvironment* env)
 {
   if (mode) // ARGB
-    return new MergeRGB(args[0].AsClip(), args[3].AsClip(), args[2].AsClip(), args[1].AsClip(), args[0].AsClip(), "", env); 
+    return new MergeRGB(args[0].AsClip(), args[3].AsClip(), args[2].AsClip(), args[1].AsClip(), args[0].AsClip(), "", env);
   else      // RGB[type]
     return new MergeRGB(args[0].AsClip(), args[2].AsClip(), args[1].AsClip(), args[0].AsClip(), 0, args[3].AsString(""), env);
   // default pixel_type now dynamic by bit_depth: RGB32 or RGB64
@@ -2033,8 +2033,8 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   if (levelSpecified)
   {
     if (hasAlpha)
-      opacity = (float)levelB / ((1 << bits_per_pixel) + 1); // gives 1.0f for 257 (@8bit) and 65537 (@16 bits) 
-      // originally levelB was used in formula: (alpha*level + 1) / range_size, 
+      opacity = (float)levelB / ((1 << bits_per_pixel) + 1); // gives 1.0f for 257 (@8bit) and 65537 (@16 bits)
+      // originally levelB was used in formula: (alpha*level + 1) / range_size,
       // now level is calculated from opacity as: level = opacity * ((1 << bits_per_pixel) + 1)
     else
       opacity = (float)levelB / ((1 << bits_per_pixel)); // YUY2 or other non-Alpha, gives 1.0f for 256 (@8bit)
@@ -2128,7 +2128,7 @@ static void layer_yuy2_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int
 
       //it's fine, don't optimize
       chroma = _mm_srli_epi16(chroma, 8);
-      chroma = _mm_slli_epi16(chroma, 8); 
+      chroma = _mm_slli_epi16(chroma, 8);
 
       __m128i dst = _mm_or_si128(luma, chroma);
       dst = _mm_add_epi8(src, dst);
@@ -2151,7 +2151,7 @@ static void layer_yuy2_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int
 
 #ifdef X86_32
 template<bool use_chroma>
-static AVS_FORCEINLINE __m64 layer_yuy2_mul_mmx_core(const __m64 &src, const __m64 &ovr, const __m64 &luma_mask, 
+static AVS_FORCEINLINE __m64 layer_yuy2_mul_mmx_core(const __m64 &src, const __m64 &ovr, const __m64 &luma_mask,
                                        const __m64 &alpha, const __m64 &half_alpha, const __m64 &v128) {
   __m64 src_luma = _mm_and_si64(src, luma_mask);
   __m64 ovr_luma = _mm_and_si64(ovr, luma_mask);
@@ -2176,7 +2176,7 @@ static AVS_FORCEINLINE __m64 layer_yuy2_mul_mmx_core(const __m64 &src, const __m
 
   //it's fine, don't optimize
   chroma = _mm_srli_pi16(chroma, 8);
-  chroma = _mm_slli_pi16(chroma, 8); 
+  chroma = _mm_slli_pi16(chroma, 8);
 
   __m64 dst = _mm_or_si64(luma, chroma);
   return _mm_add_pi8(src, dst);
@@ -2214,7 +2214,7 @@ static void layer_yuy2_mul_mmx(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int 
 #endif
 
 template<bool use_chroma>
-static void layer_yuy2_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_yuy2_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       // luma
@@ -2236,7 +2236,7 @@ static void layer_yuy2_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
 }
 
 // YUV(A) mul 8-16 bits
-// when chroma is processed, one can use/not use source chroma, 
+// when chroma is processed, one can use/not use source chroma,
 // Only when use_alpha: maskMode defines mask generation for chroma planes
 // When use_alpha == false maskMode ignored
 template<MaskMode maskMode, typename pixel_t, int bits_per_pixel, bool is_chroma, bool use_chroma, bool has_alpha>
@@ -2320,13 +2320,13 @@ static void layer_yuv_mul_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, 
       if constexpr(!is_chroma)
         dstp[x] = (pixel_t)(dstp[x] + ((((((calc_t)ovrp[x] * dstp[x]) >> bits_per_pixel) - dstp[x]) * alpha_mask) >> bits_per_pixel));
       else if constexpr(use_chroma) {
-        // chroma mode + process chroma 
+        // chroma mode + process chroma
         dstp[x] = (pixel_t)(dstp[x] + (((calc_t)(ovrp[x] - dstp[x]) * alpha_mask) >> bits_per_pixel));
         // U = U + ( ((Uovr - U)*level) >> 8 )
         // V = V + ( ((Vovr - V)*level) >> 8 )
       }
       else {
-        // non-chroma mode + process chroma 
+        // non-chroma mode + process chroma
         constexpr int half = 1 << (bits_per_pixel - 1);
         dstp[x] = (pixel_t)(dstp[x] + (((calc_t)(half - dstp[x]) * (alpha_mask / 2)) >> bits_per_pixel));
         // U = U + ( ((128 - U)*(level/2)) >> 8 )
@@ -2421,13 +2421,13 @@ static void layer_yuv_mul_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8
       if constexpr (!is_chroma)
         dstp[x] = dstp[x] + (ovrp[x] * dstp[x] - dstp[x]) * alpha_mask;
       else if constexpr(use_chroma) {
-        // chroma mode + process chroma 
+        // chroma mode + process chroma
         dstp[x] = dstp[x] + (ovrp[x] - dstp[x]) * alpha_mask;
         // U = U + ( ((Uovr - U)*level) >> 8 )
         // V = V + ( ((Vovr - V)*level) >> 8 )
       }
       else {
-        // non-chroma mode + process chroma 
+        // non-chroma mode + process chroma
         constexpr float half = 0.0f;
         dstp[x] = dstp[x] + (half - dstp[x]) * (alpha_mask * 0.5f);
         // U = U + ( ((128 - U)*(level/2)) >> 8 )
@@ -2466,8 +2466,8 @@ static void layer_yuy2_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int
       ovr = _mm_unpacklo_epi8(ovr, zero);
 
       if (!use_chroma) {
-        ovr = _mm_and_si128(ovr, luma_mask); 
-        ovr = _mm_or_si128(ovr, v128); 
+        ovr = _mm_and_si128(ovr, luma_mask);
+        ovr = _mm_or_si128(ovr, v128);
       }
 
       __m128i diff = _mm_subs_epi16(ovr, src);
@@ -2535,7 +2535,7 @@ static void layer_yuy2_add_mmx(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int 
 #endif
 
 template<bool use_chroma>
-static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   constexpr int rounder = 128;
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
@@ -3012,7 +3012,7 @@ static void layer_yuy2_subtract_mmx(BYTE* dstp, const BYTE* ovrp, int dst_pitch,
 #endif
 
 template<bool use_chroma>
-static void layer_yuy2_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_yuy2_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   constexpr int rounder = 128;
 
   for (int y = 0; y < height; ++y) {
@@ -3096,7 +3096,7 @@ static void layer_yuy2_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst
   __m64 alpha = _mm_set1_pi16(level);
   __m64 zero = _mm_setzero_si64();
   __m64 threshold = _mm_set1_pi16(thresh);
-  
+
   constexpr int rounder = 128;
   const __m64 rounder_simd = _mm_set1_pi16(rounder);
 
@@ -3138,7 +3138,7 @@ static void layer_yuy2_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst
 #endif
 
 template<int mode>
-static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
   constexpr int rounder = 128;
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
@@ -3164,7 +3164,7 @@ template<int mode, MaskMode maskMode, typename pixel_t, int bits_per_pixel, bool
 static void layer_yuv_lighten_darken_c(
   BYTE* dstp8, BYTE* dstp8_u, BYTE* dstp8_v,/* BYTE* dstp8_a,*/
   const BYTE* ovrp8, const BYTE* ovrp8_u, const BYTE* ovrp8_v, const BYTE* maskp8,
-  int dst_pitch, int dst_pitchUV, 
+  int dst_pitch, int dst_pitchUV,
   int overlay_pitch, int overlay_pitchUV,
   int mask_pitch,
   int width, int height, int level, int thresh) {
@@ -3351,7 +3351,7 @@ static void layer_yuv_lighten_darken_c(
   // make luma
   if constexpr(!lumaonly && maskMode != MASK444)
     layer_yuv_lighten_darken_c<mode, MASK444, pixel_t, bits_per_pixel, allow_leftminus1, true /* lumaonly*/, has_alpha>(
-      dstp8, dstp8_u, dstp8_v, //dstp8_a, 
+      dstp8, dstp8_u, dstp8_v, //dstp8_a,
       ovrp8, ovrp8_u, ovrp8_v, maskp8,
       dst_pitch, dst_pitchUV, overlay_pitch, overlay_pitchUV, mask_pitch,
       width, height, level, thresh);
@@ -3545,7 +3545,7 @@ static void layer_yuv_lighten_darken_f_c(
   // make luma
   if constexpr (!lumaonly && maskMode != MASK444)
     layer_yuv_lighten_darken_f_c<mode, MASK444, allow_leftminus1, true /* lumaonly*/, has_alpha>(
-      dstp8, dstp8_u, dstp8_v, //dstp8_a, 
+      dstp8, dstp8_u, dstp8_v, //dstp8_a,
       ovrp8, ovrp8_u, ovrp8_v, maskp8,
       dst_pitch, dst_pitchUV, overlay_pitch, overlay_pitchUV, mask_pitch,
       width, height, opacity, thresh);
@@ -3566,7 +3566,7 @@ static AVS_FORCEINLINE __m128i calculate_monochrome_alpha_sse2(const __m128i &sr
 
 static AVS_FORCEINLINE __m128i calculate_luma_sse2(const __m128i &src, const __m128i &rgb_coeffs, const __m128i &zero) {
   AVS_UNUSED(zero);
-  __m128i temp = _mm_madd_epi16(src, rgb_coeffs); 
+  __m128i temp = _mm_madd_epi16(src, rgb_coeffs);
   __m128i low = _mm_shuffle_epi32(temp, _MM_SHUFFLE(3, 3, 1, 1));
   temp = _mm_add_epi32(low, temp);
   temp = _mm_srli_epi32(temp, 15);
@@ -3585,7 +3585,7 @@ static AVS_FORCEINLINE __m64 calculate_luma_isse(const __m64 &src, const __m64 &
 #endif
 
 template<bool use_chroma>
-static void layer_rgb32_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_rgb32_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   int mod2_width = width / 2 * 2;
 
   __m128i zero = _mm_setzero_si128();
@@ -3648,7 +3648,7 @@ static void layer_rgb32_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
 
 #ifdef X86_32
 template<bool use_chroma>
-static void layer_rgb32_mul_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_rgb32_mul_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   __m64 zero = _mm_setzero_si64();
   __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
 
@@ -3934,7 +3934,7 @@ static void layer_rgb32_add_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
       dst = _mm_add_pi16(dst, rounder_simd);
       dst = _mm_srli_pi16(dst, 8);
       dst = _mm_add_pi8(src, dst);
-      
+
       dst = _mm_packs_pu16(dst, zero);
 
       *reinterpret_cast<int*>(dstp+x*4) = _mm_cvtsi64_si32(dst);
@@ -4173,7 +4173,7 @@ static void layer_rgb32_fast_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, i
 #endif
 
 template<typename pixel_t>
-static void layer_rgb32_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_rgb32_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   layer_genericplane_fast_c<pixel_t>(dstp, ovrp, dst_pitch, overlay_pitch, width*4, height, level);
 }
 
@@ -4345,7 +4345,7 @@ static void layer_rgb32_subtract_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch
 
 
 template<int mode>
-static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
   int mod2_width = width / 2 * 2;
 
   __m128i zero = _mm_setzero_si128();
@@ -4416,7 +4416,7 @@ static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int ds
 
 #ifdef X86_32
 template<int mode>
-static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
   __m64 zero = _mm_setzero_si64();
   __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
   __m64 threshold = _mm_set1_pi16(thresh);
@@ -4611,7 +4611,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
   env->MakeWritable(&src1);
 
   const int mylevel = hasAlpha ? (int)(opacity * ((1 << bits_per_pixel) + 1) + 0.5f) : (int)(opacity * (1 << bits_per_pixel) + 0.5f);
-    // Alpha mode: opacity of 1.0f gives 257 (@8bit) and 65537 (@16 bits), used in (alpha*level + 1) / range_size, 
+    // Alpha mode: opacity of 1.0f gives 257 (@8bit) and 65537 (@16 bits), used in (alpha*level + 1) / range_size,
     // non-Alpha mode: 1.0f gives 256 (@8bit)
 
   const int height = ycount; // these may be divided by subsampling factor
@@ -4630,34 +4630,34 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) // Use chroma of the overlay_clip.
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16)) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
         {
           layer_yuy2_mul_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_MMX) 
+        else if (env->GetCPUFlags() & CPUF_MMX)
         {
           layer_yuy2_mul_mmx<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
         else
         {
           layer_yuy2_mul_c<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
-      } 
-      else 
+      }
+      else
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16)) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
         {
           layer_yuy2_mul_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_MMX) 
+        else if (env->GetCPUFlags() & CPUF_MMX)
         {
           layer_yuy2_mul_mmx<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
-        else 
+        else
         {
           layer_yuy2_mul_c<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
@@ -4672,29 +4672,29 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
           layer_yuy2_add_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_MMX) 
+        else if (env->GetCPUFlags() & CPUF_MMX)
         {
           layer_yuy2_add_mmx<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
         else
         {
           layer_yuy2_add_c<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
-      } 
-      else 
+      }
+      else
       {
-        if (env->GetCPUFlags() & CPUF_SSE2) 
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_yuy2_add_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_MMX) 
+        else if (env->GetCPUFlags() & CPUF_MMX)
         {
           layer_yuy2_add_mmx<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
-        else 
+        else
         {
           layer_yuy2_add_c<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
@@ -4702,60 +4702,60 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     }
     if (!lstrcmpi(Op, "Fast"))
     {
-      if (chroma) 
+      if (chroma)
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16)) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
         {
           layer_yuy2_fast_sse2(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
         {
           layer_yuy2_fast_isse(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
         else
         {
           layer_yuy2_fast_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
-      } 
-      else 
+      }
+      else
       {
         env->ThrowError("Layer: this mode not allowed in FAST; use ADD instead");
       }
     }
     if (!lstrcmpi(Op, "Subtract"))
     {
-      if (chroma) 
+      if (chroma)
       {
-        if (env->GetCPUFlags() & CPUF_SSE2) 
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_yuy2_subtract_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_MMX) 
+        else if (env->GetCPUFlags() & CPUF_MMX)
         {
           layer_yuy2_subtract_mmx<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
         else
         {
           layer_yuy2_subtract_c<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
-      } 
-      else 
+      }
+      else
       {
-        if (env->GetCPUFlags() & CPUF_SSE2) 
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_yuy2_subtract_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #ifdef X86_32
-        else if (env->GetCPUFlags() & CPUF_MMX) 
+        else if (env->GetCPUFlags() & CPUF_MMX)
         {
           layer_yuy2_subtract_mmx<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
-        else 
+        else
         {
           layer_yuy2_subtract_c<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
@@ -4804,7 +4804,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     const int src2_pitch = src2->GetPitch();
     BYTE* src1p = src1->GetWritePtr();
     const BYTE* src2p = src2->GetReadPtr();
-  
+
     int rgb_step = vi.BytesFromPixels(1); // 4 or 8 bytes/pixelgroup
     int pixelsize = vi.ComponentSize();
 
@@ -4816,39 +4816,39 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
     if (!lstrcmpi(Op, "Mul"))
     {
-      if (chroma) 
+      if (chroma)
       {
         if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_mul_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #ifdef X86_32
         else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_mul_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
-        else 
+        else
         {
           if(pixelsize == 1)
             layer_rgb32_mul_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_mul_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
-      } 
+      }
       else // Mul, chroma==false
       {
         if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_mul_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #ifdef X86_32
         else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_mul_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #endif
-        else 
+        else
         {
           if(pixelsize == 1)
             layer_rgb32_mul_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
@@ -4867,34 +4867,34 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_add_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #ifdef X86_32
         else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_add_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
-        else 
+        else
         {
           if(pixelsize == 1)
             layer_rgb32_add_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_add_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
-      } 
+      }
       else // Add, chroma == false
       {
         if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_add_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #ifdef X86_32
         else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_add_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #endif
-        else 
+        else
         {
           if(pixelsize == 1)
             layer_rgb32_add_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
@@ -4905,7 +4905,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     }
     if (!lstrcmpi(Op, "Lighten"))
     {
-      // Copy overlay_clip over base_clip in areas where overlay_clip is lighter by threshold. 
+      // Copy overlay_clip over base_clip in areas where overlay_clip is lighter by threshold.
       // only chroma == true
       if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
       {
@@ -4927,7 +4927,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     }
     if (!lstrcmpi(Op, "Darken"))
     {
-      // Copy overlay_clip over base_clip in areas where overlay_clip is darker by threshold. 
+      // Copy overlay_clip over base_clip in areas where overlay_clip is darker by threshold.
       // only chroma == true
       if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
       {
@@ -4975,39 +4975,39 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       // base_clip - overlay_clip.
       // Similar to add, but overlay_clip is inverted before adding.
-      if (chroma) 
+      if (chroma)
       {
         if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_subtract_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #ifdef X86_32
         else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_subtract_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
+        }
 #endif
-        else 
+        else
         {
           if(pixelsize==1)
             layer_rgb32_subtract_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_subtract_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
-      } 
-      else 
+      }
+      else
       {
         if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
         {
           layer_rgb32_subtract_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-        } 
-#ifdef X86_32 
+        }
+#ifdef X86_32
         else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
         {
           layer_rgb32_subtract_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
 #endif
-        else 
+        else
         {
           if(pixelsize==1)
             layer_rgb32_subtract_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
@@ -5641,7 +5641,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       const bool isLighten = !lstrcmpi(Op, "Lighten");
       // only chroma == true
-      // Copy overlay_clip over base_clip in areas where overlay_clip is lighter by threshold. 
+      // Copy overlay_clip over base_clip in areas where overlay_clip is lighter by threshold.
       // called only once, for all planes
       // integer 8-16 bits version
       using layer_planarrgb_lighten_darken_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh);

@@ -58,14 +58,14 @@ public:
 			dither=_dither;
 			pdf=_pdf;
 			fast=_fast;
-		}	
+		}
 	};
 
 private:
 	Buffer in,out;
 	void bufloop(int finish);
 protected:
-	
+
 	Resampler_base(const Resampler_base::CONFIG & c);
 
 	void _inline __output(REAL_inout value, int& delay2)
@@ -82,7 +82,7 @@ protected:
 	double peak;
 	int nch,sfrq,dfrq;
 	double gain;
-	
+
 
 	double AA,DF;
 	int FFTFIRLEN;
@@ -92,7 +92,7 @@ public:
 
 void Write(const REAL_inout* input,int size);
 	_inline void Finish() {bufloop(1);}
-	
+
 	_inline REAL_inout* GetBuffer(int * s) {return out.GetBuffer(s);}
 	_inline void Read(unsigned int s) {out.Read(s);}
 

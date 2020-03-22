@@ -113,11 +113,11 @@ public:
 
 
 
-class ShowFiveVersions : public IClip 
+class ShowFiveVersions : public IClip
 /**
   * Class to show every pulldown combination
  **/
-{  
+{
 public:
   ShowFiveVersions(PClip* children, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -126,9 +126,9 @@ public:
     { child[0]->GetAudio(buf, start, count, env); }
   inline const VideoInfo& __stdcall GetVideoInfo()
     { return vi; }
-  inline bool __stdcall GetParity(int n) 
+  inline bool __stdcall GetParity(int n)
     { return child[0]->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { 
+  int __stdcall SetCacheHints(int cachehints,int frame_range) {
     AVS_UNUSED(cachehints);
     AVS_UNUSED(frame_range);
     return 0;
@@ -143,7 +143,7 @@ private:
 
 
 
-class Animate : public IClip 
+class Animate : public IClip
 /**
   * Class to allow recursive animation of multiple clips (see docs)  *
  **/
@@ -158,7 +158,7 @@ class Animate : public IClip
   const char* name;
   bool range_limit;
 public:
-  Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before, 
+  Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before,
            const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env );
   virtual ~Animate() { }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -168,10 +168,10 @@ public:
     { return cache[0]->GetVideoInfo(); }
   bool __stdcall GetParity(int n);
 
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { 
+  int __stdcall SetCacheHints(int cachehints,int frame_range) {
     AVS_UNUSED(cachehints);
     AVS_UNUSED(frame_range);
-    return 0; 
+    return 0;
   };
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

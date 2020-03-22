@@ -69,7 +69,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
   bool blit_luma_only;
   bool yuy2_input;
@@ -216,7 +216,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
   BitDepthConvFuncPtr conv_function;
   BitDepthConvFuncPtr conv_function_chroma; // 32bit float YUV chroma

@@ -42,7 +42,7 @@
 ********************************************************************/
 
 
-class Histogram : public GenericVideoFilter 
+class Histogram : public GenericVideoFilter
 /**
   * Class to display histogram based on video input
  **/

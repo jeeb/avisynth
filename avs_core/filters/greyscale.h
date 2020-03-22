@@ -47,7 +47,7 @@ struct GreyConversionMatrix {
   float b_f;
 };
 
-class Greyscale : public GenericVideoFilter 
+class Greyscale : public GenericVideoFilter
 /**
   * Class to convert video to greyscale
  **/

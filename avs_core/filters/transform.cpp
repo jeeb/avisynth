@@ -45,8 +45,8 @@
 ********************************************************************/
 
 extern const AVSFunction Transform_filters[] = {
-  { "FlipVertical",   BUILTIN_FUNC_PREFIX, "c", FlipVertical::Create },     
-  { "FlipHorizontal", BUILTIN_FUNC_PREFIX, "c", FlipHorizontal::Create },     
+  { "FlipVertical",   BUILTIN_FUNC_PREFIX, "c", FlipVertical::Create },
+  { "FlipHorizontal", BUILTIN_FUNC_PREFIX, "c", FlipHorizontal::Create },
   { "Crop",           BUILTIN_FUNC_PREFIX, "ciiii[align]b", Crop::Create },              // left, top, width, height *OR*
                                                   //  left, top, -right, -bottom (VDub style)
   { "CropBottom", BUILTIN_FUNC_PREFIX, "ci", Create_CropBottom },      // bottom amount
@@ -102,7 +102,7 @@ PVideoFrame FlipVertical::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
-AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   AVS_UNUSED(env);
   return new FlipVertical(args[0].AsClip());
@@ -151,7 +151,7 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     }
     return dst;
   }
-  
+
   typedef void(*FlipFuncPtr) (BYTE * dstp, const BYTE * srcp, int dst_pitch, int src_pitch, int width, int height);
   FlipFuncPtr flip_h_func;
 
@@ -234,7 +234,7 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   AVS_UNUSED(env);
   return new FlipHorizontal(args[0].AsClip());
@@ -255,7 +255,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _chi
   // _align parameter exists only for the backward compatibility.
 
   /* Negative values -> VDub-style syntax
-     Namely, Crop(a, b, -c, -d) will crop c pixels from the right and d pixels from the bottom.  
+     Namely, Crop(a, b, -c, -d) will crop c pixels from the right and d pixels from the bottom.
      Flags on 0 values too since AFAICT it's much more useful to this syntax than the standard one. */
   if ( (_left<0) || (_top<0) )
     env->ThrowError("Crop: Top and Left must be more than 0");
@@ -307,7 +307,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _chi
 }
 
 
-PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
 
@@ -366,9 +366,9 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), args[5].AsBool(true), 
+  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), args[5].AsBool(true),
                    args[0].AsClip(), env );
 }
 
@@ -491,11 +491,11 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     switch(vi.ComponentSize()) {
     case 1: addborders_planar<uint8_t>(dst, src, vi, top, bot, left, right, clr, isYUV, force_color_as_yuv /*like MODE_COLOR_YUV in BlankClip */, bits_per_pixel); break;
     case 2: addborders_planar<uint16_t>(dst, src, vi, top, bot, left, right,  clr, isYUV, force_color_as_yuv, bits_per_pixel); break;
-    default: //case 4: 
+    default: //case 4:
       addborders_planar<float>(dst, src, vi, top, bot, left, right, clr, isYUV, force_color_as_yuv, bits_per_pixel); break;
     }
     return dst;
-  } 
+  }
 
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
@@ -647,7 +647,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 
 
 
-AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   // [0][1][2][3][4]  [5]       [6]
   //  c  i  i  i  i [color]i[color_yuv]i
@@ -658,7 +658,7 @@ AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* en
   if (args[6].Defined()) {
     if (color != 0) // Not quite 100% test
       env->ThrowError("AddBorders: color and color_yuv are mutually exclusive");
-    
+
     const VideoInfo &vi = args[0].AsClip()->GetVideoInfo();
 
     if (!vi.IsYUV() && !vi.IsYUVA())
@@ -669,7 +669,7 @@ AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* en
       env->ThrowError("AddBorders: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
-  return new AddBorders( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), 
+  return new AddBorders( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(),
                          args[4].AsInt(), color, color_as_yuv, args[0].AsClip(), env);
 }
 
@@ -733,14 +733,14 @@ PVideoFrame __stdcall FillBorder::GetFrame(int n, IScriptEnvironment* env) {
   }
   return src;
 }
- 
 
-PClip FillBorder::Create(PClip clip) 
+
+PClip FillBorder::Create(PClip clip)
 {
   if (!clip->GetVideoInfo().IsPlanar()) {  // If not planar, already ok.
     return clip;
   }
-  else 
+  else
     return new FillBorder(clip);
 }
 
@@ -753,12 +753,12 @@ PClip FillBorder::Create(PClip clip)
  *********************************/
 
 
-AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   int top = args[1].AsInt();
   int bot = args[2].AsInt();
-  int left = args[3].AsInt(0); 
+  int left = args[3].AsInt(0);
   int right = args[4].AsInt(0);
   int color = args[5].AsInt(0);
   const VideoInfo& vi = clip->GetVideoInfo();
@@ -780,10 +780,10 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
       env->ThrowError("LetterBox: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
-  if ( (top<0) || (bot<0) || (left<0) || (right<0) ) 
+  if ( (top<0) || (bot<0) || (left<0) || (right<0) )
     env->ThrowError("LetterBox: You cannot specify letterboxing less than 0.");
   if (top+bot>=vi.height) // Must be >= otherwise it is interpreted wrong by crop()
-    env->ThrowError("LetterBox: You cannot specify letterboxing that is bigger than the picture (height).");  
+    env->ThrowError("LetterBox: You cannot specify letterboxing that is bigger than the picture (height).");
   if (right+left>=vi.width) // Must be >= otherwise it is interpreted wrong by crop()
     env->ThrowError("LetterBox: You cannot specify letterboxing that is bigger than the picture (width).");
 
@@ -813,7 +813,7 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();

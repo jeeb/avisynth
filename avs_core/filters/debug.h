@@ -42,11 +42,11 @@
 #include <avisynth.h>
 
 
-class Null : public GenericVideoFilter 
+class Null : public GenericVideoFilter
 /**
   * Class for debugging Avisynth internals.
- **/ 
-{ 
+ **/
+{
 public:
   Null( PClip _child, const char * _copy, IScriptEnvironment* env );
   virtual ~Null(void);
@@ -67,12 +67,12 @@ public:
 
   void randomFill(BYTE* const buf, const int pitch, const int row_size, const int height);
   int randomCheck(BYTE* const buf, const int pitch, const int row_size, const int height);
-  
+
   void reset();
 
 private:
   char nextNum();
-  
+
   int randNum;
   int whichByte;
   const int mask;

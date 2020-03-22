@@ -31,7 +31,7 @@
 // Public License plus this exception.  An independent module is a module
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
- 
+
 
 #include <avisynth.h>
 #include <avs/win.h>
@@ -46,9 +46,9 @@
 # Hints for Avisynth+, Visual Studio 2019
 
 - download and install 7.1 SDK
-  Microsoft Windows SDK for Windows 7 and .NET Framework 4 
+  Microsoft Windows SDK for Windows 7 and .NET Framework 4
     https://www.microsoft.com/en-us/download/details.aspx?id=8279
-  
+
   In case of problems:
   https://social.msdn.microsoft.com/Forums/vstudio/en-US/1de7c9b4-1feb-4c98-b426-f7f02cbafa99/windows-sdk-71-on-windows-10
   Uninstall VC2010 redist, download offline ISO image installer, install
@@ -58,8 +58,8 @@
       c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\
     (or replace v7.1A with appropriate v7 SDK folder)
     Project is of old format, will be converted.
-  - Compile for targets Release_MBCS x86 and x64. 
-    Find compiled library strmbase.lib in 
+  - Compile for targets Release_MBCS x86 and x64.
+    Find compiled library strmbase.lib in
       c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
     and
       c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
@@ -71,9 +71,9 @@
     c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\;
     c:\Program Files\Microsoft SDKs\Windows\v7.1A\Include\; or put behind $(VC_IncludePath) if windows.h not found
   - Edit Project Properties|VC++ Directories|Library Directories
-    For x86 target add 
+    For x86 target add
       c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
-    For x64 target add 
+    For x64 target add
       c:\Program Files\Microsoft SDKs\Windows\v7.1A\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
     For XP target add (to find winmm.lib)
       c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\; (for 32 bit build)
@@ -81,7 +81,7 @@
   - Edit Project Properties|Linker|Input|Additional Dependencies
     Add strmbase.lib to the list
   - For XP compatibility
-    - choose Platform Toolset v141_xp 
+    - choose Platform Toolset v141_xp
     - Edit Project Properties|C/C++|Command Line
       Add
       /Zc:threadSafeInit-
@@ -126,7 +126,7 @@ nmake
 /LIBPATH:"C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses\XP32_RETAIL"
 /LIBPATH:"C:\Program Files\Microsoft DirectX SDK (August 2009)\Lib\x86"
 
-/LIBPATH:"C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Lib\x86" 
+/LIBPATH:"C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Lib\x86"
 ********************************************************************/
 
 #define SAFE_RELEASE(x) { if (x) x->Release(); x = NULL; }
@@ -178,7 +178,7 @@ public:
   ~GetSampleEnumMediaTypes();
 
 // IUnknown::
-  
+
   ULONG __stdcall AddRef() { InterlockedIncrement(&refcnt); return refcnt; }
   ULONG __stdcall Release() {
     if (!InterlockedDecrement(&refcnt)) {
@@ -212,7 +212,7 @@ class GetSampleEnumPins : public IEnumPins {
   long refcnt;
   GetSample* const parent;
   int pos;
-  
+
   LOG* log;
 
 public:
@@ -220,7 +220,7 @@ public:
   ~GetSampleEnumPins();
 
 // IUnknown::
-  
+
   ULONG __stdcall AddRef() { InterlockedIncrement(&refcnt); return refcnt; }
   ULONG __stdcall Release() {
     if (!InterlockedDecrement(&refcnt)) {
@@ -305,7 +305,7 @@ public:
     mediaFULL   = mediaRGB | mediaYUVex,
     mediaPAD    = 1<<31,
   };
-  
+
   __int64 segment_start_time, segment_stop_time, sample_start_time, sample_end_time;
 
   int avg_time_per_frame;
@@ -342,7 +342,7 @@ public:
   void PauseGraph(IGraphBuilder* gb);
   HRESULT SeekTo(__int64 pos, IGraphBuilder* gb);
   bool NextSample(DWORD &timeout);
-  
+
 // IUnknown::
 
   ULONG __stdcall AddRef();
@@ -350,14 +350,14 @@ public:
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
 
 // IPersist::
-  
+
   HRESULT __stdcall GetClassID(CLSID* pClassID);
 
 // IMediaFilter::
 
   HRESULT __stdcall Stop();
   HRESULT __stdcall Pause();
-  HRESULT __stdcall Run(REFERENCE_TIME tStart); 
+  HRESULT __stdcall Run(REFERENCE_TIME tStart);
   HRESULT __stdcall GetState(DWORD dwMilliSecsTimeout, FILTER_STATE* State);
   HRESULT __stdcall SetSyncSource(IReferenceClock* pClock);
   HRESULT __stdcall GetSyncSource(IReferenceClock** ppClock);

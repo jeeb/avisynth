@@ -88,7 +88,7 @@ void cfg_var::on_change()
 		ptr->on_var_change(var_get_name(),this);
 		ptr = ptr->var_next;
 	}
-	
+
 }
 
 cfg_var_notify * cfg_var_notify::list=0;

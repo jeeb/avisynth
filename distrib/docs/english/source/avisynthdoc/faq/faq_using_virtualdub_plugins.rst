@@ -7,7 +7,7 @@ AviSynth FAQ - Using VirtualDub plugins in AviSynth
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 Where can I download the latest version of scripts which import filters from VirtualDub?

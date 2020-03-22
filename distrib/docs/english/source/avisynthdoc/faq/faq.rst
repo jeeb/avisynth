@@ -17,7 +17,7 @@ problems, make sure that you install a more recent version of AviSynth.
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 S1: About Avisynth

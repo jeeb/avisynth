@@ -10,9 +10,9 @@ public:
 
 private:
   std::vector<T>  array;
-  const size_type max_size; 
-  size_type head; 
-  size_type tail; 
+  const size_type max_size;
+  size_type head;
+  size_type tail;
   size_type size;
 
 public:

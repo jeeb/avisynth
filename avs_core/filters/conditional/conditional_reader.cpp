@@ -242,7 +242,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
 
         } else if (!lstrcmpi(keyword, "offset")) {
           fields = sscanf(type, "%d", &offset);
-          if (fields != 1) 
+          if (fields != 1)
             ThrowLine("ConditionalReader: Could not read Offset in line %d", lines, env);
 
         } else if (keyword[0] == 'R' || keyword[0] == 'r') {  // Range
@@ -280,7 +280,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
           char stop_value[64];
           fields = sscanf(type, "%d %d %63s %63s", &start, &stop, start_value, stop_value);
 
-          if (fields != 4) 
+          if (fields != 4)
             ThrowLine("ConditionalReader: Could not read Interpolation range in line %d", lines, env);
           if (start > stop)
             ThrowLine("ConditionalReader: The Interpolation start frame is after the end frame in line %d", lines, env);
@@ -309,7 +309,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
             ThrowLine("ConditionalReader: Do not understand line %d", lines, env);
           }
         }
-      
+
       } // End we have defined type
       free(line);
       line = 0;
@@ -382,10 +382,10 @@ AVSValue ConditionalReader::ConvertType(const char* content, int line, IScriptEn
       }
       else if (!lstrcmpi(bval, "no")) {
         return AVSValue(false);
-      } 
+      }
       else if (!lstrcmp(bval, "0")) {
         return AVSValue(false);
-      } 
+      }
       ThrowLine("ConditionalReader: Boolean value was not true or false in line %d", line, env);
 
     case MODE_STRING:
@@ -492,13 +492,13 @@ AVSValue ConditionalReader::GetFrameValue(int framenumber) {
 }
 
 // Destructor
-ConditionalReader::~ConditionalReader(void) 
+ConditionalReader::~ConditionalReader(void)
 {
   CleanUp();
 }
 
 
-void ConditionalReader::CleanUp(void) 
+void ConditionalReader::CleanUp(void)
 {
   switch (mode) {
     case MODE_INT:
@@ -576,7 +576,7 @@ Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck
 
 	fout = fopen(filename, append ? AplusT : WplusT);	//append or purge file
 	if (!fout) env->ThrowError("Write: File '%s' cannot be opened.", filename);
-	
+
 	if (flush) fclose(fout);	//will be reopened in FileOut
 
 	arrsize = args.ArraySize();
@@ -627,7 +627,7 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 
 	env->SetVar("last",(AVSValue)child);       // Set implicit last (to avoid recursive stack calls?)
 	env->SetVar("current_frame",n);
-	
+
 	if (Write::DoEval(env)) {
 		Write::FileOut(env, AplusT);
 	}
@@ -674,7 +674,7 @@ bool Write::DoEval( IScriptEnvironment* env) {
 
 	for (i=0; i<arrsize; i++) {
 		expr = arglist[i].expression;
-		
+
 		if ( (linecheck==1) && (i==0)) {
 			try {
 				result = env->Invoke("Eval",expr);

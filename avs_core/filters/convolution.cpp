@@ -558,7 +558,7 @@ AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void*, IScriptEnviron
   }
 
   GeneralConvolution* Result = new GeneralConvolution(clip, args[3].AsFloat(1.0f), args[1].AsFloatf(0.0f),
-    args[2].AsString("0 0 0 0 1 0 0 0 0"), args[4].AsBool(true), 
+    args[2].AsString("0 0 0 0 1 0 0 0 0"), args[4].AsBool(true),
     args[5].AsBool(true), args[6].AsBool(true), args[7].AsBool(true), // luma, chroma, alpha, when n/a then ignored
     env);
 

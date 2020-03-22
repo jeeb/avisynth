@@ -43,7 +43,7 @@ string_print_time::string_print_time(__int64 length)
 	if (length<0) length=0;
 	char * out = buffer;
 	int weeks,days,hours,minutes,seconds;
-	
+
 	weeks = (int)( ( length / (60*60*24*7) ) );
 	days = (int)( ( length / (60*60*24) ) % 7 );
 	hours = (int) ( ( length / (60 * 60) ) % 24);
@@ -347,7 +347,7 @@ unsigned string8::replace_string(const char * s1,unsigned len1,const char * s2,u
 
 	unsigned len = used;
 	char * src = data.get_ptr();
-	
+
 	unsigned count = 0;
 
 	if (len1>0)
@@ -593,7 +593,7 @@ double pfc_string_to_float(const char * src)
 
 	if (*src=='-') {neg = true;src++;}
 	else if (*src=='+') src++;
-	
+
 	while(*src)
 	{
 		if (*src>='0' && *src<='9')
@@ -619,7 +619,7 @@ double pfc_string_to_float(const char * src)
 	}
 	if (neg) val = -val;
 	return (double) val * pow(10.0,(double)div);
-	
+
 
 }
 

@@ -37,7 +37,7 @@
 
 #include <avs/types.h>
 #include "convert.h"
-#include "convert_planar.h" 
+#include "convert_planar.h"
 
 template<int bits_per_pixel>
 #if defined(GCC) || defined(CLANG)

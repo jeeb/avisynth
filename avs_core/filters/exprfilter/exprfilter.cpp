@@ -2,7 +2,7 @@
 *
 * Avisynth+ Expression filter, ported from the VapourSynth project
 * Copyright (c) 2012-2015 Fredrik Mellbin
-* 
+*
 * Additions and differences to VS r39 version:
 * ------------------------------
 * (similar features to the masktools mt_lut family syntax)
@@ -34,7 +34,7 @@
 *    sx, sy (absolute x and y coordinates, 0 to width-1 and 0 to height-1)
 *    sxr, syr (relative x and y coordinates, from 0 to 1.0)
 * Optimize: recognize constant plane expression: use fast memset instead of generic simd process. Approx. 3-4x (32 bits) to 10-12x (8 bits) speedup
-* Optimize: Recognize single clip letter in expression: use fast plane copy (BitBlt) 
+* Optimize: Recognize single clip letter in expression: use fast plane copy (BitBlt)
 *   (e.g. for 8-16 bits: instead of load-convert_to_float-clamp-convert_to_int-store). Approx. 1.4x (32 bits), 3x (16 bits), 8-9x (8 bits) speedup
 * Optimize: do not call GetFrame for input clips that are not referenced or plane-copied
 * 20171211: Implement relative pixel indexing e.g. x[-1,-3], requires SSSE3
@@ -49,7 +49,7 @@
 *             (A float can hold a 24 bit integer w/o losing precision)
 *           expr constants: 'width', 'height' for current plane width and height
 *           expr auto variable: 'frameno' holds the current frame number 0..total number of frames-1
-*           expr auto variable: 'time' relative time in clip, 0 <= time <= 1 
+*           expr auto variable: 'time' relative time in clip, 0 <= time <= 1
 *                calculation: time = frameno/(total number of frames - 1)
 * 20180614 new parameters: scale_inputs, clamp_float
 *          implement 'clip' three operand operator like in masktools2: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
@@ -60,7 +60,7 @@
 * ---------------------------------
 *   Up to 26 clips are allowed (x,y,z,a,b,...w). Masktools handles only up to 4 clips with its mt_lut, my_lutxy, mt_lutxyz, mt_lutxyza
 *   Clips with different bit depths are allowed
-*   works with 32 bit floats instead of 64 bit double internally 
+*   works with 32 bit floats instead of 64 bit double internally
 *   less functions (e.g. no bit shifts)
 *   logical 'false' is 0 instead of -1
 *   avs+: ymin, ymax, etc built-in constants can have a _X suffix, where X is the corresponding clip designator letter. E.g. cmax_z, range_half_x
@@ -581,7 +581,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
     return std::to_string(++labelCount);
   }
 
-  ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, int planeheight, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), 
+  ExprEval(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, int planeheight, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags),
     planewidth(planewidth), planeheight(planeheight), singleMode(singleMode), labelCount(0) {}
 
   AVS_FORCEINLINE void doMask(XmmReg &r, Reg &constptr, int _planewidth)
@@ -672,7 +672,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           // Read from above
           Reg dy, sy;
           mov(sy, SpatialY);
-          mov(dy, -iter.dy); // dy = -dy; 
+          mov(dy, -iter.dy); // dy = -dy;
           cmp(dy, sy);
           cmovg(dy, sy); // mov if greater: if (dy > SpatialY) dy = SpatialY;
 #ifdef JITASM64
@@ -699,8 +699,8 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
         }
 
         // dy shift is done already. newx holds xcounter + dx
-        // Cases: 
-        // ReadBefore: xcounter + dx < 0 (only when dx < 0): 
+        // Cases:
+        // ReadBefore: xcounter + dx < 0 (only when dx < 0):
         //   FullReadBefore: dx <= pixels_per_cycle: clone leftmost pixel to each pixel posision in the group
         //   PartialReadBefore: pixels_per_cycle < dx < 0: close leftmost pixel to -dx positions
         // NormalRead: 0 <= xcounter + dx < planewidth - (pixels_per_cycle - 1) (can read whole pixel group)
@@ -725,7 +725,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           if (iter.dx != 0) { // Optim: read after rightmost pixel is possible only for dx>0 case
                               // Also check for dx<0, because of possible memory overread
                               // e.g.: planewidth = 64, dx = -1, 16 bit pixels, 16 bytes/cycle, reading from offsets -1(0), 15, 31, 47, then 63
-                              // When we read 16 bytes from offset 63, we are overaddressing the 64 byte scanline, 
+                              // When we read 16 bytes from offset 63, we are overaddressing the 64 byte scanline,
                               // which may give access violation when pointer is in the most bottom line.
             cmp(newx, planewidth - (pixels_per_cycle - 1)); // read (partially of fully) after the rightmost pixel
             jge(LabelOver);
@@ -868,7 +868,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             }
             else if (iter.op == opLoadRelSrcF32) {
               // omg it's complicated
-              movdqa(r1, xmmword_ptr[a]); // 4 pixels, 16 bytes, here still aligned 
+              movdqa(r1, xmmword_ptr[a]); // 4 pixels, 16 bytes, here still aligned
             }
             int bytes_to_shift = ((planewidth - 1) & (pixels_per_cycle - 1)) * sizeof(float);
             if (bytes_to_shift > 0) {
@@ -893,7 +893,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             if (iter.op == opLoadRelSrc8) {
               sub(a, ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_XCOUNTER)]); // back x counter bytes to the beginning
               add(a, newx);     // new position
-              movd(r1, dword_ptr[a]); // 4 pixels, 4 bytes 
+              movd(r1, dword_ptr[a]); // 4 pixels, 4 bytes
               punpcklbw(r1, zero); // words
                                    /*
                                    // no shift here, just duplicate appropriate pixel into the high ones
@@ -914,7 +914,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
               sub(newx, ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_XCOUNTER)]);
               shl(newx, 1);
               add(a, newx);
-              movq(r1, mmword_ptr[a]); // 4 pixels, 8 bytes 
+              movq(r1, mmword_ptr[a]); // 4 pixels, 8 bytes
                                        // no shift here, just duplicate appropriate pixel into the high ones
                                        /*
                                        // reuse newx
@@ -977,7 +977,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             // When reading from negative x coordinates we read exactly from 0th, then shift and duplicate
             // For extreme minus offsets we duplicate 0th (leftmost) pixel to each position
             // example: dx = -1
-            // -1 0  1  2  3  4  5  6  7 
+            // -1 0  1  2  3  4  5  6  7
             // A  A  B  C  D  E  F  G         we need this
             //    A  B  C  D  E  F  G  H      read [0]
             //    0  A  B  C  D  E  F  G  H   shift
@@ -989,7 +989,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 punpcklbw(r1, zero); // bytes to words
               }
               else if (iter.op == opLoadRelSrc16) {
-                // go back to the beginning, in 16 bit, *2 
+                // go back to the beginning, in 16 bit, *2
                 Reg tmp;
                 mov(tmp, ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_XCOUNTER)]);
                 shl(tmp, 1); // for 16 bit 2*xcounter
@@ -1017,7 +1017,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             L(PartialReadBefore);
             // -pixels_per_cycle < newx < 0
             int bytes_to_shift = sizeof(float) * min(pixels_per_cycle - 1, (-iter.dx) & (pixels_per_cycle - 1));
-            //    shift bytes             
+            //    shift bytes
             //         4                  r1 << 4     shuffle r1.1 to r1.0-0
             //         8                  r1 << 8     shuffle r1.2 to r1.0-1
             //         12                 r1 << 12    shuffle r1.3 to r1.0-2
@@ -1060,7 +1060,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           if (iter.dx != 0) {
             // Also check for dx<0, because of possible memory overread
             // e.g.: planewidth = 64, dx = -1, 16 bit pixels, 16 bytes/cycle, reading from offsets -1(0), 15, 31, 47, then 63
-            // When we read 16 bytes from offset 63, we are overaddressing the 64 byte scanline, 
+            // When we read 16 bytes from offset 63, we are overaddressing the 64 byte scanline,
             // which may give access violation when pointer is in the most bottom line.
             cmp(newx, planewidth - (pixels_per_cycle - 1)); // read (partially of fully) after the rightmost pixel
             jge(LabelOver);
@@ -1184,9 +1184,9 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             //           1            -1         6        0->0 0->1 0->2 0->3 0->4 0->5 0->6 0->7 elSuffleForRight6 (lowest to everywhere)
             //           2            -2         5        0->0 1->1 1->2 1->3 1->4 1->5 1->6 1->7 elSuffleForRight5 (lowest two remains then second duplicates)
             //           3            -3         4        0->0 1->1 2->2 2->3 2->4 2->5 2->6 2->7 elSuffleForRight4 (lowest three remains then third duplicates)
-            //           4            -4         3        0->0 1->1 2->2 3->3 3->4 3->5 3->6 3->7 elSuffleForRight3 
-            //           5            -5         2        0->0 1->1 2->2 3->3 4->4 4->5 4->6 4->7 elSuffleForRight2 
-            //           6            -6         1        0->0 1->1 2->2 3->3 4->4 5->5 5->6 5->7 elSuffleForRight1 
+            //           4            -4         3        0->0 1->1 2->2 3->3 3->4 3->5 3->6 3->7 elSuffleForRight3
+            //           5            -5         2        0->0 1->1 2->2 3->3 4->4 4->5 4->6 4->7 elSuffleForRight2
+            //           6            -6         1        0->0 1->1 2->2 3->3 4->4 5->5 5->6 5->7 elSuffleForRight1
             //           7            -7         0        0->0 1->1 2->2 3->3 4->4 5->5 6->6 6->7 elSuffleForRight0 (lowest seven remains then seventh duplicates)
             // in extreme case (read all beyond last pixel): newx >= planewidth: ==> case of elSuffleForRight6
 
@@ -1316,7 +1316,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 // 15 14 13.... 0   15 14 13 ... 0
                 //    15 14 13  1   0  15 14.... 1  palignr(dst, src, 1)
                 //              15  14 13  ..... 15 palignr(dst, src, 15)
-                movdqa(r1, xmmword_ptr[a]); // 4 pixels, 16 bytes, here still aligned 
+                movdqa(r1, xmmword_ptr[a]); // 4 pixels, 16 bytes, here still aligned
                 movdqa(r2, xmmword_ptr[a + 16]); // 4 pixels, 16 bytes
                 if (bytes_to_shift > 0) {
                   palignr(r1, r2, bytes_to_shift); // shift right dualreg. r1 is ready.
@@ -1369,13 +1369,13 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
               if (iter.op == opLoadRelSrc8)
               {
                 add(a, newx);     // new position
-                movq(r1, mmword_ptr[a]); // 8 pixels, 8 bytes 
+                movq(r1, mmword_ptr[a]); // 8 pixels, 8 bytes
                 punpcklbw(r1, zero); // words
               }
               else {
                 shl(newx, 1); //a = a - 2 * xcounter + 2 * newx;
                 add(a, newx);
-                movdqu(r1, xmmword_ptr[a]); // 8 pixels, 16 bytes 
+                movdqu(r1, xmmword_ptr[a]); // 8 pixels, 16 bytes
               }
               // no shift here, just duplicate appropriate pixel into the high ones
               int what = ((planewidth - iter.dx - 1) & (pixels_per_cycle - 1));
@@ -1464,7 +1464,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             // When reading from negative x coordinates we read exactly from 0th, then shift and duplicate
             // For extreme minus offsets we duplicate 0th (leftmost) pixel to each position
             // example: dx = -1
-            // -1 0  1  2  3  4  5  6  7 
+            // -1 0  1  2  3  4  5  6  7
             // A  A  B  C  D  E  F  G         we need this
             //    A  B  C  D  E  F  G  H      read [0]
             //    0  A  B  C  D  E  F  G  H   shift
@@ -1476,7 +1476,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
                 punpcklbw(r1, zero); // bytes to words
               }
               else if (iter.op == opLoadRelSrc16) {
-                // go back to the beginning, in 16 bit, *2 
+                // go back to the beginning, in 16 bit, *2
                 Reg tmp;
                 mov(tmp, ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_XCOUNTER)]);
                 shl(tmp, 1); // for 16 bit 2*xcounter
@@ -1514,7 +1514,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             }
             else if (iter.op == opLoadRelSrcF32) {
               // negative
-              // go back to the beginning, in 16 bit, *2 
+              // go back to the beginning, in 16 bit, *2
               Reg tmp;
               mov(tmp, ptr[regptrs + sizeof(void *) * (RWPTR_START_OF_XCOUNTER)]);
               shl(tmp, 2); // go back to the beginning, in 32 bit, *4
@@ -1533,7 +1533,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
               L(PartialReadBefore);
               // -pixels_per_cycle < newx < 0
               int bytes_to_shift = sizeof(float) * min(pixels_per_cycle - 1, (-iter.dx) & (pixels_per_cycle - 1));
-              //    shift bytes             
+              //    shift bytes
               //         4                  r2r1 << 4     shuffle r1.1 to r1.0-0
               //         8                  r2r1 << 8     shuffle r1.2 to r1.0-1
               //         12                 r2r1 << 12    shuffle r1.3 to r1.0-2
@@ -1879,7 +1879,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
         }
       }
       else if (iter.op == opStore10 // avs+
-        || iter.op == opStore12 // avs+ 
+        || iter.op == opStore12 // avs+
         || iter.op == opStore14 // avs+
         || iter.op == opStore16
         ) {
@@ -2304,7 +2304,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
   int planeheight;
   bool singleMode;
 
-  ExprEvalAvx2(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, int planeheight, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags), 
+  ExprEvalAvx2(std::vector<ExprOp> &ops, int numInputs, int cpuFlags, int planewidth, int planeheight, bool singleMode) : ops(ops), numInputs(numInputs), cpuFlags(cpuFlags),
     planewidth(planewidth), planeheight(planeheight), singleMode(singleMode) {}
 
   template<bool processSingle, bool maskUnused>
@@ -2700,7 +2700,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
         }
       }
       else if (iter.op == opStore10 // avs+
-        || iter.op == opStore12 // avs+ 
+        || iter.op == opStore12 // avs+
         || iter.op == opStore14 // avs+
         || iter.op == opStore16
         ) {
@@ -3027,7 +3027,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
     }
   }
 /*
-In brief: 
+In brief:
 jitasm was modded to accept avx_epilog_=true for code generation
 
 Why: couldn't use vzeroupper because prolog/epilog was saving all xmm6:xmm15 registers even if they were not used at all
@@ -3038,7 +3038,7 @@ All these issues resulted in AVX->SSE2 penalty
 From MSDN:
 XMM6:XMM15, YMM6:YMM15 rules for x64:
 Nonvolatile (XMM), Volatile (upper half of YMM)
-XMM6:XMM15 Must be preserved as needed by callee. 
+XMM6:XMM15 Must be preserved as needed by callee.
 YMM registers must be preserved as needed by caller. (they do not need to be preserved)
 
 Problem:
@@ -3048,7 +3048,7 @@ No problem (looking at the disassembly list):
   if ymm6:ymm11 (in this example) is used. If no register is used over xmm6/ymm6 then xmm registers are not saved at all.
 - question: does it have any penalty when movaps is used w/o vzeroupper?
   The epilog generates movaps
-  movaps      xmm11,xmmword ptr [rbx-10h] 
+  movaps      xmm11,xmmword ptr [rbx-10h]
 
 0000000002430000  push        rbp
 0000000002430001  mov         rbp,rsp
@@ -3103,11 +3103,11 @@ Note: Don't use vzeroupper manually. When vzeroupper is issued manually, jitasm 
 000000000243008E  add         rsp,0A8h
 0000000002430095  pop         rbx
 0000000002430096  pop         rbp
-0000000002430097  ret  
+0000000002430097  ret
 -- end of jitasm generated epilog (old)
 
 PF: modded jitasm (calling codegen with avx_epilog_ = true) generates vmovaps instead of movaps and and automatic vzeroupper before the ret instruction
-generated epilog example (new): 
+generated epilog example (new):
 0000000001E70613  vmovaps     xmm11,xmmword ptr [rbx-10h]
 0000000001E70618  vmovaps     xmm10,xmmword ptr [rbx-20h]
 0000000001E7061D  vmovaps     xmm9,xmmword ptr [rbx-30h]
@@ -3129,7 +3129,7 @@ generated epilog example (new):
     vpxor(zero, zero, zero);
     Reg constptr;
     mov(constptr, (uintptr_t)logexpconst_avx);
-    
+
     L("wloop");
     cmp(niter, 0); // while(niter>0)
     je("wend");
@@ -3169,7 +3169,7 @@ generated epilog example (new):
 
     jmp("wloop");
     L("wend");
-    
+
     int nrestpixels = planewidth & (singleMode ? 7 : 15);
     if(nrestpixels > 8) // dual process with masking
       processingLoop<false, true>(regptrs, zero, constptr, SpatialY);
@@ -3301,12 +3301,12 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
 
   const bool clamp_float = args[next_paramindex].AsBool(false);
   next_paramindex++;
-  
+
   const bool clamp_float_UV = args[next_paramindex].AsBool(false);
 
   // clamp_float clamp_float_uv -> clamp_float_i   clamp range for Y clamp range for UV
   // false       x                 0               0..1              -0.5..+0.5
-  // true        false             1               0..1              -0.5..+0.5 
+  // true        false             1               0..1              -0.5..+0.5
   // true        true              2               0..1              0..1
 
   int clamp_float_i;
@@ -3314,14 +3314,14 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
     clamp_float_i = clamp_float_UV ? 2 : 1;
   else
     clamp_float_i = 0;
-  
+
   return new Exprfilter(children, expressions, newformat, optAvx2, optSingleMode, optSSE2, scale_inputs, clamp_float_i, env);
 
 }
 
 
 PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
-  // ExprData d class variable already filled 
+  // ExprData d class variable already filled
   int numInputs = d.numInputs;
 
   std::vector<PVideoFrame> src;
@@ -3392,13 +3392,13 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         ExprData::ProcessLineProc proc = d.proc[plane];
 
 #ifdef GCC
-        // the following local allocation in gcc 8.3 results in warning: 
+        // the following local allocation in gcc 8.3 results in warning:
         // alignas(32) intptr_t rwptrs[RWPTR_SIZE];
         // requested alignment 32 is larger than 16 [-Wattributes]
 
         // Using c++17 feature instead: new with alignment
         intptr_t* rwptrs = new (std::align_val_t(32)) intptr_t[RWPTR_SIZE];
-        
+
         // Note: this method is giving immediate build error in VS2019 16.0.4 (bug?). Clang 8.0 and gcc 8.3 is O.K.
         // error C2956: sized deallocation function 'operator delete(void*, size_t)' would be chosen as placement deallocation function.
         // See https://developercommunity.visualstudio.com/content/problem/528320/using-c17-new-stdalign-val-tn-syntax-results-in-er.html
@@ -3746,7 +3746,7 @@ static SOperation getStoreOp(const VideoInfo *vi) {
   switch (vi->BitsPerComponent()) {
   case 8: return opStore8;
   case 10: return opStore10; // avs+
-  case 12: return opStore12; // avs+ 
+  case 12: return opStore12; // avs+
   case 14: return opStore14; // avs+
   case 16: return opStore16;
   case 32: return opStoreF32;
@@ -3772,10 +3772,10 @@ static SOperation getStoreOp(const VideoInfo *vi) {
 // no suffix means 0
 static int getSuffix(std::string token, std::string base) {
   size_t len = base.length();
-  
+
   if (token.substr(0, len) != base)
     return -1; // no match
-    
+
   if (token.length() == len)
     return 0; // no suffix, treat as _x
 
@@ -3800,8 +3800,8 @@ static int getEffectiveBitsPerComponent(int bitsPerComponent, bool autoconv_conv
   return bitsPerComponent;
 }
 
-static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma, 
-  const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float, const int clamp_float_i, const bool shift_float, 
+static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma,
+  const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float, const int clamp_float_i, const bool shift_float,
   IScriptEnvironment *env)
 {
     // vi_output is new in avs+, and is not used yet
@@ -3910,7 +3910,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         else if (tokens[i] == "sx") { // avs+
           // spatial
           LOAD_OP(opLoadSpatialX, 0, 0);
-        } 
+        }
         else if (tokens[i] == "sy") { // avs+
           // spatial
           LOAD_OP(opLoadSpatialY, 0, 0);
@@ -3973,7 +3973,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           // avs+: 'scale_inputs': converts input pixels to a common specified range
           // Apply to integer and/or float bit depths.
           // For integers bit-shift or full-scale-stretch method can be chosen
-          // There is no precision loss, since the multiplication/division occurs when original pixels 
+          // There is no precision loss, since the multiplication/division occurs when original pixels
           // are already loaded as float
           const int realSourceBitdepth = vi[loadIndex]->BitsPerComponent();
           // need any conversion?
@@ -4033,7 +4033,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               }
             }
           } // end of scale inputs
-            
+
           // "floatUV" - shifts -0.5 .. +0.5 chroma range to 0 .. 1.0 only when no other autoscaling is active
           // the effect of this pre-shift is reversed at the storage phase
           if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && realSourceBitdepth == 32) {
@@ -4096,7 +4096,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
 
           if(dx <= -vi_output->width || dx >= vi_output->width)
             env->ThrowError("Expr: dx must be between +/- (width-1) in '%s'", tokens[i].c_str());
-          if (dy <= -vi_output->height || dy >= vi_output->height) 
+          if (dy <= -vi_output->height || dy >= vi_output->height)
             env->ThrowError("Expr: dy must be between +/- (height-1) in '%s'", tokens[i].c_str());
           LOAD_REL_OP(getLoadOp(vi[loadIndex], true), loadIndex, 0, dx, dy);
         }
@@ -4414,7 +4414,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
           }
           else {
-            // no scaling is needed. Bit depth of constant is the same as of the reference clip 
+            // no scaling is needed. Bit depth of constant is the same as of the reference clip
           }
         }
         else if (tokens[i] == "scalef" || tokens[i] == "yscalef") // avs+, scale by full scale
@@ -4497,7 +4497,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
           }
           else {
-            // no scaling is needed. Bit depth of constant is the same as of the reference clip 
+            // no scaling is needed. Bit depth of constant is the same as of the reference clip
           }
         }
         else if (tokens[i] == "i8") // avs+
@@ -4542,13 +4542,13 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         if (stackSize != 1)
             env->ThrowError("Expr: Stack unbalanced at end of expression. Need to have exactly one value on the stack to return.");
 
-        // When scale_inputs option was used for scaling input to a common internal range, 
+        // When scale_inputs option was used for scaling input to a common internal range,
         // we have to scale pixels before storing them back
         // need any conversion?
-        // or use effectiveTargetBitDepth instead of autoScaleSourceBitDepth 
+        // or use effectiveTargetBitDepth instead of autoScaleSourceBitDepth
 
         if (autoScaleSourceBitDepth != targetBitDepth && (autoconv_conv_int || autoconv_conv_float)) {
-          // We can be sure that internal source was not 32 bits float: 
+          // We can be sure that internal source was not 32 bits float:
           // (was checked during input conversion)
           if (targetBitDepth != 32 && autoconv_conv_int) {
             // convert back internal integer to other integer
@@ -4604,12 +4604,12 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
           }
         } // end of scale inputs
-        
-        // "floatUV" - 
+
+        // "floatUV" -
         // this reverses the effect of the 0.5 float-type pre-shift is the pixel load phase
-        // pre-shifts chroma pixels by +0.5 before applying the expression (see at pixel load), 
+        // pre-shifts chroma pixels by +0.5 before applying the expression (see at pixel load),
         // then here the result is shifted back by -0.5
-        // Thus expressions, which rely on a working range of 0..1.0 will work transparently 
+        // Thus expressions, which rely on a working range of 0..1.0 will work transparently
         if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && targetBitDepth == 32) {
           if (chroma && shift_float) {
 #ifndef FLOAT_CHROMA_IS_HALF_CENTERED
@@ -4623,7 +4623,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (chroma) {
             // clamp_float clamp_float_uv -> clamp_float_i   clamp range for Y clamp range for UV
             // false       x                 0               0..1              -0.5..+0.5
-            // true        false             1               0..1              -0.5..+0.5 
+            // true        false             1               0..1              -0.5..+0.5
             // true        true              2               0..1              0..1
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
             LOAD_OP_NOTOKEN(opLoadConst, 0.0f, 0);
@@ -4995,9 +4995,9 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             }
           }
           break;
-          
+
         }
-        
+
         // fold constant
         switch (ops[i].op) {
             case opDup:
@@ -5080,7 +5080,7 @@ static void foldConstants(std::vector<ExprOp> &ops) {
     }
 }
 
-Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2, 
+Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2,
   const bool _optSingleMode, const bool _optSSE2, const std::string _scale_inputs, const int _clamp_float_i, IScriptEnvironment *env) :
   children(_child_array), expressions(_expr_array), optAvx2(_optAvx2), optSingleMode(_optSingleMode), optSSE2(_optSSE2), scale_inputs(_scale_inputs), clamp_float_i(_clamp_float_i) {
 
@@ -5129,7 +5129,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     d.numInputs = (int)children.size(); // d->numInputs = vsapi->propNumElements(in, "clips");
     if (d.numInputs > 26)
       env->ThrowError("Expr: More than 26 input clips provided");
-    
+
     for (int i = 0; i < d.numInputs; i++)
       d.node[i] = children[i];
 
@@ -5152,7 +5152,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       const int plane_enum_i = plane_enums_i[1];
 
       if (vi_array[0]->NumComponents() != vi_array[i]->NumComponents() // number of planes should match
-        || 
+        ||
         ( !vi_array[0]->IsY() && ( // no subsampling for Y
            vi_array[0]->GetPlaneWidthSubsampling(plane_enum) != vi_array[i]->GetPlaneWidthSubsampling(plane_enum_i)
            || vi_array[0]->GetPlaneHeightSubsampling(plane_enum) != vi_array[i]->GetPlaneHeightSubsampling(plane_enum_i)
@@ -5250,7 +5250,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       const int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
       const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
       const bool chroma = (plane_enum_s == PLANAR_U || plane_enum_s == PLANAR_V);
-      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma, 
+      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma,
         autoconv_full_scale, autoconv_conv_int, autoconv_conv_float, clamp_float_i, shift_float,
         env), d.maxStackSize);
       foldConstants(d.ops[i]);
@@ -5267,7 +5267,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 
       // optimize single clip letter in expression: Load-Store. Change operation to "copy"
       // no relative loads here
-      if (d.plane[i] == poProcess && d.ops[i].size() == 2 && 
+      if (d.plane[i] == poProcess && d.ops[i].size() == 2 &&
         (d.ops[i][0].op == opLoadSrc8 || d.ops[i][0].op == opLoadSrc16 || d.ops[i][0].op == opLoadSrcF16 || d.ops[i][0].op == opLoadSrcF32) &&
         (d.ops[i][1].op == opStore8 || d.ops[i][1].op == opStore10 || d.ops[i][1].op == opStore12 || d.ops[i][1].op == opStore14 || d.ops[i][1].op == opStore16 || d.ops[i][1].op == opStoreF16 || d.ops[i][1].op == opStoreF32))
       {
@@ -5355,7 +5355,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 #if 0
         // under construction
 
-        // check LUT possibility: 
+        // check LUT possibility:
         // * 8-16bit 1D lut, or 8-10 bit 2D lut
         // * bit depth of input clip(s) and output must match
         bool useLut =
@@ -5368,8 +5368,8 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
             && d.vi.BitsPerComponent() == vi_array[0]->BitsPerComponent()
             && d.vi.BitsPerComponent() == vi_array[1]->BitsPerComponent()
             );
-        
-        // todo: 
+
+        // todo:
         // if there is a 'runtime' variable in the expression (framecount, relative_time), then lut is not possible
 
         if (useLut) {

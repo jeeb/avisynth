@@ -19,7 +19,7 @@ static const BYTE val_tab[6]={0,0xC0,0xE0,0xF0,0xF8,0xFC};
 unsigned utf8_decode_char(const char *p_utf8,unsigned * wide,unsigned max)
 {
 	const BYTE * utf8 = (const BYTE*)p_utf8;
-	
+
 	if (wide) *wide = 0;
 
 	if (max==0)
@@ -329,7 +329,7 @@ int skip_utf8_chars(const char * ptr,int count)
 	{
 		int d = utf8_char_len(ptr+num);
 		if (d<=0) break;
-		num+=d;		
+		num+=d;
 	}
 	return num;
 }
@@ -526,14 +526,14 @@ unsigned strcpy_utf8_truncate(const char * src,char * out,unsigned maxbytes)
 {
 	unsigned rv = 0 , ptr = 0;
 	if (maxbytes>0)
-	{	
+	{
 		maxbytes--;//for null
 		while(!check_end_of_string(src) && maxbytes>0)
 		{
 			__try {
 				unsigned delta = utf8_char_len(src);
 				if (delta>maxbytes || delta==0) break;
-				do 
+				do
 				{
 					out[ptr++] = *(src++);
 				} while(--delta);

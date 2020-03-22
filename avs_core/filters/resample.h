@@ -52,7 +52,7 @@ typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height
 class FilteredResizeH : public GenericVideoFilter
 {
 public:
-  FilteredResizeH( PClip _child, double subrange_left, double subrange_width, int target_width, 
+  FilteredResizeH( PClip _child, double subrange_left, double subrange_width, int target_width,
                    ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -92,7 +92,7 @@ private:
   TurnFuncPtr turn_left, turn_right;
 };
 
- 
+
 /**
   * Class to resize in the vertical direction using a specified sampling filter
   * Helper for resample functions
@@ -137,13 +137,13 @@ class FilteredResize
  **/
 {
 public:
-static PClip CreateResizeH( PClip clip, double subrange_left, double subrange_width, int target_width, 
+static PClip CreateResizeH( PClip clip, double subrange_left, double subrange_width, int target_width,
                             ResamplingFunction* func, IScriptEnvironment* env );
 
-static PClip CreateResizeV( PClip clip, double subrange_top, double subrange_height, int target_height, 
+static PClip CreateResizeV( PClip clip, double subrange_top, double subrange_height, int target_height,
                             ResamplingFunction* func, IScriptEnvironment* env );
 
-static PClip CreateResize( PClip clip, int target_width, int target_height, const AVSValue* args, 
+static PClip CreateResize( PClip clip, int target_width, int target_height, const AVSValue* args,
                            ResamplingFunction* f, IScriptEnvironment* env );
 
 static AVSValue __cdecl Create_PointResize(AVSValue args, void*, IScriptEnvironment* env);
@@ -152,7 +152,7 @@ static AVSValue __cdecl Create_BilinearResize(AVSValue args, void*, IScriptEnvir
 
 static AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env);
 
-// 09-14-2002 - Vlad59 - Lanczos3Resize - 
+// 09-14-2002 - Vlad59 - Lanczos3Resize -
 static AVSValue __cdecl Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env);
 
 static AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env);

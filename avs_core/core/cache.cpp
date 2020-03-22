@@ -52,7 +52,7 @@ extern const AVSFunction Cache_filters[] = {
 
 struct CachePimpl
 {
-  PClip child; 
+  PClip child;
   VideoInfo vi;
 
   // Video cache
@@ -112,9 +112,9 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
   PVideoFrame result;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
-  
-#ifdef _DEBUG	
-  std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end; 
+
+#ifdef _DEBUG
+  std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end;
   t_start = std::chrono::high_resolution_clock::now(); // t_start starts in the constructor. Used in logging
 
   char buf[256];
@@ -147,7 +147,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
         _pimpl->VideoCache->rollback(&cache_handle);
         throw;
       }
-#ifdef _DEBUG	
+#ifdef _DEBUG
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
@@ -161,8 +161,8 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
           _RPT0(0, buf);
       }
 #endif
-      // result = cache_handle.first->value; not here! 
-      // its content may change after commit when the last lock is released 
+      // result = cache_handle.first->value; not here!
+      // its content may change after commit when the last lock is released
       // (cache is being restructured by other threads, new frames, etc...)
       break;
     }
@@ -173,7 +173,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       // solution:
       // when LRU_LOOKUP_FOUND_AND_READY, the cache_handle.first->value is copied and returned in result itself
       // result =  cache_handle.first->value; // old method not needed, result is filled already by lookup
-#ifdef _DEBUG	
+#ifdef _DEBUG
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
@@ -187,7 +187,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   case LRU_LOOKUP_NO_CACHE:
     {
       result = _pimpl->child->GetFrame(n, env);
-#ifdef _DEBUG	
+#ifdef _DEBUG
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
       std::string name = FuncName;
@@ -247,7 +247,7 @@ void __stdcall Cache::GetAudio(void* buf, int64_t start, int64_t count, IScriptE
     // -----------------------------------------------------------
     //          Caching
     // -----------------------------------------------------------
-    
+
     // TODO: implement audio cache
 
 
@@ -360,7 +360,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 
     case CACHE_GET_SIZE:
       return (int)_pimpl->VideoCache->size();
-      
+
     case CACHE_GET_REQUESTED_CAP:
       return (int)_pimpl->VideoCache->requested_capacity();
 

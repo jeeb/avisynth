@@ -55,7 +55,7 @@ PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
 
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
+  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1)))
     env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
 
   env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
@@ -66,12 +66,12 @@ PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-PClip AlignPlanar::Create(PClip clip) 
+PClip AlignPlanar::Create(PClip clip)
 {
   if (!clip->GetVideoInfo().IsPlanar()) {  // If not planar, already ok.
     return clip;
   }
-  else 
+  else
     return new AlignPlanar(clip);
 }
 

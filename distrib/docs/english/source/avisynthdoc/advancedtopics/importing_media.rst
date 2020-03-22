@@ -7,7 +7,7 @@ Importing media into AviSynth
     :maxdepth: 3
 
 .. contents:: Table of contents
-    
+
 
 
 Loading clips into AviSynth

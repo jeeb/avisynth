@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// 
+///
 /// Linear interpolation routine.
 ///
 /// Author        : Copyright (c) Olli Parviainen
@@ -47,17 +47,17 @@ protected:
 
     virtual void resetRegisters();
 
-    virtual int transposeMono(SAMPLETYPE *dest, 
-                       const SAMPLETYPE *src, 
+    virtual int transposeMono(SAMPLETYPE *dest,
+                       const SAMPLETYPE *src,
                        int &srcSamples);
-    virtual int transposeStereo(SAMPLETYPE *dest, 
-                         const SAMPLETYPE *src, 
+    virtual int transposeStereo(SAMPLETYPE *dest,
+                         const SAMPLETYPE *src,
                          int &srcSamples);
     virtual int transposeMulti(SAMPLETYPE *dest, const SAMPLETYPE *src, int &srcSamples);
 public:
     InterpolateLinearInteger();
 
-    /// Sets new target rate. Normal rate = 1.0, smaller values represent slower 
+    /// Sets new target rate. Normal rate = 1.0, smaller values represent slower
     /// rate, larger faster rates.
     virtual void setRate(double newRate);
 };
@@ -71,11 +71,11 @@ protected:
 
     virtual void resetRegisters();
 
-    virtual int transposeMono(SAMPLETYPE *dest, 
-                       const SAMPLETYPE *src, 
+    virtual int transposeMono(SAMPLETYPE *dest,
+                       const SAMPLETYPE *src,
                        int &srcSamples);
-    virtual int transposeStereo(SAMPLETYPE *dest, 
-                         const SAMPLETYPE *src, 
+    virtual int transposeStereo(SAMPLETYPE *dest,
+                         const SAMPLETYPE *src,
                          int &srcSamples);
     virtual int transposeMulti(SAMPLETYPE *dest, const SAMPLETYPE *src, int &srcSamples);
 

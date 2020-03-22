@@ -23,13 +23,13 @@ if (MINGW)
   set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
 endif()
 
-# Library dependencies 
+# Library dependencies
 target_link_libraries(${ProjectName} "user32")
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR})
 
-if (MSVC_IDE)    
+if (MSVC_IDE)
   # Copy output to a common folder for easy deployment
   add_custom_command(
     TARGET ${ProjectName}

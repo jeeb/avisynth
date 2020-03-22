@@ -211,12 +211,12 @@ typedef long long unsigned int ILuint64;
 #define IL_WAL          0x0432  //!< Quake 2 Texture - .wal extension
 #define IL_LIF          0x0434  //!< Homeworld Texture - .lif extension
 #define IL_MNG          0x0435  //!< Multiple-image Network Graphics - .mng extension
-#define IL_JNG          0x0435  //!< 
+#define IL_JNG          0x0435  //!<
 #define IL_GIF          0x0436  //!< Graphics Interchange Format - .gif extension
 #define IL_DDS          0x0437  //!< DirectDraw Surface - .dds extension
 #define IL_DCX          0x0438  //!< ZSoft Multi-PCX - .dcx extension
 #define IL_PSD          0x0439  //!< Adobe PhotoShop - .psd extension
-#define IL_EXIF         0x043A  //!< 
+#define IL_EXIF         0x043A  //!<
 #define IL_PSP          0x043B  //!< PaintShop Pro - .psp extension
 #define IL_PIX          0x043C  //!< PIX - .pix extension
 #define IL_PXR          0x043D  //!< Pixar - .pxr extension
@@ -455,11 +455,11 @@ typedef long long unsigned int ILuint64;
 
 // This is from Win32's <windef.h>
 #if (_MSC_VER >= 800) || defined(_STDCALL_SUPPORTED) || defined(__BORLANDC__) || defined(__LCC__)
-	#define ILAPIENTRY __stdcall 
+	#define ILAPIENTRY __stdcall
 	#define IL_PACKSTRUCT
 //#elif defined(linux) || defined(MACOSX) || defined(__CYGWIN__) //fix bug 840364
 #elif defined( __GNUC__ )
-  // this should work for any of the above commented platforms 
+  // this should work for any of the above commented platforms
   // plus any platform using GCC
 	#ifdef __MINGW32__
 		#define ILAPIENTRY __stdcall

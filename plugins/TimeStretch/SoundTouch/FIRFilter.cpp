@@ -1,13 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// General FIR digital filter routines with MMX optimization. 
+/// General FIR digital filter routines with MMX optimization.
 ///
-/// Notes : MMX optimized functions reside in a separate, platform-specific file, 
+/// Notes : MMX optimized functions reside in a separate, platform-specific file,
 /// e.g. 'mmx_win.cpp' or 'mmx_gcc.cpp'
 ///
 /// This source file contains OpenMP optimizations that allow speeding up the
-/// corss-correlation algorithm by executing it in several threads / CPU cores 
-/// in parallel. See the following article link for more detailed discussion 
+/// corss-correlation algorithm by executing it in several threads / CPU cores
+/// in parallel. See the following article link for more detailed discussion
 /// about SoundTouch OpenMP optimizations:
 /// http://www.softwarecoven.com/parallel-computing-in-embedded-mobile-devices
 ///
@@ -87,7 +87,7 @@ uint FIRFilter::evaluateFilterStereo(SAMPLETYPE *dest, const SAMPLETYPE *src, ui
     end = 2 * (numSamples - length);
 
     #pragma omp parallel for
-    for (j = 0; j < end; j += 2) 
+    for (j = 0; j < end; j += 2)
     {
         const SAMPLETYPE *ptr;
         LONG_SAMPLETYPE suml, sumr;
@@ -96,7 +96,7 @@ uint FIRFilter::evaluateFilterStereo(SAMPLETYPE *dest, const SAMPLETYPE *src, ui
         suml = sumr = 0;
         ptr = src + j;
 
-        for (i = 0; i < length; i += 4) 
+        for (i = 0; i < length; i += 4)
         {
             // loop is unrolled by factor of 4 here for efficiency
             suml += ptr[2 * i + 0] * filterCoeffs[i + 0] +
@@ -141,19 +141,19 @@ uint FIRFilter::evaluateFilterMono(SAMPLETYPE *dest, const SAMPLETYPE *src, uint
 
     end = numSamples - length;
     #pragma omp parallel for
-    for (j = 0; j < end; j ++) 
+    for (j = 0; j < end; j ++)
     {
         const SAMPLETYPE *pSrc = src + j;
         LONG_SAMPLETYPE sum;
         uint i;
 
         sum = 0;
-        for (i = 0; i < length; i += 4) 
+        for (i = 0; i < length; i += 4)
         {
             // loop is unrolled by factor of 4 here for efficiency
-            sum += pSrc[i + 0] * filterCoeffs[i + 0] + 
-                   pSrc[i + 1] * filterCoeffs[i + 1] + 
-                   pSrc[i + 2] * filterCoeffs[i + 2] + 
+            sum += pSrc[i + 0] * filterCoeffs[i + 0] +
+                   pSrc[i + 1] * filterCoeffs[i + 1] +
+                   pSrc[i + 2] * filterCoeffs[i + 2] +
                    pSrc[i + 3] * filterCoeffs[i + 3];
         }
 #ifdef SOUNDTOUCH_INTEGER_SAMPLES
@@ -210,7 +210,7 @@ uint FIRFilter::evaluateFilterMulti(SAMPLETYPE *dest, const SAMPLETYPE *src, uin
                 ptr ++;
             }
         }
-        
+
         for (c = 0; c < numChannels; c ++)
         {
 #ifdef SOUNDTOUCH_INTEGER_SAMPLES
@@ -252,11 +252,11 @@ uint FIRFilter::getLength() const
 }
 
 
-// Applies the filter to the given sequence of samples. 
+// Applies the filter to the given sequence of samples.
 //
-// Note : The amount of outputted samples is by value of 'filter_length' 
+// Note : The amount of outputted samples is by value of 'filter_length'
 // smaller than the amount of input samples.
-uint FIRFilter::evaluate(SAMPLETYPE *dest, const SAMPLETYPE *src, uint numSamples, uint numChannels) 
+uint FIRFilter::evaluate(SAMPLETYPE *dest, const SAMPLETYPE *src, uint numSamples, uint numChannels)
 {
     assert(length > 0);
     assert(lengthDiv8 * 8 == length);
@@ -267,7 +267,7 @@ uint FIRFilter::evaluate(SAMPLETYPE *dest, const SAMPLETYPE *src, uint numSample
     if (numChannels == 1)
     {
         return evaluateFilterMono(dest, src, numSamples);
-    } 
+    }
     else if (numChannels == 2)
     {
         return evaluateFilterStereo(dest, src, numSamples);
@@ -281,7 +281,7 @@ uint FIRFilter::evaluate(SAMPLETYPE *dest, const SAMPLETYPE *src, uint numSample
 }
 
 
-// Operator 'new' is overloaded so that it automatically creates a suitable instance 
+// Operator 'new' is overloaded so that it automatically creates a suitable instance
 // depending on if we've a MMX-capable CPU available or not.
 void * FIRFilter::operator new(size_t s)
 {

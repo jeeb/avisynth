@@ -47,7 +47,7 @@ void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScript
 
 void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, IScriptEnvironment* env);
 
-class AssumeScaledFPS : public NonCachedGenericVideoFilter 
+class AssumeScaledFPS : public NonCachedGenericVideoFilter
 /**
   * Class to change the framerate without changing the frame count
  **/
@@ -58,7 +58,7 @@ public:
 };
 
 
-class AssumeFPS : public NonCachedGenericVideoFilter 
+class AssumeFPS : public NonCachedGenericVideoFilter
 /**
   * Class to change the framerate without changing the frame count
  **/
@@ -72,7 +72,7 @@ public:
 };
 
 
-class ChangeFPS : public GenericVideoFilter 
+class ChangeFPS : public GenericVideoFilter
 /**
   * Class to change the framerate, deleting or adding frames as necessary
  **/
@@ -85,7 +85,7 @@ public:
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
     //todo: not really sure if it has to be serialized or can do with multiple instances
-    return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0; 
+    return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0;
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -101,13 +101,13 @@ private:
 
 
 
-class ConvertFPS : public GenericVideoFilter 
+class ConvertFPS : public GenericVideoFilter
 /**
   * Class to change the framerate, attempting to smooth the transitions
  **/
 {
 public:
-  ConvertFPS( PClip _child, unsigned new_numerator, unsigned new_denominator, int _zone, 
+  ConvertFPS( PClip _child, unsigned new_numerator, unsigned new_denominator, int _zone,
               int _vbi, IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);

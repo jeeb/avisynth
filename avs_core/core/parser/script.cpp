@@ -371,7 +371,7 @@ std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string)
   const auto len = wcslen(w_string);
   auto s_ansi = std::make_unique<char[]>(len + 1);
   WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
-  // int succ = wcstombs(s_ansi, w_string, len +1); 
+  // int succ = wcstombs(s_ansi, w_string, len +1);
   // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
   return s_ansi;
 }
@@ -381,7 +381,7 @@ std::unique_ptr<char[]> WideCharToAnsiACP(const wchar_t *w_string)
   const auto len = wcslen(w_string);
   auto s_ansi = std::make_unique<char[]>(len + 1);
   WideCharToMultiByte(CP_ACP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
-  // int succ = wcstombs(s_ansi, w_string, len +1); 
+  // int succ = wcstombs(s_ansi, w_string, len +1);
   // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
   return s_ansi;
 }
@@ -1029,8 +1029,8 @@ AVSValue ReplaceStr(AVSValue args, void*, IScriptEnvironment* env) {
   return ret;
 }
 
-AVSValue TrimLeft(AVSValue args, void*, IScriptEnvironment* env) 
-{ 
+AVSValue TrimLeft(AVSValue args, void*, IScriptEnvironment* env)
+{
   char const *original = args[0].AsString();
   char const *s = original;
   char ch;
@@ -1059,7 +1059,7 @@ AVSValue TrimRight(AVSValue args, void*, IScriptEnvironment* env)
   while ((len > 0) && ((ch = *--s) == (char)32 || ch == (char)160 || ch == (char)9)) {
     len--;
   }
-  
+
   if(orig_len == len)
     return args[0]; // avoid SaveString if no change
 
@@ -1553,7 +1553,7 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env)
-{ 
+{
   int n = args[0].AsInt();
   int wid = args[1].AsInt(0); // 0..8 is the minimum width of the returned string
   wid = (wid<0) ? 0 : (wid > 8) ? 8 : wid;
@@ -1573,7 +1573,7 @@ AVSValue Default(AVSValue args, void*, IScriptEnvironment*) {  return args[0].De
 AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment*) {  return AVS_CLASSIC_VERSION; }
 AVSValue VersionString(AVSValue args, void*, IScriptEnvironment*) {  return AVS_FULLVERSION; }
 AVSValue IsVersionOrGreater(AVSValue args, void*, IScriptEnvironment* env)
-{ 
+{
   if (!args[0].Defined() || !args[1].Defined()) {
     env->ThrowError("IsVersionOrGreater error: at least two parameters (majorVersion, minorVersion) required!");
   }
@@ -1940,7 +1940,7 @@ AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env)
   else {
     chroma = 444; // n/a
   }
-  
+
   if(chroma != 444 && chroma != 422 && chroma != 420 && chroma != 411)
     env->ThrowError("BuildPixelType error: 'chroma' must be 444, 422, 420 or 411.");
 
@@ -1984,7 +1984,7 @@ AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env)
       format += "420";
     else if (chroma == 411)
       format += "411";
-    
+
     format = format + "P";
   }
 
@@ -1998,7 +1998,7 @@ AVSValue BuildPixelType(AVSValue args, void*, IScriptEnvironment* env)
     else if (format == "YUV422" || format == "YUV422P8") format = "YV16";
     else if (format == "YUV444" || format == "YUV444P8") format = "YV24";
   }
-  
+
   // 411 has no alternative naming
   if (format == "YUV411") format = "YV411";
 

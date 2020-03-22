@@ -48,14 +48,14 @@ public:
 		if (found_index>=0)
 		{
 			list[found_index]->used = true;
-			return list[found_index]->block.copy(ptr,size);				
+			return list[found_index]->block.copy(ptr,size);
 		}
 		entry * new_entry = new entry;
 		new_entry->used = true;
 		list.add_item(new_entry);
 		return new_entry->block.copy(ptr,size);
 	}
-	
+
 	void mark_as_free()
 	{
 		int n;

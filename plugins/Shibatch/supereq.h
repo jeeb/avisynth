@@ -68,7 +68,7 @@ private:
 	int *rfft_ip;
 	REAL *rfft_w;
 
-  
+
 	REAL fact[M+1];
 	REAL aa;
 	REAL iza;
@@ -198,7 +198,7 @@ private:
 		ret += e->gain*(hn_imp(n)-lhn);
 
 		return ret;
-	
+
 	}
 
 
@@ -223,7 +223,7 @@ static const double bands[NBANDS] = { // Half octave spacing, i.e. *=sqrt(2.0)
 			(*pp)->upper = i == NBANDS ? fs : bands[i  ];
 			(*pp)->gain  = bc[i];
 		  }
-  
+
 		  for(e = param->elm;e != NULL;e = e->next)
 		  {
 			if ((ch == 0 && !e->left) || (ch == 1 && !e->right)) continue;
@@ -408,7 +408,7 @@ public:
 			rfft(tabsize,1,fsamples);
 
 			fsamples[0] = ires[0]*fsamples[0];
-			fsamples[1] = ires[1]*fsamples[1]; 
+			fsamples[1] = ires[1]*fsamples[1];
 
 			for(i=1;i<tabsize/2;i++)
 			{
@@ -453,9 +453,9 @@ public:
 		samples_done = 0;
 		return done.get_ptr();
 	}
-	
+
 	int samples_buffered() {return nbufsamples;}
-	
+
 	~supereq()
 	{
 		if (lires1) free(lires1);
