@@ -1331,7 +1331,7 @@ const char *GetPixelTypeName(const int pixel_type)
   return (it->second).c_str();
 }
 
-const int GetPixelTypeFromName(const char *pixeltypename)
+int GetPixelTypeFromName(const char *pixeltypename)
 {
   std::string name_to_find = pixeltypename;
   for (auto & c: name_to_find) c = toupper(c); // uppercase input string

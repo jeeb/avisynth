@@ -83,7 +83,7 @@ enum MANAGE_CACHE_KEYS
 
 int RGB2YUV(int rgb);
 const char *GetPixelTypeName(const int pixel_type); // in script.c
-const int GetPixelTypeFromName(const char *pixeltypename); // in script.c
+int GetPixelTypeFromName(const char *pixeltypename); // in script.c
 const char* GetAVSTypeName(AVSValue value); // in script.c
 int GetDeviceTypes(const PClip& child); // in DeviceManager.cpp
 size_t GetFrameHead(const PVideoFrame& vf); // in DeviceManager.cpp

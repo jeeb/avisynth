@@ -48,7 +48,7 @@
 
 #include <cassert>
 
-static const char * const StringSystemError(const unsigned code)
+static const char * StringSystemError(const unsigned code)
 {
   switch (code) {
   case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
