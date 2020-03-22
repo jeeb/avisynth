@@ -120,9 +120,6 @@ AVSValue Tau(AVSValue args, void* user_data, IScriptEnvironment* env);
 #endif
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
 
-
-static inline const VideoInfo& VI(const AVSValue& arg);
-
 AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Width(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Height(AVSValue args, void*, IScriptEnvironment* env);

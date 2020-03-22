@@ -704,15 +704,6 @@ void LightOneUVPixel(const bool lightIt, pixel_t* dstpU, int j, pixel_t& color_u
   }
 }
 
-/* returns the biggest integer x such as 2^x <= i */
-static int ilog2(int i)
-{
-  int result = 0;
-  while (i > 1) { i /= 2; result++; }
-  return result;
-}
-
-
 static void adjustWriteLimits(std::vector<int>& s, const int width, const int height, const int FONT_WIDTH, const int FONT_HEIGHT, int align, int& x, int& y, int& len, int& startindex, int& xstart, int& ystart, int& yend)
 {
   const int al = alignToBitmask(align);
