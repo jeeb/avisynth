@@ -70,7 +70,7 @@ Limiter::Limiter(PClip _child, float _min_luma, float _max_luma, float _min_chro
   const bool isFloat = bits_per_pixel == 32;
   int tv_range_low   = isFloat ? 16 : (16 << (bits_per_pixel - 8)); // 16
   int tv_range_hi_luma   = isFloat ? 235 : (235 << (bits_per_pixel - 8)); // 16-235
-  int tv_range_hi_chroma = isFloat ? 240 : (240 << (bits_per_pixel - 8)); // 16-240,64–960, ...
+  int tv_range_hi_chroma = isFloat ? 240 : (240 << (bits_per_pixel - 8)); // 16-240,64-960, ...
 
   float tv_range_low_luma_f = 16 / 255.0f;
   float tv_range_hi_luma_f = 235 / 255.0f;

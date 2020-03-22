@@ -134,13 +134,13 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
 
     int tv_range_lo_luma_8 = 16;
     int tv_range_hi_luma_8 = 235;
-    int tv_range_lo_chroma_8 = tv_range_lo_luma_8; // 16-240,64–960, 256–3852,... 4096-61692
+    int tv_range_lo_chroma_8 = tv_range_lo_luma_8; // 16-240,64-960, 256-3852,... 4096-61692
     int tv_range_hi_chroma_8 = 240;
 
 
     int tv_range_lo_luma = (tv_range_lo_luma_8 << (bits_per_pixel - 8));
     int tv_range_hi_luma = (tv_range_hi_luma_8 << (bits_per_pixel - 8));
-    int tv_range_lo_chroma = tv_range_lo_luma; // 16-240,64–960, 256–3852,... 4096-61692
+    int tv_range_lo_chroma = tv_range_lo_luma; // 16-240,64-960, 256-3852,... 4096-61692
     int tv_range_hi_chroma = (tv_range_hi_chroma_8 << (bits_per_pixel - 8));
 
     double gain = tweaklike_params ? config->gain : (config->gain / 256 + 1.0);
@@ -160,7 +160,7 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
     double range_factor_pc_to_tv;
 
     if (config->plane == PLANAR_Y) {
-      // 8 bit 219 = 235-16, 10 bit: 64–960
+      // 8 bit 219 = 235-16, 10 bit: 64-960
       range_factor_tv_to_pc = (double)pixel_max / (tv_range_hi_luma - tv_range_lo_luma); // 255.0 / 219.0
       range_factor_pc_to_tv = (tv_range_hi_luma - tv_range_lo_luma) / (double)pixel_max; // 219.0 / 255.0
     }
@@ -266,7 +266,7 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
 
   int tv_range_lo_luma_8 = 16;
   int tv_range_hi_luma_8 = 235;
-  int tv_range_lo_chroma_8 = tv_range_lo_luma_8; // 16-240,64–960, 256–3852,... 4096-61692
+  int tv_range_lo_chroma_8 = tv_range_lo_luma_8; // 16-240,64-960, 256-3852,... 4096-61692
   int tv_range_hi_chroma_8 = 240;
 
   if (f32) {
@@ -284,7 +284,7 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
     pixel_max = (double)((1 << bits_per_pixel) - 1);
     tv_range_lo_luma = (double)(tv_range_lo_luma_8 << (bits_per_pixel - 8));
     tv_range_hi_luma = (double)(tv_range_hi_luma_8 << (bits_per_pixel - 8));
-    tv_range_lo_chroma = tv_range_lo_luma; // 16-240,64–960, 256–3852,... 4096-61692
+    tv_range_lo_chroma = tv_range_lo_luma; // 16-240,64-960, 256-3852,... 4096-61692
     tv_range_hi_chroma = (double)(tv_range_hi_chroma_8 << (bits_per_pixel - 8));
   }
 
@@ -304,7 +304,7 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
   double range_factor_pc_to_tv;
 
   if (config->plane == PLANAR_Y) {
-    // 8 bit 219 = 235-16, 10 bit: 64–960
+    // 8 bit 219 = 235-16, 10 bit: 64-960
     range_factor_tv_to_pc = (double)pixel_max / (tv_range_hi_luma - tv_range_lo_luma); // 255.0 / 219.0
     range_factor_pc_to_tv = (tv_range_hi_luma - tv_range_lo_luma) / (double)pixel_max; // 219.0 / 255.0
   }
