@@ -2,15 +2,17 @@
 # CMAKE_CXX_STANDARD to be set to C++17.
 CMAKE_MINIMUM_REQUIRED( VERSION 3.8.2 )
 
+if (WIN32)
+  set(CoreName "AviSynth")
+else()
+  set(CoreName "avisynth")
+endif()
+
 # Create library
 project("AvsCore")
 Include("Files.cmake")
 add_library("AvsCore" SHARED ${AvsCore_Sources})
-if (MSVC OR MINGW)
-  set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "AviSynth")
-else()
-  set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "avisynth")
-endif()
+set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "${CoreName}")
 if (MINGW)
   set_target_properties("AvsCore" PROPERTIES PREFIX "")
   set_target_properties("AvsCore" PROPERTIES IMPORT_PREFIX "")

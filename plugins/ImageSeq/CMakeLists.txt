@@ -5,6 +5,10 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.8.2 )
 set(PluginName "ImageSeq")
 set(ProjectName "Plugin${PluginName}")
 
+if (NOT WIN32)
+  string(TOLOWER "${PluginName}" PluginName)
+endif()
+
 # Create library
 project(${ProjectName})
 list (APPEND SourceFiles
