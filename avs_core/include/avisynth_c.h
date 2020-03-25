@@ -52,6 +52,7 @@
 //         Thus the Avisynth+ specific API functions are safely callable even when connected to classic Avisynth DLL
 // 202002xx  non-Windows friendly additions
 // 20200305  avs_vsprintf parameter type change: (void *) to va_list
+// 20200322  AVS_VideoFrame extended with pointer to frame properies
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -591,6 +592,7 @@ typedef struct AVS_VideoFrame {
   int offsetA;
 #endif
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
+  void* avsmap; // really: AVSMap * from Neo
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
@@ -656,6 +658,8 @@ AVSC_INLINE AVS_VideoFrame * avs_copy_frame(AVS_VideoFrame * f)
   {return avs_copy_video_frame(f);}
 #endif
 
+
+// todo: implement avsmap access
 /////////////////////////////////////////////////////////////////////
 //
 // AVS_Value
