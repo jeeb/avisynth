@@ -355,6 +355,7 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
   delete (ScriptFunction*)self;
 }
 
+
 /***********************************
  *******   wchar_t-utf-ansi   ******
  **********************************/

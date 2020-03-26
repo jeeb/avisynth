@@ -438,6 +438,8 @@ class ExpLegacyFunctionDefinition : public Expression {
 public:
   virtual AVSValue Evaluate(IScriptEnvironment* env) { return AVSValue(); }
 };
+
+
 class ExpFunctionWrapper : public Expression
 {
 public:

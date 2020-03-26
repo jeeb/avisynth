@@ -101,11 +101,15 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
   const char* param_names[max_args];
   int param_count=0;
 
+#ifndef AVS_VALUE
+  // fixme: Neo's variable capture syntax is incompatible with array definitions
+  // check there!
+#else
   // variable capture
   if (tokenizer.IsOperator('[')) {
-	if(name != nullptr) {
-		env->ThrowError("Script error: variable capture is not supported on legacy function definition.");
-	}
+    if (name != nullptr) {
+      env->ThrowError("Script error: variable capture is not supported on legacy function definition.");
+    }
     tokenizer.NextToken();
     bool need_comma = false;
     for (;;) {
@@ -128,7 +132,7 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
       need_comma = true;
     }
   }
-
+#endif
   if (!tokenizer.IsOperator('{')) {
     Expect('(', "Script error: expected ( or { after function name");
     bool need_comma = false;
@@ -198,8 +202,8 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
 
   const char* saved_param_names = env->SaveString(param_types);
 
- if(name != nullptr) {
-	// legacy function definition
+  if(name != nullptr) {
+    // legacy function definition
     ScriptFunction* sf = new ScriptFunction(body, param_floats, param_names, param_count);
     env->AtExit(ScriptFunction::Delete, sf);
     env->AddFunction(name, saved_param_names, ScriptFunction::Execute, sf, "$UserFunctions$");
