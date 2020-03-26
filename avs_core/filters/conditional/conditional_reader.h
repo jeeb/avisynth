@@ -68,6 +68,7 @@ public:
   ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, const char *_condVarSuffix, IScriptEnvironment* env);
   ~ConditionalReader(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
 
@@ -92,7 +93,7 @@ private:
 #endif
 	int arrsize;
 	struct exp_res {
-		const char* expression;
+		AVSValue expression;
 		const char* string;
 	};
 	exp_res* arglist;
@@ -107,7 +108,8 @@ public:
 	static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_If(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_Start(AVSValue args, void* user_data, IScriptEnvironment* env);
-	static AVSValue __cdecl Create_End(AVSValue args, void* user_data, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
+  static AVSValue __cdecl Create_End(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
 
 

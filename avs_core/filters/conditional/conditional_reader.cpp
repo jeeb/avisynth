@@ -541,7 +541,7 @@ PVideoFrame __stdcall ConditionalReader::GetFrame(int n, IScriptEnvironment* env
   AVSValue v = GetFrameValue(n);
 
   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-  env->SetGlobalVar(variableName, v);
+  env->SetGlobalVar(variableName.c_str(), v);
 
   PVideoFrame src = child->GetFrame(n,env);
 
@@ -598,7 +598,7 @@ Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck
 	arglist = new exp_res[arrsize];
 
 	for (int i=0; i<arrsize; i++) {
-		arglist[i].expression = args[i].AsString(EMPTY);
+		arglist[i].expression = args[i];
 		arglist[i].string = EMPTY;
 	}
 
@@ -667,18 +667,25 @@ void Write::FileOut(IScriptEnvironment* env, const char* mode) {
 	}
 }
 
-bool Write::DoEval( IScriptEnvironment* env) {
+bool Write::DoEval( IScriptEnvironment* env_) {
 	bool keep_this_line = true;
 	int i;
 	AVSValue expr;
 	AVSValue result;
+  InternalEnvironment* env = static_cast<InternalEnvironment*>(env_);
 
 	for (i=0; i<arrsize; i++) {
 		expr = arglist[i].expression;
 
 		if ( (linecheck==1) && (i==0)) {
 			try {
-				result = env->Invoke("Eval",expr);
+        if (expr.IsFunction()) {
+          env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
+        }
+        else {
+          expr = expr.AsString(EMPTY);
+          result = env->Invoke("Eval", expr);
+        }
 				if (!result.AsBool(true)) {
 					keep_this_line = false;
 					break;
@@ -688,7 +695,13 @@ bool Write::DoEval( IScriptEnvironment* env) {
 			}
 		} else {
 			try {
-				result = env->Invoke("Eval",expr);
+        if (expr.IsFunction()) {
+          env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
+        }
+        else {
+          expr = expr.AsString(EMPTY);
+          result = env->Invoke("Eval", expr);
+        }
 				result = env->Invoke("string",result);	//convert all results to a string
 				arglist[i].string = result.AsString(EMPTY);
 			} catch (const AvisynthError &error) {
@@ -763,8 +776,9 @@ int __stdcall UseVar::SetCacheHints(int cachehints, int frame_range) {
   {
   case CACHE_GET_MTMODE:
     return MT_NICE_FILTER;
-  case CACHE_GET_DEV_TYPE:
+  /*case CACHE_GET_DEV_TYPE:
     return (child->GetVersion() >= 5) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+  */
   }
   return 0;  // We do not pass cache requests upwards.
 }
@@ -815,40 +829,3 @@ AVSValue __cdecl AddProp::Create(AVSValue args, void* user_data, IScriptEnvironm
    return new AddProp(args[0].AsClip(), args[1].AsString(), args[2], env);
 }
 
-
-UseVar::UseVar(PClip _child, AVSValue vars, IScriptEnvironment* env)
-   : GenericVideoFilter(_child)
-{
-
-  IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
-
-  vars_.resize(vars.ArraySize());
-  for (int i = 0; i < vars.ArraySize(); ++i) {
-    auto name = vars_[i].name = vars[i].AsString();
-    if (!env2->GetVar(name, &vars_[i].val)) {
-      env->ThrowError("UseVar: No variable named %s", name);
-    }
-}
-
-UseVar::~UseVar() { }
-
-PVideoFrame __stdcall UseVar::GetFrame(int n, IScriptEnvironment* env)
-{
-   GlobalVarFrame var_frame(static_cast<IScriptEnvironment2*>(env)); // allocate new frame
-
-   // set variables
-   for (int i = 0; i < (int)vars_.size(); ++i) {
-      env->SetGlobalVar(vars_[i].name, vars_[i].val);
-   }
-
-   return child->GetFrame(n, env);
-}
-
-int __stdcall UseVar::SetCacheHints(int cachehints, int frame_range) {
-   return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-}
-
-AVSValue __cdecl UseVar::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
-{
-   return new UseVar(args[0].AsClip(), args[1], env);
-}

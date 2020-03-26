@@ -34,14 +34,8 @@
 
 
 #include "tokenizer.h"
-
-#ifdef AVS_WINDOWS
-    #include <avs/win.h>
-#else
-    #include <avs/posix.h>
-    #include <ctype.h>
-#endif
-
+#include "../InternalEnvironment.h"
+#include <avs/win.h>
 
 #include <cfloat>
 #include <climits>
@@ -199,15 +193,6 @@ void Tokenizer::NextToken() {
         pc += 2;
       }
       break;
-	case ':':
-		if (pc[1] == '=') {
-			SetToOperator(pc[0] * 256 + pc[1]);
-			pc += 2;
-		}
-		else {
-			SetToOperator(*pc++);
-		}
-		break;
 
     case '+':    // these operators have single and double (++, &&, ||, ==) versions
     case '&':
@@ -224,13 +209,11 @@ void Tokenizer::NextToken() {
     case '}':
     case '(':
     case ')':
-#ifdef NEW_AVSVALUE
-    case '[': // array definition
+    case '[': // variable capture for function definition
     case ']':
-#endif
     case ',':
     case '?':
-    //case ':':
+    case ':':
     case '-':
     case '*':
     case '/':
@@ -254,8 +237,13 @@ void Tokenizer::NextToken() {
       } while (isalnum(*++pc));
       break;
 
-    case '"':    // string
-      {
+    default:
+      if(*pc == '"' || (*pc == 'e' && pc[1] == '"')) { // string
+        bool escape = false;
+        if (*pc == 'e') {
+          escape = true;
+          ++pc;
+        }
         const char *start, *end;
         if (pc[1] == '"' && pc[2] == '"') {
           // """..."""
@@ -283,12 +271,9 @@ void Tokenizer::NextToken() {
         for (const char *cp = start; cp < end; cp++) {
           if (*cp == '\n') { line++; }
         }        type = 's';
-        string = env->SaveString(start, int(end-start));
+        string = static_cast<InternalEnvironment*>(env)->SaveString(start, int(end-start), escape);
       }
-      break;
-
-    default:
-      if (isdigit(*pc)) {
+      else if (isdigit(*pc)) {
         // number
         GetNumber();
       } else if (*pc == '_' || isalpha(*pc)) {

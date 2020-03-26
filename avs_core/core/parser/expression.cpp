@@ -540,12 +540,10 @@ ExpFunctionCall::ExpFunctionCall( const char* _name, const PExpression& _func, P
   : name(_name), func(_func), arg_expr_count(_arg_expr_count), oop_notation(_oop_notation)
 {
   arg_exprs = new PExpression[arg_expr_count];
-  // arg_expr_names has an extra elt at the beginning, for implicit "last"
-  arg_expr_names = new const char*[arg_expr_count+1];
-  arg_expr_names[0] = 0;
+arg_expr_names = new const char*[arg_expr_count];
   for (int i=0; i<arg_expr_count; ++i) {
     arg_exprs[i] = _arg_exprs[i];
-    arg_expr_names[i+1] = _arg_expr_names[i];
+    arg_expr_names[i] = _arg_expr_names[i];
   }
 }
 
@@ -555,7 +553,7 @@ ExpFunctionCall::~ExpFunctionCall(void)
   delete[] arg_expr_names;
 }
 
-const PFunction& getter_proxy(const PFunction& f) { return f; };
+static const PFunction& getter_proxy(const PFunction& f) { return f; };
 
 AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 {
@@ -569,39 +567,29 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
     // if name is not given, evaluate expression to get the function
     eval_result = func->Evaluate(env);
     if (!eval_result.IsFunction()) {
-      if (eval_result.IsClip())
         env->ThrowError(
           "Script error: '%s' cannot be called. Give me a function!",
-          TypeName(eval_result, nullptr, env));
+        GetAVSTypeName(eval_result));
     }
     //auto& func = eval_result.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
     decltype(auto) func = getter_proxy(eval_result.AsFunction()); // PF: getter proxy + decltype!
+    real_name = func->GetLegacyName();
     real_func = func->GetDefinition();
   }
 
   assert(real_name || real_func);
 
-  std::vector<AVSValue> args(arg_expr_count+1, AVSValue());
+  std::vector<AVSValue> args(arg_expr_count, AVSValue());
   for (int a=0; a<arg_expr_count; ++a)
-    args[a+1] = arg_exprs[a]->Evaluate(env);
+    args[a] = arg_exprs[a]->Evaluate(env);
 
-  // first try without implicit "last"
+ AVSValue implicit_last = oop_notation ? AVSValue() : env2->GetVarDef("last");
   try
   { // Invoke can always throw by calling a constructor of a filter that throws
-    if (env2->InvokeFunc(&result, real_name, real_func, AVSValue(args.data()+1, arg_expr_count), arg_expr_names+1))
+    if (env2->Invoke_(&result, implicit_last,
+      real_name, real_func, AVSValue(args.data(), arg_expr_count), arg_expr_names, nullptr))
       return result;
   } catch(const IScriptEnvironment::NotFound&){}
-
-  // if that fails, try with implicit "last" (except when OOP notation was used)
-  if (!oop_notation)
-  {
-    try
-    {
-      if (env2->GetVar("last", args.data()) &&
-          env2->InvokeFunc(&result, real_name, real_func, AVSValue(args.data(), arg_expr_count+1), arg_expr_names))
-        return result;
-    } catch(const IScriptEnvironment::NotFound&){}
-  }
 
   if (real_name == nullptr) {
     // anonymous function

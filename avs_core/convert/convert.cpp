@@ -50,6 +50,12 @@
 #include "convert_avx.h"
 #include "convert_avx2.h"
 
+#ifdef AVS_WINDOWS
+#include <avs/win.h>
+#else
+#include <avs/posix.h>
+#endif
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/

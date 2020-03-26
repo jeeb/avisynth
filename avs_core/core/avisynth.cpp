@@ -680,7 +680,8 @@ public:
 	ScriptEnvironment();
   void __stdcall CheckVersion(int version);
   int __stdcall GetCPUFlags();
-  char* __stdcall SaveString(const char* s, int length = -1);
+ char* __stdcall SaveString(const char* s, int length = -1) { return SaveString(s, length, false); }
+  char* __stdcall SaveString(const char* s, int length, bool escape);
   char* __stdcall Sprintf(const char* fmt, ...);
   char* __stdcall VSprintf(const char* fmt, va_list val);
   void __stdcall ThrowError(const char* fmt, ...);
@@ -752,14 +753,15 @@ public:
   virtual void __stdcall VThrowError(const char* fmt, va_list va);
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
-	/* INeoEnv */
-	virtual AVSValue __stdcall Invoke(const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
-	virtual bool __stdcall Invoke(AVSValue *result, const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
+  /* INeoEnv */
+  virtual bool __stdcall Invoke(AVSValue* result, const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0);
+  virtual AVSValue __stdcall Invoke(const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
+  virtual bool __stdcall Invoke(AVSValue *result, const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0);
 
-	virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const Function *f, const AVSValue& args,
-		const char* const* arg_names, InternalEnvironment* env);
-	virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names = 0);
-  /*
+  virtual bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
+    const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
+    IScriptEnvironment* env_thread);
+/*
   virtual Device* __stdcall SetCurrentDevice(Device* device);
   virtual Device* __stdcall GetCurrentDevice() const;
   virtual PDevice __stdcall GetDevice(AvsDeviceType device_type, int device_index) const;
@@ -775,11 +777,12 @@ public:
   //virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device);
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env);
-	virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
+  virtual ThreadPool* __stdcall NewThreadPool(size_t nThreads);
   virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) { return frame->avsmap; }
 
+  /*
   virtual void __stdcall SetGraphAnalysis(bool enable) { graphAnalysisEnable = enable; }
-
+  */
   virtual void __stdcall AddRef() { };
   virtual void __stdcall Release() { };
   virtual void __stdcall IncEnvCount() { InterlockedIncrement(&EnvCount); }
@@ -818,6 +821,7 @@ private:
   bool CheckArguments(const Function* f, const AVSValue* args, size_t num_args,
     bool& pstrict, size_t args_names_count, const char* const* arg_names);
   void EnsureMemoryLimit(size_t request);
+
   uint64_t memory_max;
   std::atomic<uint64_t> memory_used;
   std::unordered_map<IClip*, ClipDataStore> clip_data;
@@ -2403,9 +2407,11 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 }
 
 
+/*/
 PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi) {
-  return NewVideoFrameOn(vi, FRAME_ALIGN);
+  return NewVideoFrame(vi, FRAME_ALIGN);
 }
+*/
 
 PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
   // todo: high bit-depth: we have too many types now. Do we need really check?
@@ -2546,7 +2552,7 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
          vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
   BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U),
          vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
-  if(alpha)
+  if (alpha)
       BitBlt(dst->GetWritePtr(PLANAR_A), dst->GetPitch(PLANAR_A), vf->GetReadPtr(PLANAR_A),
           vf->GetPitch(PLANAR_A), vf->GetRowSize(PLANAR_A), vf->GetHeight(PLANAR_A));
 
@@ -2557,6 +2563,7 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   return true;
 }
 
+/*
 bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
   const PVideoFrame& vf = *pvf;
 
@@ -2585,7 +2592,7 @@ bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
   *pvf = dst;
   return true;
 }
-
+*/
 
 void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data) {
   at_exit.Add(function, user_data);
@@ -2846,7 +2853,7 @@ static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, int leve
   return index;
 }
 
-const PFunction& getter_proxy(const PFunction& f) { return f; };
+static const PFunction& getter_proxy(const PFunction& f) { return f; };
 
 const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                     bool &pstrict, size_t args_names_count, const char* const* arg_names)
@@ -2922,10 +2929,11 @@ bool ScriptEnvironment::CheckArguments(const Function* func, const AVSValue* arg
   return false;
 }
 
-AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char* const* arg_names)
+AVSValue ScriptEnvironment::Invoke(const char* name,
+  const AVSValue args, const char* const* arg_names)
 {
 	AVSValue result;
-	if (!InvokeFunc(&result, name, nullptr, args, arg_names))
+	if (!Invoke_(&result, AVSValue(), name, nullptr, args, arg_names, nullptr))
   {
     throw NotFound();
   }
@@ -2937,7 +2945,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   // Unfortunately at this point we do not know who is calling Invoke.
   // If AVSValue was created by a v2.5 interface, we get and exception when trying to free up
   // childs.
-  if (!_stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
+  if (!stricmp(name, "Blackness")) // now to decide that call came from v2.5 interface?
   {
 //    const_cast<AVSValue *>(&args)->MarkArrayAsC();
   }
@@ -2945,52 +2953,101 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   return result;
 }
 
-AVSValue ScriptEnvironment::Invoke(const PFunction& func, const AVSValue args, const char* const* arg_names)
+bool __stdcall ScriptEnvironment::Invoke(AVSValue* result,
+  const char* name, const AVSValue& args, const char* const* arg_names)
+{
+  return Invoke_(result, AVSValue(), name, nullptr, args, arg_names, nullptr);
+}
+
+bool __stdcall ScriptEnvironment::Invoke(AVSValue* result, const AVSValue& implicit_last,
+  const char* name, const AVSValue args, const char* const* arg_names)
+{
+  return Invoke_(result, implicit_last,
+    name, nullptr, args, arg_names, nullptr);
+}
+
+AVSValue __stdcall ScriptEnvironment::Invoke(const AVSValue& implicit_last,
+  const PFunction& func, const AVSValue args, const char* const* arg_names)
 {
   AVSValue result;
-  if (!InvokeFunc(&result, func->GetLegacyName(), func->GetDefinition(), args, arg_names))
+  if (!Invoke_(&result, implicit_last,
+    func->GetLegacyName(), func->GetDefinition(), args, arg_names, nullptr))
   {
     throw NotFound();
   }
   return result;
 }
 
-bool __stdcall ScriptEnvironment::InvokeThread(AVSValue* result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names, InternalEnvironment* env)
+bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const AVSValue& implicit_last,
+  const PFunction& func, const AVSValue args, const char* const* arg_names)
 {
+  return Invoke_(result, implicit_last,
+    func->GetLegacyName(), func->GetDefinition(), args, arg_names, nullptr);
+}
+
+struct SuppressThreadCounter {
+  SuppressThreadCounter() { ++g_suppress_thread_count; }
+  ~SuppressThreadCounter() { --g_suppress_thread_count; }
+};
+
+bool __stdcall ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
+  const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
+  IScriptEnvironment* env_thread)
+{
+	if (env_thread == nullptr && g_thread_id != 0) {
+		ThrowError("Invalid ScriptEnvironment. You are using different thread's environment.");
+	}
+
+	if (g_getframe_recursive_count != 0) {
+		// Invoked from GetFrame/GetAudio, skip all cache and mt mecanism
+    env_thread = this;
+	}
+
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
-  if (name == nullptr) {
+ if (name == nullptr) {
     // for debug printing
     name = "<anonymous function>";
   }
 
-	// get how many args we will need to store
-	size_t args2_count = Flatten(args, NULL, 0, 0, arg_names);
-	if (args2_count > ScriptParser::max_args)
-		ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
+  // get how many args we will need to store
+  size_t args2_count = Flatten(args, NULL, 0, 0, arg_names);
+  if (args2_count > ScriptParser::max_args)
+    ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
 
   // flatten unnamed args
-  std::vector<AVSValue> args2(args2_count, AVSValue());
-  Flatten(args, args2.data(), 0, 0, arg_names);
+  std::vector<AVSValue> args2(args2_count + 1, AVSValue());
+  args2[0] = implicit_last;
+  Flatten(args, args2.data() + 1, 0, 0, arg_names);
 
-	bool strict = false;
+  bool strict = false;
+  int argbase = 1;
   if (f != nullptr) {
     // check arguments
-    if (!this->CheckArguments(f, args2.data(), args2_count, strict, args_names_count, arg_names))
-      return false;
+    if (!this->CheckArguments(f, args2.data() + 1, args2_count, strict, args_names_count, arg_names)) {
+      if (!implicit_last.Defined() ||
+        !this->CheckArguments(f, args2.data(), args2_count + 1, strict, args_names_count, arg_names))
+        return false;
+      argbase = 0;
+    }
   }
   else {
     // find matching function
-    f = this->Lookup(name, args2.data(), args2_count, strict, args_names_count, arg_names);
+    f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names);
     if (!f) {
-      return false;
+      if (!implicit_last.Defined())
+        return false;
+      f = this->Lookup(name, args2.data(), args2_count + 1, strict, args_names_count, arg_names);
+      if (!f)
+        return false;
+      argbase = 0;
     }
   }
 
   // combine unnamed args into arrays
   size_t src_index = 0, dst_index = 0;
   const char* p = f->param_types;
-  const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
+  const size_t maxarg3 = max(args2_count + 1, strlen(p)); // well it can't be any longer than this.
 
   std::vector<AVSValue> args3(maxarg3, AVSValue());
 
@@ -3002,20 +3059,20 @@ bool __stdcall ScriptEnvironment::InvokeThread(AVSValue* result, const char* nam
     }
     else if ((p[1] == '*') || (p[1] == '+')) {
       size_t start = src_index;
-      while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[src_index], strict)))
+      while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[argbase + src_index], strict)))
         src_index++;
       size_t size = src_index - start;
       assert(args2_count >= size);
 
       // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
       // because filters like BlankClip might still be expecting it.
-      args3[dst_index++] = AVSValue(size > 0 ? args2.data() + start : NULL, (int)size); // can't delete args2 early because of this
+      args3[dst_index++] = AVSValue(size > 0 ? args2.data() + argbase + start : NULL, (int)size); // can't delete args2 early because of this
 
       p += 2;
     }
     else {
       if (src_index < args2_count)
-        args3[dst_index] = args2[src_index];
+        args3[dst_index] = args2[argbase + src_index];
       src_index++;
       dst_index++;
       p++;
@@ -3074,41 +3131,11 @@ bool __stdcall ScriptEnvironment::InvokeThread(AVSValue* result, const char* nam
   args3.resize(args3_count);
   std::vector<AVSValue>(args3).swap(args3);
 
+  if(env_thread) {
+    // Invoked by a thread or GetFrame
   AVSValue funcArgs(args3.data(), (int)args3.size());
-  *result = f->apply(funcArgs, f->user_data, env);
-
-  return true;
-}
-
-bool __stdcall ScriptEnvironment::Invoke(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names)
-{
-  return InvokeFunc(result, name, nullptr, args, arg_names);
-}
-
-bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const PFunction& func, const AVSValue args, const char* const* arg_names)
-{
-  return InvokeFunc(result, func->GetLegacyName(), func->GetDefinition(), args, arg_names);
-}
-
-struct SuppressThreadCounter {
-  SuppressThreadCounter() { ++g_suppress_thread_count; }
-  ~SuppressThreadCounter() { --g_suppress_thread_count; }
-};
-
-bool __stdcall ScriptEnvironment::InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names)
-{
-	if (g_thread_id != 0) {
-		ThrowError("Invalid ScriptEnvironment. You are using different thread's environment.");
-	}
-
-	if (g_getframe_recursive_count != 0) {
-		// Invoked from GetFrame/GetAudio, skip all cache and mt mecanism
-		return InvokeThread(result, name, f, args, arg_names, this);
-	}
-
-  if (name == nullptr) {
-    // for debug printing
-    name = "<anonymous function>";
+    *result = f->apply(funcArgs, f->user_data, env_thread);
+    return true;
   }
 
 #ifdef DEBUG_GSCRIPTCLIP_MT
@@ -3121,8 +3148,6 @@ bool __stdcall ScriptEnvironment::InvokeFunc(AVSValue *result, const char* name,
 
   SuppressThreadCounter suppressThreadCount_;
 
-  bool strict = false;
-
   // chainedCtor is true if we are being constructed inside/by the
   // constructor of another filter. In that case we want MT protections
   // applied not here, but by the Invoke() call of that filter.
@@ -3133,20 +3158,10 @@ bool __stdcall ScriptEnvironment::InvokeFunc(AVSValue *result, const char* name,
   std::vector<MTGuardExit*> GuardExits;
 #endif
 
-  const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
-
-  // get how many args we will need to store
-  size_t args2_count = Flatten(args, NULL, 0, 0, arg_names);
-  if (args2_count > ScriptParser::max_args)
-    ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
-
-  // flatten unnamed args
-  std::vector<AVSValue> args2(args2_count, AVSValue());
-  Flatten(args, args2.data(), 0, 0, arg_names);
-
   bool foundClipArgument = false;
-  for (auto &argx : args2)
+  for (int i = argbase; (int)args2.size(); ++i)
   {
+    auto& argx = args2[i];
 #ifndef NEW_AVSVALUE
     assert(!argx.IsArray()); // todo: we can have arrays 161106
 #endif
@@ -3177,100 +3192,6 @@ bool __stdcall ScriptEnvironment::InvokeFunc(AVSValue *result, const char* name,
       }
   }
   bool isSourceFilter = !foundClipArgument;
-
-  if (f != nullptr) {
-    // check arguments
-    if (!CheckArguments(f, args2.data(), args2_count, strict, args_names_count, arg_names))
-      return false;
-  }
-  else {
-    // find matching function
-    f = this->Lookup(name, args2.data(), args2_count, strict, args_names_count, arg_names);
-    if (!f)
-      return false;
-  }
-
-  // combine unnamed args into arrays
-  size_t src_index=0, dst_index=0;
-  const char* p = f->param_types;
-  const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
-
-  std::vector<AVSValue> args3(maxarg3, AVSValue());
-
-  while (*p) {
-    if (*p == '[') {
-      p = strchr(p+1, ']');
-      if (!p) break;
-      p++;
-    } else if ((p[1] == '*') || (p[1] == '+')) {
-      size_t start = src_index;
-      while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[src_index], strict)))
-        src_index++;
-      size_t size = src_index - start;
-      assert(args2_count >= size);
-
-      // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
-      // because filters like BlankClip might still be expecting it.
-      args3[dst_index++] = AVSValue(size > 0 ? args2.data()+start : NULL, (int)size); // can't delete args2 early because of this
-
-      p += 2;
-    } else {
-      if (src_index < args2_count)
-        args3[dst_index] = args2[src_index];
-      src_index++;
-      dst_index++;
-      p++;
-    }
-  }
-  if (src_index < args2_count)
-    ThrowError("Too many arguments to function %s", name);
-
-  const int args3_count = (int)dst_index;
-
-  // copy named args
-  for (int i=0; i<args_names_count; ++i) {
-    if (arg_names[i]) {
-      size_t named_arg_index = 0;
-      for (const char* p = f->param_types; *p; ++p) {
-        if (*p == '*' || *p == '+') {
-          continue;   // without incrementing named_arg_index
-        } else if (*p == '[') {
-          p += 1;
-          const char* q = strchr(p, ']');
-          if (!q) break;
-          if (strlen(arg_names[i]) == size_t(q-p) && !_strnicmp(arg_names[i], p, q-p)) {
-            // we have a match
-            if (args3[named_arg_index].Defined()) {
-              // so named args give can't have .+ specifier
-              ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
-            }
-#ifndef NEW_AVSVALUE
-            //PF 161028 AVS+ arrays as named arguments
-              else if (args[i].IsArray()) {
-              ThrowError("Script error: can't pass an array as a named argument");
-            }
-#endif
-              else if (args[i].Defined() && !AVSFunction::SingleTypeMatch(q[1], args[i], false)) {
-              ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
-            } else {
-              args3[named_arg_index] = args[i];
-              goto success;
-            }
-          } else {
-            p = q+1;
-          }
-        }
-        named_arg_index++;
-      }
-      // failure
-      ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
-success:;
-    }
-  }
-
-  // Trim array size to the actual number of arguments
-  args3.resize(args3_count);
-  std::vector<AVSValue>(args3).swap(args3);
 
   // ... and we're finally ready to make the call
   std::unique_ptr<const FilterConstructor> funcCtor = std::make_unique<const FilterConstructor>(this, f, &args2, &args3);
@@ -3388,8 +3309,7 @@ success:;
             }
 
 
-            PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
-            *result = CacheGuard::Create(guard, NULL, this);
+            *result = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
 
 #ifdef USE_MT_GUARDEXIT
             // 170531: concept introduced in r2069 is not working
@@ -3415,11 +3335,9 @@ success:;
             data->CreatedByInvoke = true;
         } // if (chainedCtor)
 
-/* Or another concept from Neo
 				// Nekopanda: moved here from above.
 				// some filters invoke complex filters in its constructor, and they need cache.
 				*result = CacheGuard::Create(*result, NULL, this);
-*/
 
         // Check that the filter returns zero for unknown queries in SetCacheHints().
         // This is actually something we rely upon.
@@ -3541,8 +3459,8 @@ void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int 
 }
 
 
-char* ScriptEnvironment::SaveString(const char* s, int len) {
-  return var_table.SaveString(s, len);
+char* ScriptEnvironment::SaveString(const char* s, int len, bool escape) {
+  return var_table.SaveString(s, len, escape);
 }
 
 
@@ -3599,7 +3517,6 @@ Device* ScriptEnvironment::SetCurrentDevice(Device* device)
 	currentDevice = device;
 	return old;
 }
-
 
 Device* ScriptEnvironment::GetCurrentDevice() const
 {

@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 // Overlay (c) 2003, 2004 by Klaus Post
-
+#include <avisynth.h>
 #ifdef AVS_WINDOWS
     #include <avs/win.h>
 #else

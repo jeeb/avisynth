@@ -2,11 +2,18 @@
 #define _SCRIPTENVIRONMENTTLS_H
 
 #include <avisynth.h>
+#ifdef AVS_WINDOWS
+#include <avs/win.h>
+#else
+#include <avs/posix.h>
+#endif
+
 #include <cstdarg>
 #include "vartable.h"
 #include "internal.h"
 #include "ThreadPool.h"
 #include "BufferPool.h"
+//#include "DeviceManager.h"
 #include "InternalEnvironment.h"
 
 #define CHECK_THREAD if(g_thread_id != thread_id) \
@@ -15,13 +22,14 @@
 class ScriptEnvironmentTLS : public InternalEnvironment
 {
 private:
-  InternalEnvironment* env_; // for leak detection
-  InternalEnvironment* core;
+  InternalEnvironment *env_; // for leak detection
+  InternalEnvironment *core;
   const size_t thread_id;
   // PF 161223 why do we need thread-local global variables?
   // comment remains here until it gets cleared, anyway, I make it of no use
   VarTable var_table;
   BufferPool buffer_pool;
+//  Device* currentDevice;
   volatile long refcount;
 
   ~ScriptEnvironmentTLS()
@@ -37,12 +45,13 @@ public:
     thread_id(_thread_id),
     var_table(env->GetTopFrame()),
     buffer_pool(this),
+// currentDevice(NULL),
     refcount(1)
   {
     env_->IncEnvCount(); // for leak detection
   }
 
-  void Specialize(InternalEnvironment* _core)
+  void Specialize(InternalEnvironment* _core/*, Device* _device*/)
   {
     core = _core->GetCoreEnvironment();
     //currentDevice = _device;
@@ -224,6 +233,11 @@ public:
     return var_table.SaveString(s, length);
   }
 
+  char* __stdcall SaveString(const char* s, int length, bool escape)
+  {
+    return var_table.SaveString(s, length, escape);
+  }
+
   char* __stdcall Sprintf(const char* fmt, ...)
   {
     va_list val;
@@ -267,27 +281,54 @@ public:
     return core->FunctionExists(name);
   }
 
-  AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0)
+  AVSValue __stdcall Invoke(const char* name,
+    const AVSValue args, const char* const* arg_names)
   {
 		AVSValue result;
-		if (!core->InvokeThread(&result, name, nullptr, args, arg_names, this)) {
+    if (!core->Invoke_(&result, AVSValue(), name, nullptr, args, arg_names, this))
+    {
 			throw NotFound();
 		}
 		return result;
   }
 
-  AVSValue __stdcall Invoke(const PFunction& func, const AVSValue args, const char* const* arg_names = 0)
+  bool __stdcall Invoke(AVSValue* result,
+    const char* name, const AVSValue& args, const char* const* arg_names)
+  {
+    return core->Invoke_(result, AVSValue(), name, nullptr, args, arg_names, this);
+  }
+
+  bool __stdcall Invoke(AVSValue* result, const AVSValue& implicit_last,
+    const char* name, const AVSValue args, const char* const* arg_names)
+  {
+    return core->Invoke_(result, implicit_last,
+      name, nullptr, args, arg_names, this);
+  }
+
+  AVSValue __stdcall Invoke(const AVSValue& implicit_last,
+    const PFunction& func, const AVSValue args, const char* const* arg_names)
   {
     AVSValue result;
-    if (!core->InvokeThread(&result, func->GetLegacyName(), func->GetDefinition(), args, arg_names, this)) {
+    if (!core->Invoke_(&result, implicit_last,
+      func->GetLegacyName(), func->GetDefinition(), args, arg_names, this))
+    {
       throw NotFound();
     }
     return result;
   }
 
-  bool __stdcall Invoke(AVSValue *result, const PFunction& func, const AVSValue args, const char* const* arg_names = 0)
+  bool __stdcall Invoke(AVSValue *result, const AVSValue& implicit_last,
+    const PFunction& func, const AVSValue args, const char* const* arg_names)
   {
-    return core->InvokeThread(result, func->GetLegacyName(), func->GetDefinition(), args, arg_names, this);
+    return core->Invoke_(result, implicit_last,
+      func->GetLegacyName(), func->GetDefinition(), args, arg_names, this);
+  }
+
+  bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
+    const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
+    IScriptEnvironment* env_thread)
+  {
+    return core->Invoke_(result, implicit_last, name, f, args, arg_names, this);
   }
 
   bool __stdcall MakeWritable(PVideoFrame* pvf)
@@ -386,11 +427,6 @@ public:
     return core->DecrImportDepth();
   }
 
-  virtual bool __stdcall Invoke(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0)
-  {
-    return core->InvokeThread(result, name, nullptr, args, arg_names, this);
-  }
-
   size_t  __stdcall GetProperty(AvsEnvProperty prop)
   {
     switch (prop)
@@ -482,6 +518,7 @@ public:
     return core->GetCoreEnvironment();
   }
 
+  /*
   virtual int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem)
   {
       return core->SetMemoryMax(type, index, mem);
@@ -498,7 +535,6 @@ public:
     return currentDevice;
   }
 
-  /*
   virtual AvsDeviceType __stdcall GetDeviceType() const
   {
     CHECK_THREAD;
@@ -558,12 +594,6 @@ public:
     return core->GetAVSMap(frame);
   }
 
-	virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const Function* func, const AVSValue& args,
-		const char* const* arg_names, InternalEnvironment* env)
-	{
-		return core->InvokeThread(result, name, func, args, arg_names, env);
-	}
-
   virtual void __stdcall AddRef() {
     InterlockedIncrement(&refcount);
   }
@@ -597,15 +627,10 @@ public:
 	{
 		return core->GetCacheMode();
 	}
-  */
-  virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char* exportVar)
+*/
+  virtual void __stdcall UpdateFunctionExports(const char*, const char*, const char *)
   {
     return;
-  }
-
-  virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function* func, const AVSValue& args, const char* const* arg_names = 0)
-  {
-    return core->InvokeThread(result, name, func, args, arg_names, this);
   }
 };
 

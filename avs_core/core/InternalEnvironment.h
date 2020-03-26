@@ -46,6 +46,7 @@ public:
     bool operator==(const OneTimeLogTicket &other) const;
 };
 
+//class Device;
 class ThreadPool;
 class ConcurrentVarStringFrame;
 
@@ -73,7 +74,7 @@ public:
   virtual int __stdcall GetCPUFlags() = 0;
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
   virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
-  virtual char* __stdcall VSprintf(const char* fmt, void* val) = 0;
+  virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
   __declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) = 0;
   virtual void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data) = 0;
   virtual bool __stdcall FunctionExists(const char* name) = 0;
@@ -148,12 +149,13 @@ public:
   virtual Device* __stdcall GetCurrentDevice() const = 0;
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) = 0;
   virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device) = 0;
-  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) = 0;
-  virtual bool __stdcall InvokeThread(AVSValue* result, const char* name, const Function* func, const AVSValue& args,
-    const char* const* arg_names, InternalEnvironment* env) = 0;
-
-  using INeoEnv::SetMemoryMax;
 */
+  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) = 0;
+
+  //using INeoEnv::SetMemoryMax;
+  using INeoEnv::Invoke;
+  //using INeoEnv::NewVideoFrame;
+  using INeoEnv::SaveString;
   // Nekopanda: support multiple prefetcher //
   // to allow thread to submit with their env
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env) = 0;
@@ -173,7 +175,10 @@ public:
   bool increaseCache;
   */
   virtual void __stdcall UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar) = 0;
-  virtual bool __stdcall InvokeFunc(AVSValue *result, const char* name, const Function *f, const AVSValue& args, const char* const* arg_names = 0) = 0;
+
+  virtual bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
+    const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
+    IScriptEnvironment* env_thread) = 0;
 };
 
 struct InternalEnvironmentDeleter {

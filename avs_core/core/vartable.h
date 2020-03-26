@@ -127,6 +127,17 @@ class StringDump {
    char* current_block;
    size_t block_pos, block_size;
 
+   void ensure_length(int len)
+   {
+     if (block_pos + len + 1 > block_size) {
+       char* new_block = new char[block_size = max(block_size, len + 1 + sizeof(char*))];
+       _RPT0(0, "StringDump: Allocating new stringblock.\r\n");
+       *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
+       current_block = new_block;
+       block_pos = sizeof(char*);
+     }
+   }
+
 public:
    StringDump() : current_block(0), block_pos(BLOCK_SIZE), block_size(BLOCK_SIZE) {}
 
@@ -140,17 +151,52 @@ public:
       }
    }
 
-   char* SaveString(const char* s, int len = -1) {
-      if (len == -1)
-         len = (int)strlen(s);
+   char* SaveString(const char* s, int len = -1, bool escape = false) {
+     int srclen = (len == -1) ? (int)strlen(s) : len;
 
-      if (block_pos + len + 1 > block_size) {
-         char* new_block = new char[block_size = max(block_size, len + 1 + sizeof(char*))];
-         _RPT0(0, "StringDump: Allocating new stringblock.\r\n");
-         *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
-         current_block = new_block;
-         block_pos = sizeof(char*);
+#if 0
+     std::unique_ptr<char[]> ss;
+#else
+     std::string ws = s;
+#endif
+
+      if (escape) {
+#if 0
+        auto ws = MultiByteToWide(AreFileApisANSI() ? CP_ACP : CP_OEMCP, s, srclen);
+#else
+        // utf8: ascii characters are freely searchable w/o conversion (?) fixme PF: check it again
+#endif
+        len = 0;
+        for (int i = 0; ws[i]; ++i, ++len) {
+          if (ws[i] == '\\') {
+            switch (ws[i + 1]) {
+            case 'n': ws[len] = '\n'; ++i; continue;
+            case 'r': ws[len] = '\r'; ++i; continue;
+            case 't': ws[len] = '\t'; ++i; continue;
+            case '0': ws[len] = '\0'; ++i; continue;
+            case 'a': ws[len] = '\a'; ++i; continue;
+            case 'f': ws[len] = '\f'; ++i; continue;
+            case '\\': ws[len] = '\\'; ++i; continue;
+            case '\"': ws[len] = '\"'; ++i; continue;
+            }
+          }
+          ws[len] = ws[i];
+        }
+        ws[len] = 0;
+#if 0
+        ss = WideToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, ws.get(), len);
+        s = ss.get();
+        len = (int)strlen(s);
+#else
+        s = ws.c_str();
+        len = ws.size();
+#endif
       }
+      else {
+        len = srclen;
+      }
+
+      ensure_length(len);
       char* result = current_block + block_pos;
       memcpy(result, s, len);
       result[len] = 0;
@@ -210,8 +256,8 @@ class VarStringFrame : public VarFrame
 {
    StringDump string_dump;
 public:
-   char* SaveString(const char* s, int len = -1) {
-      return string_dump.SaveString(s, len);
+   char* SaveString(const char* s, int len = -1, bool escape = false) {
+      return string_dump.SaveString(s, len, escape);
    }
 
    void Clear()
@@ -240,9 +286,9 @@ public:
       return VarFrame::Set(name, val);
    }
 
-   char* SaveString(const char* s, int len = -1) {
+   char* SaveString(const char* s, int len = -1, bool escape = false) {
       std::lock_guard<std::mutex> lock(var_mutex); // avoid concurrency for global variables
-      return VarStringFrame::SaveString(s, len);
+      return VarStringFrame::SaveString(s, len, escape);
    }
 
    void Clear()
@@ -343,12 +389,12 @@ public:
       return topFrame->Get(name, val);
    }
 
-   char* SaveString(const char* s, int len = -1)
+   char* SaveString(const char* s, int len = -1, bool escape = false)
    {
       if (globalFrames.size() > 0) {
-         return globalFrames.back()->SaveString(s, len);
+         return globalFrames.back()->SaveString(s, len, escape);
       }
-      return topFrame->SaveString(s, len);
+      return topFrame->SaveString(s, len, escape);
    }
 };
 

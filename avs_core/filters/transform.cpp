@@ -366,6 +366,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 }
 
 int __stdcall Crop::SetCacheHints(int cachehints, int frame_range) {
+  AVS_UNUSED(frame_range);
   switch (cachehints) {
   case CACHE_GET_MTMODE:
     return MT_NICE_FILTER;

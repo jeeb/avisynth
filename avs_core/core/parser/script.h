@@ -51,6 +51,27 @@
 /********************************************************************
 ********************************************************************/
 
+class ScriptFunction
+  /**
+    * Executes a script
+   **/
+{
+public:
+  ScriptFunction(const PExpression& _body, const bool* _param_floats, const char** _param_names, int param_count);
+  virtual ~ScriptFunction()
+  {
+    delete[] param_floats;
+    delete[] param_names;
+  }
+
+  static AVSValue Execute(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static void Delete(void* self, IScriptEnvironment*);
+
+private:
+  const PExpression body;
+  bool* param_floats;
+  const char** param_names;
+};
 
 
 /****    Helper functions   ****/

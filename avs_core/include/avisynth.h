@@ -359,9 +359,14 @@ struct AVS_Linkage {
   // AviSynth Neo additions
   INeoEnv*    (__stdcall *GetNeoEnv)(IScriptEnvironment* env);
 
-  void                (VideoFrame::*SetProperty)(const char* key, const AVSMapValue& value);
-  const AVSMapValue*  (VideoFrame::*GetProperty)(const char* key) const;
-  bool                (VideoFrame::*DeleteProperty)(const char* key);
+  void                (VideoFrame::* VideoFrame_SetProperty)(const char* key, const AVSMapValue& value);
+  const AVSMapValue* (VideoFrame::* VideoFrame_GetProperty)(const char* key) const;
+  PVideoFrame(VideoFrame::* VideoFrame_GetProperty_Frame)(const char* key, PVideoFrame def) const;
+  int                 (VideoFrame::* VideoFrame_GetProperty_Int)(const char* key, int def) const;
+  double              (VideoFrame::* VideoFrame_GetProperty_Float)(const char* key, double def) const;
+  bool                (VideoFrame::* VideoFrame_DeleteProperty)(const char* key);
+  //PDevice(VideoFrame::* VideoFrame_GetDevice)() const;
+  int                 (VideoFrame::* VideoFrame_CheckMemory)() const;
 
   // class AVSMapValue
   void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR0)();
@@ -402,8 +407,6 @@ struct AVS_Linkage {
   const char*     (PDevice::*PDevice_GetName)() const;
   // end class PDevice
   */
-
-  //int     (VideoFrame::*VdieoFrame_CheckMemory)() const;
 
   /**********************************************************************/
 };
@@ -949,10 +952,20 @@ public:
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
-  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(SetProperty)(key, value))
-  const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(GetProperty)(key))
-  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(DeleteProperty)(key))
+  //bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
+  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
+  // if key is not found, returns nullptr
+  const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty)(key))
 
+  // if key is not found or had wrong type, returns supplied default value
+  PVideoFrame GetProperty(const char* key, PVideoFrame def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Frame)(key, def))
+  int GetProperty(const char* key, int def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Int)(key, def))
+  double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Float)(key, def))
+  bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(DeleteProperty)(key))
+  // PDevice GetDevice() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetDevice)())
+
+  // 0: OK, 1: NG, -1: disabled or non CPU frame
+  int CheckMemory() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_CheckMemory)())
 
   ~VideoFrame() AVS_BakedCode( AVS_LinkCall_Void(VideoFrame_DESTRUCTOR)() )
 #ifdef BUILDING_AVSCORE
@@ -1589,18 +1602,29 @@ public:
   virtual void __stdcall ClearAutoloadDirs() = 0;
   virtual void __stdcall AutoloadPlugins() = 0;
 
-  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
-  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
+  virtual void __stdcall AddFunction(
+    const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
+  virtual void __stdcall AddFunction(
+    const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
   virtual bool __stdcall FunctionExists(const char* name) = 0;
   virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
 
   // Invoke function. Throws NotFounc exception when the specified function is not exists.
-  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
-  virtual AVSValue __stdcall Invoke(const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual AVSValue __stdcall Invoke(
+    const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual AVSValue __stdcall Invoke(
+    const AVSValue& implicit_last,
+    const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
 
   // These versions of Invoke will return false instead of throwing NotFound().
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
-  virtual bool __stdcall Invoke(AVSValue *result, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual bool __stdcall Invoke(
+    AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
+  virtual bool __stdcall Invoke(
+    AVSValue* result, const AVSValue& implicit_last,
+    const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual bool __stdcall Invoke(
+    AVSValue *result, const AVSValue& implicit_last,
+    const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
 
   // Throws exception when the requested variable is not found.
   virtual AVSValue __stdcall GetVar(const char* name) = 0;
@@ -1632,9 +1656,10 @@ public:
 
   // Allocate new video frame
   // Align parameter is no longer supported
+  /* Neo versions
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi) = 0; // current device is used
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device) = 0;
-
+  */
   // Frame related operations
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
   virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
@@ -1653,6 +1678,7 @@ public:
   virtual void __stdcall Free(void* ptr) = 0;
 
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
+  virtual char* __stdcall SaveString(const char* s, int length, bool escape) = 0;
   virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
   virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
 
@@ -1663,8 +1689,9 @@ public:
 
   // Setting
   virtual int __stdcall SetMemoryMax(int mem) = 0;
+  /* Neo
   virtual int __stdcall SetMemoryMax(AvsDeviceType type, int index, int mem) = 0;
-
+  */
   virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
   virtual int __stdcall SetWorkingDir(const char * newdir) = 0;
   virtual void* __stdcall ManageCache(int key, void* data) = 0;

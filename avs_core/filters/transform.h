@@ -96,10 +96,7 @@ public:
   Crop(int _left, int _top, int _width, int _height, bool _align, PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override;
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 

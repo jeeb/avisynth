@@ -555,10 +555,11 @@ bool VideoFrame::IsWritable() const {
   return false;
 }
 
+/*
 bool VideoFrame::IsPropertyWritable() const {
   return (refcount == 1);
 }
-
+*/
 BYTE* VideoFrame::GetWritePtr(int plane) const {
   if (!plane || plane == PLANAR_Y || plane == PLANAR_G) { // planar RGB order GBR
     if (vfb->GetRefcount()>1) {
@@ -620,6 +621,26 @@ bool VideoFrame::DeleteProperty(const char* key) {
   std::unique_lock<std::mutex> global_lock(avsmap->mutex);
 	return (avsmap->data.erase(key) > 0);
 }
+
+
+int VideoFrame::CheckMemory() const {
+#ifdef _DEBUG
+  if (vfb->data /*&& vfb->device->device_type == DEV_TYPE_CPU*/) {
+    // check buffer overrun
+    int *pInt = (int *)(vfb->data + vfb->data_size);
+    if (pInt[0] != 0xDEADBEEF ||
+      pInt[1] != 0xDEADBEEF ||
+      pInt[2] != 0xDEADBEEF ||
+      pInt[3] != 0xDEADBEEF)
+    {
+      return 1;
+    }
+    return 0;
+  }
+#endif
+  return -1;
+}
+
 /* Baked ********************
 VideoFrame::~VideoFrame() { InterlockedDecrement(&vfb->refcount); }
    Baked ********************/
@@ -1052,11 +1073,11 @@ void PFunction::CONSTRUCTOR1(IFunction* p) { Init(p); }
 PFunction::PFunction(const PFunction& p) { CONSTRUCTOR2(p); }
 void PFunction::CONSTRUCTOR2(const PFunction& p) { Init(p.e); }
 
-void PFunction::operator=(IFunction* p) { OPERATOR_ASSIGN0(p); }
-void PFunction::OPERATOR_ASSIGN0(IFunction* p) { Set(p); }
+PFunction& PFunction::operator=(IFunction* p) { return OPERATOR_ASSIGN0(p); }
+PFunction& PFunction::OPERATOR_ASSIGN0(IFunction* p) { Set(p); return *this; }
 
-void PFunction::operator=(const PFunction& p) { OPERATOR_ASSIGN1(p); }
-void PFunction::OPERATOR_ASSIGN1(const PFunction& p) { Set(p.e);}
+PFunction& PFunction::operator=(const PFunction& p) { return OPERATOR_ASSIGN1(p); }
+PFunction& PFunction::OPERATOR_ASSIGN1(const PFunction& p) { Set(p.e); return *this; }
 
 PFunction::~PFunction() { DESTRUCTOR(); }
 void PFunction::DESTRUCTOR() { if (e) e->Release(); }
@@ -1064,6 +1085,11 @@ void PFunction::DESTRUCTOR() { if (e) e->Release(); }
 IFunction * PFunction::GetPointerWithAddRef() const { if (e) e->AddRef(); return e; }
 void PFunction::Init(IFunction* p) { e = p; if (e) e->AddRef(); }
 void PFunction::Set(IFunction* p) { if (p) p->AddRef(); if (e) e->Release(); e = p; }
+
+INeoEnv* __stdcall GetAvsEnv(IScriptEnvironment* env) { return static_cast<InternalEnvironment*>(env); }
+
+PNeoEnv::PNeoEnv(IScriptEnvironment* env) : p(static_cast<InternalEnvironment*>(env)) { }
+PNeoEnv::operator IScriptEnvironment2* () { return static_cast<InternalEnvironment*>(p); }
 
 /**********************************************************************/
 
@@ -1318,7 +1344,8 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoFrame::GetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::DeleteProperty,
-  &VideoFrame::IsPropertyWritable,
+  &VideoFrame::CheckMemory,
+  //&VideoFrame::IsPropertyWritable,
 
 
   // class AVSMapValue
@@ -1347,6 +1374,22 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &PFunction::OPERATOR_ASSIGN1,
   &PFunction::DESTRUCTOR,
   // end PFunction
+
+  /*
+  // class PDevice
+  &PDevice::CONSTRUCTOR0,
+  &PDevice::CONSTRUCTOR1,
+  &PDevice::CONSTRUCTOR2,
+  &PDevice::OPERATOR_ASSIGN0,
+  &PDevice::OPERATOR_ASSIGN1,
+  &PDevice::DESTRUCTOR,
+  &PDevice::GetType,
+  &PDevice::GetId,
+  &PDevice::GetIndex,
+  &PDevice::GetName,
+  // end class PDevice
+  */
+
 // this part should be identical with struct AVS_Linkage in avisynth.h
 
 /**********************************************************************/
