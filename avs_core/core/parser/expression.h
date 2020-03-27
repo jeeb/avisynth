@@ -404,7 +404,7 @@ private:
 class ExpGlobalAssignment : public Expression
 {
 public:
-  ExpGlobalAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs), withret(false) {}
+  ExpGlobalAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
 
 private:

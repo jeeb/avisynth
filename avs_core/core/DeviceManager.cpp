@@ -150,7 +150,7 @@ public:
 
   virtual BYTE* Allocate(size_t size, int margin)
   {
-		size += margin;
+    size += margin;
 #ifdef _DEBUG
     BYTE* data = new BYTE[size + 16];
     int *pInt = (int *)(data + size);
@@ -211,11 +211,11 @@ public:
     // do nothing
   }
 
-	virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment)
-	{
-		*memoryAlignment = FRAME_ALIGN;
-		*pitchAlignment = FRAME_ALIGN;
-	}
+  virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment)
+  {
+    *memoryAlignment = FRAME_ALIGN;
+    *pitchAlignment = FRAME_ALIGN;
+  }
 };
 
 #ifdef ENABLE_CUDA
@@ -299,11 +299,11 @@ public:
     }
   }
 
-	virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment)
-	{
-		*memoryAlignment = FRAME_ALIGN;
-		*pitchAlignment = FRAME_ALIGN;
-	}
+  virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment)
+  {
+    *memoryAlignment = FRAME_ALIGN;
+    *pitchAlignment = FRAME_ALIGN;
+  }
 };
 #endif
 
@@ -332,7 +332,7 @@ class CUDADevice : public Device {
 
   char name[32];
 
-	cudaDeviceProp prop;
+  cudaDeviceProp prop;
 
   std::mutex mutex;
   std::vector<DeviceCompleteCallbackData> callbacks;
@@ -348,9 +348,9 @@ public:
   {
     sprintf_s(name, "CUDA %d", n);
 
-		ScopedCUDADevice d(device_index, env);
+    ScopedCUDADevice d(device_index, env);
 
-		CUDA_CHECK(cudaGetDeviceProperties(&prop, device_index));
+    CUDA_CHECK(cudaGetDeviceProperties(&prop, device_index));
 
     SetMemoryMax(768); // start with 768MB
 #if ENABLE_CUDA_COMPUTE_STREAM
@@ -370,8 +370,8 @@ public:
   virtual int SetMemoryMax(int mem)
   {
     if (mem > 0) {
-      unsigned __int64 requested = mem * 1048576ull;
-      unsigned __int64 mem_limit = prop.totalGlobalMem;
+      uint64_t requested = mem * 1048576ull;
+      uint64_t mem_limit = prop.totalGlobalMem;
       memory_max = clamp(requested, 64 * 1024 * 1024ull, mem_limit - 128 * 1024 * 1024ull);
     }
     return (int)(memory_max / 1048576ull);
@@ -431,7 +431,7 @@ public:
   void MakeStreamWaitCompute(cudaStream_t stream, InternalEnvironment* env)
   {
 #if ENABLE_CUDA_COMPUTE_STREAM
-		std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(mutex);
 
     CUDA_CHECK(cudaEventRecord(computeEvent, computeStream));
     CUDA_CHECK(cudaStreamWaitEvent(stream, computeEvent, 0));
@@ -444,11 +444,11 @@ public:
     }
   }
 
-	virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment)
-	{
-		*memoryAlignment = prop.textureAlignment;
-		*pitchAlignment = prop.texturePitchAlignment;
-	}
+  virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment)
+  {
+    *memoryAlignment = prop.textureAlignment;
+    *pitchAlignment = prop.texturePitchAlignment;
+  }
 };
 #endif
 
@@ -505,20 +505,20 @@ Device* DeviceManager::GetDevice(AvsDeviceType device_type, int device_index) co
 
 int DeviceManager::GetNumDevices(AvsDeviceType device_type) const
 {
-	switch (device_type) {
+  switch (device_type) {
 
-	case DEV_TYPE_CPU:
-		return 1;
+  case DEV_TYPE_CPU:
+    return 1;
 
 #ifdef ENABLE_CUDA
-	case DEV_TYPE_CUDA:
-		return (int)cudaDevices.size();
+  case DEV_TYPE_CUDA:
+    return (int)cudaDevices.size();
 #endif // #ifdef ENABLE_CUDA
 
-	default:
-		env->ThrowError("Not supported memory type %d", device_type);
-	}
-	return 0;
+  default:
+    env->ThrowError("Not supported memory type %d", device_type);
+  }
+  return 0;
 }
 
 void DeviceManager::SetDeviceOpt(DeviceOpt opt, int val, InternalEnvironment* env)
@@ -687,10 +687,10 @@ public:
 
   PVideoFrame GetFrame(int n, InternalEnvironment* env)
   {
-		// do not use thread when invoke running
-		if (prefetchFrames == 0 || env->GetSuppressThreadCount() > 0) {
-			return child->GetFrame(n, env);
-		}
+    // do not use thread when invoke running
+    if (prefetchFrames == 0 || env->GetSuppressThreadCount() > 0) {
+      return child->GetFrame(n, env);
+    }
 
     PVideoFrame result;
     CacheType::handle cacheHandle;
@@ -1138,7 +1138,7 @@ public:
     return frame;
   }
 
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env_)
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env_)
   {
     InternalEnvironment* env = static_cast<InternalEnvironment*>(env_);
     Device* downstreamDevice = env->SetCurrentDevice(upstreamDevice);

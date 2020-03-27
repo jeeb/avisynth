@@ -686,9 +686,8 @@ AVSValue __cdecl SeparateFields::Create(AVSValue args, void*, IScriptEnvironment
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsFieldBased())
     env->ThrowError("SeparateFields: SeparateFields should be applied on frame-based material: use AssumeFrameBased() beforehand");
-//    return clip;
-//  else
-    return new SeparateFields(clip, env);
+
+  return new SeparateFields(clip, env);
 }
 
 
