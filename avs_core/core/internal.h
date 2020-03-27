@@ -47,6 +47,11 @@
 #include <limits.h>
 #endif
 #include "InternalEnvironment.h"
+#ifdef AVS_WINDOWS
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
 #define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2020 AviSynth+ Project"
@@ -227,7 +232,7 @@ static AVS_FORCEINLINE bool IsCloseFloat(float a, float b, float threshold)
 
 // sse2 replacement of _mm_mullo_epi32 in SSE4.1
 // use it after speed test, may have too much overhead and C is faster
-AVS_FORCEINLINE __m128i _MM_MULLO_EPI32(const __m128i &a, const __m128i &b)
+static AVS_FORCEINLINE __m128i _MM_MULLO_EPI32(const __m128i &a, const __m128i &b)
 {
   // for SSE 4.1: return _mm_mullo_epi32(a, b);
   __m128i tmp1 = _mm_mul_epu32(a,b); // mul 2,0
@@ -241,7 +246,7 @@ AVS_FORCEINLINE __m128i _MM_MULLO_EPI32(const __m128i &a, const __m128i &b)
 #pragma warning(disable: 4309)
 #endif
 // fake _mm_packus_epi32 (orig is SSE4.1 only)
-AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
+static AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
 {
   const static __m128i val_32 = _mm_set1_epi32(0x8000);
   const static __m128i val_16 = _mm_set1_epi16(0x8000);
@@ -258,7 +263,7 @@ AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32( __m128i a, __m128i b )
 #endif
 // fake _mm_packus_epi32 (orig is SSE4.1 only)
 // only for packing 00000000..0000FFFF range integers, does not clamp properly above that, e.g. 00010001
-AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32_SRC_TRUEWORD(__m128i a, __m128i b)
+static AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32_SRC_TRUEWORD(__m128i a, __m128i b)
 {
   a = _mm_slli_epi32 (a, 16);
   a = _mm_srai_epi32 (a, 16);
@@ -268,27 +273,27 @@ AVS_FORCEINLINE __m128i _MM_PACKUS_EPI32_SRC_TRUEWORD(__m128i a, __m128i b)
   return a;
 }
 
-AVS_FORCEINLINE __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
+static AVS_FORCEINLINE __m128i _MM_CMPLE_EPU16(__m128i x, __m128i y)
 {
   // Returns 0xFFFF where x <= y:
   return _mm_cmpeq_epi16(_mm_subs_epu16(x, y), _mm_setzero_si128());
 }
 
-AVS_FORCEINLINE __m128i _MM_BLENDV_SI128(__m128i x, __m128i y, __m128i mask)
+static AVS_FORCEINLINE __m128i _MM_BLENDV_SI128(__m128i x, __m128i y, __m128i mask)
 {
   // Replace bit in x with bit in y when matching bit in mask is set:
   return _mm_or_si128(_mm_andnot_si128(mask, x), _mm_and_si128(mask, y));
 }
 
 // sse2 simulation of SSE4's _mm_min_epu16
-AVS_FORCEINLINE __m128i _MM_MIN_EPU16(__m128i x, __m128i y)
+static AVS_FORCEINLINE __m128i _MM_MIN_EPU16(__m128i x, __m128i y)
 {
   // Returns x where x <= y, else y:
   return _MM_BLENDV_SI128(y, x, _MM_CMPLE_EPU16(x, y));
 }
 
 // sse2 simulation of SSE4's _mm_max_epu16
-AVS_FORCEINLINE __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
+static AVS_FORCEINLINE __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
 {
   // Returns x where x >= y, else y:
   return _MM_BLENDV_SI128(x, y, _MM_CMPLE_EPU16(x, y));

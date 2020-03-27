@@ -93,7 +93,7 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
   catch (const SehException &seh) {
     if (seh.m_msg)
       env->ThrowError(seh.m_msg);
-	  else
+    else
       env->ThrowError("Evaluate: System exception - 0x%x", seh.m_code);
   }
   catch (...) {
@@ -247,9 +247,9 @@ AVSValue ExpConditional::Evaluate(IScriptEnvironment* env)
 
 AVSValue ExpReturn::Evaluate(IScriptEnvironment* env)
 {
-	ReturnExprException ret;
-	ret.value = value->Evaluate(env);
-	throw ret;
+  ReturnExprException ret;
+  ret.value = value->Evaluate(env);
+  throw ret;
 }
 
 
@@ -495,6 +495,21 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
 AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
 {
   env->SetVar(lhs, rhs->Evaluate(env));
+  if (withret) {
+    AVSValue last;
+    AVSValue result;
+
+    IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+    if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
+    {
+      // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
+      if (env2->GetVar(lhs, &result)) {
+        return result;
+      }
+      env->ThrowError("I don't know what '%s' means.", lhs);
+      return 0;
+    }
+  }
   return AVSValue();
 }
 

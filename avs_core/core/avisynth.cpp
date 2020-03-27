@@ -878,8 +878,8 @@ private:
   VideoFrame* AllocateFrame(size_t vfb_size, size_t margin, Device* device);
   std::recursive_mutex memory_mutex;
 
-	int frame_align;
-	int plane_align;
+  int frame_align;
+  int plane_align;
 
   //BufferPool BufferPool;
 
@@ -907,8 +907,8 @@ private:
   // filter graph
   bool graphAnalysisEnable;
 
-	typedef std::vector<FilterGraphNode*> GraphNodeRegistryType;
-	GraphNodeRegistryType GraphNodeRegistry;
+  typedef std::vector<FilterGraphNode*> GraphNodeRegistryType;
+  GraphNodeRegistryType GraphNodeRegistry;
 
   CacheMode cacheMode;
 
@@ -918,121 +918,121 @@ const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
 // Only ThrowError and Sprintf is implemented(Used by destructor)
 class MinimumScriptEnvironment : public IScriptEnvironment {
-	VarTable var_table;
+  VarTable var_table;
 public:
-	MinimumScriptEnvironment(ConcurrentVarStringFrame* top_frame) : var_table(top_frame) { }
-	virtual ~MinimumScriptEnvironment() {}
-	virtual int __stdcall GetCPUFlags() {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual char* __stdcall SaveString(const char* s, int length = -1) {
-		return var_table.SaveString(s, length);
-	}
-	virtual char* __stdcall Sprintf(const char* fmt, ...) {
-		va_list val;
-		va_start(val, fmt);
-		char* result = VSprintf(fmt, val);
-		va_end(val);
-		return result;
-	}
-	virtual char* __stdcall VSprintf(const char* fmt, void* val) {
-		try {
-			std::string str = FormatString(fmt, (va_list)val);
-			return var_table.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
-		}
-		catch (...) {
-			return NULL;
-		}
-	}
-	__declspec(noreturn) virtual void __stdcall ThrowError(const char* fmt, ...) {
-		va_list val;
-		va_start(val, fmt);
-		VThrowError(fmt, val);
-		va_end(val);
-	}
-	void __stdcall VThrowError(const char* fmt, va_list va)
-	{
-		std::string msg;
-		try {
-			msg = FormatString(fmt, va);
-		}
-		catch (...) {
-			msg = "Exception while processing ScriptEnvironment::ThrowError().";
-		}
-		// Throw...
-		throw AvisynthError(var_table.SaveString(msg.c_str()));
-	}
-	virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual bool __stdcall FunctionExists(const char* name) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual AVSValue __stdcall GetVar(const char* name) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual bool __stdcall SetVar(const char* name, const AVSValue& val) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void __stdcall PushContext(int level = 0) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void __stdcall PopContext() {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual bool __stdcall MakeWritable(PVideoFrame* pvf) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void __stdcall AtExit(ShutdownFunc function, void* user_data) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void __stdcall CheckVersion(int version = AVISYNTH_INTERFACE_VERSION) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual int __stdcall SetMemoryMax(int mem) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual int __stdcall SetWorkingDir(const char * newdir) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void* __stdcall ManageCache(int key, void* data) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual bool __stdcall PlanarChromaAlignment(PlanarChromaAlignmentMode key) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-		int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void __stdcall DeleteScriptEnvironment() {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
-		int textcolor, int halocolor, int bgcolor) {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual const AVS_Linkage* __stdcall GetAVSLinkage() {
-		throw AvisynthError("Not Implemented");
-	}
-	virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) {
-		throw AvisynthError("Not Implemented");
-	}
+  MinimumScriptEnvironment(ConcurrentVarStringFrame* top_frame) : var_table(top_frame) { }
+  virtual ~MinimumScriptEnvironment() {}
+  virtual int __stdcall GetCPUFlags() {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual char* __stdcall SaveString(const char* s, int length = -1) {
+    return var_table.SaveString(s, length);
+  }
+  virtual char* Sprintf(const char* fmt, ...) {
+    va_list val;
+    va_start(val, fmt);
+    char* result = VSprintf(fmt, val);
+    va_end(val);
+    return result;
+  }
+  virtual char* __stdcall VSprintf(const char* fmt, va_list val) {
+    try {
+      std::string str = FormatString(fmt, (va_list)val);
+      return var_table.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
+    }
+    catch (...) {
+      return NULL;
+    }
+  }
+  __declspec(noreturn) virtual void ThrowError(const char* fmt, ...) {
+    va_list val;
+    va_start(val, fmt);
+    VThrowError(fmt, val);
+    va_end(val);
+  }
+  void __stdcall VThrowError(const char* fmt, va_list va)
+  {
+    std::string msg;
+    try {
+      msg = FormatString(fmt, va);
+    }
+    catch (...) {
+      msg = "Exception while processing ScriptEnvironment::ThrowError().";
+    }
+    // Throw...
+    throw AvisynthError(var_table.SaveString(msg.c_str()));
+  }
+  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual bool __stdcall FunctionExists(const char* name) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual AVSValue __stdcall GetVar(const char* name) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual bool __stdcall SetVar(const char* name, const AVSValue& val) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void __stdcall PushContext(int level = 0) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void __stdcall PopContext() {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual bool __stdcall MakeWritable(PVideoFrame* pvf) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void __stdcall AtExit(ShutdownFunc function, void* user_data) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void __stdcall CheckVersion(int version = AVISYNTH_INTERFACE_VERSION) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual int __stdcall SetMemoryMax(int mem) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual int __stdcall SetWorkingDir(const char * newdir) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void* __stdcall ManageCache(int key, void* data) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual bool __stdcall PlanarChromaAlignment(PlanarChromaAlignmentMode key) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void __stdcall DeleteScriptEnvironment() {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
+    int textcolor, int halocolor, int bgcolor) {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual const AVS_Linkage* __stdcall GetAVSLinkage() {
+    throw AvisynthError("Not Implemented");
+  }
+  virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) {
+    throw AvisynthError("Not Implemented");
+  }
 };
 
 /* ---------------------------------------------------------------------------------
@@ -1050,14 +1050,14 @@ struct ScriptEnvironmentTLS
   bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
   bool supressCaching;
   int ImportDepth;
-	int getFrameRecursiveCount;
+  int getFrameRecursiveCount;
 
-	// Concurrent GetFrame with Invoke causes deadlock.
-	// Increment this variable when Invoke running
-	// to prevent submitting job to threadpool
-	int suppressThreadCount;
+  // Concurrent GetFrame with Invoke causes deadlock.
+  // Increment this variable when Invoke running
+  // to prevent submitting job to threadpool
+  int suppressThreadCount;
 
-	FilterGraphNode* currentGraphNode;
+  FilterGraphNode* currentGraphNode;
   volatile long refcount;
 
   ScriptEnvironmentTLS(int thread_id, InternalEnvironment* core)
@@ -1068,9 +1068,9 @@ struct ScriptEnvironmentTLS
     , closing(false)
     , supressCaching(false)
     , ImportDepth(0)
-		, getFrameRecursiveCount(0)
-		, suppressThreadCount(0)
-		, currentGraphNode(nullptr)
+    , getFrameRecursiveCount(0)
+    , suppressThreadCount(0)
+    , currentGraphNode(nullptr)
     , refcount(1)
   {
   }
@@ -1711,10 +1711,10 @@ public:
     return core->GetCacheMode();
   }
 
-	bool& __stdcall GetSupressCaching()
-	{
-		return DISPATCH(supressCaching);
-	}
+  bool& __stdcall GetSupressCaching()
+  {
+    return DISPATCH(supressCaching);
+  }
 
   void __stdcall SetDeviceOpt(DeviceOpt opt, int val)
   {
@@ -1730,31 +1730,31 @@ public:
     core->UpdateFunctionExports(funcName, funcParams, exportVar);
   }
 
-	bool __stdcall MakePropertyWritable(PVideoFrame* pvf)
-	{
-		return core->MakePropertyWritable(pvf);
-	}
+  bool __stdcall MakePropertyWritable(PVideoFrame* pvf)
+  {
+    return core->MakePropertyWritable(pvf);
+  }
 
   InternalEnvironment* __stdcall NewThreadScriptEnvironment(int thread_id)
   {
     return new ThreadScriptEnvironment(thread_id, core, coreTLS);
   }
 
-	int __stdcall GetThreadId() {
-		return DISPATCH(thread_id);
-	}
+  int __stdcall GetThreadId() {
+    return DISPATCH(thread_id);
+  }
 
-	int& __stdcall GetFrameRecursiveCount() {
-		return DISPATCH(getFrameRecursiveCount);
-	}
+  int& __stdcall GetFrameRecursiveCount() {
+    return DISPATCH(getFrameRecursiveCount);
+  }
 
-	int& __stdcall GetSuppressThreadCount() {
-		return DISPATCH(suppressThreadCount);
-	}
+  int& __stdcall GetSuppressThreadCount() {
+    return DISPATCH(suppressThreadCount);
+  }
 
-	FilterGraphNode*& GetCurrentGraphNode() {
-		return DISPATCH(currentGraphNode);
-	}
+  FilterGraphNode*& GetCurrentGraphNode() {
+    return DISPATCH(currentGraphNode);
+  }
 
 #undef DISPATCH
 };
@@ -1926,19 +1926,19 @@ ScriptEnvironment::ScriptEnvironment()
     threadEnv = std::unique_ptr<ThreadScriptEnvironment>(new ThreadScriptEnvironment(0, this, nullptr));
     Devices = std::unique_ptr<DeviceManager>(new DeviceManager(threadEnv.get()));
 
-		// calc frame align
-		frame_align = plane_align = FRAME_ALIGN;
-		for (int i = 0, end = Devices->GetNumDevices(DEV_TYPE_CUDA); i < end; ++i) {
-			int align, pitchAlign;
-			Devices->GetDevice(DEV_TYPE_CUDA, i)->GetAlignmentRequirement(&align, &pitchAlign);
-			frame_align = max(frame_align, pitchAlign);
-			plane_align = max(plane_align, align);
-		}
+    // calc frame align
+    frame_align = plane_align = FRAME_ALIGN;
+    for (int i = 0, end = Devices->GetNumDevices(DEV_TYPE_CUDA); i < end; ++i) {
+      int align, pitchAlign;
+      Devices->GetDevice(DEV_TYPE_CUDA, i)->GetAlignmentRequirement(&align, &pitchAlign);
+      frame_align = max(frame_align, pitchAlign);
+      plane_align = max(plane_align, align);
+    }
 
 
 
     auto cpuDevice = Devices->GetCPUDevice();
-		threadEnv->GetTLS()->currentDevice = cpuDevice;
+    threadEnv->GetTLS()->currentDevice = cpuDevice;
 
 #ifdef AVS_WINDOWS
     MEMORYSTATUSEX memstatus;
@@ -1946,7 +1946,6 @@ ScriptEnvironment::ScriptEnvironment()
     GlobalMemoryStatusEx(&memstatus);
     cpuDevice->memory_max = ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
 #endif
-
 #ifdef AVS_POSIX
     uint64_t ullTotalPhys = posix_get_physical_memory();
     cpuDevice->memory_max = ConstrainMemoryRequest(ullTotalPhys / 4);
@@ -2072,15 +2071,15 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
 
 #if 0
-	// check clip leaks DoDumpGraph
-	if (std::find_if(GraphNodeRegistry.begin(), GraphNodeRegistry.end(),
-		[](FilterGraphNode* node) { return node != nullptr; }) != GraphNodeRegistry.end())
-	{
-		// This is dangerous operation because thread's string is destroyed
-		// and may be there are dangling string pointer which results in access violation.
-		MinimumScriptEnvironment env(&top_frame);
-		DoDumpGraph(GraphNodeRegistry, "clip_leaks.txt", &env);
-	}
+  // check clip leaks DoDumpGraph
+  if (std::find_if(GraphNodeRegistry.begin(), GraphNodeRegistry.end(),
+    [](FilterGraphNode* node) { return node != nullptr; }) != GraphNodeRegistry.end())
+  {
+    // This is dangerous operation because thread's string is destroyed
+    // and may be there are dangling string pointer which results in access violation.
+    MinimumScriptEnvironment env(&top_frame);
+    DoDumpGraph(GraphNodeRegistry, "clip_leaks.txt", &env);
+  }
 #endif
 
   // delete avsmap
@@ -2468,8 +2467,8 @@ size_t  ScriptEnvironment::GetProperty(AvsEnvProperty prop)
     return Devices->GetNumDevices();
   case AEP_FRAME_ALIGN:
     return frame_align;
-	case AEP_PLANE_ALIGN:
-		return plane_align;
+  case AEP_PLANE_ALIGN:
+    return plane_align;
   case AEP_FILTERCHAIN_THREADS:
     return nMaxFilterInstances;
   case AEP_PHYSICAL_CPUS:
@@ -2587,7 +2586,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
   // no locking here, calling method have done it already
   FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame, newFrame->avsmap));
 
-  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);  //_RPT1(0, "ScriptEnvironment::AllocateFrame %Iu frame=%p vfb=%p %I64d\n", vfb_size, newFrame, newFrame->vfb, memory_used); // P.F.
+  //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
 
   return newFrame;
 }
@@ -3124,7 +3123,7 @@ void ScriptEnvironment::ShrinkCache(Device *device)
             else {
               // there should not be such case: vfb.refcount=0 and frame.refcount!=0
               ++unfreed_frame_count;
-              _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", vfb, frame, frame->refcount);
+              _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount);
             }
           }
           // delete array belonging to this vfb in one step
@@ -3166,8 +3165,8 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     pitchUV = AlignNumber(row_sizeUV, align);
   }
 
-	size_t sizeY = AlignNumber(pitchY * height, plane_align);
-	size_t sizeUV = AlignNumber(pitchUV * heightUV, plane_align);
+  size_t sizeY = AlignNumber(pitchY * height, plane_align);
+  size_t sizeUV = AlignNumber(pitchUV * heightUV, plane_align);
   size_t size = sizeY + 2 * sizeUV + (alpha ? sizeY : 0);
 
   VideoFrame *res = GetNewFrame(size, align - 1, device);
@@ -3402,32 +3401,32 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
 }
 
 bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
-	const PVideoFrame& vf = *pvf;
+  const PVideoFrame& vf = *pvf;
 
-	// If the frame is already writable, do nothing.
-	if (vf->IsPropertyWritable())
-		return false;
+  // If the frame is already writable, do nothing.
+  if (vf->IsPropertyWritable())
+    return false;
 
-	// Otherwise, allocate a new frame (using Subframe)
-	PVideoFrame dst;
-	if (vf->GetPitch(PLANAR_A)) {
-		// planar + alpha
-		dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U), 0);
-	}
-	else if (vf->GetPitch(PLANAR_U)) {
-		// planar
-		dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U));
-	}
-	else {
-		// single plane
-		dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight());
-	}
+  // Otherwise, allocate a new frame (using Subframe)
+  PVideoFrame dst;
+  if (vf->GetPitch(PLANAR_A)) {
+    // planar + alpha
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U), 0);
+  }
+  else if (vf->GetPitch(PLANAR_U)) {
+    // planar
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U));
+  }
+  else {
+    // single plane
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight());
+  }
 
-	// Copy properties
-	dst->avsmap->data = vf->avsmap->data;
+  // Copy properties
+  dst->avsmap->data = vf->avsmap->data;
 
-	*pvf = dst;
-	return true;
+  *pvf = dst;
+  return true;
 }
 
 
@@ -3625,25 +3624,25 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     }
     break;
   }
-	case MC_RegisterGraphNode:
-	{
-		FilterGraphNode* node = reinterpret_cast<FilterGraphNode*>(data);
-		GraphNodeRegistry.push_back(node);
-		break;
-	}
-	case MC_UnRegisterGraphNode:
-	{
-		FilterGraphNode* node = reinterpret_cast<FilterGraphNode*>(data);
-		for (auto& item : GraphNodeRegistry)
-		{
-			if (item == node)
-			{
-				item = NULL;
-				break;
-			}
-		}
-		break;
-	}
+  case MC_RegisterGraphNode:
+  {
+    FilterGraphNode* node = reinterpret_cast<FilterGraphNode*>(data);
+    GraphNodeRegistry.push_back(node);
+    break;
+  }
+  case MC_UnRegisterGraphNode:
+  {
+    FilterGraphNode* node = reinterpret_cast<FilterGraphNode*>(data);
+    for (auto& item : GraphNodeRegistry)
+    {
+      if (item == node)
+      {
+        item = NULL;
+        break;
+      }
+    }
+    break;
+  }
   } // switch
 #ifdef DEBUG_GSCRIPTCLIP_MT
   _RPT2(0, "ScriptEnvironment::ManageCache memory mutex will unlock on release: %p thread=%d\n", (void*)&memory_mutex, GetCurrentThreadId());

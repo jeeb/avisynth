@@ -2,7 +2,11 @@
 #include "DeviceManager.h"
 #include "InternalEnvironment.h"
 
-#include <avs/win.h>
+#ifdef AVS_WINDOWS
+  #include <avs/win.h>
+#else
+  #include <avs/posix.h>
+#endif
 
 #include <map>
 #include <iostream>

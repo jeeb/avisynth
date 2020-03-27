@@ -35,7 +35,11 @@
 
 #include "tokenizer.h"
 #include "../InternalEnvironment.h"
+#ifdef AVS_WINDOWS
 #include <avs/win.h>
+#else
+#include <avs/posix.h>
+#endif
 
 #include <cfloat>
 #include <climits>

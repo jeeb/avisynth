@@ -389,7 +389,7 @@ private:
 class ExpAssignment : public Expression
 {
 public:
-  ExpAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs) {}
+  ExpAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs), withret(false) {}
   ExpAssignment(const char* _lhs, const PExpression& _rhs, bool wr) : lhs(_lhs), rhs(_rhs), withret(wr) {}
 
   virtual AVSValue Evaluate(IScriptEnvironment* env);
@@ -397,21 +397,19 @@ public:
 private:
   const char* const lhs;
   PExpression rhs;
-  bool withret = false;
+  bool withret;
 };
 
 
 class ExpGlobalAssignment : public Expression
 {
 public:
-  ExpGlobalAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs) {}
-  ExpGlobalAssignment(const char* _lhs, const PExpression& _rhs, bool wr) : lhs(_lhs), rhs(_rhs), withret(wr) {}
+  ExpGlobalAssignment(const char* _lhs, const PExpression& _rhs) : lhs(_lhs), rhs(_rhs), withret(false) {}
   virtual AVSValue Evaluate(IScriptEnvironment* env);
 
 private:
   const char* const lhs;
   PExpression rhs;
-  bool withret = false;
 };
 
 
