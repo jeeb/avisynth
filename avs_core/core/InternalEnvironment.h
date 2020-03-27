@@ -42,7 +42,7 @@ enum CacheMode {
 	CACHE_DEFAULT = CACHE_FAST_START,
 };
 
-enum DeviceOpt {
+enum DeviceOpt: int {
     DEV_CUDA_PINNED_HOST, // allocate CPU frame with CUDA pinned host memory
     DEV_FREE_THRESHOLD,   // free request count threshold to free frame
 };

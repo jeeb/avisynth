@@ -6,7 +6,7 @@
 #include <memory>
 
 class InternalEnvironment;
-enum DeviceOpt;
+enum DeviceOpt: int; // forward enum w/o underlying types are MS specific
 
 struct DeviceCompleteCallbackData {
   void(*cb)(void*);
@@ -22,18 +22,18 @@ public:
     const int device_id;
     const int device_index;
 
-    unsigned __int64 memory_max;
-    std::atomic<unsigned __int64> memory_used;
+    uint64_t memory_max;
+    std::atomic<uint64_t> memory_used;
 
     int  free_thresh;
 
     Device(AvsDeviceType type, int id, int index, InternalEnvironment* env) :
-		  env(env),
+      env(env),
       device_type(type),
       device_id(id),
       device_index(index),
-		  memory_max(0),
-		  memory_used(0),
+      memory_max(0),
+      memory_used(0),
       free_thresh(0)
     { }
 
@@ -48,7 +48,7 @@ public:
     virtual void SetActiveToCurrentThread(InternalEnvironment* env) = 0;
     virtual void* GetComputeStream() = 0;
     virtual void SetDeviceOpt(DeviceOpt opt, int val, InternalEnvironment* env) = 0;
-		virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment) = 0;
+    virtual void GetAlignmentRequirement(int* memoryAlignment, int* pitchAlignment) = 0;
 };
 
 class DeviceManager {
@@ -66,8 +66,8 @@ public:
 
     Device* GetCPUDevice() { return GetDevice(DEV_TYPE_CPU, 0); }
 
-		int GetNumDevices() const { return numDevices; }
-		int GetNumDevices(AvsDeviceType device_type) const;
+    int GetNumDevices() const { return numDevices; }
+    int GetNumDevices(AvsDeviceType device_type) const;
 
     void SetDeviceOpt(DeviceOpt opt, int val, InternalEnvironment* env);
 };
