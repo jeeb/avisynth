@@ -29,6 +29,9 @@
 #include "internal.h"
 #include <unordered_map>
 #include <array>
+#if defined(GCC) 
+#include <iomanip>
+#endif
 
 class BitmapFont {
 
