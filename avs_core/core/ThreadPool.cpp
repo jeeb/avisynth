@@ -8,7 +8,7 @@ struct ThreadPoolGenericItemData
   ThreadWorkerFuncPtr Func;
   void* Params;
   AVSPromise* Promise;
-  //Device* Device;
+  Device* Device;
 };
 
 #include "mpmc_bounded_queue.h"
@@ -32,7 +32,7 @@ public:
 void ThreadPool::ThreadFunc(size_t thread_id, ThreadPoolPimpl * const _pimpl, InternalEnvironment* env)
 {
   auto EnvTLS = env->NewThreadScriptEnvironment(thread_id);
-	PInternalEnvironment holder = PInternalEnvironment(EnvTLS);
+  PInternalEnvironment holder = PInternalEnvironment(EnvTLS);
 
   while (true)
   {
@@ -99,7 +99,7 @@ void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnviron
   ThreadPoolGenericItemData itemData;
   itemData.Func = clb;
   itemData.Params = params;
-  //itemData.Device = env->GetCurrentDevice();
+  itemData.Device = env->GetCurrentDevice();
 
   if (tc != NULL)
     itemData.Promise = tc->Add();
@@ -118,21 +118,21 @@ size_t ThreadPool::NumThreads() const
 
 std::vector<void*> ThreadPool::Finish()
 {
-	std::unique_lock<std::mutex> lock(_pimpl->Mutex);
-	if (_pimpl->NumRunning > 0) {
-		_pimpl->MsgQueue.finish();
-		while (_pimpl->NumRunning > 0)
-		{
-			_pimpl->FinishCond.wait(lock);
-		}
-		std::vector<void*> ret;
-		ThreadPoolGenericItemData item;
-		while (_pimpl->MsgQueue.pop_remain(&item)) {
-			ret.push_back(item.Params);
-		}
-		return ret;
-	}
-	return std::vector<void*>();
+  std::unique_lock<std::mutex> lock(_pimpl->Mutex);
+  if (_pimpl->NumRunning > 0) {
+    _pimpl->MsgQueue.finish();
+    while (_pimpl->NumRunning > 0)
+    {
+      _pimpl->FinishCond.wait(lock);
+    }
+    std::vector<void*> ret;
+    ThreadPoolGenericItemData item;
+    while (_pimpl->MsgQueue.pop_remain(&item)) {
+      ret.push_back(item.Params);
+    }
+    return ret;
+  }
+  return std::vector<void*>();
 }
 
 void ThreadPool::Join()

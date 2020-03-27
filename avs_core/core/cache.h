@@ -58,7 +58,7 @@ public:
 #ifdef _DEBUG
   std::string FuncName = ""; // P.F. Invoked function's name whose queue owns the cache object
 #endif
-  Cache(const PClip& child, /*Device* device,*/ InternalEnvironment* env);
+  Cache(const PClip& child, Device* device, InternalEnvironment* env);
   ~Cache();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
@@ -89,9 +89,7 @@ private:
     VideoInfo vi;
 		IScriptEnvironment* globalEnv;
 
-    //std::vector<std::pair<Device*, PClip>> deviceCaches;
-    std::vector<PClip> deviceCaches; // no device in classic Avs+
-
+    std::vector<std::pair<Device*, PClip>> deviceCaches;
 	CacheHints hints;
     mutable std::mutex mutex;
 

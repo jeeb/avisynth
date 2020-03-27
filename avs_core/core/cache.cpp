@@ -36,7 +36,7 @@
 #include "internal.h"
 #include "LruCache.h"
 #include "InternalEnvironment.h"
-
+#include "DeviceManager.h"
 #include <cassert>
 #include <cstdio>
 
@@ -99,9 +99,10 @@ struct CachePimpl
 };
 
 
-Cache::Cache(const PClip& _child, InternalEnvironment* env) :
+Cache::Cache(const PClip& _child, Device* device, InternalEnvironment* env) :
   Env(env),
-  _pimpl(NULL)
+  _pimpl(NULL),
+  device(device)
 {
   _pimpl = new CachePimpl(_child, env->GetCacheMode());
   env->ManageCache(MC_RegisterCache, reinterpret_cast<void*>(this));
@@ -155,6 +156,15 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env_)
       {
         //cache_handle.first->value = _pimpl->child->GetFrame(n, env);
         result = _pimpl->child->GetFrame(n, env); // P.F. fill result immediately
+
+        // check device
+        if (result->GetFrameBuffer()->device != device) {
+            const char* error_msg = env->Sprintf("Frame device mismatch: Assumed: %s Actual: %s",
+                device->GetName(), result->GetFrameBuffer()->device->GetName());
+            result = env->NewVideoFrame(_pimpl->vi);
+            env->ApplyMessage(&result, _pimpl->vi, error_msg, _pimpl->vi.width / 5, 0xa0a0a0, 0, 0);
+        }
+
         cache_handle.first->value = result; // not after commit!
   #ifdef X86_32
         _mm_empty();
@@ -172,8 +182,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env_)
       std::string name = FuncName;
       char buf[256];
       if (NULL == cache_handle.first->value) {
-          // fixed bug but who knows
-          snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: HEY! got nulled! [%s] n=%6d child=%p frame=%p framebefore=%p SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, elapsed_seconds.count()); // P.F.
+          _snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: HEY! got nulled! [%s] n=%6d child=%p frame=%p framebefore=%p SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, elapsed_seconds.count()); // P.F.
           _RPT0(0, buf);
       } else {
           snprintf(buf, 255, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: [%s] n=%6d child=%p frame=%p framebefore=%p videoCacheSize=%zu SeekTimeWithGetFrame:%f\n", name.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)result, _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
@@ -441,8 +450,6 @@ PClip CacheGuard::GetCache(IScriptEnvironment* env_)
 
 	InternalEnvironment* env = static_cast<InternalEnvironment*>(env_);
 
-#ifdef ORIG_NEO_FOR_SAMPLE
-
     Device* device = env->GetCurrentDevice();
 
     for (auto entry : deviceCaches) {
@@ -462,53 +469,22 @@ PClip CacheGuard::GetCache(IScriptEnvironment* env_)
 
     deviceCaches.emplace_back(device, cache);
       return deviceCaches.back().second;
-#else
-     // merge from Neo 20200321
-    for (auto entry : deviceCaches) {
-      /* PF hack, only one */
-      return entry;
-    }
-
-    // not found for current device, create it
-    Cache* cache = new Cache(child/*, device*/, static_cast<InternalEnvironment*>(globalEnv));
-
-    // apply cache hints if it is changed
-    if (hints.min != 0)
-      cache->SetCacheHints(CACHE_SET_MIN_CAPACITY, (int)hints.min);
-    if (hints.max != std::numeric_limits<size_t>::max())
-      cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, (int)hints.max);
-    deviceCaches.emplace_back(cache); // single device
-    return deviceCaches.back();
-#endif
 }
 
 void CacheGuard::ApplyHints(int cachehints, int frame_range)
 {
   std::unique_lock<std::mutex> global_lock(mutex);
-#ifdef ORIG_NEO_FOR_SAMPLE
   for (auto entry : deviceCaches) {
     entry.second->SetCacheHints(cachehints, frame_range);
   }
-#else
-  for (auto entry : deviceCaches) {
-    entry->SetCacheHints(cachehints, frame_range);
-  }
-#endif
 }
 
 int CacheGuard::GetOrDefault(int cachehints, int frame_range, int def)
 {
-
   std::unique_lock<std::mutex> global_lock(mutex);
-#ifdef ORIG_NEO_FOR_SAMPLE
   for (auto entry : deviceCaches) {
     return entry.second->SetCacheHints(cachehints, frame_range);
   }
-#else
-  for (auto entry : deviceCaches) {
-    return entry->SetCacheHints(cachehints, frame_range);
-  }
-#endif
   return def;
 }
 
@@ -655,11 +631,9 @@ int __stdcall CacheGuard::SetCacheHints(int cachehints, int frame_range)
   case CACHE_PREFETCH_AUDIO_GO:       // Action audio prefetch
     break;
 
-#ifdef ORIG_NEO_FOR_SAMPLE
   case CACHE_GET_DEV_TYPE:
   case CACHE_GET_CHILD_DEV_TYPE:
     return (child->GetVersion() >= 5) ? child->SetCacheHints(cachehints, 0) : 0;
-#endif
 
   default:
     return 0;
