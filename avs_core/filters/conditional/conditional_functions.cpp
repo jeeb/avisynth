@@ -863,7 +863,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
 
   if (pixelsize == 4) {
     const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
-    if (chroma && (mode == MIN && mode == MAX)) {
+    if (chroma && (mode == MIN || mode == MAX)) {
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
       const float shift = 0.0f;
 #else
