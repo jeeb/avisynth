@@ -101,10 +101,6 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
   const char* param_names[max_args];
   int param_count=0;
 
-#ifndef AVS_VALUE
-  // fixme: Neo's variable capture syntax is incompatible with array definitions
-  // check there!
-#else
   // variable capture
   if (tokenizer.IsOperator('[')) {
     if (name != nullptr) {
@@ -132,7 +128,7 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
       need_comma = true;
     }
   }
-#endif
+
   if (!tokenizer.IsOperator('{')) {
     Expect('(', "Script error: expected ( or { after function name");
     bool need_comma = false;
