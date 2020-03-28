@@ -146,7 +146,9 @@ private:
 enum AvsDeviceType {
   DEV_TYPE_NONE = 0,
   DEV_TYPE_CPU = 1,
+#ifdef ENABLE_CUDA
   DEV_TYPE_CUDA = 2,
+#endif
   DEV_TYPE_ANY = 0xFFFF
 };
 

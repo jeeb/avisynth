@@ -46,7 +46,7 @@ void ThreadPool::ThreadFunc(size_t thread_id, ThreadPoolPimpl * const _pimpl, In
       return;
     }
 
-    //EnvTLS->SetCurrentDevice(data.Device);
+    EnvTLS->SetCurrentDevice(data.Device);
     EnvTLS->GetSupressCaching() = false;
     if (data.Promise != NULL)
     {
@@ -107,7 +107,7 @@ void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnviron
     itemData.Promise = NULL;
 
   if (_pimpl->MsgQueue.push_front(std::move(itemData)) == false) {
-    throw AvisynthError("Threadpool is canceled");
+    throw AvisynthError("Threadpool is cancelled");
   }
 }
 

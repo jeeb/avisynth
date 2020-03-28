@@ -63,9 +63,11 @@ std::string DeviceTypesString(int devicetypes)
   if (devicetypes & DEV_TYPE_CPU) {
     typesstr.push_back("CPU");
   }
+#ifdef ENABLE_CUDA
   if (devicetypes & DEV_TYPE_CUDA) {
     typesstr.push_back("CUDA");
   }
+#endif
   std::ostringstream oss;
   for (int i = 0; i < (int)typesstr.size(); ++i) {
     if (i > 0) oss << ",";
@@ -1174,7 +1176,9 @@ public:
     if (args[0].IsClip()) {
       PClip clip = args[0].AsClip();
       int numPrefetch = args[1].Defined() ? args[1].AsInt() : 1;
+#ifdef ENABLE_CUDA
       int upstreamIndex = (args.ArraySize() >= 3 && args[2].Defined()) ? args[2].AsInt() : 0;
+#endif
 
       if (numPrefetch < 0) {
         numPrefetch = 0;
@@ -1183,8 +1187,10 @@ public:
       switch (upstreamType) {
       case DEV_TYPE_CPU:
         return new OnDevice(clip, numPrefetch, (Device*)(void*)env->GetDevice(DEV_TYPE_CPU, 0), env);
+#ifdef ENABLE_CUDA
       case DEV_TYPE_CUDA:
         return new OnDevice(clip, numPrefetch, (Device*)(void*)env->GetDevice(DEV_TYPE_CUDA, upstreamIndex), env);
+#endif
       }
 
       env->ThrowError("Not supported device ...");
@@ -1193,16 +1199,20 @@ public:
     else {
       assert(args[0].IsFunction());
       PFunction func = args[0].AsFunction();
+#ifdef ENABLE_CUDA
       int upstreamIndex = (args.ArraySize() >= 2 && args[1].Defined()) ? args[1].AsInt() : 0;
+#endif
 
       Device* upstreamDevice = nullptr;
       switch (upstreamType) {
       case DEV_TYPE_CPU:
         upstreamDevice = (Device*)(void*)env->GetDevice(DEV_TYPE_CPU, 0);
         break;
+#ifdef ENABLE_CUDA
       case DEV_TYPE_CUDA:
         upstreamDevice = (Device*)(void*)env->GetDevice(DEV_TYPE_CUDA, upstreamIndex);
         break;
+#endif
       default:
         env->ThrowError("Not supported device ...");
         break;
@@ -1268,8 +1278,12 @@ PVideoFrame GetFrameOnDevice(PClip& c, int n, const PDevice& device, InternalEnv
 
 extern const AVSFunction Device_filters[] = {
   { "OnCPU", BUILTIN_FUNC_PREFIX, "c[num_prefetch]i", OnDevice::Create, (void*)DEV_TYPE_CPU },
+#ifdef ENABLE_CUDA
   { "OnCUDA", BUILTIN_FUNC_PREFIX, "c[num_prefetch]i[device_index]i", OnDevice::Create, (void*)DEV_TYPE_CUDA },
+#endif
   { "OnCPU", BUILTIN_FUNC_PREFIX, "n", OnDevice::Create, (void*)DEV_TYPE_CPU },
+#ifdef ENABLE_CUDA
   { "OnCUDA", BUILTIN_FUNC_PREFIX, "n[device_index]i", OnDevice::Create, (void*)DEV_TYPE_CUDA },
+#endif
   { 0 }
 };
