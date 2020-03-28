@@ -154,47 +154,32 @@ public:
    char* SaveString(const char* s, int len = -1, bool escape = false) {
      int srclen = (len == -1) ? (int)strlen(s) : len;
 
-#if 0
-     std::unique_ptr<char[]> ss;
-#else
-     std::string ws = s;
-#endif
-
-      if (escape) {
-#if 0
-        auto ws = MultiByteToWide(AreFileApisANSI() ? CP_ACP : CP_OEMCP, s, srclen);
-#else
-        // utf8: ascii characters are freely searchable w/o conversion (?) fixme PF: check it again
-#endif
-        len = 0;
-        for (int i = 0; ws[i]; ++i, ++len) {
-          if (ws[i] == '\\') {
-            switch (ws[i + 1]) {
-            case 'n': ws[len] = '\n'; ++i; continue;
-            case 'r': ws[len] = '\r'; ++i; continue;
-            case 't': ws[len] = '\t'; ++i; continue;
-            case '0': ws[len] = '\0'; ++i; continue;
-            case 'a': ws[len] = '\a'; ++i; continue;
-            case 'f': ws[len] = '\f'; ++i; continue;
-            case '\\': ws[len] = '\\'; ++i; continue;
-            case '\"': ws[len] = '\"'; ++i; continue;
-            }
-          }
-          ws[len] = ws[i];
-        }
-        ws[len] = 0;
-#if 0
-        ss = WideToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, ws.get(), len);
-        s = ss.get();
-        len = (int)strlen(s);
-#else
-        s = ws.c_str();
-        len = ws.size();
-#endif
-      }
-      else {
-        len = srclen;
-      }
+     std::string ss;
+     if (escape) {
+       ss.reserve(srclen); // worst case. Note: input string may not be closed by 0x00
+       // PF: no need for WideString conversion, utf8 lower 128 ascii characters are freely searchable w/o conversion
+       len = 0;
+       for (int i = 0; s[i] && i<srclen; ++i, ++len) {
+         if (s[i] == '\\') {
+           switch (s[i + 1]) {
+           case 'n': ss += '\n'; ++i; continue;
+           case 'r': ss += '\r'; ++i; continue;
+           case 't': ss += '\t'; ++i; continue;
+           case '0': ss += '\0'; ++i; continue;
+           case 'a': ss += '\a'; ++i; continue;
+           case 'f': ss += '\f'; ++i; continue;
+           case '\\': ss += '\\'; ++i; continue;
+           case '\"': ss += '\"'; ++i; continue;
+           }
+         }
+         ss += s[i];
+       }
+       len = ss.size();
+       s = ss.c_str();
+     }
+     else {
+       len = srclen;
+     }
 
       ensure_length(len);
       char* result = current_block + block_pos;
