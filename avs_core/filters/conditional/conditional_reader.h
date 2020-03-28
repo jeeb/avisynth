@@ -50,7 +50,8 @@ private:
   const char* variableNameFixed;
   int mode;
   int offset;
-  StringCache* stringcache;
+  const bool local;
+  StringCache* stringcache; // fixme: to vector
   union {
     int* intVal;
     bool* boolVal;
@@ -66,7 +67,7 @@ private:
   void CleanUp(void);
 
 public:
-  ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, const char *_condVarSuffix, IScriptEnvironment* env);
+  ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, const char *_condVarSuffix, bool _local, IScriptEnvironment* env);
   ~ConditionalReader(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);
@@ -86,6 +87,7 @@ private:
 	int linecheck;	// 0=write each line, 1=write only if first expression == true, -1 = write at start, -2 = write at end
 	bool flush;
 	bool append;
+  bool local;
 
 #ifdef AVS_WINDOWS
 	char filename[_MAX_PATH];
@@ -103,7 +105,7 @@ private:
 	void FileOut(IScriptEnvironment* env, const char* mode);
 
 public:
-    Write(PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _flush, bool _append, IScriptEnvironment* env);
+    Write(PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _flush, bool _append, bool _local, IScriptEnvironment* env);
 	~Write(void);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);

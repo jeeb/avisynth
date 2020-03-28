@@ -49,24 +49,26 @@
 #include "../../core/InternalEnvironment.h"
 
 extern const AVSFunction Conditional_filters[] = {
-  {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "csc+[show]b", ConditionalSelect::Create },
-  {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "cnc+[show]b", ConditionalSelect::Create }, // function input
-  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccsss[show]b", ConditionalFilter::Create, (void *)0 },
+  // 2020.03.28 bool "local" parameter like in gRunT. Default false. Note! AvsNeo works as local=true, but it's incompatible with old Avisynth
+  // with "function" input local default is true
+  {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "csc+[show]b[local]b", ConditionalSelect::Create },
+  {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "cnc+[show]b[local]b", ConditionalSelect::Create }, // function input
+  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccsss[show]b[localb", ConditionalFilter::Create, (void *)0 },
   // easy syntax from GConditionalFilter, args3 and 4 to "=" and "true":
-  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccs[show]b", ConditionalFilter::Create, (void *)1 },
-  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccn[show]b", ConditionalFilter::Create, (void *)2 }, // function input
-  {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create },
-  {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cn[show]b[after_frame]b", ScriptClip::Create }, // function input
-  {  "ConditionalReader", BUILTIN_FUNC_PREFIX, "css[show]b", ConditionalReader::Create },
-  {  "FrameEvaluate",     BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create_eval },
-  {  "WriteFile",         BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b", Write::Create },
-  {  "WriteFileIf",       BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b", Write::Create_If },
-  {  "WriteFileStart",    BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b", Write::Create_Start },
-  {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b", Write::Create_End },
-  {  "WriteFile",         BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[flush]b", Write::Create }, // function input
-  {  "WriteFileIf",       BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[flush]b", Write::Create_If }, // function input
-  {  "WriteFileStart",    BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b", Write::Create_Start }, // function input
-  {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b", Write::Create_End }, // function input
+  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccs[show]b[local]b", ConditionalFilter::Create, (void *)1 },
+  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccn[show]b[local]b", ConditionalFilter::Create, (void *)2 }, // function input
+  {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b[local]b", ScriptClip::Create },
+  {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cn[show]b[after_frame]b[local]b", ScriptClip::Create }, // function input
+  {  "ConditionalReader", BUILTIN_FUNC_PREFIX, "css[show]b[condvarsuffix]s[local]b", ConditionalReader::Create },
+  {  "FrameEvaluate",     BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b[local]b", ScriptClip::Create_eval },
+  {  "WriteFile",         BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b[local]b", Write::Create },
+  {  "WriteFileIf",       BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b[local]b", Write::Create_If },
+  {  "WriteFileStart",    BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[local]b", Write::Create_Start },
+  {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[local]b", Write::Create_End },
+  {  "WriteFile",         BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[flush]b[local]b", Write::Create }, // function input
+  {  "WriteFileIf",       BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[flush]b[local]b", Write::Create_If }, // function input
+  {  "WriteFileStart",    BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[local]b", Write::Create_Start }, // function input
+  {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[local]b", Write::Create_End }, // function input
   { "UseVar", BUILTIN_FUNC_PREFIX, "cs+", UseVar::Create },
   { "AddProp", BUILTIN_FUNC_PREFIX, "css", AddProp::Create },
   { 0 }
@@ -84,9 +86,9 @@ extern const AVSFunction Conditional_filters[] = {
 
 ConditionalSelect::ConditionalSelect(PClip _child, AVSValue _script,
                                      int _num_args, PClip *_child_array,
-                                     bool _show, IScriptEnvironment* env) :
+                                     bool _show, bool _local, IScriptEnvironment* env) :
   GenericVideoFilter(_child), script(_script),
-  num_args(_num_args), child_array(_child_array), show(_show) {
+  num_args(_num_args), child_array(_child_array), show(_show), local(_local) {
 
   for (int i=0; i<num_args; i++) {
     const VideoInfo& vin = child_array[i]->GetVideoInfo();
@@ -122,10 +124,24 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
 {
   InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
 
-  GlobalVarFrame var_frame(envI); // allocate new frame
+  AVSValue prev_last;
+  AVSValue prev_current_frame;
+  std::unique_ptr<GlobalVarFrame> var_frame;
+
   AVSValue child_val = child;
-  env->SetGlobalVar("last", child_val);      // Set implicit last
-  env->SetGlobalVar("current_frame", (AVSValue)n); // Set frame to be tested by the conditional filters.
+
+  if (!local) {
+    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    env->SetVar("last", child_val);       // Set implicit last
+    env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
+  else {
+    // Neo's default, correct but incompatible with previous Avisynth versions
+    var_frame = std::unique_ptr<GlobalVarFrame>(new GlobalVarFrame(envI)); // allocate new frame
+    env->SetGlobalVar("last", child_val);       // Set explicit last
+    env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
 
   AVSValue result;
 
@@ -151,6 +167,11 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
       env->ThrowError("Conditional Select: Expression must return an integer!");
   }
   catch (const AvisynthError &error) {
+    if (!local) {
+      env->SetVar("last", prev_last);       // Restore implicit last
+      env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
+    }
+
     const int num_frames = child->GetVideoInfo().num_frames;
     PVideoFrame dst = child->GetFrame(min(num_frames-1, n), env);
 
@@ -158,6 +179,11 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
     env->ApplyMessage(&dst, vi, error.msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
 
     return dst;
+  }
+
+  if (!local) {
+    env->SetVar("last", prev_last);       // Restore implicit last
+    env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
   }
 
   const int i = result.AsInt();
@@ -212,7 +238,9 @@ AVSValue __cdecl ConditionalSelect::Create(AVSValue args, void* , IScriptEnviron
     env->ThrowError("Conditional Select: clip array not recognized!");
   }
 
-  return new ConditionalSelect(args[0].AsClip(), args[1], num_args, child_array, args[3].AsBool(false), env);
+  const bool runtime_local_default = args[1].IsFunction() ?  true : false; // Avisynth compatibility: false, Neo: true. functions are legacy Neo
+
+  return new ConditionalSelect(args[0].AsClip(), args[1], num_args, child_array, args[3].AsBool(false), args[4].AsBool(runtime_local_default), env);
 }
 
 
@@ -225,9 +253,9 @@ AVSValue __cdecl ConditionalSelect::Create(AVSValue args, void* , IScriptEnviron
 
 ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source2,
                                      AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2,
-                                     bool _show, IScriptEnvironment* env) :
+                                     bool _show, bool _local, IScriptEnvironment* env) :
   GenericVideoFilter(_child), source1(_source1), source2(_source2),
-  eval1(_condition1), eval2(_condition2), show(_show) {
+  eval1(_condition1), eval2(_condition2), show(_show), local(_local) {
 
     evaluator = NONE;
 
@@ -279,10 +307,24 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 {
   InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
 
-  GlobalVarFrame var_frame(envI); // allocate new frame
+  AVSValue prev_last;
+  AVSValue prev_current_frame;
+  std::unique_ptr<GlobalVarFrame> var_frame;
+
   AVSValue child_val = child;
-  env->SetGlobalVar("last", child_val);       // Set implicit last
-  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+
+  if (!local) {
+    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    env->SetVar("last", (AVSValue)child_val);       // Set implicit last
+    env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
+  else {
+    // Neo's default, correct but incompatible with previous Avisynth versions
+    var_frame = std::unique_ptr<GlobalVarFrame>(new GlobalVarFrame(envI)); // allocate new frame
+    env->SetGlobalVar("last", child_val);       // Set explicit last
+    env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
 
   VideoInfo vi1 = source1->GetVideoInfo();
   VideoInfo vi2 = source2->GetVideoInfo();
@@ -317,7 +359,18 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
     env->ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
+
+    if (!local) {
+      env->SetVar("last", prev_last);       // Restore implicit last
+      env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
+    }
+
     return dst;
+  }
+
+  if (!local) {
+    env->SetVar("last", prev_last);       // Restore implicit last
+    env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
   }
 
   bool test_int=false;
@@ -423,7 +476,6 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
       PVideoFrame dst = (state) ? source1->GetFrame(min(vi1.num_frames-1,n),env) : source2->GetFrame(min(vi2.num_frames-1,n),env);
       env->MakeWritable(&dst);
       env->ApplyMessage(&dst, vi, text, vi.width/4, 0xa0a0a0, 0, 0);
-
     return dst;
   }
 
@@ -441,10 +493,13 @@ void __stdcall ConditionalFilter::GetAudio(void* buf, int64_t start, int64_t cou
 AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   intptr_t userdata = (intptr_t)user_data;
+
+  const bool runtime_local_default = args[3].IsFunction() ? true : false; // Avisynth compatibility: false, Neo: true. functions are legacy Neo
+
   if (userdata == 0)
-    return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], args[4], args[5], args[6].AsBool(false),env);
+    return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], args[4], args[5], args[6].AsBool(false), args[7].AsBool(runtime_local_default), env);
   else // like GConditional filter shortcut: no "=" "true" needed
-    return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], "=", "true", args[4].AsBool(false), env);
+    return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], "=", "true", args[4].AsBool(false), args[5].AsBool(runtime_local_default), env);
 }
 
 
@@ -456,8 +511,8 @@ AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScri
  * Implicit last, and current frame is set on each frame.
  **************************/
 
-ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, bool _eval_after_frame, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), script(_script), show(_show), only_eval(_only_eval), eval_after(_eval_after_frame) {
+ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, bool _eval_after_frame, bool _local, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), script(_script), show(_show), only_eval(_only_eval), eval_after(_eval_after_frame), local(_local) {
   AVS_UNUSED(env);
 }
 
@@ -481,16 +536,35 @@ int __stdcall ScriptClip::SetCacheHints(int cachehints, int frame_range)
 PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env)
 {
   InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
-  GlobalVarFrame var_frame(envI); // allocate new frame
+
+  AVSValue prev_last;
+  AVSValue prev_current_frame;
+  std::unique_ptr<GlobalVarFrame> var_frame;
+
   AVSValue child_val = child;
-  env->SetGlobalVar("last", child_val);       // Set explicit last
-  env->SetGlobalVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
+
+  if (!local) {
+    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    env->SetVar("last", (AVSValue)child_val);       // Set implicit last
+    env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
+  else {
+    // Neo's default, correct but incompatible with previous Avisynth versions
+    var_frame = std::unique_ptr<GlobalVarFrame>(new GlobalVarFrame(envI)); // allocate new frame
+    env->SetGlobalVar("last", child_val);       // Set explicit last
+    env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
 
   if (show) {
     PVideoFrame dst = child->GetFrame(n,env);
     const char* text = script.IsString() ? script.AsString() : script.AsFunction()->ToString(env);
     env->MakeWritable(&dst);
     env->ApplyMessage(&dst, vi, text, vi.width/6, 0xa0a0a0, 0, 0);
+    if (!local) {
+      env->SetVar("last", prev_last);       // Restore implicit last
+      env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
+    }
     return dst;
   }
 
@@ -522,7 +596,16 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
     env->ApplyMessage(&dst, vi, error_msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
+    if (!local) {
+      env->SetVar("last", prev_last);       // Restore implicit last
+      env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
+    }
     return dst;
+  }
+
+  if (!local) {
+    env->SetVar("last", prev_last);       // Restore implicit last
+    env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
   }
 
   if (eval_after && only_eval) return eval_return;
@@ -571,10 +654,14 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl ScriptClip::Create(AVSValue args, void* , IScriptEnvironment* env)
 {
-  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),false, args[3].AsBool(false), env);
+  const bool runtime_local_default = args[1].IsFunction() ? true : false; // Avisynth compatibility: false, Neo: true. functions are legacy Neo
+
+  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),false, args[3].AsBool(false), args[4].AsBool(runtime_local_default), env);
 }
 
 
 AVSValue __cdecl ScriptClip::Create_eval(AVSValue args, void* , IScriptEnvironment* env)
 {
-  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),true, args[3].AsBool(false), env);}
+  const bool runtime_local_default = args[1].IsFunction() ? true : false; // Avisynth compatibility: false, Neo: true. functions are legacy Neo
+
+  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),true, args[3].AsBool(false), args[4].AsBool(runtime_local_default), env);}

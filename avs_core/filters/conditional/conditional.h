@@ -40,7 +40,7 @@
 class ConditionalSelect : public GenericVideoFilter
 {
 public:
-  ConditionalSelect(PClip _child, AVSValue _script, int _num_args, PClip *_child_array, bool _show, IScriptEnvironment* env);
+  ConditionalSelect(PClip _child, AVSValue _script, int _num_args, PClip *_child_array, bool _show, bool _local, IScriptEnvironment* env);
   ~ConditionalSelect();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);
@@ -51,6 +51,7 @@ private:
   const int num_args;
   PClip *child_array;
   const bool show;
+  bool local;
 };
 
 
@@ -67,7 +68,7 @@ class ConditionalFilter : public GenericVideoFilter
   };
 
 public:
-  ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env);
+  ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, bool _local, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);
@@ -80,12 +81,13 @@ private:
   AVSValue eval1;
   AVSValue eval2;
   bool show;
+  bool local;
 };
 
 class ScriptClip : public GenericVideoFilter
 {
 public:
-  ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, bool _eval_after_frame, IScriptEnvironment* env);
+  ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, bool _eval_after_frame, bool _local, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -96,4 +98,5 @@ private:
   bool show;
   bool only_eval;
   bool eval_after;
+  bool local; // like in gRunT, watch at Neo and AVS+ differences! Compatibility is local=false
 };

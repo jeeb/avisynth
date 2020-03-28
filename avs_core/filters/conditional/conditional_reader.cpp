@@ -165,8 +165,9 @@ iscomment(char *string)
 // Reader ------------------------------------------------
 
 
-ConditionalReader::ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, const char *_condVarSuffix, IScriptEnvironment* env)
- : GenericVideoFilter(_child), show(_show), mode(MODE_UNKNOWN), offset(0), stringcache(0)
+ConditionalReader::ConditionalReader(PClip _child, const char* filename, const char _varname[],
+  bool _show, const char *_condVarSuffix, bool _local, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), show(_show), mode(MODE_UNKNOWN), offset(0), local(_local), stringcache(0)
 {
   FILE * f;
   char *line = 0;
@@ -540,8 +541,21 @@ PVideoFrame __stdcall ConditionalReader::GetFrame(int n, IScriptEnvironment* env
 {
   AVSValue v = GetFrameValue(n);
 
-  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-  env->SetGlobalVar(variableName.c_str(), v);
+  InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
+
+  std::unique_ptr<GlobalVarFrame> var_frame;
+
+  AVSValue child_val = child;
+
+  if (!local) {
+    env->SetGlobalVar(variableNameFixed, v);
+  }
+  else {
+    // Neo's default, correct but incompatible with previous Avisynth versions
+    var_frame = std::unique_ptr<GlobalVarFrame>(new GlobalVarFrame(envI)); // allocate new frame
+    env->SetGlobalVar(variableNameFixed, v);
+  }
+
 
   PVideoFrame src = child->GetFrame(n,env);
 
@@ -567,7 +581,9 @@ int __stdcall ConditionalReader::SetCacheHints(int cachehints, int frame_range)
 
 AVSValue __cdecl ConditionalReader::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new ConditionalReader(args[0].AsClip(), args[1].AsString(""), args[2].AsString("Conditional") , args[3].AsBool(false), args[4].AsString(""), env);
+  const bool runtime_local_default = false; // Avisynth compatibility: false, Neo: true.
+
+  return new ConditionalReader(args[0].AsClip(), args[1].AsString(""), args[2].AsString("Conditional") , args[3].AsBool(false), args[4].AsString(""), args[5].AsBool(runtime_local_default), env);
 }
 
 
@@ -579,72 +595,105 @@ static const char AplusT[] = "a+t";
 static const char WplusT[] = "w+t";
 
 
-Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _append, bool _flush, IScriptEnvironment* env):
-	GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append), arglist(0)
+Write::Write(PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _append, bool _flush, bool _local, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append), local(_local), arglist(0)
 {
 #ifdef AVS_WINDOWS
-	_fullpath(filename, _filename, _MAX_PATH);
+  _fullpath(filename, _filename, _MAX_PATH);
 #else
-	realpath(_filename, filename);
+  realpath(_filename, filename);
 #endif
 
-	fout = fopen(filename, append ? AplusT : WplusT);	//append or purge file
-	if (!fout) env->ThrowError("Write: File '%s' cannot be opened.", filename);
+  fout = fopen(filename, append ? AplusT : WplusT);	//append or purge file
+  if (!fout) env->ThrowError("Write: File '%s' cannot be opened.", filename);
 
-	if (flush) fclose(fout);	//will be reopened in FileOut
+  if (flush) fclose(fout);	//will be reopened in FileOut
 
-	arrsize = args.ArraySize();
+  arrsize = args.ArraySize();
 
-	arglist = new exp_res[arrsize];
+  arglist = new exp_res[arrsize];
 
-	for (int i=0; i<arrsize; i++) {
-		arglist[i].expression = args[i];
-		arglist[i].string = EMPTY;
-	}
+  for (int i = 0; i < arrsize; i++) {
+    arglist[i].expression = args[i];
+    arglist[i].string = EMPTY;
+  }
 
-	if (linecheck == -1) {	//write at start
-		AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-		AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+  if (linecheck != -1 && linecheck != -2)
+    return;
 
-		env->SetVar("last", (AVSValue)child);       // Set implicit last
-		env->SetVar("current_frame", -1);
-		Write::DoEval(env);
-		Write::FileOut(env, AplusT);
+  InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
 
-		env->SetVar("last", prev_last);       // Restore implicit last
-		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
-	}
-	if (linecheck == -2) {	//write at end, evaluate right now
-		AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-		AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+  AVSValue prev_last;
+  AVSValue prev_current_frame;
+  std::unique_ptr<GlobalVarFrame> var_frame;
 
-		env->SetVar("last", (AVSValue)child);       // Set implicit last
-		env->SetVar("current_frame", -2);
-		Write::DoEval(env);
+  AVSValue child_val = child;
 
-		env->SetVar("last", prev_last);       // Restore implicit last
-		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
-	}
+  if (!local) {
+    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    env->SetVar("last", child_val);       // Set implicit last
+    env->SetVar("current_frame", (AVSValue)linecheck);  // special -1 or -2
+  }
+  else {
+    // Neo's default, correct but incompatible with previous Avisynth versions
+    var_frame = std::unique_ptr<GlobalVarFrame>(new GlobalVarFrame(envI)); // allocate new frame
+    env->SetGlobalVar("last", child_val);       // Set explicit last
+    env->SetGlobalVar("current_frame", (AVSValue)linecheck);  // special -1 or -2
+  }
+
+  Write::DoEval(env); // at both write at start and write at end
+
+  if (linecheck == -1) { //write at start
+    Write::FileOut(env, AplusT);
+  }
+
+  if (!local) {
+    env->SetVar("last", prev_last);       // Restore implicit last
+    env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
+  }
 }
 
 PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 
-//changed to call write AFTER the child->GetFrame
+  //changed to call write AFTER the child->GetFrame
 
 
-	PVideoFrame tmpframe = child->GetFrame(n, env);
+  PVideoFrame tmpframe = child->GetFrame(n, env);
 
-	if (linecheck<0) return tmpframe;	//do nothing here when writing only start or end
+  if (linecheck < 0) return tmpframe;	//do nothing here when writing only start or end
 
-   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-	env->SetGlobalVar("last",(AVSValue)child);       // Set implicit last (to avoid recursive stack calls?)
-	env->SetGlobalVar("current_frame",n);
+  InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
 
-	if (Write::DoEval(env)) {
-		Write::FileOut(env, AplusT);
-	}
+  AVSValue prev_last;
+  AVSValue prev_current_frame;
+  std::unique_ptr<GlobalVarFrame> var_frame;
 
-	return tmpframe;
+  AVSValue child_val = child;
+
+  if (!local) {
+    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    env->SetVar("last", (AVSValue)child_val);       // Set implicit last
+    env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
+  else {
+    // Neo's default, correct but incompatible with previous Avisynth versions
+    var_frame = std::unique_ptr<GlobalVarFrame>(new GlobalVarFrame(envI)); // allocate new frame
+    env->SetGlobalVar("last", child_val);       // Set implicit last (to avoid recursive stack calls?)
+    env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
+  }
+
+  if (Write::DoEval(env)) {
+    Write::FileOut(env, AplusT);
+  }
+
+  if (!local) {
+    env->SetVar("last", prev_last);       // Restore implicit last
+    env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
+  }
+
+  return tmpframe;
 
 };
 
@@ -732,22 +781,49 @@ int __stdcall Write::SetCacheHints(int cachehints, int frame_range)
 
 AVSValue __cdecl Write::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 0, args[3].AsBool(true),args[4].AsBool(true), env);
+  bool runtime_local_default = false;
+  // Param 2: string/function or array of strings/functions
+  if (args[2].IsFunction() || (args[2].IsArray() && args[2].ArraySize() > 0 && args[2][0].IsFunction()))
+    runtime_local_default = true;
+  // Avisynth compatibility: false, Neo: true. functions are legacy Neo
+
+	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 0, args[3].AsBool(true),args[4].AsBool(true), args[5].AsBool(runtime_local_default), env);
 }
 
 AVSValue __cdecl Write::Create_If(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 1, args[3].AsBool(true),args[4].AsBool(true), env);
+  bool runtime_local_default = false;
+  // Param 2: string/function or array of strings/functions
+  if (args[2].IsFunction() || (args[2].IsArray() && args[2].ArraySize() > 0 && args[2][0].IsFunction()))
+    runtime_local_default = true;
+  // Avisynth compatibility: false, Neo: true. functions are legacy Neo
+
+	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 1, args[3].AsBool(true),args[4].AsBool(true), args[5].AsBool(runtime_local_default), env);
 }
 
 AVSValue __cdecl Write::Create_Start(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -1, args[3].AsBool(false), true, env);
+  bool runtime_local_default = false;
+  // Param 2: string/function or array of strings/functions
+  /*if (args[2].IsFunction() || (args[2].IsArray() && args[2].ArraySize() > 0 && args[2][0].IsFunction()))
+    runtime_local_default = true;
+  */
+  // Avisynth compatibility: false, Neo: also false as of 2020.03.28
+
+	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -1, args[3].AsBool(false), true, args[4].AsBool(runtime_local_default), env);
 }
 
 AVSValue __cdecl Write::Create_End(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -2, args[3].AsBool(true), true, env);
+  bool runtime_local_default = false;
+  // Param 2: string/function or array of strings/functions
+  /*
+  if (args[2].IsFunction() || (args[2].IsArray() && args[2].ArraySize() > 0 && args[2][0].IsFunction()))
+    runtime_local_default = true;
+  */
+  // Avisynth compatibility: false, Neo: also false as of 2020.03.28
+
+	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -2, args[3].AsBool(true), args[4].AsBool(runtime_local_default), true, env);
 }
 
 
