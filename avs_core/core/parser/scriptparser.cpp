@@ -600,104 +600,82 @@ PExpression ScriptParser::ParseUnary(void) {
 PExpression ScriptParser::ParseOOP(void)
 {
 #ifndef NEW_AVSVALUE
-  PExpression left = ParseFunction(0);
+  PExpression left = ParseFunction(nullptr);
   while (tokenizer.IsOperator('.')) {
     tokenizer.NextToken();
     left = ParseFunction(left);
   }
 #else
-  PExpression left = ParseFunction(0, '\0');
+  // check if need convert [] brackets to function calls: Array() and ArrayGet()
+  // no context and [: e.g. x = [23,2] --> x = Array(23,2)
+  PExpression left;
+  if (tokenizer.IsOperator('['))
+    left = ParseArray(nullptr);
+  else
+    left = ParseFunction(nullptr);
   while (tokenizer.IsOperator('.') || tokenizer.IsOperator('[')) {
     // OOP '.' or array indexing
-    char op = tokenizer.AsOperator();
+    // somename.function( ...
+    // somename[ ... : e.g. x = a[23,2] --> x = a.ArrayGet(23,2)
+    // context is 'somename'
+    const bool isArraySpecifier = tokenizer.IsOperator('[');
     tokenizer.NextToken();
-    left = ParseFunction(left, op);
+    if(isArraySpecifier)
+      left = ParseArray(left);
+    else
+      left = ParseFunction(left);
   }
 #endif
   return left;
 }
 
-#ifndef NEW_AVSVALUE
+PExpression ScriptParser::ParseArray(PExpression context)
+{
+  PExpression left;
+  if (context)
+    left = new ExpVariableReference("ArrayGet"); // x = a[2,1] -> x = a.ArrayGet(2,1)
+  else
+    left = new ExpVariableReference("Array"); // x = [23,3] --> x = Array(23,3)
+  PExpression result = ParseCall(left, context, true); // true: array syntax
+  return result;
+}
+
 PExpression ScriptParser::ParseFunction(PExpression context)
 {
   PExpression left = ParseAtom();
   if (context || tokenizer.IsOperator('(')) {
-    return ParseCall(left, context);
+    return ParseCall(left, context, false); // false: function syntax
   }
   return left;
 }
-#else
-PExpression ScriptParser::ParseFunction(PExpression context, char context_char)
-  PExpression left = ParseAtom();
-  if (context || tokenizer.IsOperator('(')) {
-    return ParseCall(left, context, context_char);
-  }
-  return left;
-}
-#endif
 
-#ifndef NEW_AVSVALUE
-PExpression ScriptParser::ParseCall(PExpression left, PExpression context)
-#else
-PExpression ScriptParser::ParseCall(PExpression left, PExpression context, char context_char)
-#endif
+/*
+  -NEW_AVSVALUE means arrays
+  - AVSValue deep copy for arrays (arrays in arrays in ...)
+    constant script arrays
+    array_variable = [[1, 2, 3], [4, 5, 8], "hello"]
+    dictionary = [["one", 1], ["two", 2]]
+    empty = []
+    subarray = array_variable[0]
+    val = subarray[2]
+    val2 = array_variable[1, 3]
+    str = array_variable[2]
+    n = ArraySize(array_variable) #3
+    n2 = ArraySize(empty) #0
+    val3 = dictionary["two"]
+
+    - arrays as filter parameters(named and unnamed) :
+    new 'a' type or use '.+' or '.*' and check AVSValue IsArray()
+    Concept is incompatible with avs 2.5 plugins due to their 'baked' interface code
+*/
+PExpression ScriptParser::ParseCall(PExpression left, PExpression context, bool isArraySpecifier)
 {
-#if 0
-// PF fixme to understand arrays vs new neo functions
-#ifndef NEW_AVSVALUE
-  if (!tokenizer.IsIdentifier()) {
-    if (context)
-      env->ThrowError("Script error: expected function name following `.'");
-    else
-      return ParseAtom();
-  }
-#else
-  bool isVariableReference = (context_char == '[');
-  bool isArraySpecifier = isVariableReference || tokenizer.IsOperator('[');
-  if (isArraySpecifier) // debug
-  {
-    isArraySpecifier = isArraySpecifier;
-  }
-  if (!tokenizer.IsIdentifier() && !isVariableReference) {
-    if (context)
-      env->ThrowError("Script error: expected function name following `.'");
-    else if (!isArraySpecifier)
-      return ParseAtom();
-  }
-#endif
-  PExpression func;
-  const char* name = nullptr;
-  if (tokenizer.IsIdentifier("function")) {
-    tokenizer.NextToken();
-    func = ParseFunctionDefinition();
-  }
-  else {
-#ifdef NEW_AVSVALUE
-    // treat [ as special function: "Array"
-    const char* name = (isArraySpecifier) ? (isVariableReference ? "ArrayGet" : "Array") : tokenizer.AsIdentifier();
-    if (!isArraySpecifier) // also for variable reference: ParseOOP already had [ and also the next
-      tokenizer.NextToken();
-#else
-    name = tokenizer.AsIdentifier();
-    tokenizer.NextToken();
-#endif
-  }
+  // though parser can do here arrays in general, isArraySpecifier is always false for non AVS_NEWVALUE
+  // array references are using [] brackets which are here
+  // converted to Array() and ArrayGet functions depending on the position
+  // x = a[23] --> x = a.ArrayGet(23)  has a variable reference (context is not null)
+  // x = [2,3] -> x = Array(2,3)       no context
 
-#ifndef NEW_AVSVALUE
-  if (!context && !tokenizer.IsOperator('(')) {
-#else
-  if (!context && !tokenizer.IsOperator('(') && !isArraySpecifier) {
-#endif
-    if (name == nullptr) {
-      // only function definition
-      return func;
-    }
-    else {
-      // variable
-      return new ExpVariableReference(name);
-    }
-  }
-#endif // if 0 fixme
   // function
   PExpression args[max_args];
   const char* arg_names[max_args];
@@ -705,38 +683,33 @@ PExpression ScriptParser::ParseCall(PExpression left, PExpression context, char 
   int params_count = 0;
   int i=0;
   if (context)
-    args[i++] = context; // first arg is the object before '.'
+    args[i++] = context; // first arg is the object before '.' or '['
+
   if (
-#ifdef NEW_AVSVALUE
     isArraySpecifier ||
-#endif
     tokenizer.IsOperator('(')) {
-#ifdef NEW_AVSVALUE
-    if(!isVariableReference) // ParseOOP already had [ and also the next token
-#endif
+
+    if(!(context != nullptr && isArraySpecifier)) // ParseOOP already had [ and also the next token
       tokenizer.NextToken();
+
+    const char end_bracket = isArraySpecifier ? ']' : ')';
+    // arrays are delimited by ], functions by )
+
     bool need_comma = false;
     for (;;) {
-#ifdef NEW_AVSVALUE
-      if ((isArraySpecifier && tokenizer.IsOperator(']')) // arrays are delimited by ]
-          || (!isArraySpecifier &&  tokenizer.IsOperator(')')))
-#else
-      if(tokenizer.IsOperator(')'))
-#endif
+      if(tokenizer.IsOperator(end_bracket))
       {
         tokenizer.NextToken();
         break;
       }
       if (need_comma) {
-#ifdef NEW_AVSVALUE
         if(isArraySpecifier)
           Expect(',', "Script error: expected a , or ]");
         else
-#endif
           Expect(',', "Script error: expected a , or )");
       }
-      // check for named argument syntax (name=val)
-      if (tokenizer.IsIdentifier()) {
+      // check for named argument syntax (name=val) for functions
+      if (!isArraySpecifier && tokenizer.IsIdentifier()) {
         Tokenizer lookahead(&tokenizer);
         if (lookahead.IsOperator('=')) {
           arg_names[i] = tokenizer.AsIdentifier();
@@ -751,14 +724,13 @@ PExpression ScriptParser::ParseCall(PExpression left, PExpression context, char 
       params_count++;
       need_comma = true;
     }
-     // no this will be an one-element array of one empty array
-    /*
-    if (isArraySpecifier && params_count == 0)
-    {
-      // special case: empty array!
-      args[i++] = new ExpConstant(AVSValue()); // undefined. Array() will create null-element array
-    }
-    */
+  }
+
+  if (isArraySpecifier && params_count == 0)
+  {
+    if (context != nullptr)
+      env->ThrowError("Script error: array indexing must have at least one index");
+    // contextless case is empty array definition: x = []
   }
 
   const char* name = left->GetLvalue();
@@ -768,18 +740,15 @@ PExpression ScriptParser::ParseCall(PExpression left, PExpression context, char 
     left = new ExpFunctionWrapper(args[0]->GetLvalue());
   }
   else {
-    left = new ExpFunctionCall(name, left, args, arg_names, i, !!context);
+    // we have to set this true for array definitions x = [2,3] or else an
+    // implicite "last" will be passed on by ExpFunctionCall::Evaluate
+    const bool oop_notation_aka_disable_implicite_last = !!context || isArraySpecifier;
+    left = new ExpFunctionCall(name, left, args, arg_names, i, oop_notation_aka_disable_implicite_last);
   }
 
   if (tokenizer.IsOperator('(')) {
-    return ParseCall(left, nullptr);
+    return ParseCall(left, nullptr, false);
   }
-#ifdef NEW_AVSVALUE
-  if (isVariableReference && params_count == 0)
-  {
-    env->ThrowError("Script error: array indexing must have at least one index");
-  }
-#endif
   return left;
 
 }
@@ -810,8 +779,7 @@ PExpression ScriptParser::ParseAtom(void)
     tokenizer.NextToken();
     return new ExpConstant(result);
   }
-#ifdef NEW_AVSVALUE
-  // was: ifdef ARRAYS_AT_TOKENIZER_LEVEL
+#ifdef ARRAYS_AT_TOKENIZER_LEVEL
   else if (tokenizer.IsArray()) {
     std::vector<AVSValue>* result = tokenizer.AsArray(); // PF tokenizer returns new array
     tokenizer.NextToken();
@@ -825,10 +793,10 @@ PExpression ScriptParser::ParseAtom(void)
     return result;
   }
   else if (tokenizer.IsOperator('[')) { // array
+    // with NEW_AVSVALUE this case is unreachable
     env->ThrowError("Script error: array is not supported on this version of avisynth");
     return 0;
   }
-
   else {
     env->ThrowError("Script error: syntax error");
     return 0;

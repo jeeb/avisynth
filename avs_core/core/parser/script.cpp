@@ -299,7 +299,7 @@ extern const AVSFunction Script_functions[] = {
 
 
 #ifdef NEW_AVSVALUE
-  { "Array", BUILTIN_FUNC_PREFIX, ".+", ArrayCreate },  // # instead of +: creates script array
+  { "Array", BUILTIN_FUNC_PREFIX, ".*", ArrayCreate },  // zero or more anything, creates script array
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, "as", ArrayGet },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, "a.+", ArrayGet }, // multidimensional
@@ -2095,10 +2095,14 @@ AVSValue VarExist(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env)
 {
-  // empty array comes as an array with one non-defined element (AVSValue.type=='v')
-  if (args[0].IsArray() && args[0].ArraySize()==1 && !args[0][0].Defined())
-    return AVSValue(nullptr, 0); // special case: zero length array
-  else
+  if (args[0].IsArray() && args[0].ArraySize() == 1) {
+    AVSValue arg0 = args[0];
+    if (arg0.ArraySize() == 0)
+      return new AVSValue(nullptr, 0); // special case: zero length array
+    else
+      return args[0];
+  }
+else
     return args[0];
 }
 

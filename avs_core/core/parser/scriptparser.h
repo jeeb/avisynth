@@ -81,13 +81,9 @@ private:
   PExpression ParseMultiplication(bool negationOnHold);
   PExpression ParseUnary(void);
   PExpression ParseOOP(void);
-#ifdef NEW_AVSVALUE
-  PExpression ParseFunction(PExpression context, char context_char);
-  PExpression ParseCall(PExpression left, PExpression context, char context_char);
-#else
+  PExpression ParseArray(PExpression context);
   PExpression ParseFunction(PExpression context);
-  PExpression ParseCall(PExpression left, PExpression context);
-#endif
+  PExpression ParseCall(PExpression left, PExpression context, bool isArraySpecifier);
   PExpression ParseAtom(void);
 
   PExpression ParseIf(void);

@@ -340,19 +340,23 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
 
   bool optional = false;
 
-  /*
+  /* examples
   { "StackHorizontal", BUILTIN_FUNC_PREFIX, "cc+", StackHorizontal::Create },
   { "Spline", BUILTIN_FUNC_PREFIX, "[x]ff+[cubic]b", Spline },
   { "Select",   BUILTIN_FUNC_PREFIX, "i.+", Select },
-  { "Array", BUILTIN_FUNC_PREFIX, ".#", ArrayCreate },  // # instead of +: creates script array
-
+  { "Array", BUILTIN_FUNC_PREFIX, ".*", ArrayCreate },  // zero or more
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, "ai", ArrayGet },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, "as", ArrayGet },
   { "ArraySize", BUILTIN_FUNC_PREFIX, "a", ArraySize },
   */
+
   // arguments are provided in a flattened way (flattened=array elements extracted)
   // e.g.    string array is provided here string,string,string
+
+  // '*' or '+' to indicate "zero or more" or "one or more"
+  // '.' matches a single argument of any type. To match multiple arguments of any type, use ".*" or ".+".
+
   size_t i = 0;
   while (i < num_args) {
 
@@ -391,13 +395,14 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
             && !SingleTypeMatch(*param_types, args[i], strict))
           return false;
         // fall through
-      case '.':
+      case '.': // any type
         ++param_types;
         ++i;
         break;
       case '+': case '*':
 #ifdef NEW_AVSVALUE
-        if (param_types[-1] != '.' && args[i].IsArray()) { // PF new Arrays
+        if (param_types[-1] != '.' && args[i].IsArray()) {
+          // in case of args not flatted
           // all elements in the array should match with the type char preceding '+*'
           // only one array level is enough
           for (int j = 0; j < args[i].ArraySize(); j++)
