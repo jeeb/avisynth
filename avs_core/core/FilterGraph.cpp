@@ -1,3 +1,4 @@
+#include "avs/config.h"
 #include "FilterGraph.h"
 #include "DeviceManager.h"
 #include "InternalEnvironment.h"
@@ -13,6 +14,8 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 static AVSValue DeepCopyValue(std::vector<std::unique_ptr<AVSValue[]>>& arrays, const AVSValue& src) {
   if (src.IsArray()) {
@@ -502,21 +505,9 @@ public:
   }
 };
 
-static std::string GetFullPathNameWrap(const std::string &f)
+static std::string GetFullPathNameWrap(const std::string& f)
 {
-  // Get the lenght of the buffer we need
-  DWORD len = GetFullPathName(f.c_str(), 0, NULL, NULL);
-
-  // Reserve space and make call
-  char *fullPathName = new char[len];
-  GetFullPathName(f.c_str(), len, fullPathName, NULL);
-
-  // Wrap into C++ string
-  std::string result(fullPathName);
-
-  // Cleanup and return
-  delete[] fullPathName;
-  return result;
+  return fs::absolute(fs::path(f).lexically_normal()).generic_string();
 }
 
 static AVSValue DumpFilterGraph(AVSValue args, void* user_data, IScriptEnvironment* env) {

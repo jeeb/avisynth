@@ -3,6 +3,7 @@
 
 #include <avisynth.h>
 #include <future>
+#include <vector>
 
 typedef std::future<AVSValue> AVSFuture;
 typedef std::promise<AVSValue> AVSPromise;

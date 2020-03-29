@@ -8,7 +8,7 @@ struct ThreadPoolGenericItemData
   ThreadWorkerFuncPtr Func;
   void* Params;
   AVSPromise* Promise;
-  Device* Device;
+  Device* device;
 };
 
 #include "mpmc_bounded_queue.h"
@@ -46,7 +46,7 @@ void ThreadPool::ThreadFunc(size_t thread_id, ThreadPoolPimpl * const _pimpl, In
       return;
     }
 
-    EnvTLS->SetCurrentDevice(data.Device);
+    EnvTLS->SetCurrentDevice(data.device);
     EnvTLS->GetSupressCaching() = false;
     if (data.Promise != NULL)
     {
@@ -99,7 +99,7 @@ void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnviron
   ThreadPoolGenericItemData itemData;
   itemData.Func = clb;
   itemData.Params = params;
-  itemData.Device = env->GetCurrentDevice();
+  itemData.device = env->GetCurrentDevice();
 
   if (tc != NULL)
     itemData.Promise = tc->Add();

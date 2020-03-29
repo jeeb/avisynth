@@ -937,7 +937,7 @@ public:
   }
   virtual char* __stdcall VSprintf(const char* fmt, va_list val) {
     try {
-      std::string str = FormatString(fmt, (va_list)val);
+      std::string str = FormatString(fmt, val);
       return var_table.SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
     }
     catch (...) {
@@ -1045,7 +1045,7 @@ struct ScriptEnvironmentTLS
   // PF 161223 why do we need thread-local global variables?
   // comment remains here until it gets cleared, anyway, I make it of no use
   VarTable var_table;
-  BufferPool BufferPool;
+  BufferPool buffer_pool;
   Device* currentDevice;
   bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
   bool supressCaching;
@@ -1063,7 +1063,7 @@ struct ScriptEnvironmentTLS
   ScriptEnvironmentTLS(int thread_id, InternalEnvironment* core)
     : thread_id(thread_id)
     , var_table(core->GetTopFrame())
-    , BufferPool(core)
+    , buffer_pool(core)
     , currentDevice(NULL)
     , closing(false)
     , supressCaching(false)
@@ -1217,12 +1217,12 @@ public:
   {
     if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
       return NULL;
-    return DISPATCH(BufferPool).Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
+    return DISPATCH(buffer_pool).Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
   }
 
   void __stdcall Free(void* ptr)
   {
-    DISPATCH(BufferPool).Free(ptr);
+    DISPATCH(buffer_pool).Free(ptr);
   }
 
   Device* __stdcall GetCurrentDevice() const
@@ -1308,7 +1308,7 @@ public:
   char* __stdcall VSprintf(const char* fmt, va_list val)
   {
     try {
-      std::string str = FormatString(fmt, (va_list)val);
+      std::string str = FormatString(fmt, val);
       return DISPATCH(var_table).SaveString(str.c_str(), int(str.size())); // SaveString will add the NULL in len mode.
     }
     catch (...) {

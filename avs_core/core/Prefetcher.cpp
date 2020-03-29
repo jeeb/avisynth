@@ -1,5 +1,6 @@
 #include "Prefetcher.h"
 
+#include <vector>
 #include <mutex>
 #include <atomic>
 #include <mmintrin.h>
