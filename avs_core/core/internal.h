@@ -215,7 +215,7 @@ static AVS_FORCEINLINE uint8_t ScaledPixelClip(int i) {
 }
 
 static AVS_FORCEINLINE uint16_t ScaledPixelClip(int64_t i) {
-    return (uint16_t)clamp((i + 32768) >> 16, 0LL, 65535LL);
+    return (uint16_t)clamp((i + 32768) >> 16, (int64_t)0, (int64_t)65535);
 }
 
 static AVS_FORCEINLINE uint16_t ScaledPixelClipEx(int64_t i, int max_value) {

@@ -241,7 +241,7 @@ template<typename pixel_t>
 static AVS_FORCEINLINE void af_horizontal_planar_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
   size_t x;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, long long int>::type weight_t; // for calling the right ScaledPixelClip()
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type weight_t; // for calling the right ScaledPixelClip()
   size_t width = row_size / sizeof(pixel_t);
   for (x = 0; x < width-1; ++x) {
     pixel_t temp = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x+1]) * (weight_t)outer_weight));
@@ -257,7 +257,7 @@ static AVS_FORCEINLINE void af_horizontal_planar_process_line_uint16_c(uint16_t 
   typedef uint16_t pixel_t;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
   const int max_pixel_value = (1 << bits_per_pixel) - 1; // clamping on 10-12-14-16 bitdepth
-  typedef std::conditional < sizeof(pixel_t) == 1, int, long long int>::type weight_t; // for calling the right ScaledPixelClip()
+  typedef std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type weight_t; // for calling the right ScaledPixelClip()
   size_t width = row_size / sizeof(pixel_t);
   for (x = 0; x < width-1; ++x) {
     pixel_t temp = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x+1]) * (weight_t)outer_weight), max_pixel_value);

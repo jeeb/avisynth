@@ -77,7 +77,7 @@ AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
 
 template<typename pixel_t>
 static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const int half_amount, int bits_per_pixel) {
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, long long int>::type weight_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type weight_t;
   // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
   weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
   weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
@@ -90,7 +90,7 @@ static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const 
   for (int y = height-1; y>0; --y) {
     for (int x = 0; x < width; ++x) {
       pixel_t a;
-      // Note: ScaledPixelClip is overloaded. With long long int parameter and uint16_t result works for 16 bit
+      // Note: ScaledPixelClip is overloaded. With int64_t parameter and uint16_t result works for 16 bit
       if constexpr(sizeof(pixel_t) == 1)
         a = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight));
       else
@@ -628,7 +628,7 @@ static AVS_FORCEINLINE void af_horizontal_rgb32_process_line_c(pixel_t b_left, p
 
 template<typename pixel_t>
 static void af_horizontal_rgb32_64_c(BYTE* dstp8, size_t height, size_t pitch8, size_t width, int half_amount) {
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, long long int>::type weight_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type weight_t;
   // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
   weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
   weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
@@ -1111,7 +1111,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
 
 template<typename pixel_t>
 static void af_horizontal_rgb24_48_c(BYTE* dstp8, int height, int pitch8, int width, int half_amount) {
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, long long int>::type weight_t;
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type weight_t;
   // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
   weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
   weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
@@ -1149,7 +1149,7 @@ template<typename pixel_t>
 static AVS_FORCEINLINE void af_horizontal_planar_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
   size_t x;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, long long int>::type weight_t; // for calling the right ScaledPixelClip()
+  typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type weight_t; // for calling the right ScaledPixelClip()
   size_t width = row_size / sizeof(pixel_t);
   for (x = 0; x < width-1; ++x) {
     pixel_t temp = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x+1]) * (weight_t)outer_weight));
@@ -1165,7 +1165,7 @@ static AVS_FORCEINLINE void af_horizontal_planar_process_line_uint16_c(uint16_t 
   typedef uint16_t pixel_t;
   pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
   const int max_pixel_value = (1 << bits_per_pixel) - 1; // clamping on 10-12-14-16 bitdepth
-  typedef std::conditional < sizeof(pixel_t) == 1, int, long long int>::type weight_t; // for calling the right ScaledPixelClip()
+  typedef std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type weight_t; // for calling the right ScaledPixelClip()
   size_t width = row_size / sizeof(pixel_t);
   for (x = 0; x < width-1; ++x) {
     pixel_t temp = (pixel_t)ScaledPixelClipEx((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x+1]) * (weight_t)outer_weight), max_pixel_value);
@@ -2332,12 +2332,12 @@ template int calculate_sad_sse2<true>(const BYTE* cur_ptr, const BYTE* other_ptr
 // also used from conditionalfunctions
 // packed rgb template masks out alpha plane for RGB32/RGB64
 template<typename pixel_t, bool packedRGB3264>
-long long int calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
+int64_t calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
   size_t mod16_width = rowsize / 16 * 16;
 
   __m128i zero = _mm_setzero_si128();
-  long long int totalsum = 0; // fullframe SAD exceeds int32 at 8+ bit
+  int64_t totalsum = 0; // fullframe SAD exceeds int32 at 8+ bit
 
   __m128i rgb_mask;
   if (packedRGB3264) {
@@ -2415,10 +2415,10 @@ long long int calculate_sad_8_or_16_sse2(const BYTE* cur_ptr, const BYTE* other_
 }
 
 // instantiate
-template long long int calculate_sad_8_or_16_sse2<uint8_t, false>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
-template long long int calculate_sad_8_or_16_sse2<uint8_t, true>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
-template long long int calculate_sad_8_or_16_sse2<uint16_t, false>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
-template long long int calculate_sad_8_or_16_sse2<uint16_t, true>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template int64_t calculate_sad_8_or_16_sse2<uint8_t, false>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template int64_t calculate_sad_8_or_16_sse2<uint8_t, true>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template int64_t calculate_sad_8_or_16_sse2<uint16_t, false>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
+template int64_t calculate_sad_8_or_16_sse2<uint16_t, true>(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height);
 
 
 #ifdef X86_32
@@ -2450,7 +2450,7 @@ static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
 #endif
 
 template<typename pixel_t>
-static long long int calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
+static int64_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
   const pixel_t *ptr1 = reinterpret_cast<const pixel_t *>(cur_ptr);
   const pixel_t *ptr2 = reinterpret_cast<const pixel_t *>(other_ptr);
@@ -2459,7 +2459,7 @@ static long long int calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr,
   other_pitch /= sizeof(pixel_t);
 
   // for fullframe float may loose precision
-  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, double, long long int>::type sum_t;
+  typedef typename std::conditional < std::is_floating_point<pixel_t>::value, double, int64_t>::type sum_t;
   // for one row int is enough and faster than int64
   typedef typename std::conditional < std::is_floating_point<pixel_t>::value, float, int>::type sumrow_t;
   sum_t sum = 0;
@@ -2474,20 +2474,20 @@ static long long int calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr,
     ptr2 += other_pitch;
   }
   if (std::is_floating_point<pixel_t>::value)
-    return (long long int)(sum * 255); // scale 0..1 based sum to 8 bit range
+    return (int64_t)(sum * 255); // scale 0..1 based sum to 8 bit range
   else
-    return (long long int)sum; // for int, scaling to 8 bit range is done outside
+    return (int64_t)sum; // for int, scaling to 8 bit range is done outside
 }
 
 // sum of byte-diffs.
-static long long int calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
+static int64_t calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, int bits_per_pixel, IScriptEnvironment* env) {
   // todo: sse for float
   if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
-    return (long long int)calculate_sad_sse2<false>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
+    return (int64_t)calculate_sad_sse2<false>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #ifdef X86_32
   if ((pixelsize ==1 ) && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && rowsize >= 8) {
-    return (long long int)calculate_sad_isse(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
+    return (int64_t)calculate_sad_isse(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #endif
   // sse2 uint16_t
