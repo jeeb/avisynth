@@ -4,8 +4,76 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200328 3.5.? (dev)
+20200329 3.5.? (dev)
 --------------------
+- Script array for NEW_AVSVALUE define are working again. (default in Linux build - experimental)
+  Memo:
+    Compiler define NEW_AVSVALUE means script arrays
+    - AVSValue deep copy for arrays (arrays in arrays in ...)
+    - untyped and unconstrained element number
+    - access with indexes or in a dictionary-like associative way
+      array_variable = [[1, 2, 3], [4, 5, 8], "hello"]
+      dictionary = [["one", 1], ["two", 2]]
+      empty = []
+      subarray = array_variable[0]
+      val = subarray[2]
+      val2 = array_variable[1, 3]
+      str = array_variable[2]
+      n = ArraySize(array_variable) #3
+      n2 = ArraySize(empty) #0
+      val3 = dictionary["two"]
+    - arrays as filter parameters(named and unnamed)
+      new 'a' type or use '.+' or '.*' and check AVSValue IsArray()
+    - Concept is incompatible with avs 2.5 plugins due to their 'baked' interface code
+    - Demo script (to be cleaned up)
+      '''
+      ColorBars()
+      clip=last
+      a = [[1,2],[3,4]]
+      aa = [1]
+      b = a[1,1] + ArrayGet(a, 1,0) + aa[0]
+
+      empty_array = []
+      empty_array_2 = empty_array
+      #n3 = empty_array_2.ArrayGet(0) # array index out out range error!
+
+      black_yuv_16 = [0,32768,32768]
+      grey_yuv_16 = [32768,32768,32768]
+      white_yuv_16 = [65535,32768,32768]
+      aSelectColors = [\
+        ["black", black_yuv_16],\
+        ["grey", grey_yuv_16],\
+        ["white",white_yuv_16],\
+        ["empty",empty_array]\
+      ]
+      test_array = [99, 1.0, "this is a string"] # mixed types
+      test_array2 = [199, 2.0, "This is a string"]
+
+      n = ArraySize(test_array) # 3
+      n2 = ArraySize(empty_array_2) # 0
+      sum = FirstNSum(grey_yuv_16,2)
+      b = b
+
+      clip = clip.Text(e"Array size = " + String(n) +\
+       e"\n Empty array size = " + String(n2) +\
+       e"\n sum = " + String(sum) +\
+       e"\n b = " + String(b) +\
+       e"\n white_yuv_16[1]=" + String(aSelectColors["white"][1]) + \
+       e"\n [0]=" + String(ArrayGet(test_array,0)) + \
+       e"\n [1]=" + String(ArrayGet(test_array,1)) + \
+       e"\n [2]=" + ArrayGet(test_array,2), lsp=0, bold=true, font="info_h")
+
+      return clip
+
+      function FirstNSum(array x, int n)
+      {
+        a = 0
+        for (i=0, x.ArraySize()-1) {
+          a = a + x[i]
+        }
+        return a
+      }
+      '''
 - Fix: Mix/Max Runtime function 32bit float chroma: return -0.5..0.5 range (was: 0..1 range)
 - AviSynth+ enhancements by Nekopanda (Neo fork)
   - Allow multiple prefetchers (MT) (mentioned earlier)
