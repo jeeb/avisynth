@@ -41,12 +41,12 @@ Ubuntu 19.10 or higher
     mkdir avisynth-build && \
     cd avisynth-build && \
 
-    cmake ../ -G Ninja -DCMAKE_CXX_FLAGS="-fpermissive" && \
+    cmake ../ -G Ninja && \
     ninja && \
         sudo checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
         Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
         sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
-        --strip=yes --fstrans=no --default ninja install
+        --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install
 
 
 Ubuntu 18.04 LTS
@@ -60,7 +60,7 @@ installing GCC 9:
 
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test
     sudo apt-get update
-    sudo apt-get install build-essential cmake git ninja-build gcc-9 g++-9
+    sudo apt-get install build-essential cmake git ninja-build gcc-9 g++-9 checkinstall
 
 
 ::
@@ -70,25 +70,19 @@ installing GCC 9:
     mkdir avisynth-build && \
     cd avisynth-build && \
 
-    CC=gcc-9 CXX=gcc-9 LD=gcc-9 cmake ../ -G Ninja -DCMAKE_CXX_FLAGS="-fpermissive" && \
+    CC=gcc-9 CXX=gcc-9 LD=gcc-9 cmake ../ -G Ninja && \
     ninja && \
         sudo checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
         Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
         sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
-        --strip=yes --fstrans=no --default ninja install
+        --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install
 
 
 macOS
 ^^^^^
 
-Tested on both 15.3 High Sierra and 15.4 Mojave.
-
 | Requires Homebrew:
 | `<https://brew.sh/>`_
-
-::
-
-    brew install cmake ninja gcc
 
 
 Building AviSynth+
@@ -99,17 +93,39 @@ Building AviSynth+
     git clone git://github.com/AviSynth/AviSynthPlus.git && \
     cd AviSynthPlus && \
     mkdir avisynth-build && \
-    cd avisynth-build && \
+    cd avisynth-build
 
-    CC=gcc-9 CXX=g++-9 LD=gcc-9 cmake ../ -G Ninja -DCMAKE_CXX_FLAGS="-fpermissive" && \
+
+15.13 High Sierra and 15.14 Mojave
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Apple's libc++ doesn't support the C++17 filesystem functionality
+on either of these versions of macOS, so using GCC from Homebrew
+is necessary.
+
+::
+
+    brew install cmake ninja gcc
+
+    CC=gcc-9 CXX=g++-9 LD=gcc-9 cmake ../ -G Ninja && \
     ninja && \
     sudo ninja install
 
 
-Ninja is preferred, since it obviates the need to use
-CMAKE_SHARED_LINKER_FLAGS to link in libstdc++ (also true
-in BSD, but getting GNU make working on Mac seems to be
-more complicated than installing gmake on BSD).
+15.15 Catalina
+~~~~~~~~~~~~~~
+
+C++17 filesystem support is available on Catalina, so it can
+be built with the default Clang installation.  GCC is potentially
+useful later on, though, so install that too.
+
+::
+
+    brew install cmake ninja gcc
+
+    cmake ../ -G Ninja && \
+    ninja && \
+    sudo ninja install
 
 
 FreeBSD
@@ -119,7 +135,12 @@ Tested on FreeBSD 12.1.
 
 ::
 
-    pkg install cmake git gmake ninja gcc
+    pkg install cmake git gmake ninja
+
+    git clone git://github.com/AviSynth/AviSynthPlus.git && \
+    cd AviSynthPlus && \
+    mkdir avisynth-build && \
+    cd avisynth-build
 
 
 Building AviSynth+ (GNU Make)
@@ -127,12 +148,7 @@ Building AviSynth+ (GNU Make)
 
 ::
 
-    git clone git://github.com/AviSynth/AviSynthPlus.git && \
-    cd AviSynthPlus && \
-    mkdir avisynth-build && \
-    cd avisynth-build && \
-
-    CC=gcc CXX=g++ LD=gcc cmake ../ -DCMAKE_CXX_FLAGS="-fpermissive" -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++" && \
+    cmake ../ && \
     gmake -j$(nproc) && \
     gmake install
 
@@ -142,12 +158,7 @@ Building AviSynth+ (Ninja)
 
 ::
 
-    git clone git://github.com/AviSynth/AviSynthPlus.git && \
-    cd AviSynthPlus && \
-    mkdir avisynth-build && \
-    cd avisynth-build && \
-
-    CC=gcc CXX=g++ LD=gcc cmake ../ -G Ninja -DCMAKE_CXX_FLAGS="-fpermissive" && \
+    cmake ../ -G Ninja && \
     ninja && \
     sudo ninja install
 
@@ -205,7 +216,7 @@ Building FFmpeg
 
 ::
 
-    git clone -b avsplus_linux git://github.com/qyot27/FFmpeg.git
+    git clone -b avsplus_linux2 git://github.com/qyot27/FFmpeg.git
     cd FFmpeg
 
 
@@ -244,6 +255,7 @@ macOS
     make -j$(nproc)
     make install
 
+On Catalina, `--extra-cflags="-fno-stack-check"` is necessary when using AppleClang as the compiler.
 
 FreeBSD
 ~~~~~~~
@@ -297,15 +309,12 @@ Building FFMS2
 --------------
 
 FFMS2 doesn't require any additional prerequisites, so it can be
-built straight away.  As of the current time of writing (2020-03-02)
-upstream FFMS2 hasn't been patched to allow building the AviSynth
-plugin on non-Windows OSes, so the C-plugin repository will have
-to suffice for now:
+built straight away.
 
 ::
 
-    git clone -b patches_plusvp9av1 git://github.com/qyot27/ffms2_cplugin.git
-    cd ffms2_cplugin
+    git clone git://github.com/ffms/ffms2.git && \
+    cd ffms2
 
 
 Linux
@@ -316,9 +325,10 @@ Ubuntu
 
 ::
 
-        PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig ./configure --enable-shared \
-        --enable-pic --enable-avisynth-cpp --enable-vapoursynth
-    make -j$(nproc)
+        PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        CPPFLAGS="-I/usr/local/include/avisynth" \
+        ./autogen.sh --enable-shared --enable-avisynth && \
+    make -j$(nproc) && \
         sudo checkinstall --pkgname=ffms2 --pkgversion="1:$(./version.sh)-git" \
         --backup=no --deldoc=yes --delspec=yes --deldesc=yes --strip=yes --stripso=yes \
         --addso=yes --fstrans=no --default
@@ -329,9 +339,12 @@ macOS
 
 ::
 
-        CC=gcc CXX=g++ LD=gcc PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
-        ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
-    make -j$(nproc)
+    brew install autoconf automake libtool m4
+
+        CC=gcc-9 CXX=g++-9 LD=gcc-9 PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        CPPFLAGS="-I/usr/local/include/avisynth" \
+        ./autogen.sh --enable-shared --enable-avisynth && \
+    make -j$(nproc) && \
     sudo make install
 
 
@@ -340,33 +353,28 @@ FreeBSD
 
 ::
 
-        CC=gcc CXX=g++ LD=gcc PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
-        ./configure --enable-shared --enable-pic --enable-avisynth-cpp --enable-vapoursynth
-    gmake -j$(nproc)
+    pkg install autoconf automake libtool m4
+
+        PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        CPPFLAGS="-I/usr/local/include/avisynth" \
+        ./autogen.sh --enable-shared --enable-avisynth && \
+    gmake -j$(nproc) && \
     gmake install
 
 
-Using FFMS2 as a source filter
-------------------------------
+Plugin autoloading
+------------------
 
-AddAutoloadDir can be used to set the directory to load plugins
-from.
+AviSynth+ will use two directories for autoloading:
+the `avisynth/` subdirectory where libavisynth.so was installed,
+and `$HOME/.avisynth`.  The latter of which can hold
+plugins (and symlinks to plugins) or AVSI files without needing
+root permissions.
 
-::
-
-    AddAutoloadDir("/usr/local/lib/avisynth")
-    FFmpegSource2("source") # or any additional options as usual
-
-
-If AddAutoloadDir doesn't work, try to fall back to loading the
-plugin manually:
-
-::
-
-    LoadPlugin("/usr/local/lib/avisynth/libffms2.so")
-    FFmpegSource2("source") # or any additional options as usual
+On FreeBSD, procfs needs to be mounted first in order for
+autoloading to function.
 
 
 Back to the :doc:`main page <../../index>`
 
-$ Date: 2020-03-04 15:09:23-05:00 $
+$ Date: 2020-04-01 03:18:25-04:00 $
