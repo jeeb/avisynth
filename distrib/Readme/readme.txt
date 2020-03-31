@@ -31,6 +31,193 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
+20200331 3.5.? (dev)
+--------------------
+- New function:
+  SetMaxCPU(string feature)
+
+  string "feature"
+
+    "" or "C" for zero SIMD support, no processor flags are reported
+    "mmx", "sse", "sse2", "sse3", "ssse3", "sse4" or "sse4.1", "sse4.2", "avx, "avx2"
+
+    parameter is case insensitive.
+    Note: "avx2" triggers FMA3 flag as well.
+
+  Processor options w/o any modifier will limit the CPU flag report to at most the processor level.
+  When "feature" is ended by '+', relevant processor feature flag will be switched on
+  When "feature" is ended by '-', relevant processor feature flag will be removed
+  Multiple options can be put in a comma separated list. They will evaluated in that order.
+
+  Examples:
+    SetMaxCPU("SSE2") reports at most SSE2 processor (even if AVX2 is available)
+    SetMaxCPU("avx,sse4.1-") limits to avx2 but explicitely removes reporting sse4.1 support
+    SetMaxCPU("C,avx2+") limits to plain C, then switches on AVX2-only support
+
+- Script array for NEW_AVSVALUE define are working again. (default in Linux build - experimental)
+  Memo:
+    Compiler define NEW_AVSVALUE means script arrays
+    - AVSValue deep copy for arrays (arrays in arrays in ...)
+    - untyped and unconstrained element number
+    - access with indexes or in a dictionary-like associative way
+      array_variable = [[1, 2, 3], [4, 5, 8], "hello"]
+      dictionary = [["one", 1], ["two", 2]]
+      empty = []
+      subarray = array_variable[0]
+      val = subarray[2]
+      val2 = array_variable[1, 3]
+      str = array_variable[2]
+      n = ArraySize(array_variable) #3
+      n2 = ArraySize(empty) #0
+      val3 = dictionary["two"]
+    - arrays as filter parameters(named and unnamed)
+      new 'a' type or use '.+' or '.*' and check AVSValue IsArray()
+    - Concept is incompatible with avs 2.5 plugins due to their 'baked' interface code
+    - Demo script (to be cleaned up)
+      '''
+      ColorBars()
+      clip=last
+      a = [[1,2],[3,4]]
+      aa = [1]
+      b = a[1,1] + ArrayGet(a, 1,0) + aa[0]
+
+      empty_array = []
+      empty_array_2 = empty_array
+      #n3 = empty_array_2.ArrayGet(0) # array index out out range error!
+
+      black_yuv_16 = [0,32768,32768]
+      grey_yuv_16 = [32768,32768,32768]
+      white_yuv_16 = [65535,32768,32768]
+      aSelectColors = [\
+        ["black", black_yuv_16],\
+        ["grey", grey_yuv_16],\
+        ["white",white_yuv_16],\
+        ["empty",empty_array]\
+      ]
+      test_array = [99, 1.0, "this is a string"] # mixed types
+      test_array2 = [199, 2.0, "This is a string"]
+
+      n = ArraySize(test_array) # 3
+      n2 = ArraySize(empty_array_2) # 0
+      sum = FirstNSum(grey_yuv_16,2)
+      b = b
+
+      clip = clip.Text(e"Array size = " + String(n) +\
+       e"\n Empty array size = " + String(n2) +\
+       e"\n sum = " + String(sum) +\
+       e"\n b = " + String(b) +\
+       e"\n white_yuv_16[1]=" + String(aSelectColors["white"][1]) + \
+       e"\n [0]=" + String(ArrayGet(test_array,0)) + \
+       e"\n [1]=" + String(ArrayGet(test_array,1)) + \
+       e"\n [2]=" + ArrayGet(test_array,2), lsp=0, bold=true, font="info_h")
+
+      return clip
+
+      function FirstNSum(array x, int n)
+      {
+        a = 0
+        for (i=0, x.ArraySize()-1) {
+          a = a + x[i]
+        }
+        return a
+      }
+      '''
+- Fix: Mix/Max Runtime function 32bit float chroma: return -0.5..0.5 range (was: 0..1 range)
+- AviSynth+ enhancements by Nekopanda (Neo fork)
+  - Allow multiple prefetchers (MT) (mentioned earlier)
+  - Multithreading and deadlock fixes for ScriptClip
+    (originally I intended to pull only Neo changes which were fixing an old AVS+ bug,
+     namely ScriptClip and multithreading. But I was not able to do that without pulling
+     nearly everything from Neo)
+  - Caching enhancements.
+    SetCacheMode(0) or SetCacheMode(CACHE_FAST_START) start up time and size balanced mode
+    SetCacheMode(1) or SetCacheMode(CACHE_OPTIMAL_SIZE) slow start up but optimal speed and cache size
+    Latter can do wonders especially at really low memory environment
+  - ScriptClip and variable stability in multithreading.
+    Compared to Neo, I extended it a bit.
+    Regarding visibility of variables: I had to change back from Neo's new default behaviour,
+    which was similar to GRunT's local=true and yielded incompatibility with the past.
+    So scripts written on the assumption of local = false did not work.
+    Neo's (valid) point: they would not allow the following script to show the behavior to print "3".
+    '''
+      # prints 3 - Avisynth default but seems incorrect
+      global foo=2
+      function PrintFoo(clip c)
+      { c.ScriptClip("Subtitle(string(foo))", local = false) }
+      Version()
+      PrintFoo()
+      foo = 3
+      last
+
+      # prints 2 - Neo's default behaviour
+      global foo=2
+      function PrintFoo(clip c)
+      { c.ScriptClip("Subtitle(string(foo))", local = true) }
+      Version()
+      PrintFoo()
+      foo = 3
+      last
+    '''
+
+    So all runtime filters* got a bool "local" parameter which acts same as in GRunT
+    * ConditionalSelect, ConditionalFilter, ScriptClip, ConditionalReader, FrameEvaluate,
+      WriteFile, WriteFileIf, WriteFileStart, WriteFileEnd
+
+    If local=true the filter will evaluate its run-time script in a new variable scope,
+    avoiding unintended sharing of variables between run-time scripts.
+    (As of current state (20200328): Neo's WriteFileStart and WriteFileEnd works like
+    local=false, in Avisynth compatible mode; all other runtime filters work in local=true mode in Neo)
+
+    In our present Avisynth+ all runtime filters are compatible with the usual behaviour,
+    but one can set the other mode by "local=true" parameter. This is when script is passed as string
+    Except: when the script parameter is not a string but a function (yes! Nekopanda made it available!)
+    then we in classic Avs! (haha, Classic+) kept Neo's new recommendation
+    and the default value of "local" is true.
+
+    (as a memo, ConditionalFilter still has the GRunT-like "shortcut" style parameter for bool results which implies "=" and "true"
+     and parameter "condvarsuffix" for ConditionalReader)
+  - UseVar, special filter, opens a clean variable environment in which only the
+    variables in the parameter list can be seen.
+
+  - "escaped" string constants: with e prefix right before the quotation mask
+    n"Hello \n" will store actual LF (10) control character into the string
+    \n \r \t \0 \a \f \\ and \" are converted
+  - Introduce function objects into scripts
+    Functions can appear as standard Avisynth variables and parameters (AVSValue type='n')
+    https://github.com/nekopanda/AviSynthPlus/wiki/Language-New-Features
+    Even with variable capture [] (like in GRuntT args)
+
+  - Filter graph. Switch it on by putting SetGraphAnalysis(true) at the beginning of the script.
+    Dump to text file with DumpFilterGraph. E.g. DumpFilterGraph("graph.txt", mode=2)
+    Output is in "dot" format, it can be converted to an image with Graphviz as follows:
+    '''
+    dot -Tsvg graph.txt -o graph.svg
+    '''
+
+    SetGraphAnalysis (bool)
+
+      Enables (True) or disables (False) graph node insertion into the instantiated filter.
+      To output a filter graph, a graph node must be inserted in the filter.
+      When a graph node is inserted, performance may decrease slightly due to the increase of internal function calls.
+      (In most cases, there is no observable performance degradation.)
+
+    DumpFilterGraph (clip, string "outfile", int "mode", int "nframes", bool "repeat")
+
+      Outputs a filter graph.
+
+      clip
+          Clip to output filter graph
+      string outfile = ""
+          Output file path
+      int mode = 0 *
+      int nframes = -1
+          Outputs the filter graph when processing the specified frame. The cache size and memory usage of each filter at that time are output together. This is effective when you want to know the memory usage of each filter. If -1, output when DumpFilterGraph is called (before the frame is processed).
+      bool repeat = false
+          Valid only when nframes> 0. Outputs a filter graph repeatedly at nframes intervals.
+
+  - Frame properties (still from Neo!)
+    (experimental, we have planned it in Avs+, probably we'll try to follow the VapourSynth methods(?))
+
 20200322 3.5.? (dev)
 --------------------
 - Fix: Multithreading enhancements and fixes (Nekopanda, from Neo fork)

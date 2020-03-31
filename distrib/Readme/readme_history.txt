@@ -4,8 +4,29 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200329 3.5.? (dev)
+20200331 3.5.? (dev)
 --------------------
+- New function:
+  SetMaxCPU(string feature)
+
+  string "feature"
+
+    "" or "C" for zero SIMD support, no processor flags are reported
+    "mmx", "sse", "sse2", "sse3", "ssse3", "sse4" or "sse4.1", "sse4.2", "avx, "avx2"
+
+    parameter is case insensitive.
+    Note: "avx2" triggers FMA3 flag as well.
+
+  Processor options w/o any modifier will limit the CPU flag report to at most the processor level.
+  When "feature" is ended by '+', relevant processor feature flag will be switched on
+  When "feature" is ended by '-', relevant processor feature flag will be removed
+  Multiple options can be put in a comma separated list. They will evaluated in that order.
+
+  Examples:
+    SetMaxCPU("SSE2") reports at most SSE2 processor (even if AVX2 is available)
+    SetMaxCPU("avx,sse4.1-") limits to avx2 but explicitely removes reporting sse4.1 support
+    SetMaxCPU("C,avx2+") limits to plain C, then switches on AVX2-only support
+
 - Script array for NEW_AVSVALUE define are working again. (default in Linux build - experimental)
   Memo:
     Compiler define NEW_AVSVALUE means script arrays
