@@ -1280,20 +1280,20 @@ public:
 class AVSMapValue
 {
 public:
-  AVSMapValue() AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR0)())
-	AVSMapValue(PVideoFrame& frame) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR1)(frame))
-  explicit AVSMapValue(int64_t i) AVS_BakedCode( AVS_LinkCall(AVSMapValue_CONSTRUCTOR2)(i) )
-  AVSMapValue(int i) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR2)(i))
-  AVSMapValue(double d) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR3)(d))
-  AVSMapValue(const AVSMapValue& other) AVS_BakedCode(AVS_LinkCall(AVSMapValue_CONSTRUCTOR4)(other))
-  ~AVSMapValue() AVS_BakedCode(AVS_LinkCall(AVSMapValue_DESTRUCTOR)())
-  AVSMapValue& operator=(const AVSMapValue& other) AVS_BakedCode(return AVS_LinkCall(AVSMapValue_OPERATOR_ASSIGN)(other))
+  AVSMapValue() AVS_BakedCode(AVS_LinkCall_Void(AVSMapValue_CONSTRUCTOR0)())
+  AVSMapValue(PVideoFrame& frame) AVS_BakedCode(AVS_LinkCall_Void(AVSMapValue_CONSTRUCTOR1)(frame))
+  explicit AVSMapValue(int64_t i) AVS_BakedCode(AVS_LinkCall_Void(AVSMapValue_CONSTRUCTOR2)(i) )
+  AVSMapValue(int i) AVS_BakedCode(AVS_LinkCall_Void(AVSMapValue_CONSTRUCTOR2)(i))
+  AVSMapValue(double d) AVS_BakedCode(AVS_LinkCall_Void(AVSMapValue_CONSTRUCTOR3)(d))
+  AVSMapValue(const AVSMapValue& other) AVS_BakedCode(AVS_LinkCall_Void(AVSMapValue_CONSTRUCTOR4)(other))
+  ~AVSMapValue() AVS_BakedCode(AVS_LinkCall_Void(AVSMapValue_DESTRUCTOR)())
+  AVSMapValue& operator=(const AVSMapValue& other) AVS_BakedCode(return AVS_LinkCallV(AVSMapValue_OPERATOR_ASSIGN)(other))
 
-    bool IsFrame() const AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsFrame)())
-    bool IsInt() const AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsInt)())
+  bool IsFrame() const AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsFrame)())
+  bool IsInt() const AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsInt)())
   bool IsFloat() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_IsFloat)())
 
-    PVideoFrame GetFrame() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetFrame)())
+  PVideoFrame GetFrame() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetFrame)())
   int64_t GetInt() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetInt)())
   double GetFloat() const  AVS_BakedCode(return AVS_LinkCall(AVSMapValue_GetFloat)())
 
