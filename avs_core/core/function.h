@@ -57,9 +57,6 @@ public:
   AVSFunction& operator=(AVSFunction&&) = delete;
 
   bool empty() const;
-#ifdef DEBUG_GSCRIPTCLIP_MT
-  bool IsRuntimeScriptFunction() const;
-#endif
 
   static bool IsScriptFunction(const Function* func);
   static bool ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names);

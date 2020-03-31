@@ -26,13 +26,6 @@ public:
     return AVSFunction::IsScriptFunction(Func);
   }
 
-#ifdef DEBUG_GSCRIPTCLIP_MT
-  bool IsRuntimeScriptFunction() const
-  {
-    return Func->IsRuntimeScriptFunction();
-  }
-#endif
-
   const Function* GetAvsFunction() const
   {
       return Func;

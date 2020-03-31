@@ -519,18 +519,7 @@ ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_e
 
 int __stdcall ScriptClip::SetCacheHints(int cachehints, int frame_range)
 {
-#ifdef DEBUG_GSCRIPTCLIP_MT
-  switch (cachehints) {
-  case CACHE_DONT_CACHE_ME:
-    return 1;
-  case CACHE_GET_MTMODE:
-    return MT_NICE_FILTER;
-  default:
-    return 0;
-  }
-#else
   return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-#endif
 }
 
 PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env)
