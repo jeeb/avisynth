@@ -45,25 +45,22 @@
 namespace fs = std::filesystem;
 
 #ifdef AVS_WINDOWS
-    #include <io.h>
-    #include <avs/win.h>
+#include <io.h>
+#include <avs/win.h>
 #else
-    #include <avs/posix.h>
-    #include "os/win32_string_compat.h"
-    #include <dirent.h>
-    #include <filesystem>
+#include <avs/posix.h>
+#include "os/win32_string_compat.h"
+#include <dirent.h>
 #endif
 
 #include <avs/minmax.h>
 #include <new>
-#include <clocale>
 #include "../internal.h"
 #include "../Prefetcher.h"
 #include "../InternalEnvironment.h"
 #include "../strings.h"
 #include <map>
 #include <string>
-#include <codecvt>
 
 #ifndef MINGW_HAS_SECURE_API
 #define sprintf_s sprintf
@@ -354,137 +351,6 @@ AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironm
 void ScriptFunction::Delete(void* self, IScriptEnvironment*)
 {
   delete (ScriptFunction*)self;
-}
-
-
-/***********************************
- *******   wchar_t-utf-ansi   ******
- **********************************/
-
-#ifdef AVS_WINDOWS
-std::unique_ptr<char[]> WideCharToUtf8(const wchar_t *w_string)
-{
-  const auto utf8len = WideCharToMultiByte(CP_UTF8, 0, w_string, -1, NULL, 0, 0, 0) - 1; // w/o the \0 terminator
-  auto s_utf8 = std::make_unique<char[]>(utf8len + 1);
-  WideCharToMultiByte(CP_UTF8, 0, w_string, -1, s_utf8.get(), (int)utf8len + 1, 0, 0);
-  return s_utf8;
-}
-
-std::unique_ptr<char[]> WideCharToAnsi(const wchar_t *w_string)
-{
-  const auto len = wcslen(w_string);
-  auto s_ansi = std::make_unique<char[]>(len + 1);
-  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
-  // int succ = wcstombs(s_ansi, w_string, len +1);
-  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
-  return s_ansi;
-}
-
-std::unique_ptr<char[]> WideCharToAnsiACP(const wchar_t *w_string)
-{
-  const auto len = wcslen(w_string);
-  auto s_ansi = std::make_unique<char[]>(len + 1);
-  WideCharToMultiByte(CP_ACP, 0, w_string, -1, s_ansi.get(), (int)len + 1, NULL, NULL); // replaces out-of-CP chars by ?
-  // int succ = wcstombs(s_ansi, w_string, len +1);
-  // no good, stops at non-replacable unicode chars. If wcstombs encounters a wide character it cannot convert to a multibyte character, it returns 1 cast to type size_t and sets errno to EILSEQ.
-  return s_ansi;
-}
-
-std::unique_ptr<char[]> WideCharToUtf8_maxn(const wchar_t *w_string, size_t maxn)
-{
-  const auto utf8len = WideCharToMultiByte(CP_UTF8, 0, w_string, (int)maxn, NULL, 0, 0, 0); // no \0 terminator check requested here
-  auto s_utf8 = std::make_unique<char[]>(utf8len + 1);
-  WideCharToMultiByte(CP_UTF8, 0, w_string, -1, s_utf8.get(), utf8len, 0, 0);
-  s_utf8[utf8len] = 0;
-  return s_utf8;
-}
-
-std::unique_ptr<char[]> WideCharToAnsi_maxn(const wchar_t *w_string, size_t maxn)
-{
-  auto s_ansi = std::make_unique<char[]>(maxn + 1);
-  WideCharToMultiByte(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, w_string, -1, s_ansi.get(), (int)maxn, NULL, NULL); // replaces out-of-CP chars by ?
-  s_ansi[maxn] = 0;
-  return s_ansi;
-}
-
-std::unique_ptr<wchar_t[]> AnsiToWideChar(const char *s_ansi)
-{
-  const size_t bufsize = strlen(s_ansi) + 1;
-  auto w_string = std::make_unique<wchar_t[]>(bufsize);
-  MultiByteToWideChar(AreFileApisANSI() ? CP_ACP : CP_OEMCP, 0, s_ansi, -1, w_string.get(), (int)bufsize);
-  //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
-  return w_string;
-}
-
-std::unique_ptr<wchar_t[]> AnsiToWideCharACP(const char *s_ansi)
-{
-  const size_t bufsize = strlen(s_ansi) + 1;
-  auto w_string = std::make_unique<wchar_t[]>(bufsize);
-  MultiByteToWideChar(CP_ACP, 0, s_ansi, -1, w_string.get(), (int)bufsize);
-  //mbstowcs(script_name_w, script_name, len); // ansi to wchar_t, does not convert properly out-of-the box
-  return w_string;
-}
-
-std::unique_ptr<wchar_t[]> Utf8ToWideChar(const char *s_ansi)
-{
-  const size_t wchars_count = MultiByteToWideChar(CP_UTF8, 0, s_ansi, -1, NULL, 0);
-  const size_t bufsize = wchars_count + 1;
-  auto w_string = std::make_unique<wchar_t[]>(bufsize);
-  MultiByteToWideChar(CP_UTF8, 0, s_ansi, -1, w_string.get(), (int)bufsize);
-  return w_string;
-}
-#endif
-
-std::wstring charToWstring(const char* text, bool utf8)
-{
-  std::wstring ws;
-  // AVS_POSIX: utf8 is always true, no ANSI here
-#ifdef AVS_POSIX
-  utf8 = true;
-#endif
-  if (utf8) {
-    // warning C4996 :
-    // ...and the <codecvt> header(containing std::codecvt_mode, std::codecvt_utf8, std::codecvt_utf16, and std::codecvt_utf8_utf16)
-    // are deprecated in C++17.
-    // (The std::codecvt class template is NOT deprecated.)
-    // The C++ Standard doesn't provide equivalent non-deprecated functionality;
-    // consider using MultiByteToWideChar() and WideCharToMultiByte() from <Windows.h> instead.
-    // You can define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
-
-    // utf8 to wchar_t
-#if defined(MSVC_PURE) && (_MSC_VER < 1920)
-    // workround for v141_xp toolset suxxx: unresolved externals
-    auto wsource = Utf8ToWideChar(text);
-    ws = wsource.get();
-#else
-    // MSVC++ 14.2  _MSC_VER == 1920 (Visual Studio 2019 version 16.0) v142 toolset
-    // MSVC++ 14.16 _MSC_VER == 1916 (Visual Studio 2017 version 15.9) v141_xp toolset
-    // this one suxx with MSVC v141_xp toolset: unresolved external error
-
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
-
-    // crash warning, strings here are considered as being a valid utf8 sequence
-    // which is not the case when our own original VersionString() is passed here with an embedded ansi encoded (C) symbol
-    // Crash occurs: "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2020 AviSynth+ Project"
-    // O.K.: u8"\n\u00A9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\u00A9 2013-2020 AviSynth+ Project"
-    // FIXME: make it crash-tolerant?
-    try {
-      ws = convert.from_bytes(text);
-    }
-    catch (const std::exception & e) {
-      ws = L"Error converting utf8 string to wide string\r\n";
-      // FIXME: Throw a proper avs exception
-    }
-#endif
-  }
-#ifdef AVS_WINDOWS
-  else {
-    // ANSI, Windows
-    auto wsource = AnsiToWideCharACP(text);
-    ws = wsource.get();
-  }
-#endif
-  return ws;
 }
 
 /***********************************

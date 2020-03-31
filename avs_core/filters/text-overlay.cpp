@@ -32,24 +32,24 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "text-overlay.h"
-#include "../convert/convert.h"  // for RGB2YUV
-
+#include <avs/config.h>
 #ifdef AVS_WINDOWS
-    #include <avs/win.h>
+#include <avs/win.h>
 #else
-    #include <avs/posix.h>
+#include <avs/posix.h>
 #endif
 
+#include "text-overlay.h"
+#include "../convert/convert.h"  // for RGB2YUV
 #include <inttypes.h>
 #include <sstream>
 #include <cstdint>
 #include <cmath>
-#include <avs/config.h>
 #include <avs/minmax.h>
 #include <emmintrin.h>
 #include "../core/internal.h"
 #include "../core/info.h"
+#include "../core/strings.h"
 
 
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)

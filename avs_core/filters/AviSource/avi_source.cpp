@@ -36,6 +36,7 @@
 #include "../../convert/convert.h"
 #include "../../filters/transform.h"
 #include "../../core/alignplanar.h"
+#include "../../core/strings.h"
 #include "AudioSource.h"
 #include "VD_Audio.h"
 #include "AVIReadHandler.h"

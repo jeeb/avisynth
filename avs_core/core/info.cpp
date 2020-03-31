@@ -27,6 +27,7 @@
 #include <array>
 #include <filesystem>
 #include "fonts/fixedfonts.h"
+#include "strings.h"
 
 namespace fs = std::filesystem;
 

@@ -31,6 +31,7 @@
 #include "../core/internal.h"
 #include <cmath>
 #include <cstdint>
+#include "../core/strings.h"
 
 
 #pragma warning(disable: 4706)    // assignment within conditional expression

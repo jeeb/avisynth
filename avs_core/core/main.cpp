@@ -52,7 +52,6 @@
 #include "exception.h"
 #include <cstdio>
 #include <new>
-#include <codecvt>
 #include "AviHelper.h"
 
 #define FP_STATE 0x9001f
