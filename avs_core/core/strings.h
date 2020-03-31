@@ -39,6 +39,7 @@ std::string concat(const std::string &s1, const std::string &s2);
 bool replace_beginning(std::string &_haystack, const std::string &needle, const std::string &newStr);
 bool replace(std::string &haystack, const std::string &needle, const std::string &newStr);
 bool replace(std::string &haystack, char needle, char newChar);
+std::string trim(const std::string& s);
 
 #ifdef AVS_WINDOWS
 std::unique_ptr<char[]> WideCharToUtf8(const wchar_t* w_string);

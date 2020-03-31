@@ -704,6 +704,7 @@ public:
   void LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...);
   void LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va);
   PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
+  void SetMaxCPU(const char *features);
 
   /* INeoEnv */
   bool Invoke_(AVSValue *result, const AVSValue& implicit_last,
@@ -1575,6 +1576,11 @@ public:
     core->LogMsgOnce_valist(ticket, level, fmt, va);
   }
 
+  void __stdcall SetMaxCPU(const char *features)
+  {
+    core->SetMaxCPU(features);
+  }
+
   void __stdcall SetGraphAnalysis(bool enable)
   {
     core->SetGraphAnalysis(enable);
@@ -2287,6 +2293,124 @@ void ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket& ticket, int le
     LogTickets.insert(ticket);
   }
 }
+
+
+void ScriptEnvironment::SetMaxCPU(const char* features)
+{
+  enum CPUlevel {
+    CL_C,
+    CL_MMX,
+    CL_SSE,
+    CL_SSE2,
+    CL_SSE3,
+    CL_SSSE3,
+    CL_SSE4_1,
+    CL_SSE4_2,
+    CL_AVX,
+    CL_AVX2
+  };
+
+  std::string s;
+  const int len = (int)strlen(features);
+  s.resize(len);
+  for (int i = 0; i < len; i++)
+    s[i] = tolower(features[i]);
+
+  int cpu_flags = GetCPUFlags();
+
+  std::vector<std::string> tokens;
+  std::size_t start = 0, end = 0;
+  while ((end = s.find(',', start)) != std::string::npos) {
+    if (end != start) {
+      tokens.push_back(s.substr(start, end - start));
+    }
+    start = end + 1;
+  }
+  if (end != start) {
+    tokens.push_back(s.substr(start));
+  }
+
+  for (auto token : tokens)
+  {
+    token = trim(token);
+    if (token.empty()) continue;
+
+    int mode = 0; // limit
+
+    char ch = token[token.size() - 1];
+    if (ch == '-') mode = -1; // remove
+    else if (ch == '+') mode = 1; // add
+
+    if (mode != 0)
+      token.resize(token.size() - 1);
+
+    CPUlevel cpulevel;
+
+    const char* t = token.c_str();
+
+    if (streqi(t, "") || streqi(t, "c")) cpulevel = CL_C;
+    else if (streqi(t, "mmx")) cpulevel = CL_MMX;
+    else if (streqi(t, "sse")) cpulevel = CL_SSE;
+    else if (streqi(t, "sse2")) cpulevel = CL_SSE2;
+    else if (streqi(t, "sse3")) cpulevel = CL_SSE3;
+    else if (streqi(t, "ssse3")) cpulevel = CL_SSSE3;
+    else if (streqi(t, "sse4") || streqi(t, "sse4.1")) cpulevel = CL_SSE4_1;
+    else if (streqi(t, "sse4.2")) cpulevel = CL_SSE4_2;
+    else if (streqi(t, "avx")) cpulevel = CL_AVX;
+    else if (streqi(t, "avx2")) cpulevel = CL_AVX2;
+    else ThrowError("SetMaxCPU error: cpu level must be c, mmx, sse, sse2, sse3, ssse3, sse4 or sse4.1, sse4.2, avx or avx2! (%s)", t);
+
+    if (0 == mode) { // limit
+      if (cpulevel <= CL_AVX2)
+        cpu_flags &= ~(CPUF_AVX512BW | CPUF_AVX512CD | CPUF_AVX512DQ |
+          CPUF_AVX512ER | CPUF_AVX512F | CPUF_AVX512IFMA | CPUF_AVX512PF | CPUF_AVX512VBMI | CPUF_AVX512VL);
+      if (cpulevel <= CL_AVX)
+        cpu_flags &= ~(CPUF_AVX2 | CPUF_FMA3 | CPUF_FMA4 | CPUF_F16C);
+      if (cpulevel <= CL_SSE4_2)
+        cpu_flags &= ~(CPUF_AVX);
+      if (cpulevel <= CL_SSE4_1)
+        cpu_flags &= ~(CPUF_SSE4_2);
+      if (cpulevel <= CL_SSSE3)
+        cpu_flags &= ~(CPUF_SSE4_1);
+      if (cpulevel <= CL_SSE3)
+        cpu_flags &= ~(CPUF_SSSE3);
+      if (cpulevel <= CL_SSE2)
+        cpu_flags &= ~(CPUF_SSE3);
+      if (cpulevel <= CL_SSE)
+        cpu_flags &= ~(CPUF_SSE2);
+      if (cpulevel <= CL_MMX)
+        cpu_flags &= ~(CPUF_SSE | CPUF_INTEGER_SSE); // ?
+      if (cpulevel <= CL_C)
+        cpu_flags &= ~(CPUF_MMX);
+    }
+    else {
+      int current_flag;
+      switch (cpulevel) {
+      case CL_AVX2: current_flag = CPUF_AVX2 | CPUF_FMA3; break;
+      case CL_AVX: current_flag = CPUF_AVX; break;
+      case CL_SSE4_2: current_flag = CPUF_SSE4_2; break;
+      case CL_SSE4_1: current_flag = CPUF_SSE4_1; break;
+      case CL_SSSE3: current_flag = CPUF_SSSE3; break;
+      case CL_SSE3: current_flag = CPUF_SSE3; break;
+      case CL_SSE2: current_flag = CPUF_SSE2; break;
+      case CL_SSE: current_flag = CPUF_SSE; break;
+      case CL_MMX: current_flag = CPUF_MMX; break;
+      default:
+        current_flag = 0;
+      }
+      if (mode < 0) {
+        if (0 != current_flag)
+          cpu_flags &= ~current_flag; // sse2-: removes sse2
+      }
+      else
+        cpu_flags |= current_flag; // avx2+: adds avx2 and fma3
+      // limit to sse2 and avx2: "sse2,avx2+"
+    }
+  }
+
+  ::SetMaxCPU(cpu_flags);
+}
+
 
 ClipDataStore* ScriptEnvironment::ClipData(IClip *clip)
 {
@@ -4186,13 +4310,8 @@ int ScriptEnvironment::SetMemoryMax(AvsDeviceType type, int index, int mem)
 
 PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* device)
 {
-#ifdef SIZETMOT
-  typedef size_t offset_t;
-  typedef ptrdiff_t diff_t;
-#else
   typedef int offset_t;
   typedef int diff_t;
-#endif
 
   size_t srchead = GetFrameHead(src);
 

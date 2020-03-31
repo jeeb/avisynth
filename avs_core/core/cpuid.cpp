@@ -149,7 +149,31 @@ static int CPUCheckForExtensions()
   return result;
 }
 
+class _CPUFlags
+{
+private:
+  int lCPUExtensionsAvailable;
+  _CPUFlags() { lCPUExtensionsAvailable = CPUCheckForExtensions(); }
+
+public:
+  static _CPUFlags& getInstance() {
+    static _CPUFlags theInstance;
+    return theInstance;
+  }
+
+  int GetCPUFlags() {
+    return lCPUExtensionsAvailable;
+  }
+
+  void SetCPUFlags(int new_flags) {
+    lCPUExtensionsAvailable = new_flags;
+  }
+};
+
 int GetCPUFlags() {
-  static int lCPUExtensionsAvailable = CPUCheckForExtensions();
-  return lCPUExtensionsAvailable;
+  return _CPUFlags::getInstance().GetCPUFlags();
+}
+
+void SetMaxCPU(int new_flags) {
+  _CPUFlags::getInstance().SetCPUFlags(new_flags);
 }

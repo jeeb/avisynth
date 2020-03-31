@@ -1959,7 +1959,8 @@ std::string GetCpuMsg(IScriptEnvironment * env, bool avx512)
   std::stringstream ss;
 
   if (!avx512) {
-  // don't display old capabilities when at least AVX is used
+#ifndef _M_X64
+    // don't display old capabilities when at least AVX is used
     if (!(flags & CPUF_AVX)) {
     //if (flags & CPUF_FPU)
     //  ss << "x87 ";
@@ -1974,20 +1975,19 @@ std::string GetCpuMsg(IScriptEnvironment * env, bool avx512)
         ss << "3DNOW ";
     }
 
-    // from SSE..SSE4.2 display the highest
-    if (flags & CPUF_SSE4_2)
-      ss << "SSE4.2 ";
-    else if (flags & CPUF_SSE4_1)
-      ss << "SSE4.1 ";
-    else if (flags & CPUF_SSE3)
-      ss << "SSE3 ";
-    else if (flags & CPUF_SSE2)
-      ss << "SSE2 ";
-    else if (flags & CPUF_SSE)
+    if (flags & CPUF_SSE)
       ss << "SSE ";
-
+#endif
+    if (flags & CPUF_SSE2)
+      ss << "SSE2 ";
+    if (flags & CPUF_SSE3)
+      ss << "SSE3 ";
     if (flags & CPUF_SSSE3)
       ss << "SSSE3 ";
+    if (flags & CPUF_SSE4_1)
+      ss << "SSE4.1 ";
+    if (flags & CPUF_SSE4_2)
+      ss << "SSE4.2 ";
 
     if (flags & CPUF_AVX)
       ss << "AVX ";

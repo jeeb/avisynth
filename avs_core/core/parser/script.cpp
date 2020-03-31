@@ -263,9 +263,10 @@ extern const AVSFunction Script_functions[] = {
   { "SetFilterMTMode",  BUILTIN_FUNC_PREFIX, "si[force]b", SetFilterMTMode  },
   { "Prefetch",         BUILTIN_FUNC_PREFIX, "c[threads]i[frames]i", Prefetcher::Create },
   { "SetLogParams",     BUILTIN_FUNC_PREFIX, "[target]s[level]i", SetLogParams },
-  { "LogMsg",              BUILTIN_FUNC_PREFIX, "si", LogMsg },
+  { "LogMsg",           BUILTIN_FUNC_PREFIX, "si", LogMsg },
   { "SetCacheMode",     BUILTIN_FUNC_PREFIX, "[mode]i", SetCacheMode }, // Neo
   { "SetDeviceOpt",     BUILTIN_FUNC_PREFIX, "[opt]i[val]i", SetDeviceOpt }, // Neo
+  { "SetMaxCPU",        BUILTIN_FUNC_PREFIX, "s", SetMaxCPU }, // 20200331
 
   { "IsY",       BUILTIN_FUNC_PREFIX, "c", IsY },
   { "Is420",     BUILTIN_FUNC_PREFIX, "c", Is420 },
@@ -1675,8 +1676,15 @@ AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env)
     return env->SetMemoryMax(memMax);
   }
 
-  InternalEnvironment *env2 = static_cast<InternalEnvironment*>(env);
-  return env2->SetMemoryMax((AvsDeviceType)deviceType, deviceIndex, memMax);
+  InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
+  return envI->SetMemoryMax((AvsDeviceType)deviceType, deviceIndex, memMax);
+}
+
+AVSValue SetMaxCPU(AVSValue args, void*, IScriptEnvironment* env)
+{
+  InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
+  envI->SetMaxCPU(args[0].AsString());
+  return AVSValue();
 }
 
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsY(); }
