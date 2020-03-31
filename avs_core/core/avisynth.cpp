@@ -355,33 +355,6 @@ void* VideoFrame::operator new(size_t size) {
   return ::operator new(size);
 }
 
-#ifdef SIZETMOD
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-  offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
-  , offsetA(0), pitchA(0), row_sizeA(0)
-{
-  InterlockedIncrement(&vfb->refcount);
-}
-
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
-  size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-  , offsetA(0), pitchA(0), row_sizeA(0)
-{
-  InterlockedIncrement(&vfb->refcount);
-}
-
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
-  size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, size_t _offsetA)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-  , offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size)
-{
-  InterlockedIncrement(&vfb->refcount);
-}
-#else
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
@@ -407,7 +380,6 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int 
 {
     InterlockedIncrement(&vfb->refcount);
 }
-#endif
 // Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
 // assignement to a PVideoFrame, the same as for a "New VideoFrame" to keep the refcount consistant.
 // P.F. ?? so far it works automatically
@@ -2829,11 +2801,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             std::chrono::duration<double> elapsed_seconds = t_end - t_start;
             snprintf(buf, 255, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7zu GotSize=%7zu FrReg.Size=%6zu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
             _RPT0(0, buf);
-#ifdef SIZETMOD
-            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%7Iu\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
-#else
             _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.            _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
-#endif
 #endif
             // only 1 frame in list -> no delete
             if (videoFrameListSize <= 1)

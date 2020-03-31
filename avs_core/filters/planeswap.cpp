@@ -180,15 +180,8 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsPlanar()) {
     // Abuse subframe to flip the UV plane pointers -- extremely fast but a bit naughty!
-#ifdef SIZETMOD
-    // !! be cautious when you subtract two unsigned size_t variables
-    const size_t offs_v = src->GetOffset(PLANAR_V);
-    const size_t offs_u = src->GetOffset(PLANAR_U);
-    const int uvoffset = (offs_v > offs_u) ? (int)(offs_v - offs_u) : -(int)(offs_u - offs_v);
-    // very naughty - don't do this at home!!
-#else
+    // !! if offsets would be size_t, be cautious when you subtract two unsigned size_t variables
     const int uvoffset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_U); // very naughty - don't do this at home!!
-#endif
     if (vi.NumComponents() == 4) {
       IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
       return env2->SubframePlanarA(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
@@ -404,15 +397,9 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
   default: NonYUY2toY8 = false;
   }
   if (NonYUY2toY8) {
-#ifdef SIZETMOD
-    // !! be cautious when you subtract two unsigned size_t variables
-    const size_t offs_src = src->GetOffset(source_plane);
-    const size_t offs_tgt = src->GetOffset(target_plane);
-    const int offset = (offs_src > offs_tgt) ? (int)(offs_src - offs_tgt) : -(int)(offs_tgt - offs_src);
-#else
+    // !! if offsets would be size_t, be cautious when you subtract two unsigned size_t variables
     const int offset = src->GetOffset(source_plane) - src->GetOffset(target_plane); // very naughty - don't do this at home!!
                                                                                     // Abuse Subframe to snatch the U/V/R/G/B/A plane
-#endif
     return env->Subframe(src, offset, src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
   }
 
@@ -959,11 +946,7 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
     int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
     int *planes = (vi_src.IsYUV() || vi_src.IsYUVA()) ? planes_y : planes_r;
 
-#ifdef SIZETMOD
-    size_t Offsets[4];
-#else
     int Offsets[4];
-#endif
     int Pitches[4], NewPitches[4];
     int RowSizes[4], NewRowSizes[4];
 
@@ -992,14 +975,8 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
       case PLANAR_V: case PLANAR_R: source_index = 2; break;
       case PLANAR_A: source_index = 3; break;
       }
-#ifdef SIZETMOD
-      // !! be cautious when you subtract two unsigned size_t variables
-      const size_t offs_src = src->GetOffset(source_plane);
-      const size_t offs_tgt = src->GetOffset(target_plane);
-      RelOffsets[target_index] = (offs_src > offs_tgt) ? (int)(offs_src - offs_tgt) : -(int)(offs_tgt - offs_src);
-#else
+      // !! if offsets would be size_t, be cautious when you subtract two unsigned size_t variables
       RelOffsets[target_index] = Offsets[source_index] - Offsets[target_index];
-#endif
       NewPitches[target_index] = Pitches[source_index];
       NewRowSizes[target_index] = RowSizes[source_index];
       // Y            U           V          A

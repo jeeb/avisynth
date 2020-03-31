@@ -53,6 +53,7 @@
 // 202002xx  non-Windows friendly additions
 // 20200305  avs_vsprintf parameter type change: (void *) to va_list
 // 20200322  AVS_VideoFrame extended with pointer to frame properies
+// 20200330: (remove test SIZETMOD define for clarity)
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -551,11 +552,7 @@ AVSC_API(int, avs_bits_per_component)(const AVS_VideoInfo * p);
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrameBuffer {
   BYTE * data;
-#ifdef SIZETMOD
-  size_t data_size;
-#else
   int data_size;
-#endif
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
   volatile long sequence_number;
@@ -570,27 +567,15 @@ typedef struct AVS_VideoFrameBuffer {
 typedef struct AVS_VideoFrame {
   volatile long refcount;
   AVS_VideoFrameBuffer * vfb;
-#ifdef SIZETMOD
-  size_t offset;
-#else
   int offset;
-#endif
   int pitch, row_size, height;
-#ifdef SIZETMOD
-  size_t offsetU, offsetV;
-#else
   int offsetU, offsetV;
-#endif
   int pitchUV;  // U&V offsets are from top of picture.
   int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
                             // for Planar RGB pitchUV and row_sizeUV = 0, because when no VideoInfo (MakeWriteable)
                             // the decision on existence of UV is checked by zero pitch
   // AVS+ extension, avisynth.h: class does not break plugins if appended here
-#ifdef SIZETMOD
-  size_t offsetA;
-#else
   int offsetA;
-#endif
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
   void* avsmap; // really: AVSMap * from Neo
 } AVS_VideoFrame;

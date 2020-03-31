@@ -704,15 +704,8 @@ PVideoFrame __stdcall FillBorder::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   if (src->GetRowSize(PLANAR_Y)==src->GetRowSize(PLANAR_Y_ALIGNED)) return src;  // No need to fill extra pixels
 
-#ifdef SIZETMOD
-  // !! be cautious when you subtract two unsigned size_t variables
-  const size_t offs_u = src->GetOffset(PLANAR_U);
-  const size_t offs_y= src->GetOffset(PLANAR_Y);
-  int offs_diff = (offs_u > offs_y) ? (int)(offs_u - offs_y) : -(int)(offs_y - offs_u);
-  unsigned char* Ydata = src->GetWritePtr(PLANAR_U) - offs_diff; // Nasty hack, to avoid "MakeWritable" - never, EVER do this at home!
-#else
+  // !! when GetWritePtr would be size_t, revise this. Be cautious when you subtract two unsigned size_t variables
   unsigned char* Ydata = src->GetWritePtr(PLANAR_U) - (src->GetOffset(PLANAR_U) - src->GetOffset(PLANAR_Y)); // Nasty hack, to avoid "MakeWritable" - never, EVER do this at home!
-#endif
   unsigned char* Udata = src->GetWritePtr(PLANAR_U);
   unsigned char* Vdata = src->GetWritePtr(PLANAR_V);
 
