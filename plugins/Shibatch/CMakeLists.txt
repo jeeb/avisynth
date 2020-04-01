@@ -10,7 +10,7 @@ if (NOT WIN32)
 endif()
 
 # Create library
-project(${ProjectName} VERSION ${PROJECT_VERSION})
+project(${ProjectName} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 list (APPEND SourceFiles
     "dbesi0.c"
     "fft.h"

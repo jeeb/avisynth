@@ -6,7 +6,7 @@ set(PluginName "VDubFilter")
 set(ProjectName "Plugin${PluginName}")
 
 # Create library
-project(${ProjectName} VERSION ${PROJECT_VERSION})
+project(${ProjectName} VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 list (APPEND SourceFiles
     "VDubFilter.cpp"
     "GetCPUFlags.cpp"

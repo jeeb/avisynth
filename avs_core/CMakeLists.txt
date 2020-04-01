@@ -9,7 +9,7 @@ else()
 endif()
 
 # Create library
-project("AvsCore" VERSION "${PROJECT_VERSION}")
+project("AvsCore" VERSION "${PROJECT_VERSION}" LANGUAGES CXX)
 Include("Files.cmake")
 add_library("AvsCore" SHARED ${AvsCore_Sources})
 set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "${CoreName}")

@@ -10,7 +10,7 @@ if (NOT WIN32)
 endif()
 
 # Create library
-project(${ProjectName} VERSION ${PROJECT_VERSION})
+project(${ProjectName} VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 list (APPEND SourceFiles
     "ImageSeq.cpp"
     "ImageSeq.h"

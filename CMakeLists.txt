@@ -32,7 +32,7 @@ include(GNUInstallDirs)
 
 if(NOT HEADERS_ONLY)
 
-  project("AviSynth+" VERSION ${version_major}.${version_minor}.${version_bugfix})
+  project("AviSynth+" VERSION ${version_major}.${version_minor}.${version_bugfix} LANGUAGES CXX)
 
   # Avoid uselessly linking to unused libraries
   set(CMAKE_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
@@ -209,7 +209,7 @@ if(NOT HEADERS_ONLY)
 
 else()
 
-  project(AviSynth-Headers VERSION ${version_major}.${version_minor}.${version_bugfix})
+  project(AviSynth-Headers VERSION ${version_major}.${version_minor}.${version_bugfix} LANGUAGES)
   message(STATUS "Install Only Headers: ON")
 
   add_library(${PROJECT_NAME} INTERFACE)
