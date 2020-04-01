@@ -54,6 +54,7 @@
     #include <avs/win.h>
     #include <objbase.h>
 #else
+#include "avisynth_conf.h"
 #if defined(AVS_MACOS)
     #include <mach/host_info.h>
     #include <mach/mach_host.h>
@@ -1100,6 +1101,16 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
+#else
+    // system_avs_plugindir relies on install path, it gets
+    // defined in avisynth_conf.h.in when configuring.
+
+    std::string user_avs_plugindir = std::getenv("HOME");
+    std::string user_avs_dirname = "/.avisynth";
+    user_avs_plugindir.append(user_avs_dirname);
+
+    plugin_manager->AddAutoloadDir(user_avs_plugindir, false);
+    plugin_manager->AddAutoloadDir(system_avs_plugindir, false);
 #endif
 
     global_var_table->Set("LOG_ERROR",   (int)LOGLEVEL_ERROR);
