@@ -630,8 +630,8 @@ Write::Write(PClip _child, const char* _filename, AVSValue args, int _linecheck,
   AVSValue child_val = child;
 
   if (!local) {
-    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    prev_last = env->GetVarDef("last");  // Store previous last
+    prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
     env->SetVar("last", child_val);       // Set implicit last
     env->SetVar("current_frame", (AVSValue)linecheck);  // special -1 or -2
   }
@@ -672,8 +672,8 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
   AVSValue child_val = child;
 
   if (!local) {
-    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    prev_last = env->GetVarDef("last");  // Store previous last
+    prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
     env->SetVar("last", (AVSValue)child_val);       // Set implicit last
     env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
   }

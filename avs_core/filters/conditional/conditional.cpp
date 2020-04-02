@@ -131,8 +131,8 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
   AVSValue child_val = child;
 
   if (!local) {
-    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    prev_last = env->GetVarDef("last");  // Store previous last
+    prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
     env->SetVar("last", child_val);       // Set implicit last
     env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
   }
@@ -314,8 +314,8 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   AVSValue child_val = child;
 
   if (!local) {
-    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    prev_last = env->GetVarDef("last");  // Store previous last
+    prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
     env->SetVar("last", (AVSValue)child_val);       // Set implicit last
     env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
   }
@@ -533,8 +533,8 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env)
   AVSValue child_val = child;
 
   if (!local) {
-    AVSValue prev_last = env->GetVarDef("last");  // Store previous last
-    AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
+    prev_last = env->GetVarDef("last");  // Store previous last
+    prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
     env->SetVar("last", (AVSValue)child_val);       // Set implicit last
     env->SetVar("current_frame", (AVSValue)n);  // Set frame to be tested by the conditional filters.
   }
