@@ -2235,6 +2235,9 @@ static void layer_yuy2_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
   }
 }
 
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
+
 // YUV(A) mul 8-16 bits
 // when chroma is processed, one can use/not use source chroma,
 // Only when use_alpha: maskMode defines mask generation for chroma planes
@@ -2343,6 +2346,10 @@ static void layer_yuv_mul_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, 
     }
   }
 }
+DISABLE_WARNING_POP
+
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
 
 // YUV(A) mul 32 bits
 template<MaskMode maskMode, bool is_chroma, bool use_chroma, bool has_alpha>
@@ -2444,7 +2451,7 @@ static void layer_yuv_mul_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8
     }
   }
 }
-
+DISABLE_WARNING_POP
 
 template<bool use_chroma>
 static void layer_yuy2_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
@@ -2556,6 +2563,11 @@ static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
 // Only when use_alpha: maskMode defines mask generation for chroma planes
 // When use_alpha == false -> maskMode ignored
 // allow_leftminus1: prepare for to be called from SIMD code, remaining non-mod pixel's C function. For such non x=0 pos calculations there already exist valid [x-1] pixels
+
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
+
+// warning C4101 : 'mask_right' : unreferenced local variable
 template<MaskMode maskMode, typename pixel_t, int bits_per_pixel, bool is_chroma, bool use_chroma, bool has_alpha, bool subtract, bool allow_leftminus1>
 static void layer_yuv_add_subtract_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* mask8, int dst_pitch, int overlay_pitch, int mask_pitch, int width, int height, int level) {
   pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
@@ -2663,6 +2675,10 @@ static void layer_yuv_add_subtract_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE*
     }
   }
 }
+DISABLE_WARNING_POP
+
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
 
 // YUV(A) mul 32 bits
 template<MaskMode maskMode, bool is_chroma, bool use_chroma, bool has_alpha, bool subtract, bool allow_leftminus1>
@@ -2770,6 +2786,7 @@ static void layer_yuv_add_subtract_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYT
     }
   }
 }
+DISABLE_WARNING_POP
 
 template<MaskMode maskMode, typename pixel_t, int bits_per_pixel, bool is_chroma, bool use_chroma, bool has_alpha>
 static void layer_yuv_add_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* mask8, int dst_pitch, int overlay_pitch, int mask_pitch, int width, int height, int level) {
@@ -3157,6 +3174,9 @@ static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pi
   }
 }
 
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
+
 // allow_leftminus1: true when called after an SSE2 block when mod16 bytes are handled with SSE but rest right pixels needs C (RFU)
 // for pure C it must be called with allow_leftminus1==false
 // does not update destination alpha
@@ -3357,6 +3377,10 @@ static void layer_yuv_lighten_darken_c(
       width, height, level, thresh);
 }
 
+DISABLE_WARNING_POP
+
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
 
 // allow_leftminus1: true when called after an SSE2 block when mod16 bytes are handled with SSE but rest right pixels needs C
 // for pure C it must be called with allow_leftminus1==false
@@ -3551,6 +3575,7 @@ static void layer_yuv_lighten_darken_f_c(
       width, height, opacity, thresh);
 }
 
+DISABLE_WARNING_POP
 /* RGB32 */
 
 //src format: xx xx xx xx | xx xx xx xx | a1 xx xx xx | a0 xx xx xx
