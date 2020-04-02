@@ -33,6 +33,7 @@
 #define AVSCORE_STRINGS_H
 
 #include <string>
+#include <memory>
 
 bool streqi(const char* s1, const char* s2);
 std::string concat(const std::string &s1, const std::string &s2);

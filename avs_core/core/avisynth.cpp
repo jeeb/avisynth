@@ -153,6 +153,7 @@ const AVSFunction* const builtin_functions[] = {
                          Exprfilter_filters
 };
 
+#if 0
 // Global statistics counters
 struct {
   unsigned int CleanUps;
@@ -164,6 +165,7 @@ struct {
   unsigned int PlanD;
   char tag[36];
 } g_Mem_stats = { 0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]" };
+#endif
 
 const _PixelClip PixelClip;
 
@@ -3199,7 +3201,9 @@ void ScriptEnvironment::ShrinkCache(Device *device)
           OutputDebugStringA(buf);
 #endif
           device->memory_used -= vfb->GetDataSize();
+#ifdef _DEBUG
           VFBStorage *_vfb = vfb;
+#endif
           delete vfb;
           ++freed_vfb_count;
           const VideoFrameArrayType::iterator end_it3 = it2->second.end();
@@ -3218,7 +3222,9 @@ void ScriptEnvironment::ShrinkCache(Device *device)
             else {
               // there should not be such case: vfb.refcount=0 and frame.refcount!=0
               ++unfreed_frame_count;
+#ifdef _DEBUG
               _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount);
+#endif
             }
           }
           // delete array belonging to this vfb in one step
@@ -4310,7 +4316,6 @@ int ScriptEnvironment::SetMemoryMax(AvsDeviceType type, int index, int mem)
 
 PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* device)
 {
-  typedef int offset_t;
   typedef int diff_t;
 
   size_t srchead = GetFrameHead(src);
