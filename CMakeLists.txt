@@ -28,11 +28,11 @@ if(${INSTALL_ONLY_HEADER})
   set(INSTALL_ONLY_HEADER OFF)
 endif()
 
-include(GNUInstallDirs)
-
 if(NOT HEADERS_ONLY)
 
   project("AviSynth+" VERSION ${version_major}.${version_minor}.${version_bugfix} LANGUAGES CXX)
+
+  include(GNUInstallDirs)
 
   # Avoid uselessly linking to unused libraries
   set(CMAKE_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
@@ -215,6 +215,8 @@ else()
   add_library(${PROJECT_NAME} INTERFACE)
   target_include_directories(${PROJECT_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include")
   add_library(AviSynth::Headers ALIAS ${PROJECT_NAME})
+
+  include(GNUInstallDirs)
 
   install(
           FILES ${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include/avisynth.h
