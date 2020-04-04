@@ -88,7 +88,7 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
 # stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
-if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     set(FSLIB "stdc++fs")
 endif()
 
