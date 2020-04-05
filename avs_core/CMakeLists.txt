@@ -140,6 +140,10 @@ ADD_CUSTOM_TARGET(
 )
 ADD_DEPENDENCIES("AvsCore" VersionGen)
 
+if (NOT EXISTS "${CMAKE_SOURCE_DIR}/.git")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRELEASE_TARBALL")
+endif()
+
 # Generate pkg-config file
 get_target_property(LIB_NAME AvsCore OUTPUT_NAME)
 set(LIBS "-l${LIB_NAME}")
