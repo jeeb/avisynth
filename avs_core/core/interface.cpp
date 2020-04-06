@@ -916,6 +916,8 @@ void AVSValue::Assign(const AVSValue* src, bool init) {
 void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
   if (src->IsClip() && src->clip)
     src->clip->AddRef();
+  if (src->IsFunction() && src->function)
+    src->function->AddRef();
   if (c_arrays) {
     // don't free array members!
     if (!init && IsClip() && clip)
@@ -928,8 +930,9 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
     this->clip = src->clip; // "clip" is the largest member of the union, making sure we copy everything
     return;
   }
-  bool shouldRelease = !init && IsClip() && clip;
-  IClip *prev_clip_pointer = (IClip*)((void*)clip); // release at the end
+  bool shouldReleaseClip = !init && IsClip() && clip;
+  bool shouldReleaseFunction = !init && IsFunction() && function;
+  void *prev_pointer_to_release = (void*)clip; // release at the end
 
   bool prevIsArray = IsArray();
   bool nextIsArray = src->IsArray();
@@ -977,8 +980,10 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
     this->type = tmp_type;
     this->array_size = tmp_array_size; // n/a
   }
-  if (shouldRelease)
-    prev_clip_pointer->Release();
+  if (shouldReleaseClip)
+    ((IClip *)prev_pointer_to_release)->Release();
+  if (shouldReleaseFunction)
+    ((IFunction *)prev_pointer_to_release)->Release();
 }
 #endif
 
