@@ -539,8 +539,6 @@ ExpFunctionCall::~ExpFunctionCall(void)
   delete[] arg_expr_names;
 }
 
-static const PFunction& getter_proxy(const PFunction& f) { return f; };
-
 AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
@@ -557,7 +555,8 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
           "Script error: '%s' cannot be called. Give me a function!",
         GetAVSTypeName(eval_result));
     }
-    decltype(auto) func = getter_proxy(eval_result.AsFunction());
+    //auto& func = eval_result.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
+    const PFunction& func = eval_result.AsFunction();
     real_name = func->GetLegacyName();
     real_func = func->GetDefinition();
   }

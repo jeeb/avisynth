@@ -118,8 +118,6 @@ int __stdcall ConditionalSelect::SetCacheHints(int cachehints, int frame_range)
   return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
 }
 
-static const PFunction& getter_proxy(const PFunction& f) { return f; };
-
 PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env)
 {
   InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
@@ -152,9 +150,11 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
       result = exp->Evaluate(env);
     }
     else {
-      decltype(auto) func = getter_proxy(script.AsFunction());
+      //auto& func = script.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
+      const PFunction& func = script.AsFunction();
+      const AVSValue empty_args_array = AVSValue(nullptr, 0); // Invoke_ parameter is const AVSValue&, don't do it inline.
       if (!envI->Invoke_(&result, child_val,
-        func->GetLegacyName(), func->GetDefinition(), AVSValue(nullptr, 0), 0))
+        func->GetLegacyName(), func->GetDefinition(), empty_args_array, 0))
       {
         env->ThrowError(
           "ConditionalSelect: Invalid function parameter type '%s'(%s)\n"
@@ -342,9 +342,11 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
       e2_result = exp->Evaluate(env);
     }
     else {
-      decltype(auto) func = getter_proxy(eval1.AsFunction());
+      //auto& func = eval1.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
+      const PFunction& func = eval1.AsFunction();
+      const AVSValue empty_args_array = AVSValue(nullptr, 0); // Invoke_ parameter is const AVSValue&, don't do it inline.
       if (!envI->Invoke_(&e1_result, child_val,
-        func->GetLegacyName(), func->GetDefinition(), AVSValue(nullptr, 0), 0))
+        func->GetLegacyName(), func->GetDefinition(), empty_args_array, 0))
       {
         env->ThrowError(
           "ConditionalFilter: Invalid function parameter type '%s'(%s)\n"
@@ -569,14 +571,26 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env)
       result = exp->Evaluate(env);
     }
     else {
-      decltype(auto) func = getter_proxy(script.AsFunction());
+      const PFunction& func = script.AsFunction();
+      const AVSValue empty_args_array = AVSValue(nullptr, 0); // Invoke_ parameter is const AVSValue&, don't do it inline.
+      const Function* fd = func->GetDefinition();
       if (!envI->Invoke_(&result, child_val,
-        func->GetLegacyName(), func->GetDefinition(), AVSValue(nullptr, 0), 0))
+        func->GetLegacyName(),fd , empty_args_array, 0))
       {
-        env->ThrowError(
-          "ScriptClip: Invalid function parameter type '%s'(%s)\n"
-          "Function should have one clip argument or no argument",
-          func->GetDefinition()->param_types, func->ToString(env));
+        /* fd is nullptr:
+           ps = function propSetterFunc(Clip c) { propSetInt("frameluma_sc_func",func(AverageLuma)) }
+           ScriptClip(func(ps))
+        */
+        if (fd == nullptr)
+          env->ThrowError(
+            "ScriptClip: Invalid function parameter type '%s'(%s)\n"
+            "Function should have one clip argument or no argument",
+            "<no definition>", func->ToString(env));
+        else
+          env->ThrowError(
+            "ScriptClip: Invalid function parameter type '%s'(%s)\n"
+            "Function should have one clip argument or no argument",
+            func->GetDefinition()->param_types, func->ToString(env));
       }
     }
   } catch (const AvisynthError &error) {
