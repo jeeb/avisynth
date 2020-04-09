@@ -167,9 +167,6 @@ FFmpeg support
 --------------
 
 On all of these OSes, AviSynth+ can interface with FFmpeg.
-As of this time of writing (2020-03-02), FFmpeg uses
-AvxSynth to support non-Windows OSes, so to support
-AviSynth+, a patched version of FFmpeg is necessary.
 
 To compile a basic build of FFmpeg that supports
 AviSynth+, the following steps will suffice:
@@ -216,8 +213,8 @@ Building FFmpeg
 
 ::
 
-    git clone -b avsplus_linux2 git://github.com/qyot27/FFmpeg.git
-    cd FFmpeg
+    git clone git://git.ffmpeg.org/ffmpeg.git
+    cd ffmpeg
 
 
 Linux
