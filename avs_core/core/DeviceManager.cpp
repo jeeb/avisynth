@@ -854,7 +854,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
           PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
           TransferFrameData(dst, src, false, env);
           const AVSFrameRef newfr(dst);
-          env->propSetFrame(mapv, key, &newfr, VSPropAppendMode::paAppend);
+          env->propSetFrame(mapv, key, &newfr, AVSPropAppendMode::paAppend);
         }
       }
     }
@@ -914,7 +914,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
           PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
           TransferFrameData(dst, src, true, env);
           const AVSFrameRef newfr(dst);
-          env->propSetFrame(mapv, key, &newfr, VSPropAppendMode::paAppend);
+          env->propSetFrame(mapv, key, &newfr, AVSPropAppendMode::paAppend);
         }
       }
     }

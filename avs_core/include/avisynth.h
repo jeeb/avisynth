@@ -16,6 +16,7 @@
 // 20200330: (remove test SIZETMOD define for clarity)
 // 20200330: VideoFrame: frame property field: avsmap (from Neo)
 // 20200330: Integrate Avisynth Neo structures and interface, PFunction, PDevice
+// 20200410: frame properties - new version
 
 // http://www.avisynth.org
 
@@ -180,29 +181,6 @@ class SINGLE_INHERITANCE PDevice;
 class AVSMap;
 struct AVSFrameRef;
 struct AVSClipRef;
-
-typedef enum VSPropTypes {
-  ptUnset = 'u',
-  ptInt = 'i',
-  ptFloat = 'f',
-  ptData = 's',
-  ptNode = 'c',
-  ptFrame = 'v',
-//  ptFunction = 'm'
-} VSPropTypes;
-
-typedef enum VSGetPropErrors {
-  peUnset = 1,
-  peType = 2,
-  peIndex = 4
-} VSGetPropErrors;
-
-typedef enum VSPropAppendMode {
-  paReplace = 0,
-  paAppend = 1,
-  paTouch = 2
-} VSPropAppendMode;
-
 
 #endif
 
@@ -1217,6 +1195,44 @@ public:
   void DESTRUCTOR();
 #endif
 }; // end class PClip
+
+
+#ifndef NEOFP
+struct AVSFrameRef {
+  PVideoFrame frame;
+  AVSFrameRef(const PVideoFrame& frame) : frame(frame) {}
+  AVSFrameRef(PVideoFrame&& frame) : frame(frame) {}
+};
+
+struct AVSClipRef {
+  PClip clip;
+  AVSClipRef(const PClip& clip) : clip(clip) {}
+  AVSClipRef(PClip&& clip) : clip(clip) {}
+};
+
+typedef enum AVSPropTypes {
+  ptUnset = 'u',
+  ptInt = 'i',
+  ptFloat = 'f',
+  ptData = 's',
+  ptNode = 'c',
+  ptFrame = 'v',
+  //  ptFunction = 'm'
+} AVSPropTypes;
+
+typedef enum AVSGetPropErrors {
+  peUnset = 1,
+  peType = 2,
+  peIndex = 4
+} AVSGetPropErrors;
+
+typedef enum AVSPropAppendMode {
+  paReplace = 0,
+  paAppend = 1,
+  paTouch = 2
+} AVSPropAppendMode;
+#endif
+
 
 
 class AVSValue {

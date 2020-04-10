@@ -31,20 +31,7 @@ typedef std::vector<AVSClipRef> ClipList;
 typedef std::vector<PVideoFrame> FrameList;
 //typedef std::vector<PExtFunction> FuncList;
 
-struct AVSFrameRef {
-  PVideoFrame frame;
-  AVSFrameRef(const PVideoFrame& frame) : frame(frame) {}
-  AVSFrameRef(PVideoFrame&& frame) : frame(frame) {}
-};
-
 #define AVS_NOEXCEPT noexcept
-
-struct AVSClipRef {
-  PClip clip;
-  //int index;
-  AVSClipRef(const PClip& clip/*, int index*/) : clip(clip)/*, index(index)*/ {}
-  AVSClipRef(PClip&& clip/*, int index*/) : clip(clip)/*, index(index)*/ {}
-};
 
 class FramePropVariant {
 public:

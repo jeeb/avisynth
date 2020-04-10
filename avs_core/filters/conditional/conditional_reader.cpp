@@ -1073,7 +1073,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       // no such api like propSetDataArray
       env2->propDeleteKey(avsmap, name);
       for (int i = 0; i < size; i++) {
-        res = env2->propSetData(avsmap, name, result[i].AsString(), -1, VSPropAppendMode::paAppend); // all elements should be string
+        res = env2->propSetData(avsmap, name, result[i].AsString(), -1, AVSPropAppendMode::paAppend); // all elements should be string
         if (res)
           break;
       }
@@ -1112,7 +1112,7 @@ int __stdcall SetProperty::SetCacheHints(int cachehints, int frame_range)
 AVSValue __cdecl SetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   const int kind = (int)(intptr_t)user_data;
-  const int defaultMode = (int)VSPropAppendMode::paReplace;
+  const int defaultMode = (int)AVSPropAppendMode::paReplace;
 
   int mode = paReplace;
   if(kind != 4) // at propSetArray there is no mode parameter

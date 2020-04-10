@@ -159,7 +159,7 @@ private:
   const char* name;
   PFunction func;
   const int kind;
-  const int append_mode; // VSPropAppendMode
+  const int append_mode; // AVSPropAppendMode
 
 public:
   SetProperty(PClip _child, const char* name, const PFunction& eval, const int kind, const int mode, IScriptEnvironment* env);
