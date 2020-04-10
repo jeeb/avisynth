@@ -4,8 +4,221 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200331 3.5.? (dev)
+20200410 3.5.? (dev)
 --------------------
+- frame properties framework
+  - like in VapourSynth
+  - new field in VideoFrame: avsmap, type is AVSMap which is basically a reference counting struct for holding array of variants
+  - frame properties are key-value(s) pairs
+    - Key is an alphanumeric identifier.
+    - Values can be of single value or array of type
+      - 64 bit integers (inside AVS 32 bit is available - AVSValue limitation)
+      - 64 bit doubles inside AVS 32 bit float is available - AVSValue limitation)
+      - strings (or data) with given length
+      - frame references (PVideoFrame)
+      - clip references (PClip)
+    - property setting has 3 modes: 0-replace 1-append 2-touch (see AVSPropAppendMode)
+      0 - single value for that key is replaced
+      1 - property is appended (make arrays by calling with mode=1 consecutively)
+      2 - touch
+  - from plugin writer's point of view:
+    At this first (zeroth) version env->NewVideoFrame has no variant which can use another frame
+    as frame property source. (todo) One can use copyFrameProps
+
+    In avisynth.h:
+      struct AVSFrameRef and AVSClipRef
+      enums AVSPropTypes, AVSGetPropErrors and AVSPropAppendMode
+      AVSMap* is just a pointer to access its content through IScriptEnvironment2 or C interface calls
+
+  - IScriptEnvirontment2 implements
+    - copy frame properties from one frame to another: copyFrameProps
+    - get property pointer for readonly access: getFramePropsRO
+    - get property pointer for read/write access: getFramePropsRW
+    - property count helper functions
+    - clear of individual properties by key or clear everything
+    - property getter and setter functions (by key, key+index, by index)
+    - examples in conditional.cpp, conditional_functions.cpp
+
+      void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
+
+      const AVSMap* getFramePropsRO(const AVSFrameRef* frame);
+      AVSMap* getFramePropsRW(AVSFrameRef* frame);
+
+      int propNumKeys(const AVSMap* map);
+      const char* propGetKey(const AVSMap* map, int index);
+      int propDeleteKey(AVSMap* map, const char* key);
+      int propNumElements(const AVSMap* map, const char* key);
+      char propGetType(const AVSMap* map, const char* key);
+
+      int64_t propGetInt(const AVSMap* map, const char* key, int index, int* error);
+      double propGetFloat(const AVSMap* map, const char* key, int index, int* error);
+      const char* propGetData(const AVSMap* map, const char* key, int index, int* error);
+      int propGetDataSize(const AVSMap* map, const char* key, int index, int* error);
+      AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error);
+      const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error);
+      int propSetInt(AVSMap* map, const char* key, int64_t i, int append);
+      int propSetFloat(AVSMap* map, const char* key, double d, int append);
+      int propSetData(AVSMap* map, const char* key, const char* d, int length, int append);
+      int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append);
+      int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append);
+
+      const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error);
+      const double *propGetFloatArray(const AVSMap* map, const char* key, int* error);
+      int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size);
+      int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size);
+
+      AVSMap* createMap();
+      void freeMap(AVSMap* map);
+      void clearMap(AVSMap* map);
+
+  - C interface
+    AVS_VideoFrame struct extended with placeholder for frame properies pointer
+    copyFrameProps
+    getFramePropsRO, getFramePropsRW
+    propNumKeys, propGetKey, propNumElements, propGetType, propGetDataSize
+    propGetInt, propGetFloat, propGetData, propGetClip, propGetFrame, propGetIntArray, propGetFloatArray
+    propSetInt, propSetFloat, propSetData, propSetClip, propSetFrame, propSetIntArray, propSetFloatArray
+    propDeleteKey, clearMap
+
+  - Frame properties read-write in runtime functions
+    Setter functions are available only through getting data from the new "function objects"
+    // in conditional_reader.cpp, see property getters in conditional_functions.cpp
+    { "propSet", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void *)0 },
+    { "propSetInt", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)1 },
+    { "propSetFloat", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)2 },
+    { "propSetString", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)3 },
+    { "propSetArray", BUILTIN_FUNC_PREFIX, "csn", SetProperty::Create, (void*)4 },
+    { "propDelete", BUILTIN_FUNC_PREFIX, "cs", DeleteProperty::Create },
+    { "propClearAll", BUILTIN_FUNC_PREFIX, "c", ClearProperties::Create },
+
+    { "propGetAny", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)0 },
+    { "propGetInt", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void *)1 },
+    { "propGetFloat", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)2 },
+    { "propGetString", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)3 },
+    { "propGetDataSize", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetPropertyDataSize::Create },
+    { "propNumElements", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyNumElements::Create},
+    { "propNumKeys", BUILTIN_FUNC_PREFIX, "c[offset]i", GetPropertyNumKeys::Create},
+    { "propGetKeyByIndex", BUILTIN_FUNC_PREFIX, "c[index]i[offset]i", GetPropertyKeyByIndex::Create},
+    { "propGetType", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyType::Create},
+    { "propGetAsArray", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyAsArray::Create},
+
+  Example 1:
+  '''
+    ColorBars()
+
+    # just practicing with function objects
+    ScriptClip(function[](clip c) { c.Subtitle(String(current_frame)) })
+
+    # write frame properties with function object
+    ScriptClip("""propSetInt("frameprop_from_str",func(YPlaneMax))""")
+    # write frame properties with traditional script string
+    ScriptClip(function[](clip c) { propSetInt("frameluma_sc_func",func(AverageLuma)) })
+
+    # read frame properties (function object, string)
+    ScriptClip(function[](clip c) { SubTitle(string(propGetInt("frameprop_from_str")), y=20) })
+    ScriptClip("""SubTitle(string(propGetInt("frameluma_sc_func")), y=40)""")
+
+    return last
+  '''
+
+  Example 2: (long - require NEW_AVSVALUE build - default on POSIX - becasue of arrays)
+      '''
+      ColorBars(width=640, height=480, pixel_type="yv12", staticframes=true)
+
+      ScriptClip(function[](clip c) { propSetString("s",function[](clip c) { return "Hello " + string(current_frame) }) })
+      ScriptClip(function[](clip c) { propSetString("s",function[](clip c) { return "Hello array element #2 " }, mode=1) })
+      ScriptClip(function[](clip c) { propSetString("s",function[](clip c) { return "Hello array element #3 "}, mode=1 ) })
+
+      ScriptClip(function[](clip c) { propSetString("s2",function[](clip c) { return "Another property "} ) })
+
+      ScriptClip(function[](clip c) { propSetInt("s_int",function[](clip c) { return current_frame*1 }) })
+      ScriptClip(function[](clip c) { propSetInt("s_int",function[](clip c) { return current_frame*2 }, mode=1) })
+      ScriptClip(function[](clip c) { propSetInt("s_int",function[](clip c) { return current_frame*4 }, mode=1 ) })
+
+      ScriptClip(function[](clip c) { propSetFloat("s_float",function[](clip c) { return current_frame*1*3.14 }) })
+      ScriptClip(function[](clip c) { propSetFloat("s_float",function[](clip c) { return current_frame*2*3.14 }, mode=1) })
+      ScriptClip(function[](clip c) { propSetFloat("s_float",function[](clip c) { return current_frame*3*3.14 }, mode=1 ) })
+
+      ScriptClip(function[](clip c) { propSetArray("s_float_arr",function[](clip c) { return [1.1, 2.2] } ) })
+      ScriptClip(function[](clip c) { propSetArray("s_int_arr",function[](clip c) { return [-1,-2,-5] } ) })
+      ScriptClip(function[](clip c) { propSetArray("s_string",function[](clip c) { return ["ArrayElementS_1", "ArrayElementS_2"] } ) })
+      #ScriptClip("""propDelete("s")""")
+      ScriptClip(function[](clip c) {
+        y = 0
+        SubTitle("Prop Key count =" + String(propNumKeys), y=y)
+        y = y + 15
+        numKeys = propNumKeys() - 1
+        for ( i = 0 , numKeys) {
+          propName = propGetKeyByIndex(index = i)
+          propType = propGetType(propName)
+          SubTitle("#"+String(i) + " property: '" + propName + "', Type = " + String(propType) , y=y)
+          y = y + 15
+
+          for(j=0, propNumElements(propName) - 1) {
+            SubTitle("element #" + String(j) + ", size = " + String(propType == 3 ? propGetDataSize(propName, index=j) : 0) + ", Value = " + String(propGetAny(propName, index=j)), y = y)
+            #SubTitle("element #" + String(j) + " size = " + String(propType == 3 ? propGetDataSize(propName, index=j) : 0) + ", Value = " + String(propGetAny(propName, index=j)), y = y)
+            y = y + 15
+          }
+
+        }
+        return last
+      })
+
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s")
+        y = 100
+        x = 400
+        SubTitle(string(a.ArraySize()), x=x, y=y)
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+
+      # get int array one pass
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s_int")
+        y = 440
+        x = 400
+        SubTitle("Array size=" + string(a.ArraySize()), x=x, y=y)
+        y = y + 15
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+
+      # get float array one pass
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s_float")
+        y = 440
+        x = 200
+        SubTitle("Array size=" + string(a.ArraySize()), x=x, y=y)
+        y = y + 15
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+
+      # get string array
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s_stringa")
+        y = 440
+        x = 000
+        SubTitle("Array size=" + string(a.ArraySize()), x=x, y=y)
+        y = y + 15
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+    '''
+
 - New function:
   SetMaxCPU(string feature)
 
