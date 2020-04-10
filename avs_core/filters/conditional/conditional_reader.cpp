@@ -31,6 +31,7 @@
 
 #include <avs/minmax.h>
 #include "../core/parser/scriptparser.h"
+#include "../core/AVSMap.h"
 
 
 /*****************************************************************************
@@ -874,6 +875,7 @@ AVSValue __cdecl UseVar::Create(AVSValue args, void* user_data, IScriptEnvironme
 
 #define W_DIVISOR 5  // Width divisor for onscreen messages
 
+#ifdef NEOFP
 AddProp::AddProp(PClip _child, const char* name, const PFunction& func, IScriptEnvironment* env)
    : GenericVideoFilter(_child)
    , name(name)
@@ -939,3 +941,292 @@ AVSValue __cdecl AddProp::Create(AVSValue args, void* user_data, IScriptEnvironm
 {
    return new AddProp(args[0].AsClip(), args[1].AsString(), args[2].AsFunction(), env);
 }
+#endif
+
+#ifndef NEOFP
+
+// Avisynth+ frame property support
+//**************************************************
+// propSet, propSetInt, propSetFloat, propSetString
+
+SetProperty::SetProperty(PClip _child, const char* name, const PFunction& func, const int kind,
+  const int mode, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+  , name(name)
+  , func(func)
+  , kind(kind)
+  , append_mode(mode)
+{ }
+
+SetProperty::~SetProperty() { }
+
+PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
+{
+  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
+  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
+
+  AVSValue result;
+  const char* error_msg = nullptr;
+  try {
+    const AVSValue empty_args_array = AVSValue(nullptr, 0); // invoke's parameter is const AVSValue&, don't do it inline.
+    result = static_cast<InternalEnvironment*>(env)->Invoke(child, func, empty_args_array);
+  }
+  catch (IScriptEnvironment::NotFound) {
+    error_msg = env->Sprintf("AddProperties: Invalid function parameter type '%s'(%s)\n"
+      "Function should have no argument",
+      func->GetDefinition()->param_types, func->ToString(env));
+  }
+  catch (const AvisynthError& error) {
+    error_msg = env->Sprintf("%s\nAddProperties: Error in %s",
+      error.msg, func->ToString(env));
+  }
+
+  PVideoFrame frame = child->GetFrame(n, env);
+
+  if (error_msg) {
+    env->MakeWritable(&frame);
+    env->ApplyMessage(&frame, vi, error_msg, vi.width / W_DIVISOR, 0xa0a0a0, 0, 0);
+    return frame;
+  }
+
+/*
+  usage:
+   ScriptClip("""propSetInt("frameluma",func(AverageLuma))""")
+   ScriptClip("""SubTitle(string(propGetInt("frameluma")))""")
+  or
+   ps = func(propSetterFunc) # make function object from function
+   ScriptClip(ps) # pass function object to scriptclip
+   ScriptClip(function[](clip c) { SubTitle(string(propGetInt("frameprop_demo")), y=20) })
+   ScriptClip(function[](clip c) { SubTitle(string(propGetInt("frameprop_demo2")), y=40) })
+   function propSetterFunc(Clip x) {
+    x
+    propSetInt("frameprop_demo", func(AverageLuma))
+    propSetInt("frameprop_demo2", function[]() { current_frame })
+  }
+*/
+
+  env->MakeWritable(&frame);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
+  AVSMap* avsmap = env2->getFramePropsRW(&fr);
+
+  int propType = kind;
+  // vUnset, vInt, vFloat, vData/*, vNode*/, vFrame/*, vMethod*/ }
+  // 0: auto
+  // 1: integer
+  // 2: float
+  // 3: char (null terminated data)
+
+  try {
+    // check auto
+    if (propType == 0) {
+      // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
+      if (result.IsInt())
+        propType = 1;
+      else if (result.IsFloat())
+        propType = 2;
+      else if (result.IsString())
+        propType = 3;
+      else if (result.IsArray())
+        propType = 4;
+      else if (result.IsClip())
+        env->ThrowError("Clip frame properties not yet supported");
+      else
+        env->ThrowError("Invalid return type (Was a %s)", GetAVSTypeName(result));
+    }
+
+    int res = 0;
+
+    // special case: zero sized array -> entry deleted
+    if (result.IsArray() && result.ArraySize() == 0)
+      res = env2->propDeleteKey(avsmap, name); // 0 is success
+    else if (propType == 1 && result.IsInt())
+      res = env2->propSetInt(avsmap, name, result.AsInt(), append_mode);
+    else if (propType == 2 && result.IsFloat())
+      res = env2->propSetFloat(avsmap, name, result.AsFloat(), append_mode);
+    else if (propType == 3 && result.IsString())
+    {
+      const char* s = result.AsString(); // no need for SaveString, it has its own storage
+      res = env2->propSetData(avsmap, name, s, -1, append_mode); // -1: auto string length
+    }
+    else if (propType == 4 && result[0].IsInt())
+    {
+      int size = result.ArraySize();
+      std::vector<int64_t> int64array(size); // avs can do int only, temporary array needed
+      for (int i = 0; i < size; i++)
+        int64array[i] = result[i].AsInt(); // all elements should be int
+      res = env2->propSetIntArray(avsmap, name, int64array.data(), size);
+    }
+    else if (propType == 4 && result[0].IsFloat())
+    {
+      int size = result.ArraySize();
+      std::vector<double> d_array(size); // avs can do float only, temporary array needed
+      for (int i = 0; i < size; i++)
+        d_array[i] = result[i].AsFloat(); // all elements should be float or int
+      res = env2->propSetFloatArray(avsmap, name, d_array.data(), size);
+    }
+    else if (propType == 4 && result[0].IsString())
+    {
+      const int size = result.ArraySize();
+      // no such api like propSetDataArray
+      env2->propDeleteKey(avsmap, name);
+      for (int i = 0; i < size; i++) {
+        res = env2->propSetData(avsmap, name, result[i].AsString(), -1, VSPropAppendMode::paAppend); // all elements should be string
+        if (res)
+          break;
+      }
+    }
+    else
+    {
+      env->ThrowError("Wrong data type, property '%s' type is not %s", name, GetAVSTypeName(result)); // fixme: res reasons
+    }
+
+    if (res)
+      env->ThrowError("error setting property '%s', error = %d", name, res); // fixme: res reasons
+  }
+  catch (const AvisynthError& error) {
+    error_msg = env->Sprintf("propAdd: %s", error.msg);
+  }
+
+  if (error_msg) {
+    env->MakeWritable(&frame);
+    env->ApplyMessage(&frame, vi, error_msg, vi.width / W_DIVISOR, 0xa0a0a0, 0, 0);
+  }
+
+  return frame;
+}
+
+int __stdcall SetProperty::SetCacheHints(int cachehints, int frame_range)
+{
+  AVS_UNUSED(frame_range);
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
+
+AVSValue __cdecl SetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  const int kind = (int)(intptr_t)user_data;
+  const int defaultMode = (int)VSPropAppendMode::paReplace;
+
+  int mode = paReplace;
+  if(kind != 4) // at propSetArray there is no mode parameter
+    mode = args[3].AsInt(defaultMode);
+
+  /*
+    paReplace = 0,
+    paAppend = 1,
+    paTouch = 2
+  */
+  return new SetProperty(args[0].AsClip(), args[1].AsString(), args[2].AsFunction(), kind, mode, env);
+}
+
+//**************************************************
+// propDelete
+
+DeleteProperty::DeleteProperty(PClip _child, const char* name, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+  , name(name)
+{ }
+
+DeleteProperty::~DeleteProperty() { }
+
+PVideoFrame __stdcall DeleteProperty::GetFrame(int n, IScriptEnvironment* env)
+{
+  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
+  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
+
+  PVideoFrame frame = child->GetFrame(n, env);
+
+  /*
+    usage:
+      ScriptClip("""propDelete("frameluma")""")
+  */
+
+  env->MakeWritable(&frame);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
+  AVSMap* avsmap = env2->getFramePropsRW(&fr);
+  int res = env2->propDeleteKey(avsmap, name); // 0 is success
+
+  if (!res) {
+    const char *error_msg = env->Sprintf("propDelete: error deleting property '%s'", name);
+    env->ApplyMessage(&frame, vi, error_msg, vi.width / W_DIVISOR, 0xa0a0a0, 0, 0);
+  }
+
+  return frame;
+}
+
+int __stdcall DeleteProperty::SetCacheHints(int cachehints, int frame_range)
+{
+  AVS_UNUSED(frame_range);
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
+
+AVSValue __cdecl DeleteProperty::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return new DeleteProperty(args[0].AsClip(), args[1].AsString(), env);
+}
+
+//**************************************************
+// propDelete
+
+ClearProperties::ClearProperties(PClip _child, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+{ }
+
+ClearProperties::~ClearProperties() { }
+
+PVideoFrame __stdcall ClearProperties::GetFrame(int n, IScriptEnvironment* env)
+{
+  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
+  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
+  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
+
+  PVideoFrame frame = child->GetFrame(n, env);
+
+  /*
+    usage:
+      ScriptClip("""propClear()""")
+  */
+
+  env->MakeWritable(&frame);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
+  AVSMap* avsmap = env2->getFramePropsRW(&fr);
+  env2->clearMap(avsmap);
+
+  return frame;
+}
+
+int __stdcall ClearProperties::SetCacheHints(int cachehints, int frame_range)
+{
+  AVS_UNUSED(frame_range);
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
+
+AVSValue __cdecl ClearProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return new ClearProperties(args[0].AsClip(), env);
+}
+
+
+#endif

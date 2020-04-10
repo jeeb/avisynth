@@ -51,11 +51,6 @@
 // Avisynth, such as 3rd-party filters, import and export plugins, or
 // graphical user interfaces.
 
-#ifdef AVS_POSIX
-# include "avs/posix.h"
-#endif
-
-
 
 #ifndef __AVISYNTH_7_H__
 #define __AVISYNTH_7_H__
@@ -63,6 +58,10 @@
 #include "avs/config.h"
 #include "avs/capi.h"
 #include "avs/types.h"
+
+#ifdef AVS_POSIX
+# include "avs/posix.h"
+#endif
 
 #if defined(AVS_POSIX)
 #define __stdcall
@@ -177,6 +176,36 @@ class IFunction;
 class SINGLE_INHERITANCE PFunction;
 class Device;
 class SINGLE_INHERITANCE PDevice;
+#ifndef NEOFP
+class AVSMap;
+struct AVSFrameRef;
+struct AVSClipRef;
+
+typedef enum VSPropTypes {
+  ptUnset = 'u',
+  ptInt = 'i',
+  ptFloat = 'f',
+  ptData = 's',
+  ptNode = 'c',
+  ptFrame = 'v',
+//  ptFunction = 'm'
+} VSPropTypes;
+
+typedef enum VSGetPropErrors {
+  peUnset = 1,
+  peType = 2,
+  peIndex = 4
+} VSGetPropErrors;
+
+typedef enum VSPropAppendMode {
+  paReplace = 0,
+  paAppend = 1,
+  paTouch = 2
+} VSPropAppendMode;
+
+
+#endif
+
 
 
 /*
@@ -351,22 +380,40 @@ struct AVS_Linkage {
   bool    (VideoInfo::*IsPlanarRGBA)() const;
   /**********************************************************************/
 
+#ifndef NEOFP
+  AVSMap& (VideoFrame::* getProperties)();
+  const AVSMap& (VideoFrame::* getConstProperties)();
+  void (VideoFrame::* setProperties)(const AVSMap& properties);
+
+  /**********************************************************************/
+  // Reserve pointer space so that we can keep compatibility with Neo/AviSynth+
+  void    (VideoInfo::* reserved2[64 - 3])();
+#else
+
 /**********************************************************************/
   // Reserve pointer space so that we can keep compatibility with AviSynth+
   void    (VideoInfo::*reserved2[64])();
+#endif
 /**********************************************************************/
   // AviSynth Neo additions
   INeoEnv*    (__stdcall *GetNeoEnv)(IScriptEnvironment* env);
 
+#ifndef NEOFP
+  void    (VideoInfo:: * reserved3[6])();
+#else
   void                (VideoFrame::* VideoFrame_SetProperty)(const char* key, const AVSMapValue& value);
   const AVSMapValue* (VideoFrame::* VideoFrame_GetProperty)(const char* key) const;
   PVideoFrame(VideoFrame::* VideoFrame_GetProperty_Frame)(const char* key, PVideoFrame def) const;
   int                 (VideoFrame::* VideoFrame_GetProperty_Int)(const char* key, int def) const;
   double              (VideoFrame::* VideoFrame_GetProperty_Float)(const char* key, double def) const;
   bool                (VideoFrame::* VideoFrame_DeleteProperty)(const char* key);
-  PDevice             (VideoFrame::* VideoFrame_GetDevice)() const;
+#endif
+  PDevice(VideoFrame::* VideoFrame_GetDevice)() const;
   int                 (VideoFrame::* VideoFrame_CheckMemory)() const;
 
+#ifndef NEOFP
+  void    (VideoInfo::* reserved4[13])();
+#else
   // class AVSMapValue
   void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR0)();
   void            (AVSMapValue::* AVSMapValue_CONSTRUCTOR1)(PVideoFrame& frame);
@@ -381,7 +428,7 @@ struct AVS_Linkage {
   PVideoFrame     (AVSMapValue::* AVSMapValue_GetFrame)() const;
   int64_t         (AVSMapValue::* AVSMapValue_GetInt)() const;
   double          (AVSMapValue::* AVSMapValue_GetFloat)() const;
-
+#endif
   // PFunction
   void            (AVSValue::*AVSValue_CONSTRUCTOR11)(const PFunction& o);
   bool            (AVSValue::*IsFunction)() const;
@@ -406,8 +453,11 @@ struct AVS_Linkage {
   const char*     (PDevice::*PDevice_GetName)() const;
   // end class PDevice
 
+#ifndef NEOFP
+  void    (VideoInfo::* reserved5[1])();
+#else
 	bool            (VideoFrame::*VideoFrame_IsPropertyWritable)() const;
-
+#endif
   /**********************************************************************/
 };
 
@@ -926,7 +976,9 @@ public:
 }; // end class PVideoFrame
 
 
+#ifdef NEOFP
 class AVSMap;
+#endif
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.  Operator new
 // is overloaded to recycle class instances.
@@ -947,7 +999,11 @@ class VideoFrame {
   int offsetA;
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
 
+#ifndef NEOFP
+  AVSMap *properties;
+#else
   AVSMap* avsmap;
+#endif
 
   friend class PVideoFrame;
   void AddRef();
@@ -957,11 +1013,17 @@ class VideoFrame {
   friend class Cache;
   friend class AVSMapValue;
 
+#ifndef NEOFP
   VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height);
   VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
   // for Alpha
   VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA);
-
+#else
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
+  // for Alpha
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA);
+#endif
   void* operator new(size_t size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
 public:
@@ -983,9 +1045,13 @@ public:
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
+#ifndef NEOFP
+  AVSMap& getProperties() AVS_BakedCode(return AVS_LinkCallV(getProperties)())
+  const AVSMap& getConstProperties() AVS_BakedCode(return AVS_LinkCallV(getConstProperties)())
+  void setProperties(const AVSMap& properties) AVS_BakedCode(AVS_LinkCall_Void(setProperties)())
+#else
   bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
-  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
-
+  void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
   // if key is not found, returns nullptr
   const AVSMapValue* GetProperty(const char* key) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty)(key))
 
@@ -995,6 +1061,7 @@ public:
   double GetProperty(const char* key, double def) const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetProperty_Float)(key, def))
 
   bool DeleteProperty(const char* key) AVS_BakedCode(return AVS_LinkCall(VideoFrame_DeleteProperty)(key))
+#endif
 
   PDevice GetDevice() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetDevice)())
 
@@ -1547,6 +1614,41 @@ public:
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 
+  // IScriptEnvironment2 20200401 additions
+#ifndef NEOFP
+  virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0;
+  virtual const AVSMap* __stdcall getFramePropsRO(const AVSFrameRef* frame) = 0;
+  virtual AVSMap* __stdcall getFramePropsRW(AVSFrameRef* frame) = 0;
+
+  virtual int __stdcall propNumKeys(const AVSMap* map) = 0;
+  virtual const char* __stdcall propGetKey(const AVSMap* map, int index) = 0;
+  virtual int __stdcall propNumElements(const AVSMap* map, const char* key) = 0;
+  virtual char __stdcall propGetType(const AVSMap* map, const char* key) = 0;
+
+  virtual int64_t __stdcall propGetInt(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual double __stdcall propGetFloat(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const char* __stdcall propGetData(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual int __stdcall propGetDataSize(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual AVSClipRef* __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const AVSFrameRef* __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
+
+  virtual int __stdcall propDeleteKey(AVSMap* map, const char* key) = 0;
+
+  virtual int __stdcall propSetInt(AVSMap* map, const char* key, int64_t i, int append) = 0;
+  virtual int __stdcall propSetFloat(AVSMap* map, const char* key, double d, int append) = 0;
+  virtual int __stdcall propSetData(AVSMap* map, const char* key, const char* d, int length, int append) = 0;
+  virtual int __stdcall propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) = 0;
+  virtual int __stdcall propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) = 0;
+
+  virtual const int64_t *__stdcall propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual const double *__stdcall propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual int __stdcall propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) = 0;
+  virtual int __stdcall propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) = 0;
+
+  virtual AVSMap* __stdcall createMap() = 0;
+  virtual void __stdcall freeMap(AVSMap* map) = 0;
+  virtual void __stdcall clearMap(AVSMap* map) = 0;
+#endif
 }; // end class IScriptEnvironment2
 
 
@@ -1642,14 +1744,51 @@ public:
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
   virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
 
+#ifdef NEOFP
   // AVSMap Support
   virtual void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const = 0;
+#endif
 
   virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) = 0;
   virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
+#ifndef NEOFP
+  // I keep using Neo method in which ScriptEnvironment2 is duplicated here
+  virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0; // as in ScriptEnvironment2
+  virtual const AVSMap* __stdcall getFramePropsRO(const AVSFrameRef* frame) = 0;
+  virtual AVSMap* __stdcall getFramePropsRW(AVSFrameRef* frame) = 0;
+
+  virtual int __stdcall propNumKeys(const AVSMap* map) = 0;
+  virtual const char* __stdcall propGetKey(const AVSMap* map, int index) = 0;
+  virtual int __stdcall propNumElements(const AVSMap* map, const char* key) = 0;
+  virtual char __stdcall propGetType(const AVSMap* map, const char* key) = 0;
+
+  virtual int64_t __stdcall propGetInt(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual double __stdcall propGetFloat(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const char* __stdcall propGetData(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual int __stdcall propGetDataSize(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual AVSClipRef* __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const AVSFrameRef* __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
+
+  virtual int __stdcall propDeleteKey(AVSMap* map, const char* key) = 0;
+
+  virtual int __stdcall propSetInt(AVSMap* map, const char* key, int64_t i, int append) = 0;
+  virtual int __stdcall propSetFloat(AVSMap* map, const char* key, double d, int append) = 0;
+  virtual int __stdcall propSetData(AVSMap* map, const char* key, const char* d, int length, int append) = 0;
+  virtual int __stdcall propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) = 0;
+  virtual int __stdcall propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) = 0;
+
+  virtual const int64_t *__stdcall propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual const double *__stdcall propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual int __stdcall propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) = 0;
+  virtual int __stdcall propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) = 0;
+
+  virtual AVSMap* __stdcall createMap() = 0;
+  virtual void __stdcall freeMap(AVSMap* map) = 0;
+  virtual void __stdcall clearMap(AVSMap* map) = 0;
+#endif
 
   // Support functions
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
@@ -1692,7 +1831,9 @@ public:
 
   virtual PVideoFrame __stdcall GetFrame(PClip c, int n, const PDevice& device) = 0;
 
-	virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
+#ifdef NEOFP
+  virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
+#endif
 };
 
 // support inteface conversion

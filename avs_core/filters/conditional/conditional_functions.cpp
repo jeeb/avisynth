@@ -43,6 +43,9 @@
 #include <algorithm>
 #include <cmath>
 #include "../focus.h" // sad
+#ifndef NEOFP
+#include "../core/AVSMap.h"
+#endif
 
 extern const AVSFunction Conditional_funtions_filters[] = {
   {  "AverageLuma",    BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_Y },
@@ -118,7 +121,24 @@ extern const AVSFunction Conditional_funtions_filters[] = {
 //{  "HueMedian","c[offset]i", MinMaxPlane::Create_medianhue },
 //{  "HueMinMaxDifference","c[threshold]f[offset]i", MinMaxPlane::Create_minmaxhue },
 
+#ifdef NEOFP
+  // Neo AddProp in conditional_reader
   { "GetProp", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetProp_::Create, 0 },
+#endif
+
+#ifndef NEOFP
+  // frame property setters in conditional_reader
+  { "propGetAny", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)0 },
+  { "propGetInt", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void *)1 },
+  { "propGetFloat", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)2 },
+  { "propGetString", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)3 },
+  { "propGetDataSize", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetPropertyDataSize::Create },
+  { "propNumElements", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyNumElements::Create},
+  { "propNumKeys", BUILTIN_FUNC_PREFIX, "c[offset]i", GetPropertyNumKeys::Create},
+  { "propGetKeyByIndex", BUILTIN_FUNC_PREFIX, "c[index]i[offset]i", GetPropertyKeyByIndex::Create},
+  { "propGetType", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyType::Create},
+  { "propGetAsArray", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyAsArray::Create},
+#endif
 
   { 0 }
 };
@@ -873,7 +893,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
     return AVSValue(retval);
 }
 
-
+#ifdef NEOFP
+// Neo Style getProp
 AVSValue GetProp_::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
    AVSValue clip = args[0];
    if (!clip.IsClip())
@@ -907,3 +928,388 @@ AVSValue GetProp_::Create(AVSValue args, void* user_data, IScriptEnvironment* en
    }
    return AVSValue();
 }
+#endif
+
+#ifndef NEOFP
+AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propGetxxxxx: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propGetxxxxx: This filter can only be used within run-time filters");
+
+  int propType = (int)(intptr_t)user_data;
+  // vUnset, vInt, vFloat, vData/*, vNode*/, vFrame/*, vMethod*/ }
+  // 0: auto
+  // 1: integer
+  // 2: float
+  // 3: char (null terminated data)
+
+  const char* propName = args[1].AsString();
+  const int index = args[2].AsInt(0);
+  const int offset = args[3].AsInt(0);
+
+  int n = cn.AsInt();
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  const AVSFrameRef fr(src);
+  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+
+  int error = 0;
+
+  // check auto
+  if (propType == 0) {
+    char res = env2->propGetType(avsmap, propName);
+    // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
+    switch (res) {
+    case 'u': return AVSValue(); // unSet = AVS undefined
+    case 'v': env->ThrowError("Error getting frame property \"%s\": video frames not supported as function return values", propName);
+      break;
+    case 'i': propType = 1; break;
+    case 'f': propType = 2; break;
+    case 's': propType = 3; break;
+    // case 'c': propType = 4; break; Clips not supported
+    default:
+      env->ThrowError("Error getting frame property \"%s\": type '%c' not supported", propName, res);
+    }
+  }
+
+  if (propType == 1) {
+    int64_t result = env2->propGetInt(avsmap, propName, index, &error);
+    if(!error)
+      return AVSValue((int)result);
+  }
+  else if (propType == 2) {
+    double result = env2->propGetFloat(avsmap, propName, index, &error);
+    if (!error)
+      return AVSValue(result);
+  }
+  else if (propType == 3) {
+    const char *result = env2->propGetData(avsmap, propName, index, &error);
+    if (!error) {
+      result = env->SaveString(result); // property had its own storage
+      return AVSValue(result);
+    }
+  }
+  else {
+    error = VSGetPropErrors::peType;
+  }
+
+  const char* error_msg = nullptr;
+
+  // really, errors are bits
+  if (error & VSGetPropErrors::peUnset)
+    error_msg = "property is not set";
+  else if (error & VSGetPropErrors::peType)
+    error_msg = "wrong type";
+  else if (error & VSGetPropErrors::peIndex)
+    error_msg = "index error"; // arrays
+
+  if (error)
+    env->ThrowError("Error getting frame property \"%s\": %s ", propName, error_msg);
+
+  return AVSValue();
+}
+
+#ifdef NEW_AVSVALUE
+AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* env)
+{
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propGetAsArray: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propGetAsArray: This filter can only be used within run-time filters");
+
+  const char* propName = args[1].AsString();
+  const int offset = args[2].AsInt(0);
+
+  int n = cn.AsInt();
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  const AVSFrameRef fr(src);
+  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+
+  int error = 0;
+
+  char propType = env2->propGetType(avsmap, propName);
+  if (propType == 'u') {
+    // special: zero array
+    return AVSValue(nullptr, 0);
+  }
+  // check auto
+  int size = env2->propNumElements(avsmap, propName);
+
+  AVSValue *result = new AVSValue[size];
+
+  // propGetIntArray or propGetFloatArray is available
+  // note: AVSValue is int and float, prop arrays are int64_t and double
+  if (propType == 'i') {
+    const int64_t* arr = env2->propGetIntArray(avsmap, propName, &error);
+    for (int i = 0; i < size; ++i)
+      result[i] = (int)arr[i];
+  }
+  else if (propType == 'f') {
+    const double* arr = env2->propGetFloatArray(avsmap, propName, &error);
+    for (int i = 0; i < size; ++i)
+      result[i] = (float)arr[i];
+  }
+  else
+  {
+    // generic
+    for (int i = 0; i < size; ++i) {
+      AVSValue elem;
+      switch (propType) {
+      case 'i': elem = AVSValue((int)env2->propGetInt(avsmap, propName, i, &error)); break; // though handled earlier
+      case 'f': elem = AVSValue((float)env2->propGetFloat(avsmap, propName, i, &error)); break; // though handled earlier
+      case 's': {
+        const char* s = env2->propGetData(avsmap, propName, i, &error);
+        if (!error)
+          elem = AVSValue(env->SaveString(s));
+      }
+        break;
+      case 'v': elem = AVSValue(env2->propGetFrame(avsmap, propName, i, &error)); break;
+      default:
+        elem = AVSValue();
+      }
+      if (error)
+        break;
+      result[i] = elem;
+    }
+  }
+
+  const char* error_msg = nullptr;
+
+  // really, errors are bits
+  if (error & VSGetPropErrors::peUnset)
+    error_msg = "property is not set";
+  else if (error & VSGetPropErrors::peType)
+    error_msg = "wrong type";
+  else if (error & VSGetPropErrors::peIndex)
+    error_msg = "index error"; // arrays
+
+  if (error)
+    env->ThrowError("propGetAsArray: Error getting frame property \"%s\": %s ", propName, error_msg);
+
+  return AVSValue(result, size);
+}
+#endif
+
+// e.g. string length
+AVSValue GetPropertyDataSize::Create(AVSValue args, void* , IScriptEnvironment* env) {
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propGetDataSize: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propGetDataSize: This filter can only be used within run-time filters");
+
+  const char* propName = args[1].AsString();
+  const int index = args[2].AsInt(0);
+  const int offset = args[3].AsInt(0);
+
+  int n = cn.AsInt();
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  const AVSFrameRef fr(src);
+  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+
+  int error = 0;
+
+  int size = env2->propGetDataSize(avsmap, propName, index, &error);
+  if (!error)
+    return AVSValue(size);
+
+  const char* error_msg = nullptr;
+
+  // really, errors are bits
+  if (error & VSGetPropErrors::peUnset)
+    error_msg = "property is not set";
+  else if (error & VSGetPropErrors::peType)
+    error_msg = "wrong type";
+  else if (error & VSGetPropErrors::peIndex)
+    error_msg = "index error"; // arrays
+
+  if (error)
+    env->ThrowError("Error getting frame property data size \"%s\": %s ", propName, error_msg);
+
+  return AVSValue();
+}
+
+// array size of a given property, (by setProp append mode arrays can be constructed)
+AVSValue GetPropertyNumElements::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propNumElements: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propNumElements: This filter can only be used within run-time filters");
+
+  const char* propName = args[1].AsString();
+  const int offset = args[2].AsInt(0);
+
+  int n = cn.AsInt();
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  const AVSFrameRef fr(src);
+  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+
+  try {
+    int size = env2->propNumElements(avsmap, propName);
+    return AVSValue(size);
+  }
+  catch (const AvisynthError& error) {
+    env->ThrowError("propNumElements: %s", error.msg);
+  }
+
+  return AVSValue();
+}
+
+// returns integer enums instead of char (string)
+AVSValue GetPropertyType::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propGetType: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propGetType: This filter can only be used within run-time filters");
+
+  const char* propName = args[1].AsString();
+  const int offset = args[2].AsInt(0);
+
+  int n = cn.AsInt();
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  const AVSFrameRef fr(src);
+  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+
+  try {
+    char prop_type = env2->propGetType(avsmap, propName);
+    // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
+    switch (prop_type) {
+    case 'u': return 0;
+    case 'i': return 1;
+    case 'f': return 2;
+    case 's': return 3;
+    case 'c': return 4;
+    case 'v': return 5;
+      //case 'm': return 6;
+    default:
+      return -1;
+    }
+  }
+  catch (const AvisynthError& error) {
+    env->ThrowError("propGetType: %s", error.msg);
+  }
+
+  return AVSValue();
+}
+
+
+// Number of properties (keys) for a frame
+AVSValue GetPropertyNumKeys::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propNumKeys: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propNumKeys: This filter can only be used within run-time filters");
+
+  int n = cn.AsInt();
+  int offset = args[1].AsInt(0);
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  const AVSFrameRef fr(src);
+  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+
+  try {
+    int size = env2->propNumKeys(avsmap);
+    return AVSValue(size);
+  }
+  catch (const AvisynthError& error) {
+    env->ThrowError("propNumKeys: %s", error.msg);
+  }
+
+  return AVSValue();
+}
+
+// Get the name (key) of the Nth frame property
+AVSValue GetPropertyKeyByIndex::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propNumKeys: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propNumKeys: This filter can only be used within run-time filters");
+
+  const int index = args[1].AsInt(0);
+  const int offset = args[2].AsInt(0);
+
+  int n = cn.AsInt();
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  const AVSFrameRef fr(src);
+  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+
+  try {
+    const char* prop_name = env2->propGetKey(avsmap, index);
+    return AVSValue(env->SaveString(prop_name));
+  }
+  catch (const AvisynthError& error) {
+    env->ThrowError("propGetKeyByIndex: %s", error.msg);
+  }
+
+  return AVSValue();
+}
+
+#endif

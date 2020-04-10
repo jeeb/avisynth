@@ -357,6 +357,7 @@ void* VideoFrame::operator new(size_t size) {
   return ::operator new(size);
 }
 
+#ifdef NEOFP
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
@@ -385,9 +386,45 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int 
 // Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
 // assignement to a PVideoFrame, the same as for a "New VideoFrame" to keep the refcount consistant.
 // P.F. ?? so far it works automatically
+#endif
+
+#ifndef NEOFP
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+  offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
+  , offsetA(0), pitchA(0), row_sizeA(0), properties(avsmap)
+{
+  InterlockedIncrement(&vfb->refcount);
+}
+
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
+  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
+  , offsetA(0), pitchA(0), row_sizeA(0), properties(avsmap)
+{
+  InterlockedIncrement(&vfb->refcount);
+}
+
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
+  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA)
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
+  , offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size), properties(avsmap)
+{
+  InterlockedIncrement(&vfb->refcount);
+}
+// Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
+// assignement to a PVideoFrame, the same as for a "New VideoFrame" to keep the refcount consistant.
+// P.F. ?? so far it works automatically
+#endif
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
+#ifndef NEOFP
+  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height);
+#else
   return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height);
+#endif
 }
 
 
@@ -397,8 +434,13 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
     const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
     const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
+#ifndef NEOFP
+    return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
+      rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
+#else
     return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height,
         rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
+#endif
 }
 
 // alpha support
@@ -408,8 +450,13 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
   const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
   const int new_heightUV = !height ? 0 : MulDiv(new_height, heightUV, height);
 
+#ifndef NEOFP
   return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
     rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA);
+#else
+  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
+    rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA);
+#endif
 }
 
 VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(NULL), data_size(0), sequence_number(0) {}
@@ -665,7 +712,9 @@ public:
   PVideoFrame NewVideoFrame(const VideoInfo& vi, const PDevice& device);
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, Device* device);
   bool MakeWritable(PVideoFrame* pvf);
+#ifdef NEOFP
   bool MakePropertyWritable(PVideoFrame* pvf);
+#endif
   void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
   void AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data);
   PVideoFrame Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
@@ -706,7 +755,37 @@ public:
   void LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...);
   void LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va);
   PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
-  void SetMaxCPU(const char *features);
+#ifndef NEOFP
+  void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
+  const AVSMap* getFramePropsRO(const AVSFrameRef* frame) AVS_NOEXCEPT;
+  AVSMap* getFramePropsRW(AVSFrameRef* frame) AVS_NOEXCEPT;
+  int propNumKeys(const AVSMap* map) AVS_NOEXCEPT;
+  const char* propGetKey(const AVSMap* map, int index) AVS_NOEXCEPT;
+  int propNumElements(const AVSMap* map, const char* key) AVS_NOEXCEPT;
+  char propGetType(const AVSMap* map, const char* key) AVS_NOEXCEPT;
+  int propDeleteKey(AVSMap* map, const char* key) AVS_NOEXCEPT;
+  int64_t propGetInt(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  double propGetFloat(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  const char* propGetData(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  int propGetDataSize(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  int propSetInt(AVSMap* map, const char* key, int64_t i, int append) AVS_NOEXCEPT;
+  int propSetFloat(AVSMap* map, const char* key, double d, int append) AVS_NOEXCEPT;
+  int propSetData(AVSMap* map, const char* key, const char* d, int length, int append) AVS_NOEXCEPT;
+  int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) AVS_NOEXCEPT;
+  int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) AVS_NOEXCEPT;
+
+  const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
+  const double *propGetFloatArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
+  int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) AVS_NOEXCEPT;
+  int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) AVS_NOEXCEPT;
+
+  AVSMap* createMap() AVS_NOEXCEPT;
+  void freeMap(AVSMap* map) AVS_NOEXCEPT;
+  void clearMap(AVSMap* map) AVS_NOEXCEPT;
+#endif
+  void SetMaxCPU(const char *features); // fixme: why is here InternalEnvironment?
 
   /* INeoEnv */
   bool Invoke_(AVSValue *result, const AVSValue& implicit_last,
@@ -717,11 +796,14 @@ public:
   int SetMemoryMax(AvsDeviceType type, int index, int mem);
 
   PVideoFrame GetOnDeviceFrame(const PVideoFrame& src, Device* device);
+#ifdef NEOFP
   void CopyFrameProps(PVideoFrame src, PVideoFrame dst) const;
+#endif
   void ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env);
   ThreadPool* NewThreadPool(size_t nThreads);
+#ifdef NEOFP
   AVSMap* GetAVSMap(PVideoFrame& frame) { return frame->avsmap; }
-
+#endif
   void SetGraphAnalysis(bool enable) { graphAnalysisEnable = enable; }
 
   void IncEnvCount() { InterlockedIncrement(&EnvCount); }
@@ -776,14 +858,30 @@ private:
   struct DebugTimestampedFrame
   {
     VideoFrame* frame;
+#ifndef NEOFP
+    AVSMap* properties;
+#else
     AVSMap* avsmap;
+#endif
+
 #ifdef _DEBUG
     std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
 #endif
 
-    DebugTimestampedFrame(VideoFrame* _frame, AVSMap* _avsmap)
+    DebugTimestampedFrame(VideoFrame* _frame,
+#ifndef NEOFP
+      AVSMap* _properties
+#else
+      AVSMap* _avsmap
+#endif
+    )
       : frame(_frame)
+#ifndef NEOFP
+      , properties(_properties)
+#else
       , avsmap(_avsmap)
+#endif
+
 #ifdef _DEBUG
       , timestamp(std::chrono::high_resolution_clock::now())
 #endif
@@ -1321,6 +1419,122 @@ public:
     return core->SubframePlanarA(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
   }
 
+#ifndef NEOFP
+  void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst)
+  {
+    core->copyFrameProps(src, dst);
+  }
+
+  const AVSMap* __stdcall getFramePropsRO(const AVSFrameRef* frame)
+  {
+    return core->getFramePropsRO(frame);
+  }
+  AVSMap* __stdcall getFramePropsRW(AVSFrameRef* frame)
+  {
+    return core->getFramePropsRW(frame);
+  }
+  int __stdcall propNumKeys(const AVSMap* map)
+  {
+    return core->propNumKeys(map);
+  }
+  const char* __stdcall propGetKey(const AVSMap* map, int index)
+  {
+    return core->propGetKey(map, index);
+  }
+  int __stdcall propNumElements(const AVSMap* map, const char* key)
+  {
+    return core->propNumElements(map, key);
+  }
+  char __stdcall propGetType(const AVSMap* map, const char* key)
+  {
+    return core->propGetType(map, key);
+  }
+  int __stdcall propDeleteKey(AVSMap* map, const char* key)
+  {
+    return core->propDeleteKey(map, key);
+  }
+  int64_t __stdcall propGetInt(const AVSMap* map, const char* key, int index, int* error)
+  {
+    return core->propGetInt(map, key, index, error);
+  }
+  double __stdcall propGetFloat(const AVSMap* map, const char* key, int index, int* error)
+  {
+    return core->propGetFloat(map, key, index, error);
+  }
+  const char* __stdcall propGetData(const AVSMap* map, const char* key, int index, int* error)
+  {
+    return core->propGetData(map, key, index, error);
+  }
+  int __stdcall propGetDataSize(const AVSMap* map, const char* key, int index, int* error)
+  {
+    return core->propGetDataSize(map, key, index, error);
+  }
+  AVSClipRef* __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error)
+  {
+    return core->propGetClip(map, key, index, error);
+  }
+  const AVSFrameRef* __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error)
+  {
+    return core->propGetFrame(map, key, index, error);
+  }
+  int __stdcall propSetInt(AVSMap* map, const char* key, int64_t i, int append)
+  {
+    return core->propSetInt(map, key, i, append);
+  }
+  int __stdcall propSetFloat(AVSMap* map, const char* key, double d, int append)
+  {
+    return core->propSetFloat(map, key, d, append);
+  }
+  int __stdcall propSetData(AVSMap* map, const char* key, const char* d, int length, int append)
+  {
+    return core->propSetData(map, key, d, length, append);
+  }
+  int __stdcall propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append)
+  {
+    return core->propSetClip(map, key, clip, append);
+  }
+  int __stdcall propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append)
+  {
+    return core->propSetFrame(map, key, frame, append);
+  }
+
+  const int64_t* __stdcall propGetIntArray(const AVSMap* map, const char* key, int* error)
+  {
+    return core->propGetIntArray(map, key, error);
+  }
+
+  const double* __stdcall propGetFloatArray(const AVSMap* map, const char* key, int* error)
+  {
+    return core->propGetFloatArray(map, key, error);
+  }
+
+  int __stdcall propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size)
+  {
+    return core->propSetIntArray(map, key, i, size);
+  }
+
+  int __stdcall propSetFloatArray(AVSMap* map, const char* key, const double* d, int size)
+  {
+    return core->propSetFloatArray(map, key, d, size);
+  }
+
+  AVSMap* __stdcall createMap()
+  {
+    return core->createMap();
+  }
+
+  void __stdcall freeMap(AVSMap* map)
+  {
+    core->freeMap(map);
+  }
+
+  void __stdcall clearMap(AVSMap* map)
+  {
+    core->clearMap(map);
+  }
+
+#endif
+
   void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data = 0)
   {
     core->AddFunction(name, params, apply, user_data);
@@ -1643,20 +1857,24 @@ public:
     return core->GetOnDeviceFrame(src, device);
   }
 
+#ifdef NEOFP
   void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const
   {
     core->CopyFrameProps(src, dst);
   }
+#endif
 
   ThreadPool* __stdcall NewThreadPool(size_t nThreads)
   {
     return core->NewThreadPool(nThreads);
   }
 
+#ifdef NEOFP
   AVSMap* __stdcall GetAVSMap(PVideoFrame& frame)
   {
     return core->GetAVSMap(frame);
   }
+#endif
 
   void __stdcall AddRef() {
     InterlockedIncrement(&DISPATCH(refcount));
@@ -1710,10 +1928,12 @@ public:
     core->UpdateFunctionExports(funcName, funcParams, exportVar);
   }
 
+#ifdef NEOFP
   bool __stdcall MakePropertyWritable(PVideoFrame* pvf)
   {
     return core->MakePropertyWritable(pvf);
   }
+#endif
 
   InternalEnvironment* __stdcall NewThreadScriptEnvironment(int thread_id)
   {
@@ -2081,9 +2301,15 @@ ScriptEnvironment::~ScriptEnvironment() {
         it3 != end_it3;
         ++it3)
       {
+#ifndef NEOFP
+        delete it3->properties;
+        it3->properties = 0;
+        it3->frame->properties = 0; // fixme ??
+#else
         delete it3->avsmap;
         it3->avsmap = 0;
         it3->frame->avsmap = 0;
+#endif
       }
     }
   }
@@ -2675,7 +2901,11 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
   VideoFrame *newFrame = NULL;
   try
   {
+#ifndef NEOFP
     newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0);
+#else
+    newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0);
+#endif
   }
   catch(const std::bad_alloc&)
   {
@@ -2688,7 +2918,13 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
 
   // automatically inserts keys if they not exist!
   // no locking here, calling method have done it already
-  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame, newFrame->avsmap));
+  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame,
+#ifndef NEOFP
+    newFrame->properties
+#else
+    newFrame->avsmap
+#endif
+  ));
 
   //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
 
@@ -2903,7 +3139,11 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
       {
         size_t videoFrameListSize = it2->second.size();
         VideoFrame *frame_found;
-        AVSMap *map_found;
+#ifndef NEOFP
+        AVSMap* properties_found;
+#else
+        AVSMap* map_found;
+#endif
         bool found = false;
         for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
           it3 != end_it3;
@@ -2914,7 +3154,11 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           // sanity check if its refcount is zero
           // because when a vfb is free (refcount==0) then all its parent frames should also be free
           assert(0 == frame->refcount);
+#ifndef NEOFP
+          assert(nullptr != frame->properties);
+#else
           assert(0 == frame->avsmap->data.size());
+#endif
 
           if (!found)
           {
@@ -2941,7 +3185,11 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             }
             // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
             frame_found = frame;
+#ifndef NEOFP
+            properties_found = it3->properties;
+#else
             map_found = it3->avsmap;
+#endif
             found = true;
             ++it3;
           }
@@ -2950,7 +3198,11 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             // Benefit: no 4-5k frame list count per a single vfb.
             //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
             delete frame;
+#ifndef NEOFP
+            delete it3->properties;
+#else
             delete it3->avsmap;
+#endif
             ++it3;
           }
         } // for it3
@@ -2959,7 +3211,13 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. clearing frames. List count: it2->second.size(): %7zu \n", it2->second.size());
           it2->second.clear();
           it2->second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
-          it2->second.push_back(DebugTimestampedFrame(frame_found, map_found)); // keep only the first
+          it2->second.push_back(DebugTimestampedFrame(frame_found,
+#ifndef NEOFP
+            properties_found
+#else
+            map_found
+#endif
+          )); // keep only the first
           return frame_found;
         }
       }
@@ -3080,7 +3338,12 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
           VideoFrame *currentframe = it3->frame;
           assert(0 == currentframe->refcount);
           delete currentframe;
+#ifndef NEOFP
+          delete it3->properties;
+#else
           delete it3->avsmap;
+#endif
+
         }
         // delete array belonging to this vfb in one step
         it2->second.clear(); // clear frame list
@@ -3216,7 +3479,11 @@ void ScriptEnvironment::ShrinkCache(Device *device)
             if (0 == frame->refcount)
             {
               delete frame;
+#ifndef NEOFP
+              delete it3->properties;
+#else
               delete it3->avsmap;
+#endif
               ++freed_frame_count;
             }
             else {
@@ -3498,12 +3765,17 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   }
 
   // Copy properties
+#ifndef NEOFP
+  copyFrameProps(vf, dst);
+#else
   dst->avsmap->data = vf->avsmap->data;
+#endif
 
   *pvf = dst;
   return true;
 }
 
+#ifdef NEOFP
 bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
   const PVideoFrame& vf = *pvf;
 
@@ -3528,11 +3800,14 @@ bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
 
   // Copy properties
   dst->avsmap->data = vf->avsmap->data;
+#ifndef NEOFP
+  copyFrameProps(vf, dst);
+#endif
 
   *pvf = dst;
   return true;
 }
-
+#endif
 
 void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data) {
   at_exit.Add(function, user_data);
@@ -3546,14 +3821,25 @@ PVideoFrame ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new
 
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
+#ifndef NEOFP
+  PVideoFrame dst(subframe);
+  copyFrameProps(src, dst); // fixme: copyFrameProps with VideoFrame*
+#else
   subframe->avsmap->data = src->avsmap->data;
-
+#endif
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
   // automatically inserts if not exists!
   assert(NULL != subframe);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe, subframe->avsmap)); // insert with timestamp!
+
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
+#ifndef NEOFP
+    subframe->properties
+#else
+    subframe->avsmap
+#endif
+  )); // insert with timestamp!
 
   return subframe;
 }
@@ -3566,14 +3852,27 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
       ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
 
   VideoFrame *subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+
+#ifndef NEOFP
+  PVideoFrame dst(subframe);
+  copyFrameProps(src, dst);
+#else
   subframe->avsmap->data = src->avsmap->data;
+#endif
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
   // automatically inserts if not exists!
   assert(subframe != NULL);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe, subframe->avsmap)); // insert with timestamp!
+
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
+#ifndef NEOFP
+    subframe->properties
+#else
+    subframe->avsmap
+#endif
+  )); // insert with timestamp!
 
   return subframe;
 }
@@ -3586,14 +3885,26 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
       ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
+#ifndef NEOFP
+  PVideoFrame dst(subframe);
+  copyFrameProps(src, dst);
+#else
   subframe->avsmap->data = src->avsmap->data;
+#endif
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
                                                        // automatically inserts if not exists!
   assert(subframe != NULL);
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe, subframe->avsmap)); // insert with timestamp!
+
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
+#ifndef NEOFP
+    subframe->properties
+#else
+    subframe->avsmap
+#endif
+  )); // insert with timestamp!
 
   return subframe;
 }
@@ -3781,15 +4092,13 @@ static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, int leve
   return index;
 }
 
-static const PFunction& getter_proxy(const PFunction& f) { return f; };
-
 const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
   bool& pstrict, size_t args_names_count, const char* const* arg_names, IScriptEnvironment2* ctx)
 {
   AVSValue avsv;
   if (ctx->GetVar(search_name, &avsv) && avsv.IsFunction()) {
     //auto& funcv = avsv.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
-    decltype(auto) funcv = getter_proxy(avsv.AsFunction()); // PF: getter proxy + decltype!
+    const PFunction& funcv = avsv.AsFunction();
     const char* name = funcv->GetLegacyName();
     const Function* func = funcv->GetDefinition();
     if (name != nullptr) {
@@ -4304,6 +4613,223 @@ PVideoFrame ScriptEnvironment::SubframePlanarA(PVideoFrame src, int rel_offset, 
   return SubframePlanar(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
 }
 
+#ifndef NEOFP
+void ScriptEnvironment::copyFrameProps(const PVideoFrame& src, PVideoFrame& dst)
+{
+  dst->setProperties(src->getProperties());
+}
+
+// from vsapi.cpp
+// these were VS_CC (__stdcall)
+const AVSMap* ScriptEnvironment::getFramePropsRO(const AVSFrameRef* frame) AVS_NOEXCEPT {
+  assert(frame);
+  return &frame->frame->getConstProperties();
+}
+
+AVSMap* ScriptEnvironment::getFramePropsRW(AVSFrameRef* frame) AVS_NOEXCEPT {
+  assert(frame);
+  return &frame->frame->getProperties();
+}
+
+int ScriptEnvironment::propNumKeys(const AVSMap* map) AVS_NOEXCEPT {
+  assert(map);
+  return static_cast<int>(map->size());
+}
+
+const char* ScriptEnvironment::propGetKey(const AVSMap* map, int index) AVS_NOEXCEPT {
+  assert(map);
+  if (index < 0 || static_cast<size_t>(index) >= map->size())
+    ThrowError(("propGetKey: Out of bounds index " + std::to_string(index) + " passed. Valid range: [0," + std::to_string(map->size() - 1) + "]").c_str());
+
+  return map->key(index);
+}
+
+static int propNumElementsInternal(const AVSMap* map, const std::string& key) AVS_NOEXCEPT {
+  FramePropVariant* val = map->find(key);
+  return val ? (int)val->size() : -1;
+}
+
+
+int ScriptEnvironment::propNumElements(const AVSMap* map, const char* key) AVS_NOEXCEPT {
+  assert(map && key);
+  return propNumElementsInternal(map, key);
+}
+
+char ScriptEnvironment::propGetType(const AVSMap* map, const char* key) AVS_NOEXCEPT {
+  assert(map && key);
+  const char a[] = { 'u', 'i', 'f', 's', 'c', 'v', 'm' };
+  FramePropVariant* val = map->find(key);
+  return val ? a[val->getType()] : 'u';
+}
+
+int ScriptEnvironment::propDeleteKey(AVSMap* map, const char* key) AVS_NOEXCEPT {
+  assert(map && key);
+  return map->erase(key);
+}
+
+#define PROP_GET_SHARED(vt, retexpr) \
+    assert(map && key); \
+    if (map->hasError()) \
+        ThrowError("Attempted to read key '%s' from a map with error set: %s", key, map->getErrorMessage().c_str()); \
+    int err = 0; \
+    FramePropVariant *l = map->find(key); \
+    if (l && l->getType() == (vt)) { \
+        if (index >= 0 && static_cast<size_t>(index) < l->size()) { \
+            if (error) \
+                *error = 0; \
+            return (retexpr); \
+        } else { \
+            err |= peIndex; \
+        } \
+    } else if (l) { \
+        err |= peType; \
+    } else { \
+        err = peUnset; \
+    } \
+    if (!error) \
+        ThrowError("Property read unsuccessful but no error output: %s", key); \
+    *error = err; \
+    return 0;
+
+int64_t ScriptEnvironment::propGetInt(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  PROP_GET_SHARED(FramePropVariant::vInt, l->getValue<int64_t>(index))
+}
+
+double ScriptEnvironment::propGetFloat(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  PROP_GET_SHARED(FramePropVariant::vFloat, l->getValue<double>(index))
+}
+
+const char* ScriptEnvironment::propGetData(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  PROP_GET_SHARED(FramePropVariant::vData, l->getValue<VSMapData>(index)->c_str())
+}
+
+int ScriptEnvironment::propGetDataSize(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  PROP_GET_SHARED(FramePropVariant::vData, static_cast<int>(l->getValue<VSMapData>(index)->size()))
+}
+
+AVSClipRef* __stdcall ScriptEnvironment::propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  PROP_GET_SHARED(FramePropVariant::vClip, new AVSClipRef(l->getValue<AVSClipRef>(index)))
+}
+
+const AVSFrameRef* ScriptEnvironment::propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  PROP_GET_SHARED(FramePropVariant::vFrame, new AVSFrameRef(l->getValue<PVideoFrame>(index)))
+}
+
+static inline bool isAlphaUnderscore(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+}
+
+static inline bool isAlphaNumUnderscore(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
+}
+
+static bool isValidVSMapKey(const std::string& s) {
+  size_t len = s.length();
+  if (!len)
+    return false;
+
+  if (!isAlphaUnderscore(s[0]))
+    return false;
+  for (size_t i = 1; i < len; i++)
+    if (!isAlphaNumUnderscore(s[i]))
+      return false;
+  return true;
+}
+
+#define PROP_SET_SHARED(vv, appendexpr) \
+    assert(map && key); \
+    if (append != paReplace && append != paAppend && append != paTouch) \
+        ThrowError("Invalid prop append mode given when setting key '%s'", key); \
+    std::string skey = key; \
+    if (!isValidVSMapKey(skey)) \
+        return 1; \
+    if (append != paReplace && map->contains(skey)) { \
+        FramePropVariant &l = map->at(skey); \
+        if (l.getType() != (vv)) \
+            return 1; \
+        else if (append == paAppend) \
+            l.append(appendexpr); \
+    } else { \
+        FramePropVariant l((vv)); \
+        if (append != paTouch) \
+            l.append(appendexpr); \
+        map->insert(skey, std::move(l)); \
+    } \
+    return 0;
+
+
+int ScriptEnvironment::propSetInt(AVSMap* map, const char* key, int64_t i, int append) AVS_NOEXCEPT {
+  PROP_SET_SHARED(FramePropVariant::vInt, i)
+}
+
+int ScriptEnvironment::propSetFloat(AVSMap* map, const char* key, double d, int append) AVS_NOEXCEPT {
+  PROP_SET_SHARED(FramePropVariant::vFloat, d)
+}
+
+int ScriptEnvironment::propSetData(AVSMap* map, const char* key, const char* d, int length, int append) AVS_NOEXCEPT {
+  PROP_SET_SHARED(FramePropVariant::vData, length >= 0 ? std::string(d, length) : std::string(d))
+}
+
+int ScriptEnvironment::propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) AVS_NOEXCEPT {
+  PROP_SET_SHARED(FramePropVariant::vClip, *clip)
+}
+
+int ScriptEnvironment::propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) AVS_NOEXCEPT {
+  PROP_SET_SHARED(FramePropVariant::vFrame, frame->frame)
+}
+
+const int64_t* ScriptEnvironment::propGetIntArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT {
+  int index = 0;
+  PROP_GET_SHARED(FramePropVariant::vInt, l->getArray<int64_t>())
+}
+
+const double* ScriptEnvironment::propGetFloatArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT {
+  int index = 0;
+  PROP_GET_SHARED(FramePropVariant::vFloat, l->getArray<double>())
+}
+
+int ScriptEnvironment::propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) AVS_NOEXCEPT {
+  assert(map && key && size >= 0);
+  if (size < 0)
+    return 1;
+  std::string skey = key;
+  if (!isValidVSMapKey(skey))
+    return 1;
+  FramePropVariant l(FramePropVariant::vInt);
+  l.setArray(i, size);
+  map->insert(skey, std::move(l));
+  return 0;
+}
+
+ int ScriptEnvironment::propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) AVS_NOEXCEPT {
+  assert(map && key && size >= 0);
+  if (size < 0)
+    return 1;
+  std::string skey = key;
+  if (!isValidVSMapKey(skey))
+    return 1;
+  FramePropVariant l(FramePropVariant::vFloat);
+  l.setArray(d, size);
+  map->insert(skey, std::move(l));
+  return 0;
+}
+
+AVSMap* ScriptEnvironment::createMap() AVS_NOEXCEPT {
+  return new AVSMap();
+}
+
+void ScriptEnvironment::freeMap(AVSMap* map) AVS_NOEXCEPT {
+  delete map;
+}
+
+void ScriptEnvironment::clearMap(AVSMap* map) AVS_NOEXCEPT {
+  assert(map);
+  map->clear();
+}
+
+
+#endif
+
 PDevice ScriptEnvironment::GetDevice(AvsDeviceType device_type, int device_index) const
 {
   return Devices->GetDevice(device_type, device_index);
@@ -4340,15 +4866,20 @@ PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* 
   res->offsetA = src->pitchA ? (src->offsetA + diff) : 0;
   res->pitchA = src->pitchA;
   res->row_sizeA = src->row_sizeA;
+#ifndef NEOFP
+  *res->properties = *src->properties;
+#else
   res->avsmap->data = src->avsmap->data;
-
+#endif
   return PVideoFrame(res);
 }
 
+#ifdef NEOFP
 void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst) const
 {
   dst->avsmap->data = src->avsmap->data;
 }
+#endif
 
 ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
 {
@@ -4449,3 +4980,126 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version)
   else
     return NULL;
 }
+
+#ifndef NEOFP
+
+FramePropVariant::FramePropVariant(FramePropVType vtype) : vtype(vtype), internalSize(0), storage(nullptr) {
+}
+
+FramePropVariant::FramePropVariant(const FramePropVariant& v) : vtype(v.vtype), internalSize(v.internalSize), storage(nullptr) {
+  if (internalSize) {
+    switch (vtype) {
+    case FramePropVariant::vInt:
+      storage = new IntList(*reinterpret_cast<IntList*>(v.storage)); break;
+    case FramePropVariant::vFloat:
+      storage = new FloatList(*reinterpret_cast<FloatList*>(v.storage)); break;
+    case FramePropVariant::vData:
+      storage = new DataList(*reinterpret_cast<DataList*>(v.storage)); break;
+    case FramePropVariant::vClip:
+      storage = new ClipList(*reinterpret_cast<ClipList*>(v.storage)); break;
+    case FramePropVariant::vFrame:
+      storage = new FrameList(*reinterpret_cast<FrameList*>(v.storage)); break;
+/*    case FramePropVariant::vMethod:
+      storage = new FuncList(*reinterpret_cast<FuncList*>(v.storage)); break;*/
+    default:;
+    }
+  }
+}
+
+FramePropVariant::FramePropVariant(FramePropVariant&& v) : vtype(v.vtype), internalSize(v.internalSize), storage(v.storage) {
+  v.vtype = vUnset;
+  v.storage = nullptr;
+  v.internalSize = 0;
+}
+
+FramePropVariant::~FramePropVariant() {
+  if (storage) {
+    switch (vtype) {
+    case FramePropVariant::vInt:
+      delete reinterpret_cast<IntList*>(storage); break;
+    case FramePropVariant::vFloat:
+      delete reinterpret_cast<FloatList*>(storage); break;
+    case FramePropVariant::vData:
+      delete reinterpret_cast<DataList*>(storage); break;
+    case FramePropVariant::vClip:
+      delete reinterpret_cast<ClipList*>(storage); break;
+    case FramePropVariant::vFrame:
+      delete reinterpret_cast<FrameList*>(storage); break;
+/*    case FramePropVariant::vMethod:
+      delete reinterpret_cast<FuncList*>(storage); break;*/
+    default:;
+    }
+  }
+}
+
+size_t FramePropVariant::size() const {
+  return internalSize;
+}
+
+FramePropVariant::FramePropVType FramePropVariant::getType() const {
+  return vtype;
+}
+
+void FramePropVariant::append(int64_t val) {
+  initStorage(vInt);
+  reinterpret_cast<IntList*>(storage)->push_back(val);
+  internalSize++;
+}
+
+void FramePropVariant::append(double val) {
+  initStorage(vFloat);
+  reinterpret_cast<FloatList*>(storage)->push_back(val);
+  internalSize++;
+}
+
+void FramePropVariant::append(const std::string& val) {
+  initStorage(vData);
+  reinterpret_cast<DataList*>(storage)->push_back(std::make_shared<std::string>(val));
+  internalSize++;
+}
+
+void FramePropVariant::append(const AVSClipRef& val) {
+  initStorage(vClip);
+  reinterpret_cast<ClipList*>(storage)->push_back(val);
+  internalSize++;
+}
+
+void FramePropVariant::append(const PVideoFrame& val) {
+  initStorage(vFrame);
+  reinterpret_cast<FrameList*>(storage)->push_back(val);
+  internalSize++;
+}
+
+/*
+void FramePropVariant::append(const PExtFunction& val) {
+  initStorage(vMethod);
+  reinterpret_cast<FuncList*>(storage)->push_back(val);
+  internalSize++;
+}
+*/
+
+void FramePropVariant::initStorage(FramePropVType t) {
+  assert(vtype == vUnset || vtype == t);
+  vtype = t;
+  if (!storage) {
+    switch (t) {
+    case FramePropVariant::vInt:
+      storage = new IntList(); break;
+    case FramePropVariant::vFloat:
+      storage = new FloatList(); break;
+    case FramePropVariant::vData:
+      storage = new DataList(); break;
+/*    case FramePropVariant::vClip:
+      storage = new ClipList(); break;*/
+    case FramePropVariant::vFrame:
+      storage = new FrameList(); break;
+/*    case FramePropVariant::vMethod:
+      storage = new FuncList(); break;*/
+    default:;
+    }
+  }
+}
+
+///////////////
+
+#endif

@@ -52,8 +52,15 @@
 //         Thus the Avisynth+ specific API functions are safely callable even when connected to classic Avisynth DLL
 // 202002xx  non-Windows friendly additions
 // 20200305  avs_vsprintf parameter type change: (void *) to va_list
-// 20200322  AVS_VideoFrame extended with pointer to frame properies
 // 20200330: (remove test SIZETMOD define for clarity)
+// 20200407: frame properties
+//           AVS_VideoFrame struct extended with placeholder for frame properies pointer
+//           copyFrameProps
+//           getFramePropsRO, getFramePropsRW
+//           propNumKeys, propGetKey, propNumElements, propGetType, propGetDataSize
+//           propGetInt, propGetFloat, propGetData, propGetClip, propGetFrame, propGetIntArray, propGetFloatArray
+//           propSetInt, propSetFloat, propSetData, propSetClip, propSetFrame, propSetIntArray, propSetFloatArray
+//           propDeleteKey, clearMap
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -467,6 +474,7 @@ AVSC_INLINE int avs_sample_type(const AVS_VideoInfo * p)
         { return p->sample_type;}
 
 // useful mutator
+// Note: these are not the frame properties
 AVSC_INLINE void avs_set_property(AVS_VideoInfo * p, int property)
         { p->image_type|=property; }
 
@@ -535,6 +543,7 @@ AVSC_API(int, avs_num_components)(const AVS_VideoInfo * p);
 AVSC_API(int, avs_component_size)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_bits_per_component)(const AVS_VideoInfo * p);
+
 // end of Avisynth+ specific
 
 /////////////////////////////////////////////////////////////////////
@@ -577,7 +586,7 @@ typedef struct AVS_VideoFrame {
   // AVS+ extension, avisynth.h: class does not break plugins if appended here
   int offsetA;
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
-  void* avsmap; // really: AVSMap * from Neo
+  void* avsmap; // frame properties
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
@@ -644,7 +653,41 @@ AVSC_INLINE AVS_VideoFrame * avs_copy_frame(AVS_VideoFrame * f)
 #endif
 
 
-// todo: implement avsmap access
+///////////////////////////////////////////////////////////////////////////////
+// Avisynth+ new interface elements from 20200407 (fixme: update with proper IF version number)
+// frame properties
+
+// VS_Map is just a placeholder for AVSMap
+typedef struct VS_Map {
+  void* data;
+} VS_Map;
+
+AVSC_API(void, copyFrameProps)(AVS_ScriptEnvironment* p, const AVS_VideoFrame* src, AVS_VideoFrame* dst);
+AVSC_API(const VS_Map*, getFramePropsRO)(AVS_ScriptEnvironment* p, const AVS_VideoFrame* frame);
+AVSC_API(VS_Map*, getFramePropsRW)(AVS_ScriptEnvironment* p, AVS_VideoFrame* frame);
+AVSC_API(int, propNumKeys)(AVS_ScriptEnvironment* p, const VS_Map* map);
+AVSC_API(const char*, propGetKey)(AVS_ScriptEnvironment* p, const VS_Map* map, int index);
+AVSC_API(int, propNumElements)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key);
+AVSC_API(char, propGetType)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key);
+AVSC_API(int64_t, propGetInt)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key, int index, int* error);
+AVSC_API(double, propGetFloat)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key, int index, int* error);
+AVSC_API(const char*, propGetData)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key, int index, int* error);
+AVSC_API(int, propGetDataSize)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key, int index, int* error);
+AVSC_API(AVS_Clip*, propGetClip)(AVS_ScriptEnvironment * p, const VS_Map* map, const char* key, int index, int* error);
+AVSC_API(const AVS_VideoFrame*, propGetFrame)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key, int index, int* error);
+AVSC_API(int, propDeleteKey)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key);
+AVSC_API(int, propSetInt)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key, int64_t i, int append);
+AVSC_API(int, propSetFloat)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key, double d, int append);
+AVSC_API(int, propSetData)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key, const char* d, int length, int append);
+AVSC_API(int, propSetClip)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key, AVS_Clip*clip, int append);
+AVSC_API(const int64_t*, propGetIntArray)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key, int* error);
+AVSC_API(const double*, propGetFloatArray)(AVS_ScriptEnvironment* p, const VS_Map* map, const char* key, int* error);
+AVSC_API(int, propSetIntArray)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key, const int64_t* i, int size);
+AVSC_API(int, propSetFloatArray)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key, const double* d, int size);
+
+AVSC_API(int, propSetFrame)(AVS_ScriptEnvironment* p, VS_Map* map, const char* key, const AVS_VideoFrame* frame, int append);
+AVSC_API(void, clearMap)(AVS_ScriptEnvironment* p, VS_Map* map);
+
 /////////////////////////////////////////////////////////////////////
 //
 // AVS_Value
@@ -661,7 +704,7 @@ AVSC_INLINE AVS_VideoFrame * avs_copy_frame(AVS_VideoFrame * f)
 // AVS_Value is laid out identically to AVSValue
 typedef struct AVS_Value AVS_Value;
 struct AVS_Value {
-  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or 'l'ong
+  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or 'l'ong, or fu'n'ction
                // for some function e'rror
   short array_size;
   union {
@@ -1039,6 +1082,37 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_num_components);
   AVSC_DECLARE_FUNC(avs_component_size);
   AVSC_DECLARE_FUNC(avs_bits_per_component);
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Avisynth+ new interface elements from 20200407 (fixme: update with proper IF version number)
+  // frame properties
+  AVSC_DECLARE_FUNC(copyFrameProps);
+  AVSC_DECLARE_FUNC(getFramePropsRO);
+  AVSC_DECLARE_FUNC(getFramePropsRW);
+  AVSC_DECLARE_FUNC(propNumKeys);
+  AVSC_DECLARE_FUNC(propGetKey);
+  AVSC_DECLARE_FUNC(propNumElements);
+  AVSC_DECLARE_FUNC(propGetType);
+  AVSC_DECLARE_FUNC(propGetInt);
+  AVSC_DECLARE_FUNC(propGetFloat);
+  AVSC_DECLARE_FUNC(propGetData);
+  AVSC_DECLARE_FUNC(propGetDataSize);
+  AVSC_DECLARE_FUNC(propGetClip);
+  AVSC_DECLARE_FUNC(propGetFrame);
+  AVSC_DECLARE_FUNC(propDeleteKey);
+  AVSC_DECLARE_FUNC(propSetInt);
+  AVSC_DECLARE_FUNC(propSetFloat);
+  AVSC_DECLARE_FUNC(propSetData);
+  AVSC_DECLARE_FUNC(propSetClip);
+  AVSC_DECLARE_FUNC(propSetFrame);
+
+  AVSC_DECLARE_FUNC(propGetIntArray);
+  AVSC_DECLARE_FUNC(propGetFloatArray);
+  AVSC_DECLARE_FUNC(propSetFloat);
+  AVSC_DECLARE_FUNC(propSetIntArray);
+
+  AVSC_DECLARE_FUNC(clearMap);
+
   // end of Avisynth+ specific
 
 };

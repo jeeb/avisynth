@@ -828,6 +828,37 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
     PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
     TransferFrameData(dst, src, false, env);
 
+#ifndef NEOFP
+    auto env2 = static_cast<IScriptEnvironment2*>(env);
+    AVSFrameRef fr(dst);
+    AVSMap* mapv = env2->getFramePropsRW(&fr);
+    const int numKeys = env2->propNumKeys(mapv);
+    for (int i = 0; i < numKeys; i++) {
+      const char* key = env2->propGetKey(mapv, i);
+      if (env2->propGetType(mapv, key) == 'v') {
+        // isFrame true
+        const int numElements = env2->propNumElements(mapv, key);
+
+        std::vector<PVideoFrame> frameset;
+        int error;
+
+        for (int index = 0; index < numElements; index++) {
+          const AVSFrameRef* srcframe = env2->propGetFrame(mapv, key, index, &error);
+          frameset.push_back(srcframe->frame);
+        }
+
+        env->propDeleteKey(mapv, key);
+
+        for (int index = 0; index < numElements; index++) {
+          PVideoFrame src = frameset[index];
+          PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
+          TransferFrameData(dst, src, false, env);
+          const AVSFrameRef newfr(dst);
+          env->propSetFrame(mapv, key, &newfr, VSPropAppendMode::paAppend);
+        }
+      }
+    }
+#else
     AVSMap* mapv = env->GetAVSMap(dst);
     for (auto it = mapv->data.begin(), end = mapv->data.end(); it != end; ++it) {
       if (it->second.IsFrame()) {
@@ -837,7 +868,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
         it->second = dst;
       }
     }
-
+#endif
     ExecuteCallbacks(downstreamDevice->GetAndClearCallbacks().get());
 
     return dst;
@@ -857,6 +888,37 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
 
     TransferFrameData(cacheHandle.first->value, item.src, true, env);
 
+#ifndef NEOFP
+    auto env2 = static_cast<IScriptEnvironment2*>(env);
+    AVSFrameRef fr(cacheHandle.first->value);
+    AVSMap* mapv = env2->getFramePropsRW(&fr);
+    const int numKeys = env2->propNumKeys(mapv);
+    for (int i = 0; i < numKeys; i++) {
+      const char* key = env2->propGetKey(mapv, i);
+      if (env2->propGetType(mapv, key) == 'v') {
+        // isFrame true
+        const int numElements = env2->propNumElements(mapv, key);
+
+        std::vector<PVideoFrame> frameset;
+        int error;
+
+        for (int index = 0; index < numElements; index++) {
+          const AVSFrameRef* srcframe = env2->propGetFrame(mapv, key, index, &error);
+          frameset.push_back(srcframe->frame);
+        }
+
+        env->propDeleteKey(mapv, key);
+
+        for (int index = 0; index < numElements; index++) {
+          PVideoFrame src = frameset[index];
+          PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
+          TransferFrameData(dst, src, true, env);
+          const AVSFrameRef newfr(dst);
+          env->propSetFrame(mapv, key, &newfr, VSPropAppendMode::paAppend);
+        }
+      }
+    }
+#else
     AVSMap* mapv = env->GetAVSMap(cacheHandle.first->value);
     for (auto it = mapv->data.begin(), end = mapv->data.end(); it != end; ++it) {
       if (it->second.IsFrame()) {
@@ -866,6 +928,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
         it->second = dst;
       }
     }
+#endif
 
     CUDA_CHECK(cudaEventRecord(item.completeEvent, stream));
 

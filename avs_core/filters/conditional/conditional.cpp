@@ -70,7 +70,19 @@ extern const AVSFunction Conditional_filters[] = {
   {  "WriteFileStart",    BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[local]b", Write::Create_Start }, // function input
   {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[local]b", Write::Create_End }, // function input
   { "UseVar", BUILTIN_FUNC_PREFIX, "cs+", UseVar::Create },
-  { "AddProp", BUILTIN_FUNC_PREFIX, "css", AddProp::Create },
+#ifdef NEOFP
+  { "AddProp", BUILTIN_FUNC_PREFIX, "csn", AddProp::Create },
+#endif
+#ifndef NEOFP
+  // in conditional_reader.cpp, see property getters in conditional_functions.cpp
+  { "propSet", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void *)0 },
+  { "propSetInt", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)1 },
+  { "propSetFloat", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)2 },
+  { "propSetString", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)3 },
+  { "propSetArray", BUILTIN_FUNC_PREFIX, "csn", SetProperty::Create, (void*)4 },
+  { "propDelete", BUILTIN_FUNC_PREFIX, "cs", DeleteProperty::Create },
+  { "propClearAll", BUILTIN_FUNC_PREFIX, "c", ClearProperties::Create },
+#endif
   { 0 }
 };
 

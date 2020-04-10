@@ -70,7 +70,49 @@ private:
 
 };
 
+#ifdef NEOFP
 class GetProp_ {
 public:
    static AVSValue Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
+#endif
+
+#ifndef NEOFP
+class GetProperty {
+public:
+  static AVSValue Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+};
+
+#ifdef NEW_AVSVALUE
+class GetPropertyAsArray {
+public:
+  static AVSValue Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+};
+#endif
+
+class GetPropertyDataSize {
+public:
+  static AVSValue Create(AVSValue args, void* , IScriptEnvironment* env);
+};
+
+class GetPropertyType {
+public:
+  static AVSValue Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
+class GetPropertyNumElements {
+public:
+  static AVSValue Create(AVSValue args, void* , IScriptEnvironment* env);
+};
+
+class GetPropertyNumKeys {
+public:
+  static AVSValue Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
+class GetPropertyKeyByIndex {
+public:
+  static AVSValue Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
+#endif

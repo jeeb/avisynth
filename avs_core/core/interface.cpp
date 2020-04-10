@@ -58,6 +58,7 @@
 #include "DeviceManager.h"
 #include "AVSMap.h"
 #include "function.h"
+#include "assert.h"
 
 /**********************************************************************/
 
@@ -477,9 +478,14 @@ void VideoFrame::Release() {
   VideoFrameBuffer* _vfb = vfb;
 
   if (!InterlockedDecrement(&refcount)) {
+#ifndef NEOFP
+    if (properties)
+      properties->clear();
+#else
     if (avsmap) {
       avsmap->data.clear();
     }
+#endif
     InterlockedDecrement(&_vfb->refcount);
   }
 }
@@ -548,9 +554,11 @@ bool VideoFrame::IsWritable() const {
   return false;
 }
 
+#ifdef NEOFP
 bool VideoFrame::IsPropertyWritable() const {
 	return (refcount == 1);
 }
+#endif
 
 BYTE* VideoFrame::GetWritePtr(int plane) const {
   if (!plane || plane == PLANAR_Y || plane == PLANAR_G) { // planar RGB order GBR
@@ -563,6 +571,19 @@ BYTE* VideoFrame::GetWritePtr(int plane) const {
   return vfb->data + GetOffset(plane);
 }
 
+#ifndef NEOFP
+AVSMap& VideoFrame::getProperties() {
+  return *properties;
+}
+
+const AVSMap& VideoFrame::getConstProperties() {
+  return *properties;
+}
+
+void VideoFrame::setProperties(const AVSMap& properties) {
+  *(this->properties) = properties;
+}
+#else
 void VideoFrame::SetProperty(const char* key, const AVSMapValue& value) {
 
 	if (refcount > 1) {
@@ -613,6 +634,7 @@ bool VideoFrame::DeleteProperty(const char* key) {
   std::unique_lock<std::mutex> global_lock(avsmap->mutex);
 	return (avsmap->data.erase(key) > 0);
 }
+#endif
 
 PDevice VideoFrame::GetDevice() const {
   return vfb->device;
@@ -1289,9 +1311,15 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoInfo::IsPlanarRGB,                  //   bool    (VideoInfo::*IsPlanarRGB)()  const;
   &VideoInfo::IsPlanarRGBA,                 //   bool    (VideoInfo::*IsPlanarRGBA)()  const;
 /**********************************************************************/
+#ifndef NEOFP
+  &VideoFrame::getProperties, // AVSMap& (VideoFrame::* getProperties)();
+  &VideoFrame::getConstProperties, // const AVSMap& (VideoFrame::* getConstProperties)();
+  &VideoFrame::setProperties, // void (VideoFrame::* setProperties)(const AVSMap& properties);
+#else
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
+#endif
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
@@ -1356,15 +1384,39 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
 /**********************************************************************/
   // AviSynth Neo additions
   &GetAvsEnv,
+#ifndef NEOFP
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+#else
   &VideoFrame::SetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::GetProperty,
   &VideoFrame::DeleteProperty,
+#endif
   &VideoFrame::GetDevice,
   &VideoFrame::CheckMemory,
 
+#ifndef NEOFP
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+#else
   // class AVSMapValue
   &AVSMapValue::CONSTRUCTOR0,
   &AVSMapValue::CONSTRUCTOR1,
@@ -1379,7 +1431,8 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &AVSMapValue::GetFrame,
   &AVSMapValue::GetInt,
   &AVSMapValue::GetFloat,
-  // end class AVSMapValue
+#endif
+   // end class AVSMapValue
 
 // PFunction
   &AVSValue::CONSTRUCTOR11,
@@ -1405,7 +1458,11 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &PDevice::GetName,
   // end class PDevice
 
-	&VideoFrame::IsPropertyWritable,
+#ifndef NEOFP
+  NULL,
+#else
+  &VideoFrame::IsPropertyWritable,
+#endif
 
 // this part should be identical with struct AVS_Linkage in avisynth.h
 

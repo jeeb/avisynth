@@ -141,6 +141,41 @@ public:
   virtual void __stdcall Free(void* ptr) = 0;
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
+  // New AVS+ addition
+#ifndef NEOFP
+  // frame properties support
+  virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0;
+
+  virtual const AVSMap* getFramePropsRO(const AVSFrameRef* frame) = 0;
+  virtual AVSMap* getFramePropsRW(AVSFrameRef* frame) = 0;
+
+  virtual int propNumKeys(const AVSMap* map) = 0;
+  virtual const char* propGetKey(const AVSMap* map, int index) = 0;
+  virtual int propDeleteKey(AVSMap* map, const char* key) = 0;
+  virtual int propNumElements(const AVSMap* map, const char* key) = 0;
+  virtual char propGetType(const AVSMap* map, const char* key) = 0;
+
+  virtual int64_t propGetInt(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual double propGetFloat(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const char* propGetData(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual int propGetDataSize(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual int propSetInt(AVSMap* map, const char* key, int64_t i, int append) = 0;
+  virtual int propSetFloat(AVSMap* map, const char* key, double d, int append) = 0;
+  virtual int propSetData(AVSMap* map, const char* key, const char* d, int length, int append) = 0;
+  virtual int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) = 0;
+  virtual int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) = 0;
+
+  virtual const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual const double *propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) = 0;
+  virtual int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) = 0;
+
+  virtual AVSMap* createMap() = 0;
+  virtual void freeMap(AVSMap* map) = 0;
+  virtual void clearMap(AVSMap* map) = 0;
+#endif
 
   // InternalEnvironment
   virtual int __stdcall IncrImportDepth() = 0;
@@ -169,7 +204,9 @@ public:
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) = 0;
   virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device) = 0;
 
+#ifdef NEOFP
   virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) = 0;
+#endif
 
   using INeoEnv::SetMemoryMax;
   using INeoEnv::Invoke;

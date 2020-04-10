@@ -134,7 +134,8 @@ public:
    static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
 
-
+#ifdef NEOFP
+// Neo properties
 class AddProp : public GenericVideoFilter
 {
 private:
@@ -148,3 +149,49 @@ public:
    int __stdcall SetCacheHints(int cachehints, int frame_range);
    static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
+#endif
+
+#ifndef NEOFP
+// avs+ (vs) style frame properties
+class SetProperty : public GenericVideoFilter
+{
+private:
+  const char* name;
+  PFunction func;
+  const int kind;
+  const int append_mode; // VSPropAppendMode
+
+public:
+  SetProperty(PClip _child, const char* name, const PFunction& eval, const int kind, const int mode, IScriptEnvironment* env);
+  ~SetProperty();
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
+  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+};
+
+class DeleteProperty : public GenericVideoFilter
+{
+private:
+  const char* name;
+
+public:
+  DeleteProperty(PClip _child, const char* name, IScriptEnvironment* env);
+  ~DeleteProperty();
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
+  static AVSValue __cdecl Create(AVSValue args, void* , IScriptEnvironment* env);
+};
+
+class ClearProperties : public GenericVideoFilter
+{
+private:
+
+public:
+  ClearProperties(PClip _child, IScriptEnvironment* env);
+  ~ClearProperties();
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
+#endif
