@@ -1844,7 +1844,7 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   const bool interlaced = args[15].AsBool(false); // n/a
   const char* font_filename = args[16].AsString("");
   const bool utf8 = args[17].AsBool(false); // linux: n/a
-  const bool bold = args[18].AsBool(false); // different from SubTitle
+  const bool bold = args.ArraySize() >= 19 ? args[18].AsBool(false) : false; // different from SubTitle, guard array access of extra parameter
 
   // parameters marked with n/a are ignored; parameter list is currently the same as SubTitle
 
