@@ -924,7 +924,11 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
           env->BitBlt(src->GetWritePtr(PLANAR_A),src->GetPitch(PLANAR_A),chroma->GetReadPtr(PLANAR_A),chroma->GetPitch(PLANAR_A),chroma->GetRowSize(PLANAR_A),chroma->GetHeight(PLANAR_A));
       }
       else { // avoid the cost of 2 chroma blits
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
         env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
         env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),chroma->GetReadPtr(PLANAR_U),chroma->GetPitch(PLANAR_U),chroma->GetRowSize(PLANAR_U),chroma->GetHeight(PLANAR_U));
@@ -1052,7 +1056,11 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
       return luma;
     }
     else { // avoid the cost of 2 chroma blits
+#ifndef NEOFP
+      PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &luma);
+#else
       PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
       env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),luma->GetReadPtr(PLANAR_Y),luma->GetPitch(PLANAR_Y),luma->GetRowSize(PLANAR_Y),luma->GetHeight(PLANAR_Y));
       if (src->GetRowSize(PLANAR_U) && dst->GetRowSize(PLANAR_U)) {

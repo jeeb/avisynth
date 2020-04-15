@@ -1538,7 +1538,11 @@ static void copy_frame(const PVideoFrame &src, PVideoFrame &dst, IScriptEnvironm
 PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
   const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
@@ -2667,7 +2671,11 @@ SpatialSoften::SpatialSoften( PClip _child, int _radius, unsigned _luma_threshol
 PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();

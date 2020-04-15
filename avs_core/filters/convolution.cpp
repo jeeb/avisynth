@@ -649,8 +649,12 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
   int h = vi.height;
   int w = vi.width;
 
-  PVideoFrame dst = env->NewVideoFrame(vi);
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
+  PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
 
   const int *matrix = iMatrix.data();

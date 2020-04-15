@@ -917,6 +917,8 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     if (colorbar_bits>0)
     {
         PVideoFrame dst = env->NewVideoFrame(vi);
+        // no frame property source. It's like a source filter
+
         // pre AVS+: full_range is always false
         // AVS+: showyuv_fullrange bool parameter
         // AVS+: bits parameter
@@ -1083,7 +1085,11 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
             coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
         }
       }
+#ifndef NEOFP
+      dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
       dst = env->NewVideoFrame(vi); // go live dst here!
+#endif
 
       if (vi.IsYUY2())
       {

@@ -205,7 +205,11 @@ static void convert_rgb48_to_rgb64_c(const BYTE *srcp, BYTE *dstp, size_t src_pi
 PVideoFrame __stdcall RGBtoRGBA::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   const BYTE *srcp = src->GetReadPtr();
   BYTE *dstp = dst->GetWritePtr();
   const int src_pitch = src->GetPitch();
@@ -407,7 +411,11 @@ static void convert_rgb64_to_rgb48_c(const BYTE *srcp, BYTE *dstp, size_t src_pi
 PVideoFrame __stdcall RGBAtoRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   const BYTE *srcp = src->GetReadPtr();
   BYTE *dstp = dst->GetWritePtr();
   size_t src_pitch = src->GetPitch();
@@ -647,7 +655,11 @@ static void convert_rgb_to_rgbp_c(const BYTE *srcp, BYTE * (&dstp)[4], int src_p
 PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   int src_pitch = src->GetPitch();
   const BYTE *srcp = src->GetReadPtr();
   BYTE *dstp[4] = {dst->GetWritePtr(PLANAR_G),dst->GetWritePtr(PLANAR_B),dst->GetWritePtr(PLANAR_R),dst->GetWritePtr(PLANAR_A)};
@@ -849,7 +861,11 @@ static void convert_rgbp_to_rgb_c(const BYTE *(&srcp)[4], BYTE * dstp, int (&src
 PVideoFrame __stdcall PlanarRGBtoPackedRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   int dst_pitch = dst->GetPitch();
   BYTE *dstp = dst->GetWritePtr();
   const BYTE *srcp[4] = {src->GetReadPtr(PLANAR_G),src->GetReadPtr(PLANAR_B),src->GetReadPtr(PLANAR_R),src->GetReadPtr(PLANAR_A)};

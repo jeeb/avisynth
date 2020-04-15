@@ -175,6 +175,8 @@ public:
   virtual AVSMap* createMap() = 0;
   virtual void freeMap(AVSMap* map) = 0;
   virtual void clearMap(AVSMap* map) = 0;
+
+  // NewVideoFrame with frame prop source is replaced with new one
 #endif
 
   // InternalEnvironment
@@ -201,7 +203,11 @@ public:
 
   virtual Device* __stdcall SetCurrentDevice(Device* device) = 0;
   virtual Device* __stdcall GetCurrentDevice() const = 0;
+  // replacement of NewVideoFrame
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) = 0;
+#ifndef NEOFP
+  virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame *propSrc) = 0;
+#endif
   virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device) = 0;
 
 #ifdef NEOFP

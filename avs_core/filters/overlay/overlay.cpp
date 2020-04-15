@@ -266,7 +266,7 @@ Overlay::~Overlay() {
 }
 
 PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
-
+  // fixme: do all necessary conversions in filter creation, not in GetFrame!
   int op_offset;
   float op_offset_f;
   int con_x_offset;
@@ -296,22 +296,34 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   else if (isInternal444) {
     if ((pixelsize == 1 || pixelsize == 2) && inputVi->Is420()) {
       // use blazing fast YV12 -> YV24 converter
-      PVideoFrame frameSrc420 = child->GetFrame(n, env);
+      PVideoFrame Inframe = child->GetFrame(n, env);
+#ifndef NEOFP
+      frame = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalWorkingFormat, &Inframe);
+#else
       frame = env->NewVideoFrame(*viInternalWorkingFormat);
+#endif
       // no fancy options for chroma resampler, etc.. simply fast
-      Convert444FromYV12(frameSrc420, frame, pixelsize, bits_per_pixel, env);
+      Convert444FromYV12(Inframe, frame, pixelsize, bits_per_pixel, env);
     }
     else if ((pixelsize == 1 || pixelsize == 2) && inputVi->Is422()) {
-   // use blazing fast YV16 -> YV24 converter
-      PVideoFrame frameSrc422 = child->GetFrame(n, env);
+      // use blazing fast YV16 -> YV24 converter
+      PVideoFrame Inframe = child->GetFrame(n, env);
+#ifndef NEOFP
+      frame = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalWorkingFormat, &Inframe);
+#else
       frame = env->NewVideoFrame(*viInternalWorkingFormat);
-      Convert444FromYV16(frameSrc422, frame, pixelsize, bits_per_pixel, env);
+#endif
+      Convert444FromYV16(Inframe, frame, pixelsize, bits_per_pixel, env);
     }
     else if (inputVi->IsYUY2()) {
-   // use blazing fast YUY2 -> YV24 converter
-      PVideoFrame frameSrcYUY2 = child->GetFrame(n, env);
+      // use blazing fast YUY2 -> YV24 converter
+      PVideoFrame Inframe = child->GetFrame(n, env);
+#ifndef NEOFP
+      frame = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalWorkingFormat, &Inframe);
+#else
       frame = env->NewVideoFrame(*viInternalWorkingFormat);
-      Convert444FromYUY2(frameSrcYUY2, frame, pixelsize, bits_per_pixel, env);
+#endif
+      Convert444FromYUY2(Inframe, frame, pixelsize, bits_per_pixel, env);
     }
     else if (inputVi->IsRGB()) {
       // clip, interlaced, matrix
@@ -373,23 +385,35 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   }
   else if (isInternal444) {
     if ((pixelsize == 1 || pixelsize == 2) && overlayVi.Is420()) {
-      // use blazing fast YV12 -> YV24 converter
-      PVideoFrame frameSrc420 = overlay->GetFrame(n, env);
+      // use blazing fast YV12 -> YV24 converter. Note: not exact chroma placement
+      PVideoFrame frame = overlay->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
       // no fancy options for chroma resampler, etc.. simply fast
-      Convert444FromYV12(frameSrc420, Oframe, pixelsize, bits_per_pixel, env);
+      Convert444FromYV12(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
     else if ((pixelsize == 1 || pixelsize == 2) && overlayVi.Is422()) {
       // use blazing fast YV16 -> YV24 converter
-      PVideoFrame frameSrc422 = overlay->GetFrame(n, env);
+      PVideoFrame frame = overlay->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
-      Convert444FromYV16(frameSrc422, Oframe, pixelsize, bits_per_pixel, env);
+#endif
+      Convert444FromYV16(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
     else if (overlayVi.IsYUY2()) {
       // use blazing fast YUY2 -> YV24 converter
-      PVideoFrame frameSrcYUY2 = overlay->GetFrame(n, env);
+      PVideoFrame frame = overlay->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
-      Convert444FromYUY2(frameSrcYUY2, Oframe, pixelsize, bits_per_pixel, env);
+#endif
+      Convert444FromYUY2(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
     else if (overlayVi.IsRGB()) {
       // clip, interlaced, matrix
@@ -418,9 +442,13 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     else if (overlayVi.IsYUY2()) {
       // use blazing fast YUY2 -> YV24 converter
       // we'll use only Y anyway
-      PVideoFrame frameSrcYUY2 = overlay->GetFrame(n, env);
+      PVideoFrame frame = overlay->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
-      Convert444FromYUY2(frameSrcYUY2, Oframe, pixelsize, bits_per_pixel, env);
+#endif
+      Convert444FromYUY2(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
     else {
       AVSValue new_args[1] = { overlay };
@@ -453,19 +481,27 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
       overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
       // faster than invoking ConvertToYUV420
-      PVideoFrame frameSrc420 = overlay2.AsClip()->GetFrame(n, env);
+      PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
       // no fancy options for chroma resampler, etc.. simply fast
-      Convert444ToYV12(frameSrc420, Oframe, pixelsize, bits_per_pixel, env);
+      Convert444ToYV12(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
     else {
       // clip, interlaced
       AVSValue new_args[2] = { overlay, false };
       overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
-      PVideoFrame frameSrc420 = overlay2.AsClip()->GetFrame(n, env);
+      PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
       // no fancy options for chroma resampler, etc.. simply fast
-      Convert444ToYV12(frameSrc420, Oframe, pixelsize, bits_per_pixel, env);
+      Convert444ToYV12(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
   } else if(isInternal422) {
     if (overlayVi.Is422())
@@ -476,19 +512,27 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
       overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
       // faster than invoking ConvertToYUV422
-      PVideoFrame frameSrc422 = overlay2.AsClip()->GetFrame(n, env);
+      PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
       // no fancy options for chroma resampler, etc.. simply fast
-      Convert444ToYV16(frameSrc422, Oframe, pixelsize, bits_per_pixel, env);
+      Convert444ToYV16(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
     else {
       AVSValue new_args[2] = { overlay, false };
       // clip, interlaced
       overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
-      PVideoFrame frameSrc422 = overlay2.AsClip()->GetFrame(n, env);
+      PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
+#ifndef NEOFP
+      Oframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
       // no fancy options for chroma resampler, etc.. simply fast
-      Convert444ToYV16(frameSrc422, Oframe, pixelsize, bits_per_pixel, env);
+      Convert444ToYV16(frame, Oframe, pixelsize, bits_per_pixel, env);
     }
   }
   // Fetch current overlay and convert it to internal format
@@ -528,23 +572,35 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       else if (isInternal444 || greymask) {
         if ((pixelsize == 1 || pixelsize == 2) && maskVi.Is420()) {
           // use blazing fast YV12 -> YV24 converter
-          PVideoFrame frameSrc420 = mask->GetFrame(n, env);
+          PVideoFrame frame = mask->GetFrame(n, env);
+#ifndef NEOFP
+          Mframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
           // no fancy options for chroma resampler, etc.. simply fast
-          Convert444FromYV12(frameSrc420, Mframe, pixelsize, bits_per_pixel, env);
+          Convert444FromYV12(frame, Mframe, pixelsize, bits_per_pixel, env);
           // convert frameSrc420 -> frame
         }
         else if ((pixelsize == 1 || pixelsize == 2) && maskVi.Is422()) {
           // use blazing fast YV16 -> YV24 converter
-          PVideoFrame frameSrc422 = mask->GetFrame(n, env);
+          PVideoFrame frame = mask->GetFrame(n, env);
+#ifndef NEOFP
+          Mframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
-          Convert444FromYV16(frameSrc422, Mframe, pixelsize, bits_per_pixel, env);
+#endif
+          Convert444FromYV16(frame, Mframe, pixelsize, bits_per_pixel, env);
         }
         else if (maskVi.IsYUY2()) {
           // use blazing fast YUY2 -> YV24 converter
-          PVideoFrame frameSrcYUY2 = mask->GetFrame(n, env);
+          PVideoFrame frame = mask->GetFrame(n, env);
+#ifndef NEOFP
+          Mframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
-          Convert444FromYUY2(frameSrcYUY2, Mframe, pixelsize, bits_per_pixel, env);
+#endif
+          Convert444FromYUY2(frame, Mframe, pixelsize, bits_per_pixel, env);
         }
         else if (maskVi.IsRGB()) {
           if (greymask) {
@@ -580,19 +636,27 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
           mask2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
           // faster than invoking ConvertToYUV420
-          PVideoFrame frameSrc420 = mask2.AsClip()->GetFrame(n, env);
+          PVideoFrame frame = mask2.AsClip()->GetFrame(n, env);
+#ifndef NEOFP
+          Mframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
           // no fancy options for chroma resampler, etc.. simply fast
-          Convert444ToYV12(frameSrc420, Mframe, pixelsize, bits_per_pixel, env);
+          Convert444ToYV12(frame, Mframe, pixelsize, bits_per_pixel, env);
         }
         else if (isInternal422) {
           AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
           mask2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 3)).AsClip();
           // faster than invoking ConvertToYUV422
-          PVideoFrame frameSrc422 = mask2.AsClip()->GetFrame(n, env);
+          PVideoFrame frame = mask2.AsClip()->GetFrame(n, env);
+#ifndef NEOFP
+          Mframe = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+#else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
+#endif
           // no fancy options for chroma resampler, etc.. simply fast
-          Convert444ToYV16(frameSrc422, Mframe, pixelsize, bits_per_pixel, env);
+          Convert444ToYV16(frame, Mframe, pixelsize, bits_per_pixel, env);
         }
         else {
           AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
@@ -647,15 +711,27 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // apply fast conversion
   if((pixelsize==1 || pixelsize == 2) && outputVi->Is420() && viInternalWorkingFormat->Is444())
   {
+#ifndef NEOFP
+    PVideoFrame outputFrame = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*outputVi, &frame);
+#else
     PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
+#endif
     Convert444ToYV12(frame, outputFrame, pixelsize, bits_per_pixel, env);
     return outputFrame;
   } else if((pixelsize==1 || pixelsize == 2) && outputVi->Is422() && viInternalWorkingFormat->Is444()) {
+#ifndef NEOFP
+    PVideoFrame outputFrame = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*outputVi, &frame);
+#else
     PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
+#endif
     Convert444ToYV16(frame, outputFrame, pixelsize, bits_per_pixel, env);
     return outputFrame;
   } else if(outputVi->IsYUY2()) {
+#ifndef NEOFP
+    PVideoFrame outputFrame = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(*outputVi, &frame);
+#else
     PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
+#endif
     Convert444ToYUY2(frame, outputFrame, pixelsize, bits_per_pixel, env);
     return outputFrame;
   }

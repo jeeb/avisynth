@@ -2143,7 +2143,11 @@ MaskHS::MaskHS(PClip _child, double _startHue, double _endHue, double _maxSat, d
 PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
 {
     PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+    PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
     PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
     uint8_t* dstp = dst->GetWritePtr();
     int dst_pitch = dst->GetPitch();

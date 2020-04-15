@@ -170,6 +170,7 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
   IScriptEnvironment* env)
 {
     auto result = env->NewVideoFrame(vi);
+    // fixme: this is source filter, add frame properties if possible
     BYTE* dstp = result->GetWritePtr();
     int pitch = result->GetPitch();
     int height = result->GetHeight();

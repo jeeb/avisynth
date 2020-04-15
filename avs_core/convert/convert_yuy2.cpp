@@ -390,7 +390,11 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
 
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {
+#ifndef NEOFP
+    PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
     PVideoFrame dst = env->NewVideoFrame(vi,32);
+#endif
     BYTE* dstp = dst->GetWritePtr();
     const BYTE* srcp_y = src->GetReadPtr(PLANAR_Y);
     const BYTE* srcp_u = src->GetReadPtr(PLANAR_U);
@@ -437,7 +441,11 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     return dst;
   }
 
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   BYTE* yuv = dst->GetWritePtr();
 
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
@@ -939,7 +947,11 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 
   if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24)
   {
+#ifndef NEOFP
+    PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
     PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
     BYTE* dstp = dst->GetWritePtr();
     const int dpitch  = dst->GetPitch();
 
@@ -968,7 +980,11 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     return dst;
   }
 
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   BYTE* yuv = dst->GetWritePtr();
 
 

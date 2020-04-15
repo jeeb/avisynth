@@ -62,7 +62,11 @@ public:
     {
         PVideoFrame src = child->GetFrame(n, env);
 
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
         const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
         const int plane_count = vi.IsY8() ? 1 : 3; // checking the stacked 8 bit format constants
@@ -179,8 +183,11 @@ public:
     {
         PVideoFrame src = child->GetFrame(n, env);
 
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
-
+#endif
         const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
         const int plane_count = vi.IsY() ? 1 : 3;
         for (int p = 0; p < plane_count; ++p) {

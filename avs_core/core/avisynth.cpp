@@ -713,7 +713,16 @@ public:
   PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device);
   PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, Device* device);
   PVideoFrame NewVideoFrame(const VideoInfo& vi, const PDevice& device);
+#ifndef NEOFP
+  // variant #3, with frame property source
+  PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame *propSrc);
+  // variant #1, with frame property source
+  PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, Device* device, PVideoFrame* propSrc);
+  // variant #2, with frame property source
+  PVideoFrame NewVideoFrame(const VideoInfo& vi, const PDevice& device, PVideoFrame* propSrc);
+#endif
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, Device* device);
+
   bool MakeWritable(PVideoFrame* pvf);
 #ifdef NEOFP
   bool MakePropertyWritable(PVideoFrame* pvf);
@@ -787,6 +796,8 @@ public:
   AVSMap* createMap() AVS_NOEXCEPT;
   void freeMap(AVSMap* map) AVS_NOEXCEPT;
   void clearMap(AVSMap* map) AVS_NOEXCEPT;
+
+  PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
 #endif
   void SetMaxCPU(const char *features); // fixme: why is here InternalEnvironment?
 
@@ -1318,6 +1329,13 @@ public:
     return core->NewVideoFrameOnDevice(vi, align, DISPATCH(currentDevice));
   }
 
+#ifndef NEOFP
+  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame *propSrc, int align)
+  {
+    return core->NewVideoFrameOnDevice(vi, align, DISPATCH(currentDevice), propSrc);
+  }
+#endif
+
   void* __stdcall GetDeviceStream()
   {
     return DISPATCH(currentDevice)->GetComputeStream();
@@ -1535,7 +1553,6 @@ public:
   {
     core->clearMap(map);
   }
-
 #endif
 
   void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data = 0)
@@ -1845,15 +1862,38 @@ public:
     return core->NewVideoFrameOnDevice(vi, align, device);
   }
 
+  // shortcut to the above
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi)
   {
     return NewVideoFrameOnDevice(vi, FRAME_ALIGN, DISPATCH(currentDevice));
   }
 
+  // shortcut to the above
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device)
   {
     return NewVideoFrameOnDevice(vi, FRAME_ALIGN, (Device*)(void*)device);
   }
+
+#ifndef NEOFP
+  // variants with frame property source
+  PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame *propSrc)
+  {
+    return core->NewVideoFrameOnDevice(vi, align, device, propSrc);
+  }
+
+  // shortcut to the above
+  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc)
+  {
+    return NewVideoFrameOnDevice(vi, FRAME_ALIGN, DISPATCH(currentDevice), propSrc);
+  }
+
+  // shortcut to the above
+  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device, PVideoFrame* propSrc)
+  {
+    return NewVideoFrameOnDevice(vi, FRAME_ALIGN, (Device*)(void*)device, propSrc);
+  }
+
+#endif
 
   PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device)
   {
@@ -3568,11 +3608,10 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   res->row_sizeA = alpha ? row_size : 0;
   res->pitchA = alpha ? pitchY : 0;
 
-
   return PVideoFrame(res);
 }
 
-
+// Variant #1.no frame property source
 PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, int align, Device* device)
 {
   if (align < 0)
@@ -3604,15 +3643,42 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, i
   res->row_sizeA = 0;
   res->pitchA = 0;
 
-
   return PVideoFrame(res);
 }
 
+#ifndef NEOFP
+// Variant #1. with frame property source
+PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, int align, Device* device, PVideoFrame* propSrc)
+{
+  PVideoFrame result = NewVideoFrameOnDevice(row_size, height, align, device);
+
+  if (propSrc)
+    copyFrameProps(*propSrc, result);
+
+  return result;
+}
+#endif
+
+// Variant #2. without frame property source
 PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, const PDevice& device) {
   return NewVideoFrameOnDevice(vi, frame_align, (Device*)(void*)device);
 }
 
-PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) {
+#ifndef NEOFP
+// Variant #2. with frame property source
+PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, const PDevice& device, PVideoFrame* propSrc)
+{
+  PVideoFrame result = NewVideoFrame(vi, device);
+
+  if (propSrc)
+    copyFrameProps(*propSrc, result);
+
+  return result;
+}
+#endif
+
+// Variant #3. without frame property source
+PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo & vi, int align, Device * device) {
   // todo: high bit-depth: we have too many types now. Do we need really check?
   // Check requested pixel_type:
   switch (vi.pixel_type) {
@@ -3720,6 +3786,21 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo& vi, int al
 
   return retval;
 }
+
+
+#ifndef NEOFP
+// Variant #3. with frame property source
+PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame* propSrc)
+{
+  PVideoFrame result = NewVideoFrameOnDevice(vi, align, device);
+
+  if (propSrc)
+    copyFrameProps(*propSrc, result);
+
+  return result;
+}
+#endif
+
 
 bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   const PVideoFrame& vf = *pvf;
@@ -4829,8 +4910,6 @@ void ScriptEnvironment::clearMap(AVSMap* map) AVS_NOEXCEPT {
   assert(map);
   map->clear();
 }
-
-
 #endif
 
 PDevice ScriptEnvironment::GetDevice(AvsDeviceType device_type, int device_index) const

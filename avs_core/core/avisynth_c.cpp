@@ -1054,7 +1054,7 @@ int AVSC_CC avs_set_global_var(AVS_ScriptEnvironment * p, const char* name, AVS_
 }
 
 extern "C"
-AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo *  vi, int align)
+AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, int align)
 {
 	p->error = 0;
 	try {
@@ -1067,6 +1067,45 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const 
 	}
 	return 0;
 }
+
+#ifndef NEOFP
+// with frame properties, and alignment
+extern "C"
+AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
+{
+  p->error = 0;
+  try {
+    auto env2 = static_cast<IScriptEnvironment2*>(p->env);
+    PVideoFrame f0 = env2->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, align);
+    AVS_VideoFrame* f;
+    new((PVideoFrame*)&f) PVideoFrame(f0);
+    return f;
+  }
+  catch (const AvisynthError& err) {
+    p->error = err.msg;
+  }
+  return 0;
+}
+
+// with frame properties, no alignment
+extern "C"
+AVS_VideoFrame * AVSC_CC avs_new_video_frame_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame * propSrc)
+{
+  p->error = 0;
+  try {
+    auto env2 = static_cast<IScriptEnvironment2*>(p->env);
+    PVideoFrame f0 = env2->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, AVS_FRAME_ALIGN);
+    AVS_VideoFrame* f;
+    new((PVideoFrame*)&f) PVideoFrame(f0);
+    return f;
+  }
+  catch (const AvisynthError& err) {
+    p->error = err.msg;
+  }
+  return 0;
+}
+
+#endif
 
 extern "C"
 int AVSC_CC avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * * pvf)

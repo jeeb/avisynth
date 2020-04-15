@@ -212,7 +212,11 @@ SkewRows::SkewRows(PClip _child, int skew, IScriptEnvironment* env)
 PVideoFrame SkewRows::GetFrame(int n, IScriptEnvironment* env) {
 
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   const int srowsize = src->GetRowSize();
   const int spitch   = src->GetPitch();

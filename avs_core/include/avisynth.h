@@ -1626,6 +1626,7 @@ public:
   using IScriptEnvironment::Invoke;
   using IScriptEnvironment::AddFunction;
   using IScriptEnvironment::GetVar;
+  using IScriptEnvironment::NewVideoFrame;
 
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
@@ -1637,6 +1638,7 @@ public:
   virtual AVSMap* __stdcall getFramePropsRW(AVSFrameRef* frame) = 0;
 
   virtual int __stdcall propNumKeys(const AVSMap* map) = 0;
+
   virtual const char* __stdcall propGetKey(const AVSMap* map, int index) = 0;
   virtual int __stdcall propNumElements(const AVSMap* map, const char* key) = 0;
   virtual char __stdcall propGetType(const AVSMap* map, const char* key) = 0;
@@ -1664,6 +1666,9 @@ public:
   virtual AVSMap* __stdcall createMap() = 0;
   virtual void __stdcall freeMap(AVSMap* map) = 0;
   virtual void __stdcall clearMap(AVSMap* map) = 0;
+
+  // like in original IScriptEnvironment but with frame property source
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
 #endif
 }; // end class IScriptEnvironment2
 
@@ -1755,6 +1760,11 @@ public:
   // Align parameter is no longer supported
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi) = 0; // current device is used
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device) = 0;
+#ifndef NEOFP
+  // as above but with property sources
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame *propSrc) = 0; // current device is used + frame property source
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device, PVideoFrame* propSrc) = 0; // current device is used + frame property source
+#endif
 
   // Frame related operations
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;

@@ -3327,12 +3327,25 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   std::vector<PVideoFrame> src;
   src.reserve(children.size());
 
+  int first_used_clip_index = -1;
   for (size_t i = 0; i < children.size(); i++) {
     const auto &child = children[i];
     src.emplace_back(d.clipsUsed[i] ? child->GetFrame(n, env) : nullptr); // GetFrame only when really referenced
+    if (first_used_clip_index < 0) {
+      if (d.clipsUsed[i])
+        first_used_clip_index = i;
+    }
   }
 
+#ifndef NEOFP
+  PVideoFrame dst;
+  if (first_used_clip_index >= 0)
+    dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(d.vi, &src[first_used_clip_index]);
+  else
+    dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(d.vi);
+#else
   PVideoFrame dst = env->NewVideoFrame(d.vi);
+#endif
 
   const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
   const uint8_t *srcp_orig[MAX_EXPR_INPUTS] = {}; // for C

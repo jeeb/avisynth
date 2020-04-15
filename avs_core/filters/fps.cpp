@@ -714,7 +714,11 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 			return a;
 
 		// Result goes into a new buffer since it can be made up of a number of source frames
-		PVideoFrame    d      = env->NewVideoFrame(vi);
+#ifndef NEOFP
+    PVideoFrame d = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &a);
+#else
+    PVideoFrame d = env->NewVideoFrame(vi);
+#endif
 		BYTE* data   = d->GetWritePtr();
 		const int      pitch  = d->GetPitch();
 		if( top > 0 )

@@ -194,7 +194,11 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // YUY2
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
   int src_pitch = src->GetPitch();
@@ -403,8 +407,11 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     return env->Subframe(src, offset, src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
   }
 
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
-
+#endif
   if (mode == YUY2UToY8 || mode == YUY2VToY8 || vi.IsYUY2()) {
     const BYTE* srcp = src->GetReadPtr();
     BYTE* dstp = dst->GetWritePtr();
@@ -644,7 +651,11 @@ static void yuy2_ytouv_c(const BYTE* src_y, const BYTE* src_u, const BYTE* src_v
 
 PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   if (vi.IsYUY2()) {
     const BYTE* srcp_u = src->GetReadPtr();
@@ -1002,11 +1013,18 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
+  bool propCopied = false;
 
   PVideoFrame src;
   for (int i = 0; i < planecount; i++) {
     if (clips[i]) { // source clips can be less than defined planes
       src = clips[i]->GetFrame(n, env); // last defined clip is used for the others
+#ifndef NEOFP
+      if (!propCopied) {
+        static_cast<IScriptEnvironment2*>(env)->copyFrameProps(src, dst);
+        propCopied = true;
+      }
+#endif
     }
     int target_plane = target_planes[i];
     int source_plane = source_planes[i];

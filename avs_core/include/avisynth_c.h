@@ -922,6 +922,16 @@ AVSC_API(AVS_VideoFrame *, avs_new_video_frame_a)(AVS_ScriptEnvironment *,
 // align should be at least 16 for classic Avisynth
 // Avisynth+: any value, Avs+ ensures a minimum alignment if too small align is provided
 
+#ifndef NEOFP
+// with frame property source
+AVSC_API(AVS_VideoFrame*, avs_new_video_frame_prop)(AVS_ScriptEnvironment*,
+  const AVS_VideoInfo* vi, AVS_VideoFrame *propSrc);
+
+// with frame property source
+AVSC_API(AVS_VideoFrame*, avs_new_video_frame_a_prop)(AVS_ScriptEnvironment*,
+  const AVS_VideoInfo* vi, AVS_VideoFrame* propSrc, int align);
+#endif
+
 // no API for these, inline helper functions
 #ifndef AVSC_NO_DECLSPEC
 // this inline function is calling an API function
@@ -1086,6 +1096,10 @@ struct AVS_Library {
   ///////////////////////////////////////////////////////////////////////////////
   // Avisynth+ new interface elements from 20200407 (fixme: update with proper IF version number)
   // frame properties
+#ifndef NEOFP
+  AVSC_DECLARE_FUNC(avs_new_video_frame_prop);
+  AVSC_DECLARE_FUNC(avs_new_video_frame_a_prop);
+
   AVSC_DECLARE_FUNC(copyFrameProps);
   AVSC_DECLARE_FUNC(getFramePropsRO);
   AVSC_DECLARE_FUNC(getFramePropsRW);
@@ -1112,7 +1126,7 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(propSetIntArray);
 
   AVSC_DECLARE_FUNC(clearMap);
-
+#endif
   // end of Avisynth+ specific
 
 };
@@ -1241,6 +1255,12 @@ avs_bits_per_component    constant 8 (8 bits/component)
   AVSC_LOAD_FUNC(avs_make_writable);
   AVSC_LOAD_FUNC(avs_new_c_filter);
   AVSC_LOAD_FUNC(avs_new_video_frame_a);
+
+#ifndef NEOFP
+  AVSC_LOAD_FUNC(avs_new_video_frame_prop);
+  AVSC_LOAD_FUNC(avs_new_video_frame_a_prop);
+#endif
+
   AVSC_LOAD_FUNC(avs_release_clip);
   AVSC_LOAD_FUNC(avs_release_value);
   AVSC_LOAD_FUNC(avs_release_video_frame);

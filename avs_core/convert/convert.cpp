@@ -556,7 +556,11 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   const int src_pitch = src->GetPitch();
   const BYTE* srcp = src->GetReadPtr();
 
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   const int dst_pitch = dst->GetPitch();
   BYTE* dstp = dst->GetWritePtr();
   int tv_scale = theMatrix == Rec601 || theMatrix == Rec709 ? 16 : 0;
@@ -814,7 +818,11 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
 
 PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   if (interlaced) {
     if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
@@ -3353,7 +3361,11 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
     return src;
   }
 
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   if(vi.IsPlanar())
   {
@@ -3489,7 +3501,11 @@ AddAlphaPlane::AddAlphaPlane(PClip _child, PClip _alphaClip, float _mask_f, bool
 PVideoFrame AddAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   if(vi.IsPlanar())
   {
     int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
@@ -3645,7 +3661,11 @@ PVideoFrame RemoveAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
 
 #if 0
   // BitBlt version. Kept for reference
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   // copy 3 planes w/o alpha
   for (int p = 0; p < 3; ++p) {
     const int plane = planes[p];

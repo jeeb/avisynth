@@ -393,7 +393,11 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
 PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   int64_t start = vi.AudioSamplesFromFrames(n);
   int64_t end = vi.AudioSamplesFromFrames(n+1);
@@ -551,7 +555,11 @@ PVideoFrame Histogram::DrawModeLuma(int n, IScriptEnvironment* env) {
 
 PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   BYTE* pdst = dst->GetWritePtr();
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
@@ -752,7 +760,11 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
 PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
   // This mode will display the chroma values(U / V color placement) in a two dimensional graph(called a vectorscope)
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   BYTE* p = dst->GetWritePtr();
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
@@ -1081,7 +1093,11 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
 
 PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   BYTE* dstp = dst->GetWritePtr();
 
   int show_size = 1 << show_bits;
@@ -1620,7 +1636,11 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
   const BYTE* srcp = src->GetReadPtr();
   const int srcpitch = src->GetPitch();
 
+#ifndef NEOFP
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
   BYTE* pdst = dst->GetWritePtr();
   const int dstpitch = dst->GetPitch();
 

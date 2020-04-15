@@ -1202,7 +1202,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // RGB32->RGB24, RGB64->RGB48
     {
+#ifndef NEOFP
+      PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
       PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       if(pixelsize==1) {
@@ -1229,7 +1233,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB32->YUY2
     {
+#ifndef NEOFP
+      PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
       PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       const int dstrowsize = dst->GetRowSize();
@@ -1252,7 +1260,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       // 444, 422 support + 16 bits
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
@@ -1297,7 +1309,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB32/64 -> Planar RGB 8/16 bit
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
         BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
         BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
         BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
@@ -1363,7 +1379,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         return f;
       }
       else { // RGB24->RGB24 not in-place
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
         BYTE * dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
 
@@ -1393,7 +1413,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // RGB24->RGB32
     {
+#ifndef NEOFP
+      PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
       PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
 
@@ -1420,7 +1444,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB24->YUY2
     {
+#ifndef NEOFP
+      PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
       PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       const int dstrowsize = dst->GetRowSize()/2;
@@ -1442,7 +1470,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     { // // RGB24->YV12/16/24/Y8 + 16bit
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
@@ -1486,7 +1518,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB24/48 -> Planar RGB 8/16 bit
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
         BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
         BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
         BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
@@ -1542,7 +1578,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // PRGB/YUVA->RGB32/RGB64
     {
       { // Planar RGBA/YUVA  ->RGB32/64
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
         BYTE * dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
         // RGB is upside-down
@@ -1603,7 +1643,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // PRGB(A)/YUVA->RGB24, PRGB(A)16/YUVA16->RGB48
     {
+#ifndef NEOFP
+      PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
       PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       // RGB is upside-down
@@ -1655,7 +1699,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
+#ifndef NEOFP
+        PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &f);
+#else
         PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
@@ -1823,7 +1871,12 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame R = red->GetFrame(n, env);
   PVideoFrame A = (alpha) ? alpha->GetFrame(n, env) : 0;
 
+#ifndef NEOFP
+  // choose one: R
+  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &R);
+#else
   PVideoFrame dst = env->NewVideoFrame(vi);
+#endif
 
   const int height = dst->GetHeight();
   const int pitch = dst->GetPitch();
