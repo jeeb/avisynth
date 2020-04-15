@@ -85,10 +85,10 @@
 // Constants
 //
 
-#ifndef __AVISYNTH_7_H__
+#ifndef __AVISYNTH_8_H__
 enum {
   AVISYNTH_INTERFACE_CLASSIC_VERSION = 6,
-  AVISYNTH_INTERFACE_VERSION = 7
+  AVISYNTH_INTERFACE_VERSION = 8
 };
 #endif
 
