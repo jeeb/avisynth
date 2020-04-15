@@ -6,15 +6,15 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 20200415 3.5.? (dev)
 --------------------
-- frame properties framework
+- frame properties framework, IScriptEnvironment extension
   - like in VapourSynth
   - new field in VideoFrame: avsmap, type is AVSMap which is basically a reference counting struct for holding array of variants
   - frame properties are key-value(s) pairs
     - Key is an alphanumeric identifier.
     - Values can be of single value or array of type
-      - 64 bit integers (inside AVS 32 bit is available - AVSValue limitation)
-      - 64 bit doubles inside AVS 32 bit float is available - AVSValue limitation)
-      - strings (or data) with given length
+      - 64 bit integers (32 bit integer when converted to AVSValue inside Avisynth+, AVSValue limitation)
+      - 64 bit doubles (32 bit float when converted to AVSValue inside Avisynth+, AVSValue limitation)
+      - strings (or data) with given length. strings are null terminated
       - frame references (PVideoFrame)
       - clip references (PClip)
     - property setting has 3 modes: 0-replace 1-append 2-touch (see AVSPropAppendMode in avisynth.h)
@@ -31,49 +31,53 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
     Unfortunately if even one filter in the chain is not passing frame properties then it is a dead end on the info.
 
-    At the moment frame property functions are in IScriptEnvironment2 but they will move soon to IScriptEnvironment
-    after the tests.
-    Whether you can (should) use it or not, the Avisynth interface version will tell you. (e.g. >= 8) which can be
-    queried. There will be a transient time when you have to support both world.
+    Whether you can (should) use it or not, the Avisynth interface version will tell you. (e.g. >= 8) which should be
+    queried somewhere before plugin code decides whether frame properties can be used or not.
+    Unless you drop support for older avs+ or classic Avisynth 2.6, there will be a transient time when you have to support both world.
 
       AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
-
-     (done in  C interface and IScriptEnvironment2:
-     earlier note from 20200410: at this first (zeroth) version env->NewVideoFrame has no variant which can use another frame
-     as frame property source. One can use copyFrameProps)
 
     In avisynth.h:
       struct AVSFrameRef and AVSClipRef
       enums AVSPropTypes, AVSGetPropErrors and AVSPropAppendMode
-      AVSMap* is just a pointer to access its content through IScriptEnvironment2 or C interface calls
+      AVSMap* is just a pointer which holds the actual list and values of frame properties.
+      You don't need to know what's inside. Access its content through IScriptEnvironment or C interface calls
 
-  - IScriptEnvirontment2 (see note) implements
+  - IScriptEnvironment vtable extended! For the first time since classic Avisynth 2.6 moved to IF version 6
+    Preliminarily the new IF version will be 8.
+
+    New methods:
+
     - NewVideoFrame with frame property source:
-      PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
+        PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
 
       Instead of using
         PVideoFrame src = child->GetFrame(n, env);
         PVideoFrame frame = env->NewVideoFrame(vi)
 
-      can create new video frame with passing properties
+      create new video frame with passing properties
         PVideoFrame src = child->GetFrame(n, env);
-        PVideoFrame dst = static_cast<IScriptEnvironment2 *>(env)->NewVideoFrame(vi, &src);
+        PVideoFrame dst = env->NewVideoFrame(vi, &src);
 
       All core functions in Avisynth support passing frame properties as a first step.
-      (Second and further steps: use "standardized" frame properties for color matrix and primaries info,
+      (Second and further steps for Avisynth core: use "standardized" frame properties for color matrix and primaries info,
       for field based flag, etc...)
 
       Note: MakeWritable preserves frame properties
-      Note2: it will appear in IScriptEnvironment soon (along with the other frame property functions).
       Usability: after querying Avisynth interface version, if >=8 (preliminary info), use it. When a plugin wants to support
-      earlier avs+ and classic avs versions, you should branch it programatically.
+      earlier avs+ and classic avs versions, you should branch it programatically. Or guard your plugin:
+      See:
+        http://avisynth.nl/index.php/Filter_SDK/AVISYNTH_INTERFACE_VERSION
+        "Through the IClip interface it is the authors responsibility to declare the level of support the plugin provides:
+          virtual int __stdcall IClip()::GetVersion() { return <supported AVISYNTH_INTERFACE_VERSION>; }"
+
 
     - copy frame properties from one frame to another: copyFrameProps
     - get property pointer for readonly access: getFramePropsRO
     - get property pointer for read/write access: getFramePropsRW
     - property count helper functions
     - clear of individual properties by key or clear everything
-    - property getter and setter functions (by key, key+index, by index)
+    - property getter and setter functions (by key, key+index, by index). Indexes are starting with 0.
     - examples in conditional.cpp, conditional_functions.cpp
 
       void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
