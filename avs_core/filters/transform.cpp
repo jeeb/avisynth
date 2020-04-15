@@ -66,7 +66,7 @@ extern const AVSFunction Transform_filters[] = {
 PVideoFrame FlipVertical::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -134,7 +134,7 @@ static void flip_horizontal_plane_c(BYTE* dstp, const BYTE* srcp, int dst_pitch,
 PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -337,7 +337,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
   if (0 != _align) {
 
 #ifndef NEOFP
-    PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &frame, (int)align + 1);
+    PVideoFrame dst = env->NewVideoFrame(vi, &frame, (int)align + 1);
 #else
     PVideoFrame dst = env->NewVideoFrame(vi, (int)align+1);
 #endif
@@ -363,9 +363,8 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
     return env->Subframe(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else {
     if (hasAlpha) {
-      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
 
-      return env2->SubframePlanarA(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height,
+      return env->SubframePlanarA(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height,
         (top >> ysub) * frame->GetPitch(plane1) + (left_bytes >> xsub),
         (top >> ysub) * frame->GetPitch(plane2) + (left_bytes >> xsub),
         frame->GetPitch(plane1), top * frame->GetPitch(PLANAR_A) + left_bytes);

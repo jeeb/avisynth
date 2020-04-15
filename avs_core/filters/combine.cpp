@@ -107,7 +107,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
     frames.emplace_back(child->GetFrame(n, env));
 
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &frames[0]);
+  PVideoFrame dst = env->NewVideoFrame(vi, &frames[0]);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -210,7 +210,7 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
     frames.emplace_back(child->GetFrame(n, env));
 
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &frames[0]);
+  PVideoFrame dst = env->NewVideoFrame(vi, &frames[0]);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -341,7 +341,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame src = child[c]->GetFrame(n, env);
 #ifndef NEOFP
     if(c == 0) // copy frame properties from the very first
-      static_cast<IScriptEnvironment2*>(env)->copyFrameProps(src, dst);
+     env->copyFrameProps(src, dst);
 #endif
     if (vi.IsPlanar()) {
       const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);

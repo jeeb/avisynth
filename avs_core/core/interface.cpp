@@ -1013,8 +1013,9 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
 
 /**********************************************************************/
 
+#ifdef NEOFP
+// for Avs+Neo's frame properties
 // class AVSMapValue
-
 enum AVS_VALUE_TYPE {
   AVS_VALUE_FRAME = 1,
   AVS_VALUE_INT,
@@ -1085,6 +1086,7 @@ int64_t AVSMapValue::GetInt() const { return value.i; }
 double AVSMapValue::GetFloat() const { return value.d; }
 
 // end class AVSMapValue
+#endif
 
 PFunction::PFunction() { CONSTRUCTOR0(); }
 void PFunction::CONSTRUCTOR0() { Init(0); }

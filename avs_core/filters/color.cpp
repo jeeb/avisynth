@@ -1086,7 +1086,7 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
         }
       }
 #ifndef NEOFP
-      dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+      dst = env->NewVideoFrame(vi, &src);
 #else
       dst = env->NewVideoFrame(vi); // go live dst here!
 #endif

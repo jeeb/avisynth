@@ -183,8 +183,7 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
     // !! if offsets would be size_t, be cautious when you subtract two unsigned size_t variables
     const int uvoffset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_U); // very naughty - don't do this at home!!
     if (vi.NumComponents() == 4) {
-      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
-      return env2->SubframePlanarA(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
+      return env->SubframePlanarA(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
         uvoffset, -uvoffset, src->GetPitch(PLANAR_V), 0);
     }
     else {
@@ -195,7 +194,7 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
 
   // YUY2
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -408,7 +407,7 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
   }
 
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -652,7 +651,7 @@ static void yuy2_ytouv_c(const BYTE* src_y, const BYTE* src_u, const BYTE* src_v
 PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -998,9 +997,8 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
       //  3010       2010        1010       10      new offsets inside
     }
 
-    IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
     if (vi.NumComponents() == 4) {
-      return env2->SubframePlanarA(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
+      return env->SubframePlanarA(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
         RelOffsets[1], RelOffsets[2], NewPitches[1], RelOffsets[3]);
     }
     else if (vi.NumComponents() == 3) {
@@ -1021,7 +1019,7 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
       src = clips[i]->GetFrame(n, env); // last defined clip is used for the others
 #ifndef NEOFP
       if (!propCopied) {
-        static_cast<IScriptEnvironment2*>(env)->copyFrameProps(src, dst);
+       env->copyFrameProps(src, dst);
         propCopied = true;
       }
 #endif

@@ -743,6 +743,39 @@ public:
   // alpha support
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha, Device* device);
   PVideoFrame SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
+  PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
+#ifndef NEOFP
+  void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
+  const AVSMap* getFramePropsRO(const AVSFrameRef* frame) AVS_NOEXCEPT;
+  AVSMap* getFramePropsRW(AVSFrameRef* frame) AVS_NOEXCEPT;
+  int propNumKeys(const AVSMap* map) AVS_NOEXCEPT;
+  const char* propGetKey(const AVSMap* map, int index) AVS_NOEXCEPT;
+  int propNumElements(const AVSMap* map, const char* key) AVS_NOEXCEPT;
+  char propGetType(const AVSMap* map, const char* key) AVS_NOEXCEPT;
+  int propDeleteKey(AVSMap* map, const char* key) AVS_NOEXCEPT;
+  int64_t propGetInt(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  double propGetFloat(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  const char* propGetData(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  int propGetDataSize(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  int propSetInt(AVSMap* map, const char* key, int64_t i, int append) AVS_NOEXCEPT;
+  int propSetFloat(AVSMap* map, const char* key, double d, int append) AVS_NOEXCEPT;
+  int propSetData(AVSMap* map, const char* key, const char* d, int length, int append) AVS_NOEXCEPT;
+  int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) AVS_NOEXCEPT;
+  int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) AVS_NOEXCEPT;
+
+  const int64_t* propGetIntArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
+  const double* propGetFloatArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
+  int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) AVS_NOEXCEPT;
+  int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) AVS_NOEXCEPT;
+
+  AVSMap* createMap() AVS_NOEXCEPT;
+  void freeMap(AVSMap* map) AVS_NOEXCEPT;
+  void clearMap(AVSMap* map) AVS_NOEXCEPT;
+
+  PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
+#endif
 
   /* IScriptEnvironment2 */
   bool LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
@@ -766,39 +799,7 @@ public:
   void LogMsg_valist(int level, const char* fmt, va_list va);
   void LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...);
   void LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va);
-  PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
-#ifndef NEOFP
-  void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
-  const AVSMap* getFramePropsRO(const AVSFrameRef* frame) AVS_NOEXCEPT;
-  AVSMap* getFramePropsRW(AVSFrameRef* frame) AVS_NOEXCEPT;
-  int propNumKeys(const AVSMap* map) AVS_NOEXCEPT;
-  const char* propGetKey(const AVSMap* map, int index) AVS_NOEXCEPT;
-  int propNumElements(const AVSMap* map, const char* key) AVS_NOEXCEPT;
-  char propGetType(const AVSMap* map, const char* key) AVS_NOEXCEPT;
-  int propDeleteKey(AVSMap* map, const char* key) AVS_NOEXCEPT;
-  int64_t propGetInt(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  double propGetFloat(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  const char* propGetData(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  int propGetDataSize(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  int propSetInt(AVSMap* map, const char* key, int64_t i, int append) AVS_NOEXCEPT;
-  int propSetFloat(AVSMap* map, const char* key, double d, int append) AVS_NOEXCEPT;
-  int propSetData(AVSMap* map, const char* key, const char* d, int length, int append) AVS_NOEXCEPT;
-  int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) AVS_NOEXCEPT;
-  int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) AVS_NOEXCEPT;
 
-  const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
-  const double *propGetFloatArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
-  int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) AVS_NOEXCEPT;
-  int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) AVS_NOEXCEPT;
-
-  AVSMap* createMap() AVS_NOEXCEPT;
-  void freeMap(AVSMap* map) AVS_NOEXCEPT;
-  void clearMap(AVSMap* map) AVS_NOEXCEPT;
-
-  PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
-#endif
   void SetMaxCPU(const char *features); // fixme: why is here InternalEnvironment?
 
   /* INeoEnv */
@@ -4692,12 +4693,14 @@ void ScriptEnvironment::VThrowError(const char* fmt, va_list va)
   threadEnv->VThrowError(fmt, va);
 }
 
+// since IF V8 it moved from IScriptEnvironment2 to IScriptEnvironment
 PVideoFrame ScriptEnvironment::SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA)
 {
   return SubframePlanar(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
 }
 
 #ifndef NEOFP
+// since IF V8 frame property helpers are part of IScriptEnvironment
 void ScriptEnvironment::copyFrameProps(const PVideoFrame& src, PVideoFrame& dst)
 {
   dst->setProperties(src->getProperties());

@@ -122,7 +122,7 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
 
   PVideoFrame src = child->GetFrame(f, env);
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -315,7 +315,7 @@ PVideoFrame WeaveColumns::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame src = child->GetFrame(f, env);
 #ifndef NEOFP
     if(m==0)
-      static_cast<IScriptEnvironment2*>(env)->copyFrameProps(src, dst);
+     env->copyFrameProps(src, dst);
 #endif
 
     if (vi.IsPlanar()) {
@@ -526,9 +526,8 @@ PVideoFrame SeparateRows::GetFrame(int n, IScriptEnvironment* env)
 
     if (vi.NumComponents() == 4) {
       int Aoffset = frame->GetPitch(PLANAR_A) * m;
-      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
 
-      return env2->SubframePlanarA(frame, Yoffset, Ypitch * interval,
+      return env->SubframePlanarA(frame, Yoffset, Ypitch * interval,
         frame->GetRowSize(plane0), vi.height,
         UVoffset, UVoffset, UVpitch * interval, Aoffset);
     }
@@ -591,7 +590,7 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
       PVideoFrame src = child->GetFrame(j, env);
 #ifndef NEOFP
       if(i==b)
-        static_cast<IScriptEnvironment2*>(env)->copyFrameProps(src, dst);
+       env->copyFrameProps(src, dst);
 #endif
 
       env->BitBlt( dstp,              dstpitch * period,
@@ -617,7 +616,7 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
       PVideoFrame src = child->GetFrame(j, env);
 #ifndef NEOFP
       if (i == b)
-        static_cast<IScriptEnvironment2*>(env)->copyFrameProps(src, dst);
+       env->copyFrameProps(src, dst);
 #endif
       for (int p = 0; p < (isYUY2 ? 1 : vi.NumComponents()); ++p) {
         int plane = planes[p];
@@ -683,9 +682,8 @@ PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
 
     if (vi.NumComponents() == 4) {
       int Aoffset = !topfield ? frame->GetPitch(PLANAR_A) : 0;
-      IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
 
-      return env2->SubframePlanarA(frame, Yoffset, frame->GetPitch() * 2, frame->GetRowSize(), frame->GetHeight() >> 1,
+      return env->SubframePlanarA(frame, Yoffset, frame->GetPitch() * 2, frame->GetRowSize(), frame->GetHeight() >> 1,
         UVoffset, UVoffset, frame->GetPitch(PLANAR_U) * 2, Aoffset);
     }
     else {
@@ -852,7 +850,7 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame b = child->GetFrame(n+1, env);
 
 #ifndef NEOFP
-  PVideoFrame result = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &a);
+  PVideoFrame result = env->NewVideoFrame(vi, &a);
 #else
   PVideoFrame result = env->NewVideoFrame(vi);
 #endif
@@ -935,7 +933,7 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     }
     else {
 #ifndef NEOFP
-      PVideoFrame result = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &a);
+      PVideoFrame result = env->NewVideoFrame(vi, &a);
 #else
       PVideoFrame result = env->NewVideoFrame(vi);
 #endif

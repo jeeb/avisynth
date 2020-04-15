@@ -114,34 +114,20 @@ public:
   virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
   virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
+  // AVISYNTH_INTERFACE_VERION 5
   virtual void __stdcall DeleteScriptEnvironment() = 0;
   virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
     int textcolor, int halocolor, int bgcolor) = 0;
   virtual const AVS_Linkage* __stdcall GetAVSLinkage() = 0;
+
+  // AVISYNTH_INTERFACE_VERION 6
   virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
 
-  // IScriptEnvironment2
-  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
-  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
-  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
-  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
-  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
-  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
-  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
-  virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
-  virtual void __stdcall ClearAutoloadDirs() = 0;
-  virtual void __stdcall AutoloadPlugins() = 0;
-  virtual void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data, const char *exportVar) = 0;
-  virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
-  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0;
-  virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
-  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
-  virtual void __stdcall Free(void* ptr) = 0;
+  // AVISYNTH_INTERFACE_VERION 8
+  /* moved to standard IScriptEnvironment IF v8 */
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
-  // New AVS+ addition
+
 #ifndef NEOFP
   // frame properties support
   virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0;
@@ -167,8 +153,8 @@ public:
   virtual int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) = 0;
   virtual int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) = 0;
 
-  virtual const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
-  virtual const double *propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual const int64_t* propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
+  virtual const double* propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;
   virtual int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) = 0;
   virtual int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) = 0;
 
@@ -179,6 +165,30 @@ public:
   // NewVideoFrame with frame prop source is replaced with new one
 #endif
 
+  // IScriptEnvironment2
+  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
+  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
+  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
+  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
+  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
+  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
+  virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
+  virtual void __stdcall ClearAutoloadDirs() = 0;
+  virtual void __stdcall AutoloadPlugins() = 0;
+  virtual void __stdcall AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data, const char *exportVar) = 0;
+  virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0;
+  virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
+  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
+  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
+  virtual void __stdcall Free(void* ptr) = 0;
+  /* moved to standard IScriptEnvironment IF v8 */
+  /*
+  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
+  */
   // InternalEnvironment
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;

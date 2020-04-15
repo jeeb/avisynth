@@ -557,7 +557,7 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   const BYTE* srcp = src->GetReadPtr();
 
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -819,7 +819,7 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
 PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -3362,7 +3362,7 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
   }
 
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -3502,7 +3502,7 @@ PVideoFrame AddAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -3662,7 +3662,7 @@ PVideoFrame RemoveAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
 #if 0
   // BitBlt version. Kept for reference
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

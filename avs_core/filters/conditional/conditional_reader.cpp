@@ -1010,7 +1010,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
-  AVSMap* avsmap = env2->getFramePropsRW(&fr);
+  AVSMap* avsmap = env->getFramePropsRW(&fr);
 
   int propType = kind;
   // vUnset, vInt, vFloat, vData/*, vNode*/, vFrame/*, vMethod*/ }
@@ -1041,15 +1041,15 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
 
     // special case: zero sized array -> entry deleted
     if (result.IsArray() && result.ArraySize() == 0)
-      res = env2->propDeleteKey(avsmap, name); // 0 is success
+      res = env->propDeleteKey(avsmap, name); // 0 is success
     else if (propType == 1 && result.IsInt())
-      res = env2->propSetInt(avsmap, name, result.AsInt(), append_mode);
+      res = env->propSetInt(avsmap, name, result.AsInt(), append_mode);
     else if (propType == 2 && result.IsFloat())
-      res = env2->propSetFloat(avsmap, name, result.AsFloat(), append_mode);
+      res = env->propSetFloat(avsmap, name, result.AsFloat(), append_mode);
     else if (propType == 3 && result.IsString())
     {
       const char* s = result.AsString(); // no need for SaveString, it has its own storage
-      res = env2->propSetData(avsmap, name, s, -1, append_mode); // -1: auto string length
+      res = env->propSetData(avsmap, name, s, -1, append_mode); // -1: auto string length
     }
     else if (propType == 4 && result[0].IsInt())
     {
@@ -1057,7 +1057,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       std::vector<int64_t> int64array(size); // avs can do int only, temporary array needed
       for (int i = 0; i < size; i++)
         int64array[i] = result[i].AsInt(); // all elements should be int
-      res = env2->propSetIntArray(avsmap, name, int64array.data(), size);
+      res = env->propSetIntArray(avsmap, name, int64array.data(), size);
     }
     else if (propType == 4 && result[0].IsFloat())
     {
@@ -1065,15 +1065,15 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       std::vector<double> d_array(size); // avs can do float only, temporary array needed
       for (int i = 0; i < size; i++)
         d_array[i] = result[i].AsFloat(); // all elements should be float or int
-      res = env2->propSetFloatArray(avsmap, name, d_array.data(), size);
+      res = env->propSetFloatArray(avsmap, name, d_array.data(), size);
     }
     else if (propType == 4 && result[0].IsString())
     {
       const int size = result.ArraySize();
       // no such api like propSetDataArray
-      env2->propDeleteKey(avsmap, name);
+      env->propDeleteKey(avsmap, name);
       for (int i = 0; i < size; i++) {
-        res = env2->propSetData(avsmap, name, result[i].AsString(), -1, AVSPropAppendMode::paAppend); // all elements should be string
+        res = env->propSetData(avsmap, name, result[i].AsString(), -1, AVSPropAppendMode::paAppend); // all elements should be string
         if (res)
           break;
       }
@@ -1153,8 +1153,8 @@ PVideoFrame __stdcall DeleteProperty::GetFrame(int n, IScriptEnvironment* env)
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
-  AVSMap* avsmap = env2->getFramePropsRW(&fr);
-  int res = env2->propDeleteKey(avsmap, name); // 0 is success
+  AVSMap* avsmap = env->getFramePropsRW(&fr);
+  int res = env->propDeleteKey(avsmap, name); // 0 is success
 
   if (!res) {
     const char *error_msg = env->Sprintf("propDelete: error deleting property '%s'", name);
@@ -1206,8 +1206,8 @@ PVideoFrame __stdcall ClearProperties::GetFrame(int n, IScriptEnvironment* env)
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
-  AVSMap* avsmap = env2->getFramePropsRW(&fr);
-  env2->clearMap(avsmap);
+  AVSMap* avsmap = env->getFramePropsRW(&fr);
+  env->clearMap(avsmap);
 
   return frame;
 }

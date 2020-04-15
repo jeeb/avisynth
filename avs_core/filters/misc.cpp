@@ -213,7 +213,7 @@ PVideoFrame SkewRows::GetFrame(int n, IScriptEnvironment* env) {
 
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrame(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

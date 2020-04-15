@@ -339,7 +339,7 @@ void AVSC_CC copyFrameProps(AVS_ScriptEnvironment * p, const AVS_VideoFrame *src
 {
   p->error = 0;
   try {
-    static_cast<IScriptEnvironment2 *>(p->env)->copyFrameProps(*(const PVideoFrame*)(src), *(PVideoFrame*)(dst));
+    p->env->copyFrameProps(*(const PVideoFrame*)(src), *(PVideoFrame*)(dst));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -352,7 +352,7 @@ const VS_Map* getFramePropsRO(AVS_ScriptEnvironment* p, const AVS_VideoFrame* fr
   p->error = 0;
   try {
     const AVSFrameRef fr(*(const PVideoFrame*)(frame));
-    return (const VS_Map *)(static_cast<IScriptEnvironment2*>(p->env)->getFramePropsRO(&fr));
+    return (const VS_Map *)(p->env->getFramePropsRO(&fr));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -366,7 +366,7 @@ VS_Map * getFramePropsRW(AVS_ScriptEnvironment * p, AVS_VideoFrame * frame)
   p->error = 0;
   try {
     AVSFrameRef fr(*(PVideoFrame*)(frame));
-    return (VS_Map*)(static_cast<IScriptEnvironment2*>(p->env)->getFramePropsRW(&fr));
+    return (VS_Map*)(p->env->getFramePropsRW(&fr));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -379,7 +379,7 @@ int propNumKeys(AVS_ScriptEnvironment * p, const VS_Map * map)
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propNumKeys((const AVSMap *)map));
+    return (p->env->propNumKeys((const AVSMap *)map));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -392,7 +392,7 @@ const char* propGetKey(AVS_ScriptEnvironment * p, const VS_Map * map, int index)
 {
   p->error = 0;
   try {
-    const char* key = (static_cast<IScriptEnvironment2*>(p->env)->propGetKey((const AVSMap*)map, index));
+    const char* key = (p->env->propGetKey((const AVSMap*)map, index));
     return p->env->SaveString(key);
   }
   catch (const AvisynthError& err) {
@@ -406,7 +406,7 @@ int propNumElements(AVS_ScriptEnvironment * p, const VS_Map * map, const char* k
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propNumElements((const AVSMap*)map, key));
+    return (p->env->propNumElements((const AVSMap*)map, key));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -419,7 +419,7 @@ char propGetType(AVS_ScriptEnvironment * p, const VS_Map * map, const char* key)
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propGetType((const AVSMap*)map, key));
+    return (p->env->propGetType((const AVSMap*)map, key));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -432,7 +432,7 @@ int propDeleteKey(AVS_ScriptEnvironment * p, VS_Map * map, const char* key)
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propDeleteKey((AVSMap*)map, key));
+    return (p->env->propDeleteKey((AVSMap*)map, key));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -445,7 +445,7 @@ int64_t propGetInt(AVS_ScriptEnvironment * p, const VS_Map * map, const char* ke
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propGetInt((const AVSMap*)map, key, index, error));
+    return (p->env->propGetInt((const AVSMap*)map, key, index, error));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -458,7 +458,7 @@ double propGetFloat(AVS_ScriptEnvironment * p, const VS_Map * map, const char* k
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propGetFloat((const AVSMap*)map, key, index, error));
+    return (p->env->propGetFloat((const AVSMap*)map, key, index, error));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -471,7 +471,7 @@ const char* propGetData(AVS_ScriptEnvironment * p, const VS_Map * map, const cha
 {
   p->error = 0;
   try {
-    const char* data = static_cast<IScriptEnvironment2*>(p->env)->propGetData((const AVSMap*)map, key, index, error);
+    const char* data = p->env->propGetData((const AVSMap*)map, key, index, error);
     if (error)
       return nullptr;
     else
@@ -488,7 +488,7 @@ int propGetDataSize(AVS_ScriptEnvironment * p, const VS_Map * map, const char* k
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propGetDataSize((const AVSMap*)map, key, index, error));
+    return (p->env->propGetDataSize((const AVSMap*)map, key, index, error));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -501,7 +501,7 @@ AVS_Clip* propGetClip(AVS_ScriptEnvironment* p, const VS_Map* map, const char* k
 {
   p->error = 0;
   try {
-    AVSClipRef* clip = static_cast<IScriptEnvironment2*>(p->env)->propGetClip((const AVSMap*)map, key, index, error);
+    AVSClipRef* clip = p->env->propGetClip((const AVSMap*)map, key, index, error);
     PClip c0 = clip->clip;
     AVS_Clip* c;
     new((PClip*)&c) PClip(c0);
@@ -518,7 +518,7 @@ const AVS_VideoFrame * propGetFrame(AVS_ScriptEnvironment * p, const VS_Map * ma
 {
   p->error = 0;
   try {
-    const AVSFrameRef* fr = static_cast<IScriptEnvironment2*>(p->env)->propGetFrame((const AVSMap*)map, key, index, error);
+    const AVSFrameRef* fr = p->env->propGetFrame((const AVSMap*)map, key, index, error);
     PVideoFrame f0 = fr->frame;
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
@@ -535,7 +535,7 @@ int propSetInt(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, int64_t
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propSetInt((AVSMap*)map, key, i, append));
+    return (p->env->propSetInt((AVSMap*)map, key, i, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -548,7 +548,7 @@ int propSetFloat(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, doubl
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propSetFloat((AVSMap*)map, key, d, append));
+    return (p->env->propSetFloat((AVSMap*)map, key, d, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -562,7 +562,7 @@ int propSetData(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, const 
   // length = -1 -> auto strlen
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propSetData((AVSMap*)map, key, d, length, append));
+    return (p->env->propSetData((AVSMap*)map, key, d, length, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -577,7 +577,7 @@ int propSetClip(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, AVS_Cl
   p->error = 0;
   try {
     AVSClipRef cl(*(PClip*)clip);
-    return (static_cast<IScriptEnvironment2*>(p->env)->propSetClip((AVSMap*)map, key, &cl, append));
+    return (p->env->propSetClip((AVSMap*)map, key, &cl, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -592,7 +592,7 @@ int propSetFrame(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, const
   p->error = 0;
   try {
     AVSFrameRef fr(*(PVideoFrame*)frame);
-    return (static_cast<IScriptEnvironment2*>(p->env)->propSetFrame((AVSMap*)map, key, &fr, append));
+    return (p->env->propSetFrame((AVSMap*)map, key, &fr, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -606,7 +606,7 @@ const int64_t *propGetIntArray(AVS_ScriptEnvironment* p, const VS_Map* map, cons
 {
   p->error = 0;
   try {
-    return static_cast<IScriptEnvironment2*>(p->env)->propGetIntArray((const AVSMap*)map, key, error);
+    return p->env->propGetIntArray((const AVSMap*)map, key, error);
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -619,7 +619,7 @@ const double *propGetFloatArray(AVS_ScriptEnvironment* p, const VS_Map* map, con
 {
   p->error = 0;
   try {
-    return static_cast<IScriptEnvironment2*>(p->env)->propGetFloatArray((const AVSMap*)map, key, error);
+    return p->env->propGetFloatArray((const AVSMap*)map, key, error);
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -632,7 +632,7 @@ int propSetIntArray(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, co
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propSetIntArray((AVSMap*)map, key, i, size));
+    return (p->env->propSetIntArray((AVSMap*)map, key, i, size));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -645,7 +645,7 @@ int propSetFloatArray(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, 
 {
   p->error = 0;
   try {
-    return (static_cast<IScriptEnvironment2*>(p->env)->propSetFloatArray((AVSMap*)map, key, d, size));
+    return (p->env->propSetFloatArray((AVSMap*)map, key, d, size));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -658,7 +658,7 @@ void clearMap(AVS_ScriptEnvironment * p, VS_Map * map)
 {
   p->error = 0;
   try {
-    static_cast<IScriptEnvironment2*>(p->env)->clearMap((AVSMap*)map);
+    p->env->clearMap((AVSMap*)map);
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -1075,8 +1075,8 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, c
 {
   p->error = 0;
   try {
-    auto env2 = static_cast<IScriptEnvironment2*>(p->env);
-    PVideoFrame f0 = env2->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, align);
+    auto env = p->env;
+    PVideoFrame f0 = env->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, align);
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
     return f;
@@ -1093,8 +1093,8 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_prop(AVS_ScriptEnvironment * p, con
 {
   p->error = 0;
   try {
-    auto env2 = static_cast<IScriptEnvironment2*>(p->env);
-    PVideoFrame f0 = env2->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, AVS_FRAME_ALIGN);
+    auto env = p->env;
+    PVideoFrame f0 = env->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, AVS_FRAME_ALIGN);
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
     return f;

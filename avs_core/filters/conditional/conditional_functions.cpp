@@ -961,13 +961,13 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(&fr);
 
   int error = 0;
 
   // check auto
   if (propType == 0) {
-    char res = env2->propGetType(avsmap, propName);
+    char res = env->propGetType(avsmap, propName);
     // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
     switch (res) {
     case 'u': return AVSValue(); // unSet = AVS undefined
@@ -983,17 +983,17 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
   }
 
   if (propType == 1) {
-    int64_t result = env2->propGetInt(avsmap, propName, index, &error);
+    int64_t result = env->propGetInt(avsmap, propName, index, &error);
     if(!error)
       return AVSValue((int)result);
   }
   else if (propType == 2) {
-    double result = env2->propGetFloat(avsmap, propName, index, &error);
+    double result = env->propGetFloat(avsmap, propName, index, &error);
     if (!error)
       return AVSValue(result);
   }
   else if (propType == 3) {
-    const char *result = env2->propGetData(avsmap, propName, index, &error);
+    const char *result = env->propGetData(avsmap, propName, index, &error);
     if (!error) {
       result = env->SaveString(result); // property had its own storage
       return AVSValue(result);
@@ -1043,29 +1043,29 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(&fr);
 
   int error = 0;
 
-  char propType = env2->propGetType(avsmap, propName);
+  char propType = env->propGetType(avsmap, propName);
   if (propType == 'u') {
     // special: zero array
     return AVSValue(nullptr, 0);
   }
   // check auto
-  int size = env2->propNumElements(avsmap, propName);
+  int size = env->propNumElements(avsmap, propName);
 
   AVSValue *result = new AVSValue[size];
 
   // propGetIntArray or propGetFloatArray is available
   // note: AVSValue is int and float, prop arrays are int64_t and double
   if (propType == 'i') {
-    const int64_t* arr = env2->propGetIntArray(avsmap, propName, &error);
+    const int64_t* arr = env->propGetIntArray(avsmap, propName, &error);
     for (int i = 0; i < size; ++i)
       result[i] = (int)arr[i];
   }
   else if (propType == 'f') {
-    const double* arr = env2->propGetFloatArray(avsmap, propName, &error);
+    const double* arr = env->propGetFloatArray(avsmap, propName, &error);
     for (int i = 0; i < size; ++i)
       result[i] = (float)arr[i];
   }
@@ -1075,15 +1075,15 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
     for (int i = 0; i < size; ++i) {
       AVSValue elem;
       switch (propType) {
-      case 'i': elem = AVSValue((int)env2->propGetInt(avsmap, propName, i, &error)); break; // though handled earlier
-      case 'f': elem = AVSValue((float)env2->propGetFloat(avsmap, propName, i, &error)); break; // though handled earlier
+      case 'i': elem = AVSValue((int)env->propGetInt(avsmap, propName, i, &error)); break; // though handled earlier
+      case 'f': elem = AVSValue((float)env->propGetFloat(avsmap, propName, i, &error)); break; // though handled earlier
       case 's': {
-        const char* s = env2->propGetData(avsmap, propName, i, &error);
+        const char* s = env->propGetData(avsmap, propName, i, &error);
         if (!error)
           elem = AVSValue(env->SaveString(s));
       }
         break;
-      case 'v': elem = AVSValue(env2->propGetFrame(avsmap, propName, i, &error)); break;
+      case 'v': elem = AVSValue(env->propGetFrame(avsmap, propName, i, &error)); break;
       default:
         elem = AVSValue();
       }
@@ -1134,11 +1134,11 @@ AVSValue GetPropertyDataSize::Create(AVSValue args, void* , IScriptEnvironment* 
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(&fr);
 
   int error = 0;
 
-  int size = env2->propGetDataSize(avsmap, propName, index, &error);
+  int size = env->propGetDataSize(avsmap, propName, index, &error);
   if (!error)
     return AVSValue(size);
 
@@ -1181,10 +1181,10 @@ AVSValue GetPropertyNumElements::Create(AVSValue args, void*, IScriptEnvironment
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(&fr);
 
   try {
-    int size = env2->propNumElements(avsmap, propName);
+    int size = env->propNumElements(avsmap, propName);
     return AVSValue(size);
   }
   catch (const AvisynthError& error) {
@@ -1217,10 +1217,10 @@ AVSValue GetPropertyType::Create(AVSValue args, void*, IScriptEnvironment* env) 
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(&fr);
 
   try {
-    char prop_type = env2->propGetType(avsmap, propName);
+    char prop_type = env->propGetType(avsmap, propName);
     // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
     switch (prop_type) {
     case 'u': return 0;
@@ -1263,10 +1263,10 @@ AVSValue GetPropertyNumKeys::Create(AVSValue args, void*, IScriptEnvironment* en
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(&fr);
 
   try {
-    int size = env2->propNumKeys(avsmap);
+    int size = env->propNumKeys(avsmap);
     return AVSValue(size);
   }
   catch (const AvisynthError& error) {
@@ -1299,10 +1299,10 @@ AVSValue GetPropertyKeyByIndex::Create(AVSValue args, void*, IScriptEnvironment*
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env2->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(&fr);
 
   try {
-    const char* prop_name = env2->propGetKey(avsmap, index);
+    const char* prop_name = env->propGetKey(avsmap, index);
     return AVSValue(env->SaveString(prop_name));
   }
   catch (const AvisynthError& error) {

@@ -765,7 +765,7 @@ PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
 
     auto src = child->GetFrame(n, env);
 #ifndef NEOFP
-    auto dst = static_cast<IScriptEnvironment2*>(env)->NewVideoFrame(vi, &src);
+    auto dst = env->NewVideoFrame(vi, &src);
 #else
     auto dst = env->NewVideoFrame(vi);
 #endif
