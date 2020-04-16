@@ -1059,16 +1059,24 @@ bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
     AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit3@8");
 #endif
 
+  bool success = true;
   if (AvisynthPluginInit3 == NULL)
     return false;
   else
   {
     PluginInLoad = &plugin;
-    *result = AvisynthPluginInit3(Env, AVS_linkage);
+    // a bad plugin can kill everything if it uses e.g. an old IScriptEnvironment2
+    try {
+      *result = AvisynthPluginInit3(Env, AVS_linkage);
+    }
+    catch (...)
+    {
+      success = false;
+    }
     PluginInLoad = NULL;
   }
 
-  return true;
+  return success;
 }
 
 bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
@@ -1085,16 +1093,24 @@ bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
     AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin.Library, "_AvisynthPluginInit2@4");
 #endif
 
+  bool success = true;
   if (AvisynthPluginInit2 == NULL)
     return false;
   else
   {
     PluginInLoad = &plugin;
-    *result = AvisynthPluginInit2(Env);
+    // in case of a crash in init2
+    try {
+      *result = AvisynthPluginInit2(Env);
+    }
+    catch (...)
+    {
+      success = false;
+    }
     PluginInLoad = NULL;
   }
 
-  return true;
+  return success;
 }
 
 bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
