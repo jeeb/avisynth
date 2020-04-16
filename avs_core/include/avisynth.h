@@ -71,8 +71,20 @@
 #define __cdecl
 #endif
 
-enum { AVISYNTH_INTERFACE_VERSION = 7 };
+// Important note on AVISYNTH_INTERFACE_VERSION change:
+// Note 1: Those few plugins which were using earlier IScriptEnvironment2 despite the big Warning will crash have to be rebuilt.
+// Note 2: How to support earlier avisynth interface with an up-to-date avisynth.h:
+//         Use the new frame property features adaptively after querying that at least v8 is supported
+//         AviSynth property support can be queried (cpp iface example):
+//           has_at_least_v8 = true;
+//           try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8 = false; }
+//         and use it:
+//           if (has_at_least_v8) dst = env->NewVideoFrameP(vi, &src); else dst = env->NewVideoFrame(vi);
 
+enum {
+  AVISYNTH_CLASSIC_INTERFACE_VERSION = 6,
+  AVISYNTH_INTERFACE_VERSION = 7
+};
 
 /* Compiler-specific crap */
 
@@ -1026,9 +1038,9 @@ public:
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
 #ifndef NEOFP
-  AVSMap& getProperties() AVS_BakedCode(return AVS_LinkCallV(getProperties)())
-  const AVSMap& getConstProperties() AVS_BakedCode(return AVS_LinkCallV(getConstProperties)())
-  void setProperties(const AVSMap& properties) AVS_BakedCode(AVS_LinkCall_Void(setProperties)())
+  AVSMap& getProperties() AVS_BakedCode(return AVS_LinkCallOptDefault(getProperties, (AVSMap&)*(AVSMap*)0))
+  const AVSMap& getConstProperties() AVS_BakedCode(return AVS_LinkCallOptDefault(getConstProperties, (const AVSMap&)*(const AVSMap*)0))
+  void setProperties(const AVSMap & properties) AVS_BakedCode(AVS_LinkCall_Void(setProperties)(properties))
 #else
   bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_IsPropertyWritable)())
   void SetProperty(const char* key, const AVSMapValue& value) AVS_BakedCode(AVS_LinkCall_Void(VideoFrame_SetProperty)(key, value))
@@ -1566,7 +1578,7 @@ public:
   virtual void __stdcall clearMap(AVSMap* map) = 0;
 
   // with frame property source
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
+  virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
 #endif
 
 }; // end class IScriptEnvironment
@@ -1673,13 +1685,11 @@ public:
   using IScriptEnvironment::Invoke;
   using IScriptEnvironment::AddFunction;
   using IScriptEnvironment::GetVar;
-  using IScriptEnvironment::NewVideoFrame;
+  using IScriptEnvironment::SubframePlanarA;
 
-  /* since IF v8 moved to IScriptEnvironment from IScriptEnvironment2
+  /* since IF v8 moved to IScriptEnvironment from IScriptEnvironment2*/
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
-  */
-
 }; // end class IScriptEnvironment2
 
 
