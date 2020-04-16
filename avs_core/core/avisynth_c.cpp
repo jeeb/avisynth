@@ -1076,7 +1076,7 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, c
   p->error = 0;
   try {
     auto env = p->env;
-    PVideoFrame f0 = env->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, align);
+    PVideoFrame f0 = env->NewVideoFrameP(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, align);
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
     return f;
@@ -1094,7 +1094,7 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_prop(AVS_ScriptEnvironment * p, con
   p->error = 0;
   try {
     auto env = p->env;
-    PVideoFrame f0 = env->NewVideoFrame(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, AVS_FRAME_ALIGN);
+    PVideoFrame f0 = env->NewVideoFrameP(*(const VideoInfo*)vi, (PVideoFrame*)propSrc, AVS_FRAME_ALIGN);
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
     return f;

@@ -194,7 +194,7 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
 
   // YUY2
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -407,7 +407,7 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
   }
 
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -651,7 +651,7 @@ static void yuy2_ytouv_c(const BYTE* src_y, const BYTE* src_u, const BYTE* src_v
 PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

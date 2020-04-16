@@ -1332,7 +1332,7 @@ public:
   }
 
 #ifndef NEOFP
-  PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame *propSrc, int align)
+  PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame *propSrc, int align)
   {
     return core->NewVideoFrameOnDevice(vi, align, DISPATCH(currentDevice), propSrc);
   }

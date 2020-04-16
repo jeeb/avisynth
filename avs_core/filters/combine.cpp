@@ -107,7 +107,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
     frames.emplace_back(child->GetFrame(n, env));
 
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &frames[0]);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &frames[0]);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -210,7 +210,7 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
     frames.emplace_back(child->GetFrame(n, env));
 
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &frames[0]);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &frames[0]);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

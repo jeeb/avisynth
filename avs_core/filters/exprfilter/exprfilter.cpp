@@ -3340,7 +3340,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 #ifndef NEOFP
   PVideoFrame dst;
   if (first_used_clip_index >= 0)
-    dst = env->NewVideoFrame(d.vi, &src[first_used_clip_index]);
+    dst = env->NewVideoFrameP(d.vi, &src[first_used_clip_index]);
   else
     dst = env->NewVideoFrame(d.vi);
 #else

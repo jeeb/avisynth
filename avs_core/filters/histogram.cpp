@@ -394,7 +394,7 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -556,7 +556,7 @@ PVideoFrame Histogram::DrawModeLuma(int n, IScriptEnvironment* env) {
 PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -761,7 +761,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
   // This mode will display the chroma values(U / V color placement) in a two dimensional graph(called a vectorscope)
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1094,7 +1094,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
 PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1637,7 +1637,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
   const int srcpitch = src->GetPitch();
 
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

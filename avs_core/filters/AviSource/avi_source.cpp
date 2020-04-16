@@ -1302,7 +1302,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     if (keyframe < 0) keyframe = 0;
 
     bool frameok = false;
-    //PVideoFrame frame = env->NewVideoFrame(vi, -4);
+    //PVideoFrame frame = env->NewVideoFrameP(vi, -4);
 
     bool not_found_yet;
     do {

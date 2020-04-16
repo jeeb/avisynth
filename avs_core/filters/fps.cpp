@@ -715,7 +715,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 
 		// Result goes into a new buffer since it can be made up of a number of source frames
 #ifndef NEOFP
-    PVideoFrame d = env->NewVideoFrame(vi, &a);
+    PVideoFrame d = env->NewVideoFrameP(vi, &a);
 #else
     PVideoFrame d = env->NewVideoFrame(vi);
 #endif

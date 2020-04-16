@@ -298,7 +298,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // use blazing fast YV12 -> YV24 converter
       PVideoFrame Inframe = child->GetFrame(n, env);
 #ifndef NEOFP
-      frame = env->NewVideoFrame(*viInternalWorkingFormat, &Inframe);
+      frame = env->NewVideoFrameP(*viInternalWorkingFormat, &Inframe);
 #else
       frame = env->NewVideoFrame(*viInternalWorkingFormat);
 #endif
@@ -309,7 +309,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // use blazing fast YV16 -> YV24 converter
       PVideoFrame Inframe = child->GetFrame(n, env);
 #ifndef NEOFP
-      frame = env->NewVideoFrame(*viInternalWorkingFormat, &Inframe);
+      frame = env->NewVideoFrameP(*viInternalWorkingFormat, &Inframe);
 #else
       frame = env->NewVideoFrame(*viInternalWorkingFormat);
 #endif
@@ -319,7 +319,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // use blazing fast YUY2 -> YV24 converter
       PVideoFrame Inframe = child->GetFrame(n, env);
 #ifndef NEOFP
-      frame = env->NewVideoFrame(*viInternalWorkingFormat, &Inframe);
+      frame = env->NewVideoFrameP(*viInternalWorkingFormat, &Inframe);
 #else
       frame = env->NewVideoFrame(*viInternalWorkingFormat);
 #endif
@@ -388,7 +388,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // use blazing fast YV12 -> YV24 converter. Note: not exact chroma placement
       PVideoFrame frame = overlay->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -399,7 +399,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // use blazing fast YV16 -> YV24 converter
       PVideoFrame frame = overlay->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -409,7 +409,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // use blazing fast YUY2 -> YV24 converter
       PVideoFrame frame = overlay->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -444,7 +444,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // we'll use only Y anyway
       PVideoFrame frame = overlay->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -483,7 +483,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // faster than invoking ConvertToYUV420
       PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -496,7 +496,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
       PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -514,7 +514,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       // faster than invoking ConvertToYUV422
       PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -527,7 +527,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       overlay2 = env->Invoke("ConvertToYUV444", AVSValue(new_args, 2)).AsClip();
       PVideoFrame frame = overlay2.AsClip()->GetFrame(n, env);
 #ifndef NEOFP
-      Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+      Oframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
       Oframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -574,7 +574,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           // use blazing fast YV12 -> YV24 converter
           PVideoFrame frame = mask->GetFrame(n, env);
 #ifndef NEOFP
-          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+          Mframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -586,7 +586,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           // use blazing fast YV16 -> YV24 converter
           PVideoFrame frame = mask->GetFrame(n, env);
 #ifndef NEOFP
-          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+          Mframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -596,7 +596,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           // use blazing fast YUY2 -> YV24 converter
           PVideoFrame frame = mask->GetFrame(n, env);
 #ifndef NEOFP
-          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+          Mframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -638,7 +638,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           // faster than invoking ConvertToYUV420
           PVideoFrame frame = mask2.AsClip()->GetFrame(n, env);
 #ifndef NEOFP
-          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+          Mframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -651,7 +651,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
           // faster than invoking ConvertToYUV422
           PVideoFrame frame = mask2.AsClip()->GetFrame(n, env);
 #ifndef NEOFP
-          Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat, &frame);
+          Mframe = env->NewVideoFrameP(*viInternalOverlayWorkingFormat, &frame);
 #else
           Mframe = env->NewVideoFrame(*viInternalOverlayWorkingFormat);
 #endif
@@ -712,7 +712,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   if((pixelsize==1 || pixelsize == 2) && outputVi->Is420() && viInternalWorkingFormat->Is444())
   {
 #ifndef NEOFP
-    PVideoFrame outputFrame = env->NewVideoFrame(*outputVi, &frame);
+    PVideoFrame outputFrame = env->NewVideoFrameP(*outputVi, &frame);
 #else
     PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
 #endif
@@ -720,7 +720,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     return outputFrame;
   } else if((pixelsize==1 || pixelsize == 2) && outputVi->Is422() && viInternalWorkingFormat->Is444()) {
 #ifndef NEOFP
-    PVideoFrame outputFrame = env->NewVideoFrame(*outputVi, &frame);
+    PVideoFrame outputFrame = env->NewVideoFrameP(*outputVi, &frame);
 #else
     PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
 #endif
@@ -728,7 +728,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     return outputFrame;
   } else if(outputVi->IsYUY2()) {
 #ifndef NEOFP
-    PVideoFrame outputFrame = env->NewVideoFrame(*outputVi, &frame);
+    PVideoFrame outputFrame = env->NewVideoFrameP(*outputVi, &frame);
 #else
     PVideoFrame outputFrame = env->NewVideoFrame(*outputVi);
 #endif

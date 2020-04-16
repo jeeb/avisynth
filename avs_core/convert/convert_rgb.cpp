@@ -206,7 +206,7 @@ PVideoFrame __stdcall RGBtoRGBA::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -412,7 +412,7 @@ PVideoFrame __stdcall RGBAtoRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -656,7 +656,7 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
 {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -862,7 +862,7 @@ PVideoFrame __stdcall PlanarRGBtoPackedRGB::GetFrame(int n, IScriptEnvironment* 
 {
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

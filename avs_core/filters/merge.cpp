@@ -925,7 +925,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       }
       else { // avoid the cost of 2 chroma blits
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &src);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1057,7 +1057,7 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
     }
     else { // avoid the cost of 2 chroma blits
 #ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrame(vi, &luma);
+      PVideoFrame dst = env->NewVideoFrameP(vi, &luma);
 #else
       PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

@@ -1203,7 +1203,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // RGB32->RGB24, RGB64->RGB48
     {
 #ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrame(vi, &f);
+      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
       PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1234,7 +1234,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB32->YUY2
     {
 #ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrame(vi, &f);
+      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
       PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1261,7 +1261,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &f);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1310,7 +1310,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB32/64 -> Planar RGB 8/16 bit
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &f);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1380,7 +1380,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else { // RGB24->RGB24 not in-place
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &f);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1414,7 +1414,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // RGB24->RGB32
     {
 #ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrame(vi, &f);
+      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
       PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1445,7 +1445,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB24->YUY2
     {
 #ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrame(vi, &f);
+      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
       PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1471,7 +1471,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &f);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1519,7 +1519,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB24/48 -> Planar RGB 8/16 bit
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &f);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1579,7 +1579,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     {
       { // Planar RGBA/YUVA  ->RGB32/64
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &f);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1644,7 +1644,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // PRGB(A)/YUVA->RGB24, PRGB(A)16/YUVA16->RGB48
     {
 #ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrame(vi, &f);
+      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
       PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1700,7 +1700,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
 #ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrame(vi, &f);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
 #else
         PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -1873,7 +1873,7 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
 
 #ifndef NEOFP
   // choose one: R
-  PVideoFrame dst = env->NewVideoFrame(vi, &R);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &R);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

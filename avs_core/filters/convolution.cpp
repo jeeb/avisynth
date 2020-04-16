@@ -651,7 +651,7 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
 
   PVideoFrame src = child->GetFrame(n, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

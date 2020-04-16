@@ -54,7 +54,7 @@ PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
     return src;
 
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif

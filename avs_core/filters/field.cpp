@@ -122,7 +122,7 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
 
   PVideoFrame src = child->GetFrame(f, env);
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -850,7 +850,7 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame b = child->GetFrame(n+1, env);
 
 #ifndef NEOFP
-  PVideoFrame result = env->NewVideoFrame(vi, &a);
+  PVideoFrame result = env->NewVideoFrameP(vi, &a);
 #else
   PVideoFrame result = env->NewVideoFrame(vi);
 #endif
@@ -933,7 +933,7 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     }
     else {
 #ifndef NEOFP
-      PVideoFrame result = env->NewVideoFrame(vi, &a);
+      PVideoFrame result = env->NewVideoFrameP(vi, &a);
 #else
       PVideoFrame result = env->NewVideoFrame(vi);
 #endif

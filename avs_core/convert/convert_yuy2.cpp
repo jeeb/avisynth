@@ -391,7 +391,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {
 #ifndef NEOFP
-    PVideoFrame dst = env->NewVideoFrame(vi, &src);
+    PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
     PVideoFrame dst = env->NewVideoFrame(vi,32);
 #endif
@@ -442,7 +442,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
   }
 
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -948,7 +948,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
   if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24)
   {
 #ifndef NEOFP
-    PVideoFrame dst = env->NewVideoFrame(vi, &src);
+    PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
     PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
@@ -981,7 +981,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
   }
 
 #ifndef NEOFP
-  PVideoFrame dst = env->NewVideoFrame(vi, &src);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 #else
   PVideoFrame dst = env->NewVideoFrame(vi);
 #endif
