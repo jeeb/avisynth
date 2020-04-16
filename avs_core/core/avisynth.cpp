@@ -54,6 +54,7 @@
     #include <avs/win.h>
     #include <objbase.h>
 #else
+    #include "avisynth_conf.h"
 #if defined(AVS_MACOS)
     #include <mach/host_info.h>
     #include <mach/mach_host.h>
