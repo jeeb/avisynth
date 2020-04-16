@@ -23,17 +23,26 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       2 - touch
   - from plugin writer's point of view:
     If your filter is not an in-place one (works with NewVideoFrame instead of MakeWritable) then
-    you have to pass properties programatically by using a new version of env->NewVideoFrame.
+    you have to pass properties programatically by using a new version of env->NewVideoFrame: NewVideoFrameP.
     This alternative version of NewVideoFrame has a second PVideoFrame* parameter from which properties will be
     copied upon creating an empty VideoFrame.
-    In C interface: use avs_new_video_frame_a_prop instead of avs_new_video_frame_a
-    Another approach VideoFrame is created as before and later 'copyFrameProps' is used.
 
     Unfortunately if even one filter in the chain is not passing frame properties then it is a dead end on the info.
 
     Whether you can (should) use it or not, the Avisynth interface version will tell you. (e.g. >= 8) which should be
-    queried somewhere before plugin code decides whether frame properties can be used or not.
+    queried (best place: filter constructor)
     Unless you drop support for older avs+ or classic Avisynth 2.6, there will be a transient time when you have to support both world.
+    Example:
+      Check it:
+        has_at_least_v8 = true;
+        try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8 = false; }
+      and use it:
+        if (has_at_least_v8) dst = env->NewVideoFrameP(vi, &src); else dst = env->NewVideoFrame(vi);
+
+    Another approach VideoFrame is created as before and later 'copyFrameProps' is used.
+
+    In C interface:
+      use avs_new_video_frame_a_prop instead of avs_new_video_frame_a
 
       AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
 
@@ -49,7 +58,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     New methods:
 
     - NewVideoFrame with frame property source:
-        PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
+        PVideoFrame NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
 
       Instead of using
         PVideoFrame src = child->GetFrame(n, env);
@@ -57,20 +66,13 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
       create new video frame with passing properties
         PVideoFrame src = child->GetFrame(n, env);
-        PVideoFrame dst = env->NewVideoFrame(vi, &src);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
       All core functions in Avisynth support passing frame properties as a first step.
       (Second and further steps for Avisynth core: use "standardized" frame properties for color matrix and primaries info,
       for field based flag, etc...)
 
       Note: MakeWritable preserves frame properties
-      Usability: after querying Avisynth interface version, if >=8 (preliminary info), use it. When a plugin wants to support
-      earlier avs+ and classic avs versions, you should branch it programatically. Or guard your plugin:
-      See:
-        http://avisynth.nl/index.php/Filter_SDK/AVISYNTH_INTERFACE_VERSION
-        "Through the IClip interface it is the authors responsibility to declare the level of support the plugin provides:
-          virtual int __stdcall IClip()::GetVersion() { return <supported AVISYNTH_INTERFACE_VERSION>; }"
-
 
     - copy frame properties from one frame to another: copyFrameProps
     - get property pointer for readonly access: getFramePropsRO
