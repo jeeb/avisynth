@@ -351,8 +351,7 @@ const VS_Map* getFramePropsRO(AVS_ScriptEnvironment* p, const AVS_VideoFrame* fr
 {
   p->error = 0;
   try {
-    const AVSFrameRef fr(*(const PVideoFrame*)(frame));
-    return (const VS_Map *)(p->env->getFramePropsRO(&fr));
+    return (const VS_Map *)(p->env->getFramePropsRO(*(const PVideoFrame*)frame));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -365,8 +364,7 @@ VS_Map * getFramePropsRW(AVS_ScriptEnvironment * p, AVS_VideoFrame * frame)
 {
   p->error = 0;
   try {
-    AVSFrameRef fr(*(PVideoFrame*)(frame));
-    return (VS_Map*)(p->env->getFramePropsRW(&fr));
+    return (VS_Map*)(p->env->getFramePropsRW(*(PVideoFrame*)frame));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -501,8 +499,7 @@ AVS_Clip* propGetClip(AVS_ScriptEnvironment* p, const VS_Map* map, const char* k
 {
   p->error = 0;
   try {
-    AVSClipRef* clip = p->env->propGetClip((const AVSMap*)map, key, index, error);
-    PClip c0 = clip->clip;
+    PClip c0 = p->env->propGetClip((const AVSMap*)map, key, index, error);
     AVS_Clip* c;
     new((PClip*)&c) PClip(c0);
     return c;
@@ -518,8 +515,7 @@ const AVS_VideoFrame * propGetFrame(AVS_ScriptEnvironment * p, const VS_Map * ma
 {
   p->error = 0;
   try {
-    const AVSFrameRef* fr = p->env->propGetFrame((const AVSMap*)map, key, index, error);
-    PVideoFrame f0 = fr->frame;
+    const PVideoFrame f0 = p->env->propGetFrame((const AVSMap*)map, key, index, error);
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
     return f;
@@ -576,8 +572,7 @@ int propSetClip(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, AVS_Cl
   // length = -1 -> auto strlen
   p->error = 0;
   try {
-    AVSClipRef cl(*(PClip*)clip);
-    return (p->env->propSetClip((AVSMap*)map, key, &cl, append));
+    return (p->env->propSetClip((AVSMap*)map, key, *(PClip*)clip, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -591,8 +586,7 @@ int propSetFrame(AVS_ScriptEnvironment * p, VS_Map * map, const char* key, const
   // length = -1 -> auto strlen
   p->error = 0;
   try {
-    AVSFrameRef fr(*(PVideoFrame*)frame);
-    return (p->env->propSetFrame((AVSMap*)map, key, &fr, append));
+    return (p->env->propSetFrame((AVSMap*)map, key, *(PVideoFrame*)frame, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;

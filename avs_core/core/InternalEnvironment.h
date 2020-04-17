@@ -132,8 +132,8 @@ public:
   // frame properties support
   virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0;
 
-  virtual const AVSMap* getFramePropsRO(const AVSFrameRef* frame) = 0;
-  virtual AVSMap* getFramePropsRW(AVSFrameRef* frame) = 0;
+  virtual const AVSMap* getFramePropsRO(const PVideoFrame& frame) = 0;
+  virtual AVSMap* getFramePropsRW(PVideoFrame &frame) = 0;
 
   virtual int propNumKeys(const AVSMap* map) = 0;
   virtual const char* propGetKey(const AVSMap* map, int index) = 0;
@@ -145,13 +145,13 @@ public:
   virtual double propGetFloat(const AVSMap* map, const char* key, int index, int* error) = 0;
   virtual const char* propGetData(const AVSMap* map, const char* key, int index, int* error) = 0;
   virtual int propGetDataSize(const AVSMap* map, const char* key, int index, int* error) = 0;
-  virtual AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
-  virtual const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual PClip propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const PVideoFrame propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
   virtual int propSetInt(AVSMap* map, const char* key, int64_t i, int append) = 0;
   virtual int propSetFloat(AVSMap* map, const char* key, double d, int append) = 0;
   virtual int propSetData(AVSMap* map, const char* key, const char* d, int length, int append) = 0;
-  virtual int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) = 0;
-  virtual int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) = 0;
+  virtual int propSetClip(AVSMap* map, const char* key, PClip& clip, int append) = 0;
+  virtual int propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append) = 0;
 
   virtual const int64_t* propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
   virtual const double* propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;

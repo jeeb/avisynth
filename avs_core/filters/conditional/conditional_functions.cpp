@@ -137,7 +137,9 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   { "propNumKeys", BUILTIN_FUNC_PREFIX, "c[offset]i", GetPropertyNumKeys::Create},
   { "propGetKeyByIndex", BUILTIN_FUNC_PREFIX, "c[index]i[offset]i", GetPropertyKeyByIndex::Create},
   { "propGetType", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyType::Create},
+#ifdef NEW_AVSVALUE
   { "propGetAsArray", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyAsArray::Create},
+#endif
 #endif
 
   { 0 }
@@ -959,9 +961,7 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
 
   PVideoFrame src = child->GetFrame(n, env);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(src);
 
   int error = 0;
 
@@ -1041,9 +1041,7 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
 
   PVideoFrame src = child->GetFrame(n, env);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(src);
 
   int error = 0;
 
@@ -1132,9 +1130,7 @@ AVSValue GetPropertyDataSize::Create(AVSValue args, void* , IScriptEnvironment* 
 
   PVideoFrame src = child->GetFrame(n, env);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(src);
 
   int error = 0;
 
@@ -1179,9 +1175,7 @@ AVSValue GetPropertyNumElements::Create(AVSValue args, void*, IScriptEnvironment
 
   PVideoFrame src = child->GetFrame(n, env);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(src);
 
   try {
     int size = env->propNumElements(avsmap, propName);
@@ -1215,9 +1209,7 @@ AVSValue GetPropertyType::Create(AVSValue args, void*, IScriptEnvironment* env) 
 
   PVideoFrame src = child->GetFrame(n, env);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(src);
 
   try {
     char prop_type = env->propGetType(avsmap, propName);
@@ -1261,9 +1253,7 @@ AVSValue GetPropertyNumKeys::Create(AVSValue args, void*, IScriptEnvironment* en
 
   PVideoFrame src = child->GetFrame(n, env);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(src);
 
   try {
     int size = env->propNumKeys(avsmap);
@@ -1297,9 +1287,7 @@ AVSValue GetPropertyKeyByIndex::Create(AVSValue args, void*, IScriptEnvironment*
 
   PVideoFrame src = child->GetFrame(n, env);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  const AVSFrameRef fr(src);
-  const AVSMap* avsmap = env->getFramePropsRO(&fr);
+  const AVSMap* avsmap = env->getFramePropsRO(src);
 
   try {
     const char* prop_name = env->propGetKey(avsmap, index);

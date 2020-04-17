@@ -747,8 +747,8 @@ public:
   PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 #ifndef NEOFP
   void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
-  const AVSMap* getFramePropsRO(const AVSFrameRef* frame) AVS_NOEXCEPT;
-  AVSMap* getFramePropsRW(AVSFrameRef* frame) AVS_NOEXCEPT;
+  const AVSMap* getFramePropsRO(const PVideoFrame& frame) AVS_NOEXCEPT;
+  AVSMap* getFramePropsRW(PVideoFrame& frame) AVS_NOEXCEPT;
   int propNumKeys(const AVSMap* map) AVS_NOEXCEPT;
   const char* propGetKey(const AVSMap* map, int index) AVS_NOEXCEPT;
   int propNumElements(const AVSMap* map, const char* key) AVS_NOEXCEPT;
@@ -758,13 +758,13 @@ public:
   double propGetFloat(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
   const char* propGetData(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
   int propGetDataSize(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
-  const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  PClip propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
+  const PVideoFrame propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT;
   int propSetInt(AVSMap* map, const char* key, int64_t i, int append) AVS_NOEXCEPT;
   int propSetFloat(AVSMap* map, const char* key, double d, int append) AVS_NOEXCEPT;
   int propSetData(AVSMap* map, const char* key, const char* d, int length, int append) AVS_NOEXCEPT;
-  int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) AVS_NOEXCEPT;
-  int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) AVS_NOEXCEPT;
+  int propSetClip(AVSMap* map, const char* key, PClip& clip, int append) AVS_NOEXCEPT;
+  int propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append) AVS_NOEXCEPT;
 
   const int64_t* propGetIntArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
   const double* propGetFloatArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT;
@@ -1452,11 +1452,11 @@ public:
     core->copyFrameProps(src, dst);
   }
 
-  const AVSMap* __stdcall getFramePropsRO(const AVSFrameRef* frame)
+  const AVSMap* __stdcall getFramePropsRO(const PVideoFrame& frame)
   {
     return core->getFramePropsRO(frame);
   }
-  AVSMap* __stdcall getFramePropsRW(AVSFrameRef* frame)
+  AVSMap* __stdcall getFramePropsRW(PVideoFrame& frame)
   {
     return core->getFramePropsRW(frame);
   }
@@ -1496,11 +1496,11 @@ public:
   {
     return core->propGetDataSize(map, key, index, error);
   }
-  AVSClipRef* __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error)
+  PClip __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error)
   {
     return core->propGetClip(map, key, index, error);
   }
-  const AVSFrameRef* __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error)
+  const PVideoFrame __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error)
   {
     return core->propGetFrame(map, key, index, error);
   }
@@ -1516,11 +1516,11 @@ public:
   {
     return core->propSetData(map, key, d, length, append);
   }
-  int __stdcall propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append)
+  int __stdcall propSetClip(AVSMap* map, const char* key, PClip& clip, int append)
   {
     return core->propSetClip(map, key, clip, append);
   }
-  int __stdcall propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append)
+  int __stdcall propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append)
   {
     return core->propSetFrame(map, key, frame, append);
   }
@@ -4713,14 +4713,14 @@ void ScriptEnvironment::copyFrameProps(const PVideoFrame& src, PVideoFrame& dst)
 
 // from vsapi.cpp
 // these were VS_CC (__stdcall)
-const AVSMap* ScriptEnvironment::getFramePropsRO(const AVSFrameRef* frame) AVS_NOEXCEPT {
+const AVSMap* ScriptEnvironment::getFramePropsRO(const PVideoFrame& frame) AVS_NOEXCEPT {
   assert(frame);
-  return &frame->frame->getConstProperties();
+  return &(frame->getConstProperties());
 }
 
-AVSMap* ScriptEnvironment::getFramePropsRW(AVSFrameRef* frame) AVS_NOEXCEPT {
+AVSMap* ScriptEnvironment::getFramePropsRW(PVideoFrame &frame) AVS_NOEXCEPT {
   assert(frame);
-  return &frame->frame->getProperties();
+  return &(frame->getProperties());
 }
 
 int ScriptEnvironment::propNumKeys(const AVSMap* map) AVS_NOEXCEPT {
@@ -4799,12 +4799,13 @@ int ScriptEnvironment::propGetDataSize(const AVSMap* map, const char* key, int i
   PROP_GET_SHARED(FramePropVariant::vData, static_cast<int>(l->getValue<VSMapData>(index)->size()))
 }
 
-AVSClipRef* __stdcall ScriptEnvironment::propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
-  PROP_GET_SHARED(FramePropVariant::vClip, new AVSClipRef(l->getValue<AVSClipRef>(index)))
+PClip __stdcall ScriptEnvironment::propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  PROP_GET_SHARED(FramePropVariant::vClip, l->getValue<PClip>(index))
 }
 
-const AVSFrameRef* ScriptEnvironment::propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
-  PROP_GET_SHARED(FramePropVariant::vFrame, new AVSFrameRef(l->getValue<PVideoFrame>(index)))
+const PVideoFrame ScriptEnvironment::propGetFrame(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+  // PVideoFrame itself is reference counted
+  PROP_GET_SHARED(FramePropVariant::vFrame, l->getValue<PVideoFrame>(index))
 }
 
 static inline bool isAlphaUnderscore(char c) {
@@ -4862,12 +4863,12 @@ int ScriptEnvironment::propSetData(AVSMap* map, const char* key, const char* d, 
   PROP_SET_SHARED(FramePropVariant::vData, length >= 0 ? std::string(d, length) : std::string(d))
 }
 
-int ScriptEnvironment::propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) AVS_NOEXCEPT {
-  PROP_SET_SHARED(FramePropVariant::vClip, *clip)
+int ScriptEnvironment::propSetClip(AVSMap* map, const char* key, PClip& clip, int append) AVS_NOEXCEPT {
+  PROP_SET_SHARED(FramePropVariant::vClip, clip)
 }
 
-int ScriptEnvironment::propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) AVS_NOEXCEPT {
-  PROP_SET_SHARED(FramePropVariant::vFrame, frame->frame)
+int ScriptEnvironment::propSetFrame(AVSMap* map, const char* key, const PVideoFrame &frame, int append) AVS_NOEXCEPT {
+  PROP_SET_SHARED(FramePropVariant::vFrame, frame)
 }
 
 const int64_t* ScriptEnvironment::propGetIntArray(const AVSMap* map, const char* key, int* error) AVS_NOEXCEPT {
@@ -5148,7 +5149,7 @@ void FramePropVariant::append(const std::string& val) {
   internalSize++;
 }
 
-void FramePropVariant::append(const AVSClipRef& val) {
+void FramePropVariant::append(const PClip& val) {
   initStorage(vClip);
   reinterpret_cast<ClipList*>(storage)->push_back(val);
   internalSize++;

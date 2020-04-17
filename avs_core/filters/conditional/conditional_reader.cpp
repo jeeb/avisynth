@@ -1008,9 +1008,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
 
   env->MakeWritable(&frame);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
-  AVSMap* avsmap = env->getFramePropsRW(&fr);
+  AVSMap* avsmap = env->getFramePropsRW(frame);
 
   int propType = kind;
   // vUnset, vInt, vFloat, vData/*, vNode*/, vFrame/*, vMethod*/ }
@@ -1151,9 +1149,7 @@ PVideoFrame __stdcall DeleteProperty::GetFrame(int n, IScriptEnvironment* env)
 
   env->MakeWritable(&frame);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
-  AVSMap* avsmap = env->getFramePropsRW(&fr);
+  AVSMap* avsmap = env->getFramePropsRW(frame);
   int res = env->propDeleteKey(avsmap, name); // 0 is success
 
   if (!res) {
@@ -1204,9 +1200,7 @@ PVideoFrame __stdcall ClearProperties::GetFrame(int n, IScriptEnvironment* env)
 
   env->MakeWritable(&frame);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  AVSFrameRef fr(frame); // fixme: PVideoFrame&&?
-  AVSMap* avsmap = env->getFramePropsRW(&fr);
+  AVSMap* avsmap = env->getFramePropsRW(frame);
   env->clearMap(avsmap);
 
   return frame;

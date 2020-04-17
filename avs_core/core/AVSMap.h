@@ -27,7 +27,7 @@ typedef std::shared_ptr<std::string> VSMapData;
 typedef std::vector<int64_t> IntList;
 typedef std::vector<double> FloatList;
 typedef std::vector<VSMapData> DataList;
-typedef std::vector<AVSClipRef> ClipList;
+typedef std::vector<PClip> ClipList;
 typedef std::vector<PVideoFrame> FrameList;
 //typedef std::vector<PExtFunction> FuncList;
 
@@ -47,7 +47,7 @@ public:
   void append(int64_t val);
   void append(double val);
   void append(const std::string& val);
-  void append(const AVSClipRef& val);
+  void append(const PClip& val);
   void append(const PVideoFrame& val);
   //void append(const PExtFunction& val); // not in avs+
 

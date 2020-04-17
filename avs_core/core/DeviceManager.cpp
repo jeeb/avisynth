@@ -829,9 +829,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
     TransferFrameData(dst, src, false, env);
 
 #ifndef NEOFP
-    auto env2 = static_cast<IScriptEnvironment2*>(env);
-    AVSFrameRef fr(dst);
-    AVSMap* mapv = env->getFramePropsRW(&fr);
+    AVSMap* mapv = env->getFramePropsRW(dst);
     const int numKeys = env->propNumKeys(mapv);
     for (int i = 0; i < numKeys; i++) {
       const char* key = env->propGetKey(mapv, i);
@@ -843,8 +841,8 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
         int error;
 
         for (int index = 0; index < numElements; index++) {
-          const AVSFrameRef* srcframe = env->propGetFrame(mapv, key, index, &error);
-          frameset.push_back(srcframe->frame);
+          const PVideoFrame srcframe = env->propGetFrame(mapv, key, index, &error);
+          frameset.push_back(srcframe);
         }
 
         env->propDeleteKey(mapv, key);
@@ -853,8 +851,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
           PVideoFrame src = frameset[index];
           PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
           TransferFrameData(dst, src, false, env);
-          const AVSFrameRef newfr(dst);
-          env->propSetFrame(mapv, key, &newfr, AVSPropAppendMode::paAppend);
+          env->propSetFrame(mapv, key, dst, AVSPropAppendMode::paAppend);
         }
       }
     }
@@ -889,9 +886,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
     TransferFrameData(cacheHandle.first->value, item.src, true, env);
 
 #ifndef NEOFP
-    auto env2 = static_cast<IScriptEnvironment2*>(env);
-    AVSFrameRef fr(cacheHandle.first->value);
-    AVSMap* mapv = env->getFramePropsRW(&fr);
+    AVSMap* mapv = env->getFramePropsRW(cacheHandle.first->value);
     const int numKeys = env->propNumKeys(mapv);
     for (int i = 0; i < numKeys; i++) {
       const char* key = env->propGetKey(mapv, i);
@@ -903,8 +898,8 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
         int error;
 
         for (int index = 0; index < numElements; index++) {
-          const AVSFrameRef* srcframe = env->propGetFrame(mapv, key, index, &error);
-          frameset.push_back(srcframe->frame);
+          const PVideoFrame srcframe = env->propGetFrame(mapv, key, index, &error);
+          frameset.push_back(srcframe);
         }
 
         env->propDeleteKey(mapv, key);
@@ -913,8 +908,7 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
           PVideoFrame src = frameset[index];
           PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
           TransferFrameData(dst, src, true, env);
-          const AVSFrameRef newfr(dst);
-          env->propSetFrame(mapv, key, &newfr, AVSPropAppendMode::paAppend);
+          env->propSetFrame(mapv, key, dst, AVSPropAppendMode::paAppend);
         }
       }
     }

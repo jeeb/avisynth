@@ -17,7 +17,7 @@
 // 20200330: VideoFrame: frame property field: avsmap (from Neo)
 // 20200330: Integrate Avisynth Neo structures and interface, PFunction, PDevice
 // 20200410: frame properties - new version
-// 20200415: frame property support (NewVideoFrame and other functions) to legacy IScriptEnvironment.
+// 20200415: frame property support (NewVideoFrameP and other functions) to legacy IScriptEnvironment.
 //           Interface Version to 8 (classic 2.6 = 6)
 
 // http://www.avisynth.org
@@ -193,9 +193,6 @@ class Device;
 class SINGLE_INHERITANCE PDevice;
 #ifndef NEOFP
 class AVSMap;
-struct AVSFrameRef;
-struct AVSClipRef;
-
 #endif
 
 
@@ -1212,18 +1209,6 @@ public:
 
 
 #ifndef NEOFP
-struct AVSFrameRef {
-  PVideoFrame frame;
-  AVSFrameRef(const PVideoFrame& frame) : frame(frame) {}
-  AVSFrameRef(PVideoFrame&& frame) : frame(frame) {}
-};
-
-struct AVSClipRef {
-  PClip clip;
-  AVSClipRef(const PClip& clip) : clip(clip) {}
-  AVSClipRef(PClip&& clip) : clip(clip) {}
-};
-
 typedef enum AVSPropTypes {
   ptUnset = 'u',
   ptInt = 'i',
@@ -1544,8 +1529,8 @@ public:
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 #ifndef NEOFP
   virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0;
-  virtual const AVSMap* __stdcall getFramePropsRO(const AVSFrameRef* frame) = 0;
-  virtual AVSMap* __stdcall getFramePropsRW(AVSFrameRef* frame) = 0;
+  virtual const AVSMap* __stdcall getFramePropsRO(const PVideoFrame& frame) = 0;
+  virtual AVSMap* __stdcall getFramePropsRW(PVideoFrame& frame) = 0;
 
   virtual int __stdcall propNumKeys(const AVSMap* map) = 0;
 
@@ -1557,16 +1542,16 @@ public:
   virtual double __stdcall propGetFloat(const AVSMap* map, const char* key, int index, int* error) = 0;
   virtual const char* __stdcall propGetData(const AVSMap* map, const char* key, int index, int* error) = 0;
   virtual int __stdcall propGetDataSize(const AVSMap* map, const char* key, int index, int* error) = 0;
-  virtual AVSClipRef* __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
-  virtual const AVSFrameRef* __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual PClip __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const PVideoFrame __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
 
   virtual int __stdcall propDeleteKey(AVSMap* map, const char* key) = 0;
 
   virtual int __stdcall propSetInt(AVSMap* map, const char* key, int64_t i, int append) = 0;
   virtual int __stdcall propSetFloat(AVSMap* map, const char* key, double d, int append) = 0;
   virtual int __stdcall propSetData(AVSMap* map, const char* key, const char* d, int length, int append) = 0;
-  virtual int __stdcall propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) = 0;
-  virtual int __stdcall propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) = 0;
+  virtual int __stdcall propSetClip(AVSMap* map, const char* key, PClip& clip, int append) = 0;
+  virtual int __stdcall propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append) = 0;
 
   virtual const int64_t* __stdcall propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
   virtual const double* __stdcall propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;
@@ -1577,8 +1562,13 @@ public:
   virtual void __stdcall freeMap(AVSMap* map) = 0;
   virtual void __stdcall clearMap(AVSMap* map) = 0;
 
-  // with frame property source
+  // with frame property source.
   virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
+
+  // Note: do not declare existing names like 'NewVideoFrame' again with different parameters since MSVC will reorder it
+  // in the vtable and group it together with the first NewVideoFrame variant.
+  // This results in shifting all vtable method pointers after NewVideoFrame and breaks all plugins who expect the old order.
+  // E.g. ApplyMessage will be called instead of GetAVSLinkage
 #endif
 
 }; // end class IScriptEnvironment
@@ -1803,8 +1793,8 @@ public:
 #ifndef NEOFP
   // I keep using Neo method in which ScriptEnvironment2 is duplicated here
   virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0; // as in ScriptEnvironment2
-  virtual const AVSMap* __stdcall getFramePropsRO(const AVSFrameRef* frame) = 0;
-  virtual AVSMap* __stdcall getFramePropsRW(AVSFrameRef* frame) = 0;
+  virtual const AVSMap* __stdcall getFramePropsRO(const PVideoFrame& frame) = 0;
+  virtual AVSMap* __stdcall getFramePropsRW(PVideoFrame& frame) = 0;
 
   virtual int __stdcall propNumKeys(const AVSMap* map) = 0;
   virtual const char* __stdcall propGetKey(const AVSMap* map, int index) = 0;
@@ -1815,16 +1805,16 @@ public:
   virtual double __stdcall propGetFloat(const AVSMap* map, const char* key, int index, int* error) = 0;
   virtual const char* __stdcall propGetData(const AVSMap* map, const char* key, int index, int* error) = 0;
   virtual int __stdcall propGetDataSize(const AVSMap* map, const char* key, int index, int* error) = 0;
-  virtual AVSClipRef* __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
-  virtual const AVSFrameRef* __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual PClip __stdcall propGetClip(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual const PVideoFrame __stdcall propGetFrame(const AVSMap* map, const char* key, int index, int* error) = 0;
 
   virtual int __stdcall propDeleteKey(AVSMap* map, const char* key) = 0;
 
   virtual int __stdcall propSetInt(AVSMap* map, const char* key, int64_t i, int append) = 0;
   virtual int __stdcall propSetFloat(AVSMap* map, const char* key, double d, int append) = 0;
   virtual int __stdcall propSetData(AVSMap* map, const char* key, const char* d, int length, int append) = 0;
-  virtual int __stdcall propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append) = 0;
-  virtual int __stdcall propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append) = 0;
+  virtual int __stdcall propSetClip(AVSMap* map, const char* key, PClip& clip, int append) = 0;
+  virtual int __stdcall propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append) = 0;
 
   virtual const int64_t *__stdcall propGetIntArray(const AVSMap* map, const char* key, int* error) = 0;
   virtual const double *__stdcall propGetFloatArray(const AVSMap* map, const char* key, int* error) = 0;
