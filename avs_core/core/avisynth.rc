@@ -1,11 +1,11 @@
 #include <windows.h>
 #include "version.h"
 
-#define VER_FILEVERSION             AVS_MAJOR_VER,AVS_MINOR_VER
-#define VER_PRODUCTVERSION          AVS_MAJOR_VER,AVS_MINOR_VER
+#define VER_FILEVERSION             AVS_MAJOR_VER,AVS_MINOR_VER,AVS_BUGFIX_VER
+#define VER_PRODUCTVERSION          AVS_MAJOR_VER,AVS_MINOR_VER,AVS_BUGFIX_VER
 #define VER_COMPANYNAME_STR         "The Public\0"
 #define VER_FILEDESCRIPTION_STR     "AviSynth video processing scripting language\0"
-#define VER_FILEVERSION_STR         AVS_PPSTR(AVS_MAJOR_VER) ", " AVS_PPSTR(AVS_MINOR_VER) "\0"
+#define VER_FILEVERSION_STR         AVS_PPSTR(AVS_MAJOR_VER) ", " AVS_PPSTR(AVS_MINOR_VER) ", " AVS_PPSTR(AVS_BUGFIX_VER) "\0"
 #define VER_INTERNALNAME_STR        AVS_FULLVERSION "\0"
 #define VER_LEGALCOPYRIGHT_STR      "© 2000-2020 Ben Rudiak-Gould and others\0"
 #define VER_ORIGINALFILENAME_STR    "avisynth.dll\0"
