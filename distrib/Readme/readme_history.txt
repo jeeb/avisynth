@@ -4,11 +4,12 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200415 3.5.? (dev)
+20200417 3.5.? (dev)
 --------------------
 - frame properties framework, IScriptEnvironment extension
-  - like in VapourSynth
-  - new field in VideoFrame: avsmap, type is AVSMap which is basically a reference counting struct for holding array of variants
+  - Core and concept ported from VapourSynth - thank you
+  - Frame properties are really per-frame data which can only be read and written within runtime functions.
+    Source filters can feed into frame properties useful data such as information on colorimetry.
   - frame properties are key-value(s) pairs
     - Key is an alphanumeric identifier.
     - Values can be of single value or array of type
@@ -22,40 +23,43 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       1 - property is appended (make arrays by calling with mode=1 consecutively)
       2 - touch
   - from plugin writer's point of view:
-    If your filter is not an in-place one (works with NewVideoFrame instead of MakeWritable) then
-    you have to pass properties programatically by using a new version of env->NewVideoFrame: NewVideoFrameP.
-    This alternative version of NewVideoFrame has a second PVideoFrame* parameter from which properties will be
-    copied upon creating an empty VideoFrame.
+    - new field in internal VideoFrame struct:
+      avsmap, type is AVSMap* which is basically a reference counting struct for holding array of variants
+    - frame property passing along the filter chain
+      If your filter is not an in-place one (works with NewVideoFrame instead of MakeWritable) then
+      you have to pass properties programatically by using a new version of env->NewVideoFrame: NewVideoFrameP.
+      This alternative version of NewVideoFrame has a second PVideoFrame* parameter from which properties will be
+      copied upon creating an empty VideoFrame.
 
-    Unfortunately if even one filter in the chain is not passing frame properties then it is a dead end on the info.
+      Unfortunately if even one filter in the chain is not passing frame properties then it is a dead end on the info.
 
-    Whether you can (should) use it or not, the Avisynth interface version will tell you. (e.g. >= 8) which should be
-    queried (best place: filter constructor)
-    Unless you drop support for older avs+ or classic Avisynth 2.6, there will be a transient time when you have to support both world.
-    Example:
-      Check it:
-        has_at_least_v8 = true;
-        try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8 = false; }
-      and use it:
-        if (has_at_least_v8) dst = env->NewVideoFrameP(vi, &src); else dst = env->NewVideoFrame(vi);
+      Whether you can (should) use it or not, the Avisynth interface version will tell you. (e.g. >= 8) which should be
+      queried (best place: filter constructor)
+      Unless you drop support for older avs+ or classic Avisynth 2.6, there will be a transient time when you have to support both world.
+      Example:
+        Check it:
+          has_at_least_v8 = true;
+          try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8 = false; }
+        and use it:
+          if (has_at_least_v8) dst = env->NewVideoFrameP(vi, &src); else dst = env->NewVideoFrame(vi);
 
-    Another approach VideoFrame is created as before and later 'copyFrameProps' is used.
+      Another approach VideoFrame is created as before and later 'copyFrameProps' is used.
 
+    - support functions
     In C interface:
       use avs_new_video_frame_a_prop instead of avs_new_video_frame_a
 
       AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
 
     In avisynth.h:
-      struct AVSFrameRef and AVSClipRef
       enums AVSPropTypes, AVSGetPropErrors and AVSPropAppendMode
       AVSMap* is just a pointer which holds the actual list and values of frame properties.
       You don't need to know what's inside. Access its content through IScriptEnvironment or C interface calls
 
-  - IScriptEnvironment vtable extended! For the first time since classic Avisynth 2.6 moved to IF version 6
-    Preliminarily the new IF version will be 8.
+  - IScriptEnvironment interface is extended! For the first time since classic Avisynth 2.6 moved to IF version 6.
+    AVISYNTH_INTERFACE_VERION supporting frame properties is: 8.
 
-    New methods:
+    [CPP interface]
 
     - NewVideoFrame with frame property source:
         PVideoFrame NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
@@ -84,8 +88,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
       void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
 
-      const AVSMap* getFramePropsRO(const AVSFrameRef* frame);
-      AVSMap* getFramePropsRW(AVSFrameRef* frame);
+      const AVSMap* getFramePropsRO(const PVideoFrame& frame);
+      AVSMap* getFramePropsRW(PVideoFrame& frame);
 
       int propNumKeys(const AVSMap* map);
       const char* propGetKey(const AVSMap* map, int index);
@@ -97,13 +101,13 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       double propGetFloat(const AVSMap* map, const char* key, int index, int* error);
       const char* propGetData(const AVSMap* map, const char* key, int index, int* error);
       int propGetDataSize(const AVSMap* map, const char* key, int index, int* error);
-      AVSClipRef* propGetClip(const AVSMap* map, const char* key, int index, int* error);
-      const AVSFrameRef* propGetFrame(const AVSMap* map, const char* key, int index, int* error);
+      PClip propGetClip(const AVSMap* map, const char* key, int index, int* error);
+      const PVideoFrame propGetFrame(const AVSMap* map, const char* key, int index, int* error);
       int propSetInt(AVSMap* map, const char* key, int64_t i, int append);
       int propSetFloat(AVSMap* map, const char* key, double d, int append);
       int propSetData(AVSMap* map, const char* key, const char* d, int length, int append);
-      int propSetClip(AVSMap* map, const char* key, AVSClipRef* clip, int append);
-      int propSetFrame(AVSMap* map, const char* key, const AVSFrameRef* frame, int append);
+      int propSetClip(AVSMap* map, const char* key, PClip& clip, int append);
+      int propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append);
 
       const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error);
       const double *propGetFloatArray(const AVSMap* map, const char* key, int* error);
@@ -114,15 +118,20 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       void freeMap(AVSMap* map);
       void clearMap(AVSMap* map);
 
-  - C interface
+    [C interface]
     - see avisynth_c.h
-    - new: avs_new_video_frame_prop and avs_new_video_frame_a_prop:
-      getting new empty video frame with frame property source.
+    - new video frame creator functions:
+        avs_new_video_frame_prop
+        avs_new_video_frame_a_prop
+
+      They return and empty video frame but with frame properties copied from the source parameter.
+
         AVS_VideoFrame * AVSC_CC avs_new_video_frame_prop(const AVS_VideoInfo* vi, AVS_VideoFrame *propSrc)
         AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
-      NULL as propSrc will behave like avs_new_video_frame and avs_new_video_frame_a
 
-    - AVS_VideoFrame struct extended with placeholder for frame properies pointer
+      NULL as propSrc will behave like old avs_new_video_frame and avs_new_video_frame_a
+
+    - AVS_VideoFrame struct extended with a placeholder field for 'avsmap' frame property pointer
     - copyFrameProps
     - getFramePropsRO, getFramePropsRW
     - propNumKeys, propGetKey, propNumElements, propGetType, propGetDataSize
@@ -130,8 +139,11 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     - propSetInt, propSetFloat, propSetData, propSetClip, propSetFrame, propSetIntArray, propSetFloatArray
     - propDeleteKey, clearMap
 
-  - Frame properties read-write in runtime functions
-    Setter functions are available only through getting data from the new "function objects"
+    [AviSynth scripting language]
+
+    Frame properties read-write possible only within runtime functions.
+    Input value of setter functions are to be come from the return value of "function objects"
+
     // in conditional_reader.cpp, see property getters in conditional_functions.cpp
     { "propSet", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void *)0 },
     { "propSetInt", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)1 },
