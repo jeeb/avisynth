@@ -90,7 +90,7 @@ void MTGuard::EnableMT(size_t nThreads)
 					for (int i = 0; i < this->nThreads; ++i) {
 						newchilds[i].filter = ChildFilters[i].filter;
 					}
-					for (int i = this->nThreads; i < nThreads; ++i) {
+					for (size_t i = this->nThreads; i < nThreads; ++i) {
 						newchilds[i].filter = FilterCtor->InstantiateFilter().AsClip();
 					}
 					ChildFilters = std::move(newchilds);

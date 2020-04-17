@@ -241,7 +241,7 @@ std::wstring charToWstring(const char* text, bool utf8)
     try {
       ws = convert.from_bytes(text);
     }
-    catch (const std::exception& e) {
+    catch (const std::exception&) {
       ws = L"Error converting utf8 string to wide string\r\n";
       // FIXME: Throw a proper avs exception
     }

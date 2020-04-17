@@ -174,7 +174,7 @@ public:
          }
          ss += s[i];
        }
-       len = ss.size();
+       len = (int)ss.size();
        s = ss.c_str();
      }
      else {

@@ -1449,9 +1449,9 @@ void SimpleTextOutW_multi(BitmapFont *current_font, const VideoInfo& vi, PVideoF
   // when multiline, bottom and vertically centered cases affect starting y
   int al = alignToBitmask(align);
   if (al & ATA_BOTTOM)
-    real_y -= fontSize * (parts.size() - 1);
+    real_y -= fontSize * ((int)parts.size() - 1);
   else if (al & ATA_BASELINE)
-    real_y -= fontSize * (parts.size() / 2);
+    real_y -= fontSize * ((int)parts.size() / 2);
 
   for (auto ws : parts) {
     SimpleTextOutW(current_font, vi, frame, real_x, real_y, ws, fadeBackground, textcolor, halocolor, useHaloColor, align);

@@ -582,10 +582,10 @@ int __stdcall CacheGuard::SetCacheHints(int cachehints, int frame_range)
     break;
 
   case CACHE_GET_MIN_CAPACITY:
-    return hints.min;
+    return (int)hints.min;
 
   case CACHE_GET_MAX_CAPACITY:
-    return hints.max;
+    return (int)hints.max;
 
   case CACHE_GET_SIZE:
   case CACHE_GET_REQUESTED_CAP:

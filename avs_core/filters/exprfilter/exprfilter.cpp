@@ -3333,7 +3333,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
     src.emplace_back(d.clipsUsed[i] ? child->GetFrame(n, env) : nullptr); // GetFrame only when really referenced
     if (first_used_clip_index < 0) {
       if (d.clipsUsed[i])
-        first_used_clip_index = i;
+        first_used_clip_index = (int)i;
     }
   }
 

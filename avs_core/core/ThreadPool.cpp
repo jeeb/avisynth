@@ -31,7 +31,7 @@ public:
 
 void ThreadPool::ThreadFunc(size_t thread_id, ThreadPoolPimpl * const _pimpl, InternalEnvironment* env)
 {
-  auto EnvTLS = env->NewThreadScriptEnvironment(thread_id);
+  auto EnvTLS = env->NewThreadScriptEnvironment((int)thread_id);
   PInternalEnvironment holder = PInternalEnvironment(EnvTLS);
 
   while (true)

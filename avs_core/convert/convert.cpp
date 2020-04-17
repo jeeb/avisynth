@@ -1974,7 +1974,10 @@ static void convert_rgb_uint16_to_uint16_sse41(const BYTE *srcp8, BYTE *dstp8, i
   constexpr float factor1 = (float)target_max / source_max;
 
   __m128 factor = _mm_set1_ps(factor1);
+#pragma warning(push)
+#pragma warning(disable: 4309)
   __m128i max_pixel_value = _mm_set1_epi16(target_max);
+#pragma warning(pop)
   __m128i zero = _mm_setzero_si128();
 
   for (int y = 0; y < src_height; y++)

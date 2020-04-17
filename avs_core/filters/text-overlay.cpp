@@ -3133,7 +3133,7 @@ bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int size, b
     height += current_font->height;
   }
 
-  width = max_width;
+  width = (int)max_width;
 
   return true;
 }

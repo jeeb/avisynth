@@ -157,7 +157,7 @@ private:
 
   RGBAdjustConfig config;
 
-  size_t number_of_maps;
+  int number_of_maps;
   BYTE *map_holder;
   BYTE *maps[4];
   // avs+

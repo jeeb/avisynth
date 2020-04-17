@@ -984,7 +984,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
       maps[2] = maps[1] + one_bufsize;
       maps[3] = number_of_maps == 4 ? maps[2] + one_bufsize : nullptr;
 
-      for (size_t plane = 0; plane < number_of_maps; plane++) {
+      for (int plane = 0; plane < number_of_maps; plane++) {
         rgbadjust_create_lut(maps[plane], plane, config);
       }
     }
@@ -1105,7 +1105,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
     if (local_config.rgba[0].changed || local_config.rgba[1].changed || local_config.rgba[2].changed || local_config.rgba[3].changed) {
       CheckAndConvertParams(local_config, env);
       if (use_lut) {
-        for (size_t plane = 0; plane < number_of_maps; plane++) {
+        for (int plane = 0; plane < (int)number_of_maps; plane++) {
           // recalculate plane LUT only if changed
           if (local_config.rgba[plane].changed)
           {

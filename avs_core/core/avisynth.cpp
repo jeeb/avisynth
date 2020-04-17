@@ -2940,7 +2940,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
   VFBStorage* vfb = NULL;
   try
   {
-    vfb = new VFBStorage((int)vfb_size, margin, device);
+    vfb = new VFBStorage((int)vfb_size, (int)margin, device);
   }
   catch(const std::bad_alloc&)
   {
@@ -3591,13 +3591,13 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   int  offsetU, offsetV, offsetA;
   const int offsetY = (int)(AlignPointer(res->vfb->GetWritePtr(), align) - res->vfb->GetWritePtr()); // first line offset for proper alignment
   if (U_first) {
-    offsetU = offsetY + sizeY;
-    offsetV = offsetY + sizeY + sizeUV;
-    offsetA = alpha ? offsetV + sizeUV : 0;
+    offsetU = offsetY + (int)sizeY;
+    offsetV = offsetY + (int)sizeY + (int)sizeUV;
+    offsetA = alpha ? offsetV + (int)sizeUV : 0;
   } else {
-    offsetV = offsetY + sizeY;
-    offsetU = offsetY + sizeY + sizeUV;
-    offsetA = alpha ? offsetU + sizeUV : 0;
+    offsetV = offsetY + (int)sizeY;
+    offsetU = offsetY + (int)sizeY + (int)sizeUV;
+    offsetA = alpha ? offsetU + (int)sizeUV : 0;
   }
 
   res->offset = offsetY;
