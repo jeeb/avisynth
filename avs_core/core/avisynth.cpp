@@ -1168,7 +1168,11 @@ struct ScriptEnvironmentTLS
 // per thread data is bound to a thread (not ThreadScriptEnvironment)
 // since some filter (e.g. svpflow1) ignores env given for GetFrame, and always use main thread's env.
 // this is a work-around for that.
-__declspec(thread) ScriptEnvironmentTLS* g_TLS;
+#ifdef AVS_WINDOWS
+__declspec(thread) ScriptEnvironmentTLS* g_TLS = nullptr;
+#else
+__thread ScriptEnvironmentTLS* g_TLS = nullptr;
+#endif
 
 class ThreadScriptEnvironment : public InternalEnvironment
 {
