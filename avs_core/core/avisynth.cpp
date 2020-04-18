@@ -2575,7 +2575,7 @@ void ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket& ticket, int le
 void ScriptEnvironment::SetMaxCPU(const char* features)
 {
   enum CPUlevel {
-    CL_C,
+    CL_NONE,
     CL_MMX,
     CL_SSE,
     CL_SSE2,
@@ -2625,7 +2625,7 @@ void ScriptEnvironment::SetMaxCPU(const char* features)
 
     const char* t = token.c_str();
 
-    if (streqi(t, "") || streqi(t, "c")) cpulevel = CL_C;
+    if (streqi(t, "") || streqi(t, "none")) cpulevel = CL_NONE;
     else if (streqi(t, "mmx")) cpulevel = CL_MMX;
     else if (streqi(t, "sse")) cpulevel = CL_SSE;
     else if (streqi(t, "sse2")) cpulevel = CL_SSE2;
@@ -2635,7 +2635,7 @@ void ScriptEnvironment::SetMaxCPU(const char* features)
     else if (streqi(t, "sse4.2")) cpulevel = CL_SSE4_2;
     else if (streqi(t, "avx")) cpulevel = CL_AVX;
     else if (streqi(t, "avx2")) cpulevel = CL_AVX2;
-    else ThrowError("SetMaxCPU error: cpu level must be c, mmx, sse, sse2, sse3, ssse3, sse4 or sse4.1, sse4.2, avx or avx2! (%s)", t);
+    else ThrowError("SetMaxCPU error: cpu level must be empty or none, mmx, sse, sse2, sse3, ssse3, sse4 or sse4.1, sse4.2, avx or avx2! (%s)", t);
 
     if (0 == mode) { // limit
       if (cpulevel <= CL_AVX2)
@@ -2657,7 +2657,7 @@ void ScriptEnvironment::SetMaxCPU(const char* features)
         cpu_flags &= ~(CPUF_SSE2);
       if (cpulevel <= CL_MMX)
         cpu_flags &= ~(CPUF_SSE | CPUF_INTEGER_SSE); // ?
-      if (cpulevel <= CL_C)
+      if (cpulevel <= CL_NONE)
         cpu_flags &= ~(CPUF_MMX);
     }
     else {
