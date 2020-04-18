@@ -284,11 +284,7 @@ VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
 
 PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
   int pixelsize = vi.ComponentSize();
 
   if (vi.IsPlanar()) {
@@ -367,11 +363,7 @@ static void horizontal_reduce_core(PVideoFrame& dst, PVideoFrame& src, int plane
 PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
   if (vi.IsPlanar()) {
 
     int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };

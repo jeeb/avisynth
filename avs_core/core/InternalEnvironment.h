@@ -128,7 +128,6 @@ public:
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 
-#ifndef NEOFP
   // frame properties support
   virtual void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst) = 0;
 
@@ -163,7 +162,6 @@ public:
   virtual void clearMap(AVSMap* map) = 0;
 
   // NewVideoFrame with frame prop source is replaced with new one
-#endif
 
   // IScriptEnvironment2
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
@@ -215,14 +213,8 @@ public:
   virtual Device* __stdcall GetCurrentDevice() const = 0;
   // replacement of NewVideoFrame
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) = 0;
-#ifndef NEOFP
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame *propSrc) = 0;
-#endif
   virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device) = 0;
-
-#ifdef NEOFP
-  virtual AVSMap* __stdcall GetAVSMap(PVideoFrame& frame) = 0;
-#endif
 
   using INeoEnv::SetMemoryMax;
   using INeoEnv::Invoke;

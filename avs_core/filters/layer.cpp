@@ -441,7 +441,7 @@ static AVS_FORCEINLINE __m64 colorkeymask_core_mmx(const __m64 &src, const __m64
   return _mm_andnot_si64(passed, src);
 }
 
-static void colorkeymask_mmx(BYTE* pf, int pitch, int color, int height, int width, int tolB, int tolG, int tolR) {
+static void colorkeymask_mmx(BYTE* srcp, int pitch, int color, int height, int width, int tolB, int tolG, int tolR) {
 #pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 tolerance = _mm_set_pi8(0xFF, tolR, tolG, tolB, 0xFF, tolR, tolG, tolB);
@@ -453,18 +453,18 @@ static void colorkeymask_mmx(BYTE* pf, int pitch, int color, int height, int wid
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < mod8_width; x += 8) {
-      __m64 src = *reinterpret_cast<const __m64*>(pf + x);
+      __m64 src = *reinterpret_cast<const __m64*>(srcp + x);
       __m64 result = colorkeymask_core_mmx(src, colorv, tolerance, zero);
-      *reinterpret_cast<__m64*>(pf + x) = result;
+      *reinterpret_cast<__m64*>(srcp + x) = result;
     }
 
     if (mod8_width != width) {
-      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(pf + width - 4));
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp + width - 4));
       __m64 result = colorkeymask_core_mmx(src, colorv, tolerance, zero);
-      *reinterpret_cast<int*>(pf + width - 4) = _mm_cvtsi64_si32(result);
+      *reinterpret_cast<int*>(srcp + width - 4) = _mm_cvtsi64_si32(result);
     }
 
-    pf += pitch;
+    srcp += pitch;
   }
 
   _mm_empty();
@@ -569,7 +569,7 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
   #ifdef X86_32
     if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX))
     {
-      colorkeymask_mmx(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
+      colorkeymask_mmx(srcp, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
     }
     else
   #endif
@@ -1130,13 +1130,13 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
 
 PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 {
-  PVideoFrame f = child->GetFrame(n, env);
+  PVideoFrame src = child->GetFrame(n, env);
 
   // for planar these will be reread for proper plane
-  const BYTE* pf = f->GetReadPtr();
-  const int height = f->GetHeight();
-  const int pitch = f->GetPitch();
-  const int rowsize = f->GetRowSize();
+  const BYTE* srcp = src->GetReadPtr();
+  const int height = src->GetHeight();
+  const int pitch = src->GetPitch();
+  const int rowsize = src->GetRowSize();
 
   const int width = rowsize / pixelsize;
 
@@ -1149,9 +1149,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
   if (input_type == VideoInfo::CS_BGR32 || input_type == VideoInfo::CS_BGR64) {
     if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // RGB32->RGB32, RGB64->RGB64
     {
-      if (f->IsWritable()) {
+      if (src->IsWritable()) {
         // we can do it in-place
-        BYTE* dstp = f->GetWritePtr();
+        BYTE* dstp = src->GetWritePtr();
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<width; j+=4) {
@@ -1169,20 +1169,20 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
             dstp += pitch;
           }
         }
-        return f;
+        return src;
       }
       else { // RGB32->RGB32 not in-place
-        PVideoFrame dst = env->NewVideoFrame(vi);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
         BYTE * dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
 
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<width; j+=4) {
-              dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = pf[j + channel];
-              dstp[j + 3] = pf[j + 3];
+              dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = srcp[j + channel];
+              dstp[j + 3] = srcp[j + 3];
             }
-            pf   += pitch;
+            srcp += pitch;
             dstp += dstpitch;
           }
         }
@@ -1190,10 +1190,10 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           for (int i=0; i<height; ++i) {
             for (int j=0; j<width; j+=4) {
               uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(pf)[j + channel];
-              dstp16[j + 3] = reinterpret_cast<const uint16_t *>(pf)[j + 3];
+              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(srcp)[j + channel];
+              dstp16[j + 3] = reinterpret_cast<const uint16_t *>(srcp)[j + 3];
             }
-            pf   += pitch;
+            srcp   += pitch;
             dstp += dstpitch;
           }
         }
@@ -1202,19 +1202,15 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // RGB32->RGB24, RGB64->RGB48
     {
-#ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-      PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+      PVideoFrame dst = env->NewVideoFrameP(vi, &src);
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       if(pixelsize==1) {
         for (int i=0; i<height; ++i) {
           for (int j=0; j<width/4; j++) {
-            dstp[j*3 + 0] = dstp[j*3 + 1] = dstp[j*3 + 2] = pf[j*4 + channel];
+            dstp[j*3 + 0] = dstp[j*3 + 1] = dstp[j*3 + 2] = srcp[j*4 + channel];
           }
-          pf   += pitch;
+          srcp   += pitch;
           dstp += dstpitch;
         }
       }
@@ -1222,9 +1218,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         for (int i=0; i<height; ++i) {
           for (int j=0; j<width/4; j++) {
             uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-            dstp16[j*3 + 0] = dstp16[j*3 + 1] = dstp16[j*3 + 2] = reinterpret_cast<const uint16_t *>(pf)[j*4 + channel];
+            dstp16[j*3 + 0] = dstp16[j*3 + 1] = dstp16[j*3 + 2] = reinterpret_cast<const uint16_t *>(srcp)[j*4 + channel];
           }
-          pf   += pitch;
+          srcp   += pitch;
           dstp += dstpitch;
         }
 
@@ -1233,24 +1229,20 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB32->YUY2
     {
-#ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-      PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+      PVideoFrame dst = env->NewVideoFrameP(vi, &src);
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       const int dstrowsize = dst->GetRowSize();
 
       // RGB is upside-down
-      pf += (height-1) * pitch;
+      srcp += (height-1) * pitch;
 
       for (int i=0; i<height; ++i) {
         for (int j=0; j<dstrowsize; j+=2) {
-          dstp[j + 0] = pf[j*2 + channel];
+          dstp[j + 0] = srcp[j*2 + channel];
           dstp[j + 1] = 128;
         }
-        pf -= pitch;
+        srcp -= pitch;
         dstp += dstpitch;
       }
       return dst;
@@ -1260,34 +1252,30 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       // 444, 422 support + 16 bits
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
-#ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // packed RGB is upside-down
-        pf += (height-1) * pitch;
+        srcp += (height-1) * pitch;
 
         // copy to luma
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<dstwidth; ++j) {
-              dstp[j] = pf[j*4 + channel];
+              dstp[j] = srcp[j*4 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp += dstpitch;
           }
         }
         else { // pixelsize==2
           for (int i=0; i<height; ++i) {
             for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(pf)[j*4 + channel];
+              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*4 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp += dstpitch;
           }
         }
@@ -1309,11 +1297,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB32/64 -> Planar RGB 8/16 bit
-#ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
         BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
         BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
         BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
@@ -1321,15 +1305,15 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // packed RGB is upside-down
-        pf += (height-1) * pitch;
+        srcp += (height-1) * pitch;
 
         // copy to luma
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<dstwidth; ++j) {
-              dstp_g[j] = dstp_b[j] = dstp_r[j] = pf[j*4 + channel];
+              dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j*4 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp_g += dstpitch;
             dstp_b += dstpitch;
             dstp_r += dstpitch;
@@ -1340,9 +1324,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
             for (int j=0; j<dstwidth; ++j) {
               reinterpret_cast<uint16_t *>(dstp_g)[j] =
                 reinterpret_cast<uint16_t *>(dstp_b)[j] =
-                  reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(pf)[j*4 + channel];
+                  reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*4 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp_g += dstpitch;
             dstp_b += dstpitch;
             dstp_r += dstpitch;
@@ -1355,9 +1339,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
   {
     if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // RGB24->RGB24, RGB48->RGB48
     {
-      if (f->IsWritable()) {
+      if (src->IsWritable()) {
         // we can do it in-place
-        BYTE* dstp = f->GetWritePtr();
+        BYTE* dstp = src->GetWritePtr();
 
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
@@ -1376,23 +1360,19 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
             dstp += pitch;
           }
         }
-        return f;
+        return src;
       }
       else { // RGB24->RGB24 not in-place
-#ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
         BYTE * dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
 
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<width; j+=3) {
-              dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = pf[j + channel];
+              dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = srcp[j + channel];
             }
-            pf   += pitch;
+            srcp   += pitch;
             dstp += dstpitch;
           }
         }
@@ -1400,9 +1380,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           for (int i=0; i<height; ++i) {
             for (int j=0; j<width; j+=3) {
               uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(pf)[j + channel];
+              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(srcp)[j + channel];
             }
-            pf   += pitch;
+            srcp   += pitch;
             dstp += dstpitch;
           }
         }
@@ -1413,20 +1393,16 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // RGB24->RGB32
     {
-#ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-      PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+      PVideoFrame dst = env->NewVideoFrameP(vi, &src);
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
 
       if(pixelsize==1) {
         for (int i=0; i<height; ++i) {
           for (int j=0; j<width/3; j++) {
-            dstp[j*4 + 0] = dstp[j*4 + 1] = dstp[j*4 + 2] = dstp[j*4 + 3] = pf[j*3 + channel];
+            dstp[j*4 + 0] = dstp[j*4 + 1] = dstp[j*4 + 2] = dstp[j*4 + 3] = srcp[j*3 + channel];
           }
-          pf   += pitch;
+          srcp   += pitch;
           dstp += dstpitch;
         }
       }
@@ -1434,9 +1410,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         for (int i=0; i<height; ++i) {
           for (int j=0; j<width/3; j++) {
             uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-            dstp16[j*4 + 0] = dstp16[j*4 + 1] = dstp16[j*4 + 2] = dstp16[j*4 + 3] = reinterpret_cast<const uint16_t *>(pf)[j*3 + channel];
+            dstp16[j*4 + 0] = dstp16[j*4 + 1] = dstp16[j*4 + 2] = dstp16[j*4 + 3] = reinterpret_cast<const uint16_t *>(srcp)[j*3 + channel];
           }
-          pf   += pitch;
+          srcp   += pitch;
           dstp += dstpitch;
         }
       }
@@ -1444,24 +1420,20 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB24->YUY2
     {
-#ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-      PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+      PVideoFrame dst = env->NewVideoFrameP(vi, &src);
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       const int dstrowsize = dst->GetRowSize()/2;
 
       // RGB is upside-down
-      pf += (height-1) * pitch;
+      srcp += (height-1) * pitch;
 
       for (int i=0; i<height; ++i) {
         for (int j=0; j<dstrowsize; j++) {
-          dstp[j*2 + 0] = pf[j*3 + channel];
+          dstp[j*2 + 0] = srcp[j*3 + channel];
           dstp[j*2 + 1] = 128;
         }
-        pf -= pitch;
+        srcp -= pitch;
         dstp += dstpitch;
       }
       return dst;
@@ -1470,33 +1442,29 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     { // // RGB24->YV12/16/24/Y8 + 16bit
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
-#ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // RGB is upside-down
-        pf += (height-1) * pitch;
+        srcp += (height-1) * pitch;
 
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<dstwidth; ++j) {
-              dstp[j] = pf[j*3 + channel];
+              dstp[j] = srcp[j*3 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp += dstpitch;
           }
         }
         else {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(pf)[j*3 + channel];
+              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*3 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp += dstpitch;
           }
         }
@@ -1518,26 +1486,22 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB24/48 -> Planar RGB 8/16 bit
-#ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
         BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
         BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
         BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
         // packed RGB is upside-down
-        pf += (height-1) * pitch;
+        srcp += (height-1) * pitch;
 
         // copy to luma
         if(pixelsize==1) {
           for (int i=0; i<height; ++i) {
             for (int j=0; j<dstwidth; ++j) {
-              dstp_g[j] = dstp_b[j] = dstp_r[j] = pf[j*3 + channel];
+              dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j*3 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp_g += dstpitch;
             dstp_b += dstpitch;
             dstp_r += dstpitch;
@@ -1548,9 +1512,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
             for (int j=0; j<dstwidth; ++j) {
               reinterpret_cast<uint16_t *>(dstp_g)[j] =
                 reinterpret_cast<uint16_t *>(dstp_b)[j] =
-                reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(pf)[j*3 + channel];
+                reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*3 + channel];
             }
-            pf -= pitch;
+            srcp -= pitch;
             dstp_g += dstpitch;
             dstp_b += dstpitch;
             dstp_r += dstpitch;
@@ -1568,21 +1532,17 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     const int plane = planes[channel];
 
     bool hasAlpha = input_type_is_planar_rgba || input_type_is_yuva;
-    const BYTE* srcp = f->GetReadPtr(plane); // source plane
-    const BYTE* srcp_a = hasAlpha ? f->GetReadPtr(PLANAR_A) : nullptr;
+    const BYTE* srcp = src->GetReadPtr(plane); // source plane
+    const BYTE* srcp_a = hasAlpha ? src->GetReadPtr(PLANAR_A) : nullptr;
 
-    const int width = f->GetRowSize(plane) / pixelsize;
-    const int height = f->GetHeight(plane);
-    const int pitch = f->GetPitch(plane);
+    const int width = src->GetRowSize(plane) / pixelsize;
+    const int height = src->GetHeight(plane);
+    const int pitch = src->GetPitch(plane);
 
     if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // PRGB/YUVA->RGB32/RGB64
     {
       { // Planar RGBA/YUVA  ->RGB32/64
-#ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
         BYTE * dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
         // RGB is upside-down
@@ -1643,11 +1603,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // PRGB(A)/YUVA->RGB24, PRGB(A)16/YUVA16->RGB48
     {
-#ifndef NEOFP
-      PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-      PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
+      PVideoFrame dst = env->NewVideoFrameP(vi, &src);
       BYTE * dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       // RGB is upside-down
@@ -1695,15 +1651,10 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     { // RGB(A)P/YUVA->YV12/16/24/Y8 + 16bit
       // 444, 422 support + 16 bits
       const bool targetHasAlpha = vi.IsPlanarRGBA() || vi.IsYUVA();
-      PVideoFrame dst = env->NewVideoFrame(vi);
+      PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
-#ifndef NEOFP
-        PVideoFrame dst = env->NewVideoFrameP(vi, &f);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
@@ -1808,7 +1759,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
   } // planar RGB(A) or YUVA source
 
   env->ThrowError("ShowChannel: unexpected end of function");
-  return f;
+  return src;
 }
 
 
@@ -1871,12 +1822,8 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame R = red->GetFrame(n, env);
   PVideoFrame A = (alpha) ? alpha->GetFrame(n, env) : 0;
 
-#ifndef NEOFP
   // choose one: R
   PVideoFrame dst = env->NewVideoFrameP(vi, &R);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   const int height = dst->GetHeight();
   const int pitch = dst->GetPitch();

@@ -70,14 +70,7 @@ private:
 
 };
 
-#ifdef NEOFP
-class GetProp_ {
-public:
-   static AVSValue Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-};
-#endif
 
-#ifndef NEOFP
 class GetProperty {
 public:
   static AVSValue Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -115,4 +108,3 @@ public:
   static AVSValue Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
-#endif

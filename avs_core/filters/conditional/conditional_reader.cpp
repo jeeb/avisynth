@@ -875,75 +875,6 @@ AVSValue __cdecl UseVar::Create(AVSValue args, void* user_data, IScriptEnvironme
 
 #define W_DIVISOR 5  // Width divisor for onscreen messages
 
-#ifdef NEOFP
-AddProp::AddProp(PClip _child, const char* name, const PFunction& func, IScriptEnvironment* env)
-   : GenericVideoFilter(_child)
-   , name(name)
-   , func(func)
-{ }
-
-AddProp::~AddProp() { }
-
-PVideoFrame __stdcall AddProp::GetFrame(int n, IScriptEnvironment* env)
-{
-   GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-   env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
-   env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
-
-  AVSValue result;
-  const char* error_msg = nullptr;
-  try {
-    result = static_cast<InternalEnvironment*>(env)->Invoke(child, func, AVSValue(nullptr, 0));
-  }
-  catch (IScriptEnvironment::NotFound) {
-    error_msg = env->Sprintf("AddProp: Invalid function parameter type '%s'(%s)\n"
-      "Function should have no argument",
-      func->GetDefinition()->param_types, func->ToString(env));
-  }
-  catch (const AvisynthError &error) {
-    error_msg = env->Sprintf("%s\nAddProp: Error in %s",
-      error.msg, func->ToString(env));
-  }
-
-  PVideoFrame frame = child->GetFrame(n, env);
-
-  if (error_msg) {
-    env->MakeWritable(&frame);
-    env->ApplyMessage(&frame, vi, error_msg, vi.width / W_DIVISOR, 0xa0a0a0, 0, 0);
-    return frame;
-  }
-
-	static_cast<InternalEnvironment*>(env)->MakePropertyWritable(&frame);
-  if (result.IsInt())
-    frame->SetProperty(name, result.AsInt());
-  else if (result.IsBool())
-    frame->SetProperty(name, (int)result.AsBool());
-  else if (result.IsFloat())
-    frame->SetProperty(name, result.AsFloat());
-  else
-    env->ThrowError("AddProp: Invalid return type (Was a %s)", GetAVSTypeName(result));
-
-   return frame;
-}
-
-int __stdcall AddProp::SetCacheHints(int cachehints, int frame_range)
-{
-  AVS_UNUSED(frame_range);
-  switch (cachehints)
-  {
-  case CACHE_GET_MTMODE:
-    return MT_NICE_FILTER;
-  }
-  return 0;  // We do not pass cache requests upwards.
-}
-
-AVSValue __cdecl AddProp::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
-{
-   return new AddProp(args[0].AsClip(), args[1].AsString(), args[2].AsFunction(), env);
-}
-#endif
-
-#ifndef NEOFP
 
 // Avisynth+ frame property support
 //**************************************************
@@ -1222,5 +1153,3 @@ AVSValue __cdecl ClearProperties::Create(AVSValue args, void*, IScriptEnvironmen
   return new ClearProperties(args[0].AsClip(), env);
 }
 
-
-#endif

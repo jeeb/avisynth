@@ -425,11 +425,7 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
   const BYTE* srcp = src->GetReadPtr();
   const int src_pitch = src->GetPitch();
 
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
   BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
   const int dst_pitch = dst->GetPitch(PLANAR_Y);
   int rowsize = dst->GetRowSize(PLANAR_Y);
@@ -1381,11 +1377,7 @@ static void convert_planarrgb_to_yuv_float_c(BYTE *(&dstp)[3], int (&dstPitch)[3
 PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   const BYTE* srcp = src->GetReadPtr();
 
@@ -2446,11 +2438,7 @@ static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* sr
 PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -2849,11 +2837,7 @@ static void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u,
 
 PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   const BYTE* srcP = src->GetReadPtr();
 
@@ -2968,11 +2952,7 @@ void convert_yv16_to_yuy2_c(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *
 
 PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -3157,11 +3137,7 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
 
 PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
               src->GetRowSize(PLANAR_Y_ALIGNED), src->GetHeight(PLANAR_Y));

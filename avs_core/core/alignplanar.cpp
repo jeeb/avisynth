@@ -53,11 +53,7 @@ PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
   if (!(src->GetRowSize(plane)&(FRAME_ALIGN-1)))
     return src;
 
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1)))
     env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");

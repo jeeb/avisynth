@@ -65,11 +65,7 @@ extern const AVSFunction Transform_filters[] = {
 
 PVideoFrame FlipVertical::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
   int row_size = src->GetRowSize();
@@ -133,11 +129,7 @@ static void flip_horizontal_plane_c(BYTE* dstp, const BYTE* srcp, int dst_pitch,
 
 PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
   int width = src->GetRowSize();
@@ -336,11 +328,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 
   if (0 != _align) {
 
-#ifndef NEOFP
     PVideoFrame dst = env->NewVideoFrameP(vi, &frame, (int)align + 1);
-#else
-    PVideoFrame dst = env->NewVideoFrameP(vi, (int)align+1);
-#endif
 
     env->BitBlt(dst->GetWritePtr(plane0), dst->GetPitch(plane0), srcp0,
       frame->GetPitch(plane0), dst->GetRowSize(plane0), dst->GetHeight(plane0));

@@ -61,12 +61,7 @@ public:
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
     {
         PVideoFrame src = child->GetFrame(n, env);
-
-#ifndef NEOFP
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-        PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
         const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
         const int plane_count = vi.IsY8() ? 1 : 3; // checking the stacked 8 bit format constants

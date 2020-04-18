@@ -478,14 +478,8 @@ void VideoFrame::Release() {
   VideoFrameBuffer* _vfb = vfb;
 
   if (!InterlockedDecrement(&refcount)) {
-#ifndef NEOFP
     if (properties)
       properties->clear();
-#else
-    if (avsmap) {
-      avsmap->data.clear();
-    }
-#endif
     InterlockedDecrement(&_vfb->refcount);
   }
 }
@@ -554,11 +548,6 @@ bool VideoFrame::IsWritable() const {
   return false;
 }
 
-#ifdef NEOFP
-bool VideoFrame::IsPropertyWritable() const {
-	return (refcount == 1);
-}
-#endif
 
 BYTE* VideoFrame::GetWritePtr(int plane) const {
   if (!plane || plane == PLANAR_Y || plane == PLANAR_G) { // planar RGB order GBR
@@ -571,7 +560,6 @@ BYTE* VideoFrame::GetWritePtr(int plane) const {
   return vfb->data + GetOffset(plane);
 }
 
-#ifndef NEOFP
 AVSMap& VideoFrame::getProperties() {
   return *properties;
 }
@@ -583,58 +571,6 @@ const AVSMap& VideoFrame::getConstProperties() {
 void VideoFrame::setProperties(const AVSMap& properties) {
   *(this->properties) = properties;
 }
-#else
-void VideoFrame::SetProperty(const char* key, const AVSMapValue& value) {
-
-	if (refcount > 1) {
-		throw AvisynthError("Property Write Error - refcount was more than one");
-	}
-
-  if (value.IsFrame()) {
-    const AVSMap *childmap = value.GetFrame()->avsmap;
-    std::unique_lock<std::mutex> global_lock(childmap->mutex);
-    for (auto it = childmap->data.begin(); it != childmap->data.end(); ++it) {
-      if (it->second.IsFrame()) {
-        // cannot contain frame recursively
-        return;
-      }
-    }
-  }
-
-  std::unique_lock<std::mutex> global_lock(avsmap->mutex);
-  avsmap->data[key] = value;
-}
-
-const AVSMapValue* VideoFrame::GetProperty(const char* key) const {
-  std::unique_lock<std::mutex> global_lock(avsmap->mutex);
-  auto it = avsmap->data.find(key);
-  if (it == avsmap->data.end()) return nullptr;
-  return &it->second;
-}
-
-PVideoFrame VideoFrame::GetProperty(const char* key, PVideoFrame def) const {
-  auto val = GetProperty(key);
-  if (val && val->IsFrame()) return val->GetFrame();
-  return def;
-}
-
-int VideoFrame::GetProperty(const char* key, int def) const {
-  auto val = GetProperty(key);
-  if (val && val->IsInt()) return (int)val->GetInt();
-  return def;
-}
-
-double VideoFrame::GetProperty(const char* key, double def) const {
-  auto val = GetProperty(key);
-  if (val && val->IsFloat()) return val->GetFloat();
-  return def;
-}
-
-bool VideoFrame::DeleteProperty(const char* key) {
-  std::unique_lock<std::mutex> global_lock(avsmap->mutex);
-	return (avsmap->data.erase(key) > 0);
-}
-#endif
 
 PDevice VideoFrame::GetDevice() const {
   return vfb->device;
@@ -1013,81 +949,6 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
 
 /**********************************************************************/
 
-#ifdef NEOFP
-// for Avs+Neo's frame properties
-// class AVSMapValue
-enum AVS_VALUE_TYPE {
-  AVS_VALUE_FRAME = 1,
-  AVS_VALUE_INT,
-  AVS_VALUE_FLOAT,
-};
-
-AVSMapValue::AVSMapValue() { CONSTRUCTOR0(); }
-void AVSMapValue::CONSTRUCTOR0() {
-  type = 0;
-  value.frame = 0;
-}
-
-AVSMapValue::AVSMapValue(PVideoFrame& frame) { CONSTRUCTOR1(frame); }
-void AVSMapValue::CONSTRUCTOR1(PVideoFrame& frame) {
-  type = AVS_VALUE_FRAME;
-  value.frame = (VideoFrame*)(void*)frame;
-  value.frame->AddRef();
-}
-
-AVSMapValue::AVSMapValue(int64_t i) { CONSTRUCTOR2(i); }
-AVSMapValue::AVSMapValue(int i) { CONSTRUCTOR2(i); }
-void AVSMapValue::CONSTRUCTOR2(int64_t i) {
-  type = AVS_VALUE_INT;
-  value.i = i;
-}
-
-AVSMapValue::AVSMapValue(double d) { CONSTRUCTOR3(d); }
-void AVSMapValue::CONSTRUCTOR3(double d) {
-  type = AVS_VALUE_FLOAT;
-  value.d = d;
-}
-
-AVSMapValue::AVSMapValue(const AVSMapValue& other) { CONSTRUCTOR4(other); }
-void AVSMapValue::CONSTRUCTOR4(const AVSMapValue& other) {
-	type = 0;
-  Set(other);
-}
-
-AVSMapValue::~AVSMapValue() { DESTRUCTOR(); }
-void AVSMapValue::DESTRUCTOR() {
-  if (type == AVS_VALUE_FRAME)
-    value.frame->Release();
-}
-
-AVSMapValue& AVSMapValue::operator=(const AVSMapValue& other) { return OPERATOR_ASSIGN(other); }
-AVSMapValue& AVSMapValue::OPERATOR_ASSIGN(const AVSMapValue& other) {
-  Set(other);
-  return *this;
-}
-
-void AVSMapValue::Set(const AVSMapValue& other) {
-  if (type == AVS_VALUE_FRAME)
-    value.frame->Release();
-
-  if (other.type == AVS_VALUE_FRAME)
-    other.value.frame->AddRef();
-
-  type = other.type;
-  value.i = other.value.i;
-}
-
-bool AVSMapValue::IsFrame() const { return type == AVS_VALUE_FRAME; }
-bool AVSMapValue::IsInt() const { return type == AVS_VALUE_INT; }
-bool AVSMapValue::IsFloat() const { return type == AVS_VALUE_FLOAT; }
-
-PVideoFrame AVSMapValue::GetFrame() const { return value.frame; }
-int64_t AVSMapValue::GetInt() const { return value.i; }
-double AVSMapValue::GetFloat() const { return value.d; }
-
-// end class AVSMapValue
-#endif
-
 PFunction::PFunction() { CONSTRUCTOR0(); }
 void PFunction::CONSTRUCTOR0() { Init(0); }
 
@@ -1313,35 +1174,39 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoInfo::IsPlanarRGB,                  //   bool    (VideoInfo::*IsPlanarRGB)()  const;
   &VideoInfo::IsPlanarRGBA,                 //   bool    (VideoInfo::*IsPlanarRGBA)()  const;
 /**********************************************************************/
-#ifndef NEOFP
+  // Frame properties
   &VideoFrame::getProperties, // AVSMap& (VideoFrame::* getProperties)();
   &VideoFrame::getConstProperties, // const AVSMap& (VideoFrame::* getConstProperties)();
   &VideoFrame::setProperties, // void (VideoFrame::* setProperties)(const AVSMap& properties);
-#else
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-#endif
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
+
+  // PFunction (Neo)
+  &AVSValue::CONSTRUCTOR11,
+  &AVSValue::IsFunction,
+  &PFunction::CONSTRUCTOR0,
+  &PFunction::CONSTRUCTOR1,
+  &PFunction::CONSTRUCTOR2,
+  &PFunction::OPERATOR_ASSIGN0,
+  &PFunction::OPERATOR_ASSIGN1,
+  &PFunction::DESTRUCTOR,
+  // end PFunction
+
+  // Videoframe extras (Neo)
+  &VideoFrame::CheckMemory,
+  &VideoFrame::GetDevice,
+
+    // class PDevice (Neo)
+  &PDevice::CONSTRUCTOR0,
+  &PDevice::CONSTRUCTOR1,
+  &PDevice::CONSTRUCTOR2,
+  &PDevice::OPERATOR_ASSIGN0,
+  &PDevice::OPERATOR_ASSIGN1,
+  &PDevice::DESTRUCTOR,
+  &PDevice::GetType,
+  &PDevice::GetId,
+  &PDevice::GetIndex,
+  &PDevice::GetName,
+  // end class PDevice
+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
@@ -1385,86 +1250,9 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   NULL,                                     //   reserved for AviSynth+
 /**********************************************************************/
   // AviSynth Neo additions
-  &GetAvsEnv,
-#ifndef NEOFP
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-#else
-  &VideoFrame::SetProperty,
-  &VideoFrame::GetProperty,
-  &VideoFrame::GetProperty,
-  &VideoFrame::GetProperty,
-  &VideoFrame::GetProperty,
-  &VideoFrame::DeleteProperty,
-#endif
-  &VideoFrame::GetDevice,
-  &VideoFrame::CheckMemory,
-
-#ifndef NEOFP
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-#else
-  // class AVSMapValue
-  &AVSMapValue::CONSTRUCTOR0,
-  &AVSMapValue::CONSTRUCTOR1,
-  &AVSMapValue::CONSTRUCTOR2,
-  &AVSMapValue::CONSTRUCTOR3,
-  &AVSMapValue::CONSTRUCTOR4,
-  &AVSMapValue::DESTRUCTOR,
-  &AVSMapValue::OPERATOR_ASSIGN,
-  &AVSMapValue::IsFrame,
-  &AVSMapValue::IsInt,
-  &AVSMapValue::IsFloat,
-  &AVSMapValue::GetFrame,
-  &AVSMapValue::GetInt,
-  &AVSMapValue::GetFloat,
-#endif
-   // end class AVSMapValue
-
-// PFunction
-  &AVSValue::CONSTRUCTOR11,
-  &AVSValue::IsFunction,
-  &PFunction::CONSTRUCTOR0,
-  &PFunction::CONSTRUCTOR1,
-  &PFunction::CONSTRUCTOR2,
-  &PFunction::OPERATOR_ASSIGN0,
-  &PFunction::OPERATOR_ASSIGN1,
-  &PFunction::DESTRUCTOR,
-  // end PFunction
-
-    // class PDevice
-  &PDevice::CONSTRUCTOR0,
-  &PDevice::CONSTRUCTOR1,
-  &PDevice::CONSTRUCTOR2,
-  &PDevice::OPERATOR_ASSIGN0,
-  &PDevice::OPERATOR_ASSIGN1,
-  &PDevice::DESTRUCTOR,
-  &PDevice::GetType,
-  &PDevice::GetId,
-  &PDevice::GetIndex,
-  &PDevice::GetName,
-  // end class PDevice
-
-#ifndef NEOFP
-  NULL,
-#else
-  &VideoFrame::IsPropertyWritable,
-#endif
+  &GetAvsEnv
+  // Most Neo linkage entries are moved to standard avs+ place.
+  // frame property logic has been replaced entirely
 
 // this part should be identical with struct AVS_Linkage in avisynth.h
 

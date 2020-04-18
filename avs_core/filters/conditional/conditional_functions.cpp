@@ -43,9 +43,7 @@
 #include <algorithm>
 #include <cmath>
 #include "../focus.h" // sad
-#ifndef NEOFP
 #include "../core/AVSMap.h"
-#endif
 
 extern const AVSFunction Conditional_funtions_filters[] = {
   {  "AverageLuma",    BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_Y },
@@ -121,12 +119,6 @@ extern const AVSFunction Conditional_funtions_filters[] = {
 //{  "HueMedian","c[offset]i", MinMaxPlane::Create_medianhue },
 //{  "HueMinMaxDifference","c[threshold]f[offset]i", MinMaxPlane::Create_minmaxhue },
 
-#ifdef NEOFP
-  // Neo AddProp in conditional_reader
-  { "GetProp", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetProp_::Create, 0 },
-#endif
-
-#ifndef NEOFP
   // frame property setters in conditional_reader
   { "propGetAny", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)0 },
   { "propGetInt", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void *)1 },
@@ -139,7 +131,6 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   { "propGetType", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyType::Create},
 #ifdef NEW_AVSVALUE
   { "propGetAsArray", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyAsArray::Create},
-#endif
 #endif
 
   { 0 }
@@ -895,44 +886,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
     return AVSValue(retval);
 }
 
-#ifdef NEOFP
-// Neo Style getProp
-AVSValue GetProp_::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-   AVSValue clip = args[0];
-   if (!clip.IsClip())
-      env->ThrowError("GetProp: No clip supplied!");
 
-   PClip child = clip.AsClip();
-   VideoInfo vi = child->GetVideoInfo();
-
-   AVSValue cn = env->GetVarDef("current_frame");
-   if (!cn.IsInt())
-      env->ThrowError("GetProp: This filter can only be used within run-time filters");
-
-   int n = cn.AsInt();
-   int offset = args[2].AsInt(0);
-   n = min(max(n + offset, 0), vi.num_frames - 1);
-
-   PVideoFrame src = child->GetFrame(n, env);
-   const AVSMapValue* result = src->GetProperty(args[1].AsString());
-
-   if (result->IsInt()) {
-      return (AVSValue)(int)result->GetInt();
-   }
-   else if (result->IsFloat()) {
-      return (AVSValue)result->GetFloat();
-   }
-   else if(result->IsFrame()) {
-      env->ThrowError("GetProp: Invalid return type (Was a frame)");
-   }
-   else {
-      env->ThrowError("GetProp: Invalid return type (Was unknown type)");
-   }
-   return AVSValue();
-}
-#endif
-
-#ifndef NEOFP
 AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
   AVSValue clip = args[0];
   if (!clip.IsClip())
@@ -1300,4 +1254,3 @@ AVSValue GetPropertyKeyByIndex::Create(AVSValue args, void*, IScriptEnvironment*
   return AVSValue();
 }
 
-#endif

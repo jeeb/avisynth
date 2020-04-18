@@ -1062,7 +1062,6 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const 
 	return 0;
 }
 
-#ifndef NEOFP
 // with frame properties, and alignment
 extern "C"
 AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
@@ -1099,7 +1098,6 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_prop(AVS_ScriptEnvironment * p, con
   return 0;
 }
 
-#endif
 
 extern "C"
 int AVSC_CC avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * * pvf)

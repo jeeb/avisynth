@@ -98,6 +98,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
   if (!vi.HasVideo()) return 0;
 
   PVideoFrame frame = env->NewVideoFrame(vi);
+  // no frame property origin
 
   // RGB 8->16 bit: not << 8 like YUV but 0..255 -> 0..65535 or 0..1023 for 10 bit
   int pixelsize = vi.ComponentSize();
@@ -1474,6 +1475,7 @@ public:
     vi.num_audio_samples=vi.AudioSamplesFromFrames(vi.num_frames);
 
     frame = env->NewVideoFrame(vi);
+    // FIXME: set colorimetry frame properties
     uint32_t* p = (uint32_t *)frame->GetWritePtr();
 
     int y = 0;
@@ -1675,7 +1677,7 @@ public:
     if (staticframes)
       return frame; // original default method returns precomputed static frame.
     else {
-      PVideoFrame result = env->NewVideoFrame(vi);
+      PVideoFrame result = env->NewVideoFrameP(vi, &frame);
       env->BitBlt(result->GetWritePtr(), result->GetPitch(), frame->GetReadPtr(), frame->GetPitch(), frame->GetRowSize(), frame->GetHeight());
       env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
       env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));

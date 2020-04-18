@@ -134,24 +134,6 @@ public:
    static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 };
 
-#ifdef NEOFP
-// Neo properties
-class AddProp : public GenericVideoFilter
-{
-private:
-   const char* name;
-   PFunction func;
-
-public:
-   AddProp(PClip _child, const char* name, const PFunction& eval, IScriptEnvironment* env);
-   ~AddProp();
-   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-   int __stdcall SetCacheHints(int cachehints, int frame_range);
-   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-};
-#endif
-
-#ifndef NEOFP
 // avs+ (vs) style frame properties
 class SetProperty : public GenericVideoFilter
 {
@@ -194,4 +176,3 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
-#endif

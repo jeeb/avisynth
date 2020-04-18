@@ -361,38 +361,6 @@ void* VideoFrame::operator new(size_t size) {
   return ::operator new(size);
 }
 
-#ifdef NEOFP
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
-    ,offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
-{
-  InterlockedIncrement(&vfb->refcount);
-}
-
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
-                       int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(0), pitchA(0), row_sizeA(0), avsmap(avsmap)
-{
-  InterlockedIncrement(&vfb->refcount);
-}
-
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
-    int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA)
-    : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-    ,offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size), avsmap(avsmap)
-{
-    InterlockedIncrement(&vfb->refcount);
-}
-// Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
-// assignement to a PVideoFrame, the same as for a "New VideoFrame" to keep the refcount consistant.
-// P.F. ?? so far it works automatically
-#endif
-
-#ifndef NEOFP
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
   offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
@@ -421,14 +389,9 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int 
 // Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
 // assignement to a PVideoFrame, the same as for a "New VideoFrame" to keep the refcount consistant.
 // P.F. ?? so far it works automatically
-#endif
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
-#ifndef NEOFP
   return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height);
-#else
-  return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height);
-#endif
 }
 
 
@@ -438,13 +401,8 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
     const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
     const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
-#ifndef NEOFP
     return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
       rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
-#else
-    return new VideoFrame(vfb, new AVSMap(), offset+rel_offset, new_pitch, new_row_size, new_height,
-        rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
-#endif
 }
 
 // alpha support
@@ -454,13 +412,8 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
   const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
   const int new_heightUV = !height ? 0 : MulDiv(new_height, heightUV, height);
 
-#ifndef NEOFP
   return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
     rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA);
-#else
-  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
-    rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA);
-#endif
 }
 
 VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(NULL), data_size(0), sequence_number(0) {}
@@ -714,20 +667,16 @@ public:
   PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device);
   PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, Device* device);
   PVideoFrame NewVideoFrame(const VideoInfo& vi, const PDevice& device);
-#ifndef NEOFP
   // variant #3, with frame property source
   PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame *propSrc);
   // variant #1, with frame property source
   PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, Device* device, PVideoFrame* propSrc);
   // variant #2, with frame property source
   PVideoFrame NewVideoFrame(const VideoInfo& vi, const PDevice& device, PVideoFrame* propSrc);
-#endif
+
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, Device* device);
 
   bool MakeWritable(PVideoFrame* pvf);
-#ifdef NEOFP
-  bool MakePropertyWritable(PVideoFrame* pvf);
-#endif
   void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
   void AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data);
   PVideoFrame Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
@@ -745,7 +694,7 @@ public:
   PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha, Device* device);
   PVideoFrame SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
   PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
-#ifndef NEOFP
+
   void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
   const AVSMap* getFramePropsRO(const PVideoFrame& frame) AVS_NOEXCEPT;
   AVSMap* getFramePropsRW(PVideoFrame& frame) AVS_NOEXCEPT;
@@ -776,7 +725,6 @@ public:
   void clearMap(AVSMap* map) AVS_NOEXCEPT;
 
   PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
-#endif
 
   /* IScriptEnvironment2 */
   bool LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
@@ -812,14 +760,8 @@ public:
   int SetMemoryMax(AvsDeviceType type, int index, int mem);
 
   PVideoFrame GetOnDeviceFrame(const PVideoFrame& src, Device* device);
-#ifdef NEOFP
-  void CopyFrameProps(PVideoFrame src, PVideoFrame dst) const;
-#endif
   void ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion, InternalEnvironment *env);
   ThreadPool* NewThreadPool(size_t nThreads);
-#ifdef NEOFP
-  AVSMap* GetAVSMap(PVideoFrame& frame) { return frame->avsmap; }
-#endif
   void SetGraphAnalysis(bool enable) { graphAnalysisEnable = enable; }
 
   void IncEnvCount() { InterlockedIncrement(&EnvCount); }
@@ -874,29 +816,17 @@ private:
   struct DebugTimestampedFrame
   {
     VideoFrame* frame;
-#ifndef NEOFP
     AVSMap* properties;
-#else
-    AVSMap* avsmap;
-#endif
 
 #ifdef _DEBUG
     std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
 #endif
 
     DebugTimestampedFrame(VideoFrame* _frame,
-#ifndef NEOFP
       AVSMap* _properties
-#else
-      AVSMap* _avsmap
-#endif
     )
       : frame(_frame)
-#ifndef NEOFP
       , properties(_properties)
-#else
-      , avsmap(_avsmap)
-#endif
 
 #ifdef _DEBUG
       , timestamp(std::chrono::high_resolution_clock::now())
@@ -1335,12 +1265,10 @@ public:
     return core->NewVideoFrameOnDevice(vi, align, DISPATCH(currentDevice));
   }
 
-#ifndef NEOFP
   PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame *propSrc, int align)
   {
     return core->NewVideoFrameOnDevice(vi, align, DISPATCH(currentDevice), propSrc);
   }
-#endif
 
   void* __stdcall GetDeviceStream()
   {
@@ -1446,7 +1374,6 @@ public:
     return core->SubframePlanarA(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
   }
 
-#ifndef NEOFP
   void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst)
   {
     core->copyFrameProps(src, dst);
@@ -1559,7 +1486,6 @@ public:
   {
     core->clearMap(map);
   }
-#endif
 
   void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data = 0)
   {
@@ -1880,7 +1806,6 @@ public:
     return NewVideoFrameOnDevice(vi, FRAME_ALIGN, (Device*)(void*)device);
   }
 
-#ifndef NEOFP
   // variants with frame property source
   PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame *propSrc)
   {
@@ -1899,31 +1824,17 @@ public:
     return NewVideoFrameOnDevice(vi, FRAME_ALIGN, (Device*)(void*)device, propSrc);
   }
 
-#endif
-
   PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device)
   {
     return core->GetOnDeviceFrame(src, device);
   }
 
-#ifdef NEOFP
-  void __stdcall CopyFrameProps(PVideoFrame src, PVideoFrame dst) const
-  {
-    core->CopyFrameProps(src, dst);
-  }
-#endif
 
   ThreadPool* __stdcall NewThreadPool(size_t nThreads)
   {
     return core->NewThreadPool(nThreads);
   }
 
-#ifdef NEOFP
-  AVSMap* __stdcall GetAVSMap(PVideoFrame& frame)
-  {
-    return core->GetAVSMap(frame);
-  }
-#endif
 
   void __stdcall AddRef() {
     InterlockedIncrement(&DISPATCH(refcount));
@@ -1977,12 +1888,6 @@ public:
     core->UpdateFunctionExports(funcName, funcParams, exportVar);
   }
 
-#ifdef NEOFP
-  bool __stdcall MakePropertyWritable(PVideoFrame* pvf)
-  {
-    return core->MakePropertyWritable(pvf);
-  }
-#endif
 
   InternalEnvironment* __stdcall NewThreadScriptEnvironment(int thread_id)
   {
@@ -2350,15 +2255,9 @@ ScriptEnvironment::~ScriptEnvironment() {
         it3 != end_it3;
         ++it3)
       {
-#ifndef NEOFP
         delete it3->properties;
         it3->properties = 0;
         it3->frame->properties = 0; // fixme ??
-#else
-        delete it3->avsmap;
-        it3->avsmap = 0;
-        it3->frame->avsmap = 0;
-#endif
       }
     }
   }
@@ -2950,11 +2849,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
   VideoFrame *newFrame = NULL;
   try
   {
-#ifndef NEOFP
     newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0);
-#else
-    newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0);
-#endif
   }
   catch(const std::bad_alloc&)
   {
@@ -2968,11 +2863,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
   // automatically inserts keys if they not exist!
   // no locking here, calling method have done it already
   FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(newFrame,
-#ifndef NEOFP
     newFrame->properties
-#else
-    newFrame->avsmap
-#endif
   ));
 
   //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
@@ -3188,11 +3079,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
       {
         size_t videoFrameListSize = it2->second.size();
         VideoFrame *frame_found;
-#ifndef NEOFP
         AVSMap* properties_found;
-#else
-        AVSMap* map_found;
-#endif
         bool found = false;
         for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
           it3 != end_it3;
@@ -3203,11 +3090,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           // sanity check if its refcount is zero
           // because when a vfb is free (refcount==0) then all its parent frames should also be free
           assert(0 == frame->refcount);
-#ifndef NEOFP
           assert(nullptr != frame->properties);
-#else
-          assert(0 == frame->avsmap->data.size());
-#endif
 
           if (!found)
           {
@@ -3234,11 +3117,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             }
             // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
             frame_found = frame;
-#ifndef NEOFP
             properties_found = it3->properties;
-#else
-            map_found = it3->avsmap;
-#endif
             found = true;
             ++it3;
           }
@@ -3247,11 +3126,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             // Benefit: no 4-5k frame list count per a single vfb.
             //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
             delete frame;
-#ifndef NEOFP
             delete it3->properties;
-#else
-            delete it3->avsmap;
-#endif
             ++it3;
           }
         } // for it3
@@ -3261,11 +3136,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           it2->second.clear();
           it2->second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
           it2->second.push_back(DebugTimestampedFrame(frame_found,
-#ifndef NEOFP
             properties_found
-#else
-            map_found
-#endif
           )); // keep only the first
           return frame_found;
         }
@@ -3387,11 +3258,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
           VideoFrame *currentframe = it3->frame;
           assert(0 == currentframe->refcount);
           delete currentframe;
-#ifndef NEOFP
           delete it3->properties;
-#else
-          delete it3->avsmap;
-#endif
 
         }
         // delete array belonging to this vfb in one step
@@ -3528,11 +3395,7 @@ void ScriptEnvironment::ShrinkCache(Device *device)
             if (0 == frame->refcount)
             {
               delete frame;
-#ifndef NEOFP
               delete it3->properties;
-#else
-              delete it3->avsmap;
-#endif
               ++freed_frame_count;
             }
             else {
@@ -3652,7 +3515,6 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, i
   return PVideoFrame(res);
 }
 
-#ifndef NEOFP
 // Variant #1. with frame property source
 PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, int align, Device* device, PVideoFrame* propSrc)
 {
@@ -3663,14 +3525,12 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, i
 
   return result;
 }
-#endif
 
 // Variant #2. without frame property source
 PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, const PDevice& device) {
   return NewVideoFrameOnDevice(vi, frame_align, (Device*)(void*)device);
 }
 
-#ifndef NEOFP
 // Variant #2. with frame property source
 PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, const PDevice& device, PVideoFrame* propSrc)
 {
@@ -3681,7 +3541,6 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, const PDevice&
 
   return result;
 }
-#endif
 
 // Variant #3. without frame property source
 PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo & vi, int align, Device * device) {
@@ -3794,7 +3653,6 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo & vi, int a
 }
 
 
-#ifndef NEOFP
 // Variant #3. with frame property source
 PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame* propSrc)
 {
@@ -3805,7 +3663,6 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo& vi, int al
 
   return result;
 }
-#endif
 
 
 bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
@@ -3855,49 +3712,12 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   }
 
   // Copy properties
-#ifndef NEOFP
   copyFrameProps(vf, dst);
-#else
-  dst->avsmap->data = vf->avsmap->data;
-#endif
 
   *pvf = dst;
   return true;
 }
 
-#ifdef NEOFP
-bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf) {
-  const PVideoFrame& vf = *pvf;
-
-  // If the frame is already writable, do nothing.
-  if (vf->IsPropertyWritable())
-    return false;
-
-  // Otherwise, allocate a new frame (using Subframe)
-  PVideoFrame dst;
-  if (vf->GetPitch(PLANAR_A)) {
-    // planar + alpha
-    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U), 0);
-  }
-  else if (vf->GetPitch(PLANAR_U)) {
-    // planar
-    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U));
-  }
-  else {
-    // single plane
-    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight());
-  }
-
-  // Copy properties
-  dst->avsmap->data = vf->avsmap->data;
-#ifndef NEOFP
-  copyFrameProps(vf, dst);
-#endif
-
-  *pvf = dst;
-  return true;
-}
-#endif
 
 void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data) {
   at_exit.Add(function, user_data);
@@ -3911,12 +3731,9 @@ PVideoFrame ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new
 
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
-#ifndef NEOFP
   PVideoFrame dst(subframe);
   copyFrameProps(src, dst); // fixme: copyFrameProps with VideoFrame*
-#else
-  subframe->avsmap->data = src->avsmap->data;
-#endif
+
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
@@ -3924,11 +3741,7 @@ PVideoFrame ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new
   assert(NULL != subframe);
 
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
-#ifndef NEOFP
     subframe->properties
-#else
-    subframe->avsmap
-#endif
   )); // insert with timestamp!
 
   return subframe;
@@ -3943,12 +3756,8 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
 
   VideoFrame *subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
 
-#ifndef NEOFP
   PVideoFrame dst(subframe);
-  copyFrameProps(src, dst);
-#else
-  subframe->avsmap->data = src->avsmap->data;
-#endif
+  copyFrameProps(src, dst); // fixme: copyFrameProps with VideoFrame*
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -3957,11 +3766,7 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
   assert(subframe != NULL);
 
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
-#ifndef NEOFP
     subframe->properties
-#else
-    subframe->avsmap
-#endif
   )); // insert with timestamp!
 
   return subframe;
@@ -3975,12 +3780,9 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
       ThrowError("Filter Error: Filter attempted to break alignment of VideoFrame.");
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
-#ifndef NEOFP
+
   PVideoFrame dst(subframe);
-  copyFrameProps(src, dst);
-#else
-  subframe->avsmap->data = src->avsmap->data;
-#endif
+  copyFrameProps(src, dst); // fixme: copyFrameProps with VideoFrame*
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -3989,11 +3791,7 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
   assert(subframe != NULL);
 
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
-#ifndef NEOFP
     subframe->properties
-#else
-    subframe->avsmap
-#endif
   )); // insert with timestamp!
 
   return subframe;
@@ -4704,15 +4502,15 @@ PVideoFrame ScriptEnvironment::SubframePlanarA(PVideoFrame src, int rel_offset, 
   return SubframePlanar(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
 }
 
-#ifndef NEOFP
 // since IF V8 frame property helpers are part of IScriptEnvironment
 void ScriptEnvironment::copyFrameProps(const PVideoFrame& src, PVideoFrame& dst)
 {
   dst->setProperties(src->getProperties());
 }
 
+// frame properties support
+// core imported from VapourSynth
 // from vsapi.cpp
-// these were VS_CC (__stdcall)
 const AVSMap* ScriptEnvironment::getFramePropsRO(const PVideoFrame& frame) AVS_NOEXCEPT {
   assert(frame);
   return &(frame->getConstProperties());
@@ -4919,7 +4717,7 @@ void ScriptEnvironment::clearMap(AVSMap* map) AVS_NOEXCEPT {
   assert(map);
   map->clear();
 }
-#endif
+// end of frame prop support functions
 
 PDevice ScriptEnvironment::GetDevice(AvsDeviceType device_type, int device_index) const
 {
@@ -4957,20 +4755,10 @@ PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* 
   res->offsetA = src->pitchA ? (src->offsetA + diff) : 0;
   res->pitchA = src->pitchA;
   res->row_sizeA = src->row_sizeA;
-#ifndef NEOFP
   *res->properties = *src->properties;
-#else
-  res->avsmap->data = src->avsmap->data;
-#endif
   return PVideoFrame(res);
 }
 
-#ifdef NEOFP
-void ScriptEnvironment::CopyFrameProps(PVideoFrame src, PVideoFrame dst) const
-{
-  dst->avsmap->data = src->avsmap->data;
-}
-#endif
 
 ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
 {
@@ -5071,8 +4859,6 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version)
   else
     return NULL;
 }
-
-#ifndef NEOFP
 
 FramePropVariant::FramePropVariant(FramePropVType vtype) : vtype(vtype), internalSize(0), storage(nullptr) {
 }
@@ -5180,8 +4966,8 @@ void FramePropVariant::initStorage(FramePropVType t) {
       storage = new FloatList(); break;
     case FramePropVariant::vData:
       storage = new DataList(); break;
-/*    case FramePropVariant::vClip:
-      storage = new ClipList(); break;*/
+    case FramePropVariant::vClip:
+      storage = new ClipList(); break;
     case FramePropVariant::vFrame:
       storage = new FrameList(); break;
 /*    case FramePropVariant::vMethod:
@@ -5193,4 +4979,3 @@ void FramePropVariant::initStorage(FramePropVType t) {
 
 ///////////////
 
-#endif

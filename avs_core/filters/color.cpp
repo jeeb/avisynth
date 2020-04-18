@@ -1085,11 +1085,7 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
             coloryuv_create_lut<uint16_t>(lutV, &cV, bits_per_pixel, tweaklike_params);
         }
       }
-#ifndef NEOFP
       dst = env->NewVideoFrameP(vi, &src);
-#else
-      dst = env->NewVideoFrame(vi); // go live dst here!
-#endif
 
       if (vi.IsYUY2())
       {

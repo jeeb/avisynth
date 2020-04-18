@@ -3337,15 +3337,11 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
     }
   }
 
-#ifndef NEOFP
   PVideoFrame dst;
   if (first_used_clip_index >= 0)
     dst = env->NewVideoFrameP(d.vi, &src[first_used_clip_index]);
   else
     dst = env->NewVideoFrame(d.vi);
-#else
-  PVideoFrame dst = env->NewVideoFrame(d.vi);
-#endif
 
   const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
   const uint8_t *srcp_orig[MAX_EXPR_INPUTS] = {}; // for C

@@ -1976,11 +1976,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
@@ -2281,11 +2277,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   const BYTE* srcp = src->GetReadPtr();

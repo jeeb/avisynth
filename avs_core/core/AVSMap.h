@@ -8,16 +8,6 @@
 #include <vector>
 #include <memory>
 
-#ifdef NEOFP
-class AVSMap
-{
-public:
-  std::map<std::string, AVSMapValue> data;
-  mutable std::mutex mutex;
-};
-#endif
-
-#ifndef NEOFP
 // Helper structures for frame properties. Borrowed from VapourSynth
 // node-clip, VSVAriant-FramePropVariant VSMap-AVSMap
 // See also in Avisynth.cpp
@@ -206,5 +196,3 @@ public:
     return *((*this)["_Error"].getValue<VSMapData>(0).get());
   }
 };
-
-#endif // ifdef NEOFP else

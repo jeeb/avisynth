@@ -121,11 +121,7 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
   const int f = n/interval;
 
   PVideoFrame src = child->GetFrame(f, env);
-#ifndef NEOFP
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-#else
-  PVideoFrame dst = env->NewVideoFrame(vi);
-#endif
 
   if (vi.IsPlanar()) {
     int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
@@ -313,10 +309,8 @@ PVideoFrame WeaveColumns::GetFrame(int n, IScriptEnvironment* env)
   for (int m=0; m<period; m++) {
     const int f = b+m < inframes ? b+m : inframes-1;
     PVideoFrame src = child->GetFrame(f, env);
-#ifndef NEOFP
-    if(m==0)
+    if(0 == m)
      env->copyFrameProps(src, dst);
-#endif
 
     if (vi.IsPlanar()) {
       int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
@@ -588,10 +582,8 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
       dstp -= dstpitch;
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);
-#ifndef NEOFP
-      if(i==b)
-       env->copyFrameProps(src, dst);
-#endif
+      if(i==b) // very first
+        env->copyFrameProps(src, dst);
 
       env->BitBlt( dstp,              dstpitch * period,
               src->GetReadPtr(), src->GetPitch(),
@@ -614,10 +606,8 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
     for (int i=b; i<e; i++) {
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);
-#ifndef NEOFP
-      if (i == b)
-       env->copyFrameProps(src, dst);
-#endif
+      if (i == b)  // very first
+        env->copyFrameProps(src, dst);
       for (int p = 0; p < (isYUY2 ? 1 : vi.NumComponents()); ++p) {
         int plane = planes[p];
         env->BitBlt(dstp[p], dstpitch[p] * period,
@@ -849,11 +839,7 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame a = child->GetFrame(n, env);
   PVideoFrame b = child->GetFrame(n+1, env);
 
-#ifndef NEOFP
   PVideoFrame result = env->NewVideoFrameP(vi, &a);
-#else
-  PVideoFrame result = env->NewVideoFrame(vi);
-#endif
 
   const bool parity = child->GetParity(n);
 
@@ -932,11 +918,7 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
       return b;
     }
     else {
-#ifndef NEOFP
       PVideoFrame result = env->NewVideoFrameP(vi, &a);
-#else
-      PVideoFrame result = env->NewVideoFrame(vi);
-#endif
       copy_alternate_lines(result, a, vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), parity, env);
       copy_alternate_lines(result, b, vi.IsYUV() || vi.IsYUVA(), vi.IsPlanarRGB() || vi.IsPlanarRGBA(), !parity, env);
       return result;
