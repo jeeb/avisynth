@@ -326,6 +326,35 @@ enum {
     AVS_CACHE_ACCESS_SEQ1=263, // Filter needs sequential access (high cost)
   };
 
+// enums for frame property functions
+// AVSPropTypes
+enum {
+  AVS_PROPTYPE_UNSET = 'u',
+  AVS_PROPTYPE_INT = 'i',
+  AVS_PROPTYPE_FLOAT = 'f',
+  AVS_PROPTYPE_DATA = 's',
+  AVS_PROPTYPE_CLIP = 'c',
+  AVS_PROPTYPE_FRAME = 'v'
+};
+
+// AVSGetPropErrors
+enum {
+  AVS_GETPROPERROR_UNSET = 1,
+  AVS_GETPROPERROR_TYPE = 2,
+  AVS_GETPROPERROR_INDEX = 4
+};
+
+// AVSPropAppendMode
+enum {
+  AVS_PROPAPPENDMODE_REPLACE = 0,
+  AVS_PROPAPPENDMODE_APPEND = 1,
+  AVS_PROPAPPENDMODE_TOUCH = 2
+};
+
+
+
+// system properties
+
 #ifdef BUILDING_AVSCORE
 AVSValue create_c_video_filter(AVSValue args, void * user_data, IScriptEnvironment * e0);
 
@@ -589,7 +618,7 @@ typedef struct AVS_VideoFrame {
   // AVS+ extension, avisynth.h: class does not break plugins if appended here
   int offsetA;
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
-  void* avsmap; // frame properties
+  void* properties; // frame properties
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame

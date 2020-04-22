@@ -1063,6 +1063,7 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const 
 }
 
 // with frame properties, and alignment
+// note: in general there is no need for alignment specificationm use avs_new_video_frame_p
 extern "C"
 AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
 {
@@ -1080,7 +1081,7 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, cons
   return 0;
 }
 
-// with frame properties, no alignment
+// with frame properties, no extra alignment requirement
 extern "C"
 AVS_VideoFrame * AVSC_CC avs_new_video_frame_p(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame * propSrc)
 {
