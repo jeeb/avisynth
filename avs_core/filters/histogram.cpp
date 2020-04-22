@@ -391,7 +391,6 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
 }
 
 PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
@@ -399,10 +398,10 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   int64_t end = vi.AudioSamplesFromFrames(n+1);
   int64_t count = end-start;
   signed short* samples = static_cast<signed short*>(
-    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
+    env->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
   );
   if (!samples) {
-	  env2->ThrowError("Histogram: Could not reserve memory.");
+	  env->ThrowError("Histogram: Could not reserve memory.");
   }
 
   int h = dst->GetHeight();
@@ -456,22 +455,21 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   for (int y = 0; y < 512;y+=16)
     dstp[y*p+256] = (dstp[y*p+256]>127) ? 16 : 235 ;
 
-  env2->Free(samples);
+  env->Free(samples);
   return dst;
 }
 
 
 PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame src = env->NewVideoFrame(vi);
   int64_t start = vi.AudioSamplesFromFrames(n);
   int64_t end = vi.AudioSamplesFromFrames(n+1);
   int64_t count = end-start;
   signed short* samples = static_cast<signed short*>(
-    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
+    env->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
   );
   if (!samples) {
-	  env2->ThrowError("Histogram: Could not reserve memory.");
+	  env->ThrowError("Histogram: Could not reserve memory.");
   }
 
   int h = src->GetHeight();
@@ -513,7 +511,7 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
     memset(srcp, 128, imgSize);
   }
 
-  env2->Free(samples);
+  env->Free(samples);
   return src;
 }
 
@@ -1141,9 +1139,8 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   }
 
   // counters
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
   int bufsize = sizeof(uint32_t)*show_size;
-  uint32_t *histPlane1 = static_cast<uint32_t*>(env2->Allocate(bufsize * 3, 16, AVS_NORMAL_ALLOC));
+  uint32_t *histPlane1 = static_cast<uint32_t*>(env->Allocate(bufsize * 3, 16, AVS_NORMAL_ALLOC));
   uint32_t *histPlanes[3] = { histPlane1, histPlane1 + show_size, histPlane1 + 2 * show_size };
   if (!histPlane1)
     env->ThrowError("Histogram: Could not reserve memory.");
@@ -1570,7 +1567,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     }
   }
 
-  env2->Free(histPlane1);
+  env->Free(histPlane1);
 
   return dst;
 }

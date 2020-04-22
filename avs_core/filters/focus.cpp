@@ -545,10 +545,9 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 
     env->MakeWritable(&src);
 
-    auto env2 = static_cast<IScriptEnvironment2*>(env);
-    BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(AlignNumber(src->GetRowSize(), FRAME_ALIGN), FRAME_ALIGN, AVS_POOLED_ALLOC));
+    BYTE* line_buf = reinterpret_cast<BYTE*>(env->Allocate(AlignNumber(src->GetRowSize(), FRAME_ALIGN), FRAME_ALIGN, AVS_POOLED_ALLOC));
     if (!line_buf) {
-        env2->ThrowError("AdjustFocusV: Could not reserve memory.");
+        env->ThrowError("AdjustFocusV: Could not reserve memory.");
     }
 
     int pixelsize = vi.ComponentSize();
@@ -587,7 +586,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
           af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, bits_per_pixel, env);
     }
 
-    env2->Free(line_buf);
+    env->Free(line_buf);
     return src;
 }
 

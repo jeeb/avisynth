@@ -271,10 +271,9 @@ Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float 
   // one buffer for map and mapchroma
   map = nullptr;
   if (use_lut) {
-    auto env2 = static_cast<IScriptEnvironment2*>(env);
     int number_of_maps = need_chroma ? 2 : 1;
     int bufsize = pixelsize * real_lookup_size * scale * number_of_maps;
-    map = static_cast<uint8_t*>(env2->Allocate(bufsize, 16, AVS_NORMAL_ALLOC));
+    map = static_cast<uint8_t*>(env->Allocate(bufsize, 16, AVS_NORMAL_ALLOC));
     if (!map)
       env->ThrowError("Levels: Could not reserve memory.");
     env->AtExit(free_buffer, map);
@@ -971,8 +970,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
       // left here intentionally:
       // for some reason, AtExit does not get called from within ScriptClip, causing no free thus memory leak
       // We are using new here and delete in destructor
-      auto env2 = static_cast<IScriptEnvironment2*>(env);
-      static_cast<uint8_t*>(env2->Allocate(one_bufsize * number_of_maps, 16, AVS_NORMAL_ALLOC));
+      static_cast<uint8_t*>(env->Allocate(one_bufsize * number_of_maps, 16, AVS_NORMAL_ALLOC));
       if (!mapR)
           env->ThrowError("RGBAdjust: Could not reserve memory.");
       env->AtExit(free_buffer, mapR);
@@ -1217,10 +1215,9 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
         int pixel_max = lookup_size - 1;
 
         // worst case: 65536 for even 10 bits, too. Possible garbage
-        auto env2 = static_cast<IScriptEnvironment2*>(env);
         int bufsize = real_lookup_size * sizeof(uint32_t);
         // allocate 3x bufsize for R. G and B will share it
-        accum_r = static_cast<uint32_t*>(env2->Allocate(bufsize*3 , 16, AVS_NORMAL_ALLOC));
+        accum_r = static_cast<uint32_t*>(env->Allocate(bufsize*3 , 16, AVS_NORMAL_ALLOC));
         accum_g = accum_r + real_lookup_size;
         accum_b = accum_g + real_lookup_size;
         if (!accum_r)
@@ -1319,7 +1316,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
             Amax_r, Amax_g, Amax_b
         );
         env->ApplyMessage(&frame, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
-        env2->Free(accum_r);
+        env->Free(accum_r);
     }
     return frame;
 }
@@ -1571,15 +1568,13 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   // 8/10bit: chroma lut OK. 12+ bits: force no lookup tables.
   // 8-16bit: luma lut OK. float: force no lookup tables.
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-
   // fill brightness/constrast lookup tables
   if(!(realcalc_luma && vi.IsPlanar()))
   {
     size_t map_size = pixelsize * safe_luma_lookup_size * scale_dither_luma;
     // for 10-16 bit with dither: 2 * 65536 * 256 = 33 MByte
     //               w/o  dither: 2 * 65536 = 128 KByte
-    map = static_cast<uint8_t*>(env2->Allocate(map_size, 8, AVS_NORMAL_ALLOC));
+    map = static_cast<uint8_t*>(env->Allocate(map_size, 8, AVS_NORMAL_ALLOC));
     if (!map)
       env->ThrowError("Tweak: Could not reserve memory.");
     env->AtExit(free_buffer, map);
@@ -1629,7 +1624,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
     // for 10 bit with dither: 2 * 1024 * 1024 * 2 * 4 = 4*64 MByte = 256M huh!
     // for 10 bit w/o  dither: 2 * 1024 * 1024 * 2 = 64 MByte
 
-    mapUV = static_cast<uint16_t*>(env2->Allocate(map_size, 8, AVS_NORMAL_ALLOC)); // uint16_t for (U+V bytes), casted to uint32_t for (U+V words in non-8 bit)
+    mapUV = static_cast<uint16_t*>(env->Allocate(map_size, 8, AVS_NORMAL_ALLOC)); // uint16_t for (U+V bytes), casted to uint32_t for (U+V words in non-8 bit)
     if (!mapUV)
       env->ThrowError("Tweak: Could not reserve memory.");
     env->AtExit(free_buffer, mapUV);
@@ -2100,9 +2095,7 @@ MaskHS::MaskHS(PClip _child, double _startHue, double _endHue, double _maxSat, d
       // for  8 bit : 1 * 256 * 256 = 65536 byte
       // for 10 bit : 2 * 1024 * 1024 = 2 MByte
       // for 12 bit : 2 * 4096 * 4096 = 32 MByte
-      auto env2 = static_cast<IScriptEnvironment2*>(env);
-
-      mapUV = static_cast<uint8_t*>(env2->Allocate(map_size, 8, AVS_NORMAL_ALLOC)); // uint16_t for (U+V bytes), casted to uint32_t for (U+V words in non-8 bit)
+      mapUV = static_cast<uint8_t*>(env->Allocate(map_size, 8, AVS_NORMAL_ALLOC)); // uint16_t for (U+V bytes), casted to uint32_t for (U+V words in non-8 bit)
       if (!mapUV)
         env->ThrowError("Tweak: Could not reserve memory.");
       env->AtExit(free_buffer, mapUV);

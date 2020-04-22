@@ -125,9 +125,8 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
   else
     size = sizeY + 2 * sizeUV;
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
   // maybe memcpy become fast by aligned start address.
-  orig = env2->Allocate(size, FRAME_ALIGN, AVS_POOLED_ALLOC);
+  orig = env->Allocate(size, FRAME_ALIGN, AVS_POOLED_ALLOC);
   if (!orig)
     env->ThrowError("AVISource: couldn't allocate temporal buffer.");
   env->AtExit(free_buffer, orig);

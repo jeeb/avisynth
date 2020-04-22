@@ -53,7 +53,7 @@ constexpr int ALIGN_FLOAT_RESIZER_COEFF_SIZE = 8;
 #define M_PI 3.14159265358979323846
 
 struct ResamplingProgram {
-  IScriptEnvironment2 * Env;
+  IScriptEnvironment * Env;
   int source_size, target_size;
   double crop_start, crop_size;
   int filter_size;
@@ -74,7 +74,7 @@ struct ResamplingProgram {
   int source_overread_offset; // offset from where reading 8 bytes requires masking garbage on the right side
   int source_overread_beyond_targetx;
 
-  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment2* env)
+  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment* env)
     : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), bits_per_pixel(bits_per_pixel),
     pixel_offset(0), pixel_coefficient(0), pixel_coefficient_float(0), Env(env)
   {
@@ -126,7 +126,7 @@ public:
   virtual double f(double x) = 0;
   virtual double support() = 0;
 
-  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment2* env);
+  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment* env);
 };
 
 class PointFilter : public ResamplingFunction

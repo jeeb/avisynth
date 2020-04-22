@@ -232,7 +232,7 @@ double SincFilter::f(double value) {
  **** Resampling Patterns  ****
  *****************************/
 
-ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment2* env)
+ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment* env)
 {
   double filter_scale = double(target_size) / crop_size;
   double filter_step = min(filter_scale, 1.0);

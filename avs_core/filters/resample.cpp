@@ -565,7 +565,7 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
 }
 
 // make the resampling coefficient array mod8 or mod16 friendly for simd, padding non-used coeffs with zeros
-static void resize_h_prepare_coeff_8or16(ResamplingProgram* p, IScriptEnvironment2* env, int alignFilterSize8or16) {
+static void resize_h_prepare_coeff_8or16(ResamplingProgram* p, IScriptEnvironment* env, int alignFilterSize8or16) {
   p->filter_size_alignment = alignFilterSize8or16;
   int filter_size = AlignNumber(p->filter_size, alignFilterSize8or16);
   // for even non-simd it was aligned/padded as well, keep the same here
@@ -1862,10 +1862,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-
   // Main resampling program
-  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, bits_per_pixel, env2);
+  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, bits_per_pixel, env);
   if (vi.IsPlanar() && !grey && !isRGBPfamily) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int div   = 1 << shift;
@@ -1877,7 +1875,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       subrange_width  / div,
       target_width   >> shift,
       bits_per_pixel,
-      env2);
+      env);
   }
 
   // r2592+: no target_width mod4 check, (old avs needed for unaligned frames?)
@@ -1962,10 +1960,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       }
     }
   } else { // Planar + SSSE3 = use new horizontal resizer routines
-    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, pixelsize, bits_per_pixel, resampling_program_luma, env2);
+    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, pixelsize, bits_per_pixel, resampling_program_luma, env);
 
     if (!grey && !isRGBPfamily) {
-      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, pixelsize, bits_per_pixel, resampling_program_chroma, env2);
+      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, pixelsize, bits_per_pixel, resampling_program_chroma, env);
     }
   }
 
@@ -1978,18 +1976,16 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-
   bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
 
   if (!fast_resize) {
     // e.g. not aligned, not mod4
     // temp_1_pitch and temp_2_pitch is pixelsize-aware
-    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, FRAME_ALIGN, AVS_POOLED_ALLOC));
-    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, FRAME_ALIGN, AVS_POOLED_ALLOC));
+    BYTE* temp_1 = static_cast<BYTE*>(env->Allocate(temp_1_pitch * src_width, FRAME_ALIGN, AVS_POOLED_ALLOC));
+    BYTE* temp_2 = static_cast<BYTE*>(env->Allocate(temp_2_pitch * dst_width, FRAME_ALIGN, AVS_POOLED_ALLOC));
     if (!temp_1 || !temp_2) {
-      env2->Free(temp_1);
-      env2->Free(temp_2);
+      env->Free(temp_1);
+      env->Free(temp_2);
       env->ThrowError("Could not reserve memory in a resampler.");
     }
 
@@ -2044,8 +2040,8 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       turn_right(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
     }
 
-    env2->Free(temp_1);
-    env2->Free(temp_2);
+    env->Free(temp_1);
+    env->Free(temp_2);
   } else {
 
     // Y Plane
@@ -2075,7 +2071,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, int bits_per_pixel, ResamplingProgram* program, IScriptEnvironment2* env)
+ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, int bits_per_pixel, ResamplingProgram* program, IScriptEnvironment* env)
 {
   AVS_UNUSED(aligned);
 
@@ -2245,14 +2241,12 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
       env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-
   if (vi.IsRGB() && !isRGBPfamily)
     subrange_top = vi.height - subrange_top - subrange_height; // packed RGB upside down
 
 
   // Create resampling program and pitch table
-  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, bits_per_pixel, env2);
+  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, bits_per_pixel, env);
   resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , pixelsize, bits_per_pixel, filter_storage_luma_aligned,   resampling_program_luma);
 
   if (vi.IsPlanar() && !grey && !isRGBPfamily) {
@@ -2265,7 +2259,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   subrange_height / div,
                                   target_height  >> shift,
                                   bits_per_pixel,
-                                  env2);
+                                  env);
 
     resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , pixelsize, bits_per_pixel, filter_storage_chroma_aligned,   resampling_program_chroma);
   }
@@ -2283,12 +2277,10 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   const BYTE* srcp = src->GetReadPtr();
         BYTE* dstp = dst->GetWritePtr();
 
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-
   bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
 
   // Create pitch table
-  int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 32, AVS_POOLED_ALLOC));
+  int* src_pitch_table_luma = static_cast<int*>(env->Allocate(sizeof(int) * src->GetHeight(), 32, AVS_POOLED_ALLOC));
   if (!src_pitch_table_luma) {
     env->ThrowError("Could not reserve memory in a resampler.");
   }
@@ -2298,11 +2290,11 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   int* src_pitch_table_chromaU = NULL;
   int* src_pitch_table_chromaV = NULL;
   if ((!grey && vi.IsPlanar() && !isRGBPfamily)) {
-    src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 32, AVS_POOLED_ALLOC));
-    src_pitch_table_chromaV = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 32, AVS_POOLED_ALLOC));
+    src_pitch_table_chromaU = static_cast<int*>(env->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 32, AVS_POOLED_ALLOC));
+    src_pitch_table_chromaV = static_cast<int*>(env->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 32, AVS_POOLED_ALLOC));
     if (!src_pitch_table_chromaU || !src_pitch_table_chromaV) {
-      env2->Free(src_pitch_table_chromaU);
-      env2->Free(src_pitch_table_chromaV);
+      env->Free(src_pitch_table_chromaU);
+      env->Free(src_pitch_table_chromaV);
       env->ThrowError("Could not reserve memory in a resampler.");
     }
 
@@ -2362,9 +2354,9 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // Free pitch table
-  env2->Free(src_pitch_table_luma);
-  env2->Free(src_pitch_table_chromaU);
-  env2->Free(src_pitch_table_chromaV);
+  env->Free(src_pitch_table_luma);
+  env->Free(src_pitch_table_chromaU);
+  env->Free(src_pitch_table_chromaV);
 
   return dst;
 }

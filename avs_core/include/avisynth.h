@@ -16,9 +16,11 @@
 // 20200330: (remove test SIZETMOD define for clarity)
 // 20200330: VideoFrame: frame property field: avsmap (from Neo)
 // 20200330: Integrate Avisynth Neo structures and interface, PFunction, PDevice
-// 20200410: frame properties - new version
-// 20200415: frame property support (NewVideoFrameP and other functions) to legacy IScriptEnvironment.
+// 20200422: frame property support (NewVideoFrameP and other helpers) to legacy IScriptEnvironment.
+//           move some former IScriptEnvironment2 functions to IScriptEnvironment:
+//           GetProperty (system prop), Allocate, Free (buffer pool)
 //           Interface Version to 8 (classic 2.6 = 6)
+
 
 // http://www.avisynth.org
 
@@ -186,7 +188,6 @@ class SINGLE_INHERITANCE PVideoFrame;
 class IScriptEnvironment;
 class SINGLE_INHERITANCE AVSValue;
 class INeoEnv;
-class SINGLE_INHERITANCE AVSMapValue;
 class IFunction;
 class SINGLE_INHERITANCE PFunction;
 class Device;
@@ -954,7 +955,6 @@ class VideoFrame {
 
   friend class ScriptEnvironment;
   friend class Cache;
-  friend class AVSMapValue;
 
   VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height);
   VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
@@ -1140,7 +1140,7 @@ public:
 #endif
 }; // end class PClip
 
-
+// enums for frame property functions
 typedef enum AVSPropTypes {
   ptUnset = 'u',
   ptInt = 'i',
@@ -1275,6 +1275,7 @@ public:
 }; // end class AVSValue
 
 #define AVS_UNUSED(x) (void)(x)
+
 // instantiable null filter
 class GenericVideoFilter : public IClip {
 protected:
@@ -1334,6 +1335,29 @@ public:
 
 #include <avs/cpuid.h>
 
+enum AvsEnvProperty
+{
+  AEP_PHYSICAL_CPUS = 1,
+  AEP_LOGICAL_CPUS = 2,
+  AEP_THREADPOOL_THREADS = 3,
+  AEP_FILTERCHAIN_THREADS = 4,
+  AEP_THREAD_ID = 5,
+  AEP_VERSION = 6,
+
+  // Neo additionals
+  AEP_NUM_DEVICES = 901,
+  AEP_FRAME_ALIGN = 902,
+  AEP_PLANE_ALIGN = 903,
+
+  AEP_SUPPRESS_THREAD = 921,
+  AEP_GETFRAME_RECURSIVE = 922,
+};
+
+enum AvsAllocType
+{
+  AVS_NORMAL_ALLOC = 1,
+  AVS_POOLED_ALLOC = 2
+};
 
 
 class IScriptEnvironment {
@@ -1369,7 +1393,7 @@ public:
   virtual void __stdcall PushContext(int level=0) = 0;
   virtual void __stdcall PopContext() = 0;
 
-
+  // note v8: deprecated in most cases, use NewVideoFrameP is possible
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align=FRAME_ALIGN) = 0;
 
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
@@ -1448,7 +1472,7 @@ public:
   virtual void __stdcall freeMap(AVSMap* map) = 0;
   virtual void __stdcall clearMap(AVSMap* map) = 0;
 
-  // with frame property source.
+  // NewVideoFrame with frame property source.
   virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
 
   // Note: do not declare existing names like 'NewVideoFrame' again with different parameters since MSVC will reorder it
@@ -1456,6 +1480,12 @@ public:
   // This results in shifting all vtable method pointers after NewVideoFrame and breaks all plugins who expect the old order.
   // E.g. ApplyMessage will be called instead of GetAVSLinkage
 
+  // Generic query to ask for various system properties
+  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+
+  // Support functions
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
+  virtual void __stdcall Free(void* ptr) = 0;
 }; // end class IScriptEnvironment
 
 
@@ -1486,29 +1516,6 @@ class IScriptEnvironment2;
 class Prefetcher;
 typedef AVSValue (*ThreadWorkerFuncPtr)(IScriptEnvironment2* env, void* data);
 
-enum AvsEnvProperty
-{
-  AEP_PHYSICAL_CPUS = 1,
-  AEP_LOGICAL_CPUS = 2,
-  AEP_THREADPOOL_THREADS = 3,
-  AEP_FILTERCHAIN_THREADS = 4,
-  AEP_THREAD_ID = 5,
-  AEP_VERSION = 6,
-
-  // Neo additionals
-  AEP_NUM_DEVICES = 901,
-  AEP_FRAME_ALIGN = 902,
-  AEP_PLANE_ALIGN = 903,
-
-  AEP_SUPPRESS_THREAD = 921,
-  AEP_GETFRAME_RECURSIVE = 922,
-};
-
-enum AvsAllocType
-{
-  AVS_NORMAL_ALLOC  = 1,
-  AVS_POOLED_ALLOC  = 2
-};
 
 /* -----------------------------------------------------------------------------
    Note to plugin authors: The interface in IScriptEnvironment2 is
@@ -1523,7 +1530,8 @@ public:
   virtual ~IScriptEnvironment2() {}
 
   // Generic system to ask for various properties
-  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+  // V8: moved to IScriptEnvironment
+  //virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
 
   // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
   virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
@@ -1553,8 +1561,9 @@ public:
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0) = 0;
 
   // Support functions
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
-  virtual void __stdcall Free(void* ptr) = 0;
+  // v8: moved to IScriptEnvironment
+  //virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
+  //virtual void __stdcall Free(void* ptr) = 0;
 
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;
