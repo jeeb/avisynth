@@ -983,7 +983,7 @@ public:
 
   AVSMap& getProperties() AVS_BakedCode(return AVS_LinkCallOptDefault(getProperties, (AVSMap&)*(AVSMap*)0))
   const AVSMap& getConstProperties() AVS_BakedCode(return AVS_LinkCallOptDefault(getConstProperties, (const AVSMap&)*(const AVSMap*)0))
-  void setProperties(const AVSMap & properties) AVS_BakedCode(AVS_LinkCall_Void(setProperties)(properties))
+  void setProperties(const AVSMap & _properties) AVS_BakedCode(AVS_LinkCall_Void(setProperties)(_properties))
 
   PDevice GetDevice() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetDevice)())
 
