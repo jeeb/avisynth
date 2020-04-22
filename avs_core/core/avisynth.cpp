@@ -3711,7 +3711,6 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
         vf->GetPitch(PLANAR_A), vf->GetRowSize(PLANAR_A), vf->GetHeight(PLANAR_A));
   }
 
-  // Copy properties
   copyFrameProps(vf, dst);
 
   *pvf = dst;
@@ -3731,8 +3730,8 @@ PVideoFrame ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new
 
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
-  PVideoFrame dst(subframe);
-  copyFrameProps(src, dst); // fixme: copyFrameProps with VideoFrame*
+
+  subframe->setProperties(src->getConstProperties());
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -3756,8 +3755,7 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
 
   VideoFrame *subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
 
-  PVideoFrame dst(subframe);
-  copyFrameProps(src, dst); // fixme: copyFrameProps with VideoFrame*
+  subframe->setProperties(src->getConstProperties());
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -3781,8 +3779,7 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
 
-  PVideoFrame dst(subframe);
-  copyFrameProps(src, dst); // fixme: copyFrameProps with VideoFrame*
+  subframe->setProperties(src->getConstProperties());
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
@@ -4627,6 +4624,7 @@ static bool isValidVSMapKey(const std::string& s) {
   return true;
 }
 
+// insert and append are guarded and make new copy of actual storage before the modification
 #define PROP_SET_SHARED(vv, appendexpr) \
     assert(map && key); \
     if (append != paReplace && append != paAppend && append != paTouch) \
@@ -4639,7 +4637,7 @@ static bool isValidVSMapKey(const std::string& s) {
         if (l.getType() != (vv)) \
             return 1; \
         else if (append == paAppend) \
-            l.append(appendexpr); \
+            map->append(skey, appendexpr); \
     } else { \
         FramePropVariant l((vv)); \
         if (append != paTouch) \

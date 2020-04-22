@@ -9,7 +9,7 @@
 #include <memory>
 
 // Helper structures for frame properties. Borrowed from VapourSynth
-// node-clip, VSVAriant-FramePropVariant VSMap-AVSMap
+// node-clip, VSVariant-FramePropVariant VSMap-AVSMap
 // See also in Avisynth.cpp
 
 // variant types
@@ -156,6 +156,38 @@ public:
     detach();
     data->data.erase(key);
     data->data.insert(std::make_pair(key, v));
+    return true;
+  }
+
+  // make append safe like erase and insert
+  // or else append from different threads to the same key (array) would be possible
+  bool append(const std::string& key, int64_t i) {
+    detach();
+    (data->data.find(key)->second).append(i);
+    return true;
+  }
+
+  bool append(const std::string& key, double d) {
+    detach();
+    (data->data.find(key)->second).append(d);
+    return true;
+  }
+
+  bool append(const std::string& key, const std::string &s) {
+    detach();
+    (data->data.find(key)->second).append(s);
+    return true;
+  }
+
+  bool append(const std::string& key,const  PClip& c) {
+    detach();
+    (data->data.find(key)->second).append(c);
+    return true;
+  }
+
+  bool append(const std::string& key, const PVideoFrame& f) {
+    detach();
+    (data->data.find(key)->second).append(f);
     return true;
   }
 
