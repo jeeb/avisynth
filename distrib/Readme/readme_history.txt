@@ -4,7 +4,7 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200417 3.5.? (dev)
+20200422 3.5.? (dev)
 --------------------
 - frame properties framework, IScriptEnvironment extension
   - Core and concept ported from VapourSynth - thank you
@@ -24,7 +24,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       2 - touch
   - from plugin writer's point of view:
     - new field in internal VideoFrame struct:
-      avsmap, type is AVSMap* which is basically a reference counting struct for holding array of variants
+      properties, type is AVSMap* which is basically a reference counting struct for holding array of variants
     - frame property passing along the filter chain
       If your filter is not an in-place one (works with NewVideoFrame instead of MakeWritable) then
       you have to pass properties programatically by using a new version of env->NewVideoFrame: NewVideoFrameP.
@@ -47,9 +47,11 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
     - support functions
     In C interface:
-      use avs_new_video_frame_a_prop instead of avs_new_video_frame_a
+      use avs_new_video_frame_p instead of avs_new_video_frame
+      use avs_new_video_frame_p_a instead of avs_new_video_frame_a
 
-      AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
+      AVS_VideoFrame * AVSC_CC avs_new_video_frame_p(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame * propSrc)
+      AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
 
     In avisynth.h:
       enums AVSPropTypes, AVSGetPropErrors and AVSPropAppendMode
@@ -60,6 +62,11 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     AVISYNTH_INTERFACE_VERION supporting frame properties is: 8.
 
     [CPP interface]
+    - Summary:
+      New: frame propery support with NewVideoFrameP and property getter/setter/info helpers
+      Old-New: moved from IScriptEnvironment2:
+        GetProperty (note: this is for system properties)
+        Allocate, Free (buffer pools)
 
     - NewVideoFrame with frame property source:
         PVideoFrame NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
@@ -68,7 +75,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
         PVideoFrame src = child->GetFrame(n, env);
         PVideoFrame frame = env->NewVideoFrame(vi)
 
-      create new video frame with passing properties
+      create new video frame with passing properties by giving a source video frame
         PVideoFrame src = child->GetFrame(n, env);
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
@@ -87,39 +94,139 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     - examples in conditional.cpp, conditional_functions.cpp
 
       void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
+        copies frame properties from source to destination frame
 
       const AVSMap* getFramePropsRO(const PVideoFrame& frame);
       AVSMap* getFramePropsRW(PVideoFrame& frame);
+        get pointer to the property struct for readonly or read/write purposes.
+        A single frame can have one set of frame properties, but the set can be shared by multiple frames.
 
       int propNumKeys(const AVSMap* map);
+        returns the number of frame properties for a given AVSMap. Each entry have a unique alphanumeric key.
+        Key is the identifier name of the frame property.
+
       const char* propGetKey(const AVSMap* map, int index);
+        Retrieves the key (property identifier / property name) by index. 0 <= index < propNumKeys
+
       int propDeleteKey(AVSMap* map, const char* key);
+        Delete an entry. Returns 0 if O.K.
+
       int propNumElements(const AVSMap* map, const char* key);
+        Queries the internal counter for a given property. Properties can be arrays,
+        returned value means the array size. Non array properties return 1.
+        Returns -1 if property does not exists.
+
       char propGetType(const AVSMap* map, const char* key);
+        returns the data type.
+        Type Enums are avaliable here:
+          avisynth.h CPP interface:
+            '''
+            typedef enum AVSPropTypes {
+              ptUnset = 'u',
+              ptInt = 'i',
+              ptFloat = 'f',
+              ptData = 's',
+              ptClip = 'c',
+              ptFrame = 'v',
+            } AVSPropTypes;
+            '''
+          avisynth_c.h C interface:
+            '''
+            enum {
+              AVS_PROPTYPE_UNSET = 'u',
+              AVS_PROPTYPE_INT = 'i',
+              AVS_PROPTYPE_FLOAT = 'f',
+              AVS_PROPTYPE_DATA = 's',
+              AVS_PROPTYPE_CLIP = 'c',
+              AVS_PROPTYPE_FRAME = 'v'
+            };
+            '''
 
       int64_t propGetInt(const AVSMap* map, const char* key, int index, int* error);
       double propGetFloat(const AVSMap* map, const char* key, int index, int* error);
       const char* propGetData(const AVSMap* map, const char* key, int index, int* error);
-      int propGetDataSize(const AVSMap* map, const char* key, int index, int* error);
       PClip propGetClip(const AVSMap* map, const char* key, int index, int* error);
       const PVideoFrame propGetFrame(const AVSMap* map, const char* key, int index, int* error);
+
+        Property read functions.
+        Since properties can be arrays, index should be specified.
+        Use index = 0 for getting the value for a non-array property, in reality these
+        properties are a size=1 arrays.
+        Funtion 'propGetData' can be used for both strings and for generic byte arrays.
+        Variable 'error' returns an error code of failure (0=success):
+          peUnset: key does not exists
+          peType: e.g read integer from a float property,
+          peIndex: property array index out of range)
+        Error enums are defined here:
+          avisynth.h CPP interface:
+            typedef enum AVSGetPropErrors {
+              peUnset = 1,
+              peType = 2,
+              peIndex = 4
+            } AVSGetPropErrors;
+          avisynth_c.h C interface:
+            enum {
+              AVS_GETPROPERROR_UNSET = 1,
+              AVS_GETPROPERROR_TYPE = 2,
+              AVS_GETPROPERROR_INDEX = 4
+            };
+
+      int propGetDataSize(const AVSMap* map, const char* key, int index, int* error);
+        returns the string length or data size of a ptData typed element
+
       int propSetInt(AVSMap* map, const char* key, int64_t i, int append);
       int propSetFloat(AVSMap* map, const char* key, double d, int append);
       int propSetData(AVSMap* map, const char* key, const char* d, int length, int append);
       int propSetClip(AVSMap* map, const char* key, PClip& clip, int append);
       int propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append);
+        Property setter functions.
+        propSetData is used for strings or for real generic byte data.
+        propSetData has an extra length parameter, specify -1 for automatic string length.
+        Data bytes will be copied into the property (no need to keep data for the given pointer)
+        Three propery set modes supported.
+        - paReplace: adds if not exists, replaces value is it already exists, losing its old value.
+        - paAppend: appends to the existing property (note: they are basically arrays)
+        - paTouch: do nothing if the key exists. Otherwise, the key is added to the map, with no values associated.
+        See mode enums in:
+          avisynth.h CPP interface:
+            '''
+            typedef enum AVSPropAppendMode {
+              paReplace = 0,
+              paAppend = 1,
+              paTouch = 2
+            } AVSPropAppendMode;
+            '''
+          or
+          avisynth_c.h C interface:
+            '''
+            enum {
+              AVS_PROPAPPENDMODE_REPLACE = 0,
+              AVS_PROPAPPENDMODE_APPEND = 1,
+              AVS_PROPAPPENDMODE_TOUCH = 2
+            };
+            '''
 
       const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error);
       const double *propGetFloatArray(const AVSMap* map, const char* key, int* error);
+        Get the pointer to the first element of array of the given key.
+        Use 'propNumElements' for establishing array size and valid index ranges.
+
       int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size);
       int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size);
+        If an array is already available in the application, these functions provide
+        a quicker way for setting the properties than to insert them one by one.
+        No append mode can be specified, if property already exists it will be overwritten.
+        Return value: 0 on success, 1 otherwise
+
+      void clearMap(AVSMap* map);
+        Removes all content from the property set.
 
       AVSMap* createMap();
       void freeMap(AVSMap* map);
-      void clearMap(AVSMap* map);
+        these are for internal use only
 
     [C interface]
-    - see avisynth_c.h
+    - Functions and enums are defined avisynth_c.h
     - new video frame creator functions:
         avs_new_video_frame_prop
         avs_new_video_frame_a_prop
@@ -131,7 +238,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
       NULL as propSrc will behave like old avs_new_video_frame and avs_new_video_frame_a
 
-    - AVS_VideoFrame struct extended with a placeholder field for 'avsmap' frame property pointer
+    - AVS_VideoFrame struct extended with a placeholder field for 'properties' pointer
     - copyFrameProps
     - getFramePropsRO, getFramePropsRW
     - propNumKeys, propGetKey, propNumElements, propGetType, propGetDataSize
@@ -139,30 +246,102 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     - propSetInt, propSetFloat, propSetData, propSetClip, propSetFrame, propSetIntArray, propSetFloatArray
     - propDeleteKey, clearMap
 
+    See their descriptions above, names are similar to the CPP ones.
+
     [AviSynth scripting language]
 
     Frame properties read-write possible only within runtime functions.
     Input value of setter functions are to be come from the return value of "function objects"
 
-    // in conditional_reader.cpp, see property getters in conditional_functions.cpp
-    { "propSet", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void *)0 },
-    { "propSetInt", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)1 },
-    { "propSetFloat", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)2 },
-    { "propSetString", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)3 },
-    { "propSetArray", BUILTIN_FUNC_PREFIX, "csn", SetProperty::Create, (void*)4 },
-    { "propDelete", BUILTIN_FUNC_PREFIX, "cs", DeleteProperty::Create },
-    { "propClearAll", BUILTIN_FUNC_PREFIX, "c", ClearProperties::Create },
+    Property setter function names begin with propSet
+      - property value is given by the return value of a function object
+        Parameters:
+          clip c,
+          string key_name,
+          function object,
+          int "mode"
+            0=replace (default), 1=append, 2=touch
+            There is no append mode for inserting a full array into the property.
 
-    { "propGetAny", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)0 },
-    { "propGetInt", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void *)1 },
-    { "propGetFloat", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)2 },
-    { "propGetString", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)3 },
-    { "propGetDataSize", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetPropertyDataSize::Create },
-    { "propNumElements", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyNumElements::Create},
-    { "propNumKeys", BUILTIN_FUNC_PREFIX, "c[offset]i", GetPropertyNumKeys::Create},
-    { "propGetKeyByIndex", BUILTIN_FUNC_PREFIX, "c[index]i[offset]i", GetPropertyKeyByIndex::Create},
-    { "propGetType", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyType::Create},
-    { "propGetAsArray", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyAsArray::Create},
+          "propSet" csn[mode]i
+            generic property setter, automatic type recognition
+          "propSetInt" csn[mode]i
+            accepts only integer results from function
+          "propSetFloat" csn[mode]i
+            accepts only float results from function
+          "propSetString" csn[mode]i
+            accepts only string results from function
+          "propSetArray" csn
+            accepts only array type results from function
+
+      - Sets a property, its value is given directly
+
+        "propSet" csi[mode]i
+        "propSet" csf[mode]i
+        "propSet" css[mode]i
+        "propSet" csa
+          note: array must contain only the similarly typed values, e.g. cannot mix strings with integers.
+
+        Parameters:
+          clip c,
+          string key_name,
+          value (type of integer, float, string and array respectively),
+          int "mode"
+            0=replace (default), 1=append, 2=touch
+            There is no append mode for inserting a full array into the property.
+
+    Delete a specific property entry
+      "propDelete" cs
+
+       parameters:
+         clip c,
+         string key_name,
+
+    Clear all properties for a given video frame
+      "propClearAll" c
+
+       parameters:
+         clip c
+
+    Reading properties
+       Common parameters:
+         clip c,
+         string key_name,
+         integer "index", (default 0): for zero based indexing array access
+         integer "offset" (default 0), similar to the other runtime functions: frame offset (e.g. -1: previous, 2: next next)
+
+      "propGetAny" cs[index]i[offset]i
+        returns the automatically detected type
+      "propGetInt" cs[index]i[offset]i
+        returns only if value is integer, throws an error otherwise
+      "propGetFloat" cs[index]i[offset]i
+        returns only if value is float, throws an error otherwise
+      "propGetString"cs[index]i[offset]i
+        returns only if value is string, throws an error otherwise
+      "propGetAsArray" cs[offset]i
+        returns an array
+
+    Other helper function
+      "propGetDataSize" cs[index]i[offset]i
+        returns the size of the string or underlying data array
+
+      "propNumElements" cs[offset]i
+        returns the array size of a given property. 1=single value
+
+      "propNumKeys" c[offset]i
+        returns number of entries (keys) for a frame
+
+      "propGetKeyByIndex" c[index]i[offset]i
+        returns the key name for the Nth property (zero based, 0<=index<propNumKeys)
+
+      "propGetType" cs[offset]i
+        returns the type of the given key
+            unset: 0
+            integer: 1
+            float: 2
+            string: 3
+            clip: 4
+            frame: 5
 
   Example 1:
   '''
@@ -286,7 +465,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
   string "feature"
 
-    "" or "C" for zero SIMD support, no processor flags are reported
+    "" or "none" for zero SIMD support, no processor flags are reported
     "mmx", "sse", "sse2", "sse3", "ssse3", "sse4" or "sse4.1", "sse4.2", "avx, "avx2"
 
     parameter is case insensitive.
@@ -300,7 +479,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   Examples:
     SetMaxCPU("SSE2") reports at most SSE2 processor (even if AVX2 is available)
     SetMaxCPU("avx,sse4.1-") limits to avx2 but explicitely removes reporting sse4.1 support
-    SetMaxCPU("C,avx2+") limits to plain C, then switches on AVX2-only support
+    SetMaxCPU("none,avx2+") limits to plain C, then switches on AVX2-only support
 
 - Script array for NEW_AVSVALUE define are working again. (default in Linux build - experimental)
   Memo:
