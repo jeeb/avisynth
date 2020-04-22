@@ -139,12 +139,12 @@ class SetProperty : public GenericVideoFilter
 {
 private:
   const char* name;
-  PFunction func;
+  AVSValue value;
   const int kind;
   const int append_mode; // AVSPropAppendMode
 
 public:
-  SetProperty(PClip _child, const char* name, const PFunction& eval, const int kind, const int mode, IScriptEnvironment* env);
+  SetProperty(PClip _child, const char* name, const AVSValue& value, const int kind, const int mode, IScriptEnvironment* env);
   ~SetProperty();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);

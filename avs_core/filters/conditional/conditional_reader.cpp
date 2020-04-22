@@ -880,11 +880,11 @@ AVSValue __cdecl UseVar::Create(AVSValue args, void* user_data, IScriptEnvironme
 //**************************************************
 // propSet, propSetInt, propSetFloat, propSetString
 
-SetProperty::SetProperty(PClip _child, const char* name, const PFunction& func, const int kind,
+SetProperty::SetProperty(PClip _child, const char* name, const AVSValue& value, const int kind,
   const int mode, IScriptEnvironment* env)
   : GenericVideoFilter(_child)
   , name(name)
-  , func(func)
+  , value(value)
   , kind(kind)
   , append_mode(mode)
 { }
@@ -897,20 +897,41 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
   env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
   env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
 
+  // parameter type to set, comes different for each script function version
+  int propType = kind;
+
+  // 0: auto by result type
+  // 1: integer from function
+  // 2: float from function
+  // 3: char (null terminated data) from function
+  // 4: array from function (all elements have the same type)
+  // 10: integer from direct
+  // 11: float from direct
+  // 12: string from direct
+  // 13: array from direct (all elements have the same type)
+
   AVSValue result;
   const char* error_msg = nullptr;
-  try {
-    const AVSValue empty_args_array = AVSValue(nullptr, 0); // invoke's parameter is const AVSValue&, don't do it inline.
-    result = static_cast<InternalEnvironment*>(env)->Invoke(child, func, empty_args_array);
+  if (value.IsFunction()) {
+    PFunction func = value.AsFunction();
+    try {
+      const AVSValue empty_args_array = AVSValue(nullptr, 0); // invoke's parameter is const AVSValue&, don't do it inline.
+      result = static_cast<InternalEnvironment*>(env)->Invoke(child, func, empty_args_array);
+    }
+    catch (IScriptEnvironment::NotFound) {
+      error_msg = env->Sprintf("AddProperties: Invalid function parameter type '%s'(%s)\n"
+        "Function should have no argument",
+        func->GetDefinition()->param_types, func->ToString(env));
+    }
+    catch (const AvisynthError& error) {
+      error_msg = env->Sprintf("%s\nAddProperties: Error in %s",
+        error.msg, func->ToString(env));
+    }
   }
-  catch (IScriptEnvironment::NotFound) {
-    error_msg = env->Sprintf("AddProperties: Invalid function parameter type '%s'(%s)\n"
-      "Function should have no argument",
-      func->GetDefinition()->param_types, func->ToString(env));
-  }
-  catch (const AvisynthError& error) {
-    error_msg = env->Sprintf("%s\nAddProperties: Error in %s",
-      error.msg, func->ToString(env));
+  else {
+    // direct input
+    result = value;
+    propType = 0; // autodetect type
   }
 
   PVideoFrame frame = child->GetFrame(n, env);
@@ -924,6 +945,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
 /*
   usage:
    ScriptClip("""propSetInt("frameluma",func(AverageLuma))""")
+   ScriptClip("""propSet("frameluma2",AverageLuma)""")
    ScriptClip("""SubTitle(string(propGetInt("frameluma")))""")
   or
    ps = func(propSetterFunc) # make function object from function
@@ -940,13 +962,6 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
   env->MakeWritable(&frame);
 
   AVSMap* avsmap = env->getFramePropsRW(frame);
-
-  int propType = kind;
-  // vUnset, vInt, vFloat, vData/*, vNode*/, vFrame/*, vMethod*/ }
-  // 0: auto
-  // 1: integer
-  // 2: float
-  // 3: char (null terminated data)
 
   try {
     // check auto
@@ -984,16 +999,22 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
     {
       int size = result.ArraySize();
       std::vector<int64_t> int64array(size); // avs can do int only, temporary array needed
-      for (int i = 0; i < size; i++)
+      for (int i = 0; i < size; i++) {
+        if(!result[i].IsInt())
+          env->ThrowError("Wrong data type in property '%s': all array elements should be the same (integer) type", name);
         int64array[i] = result[i].AsInt(); // all elements should be int
+      }
       res = env->propSetIntArray(avsmap, name, int64array.data(), size);
     }
     else if (propType == 4 && result[0].IsFloat())
     {
       int size = result.ArraySize();
       std::vector<double> d_array(size); // avs can do float only, temporary array needed
-      for (int i = 0; i < size; i++)
+      for (int i = 0; i < size; i++) {
+        if (!result[i].IsFloat())
+          env->ThrowError("Wrong data type in property '%s': all array elements should be the same (float) type", name);
         d_array[i] = result[i].AsFloat(); // all elements should be float or int
+      }
       res = env->propSetFloatArray(avsmap, name, d_array.data(), size);
     }
     else if (propType == 4 && result[0].IsString())
@@ -1002,6 +1023,8 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       // no such api like propSetDataArray
       env->propDeleteKey(avsmap, name);
       for (int i = 0; i < size; i++) {
+        if (!result[i].IsString())
+            env->ThrowError("Wrong data type in property '%s': all array elements should be the same (string) type", name);
         res = env->propSetData(avsmap, name, result[i].AsString(), -1, AVSPropAppendMode::paAppend); // all elements should be string
         if (res)
           break;
@@ -1009,7 +1032,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
     }
     else
     {
-      env->ThrowError("Wrong data type, property '%s' type is not %s", name, GetAVSTypeName(result)); // fixme: res reasons
+      env->ThrowError("Wrong data type, property '%s' type is not %s", name, GetAVSTypeName(result));
     }
 
     if (res)
@@ -1052,7 +1075,7 @@ AVSValue __cdecl SetProperty::Create(AVSValue args, void* user_data, IScriptEnvi
     paAppend = 1,
     paTouch = 2
   */
-  return new SetProperty(args[0].AsClip(), args[1].AsString(), args[2].AsFunction(), kind, mode, env);
+  return new SetProperty(args[0].AsClip(), args[1].AsString(), args[2], kind, mode, env);
 }
 
 //**************************************************

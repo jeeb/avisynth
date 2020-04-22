@@ -71,11 +71,22 @@ extern const AVSFunction Conditional_filters[] = {
   {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]sn+[append]b[local]b", Write::Create_End }, // function input
   { "UseVar", BUILTIN_FUNC_PREFIX, "cs+", UseVar::Create },
   // in conditional_reader.cpp, see property getters in conditional_functions.cpp
-  { "propSet", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void *)0 },
-  { "propSetInt", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)1 },
-  { "propSetFloat", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)2 },
-  { "propSetString", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)3 },
-  { "propSetArray", BUILTIN_FUNC_PREFIX, "csn", SetProperty::Create, (void*)4 },
+
+  // value from Function
+  { "propSet", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void *)0 }, // auto from function result type
+  { "propSetInt", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)1 }, // forced check for int
+  { "propSetFloat", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)2 }, // forced check for float
+  { "propSetString", BUILTIN_FUNC_PREFIX, "csn[mode]i", SetProperty::Create, (void*)3 }, // forced check for string
+  { "propSetArray", BUILTIN_FUNC_PREFIX, "csn", SetProperty::Create, (void*)4 }, // no mode parameter, full entry refresh
+
+  // value from direct data
+  { "propSet", BUILTIN_FUNC_PREFIX, "csi[mode]i", SetProperty::Create, (void*)10 },
+  { "propSet", BUILTIN_FUNC_PREFIX, "csf[mode]i", SetProperty::Create, (void*)11 },
+  { "propSet", BUILTIN_FUNC_PREFIX, "css[mode]i", SetProperty::Create, (void*)12 },
+#ifdef NEW_AVSVALUE
+  { "propSet", BUILTIN_FUNC_PREFIX, "csa", SetProperty::Create, (void*)13 }, // no mode parameter, full entry refresh
+#endif
+
   { "propDelete", BUILTIN_FUNC_PREFIX, "cs", DeleteProperty::Create },
   { "propClearAll", BUILTIN_FUNC_PREFIX, "c", ClearProperties::Create },
   { 0 }
