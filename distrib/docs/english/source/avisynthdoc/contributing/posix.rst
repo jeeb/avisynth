@@ -78,6 +78,19 @@ installing GCC 9:
         --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install
 
 
+Distributions without checkinstall
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Not all Linux distributions have checkinstall in their repositories, either due to
+a lack of checkinstall working with their package management system or simply due
+to omission.  In these cases, the install step is a little different:
+
+::
+
+    sudo ninja install
+    sudo ldconfig
+
+
 macOS
 ^^^^^
 
@@ -167,6 +180,8 @@ FFmpeg support
 --------------
 
 On all of these OSes, AviSynth+ can interface with FFmpeg.
+This change was applied to the FFmpeg git master branch on
+2020-04-05.
 
 To compile a basic build of FFmpeg that supports
 AviSynth+, the following steps will suffice:
