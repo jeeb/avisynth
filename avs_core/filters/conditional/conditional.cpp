@@ -89,6 +89,9 @@ extern const AVSFunction Conditional_filters[] = {
 
   { "propDelete", BUILTIN_FUNC_PREFIX, "cs", DeleteProperty::Create },
   { "propClearAll", BUILTIN_FUNC_PREFIX, "c", ClearProperties::Create },
+
+  { "propShow", BUILTIN_FUNC_PREFIX, "c[size]i[showtype]b", ShowProperties::Create },
+
   { 0 }
 };
 

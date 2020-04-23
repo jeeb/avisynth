@@ -32,6 +32,10 @@
 #include <avs/minmax.h>
 #include "../core/parser/scriptparser.h"
 #include "../core/AVSMap.h"
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <string>
 
 
 /*****************************************************************************
@@ -1174,3 +1178,112 @@ AVSValue __cdecl ClearProperties::Create(AVSValue args, void*, IScriptEnvironmen
   return new ClearProperties(args[0].AsClip(), env);
 }
 
+//**************************************************
+// propShow
+
+ShowProperties::ShowProperties(PClip _child, int size, bool showtype, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), size(size), showtype(showtype)
+{ }
+
+ShowProperties::~ShowProperties() { }
+
+PVideoFrame __stdcall ShowProperties::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame frame = child->GetFrame(n, env);
+
+  const AVSMap* avsmap = env->getFramePropsRO(frame);
+
+  const int propNum = env->propNumKeys(avsmap);
+
+  if (0 == propNum)
+    return frame;
+
+  std::stringstream ss;
+  ss << "Number of keys = " << std::to_string(propNum) << std::endl;
+
+  for (int index = 0; index < propNum; index++) {
+    const char* propName = env->propGetKey(avsmap, index);
+
+    const char propType = env->propGetType(avsmap, propName);
+    ss << propName;
+    if (showtype)
+      ss << " (" << propType << ")";
+    ss << " = ";
+
+    const int propNumElements = env->propNumElements(avsmap, propName);
+
+    int error;
+
+    if (propType == 'u') {
+      // unSet: undefined value
+      ss << "<unset!>";
+    }
+    else if (propType == 'i') {
+      if (propNumElements > 1)
+        ss << "[";
+      const int64_t* arr = env->propGetIntArray(avsmap, propName, &error);
+      for (int i = 0; i < propNumElements; ++i) {
+        ss << std::to_string(arr[i]);
+        if (i < propNumElements - 1)
+          ss << ", ";
+      }
+      if (propNumElements > 1)
+        ss << "]";
+    }
+    else if (propType == 'f') {
+      if (propNumElements > 1)
+        ss << "[";
+      const double* arr = env->propGetFloatArray(avsmap, propName, &error);
+      for (int i = 0; i < propNumElements; ++i) {
+        ss << std::to_string(arr[i]);
+        if (i < propNumElements - 1)
+          ss << ", ";
+      }
+      if (propNumElements > 1)
+        ss << "]";
+    }
+    else if (propType == 's') {
+      if (propNumElements > 1)
+        ss << "[";
+      for (int i = 0; i < propNumElements; ++i) {
+        const char* s = env->propGetData(avsmap, propName, i, &error);
+        ss << "\"" << s << "\"";
+        if (i < propNumElements - 1)
+          ss << ", ";
+      }
+      if (propNumElements > 1)
+        ss << "]";
+    }
+    else {
+      ss << "<cannot display!>";
+    }
+    ss << std::endl;
+  }
+
+  std::string t = ss.str();
+  const char* text = t.c_str();
+  AVSValue args[3] = { child, text, size };
+  const char * argnames[3] = { 0, 0, "size" };
+  PClip child2 = env->Invoke("Text", AVSValue(args, 3), argnames).AsClip();
+  frame = child2->GetFrame(n, env);
+
+  return frame;
+}
+
+int __stdcall ShowProperties::SetCacheHints(int cachehints, int frame_range)
+{
+  AVS_UNUSED(frame_range);
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
+
+AVSValue __cdecl ShowProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const int size = args[1].AsInt(16);
+  const bool showtype = args[2].AsBool(false);
+  return new ShowProperties(args[0].AsClip(), size, showtype, env);
+}
