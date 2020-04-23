@@ -1180,7 +1180,7 @@ public:
     DISPATCH(var_table).PopGlobal();
   }
 
-  bool __stdcall GetVar(const char* name, AVSValue* val) const
+  bool __stdcall GetVarTry(const char* name, AVSValue* val) const
   {
     if (DISPATCH(closing)) return false;  // We easily risk  being inside the critical section below, while deleting variables.
     return DISPATCH(var_table).Get(name, val);
@@ -1190,51 +1190,68 @@ public:
   {
     if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
     AVSValue val;
-    if (this->GetVar(name, &val))
+    if (this->GetVarTry(name, &val))
       return val;
     else
       return def;
   }
 
-  bool __stdcall GetVar(const char* name, bool def) const
+  bool __stdcall GetVarBool(const char* name, bool def) const
   {
     if (DISPATCH(closing)) return false;  // We easily risk  being inside the critical section below, while deleting variables.
     AVSValue val;
-    if (this->GetVar(name, &val))
+    if (this->GetVarTry(name, &val))
       return val.AsBool(def);
     else
       return def;
   }
 
-  int __stdcall GetVar(const char* name, int def) const
+  int __stdcall GetVarInt(const char* name, int def) const
   {
     if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
     AVSValue val;
-    if (this->GetVar(name, &val))
+    if (this->GetVarTry(name, &val))
       return val.AsInt(def);
     else
       return def;
   }
 
-  double __stdcall GetVar(const char* name, double def) const
+  double __stdcall GetVarDouble(const char* name, double def) const
   {
     if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
     AVSValue val;
-    if (this->GetVar(name, &val))
+    if (this->GetVarTry(name, &val))
       return val.AsDblDef(def);
     else
       return def;
   }
 
-  const char* __stdcall GetVar(const char* name, const char* def) const
+  const char* __stdcall GetVarString(const char* name, const char* def) const
   {
     if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
     AVSValue val;
-    if (this->GetVar(name, &val))
+    if (this->GetVarTry(name, &val))
       return val.AsString(def);
     else
       return def;
   }
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244) // conversion from __int64, possible loss of data
+#endif
+  int64_t __stdcall GetVarLong(const char* name, int64_t def) const
+  {
+    if (DISPATCH(closing)) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+    AVSValue val;
+    if (this->GetVarTry(name, &val))
+      return (int)(val.AsInt(def)); // until we have int64
+    else
+      return def;
+  }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
   void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
   {
@@ -3981,7 +3998,7 @@ const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValu
   bool& pstrict, size_t args_names_count, const char* const* arg_names, IScriptEnvironment2* ctx)
 {
   AVSValue avsv;
-  if (ctx->GetVar(search_name, &avsv) && avsv.IsFunction()) {
+  if (ctx->GetVarTry(search_name, &avsv) && avsv.IsFunction()) {
     //auto& funcv = avsv.AsFunction(); // c++ strict conformance: cannot Convert PFunction to PFunction&
     const PFunction& funcv = avsv.AsFunction();
     const char* name = funcv->GetLegacyName();
@@ -4438,7 +4455,7 @@ bool ScriptEnvironment::FunctionExists(const char* name)
 
   // Look among variable table
   AVSValue result;
-  if (threadEnv->GetVar(name, &result)) {
+  if (threadEnv->GetVarTry(name, &result)) {
     if (result.IsFunction()) {
       return true;
     }

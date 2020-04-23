@@ -676,7 +676,7 @@ bool CAVIFileSynth::DelayInit2() {
           filter_graph = return_val.AsClip();
 
           // Allow WAVE_FORMAT_IEEE_FLOAT audio output
-          const bool AllowFloatAudio = env->GetVar(VARNAME_AllowFloatAudio, false);
+          const bool AllowFloatAudio = env->GetVarBool(VARNAME_AllowFloatAudio, false);
 
           if (!AllowFloatAudio && filter_graph->GetVideoInfo().IsSampleType(SAMPLE_FLOAT)) // Ensure samples are int
             filter_graph = env->Invoke("ConvertAudioTo16bit", AVSValue(&return_val, 1)).AsClip();
@@ -713,21 +713,21 @@ bool CAVIFileSynth::DelayInit2() {
         vi = &filter_graph->GetVideoInfo();
 
         // Hack YV16 and YV24 chroma plane order for old VDub's
-        VDubPlanarHack = env->GetVar(VARNAME_VDubPlanarHack, false);
+        VDubPlanarHack = env->GetVarBool(VARNAME_VDubPlanarHack, false);
 
         // Option to have scanlines mod4 padded in all pixel formats
-        AVIPadScanlines = env->GetVar(VARNAME_AVIPadScanlines, false);
+        AVIPadScanlines = env->GetVarBool(VARNAME_AVIPadScanlines, false);
 
         // AVS+ Enable_V210 instead of P210
-        Enable_V210 = env->GetVar(VARNAME_Enable_V210, false);
+        Enable_V210 = env->GetVarBool(VARNAME_Enable_V210, false);
         // AVS+ y3[10][10] instead of P210
-        Enable_Y3_10_10 = env->GetVar(VARNAME_Enable_Y3_10_10, false);
+        Enable_Y3_10_10 = env->GetVarBool(VARNAME_Enable_Y3_10_10, false);
         // AVS+ y3[10][16] instead of P216
-        Enable_Y3_10_16 = env->GetVar(VARNAME_Enable_Y3_10_16, false);
+        Enable_Y3_10_16 = env->GetVarBool(VARNAME_Enable_Y3_10_16, false);
         // AVS+ Enable_V210 instead of BRA[64]
-        Enable_b64a = env->GetVar(VARNAME_Enable_b64a, false);
+        Enable_b64a = env->GetVarBool(VARNAME_Enable_b64a, false);
         // AVS+ Enable on-the-fly Planar RGB to Packed RGB conversion
-        Enable_PlanarToPackedRGB = env->GetVar(VARNAME_Enable_PlanarToPackedRGB, false);
+        Enable_PlanarToPackedRGB = env->GetVarBool(VARNAME_Enable_PlanarToPackedRGB, false);
       }
       catch (const AvisynthError &error) {
         error_msg = error.msg;
@@ -1510,7 +1510,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
   if (!lpcbFormat) return E_POINTER;
 
-  const bool UseWaveExtensible = parent->env->GetVar(VARNAME_UseWaveExtensible, false);
+  const bool UseWaveExtensible = parent->env->GetVarBool(VARNAME_UseWaveExtensible, false);
 
   if (!lpFormat) {
     *lpcbFormat = fAudio ? ( UseWaveExtensible ? sizeof(WAVEFORMATEXTENSIBLE)
@@ -1557,7 +1557,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
         : SPEAKER_ALL;
 
-      unsigned int userChannelMask = (unsigned)(parent->env->GetVar(VARNAME_dwChannelMask, 0));
+      unsigned int userChannelMask = (unsigned)(parent->env->GetVarInt(VARNAME_dwChannelMask, 0));
       if (userChannelMask != 0)
         wfxt.dwChannelMask = userChannelMask;
 

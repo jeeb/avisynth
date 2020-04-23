@@ -792,19 +792,18 @@ void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, float* 
   *con_y_offset = 0;
 
   if (!ignore_conditional) {
-    IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
     {
       std::string s = std::string("OL_opacity_offset") + condVarSuffix;
-      *op_offset = (int)(env2->GetVar(s.c_str(), 0.0) * 256);
-      *op_offset_f = (float)(env2->GetVar(s.c_str(), 0.0));
+      *op_offset = (int)(env->GetVarDouble(s.c_str(), 0.0) * 256);
+      *op_offset_f = (float)(env->GetVarDouble(s.c_str(), 0.0));
     }
     {
       std::string s = std::string("OL_x_offset") + condVarSuffix;
-      *con_x_offset = (int)(env2->GetVar(s.c_str(), 0.0));
+      *con_x_offset = (int)(env->GetVarDouble(s.c_str(), 0.0));
     }
     {
       std::string s = std::string("OL_y_offset") + condVarSuffix;
-      *con_y_offset = (int)(env2->GetVar(s.c_str(), 0.0));
+      *con_y_offset = (int)(env->GetVarDouble(s.c_str(), 0.0));
     }
   }
 }

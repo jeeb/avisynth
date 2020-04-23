@@ -548,8 +548,8 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
   ExeFileDir = ExeFileDir.erase(ExeFileDir.rfind('/'), std::string::npos);
 
   // variable expansion
-  replace_beginning(dir, "SCRIPTDIR", Env->GetVar("$ScriptDir$", ""));
-  replace_beginning(dir, "MAINSCRIPTDIR", Env->GetVar("$MainScriptDir$", ""));
+  replace_beginning(dir, "SCRIPTDIR", Env->GetVarString("$ScriptDir$", ""));
+  replace_beginning(dir, "MAINSCRIPTDIR", Env->GetVarString("$MainScriptDir$", ""));
   replace_beginning(dir, "PROGRAMDIR", ExeFileDir);
 
   std::string plugin_dir;
@@ -812,7 +812,7 @@ void PluginManager::UpdateFunctionExports(const char* funcName, const char* func
     exportVar = "$PluginFunctions$";
 
   // Update $PluginFunctions$
-  const char *oldFnList = Env->GetVar(exportVar, "");
+  const char *oldFnList = Env->GetVarString(exportVar, "");
   std::string FnList(oldFnList);
   if (FnList.size() > 0)    // if the list is not empty...
     FnList.push_back(' ');  // ...add a delimiting whitespace

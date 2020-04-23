@@ -1960,8 +1960,7 @@ AVSValue VarExist(AVSValue args, void*, IScriptEnvironment* env)
     env->ThrowError("VarExist: invalid variable name");
 
   AVSValue result;
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  return (env2->GetVar(name, &result)); // true if exists
+  return (env->GetVarTry(name, &result)); // true if exists
 }
 
 

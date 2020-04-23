@@ -13,12 +13,12 @@
 // 2020xxxx: AVS_WINDOWS and AVS_POSIX option see avs/config.h
 // 20200305: ScriptEnvironment::VSprintf parameter (void *) changed back to va_list
 // 20200330: removed __stdcall from variadic argument functions (Sprintf)
-// 20200330: (remove test SIZETMOD define for clarity)
-// 20200330: VideoFrame: frame property field: avsmap (from Neo)
-// 20200330: Integrate Avisynth Neo structures and interface, PFunction, PDevice
-// 20200422: frame property support (NewVideoFrameP and other helpers) to legacy IScriptEnvironment.
+//           (remove test SIZETMOD define for clarity)
+//           Integrate Avisynth Neo structures and interface, PFunction, PDevice
+// 20200423: frame property support (NewVideoFrameP and other helpers) to legacy IScriptEnvironment.
 //           move some former IScriptEnvironment2 functions to IScriptEnvironment:
 //           GetProperty (system prop), Allocate, Free (buffer pool)
+//           GetVarTry, GetVarBool/Int/String/Double/Long
 //           Interface Version to 8 (classic 2.6 = 6)
 
 
@@ -1486,6 +1486,21 @@ public:
   // Support functions
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
   virtual void __stdcall Free(void* ptr) = 0;
+
+  // these GetVar versions (renamed differently) were moved from IScriptEnvironment2
+
+  // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
+  virtual bool  __stdcall GetVarTry(const char* name, AVSValue* val) const = 0; // ex virtual bool  __stdcall GetVar(const char* name, AVSValue* val) const = 0;
+  // Return the value of the requested variable.
+  // If the variable was not found or had the wrong type,
+  // return the supplied default value.
+  virtual bool __stdcall GetVarBool(const char* name, bool def) const = 0;
+  virtual int  __stdcall GetVarInt(const char* name, int def) const = 0;
+  virtual double  __stdcall GetVarDouble(const char* name, double def) const = 0;
+  virtual const char* __stdcall GetVarString(const char* name, const char* def) const = 0;
+  // brand new in v8 - though no real int64 support yet
+  virtual int64_t __stdcall GetVarLong(const char* name, int64_t def) const = 0;
+
 }; // end class IScriptEnvironment
 
 
@@ -1529,21 +1544,7 @@ class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual ~IScriptEnvironment2() {}
 
-  // Generic system to ask for various properties
-  // V8: moved to IScriptEnvironment
-  //virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
-
-  // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
-  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
-
-  // Return the value of the requested variable.
-  // If the variable was not found or had the wrong type,
-  // return the supplied default value.
-  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
-  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
-  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
-  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
-
+  // V8: SubframePlanarA, GetProperty, GetVar versions, Allocate, Free moved to IScriptEnvironment
   // Plugin functions
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
@@ -1560,20 +1561,11 @@ public:
   // This version of Invoke will return false instead of throwing NotFound().
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0) = 0;
 
-  // Support functions
-  // v8: moved to IScriptEnvironment
-  //virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
-  //virtual void __stdcall Free(void* ptr) = 0;
 
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;
   using IScriptEnvironment::AddFunction;
-  using IScriptEnvironment::GetVar;
-  using IScriptEnvironment::SubframePlanarA;
 
-  /* since IF v8 moved to IScriptEnvironment from IScriptEnvironment2*/
-  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 }; // end class IScriptEnvironment2
 
 
@@ -1639,15 +1631,16 @@ public:
   virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
 
   // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
-  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
+  virtual bool  __stdcall GetVarTry(const char* name, AVSValue* val) const = 0;
 
   // Return the value of the requested variable.
   // If the variable was not found or had the wrong type,
   // return the supplied default value.
-  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
-  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
-  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
-  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
+  virtual bool __stdcall GetVarBool(const char* name, bool def) const = 0;
+  virtual int  __stdcall GetVarInt(const char* name, int def) const = 0;
+  virtual double  __stdcall GetVarDouble(const char* name, double def) const = 0;
+  virtual const char* __stdcall GetVarString(const char* name, const char* def) const = 0;
+  virtual int64_t __stdcall GetVarLong(const char* name, int64_t def) const = 0;
 
   virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;
   virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) = 0;

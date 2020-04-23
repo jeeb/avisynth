@@ -130,8 +130,7 @@ AVSValue ExpLine::Evaluate(IScriptEnvironment* env)
 AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  env2->GetVar("last", &result);
+  env->GetVarTry("last", &result);
 
   AVSValue cond = If->Evaluate(env);
   if (!cond.IsBool())
@@ -153,8 +152,7 @@ AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env)
 AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  env2->GetVar("last", &result);
+  env->GetVarTry("last", &result);
 
   AVSValue cond;
   do {
@@ -203,8 +201,7 @@ AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
   int i = initVal.AsInt();
 
   AVSValue result;
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  env2->GetVar("last", &result);
+  env->GetVarTry("last", &result);
 
   env->SetVar(id, initVal);
   while (iStep > 0 ? i <= iLimit : i >= iLimit)
@@ -465,7 +462,7 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
 
   // first look for a genuine variable
   // Don't add a cache to this one, it's a Var
-  if (env2->GetVar(name, &result)) {
+  if (env->GetVarTry(name, &result)) {
     return result;
   }
   else {
@@ -476,10 +473,10 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
     {
       // finally look for a single-arg function taking implicit "last"
       AVSValue last;
-      if (!env2->GetVar("last", &last) || !env2->Invoke(&result, name, last))
+      if (!env->GetVarTry("last", &last) || !env2->Invoke(&result, name, last))
       {
         // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
-        if (env2->GetVar(name, &result)) {
+        if (env->GetVarTry(name, &result)) {
           return result;
         }
         env->ThrowError("I don't know what '%s' means.", name);
@@ -500,10 +497,10 @@ AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
     AVSValue result;
 
     IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-    if (!env2->GetVar("last", &last) || !env2->Invoke(&result, lhs, last))
+    if (!env->GetVarTry("last", &last) || !env2->Invoke(&result, lhs, last))
     {
       // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
-      if (env2->GetVar(lhs, &result)) {
+      if (env->GetVarTry(lhs, &result)) {
         return result;
       }
       env->ThrowError("I don't know what '%s' means.", lhs);
@@ -582,7 +579,7 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
   }
   else {
     AVSValue var;
-    if (env2->GetVar(real_name, &var) && var.IsFunction() && var.AsFunction()->GetLegacyName()) {
+    if (env->GetVarTry(real_name, &var) && var.IsFunction() && var.AsFunction()->GetLegacyName()) {
       real_name = var.AsFunction()->GetLegacyName();
     }
     env->ThrowError(env->FunctionExists(real_name) ?
@@ -615,9 +612,8 @@ ExpFunctionWrapper::ExpFunctionWrapper(const char* name)
   : func(new WrappedFunction(name)), name(name) { }
 
 AVSValue ExpFunctionWrapper::Evaluate(IScriptEnvironment* env) {
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   AVSValue result;
-  if (env2->GetVar(name, &result) && result.IsFunction()) {
+  if (env->GetVarTry(name, &result) && result.IsFunction()) {
     // if reference variable exists, returns it
     return result;
   }
@@ -668,8 +664,6 @@ AVSValue ExpFunctionDefinition::Evaluate(IScriptEnvironment* env)
 FunctionInstance::FunctionInstance(ExpFunctionDefinition* pdef, IScriptEnvironment* env)
   : data(), pdef(pdef), pdef_ref(pdef), var_data(nullptr)
 {
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-
   data.apply = Execute_;
 
   if (pdef->name) {
@@ -687,7 +681,7 @@ FunctionInstance::FunctionInstance(ExpFunctionDefinition* pdef, IScriptEnvironme
     AVSValue result;
     var_data = new AVSValue[pdef->var_count];
     for (int i = 0; i < pdef->var_count; ++i) {
-      if (!env2->GetVar(pdef->var_names[i], &result)) {
+      if (!env->GetVarTry(pdef->var_names[i], &result)) {
         env->ThrowError("No variable named '%s'", pdef->var_names[i]);
       }
       var_data[i] = result;

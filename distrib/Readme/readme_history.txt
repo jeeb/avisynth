@@ -67,6 +67,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       Old-New: moved from IScriptEnvironment2:
         GetProperty (note: this is for system properties)
         Allocate, Free (buffer pools)
+        GetVar versions distinctly named: GetVarTry, GetVarBool, GetVarInt, GetVarDouble, GetVarString, GetVarLong
 
     - NewVideoFrame with frame property source:
         PVideoFrame NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);

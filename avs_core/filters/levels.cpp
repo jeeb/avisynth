@@ -813,7 +813,7 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
     {                                                     \
         std::string s = "rgbadjust_" #var_name;\
         s = s + condVarSuffix; \
-        const double t = env2->GetVar(s.c_str(), DBL_MIN); \
+        const double t = env->GetVarDouble(s.c_str(), DBL_MIN); \
         if (t != DBL_MIN) {                             \
             config->rgba[plane_num].internal_name = t;  \
             config->rgba[plane_num].changed = true;     \
@@ -822,8 +822,6 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 static void rgbadjust_read_conditional(IScriptEnvironment* env, RGBAdjustConfig* config, const char * condVarSuffix)
 {
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-
   READ_CONDITIONAL(0, r, scale, condVarSuffix);
   READ_CONDITIONAL(1, g, scale, condVarSuffix);
   READ_CONDITIONAL(2, b, scale, condVarSuffix);

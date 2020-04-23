@@ -163,13 +163,19 @@ public:
 
   // NewVideoFrame with frame prop source is replaced with new one
 
-  // IScriptEnvironment2
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
-  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
-  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
-  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
-  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
-  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
+  virtual void __stdcall Free(void* ptr) = 0;
+
+  // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
+  virtual bool __stdcall GetVarTry(const char* name, AVSValue* val) const = 0; // ex virtual bool  __stdcall GetVar(const char* name, AVSValue* val) const = 0;
+  virtual bool __stdcall GetVarBool(const char* name, bool def) const = 0; // ex: virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
+  virtual int __stdcall GetVarInt(const char* name, int def) const = 0; // ex: int  __stdcall GetVar(const char* name, int def) const = 0;
+  virtual double __stdcall GetVarDouble(const char* name, double def) const = 0; // ex: virtual double  __stdcall GetVar(const char* name, double def) const = 0;
+  virtual const char* __stdcall GetVarString(const char* name, const char* def) const = 0; // ex: virtual const char* __stdcall GetVar(const char* name, const char* def) const = 0;
+  virtual int64_t __stdcall GetVarLong(const char* name, int64_t def) const = 0; // brand new in v8 - though no real int64 support yet
+
+  // IScriptEnvironment2
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
   virtual void __stdcall ClearAutoloadDirs() = 0;
@@ -180,13 +186,6 @@ public:
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
-  virtual void __stdcall Free(void* ptr) = 0;
-  /* moved to standard IScriptEnvironment IF v8 */
-  /*
-  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
-  */
   // InternalEnvironment
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;

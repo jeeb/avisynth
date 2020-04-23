@@ -737,7 +737,7 @@ static void coloryuv_apply_lut_yuy2(BYTE* pDst, const BYTE* pSrc, int dst_pitch,
     {            \
         std::string s = "coloryuv_" #var_name "_" #plane;\
         s = s + condVarSuffix; \
-        const double t = env2->GetVar(s.c_str(), DBL_MIN); \
+        const double t = env->GetVarDouble(s.c_str(), DBL_MIN); \
         if (t != DBL_MIN) {                               \
             c_##plane->internal_name = t;               \
             c_##plane->changed = true;                  \
@@ -747,8 +747,6 @@ static void coloryuv_apply_lut_yuy2(BYTE* pDst, const BYTE* pSrc, int dst_pitch,
 // extra: add extra at the end of variable names: different variables for multiple instances of coloryuv
 static void coloryuv_read_conditional(IScriptEnvironment* env, ColorYUVPlaneConfig* c_y, ColorYUVPlaneConfig* c_u, ColorYUVPlaneConfig* c_v, const char *condVarSuffix)
 {
-    auto env2 = static_cast<IScriptEnvironment2*>(env);
-
     READ_CONDITIONAL(y, gain, gain, condVarSuffix);
     READ_CONDITIONAL(y, off, offset, condVarSuffix);
     READ_CONDITIONAL(y, gamma, gamma, condVarSuffix);
