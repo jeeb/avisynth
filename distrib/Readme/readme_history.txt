@@ -4,7 +4,7 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200422 3.5.? (dev)
+20200423 3.5.? (dev)
 --------------------
 - frame properties framework, IScriptEnvironment extension
   - Core and concept ported from VapourSynth - thank you
@@ -346,7 +346,17 @@ For a more logical (non-historical) arrangement of changes see readme.txt
         String(p[1,1]) + " " + \
         String(p[2,1]), x=0, y=20)""")
 
+    Lists all properties to screen (a debug filter)
+      "propShow" c[size]i[showtype]b
 
+      integer "size" default(16)
+        font size to use (the "Text" filter is used for display, sizes are of limited set)
+
+      bool "showtype" default (false)
+        if true, the data type in parenthesis appears next to the property key name
+
+      Listing appears as a name = value list. Arrays values are put between [ and ]
+      Top line contains number is properties. If no properties found, nothing is displayed.
 
     Other helper function
       "propGetDataSize" cs[index]i[offset]i
