@@ -118,6 +118,10 @@
 #pragma warning( disable : 4201 )	// nonstandard extension used : nameless struct/union
 #endif
 
+#if defined(JITASM_GCC)
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#endif
+
 #ifdef ASSERT
 #define JITASM_ASSERT ASSERT
 #else
