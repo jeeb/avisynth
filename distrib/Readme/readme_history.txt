@@ -319,7 +319,33 @@ For a more logical (non-historical) arrangement of changes see readme.txt
       "propGetString"cs[index]i[offset]i
         returns only if value is string, throws an error otherwise
       "propGetAsArray" cs[offset]i
-        returns an array
+        returns an array. For a single property array size will be 1. (only in array-aware AviSynth+ versions)
+
+
+    Reading all properties
+      "propGetAll" c[offset]i
+
+      (Only in array-aware AviSynth+ versions)
+      Returns all frame properties in an array of [key-value] pairs. Array size will be 'numProps'
+      Each key-value pair is contained in a two dimensional subarray.
+      If the property value for a given key is an array again then "value" will be an array as well.
+      Once you have the array with all properties you can access them with the "associative" feature of AviSynth array access
+
+      ScriptClip("""last.propSet("cica","hello"+String(current_frame)).\
+        propSetInt("test_i1",function[](clip c) { return current_frame*3 }).\
+        propSet("test_i2", current_frame * 2) """)
+      ScriptClip("""p = propGetAll() \
+        SubTitle("size:" + String(p.ArraySize()) + " " + \
+                           String(p["test_i1"]) + " " + \
+                           String(p["cica"]) + " " + \
+                           String(p["test_i2"]))""")
+      ScriptClip("""p = propGetAll() \
+        SubTitle("size:" + String(p.ArraySize()) + " " + \
+        String(p[0,1]) + " " + \
+        String(p[1,1]) + " " + \
+        String(p[2,1]), x=0, y=20)""")
+
+
 
     Other helper function
       "propGetDataSize" cs[index]i[offset]i

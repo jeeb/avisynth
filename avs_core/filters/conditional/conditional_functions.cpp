@@ -131,6 +131,7 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   { "propGetType", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyType::Create},
 #ifdef NEW_AVSVALUE
   { "propGetAsArray", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyAsArray::Create},
+  { "propGetAll", BUILTIN_FUNC_PREFIX, "c[offset]i", GetAllProperties::Create},
 #endif
 
   { 0 }
@@ -1007,7 +1008,7 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
   // check auto
   int size = env->propNumElements(avsmap, propName);
 
-  AVSValue *result = new AVSValue[size];
+  std::vector<AVSValue> result(size);
 
   // propGetIntArray or propGetFloatArray is available
   // note: AVSValue is int and float, prop arrays are int64_t and double
@@ -1058,8 +1059,96 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
   if (error)
     env->ThrowError("propGetAsArray: Error getting frame property \"%s\": %s ", propName, error_msg);
 
-  return AVSValue(result, size);
+  return AVSValue(result.data(), size); // array deep copy
 }
+
+// propGetAll
+// fills an AVSValue array with key-value pairs
+// array size will be numProps
+// each array element is a two dimensional array [key, value]
+// value can be an array as well, depending on the property
+// only int, float and string data extracted
+AVSValue GetAllProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  AVSValue clip = args[0];
+  if (!clip.IsClip())
+    env->ThrowError("propGetAll: No clip supplied!");
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+
+  AVSValue cn = env->GetVarDef("current_frame");
+  if (!cn.IsInt())
+    env->ThrowError("propGetAll: This filter can only be used within run-time filters");
+
+  const int offset = args[1].AsInt(0);
+
+  int n = cn.AsInt();
+  n = min(max(n + offset, 0), vi.num_frames - 1);
+
+  PVideoFrame src = child->GetFrame(n, env);
+
+  const AVSMap* avsmap = env->getFramePropsRO(src);
+
+  const int propNum = env->propNumKeys(avsmap);
+
+  if (0 == propNum)
+    return AVSValue(nullptr, 0); // zero sized array
+
+  std::vector<AVSValue> result(propNum);
+
+  for (int index = 0; index < propNum; index++) {
+    std::vector<AVSValue> pair(2);
+    const char* propName = env->propGetKey(avsmap, index);
+    pair[0] = env->SaveString(propName);
+    const char propType = env->propGetType(avsmap, propName);
+    const int propNumElements = env->propNumElements(avsmap, propName);
+
+    int error;
+
+    AVSValue elem;
+    if (propType == 'u') {
+      // unSet: undefined value
+    }
+    else if (propType == 'i') {
+      if(propNumElements == 1)
+        elem = AVSValue((int)env->propGetInt(avsmap, propName, 0, &error));
+      else {
+        std::vector<AVSValue> avsarr(propNumElements);
+        const int64_t* arr = env->propGetIntArray(avsmap, propName, &error);
+        for (int i = 0; i < propNumElements; ++i)
+          avsarr[i] = (int)arr[i];
+        elem = AVSValue(avsarr.data(), propNumElements); // array deep copy
+      }
+    }
+    else if (propType == 'f') {
+      if(propNumElements == 1)
+        elem = AVSValue((float)env->propGetFloat(avsmap, propName, 0, &error));
+      else {
+        std::vector<AVSValue> avsarr(propNumElements);
+        const double* arr = env->propGetFloatArray(avsmap, propName, &error);
+        for (int i = 0; i < propNumElements; ++i)
+          avsarr[i] = (float)arr[i];
+        elem = AVSValue(avsarr.data(), propNumElements); // array deep copy
+      }
+    }
+    else if (propType == 's') {
+      // no string arrays
+      const char* s = env->propGetData(avsmap, propName, 0, &error);
+      if (!error)
+        elem = AVSValue(env->SaveString(s));
+    }
+    else {
+      // 'c', 'v': ignore
+    }
+
+    pair[1] = elem;
+    result[index] = AVSValue(pair.data(), 2); // NEW_AVSVALUE: arrays in arrays, automatic deep copy
+  }
+
+  return AVSValue(result.data(), propNum); // array deep copy
+}
+
 #endif
 
 // e.g. string length
