@@ -1311,11 +1311,11 @@ int AVSC_CC avs_set_working_dir(AVS_ScriptEnvironment * p, const char* newdir)
 
 // Interface V8. See AVS_AEP_xxx enums
 extern "C"
-size_t AVSC_CC avs_get_property(AVS_ScriptEnvironment * p, int avs_aep_prop)
+size_t AVSC_CC avs_get_env_property(AVS_ScriptEnvironment * p, int avs_aep_prop)
 {
   p->error = 0;
   try {
-    return p->env->GetProperty((AvsEnvProperty)avs_aep_prop);
+    return p->env->GetEnvProperty((AvsEnvProperty)avs_aep_prop);
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;

@@ -163,7 +163,7 @@ public:
 
   // NewVideoFrame with frame prop source is replaced with new one
 
-  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+  virtual size_t  __stdcall GetEnvProperty(AvsEnvProperty prop) = 0;
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
   virtual void __stdcall Free(void* ptr) = 0;
 

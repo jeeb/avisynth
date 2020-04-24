@@ -139,10 +139,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env_)
 
   char buf[256];
   std::string name = FuncName;
-  snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env->GetProperty(AEP_THREAD_ID));
+  snprintf(buf, 255, "Cache::GetFrame lookup follows: [%s] n=%6d Thread=%zu", name.c_str(), n, env->GetEnvProperty(AEP_THREAD_ID));
 
   LruLookupResult LruLookupRes = _pimpl->VideoCache->lookup(n, &cache_handle, true, result, &env->GetSupressCaching());
-  snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env->GetProperty(AEP_THREAD_ID), (int)LruLookupRes);
+  snprintf(buf, 255, "Cache::GetFrame lookup ready: [%s] n=%6d Thread=%zu res=%d", name.c_str(), n, env->GetEnvProperty(AEP_THREAD_ID), (int)LruLookupRes);
   switch (LruLookupRes)
 #else
   // fill result in lookup before releasing cache handle lock

@@ -17,7 +17,7 @@
 //           Integrate Avisynth Neo structures and interface, PFunction, PDevice
 // 20200423: frame property support (NewVideoFrameP and other helpers) to legacy IScriptEnvironment.
 //           move some former IScriptEnvironment2 functions to IScriptEnvironment:
-//           GetProperty (system prop), Allocate, Free (buffer pool)
+//           GetEnvProperty (system prop), Allocate, Free (buffer pool)
 //           GetVarTry, GetVarBool/Int/String/Double/Long
 //           Interface Version to 8 (classic 2.6 = 6)
 
@@ -1481,7 +1481,7 @@ public:
   // E.g. ApplyMessage will be called instead of GetAVSLinkage
 
   // Generic query to ask for various system properties
-  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+  virtual size_t  __stdcall GetEnvProperty(AvsEnvProperty prop) = 0;
 
   // Support functions
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
@@ -1544,7 +1544,7 @@ class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual ~IScriptEnvironment2() {}
 
-  // V8: SubframePlanarA, GetProperty, GetVar versions, Allocate, Free moved to IScriptEnvironment
+  // V8: SubframePlanarA, GetEnvProperty, GetVar versions, Allocate, Free moved to IScriptEnvironment
   // Plugin functions
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
@@ -1591,7 +1591,7 @@ public:
   virtual IScriptEnvironment2* __stdcall GetEnv2() = 0;
 
   // Generic system to ask for various properties
-  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+  virtual size_t  __stdcall GetEnvProperty(AvsEnvProperty prop) = 0;
   virtual int __stdcall GetCPUFlags() = 0;
 
   // Plugin functions

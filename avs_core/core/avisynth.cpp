@@ -739,7 +739,7 @@ public:
   MtMode GetFilterMTMode(const Function* filter, bool* is_forced) const;
   void ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   IJobCompletion* NewCompletion(size_t capacity);
-  size_t  GetProperty(AvsEnvProperty prop);
+  size_t  GetEnvProperty(AvsEnvProperty prop);
   ClipDataStore* ClipData(IClip* clip);
   MtMode GetDefaultMtMode() const;
   bool FilterHasMtMode(const Function* filter) const;
@@ -1675,7 +1675,7 @@ public:
     return --DISPATCH(ImportDepth);
   }
 
-  size_t  __stdcall GetProperty(AvsEnvProperty prop)
+  size_t  __stdcall GetEnvProperty(AvsEnvProperty prop)
   {
     switch (prop)
     {
@@ -1686,7 +1686,7 @@ public:
     case AEP_GETFRAME_RECURSIVE:
       return DISPATCH(getFrameRecursiveCount);
     default:
-      return core->GetProperty(prop);
+      return core->GetEnvProperty(prop);
     }
   }
 
@@ -2754,7 +2754,7 @@ void ScriptEnvironment::ExportBuiltinFilters()
   threadEnv->SetGlobalVar("$InternalFunctions$", AVSValue(threadEnv->SaveString(FunctionList.c_str(), (int)FunctionList.size())));
 }
 
-size_t  ScriptEnvironment::GetProperty(AvsEnvProperty prop)
+size_t  ScriptEnvironment::GetEnvProperty(AvsEnvProperty prop)
 {
   switch (prop)
   {

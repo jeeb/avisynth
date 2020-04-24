@@ -62,7 +62,7 @@
 //           avs_propGetInt, avs_propGetFloat, avs_propGetData, avs_propGetClip, avs_propGetFrame, avs_propGetIntArray, avs_propGetFloatArray
 //           avs_propSetInt, avs_propSetFloat, avs_propSetData, avs_propSetClip, avs_propSetFrame, avs_propSetIntArray, avs_propSetFloatArray
 //           avs_propDeleteKey, avs_clearMap
-//           avs_get_property (internal system properties!), AVS_AEP_xxx (AvsEnvProperty) enums
+//           avs_get_env_property (internal system properties!), AVS_AEP_xxx (AvsEnvProperty) enums
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -353,7 +353,7 @@ enum {
   AVS_PROPAPPENDMODE_TOUCH = 2
 };
 
-// AvsEnvProperty for avs_get_property
+// AvsEnvProperty for avs_get_env_property
 enum
 {
   AVS_AEP_PHYSICAL_CPUS = 1,
@@ -1052,7 +1052,7 @@ AVSC_API(AVS_VideoFrame*, avs_new_video_frame_p_a)(AVS_ScriptEnvironment*,
   const AVS_VideoInfo* vi, AVS_VideoFrame* propSrc, int align);
 
 // Generic query to ask for various system properties, see AVS_AEP_xxx enums
-AVSC_API(size_t, avs_get_property)(AVS_ScriptEnvironment*, int avs_aep_prop);
+AVSC_API(size_t, avs_get_env_property)(AVS_ScriptEnvironment*, int avs_aep_prop);
 
 // buffer pool, see AVS_ALLOCTYPE enums
 AVSC_API(void *, avs_allocate)(AVS_ScriptEnvironment*, size_t nBytes, size_t alignment, int avs_alloc_type);
@@ -1227,7 +1227,7 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_new_video_frame_p);
   AVSC_DECLARE_FUNC(avs_new_video_frame_p_a);
 
-  AVSC_DECLARE_FUNC(avs_get_property);
+  AVSC_DECLARE_FUNC(avs_get_env_property);
   AVSC_DECLARE_FUNC(avs_get_var_try);
   AVSC_DECLARE_FUNC(avs_get_var_bool);
   AVSC_DECLARE_FUNC(avs_get_var_int);
@@ -1456,7 +1456,7 @@ avs_bits_per_component    constant 8 (8 bits/component)
   AVSC_LOAD_FUNC(avs_new_video_frame_p);
   AVSC_LOAD_FUNC(avs_new_video_frame_p_a);
 
-  AVSC_LOAD_FUNC(avs_get_property);
+  AVSC_LOAD_FUNC(avs_get_env_property);
   AVSC_LOAD_FUNC(avs_get_var_try);
   AVSC_LOAD_FUNC(avs_get_var_bool);
   AVSC_LOAD_FUNC(avs_get_var_int);

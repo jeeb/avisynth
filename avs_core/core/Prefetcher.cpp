@@ -353,7 +353,7 @@ AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
   InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
   PClip child = args[0].AsClip();
 
-  int PrefetchThreads = args[1].AsInt((int)envi->GetProperty(AEP_PHYSICAL_CPUS)+1);
+  int PrefetchThreads = args[1].AsInt((int)envi->GetEnvProperty(AEP_PHYSICAL_CPUS)+1);
 	int PrefetchFrames = args[2].AsInt(PrefetchThreads * 2);
 
   if (PrefetchThreads > 0 && PrefetchFrames > 0)
