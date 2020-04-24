@@ -649,6 +649,8 @@ typedef struct AVS_VideoFrameBuffer {
   volatile long sequence_number;
 
   volatile long refcount;
+
+  void* device; // avs+
 } AVS_VideoFrameBuffer;
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.
