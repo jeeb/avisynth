@@ -228,24 +228,31 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
     [C interface]
     - Functions and enums are defined avisynth_c.h
+    - New: frame propery support with NewVideoFrameP and property getter/setter/info helpers
+    - Old-New: moved from IScriptEnvironment2:
+        avs_get_property (note: this is for system properties)
+        avs_allocate, avs_free (buffer pools)
+        avs_get_var versions distinctly named: avs_get_var_try, avs_get_var_bool,
+        avs_get_var_int, avs_get_var_double, avs_get_var_string, avs_get_var_long
+
     - new video frame creator functions:
-        avs_new_video_frame_prop
-        avs_new_video_frame_a_prop
+        avs_new_video_frame_p
+        avs_new_video_frame_p_a
 
       They return and empty video frame but with frame properties copied from the source parameter.
 
-        AVS_VideoFrame * AVSC_CC avs_new_video_frame_prop(const AVS_VideoInfo* vi, AVS_VideoFrame *propSrc)
-        AVS_VideoFrame * AVSC_CC avs_new_video_frame_a_prop(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
+        AVS_VideoFrame * AVSC_CC avs_new_video_frame_p(const AVS_VideoInfo* vi, AVS_VideoFrame *propSrc)
+        AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
 
       NULL as propSrc will behave like old avs_new_video_frame and avs_new_video_frame_a
 
     - AVS_VideoFrame struct extended with a placeholder field for 'properties' pointer
-    - copyFrameProps
-    - getFramePropsRO, getFramePropsRW
-    - propNumKeys, propGetKey, propNumElements, propGetType, propGetDataSize
-    - propGetInt, propGetFloat, propGetData, propGetClip, propGetFrame, propGetIntArray, propGetFloatArray
-    - propSetInt, propSetFloat, propSetData, propSetClip, propSetFrame, propSetIntArray, propSetFloatArray
-    - propDeleteKey, clearMap
+    - avs_copyFrameProps
+    - avs_getFramePropsRO, avs_getFramePropsRW
+    - avs_propNumKeys, avs_propGetKey, avs_propNumElements, avs_propGetType, avs_propGetDataSize
+    - avs_propGetInt, avs_propGetFloat, avs_propGetData, avs_propGetClip, avs_propGetFrame, avs_propGetIntArray, avs_propGetFloatArray
+    - avs_propSetInt, avs_propSetFloat, avs_propSetData, avs_propSetClip, avs_propSetFrame, avs_propSetIntArray, avs_propSetFloatArray
+    - avs_propDeleteKey, avs_clearMap
 
     See their descriptions above, names are similar to the CPP ones.
 
