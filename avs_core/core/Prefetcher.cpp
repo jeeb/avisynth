@@ -3,7 +3,9 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
+#ifdef INTEL_INTRINSICS
 #include <mmintrin.h>
+#endif
 #include <avisynth.h>
 #include "ThreadPool.h"
 #include "ObjectPool.h"
