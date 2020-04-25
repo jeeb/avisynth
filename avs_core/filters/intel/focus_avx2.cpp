@@ -428,4 +428,3 @@ void af_horizontal_planar_uint16_t_avx2(BYTE* dstp, size_t height, size_t pitch,
   }
   _mm256_zeroupper();
 }
-
