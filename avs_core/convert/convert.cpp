@@ -41,14 +41,9 @@
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include <avs/config.h>
-#include <emmintrin.h>
-#include <smmintrin.h> // SSE4.1
 #include <tuple>
 #include <map>
 #include <algorithm>
-
-#include "convert_avx.h"
-#include "convert_avx2.h"
 
 #ifdef AVS_WINDOWS
 #include <avs/win.h>
@@ -175,331 +170,6 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
   vi.pixel_type = rgb24 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
 }
 
-#if defined(__SSE2__)
-template<int rgb_size>
-static AVS_FORCEINLINE __m128i convert_yuy2_to_rgb_sse2_core(const __m128i& src_luma_scaled, const __m128i& src_chroma, const __m128i &alpha,
-                                                           const __m128i& v128, const __m128i& zero, const __m128i& rounder, const __m128i &ff,
-                                                           const __m128i& ymul, const __m128i& bmul, const __m128i& gmul, const __m128i& rmul) {
-  __m128i chroma_scaled = _mm_sub_epi16(src_chroma, v128);  //V2-128 | U2-128 | V1-128 | U1-128 | V1-128 | U1-128 | V0-128 | U0-128
-
-  __m128i luma_scaled = _mm_madd_epi16(src_luma_scaled, ymul); // (y1-16)*cy | (y0-16)*cy
-  luma_scaled = _mm_add_epi32(luma_scaled, rounder); // (y1-16)*cy + 8192 | (y0-16)*cy + 8192
-
-  __m128i chroma_scaled2 = _mm_shuffle_epi32(chroma_scaled, _MM_SHUFFLE(2, 2, 0, 0)); //V1-128 | U1-128 | V1-128 | U1-128 | V0-128 | U0-128 | V0-128 | U0-128
-
-  chroma_scaled = _mm_add_epi16(chroma_scaled, chroma_scaled2); // V0+V1-256 | U0+U1-256 | (V0-128)*2 | (U0-128)*2
-
-  __m128i b = _mm_madd_epi16(chroma_scaled, bmul); //               0 + (U0+U1-256)*cbu |              0 + (U0-128)*2*cbu
-  __m128i g = _mm_madd_epi16(chroma_scaled, gmul); // (V0+V1-256)*cgv + (U0+U1-256)*cgu | (V0-128)*2*cgv + (U0-128)*2*cgu
-  __m128i r = _mm_madd_epi16(chroma_scaled, rmul); // (V0+V1-256)*crv + 0               | (V0-128)*2*crv + 0
-
-  b = _mm_add_epi32(luma_scaled, b);
-  g = _mm_add_epi32(luma_scaled, g);
-  r = _mm_add_epi32(luma_scaled, r);
-
-  b = _mm_srai_epi32(b, 14); //b3 b3 b3 b3 | b2 b2 b2 b2  | b1 b1 b1 b1 | b0 b0 b0 b0
-  g = _mm_srai_epi32(g, 14); //g3 g3 g3 g3 | g2 g2 g2 g2  | g1 g1 g1 g1 | g0 g0 g0 g0
-  r = _mm_srai_epi32(r, 14); //g3 g3 g3 g3 | g2 g2 g2 g2  | g1 g1 g1 g1 | g0 g0 g0 g0
-
-
-  if constexpr(rgb_size == 4)
-  {
-    b = _mm_max_epi16(b, zero);
-    g = _mm_max_epi16(g, zero);
-    r = _mm_max_epi16(r, zero);
-
-    b = _mm_min_epi16(b, ff); //00 00 00 b3 | 00 00 00 b2 | 00 00 00 b1 | 00 00 00 b0
-    g = _mm_min_epi16(g, ff); //00 00 00 g3 | 00 00 00 g2 | 00 00 00 g1 | 00 00 00 g0
-    r = _mm_min_epi16(r, ff); //00 00 00 r3 | 00 00 00 r2 | 00 00 00 r1 | 00 00 00 r0
-
-    r = _mm_slli_epi32(r, 16);
-    g = _mm_slli_epi32(g, 8);
-
-    __m128i rb = _mm_or_si128(r, b);
-    __m128i rgb = _mm_or_si128(rb, g);
-    return _mm_or_si128(rgb, alpha);
-  }
-  else
-  {
-    __m128i bg = _mm_packs_epi32(b, g); //g3g3 | g2g2 | g1g1 | g0g0 | b3b3 | b2b2 | b1b1 | b0b0
-    r = _mm_packs_epi32(r, zero); //0000 | 0000 | 0000 | 0000 | r3r3 | r2r2 | r1r1 | r0r0
-
-    __m128i br = _mm_unpacklo_epi16(bg, r); //r3r3 | b3b3 | r2r2 | b2b2 | r1r1 | b1b1 | r0r0 | b0b0
-    g = _mm_unpackhi_epi16(bg, zero); //0000 | g3g3 | 0000 | g2g2 | 0000 | g1g1 | 0000 | g0g0
-
-    __m128i rgb_lo = _mm_unpacklo_epi16(br, g); //0000 | r1r1 | g1g1 | b1b1 | 0000 | r0r0 | g0g0 | b0b0
-    rgb_lo = _mm_shufflelo_epi16(rgb_lo, _MM_SHUFFLE(2, 1, 0, 3)); //0000 | r1r1 | g1g1 | b1b1 | r0r0 | g0g0 | b0b0 | 0000
-    __m128i rgb_hi = _mm_unpackhi_epi16(br, g); //0000 | r3r3 | g3g3 | b3b3 | 0000 | r2r2 | g2g2 | b2b2
-    rgb_hi = _mm_shufflelo_epi16(rgb_hi, _MM_SHUFFLE(2, 1, 0, 3)); //0000 | r3r3 | g3g3 | b3b3 | r2r2 | g2g2 | b2b2 | 0000
-
-    return _mm_packus_epi16(rgb_lo, rgb_hi); //00 | r3 | g3 | b3 | r2 | g2 | b2 | 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0 | 00
-  }
-}
-
-template<int rgb_size>
-static void convert_yuy2_to_rgb_sse2(const BYTE *srcp, BYTE* dstp, int src_pitch, int dst_pitch, int height, int width, int crv, int cgv, int cgu, int cbu, int cy, int tv_scale) {
-  srcp += height * src_pitch;
-  int mod4_width = width / 4 * 4;
-
-  __m128i tv_scale_vector = _mm_set1_epi16(tv_scale);
-  __m128i zero = _mm_setzero_si128();
-  __m128i ymul = _mm_set1_epi16(cy / 4);
-
-  __m128i bmul = _mm_set_epi16(0, cbu/8, 0, cbu/8, 0, cbu/8, 0, cbu/8);
-  __m128i gmul = _mm_set_epi16(-cgv/8, -cgu/8, -cgv/8, -cgu/8, -cgv/8, -cgu/8, -cgv/8, -cgu/8);
-  __m128i rmul = _mm_set_epi16(crv/8, 0, crv/8, 0, crv/8, 0, crv/8, 0);
-  __m128i alpha = _mm_set1_epi32(0xFF000000);
-  __m128i ff = _mm_set1_epi16(0x00FF);
-  __m128i v128 =  _mm_set1_epi16(128);
-  __m128i rounder = _mm_set1_epi32(1 << 13);
-
-  for (int y = 0; y < height; ++y) {
-    srcp -= src_pitch;
-    for (int x = 0; x < mod4_width-2; x+= 4) {
-      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x*2)); //xx xx xx xx V2 xx U2 xx V1 Y3 U1 Y2 V0 Y1 U0 Y0
-
-      __m128i src_luma = _mm_and_si128(src, ff);//0 xx 0 xx 0 xx 0 xx 0 Y3 0 Y2 0 Y1 0 Y0
-      __m128i src_chroma = _mm_srli_epi16(src, 8); //00 xx 00 xx 00 V2 00 U2 00 V1 00 U1 00 V0 00 U0
-
-      src_chroma = _mm_shuffle_epi32(src_chroma, _MM_SHUFFLE(2, 1, 1, 0)); //00 V2 00 U2 00 V1 00 U1 00 V1 00 U1 00 V0 00 U0
-
-      __m128i luma_scaled   = _mm_sub_epi16(src_luma, tv_scale_vector); //Y3-16 | Y2-16 | Y1-16 | Y0-16
-      luma_scaled = _mm_unpacklo_epi16(luma_scaled, zero); // 0000 | Y3-16 | 0000 | Y2-16 | 0000 | Y1-16 | 0000 | Y0-16
-
-      __m128i rgb = convert_yuy2_to_rgb_sse2_core<rgb_size>(luma_scaled, src_chroma, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-
-      if constexpr(rgb_size == 4) {
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4), rgb);
-      } else {
-        //input: 00 | r3 | g3 | b3 | r2 | g2 | b2 | 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0 | 00
-
-        rgb = _mm_srli_si128(rgb, 1); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0
-        *reinterpret_cast<int*>(dstp+x*3) = _mm_cvtsi128_si32(rgb);
-        rgb = _mm_shufflelo_epi16(rgb, _MM_SHUFFLE(2, 3, 3, 3)); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || r1 | g1 | 00 | 00 | 00 | 00 | 00 | 00
-        rgb = _mm_srli_si128(rgb, 6); //00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 || r3 | g3 | b3 | r2 | g2 | b2 | r1 | g1
-        _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*3+4), rgb);
-      }
-    }
-
-    if (mod4_width == width) {
-      //two pixels left to process
-      __m128i src = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(srcp+width*2 - 4)); //00 00 00 00 V0 Y1 U0 Y0
-      __m128i src_luma   = _mm_and_si128(src, ff);//0 0 0 0 0 Y1 0 Y0
-      __m128i src_chroma = _mm_srli_epi16(src, 8); //00 00 00 00 00 V0 00 U0
-      src_chroma = _mm_shufflelo_epi16(src_chroma, _MM_SHUFFLE(1, 0, 1, 0)); //00 V0 00 U0 00 V0 00 U0
-
-      __m128i luma_scaled   = _mm_sub_epi16(src_luma, tv_scale_vector); //0 | 0 | Y1-16 | Y0-16
-      luma_scaled = _mm_unpacklo_epi16(luma_scaled, zero); // 0000 | Y1-16 | 0000 | Y0-16
-      __m128i rgb = convert_yuy2_to_rgb_sse2_core<rgb_size>(luma_scaled, src_chroma, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-
-      if constexpr(rgb_size == 4){
-        _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width*4-8), rgb);
-      } else {
-        //input: 00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0 | 00
-
-        rgb = _mm_srli_si128(rgb, 1); //00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 || 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0
-        *reinterpret_cast<int*>(dstp+width*3-6) = _mm_cvtsi128_si32(rgb);
-        rgb = _mm_srli_si128(rgb, 4); //00 ... r1 | g1
-        *reinterpret_cast<short*>(dstp+width*3-2) = (short)_mm_cvtsi128_si32(rgb);
-      }
-    } else {
-      //four pixels
-      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*2-8)); //0 0 0 0 0 0 0 0 V1 Y3 U1 Y2 V0 Y1 U0 Y0
-
-      __m128i src_luma = _mm_and_si128(src, ff);//0 0 0 0 0 0 0 0 0 Y3 0 Y2 0 Y1 0 Y0
-      __m128i src_chroma = _mm_srli_epi16(src, 8); //0 0 0 0 0 0 0 0 0 V1 0 U1 0 V0 0 U0
-
-      src_chroma = _mm_shuffle_epi32(src_chroma, _MM_SHUFFLE(1, 1, 1, 0)); //00 V1 00 U1 00 V1 00 U1 00 V1 00 U1 00 V0 00 U0
-
-      __m128i luma_scaled  = _mm_sub_epi16(src_luma, tv_scale_vector); //Y3-16 | Y2-16 | Y1-16 | Y0-16
-      luma_scaled = _mm_unpacklo_epi16(luma_scaled, zero); // 0000 | Y3-16 | 0000 | Y2-16 | 0000 | Y1-16 | 0000 | Y0-16
-
-      __m128i rgb = convert_yuy2_to_rgb_sse2_core<rgb_size>(luma_scaled, src_chroma, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-
-      if constexpr(rgb_size == 4) {
-        _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+width*4-16), rgb);
-      } else {
-        //input: 00 | r3 | g3 | b3 | r2 | g2 | b2 | 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0 | 00
-
-        rgb = _mm_srli_si128(rgb, 1); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || 00 | 00 | r1 | g1 | b1 | r0 | g0 | b0
-        *reinterpret_cast<int*>(dstp+width*3-12) = _mm_cvtsi128_si32(rgb);
-        rgb = _mm_shufflelo_epi16(rgb, _MM_SHUFFLE(2, 3, 3, 3)); //00 | 00 | r3 | g3 | b3 | r2 | g2 | b2 || r1 | g1 | 00 | 00 | 00 | 00 | 00 | 00
-        rgb = _mm_srli_si128(rgb, 6); //00 | 00 | 00 | 00 | 00 | 00 | 00 | 00 || r3 | g3 | b3 | r2 | g2 | b2 | r1 | g1
-        _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width*3-8), rgb);
-      }
-    }
-
-    dstp += dst_pitch;
-  }
-}
-#endif
-
-#ifdef X86_32
-
-template<int rgb_size>
-static AVS_FORCEINLINE __m64 convert_yuy2_to_rgb_isse_core(const __m64& src_luma_scaled, const __m64& src_chroma, const __m64 &alpha,
-                                                         const __m64& v128, const __m64& zero, const __m64& rounder, const __m64 &ff,
-                                                         const __m64& ymul, const __m64& bmul, const __m64& gmul, const __m64& rmul) {
-  __m64 chroma_scaled = _mm_sub_pi16(src_chroma, v128); //V1-128 | U1-128 | V0-128 | U0-128
-
-  __m64 luma_scaled = _mm_madd_pi16(src_luma_scaled, ymul); // (y1-16)*cy | (y0-16)*cy
-  luma_scaled = _mm_add_pi32(luma_scaled, rounder); // (y1-16)*cy + 8192 | (y0-16)*cy + 8192
-
-  __m64 chroma_scaled2 = _mm_shuffle_pi16(chroma_scaled, _MM_SHUFFLE(1, 0, 1, 0)); // V0-128 | U0-128 | V0-128 | U0-128
-
-  chroma_scaled = _mm_add_pi16(chroma_scaled, chroma_scaled2); // V0+V1-256 | U0+U1-256 | (V0-128)*2 | (U0-128)*2
-
-  __m64 b = _mm_madd_pi16(chroma_scaled, bmul); //               0 + (U0+U1-256)*cbu |              0 + (U0-128)*2*cbu
-  __m64 g = _mm_madd_pi16(chroma_scaled, gmul); // (V0+V1-256)*cgv + (U0+U1-256)*cgu | (V0-128)*2*cgv + (U0-128)*2*cgu
-  __m64 r = _mm_madd_pi16(chroma_scaled, rmul); // (V0+V1-256)*crv + 0               | (V0-128)*2*crv + 0
-
-  b = _mm_add_pi32(luma_scaled, b);  //b1 | b0
-  g = _mm_add_pi32(luma_scaled, g);  //g1 | g0
-  r = _mm_add_pi32(luma_scaled, r);  //r1 | r0
-
-  b = _mm_srai_pi32(b, 14); //BBBB | bbbb
-  g = _mm_srai_pi32(g, 14); //GGGG | gggg
-  r = _mm_srai_pi32(r, 14); //RRRR | rrrr
-
-  if (rgb_size == 4)
-  {
-    b = _mm_max_pi16(b, zero);
-    g = _mm_max_pi16(g, zero);
-    r = _mm_max_pi16(r, zero);
-
-    b = _mm_min_pi16(b, ff); //00 00 00 b1 | 00 00 00 b0
-    g = _mm_min_pi16(g, ff); //00 00 00 g1 | 00 00 00 g0
-    r = _mm_min_pi16(r, ff); //00 00 00 r1 | 00 00 00 r0
-
-    r = _mm_slli_pi32(r, 16);
-    g = _mm_slli_pi32(g, 8);
-
-    __m64 rb = _mm_or_si64(r, b);
-    __m64 rgb = _mm_or_si64(rb, g);
-    return _mm_or_si64(rgb, alpha);
-  }
-  else
-  {
-    __m64 bg = _mm_packs_pi32(b, g); //GGGG | gggg | BBBB | bbbb
-    r = _mm_packs_pi32(r, zero); //0000 | 0000 | RRRR | rrrr
-
-    __m64 br = _mm_unpacklo_pi16(bg, r); //RRRR | BBBB | rrrr | bbbb
-    g = _mm_unpackhi_pi16(bg, zero); //0000 | GGGG | 0000 | gggg
-
-    __m64 rgb_lo = _mm_unpacklo_pi16(br, g); //0000 | rrrr | gggg | bbbb
-    rgb_lo = _mm_slli_si64(rgb_lo, 16); //rrrr | gggg | bbbb | 0000
-    __m64 rgb_hi = _mm_unpackhi_pi16(br, g); //0000 | RRRR | GGGG | BBBB
-
-    return _mm_packs_pu16(rgb_lo, rgb_hi); //00 | RR | GG | BB | rr | gg | bb | 00
-  }
-}
-
-//todo: omg this thing is overcomplicated
-template<int rgb_size>
-static void convert_yuy2_to_rgb_isse(const BYTE *srcp, BYTE* dstp, int src_pitch, int dst_pitch, int height, int width, int crv, int cgv, int cgu, int cbu, int cy, int tv_scale) {
-  srcp += height * src_pitch;
-  int mod4_width = width / 4 * 4;
-
-  __m64 tv_scale_vector = _mm_set1_pi16(tv_scale);
-  __m64 zero = _mm_setzero_si64();
-  __m64 ymul = _mm_set1_pi16(cy / 4);
-
-  __m64 bmul = _mm_set_pi16(0, cbu/8, 0, cbu/8);
-  __m64 gmul = _mm_set_pi16(-cgv/8, -cgu/8, -cgv/8, -cgu/8);
-  __m64 rmul = _mm_set_pi16(crv/8, 0, crv/8, 0);
-  __m64 alpha = _mm_set1_pi32(0xFF000000);
-  __m64 ff = _mm_set1_pi16(0x00FF);
-  __m64 v128 =  _mm_set1_pi16(128);
-  __m64 rounder = _mm_set1_pi32(1 << 13);
-
-  for (int y = 0; y < height; ++y) {
-    srcp -= src_pitch;
-    for (int x = 0; x < mod4_width-2; x+= 4) {
-      __m64 src = *reinterpret_cast<const __m64*>(srcp+x*2); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
-      __m64 src2 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*2+8)); //00 00 00 00 V2 xx U2 xx
-
-      __m64 src_luma   = _mm_and_si64(src, ff);//0 Y3 0 Y2 0 Y1 0 Y0
-      __m64 src_chroma = _mm_srli_pi16(src, 8); //00 V1 00 U1 00 V0 00 U0
-      __m64 src_chroma2 = _mm_srli_pi16(src2, 8); //00 00 00 00 00 V2 00 U2
-
-      src_chroma2 = _mm_or_si64(_mm_slli_si64(src_chroma2, 32), _mm_srli_si64(src_chroma, 32)); //00 V2 00 U2 00 V1 00 U1
-
-      __m64 luma_scaled   = _mm_sub_pi16(src_luma, tv_scale_vector); //Y3-16 | Y2-16 | Y1-16 | Y0-16
-      __m64 luma_scaled_lo = _mm_unpacklo_pi16(luma_scaled, zero); // 0000 | Y1-16 | 0000 | Y0-16
-      __m64 luma_scaled_hi = _mm_unpackhi_pi16(luma_scaled, zero);
-
-      __m64 rgb_lo = convert_yuy2_to_rgb_isse_core<rgb_size>(luma_scaled_lo, src_chroma, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-      __m64 rgb_hi = convert_yuy2_to_rgb_isse_core<rgb_size>(luma_scaled_hi, src_chroma2, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-
-      if (rgb_size == 4) {
-        *reinterpret_cast<__m64*>(dstp+x*4) = rgb_lo;
-        *reinterpret_cast<__m64*>(dstp+x*4+8) = rgb_hi;
-      } else {
-        //input: 00 | RR | GG | BB | rr | gg | bb | 00
-        rgb_lo = _mm_srli_si64(rgb_lo, 8); //00 | 00 | RR | GG | BB | rr | gg | bb
-        rgb_hi = _mm_slli_si64(rgb_hi, 8); //RR | GG | BB | rr | gg | bb | 00 | 00
-        *reinterpret_cast<int*>(dstp+x*3) = _mm_cvtsi64_si32(rgb_lo);
-        rgb_lo = _mm_srli_si64(rgb_lo, 32); //00 | 00 | 00 | 00 | 00 | 00 | RR | GG
-        rgb_hi = _mm_or_si64(rgb_lo, rgb_hi);
-        *reinterpret_cast<__m64*>(dstp+x*3+4) = rgb_hi;
-      }
-    }
-
-    if (mod4_width == width) {
-      //two pixels left to process
-      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width*2 - 4)); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
-      __m64 src_luma   = _mm_and_si64(src, ff);//0 Y3 0 Y2 0 Y1 0 Y0
-      __m64 src_chroma = _mm_srli_pi16(src, 8); //00 V1 00 U1 00 V0 00 U0
-      src_chroma = _mm_shuffle_pi16(src_chroma, _MM_SHUFFLE(1, 0, 1, 0)); //00 V0 00 U0 00 V0 00 U0
-
-      __m64 luma_scaled   = _mm_sub_pi16(src_luma, tv_scale_vector); //Y3-16 | Y2-16 | Y1-16 | Y0-16
-      luma_scaled = _mm_unpacklo_pi16(luma_scaled, zero); // 0000 | Y1-16 | 0000 | Y0-16
-      __m64 rgb = convert_yuy2_to_rgb_isse_core<rgb_size>(luma_scaled, src_chroma, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-
-      if (rgb_size == 4){
-        *reinterpret_cast<__m64*>(dstp+width*4-8) = rgb;
-      } else {
-        //input: 00 | RR | GG | BB | rr | gg | bb | 00
-        rgb = _mm_srli_si64(rgb, 8); //00 | 00 | RR | GG | BB | rr | gg | bb
-        *reinterpret_cast<int*>(dstp+width*3-6) = _mm_cvtsi64_si32(rgb);
-        rgb = _mm_srli_si64(rgb, 32); //00 | 00 | 00 | 00 | 00 | 00 | RR | GG
-        *reinterpret_cast<short*>(dstp+width*3-2) = (short)_mm_cvtsi64_si32(rgb);
-      }
-    } else {
-      //four pixels
-      __m64 src = *reinterpret_cast<const __m64*>(srcp+width*2 - 8); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
-      __m64 src_luma   = _mm_and_si64(src, ff);//0 Y3 0 Y2 0 Y1 0 Y0
-      __m64 src_chroma = _mm_srli_pi16(src, 8); //00 V1 00 U1 00 V0 00 U0
-      __m64 src_chroma2 = _mm_shuffle_pi16(src_chroma, _MM_SHUFFLE(3, 2, 3, 2)); //00 V1 00 U1 00 V1 00 U1
-
-      __m64 luma_scaled   = _mm_sub_pi16(src_luma, tv_scale_vector); //Y3-16 | Y2-16 | Y1-16 | Y0-16
-      __m64 luma_scaled_lo = _mm_unpacklo_pi16(luma_scaled, zero); // 0000 | Y1-16 | 0000 | Y0-16
-      __m64 luma_scaled_hi = _mm_unpackhi_pi16(luma_scaled, zero);
-
-      __m64 rgb_lo = convert_yuy2_to_rgb_isse_core<rgb_size>(luma_scaled_lo, src_chroma, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-      __m64 rgb_hi = convert_yuy2_to_rgb_isse_core<rgb_size>(luma_scaled_hi, src_chroma2, alpha, v128, zero, rounder, ff, ymul, bmul, gmul, rmul);
-
-      if (rgb_size == 4) {
-        *reinterpret_cast<__m64*>(dstp+width*4-16) = rgb_lo;
-        *reinterpret_cast<__m64*>(dstp+width*4-8)  = rgb_hi;
-      } else {
-        //input: 00 | RR | GG | BB | rr | gg | bb | 00
-        rgb_lo = _mm_srli_si64(rgb_lo, 8); //00 | 00 | RR | GG | BB | rr | gg | bb
-        rgb_hi = _mm_slli_si64(rgb_hi, 8); //RR | GG | BB | rr | gg | bb | 00 | 00
-        *reinterpret_cast<int*>(dstp+width*3-12) = _mm_cvtsi64_si32(rgb_lo);
-        rgb_lo = _mm_srli_si64(rgb_lo, 32); //00 | 00 | 00 | 00 | 00 | 00 | RR | GG
-        rgb_hi = _mm_or_si64(rgb_lo, rgb_hi);
-        *reinterpret_cast<__m64*>(dstp+width*3-8) = rgb_hi;
-      }
-    }
-
-    dstp += dst_pitch;
-  }
-  _mm_empty();
-}
-
-#endif // X86_32
-
 template<int rgb_size>
 static void convert_yuy2_to_rgb_c(const BYTE *srcp, BYTE* dstp, int src_pitch, int dst_pitch, int height, int width, int crv, int cgv, int cgu, int cbu, int cy, int tv_scale) {
   srcp += height * src_pitch;
@@ -562,30 +232,6 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   int tv_scale = theMatrix == Rec601 || theMatrix == Rec709 ? 16 : 0;
 
 
-#ifdef __SSE2__
-  if (env->GetCPUFlags() & CPUF_SSE2) {
-    if (vi.IsRGB32()) {
-      convert_yuy2_to_rgb_sse2<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
-        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
-    } else {
-      convert_yuy2_to_rgb_sse2<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
-        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
-    }
-  }
-  else
-#endif
-#ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
-    if (vi.IsRGB32()) {
-      convert_yuy2_to_rgb_isse<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
-        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
-    } else {
-      convert_yuy2_to_rgb_isse<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
-        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
-    }
-  }
-  else
-#endif
   {
     if (vi.IsRGB32()) {
       convert_yuy2_to_rgb_c<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
@@ -808,8 +454,10 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
 
   vi.pixel_type = VideoInfo::CS_YV12;
 
+#ifdef INTEL_INTRINSICS
   if ((env->GetCPUFlags() & CPUF_MMX) == 0)
     env->ThrowError("ConvertToYV12: YV12 support require a MMX capable processor.");
+#endif
 }
 
 PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
@@ -817,22 +465,6 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
   if (interlaced) {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
-    {
-      convert_yuy2_to_yv12_interlaced_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
-        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-    }
-    else
-#ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
-      {
-        convert_yuy2_to_yv12_interlaced_isse(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
-          dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-      }
-      else
-#endif
       {
         convert_yuy2_to_yv12_interlaced_c(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
@@ -841,22 +473,6 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   }
   else
   {
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
-    {
-      convert_yuy2_to_yv12_progressive_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
-        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-    }
-    else
-#ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
-      {
-        convert_yuy2_to_yv12_progressive_isse(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
-          dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-      }
-      else
-#endif
       {
         convert_yuy2_to_yv12_progressive_c(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
@@ -1069,164 +685,6 @@ static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rows
   }
 }
 
-template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-static void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-
-  int _y = 0; // for ordered dither
-
-  const int TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
-
-  // for test, make it 2,4,6,8. sourcebits-TARGET_DITHER_BITDEPTH cannot exceed 8 bit
-  // const int TARGET_DITHER_BITDEPTH = 2;
-
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
-  // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const int DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const int PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but generality)
-  const int DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const int DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const int MASK = DITHER_SIZE - 1;
-  // 10->8: 0x01 (2x2)
-  // 11->8: 0x03 (4x4)
-  // 12->8: 0x03 (4x4)
-  // 14->8: 0x07 (8x8)
-  // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  switch (sourcebits - TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data); break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data); break;
-  case 6: matrix = reinterpret_cast<const BYTE *>(dither8x8.data); break;
-  case 8: matrix = reinterpret_cast<const BYTE *>(dither16x16.data); break;
-  default: return; // n/a
-  }
-
-  // 20171024: given up integer division, rounding problems
-  const float mulfactor =
-    sourcebits == 16 ? (1.0f / 257.0f) :
-    sourcebits == 14 ? (255.0f / 16383.0f) :
-    sourcebits == 12 ? (255.0f / 4095.0f) :
-    (255.0f / 1023.0f); // 10 bits
-  const __m128 mulfactor_simd = _mm_set1_ps(mulfactor);
-  const __m128i zero = _mm_setzero_si128();
-
-  for (int y = 0; y < src_height; y++)
-  {
-    if constexpr(dither_mode == 0)
-      _y = (y & MASK) << DITHER_ORDER; // ordered dither
-    for (int x = 0; x < src_width; x += 8) // 8 * uint16_t at a time
-    {
-      if constexpr(dither_mode < 0) // -1: no dither
-      {
-
-        // C: dstp[x] = (uint8_t)(srcp0[x] * mulfactor + 0.5f);
-        // C cast truncates, use +0.5f rounder, which uses cvttss2si
-
-        __m128i pixel_i = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp0 + x)); // 16 bytes 8 pixels
-
-        __m128 pixel_f_lo = _mm_cvtepi32_ps(_mm_unpacklo_epi16(pixel_i, zero)); // 4 floats
-        __m128 mulled_lo = _mm_mul_ps(pixel_f_lo, mulfactor_simd);
-        __m128i converted32_lo = _mm_cvtps_epi32(mulled_lo); // rounding ok, nearest. no +0.5 needed
-
-        __m128 pixel_f_hi = _mm_cvtepi32_ps(_mm_unpackhi_epi16(pixel_i, zero)); // 4 floats
-        __m128 mulled_hi = _mm_mul_ps(pixel_f_hi, mulfactor_simd);
-        __m128i converted32_hi = _mm_cvtps_epi32(mulled_hi);
-
-        __m128i converted_16 = _mm_packs_epi32(converted32_lo, converted32_hi);
-        __m128i converted_8 = _mm_packus_epi16(converted_16, zero);
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(&dstp[x]), converted_8); // store 8 bytes
-      }
-      else { // dither_mode == 0 -> ordered dither
-             //  const int corr = matrix[_y | ((x / rgb_step) & MASK)];
-        __m128i corr_lo = _mm_set_epi32(
-          matrix[_y | (((x + 3) / rgb_step) & MASK)],
-          matrix[_y | (((x + 2) / rgb_step) & MASK)],
-          matrix[_y | (((x + 1) / rgb_step) & MASK)],
-          matrix[_y | (((x + 0) / rgb_step) & MASK)]
-        );
-        __m128i corr_hi = _mm_set_epi32(
-          matrix[_y | (((x + 7) / rgb_step) & MASK)],
-          matrix[_y | (((x + 6) / rgb_step) & MASK)],
-          matrix[_y | (((x + 5) / rgb_step) & MASK)],
-          matrix[_y | (((x + 4) / rgb_step) & MASK)]
-        );
-        // vvv for the non-fullscale version: int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
-
-        // no integer division, rounding problems
-        const float mulfactor_dith =
-          DITHER_BIT_DIFF == 8 ? (1.0f / 257.0f) :
-          DITHER_BIT_DIFF == 6 ? (255.0f / 16383.0f) :
-          DITHER_BIT_DIFF == 4 ? (255.0f / 4095.0f) :
-          DITHER_BIT_DIFF == 2 ? (255.0f / 1023.0f) :
-          1.0f;
-        __m128 mulfactor_dith_simd = _mm_set1_ps(mulfactor_dith);
-
-        __m128i pixel_i = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp0 + x)); // 16 bytes 8 pixels
-        __m128i pixel_i_lo = _mm_add_epi32(_mm_unpacklo_epi16(pixel_i, zero), corr_lo);
-        __m128i pixel_i_hi = _mm_add_epi32(_mm_unpackhi_epi16(pixel_i, zero), corr_hi);
-        __m128i converted32_lo, converted32_hi;
-
-        /* C:
-        if (TARGET_DITHER_BITDEPTH <= 4)
-        new_pixel = (uint16_t)((srcp0[x] + corr) * mulfactor); // rounding here makes brightness shift
-        else if (DITHER_BIT_DIFF > 0)
-        new_pixel = (uint16_t)((srcp0[x] + corr) * mulfactor + 0.5f);
-        else
-        new_pixel = (uint16_t)(srcp0[x] + corr);
-        */
-        if constexpr(TARGET_DITHER_BITDEPTH <= 4) {
-          // round: truncate
-          __m128 pixel_f_lo = _mm_cvtepi32_ps(pixel_i_lo); // 4 floats
-          __m128 mulled_lo = _mm_mul_ps(pixel_f_lo, mulfactor_dith_simd);
-          converted32_lo = _mm_cvttps_epi32(mulled_lo); // truncate! rounding here makes brightness shift
-
-          __m128 pixel_f_hi = _mm_cvtepi32_ps(pixel_i_hi); // 4 floats
-          __m128 mulled_hi = _mm_mul_ps(pixel_f_hi, mulfactor_dith_simd);
-          converted32_hi = _mm_cvttps_epi32(mulled_hi); // truncate! rounding here makes brightness shift
-        }
-        else if constexpr(DITHER_BIT_DIFF > 0) {
-          // round: nearest
-          __m128 pixel_f_lo = _mm_cvtepi32_ps(pixel_i_lo); // 4 floats
-          __m128 mulled_lo = _mm_mul_ps(pixel_f_lo, mulfactor_dith_simd);
-          converted32_lo = _mm_cvtps_epi32(mulled_lo); // rounding ok, nearest. no +0.5 needed
-
-          __m128 pixel_f_hi = _mm_cvtepi32_ps(pixel_i_hi); // 4 floats
-          __m128 mulled_hi = _mm_mul_ps(pixel_f_hi, mulfactor_dith_simd);
-          converted32_hi = _mm_cvtps_epi32(mulled_hi);
-        }
-        else {
-          // new_pixel = (uint8_t)(srcp0[x] + corr);
-          converted32_lo = pixel_i_lo;
-          converted32_hi = pixel_i_hi;
-        }
-
-        __m128i converted_16 = _mm_packs_epi32(converted32_lo, converted32_hi);
-        if constexpr(max_pixel_value_dithered <= 16384) // when <= 14 bits. otherwise packus_epi16 handles well. min_epi16 is sse2 only unlike min_epu16
-          converted_16 = _mm_min_epi16(converted_16, _mm_set1_epi16(max_pixel_value_dithered)); // new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-
-        // scale back to the required bit depth
-        // for generality. Now target == 8 bit, and dither_target is also 8 bit
-        // for test: source:10 bit, target=8 bit, dither_target=4 bit
-        const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-        if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-          converted_16 = _mm_slli_epi16(converted_16, BITDIFF_BETWEEN_DITHER_AND_TARGET); // new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // if implemented non-8bit dither target, this should be fullscale
-
-        __m128i converted_8 = _mm_packus_epi16(converted_16, zero);
-
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(&dstp[x]), converted_8);
-      }
-    } // x
-    dstp += dst_pitch;
-    srcp0 += src_pitch;
-  }
-}
-
 // idea borrowed from fmtConv
 #define FS_OPTIMIZED_SERPENTINE_COEF
 
@@ -1400,275 +858,11 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   }
 }
 
-template<uint8_t sourcebits>
-static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-  int wmod16 = (src_width / 16) * 16;
-
-  // no dithering, no range conversion, simply shift
-  for (int y = 0; y < src_height; y++)
-  {
-    for (int x = 0; x < src_width; x += 16)
-    {
-      __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-      __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8));
-      src_lo = _mm_srli_epi16(src_lo, (sourcebits - 8));
-      src_hi = _mm_srli_epi16(src_hi, (sourcebits - 8));
-      __m128i dst = _mm_packus_epi16(src_lo, src_hi);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), dst);
-    }
-    // rest
-    for (int x = wmod16; x < src_width; x++)
-    {
-      dstp[x] = srcp[x] >> (sourcebits - 8);
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4305 4309)
 #endif
 
-template<uint8_t sourcebits, uint8_t TARGET_DITHER_BITDEPTH>
-static void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  // Full general ordered dither from 10-16 bits to 2-8 bits, keeping the final 8 bit depth
-  // Avisynth's ConvertBits parameter "dither_bits" default 8 goes to TARGET_DITHER_BITDEPTH
-  // TARGET_BITDEPTH is always 8 bits, but the dither target can be less than 8.
-  // The difference between source bitdepth and TARGET_DITHER_BITDEPTH cannot be more than 8
-  // Basic usage: dither down to 8 bits from 10-16 bits.
-  // Exotic usage: dither down to 2 bits from 10 bits
-
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t); // real width. We take 2x8 word pixels at a time
-  int wmod16 = (src_width / 16) * 16;
-
-  int _y_c = 0; // Bayer matrix shift for ordered dither
-
-  const uint8_t TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1; //may be less than 255, e.g. 15 for dither target 4 bits
-
-  const __m128i max_pixel_value_dithered_epi8 = _mm_set1_epi8(max_pixel_value_dithered);
-  // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const uint8_t DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const uint8_t PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but for the sake of generality)
-  const uint8_t DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const uint8_t DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const uint8_t MASK = DITHER_SIZE - 1;
-  // 10->8: 0x01 (2x2)
-  // 11->8: 0x03 (4x4)
-  // 12->8: 0x03 (4x4)
-  // 14->8: 0x07 (8x8)
-  // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  const BYTE *matrix_c;
-  switch (sourcebits - TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data_sse2);
-    matrix_c = reinterpret_cast<const BYTE *>(dither2x2.data);
-    break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data_sse2);
-    matrix_c = reinterpret_cast<const BYTE *>(dither4x4.data);
-    break;
-  case 6:
-    matrix = reinterpret_cast<const BYTE *>(dither8x8.data_sse2);
-    matrix_c = reinterpret_cast<const BYTE *>(dither8x8.data);
-    break;
-  case 8:
-    matrix = reinterpret_cast<const BYTE *>(dither16x16.data);
-    matrix_c = matrix;
-    break;
-  default: return; // n/a
-  }
-
-  const BYTE *current_matrix_line;
-
-  __m128i zero = _mm_setzero_si128();
-
-  for (int y = 0; y < src_height; y++)
-  {
-    _y_c = (y & MASK) << DITHER_ORDER; // matrix lines stride for C
-    current_matrix_line = matrix + ((y & MASK) << 4); // always 16 byte boundary
-
-    __m128i corr = _mm_load_si128(reinterpret_cast<const __m128i*>(current_matrix_line)); // int corr = matrix[_y | (x & MASK)];
-    __m128i corr_lo = _mm_unpacklo_epi8(corr, zero); // lower 8 byte->uint16_t
-    __m128i corr_hi = _mm_unpackhi_epi8(corr, zero); // upper 8 byte->uint16_t
-
-    for (int x = 0; x < src_width; x += 16)
-    {
-      __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-      __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8));
-
-      // int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
-
-      __m128i new_pixel_lo, new_pixel_hi;
-
-      if constexpr(sourcebits < 16) { // no overflow
-        new_pixel_lo = _mm_srli_epi16(_mm_add_epi16(src_lo, corr_lo), DITHER_BIT_DIFF);
-        new_pixel_hi = _mm_srli_epi16(_mm_add_epi16(src_hi, corr_hi), DITHER_BIT_DIFF);
-        // scale down after adding dithering noise
-      }
-      else { // source bits: 16. Overflow can happen when 0xFFFF it dithered up. Go 32 bits
-        // lower
-        __m128i src_lo_lo = _mm_unpacklo_epi16(src_lo, zero);
-        __m128i corr_lo_lo = _mm_unpacklo_epi16(corr_lo, zero);
-        __m128i new_pixel_lo_lo = _mm_srli_epi32(_mm_add_epi32(src_lo_lo, corr_lo_lo), DITHER_BIT_DIFF);
-
-        __m128i src_lo_hi = _mm_unpackhi_epi16(src_lo, zero);
-        __m128i corr_lo_hi = _mm_unpackhi_epi16(corr_lo, zero);
-        __m128i new_pixel_lo_hi = _mm_srli_epi32(_mm_add_epi32(src_lo_hi, corr_lo_hi), DITHER_BIT_DIFF);
-
-        new_pixel_lo = _mm_packs_epi32(new_pixel_lo_lo, new_pixel_lo_hi); // packs is enough
-        // upper
-        __m128i src_hi_lo = _mm_unpacklo_epi16(src_hi, zero);
-        __m128i corr_hi_lo = _mm_unpacklo_epi16(corr_hi, zero);
-        __m128i new_pixel_hi_lo = _mm_srli_epi32(_mm_add_epi32(src_hi_lo, corr_hi_lo), DITHER_BIT_DIFF);
-
-        __m128i src_hi_hi = _mm_unpackhi_epi16(src_hi, zero);
-        __m128i corr_hi_hi = _mm_unpackhi_epi16(corr_hi, zero);
-        __m128i new_pixel_hi_hi = _mm_srli_epi32(_mm_add_epi32(src_hi_hi, corr_hi_hi), DITHER_BIT_DIFF);
-
-        new_pixel_hi = _mm_packs_epi32(new_pixel_hi_lo, new_pixel_hi_hi); // packs is enough
-      }
-
-      __m128i new_pixel = _mm_packus_epi16(new_pixel_lo, new_pixel_hi); // 2x8 x16 bit -> 16 byte. Clamp is automatic
-
-      if constexpr(TARGET_DITHER_BITDEPTH < 8) { // generic (not used) fun option to dither 10->4 bits then back to 8 bit
-        new_pixel = _mm_min_epu8(new_pixel, max_pixel_value_dithered_epi8);
-      }
-
-      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-      if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0) { //==0 when dither and target are both 8
-        // scale back, when e.g. 10 bit data is dithered down to 4,6,8 bits but the target bit depth is still 8 bit.
-        new_pixel = _mm_and_si128(_mm_set1_epi8((0xFF << BITDIFF_BETWEEN_DITHER_AND_TARGET) & 0xFF), _mm_slli_epi32(new_pixel, BITDIFF_BETWEEN_DITHER_AND_TARGET));
-        // non-existant _mm_slli_epi8. closest in palette: simple shift
-      }
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), new_pixel);
-    }
-
-    // rest, C
-    for (int x = wmod16; x < src_width; x++)
-    {
-      int corr = matrix_c[_y_c | (x & MASK)];
-      //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
-      int new_pixel = ((srcp[x] + corr) >> DITHER_BIT_DIFF);
-      new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-      // scale back to the required bit depth
-      // for generality. Now target == 8 bit, and dither_target is also 8 bit
-      // for test: source:10 bit, target=8 bit, dither_target=4 bit
-      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-      if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-        new_pixel = new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // closest in palette: simple shift with
-      dstp[x] = (BYTE)new_pixel;
-    }
-
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-// sse4.1
-template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
-#if defined(GCC) || defined(CLANG)
-__attribute__((__target__("sse4.1")))
-#endif
-void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  const float *srcp = reinterpret_cast<const float *>(srcp8);
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-
-  src_pitch = src_pitch / sizeof(float);
-  dst_pitch = dst_pitch / sizeof(pixel_t);
-
-  int src_width = src_rowsize / sizeof(float);
-
-  constexpr int max_pixel_value = (1 << targetbits) - 1;
-
-  constexpr int limit_lo_d = (fulld ? 0 : 16) << (targetbits - 8);
-  constexpr int limit_hi_d = fulld ? ((1 << targetbits) - 1) : ((chroma ? 240 : 235) << (targetbits - 8));
-  constexpr float range_diff_d = (float)limit_hi_d - limit_lo_d;
-
-  constexpr int limit_lo_s = fulls ? 0 : 16;
-  constexpr int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
-  constexpr float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f;
-
-  // fulls fulld luma             luma_new   chroma                          chroma_new
-  // true  false 0..1              16-235     -0.5..0.5                      16-240       Y = Y * ((235-16) << (bpp-8)) + 16, Chroma= Chroma * ((240-16) << (bpp-8)) + 16
-  // true  true  0..1               0-255     -0.5..0.5                      0-128-255
-  // false false 16/255..235/255   16-235     (16-128)/255..(240-128)/255    16-240
-  // false true  16/255..235/255    0..1      (16-128)/255..(240-128)/255    0-128-255
-  constexpr float factor = range_diff_d / range_diff_s;
-
-  constexpr float half_i = (float)(1 << (targetbits - 1));
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-  const __m128 half_ps = _mm_set1_ps(0.5f);
-#endif
-  const __m128 halfint_plus_rounder_ps = _mm_set1_ps(half_i + 0.5f);
-  const __m128 limit_lo_s_ps = _mm_set1_ps(limit_lo_s / 255.0f);
-  const __m128 limit_lo_plus_rounder_ps = _mm_set1_ps(limit_lo_d + 0.5f);
-  const __m128 max_dst_pixelvalue = _mm_set1_ps((float)max_pixel_value); // 255, 1023, 4095, 16383, 65535.0
-  const __m128 zero = _mm_setzero_ps();
-
-  __m128 factor_ps = _mm_set1_ps(factor); // 0-1.0 -> 0..max_pixel_value
-
-  for (int y = 0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x += 8) // 8 pixels at a time
-    {
-      __m128i result;
-      __m128i result_0, result_1;
-      __m128 src_0 = _mm_load_ps(reinterpret_cast<const float *>(srcp + x));
-      __m128 src_1 = _mm_load_ps(reinterpret_cast<const float *>(srcp + x + 4));
-      if constexpr(chroma) {
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-        // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
-        src_0 = _mm_sub_ps(src_0, half_ps);
-        src_1 = _mm_sub_ps(src_1, half_ps);
-        //pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
-#else
-        //pixel = (srcp0[x]       ) * factor + half + 0.5f;
-#endif
-        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), halfint_plus_rounder_ps);
-        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), halfint_plus_rounder_ps);
-      }
-      else {
-        if constexpr(!fulls) {
-          src_0 = _mm_sub_ps(src_0, limit_lo_s_ps);
-          src_1 = _mm_sub_ps(src_1, limit_lo_s_ps);
-        }
-        src_0 = _mm_add_ps(_mm_mul_ps(src_0, factor_ps), limit_lo_plus_rounder_ps);
-        src_1 = _mm_add_ps(_mm_mul_ps(src_1, factor_ps), limit_lo_plus_rounder_ps);
-        //pixel = (srcp0[x] - limit_lo_s_ps) * factor + half + limit_lo + 0.5f;
-      }
-
-      src_0 = _mm_max_ps(_mm_min_ps(src_0, max_dst_pixelvalue), zero);
-      src_1 = _mm_max_ps(_mm_min_ps(src_1, max_dst_pixelvalue), zero);
-      result_0 = _mm_cvttps_epi32(src_0); // truncate
-      result_1 = _mm_cvttps_epi32(src_1);
-      if constexpr(sizeof(pixel_t) == 2) {
-        result = _mm_packus_epi32(result_0, result_1); // sse41
-        _mm_store_si128(reinterpret_cast<__m128i *>(dstp + x), result);
-      }
-      else {
-        result = _mm_packs_epi32(result_0, result_1);
-        result = _mm_packus_epi16(result, result); // lo 8 byte
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(dstp + x), result);
-      }
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
@@ -1763,88 +957,6 @@ static void convert_rgb_8_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rows
     }
 }
 
-template<uint8_t targetbits>
-static void convert_rgb_8_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  const uint8_t *srcp = reinterpret_cast<const uint8_t *>(srcp8);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-
-  src_pitch = src_pitch / sizeof(uint8_t);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-
-  int src_width = src_rowsize / sizeof(uint8_t);
-  int wmod16 = (src_width / 16) * 16;
-
-  constexpr int MUL = (targetbits == 16)  ? 257 : ((1 << targetbits) - 1);
-  constexpr int DIV = (targetbits == 16)  ? 1 : 255;
-  // 16 bit: one mul only, no need for /255
-  // for others: // *16383 *4095 *1023  and /255
-
-  __m128i zero = _mm_setzero_si128();
-  __m128i multiplier = _mm_set1_epi16(MUL);
-  __m128 multiplier_float = _mm_set1_ps((float)MUL / DIV);
-  // This is ok, since the default SIMD rounding mode is round-to-nearest unlike c++ truncate
-  // in C: 1023 * multiplier = 1022.999 -> truncates.
-
-  for(int y=0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x+=16)
-    {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 16* uint8
-      __m128i src_lo = _mm_unpacklo_epi8(src, zero);             // 8* uint16
-      __m128i src_hi = _mm_unpackhi_epi8(src, zero);             // 8* uint16
-      // test
-      if constexpr(targetbits==16) {
-        // *257 mullo is faster than x*257 = (x<<8 + x) add/or solution (i7)
-        __m128i res_lo = _mm_mullo_epi16(src_lo, multiplier); // lower 16 bit of multiplication is enough
-        __m128i res_hi = _mm_mullo_epi16(src_hi, multiplier);
-        // dstp[x] = srcp[x] * 257; // RGB: full range 0..255 <-> 0..65535 (257 = 65535 / 255)
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), res_lo);
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x+8), res_hi);
-      }
-      else {
-        {
-          // src_lo: 8*uint16
-          // convert to int32 then float, multiply and convert back
-          __m128 res_lo = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpacklo_epi16(src_lo, zero)), multiplier_float);
-          __m128 res_hi = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpackhi_epi16(src_lo, zero)), multiplier_float);
-          // Converts the four single-precision, floating-point values of a to signed 32-bit integer values.
-          __m128i result_l  = _mm_cvtps_epi32(res_lo); // The default rounding mode is round-to-nearest unlike c++ truncate
-          __m128i result_h  = _mm_cvtps_epi32(res_hi);
-          // Pack and store no need for packus for <= 14 bit
-          __m128i result = _mm_packs_epi32(result_l, result_h); // 4*32+4*32 = 8*16
-          _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
-
-          // src_hi: 8*uint16
-          // convert to int32 then float, multiply and convert back
-          res_lo = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpacklo_epi16(src_hi, zero)), multiplier_float);
-          res_hi = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpackhi_epi16(src_hi, zero)), multiplier_float);
-          // Converts the four single-precision, floating-point values of a to signed 32-bit integer values.
-          result_l  = _mm_cvtps_epi32(res_lo);
-          result_h  = _mm_cvtps_epi32(res_hi);
-          // Pack and store no need for packus for <= 14 bit
-          result = _mm_packs_epi32(result_l, result_h); // 4*32+4*32 = 8*16
-          _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x+8), result);
-        }
-      } // if 16 bit else
-    } // for x
-    // rest
-    for (int x = wmod16; x < src_width; x++)
-    {
-      if constexpr (targetbits == 16) {
-        dstp[x] = (uint16_t)(srcp[x] * MUL / DIV); // MUL is 257, DIV is 1
-      }
-      else {
-        constexpr float mul_factor = (float)MUL / DIV;
-        dstp[x] = (uint16_t)(srcp[x] * mul_factor + 0.5f); // RGB: full range 0..255 <-> 0..16384-1
-      }
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  } // for y
-}
-
-
 // YUV: bit shift 8 to 10-12-14-16 bits
 template<uint8_t targetbits>
 static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
@@ -1860,143 +972,6 @@ static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp8, int src_rowsize
     for (int x = 0; x < src_width; x++)
     {
         dstp[x] = srcp[x] << (targetbits-8);
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-template<uint8_t targetbits>
-static void convert_8_to_uint16_sse2(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-
-  int src_width = src_rowsize / sizeof(uint8_t);
-  int wmod16 = (src_width / 16) * 16;
-
-  __m128i zero = _mm_setzero_si128();
-
-  for(int y=0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x+=16)
-    {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 16 bytes
-      __m128i dst_lo = _mm_unpacklo_epi8(src, zero);
-      __m128i dst_hi = _mm_unpackhi_epi8(src, zero);
-      dst_lo = _mm_slli_epi16(dst_lo, (targetbits - 8));
-      dst_hi = _mm_slli_epi16(dst_hi, (targetbits - 8));
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), dst_lo);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x + 8), dst_hi);
-    }
-    // rest
-    for (int x = wmod16; x < src_width; x++)
-    {
-      dstp[x] = srcp[x] << (targetbits-8);
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-// RGB full range: 10-12-14-16 <=> 10-12-14-16 bits
-template<uint8_t sourcebits, uint8_t targetbits>
-static void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-  int wmod = (src_width / 8) * 8;
-
-  const uint16_t source_max = (1 << sourcebits) - 1;
-  const uint16_t target_max = (1 << targetbits) - 1;
-
-  __m128 factor = _mm_set1_ps((float)target_max / source_max);
-  __m128i max_pixel_value = _mm_set1_epi16(target_max);
-  __m128i zero = _mm_setzero_si128();
-
-  for(int y=0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x+=8)
-    {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-
-      __m128i src_lo = _mm_unpacklo_epi16(src, zero);
-      __m128i src_hi = _mm_unpackhi_epi16(src, zero);
-
-      __m128 result_lo = _mm_mul_ps(_mm_cvtepi32_ps(src_lo), factor);
-      __m128 result_hi = _mm_mul_ps(_mm_cvtepi32_ps(src_hi), factor);
-
-      __m128i result;
-      result = _MM_PACKUS_EPI32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
-      if constexpr(targetbits < 16) {
-        result = _MM_MIN_EPU16(result, max_pixel_value);
-      }
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
-    }
-    // rest
-    for (int x = wmod; x < src_width; x++)
-    {
-      dstp[x] = (uint16_t)((int64_t)srcp[x] * target_max / source_max); // expand range
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-template<uint8_t sourcebits, uint8_t targetbits>
-#if defined(GCC) || defined(CLANG)
-__attribute__((__target__("sse4.1")))
-#endif
-static void convert_rgb_uint16_to_uint16_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-  int wmod = (src_width / 8) * 8;
-
-  constexpr int source_max = (1 << sourcebits) - 1;
-  constexpr int target_max = (1 << targetbits) - 1;
-
-  constexpr float factor1 = (float)target_max / source_max;
-
-  __m128 factor = _mm_set1_ps(factor1);
-#pragma warning(push)
-#pragma warning(disable: 4309)
-  __m128i max_pixel_value = _mm_set1_epi16(target_max);
-#pragma warning(pop)
-  __m128i zero = _mm_setzero_si128();
-
-  for (int y = 0; y < src_height; y++)
-  {
-    for (int x = 0; x < src_width; x += 8)
-    {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-
-      __m128i src_lo = _mm_unpacklo_epi16(src, zero);
-      __m128i src_hi = _mm_unpackhi_epi16(src, zero);
-
-      __m128 result_lo = _mm_mul_ps(_mm_cvtepi32_ps(src_lo), factor);
-      __m128 result_hi = _mm_mul_ps(_mm_cvtepi32_ps(src_hi), factor);
-
-      __m128i result;
-      result = _mm_packus_epi32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
-
-      if constexpr (targetbits < 16) {
-        result = _mm_min_epu16(result, max_pixel_value);
-      }
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
-    }
-    // rest
-
-    for (int x = wmod; x < src_width; x++)
-    {
-      dstp[x] = (uint16_t)std::min((int)((float)srcp[x] * factor1 + 0.5f), target_max);;
     }
     dstp += dst_pitch;
     srcp += src_pitch;
@@ -2185,50 +1160,6 @@ static void convert_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, in
   }
 }
 
-template<bool expandrange, uint8_t shiftbits>
-static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
-{
-  // remark: Compiler with SSE2 option generates the same effective code like this in C
-  // Drawback of SSE2: a future avx2 target gives more efficient code than inline SSE2 (256 bit registers)
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-  int wmod = (src_width / 16) * 16;
-
-  __m128i shift = _mm_set_epi32(0,0,0,shiftbits);
-
-  // no dithering, no range conversion, simply shift
-  for(int y=0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x+=16)
-    {
-      __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-      __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8)); // 8* uint16
-      if(expandrange) {
-        src_lo = _mm_sll_epi16(src_lo, shift);
-        src_hi = _mm_sll_epi16(src_hi, shift);
-      } else {
-        src_lo = _mm_srl_epi16(src_lo, shift);
-        src_hi = _mm_srl_epi16(src_hi, shift);
-      }
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), src_lo);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x+8), src_hi);
-    }
-    // rest
-    for (int x = wmod; x < src_width; x++)
-    {
-      if(expandrange)
-        dstp[x] = srcp[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
-      else
-        dstp[x] = srcp[x] >> shiftbits;  // reduce range
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
 // 8 bit to float, 16/14/12/10 bits to float
 template<typename pixel_t, uint8_t sourcebits, bool chroma, bool fulls, bool fulld>
 static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
@@ -2362,16 +1293,6 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
   func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 4, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
 
   //-----------
-  // full scale, no dither, SSE2
-  func_copy[make_tuple(true, 10, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 12, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 14, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<14, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  // for RGB48 and RGB64 source
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 3, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 4, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
-
-  //-----------
   // full scale, dither, C
   func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_8, 1>;
   func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_6, 1>;
@@ -2389,25 +1310,6 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
   // for RGB48 and RGB64 source
   func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 3, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_TARGET_BITDEPTH_8, 3>; // dither rgb_step param is filled
   func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 4, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_TARGET_BITDEPTH_8, 4>; // dither rgb_step param is filled
-
-  //-----------
-  // full scale, dither, SSE2
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_4, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_2, 1>;
-
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, 0, DITHER_TARGET_BITDEPTH_4, 1>;
-
-  func_copy[make_tuple(true, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<14, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<14, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  // for RGB48 and RGB64 source
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 3, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, 0, DITHER_TARGET_BITDEPTH_8, 3>; // dither rgb_step param is filled
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 4, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, 0, DITHER_TARGET_BITDEPTH_8, 4>; // dither rgb_step param is filled
 
   //-----------
   // Floyd dither, C, dither to 8 bits
@@ -2463,43 +1365,24 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
   func_copy[make_tuple(false, 12, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<12, -1, DITHER_TARGET_BITDEPTH_8>;
   func_copy[make_tuple(false, 14, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<14, -1, DITHER_TARGET_BITDEPTH_8>;
   func_copy[make_tuple(false, 16, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8>;
-  // no dither, SSE2
-  func_copy[make_tuple(false, 10, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<10>;
-  func_copy[make_tuple(false, 12, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<12>;
-  func_copy[make_tuple(false, 14, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<14>;
-  func_copy[make_tuple(false, 16, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2<16>;
 
   // dither, C, dither to 8 bits
   func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_8>;
   func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_8>;
   func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<14, 0, DITHER_TARGET_BITDEPTH_8>;
   func_copy[make_tuple(false, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<16, 0, DITHER_TARGET_BITDEPTH_8>;
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<12, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<14, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<16, DITHER_TARGET_BITDEPTH_8>;
 
   // dither, C, dither to 6 bits, max diff 8, allowed from 10-14 bits
   func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_6>;
   func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_6>;
   func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_8_c<14, 0, DITHER_TARGET_BITDEPTH_6>;
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<12, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<14, DITHER_TARGET_BITDEPTH_6>;
 
   // dither, C, dither to 4 bits, max diff 8, allowed from 10-12 bits
   func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_4>;
   func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_4>;
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_4>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<12, DITHER_TARGET_BITDEPTH_4>;
 
   // dither, C, dither to 2 bits, max diff 8, allowed from 10 bits
   func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_2>;
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_2>;
 
   BitDepthConvFuncPtr result = func_copy[make_tuple(full_scale, source_bitdepth, dither_mode, dither_bitdepth, rgb_step, cpu)];
   if (result == nullptr)
@@ -2789,10 +1672,12 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   bits_per_pixel = vi.BitsPerComponent();
   format_change_only = false;
 
+#ifdef INTEL_INTRINSICS
   bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   bool sse4 = !!(env->GetCPUFlags() & CPUF_SSE4_1);
   bool avx =  !!(env->GetCPUFlags() & CPUF_AVX);
   bool avx2 =  !!(env->GetCPUFlags() & CPUF_AVX2);
+#endif
 
   BitDepthConvFuncPtr conv_function_full_scale;
   BitDepthConvFuncPtr conv_function_full_scale_no_dither;
@@ -2883,22 +1768,22 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
 
 // 32bit->8-16bits support fulls fulld
 #define convert_32_to_uintN_functions(uint_X_t, target_bits) \
-      conv_function_a = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, true, true> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, false, true, true> : convert_32_to_uintN_c<uint_X_t, target_bits, false, true, true>; /* full-full */ \
+      conv_function_a = convert_32_to_uintN_c<uint_X_t, target_bits, false, true, true>; /* full-full */ \
       if (fulls && fulld) { \
-        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, true, true> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, false, true, true> : convert_32_to_uintN_c<uint_X_t, target_bits, false, true, true>; \
-        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, true, true> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, true, true, true> : convert_32_to_uintN_c<uint_X_t, target_bits, true, true, true>; \
+        conv_function = convert_32_to_uintN_c<uint_X_t, target_bits, false, true, true>; \
+        conv_function_chroma = convert_32_to_uintN_c<uint_X_t, target_bits, true, true, true>; \
       } \
       else if (fulls && !fulld) { \
-        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, true, false> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, false, true, false> : convert_32_to_uintN_c<uint_X_t, target_bits, false, true, false>; \
-        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, true, false> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, true, true, false> : convert_32_to_uintN_c<uint_X_t, target_bits, true, true, false>; \
+        conv_function = convert_32_to_uintN_c<uint_X_t, target_bits, false, true, false>; \
+        conv_function_chroma = convert_32_to_uintN_c<uint_X_t, target_bits, true, true, false>; \
       } \
       else if (!fulls && fulld) { \
-        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, false, true> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, false, false, true> : convert_32_to_uintN_c<uint_X_t, target_bits, false, false, true>; \
-        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, false, true> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, true, false, true> : convert_32_to_uintN_c<uint_X_t, target_bits, true, false, true>; \
+        conv_function = convert_32_to_uintN_c<uint_X_t, target_bits, false, false, true>; \
+        conv_function_chroma = convert_32_to_uintN_c<uint_X_t, target_bits, true, false, true>; \
       } \
       else if (!fulls && !fulld) { \
-        conv_function = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, false, false, false> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, false, false, false> : convert_32_to_uintN_c<uint_X_t, target_bits, false, false, false>; \
-        conv_function_chroma = avx2 ? convert_32_to_uintN_avx2<uint_X_t, target_bits, true, false, false> : sse4 ? convert_32_to_uintN_sse41<uint_X_t, target_bits, true, false, false> : convert_32_to_uintN_c<uint_X_t, target_bits, true, false, false>; \
+        conv_function = convert_32_to_uintN_c<uint_X_t, target_bits, false, false, false>; \
+        conv_function_chroma = convert_32_to_uintN_c<uint_X_t, target_bits, true, false, false>; \
       }
 
   // ConvertTo16bit() (10, 12, 14, 16)
@@ -2919,27 +1804,27 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         switch (target_bitdepth)
         {
         case 10:
-          conv_function_full_scale = sse2 ? convert_rgb_8_to_uint16_sse2<10> : convert_rgb_8_to_uint16_c<10>;
-          conv_function_shifted_scale = sse2 ? convert_8_to_uint16_sse2<10> : convert_8_to_uint16_c<10>;
+          conv_function_full_scale = convert_rgb_8_to_uint16_c<10>;
+          conv_function_shifted_scale = convert_8_to_uint16_c<10>;
           break;
         case 12:
-          conv_function_full_scale = sse2 ? convert_rgb_8_to_uint16_sse2<12> : convert_rgb_8_to_uint16_c<12>;
-          conv_function_shifted_scale = sse2 ? convert_8_to_uint16_sse2<12> : convert_8_to_uint16_c<12>;
+          conv_function_full_scale = convert_rgb_8_to_uint16_c<12>;
+          conv_function_shifted_scale = convert_8_to_uint16_c<12>;
           break;
         case 14:
-          conv_function_full_scale = sse2 ? convert_rgb_8_to_uint16_sse2<14> : convert_rgb_8_to_uint16_c<14>;
-          conv_function_shifted_scale = sse2 ? convert_8_to_uint16_sse2<14> : convert_8_to_uint16_c<14>;
+          conv_function_full_scale = convert_rgb_8_to_uint16_c<14>;
+          conv_function_shifted_scale = convert_8_to_uint16_c<14>;
           break;
         case 16:
-          conv_function_full_scale = sse2 ? convert_rgb_8_to_uint16_sse2<16> : convert_rgb_8_to_uint16_c<16>;
-          conv_function_shifted_scale = sse2 ? convert_8_to_uint16_sse2<16> : convert_8_to_uint16_c<16>;
+          conv_function_full_scale = convert_rgb_8_to_uint16_c<16>;
+          conv_function_shifted_scale = convert_8_to_uint16_c<16>;
           break;
         default: env->ThrowError("ConvertBits: unsupported bit depth");
         }
       }
       else {
-        conv_function_full_scale = sse2 ? convert_rgb_8_to_uint16_sse2<16> : convert_rgb_8_to_uint16_c<16>;
-        conv_function_shifted_scale = sse2 ? convert_8_to_uint16_sse2<16> : convert_8_to_uint16_c<16>;
+        conv_function_full_scale = convert_rgb_8_to_uint16_c<16>;
+        conv_function_shifted_scale = convert_8_to_uint16_c<16>;
       }
 
       if (fulls)
@@ -2966,27 +1851,27 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
           if (bits_per_pixel == 16) { // 16->10/12/14 keep full range
             switch (target_bitdepth)
             {
-            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<16, 10> : sse2 ? convert_rgb_uint16_to_uint16_sse2<16, 10> : convert_rgb_uint16_to_uint16_c<16, 10>;
+            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<16, 10>;
               break;
-            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<16, 12> : sse2 ? convert_rgb_uint16_to_uint16_sse2<16, 12> : convert_rgb_uint16_to_uint16_c<16, 12>;
+            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<16, 12>;
               break;
-            case 14: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<16, 14> : sse2 ? convert_rgb_uint16_to_uint16_sse2<16, 14> : convert_rgb_uint16_to_uint16_c<16, 14>;
+            case 14: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<16, 14>;
               break;
             }
           }
           else if (bits_per_pixel == 14) { // 14->10/12 keep full range
             switch (target_bitdepth)
             {
-            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<14, 10> : sse2 ? convert_rgb_uint16_to_uint16_sse2<14, 10> : convert_rgb_uint16_to_uint16_c<14, 10>;
+            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<14, 10>;
               break;
-            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<14, 12> : sse2 ? convert_rgb_uint16_to_uint16_sse2<14, 12> : convert_rgb_uint16_to_uint16_c<14, 12>;
+            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<14, 12>;
               break;
             }
           }
           else if (bits_per_pixel == 12) { // 12->10 keep full range
             switch (target_bitdepth)
             {
-            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<12, 10> : sse2 ? convert_rgb_uint16_to_uint16_sse2<12, 10> : convert_rgb_uint16_to_uint16_c<12, 10>;
+            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<12, 10>;
               break;
             }
           }
@@ -3002,27 +1887,27 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
           if (target_bitdepth == 16) { // 10/12/14->16 keep full range
             switch (bits_per_pixel)
             {
-            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<10, 16> : sse2 ? convert_rgb_uint16_to_uint16_sse2<10, 16> : convert_rgb_uint16_to_uint16_c<10, 16>;
+            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<10, 16>;
               break;
-            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<12, 16> : sse2 ? convert_rgb_uint16_to_uint16_sse2<12, 16> : convert_rgb_uint16_to_uint16_c<12, 16>;
+            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<12, 16>;
               break;
-            case 14: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<14, 16> : sse2 ? convert_rgb_uint16_to_uint16_sse2<14, 16> : convert_rgb_uint16_to_uint16_c<14, 16>;
+            case 14: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<14, 16>;
               break;
             }
           }
           else if (target_bitdepth == 14) { // 10/12->14 keep full range
             switch (bits_per_pixel)
             {
-            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<10, 14> : sse2 ? convert_rgb_uint16_to_uint16_sse2<10, 14> : convert_rgb_uint16_to_uint16_c<10, 14>;
+            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<10, 14>;
               break;
-            case 12: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<12, 14> : sse2 ? convert_rgb_uint16_to_uint16_sse2<12, 14> : convert_rgb_uint16_to_uint16_c<12, 14>;
+            case 12: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<12, 14>;
               break;
             }
           }
           else if (target_bitdepth == 12) { // 10->12 keep full range
             switch (bits_per_pixel)
             {
-            case 10: conv_function_full_scale = sse4 ? convert_rgb_uint16_to_uint16_sse41<10, 12> : sse2 ? convert_rgb_uint16_to_uint16_sse2<10, 12> : convert_rgb_uint16_to_uint16_c<10, 12>;
+            case 10: conv_function_full_scale = convert_rgb_uint16_to_uint16_c<10, 12>;
               break;
             }
           } else {
@@ -3038,13 +1923,13 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
             switch (bits_per_pixel - target_bitdepth)
             {
             case 2:
-              conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<false, 2> : avx ? convert_uint16_to_uint16_c_avx<false, 2> : (sse2 ? convert_uint16_to_uint16_sse2<false, 2> : convert_uint16_to_uint16_c<false, 2>);
+              conv_function_shifted_scale = convert_uint16_to_uint16_c<false, 2>;
               break;
             case 4:
-              conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<false, 4> : avx ? convert_uint16_to_uint16_c_avx<false, 4> : (sse2 ? convert_uint16_to_uint16_sse2<false, 4> : convert_uint16_to_uint16_c<false, 4>);
+              conv_function_shifted_scale = convert_uint16_to_uint16_c<false, 4>;
               break;
             case 6:
-              conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<false, 6> : avx ? convert_uint16_to_uint16_c_avx<false, 6> : (sse2 ? convert_uint16_to_uint16_sse2<false, 6> : convert_uint16_to_uint16_c<false, 6>);
+              conv_function_shifted_scale = convert_uint16_to_uint16_c<false, 6>;
               break;
             }
           }
@@ -3056,9 +1941,9 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         else { // expand range
           switch (target_bitdepth - bits_per_pixel)
           {
-          case 2: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<true, 2> : avx ? convert_uint16_to_uint16_c_avx<true, 2> : (sse2 ? convert_uint16_to_uint16_sse2<true, 2> : convert_uint16_to_uint16_c<true, 2>); break;
-          case 4: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<true, 4> : avx ? convert_uint16_to_uint16_c_avx<true, 4> : (sse2 ? convert_uint16_to_uint16_sse2<true, 4> : convert_uint16_to_uint16_c<true, 4>); break;
-          case 6: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<true, 6> : avx ? convert_uint16_to_uint16_c_avx<true, 6> : (sse2 ? convert_uint16_to_uint16_sse2<true, 6> : convert_uint16_to_uint16_c<true, 6>); break;
+          case 2: conv_function_shifted_scale = convert_uint16_to_uint16_c<true, 2>; break;
+          case 4: conv_function_shifted_scale = convert_uint16_to_uint16_c<true, 4>; break;
+          case 6: conv_function_shifted_scale = convert_uint16_to_uint16_c<true, 6>; break;
           }
         }
       }
