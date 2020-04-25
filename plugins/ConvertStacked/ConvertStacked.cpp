@@ -37,7 +37,9 @@
 #include <avisynth.h>
 #include <avs/alignment.h>
 #include <cstdint>
+#ifdef INTEL_INTRINSICS
 #include <emmintrin.h>
+#endif // INTEL_INTRINSICS
 
 class ConvertToStacked : public GenericVideoFilter
 {
@@ -75,6 +77,7 @@ public:
             const int width = dst->GetRowSize(plane);
             uint8_t* lsb = msb + dst_pitch*height;
 
+#ifdef INTEL_INTRINSICS
             bool use_sse2 = (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(msb, 16) && IsPtrAligned(srcp, 16);
 
             if (use_sse2)
@@ -97,6 +100,7 @@ public:
                 } // y
             }
             else
+#endif // INTEL_INTRINSICS
             {
                 for (int y = 0; y < height; ++y) {
                     for (int x = 0; x < width; ++x) {
@@ -195,6 +199,7 @@ public:
             const int width = src->GetRowSize(plane);
             const uint8_t* lsb = msb + src_pitch*height;
 
+#ifdef INTEL_INTRINSICS
             bool use_sse2 = (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(msb, 16) && IsPtrAligned(dstp, 16);
 
             if (use_sse2)
@@ -217,7 +222,9 @@ public:
                     dstp += dst_pitch;
                 }
             }
-            else {
+            else
+#endif // INTEL_INTRINSICS
+           {
                 for (int y = 0; y < height; ++y) {
                     for (int x = 0; x < width; ++x) {
                         dstp[x] = msb[x] << 8 | lsb[x];

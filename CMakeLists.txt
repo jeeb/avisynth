@@ -185,7 +185,7 @@ if(NOT HEADERS_ONLY)
 
   ELSE()
 
-    SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 " )
+#    SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 " )
   IF(WIN32)
     SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
   ELSE()
