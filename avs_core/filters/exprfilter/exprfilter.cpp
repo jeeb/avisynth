@@ -96,7 +96,9 @@
 #define JITASM64
 #endif
 
+#ifdef INTEL_INTRINSICS
 #define VS_TARGET_CPU_X86
+#endif
 #ifdef AVS_WINDOWS
 #define VS_TARGET_OS_WINDOWS
 #endif
@@ -115,11 +117,13 @@
 
 //#define TEST_AVX2_CODEGEN_IN_AVX
 
+#ifdef INTEL_INTRINSICS
 #include <immintrin.h>
 
 #if defined(GCC) || defined(CLANG)
 #include <avxintrin.h>
 #endif
+#endif // INTEL_INTRINSICS
 
 #ifdef VS_TARGET_CPU_X86
 
@@ -3394,6 +3398,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         }
       }
 
+#ifdef INTEL_INTRINSICS
       if (optSSE2 && d.planeOptSSE2[plane]) {
 
         int nfulliterations = w / pixels_per_iter;
@@ -3433,7 +3438,9 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         operator delete[](rwptrs, (std::align_val_t)(32)); // paired with aligned new
 #endif
       }
-      else {
+      else
+#endif // INTEL_INTRINSICS
+      {
         // C version
         std::vector<float> stackVector(d.maxStackSize);
 
