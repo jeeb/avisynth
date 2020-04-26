@@ -33,11 +33,11 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "convert.h"
-#include "convert_planar.h"
-#include "convert_rgb.h"
-#include "convert_yv12.h"
-#include "convert_yuy2.h"
+#include "../convert.h"
+#include "../convert_planar.h"
+#include "../convert_rgb.h"
+#include "convert_yv12_sse.h"
+#include "../convert_yuy2.h"
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include <avs/config.h>

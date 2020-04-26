@@ -35,11 +35,11 @@
 // ConvertPlanar (c) 2005 by Klaus Post
 
 
-#include "convert.h"
-#include "convert_planar.h"
+#include "../convert.h"
+#include "../convert_planar.h"
 #include "convert_planar_avx2.h"
-#include "../filters/resample.h"
-#include "../filters/planeswap.h"
+#include "../filters/intel/resample_sse.h"
+#include "../filters/intel/planeswap_sse.h"
 #include "../filters/field.h"
 
 #ifdef AVS_WINDOWS

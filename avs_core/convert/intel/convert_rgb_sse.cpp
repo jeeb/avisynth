@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "convert_rgb.h"
+#include "../convert_rgb.h"
 #include "convert_rgb_avx2.h"
 #include <tmmintrin.h>
 #include <avs/alignment.h>

@@ -32,7 +32,7 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "convert_yv12.h"
+#include "convert_yv12_sse.h"
 #include <emmintrin.h>
 
 

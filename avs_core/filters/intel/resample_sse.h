@@ -36,7 +36,7 @@
 #define __Resample_H__
 
 #include <avisynth.h>
-#include "resample_functions.h"
+#include "../resample_functions.h"
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel, const int* pitch_table, const void* storage);

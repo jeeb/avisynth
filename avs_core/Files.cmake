@@ -44,6 +44,18 @@ IF(ENABLE_SIMD)
     "filters/conditional/intel/*.h")
   LIST(REMOVE_ITEM AvsCore_Sources "filters/conditional/conditional_functions.cpp" "filters/conditional/conditional_functions.h")
   LIST(APPEND AvsCore_Sources "${Conditional_Filter_Cpu_Sources}")
+
+  FILE(GLOB Convert_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "convert/intel/*.cpp"
+    "convert/intel/*.h")
+  LIST(REMOVE_ITEM AvsCore_Sources "convert/convert_planar.cpp"
+                                   "convert/convert_rgb.cpp"
+                                   "convert/convert.cpp"
+                                   "convert/convert.h"
+                                   "convert/convert_yuy2.cpp"
+                                   "convert/convert_yv12.cpp"
+                                   "convert/convert_yv12.h")
+  LIST(APPEND AvsCore_Sources "${Convert_Cpu_Sources}")
 ENDIF()
 
 IF( MSVC OR MINGW )

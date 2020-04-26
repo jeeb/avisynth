@@ -32,8 +32,9 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "convert_yuy2.h"
-#include "convert.h"
+#include "../convert_yuy2.h"
+#include "convert_yv12_sse.h"
+#include "../convert.h"
 #include <avs/alignment.h>
 
 #ifdef AVS_WINDOWS
