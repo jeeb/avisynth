@@ -45,6 +45,7 @@ if(NOT HEADERS_ONLY)
   set(CMAKE_CXX_EXTENSIONS FALSE)
 
   option(ENABLE_PLUGINS "Build set of default external plugins" ON)
+  option(ENABLE_SIMD "Enable SIMD intrinsics (currently Intel-only)" ON)
 
   if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
@@ -185,7 +186,9 @@ if(NOT HEADERS_ONLY)
 
   ELSE()
 
-#    SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 " )
+  if(ENABLE_SIMD)
+    SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 -DINTEL_INTRINSICS" )
+  endif()
   IF(WIN32)
     SET( CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-stdcall-fixup" )
   ELSE()
