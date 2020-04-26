@@ -34,8 +34,6 @@
 
 
 #include "limiter.h"
-#include <emmintrin.h>
-#include <smmintrin.h> // for sse41
 #include <avs/alignment.h>
 
 #ifdef AVS_WINDOWS
@@ -45,88 +43,6 @@
 #endif
 
 #include <../core/internal.h>
-
-
-//min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
-void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
-  __m128i min_vector = _mm_set1_epi16(min_value);
-  __m128i max_vector = _mm_set1_epi16(max_value);
-  BYTE* end_point = ptr + pitch * height;
-
-  while(ptr < end_point) {
-    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(ptr));
-    src = _mm_max_epu8(src, min_vector);
-    src = _mm_min_epu8(src, max_vector);
-    _mm_store_si128(reinterpret_cast<__m128i*>(ptr), src);
-    ptr += 16;
-  }
-}
-
-//min and max values are 16-bit unsigned integers
-void limit_plane_uint16_sse2(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height) {
-  __m128i min_vector = _mm_set1_epi16(min_value);
-  __m128i max_vector = _mm_set1_epi16(max_value);
-  BYTE* end_point = ptr + pitch * height;
-
-  while(ptr < end_point) {
-    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(ptr));
-    src = _MM_MAX_EPU16(src, min_vector);
-    src = _MM_MIN_EPU16(src, max_vector);
-    _mm_store_si128(reinterpret_cast<__m128i*>(ptr), src);
-    ptr += 16;
-  }
-}
-
-//min and max values are 16-bit unsigned integers
-#if defined(GCC) || defined(CLANG)
-__attribute__((__target__("sse4.1")))
-#endif
-void limit_plane_uint16_sse4(BYTE *ptr, unsigned int min_value, unsigned int max_value, int pitch, int height)
-{
-  __m128i min_vector = _mm_set1_epi16(min_value);
-  __m128i max_vector = _mm_set1_epi16(max_value);
-  BYTE* end_point = ptr + pitch * height;
-
-  while(ptr < end_point) {
-    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(ptr));
-    src = _mm_max_epu16(src, min_vector);
-    src = _mm_min_epu16(src, max_vector);
-    _mm_store_si128(reinterpret_cast<__m128i*>(ptr), src);
-    ptr += 16;
-  }
-}
-
-
-#ifdef X86_32
-
-//min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
-void limit_plane_isse(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
-  __m64 min_vector = _mm_set1_pi16(min_value);
-  __m64 max_vector = _mm_set1_pi16(max_value);
-  int mod8_width = width / 8 * 8;
-
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < mod8_width; x+=8) {
-      __m64 src = *reinterpret_cast<__m64*>(ptr+x);
-      src = _mm_max_pu8(src, min_vector);
-      src = _mm_min_pu8(src, max_vector);
-      *reinterpret_cast<__m64*>(ptr+x) = src;
-    }
-
-    if (mod8_width != width) {
-      int x = width - 8;
-      __m64 src = *reinterpret_cast<__m64*>(ptr+x);
-      src = _mm_max_pu8(src, min_vector);
-      src = _mm_min_pu8(src, max_vector);
-      *reinterpret_cast<__m64*>(ptr+x) = src;
-    }
-
-    ptr += pitch;
-  }
-  _mm_empty();
-}
-
-#endif
 
 
 Limiter::Limiter(PClip _child, float _min_luma, float _max_luma, float _min_chroma, float _max_chroma, int _show, bool paramscale, IScriptEnvironment* env) :
@@ -728,21 +644,6 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			return frame;
 		}
 
-    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
-      limit_plane_sse2(srcp, min_luma | (min_chroma << 8), max_luma | (max_chroma << 8), pitch, row_size, height);
-      return frame;
-    }
-
-    /** Run emulator if CPU supports it**/
-#ifdef X86_32
-    if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
-    {
-      //limit_plane_mmx(srcp, min_luma, max_luma, pitch, row_size, height);
-      limit_plane_isse(srcp, min_luma | (min_chroma << 8), max_luma | (max_chroma << 8), pitch, row_size, height);
-      return frame;
-    }
-#endif
-    // If not ISSE
     for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_luma )
@@ -852,59 +753,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   }
   if (vi.IsPlanar())
   {
-    //todo: separate to functions and use sse2 for aligned planes even if some are unaligned
-    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) &&
-      IsPtrAligned(frame->GetWritePtr(PLANAR_U), 16) && IsPtrAligned(frame->GetWritePtr(PLANAR_V), 16)) {
-        limit_plane_sse2(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
-
-        limit_plane_sse2(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
-          frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
-
-        limit_plane_sse2(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
-          frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
-
-        return frame;
-    }
-
-#ifdef X86_32
-    if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
-    {
-      limit_plane_isse(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
-      limit_plane_isse(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
-        frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
-      limit_plane_isse(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8),
-        frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
-
-      return frame;
-    }
-#endif
-
     if ((pixelsize == 2) && IsPtrAligned(srcp, 16) &&
       IsPtrAligned(frame->GetWritePtr(PLANAR_U), 16) && IsPtrAligned(frame->GetWritePtr(PLANAR_V), 16))
-    {
-      if (env->GetCPUFlags() & CPUF_SSE4_1) {
-        limit_plane_uint16_sse4(srcp, min_luma, max_luma, pitch, height);
-
-        limit_plane_uint16_sse4(frame->GetWritePtr(PLANAR_U), min_chroma, max_chroma,
-          frame->GetPitch(PLANAR_U), frame->GetHeight(PLANAR_U));
-
-        limit_plane_uint16_sse4(frame->GetWritePtr(PLANAR_V), min_chroma, max_chroma,
-          frame->GetPitch(PLANAR_V), frame->GetHeight(PLANAR_V));
-
-        return frame;
-      }
-      if (env->GetCPUFlags() & CPUF_SSE2) {
-        limit_plane_uint16_sse2(srcp, min_luma, max_luma, pitch, height);
-
-        limit_plane_uint16_sse2(frame->GetWritePtr(PLANAR_U), min_chroma, max_chroma,
-          frame->GetPitch(PLANAR_U), frame->GetHeight(PLANAR_U));
-
-        limit_plane_uint16_sse2(frame->GetWritePtr(PLANAR_V), min_chroma, max_chroma,
-          frame->GetPitch(PLANAR_V), frame->GetHeight(PLANAR_V));
-
-        return frame;
-      }
-    }
 
     // C
 

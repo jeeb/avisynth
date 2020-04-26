@@ -46,7 +46,6 @@
 #include <cstdint>
 #include <cmath>
 #include <avs/minmax.h>
-#include <emmintrin.h>
 #include "../core/internal.h"
 #include "../core/info.h"
 #include "../core/strings.h"
@@ -1953,73 +1952,15 @@ const char* const t_STFF="Top Field (Separated)      ";
 const char* const t_SBFF="Bottom Field (Separated)   ";
 
 
-std::string GetCpuMsg(IScriptEnvironment * env, bool avx512)
+std::string GetCpuMsg(IScriptEnvironment * env)
 {
+#ifdef INTEL_INTRINSICS
   int flags = env->GetCPUFlags();
+#else
+  int flags = 0;
+#endif
   std::stringstream ss;
 
-  if (!avx512) {
-#ifndef _M_X64
-    // don't display old capabilities when at least AVX is used
-    if (!(flags & CPUF_AVX)) {
-    //if (flags & CPUF_FPU)
-    //  ss << "x87 ";
-      if (flags & CPUF_MMX)
-        ss << "MMX ";
-      if (flags & CPUF_INTEGER_SSE)
-        ss << "ISSE ";
-
-      if (flags & CPUF_3DNOW_EXT)
-        ss << "3DNOW_EXT";
-      else if (flags & CPUF_3DNOW)
-        ss << "3DNOW ";
-    }
-
-    if (flags & CPUF_SSE)
-      ss << "SSE ";
-#endif
-    if (flags & CPUF_SSE2)
-      ss << "SSE2 ";
-    if (flags & CPUF_SSE3)
-      ss << "SSE3 ";
-    if (flags & CPUF_SSSE3)
-      ss << "SSSE3 ";
-    if (flags & CPUF_SSE4_1)
-      ss << "SSE4.1 ";
-    if (flags & CPUF_SSE4_2)
-      ss << "SSE4.2 ";
-
-    if (flags & CPUF_AVX)
-      ss << "AVX ";
-    if (flags & CPUF_AVX2)
-      ss << "AVX2 ";
-    if (flags & CPUF_FMA3)
-      ss << "FMA3 ";
-    if (flags & CPUF_FMA4)
-      ss << "FMA4 ";
-    if (flags & CPUF_F16C)
-      ss << "F16C ";
-  }
-  else {
-    if (flags & CPUF_AVX512F)
-      ss << "AVX512F ";
-    if (flags & CPUF_AVX512DQ)
-      ss << "AVX512DQ ";
-    if (flags & CPUF_AVX512PF)
-      ss << "AVX512PF ";
-    if (flags & CPUF_AVX512ER)
-      ss << "AVX512ER ";
-    if (flags & CPUF_AVX512CD)
-      ss << "AVX512CD ";
-    if (flags & CPUF_AVX512BW)
-      ss << "AVX512BW ";
-    if (flags & CPUF_AVX512VL)
-      ss << "AVX512VL ";
-    if (flags & CPUF_AVX512IFMA)
-      ss << "AVX512IFMA ";
-    if (flags & CPUF_AVX512VBMI)
-      ss << "AVX512VBMI ";
-  }
   return ss.str();
 }
 
@@ -2133,19 +2074,11 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       strcpy(text + tlen, "\n");
       tlen += 1;
     }
-    // CPU capabilities w/o AVX512
+    // CPU capabilities
     tlen += snprintf(text + tlen, sizeof(text) - tlen,
       "CPU: %s\n"
-      , GetCpuMsg(env, false).c_str()
+      , GetCpuMsg(env).c_str()
     );
-    // AVX512 flags in new line (too long)
-    std::string avx512 = GetCpuMsg(env, true);
-    if (avx512.length() > 0) {
-      tlen += snprintf(text + tlen, sizeof(text) - tlen,
-        "     %s\n"
-        , avx512.c_str()
-      );
-    }
 
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     // So far RECT dimensions were hardcoded: RECT r = { 32, 16, min(3440,vi.width * 8), 900*2 };
@@ -2538,188 +2471,6 @@ static void compare_uint16_t_c(uint64_t mask64, int increment,
 }
 
 
-static void compare_sse2(uint32_t mask, int increment,
-                         const BYTE * f1ptr, int pitch1,
-                         const BYTE * f2ptr, int pitch2,
-                         int rowsize, int height,
-                         int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
-{
-  // rowsize multiple of 16 for YUV Planar, RGB32 and YUY2; 12 for RGB24
-  // increment must be 3 for RGB24 and 4 for others
-
-  int64_t issd = 0;
-  __m128i sad_vector = _mm_setzero_si128(); //sum of absolute differences
-  __m128i sd_vector = _mm_setzero_si128(); // sum of differences
-  __m128i positive_diff = _mm_setzero_si128();
-  __m128i negative_diff = _mm_setzero_si128();
-  __m128i zero = _mm_setzero_si128();
-
-  __m128i mask64 = _mm_set_epi32(0, 0, 0, mask);
-  if (increment == 3) {
-    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 3));
-    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 6));
-  } else {
-    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 4));
-    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 8));
-  }
-
-
-
-  for (int y = 0; y < height; ++y) {
-    __m128i row_ssd = _mm_setzero_si128();  // sum of squared differences (row_SSD)
-
-    for (int x = 0; x < rowsize; x+=increment*4) {
-      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(f1ptr+x));
-      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(f2ptr+x));
-
-      src1 = _mm_and_si128(src1, mask64);
-      src2 = _mm_and_si128(src2, mask64);
-
-      __m128i diff_1_minus_2 = _mm_subs_epu8(src1, src2);
-      __m128i diff_2_minus_1 = _mm_subs_epu8(src2, src1);
-
-      positive_diff = _mm_max_epu8(positive_diff, diff_1_minus_2);
-      negative_diff = _mm_max_epu8(negative_diff, diff_2_minus_1);
-
-      __m128i absdiff1 = _mm_sad_epu8(diff_1_minus_2, zero);
-      __m128i absdiff2 = _mm_sad_epu8(diff_2_minus_1, zero);
-
-      sad_vector = _mm_add_epi32(sad_vector, absdiff1);
-      sad_vector = _mm_add_epi32(sad_vector, absdiff2);
-
-      sd_vector = _mm_add_epi32(sd_vector, absdiff1);
-      sd_vector = _mm_sub_epi32(sd_vector, absdiff2);
-
-      __m128i ssd = _mm_or_si128(diff_1_minus_2, diff_2_minus_1);
-      __m128i ssd_lo = _mm_unpacklo_epi8(ssd, zero);
-      __m128i ssd_hi = _mm_unpackhi_epi8(ssd, zero);
-      ssd_lo   = _mm_madd_epi16(ssd_lo, ssd_lo);
-      ssd_hi   = _mm_madd_epi16(ssd_hi, ssd_hi);
-      row_ssd = _mm_add_epi32(row_ssd, ssd_lo);
-      row_ssd = _mm_add_epi32(row_ssd, ssd_hi);
-    }
-
-    f1ptr += pitch1;
-    f2ptr += pitch2;
-
-    __m128i tmp = _mm_srli_si128(row_ssd, 8);
-    row_ssd = _mm_add_epi32(row_ssd, tmp);
-    tmp = _mm_srli_si128(row_ssd, 4);
-    row_ssd = _mm_add_epi32(row_ssd, tmp);
-
-    issd += _mm_cvtsi128_si32(row_ssd);
-  }
-
-  SAD_sum += _mm_cvtsi128_si32(sad_vector);
-  SAD_sum += _mm_cvtsi128_si32(_mm_srli_si128(sad_vector, 8));
-  SD_sum  += _mm_cvtsi128_si32(sd_vector);
-  SD_sum += _mm_cvtsi128_si32(_mm_srli_si128(sd_vector, 8));
-
-  BYTE posdiff_tmp[16];
-  BYTE negdiff_tmp[16];
-  _mm_store_si128(reinterpret_cast<__m128i*>(posdiff_tmp), positive_diff);
-  _mm_store_si128(reinterpret_cast<__m128i*>(negdiff_tmp), negative_diff);
-
-  SSD_sum += (double)issd;
-
-  neg_D = -neg_D; // 160801! false neg_D fix for isse
-
-  for (int i = 0; i < increment*4; ++i) {
-    pos_D = max(pos_D, (int)(posdiff_tmp[i]));
-    neg_D = max(neg_D, (int)(negdiff_tmp[i]));
-  }
-
-  neg_D = -neg_D;
-}
-
-#ifdef X86_32
-
-static void compare_isse(uint32_t mask, int increment,
-                         const BYTE * f1ptr, int pitch1,
-                         const BYTE * f2ptr, int pitch2,
-                         int rowsize, int height,
-                         int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
-{
-  // rowsize multiple of 8 for YUV Planar, RGB32 and YUY2; 6 for RGB24
-  // increment must be 3 for RGB24 and 4 for others
-
-  int64_t issd = 0;
-  __m64 sad_vector = _mm_setzero_si64(); //sum of absolute differences
-  __m64 sd_vector = _mm_setzero_si64(); // sum of differences
-  __m64 positive_diff = _mm_setzero_si64();
-  __m64 negative_diff = _mm_setzero_si64();
-  __m64 zero = _mm_setzero_si64();
-
-  __m64 mask64 = _mm_set_pi32(0, mask);
-  mask64 = _mm_or_si64(mask64, _mm_slli_si64(mask64, increment*8));
-
-
-  for (int y = 0; y < height; ++y) {
-    __m64 row_ssd = _mm_setzero_si64();  // sum of squared differences (row_SSD)
-
-    for (int x = 0; x < rowsize; x+=increment*2) {
-      __m64 src1 = *reinterpret_cast<const __m64*>(f1ptr+x);
-      __m64 src2 = *reinterpret_cast<const __m64*>(f2ptr+x);
-
-      src1 = _mm_and_si64(src1, mask64);
-      src2 = _mm_and_si64(src2, mask64);
-
-      __m64 diff_1_minus_2 = _mm_subs_pu8(src1, src2);
-      __m64 diff_2_minus_1 = _mm_subs_pu8(src2, src1);
-
-      positive_diff = _mm_max_pu8(positive_diff, diff_1_minus_2);
-      negative_diff = _mm_max_pu8(negative_diff, diff_2_minus_1);
-
-      __m64 absdiff1 = _mm_sad_pu8(diff_1_minus_2, zero);
-      __m64 absdiff2 = _mm_sad_pu8(diff_2_minus_1, zero);
-
-      sad_vector = _mm_add_pi32(sad_vector, absdiff1);
-      sad_vector = _mm_add_pi32(sad_vector, absdiff2);
-
-      sd_vector = _mm_add_pi32(sd_vector, absdiff1);
-      sd_vector = _mm_sub_pi32(sd_vector, absdiff2);
-
-      __m64 ssd = _mm_or_si64(diff_1_minus_2, diff_2_minus_1);
-      __m64 ssd_lo = _mm_unpacklo_pi8(ssd, zero);
-      __m64 ssd_hi = _mm_unpackhi_pi8(ssd, zero);
-      ssd_lo   = _mm_madd_pi16(ssd_lo, ssd_lo);
-      ssd_hi   = _mm_madd_pi16(ssd_hi, ssd_hi);
-      row_ssd = _mm_add_pi32(row_ssd, ssd_lo);
-      row_ssd = _mm_add_pi32(row_ssd, ssd_hi);
-    }
-
-    f1ptr += pitch1;
-    f2ptr += pitch2;
-
-    __m64 tmp = _mm_unpackhi_pi32(row_ssd, zero);
-    row_ssd = _mm_add_pi32(row_ssd, tmp);
-
-    issd += _mm_cvtsi64_si32(row_ssd);
-  }
-
-  SAD_sum += _mm_cvtsi64_si32(sad_vector);
-  SD_sum  += _mm_cvtsi64_si32(sd_vector);
-
-  BYTE posdiff_tmp[8];
-  BYTE negdiff_tmp[8];
-  *reinterpret_cast<__m64*>(posdiff_tmp) = positive_diff;
-  *reinterpret_cast<__m64*>(negdiff_tmp) = negative_diff;
-  _mm_empty();
-
-  SSD_sum += (double)issd;
-
-  neg_D = -neg_D; // 160801! false neg_D fix for isse
-
-  for (int i = 0; i < increment*2; ++i) {
-    pos_D = max(pos_D, (int)(posdiff_tmp[i]));
-    neg_D = max(neg_D, (int)(negdiff_tmp[i]));
-  }
-
-  neg_D = -neg_D;
-}
-
-#endif
-
 
 PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -2749,27 +2500,10 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
     bytecount = (rowsize / pixelsize) * height * masked_bytes / 4;
 
-    if (((vi.IsRGB32() && (rowsize % 16 == 0)) || (vi.IsRGB24() && (rowsize % 12 == 0)) || (vi.IsYUY2() && (rowsize % 16 == 0))) &&
-        (pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2)) // only for uint8_t (pixelsize==1), todo
-    {
-
-      compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
-    }
+    if(pixelsize==1)
+        compare_c(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
     else
-#ifdef X86_32
-    if (((vi.IsRGB32() && (rowsize % 8 == 0)) || (vi.IsRGB24() && (rowsize % 6 == 0)) || (vi.IsYUY2() && (rowsize % 8 == 0))) &&
-        (pixelsize==1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) // only for uint8_t (pixelsize==1), todo
-    {
-      compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
-    }
-    else
-#endif
-    {
-        if(pixelsize==1)
-            compare_c(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
-        else
-            compare_uint16_t_c(mask64, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
-    }
+        compare_uint16_t_c(mask64, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
   }
   else { // Planar
 
@@ -2790,24 +2524,10 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
         bytecount += (rowsize / pixelsize) * height;
 
-        if ((pixelsize==1) && (rowsize % 16 == 0) && (env->GetCPUFlags() & CPUF_SSE2))
-        {
-          compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
-        }
+        if(pixelsize==1)
+            compare_planar_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
         else
-#ifdef X86_32
-        if ((pixelsize==1) && (rowsize % 8 == 0) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
-        {
-         compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
-        }
-        else
-#endif
-        {
-            if(pixelsize==1)
-                compare_planar_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
-            else
-                compare_planar_uint16_t_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
-        }
+            compare_planar_uint16_t_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
       }
     }
   }

@@ -38,7 +38,6 @@
 #include <avs/config.h>
 #include <avs/minmax.h>
 #include <avs/alignment.h>
-#include <emmintrin.h>
 #include <limits>
 #include <algorithm>
 #include <cmath>
@@ -159,60 +158,6 @@ static double get_sum_of_pixels_c(const BYTE* srcp8, size_t height, size_t width
   return (double)accum;
 }
 
-// sum: sad with zero
-static double get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
-  size_t mod16_width = width / 16 * 16;
-  int64_t result = 0;
-  __m128i sum = _mm_setzero_si128();
-  __m128i zero = _mm_setzero_si128();
-
-  for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod16_width; x+=16) {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
-      __m128i sad = _mm_sad_epu8(src, zero);
-      sum = _mm_add_epi32(sum, sad);
-    }
-
-    for (size_t x = mod16_width; x < width; ++x) {
-      result += srcp[x];
-    }
-
-    srcp += pitch;
-  }
-  __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
-  sum = _mm_add_epi32(sum, upper);
-  result += _mm_cvtsi128_si32(sum);
-  return (double)result;
-}
-
-#ifdef X86_32
-static double get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
-  size_t mod8_width = width / 8 * 8;
-  int64_t result = 0;
-  __m64 sum = _mm_setzero_si64();
-  __m64 zero = _mm_setzero_si64();
-
-  for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod8_width; x+=8) {
-      __m64 src = *reinterpret_cast<const __m64*>(srcp + x);
-      __m64 sad = _mm_sad_pu8(src, zero);
-      sum = _mm_add_pi32(sum, sad);
-    }
-
-    for (size_t x = mod8_width; x < width; ++x) {
-      result += srcp[x];
-    }
-
-    srcp += pitch;
-  }
-  result += _mm_cvtsi64_si32(sum);
-  _mm_empty();
-  return (double)result;
-}
-#endif
-
-
-
 AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IScriptEnvironment* env)
 {
   if (!clip.IsClip())
@@ -253,14 +198,6 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
   else // worst case
     sum_in_32bits = ((int64_t)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
 
-  if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
-    sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
-  } else
-#ifdef X86_32
-  if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-    sum = get_sum_of_pixels_isse(srcp, height, width, pitch);
-  } else
-#endif
   {
     if(pixelsize==1)
       sum = get_sum_of_pixels_c<uint8_t>(srcp, height, width, pitch);
@@ -330,156 +267,6 @@ static double get_sad_rgb_c(const BYTE* c_plane8, const BYTE* t_plane8, size_t h
   return (double)accum;
 
 }
-
-#if 0
-// duplicate code, let's use sad from focus.cpp, which is good for big sads (int64)
-static size_t get_sad_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
-  size_t mod16_width = width / 16 * 16;
-  size_t result = 0;
-  __m128i sum = _mm_setzero_si128();
-  for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod16_width; x+=16) {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(src_ptr + x));
-      __m128i other = _mm_load_si128(reinterpret_cast<const __m128i*>(other_ptr + x));
-      __m128i sad = _mm_sad_epu8(src, other);
-      sum = _mm_add_epi32(sum, sad);
-    }
-
-    for (size_t x = mod16_width; x < width; ++x) {
-      result += std::abs(src_ptr[x] - other_ptr[x]);
-    }
-
-    src_ptr += src_pitch;
-    other_ptr += other_pitch;
-  }
-  __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
-  sum = _mm_add_epi32(sum, upper);
-  result += _mm_cvtsi128_si32(sum);
-  return result;
-}
-#endif
-
-#if 0
-// duplicate code, let's use sad from focus.cpp, which is good for big sads (int64)
-// for RGB32/64
-template<typename pixel_t>
-static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
-  // width is rowsize here
-  size_t mod16_width = width / 16 * 16;
-  size_t result = 0;
-  __m128i zero = _mm_setzero_si128();
-  __m128i sum = _mm_setzero_si128();
-  __m128i rgb_mask;
-  if constexpr(sizeof(pixel_t) == 1)
-    rgb_mask = _mm_set1_epi32(0x00FFFFFF);
-  else
-    rgb_mask = _mm_set_epi32(0x0000FFFF,0xFFFFFFFF,0x0000FFFF,0xFFFFFFFF);
-
-  for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod16_width; x+=16) {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(src_ptr + x));
-      __m128i other = _mm_load_si128(reinterpret_cast<const __m128i*>(other_ptr + x));
-      src = _mm_and_si128(src, rgb_mask);
-      other = _mm_and_si128(other, rgb_mask);
-      if constexpr(sizeof(pixel_t) == 1) {
-        __m128i sad = _mm_sad_epu8(src, other); // Sads in lo64/hi64
-        sum = _mm_add_epi32(sum, sad);
-      }
-      else {
-        __m128i greater_t = _mm_subs_epu16(src, other); // unsigned sub with saturation
-        __m128i smaller_t = _mm_subs_epu16(other, src);
-        __m128i absdiff = _mm_or_si128(greater_t, smaller_t); //abs(s1-s2)  == (satsub(s1,s2) | satsub(s2,s1))
-                                                              // 8 x uint16 absolute differences
-        sum = _mm_add_epi32(sum, _mm_unpacklo_epi16(absdiff, zero));
-        sum = _mm_add_epi32(sum, _mm_unpackhi_epi16(absdiff, zero));
-        // sum0_32, sum1_32, sum2_32, sum3_32
-      }
-    }
-
-    for (size_t x = mod16_width; x < width; ++x) {
-      result += std::abs(src_ptr[x] - other_ptr[x]);
-    }
-
-    src_ptr += src_pitch;
-    other_ptr += other_pitch;
-  }
-  // summing up partial sums,
-  if constexpr(sizeof(pixel_t) == 2) {
-    // at 16 bits: we have 4 integers for sum: a0 a1 a2 a3
-    __m128i a0_a1 = _mm_unpacklo_epi32(sum, zero); // a0 0 a1 0
-    __m128i a2_a3 = _mm_unpackhi_epi32(sum, zero); // a2 0 a3 0
-    sum = _mm_add_epi32( a0_a1, a2_a3 ); // a0+a2, 0, a1+a3, 0
-                                         /* SSSE3: told to be not too fast
-                                         sum = _mm_hadd_epi32(sum, zero);  // A1+A2, B1+B2, 0+0, 0+0
-                                         sum = _mm_hadd_epi32(sum, zero);  // A1+A2+B1+B2, 0+0+0+0, 0+0+0+0, 0+0+0+0
-                                         */
-  }
-
-  __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
-  sum = _mm_add_epi32(sum, upper);
-  result += _mm_cvtsi128_si32(sum);
-  return result;
-}
-#endif
-
-#ifdef X86_32
-
-static size_t get_sad_isse(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
-  size_t mod8_width = width / 8 * 8;
-  size_t result = 0;
-  __m64 sum = _mm_setzero_si64();
-
-  for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod8_width; x+=8) {
-      __m64 src = *reinterpret_cast<const __m64*>(src_ptr + x);
-      __m64 other = *reinterpret_cast<const __m64*>(other_ptr + x);
-      __m64 sad = _mm_sad_pu8(src, other);
-      sum = _mm_add_pi32(sum, sad);
-    }
-
-    for (size_t x = mod8_width; x < width; ++x) {
-      result += std::abs(src_ptr[x] - other_ptr[x]);
-    }
-
-    src_ptr += src_pitch;
-    other_ptr += other_pitch;
-  }
-  result += _mm_cvtsi64_si32(sum);
-  _mm_empty();
-  return result;
-}
-
-static size_t get_sad_rgb_isse(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
-  size_t mod8_width = width / 8 * 8;
-  size_t result = 0;
-  __m64 rgb_mask = _mm_set1_pi32(0x00FFFFFF);
-  __m64 sum = _mm_setzero_si64();
-
-  for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod8_width; x+=8) {
-      __m64 src = *reinterpret_cast<const __m64*>(src_ptr + x);
-      __m64 other = *reinterpret_cast<const __m64*>(other_ptr + x);
-      src = _mm_and_si64(src, rgb_mask);
-      other = _mm_and_si64(other, rgb_mask);
-      __m64 sad = _mm_sad_pu8(src, other);
-      sum = _mm_add_pi32(sum, sad);
-    }
-
-    for (size_t x = mod8_width; x < width; ++x) {
-      result += std::abs(src_ptr[x] - other_ptr[x]);
-    }
-
-    src_ptr += src_pitch;
-    other_ptr += other_pitch;
-  }
-  result += _mm_cvtsi64_si32(sum);
-  _mm_empty();
-  return result;
-}
-
-#endif
-
-
 
 AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane, IScriptEnvironment* env)
 {
@@ -551,17 +338,6 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
 
   // for c: width, for sse: rowsize
   if (vi.IsRGB32() || vi.IsRGB64()) {
-    if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      // int64 internally, no sum_in_32bits
-      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,true>(srcp, srcp2, pitch, pitch2, width*pixelsize, height); // in focus. 21.68/21.39
-    } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
-    } else
-#ifdef X86_32
-      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-        sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
-      } else
-#endif
       {
         if (pixelsize == 1)
           sad = (double)get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
@@ -569,17 +345,6 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
           sad = (double)get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
-    if ((pixelsize==2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
-    } else
-      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
-    } else
-#ifdef X86_32
-      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-        sad = get_sad_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
-      } else
-#endif
       {
         if(pixelsize==1)
           sad = get_sad_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
@@ -652,17 +417,6 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
   double sad = 0;
   // for c: width, for sse: rowsize
   if (vi.IsRGB32() || vi.IsRGB64()) {
-    if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      // int64 internally, no sum_in_32bits
-      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus. 21.68/21.39
-    } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
-    } else
-#ifdef X86_32
-      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-        sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
-      } else
-#endif
       {
         if(pixelsize==1)
           sad = get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
@@ -670,16 +424,6 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
           sad = get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
-    if ((pixelsize==2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
-    } else if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && rowsize >= 16) {
-      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
-    } else
-#ifdef X86_32
-      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-        sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
-      } else
-#endif
       {
         if(pixelsize==1)
           sad = get_sad_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);

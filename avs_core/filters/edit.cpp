@@ -713,7 +713,11 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
     int weight_i;
     int invweight_i;
-    MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, env->GetCPUFlags(), a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
+#ifdef INTEL_INTRINSICS
+	  MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, env->GetCPUFlags(), a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
+#else
+	  MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
+#endif
     weighted_merge_planar(a_data, b_data, a_pitch, b_pitch, row_size, height, weight, weight_i, invweight_i);
   }
   return a;

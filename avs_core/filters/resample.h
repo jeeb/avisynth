@@ -62,7 +62,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static ResamplerH GetResampler(int CPU, bool aligned, int pixelsize, int bits_per_pixel, ResamplingProgram* program, IScriptEnvironment* env);
+  static ResamplerH GetResampler(bool aligned, int pixelsize, int bits_per_pixel, ResamplingProgram* program, IScriptEnvironment* env);
 
 private:
   // Resampling
@@ -109,7 +109,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static ResamplerV GetResampler(int CPU, bool aligned, int pixelsize, int bits_per_pixel, void*& storage, ResamplingProgram* program);
+  static ResamplerV GetResampler(bool aligned, int pixelsize, int bits_per_pixel, void*& storage, ResamplingProgram* program);
 
 private:
   bool grey;

@@ -143,34 +143,10 @@ void OL_DarkenImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInte
     } else {
       // opacity == 256 && !maskMode
       if(of_darken) {
-        if (sizeof(pixel_t)==1 && (env->GetCPUFlags() & CPUF_SSE4_1)) {
-          overlay_darken_sse41((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-        } else if (sizeof(pixel_t)==1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-          overlay_darken_sse2((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-        } else
-  #ifdef X86_32
-          if (sizeof(pixel_t)==1 && (env->GetCPUFlags() & CPUF_MMX)) {
-            overlay_darken_mmx((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-          } else
-  #endif
-          {
             overlay_darken_c<pixel_t>((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-          }
       } else {
         // OF_Lighten
-        if (sizeof(pixel_t)==1 && (env->GetCPUFlags() & CPUF_SSE4_1)) {
-          overlay_lighten_sse41((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-        } else if (sizeof(pixel_t)==1 && (env->GetCPUFlags() & CPUF_SSE2)) {
-          overlay_lighten_sse2((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-        } else
-#ifdef X86_32
-          if (sizeof(pixel_t)==1 && (env->GetCPUFlags() & CPUF_MMX)) {
-            overlay_lighten_mmx((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-          } else
-#endif
-          {
             overlay_lighten_c<pixel_t>((BYTE *)baseY, (BYTE *)baseU, (BYTE *)baseV, (BYTE *)ovY, (BYTE *)ovU, (BYTE *)ovV, basepitch, overlaypitch, w, h);
-          }
       }
 
     }

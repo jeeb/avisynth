@@ -41,7 +41,6 @@
 #include <avs/minmax.h>
 #include <avs/alignment.h>
 #include "../core/internal.h"
-#include <xmmintrin.h>
 #include <algorithm>
 #include <string>
 
@@ -55,7 +54,7 @@
 extern const AVSFunction Levels_filters[] = {
   { "Levels",    BUILTIN_FUNC_PREFIX, "cfffff[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high cifiii->ffffff
   { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b[conditional]b[condvarsuffix]s", RGBAdjust::Create },
-  { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b[realcalc]b[dither_strength]f", Tweak::Create },
+  { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b[realcalc]b[dither_strength]f", Tweak::Create },
   { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b[realcalc]b", MaskHS::Create },
   { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]f[max_luma]f[min_chroma]f[max_chroma]f[show]s[paramscale]b", Limiter::Create },
   { 0 }
@@ -1461,10 +1460,10 @@ void Tweak::tweak_calc_luma(BYTE *srcp, int src_pitch, float minY, float maxY, i
   }
 }
 
-Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
+Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring,
             double _startHue, double _endHue, double _maxSat, double _minSat, double p,
             bool _dither, bool _realcalc, double _dither_strength, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), realcalc(_realcalc),
+  : GenericVideoFilter(_child), coring(_coring), dither(_dither), realcalc(_realcalc),
   dhue(_hue), dsat(_sat), dbright(_bright), dcont(_cont), dstartHue(_startHue), dendHue(_endHue),
   dmaxSat(_maxSat), dminSat(_minSat), dinterp(p), dither_strength((float)_dither_strength)
 {
@@ -1516,12 +1515,6 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   // Flag to skip special processing if doing all pixels
   // If defaults, don't check for ranges, just do all
   allPixels = (_startHue == 0.0 && _endHue == 360.0 && _maxSat == 150.0 && _minSat == 0.0);
-
-// The new "mapping" C code is faster than the iSSE code on my 3GHz P4HT - Make it optional
-  if (sse && (!allPixels || coring || dither || !vi.IsYUY2()))
-      env->ThrowError("Tweak: SSE option only available for YUY2 with coring=false and no options.");
-  if (sse && !(env->GetCPUFlags() & CPUF_INTEGER_SSE))
-      env->ThrowError("Tweak: SSE option needs an iSSE capable processor");
 
   if (vi.NumComponents() == 1) {
       if (!(_hue == 0.0 && _sat == 1.0 && allPixels))
@@ -2021,7 +2014,6 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* , IScriptEnvironment* env)
         args[3].AsDblDef(0.0),     // bright
         args[4].AsDblDef(1.0),     // cont
         args[5].AsBool(true),      // coring
-        args[6].AsBool(false),     // sse
         args[7].AsDblDef(0.0),     // startHue
         args[8].AsDblDef(360.0),   // endHue
         args[9].AsDblDef(150.0),   // maxSat

@@ -46,7 +46,6 @@
 #endif
 #include "planeswap.h"
 #include "../core/internal.h"
-#include <tmmintrin.h>
 #include <algorithm>
 #include <avs/alignment.h>
 #include "../convert/convert_planar.h"
@@ -87,63 +86,6 @@ extern const AVSFunction Swap_filters[] = {
 /**************************************
  *  Swap - swaps UV on planar maps
  **************************************/
-
-static void yuy2_swap_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
-{
-  const __m128i mask = _mm_set1_epi16(0x00FF);
-
-  for (int y = 0; y < height; ++y ) {
-    for (int x = 0; x < width; x += 16) {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
-      __m128i swapped = _mm_shufflelo_epi16(src, _MM_SHUFFLE(2, 3, 0, 1));
-      swapped = _mm_shufflehi_epi16(swapped, _MM_SHUFFLE(2, 3, 0, 1));
-      swapped = _mm_or_si128(_mm_and_si128(mask, src), _mm_andnot_si128(mask, swapped));
-      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), swapped);
-    }
-
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-#if defined(GCC) || defined(CLANG)
-__attribute__((__target__("ssse3")))
-#endif
-static void yuy2_swap_ssse3(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
-{
-  const __m128i mask = _mm_set_epi8(13, 14, 15, 12, 9, 10, 11, 8, 5, 6, 7, 4, 1, 2, 3, 0);
-
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; x += 16) {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
-      __m128i dst = _mm_shuffle_epi8(src, mask);
-      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), dst);
-    }
-
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-#ifdef X86_32
-static void yuy2_swap_isse(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
-{
-  __m64 mask = _mm_set1_pi16(0x00FF);
-
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; x+= 8) {
-      __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
-      __m64 swapped = _mm_shuffle_pi16(src, _MM_SHUFFLE(2, 3, 0, 1));
-      swapped = _mm_or_si64(_mm_and_si64(mask, src), _mm_andnot_si64(mask, swapped));
-      *reinterpret_cast<__m64*>(dstp + x) = swapped;
-    }
-
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-  _mm_empty();
-}
-#endif
 
 static void yuy2_swap_c(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
 {
@@ -200,16 +142,7 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
   int dst_pitch = dst->GetPitch();
   int rowsize = src->GetRowSize();
 
-  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16))
-    yuy2_swap_ssse3(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
-  else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16))
-    yuy2_swap_sse2(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
-#ifdef X86_32
-  else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) // need pshufw
-    yuy2_swap_isse(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
-#endif
-  else
-    yuy2_swap_c(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
+  yuy2_swap_c(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
   return dst;
 }
 
@@ -328,47 +261,6 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   }
 }
 
-static void yuy2_uvtoy_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int dst_width, int height, int pos)
-{
-  const __m128i chroma = _mm_set1_epi32(0x80008000);
-  const __m128i mask = _mm_set1_epi32(0x000000FF);
-  pos *= 8;
-
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < dst_width; x += 16) {
-      __m128i s0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 2 * x));
-      __m128i s1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 2 * x + 16));
-      s0 = _mm_and_si128(mask, _mm_srli_epi32(s0, pos));
-      s1 = _mm_and_si128(mask, _mm_srli_epi32(s1, pos));
-      s0 = _mm_packs_epi32(s0, s1);
-      s0 = _mm_or_si128(s0, chroma);
-      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), s0);
-    }
-    srcp += src_pitch;
-    dstp += dst_pitch;
-  }
-}
-
-static void yuy2_uvtoy8_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int dst_width, int height, int pos)
-{
-  const __m128i mask = _mm_set1_epi32(0x000000FF);
-  pos *= 8;
-
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < dst_width; x += 8) {
-      __m128i s0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4 * x));
-      __m128i s1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4 * x + 16));
-      s0 = _mm_and_si128(mask, _mm_srli_epi32(s0, pos));
-      s1 = _mm_and_si128(mask, _mm_srli_epi32(s1, pos));
-      s0 = _mm_packs_epi32(s0, s1);
-      s0 = _mm_packus_epi16(s0, s0);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + x), s0);
-    }
-    srcp += src_pitch;
-    dstp += dst_pitch;
-  }
-}
-
 template <typename T>
 static void fill_plane(BYTE* dstp, int rowsize, int height, int pitch, T val)
 {
@@ -412,10 +304,6 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
 
     if (vi.IsYUY2()) {  // YUY2 To YUY2
       int rowsize = dst->GetRowSize();
-      if (env->GetCPUFlags() & CPUF_SSE2) {
-        yuy2_uvtoy_sse2(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height, pos);
-        return dst;
-      }
 
       srcp += pos;
       for (int y = 0; y < vi.height; ++y) {
@@ -430,11 +318,6 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     }
 
     // YUY2 to Y8
-    if (env->GetCPUFlags() & CPUF_SSE2) {
-      yuy2_uvtoy8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, pos);
-      return dst;
-    }
-
     srcp += pos;
     for (int y = 0; y < vi.height; ++y) {
       for (int x = 0; x < vi.width; ++x) {
@@ -590,40 +473,6 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, PClip _clipA, IScr
 }
 
 template <bool has_clipY>
-static void yuy2_ytouv_sse2(const BYTE* srcp_y, const BYTE* srcp_u, const BYTE* srcp_v, BYTE* dstp, int pitch_y, int pitch_u, int pitch_v, int dst_pitch, int dst_rowsize, int height)
-{
-  const __m128i mask = _mm_set1_epi16(0x00FF);
-  const __m128i zero = _mm_setzero_si128();
-  const __m128i fill = _mm_set1_epi16(0x007e);
-
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < dst_rowsize; x += 32) {
-      __m128i u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_u + x / 2));
-      __m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_v + x / 2));
-      __m128i uv = _mm_or_si128(_mm_and_si128(u, mask), _mm_slli_epi16(v, 8));
-      __m128i uv_lo = _mm_unpacklo_epi8(zero, uv);
-      __m128i uv_hi = _mm_unpackhi_epi8(zero, uv);
-      if (has_clipY) {
-        __m128i y_lo = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_y + x));
-        __m128i y_hi = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp_y + x + 16));
-        uv_lo = _mm_or_si128(uv_lo, _mm_and_si128(y_lo, mask));
-        uv_hi = _mm_or_si128(uv_hi, _mm_and_si128(y_hi, mask));
-      }
-      else {
-        uv_lo = _mm_or_si128(uv_lo, fill);
-        uv_hi = _mm_or_si128(uv_hi, fill);
-      }
-      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x), uv_lo);
-      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x + 16), uv_hi);
-    }
-    srcp_y += pitch_y;
-    srcp_u += pitch_u;
-    srcp_v += pitch_v;
-    dstp += dst_pitch;
-  }
-}
-
-template <bool has_clipY>
 static void yuy2_ytouv_c(const BYTE* src_y, const BYTE* src_u, const BYTE* src_v, BYTE* dstp, int pitch_y, int pitch_u, int pitch_v, int dst_pitch, int dst_rowsize, int height)
 {
   for (int y = 0; y < height; ++y) {
@@ -661,13 +510,8 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
       const BYTE* srcp_y = srcy->GetReadPtr();
       const int pitch_y = srcy->GetPitch();
 
-      if (env->GetCPUFlags() & CPUF_SSE2)
-        yuy2_ytouv_sse2<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
-      else
-        yuy2_ytouv_c<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
+      yuy2_ytouv_c<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
     }
-    else if (env->GetCPUFlags() & CPUF_SSE2)
-      yuy2_ytouv_sse2<false>(nullptr, srcp_u, srcp_v, dstp, 0, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
     else
       yuy2_ytouv_c<false>(nullptr, srcp_u, srcp_v, dstp, 0, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
 

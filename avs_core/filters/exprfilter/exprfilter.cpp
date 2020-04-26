@@ -5308,6 +5308,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         }
       }
 
+#ifdef INTEL_INTRINSICS
       // Check CPU instuction level constraints:
       // opLoadRel8/16/32: minimum SSSE3 (pshufb, alignr) for SIMD, and no AVX2 support
       // Trig.func: C only
@@ -5328,6 +5329,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
           break;
         }
       }
+#endif
 
     }
 

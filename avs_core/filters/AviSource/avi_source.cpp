@@ -43,8 +43,10 @@
 #include "avi_source.h"
 #include <vfw.h>
 #include <avs/minmax.h>
+#ifdef INTEL_INTRINSICS
 #include <emmintrin.h>
 #include <tmmintrin.h>
+#endif
 
 #include "../../core/AviHelper.h"
 
@@ -219,6 +221,7 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
 
         int srcpitch = frame->GetPitch();
         const BYTE *src = frame->GetPtr();
+#ifdef INTEL_INTRINSICS
         const bool ssse3 = (env->GetCPUFlags() & CPUF_SSSE3) != 0;
         const bool sse2 = (env->GetCPUFlags() & CPUF_SSE2) != 0;
         if (ssse3)
@@ -226,6 +229,7 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
         else if (sse2)
           bgra_to_argbBE_sse2(pdst, pitch, src, srcpitch, vi.width, vi.height);
         else
+#endif // INTEL_INTRINSICS
           bgra_to_argbBE_c(pdst, pitch, src, srcpitch, vi.width, vi.height);
       }
       else if (b48r) {

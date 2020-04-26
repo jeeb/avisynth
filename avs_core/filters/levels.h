@@ -182,7 +182,7 @@ private:
 class Tweak : public GenericVideoFilter
 {
 public:
-  Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
+  Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring,
     double _startHue, double _endHue, double _maxSat, double _minSat, double _interp,
     bool _dither, bool _realcalc, double _dither_strength, IScriptEnvironment* env);
 
@@ -204,7 +204,7 @@ private:
 
     int Sin, Cos;
     int Sat, Bright, Cont;
-    bool coring, sse, dither;
+    bool coring, dither;
 
     const bool realcalc; // no lookup, realtime calculation, always for 16/32 bits
     double dhue, dsat, dbright, dcont, dstartHue, dendHue, dmaxSat, dminSat, dinterp;
