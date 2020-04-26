@@ -38,6 +38,14 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
 
 )
 
+IF(ENABLE_SIMD)
+  FILE(GLOB Conditional_Filter_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "filters/conditional/intel/*.cpp"
+    "filters/conditional/intel/*.h")
+  LIST(REMOVE_ITEM AvsCore_Sources "filters/conditional/conditional_functions.cpp" "filters/conditional/conditional_functions.h")
+  LIST(APPEND AvsCore_Sources "${Conditional_Filter_Cpu_Sources}")
+ENDIF()
+
 IF( MSVC OR MINGW )
 # AviSource is Windows-only, because it depends on Video for Windows
   FILE(GLOB AvsCore_Sources_AviSource RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
