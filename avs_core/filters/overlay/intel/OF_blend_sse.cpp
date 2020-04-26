@@ -34,7 +34,7 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "overlayfunctions.h"
+#include "overlayfunctions_sse.h"
 #include <emmintrin.h>
 
 #include <stdint.h>

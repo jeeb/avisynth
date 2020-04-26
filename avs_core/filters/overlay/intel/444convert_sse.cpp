@@ -34,8 +34,8 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "444convert.h"
-#include "../../core/internal.h"
+#include "444convert_sse.h"
+#include "../core/internal.h"
 #include <emmintrin.h>
 #include <smmintrin.h>
 #include <avs/alignment.h>

@@ -36,8 +36,8 @@
 
 #include <avs/config.h>
 
-#include "blend_common.h"
-#include "overlayfunctions.h"
+#include "blend_common_sse.h"
+#include "overlayfunctions_sse.h"
 
 // Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
 #include <emmintrin.h>
