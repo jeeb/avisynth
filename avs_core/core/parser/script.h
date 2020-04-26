@@ -261,7 +261,9 @@ AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetCacheMode(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetDeviceOpt(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
+#ifdef INTEL_INTRINSICS
 AVSValue SetMaxCPU(AVSValue args, void*, IScriptEnvironment* env); // 20200331
+#endif
 
 AVSValue IsY(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Is420(AVSValue args, void*, IScriptEnvironment* env);

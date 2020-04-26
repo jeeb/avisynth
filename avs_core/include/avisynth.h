@@ -1606,7 +1606,9 @@ public:
 
   // Generic system to ask for various properties
   virtual size_t  __stdcall GetEnvProperty(AvsEnvProperty prop) = 0;
+#ifdef INTEL_INTRINSICS
   virtual int __stdcall GetCPUFlags() = 0;
+#endif
 
   // Plugin functions
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;

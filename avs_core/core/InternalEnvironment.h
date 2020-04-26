@@ -89,7 +89,9 @@ public:
   typedef IScriptEnvironment::ApplyFunc ApplyFunc;
 
   // IScriptEnvironment
+#ifdef INTEL_INTRINSICS
   virtual int __stdcall GetCPUFlags() = 0;
+#endif
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
   virtual char* Sprintf(const char* fmt, ...) = 0;
   virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
@@ -208,8 +210,9 @@ public:
   virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...) = 0;
   virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va) = 0;
   virtual void __stdcall VThrowError(const char* fmt, va_list va) = 0;
+#ifdef INTEL_INTRINSICS
   virtual void __stdcall SetMaxCPU(const char *feature) = 0;
-
+#endif
 
   virtual IScriptEnvironment2* __stdcall GetEnv2() final { return this; }
 
