@@ -33,8 +33,8 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "conditional_functions.h"
-#include "../../core/internal.h"
+#include "conditional_functions_sse.h"
+#include "../core/internal.h"
 #include <avs/config.h>
 #include <avs/minmax.h>
 #include <avs/alignment.h>
@@ -42,7 +42,7 @@
 #include <limits>
 #include <algorithm>
 #include <cmath>
-#include "../focus.h" // sad
+#include "../../intel/focus_sse.h" // sad
 #include "../core/AVSMap.h"
 
 extern const AVSFunction Conditional_funtions_filters[] = {
