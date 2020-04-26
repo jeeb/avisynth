@@ -74,8 +74,10 @@ enum {
 };
 
 #ifdef BUILDING_AVSCORE
+#ifdef INTEL_INTRINSICS
 int GetCPUFlags();
 void SetMaxCPU(int new_flags);
+#endif
 #endif
 
 #endif // AVSCORE_CPUID_H

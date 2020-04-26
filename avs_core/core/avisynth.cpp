@@ -2855,7 +2855,9 @@ void ScriptEnvironment::CheckVersion(int version) {
     ThrowError("Plugin was designed for a later version of Avisynth (%d)", version);
 }
 
+#ifdef INTEL_INTRINSICS
 int ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
+#endif
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
   this->AddFunction(name, params, apply, user_data, NULL);

@@ -47,10 +47,12 @@
 #include <limits.h>
 #endif
 #include "InternalEnvironment.h"
+#ifdef INTEL_INTRINSICS
 #ifdef AVS_WINDOWS
 #include <intrin.h>
 #else
 #include <x86intrin.h>
+#endif
 #endif
 
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
@@ -72,7 +74,9 @@ enum MANAGE_CACHE_KEYS
 };
 
 #include <avisynth.h>
+#ifdef INTEL_INTRINSICS
 #include <emmintrin.h>
+#endif
 #include <string>
 #include "function.h"
 
@@ -214,6 +218,7 @@ static AVS_FORCEINLINE bool IsClose(int a, int b, unsigned threshold)
 static AVS_FORCEINLINE bool IsCloseFloat(float a, float b, float threshold)
 { return (a-b+threshold <= threshold*2); }
 
+#ifdef INTEL_INTRINSICS
 // useful SIMD helpers
 
 // sse2 replacement of _mm_mullo_epi32 in SSE4.1
@@ -284,6 +289,7 @@ static AVS_FORCEINLINE __m128i _MM_MAX_EPU16(__m128i x, __m128i y)
   // Returns x where x >= y, else y:
   return _MM_BLENDV_SI128(x, y, _MM_CMPLE_EPU16(x, y));
 }
+#endif
 
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                              \

@@ -1215,13 +1215,16 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
     const uint8_t *aptr = frame->GetReadPtr(PLANAR_A);
     uint8_t *outbuf = (uint8_t *)lpBuffer;
     int out_pitch = width * 4 * sizeof(uint16_t);
+#ifdef INTEL_INTRINSICS
     if ((parent->env->GetCPUFlags() & CPUF_SSE2) != 0) {
       if (hasAlpha)
         ToY416_sse2<true>(outbuf, out_pitch, yptr, ppitch_y, uptr, vptr, ppitch_uv, aptr, ppitch_a, width, height);
       else
         ToY416_sse2<false>(outbuf, out_pitch, yptr, ppitch_y, uptr, vptr, ppitch_uv, aptr, ppitch_a, width, height);
     }
-    else {
+    else
+#endif
+    {
       if (hasAlpha)
         ToY416_c<true>(outbuf, out_pitch, yptr, ppitch_y, uptr, vptr, ppitch_uv, aptr, ppitch_a, width, height);
       else
@@ -1282,8 +1285,10 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   bool semi_packed_p10 = (vi.pixel_type == VideoInfo::CS_YUV420P10) || (vi.pixel_type == VideoInfo::CS_YUV422P10) ;
   bool semi_packed_p16 = (vi.pixel_type == VideoInfo::CS_YUV420P16) || (vi.pixel_type == VideoInfo::CS_YUV422P16) ;
 
+#ifdef INTEL_INTRINSICS
   const bool ssse3 = (parent->env->GetCPUFlags() & CPUF_SSSE3) != 0;
   const bool sse2 = (parent->env->GetCPUFlags() & CPUF_SSE2) != 0;
+#endif
 
   if ((vi.pixel_type == VideoInfo::CS_YUV420P10) || (vi.pixel_type == VideoInfo::CS_YUV420P16) ||
       ((vi.pixel_type == VideoInfo::CS_YUV422P10) && !parent->Enable_Y3_10_10 && !parent->Enable_V210) ||
@@ -1310,11 +1315,13 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
 
       int srcpitch = frame->GetPitch();
       const BYTE *src = frame->GetReadPtr();
+#ifdef INTEL_INTRINSICS
       if (ssse3)
         bgra_to_argbBE_ssse3(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
       else if (sse2)
         bgra_to_argbBE_sse2(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
       else
+#endif
         bgra_to_argbBE_c(pdst, -out_pitch, src, srcpitch, vi.width, vi.height);
     }
     else if (vi.IsRGB48() || vi.IsRGB64())

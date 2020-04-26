@@ -35,6 +35,7 @@
 
 #include <avisynth.h>
 #include "internal.h"
+#ifdef INTEL_INTRINSICS
 #ifdef AVS_WINDOWS
 #include <intrin.h>
 #else
@@ -43,6 +44,7 @@
 #include <smmintrin.h> // SSE4.1
 #include <emmintrin.h>
 #include <tmmintrin.h>
+#endif
 
 int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k, bool v308, bool v408) {
   int image_size;
@@ -100,6 +102,7 @@ int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bo
   return image_size;
 }
 
+#ifdef INTEL_INTRINSICS
 template<bool hasAlpha>
 void ToY416_sse2(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height)
 {
@@ -142,6 +145,7 @@ void ToY416_sse2(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch
 // instantiate
 template void ToY416_sse2<false>(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height);
 template void ToY416_sse2<true>(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height);
+#endif
 
 template<bool hasAlpha>
 void ToY416_c(uint8_t *outbuf8, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height)
@@ -253,6 +257,7 @@ static AVS_FORCEINLINE uint64_t swap64(uint64_t x) {
   return x;
 }
 
+#ifdef INTEL_INTRINSICS
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
 #endif
@@ -276,6 +281,7 @@ static AVS_FORCEINLINE __m128i _mm_bswap_epi64_sse2(__m128i x)
 
   return a;
 }
+#endif // INTEL_INTRINSICS
 
 static AVS_FORCEINLINE uint16_t swap16(uint16_t x) {
   return (x & 0x00FF) << 8 | (x & 0xFF00) >> 8;
@@ -303,6 +309,7 @@ void bgr_to_rgbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitc
   }
 }
 
+#ifdef INTEL_INTRINSICS
 // 4x16: two-way symmetric
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("ssse3")))
@@ -344,6 +351,7 @@ void bgra_to_argbBE_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int sr
     pdst += dstpitch;
   }
 }
+#endif // INTEL_INTRINSICS
 
 // 4x16: two-way symmetric
 void bgra_to_argbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
@@ -376,6 +384,7 @@ static void prepare_luma_shift6_c(uint8_t* pdst, int dstpitch, const uint8_t *sr
   }
 }
 
+#ifdef INTEL_INTRINSICS
 template<bool before>
 static void prepare_luma_shift6_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
 {
@@ -400,6 +409,7 @@ static void prepare_luma_shift6_sse2(uint8_t* pdst, int dstpitch, const uint8_t 
     pdst += dstpitch;
   }
 }
+#endif // INTEL_INTRINSICS
 
 template<bool shift6>
 static void prepare_to_interleaved_uv_c(uint8_t* pdst, int dstpitch, const uint8_t *srcu, const uint8_t *srcv, int pitchUV, int width, int height)
@@ -424,6 +434,7 @@ static void prepare_to_interleaved_uv_c(uint8_t* pdst, int dstpitch, const uint8
   }
 }
 
+#ifdef INTEL_INTRINSICS
 template<bool shift6>
 static void prepare_to_interleaved_uv_sse2(uint8_t* pdst, int dstpitch, const uint8_t *srcu, const uint8_t *srcv, int pitchUV, int width, int height)
 {
@@ -461,6 +472,7 @@ static void prepare_to_interleaved_uv_sse2(uint8_t* pdst, int dstpitch, const ui
     pdst += dstpitch;
   }
 }
+#endif // INTEL_INTRINSICS
 
 template<bool shift6>
 static void prepare_from_interleaved_uv_c(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
@@ -483,6 +495,7 @@ static void prepare_from_interleaved_uv_c(uint8_t* pdstu, uint8_t* pdstv, int pi
   }
 }
 
+#ifdef INTEL_INTRINSICS
 template<bool shift6>
 static void prepare_from_interleaved_uv_sse2(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
 {
@@ -569,6 +582,7 @@ static void prepare_from_interleaved_uv_sse41(uint8_t* pdstu, uint8_t* pdstv, in
     src += srcpitch;
   }
 }
+#endif // INTEL_INTRINSICS
 
 
 void yuv422p10_to_v210(BYTE *dstp, const BYTE *srcp_y, int srcpitch, const BYTE *srcp_u, const BYTE *srcp_v, int srcpitch_uv, int width, int height)
@@ -797,7 +811,9 @@ void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int s
   // or n lines UVUVUVUVUVUVUV (4:2:2)
   // Pitch is common. P010/P210 is upshifted to 16 bits
 
+#ifdef INTEL_INTRINSICS
   const bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+#endif
 
   // luma
   if (semi_packed_p16) {
@@ -806,9 +822,11 @@ void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int s
   }
   else {
     // shift by 6 make 10->16 bits
+#ifdef INTEL_INTRINSICS
     if (sse2)
       prepare_luma_shift6_sse2<true>(dstp, dstpitch, srcp_y, srcpitch, width, height); // true: conv to P016
     else
+#endif // INTEL_INTRINSICS
       prepare_luma_shift6_c<true>(dstp, dstpitch, srcp_y, srcpitch, width, height); // true: conv to P016
   }
 
@@ -817,6 +835,7 @@ void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int s
   // Chroma
   int cwidth = width / 2;
 
+#ifdef INTEL_INTRINSICS
   if (sse2) {
     if (semi_packed_p16)
       prepare_to_interleaved_uv_sse2<false>(dstp, dstpitch, srcp_u, srcp_v, srcpitch_uv, cwidth, cheight);
@@ -824,11 +843,14 @@ void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int s
       prepare_to_interleaved_uv_sse2<true>(dstp, dstpitch, srcp_u, srcp_v, srcpitch_uv, cwidth, cheight); // shift6 inside
   }
   else {
+#endif // INTEL_INTRINSICS
     if (semi_packed_p16)
       prepare_to_interleaved_uv_c<false>(dstp, dstpitch, srcp_u, srcp_v, srcpitch_uv, cwidth, cheight);
     else
       prepare_to_interleaved_uv_c<true>(dstp, dstpitch, srcp_u, srcp_v, srcpitch_uv, cwidth, cheight); // shift6 inside
+#ifdef INTEL_INTRINSICS
   }
+#endif // INTEL_INTRINSICS
 
 }
 
@@ -836,8 +858,10 @@ void Px10_16_to_yuv42xp10_16(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dst
   const BYTE *srcp, int srcpitch,
   int width, int height, int cheight, bool semi_packed_p16, IScriptEnvironment *env)
 {
+#ifdef INTEL_INTRINSICS
   const bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   const bool sse41 = !!(env->GetCPUFlags() & CPUF_SSE4_1);
+#endif
 
   // convert P010, P016, P210 and P216 formats back to Avisynth YUV420P10 and P16 or YUV422P10 and P16 formats
 
@@ -847,15 +871,18 @@ void Px10_16_to_yuv42xp10_16(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dst
   }
   else {
     // shift by 6 make 10->16 bits
+#ifdef INTEL_INTRINSICS
     if (sse2)
       prepare_luma_shift6_sse2<false>(dstp_y, dstpitch, srcp, srcpitch, width, height); // false: after
     else
+#endif
       prepare_luma_shift6_c<false>(dstp_y, dstpitch, srcp, srcpitch, width, height); // false: after
   }
   srcp += srcpitch * height;
 
   // Chroma
   int cwidth = width / 2; // 422 or 420
+#ifdef INTEL_INTRINSICS
   if (sse41) {
     if (semi_packed_p16)
       prepare_from_interleaved_uv_sse41<false>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight);
@@ -869,10 +896,13 @@ void Px10_16_to_yuv42xp10_16(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dst
       prepare_from_interleaved_uv_sse2<true>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight); // true: shift 6
   }
   else {
+#endif // INTEL_INTRINSICS
     if (semi_packed_p16)
       prepare_from_interleaved_uv_c<false>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight);
     else
       prepare_from_interleaved_uv_c<true>(dstp_u, dstp_v, dstpitch_uv, srcp, srcpitch, cwidth, cheight); // true: shift 6
+#ifdef INTEL_INTRINSICS
   }
+#endif
 }
 

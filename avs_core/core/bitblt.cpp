@@ -36,6 +36,7 @@
 #include <cstring>
 #include <cassert>
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC_PURE)
 
 // Assembler bitblit by Steady
@@ -255,11 +256,13 @@ memoptA_done8:
 }//end BitBlt_memopt()
 
 #endif //X86_32
+#endif // INTEL_INTRINSICS
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height)
 {
   if ( (!height) || (!row_size) ) return;
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC_PURE)
   const int cpuf = GetCPUFlags();
   if ((cpuf & CPUF_INTEGER_SSE) && !(cpuf & CPUF_AVX))
@@ -272,6 +275,7 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
     return;
   }
 #endif
+#endif // INTEL_INTRINSICS
 
   if (height == 1 || (dst_pitch == src_pitch && src_pitch == row_size)) {
     memcpy(dstp, srcp, row_size*height);

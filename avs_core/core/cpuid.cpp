@@ -18,6 +18,7 @@
 //	along with this program; if not, write to the Free Software
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+#ifdef INTEL_INTRINSICS
 #include <avs/cpuid.h>
 #include <avs/config.h>
 #include <stdint.h>
@@ -100,9 +101,9 @@ static int CPUCheckForExtensions()
     }
     if((xgetbv0_32 & (0x7u << 5)) && // OPMASK: upper-256 enabled by OS
        (xgetbv0_32 & (0x3u << 1))) { // XMM/YMM enabled by OS
-      // Verify that XCR0[7:5] = ‘111b’ (OPMASK state, upper 256-bit of ZMM0-ZMM15 and
+      // Verify that XCR0[7:5] = â€˜111bâ€™ (OPMASK state, upper 256-bit of ZMM0-ZMM15 and
       // ZMM16-ZMM31 state are enabled by OS)
-      /// and that XCR0[2:1] = ‘11b’ (XMM state and YMM state are enabled by OS).
+      /// and that XCR0[2:1] = â€˜11bâ€™ (XMM state and YMM state are enabled by OS).
       __cpuid(cpuinfo, 7);
       if (IS_BIT_SET(cpuinfo[1], 16))
         result |= CPUF_AVX512F;
@@ -177,3 +178,4 @@ int GetCPUFlags() {
 void SetMaxCPU(int new_flags) {
   _CPUFlags::getInstance().SetCPUFlags(new_flags);
 }
+#endif

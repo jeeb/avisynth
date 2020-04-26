@@ -396,6 +396,7 @@ void __stdcall MergeChannels::GetAudio(void* buf, int64_t start, int64_t count, 
         break;
       }
 	case 8: { // stereo float/32 bit
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
 		if (env->GetCPUFlags() & CPUF_MMX)
     {
@@ -432,6 +433,7 @@ void __stdcall MergeChannels::GetAudio(void* buf, int64_t start, int64_t count, 
     }
 		else
 #endif // X86_32
+#endif
     {
       for (int l = 0, k=dst_offset; l < count; l++, k+=bps)
       {
@@ -1304,6 +1306,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, int64_t start, int64_t count, 
 
 	short* dst_end = &dst[count * ch];
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC_PURE)
 	if (env->GetCPUFlags() & CPUF_MMX)
   {
@@ -1392,6 +1395,7 @@ nofix:
 	}
 	else
 #endif // X86_32
+#endif
   {
 	  while (dst < dst_end) {
 		for (int q = 0; q < ch; q++) {
@@ -1473,6 +1477,7 @@ AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment*
 }
 
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC_PURE)
 
 // FilterUD MMX SAMPLE_INT16 Version -- approx 3.25 times faster than original (2.4x than new)
@@ -1537,6 +1542,7 @@ donone:
 }
 #pragma warning( pop )
 #endif // X86_32
+#endif
 
 
 // FilterUD SAMPLE_INT16 Version
