@@ -182,8 +182,6 @@ if(NOT HEADERS_ONLY)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive-")
     endif()
 
-    SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DENABLE_FILTER_TEXTOVERLAY" )
-
   ELSE()
 
   if(ENABLE_SIMD)
