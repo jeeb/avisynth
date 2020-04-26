@@ -45,7 +45,7 @@ if(NOT HEADERS_ONLY)
   set(CMAKE_CXX_EXTENSIONS FALSE)
 
   option(ENABLE_PLUGINS "Build set of default external plugins" ON)
-  option(ENABLE_SIMD "Enable SIMD intrinsics (currently Intel-only)" ON)
+  option(ENABLE_INTEL_SIMD "Enable SIMD intrinsics for Intel processors" ON)
 
   if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
@@ -184,7 +184,7 @@ if(NOT HEADERS_ONLY)
 
   ELSE()
 
-  if(ENABLE_SIMD)
+  if(ENABLE_INTEL_SIMD)
     SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 -DINTEL_INTRINSICS" )
   endif()
   IF(WIN32)

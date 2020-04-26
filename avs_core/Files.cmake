@@ -38,7 +38,7 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
 
 )
 
-IF(ENABLE_SIMD)
+IF(ENABLE_INTEL_SIMD)
   FILE(GLOB Conditional_Filter_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "filters/conditional/intel/*.cpp"
     "filters/conditional/intel/*.h")
