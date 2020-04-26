@@ -37,7 +37,11 @@
 
 #include <avisynth.h>
 
+#ifdef INTEL_INTRINSICS
+#include "intel/convert_yv12_sse.h"
+#else
 #include "convert_yv12.h"
+#endif
 #include "convert_planar.h" // 2.60
 
 class ConvertToYUY2 : public GenericVideoFilter

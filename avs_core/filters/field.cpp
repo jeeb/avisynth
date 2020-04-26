@@ -34,7 +34,11 @@
 
 
 #include "field.h"
+#ifdef INTEL_INTRINSICS
+#include "intel/resample_sse.h"
+#else
 #include "resample.h"
+#endif
 #include <avs/minmax.h>
 #include "../core/internal.h"
 
