@@ -38,9 +38,9 @@
 **
 */
 
-#include "turn.h"
-#include "resample.h"
-#include "planeswap.h"
+#include "turn_sse.h"
+#include "resample_sse.h"
+#include "planeswap_sse.h"
 #include "../core/internal.h"
 #include <tmmintrin.h>
 #include <stdint.h>

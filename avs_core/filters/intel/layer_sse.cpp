@@ -37,7 +37,7 @@
 // Avisynth filter: Layer
 // by "poptones" (poptones@myrealbox.com)
 
-#include "layer.h"
+#include "layer_sse.h"
 
 #ifdef AVS_WINDOWS
     #include <avs/win.h>

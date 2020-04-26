@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "greyscale.h"
+#include "greyscale_sse.h"
 #include "../core/internal.h"
 #include <emmintrin.h>
 #include <smmintrin.h>

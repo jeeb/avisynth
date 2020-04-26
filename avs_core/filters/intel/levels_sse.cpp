@@ -33,9 +33,9 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "levels.h"
+#include "levels_sse.h"
 #include <float.h>
-#include "limiter.h"
+#include "limiter_sse.h"
 #include <cstdio>
 #include <cmath>
 #include <avs/minmax.h>

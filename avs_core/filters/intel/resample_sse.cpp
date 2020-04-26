@@ -32,13 +32,13 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "resample.h"
+#include "resample_sse.h"
 #include "resample_avx2.h"
 #include <avs/config.h>
 #include "../core/internal.h"
 
-#include "transform.h"
-#include "turn.h"
+#include "../transform.h"
+#include "turn_sse.h"
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include "../convert/convert_planar.h"

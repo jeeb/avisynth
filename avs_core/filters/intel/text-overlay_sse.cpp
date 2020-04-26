@@ -39,7 +39,7 @@
 #include <avs/posix.h>
 #endif
 
-#include "text-overlay.h"
+#include "text-overlay_sse.h"
 #include "../convert/convert.h"  // for RGB2YUV
 #include <inttypes.h>
 #include <sstream>

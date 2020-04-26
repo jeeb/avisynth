@@ -39,7 +39,7 @@
 // iSSE code by Ian Brabham
 
 
-#include "merge.h"
+#include "merge_sse.h"
 #include "merge_avx2.h"
 #include "../core/internal.h"
 #include <emmintrin.h>

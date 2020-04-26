@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "resize.h"
+#include "resize_sse.h"
 #include "../core/internal.h"
 #include <emmintrin.h>
 #include <avs/alignment.h>

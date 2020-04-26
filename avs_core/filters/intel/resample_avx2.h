@@ -36,7 +36,7 @@
 #define __Resample_AVX2_H__
 
 #include <avisynth.h>
-#include "resample_functions.h"
+#include "../resample_functions.h"
 
 template<int filtersizealigned8, int filtersizemod8>
 void resizer_h_avx2_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel);

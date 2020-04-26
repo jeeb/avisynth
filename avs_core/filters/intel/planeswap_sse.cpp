@@ -44,7 +44,7 @@
 #else
 #include <avs/posix.h>
 #endif
-#include "planeswap.h"
+#include "planeswap_sse.h"
 #include "../core/internal.h"
 #include <tmmintrin.h>
 #include <algorithm>

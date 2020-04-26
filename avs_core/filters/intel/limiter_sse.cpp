@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "limiter.h"
+#include "limiter_sse.h"
 #include <emmintrin.h>
 #include <smmintrin.h> // for sse41
 #include <avs/alignment.h>
