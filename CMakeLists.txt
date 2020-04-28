@@ -182,6 +182,10 @@ if(NOT HEADERS_ONLY)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive-")
     endif()
 
+  if(ENABLE_INTEL_SIMD)
+    add_definitions("/D INTEL_INTRINSICS")
+  endif()
+
   ELSE()
 
   if(ENABLE_INTEL_SIMD)
