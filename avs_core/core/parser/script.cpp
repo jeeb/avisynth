@@ -61,6 +61,7 @@ namespace fs = std::filesystem;
 #include "../strings.h"
 #include <map>
 #include <string>
+#include <utility>
 
 #ifndef MINGW_HAS_SECURE_API
 #define sprintf_s sprintf
@@ -199,6 +200,7 @@ extern const AVSFunction Script_functions[] = {
   { "String",    BUILTIN_FUNC_PREFIX, ".[]s", String },
   { "Hex",       BUILTIN_FUNC_PREFIX, "i[width]i", Hex }, // avs+ 20180222 new width parameter
   { "Func",    BUILTIN_FUNC_PREFIX, "n", Func },
+  { "Format",  BUILTIN_FUNC_PREFIX, "s.+", FormatString },
 
   { "IsBool",   BUILTIN_FUNC_PREFIX, ".", IsBool },
   { "IsInt",    BUILTIN_FUNC_PREFIX, ".", IsInt },
@@ -1390,34 +1392,35 @@ AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[0].IsString()) return args[0];
-  if (args[0].IsBool()) return (args[0].AsBool()?"true":"false");
+  if (args[0].IsBool()) return (args[0].AsBool() ? "true" : "false");
   if (args[0].IsFunction()) return args[0].AsFunction()->ToString(env);
   if (args[1].Defined()) {	// WE --> a format parameter is present
-		if (args[0].IsFloat()) {	//if it is an Int: IsFloat gives True, also !
-			return  env->Sprintf(args[1].AsString("%f"),args[0].AsFloat());
-		}
-		return "";	// <--WE
-  } else {	// standard behaviour
-	  if (args[0].IsInt()) {
-		char s[12];
+    if (args[0].IsFloat()) {	//if it is an Int: IsFloat gives True, also !
+      return  env->Sprintf(args[1].AsString("%f"), args[0].AsFloat());
+    }
+    return "";	// <--WE
+  }
+  else {	// standard behaviour
+    if (args[0].IsInt()) {
+      char s[12];
 #ifdef AVS_WINDOWS
-		return env->SaveString(_itoa(args[0].AsInt(), s, 10));
+      return env->SaveString(_itoa(args[0].AsInt(), s, 10));
 #else // copied from AvxSynth
-                sprintf(s,"%d",args[0].AsInt());
-                return env->SaveString(s);
+      sprintf(s, "%d", args[0].AsInt());
+      return env->SaveString(s);
 #endif
-	  }
-	  if (args[0].IsFloat()) {
-		char s[30];
+    }
+    if (args[0].IsFloat()) {
+      char s[30];
 #ifdef MSVC
-    _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
-    _sprintf_l(s,"%lf", locale, args[0].AsFloat());
-    _free_locale(locale);
+      _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
+      _sprintf_l(s, "%lf", locale, args[0].AsFloat());
+      _free_locale(locale);
 #else
-    sprintf(s,"%lf", args[0].AsFloat());
+      sprintf(s, "%lf", args[0].AsFloat());
 #endif
-		return env->SaveString(s);
-	  }
+      return env->SaveString(s);
+    }
   }
   return "";
 }
@@ -1430,6 +1433,185 @@ AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env)
   char buf[8 + 1];
   sprintf_s(buf, "%0*X", wid, n); // uppercase, unlike <=r2580
   return env->SaveString(buf);
+}
+
+static std::string AVSValue_to_string(AVSValue v, IScriptEnvironment* env) {
+  if (v.IsString()) return v.AsString();
+  if (v.IsBool()) return v.AsBool() ? "true" : "false";
+  if (v.IsFunction()) return v.AsFunction()->ToString(env);
+  if (v.IsInt()) return std::to_string(v.AsInt());
+  if (v.IsFloat()) {
+    char s[30];
+#ifdef MSVC
+    _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
+    _sprintf_l(s, "%lf", locale, v.AsFloat());
+    _free_locale(locale);
+#else
+    sprintf(s, "%lf", args[0].AsFloat());
+#endif
+    return s;
+  }
+  return "";
+}
+
+
+// Formatting function with parameter list with ordered, indexed or named replacements
+AVSValue FormatString(AVSValue args, void*, IScriptEnvironment* env)
+{
+  // Format("{} {}!", "Hello", "world")
+  // max_pixel_value = 255
+  // Format("max pixel value = {max_pixel_value}!")
+  // Format("Pi={1} x={0} y={0}!", 12, Pi())
+  std::string format = args[0].AsString();
+  int numargs = args[1].ArraySize();
+
+  // (name), value pairs, name can be empty
+  std::vector<std::pair<std::string, std::string>> sv;
+  for (int i = 0; i < numargs; i++)
+  {
+    std::string name; // can be empty
+    std::string val_as_s;
+
+    AVSValue v = args[1][i];
+    // ["name", value] support
+    if (v.IsArray()) {
+      if (v.ArraySize() != 2 || !v[0].IsString())
+        env->ThrowError("Format: argument as array should be in [\"name\", value] format");
+      name = v[0].AsString();
+      v = v[1];
+    }
+
+    val_as_s = AVSValue_to_string(v, env);
+
+    sv.push_back(std::make_pair(name, val_as_s));
+  }
+
+  size_t supplied_params_count = sv.size();
+
+  size_t len = format.size();
+  size_t i = 0;
+  bool in_parenthesis = false;
+  std::string ss;
+  size_t last_pos = 0;
+  std::string last_param_section;
+
+  int param_counter = 0;
+
+  while (i < len) {
+    if (!in_parenthesis) {
+      size_t x = format.find_first_of('{', last_pos);
+      // }} can appear only when escaped
+      size_t cx = format.find_first_of('}', last_pos);
+      if (cx != std::string::npos && cx < x)
+      {
+        if (cx + 1 < len && format[cx + 1] == '}') // }} escaped
+        {
+          ss += format.substr(last_pos, cx - last_pos + 1);
+          last_pos = cx + 2;
+          i = last_pos;
+          continue;
+        }
+        env->ThrowError("Format: unbalanced curly bracket at position %zu", cx);
+      }
+
+      if (x == std::string::npos) // { not found
+      {
+        ss += format.substr(last_pos); // copy rest
+        break;
+      }
+      else if (x + 1 < len && format[x + 1] == '{') // {{ escaped
+      {
+        ss += format.substr(last_pos, x - last_pos + 1);
+        last_pos = x + 2;
+        i = last_pos;
+      }
+      else {
+        // found {, not escaped
+        ss += format.substr(last_pos, x - last_pos);
+        last_pos = x + 1; // points to after the {
+        i = last_pos;
+        in_parenthesis = true;
+      }
+      continue;
+    } // end of not-in-bracket-mode
+
+    // in-curly-bracket: search for the closing bracket
+
+    size_t x = format.find_first_of('}', last_pos);
+    if (x == std::string::npos) // not found, will throw error outside
+      break;
+
+    last_param_section = format.substr(last_pos, x - last_pos); // name, order number or empty
+
+    if (last_param_section.empty()) {
+      // simple {}, insert next parameter, consume one from the list
+      // in c++20 you cannot mix
+      if (param_counter >= supplied_params_count)
+        env->ThrowError("Format: more parameter sections than parameters supplied");
+      ss += sv[param_counter++].second;
+    }
+    else {
+      // name or number
+
+      bool validName = true;
+      // check for a valid identifier name
+      auto ch = last_param_section[0];
+      if (ch != '_' && !isalpha(ch))
+        validName = false;
+      else {
+        for (int i = 1; i < last_param_section.length(); i++) {
+          const char ch = last_param_section[i];
+          if (!(ch == '_' || isalnum(ch))) {
+            validName = false;
+            break;
+          }
+        }
+      }
+
+      if (!validName) {
+        // valid number like {2} to index parameters
+        int index;
+        try {
+          // string -> integer
+          index = std::stoi(last_param_section);
+        }
+        catch (...) {
+          env->ThrowError("Format: invalid parameter specifier: \"%s\".", last_param_section.c_str());
+        }
+
+        if (index < 0 || index >= supplied_params_count)
+          env->ThrowError("Format: parameter index is out of range: %d", index);
+
+        ss += sv[index].second;
+      }
+      else {
+        // find among the named parameters
+        auto it = std::find_if(sv.begin(), sv.end(),
+          [&last_param_section](const std::pair<std::string, std::string>& element) { return element.first == last_param_section; });
+        if (it != sv.end())
+          ss += it->second; // name was found
+        else {
+          // last resort: variable with the given name
+          AVSValue v;
+          if (!env->GetVarTry(last_param_section.c_str(), &v))
+            env->ThrowError("Format: no parameter or variable found with name \"%s\".", last_param_section.c_str());
+
+          std::string val_as_s = AVSValue_to_string(v, env);
+
+          ss += val_as_s;
+        }
+      }
+    }
+
+    last_pos = x + 1;
+    i = last_pos;
+    in_parenthesis = false;
+  }
+
+  if(in_parenthesis)
+    env->ThrowError("Format: unclosed curly bracket");
+
+  return env->SaveString(ss.c_str());
 }
 
 AVSValue Func(AVSValue args, void*, IScriptEnvironment*) { return args[0]; }

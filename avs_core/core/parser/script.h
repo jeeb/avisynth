@@ -160,6 +160,7 @@ AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Func(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue FormatString(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env);
