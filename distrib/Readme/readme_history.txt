@@ -4,8 +4,74 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200423 3.5.? (dev)
+20200428 3.5.? (dev)
 --------------------
+- New: Format function
+
+  Syntax:
+    string Format(string format, [value1, value2, ...])
+
+  Parameters
+    - string format
+      unnamed parameter, the format string
+    - zero or more values for format replacement
+      Single values are converted to string like in AviSynth String() function.
+      If a value is a two dimensional array (only with AviSynth+ arrays enabled) then it can be
+      used by a named lookup in the format expression.
+
+  Returns
+    formatted string
+
+  Description:
+
+    The format string consists of
+
+        ordinary characters (except { and }), which are copied unchanged to the output,
+        escape sequences {{ and }}, which are replaced with { and } respectively in the output, and
+        replacement fields.
+
+    Each replacement field has the following format:
+
+        introductory { character;
+
+        (optional)
+        arg-id, a non-negative number;
+        or:
+        identifier which is used for lookup named parameters. (["name", value] construction)
+        or:
+        valid AviSynth variable name
+
+        final } character.
+
+    If arg-id is a number it specifies the index of the argument in args whose value is to be used for formatting;
+    Index is zero based.
+
+    If arg-id is string then it serves as a lookup key from the parameters list given as an array ["name",value] pair.
+    If not found, then arg-id is searched among Avisynth variables.
+
+    If arg-id is omitted, the arguments are used in order.
+    Mixing manual and automatic indexing is not an error.
+
+    Notes
+
+    It is not an error to provide more arguments than the format string requires:
+
+    Format("{} {}!", "Hello", "world", "something"); // OK, produces "Hello world!"
+
+  Examples:
+    By Avisynth variable
+      max_pixel_value = 255
+      SubTitle(Format("max={max_pixel_value}!"))
+
+    By index:
+      SubTitle(Format("{0} {1} {0}", "Home", "sweet"))
+
+    In order:
+      SubTitle(Format("{} {} {}", "AviSynth", "+", 2020))
+
+    Array name-value pairs
+      SubTitle(Format("maximum={max} minimum={min} max again {max}!", ["max",255], ["min",0]))
+
 - frame properties framework, IScriptEnvironment extension
   - Core and concept ported from VapourSynth - thank you
   - Frame properties are really per-frame data which can only be read and written within runtime functions.
@@ -65,7 +131,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     - Summary:
       New: frame propery support with NewVideoFrameP and property getter/setter/info helpers
       Old-New: moved from IScriptEnvironment2:
-        GetProperty (note: this is for system properties)
+        GetEnvProperty (note: this is for system properties)
         Allocate, Free (buffer pools)
         GetVar versions distinctly named: GetVarTry, GetVarBool, GetVarInt, GetVarDouble, GetVarString, GetVarLong
 
@@ -230,8 +296,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     - Functions and enums are defined avisynth_c.h
     - New: frame propery support with NewVideoFrameP and property getter/setter/info helpers
     - Old-New: moved from IScriptEnvironment2:
-        avs_get_property (note: this is for system properties)
-        avs_allocate, avs_free (buffer pools)
+        avs_get_env_property (note: this is for system properties)
+        avs_pool_allocate, avs_pool_free (buffer pools)
         avs_get_var versions distinctly named: avs_get_var_try, avs_get_var_bool,
         avs_get_var_int, avs_get_var_double, avs_get_var_string, avs_get_var_long
 
