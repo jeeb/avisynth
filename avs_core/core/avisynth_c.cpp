@@ -1326,7 +1326,7 @@ size_t AVSC_CC avs_get_env_property(AVS_ScriptEnvironment * p, int avs_aep_prop)
 // Interface V8, buffer pool, Support functions
 // see AVS_ALLOCTYPE_xxx enum
 extern "C"
-void * AVSC_CC avs_allocate(AVS_ScriptEnvironment * p, size_t nBytes, size_t alignment, int avs_alloc_type)
+void * AVSC_CC avs_pool_allocate(AVS_ScriptEnvironment * p, size_t nBytes, size_t alignment, int avs_alloc_type)
 {
   p->error = 0;
   try {
@@ -1339,7 +1339,7 @@ void * AVSC_CC avs_allocate(AVS_ScriptEnvironment * p, size_t nBytes, size_t ali
 }
 
 extern "C"
-void AVSC_CC avs_free(AVS_ScriptEnvironment * p, void* ptr)
+void AVSC_CC avs_pool_free(AVS_ScriptEnvironment * p, void* ptr)
 {
   p->error = 0;
   try {

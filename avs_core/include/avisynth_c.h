@@ -1082,8 +1082,8 @@ AVSC_API(AVS_VideoFrame*, avs_new_video_frame_p_a)(AVS_ScriptEnvironment*,
 AVSC_API(size_t, avs_get_env_property)(AVS_ScriptEnvironment*, int avs_aep_prop);
 
 // buffer pool, see AVS_ALLOCTYPE enums
-AVSC_API(void *, avs_allocate)(AVS_ScriptEnvironment*, size_t nBytes, size_t alignment, int avs_alloc_type);
-AVSC_API(void, avs_free)(AVS_ScriptEnvironment*, void *ptr);
+AVSC_API(void *, avs_pool_allocate)(AVS_ScriptEnvironment*, size_t nBytes, size_t alignment, int avs_alloc_type);
+AVSC_API(void, avs_pool_free)(AVS_ScriptEnvironment*, void *ptr);
 
 // Interface V8
 // Returns TRUE (1) and the requested variable. If the method fails, returns 0 (FALSE) and does not touch 'val'.
