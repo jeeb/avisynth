@@ -393,7 +393,7 @@ void AVSC_CC avs_copyFrameProps(AVS_ScriptEnvironment * p, const AVS_VideoFrame 
 }
 
 extern "C"
-const AVS_Map * avs_getFramePropsRO(AVS_ScriptEnvironment * p, const AVS_VideoFrame * frame)
+const AVS_Map * AVSC_CC avs_getFramePropsRO(AVS_ScriptEnvironment * p, const AVS_VideoFrame * frame)
 {
   p->error = 0;
   try {
@@ -406,7 +406,7 @@ const AVS_Map * avs_getFramePropsRO(AVS_ScriptEnvironment * p, const AVS_VideoFr
 }
 
 extern "C"
-AVS_Map * avs_getFramePropsRW(AVS_ScriptEnvironment * p, AVS_VideoFrame * frame)
+AVS_Map * AVSC_CC avs_getFramePropsRW(AVS_ScriptEnvironment * p, AVS_VideoFrame * frame)
 {
   p->error = 0;
   try {
@@ -419,7 +419,7 @@ AVS_Map * avs_getFramePropsRW(AVS_ScriptEnvironment * p, AVS_VideoFrame * frame)
 }
 
 extern "C"
-int avs_propNumKeys(AVS_ScriptEnvironment * p, const AVS_Map * map)
+int AVSC_CC avs_propNumKeys(AVS_ScriptEnvironment * p, const AVS_Map * map)
 {
   p->error = 0;
   try {
@@ -432,7 +432,7 @@ int avs_propNumKeys(AVS_ScriptEnvironment * p, const AVS_Map * map)
 }
 
 extern "C"
-const char* avs_propGetKey(AVS_ScriptEnvironment * p, const AVS_Map * map, int index)
+const char* AVSC_CC avs_propGetKey(AVS_ScriptEnvironment * p, const AVS_Map * map, int index)
 {
   p->error = 0;
   try {
@@ -446,7 +446,7 @@ const char* avs_propGetKey(AVS_ScriptEnvironment * p, const AVS_Map * map, int i
 }
 
 extern "C"
-int avs_propNumElements(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key)
+int AVSC_CC avs_propNumElements(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key)
 {
   p->error = 0;
   try {
@@ -459,7 +459,7 @@ int avs_propNumElements(AVS_ScriptEnvironment * p, const AVS_Map * map, const ch
 }
 
 extern "C"
-char avs_propGetType(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key)
+char AVSC_CC avs_propGetType(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key)
 {
   p->error = 0;
   try {
@@ -472,7 +472,7 @@ char avs_propGetType(AVS_ScriptEnvironment * p, const AVS_Map * map, const char*
 }
 
 extern "C"
-int avs_propDeleteKey(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key)
+int AVSC_CC avs_propDeleteKey(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key)
 {
   p->error = 0;
   try {
@@ -485,7 +485,7 @@ int avs_propDeleteKey(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key)
 }
 
 extern "C"
-int64_t avs_propGetInt(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
+int64_t AVSC_CC avs_propGetInt(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
 {
   p->error = 0;
   try {
@@ -498,7 +498,7 @@ int64_t avs_propGetInt(AVS_ScriptEnvironment * p, const AVS_Map * map, const cha
 }
 
 extern "C"
-double avs_propGetFloat(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
+double AVSC_CC avs_propGetFloat(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
 {
   p->error = 0;
   try {
@@ -511,7 +511,7 @@ double avs_propGetFloat(AVS_ScriptEnvironment * p, const AVS_Map * map, const ch
 }
 
 extern "C"
-const char* avs_propGetData(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
+const char* AVSC_CC avs_propGetData(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
 {
   p->error = 0;
   try {
@@ -528,7 +528,7 @@ const char* avs_propGetData(AVS_ScriptEnvironment * p, const AVS_Map * map, cons
 }
 
 extern "C"
-int avs_propGetDataSize(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
+int AVSC_CC avs_propGetDataSize(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
 {
   p->error = 0;
   try {
@@ -540,8 +540,8 @@ int avs_propGetDataSize(AVS_ScriptEnvironment * p, const AVS_Map * map, const ch
   }
 }
 
-//extern "C"
-AVS_Clip* avs_propGetClip(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int* error)
+extern "C"
+AVS_Clip* AVSC_CC avs_propGetClip(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int* error)
 {
   p->error = 0;
   try {
@@ -557,7 +557,7 @@ AVS_Clip* avs_propGetClip(AVS_ScriptEnvironment* p, const AVS_Map* map, const ch
 }
 
 extern "C"
-const AVS_VideoFrame * avs_propGetFrame(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
+const AVS_VideoFrame * AVSC_CC avs_propGetFrame(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int index, int* error)
 {
   p->error = 0;
   try {
@@ -573,7 +573,7 @@ const AVS_VideoFrame * avs_propGetFrame(AVS_ScriptEnvironment * p, const AVS_Map
 }
 
 extern "C"
-int avs_propSetInt(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, int64_t i, int append)
+int AVSC_CC avs_propSetInt(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, int64_t i, int append)
 {
   p->error = 0;
   try {
@@ -586,7 +586,7 @@ int avs_propSetInt(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, in
 }
 
 extern "C"
-int avs_propSetFloat(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, double d, int append)
+int AVSC_CC avs_propSetFloat(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, double d, int append)
 {
   p->error = 0;
   try {
@@ -599,7 +599,7 @@ int avs_propSetFloat(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, 
 }
 
 extern "C"
-int avs_propSetData(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const char* d, int length, int append)
+int AVSC_CC avs_propSetData(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const char* d, int length, int append)
 {
   // length = -1 -> auto strlen
   p->error = 0;
@@ -613,7 +613,7 @@ int avs_propSetData(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, c
 }
 
 extern "C"
-int avs_propSetClip(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, AVS_Clip * clip, int append)
+int AVSC_CC avs_propSetClip(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, AVS_Clip * clip, int append)
 {
   // length = -1 -> auto strlen
   p->error = 0;
@@ -627,7 +627,7 @@ int avs_propSetClip(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, A
 }
 
 extern "C"
-int avs_propSetFrame(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const AVS_VideoFrame * frame, int append)
+int AVSC_CC avs_propSetFrame(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const AVS_VideoFrame * frame, int append)
 {
   // length = -1 -> auto strlen
   p->error = 0;
@@ -642,7 +642,7 @@ int avs_propSetFrame(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, 
 
 
 extern "C"
-const int64_t * avs_propGetIntArray(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int* error)
+const int64_t * AVSC_CC avs_propGetIntArray(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int* error)
 {
   p->error = 0;
   try {
@@ -655,7 +655,7 @@ const int64_t * avs_propGetIntArray(AVS_ScriptEnvironment * p, const AVS_Map * m
 }
 
 extern "C"
-const double* avs_propGetFloatArray(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int* error)
+const double* AVSC_CC avs_propGetFloatArray(AVS_ScriptEnvironment * p, const AVS_Map * map, const char* key, int* error)
 {
   p->error = 0;
   try {
@@ -668,7 +668,7 @@ const double* avs_propGetFloatArray(AVS_ScriptEnvironment * p, const AVS_Map * m
 }
 
 extern "C"
-int avs_propSetIntArray(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const int64_t * i, int size)
+int AVSC_CC avs_propSetIntArray(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const int64_t * i, int size)
 {
   p->error = 0;
   try {
@@ -681,7 +681,7 @@ int avs_propSetIntArray(AVS_ScriptEnvironment * p, AVS_Map * map, const char* ke
 }
 
 extern "C"
-int avs_propSetFloatArray(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const double* d, int size)
+int AVSC_CC avs_propSetFloatArray(AVS_ScriptEnvironment * p, AVS_Map * map, const char* key, const double* d, int size)
 {
   p->error = 0;
   try {
@@ -694,7 +694,7 @@ int avs_propSetFloatArray(AVS_ScriptEnvironment * p, AVS_Map * map, const char* 
 }
 
 extern "C"
-void avs_clearMap(AVS_ScriptEnvironment * p, AVS_Map * map)
+void AVSC_CC avs_clearMap(AVS_ScriptEnvironment * p, AVS_Map * map)
 {
   p->error = 0;
   try {

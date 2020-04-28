@@ -4611,7 +4611,7 @@ int ScriptEnvironment::propGetDataSize(const AVSMap* map, const char* key, int i
   PROP_GET_SHARED(FramePropVariant::vData, static_cast<int>(l->getValue<VSMapData>(index)->size()))
 }
 
-PClip __stdcall ScriptEnvironment::propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
+PClip ScriptEnvironment::propGetClip(const AVSMap* map, const char* key, int index, int* error) AVS_NOEXCEPT {
   PROP_GET_SHARED(FramePropVariant::vClip, l->getValue<PClip>(index))
 }
 
