@@ -87,7 +87,7 @@ void MTGuard::EnableMT(size_t nThreads)
       {
 				if (this->nThreads < nThreads) {
 					auto newchilds = std::unique_ptr<MTGuardChildFilter[]>(new MTGuardChildFilter[nThreads]);
-					for (int i = 0; i < this->nThreads; ++i) {
+					for (size_t i = 0; i < this->nThreads; ++i) {
 						newchilds[i].filter = ChildFilters[i].filter;
 					}
 					for (size_t i = this->nThreads; i < nThreads; ++i) {

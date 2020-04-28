@@ -79,7 +79,7 @@ std::vector<int> BitmapFont::remap(const std::wstring& ws)
   // new vector with characters remapped to table indexes
   std::vector<int> s_remapped;
   s_remapped.resize(ws.size());
-  for (int i = 0; i < ws.size(); i++) {
+  for (size_t i = 0; i < ws.size(); i++) {
     auto it = charReMap.find(ws[i]);
     if (it != charReMap.end())
       s_remapped[i] = it->second;

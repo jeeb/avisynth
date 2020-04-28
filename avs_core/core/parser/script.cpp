@@ -1495,7 +1495,7 @@ AVSValue FormatString(AVSValue args, void*, IScriptEnvironment* env)
   size_t last_pos = 0;
   std::string last_param_section;
 
-  int param_counter = 0;
+  size_t param_counter = 0;
 
   while (i < len) {
     if (!in_parenthesis) {
@@ -1559,7 +1559,7 @@ AVSValue FormatString(AVSValue args, void*, IScriptEnvironment* env)
       if (ch != '_' && !isalpha(ch))
         validName = false;
       else {
-        for (int i = 1; i < last_param_section.length(); i++) {
+        for (size_t i = 1; i < last_param_section.length(); i++) {
           const char ch = last_param_section[i];
           if (!(ch == '_' || isalnum(ch))) {
             validName = false;
@@ -1579,7 +1579,7 @@ AVSValue FormatString(AVSValue args, void*, IScriptEnvironment* env)
           env->ThrowError("Format: invalid parameter specifier: \"%s\".", last_param_section.c_str());
         }
 
-        if (index < 0 || index >= supplied_params_count)
+        if (index < 0 || index >= (int)supplied_params_count)
           env->ThrowError("Format: parameter index is out of range: %d", index);
 
         ss += sv[index].second;
