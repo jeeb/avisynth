@@ -289,6 +289,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, I
 
   // Special fast cases
   if (src_format == SAMPLE_INT24 && dst_format == SAMPLE_INT16) {
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
     if ((env->GetCPUFlags() & CPUF_MMX))
     {
@@ -296,12 +297,14 @@ void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, I
     }
     else
 #endif
+#endif
     {
       convert24To16(tempbuffer, buf, (int)count*channels);
 	  }
 	  return;
   }
   if (src_format == SAMPLE_INT8 && dst_format == SAMPLE_INT16) {
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
     if ((env->GetCPUFlags() & CPUF_MMX))
     {
@@ -309,18 +312,21 @@ void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, I
     }
     else
 #endif
+#endif
     {
       convert8To16(tempbuffer, buf, (int)count*channels);
     }
 	  return;
   }
   if (src_format == SAMPLE_INT16 && dst_format == SAMPLE_INT8) {
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
     if ((env->GetCPUFlags() & CPUF_MMX))
     {
       convert16To8_MMX(tempbuffer, buf, (int)count*channels);
     }
     else
+#endif
 #endif
     {
       convert16To8(tempbuffer, buf, (int)count*channels);
@@ -343,6 +349,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, I
   if (src_format != SAMPLE_FLOAT) {  // Skip initial copy, if samples are already float
     // Someone with an AMD beast decide which code runs better SSE2 or 3DNow   :: FIXME
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
     if (((((int)tmp_fb) & 3) == 0) && (env->GetCPUFlags() & CPUF_SSE2))
     {
@@ -358,6 +365,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, I
     }
     else
 #endif
+#endif
     {
       convertToFloat(tempbuffer, tmp_fb, src_format, (int)count*channels);
     }
@@ -368,6 +376,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, I
   if (dst_format != SAMPLE_FLOAT)
   {   // Skip final copy, if samples are to be float
       // Someone with an AMD beast decide which code runs better SSE2 or 3DNow   :: FIXME
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
     if ((env->GetCPUFlags() & CPUF_SSE2))
     {
@@ -382,6 +391,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, int64_t start, int64_t count, I
 	    convertFromFloat_SSE(tmp_fb, buf, dst_format, (int)count*channels);
 	  }
     else
+#endif
 #endif
     {
 	    convertFromFloat(tmp_fb, buf, dst_format, (int)count*channels);
@@ -497,6 +507,7 @@ void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, int sample_type, i
   }
 }
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
 void ConvertAudio::convertToFloat_SSE(char* inbuf, float* outbuf, int sample_type, int count) {
   int i;
@@ -607,7 +618,9 @@ c32_loop:
   }
 }
 #endif
+#endif
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
 void ConvertAudio::convertToFloat_SSE2(char* inbuf, float* outbuf, int sample_type, int count) {
   int i;
@@ -836,7 +849,9 @@ c24_loop:
   }
 }
 #endif
+#endif
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
 void ConvertAudio::convertToFloat_3DN(char* inbuf, float* outbuf, int sample_type, int count) {
   int i;
@@ -982,12 +997,13 @@ c24_loop:
   }
 }
 #endif
-
+#endif
 
 
 //==================
 // convertFromFloat
 //==================
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
 void ConvertAudio::convertFromFloat_3DN(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
@@ -1141,6 +1157,7 @@ c24f_loop:
   }
 }
 #endif
+#endif
 
 void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
@@ -1187,6 +1204,7 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, int sample_type, 
   }
 }
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
 void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
@@ -1305,7 +1323,9 @@ cf32_loop:
   }
 }
 #endif
+#endif
 
+#ifdef INTEL_INTRINSICS
 #if defined(X86_32) && defined(MSVC)
 void ConvertAudio::convertFromFloat_SSE2(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
@@ -1560,6 +1580,7 @@ cf24_loop:
     }
   }
 }
+#endif
 #endif
 
 __inline int ConvertAudio::Saturate_int8(float n) {
