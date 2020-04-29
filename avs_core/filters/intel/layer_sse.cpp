@@ -569,7 +569,7 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
   #ifdef X86_32
     if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_MMX))
     {
-      colorkeymask_mmx(srcp, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
+      colorkeymask_mmx(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
     }
     else
   #endif
