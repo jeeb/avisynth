@@ -4,7 +4,15 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200428 3.5.? (dev)
+20200501 3.5.2 (dev)
+- IScriptEnvironment new additions
+  Ex-IScriptEnvironment2: no-throw Invoke -> InvokeTry
+  Ex-INeo Invoke versions to -> Invoke2Try, Invoke3, InvokeTry3
+  Did not exist but to have Throw version from each: Invoke2
+
+- Test build published on (20200428)
+
+20200428 3.5.2 (dev)
 --------------------
 - New: Format function
 
@@ -134,6 +142,20 @@ For a more logical (non-historical) arrangement of changes see readme.txt
         GetEnvProperty (note: this is for system properties)
         Allocate, Free (buffer pools)
         GetVar versions distinctly named: GetVarTry, GetVarBool, GetVarInt, GetVarDouble, GetVarString, GetVarLong
+      Old-New: moved from IScriptEnvironment2 and INeoEnv
+        InvokeTry, Invoke2, Invoke2Try, Invoke3, Invoke3Try
+        The "xxxTry" versions are returning bool instead of throwing NotFound if specified function does not exist
+
+        IScriptEnvironment V6 contained only:
+          AVSValue Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0)
+        New content, different parameter list, non-exception thrower versions
+          These versions of Invoke will throw NotFound() exception like "Invoke" does
+            AVSValue Invoke2(const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0)
+            AVSValue Invoke3(const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0)
+          These versions of Invoke will return false instead of throwing NotFound().
+            bool InvokeTry(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0)
+            bool Invoke2Try(AVSValue* result, const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0)
+            bool Invoke3Try(AVSValue* result, const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0)
 
     - NewVideoFrame with frame property source:
         PVideoFrame NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
