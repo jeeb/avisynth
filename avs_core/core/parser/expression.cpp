@@ -458,7 +458,6 @@ AVSValue ExpNot::Evaluate(IScriptEnvironment* env)
 AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
   // first look for a genuine variable
   // Don't add a cache to this one, it's a Var
@@ -469,11 +468,11 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
     // Swap order to match ::Call below -- Gavino Jan 2010
 
     // next look for an argless function
-    if (!env2->Invoke(&result, name, AVSValue(0,0)))
+    if (!env->InvokeTry(&result, name, AVSValue(0,0)))
     {
       // finally look for a single-arg function taking implicit "last"
       AVSValue last;
-      if (!env->GetVarTry("last", &last) || !env2->Invoke(&result, name, last))
+      if (!env->GetVarTry("last", &last) || !env->InvokeTry(&result, name, last))
       {
         // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
         if (env->GetVarTry(name, &result)) {
@@ -496,8 +495,7 @@ AVSValue ExpAssignment::Evaluate(IScriptEnvironment* env)
     AVSValue last;
     AVSValue result;
 
-    IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-    if (!env->GetVarTry("last", &last) || !env2->Invoke(&result, lhs, last))
+    if (!env->GetVarTry("last", &last) || !env->InvokeTry(&result, lhs, last))
     {
       // and we are giving a last chance, the variable may exist here after the avsi autoload mechanism
       if (env->GetVarTry(lhs, &result)) {

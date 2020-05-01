@@ -1527,6 +1527,7 @@ public:
     return is_runtime;
   }
 
+  // thrower Invoke, IScriptEnvironment
   AVSValue __stdcall Invoke(const char* name,
     const AVSValue args, const char* const* arg_names)
   {
@@ -1538,20 +1539,37 @@ public:
     return result;
   }
 
-  bool __stdcall Invoke(AVSValue* result,
+  //  no-throw Invoke, IScriptEnvironment, Ex-IS2
+  bool __stdcall InvokeTry(AVSValue* result,
     const char* name, const AVSValue& args, const char* const* arg_names)
   {
     return core->Invoke_(result, AVSValue(), name, nullptr, args, arg_names, this, IsRuntime());
   }
 
-  bool __stdcall Invoke(AVSValue* result, const AVSValue& implicit_last,
+  // thrower Invoke + implicit last, since IS V8
+  // created to have throw and non-throw (xxxxTry) versions from all Invokes
+  AVSValue __stdcall Invoke2(const AVSValue& implicit_last,
+    const char* name, const AVSValue args, const char* const* arg_names)
+  {
+    AVSValue result;
+    if (!core->Invoke_(&result, implicit_last,
+      name, nullptr, args, arg_names, this, IsRuntime()))
+    {
+      throw NotFound();
+    }
+    return result;
+  }
+
+  // no-throw Invoke + implicit last, Ex-INeo
+  bool __stdcall Invoke2Try(AVSValue* result, const AVSValue& implicit_last,
     const char* name, const AVSValue args, const char* const* arg_names)
   {
     return core->Invoke_(result, implicit_last,
       name, nullptr, args, arg_names, this, IsRuntime());
   }
 
-  AVSValue __stdcall Invoke(const AVSValue& implicit_last,
+  // thrower Invoke + implicit last + PFunction
+  AVSValue __stdcall Invoke3(const AVSValue& implicit_last,
     const PFunction& func, const AVSValue args, const char* const* arg_names)
   {
     AVSValue result;
@@ -1563,13 +1581,15 @@ public:
     return result;
   }
 
-  bool __stdcall Invoke(AVSValue *result, const AVSValue& implicit_last,
+  // no-throw Invoke + implicit last + PFunction
+  bool __stdcall Invoke3Try(AVSValue *result, const AVSValue& implicit_last,
     const PFunction& func, const AVSValue args, const char* const* arg_names)
   {
     return core->Invoke_(result, implicit_last,
       func->GetLegacyName(), func->GetDefinition(), args, arg_names, this, IsRuntime());
   }
 
+  // King of all Invoke versions: no-throw Invoke + implicit last + funtion name + function definition
   bool __stdcall Invoke_(AVSValue *result, const AVSValue& implicit_last,
     const char* name, const Function *f, const AVSValue& args, const char* const* arg_names)
   {

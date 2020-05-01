@@ -15,12 +15,14 @@
 // 20200330: removed __stdcall from variadic argument functions (Sprintf)
 //           (remove test SIZETMOD define for clarity)
 //           Integrate Avisynth Neo structures and interface, PFunction, PDevice
-// 20200423: frame property support (NewVideoFrameP and other helpers) to legacy IScriptEnvironment.
+// 20200501: frame property support (NewVideoFrameP and other helpers) to legacy IScriptEnvironment.
 //           move some former IScriptEnvironment2 functions to IScriptEnvironment:
 //           GetEnvProperty (system prop), Allocate, Free (buffer pool)
 //           GetVarTry, GetVarBool/Int/String/Double/Long
+//           Invoke2, Invoke3, InvokeTry, Invoke2Try, Invoke3Try
 //           Interface Version to 8 (classic 2.6 = 6)
-
+// ***** IScriptEnvironment V8 extensions after NewVideoFrameP are subject to change.
+// ***** This note will disappear on release version *****
 
 // http://www.avisynth.org
 
@@ -1423,6 +1425,7 @@ public:
   virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
                                                int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
 
+  // **** AVISYNTH_INTERFACE_VERSION 5 **** defined since classic Avisynth 2.6 beta
   virtual void __stdcall DeleteScriptEnvironment() = 0;
 
   virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
@@ -1501,6 +1504,17 @@ public:
   // brand new in v8 - though no real int64 support yet
   virtual int64_t __stdcall GetVarLong(const char* name, int64_t def) const = 0;
 
+  // 'Invoke' functions moved here from internal ScriptEnvironments are renamed in order to keep vtable order
+  // Invoke functions with 'Try' will return false instead of throwing NotFound().
+  // Ex-IS2
+  virtual bool __stdcall InvokeTry(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
+  // Since V8
+  virtual AVSValue __stdcall Invoke2(const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+  // Ex-INeo
+  virtual bool __stdcall Invoke2Try(AVSValue* result, const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual AVSValue __stdcall Invoke3(const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual bool __stdcall Invoke3Try(AVSValue* result, const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+
 }; // end class IScriptEnvironment
 
 
@@ -1544,7 +1558,7 @@ class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual ~IScriptEnvironment2() {}
 
-  // V8: SubframePlanarA, GetEnvProperty, GetVar versions, Allocate, Free moved to IScriptEnvironment
+  // V8: SubframePlanarA, GetEnvProperty, GetVar versions, Allocate, Free, no-throw Invoke moved to IScriptEnvironment
   // Plugin functions
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
@@ -1557,10 +1571,6 @@ public:
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0; // If filter is "DEFAULT_MT_MODE", sets the default MT mode
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
-
-  // This version of Invoke will return false instead of throwing NotFound().
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0) = 0;
-
 
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;
@@ -1607,21 +1617,23 @@ public:
   virtual bool __stdcall FunctionExists(const char* name) = 0;
   virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
 
-  // Invoke function. Throws NotFound exception when the specified function is not exists.
+  // Invoke function. Throws NotFound exception when the specified function does not exist.
   virtual AVSValue __stdcall Invoke(
     const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
-  virtual AVSValue __stdcall Invoke(
+  virtual AVSValue __stdcall Invoke2(
+    const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual AVSValue __stdcall Invoke3(
     const AVSValue& implicit_last,
     const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
 
   // These versions of Invoke will return false instead of throwing NotFound().
-  virtual bool __stdcall Invoke(
+  virtual bool __stdcall InvokeTry(
     AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
-  virtual bool __stdcall Invoke(
+  virtual bool __stdcall Invoke2Try(
     AVSValue* result, const AVSValue& implicit_last,
     const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
-  virtual bool __stdcall Invoke(
-    AVSValue *result, const AVSValue& implicit_last,
+  virtual bool __stdcall Invoke3Try(
+    AVSValue* result, const AVSValue& implicit_last,
     const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
 
   // Throws exception when the requested variable is not found.

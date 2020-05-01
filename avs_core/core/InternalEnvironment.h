@@ -114,17 +114,16 @@ public:
   virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
   virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
-  // AVISYNTH_INTERFACE_VERION 5
+  // AVISYNTH_INTERFACE_VERSION 5
   virtual void __stdcall DeleteScriptEnvironment() = 0;
   virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
     int textcolor, int halocolor, int bgcolor) = 0;
   virtual const AVS_Linkage* __stdcall GetAVSLinkage() = 0;
 
-  // AVISYNTH_INTERFACE_VERION 6
+  // AVISYNTH_INTERFACE_VERSION 6
   virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
 
-  // AVISYNTH_INTERFACE_VERION 8
-  /* moved to standard IScriptEnvironment IF v8 */
+  // AVISYNTH_INTERFACE_VERSION 8
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 
@@ -175,6 +174,16 @@ public:
   virtual const char* __stdcall GetVarString(const char* name, const char* def) const = 0; // ex: virtual const char* __stdcall GetVar(const char* name, const char* def) const = 0;
   virtual int64_t __stdcall GetVarLong(const char* name, int64_t def) const = 0; // brand new in v8 - though no real int64 support yet
 
+  // Invoke functions renamed for keeping vtable order in IS
+  // moved from IS2
+  virtual bool __stdcall InvokeTry(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
+  // Since V8
+  virtual AVSValue __stdcall Invoke2(const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+  // moved from INeo
+  virtual bool __stdcall Invoke2Try(AVSValue* result, const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual AVSValue __stdcall Invoke3(const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+  virtual bool __stdcall Invoke3Try(AVSValue* result, const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+
   // IScriptEnvironment2
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
@@ -185,7 +194,6 @@ public:
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0;
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names = 0) = 0;
   // InternalEnvironment
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;

@@ -729,12 +729,11 @@ void Write::FileOut(IScriptEnvironment* env, const char* mode) {
 	}
 }
 
-bool Write::DoEval( IScriptEnvironment* env_) {
+bool Write::DoEval( IScriptEnvironment* env) {
 	bool keep_this_line = true;
 	int i;
 	AVSValue expr;
 	AVSValue result;
-  InternalEnvironment* env = static_cast<InternalEnvironment*>(env_);
 
 	for (i=0; i<arrsize; i++) {
 		expr = arglist[i].expression;
@@ -742,7 +741,7 @@ bool Write::DoEval( IScriptEnvironment* env_) {
 		if ( (linecheck==1) && (i==0)) {
 			try {
         if (expr.IsFunction()) {
-          result = env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
+          result = env->Invoke3(child, expr.AsFunction(), AVSValue(nullptr, 0));
         }
         else {
           expr = expr.AsString(EMPTY);
@@ -758,7 +757,7 @@ bool Write::DoEval( IScriptEnvironment* env_) {
 		} else {
 			try {
         if (expr.IsFunction()) {
-          result = env->Invoke(child, expr.AsFunction(), AVSValue(nullptr, 0));
+          result = env->Invoke3(child, expr.AsFunction(), AVSValue(nullptr, 0));
         }
         else {
           expr = expr.AsString(EMPTY);
@@ -918,7 +917,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
     PFunction func = value.AsFunction();
     try {
       const AVSValue empty_args_array = AVSValue(nullptr, 0); // invoke's parameter is const AVSValue&, don't do it inline.
-      result = static_cast<InternalEnvironment*>(env)->Invoke(child, func, empty_args_array);
+      result = env->Invoke3(child, func, empty_args_array);
     }
     catch (IScriptEnvironment::NotFound) {
       error_msg = env->Sprintf("AddProperties: Invalid function parameter type '%s'(%s)\n"

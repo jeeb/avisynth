@@ -1278,7 +1278,7 @@ public:
       DeviceSetter setter(env, upstreamDevice);
 
       try {
-        AVSValue ret = env->Invoke(AVSValue(), func, AVSValue(nullptr, 0));
+        AVSValue ret = env->Invoke3(AVSValue(), func, AVSValue(nullptr, 0));
         return ret;
       }
       catch (IScriptEnvironment::NotFound) {
