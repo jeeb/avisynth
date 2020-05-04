@@ -140,6 +140,8 @@ static bool IsParameterTypeModifier(char c) {
 }
 
 static bool IsValidParameterString(const char* p) {
+  // does not check for logical errors such as
+  // when unnamed untyped array (.+) is followed by additional parameters
   int state = 0;
   char c;
   while ((c = *p++) != '\0' && state != -1) {
@@ -298,6 +300,20 @@ bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
   }
 }
 
+bool AVSFunction::SingleTypeMatchArray(char type, const AVSValue& arg, bool strict) {
+  if (!arg.IsArray())
+    return false;
+
+  for (int i = 0; i < arg.ArraySize(); i++)
+  {
+    if (!SingleTypeMatch(type, arg[i], strict))
+      return false;
+  }
+
+  return true;
+}
+
+
 bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env) {
 
   bool optional = false;
@@ -306,11 +322,11 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
   { "StackHorizontal", BUILTIN_FUNC_PREFIX, "cc+", StackHorizontal::Create },
   { "Spline", BUILTIN_FUNC_PREFIX, "[x]ff+[cubic]b", Spline },
   { "Select",   BUILTIN_FUNC_PREFIX, "i.+", Select },
-  { "Array", BUILTIN_FUNC_PREFIX, ".*", ArrayCreate },  // zero or more
+  { "Array", BUILTIN_FUNC_PREFIX, ".*", ArrayCreate },
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
-  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "ai", ArrayGet },
-  { "ArrayGet",  BUILTIN_FUNC_PREFIX, "as", ArrayGet },
-  { "ArraySize", BUILTIN_FUNC_PREFIX, "a", ArraySize },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, ".s", ArrayGet },
+  { "ArrayGet",  BUILTIN_FUNC_PREFIX, ".i+", ArrayGet }, // .+i+ syntax is not possible.
+  { "ArraySize", BUILTIN_FUNC_PREFIX, ".*", ArraySize },
   */
 
   // arguments are provided in a flattened way (flattened=array elements extracted)
@@ -351,7 +367,7 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
       case 'b': case 'i': case 'f': case 's': case 'c':
       case 'n':
 #ifdef NEW_AVSVALUE
-      case 'a': // PF Arrays
+      case 'a': // PF 2016: script arrays, if possible we are using .* and .+ instead
 #endif
         if (   (!optional || args[i].Defined())
             && !SingleTypeMatch(*param_types, args[i], strict))
@@ -363,26 +379,29 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
         break;
       case '+': case '*':
 #ifdef NEW_AVSVALUE
-        if (param_types[-1] != '.' && args[i].IsArray()) {
-          // in case of args not flatted
-          // all elements in the array should match with the type char preceding '+*'
-          // only one array level is enough
-          for (int j = 0; j < args[i].ArraySize(); j++)
-          {
-            if (!SingleTypeMatch(param_types[-1], args[i][j], strict))
-              return false;
-          }
-          // we're done with the + or *
+        if (args[i].IsArray() && param_types[-1] != '.') {
+          // A script can provide an array argument in an direct array-type variable.
+          // e.g. a user defined script function function Summa(int_array "x") will translate to "[x]i*"
+          // parameter list. Passing an integer array directly e.g. [1,2,3] will be handled here.
+          // All elements in the array should match with the type char preceding '+' or '*'
+          // (There was another option in legacy AviSynth: the comma separated values e.g. 1,2,3
+          // could be recognized and moved to an unnamed array, this is check later)
+          if (!SingleTypeMatchArray(param_types[-1], args[i], strict))
+            return false;
           ++param_types;
           ++i;
         }
         else
 #endif
+        // Array of arguments of known types last until an argument of another type is found.
+        // This is the reason why an .+ or .* (array of anything) must only appear at the end
+        // of the parameter list since we cannot detect type-change in an any-type argument sequence.
         if (!SingleTypeMatch(param_types[-1], args[i], strict)) {
-          // we're done with the + or *
+          // we're done with the + or *, parameter type has been changed
           ++param_types;
         }
         else {
+          // parameter type matched, step parameter pointer but leave type pointer
           ++i;
         }
         break;

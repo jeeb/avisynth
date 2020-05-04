@@ -4043,8 +4043,7 @@ const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValu
   do {
     for (int strict = 1; strict >= 0; --strict) {
       pstrict = strict & 1;
-
-      // first, look in loaded plugins
+      // first, look in loaded plugins or user defined functions
       result = plugin_manager->Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
       if (result)
         return result;
@@ -4053,10 +4052,11 @@ const Function* ScriptEnvironment::Lookup(const char* search_name, const AVSValu
       for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
         for (const AVSFunction* j = builtin_functions[i]; !j->empty(); ++j)
         {
-          if (streqi(j->name, search_name) &&
-            AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, ctx) &&
-            AVSFunction::ArgNameMatch(j->param_types, args_names_count, arg_names))
-            return j;
+          if (streqi(j->name, search_name)) {
+            if (AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, ctx) &&
+              AVSFunction::ArgNameMatch(j->param_types, args_names_count, arg_names))
+              return j;
+          }
         }
     }
     // Try again without arg name matching
@@ -4088,6 +4088,57 @@ bool ScriptEnvironment::CheckArguments(const Function* func, const AVSValue* arg
   return false;
 }
 
+#if 0
+static void ListArguments(const char *name, const AVSValue& args, int &level, bool flattened) {
+  if (!strcmp(name, "Import"))
+    return;
+  if (!strcmp(name, "Eval"))
+    return;
+  if (level == 0)
+    fprintf(stdout, "------- %s (%s)\r\n", name, flattened ? "flattened" : "orig");
+  level++;
+  if (args.IsArray()) {
+    const int as = args.ArraySize();
+    fprintf(stdout, "Array, size=%d\r\n", as);
+    for (int i = 0; i < as; i++) {
+      fprintf(stdout, "Element#%d\r\n", i);
+      ListArguments(name, args[i], level, flattened);
+    }
+  }
+  else {
+    if (!args.Defined())
+      fprintf(stdout, "Undefined\r\n");
+    else if(args.IsBool())
+      fprintf(stdout, "Bool %s\r\n", args.AsBool() ? "true" : "false");
+    else if (args.IsInt())
+        fprintf(stdout, "Int %d\r\n", args.AsInt());
+    else if (args.IsString())
+      fprintf(stdout, "String %s\r\n", args.AsString());
+    else if (args.IsFloat())
+      fprintf(stdout, "Float %f\r\n", args.AsFloatf());
+    else if (args.IsFunction())
+      fprintf(stdout, "Function\r\n");
+    else if (args.IsClip())
+      fprintf(stdout, "Clip\r\n");
+    else
+      fprintf(stdout, "Unknown type\r\n");
+  }
+  level--;
+}
+
+static void ListArguments2(const char* name, const AVSValue* args, int& level, bool flattened, int len) {
+  if (!strcmp(name, "Import"))
+    return;
+  if (!strcmp(name, "Eval"))
+    return;
+  fprintf(stdout, "------- %s (%s)\r\n", name, flattened ? "flattened" : "orig");
+  level++;
+  for (int i = 0; i < len; i++) {
+    ListArguments(name, *(args +i), level, flattened);
+  }
+}
+#endif
+
 bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   const char* name, const Function *f, const AVSValue& args, const char* const* arg_names,
   InternalEnvironment* env_thread, bool is_runtime)
@@ -4110,6 +4161,13 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   args2[0] = implicit_last;
   Flatten(args, args2.data() + 1, 0, 0, arg_names);
 
+#if 0
+  // debug list of Invoke arguments before-after flattening
+  int level = 0;
+  ListArguments(name, args, level, false); // unflattened remark
+  ListArguments2(name, args2.data()+1, level, true, args2_count); // flattened remark
+#endif
+
   bool strict = false;
   int argbase = 1;
   if (f != nullptr) {
@@ -4123,6 +4181,11 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     }
   }
   else {
+    // Because only one level is flattened, for 2+ Dimension arrays result are
+    // at least two parameters which are still arrays)
+    // [3,4,5] is flattened as 3,4,5
+    // [[2,3], [3,4,5]] is flattened as [2,3], [3,4,5]
+
     // find matching function
     f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names, env_thread);
     if (!f) {
@@ -4137,43 +4200,113 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   }
 
   // combine unnamed args into arrays
-  size_t src_index = 0, dst_index = 0;
+  size_t src_index = 0;
   const char* p = f->param_types;
-  const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
 
-  std::vector<AVSValue> args3(maxarg3, AVSValue());
+  std::vector<AVSValue> args3;
 
+  // remarks for the generic array parameter concept.
+  /*
+  args2 has to be matched to f*[N]i[y]i*
+  ------- Summa (flattened)
+  Array, size=3 (unnamed)
+  Element#0        Int 3
+  Element#1        Int 4
+  Element#2        Int 5
+
+  Int 2 (named "N")
+
+  Array, size=3 (named "Y")
+  Element#0        Int 3
+  Element#1        Int 4
+  Element#2        Int 5
+  */
+
+  /*
+  args2 has to be matched to .*
+  ------- Array (flattened)
+  Array, size=2
+  Element#0
+  Int 1
+  Element#1
+  Int 2
+  Array, size=3
+  Element#0
+  Int 3
+  Element#1
+  Int 4
+  Element#2
+  Int 5
+  */
+
+  bool last_was_named = false;
   while (*p) {
     if (*p == '[') {
-      p = strchr(p + 1, ']');
+      // named parameter check: between brackets (no name validity check, empty is valid as well)
+      const char* pstart = p + 1;
+      p = strchr(pstart, ']');
       if (!p) break;
-      p++;
+      last_was_named = (p - pstart) > 0; // empty parameter name [] is not count as named
+      p++; // skip closing bracket
     }
-    else if ((p[1] == '*') || (p[1] == '+')) {
+    else if (((p[1] == '*') || (p[1] == '+')) && !last_was_named) {
+      // Case of unnamed arrays, or fake-named arrays
+      // Latter: only [] for name like the first clip array parameter of BlankClip) "[]c*[length]i etc...
+      // They are just comma separated list elements on script level,
+      // not using the bracket-style array definition syntax
+      // The parser detects the end of array: the next argument type is different.
+      // Since the end of free-typed (".+" or ".*") arrays cannot be recognized, they are allowed to appear
+      // only at the very end of the parameter signature
       size_t start = src_index;
-      while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[argbase + src_index], strict)))
+      const char arg_type = *p;
+
+      if (src_index < args2_count &&
+        args2[argbase + src_index].IsArray() && // after flattening this only happens when 2D (or more D) array was passed
+        arg_type != '.' &&
+        AVSFunction::SingleTypeMatchArray(arg_type, args2[argbase + src_index], strict))
+      {
+        args3.push_back(args2[argbase + src_index]); // can't delete args2 early because of this
         src_index++;
-      size_t size = src_index - start;
-      assert(args2_count >= size);
+      }
+      else {
+        while ((src_index < args2_count)) {
+          const bool match = AVSFunction::SingleTypeMatch(arg_type, args2[argbase + src_index], strict);
+          if (!match)
+            break;
+          src_index++;
+        }
+        size_t size = src_index - start;
+        assert(args2_count >= size);
 
-      // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
-      // because filters like BlankClip might still be expecting it.
-      args3[dst_index++] = AVSValue(size > 0 ? args2.data() + argbase + start : NULL, (int)size); // can't delete args2 early because of this
+        // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
+        // because filters like BlankClip might still be expecting it.
+        args3.push_back(AVSValue(size > 0 ? args2.data() + argbase + start : NULL, (int)size)); // can't delete args2 early because of this
+      }
 
-      p += 2;
+      p += 2; // skip type-char and '*' or '+'
+      last_was_named = false;
     }
     else {
       if (src_index < args2_count)
-        args3[dst_index] = args2[argbase + src_index];
+        args3.push_back(args2[argbase + src_index]);
+      else
+        args3.push_back(AVSValue());
       src_index++;
-      dst_index++;
       p++;
+      // Skip possible array marker for named arrays like [colors]f+
+      // Note: this declaration style is recognized only for versions >= 3.5.3
+      // so plugins using this syntax won't load/work with older AviSynth versions
+      // Older versions without this check will report various errors like "named parameter was given more than once"
+      if ((p[0] == '*') || (p[0] == '+'))
+        p++;
+
+      last_was_named = false;
     }
   }
   if (src_index < args2_count)
     ThrowError("Too many arguments to function %s", name);
 
-  const int args3_count = (int)dst_index;
+  const int args3_count = (int)args3.size();
 
   // copy named args
   for (int i = 0; i<args_names_count; ++i) {
@@ -4190,7 +4323,6 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
           if (strlen(arg_names[i]) == size_t(q - p) && !_strnicmp(arg_names[i], p, q - p)) {
             // we have a match
             if (args3[named_arg_index].Defined()) {
-              // so named args give can't have .+ specifier
               ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
             }
 #ifndef NEW_AVSVALUE
@@ -4199,7 +4331,13 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
               ThrowError("Script error: can't pass an array as a named argument");
             }
 #endif
-            else if (args[i].Defined() && !AVSFunction::SingleTypeMatch(q[1], args[i], false)) {
+            else if (args[i].Defined() && args[i].IsArray() && ((q[2] == '*' || q[2] == '+')) && !AVSFunction::SingleTypeMatchArray(q[1], args[i], false))
+            {
+              // e.g. passing [235, 128, "Hello"] to [colors]f+
+              ThrowError("Script error: the named array argument \"%s\" to %s had a wrong element type", arg_names[i], name);
+            }
+            else if (args[i].Defined() && !args[i].IsArray() && !AVSFunction::SingleTypeMatch(q[1], args[i], false))
+            {
               ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
             }
             else {
@@ -4219,9 +4357,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     }
   }
 
-  // Trim array size to the actual number of arguments
-  args3.resize(args3_count);
-  std::vector<AVSValue>(args3).swap(args3);
+  std::vector<AVSValue>(args3).shrink_to_fit();
 
   if(is_runtime) {
     // Invoked by a thread or GetFrame
@@ -4280,7 +4416,8 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   bool isSourceFilter = !foundClipArgument;
 
   // ... and we're finally ready to make the call
-  std::unique_ptr<const FilterConstructor> funcCtor = std::make_unique<const FilterConstructor>(threadEnv.get(), f, &args2, &args3);
+  std::unique_ptr<const FilterConstructor> funcCtor =
+    std::make_unique<const FilterConstructor>(threadEnv.get(), f, &args2, &args3);
   _RPT1(0, "ScriptEnvironment::Invoke after funcCtor make unique %s\r\n", name);
 
   bool is_mtmode_forced;

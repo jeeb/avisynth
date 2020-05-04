@@ -62,4 +62,5 @@ public:
   static bool ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names);
   static bool TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env);
   static bool SingleTypeMatch(char type, const AVSValue& arg, bool strict);
+  static bool SingleTypeMatchArray(char type, const AVSValue& arg, bool strict);
 };
