@@ -1113,6 +1113,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
     else if (vi_final.pixel_type == VideoInfo::CS_RGBAP16)
       asi.fccHandler = MAKEFOURCC('G','4',0,16);
     else {
+      // fixme: grey 10+ bits such as Y16 are not covered
       _ASSERT(FALSE);
     }
 
