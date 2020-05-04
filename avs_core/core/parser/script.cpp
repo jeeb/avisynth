@@ -200,7 +200,7 @@ extern const AVSFunction Script_functions[] = {
   { "String",    BUILTIN_FUNC_PREFIX, ".[]s", String },
   { "Hex",       BUILTIN_FUNC_PREFIX, "i[width]i", Hex }, // avs+ 20180222 new width parameter
   { "Func",    BUILTIN_FUNC_PREFIX, "n", Func },
-  { "Format",  BUILTIN_FUNC_PREFIX, "s.+", FormatString },
+  { "Format",  BUILTIN_FUNC_PREFIX, "s.*", FormatString },
 
   { "IsBool",   BUILTIN_FUNC_PREFIX, ".", IsBool },
   { "IsInt",    BUILTIN_FUNC_PREFIX, ".", IsInt },
