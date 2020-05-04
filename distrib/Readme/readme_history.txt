@@ -4,11 +4,73 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200501 3.5.2 (dev)
+20200504 3.5.2 (dev)
+- Scripts arrays (Info for plugin writers)
+  Plugin parameter definition: allow type+'.' and type+'*' syntax for named array parameters
+
+  Example:
+    BlankClip has a named "colors" parameter which accepts one or more "float".
+    Definition in function signature:
+      [colors]f+
+    Usage on the caller side: pass [235.0, 128, 128].
+    Checking the proper array size is the plugin's task.
+
+  Note:
+    Plugins with named array parameter definition syntax will not work for non-array-aware AviSynth versions.
+
+  Note2:
+    Type-free unnamed arrays ".+" or ".*" cannot be followed by additional parameters
+
+  Note3:
+    A backward compatible way (AVS 2.6 and non-script-array AviSynth+ versions) of using named or unnamed arrays is to specify a single type as "." and
+    the plugin would check the argument type for IsArray
+
+- User defined functions:
+  Add array parameter types:
+
+  "array" or "val_array": array of any type.
+    When unnamed, then this kind of parameter must be the very last one.
+    Unnamed free-typed parametes cannot be followed by any other parameter.
+    Translates to ".*" in a plugin parameter definition rule.
+
+  "bool_array" "int_array", "float_array", "string_array", "clip_array", "func_array"
+    Translates to "b*", "i*", "f*", "s*", "c*", "f*" in a plugin parameter definition rule.
+
+  Example:
+
+    '''
+    a = [1.0, 2.0, 4.2]
+    b = [3, 4, 5]
+    multi = [a,b]
+
+    sum = Summa(multi[0], multi[1], 2)
+    SubTitle(Format({sum}))
+
+    Function Summa(array "x", array "y", int "N")
+    {
+      sum = 0.0
+      FOR(i=0,N-1) {
+        sum = sum + x[i] * y[i]
+      }
+      return sum
+    }
+
+    or
+
+    Function Summa(float_array x, float_array y, int "N")
+    {
+      sum = 0.0
+      FOR(i=0,N-1) {
+        sum = sum + x[i] * y[i]
+      }
+      return sum
+    }
+    '''
+
 - IScriptEnvironment new additions
-  Ex-IScriptEnvironment2: no-throw Invoke -> InvokeTry
-  Ex-INeo Invoke versions to -> Invoke2Try, Invoke3, InvokeTry3
-  Did not exist but to have Throw version from each: Invoke2
+  Ex-IScriptEnvironment2: no-throw version of Invoke name change to -> InvokeTry
+  Ex-INeo Invoke versions to -> Invoke2Try, Invoke3, Invoke3Try
+  New (was not implemented in any former Interface): Invoke2 (Exception Thrower version of Invoke2Try)
 
 - Test build published on (20200428)
 
