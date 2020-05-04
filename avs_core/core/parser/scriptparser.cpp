@@ -147,6 +147,7 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
 
       param_floats[param_count] = false;
       char type = '.';
+      bool isArray = false;
       Tokenizer lookahead(&tokenizer);
       if (lookahead.IsIdentifier() || lookahead.IsString()) {
         // we have a variable type preceding its name
@@ -159,11 +160,34 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
         }
         else if (tokenizer.IsIdentifier("string")) type = 's';
         else if (tokenizer.IsIdentifier("clip")) type = 'c';
-#ifdef NEW_AVSVALUE
-        else if (tokenizer.IsIdentifier("array")) type = 'a'; // AVS+ 161028 array type in user defined functions
-#endif
         else if (tokenizer.IsIdentifier("func")) type = 'n';
-        else env->ThrowError("Script error: expected \"val\", \"bool\", \"int\", \"float\", \"string\", \"array\", or \"clip\"");
+#ifdef NEW_AVSVALUE
+        // AVS+ 161028 array type in user defined functions
+        else if (tokenizer.IsIdentifier("array") || tokenizer.IsIdentifier("val_array")) {
+          isArray = true;  type = '.';
+          // or: isArray = false;  type = 'a'; ? No. Keeping the old syntax
+          // but .+ must be the very last parameter if parameter is unnamed
+        }
+        else if (tokenizer.IsIdentifier("bool_array")) {
+          isArray = true;  type = 'b';
+        }
+        else if (tokenizer.IsIdentifier("int_array")) {
+          isArray = true;  type = 'i';
+        }
+        else if (tokenizer.IsIdentifier("float_array")) {
+          isArray = true;  type = 'f';
+        }
+        else if (tokenizer.IsIdentifier("string_array")) {
+          isArray = true;  type = 's';
+        }
+        else if (tokenizer.IsIdentifier("clip_array")) {
+          isArray = true;  type = 'c';
+        }
+        else if (tokenizer.IsIdentifier("func_array")) {
+          isArray = true;  type = 'n';
+        }
+#endif
+        else env->ThrowError("Script error: expected \"val\", \"bool\", \"int\", \"float\", \"string\", \"array\", or \"clip\" (or their \"_array\" versions");
         tokenizer.NextToken();
       }
 
@@ -185,6 +209,8 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
         env->ThrowError("Script error: expected a parameter name");
       }
       param_types[param_chars++] = type;
+      if(isArray)
+        param_types[param_chars++] = '*'; // zero or more
       tokenizer.NextToken();
 
       need_comma = true;
@@ -196,22 +222,22 @@ PExpression ScriptParser::ParseFunctionDefinition(void)
   param_types[param_chars] = 0;
   PExpression body = new ExpRootBlock(ParseBlock(true, NULL));
 
-  const char* saved_param_names = env->SaveString(param_types);
+  const char* saved_param_signature = env->SaveString(param_types);
 
   if(name != nullptr) {
     // legacy function definition
     ScriptFunction* sf = new ScriptFunction(body, param_floats, param_names, param_count);
     env->AtExit(ScriptFunction::Delete, sf);
-    env->AddFunction(name, saved_param_names, ScriptFunction::Execute, sf, "$UserFunctions$");
+    env->AddFunction(name, saved_param_signature, ScriptFunction::Execute, sf, "$UserFunctions$");
     return new ExpLegacyFunctionDefinition();
   }
 
   if (name) {
     auto envi = static_cast<InternalEnvironment*>(env);
-    envi->UpdateFunctionExports(name, saved_param_names, "$UserFunctions$");
+    envi->UpdateFunctionExports(name, saved_param_signature, "$UserFunctions$");
   }
 
-  return new ExpFunctionDefinition(body, name, saved_param_names,
+  return new ExpFunctionDefinition(body, name, saved_param_signature,
     param_floats, param_names, param_count, var_names, var_count,
     filename, line);
   // was before 20200324:
