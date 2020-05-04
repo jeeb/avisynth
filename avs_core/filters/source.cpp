@@ -285,14 +285,19 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   vi_default.SetFieldBased(false);
   bool parity=false;
 
-  if ((args[0].ArraySize() == 1) && (!args[12].Defined())) {
-    vi_default = args[0][0].AsClip()->GetVideoInfo();
-    parity = args[0][0].AsClip()->GetParity(0);
+  AVSValue args0 = args[0];
+
+  // param#12: "clip" overrides
+  if (args0.ArraySize() == 1 && !args[12].Defined()) {
+    vi_default = args0[0].AsClip()->GetVideoInfo();
+    parity = args0[0].AsClip()->GetParity(0);
   }
-  else if (args[0].ArraySize() != 0) {
+  else if (args0.ArraySize() != 0) {
+    // when "clip" is defined then beginning clip parameter is forbidden
     env->ThrowError("BlankClip: Only 1 Template clip allowed.");
   }
   else if (args[12].Defined()) {
+    // supplied "clip" parameter
     vi_default = args[12].AsClip()->GetVideoInfo();
     parity = args[12].AsClip()->GetParity(0);
   }
@@ -429,12 +434,14 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       int pixelsize = vi.ComponentSize();
       int bits_per_pixel = vi.BitsPerComponent();
       for (int i = 0; i < color_count; i++) {
+        const float c = args[13][i].AsFloatf(0.0);
         if (pixelsize == 4)
-          colors_f[i] = args[13][i].AsFloatf(0.0);
+          colors_f[i] = c;
         else {
-          colors[i] = args[13][i].AsInt(0);
-          if (colors[i] >= (1 << bits_per_pixel) || colors[i] < 0)
-            env->ThrowError("BlankClip: invalid color value (%d) for %d bits video format", colors[i], bits_per_pixel);
+          const int color = (int)(c + 0.5f);
+          if (color >= (1 << bits_per_pixel) || color < 0)
+            env->ThrowError("BlankClip: invalid color value (%d) for %d-bit video format", color, bits_per_pixel);
+          colors[i] = color;
         }
       }
       color_is_array = true;
@@ -2022,8 +2029,8 @@ extern const AVSFunction Source_filters[] = {
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
 #ifdef NEW_AVSVALUE
-  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c[colors]a", Create_BlankClip },
-  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c[colors]a", Create_BlankClip },
+  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c[colors]f+", Create_BlankClip },
+  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c[colors]f+", Create_BlankClip },
 #endif
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
