@@ -1452,7 +1452,7 @@ static std::string AVSValue_to_string(AVSValue v, IScriptEnvironment* env) {
     _sprintf_l(s, "%lf", locale, v.AsFloat());
     _free_locale(locale);
 #else
-    sprintf(s, "%lf", args[0].AsFloat());
+    sprintf(s, "%lf", v.AsFloat());
 #endif
     return s;
   }
