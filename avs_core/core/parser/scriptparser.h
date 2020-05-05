@@ -57,6 +57,7 @@ public:
   PExpression Parse(void);
 
   enum {max_args=1024};
+  // fixme: consider using vectors
 
 private:
   IScriptEnvironment2* const env;
