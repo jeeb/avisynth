@@ -24,7 +24,7 @@ Properties and constants
     int num_frames; // max. num_frames = 2,147,483,647 (signed int32)
     int audio_samples_per_second; // audio_samples_per_second=0 means no audio
     int sample_type; // samples types are defined in avisynth.h
-    __int64 num_audio_samples;
+    uint64_t num_audio_samples;
     int nchannels;
 
 

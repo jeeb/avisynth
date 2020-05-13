@@ -2,6 +2,9 @@
 AviSynth FilterSDK
 ==================
 
+Note: this documentation was not maintained since AviSynth 2.6, update was started again
+      in 2020 April (AviSynth+ 3.5.1 era).
+
 AviSynth external Filter SDK is a package for developers to create your own
 filters (plugins and console applications) for AviSynth.
 
@@ -60,23 +63,29 @@ Source filters
 
 Speeding up your plugin using assembler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+todo: having SIMD intrinsic widespread this topic is a bit outdated:
 You can also browse various topic on :doc:`Assembler Optimizing <AssemblerOptimizing>`.
 
 Making dual plugins
 ~~~~~~~~~~~~~~~~~~~
 
-One of the features of AviSynth 2.6 is that 2.5 plugins (plugins
-compiled with plugin api v3) can still be used in AviSynth 2.6,
-although you need to make sure you use it properly since it doesn't
-know about the new features in AviSynth 2.6. So when processing a clip
-(with say color format YV16) with a 2.5 plugin you will get a messed up
-clip at best, and a crash at worst, since YV16 is not supported in the
-v3 api.
+This old topic once was about making dual 2.5 and 2.6 plugins.
+Now in 2020 it is still important to give support earlier (now it's the 2.6) interface
+which is used by earlier Avisynth+ and classic Avisynth 2.6.
 
-There are several ways to make 2.6 plugins (plugins compiled with
-plugin api v5 or higher) also work with AviSynth 2.5. They are
-described :doc:`here <DualPlugins>`.
+One of the features of AviSynth+ is that 2.6 plugins (plugins compiled with plugin
+api v6) can still be used in AviSynth+.
+Avisynth+ evolved from classic Avisynth 2.6 so this is no wonder.
+There are differences though since AviSynth+ introduced high bit depth
+video handling and there came new support functions. AviSynth+'s avisynth.h is
+responsible for the compatibility, functions which did not exist in classic Avisynth
+(such as BitsPerComponent() for VideoInfo) return a compatible value (8 in this
+case since Avisynth 2.6 handled only 8 bit videos)
+
+Beginning with the v8 interface - frame property support - dual interfaces became important
+again. Plugins have to be able to detect the availability of v8 interface and behave
+accordingly.
+(todo: They are described :doc:`here <DualPlugins>`).
 
 Writing console applications that access AviSynth
 -------------------------------------------------
@@ -178,14 +187,28 @@ What's new in the 2.6 api
         - :ref:`GetVarDef <cplusplus_getvardef>` can be used to access AviSynth variables.
           It will not throw an error if the variable doesn't exist.
 
-    - It uses size_t for things that are memory sizes, ready for 64 bit port.
+    - Avisynth+ header still uses integer for things that are memory sizes (e.g. pitch)
+      This only affects x64 versions.
+      (Although Avisynth 2.6 defined them as size_t, AviSynth+ developers have left it as integer.
+      AviSynth 2.6 had never reached a widespread x64 version so AviSynth+ variant "won")
     - New colorformats are added: Y8, YV411, YV16 and YV24.
+      AviSynth+ extended these formats with 10, 12, 14, 16 bit integer and 32 bit floating point formats.
+      Aside from 411, all other 4:2:0, 4:2:2 and 4:4:4 formats are available at higher bit depths.
+      AviSynth+ introduced planar RGB formats for all the above mentioned bit depths.
+      RGB48 and RGB64 is available as the 16 bit variants of RGB24 and RGB32 packed RGB formats.
+      Alpha plane option was added for YUV (YUVA) and planar RGB formats (Planar RGBA).
     - :doc:`VideoInfo` has several new constants and functions (the
       ones relating to the new colorformats, the chroma placement
       constants, GetPlaneHeightSubsampling,
       GetPlaneWidthSubsampling).
+      And in AviSynth+:
+      BitsPerComponent, NumComponents, ComponentSize
+      IsRGB48, IsRGB64, Is420, Is422, Is444, IsY,
+      IsYUVA, IsPlanarRGB, IsPlanarRGBA
     - Some new cache and cpu constants for GetCPUFlags (the v5/v6 ones).
+      In AviSynth+: CPU constants up to AVX512F, AVX512BW and on.
     - SetCacheHints changed from void to int.
+    - AviSynth+: SetCacheHints constants helping automatic MT mode registration for plugins
 
 - C API (AVISYNTH_INTERFACE_VERSION = 6):
     - The following functions are added to the interface:
@@ -196,7 +219,72 @@ What's new in the 2.6 api
       avs_bytes_from_pixels, avs_row_size, avs_bmp_size,
       avs_get_row_size_p, avs_get_height_p and
       avs_delete_script_environment.
+    - And in AviSynth+:
+      avs_is_rgb48, avs_is_rgb64,
+      avs_is_444, avs_is_422, avs_is_420, avs_is_y,
+      avs_is_yuva, avs_is_planar_rgb, avs_is_planar_rgba
+      avs_num_components, avs_component_size and avs_bits_per_component
+      (and others which are not mentioned because they are deprecated)
 
+- C++ API (AVISYNTH_INTERFACE_VERSION = 8):
+    - The :ref:`IScriptEnvironment <cplusplus_iscriptenvironment>` interface has several new members:
+
+        - :ref:`SubframePlanarA <cplusplus_subframeplanara>` alpha aware version of SubframePlanar.
+
+        - :ref:`copyFrameProps <cplusplus_copyframeprops>` copy frame properties between video frames.
+        - :ref:`getFramePropsRO <cplusplus_getframepropsro>` get pointer for reading frame properties
+        - :ref:`getFramePropsRW <cplusplus_getframePropsrw>` get pointer for reading/writing frame properties.
+
+        - :ref:`propNumKeys <cplusplus_propnumkeys>` get number of frame properties for a frame.
+
+        - :ref:`propGetKey <cplusplus_propgetkey>` get name of key by index.
+        - :ref:`propNumElements <cplusplus_propnumelements>` get array size of a property.
+        - :ref:`propGetType <cplusplus_propGetType>` get property data type.
+
+        - :ref:`propGetInt <cplusplus_propgetint>` get property value as integer (int64).
+        - :ref:`propGetFloat <cplusplus_propgetfloat>` get property value as float (double).
+        - :ref:`propGetData <cplusplus_propgetdata>` get property value as string buffer.
+        - :ref:`propGetDataSize <cplusplus_propgetdatasize>` get string/data buffer size.
+        - :ref:`propGetClip <cplusplus_propgetclip>` get property value as Clip.
+        - :ref:`propGetFrame <cplusplus_propgetframe>` get property value as Frame.
+
+        - :ref:`propDeleteKey <cplusplus_propdeletekey>` removes a frame property by name (key).
+
+        - :ref:`propSetInt <cplusplus_propsetint>` sets integer (int64) frame property.
+        - :ref:`propSetFloat <cplusplus_propsetfloat>` sets float (double) frame property.
+        - :ref:`propSetData <cplusplus_propsetdata>` sets string (byte buffer) frame property.
+        - :ref:`propSetClip <cplusplus_propsetclip>` sets PClip type frame property.
+        - :ref:`propSetFrame <cplusplus_propsetframe>` sets PVideoFrame type frame property..
+
+        - :ref:`propGetIntArray <cplusplus_propgetintarray>` array version of propGetInt.
+        - :ref:`propGetFloatArray <cplusplus_propgetfloatarray>` array version of propGetFloat.
+        - :ref:`propSetIntArray <cplusplus_propsetintarray>` array version of propSetInt.
+        - :ref:`propSetFloatArray <cplusplus_propsetfloatarray>` array version of propSetFloat.
+
+        - :ref:`createMap <cplusplus_createmap>` internal use only, creating frame property buffer.
+        - :ref:`freeMap <cplusplus_freemap>` internal use only, frees up frame property buffer.
+        - :ref:`clearMap <cplusplus_clearmap>` clears all properties for a frame.
+
+        - :ref:`NewVideoFrameP <cplusplus_newvideoframep>` NewVideoFrame with frame property source.
+
+        - :ref:`GetEnvProperty <cplusplus_getenvproperty>` Query to ask for various system (not frame!) properties.
+
+        - :ref:`Allocate <cplusplus_allocate>` buffer pool allocate.
+        - :ref:`Free <cplusplus_free>` buffer pool free.
+
+        - :ref:`GetVarTry <cplusplus_getvartry>` get variable with success indicator.
+        - :ref:`GetVarBool <cplusplus_getvarbool>` get bool value with default.
+        - :ref:`GetVarInt <cplusplus_getvarint>` get int value with default.
+        - :ref:`GetVarDouble <cplusplus_getvardouble>` get floating point value with default.
+        - :ref:`GetVarString <cplusplus_getvarstring>` get string with default.
+        - :ref:`GetVarLong <cplusplus_getvarlong>` get int64 with default.
+
+        - enumeration constants for frame property, system property access
+        - various other constants (MT modes, cache modes)
+
+- C API (AVISYNTH_INTERFACE_VERSION = 8):
+        - mostly the same functions as provided in C++ interface.
+          naming convention is kept. E.g. propSetFloat in C++ is prop_set_float in C
 
 Some history
 ------------
@@ -225,7 +313,7 @@ License terms
 
 Note: Avisynth Filter SDK parts are under specific :doc:`SDK license <SDKLicense>` terms.
 
-$Date: 2015/09/14 20:23:59 $
+$Date: 2020/04/22 20:23:59 $
 
 Latest online mediaWiki version is at http://avisynth.nl/Filter_SDK
 
