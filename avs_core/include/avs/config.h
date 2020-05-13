@@ -129,6 +129,8 @@
 
 #if defined(AVS_POSIX)
 #define NEW_AVSVALUE
+#else
+#define NEW_AVSVALUE
 #endif
 
 #endif //AVS_CONFIG_H
