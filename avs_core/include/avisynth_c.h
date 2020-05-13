@@ -1,6 +1,8 @@
 // Avisynth C Interface Version 0.20
 // Copyright 2003 Kevin Atkinson
 
+// Copyright 2020 AviSynth+ project
+
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or
@@ -32,8 +34,9 @@
 // export plugins, or graphical user interfaces.
 
 // NOTE: this is a partial update of the Avisynth C interface to recognize
-// new color spaces added in Avisynth 2.60. By no means is this document
-// completely Avisynth 2.60 compliant.
+// new color spaces and interface elements added in Avisynth 2.60 and AviSynth+.
+// This interface is not 100% Avisynth+ CPP interface equivalent.
+
 // 170103: added new CPU constants (FMA4, AVX512xx)
 // 171102: define SIZETMOD. do not use yet, experimental. Offsets are size_t instead of int. Affects x64.
 // 171106: avs_get_row_size calls into avs_get_row_size_p, instead of direct field access
@@ -53,7 +56,8 @@
 // 202002xx  non-Windows friendly additions
 // 20200305  avs_vsprintf parameter type change: (void *) to va_list
 // 20200330: (remove test SIZETMOD define for clarity)
-// 20200407: frame properties and IScriptEnvironment2 transfer
+// 20200513: user must use explicite #define AVS26_FALLBACK_SIMULATION for having fallback helpers in dynamic loaded library section
+// 20200513: Follow AviSynth+ V8 interface additions
 //           AVS_VideoFrame struct extended with placeholder for frame property pointer
 //           avs_subframe_planar_a
 //           avs_copy_frame_props
@@ -62,7 +66,11 @@
 //           avs_prop_get_int, avs_prop_get_float, avs_prop_get_data, avs_prop_get_clip, avs_prop_get_frame, avs_prop_get_int_array, avs_prop_get_float_array
 //           avs_prop_set_int, avs_prop_set_float, avs_prop_set_data, avs_prop_set_clip, avs_prop_set_frame, avs_prop_set_int_array, avs_prop_set_float_array
 //           avs_prop_delete_key, avs_clear_map
-//           avs_get_env_property (internal system properties!), AVS_AEP_xxx (AvsEnvProperty) enums
+//           avs_new_video_frame_p, avs_new_video_frame_p_a
+//           avs_get_env_property (internal system properties), AVS_AEP_xxx (AvsEnvProperty) enums
+//           avs_get_var_try, avs_get_var_bool, avs_get_var_int, avs_get_var_double, avs_get_var_string, avs_get_var_long
+//           avs_pool_allocate, avs_pool_free
+
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -556,7 +564,7 @@ AVSC_INLINE int avs_sample_type(const AVS_VideoInfo * p)
         { return p->sample_type;}
 
 // useful mutator
-// Note: these are not the frame properties
+// Note: these are video format properties, neither frame properties, nor system properties
 AVSC_INLINE void avs_set_property(AVS_VideoInfo * p, int property)
         { p->image_type|=property; }
 
@@ -585,26 +593,19 @@ AVSC_INLINE int avs_is_same_colorspace(const AVS_VideoInfo * x, const AVS_VideoI
 }
 #endif
 
-// Avisynth+ extensions
+// AviSynth+ extensions
 AVSC_API(int, avs_is_rgb48)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_is_rgb64)(const AVS_VideoInfo * p);
 
-AVSC_API(int, avs_is_yuv444p16)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv444
-
-AVSC_API(int, avs_is_yuv422p16)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv422
-
-AVSC_API(int, avs_is_yuv420p16)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv420
-
-AVSC_API(int, avs_is_y16)(const AVS_VideoInfo * p); // obsolete, use avs_is_y
-
-AVSC_API(int, avs_is_yuv444ps)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv444
-
-AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv422
-
-AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p); // obsolete, use avs_is_yuv420
-
-AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p); // obsolete, use avs_is_y
+AVSC_API(int, avs_is_yuv444p16)(const AVS_VideoInfo * p); // deprecated, use avs_is_yuv444
+AVSC_API(int, avs_is_yuv422p16)(const AVS_VideoInfo * p); // deprecated, use avs_is_yuv422
+AVSC_API(int, avs_is_yuv420p16)(const AVS_VideoInfo * p); // deprecated, use avs_is_yuv420
+AVSC_API(int, avs_is_y16)(const AVS_VideoInfo * p); // deprecated, use avs_is_y
+AVSC_API(int, avs_is_yuv444ps)(const AVS_VideoInfo * p); // deprecated, use avs_is_yuv444
+AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p); // deprecated, use avs_is_yuv422
+AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p); // deprecated, use avs_is_yuv420
+AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p); // deprecated, use avs_is_y
 
 AVSC_API(int, avs_is_444)(const AVS_VideoInfo * p);
 
@@ -1255,16 +1256,21 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_new_video_frame_p_a);
 
   AVSC_DECLARE_FUNC(avs_get_env_property);
+
   AVSC_DECLARE_FUNC(avs_get_var_try);
   AVSC_DECLARE_FUNC(avs_get_var_bool);
   AVSC_DECLARE_FUNC(avs_get_var_int);
   AVSC_DECLARE_FUNC(avs_get_var_double);
   AVSC_DECLARE_FUNC(avs_get_var_string);
   AVSC_DECLARE_FUNC(avs_get_var_long);
+
+  AVSC_DECLARE_FUNC(avs_pool_allocate);
+  AVSC_DECLARE_FUNC(avs_pool_free);
 };
 
 #undef AVSC_DECLARE_FUNC
 
+#ifdef AVS26_FALLBACK_SIMULATION
 // Helper functions for fallback simulation
 // Avisynth+ extensions do not exist in classic Avisynth so they are simulated
 AVSC_INLINE int avs_is_xx_fallback_return_false(const AVS_VideoInfo * p)
@@ -1300,6 +1306,7 @@ AVSC_INLINE int avs_bits_per_component_fallback(const AVS_VideoInfo * p)
   return 8;
 }
 // End of helper functions for fallback simulation
+#endif // AVS26_FALLBACK_SIMULATION
 
 // avs_load_library() allocates an array for API procedure entries
 // reads and fills the entries with live procedure addresses.
@@ -1321,20 +1328,13 @@ AVSC_INLINE AVS_Library * avs_load_library() {
     goto fail;\
 }
 
+#ifdef AVS26_FALLBACK_SIMULATION
 // When an API function is not loadable, let's try a replacement
 // Missing Avisynth+ functions will be substituted with classic Avisynth compatible methods
 /*
 Avisynth+                 When method is missing (classic Avisynth)
 avs_is_rgb48              constant false
 avs_is_rgb64              constant false
-avs_is_yuv444p16          constant false
-avs_is_yuv422p16          constant false
-avs_is_yuv420p16          constant false
-avs_is_y16                constant false
-avs_is_yuv444ps           constant false
-avs_is_yuv422ps           constant false
-avs_is_yuv420ps           constant false
-avs_is_y32                constant false
 avs_is_444                avs_is_yv24
 avs_is_422                avs_is_yv16
 avs_is_420                avs_is_yv12
@@ -1364,6 +1364,7 @@ avs_bits_per_component    constant 8 (8 bits/component)
   if (library->name == NULL)\
     goto fail;\
 }
+#endif // AVS26_FALLBACK_SIMULATION
 
   AVSC_LOAD_FUNC(avs_add_function);
   AVSC_LOAD_FUNC(avs_at_exit);
@@ -1427,17 +1428,11 @@ avs_bits_per_component    constant 8 (8 bits/component)
   AVSC_LOAD_FUNC(avs_is_writable);
   AVSC_LOAD_FUNC(avs_get_write_ptr_p);
 
-  // Avisynth+ specific but made them callable for classic Avisynth hosts
+  // Avisynth+ specific
+#ifdef AVS26_FALLBACK_SIMULATION
+  // replace with fallback fn when does not exist
   AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_rgb48, avs_is_xx_fallback_return_false);
   AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_rgb64, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv444p16, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv422p16, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv420p16, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_y16, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv444ps, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv422ps, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_yuv420ps, avs_is_xx_fallback_return_false);
-  AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_is_y32, avs_is_xx_fallback_return_false);
   AVSC_LOAD_FUNC_FALLBACK(avs_is_444, avs_is_yv24);
   AVSC_LOAD_FUNC_FALLBACK(avs_is_422, avs_is_yv16);
   AVSC_LOAD_FUNC_FALLBACK(avs_is_420, avs_is_yv12);
@@ -1448,8 +1443,22 @@ avs_bits_per_component    constant 8 (8 bits/component)
   AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_num_components, avs_num_components_fallback);
   AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_component_size, avs_component_size_fallback);
   AVSC_LOAD_FUNC_FALLBACK_SIMULATED(avs_bits_per_component, avs_bits_per_component_fallback);
-
-  // V8, no backward compatible  simulation
+#else
+  // Avisynth+ specific
+  AVSC_LOAD_FUNC(avs_is_rgb48);
+  AVSC_LOAD_FUNC(avs_is_rgb64);
+  AVSC_LOAD_FUNC(avs_is_444, avs_is_yv24);
+  AVSC_LOAD_FUNC(avs_is_422, avs_is_yv16);
+  AVSC_LOAD_FUNC(avs_is_420, avs_is_yv12);
+  AVSC_LOAD_FUNC(avs_is_y, avs_is_y8);
+  AVSC_LOAD_FUNC(avs_is_yuva);
+  AVSC_LOAD_FUNC(avs_is_planar_rgb);
+  AVSC_LOAD_FUNC(avs_is_planar_rgba);
+  AVSC_LOAD_FUNC(avs_num_components);
+  AVSC_LOAD_FUNC(avs_component_size);
+  AVSC_LOAD_FUNC(avs_bits_per_component);
+#endif
+  // Avisynth+ interface V8, no backward compatible simulation
   AVSC_LOAD_FUNC(avs_subframe_planar_a);
   // frame properties
   AVSC_LOAD_FUNC(avs_copy_frame_props);
@@ -1484,6 +1493,7 @@ avs_bits_per_component    constant 8 (8 bits/component)
   AVSC_LOAD_FUNC(avs_new_video_frame_p_a);
 
   AVSC_LOAD_FUNC(avs_get_env_property);
+
   AVSC_LOAD_FUNC(avs_get_var_try);
   AVSC_LOAD_FUNC(avs_get_var_bool);
   AVSC_LOAD_FUNC(avs_get_var_int);
@@ -1491,6 +1501,8 @@ avs_bits_per_component    constant 8 (8 bits/component)
   AVSC_LOAD_FUNC(avs_get_var_string);
   AVSC_LOAD_FUNC(avs_get_var_long);
 
+  AVSC_LOAD_FUNC(avs_pool_allocate);
+  AVSC_LOAD_FUNC(avs_pool_free);
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY
