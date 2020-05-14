@@ -40,9 +40,15 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
+#ifndef FILESYSTEM_COMPAT
 #include <filesystem>
 
 namespace fs = std::filesystem;
+#else
+#include <ghc/filesystem.hpp>
+
+namespace fs = ghc::filesystem;
+#endif
 
 #ifdef AVS_WINDOWS
 #include <io.h>
@@ -582,9 +588,15 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     }
 
 #else // adapted from AvxSynth
+#ifndef FILESYSTEM_COMPAT
     std::string file_part = std::filesystem::path(script_name).filename().string();
     std::string full_path = std::filesystem::path(script_name).remove_filename();
     std::string dir_part = std::filesystem::path(script_name).parent_path();
+#else
+    std::string file_part = ghc::filesystem::path(script_name).filename().string();
+    std::string full_path = ghc::filesystem::path(script_name).remove_filename();
+    std::string dir_part = ghc::filesystem::path(script_name).parent_path();
+#endif
 
     FILE* h = fopen(script_name, "r");
     if(NULL == h)

@@ -46,6 +46,7 @@ if(NOT HEADERS_ONLY)
 
   option(ENABLE_PLUGINS "Build set of default external plugins" ON)
   option(ENABLE_INTEL_SIMD "Enable SIMD intrinsics for Intel processors" ON)
+  option(ENABLE_FILESYSTEM_COMPAT "Use compatibility shim for C++17 filesystem" OFF)
 
   if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
@@ -210,6 +211,9 @@ if(NOT HEADERS_ONLY)
   add_subdirectory("avs_core")
   if(ENABLE_PLUGINS)
     add_subdirectory("plugins")
+  endif()
+  if(ENABLE_FILESYSTEM_COMPAT)
+    add_subdirectory("filesystem")
   endif()
 
 else()

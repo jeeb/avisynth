@@ -92,6 +92,11 @@ if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     set(FSLIB "stdc++fs")
 endif()
 
+if (ENABLE_FILESYSTEM_COMPAT)
+    set(FSLIB "ghc_filesystem")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFILESYSTEM_COMPAT")
+endif()
+
 # Windows DLL dependencies
 if (MSVC OR MINGW)
   target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
