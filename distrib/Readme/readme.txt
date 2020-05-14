@@ -1,5 +1,5 @@
-Avisynth+ v3.5.? (dev-20200322)
--------------------------
+Avisynth+ v3.6.0
+----------------
 
 Use the installer or copy files directly
 - 64 bit OS:
@@ -31,8 +31,8 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200331 3.5.? (dev)
---------------------
+20200331 3.6.0
+--------------
 - New function:
   SetMaxCPU(string feature)
 
@@ -218,8 +218,8 @@ Short info for plugin writers
   - Frame properties (still from Neo!)
     (experimental, we have planned it in Avs+, probably we'll try to follow the VapourSynth methods(?))
 
-20200322 3.5.? (dev)
---------------------
+20200322 3.6.0
+--------------
 - Fix: Multithreading enhancements and fixes (Nekopanda, from Neo fork)
   - Fix old ScriptClip (runtime filters) issue
     In this example "current_frame" variable was not seen by YDifferenceFromPrevious scripted within SubTitle

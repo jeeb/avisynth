@@ -65,7 +65,7 @@ AviSynth v2.5.x header will work in AviSynth 2.6.x and specific
 Avisynth+ version (though a bit late) changed version to
 ``AVISYNTH_INTERFACE_VERSION = 7.``
 
-From AviSynth+ version 3.5.2 new interface functions arrived
+From AviSynth+ version 3.6.0 new interface functions arrived
 along with frame properties support
 ``AVISYNTH_INTERFACE_VERSION = 8.``
 

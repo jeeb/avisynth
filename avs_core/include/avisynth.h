@@ -1438,7 +1438,7 @@ public:
   // noThrow version of GetVar
   virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
 
-  // **** AVISYNTH_INTERFACE_VERSION 8 **** AviSynth+ 3.5.2-
+  // **** AVISYNTH_INTERFACE_VERSION 8 **** AviSynth+ 3.6.0-
   virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
     int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
 

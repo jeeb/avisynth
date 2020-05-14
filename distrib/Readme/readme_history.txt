@@ -4,7 +4,8 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200504 3.5.2 (dev)
+20200504 3.6.0
+--------------
 - Scripts arrays (Info for plugin writers)
   Plugin parameter definition: allow type+'.' and type+'*' syntax for named array parameters
 
@@ -74,8 +75,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 - Test build published on (20200428)
 
-20200428 3.5.2 (dev)
---------------------
+20200428 3.6.0
+--------------
 - New: Format function
 
   Syntax:
