@@ -115,17 +115,15 @@
 #include <sys/mman.h>
 #endif
 
+#ifdef VS_TARGET_CPU_X86
+
 //#define TEST_AVX2_CODEGEN_IN_AVX
 
-#ifdef INTEL_INTRINSICS
 #include <immintrin.h>
 
 #if defined(GCC) || defined(CLANG)
 #include <avxintrin.h>
 #endif
-#endif // INTEL_INTRINSICS
-
-#ifdef VS_TARGET_CPU_X86
 
 // normal versions work with two xmm or ymm registers (2*4 or 2*8 pixels per cycle)
 // _Single suffixed versions work only one xmm or ymm registers at a time (1*4 or 1*8 pixels per cycle)
@@ -3398,7 +3396,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         }
       }
 
-#ifdef INTEL_INTRINSICS
+#ifdef VS_TARGET_CPU_X86
       if (optSSE2 && d.planeOptSSE2[plane]) {
 
         int nfulliterations = w / pixels_per_iter;
@@ -3439,7 +3437,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 #endif
       }
       else
-#endif // INTEL_INTRINSICS
+#endif // VS_TARGET_CPU_X86
       {
         // C version
         std::vector<float> stackVector(d.maxStackSize);
