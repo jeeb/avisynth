@@ -685,9 +685,7 @@ class ScriptEnvironment {
 public:
   ScriptEnvironment();
   void CheckVersion(int version);
-#ifdef INTEL_INTRINSICS
   int GetCPUFlags();
-#endif
   void AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
   bool FunctionExists(const char* name);
   PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device);
@@ -775,9 +773,7 @@ public:
   void LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...);
   void LogMsgOnce_valist(const OneTimeLogTicket& ticket, int level, const char* fmt, va_list va);
 
-#ifdef INTEL_INTRINSICS
   void SetMaxCPU(const char *features); // fixme: why is here InternalEnvironment?
-#endif
 
   /* INeoEnv */
   bool Invoke_(AVSValue *result, const AVSValue& implicit_last,
@@ -969,11 +965,9 @@ class MinimumScriptEnvironment : public IScriptEnvironment {
 public:
   MinimumScriptEnvironment(ConcurrentVarStringFrame* top_frame) : var_table(top_frame) { }
   virtual ~MinimumScriptEnvironment() {}
-#ifdef INTEL_INTRINSICS
   virtual int __stdcall GetCPUFlags() {
     throw AvisynthError("Not Implemented");
   }
-#endif
   virtual char* __stdcall SaveString(const char* s, int length = -1) {
     return var_table.SaveString(s, length);
   }
@@ -1355,12 +1349,10 @@ public:
     core->CheckVersion(version);
   }
 
-#ifdef INTEL_INTRINSICS
   int __stdcall GetCPUFlags()
   {
     return core->GetCPUFlags();
   }
-#endif
 
   char* __stdcall SaveString(const char* s, int length = -1)
   {
@@ -1813,12 +1805,10 @@ public:
     core->LogMsgOnce_valist(ticket, level, fmt, va);
   }
 
-#ifdef INTEL_INTRINSICS
   void __stdcall SetMaxCPU(const char *features)
   {
     core->SetMaxCPU(features);
   }
-#endif
 
   void __stdcall SetGraphAnalysis(bool enable)
   {
@@ -2541,7 +2531,6 @@ void ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket& ticket, int le
   }
 }
 
-#ifdef INTEL_INTRINSICS
 void ScriptEnvironment::SetMaxCPU(const char* features)
 {
   enum CPUlevel {
@@ -2657,7 +2646,6 @@ void ScriptEnvironment::SetMaxCPU(const char* features)
 
   ::SetMaxCPU(cpu_flags);
 }
-#endif
 
 ClipDataStore* ScriptEnvironment::ClipData(IClip *clip)
 {
@@ -2889,9 +2877,7 @@ void ScriptEnvironment::CheckVersion(int version) {
     ThrowError("Plugin was designed for a later version of Avisynth (%d)", version);
 }
 
-#ifdef INTEL_INTRINSICS
 int ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
-#endif
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
   this->AddFunction(name, params, apply, user_data, NULL);

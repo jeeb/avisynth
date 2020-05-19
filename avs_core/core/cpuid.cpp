@@ -18,13 +18,13 @@
 //	along with this program; if not, write to the Free Software
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#ifdef INTEL_INTRINSICS
 #include <avs/cpuid.h>
 #include <avs/config.h>
 #include <stdint.h>
 #ifdef AVS_WINDOWS
 #include <intrin.h>
 #else
+#if defined(X86_32) || defined(X86_64)
 #include <x86intrin.h>
 #include <cpuid.h>
 #undef __cpuid
@@ -38,11 +38,12 @@ static inline void __cpuid(int cpuinfo[4], int leaf) {
   cpuinfo[2] = ecx;
   cpuinfo[3] = edx;
 }
-
+#endif
 #endif
 
 #define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
 
+#if defined(X86_32) || defined(X86_64)
 static uint32_t get_xcr0()
 {
     uint32_t xcr0;
@@ -54,12 +55,14 @@ static uint32_t get_xcr0()
 #endif
     return xcr0;
 }
+#endif
 
 static int CPUCheckForExtensions()
 {
   int result = 0;
   int cpuinfo[4];
 
+#if defined(X86_32) || defined(X86_64)
   __cpuid(cpuinfo, 1);
   if (IS_BIT_SET(cpuinfo[3], 0))
     result |= CPUF_FPU;
@@ -124,8 +127,14 @@ static int CPUCheckForExtensions()
       if (IS_BIT_SET(cpuinfo[2], 1)) // [2]!
         result |= CPUF_AVX512VBMI;
     }
+#else
+    result |= CPUF_FORCE;
+
+    return result;
+#endif
   }
 
+#if defined(X86_32) || defined(X86_64)
   // 3DNow!, 3DNow!, ISSE, FMA4
   __cpuid(cpuinfo, 0x80000000);
   if (cpuinfo[0] >= 0x80000001)
@@ -149,6 +158,7 @@ static int CPUCheckForExtensions()
 
   return result;
 }
+#endif
 
 class _CPUFlags
 {
@@ -178,4 +188,3 @@ int GetCPUFlags() {
 void SetMaxCPU(int new_flags) {
   _CPUFlags::getInstance().SetCPUFlags(new_flags);
 }
-#endif

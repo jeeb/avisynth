@@ -1003,14 +1003,12 @@ const char* AVSC_CC avs_get_error(AVS_ScriptEnvironment * p) // return 0 if no e
   return p->error;
 }
 
-#ifdef INTEL_INTRINSICS
 extern "C"
 int AVSC_CC avs_get_cpu_flags(AVS_ScriptEnvironment * p)
 {
   p->error = 0;
   return p->env->GetCPUFlags();
 }
-#endif
 
 extern "C"
 char* AVSC_CC avs_save_string(AVS_ScriptEnvironment * p, const char* s, int length)

@@ -1367,9 +1367,7 @@ class IScriptEnvironment {
 public:
   virtual ~IScriptEnvironment() {}
 
-#ifdef INTEL_INTRINSICS
   virtual /*static*/ int __stdcall GetCPUFlags() = 0;
-#endif
 
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
   virtual char* Sprintf(const char* fmt, ...) = 0;
