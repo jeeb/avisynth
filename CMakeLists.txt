@@ -44,8 +44,21 @@ if(NOT HEADERS_ONLY)
   set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
   set(CMAKE_CXX_EXTENSIONS FALSE)
 
+  # Detect Intel processors and turn Intel SIMD on or off automatically.
+  message("-- Detected target processor as: ${CMAKE_SYSTEM_PROCESSOR}")
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ARCHID)
+  if( ("${ARCHID}" STREQUAL "x86") OR
+      ("${ARCHID}" STREQUAL "x64") OR
+      ("${ARCHID}" STREQUAL "i686") OR
+      ("${ARCHID}" STREQUAL "amd64") OR
+      ("${ARCHID}" STREQUAL "x86_64") )
+    set(INTEL_SIMD "ON")
+  else()
+    set(INTEL_SIMD "OFF")
+  endif()
+
   option(ENABLE_PLUGINS "Build set of default external plugins" ON)
-  option(ENABLE_INTEL_SIMD "Enable SIMD intrinsics for Intel processors" ON)
+  option(ENABLE_INTEL_SIMD "Enable SIMD intrinsics for Intel processors" "${INTEL_SIMD}")
   option(ENABLE_FILESYSTEM_COMPAT "Use compatibility shim for C++17 filesystem" OFF)
 
   if(CMAKE_CONFIGURATION_TYPES)
