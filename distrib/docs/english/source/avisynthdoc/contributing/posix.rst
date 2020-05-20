@@ -97,35 +97,36 @@ macOS
 | Requires Homebrew:
 | `<https://brew.sh/>`_
 
-
-Building AviSynth+
-~~~~~~~~~~~~~~~~~~
-
-::
-
-    git clone git://github.com/AviSynth/AviSynthPlus.git && \
-    cd AviSynthPlus && \
-    mkdir avisynth-build && \
-    cd avisynth-build
-
-
-15.13 High Sierra and 15.14 Mojave
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Apple's libc++ doesn't support the C++17 filesystem functionality
-on either of these versions of macOS, so using GCC from Homebrew
-is necessary.
-
 ::
 
     brew install cmake ninja gcc
 
-    CC=gcc-9 CXX=g++-9 LD=gcc-9 cmake ../ -G Ninja && \
+
+GCC isn't strictly necessary for AviSynth+, but it can side-step
+the need to use -DENABLE_FILESYSTEM_COMPAT on High Sierra and
+Mojave.
+
+
+10.13 High Sierra and 10.14 Mojave
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Apple's libc++ doesn't support the C++17 filesystem functionality
+on either of these versions of macOS, so we have to resort to
+using `an external implementation`_ as a submodule.
+
+::
+
+    git clone --recursive git://github.com/AviSynth/AviSynthPlus.git && \
+    cd AviSynthPlus && \
+    mkdir avisynth-build && \
+    cd avisynth-build
+
+    cmake ../ -G Ninja -DENABLE_FILESYSTEM_COMPAT:bool=on && \
     ninja && \
     sudo ninja install
 
 
-15.15 Catalina
+10.15 Catalina
 ~~~~~~~~~~~~~~
 
 C++17 filesystem support is available on Catalina, so it can
@@ -133,8 +134,6 @@ be built with the default Clang installation.  GCC is potentially
 useful later on, though, so install that too.
 
 ::
-
-    brew install cmake ninja gcc
 
     cmake ../ -G Ninja && \
     ninja && \
@@ -389,4 +388,6 @@ autoloading to function.
 
 Back to the :doc:`main page <../../index>`
 
-$ Date: 2020-04-01 03:18:25-04:00 $
+$ Date: 2020-05-20 12:50:44-04:00 $
+
+.. _an external implementation: https://github.com/gulrak/filesystem
