@@ -14,8 +14,16 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+
+#ifndef FILESYSTEM_COMPAT
 #include <filesystem>
+
 namespace fs = std::filesystem;
+#else
+#include <ghc/filesystem.hpp>
+
+namespace fs = ghc::filesystem;
+#endif // FILESYSTEM_COMPAT
 
 static AVSValue DeepCopyValue(std::vector<std::unique_ptr<AVSValue[]>>& arrays, const AVSValue& src) {
   if (src.IsArray()) {
