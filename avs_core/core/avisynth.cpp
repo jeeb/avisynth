@@ -687,6 +687,7 @@ namespace std
 #include "Prefetcher.h"
 #include "BufferPool.h"
 #include "ScriptEnvironmentTLS.h"
+
 class ThreadScriptEnvironment;
 class ScriptEnvironment {
 public:
@@ -694,6 +695,7 @@ public:
   void CheckVersion(int version);
   int GetCPUFlags();
   void AddFunction(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
+  void AddFunction25(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
   bool FunctionExists(const char* name);
   PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device);
   PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, Device* device);
@@ -808,7 +810,6 @@ public:
   ThreadScriptEnvironment* GetMainThreadEnv() { return threadEnv.get(); }
 
 private:
-
   typedef IScriptEnvironment::NotFound NotFound;
   typedef IScriptEnvironment::ApplyFunc ApplyFunc;
 
@@ -1560,6 +1561,11 @@ public:
     core->AddFunction(name, params, apply, user_data);
   }
 
+  void __stdcall AddFunction25(const char* name, const char* params, ApplyFunc apply, void* user_data = 0)
+  {
+    core->AddFunction25(name, params, apply, user_data);
+  }
+
   bool __stdcall FunctionExists(const char* name)
   {
     return core->FunctionExists(name);
@@ -1592,6 +1598,33 @@ public:
     }
     return result;
   }
+
+  // thrower Invoke, IScriptEnvironment_Avs25
+  AVSValue __stdcall Invoke25(const char* name,
+    const AVSValue args, const char* const* arg_names)
+  {
+#ifndef NEW_AVSVALUE
+    return Invoke(name, args, arg_names);
+#else
+    AVSValue result;
+    // MarkArrayAsC: signing for destructor: don't free array elements.
+    // Reason: CPP 2.5 plugins have "baked code" in their avisynth.h and do not know 
+    // about that arrays (used for parameters) are now deep-copied and deep-free'd.
+    // Normally the elements of 'args' parameter array content would be freed up on 
+    // Invoke25's function exit. But the caller would free them up again-> crash.
+    // So we are assume that the free is on the other (cpp 2.5 plugin) side.
+    const bool success = core->Invoke_(&result, AVSValue(), name, nullptr, args, arg_names, this, IsRuntime());
+
+    if (args.IsArray())
+      ((AVSValue*)&args)->MarkArrayAsC();
+
+    if (!success)
+      throw NotFound();
+
+    return result;
+#endif
+  }
+
 
   //  no-throw Invoke, IScriptEnvironment, Ex-IS2
   bool __stdcall InvokeTry(AVSValue* result,
@@ -2928,9 +2961,15 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
   this->AddFunction(name, params, apply, user_data, NULL);
 }
 
+// called from IScriptEnvironment_Avs25
+void ScriptEnvironment::AddFunction25(const char* name, const char* params, ApplyFunc apply, void* user_data) {
+  std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
+  plugin_manager->AddFunction(name, params, apply, user_data, NULL, true);
+}
+
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) {
   std::unique_lock<std::recursive_mutex> env_lock(plugin_mutex);
-  plugin_manager->AddFunction(name, params, apply, user_data, exportVar);
+  plugin_manager->AddFunction(name, params, apply, user_data, exportVar, false);
 }
 
 VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Device* device)
@@ -4410,19 +4449,23 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   }
   bool isSourceFilter = !foundClipArgument;
 
+  auto call_env = f->isAvs25 ? nullptr : threadEnv.get();
+  auto call_env25 = f->isAvs25 ? threadEnv.get()->GetEnv25() : nullptr;
   // ... and we're finally ready to make the call
   std::unique_ptr<const FilterConstructor> funcCtor =
-    std::make_unique<const FilterConstructor>(threadEnv.get(), f, &args2, &args3);
+    std::make_unique<const FilterConstructor>(call_env, call_env25 , f, &args2, &args3);
   _RPT1(0, "ScriptEnvironment::Invoke after funcCtor make unique %s\r\n", name);
+
+  // args2 and args3 are not valid after this point anymore
 
   bool is_mtmode_forced;
   bool filterHasSpecialMT = this->GetFilterMTMode(f, &is_mtmode_forced) == MT_SPECIAL_MT;
 
-  if (filterHasSpecialMT) // e.g. MP_Pipeline
+  if (filterHasSpecialMT) // pre-avs 3.6 workaround for MP_Pipeline
   {
     *result = funcCtor->InstantiateFilter();
 #ifdef _DEBUG
-    _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
+    _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name);
 #endif
   }
   else if (funcCtor->IsScriptFunction())
@@ -4437,7 +4480,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
 
     *result = funcCtor->InstantiateFilter();
 #ifdef _DEBUG
-    _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name); // P.F.
+    _RPT1(0, "ScriptEnvironment::Invoke done funcCtor->InstantiateFilter %s\r\n", name);
 #endif
   }
   else
@@ -4584,15 +4627,14 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
       *result = new FilterGraphNode((*result).AsClip(), f->name, last, args, arg_names, threadEnv.get());
     }
 
-    // args2 and args3 are not valid after this point anymore
 #ifdef _DEBUG
     if (PrevFrontCache != FrontCache && FrontCache != NULL) // cache registering swaps frontcache to the current
     {
-      _RPT2(0, "ScriptEnvironment::Invoke done Cache::Create %s  cache_id=%p\r\n", name, (void*)FrontCache); // P.F.
+      _RPT2(0, "ScriptEnvironment::Invoke done Cache::Create %s  cache_id=%p\r\n", name, (void*)FrontCache);
       FrontCache->FuncName = name; // helps debugging. See also in cache.cpp
     }
     else {
-      _RPT1(0, "ScriptEnvironment::Invoke done Cache::Create %s\r\n", name); // P.F.
+      _RPT1(0, "ScriptEnvironment::Invoke done Cache::Create %s\r\n", name);
     }
 #endif
   }

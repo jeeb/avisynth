@@ -79,7 +79,10 @@ public:
 // Strictly for Avisynth core only.
 // Neither host applications nor plugins should use
 // these interfaces.
-class InternalEnvironment : public IScriptEnvironment2, public INeoEnv {
+class InternalEnvironment :
+  public IScriptEnvironment2,
+  public IScriptEnvironment_Avs25,
+  public INeoEnv {
 protected:
   virtual ~InternalEnvironment() {}
 public:
@@ -211,6 +214,7 @@ public:
   virtual void __stdcall SetMaxCPU(const char *feature) = 0;
 
   virtual IScriptEnvironment2* __stdcall GetEnv2() final { return this; }
+  virtual IScriptEnvironment_Avs25* __stdcall GetEnv25() final { return this; }
 
 
   virtual void __stdcall SetGraphAnalysis(bool enable) = 0;

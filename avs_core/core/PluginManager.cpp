@@ -30,7 +30,7 @@ namespace fs = ghc::filesystem;
 #include "parser/expression.h" // TODO we only need FunctionInstance from here
 
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
-typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
+typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment_Avs25* env);
 typedef const char* (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
 
 #ifdef AVS_WINDOWS // only Windows has a registry we care about
@@ -214,22 +214,23 @@ static bool IsValidParameterString(const char* p) {
 */
 
 AVSFunction::AVSFunction(void*) :
-    AVSFunction(NULL, NULL, NULL, NULL, NULL, NULL)
+    AVSFunction(NULL, NULL, NULL, NULL, NULL, NULL, false)
 {}
 
 AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply) :
-    AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL, NULL)
+    AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL, NULL, false)
 {}
 
 AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data) :
-    AVSFunction(_name, _plugin_basename, _param_types, _apply, _user_data, NULL)
+    AVSFunction(_name, _plugin_basename, _param_types, _apply, _user_data, NULL, false)
 {}
 
-AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path) :
+AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path, bool _isAvs25) :
     Function()
 {
   apply = _apply;
   user_data = _user_data;
+  isAvs25 = _isAvs25;
 
     if (NULL != _dll_path)
     {
@@ -476,12 +477,13 @@ struct PluginFile
   std::string FilePath;             // Fully qualified, canonical file path
   std::string BaseName;             // Only file name, without extension
   HMODULE Library;                  // LoadLibrary handle
+  bool isAvs25;
 
   PluginFile(const std::string &filePath);
 };
 
 PluginFile::PluginFile(const std::string &filePath) :
-  FilePath(GetFullPathNameWrap(filePath)), BaseName(), Library(NULL)
+  FilePath(GetFullPathNameWrap(filePath)), BaseName(), Library(NULL), isAvs25(false)
 {
   // Turn all '\' into '/'
   replace(FilePath, '\\', '/');
@@ -913,6 +915,8 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
     }
   }
 
+  plugin.isAvs25 = false;
+
 #ifdef AVS_WINDOWS
   // Search for dependent DLLs in the plugin's directory too
   size_t slash_pos = plugin.FilePath.rfind('/');
@@ -1027,7 +1031,7 @@ static bool FunctionListHasDll(const FunctionList &list, const char *dll_path)
     return false;
 }
 
-void PluginManager::AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data, const char *exportVar)
+void PluginManager::AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data, const char *exportVar, bool isAvs25)
 {
   if (!IsValidParameterString(params))
     Env->ThrowError("%s has an invalid parameter string (bug in filter)", name);
@@ -1037,11 +1041,14 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   AVSFunction *newFunc = NULL;
   if (PluginInLoad != NULL)
   {
-      newFunc = new AVSFunction(name, PluginInLoad->BaseName.c_str(), params, apply, user_data, PluginInLoad->FilePath.c_str());
+    // either called using IScriptEnvironment_Avs25 or we are inside of a CPPv2.5 plugin load
+    const bool isAvs25like = isAvs25 || PluginInLoad->isAvs25;
+    newFunc = new AVSFunction(name, PluginInLoad->BaseName.c_str(), params, apply, user_data, PluginInLoad->FilePath.c_str(), isAvs25like);
   }
   else
   {
-      newFunc = new AVSFunction(name, NULL, params, apply, user_data, NULL);
+    // isAvs25: called using an IScriptEnvironment_Avs25->AddFunction
+    newFunc = new AVSFunction(name, NULL, params, apply, user_data, NULL, isAvs25);
       /*
          // Comment out but kept for reference.
          // This assert is false when AddFunction is called from a cpp non-plugin.
@@ -1147,7 +1154,11 @@ bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
     PluginInLoad = &plugin;
     // in case of a crash in init2
     try {
-      *result = AvisynthPluginInit2(Env);
+      // Pass the 2.5 variant IScriptEnvironment, which has different Invoke
+      // and AddFunction method to avoid array copy/free problems.
+      // (NEW_AVSVALUE compatibility: "baked code" strikes back)
+      *result = AvisynthPluginInit2(Env->GetEnv25());
+      plugin.isAvs25 = true;
     }
     catch (...)
     {
@@ -1240,6 +1251,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
     //	    Env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", plugin.BaseName.c_str());
 
       *result = AVSValue(s);
+      plugin.isAvs25 = true; // no array deep copy/free when NEW_AVSVALUE
     }
     PluginInLoad = NULL;
   }

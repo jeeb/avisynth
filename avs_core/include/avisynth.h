@@ -21,6 +21,7 @@
 //           GetVarTry, GetVarBool/Int/String/Double/Long
 //           Invoke2, Invoke3, InvokeTry, Invoke2Try, Invoke3Try
 //           Interface Version to 8 (classic 2.6 = 6)
+// 20200527  Add IScriptEnvironment_Avs25, used internally
 
 // http://www.avisynth.org
 
@@ -84,6 +85,8 @@
 //           if (has_at_least_v8) dst = env->NewVideoFrameP(vi, &src); else dst = env->NewVideoFrame(vi);
 
 enum {
+  AVISYNTH_CLASSIC_INTERFACE_VERSION_25 = 3,
+  AVISYNTH_CLASSIC_INTERFACE_VERSION_26BETA = 5,
   AVISYNTH_CLASSIC_INTERFACE_VERSION = 6,
   AVISYNTH_INTERFACE_VERSION = 8
 };
@@ -1090,6 +1093,9 @@ class IClip {
   friend class AVSValue;
   volatile long refcnt;
   void AddRef();
+#if BUILDING_AVSCORE
+public:
+#endif
   void Release();
 public:
   IClip() : refcnt(0) {}
@@ -1518,6 +1524,70 @@ public:
 
 }; // end class IScriptEnvironment
 
+// used internally
+class IScriptEnvironment_Avs25 {
+public:
+  virtual ~IScriptEnvironment_Avs25() {}
+
+  virtual /*static*/ int __stdcall GetCPUFlags() = 0;
+
+  virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
+  virtual char* Sprintf(const char* fmt, ...) = 0;
+  virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
+
+#ifdef AVS_WINDOWS
+  __declspec(noreturn) virtual void ThrowError(const char* fmt, ...) = 0;
+#else
+  virtual void ThrowError(const char* fmt, ...) = 0;
+#endif
+
+  class NotFound /*exception*/ {};  // thrown by Invoke and GetVar
+
+  typedef AVSValue(__cdecl* ApplyFunc)(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+  virtual void __stdcall AddFunction25(const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
+  virtual bool __stdcall FunctionExists(const char* name) = 0;
+  virtual AVSValue __stdcall Invoke25(const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
+
+  virtual AVSValue __stdcall GetVar(const char* name) = 0;
+  virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;
+  virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) = 0;
+
+  virtual void __stdcall PushContext(int level = 0) = 0;
+  virtual void __stdcall PopContext() = 0;
+
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) = 0;
+
+  virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
+
+  virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
+
+  typedef void(__cdecl* ShutdownFunc)(void* user_data, IScriptEnvironment* env);
+  virtual void __stdcall AtExit(ShutdownFunc function, void* user_data) = 0;
+
+  virtual void __stdcall CheckVersion(int version = AVISYNTH_CLASSIC_INTERFACE_VERSION_25) = 0;
+
+  virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) = 0;
+
+  virtual int __stdcall SetMemoryMax(int mem) = 0;
+
+  virtual int __stdcall SetWorkingDir(const char* newdir) = 0;
+
+  virtual void* __stdcall ManageCache(int key, void* data) = 0;
+
+  enum PlanarChromaAlignmentMode {
+    PlanarChromaAlignmentOff,
+    PlanarChromaAlignmentOn,
+    PlanarChromaAlignmentTest
+  };
+
+  virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
+
+  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
+
+}; // end class IScriptEnvironment_Avs25
+
 
 enum MtMode
 {
@@ -1599,8 +1669,10 @@ public:
 
   virtual const AVS_Linkage* __stdcall GetAVSLinkage() = 0;
 
-  // Get legacy interface
+  // Get legacy interface (Avisynth+)
   virtual IScriptEnvironment2* __stdcall GetEnv2() = 0;
+  // Get compatibility interface for AVS CPP 2.5 plugins
+  virtual IScriptEnvironment_Avs25* __stdcall GetEnv25() = 0;
 
   // Generic system to ask for various properties
   virtual size_t  __stdcall GetEnvProperty(AvsEnvProperty prop) = 0;
@@ -1780,8 +1852,10 @@ struct PNeoEnv {
   INeoEnv* operator->() const { return p; }
 #ifdef BUILDING_AVSCORE
   inline operator IScriptEnvironment2*();
+  inline operator IScriptEnvironment_Avs25* ();
 #else
   operator IScriptEnvironment2*() { return p->GetEnv2(); }
+  operator IScriptEnvironment_Avs25* () { return p->GetEnv25(); }
 #endif
 };
 

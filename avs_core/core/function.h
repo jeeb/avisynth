@@ -12,6 +12,7 @@ struct Function {
   const char* param_types;
   void* user_data;
   const char* dll_path;
+  bool isAvs25; // can be filled during plugin load
 };
 
 struct CaptureVars {
@@ -47,7 +48,7 @@ public:
   AVSFunction(void*);
   AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply);
   AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data);
-  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path);
+  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path, bool _isAvs25);
   ~AVSFunction();
 
   AVSFunction() = delete;
