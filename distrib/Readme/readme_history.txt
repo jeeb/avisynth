@@ -4,8 +4,29 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200504 3.6.0
+20200531 3.6.1-test4
+--------------------
+- Avisynth 2.5 plugin compatibility patch.
+- Windows XP patch (thread local storage workaround)
+- Fix: proper handling of autoload directories precedence:
+    PluginDir+ in Software/Avisynth in HKEY_CURRENT_USER (highest priority)
+    PluginDir+ in Software/Avisynth in HKEY_LOCAL_MACHINE
+    PluginDir2_5 in Software/Avisynth in HKEY_CURRENT_USER
+    PluginDir2_5 in Software/Avisynth in HKEY_LOCAL_MACHINE (lowest priority)
+  Plugin (dll file name) found in a lower priority folder will not load if a similarly named plugin already existed earlier.
+- Fix: ScriptClip + Runtime function object crash under multithreading
+  e.g. script was crashing with high confidence:
+    ColorBars(width=640, height=480, pixel_type="yv12")
+    ScriptClip(function[](clip c) { propSetInt("s",function[](clip c) { return current_frame }) })
+    Prefetch(100)
+
+20200520 3.6.0
 --------------
+- Added predefined macros for ARM processors. Tested on Raspberry Pi 4B with the aarch64 image of Ubuntu 20.04.
+- Added support for disabling the Intel SIMD intrinsics. Gets automatically disabled on non-x86 targets.
+- Added submodule to allow macOS 10.13 and 10.14 to build AviSynth+ with the native Clang compiler
+- Fixed some warnings on GCC (wangqr)
+- Implemented GetNumPhysicalCPUs on Linux and macOS (wangqr)
 - Scripts arrays (Info for plugin writers)
   Plugin parameter definition: allow type+'.' and type+'*' syntax for named array parameters
 

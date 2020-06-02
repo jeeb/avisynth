@@ -1,5 +1,5 @@
-Avisynth+ v3.6.0
-----------------
+Avisynth+ v3.6.1-test4
+----------------------
 
 Use the installer or copy files directly
 - 64 bit OS:
@@ -31,14 +31,684 @@ Short info for plugin writers
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
 
-20200331 3.6.0
+20200531 3.6.1-test4
+--------------------
+- Avisynth 2.5 plugin compatibility patch.
+- Windows XP patch (thread local storage workaround)
+- Fix: proper handling of autoload directories precedence:
+    PluginDir+ in Software/Avisynth in HKEY_CURRENT_USER (highest priority)
+    PluginDir+ in Software/Avisynth in HKEY_LOCAL_MACHINE
+    PluginDir2_5 in Software/Avisynth in HKEY_CURRENT_USER
+    PluginDir2_5 in Software/Avisynth in HKEY_LOCAL_MACHINE (lowest priority)
+  Plugin (dll file name) found in a lower priority folder will not load if a similarly named plugin already existed earlier.
+- Fix: ScriptClip + Runtime function object crash under multithreading
+  e.g. script was crashing with high confidence:
+    ColorBars(width=640, height=480, pixel_type="yv12")
+    ScriptClip(function[](clip c) { propSetInt("s",function[](clip c) { return current_frame }) })
+    Prefetch(100)
+
+20200520 3.6.0
 --------------
+- Added predefined macros for ARM processors. Tested on Raspberry Pi 4B with the aarch64 image of Ubuntu 20.04.
+- Added support for disabling the Intel SIMD intrinsics. Gets automatically disabled on non-x86 targets.
+- Added submodule to allow macOS 10.13 and 10.14 to build AviSynth+ with the native Clang compiler
+- Fixed some warnings on GCC (wangqr)
+- Implemented GetNumPhysicalCPUs on Linux and macOS (wangqr)
+- Scripts arrays (Info for plugin writers)
+  Plugin parameter definition: allow type+'.' and type+'*' syntax for named array parameters
+
+  Example:
+    BlankClip has a named "colors" parameter which accepts one or more "float".
+    Definition in function signature:
+      [colors]f+
+    Usage on the caller side: pass [235.0, 128, 128].
+    Checking the proper array size is the plugin's task.
+
+  Note:
+    Plugins with named array parameter definition syntax will not work for non-array-aware AviSynth versions.
+
+  Note2:
+    Type-free unnamed arrays ".+" or ".*" cannot be followed by additional parameters
+
+  Note3:
+    A backward compatible way (AVS 2.6 and non-script-array AviSynth+ versions) of using named or unnamed arrays is to specify a single type as "." and
+    the plugin would check the argument type for IsArray
+
+- User defined functions:
+  Add array parameter types:
+
+  "array" or "val_array": array of any type.
+    When unnamed, then this kind of parameter must be the very last one.
+    Unnamed free-typed parametes cannot be followed by any other parameter.
+    Translates to ".*" in a plugin parameter definition rule.
+
+  "bool_array" "int_array", "float_array", "string_array", "clip_array", "func_array"
+    Translates to "b*", "i*", "f*", "s*", "c*", "f*" in a plugin parameter definition rule.
+
+  Example:
+
+    '''
+    a = [1.0, 2.0, 4.2]
+    b = [3, 4, 5]
+    multi = [a,b]
+
+    sum = Summa(multi[0], multi[1], 2)
+    SubTitle(Format({sum}))
+
+    Function Summa(array "x", array "y", int "N")
+    {
+      sum = 0.0
+      FOR(i=0,N-1) {
+        sum = sum + x[i] * y[i]
+      }
+      return sum
+    }
+
+    or
+
+    Function Summa(float_array x, float_array y, int "N")
+    {
+      sum = 0.0
+      FOR(i=0,N-1) {
+        sum = sum + x[i] * y[i]
+      }
+      return sum
+    }
+    '''
+
+- IScriptEnvironment new additions
+  Ex-IScriptEnvironment2: no-throw version of Invoke name change to -> InvokeTry
+  Ex-INeo Invoke versions to -> Invoke2Try, Invoke3, Invoke3Try
+  New (was not implemented in any former Interface): Invoke2 (Exception Thrower version of Invoke2Try)
+
+- Test build published on (20200428)
+
+20200428 3.6.0
+--------------
+- New: Format function
+
+  Syntax:
+    string Format(string format, [value1, value2, ...])
+
+  Parameters
+    - string format
+      unnamed parameter, the format string
+    - zero or more values for format replacement
+      Single values are converted to string like in AviSynth String() function.
+      If a value is a two dimensional array (only with AviSynth+ arrays enabled) then it can be
+      used by a named lookup in the format expression.
+
+  Returns
+    formatted string
+
+  Description:
+
+    The format string consists of
+
+        ordinary characters (except { and }), which are copied unchanged to the output,
+        escape sequences {{ and }}, which are replaced with { and } respectively in the output, and
+        replacement fields.
+
+    Each replacement field has the following format:
+
+        introductory { character;
+
+        (optional)
+        arg-id, a non-negative number;
+        or:
+        identifier which is used for lookup named parameters. (["name", value] construction)
+        or:
+        valid AviSynth variable name
+
+        final } character.
+
+    If arg-id is a number it specifies the index of the argument in args whose value is to be used for formatting;
+    Index is zero based.
+
+    If arg-id is string then it serves as a lookup key from the parameters list given as an array ["name",value] pair.
+    If not found, then arg-id is searched among Avisynth variables.
+
+    If arg-id is omitted, the arguments are used in order.
+    Mixing manual and automatic indexing is not an error.
+
+    Notes
+
+    It is not an error to provide more arguments than the format string requires:
+
+    Format("{} {}!", "Hello", "world", "something"); // OK, produces "Hello world!"
+
+  Examples:
+    By Avisynth variable
+      max_pixel_value = 255
+      SubTitle(Format("max={max_pixel_value}!"))
+
+    By index:
+      SubTitle(Format("{0} {1} {0}", "Home", "sweet"))
+
+    In order:
+      SubTitle(Format("{} {} {}", "AviSynth", "+", 2020))
+
+    Array name-value pairs
+      SubTitle(Format("maximum={max} minimum={min} max again {max}!", ["max",255], ["min",0]))
+
+- frame properties framework, IScriptEnvironment extension
+  - Core and concept ported from VapourSynth - thank you
+  - Frame properties are really per-frame data which can only be read and written within runtime functions.
+    Source filters can feed into frame properties useful data such as information on colorimetry.
+  - frame properties are key-value(s) pairs
+    - Key is an alphanumeric identifier.
+    - Values can be of single value or array of type
+      - 64 bit integers (32 bit integer when converted to AVSValue inside Avisynth+, AVSValue limitation)
+      - 64 bit doubles (32 bit float when converted to AVSValue inside Avisynth+, AVSValue limitation)
+      - strings (or data) with given length. strings are null terminated
+      - frame references (PVideoFrame)
+      - clip references (PClip)
+    - property setting has 3 modes: 0-replace 1-append 2-touch (see AVSPropAppendMode in avisynth.h)
+      0 - single value for that key is replaced
+      1 - property is appended (make arrays by calling with mode=1 consecutively)
+      2 - touch
+  - from plugin writer's point of view:
+    - new field in internal VideoFrame struct:
+      properties, type is AVSMap* which is basically a reference counting struct for holding array of variants
+    - frame property passing along the filter chain
+      If your filter is not an in-place one (works with NewVideoFrame instead of MakeWritable) then
+      you have to pass properties programatically by using a new version of env->NewVideoFrame: NewVideoFrameP.
+      This alternative version of NewVideoFrame has a second PVideoFrame* parameter from which properties will be
+      copied upon creating an empty VideoFrame.
+
+      Unfortunately if even one filter in the chain is not passing frame properties then it is a dead end on the info.
+
+      Whether you can (should) use it or not, the Avisynth interface version will tell you. (e.g. >= 8) which should be
+      queried (best place: filter constructor)
+      Unless you drop support for older avs+ or classic Avisynth 2.6, there will be a transient time when you have to support both world.
+      Example:
+        Check it:
+          has_at_least_v8 = true;
+          try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8 = false; }
+        and use it:
+          if (has_at_least_v8) dst = env->NewVideoFrameP(vi, &src); else dst = env->NewVideoFrame(vi);
+
+      Another approach VideoFrame is created as before and later 'copyFrameProps' is used.
+
+    - support functions
+    In C interface:
+      use avs_new_video_frame_p instead of avs_new_video_frame
+      use avs_new_video_frame_p_a instead of avs_new_video_frame_a
+
+      AVS_VideoFrame * AVSC_CC avs_new_video_frame_p(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame * propSrc)
+      AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
+
+    In avisynth.h:
+      enums AVSPropTypes, AVSGetPropErrors and AVSPropAppendMode
+      AVSMap* is just a pointer which holds the actual list and values of frame properties.
+      You don't need to know what's inside. Access its content through IScriptEnvironment or C interface calls
+
+  - IScriptEnvironment interface is extended! For the first time since classic Avisynth 2.6 moved to IF version 6.
+    AVISYNTH_INTERFACE_VERION supporting frame properties is: 8.
+
+    [CPP interface]
+    - Summary:
+      New: frame propery support with NewVideoFrameP and property getter/setter/info helpers
+      Old-New: moved from IScriptEnvironment2:
+        GetEnvProperty (note: this is for system properties)
+        Allocate, Free (buffer pools)
+        GetVar versions distinctly named: GetVarTry, GetVarBool, GetVarInt, GetVarDouble, GetVarString, GetVarLong
+      Old-New: moved from IScriptEnvironment2 and INeoEnv
+        InvokeTry, Invoke2, Invoke2Try, Invoke3, Invoke3Try
+        The "xxxTry" versions are returning bool instead of throwing NotFound if specified function does not exist
+
+        IScriptEnvironment V6 contained only:
+          AVSValue Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0)
+        New content, different parameter list, non-exception thrower versions
+          These versions of Invoke will throw NotFound() exception like "Invoke" does
+            AVSValue Invoke2(const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0)
+            AVSValue Invoke3(const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0)
+          These versions of Invoke will return false instead of throwing NotFound().
+            bool InvokeTry(AVSValue* result, const char* name, const AVSValue& args, const char* const* arg_names = 0)
+            bool Invoke2Try(AVSValue* result, const AVSValue& implicit_last, const char* name, const AVSValue args, const char* const* arg_names = 0)
+            bool Invoke3Try(AVSValue* result, const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0)
+
+    - NewVideoFrame with frame property source:
+        PVideoFrame NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
+
+      Instead of using
+        PVideoFrame src = child->GetFrame(n, env);
+        PVideoFrame frame = env->NewVideoFrame(vi)
+
+      create new video frame with passing properties by giving a source video frame
+        PVideoFrame src = child->GetFrame(n, env);
+        PVideoFrame dst = env->NewVideoFrameP(vi, &src);
+
+      All core functions in Avisynth support passing frame properties as a first step.
+      (Second and further steps for Avisynth core: use "standardized" frame properties for color matrix and primaries info,
+      for field based flag, etc...)
+
+      Note: MakeWritable preserves frame properties
+
+    - copy frame properties from one frame to another: copyFrameProps
+    - get property pointer for readonly access: getFramePropsRO
+    - get property pointer for read/write access: getFramePropsRW
+    - property count helper functions
+    - clear of individual properties by key or clear everything
+    - property getter and setter functions (by key, key+index, by index). Indexes are starting with 0.
+    - examples in conditional.cpp, conditional_functions.cpp
+
+      void copyFrameProps(const PVideoFrame& src, PVideoFrame& dst);
+        copies frame properties from source to destination frame
+
+      const AVSMap* getFramePropsRO(const PVideoFrame& frame);
+      AVSMap* getFramePropsRW(PVideoFrame& frame);
+        get pointer to the property struct for readonly or read/write purposes.
+        A single frame can have one set of frame properties, but the set can be shared by multiple frames.
+
+      int propNumKeys(const AVSMap* map);
+        returns the number of frame properties for a given AVSMap. Each entry have a unique alphanumeric key.
+        Key is the identifier name of the frame property.
+
+      const char* propGetKey(const AVSMap* map, int index);
+        Retrieves the key (property identifier / property name) by index. 0 <= index < propNumKeys
+
+      int propDeleteKey(AVSMap* map, const char* key);
+        Delete an entry. Returns 0 if O.K.
+
+      int propNumElements(const AVSMap* map, const char* key);
+        Queries the internal counter for a given property. Properties can be arrays,
+        returned value means the array size. Non array properties return 1.
+        Returns -1 if property does not exists.
+
+      char propGetType(const AVSMap* map, const char* key);
+        returns the data type.
+        Type Enums are avaliable here:
+          avisynth.h CPP interface:
+            '''
+            typedef enum AVSPropTypes {
+              ptUnset = 'u',
+              ptInt = 'i',
+              ptFloat = 'f',
+              ptData = 's',
+              ptClip = 'c',
+              ptFrame = 'v',
+            } AVSPropTypes;
+            '''
+          avisynth_c.h C interface:
+            '''
+            enum {
+              AVS_PROPTYPE_UNSET = 'u',
+              AVS_PROPTYPE_INT = 'i',
+              AVS_PROPTYPE_FLOAT = 'f',
+              AVS_PROPTYPE_DATA = 's',
+              AVS_PROPTYPE_CLIP = 'c',
+              AVS_PROPTYPE_FRAME = 'v'
+            };
+            '''
+
+      int64_t propGetInt(const AVSMap* map, const char* key, int index, int* error);
+      double propGetFloat(const AVSMap* map, const char* key, int index, int* error);
+      const char* propGetData(const AVSMap* map, const char* key, int index, int* error);
+      PClip propGetClip(const AVSMap* map, const char* key, int index, int* error);
+      const PVideoFrame propGetFrame(const AVSMap* map, const char* key, int index, int* error);
+
+        Property read functions.
+        Since properties can be arrays, index should be specified.
+        Use index = 0 for getting the value for a non-array property, in reality these
+        properties are a size=1 arrays.
+        Funtion 'propGetData' can be used for both strings and for generic byte arrays.
+        Variable 'error' returns an error code of failure (0=success):
+          peUnset: key does not exists
+          peType: e.g read integer from a float property,
+          peIndex: property array index out of range)
+        Error enums are defined here:
+          avisynth.h CPP interface:
+            typedef enum AVSGetPropErrors {
+              peUnset = 1,
+              peType = 2,
+              peIndex = 4
+            } AVSGetPropErrors;
+          avisynth_c.h C interface:
+            enum {
+              AVS_GETPROPERROR_UNSET = 1,
+              AVS_GETPROPERROR_TYPE = 2,
+              AVS_GETPROPERROR_INDEX = 4
+            };
+
+      int propGetDataSize(const AVSMap* map, const char* key, int index, int* error);
+        returns the string length or data size of a ptData typed element
+
+      int propSetInt(AVSMap* map, const char* key, int64_t i, int append);
+      int propSetFloat(AVSMap* map, const char* key, double d, int append);
+      int propSetData(AVSMap* map, const char* key, const char* d, int length, int append);
+      int propSetClip(AVSMap* map, const char* key, PClip& clip, int append);
+      int propSetFrame(AVSMap* map, const char* key, const PVideoFrame& frame, int append);
+        Property setter functions.
+        propSetData is used for strings or for real generic byte data.
+        propSetData has an extra length parameter, specify -1 for automatic string length.
+        Data bytes will be copied into the property (no need to keep data for the given pointer)
+        Three propery set modes supported.
+        - paReplace: adds if not exists, replaces value is it already exists, losing its old value.
+        - paAppend: appends to the existing property (note: they are basically arrays)
+        - paTouch: do nothing if the key exists. Otherwise, the key is added to the map, with no values associated.
+        See mode enums in:
+          avisynth.h CPP interface:
+            '''
+            typedef enum AVSPropAppendMode {
+              paReplace = 0,
+              paAppend = 1,
+              paTouch = 2
+            } AVSPropAppendMode;
+            '''
+          or
+          avisynth_c.h C interface:
+            '''
+            enum {
+              AVS_PROPAPPENDMODE_REPLACE = 0,
+              AVS_PROPAPPENDMODE_APPEND = 1,
+              AVS_PROPAPPENDMODE_TOUCH = 2
+            };
+            '''
+
+      const int64_t *propGetIntArray(const AVSMap* map, const char* key, int* error);
+      const double *propGetFloatArray(const AVSMap* map, const char* key, int* error);
+        Get the pointer to the first element of array of the given key.
+        Use 'propNumElements' for establishing array size and valid index ranges.
+
+      int propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size);
+      int propSetFloatArray(AVSMap* map, const char* key, const double* d, int size);
+        If an array is already available in the application, these functions provide
+        a quicker way for setting the properties than to insert them one by one.
+        No append mode can be specified, if property already exists it will be overwritten.
+        Return value: 0 on success, 1 otherwise
+
+      void clearMap(AVSMap* map);
+        Removes all content from the property set.
+
+      AVSMap* createMap();
+      void freeMap(AVSMap* map);
+        these are for internal use only
+
+    [C interface]
+    - Functions and enums are defined avisynth_c.h
+    - New: frame propery support with NewVideoFrameP and property getter/setter/info helpers
+    - Old-New: moved from IScriptEnvironment2:
+        avs_get_env_property (note: this is for system properties)
+        avs_pool_allocate, avs_pool_free (buffer pools)
+        avs_get_var versions distinctly named: avs_get_var_try, avs_get_var_bool,
+        avs_get_var_int, avs_get_var_double, avs_get_var_string, avs_get_var_long
+
+    - new video frame creator functions:
+        avs_new_video_frame_p
+        avs_new_video_frame_p_a
+
+      They return and empty video frame but with frame properties copied from the source parameter.
+
+        AVS_VideoFrame * AVSC_CC avs_new_video_frame_p(const AVS_VideoInfo* vi, AVS_VideoFrame *propSrc)
+        AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame *propSrc, int align)
+
+      NULL as propSrc will behave like old avs_new_video_frame and avs_new_video_frame_a
+
+    - AVS_VideoFrame struct extended with a placeholder field for 'properties' pointer
+    - avs_copyFrameProps
+    - avs_getFramePropsRO, avs_getFramePropsRW
+    - avs_propNumKeys, avs_propGetKey, avs_propNumElements, avs_propGetType, avs_propGetDataSize
+    - avs_propGetInt, avs_propGetFloat, avs_propGetData, avs_propGetClip, avs_propGetFrame, avs_propGetIntArray, avs_propGetFloatArray
+    - avs_propSetInt, avs_propSetFloat, avs_propSetData, avs_propSetClip, avs_propSetFrame, avs_propSetIntArray, avs_propSetFloatArray
+    - avs_propDeleteKey, avs_clearMap
+
+    See their descriptions above, names are similar to the CPP ones.
+
+    [AviSynth scripting language]
+
+    Frame properties read-write possible only within runtime functions.
+    Input value of setter functions are to be come from the return value of "function objects"
+
+    Property setter function names begin with propSet
+      - property value is given by the return value of a function object
+        Parameters:
+          clip c,
+          string key_name,
+          function object,
+          int "mode"
+            0=replace (default), 1=append, 2=touch
+            There is no append mode for inserting a full array into the property.
+
+          "propSet" csn[mode]i
+            generic property setter, automatic type recognition
+          "propSetInt" csn[mode]i
+            accepts only integer results from function
+          "propSetFloat" csn[mode]i
+            accepts only float results from function
+          "propSetString" csn[mode]i
+            accepts only string results from function
+          "propSetArray" csn
+            accepts only array type results from function
+
+      - Sets a property, its value is given directly
+
+        "propSet" csi[mode]i
+        "propSet" csf[mode]i
+        "propSet" css[mode]i
+        "propSet" csa
+          note: array must contain only the similarly typed values, e.g. cannot mix strings with integers.
+
+        Parameters:
+          clip c,
+          string key_name,
+          value (type of integer, float, string and array respectively),
+          int "mode"
+            0=replace (default), 1=append, 2=touch
+            There is no append mode for inserting a full array into the property.
+
+    Delete a specific property entry
+      "propDelete" cs
+
+       parameters:
+         clip c,
+         string key_name,
+
+    Clear all properties for a given video frame
+      "propClearAll" c
+
+       parameters:
+         clip c
+
+    Reading properties
+       Common parameters:
+         clip c,
+         string key_name,
+         integer "index", (default 0): for zero based indexing array access
+         integer "offset" (default 0), similar to the other runtime functions: frame offset (e.g. -1: previous, 2: next next)
+
+      "propGetAny" cs[index]i[offset]i
+        returns the automatically detected type
+      "propGetInt" cs[index]i[offset]i
+        returns only if value is integer, throws an error otherwise
+      "propGetFloat" cs[index]i[offset]i
+        returns only if value is float, throws an error otherwise
+      "propGetString"cs[index]i[offset]i
+        returns only if value is string, throws an error otherwise
+      "propGetAsArray" cs[offset]i
+        returns an array. For a single property array size will be 1. (only in array-aware AviSynth+ versions)
+
+
+    Reading all properties
+      "propGetAll" c[offset]i
+
+      (Only in array-aware AviSynth+ versions)
+      Returns all frame properties in an array of [key-value] pairs. Array size will be 'numProps'
+      Each key-value pair is contained in a two dimensional subarray.
+      If the property value for a given key is an array again then "value" will be an array as well.
+      Once you have the array with all properties you can access them with the "associative" feature of AviSynth array access
+
+      ScriptClip("""last.propSet("cica","hello"+String(current_frame)).\
+        propSetInt("test_i1",function[](clip c) { return current_frame*3 }).\
+        propSet("test_i2", current_frame * 2) """)
+      ScriptClip("""p = propGetAll() \
+        SubTitle("size:" + String(p.ArraySize()) + " " + \
+                           String(p["test_i1"]) + " " + \
+                           String(p["cica"]) + " " + \
+                           String(p["test_i2"]))""")
+      ScriptClip("""p = propGetAll() \
+        SubTitle("size:" + String(p.ArraySize()) + " " + \
+        String(p[0,1]) + " " + \
+        String(p[1,1]) + " " + \
+        String(p[2,1]), x=0, y=20)""")
+
+    Lists all properties to screen (a debug filter)
+      "propShow" c[size]i[showtype]b
+
+      integer "size" default(16)
+        font size to use (the "Text" filter is used for display, sizes are of limited set)
+
+      bool "showtype" default (false)
+        if true, the data type in parenthesis appears next to the property key name
+
+      Listing appears as a name = value list. Arrays values are put between [ and ]
+      Top line contains number is properties. If no properties found, nothing is displayed.
+
+    Other helper function
+      "propGetDataSize" cs[index]i[offset]i
+        returns the size of the string or underlying data array
+
+      "propNumElements" cs[offset]i
+        returns the array size of a given property. 1=single value
+
+      "propNumKeys" c[offset]i
+        returns number of entries (keys) for a frame
+
+      "propGetKeyByIndex" c[index]i[offset]i
+        returns the key name for the Nth property (zero based, 0<=index<propNumKeys)
+
+      "propGetType" cs[offset]i
+        returns the type of the given key
+            unset: 0
+            integer: 1
+            float: 2
+            string: 3
+            clip: 4
+            frame: 5
+
+  Example 1:
+  '''
+    ColorBars()
+
+    # just practicing with function objects
+    ScriptClip(function[](clip c) { c.Subtitle(String(current_frame)) })
+
+    # write frame properties with function object
+    ScriptClip("""propSetInt("frameprop_from_str",func(YPlaneMax))""")
+    # write frame properties with traditional script string
+    ScriptClip(function[](clip c) { propSetInt("frameluma_sc_func",func(AverageLuma)) })
+
+    # read frame properties (function object, string)
+    ScriptClip(function[](clip c) { SubTitle(string(propGetInt("frameprop_from_str")), y=20) })
+    ScriptClip("""SubTitle(string(propGetInt("frameluma_sc_func")), y=40)""")
+
+    return last
+  '''
+
+  Example 2: (long - require NEW_AVSVALUE build - default on POSIX - becasue of arrays)
+      '''
+      ColorBars(width=640, height=480, pixel_type="yv12", staticframes=true)
+
+      ScriptClip(function[](clip c) { propSetString("s",function[](clip c) { return "Hello " + string(current_frame) }) })
+      ScriptClip(function[](clip c) { propSetString("s",function[](clip c) { return "Hello array element #2 " }, mode=1) })
+      ScriptClip(function[](clip c) { propSetString("s",function[](clip c) { return "Hello array element #3 "}, mode=1 ) })
+
+      ScriptClip(function[](clip c) { propSetString("s2",function[](clip c) { return "Another property "} ) })
+
+      ScriptClip(function[](clip c) { propSetInt("s_int",function[](clip c) { return current_frame*1 }) })
+      ScriptClip(function[](clip c) { propSetInt("s_int",function[](clip c) { return current_frame*2 }, mode=1) })
+      ScriptClip(function[](clip c) { propSetInt("s_int",function[](clip c) { return current_frame*4 }, mode=1 ) })
+
+      ScriptClip(function[](clip c) { propSetFloat("s_float",function[](clip c) { return current_frame*1*3.14 }) })
+      ScriptClip(function[](clip c) { propSetFloat("s_float",function[](clip c) { return current_frame*2*3.14 }, mode=1) })
+      ScriptClip(function[](clip c) { propSetFloat("s_float",function[](clip c) { return current_frame*3*3.14 }, mode=1 ) })
+
+      ScriptClip(function[](clip c) { propSetArray("s_float_arr",function[](clip c) { return [1.1, 2.2] } ) })
+      ScriptClip(function[](clip c) { propSetArray("s_int_arr",function[](clip c) { return [-1,-2,-5] } ) })
+      ScriptClip(function[](clip c) { propSetArray("s_string",function[](clip c) { return ["ArrayElementS_1", "ArrayElementS_2"] } ) })
+      #ScriptClip("""propDelete("s")""")
+      ScriptClip(function[](clip c) {
+        y = 0
+        SubTitle("Prop Key count =" + String(propNumKeys), y=y)
+        y = y + 15
+        numKeys = propNumKeys() - 1
+        for ( i = 0 , numKeys) {
+          propName = propGetKeyByIndex(index = i)
+          propType = propGetType(propName)
+          SubTitle("#"+String(i) + " property: '" + propName + "', Type = " + String(propType) , y=y)
+          y = y + 15
+
+          for(j=0, propNumElements(propName) - 1) {
+            SubTitle("element #" + String(j) + ", size = " + String(propType == 3 ? propGetDataSize(propName, index=j) : 0) + ", Value = " + String(propGetAny(propName, index=j)), y = y)
+            #SubTitle("element #" + String(j) + " size = " + String(propType == 3 ? propGetDataSize(propName, index=j) : 0) + ", Value = " + String(propGetAny(propName, index=j)), y = y)
+            y = y + 15
+          }
+
+        }
+        return last
+      })
+
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s")
+        y = 100
+        x = 400
+        SubTitle(string(a.ArraySize()), x=x, y=y)
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+
+      # get int array one pass
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s_int")
+        y = 440
+        x = 400
+        SubTitle("Array size=" + string(a.ArraySize()), x=x, y=y)
+        y = y + 15
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+
+      # get float array one pass
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s_float")
+        y = 440
+        x = 200
+        SubTitle("Array size=" + string(a.ArraySize()), x=x, y=y)
+        y = y + 15
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+
+      # get string array
+      ScriptClip(function[](clip c) {
+        a = propGetAsArray("s_stringa")
+        y = 440
+        x = 000
+        SubTitle("Array size=" + string(a.ArraySize()), x=x, y=y)
+        y = y + 15
+        for(i=0, a.ArraySize()-1) {
+          SubTitle("["+String(i)+"]="+ String(a[i]),x=x,y=y)
+          y = y + 15
+        }
+      return last
+      })
+    '''
+
 - New function:
   SetMaxCPU(string feature)
 
   string "feature"
 
-    "" or "C" for zero SIMD support, no processor flags are reported
+    "" or "none" for zero SIMD support, no processor flags are reported
     "mmx", "sse", "sse2", "sse3", "ssse3", "sse4" or "sse4.1", "sse4.2", "avx, "avx2"
 
     parameter is case insensitive.
@@ -52,7 +722,7 @@ Short info for plugin writers
   Examples:
     SetMaxCPU("SSE2") reports at most SSE2 processor (even if AVX2 is available)
     SetMaxCPU("avx,sse4.1-") limits to avx2 but explicitely removes reporting sse4.1 support
-    SetMaxCPU("C,avx2+") limits to plain C, then switches on AVX2-only support
+    SetMaxCPU("none,avx2+") limits to plain C, then switches on AVX2-only support
 
 - Script array for NEW_AVSVALUE define are working again. (default in Linux build - experimental)
   Memo:
@@ -216,7 +886,8 @@ Short info for plugin writers
           Valid only when nframes> 0. Outputs a filter graph repeatedly at nframes intervals.
 
   - Frame properties (still from Neo!)
-    (experimental, we have planned it in Avs+, probably we'll try to follow the VapourSynth methods(?))
+    (experimental, we have planned it in Avs+, probably we'll try to follow the
+    VapourSynth methods(?))
 
 20200322 3.6.0
 --------------
