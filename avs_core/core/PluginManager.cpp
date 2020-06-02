@@ -587,6 +587,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
   if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegPluginDirPlus_GCC, &plugin_dir))
     replace_beginning(dir, "MACHINE_PLUS_PLUGINS", plugin_dir);
 #else
+  // note: if e.g HKCU/PluginDir+ does not exist, USER_PLUS_PLUGINS as a string remain in search path
   if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegPluginDirPlus, &plugin_dir))
     replace_beginning(dir, "USER_PLUS_PLUGINS", plugin_dir);
   if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegPluginDirPlus, &plugin_dir))
@@ -654,19 +655,24 @@ void PluginManager::AutoloadPlugins()
         PluginFile p(concat(dir, file.path().filename().generic_string()));
 
         // Search for loaded plugins with the same base name.
+        bool same_found = false;
         for (size_t i = 0; i < AutoLoadedPlugins.size(); ++i)
         {
 #ifdef AVS_POSIX
           if (AutoLoadedPlugins[i].BaseName == p.BaseName) // case insentitive
 #else
-          if (streqi(AutoLoadedPlugins[i].BaseName.c_str(), p.BaseName.c_str())) // fixme:
+          if (streqi(AutoLoadedPlugins[i].BaseName.c_str(), p.BaseName.c_str()))
 #endif
           {
             // Prevent loading a plugin with a basename that is
             // already loaded (from another autoload folder).
-            continue;
+            same_found = true;
+            break;
           }
         }
+
+        if (same_found)
+          continue;
 
         // Try to load plugin
         AVSValue dummy;
@@ -694,7 +700,8 @@ void PluginManager::AutoloadPlugins()
 
         PluginFile p(concat(dir, file.path().filename().generic_string()));
 
-        // Search for loaded plugins with the same base name.
+        // Search for loaded avsi scripts with the same base name.
+        bool same_found = false;
         for (size_t i = 0; i < AutoLoadedImports.size(); ++i)
         {
 #ifdef AVS_POSIX
@@ -703,11 +710,15 @@ void PluginManager::AutoloadPlugins()
           if (streqi(AutoLoadedImports[i].BaseName.c_str(), p.BaseName.c_str()))
 #endif
           {
-            // Prevent loading a plugin with a basename that is
+            // Prevent loading an avsi script with a basename that is
             // already loaded (from another autoload folder).
-            continue;
+            same_found = true;
+            break;
           }
         }
+
+        if (same_found)
+          continue;
 
         // Try to load script
         Env->Invoke("Import", p.FilePath.c_str()); // FIXME: utf8?
