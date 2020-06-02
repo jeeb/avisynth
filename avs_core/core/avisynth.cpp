@@ -86,6 +86,13 @@
   #define YieldProcessor() __nop(void)
 #endif
 
+#if defined(AVS_WINDOWS)
+// Windows XP does not have proper initialization for
+// thread local variables.
+// Use workaround instead __declspec(thread)
+#define XP_TLS
+#endif 
+
 extern const AVSFunction Audio_filters[],
                          Combine_filters[],
                          Convert_filters[],
@@ -1123,7 +1130,12 @@ struct ScriptEnvironmentTLS
 // since some filter (e.g. svpflow1) ignores env given for GetFrame, and always use main thread's env.
 // this is a work-around for that.
 #ifdef AVS_WINDOWS
+#  ifdef XP_TLS
+DWORD dwTlsIndex = 0;
+#  else
+// does not work on XP when DLL is dynamic loaded
 __declspec(thread) ScriptEnvironmentTLS* g_TLS = nullptr;
+#  endif
 #else
 __thread ScriptEnvironmentTLS* g_TLS = nullptr;
 #endif
@@ -1146,10 +1158,18 @@ public:
     }
     if (thread_id != 0) {
       // thread pool thread
+#ifdef XP_TLS
+      ScriptEnvironmentTLS* g_TLS = (ScriptEnvironmentTLS*)(TlsGetValue(dwTlsIndex));
+#endif
       if (g_TLS != nullptr) {
         ThrowError("Detected multiple ScriptEnvironmentTLSs for a single thread");
       }
       g_TLS = &myTLS;
+#ifdef XP_TLS
+      if (!TlsSetValue(dwTlsIndex, g_TLS)) {
+        ThrowError("Could not store thread local value for ScriptEnvironmentTLS");
+      }
+#endif
     }
     core->IncEnvCount(); // for leak detection
   }
@@ -1160,7 +1180,14 @@ public:
 
   ScriptEnvironmentTLS* GetTLS() { return &myTLS; }
 
+#ifdef XP_TLS
+  // a ? : b, evaluate 'a' only once
+#define IFNULL(a, b) ([&](){ auto val = (a); return ((val) == nullptr ? (b) : (val)); }())
+#define DISPATCH(name) IFNULL((ScriptEnvironmentTLS*)(TlsGetValue(dwTlsIndex)), coreTLS)->name
+#else
 #define DISPATCH(name) (g_TLS ? g_TLS : coreTLS)->name
+#endif
+
 
   AVSValue __stdcall GetVar(const char* name)
   {
@@ -1542,6 +1569,9 @@ public:
     // When invoked from GetFrame/GetAudio, skip all cache and mt mecanism
     bool is_runtime = true;
 
+#ifdef XP_TLS
+    ScriptEnvironmentTLS* g_TLS = (ScriptEnvironmentTLS*)(TlsGetValue(dwTlsIndex));
+#endif
     if (g_TLS == nullptr) { // not called by thread
       if (GetFrameRecursiveCount() == 0) { // not called by GetFrame
         is_runtime = false;
@@ -1667,6 +1697,9 @@ public:
 
   void __stdcall DeleteScriptEnvironment()
   {
+#ifdef XP_TLS
+    ScriptEnvironmentTLS* g_TLS = (ScriptEnvironmentTLS*)(TlsGetValue(dwTlsIndex));
+#endif
     if (g_TLS != nullptr) {
       ThrowError("Cannot delete environment from a TLS proxy.");
     }
@@ -1972,6 +2005,7 @@ public:
   }
 
 #undef DISPATCH
+#undef IFNULL
 };
 
 #ifdef AVS_POSIX
@@ -2124,6 +2158,11 @@ ScriptEnvironment::ScriptEnvironment()
   nTotalThreads(1),
   nMaxFilterInstances(1)
 {
+#ifdef XP_TLS
+  if ((dwTlsIndex = TlsAlloc()) == TLS_OUT_OF_INDEXES)
+    throw("ScriptEnvironment: TlsAlloc failed");
+#endif
+
   try {
 #ifdef AVS_WINDOWS
     // Make sure COM is initialised
@@ -2375,6 +2414,12 @@ ScriptEnvironment::~ScriptEnvironment() {
     CoUninitialize();
   }
 #endif
+
+#ifdef XP_TLS
+  TlsFree(dwTlsIndex);
+  dwTlsIndex = 0;
+#endif
+
 }
 
 void ScriptEnvironment::SetLogParams(const char* target, int level)
@@ -5099,5 +5144,6 @@ void FramePropVariant::initStorage(FramePropVType t) {
   }
 }
 
+#undef XP_TLS
 ///////////////
 
