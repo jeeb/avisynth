@@ -1,4 +1,4 @@
-Avisynth+ v3.6.1-test4
+Avisynth+ v3.6.1-test5
 ----------------------
 
 Use the installer or copy files directly
@@ -30,6 +30,10 @@ Short info for plugin writers
   when your plugin calls it on a Classic Avisynth, or pre-high bit depth Avisynth+ host.
 
 (see readme_history.txt for details, syntax element, etc. They also appear on avisynth.nl)
+
+20200602 3.6.1-test5
+--------------------
+- Histogram("levels") to allow greyscale
 
 20200531 3.6.1-test4
 --------------------

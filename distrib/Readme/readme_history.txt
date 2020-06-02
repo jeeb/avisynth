@@ -4,6 +4,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20200602 3.6.1-test5
+--------------------
+- Histogram("levels") to allow greyscale
+
 20200531 3.6.1-test4
 --------------------
 - Avisynth 2.5 plugin compatibility patch.
