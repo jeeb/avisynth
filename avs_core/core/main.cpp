@@ -144,7 +144,7 @@ private:
   char* szScriptName;
   char* szScriptNameUTF8;
   IScriptEnvironment2* env;
-  PClip filter_graph;
+  PClip filter_graph; // actual result of script evaluation
   const VideoInfo* vi;
   const char* error_msg;
 
@@ -667,7 +667,6 @@ bool CAVIFileSynth::DelayInit2() {
         return false;
       }
       try {
-        //AVSValue return_val = env->Invoke("Import", szScriptName);
         AVSValue new_args[2] = { szScriptNameUTF8, true };
         AVSValue return_val = env->Invoke("Import", AVSValue(new_args, 2));
 

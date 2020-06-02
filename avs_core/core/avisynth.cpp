@@ -2376,21 +2376,15 @@ ScriptEnvironment::~ScriptEnvironment() {
 #endif
 
   // delete avsmap
-  for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
-    it != end_it;
-    ++it)
+  for (auto &it: FrameRegistry2)
   {
-    for (FrameBufferRegistryType::iterator it2 = (it->second).begin(), end_it2 = (it->second).end();
-      it2 != end_it2;
-      ++it2)
-    {
-      for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
-        it3 != end_it3;
-        ++it3)
+    for (auto &it2: it.second)
+  {
+      for (auto &it3: it2.second)
       {
-        delete it3->properties;
-        it3->properties = 0;
-        it3->frame->properties = 0; // fixme ??
+        delete it3.properties;
+        it3.properties = 0;
+        it3.frame->properties = 0; // fixme ??
       }
     }
   }
@@ -2401,22 +2395,16 @@ ScriptEnvironment::~ScriptEnvironment() {
 #endif
   // and deleting the frame buffer from FrameRegistry2 as well
   bool somethingLeaks = false;
-  for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
-    it != end_it;
-    ++it)
+  for (auto &it: FrameRegistry2)
   {
-    for (FrameBufferRegistryType::iterator it2 = (it->second).begin(), end_it2 = (it->second).end();
-      it2 != end_it2;
-      ++it2)
-    {
-      VFBStorage *vfb = static_cast<VFBStorage*>(it2->first);
+    for (auto &it2: it.second)
+  {
+      VFBStorage *vfb = static_cast<VFBStorage*>(it2.first);
       delete vfb;
       // iterate through frames belonging to this vfb
-      for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
-        it3 != end_it3;
-        ++it3)
+      for (auto &it3: it2.second)
       {
-        VideoFrame *frame = it3->frame;
+        VideoFrame *frame = it3.frame;
 
         frame->vfb = 0;
 
@@ -3049,30 +3037,26 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
   {
     size1++;
     _RPT3(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7zu is %7zu\n", size1, it->first, it->second.size());
-    for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
-      it2 != end_it2;
-      ++it2)
+    for (auto &it2: it->second)
     {
       size2++;
-      VideoFrameBuffer* vfb = it2->first;
+      VideoFrameBuffer* vfb = it2.first;
       total_vfb_size += vfb->GetDataSize();
-      size_t inner_frame_count_size = it2->second.size();
+      size_t inner_frame_count_size = it2.second.size();
       snprintf(buf, 1023, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
       DebugOut(buf);
       // iterate the frame list of this vfb
       int inner_frame_count = 0;
       int inner_frame_count_for_frame_refcount_nonzero = 0;
-      for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
-        it3 != end_it3;
-        ++it3)
+      for (auto &it3: it2.second)
       {
         size3++;
         inner_frame_count++;
 #ifdef _DEBUG
-        VideoFrame* frame = it3->frame;
-        std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->timestamp;
+        VideoFrame* frame = it3.frame;
+        std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3.timestamp;
 #else
-        VideoFrame* frame = *it3;
+        VideoFrame* frame = it3;
 #endif
         if (0 != frame->refcount)
           inner_frame_count_for_frame_refcount_nonzero++;
@@ -3142,18 +3126,16 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
     it != end_it;
     ++it)
   {
-    for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
-      it2 != end_it2;
-      ++it2)
+    for (auto &it2: it->second)
     {
-      VFBStorage *vfb = static_cast<VFBStorage*>(it2->first); // same for all map content, the key is vfb pointer
+      VFBStorage *vfb = static_cast<VFBStorage*>(it2.first); // same for all map content, the key is vfb pointer
       if (device == vfb->device && 0 == vfb->refcount) // vfb device and refcount check
       {
-        size_t videoFrameListSize = it2->second.size();
+        size_t videoFrameListSize = it2.second.size();
         VideoFrame *frame_found;
         AVSMap* properties_found;
         bool found = false;
-        for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
+        for (VideoFrameArrayType::iterator it3 = it2.second.begin(), end_it3 = it2.second.end();
           it3 != end_it3;
           /*++it3 not here, because of the delete*/)
         {
@@ -3195,7 +3177,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           else {
             // if the first frame to this vfb was already found, then we free all others and delete it from the list
             // Benefit: no 4-5k frame list count per a single vfb.
-            //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
+            //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset());
             delete frame;
             delete it3->properties;
             ++it3;
@@ -3203,10 +3185,10 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
         } // for it3
         if (found)
         {
-          _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. clearing frames. List count: it2->second.size(): %7zu \n", it2->second.size());
-          it2->second.clear();
-          it2->second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
-          it2->second.push_back(DebugTimestampedFrame(frame_found,
+          _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. clearing frames. List count: it2->second.size(): %7zu \n", it2.second.size());
+          it2.second.clear();
+          it2.second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
+          it2.second.push_back(DebugTimestampedFrame(frame_found,
             properties_found
           )); // keep only the first
           return frame_found;
@@ -3260,15 +3242,10 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
   // list all cache_entries
 #ifdef LIST_CACHES
   int cache_counter = 0;
-  const CacheRegistryType::iterator end_cit_0 = CacheRegistry.end();
-  for (
-    CacheRegistryType::iterator cit = CacheRegistry.begin();
-    (cit != end_cit_0);
-    ++cit
-    )
+  for (auto &cit: CacheRegistry)
   {
     cache_counter++;
-    Cache* cache = *cit;
+    Cache* cache = cit;
     int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
     _RPT4(0, "  cache#%d cache_ptr=%p cache_size=%d \n", cache_counter, (void*)cache, cache_size); // let's see what's in the cache
   }
@@ -3322,14 +3299,12 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
         vfb->device->memory_used -= vfb->GetDataSize(); // frame->vfb->GetDataSize();
         delete vfb;
         const VideoFrameArrayType::iterator end_it3 = it2->second.end(); // const
-        for (VideoFrameArrayType::iterator it3 = it2->second.begin();
-          it3 != end_it3;
-          ++it3)
+        for (auto &it3: it2->second)
         {
-          VideoFrame *currentframe = it3->frame;
+          VideoFrame *currentframe = it3.frame;
           assert(0 == currentframe->refcount);
           delete currentframe;
-          delete it3->properties;
+          delete it3.properties;
 
         }
         // delete array belonging to this vfb in one step
@@ -3339,7 +3314,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
       else ++it2;
     }
   }
-  _RPT1(0, "End of garbage collection A memused=%" PRIu64 "\n", device->memory_used.load()); // P.F.
+  _RPT1(0, "End of garbage collection A memused=%" PRIu64 "\n", device->memory_used.load());
 #if 0
   static int counter = 0;
   char buf[200]; sprintf(buf, "Re allocation %d\r\n", counter++);
@@ -3390,19 +3365,14 @@ void ScriptEnvironment::ShrinkCache(Device *device)
   */
   int shrinkcount = 0;
 
-  const CacheRegistryType::iterator end_cit = CacheRegistry.end();
-  for (
-    CacheRegistryType::iterator cit = CacheRegistry.begin();
-    cit != end_cit;
-    ++cit
-    )
+  for (auto &cit: CacheRegistry)
   {
     // Oh darn. We'd need more memory than we are allowed to use.
     // Let's reduce the amount of caching.
 
     // We try to shrink least recently used caches first.
 
-    Cache* cache = *cit;
+    Cache* cache = cit;
     if (cache->GetDevice() != device) {
       continue;
     }
@@ -3432,12 +3402,9 @@ void ScriptEnvironment::ShrinkCache(Device *device)
     int freed_vfb_count = 0;
     int freed_frame_count = 0;
     int unfreed_frame_count = 0;
-    const FrameRegistryType2::iterator end_it = FrameRegistry2.end(); // const iterator. maybe need simial in the end of NewFrameBuffer
-    for (FrameRegistryType2::iterator it = FrameRegistry2.begin();
-      it != end_it;
-      ++it)
+    for (auto &it: FrameRegistry2)
     {
-      for (FrameBufferRegistryType::iterator it2 = (it->second).begin(), end_it2 = (it->second).end();
+      for (FrameBufferRegistryType::iterator it2 = (it.second).begin(), end_it2 = (it.second).end();
         it2 != end_it2;
         /*++it2: not here: may delete iterator position */)
       {
@@ -3456,17 +3423,14 @@ void ScriptEnvironment::ShrinkCache(Device *device)
 #endif
           delete vfb;
           ++freed_vfb_count;
-          const VideoFrameArrayType::iterator end_it3 = it2->second.end();
-          for (VideoFrameArrayType::iterator it3 = it2->second.begin();
-            it3 != end_it3;
-            ++it3)
+          for (auto &it3: it2->second)
           {
-            VideoFrame *frame = it3->frame;
+            VideoFrame *frame = it3.frame;
             assert(0 == frame->refcount);
             if (0 == frame->refcount)
             {
               delete frame;
-              delete it3->properties;
+              delete it3.properties;
               ++freed_frame_count;
             }
             else {
@@ -3479,12 +3443,12 @@ void ScriptEnvironment::ShrinkCache(Device *device)
           }
           // delete array belonging to this vfb in one step
           it2->second.clear(); // clear frame list
-          it2 = (it->second).erase(it2); // clear vfb entry
+          it2 = (it.second).erase(it2); // clear vfb entry
         }
         else ++it2;
       }
     }
-    _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%" PRIu64 "\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, device->memory_used.load()); // P.F.
+    _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%" PRIu64 "\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, device->memory_used.load());
   }
 }
 
