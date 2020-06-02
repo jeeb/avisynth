@@ -41,6 +41,7 @@
 #ifdef NEW_AVSVALUE
 #include <vector>
 #endif
+#include <atomic>
 
 /********************************************************************
 ********************************************************************/
@@ -62,7 +63,7 @@ public:
 
 private:
   friend class PExpression;
-  int refcnt;
+  std::atomic<int> refcnt;
   void AddRef() { ++refcnt; }
   void Release() { if (--refcnt <= 0) delete this; }
 };
