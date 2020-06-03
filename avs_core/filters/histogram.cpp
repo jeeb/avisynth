@@ -115,7 +115,7 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
     }
     else { // or keep it alone
       vi.width = (1 << show_bits);
-      vi.height = 256;
+      vi.height = 256; // only 224+1 (3*64 + 2*16 + 1) is used
     }
   }
 
@@ -1362,6 +1362,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
                 continue;
               int StartY = gradient_upper_lower == 0 ? 64 + 16 : 128 + 32;
               ptr = pdstb + ((StartY) >> sheight) * dstPitch;
+              // we are drawing at the 64th relative line as well.
               for (int y = (StartY) >> sheight; y <= (StartY + 64) >> sheight; y++) {
                 int x = 0;
                 // 0..15, (scaled) left danger area
@@ -1510,6 +1511,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       if (markers) {
         // omit centerline if markers == false
         // height of 64, 16 pixels between
+        // we are drawing at the 64th/224th relative line as well.
         for (int y = 0; y <= 64 + (planecount - 1) * (16 + 64); y++) {
           if ((y & 3) > 1) {
             if (pixelsize == 1)       ptr[show_middle_pos] = color_i;
@@ -1538,7 +1540,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
         float scale = float(64.0 / maxval);
 
         int color = 235; // also good for RGB
-        int color_i = color << color_shift; // igazából max_luma
+        int color_i = color << color_shift; // max_luma
         float color_f = color / 255.0f;
 
         int Y_pos;
@@ -1554,6 +1556,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
           int left = (int)(220.0f*(scaled_h - (float)((int)scaled_h))); // color, scaled later
 
           ptr = pdstb + (Y_pos + 1) * dstPitch;
+          // Start from below the baseline
           for (int y = Y_pos + 1; y > h; y--) {
             if (pixelsize == 1)       ptr[x] = color_i;
             else if (pixelsize == 2)  reinterpret_cast<uint16_t *>(ptr)[x] = color_i;
@@ -1561,7 +1564,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
             ptr -= dstPitch;
           }
           int color_top = (16 + left);
-          int color_top_i = color_top << color_shift; // igazából max_luma
+          int color_top_i = color_top << color_shift; // max_luma
           float color_top_f = color_top / 255.0f;
 
           ptr = pdstb + h*dstPitch;
