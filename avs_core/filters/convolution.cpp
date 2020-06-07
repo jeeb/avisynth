@@ -35,6 +35,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <cmath>
 
 // Avisynth filter: general convolution
 // by Richard Berg (avisynth-dev@richardberg.net)
@@ -622,7 +623,7 @@ void GeneralConvolution::setMatrix(const char * _matrix, bool _isInteger, IScrip
     }
     if (_isInteger) {
       const double val = atof(s.c_str());
-      const int ival = (int)(val + 0.5);
+      const int ival = (int)std::lround(val);
       iNormalizeSum += ival;
       iMatrix[nSize++] = ival;
       if (ival >= 0)
