@@ -668,10 +668,17 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
       continue;
     }
 
+    int width = w;
+    int height = h;
+    if (plane == PLANAR_U || plane == PLANAR_V) {
+      width >>= vi.GetPlaneWidthSubsampling(plane);
+      height >>= vi.GetPlaneHeightSubsampling(plane);
+    }
+
     if(vi.BitsPerComponent() <= 16)
-      conversionFnPtr(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), w, h, matrix, iCountDiv, nBias);
+      conversionFnPtr(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), width, height, matrix, iCountDiv, nBias);
     else
-      FconversionFnPtr(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), w, h, matrixf, fCountDiv, fBias);
+      FconversionFnPtr(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane), src->GetPitch(plane), width, height, matrixf, fCountDiv, fBias);
   }
   return dst;
   // really, not other case left... packed RGB was converted to planar RGB, YUY2 to YV16
