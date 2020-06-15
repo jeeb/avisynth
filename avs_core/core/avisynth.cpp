@@ -4762,12 +4762,12 @@ int ScriptEnvironment::propDeleteKey(AVSMap* map, const char* key) AVS_NOEXCEPT 
                 *error = 0; \
             return (retexpr); \
         } else { \
-            err |= peIndex; \
+            err |= AVSGetPropErrors::GETPROPERROR_INDEX; \
         } \
     } else if (l) { \
-        err |= peType; \
+        err |= AVSGetPropErrors::GETPROPERROR_TYPE; \
     } else { \
-        err = peUnset; \
+        err = AVSGetPropErrors::GETPROPERROR_UNSET; \
     } \
     if (!error) \
         ThrowError("Property read unsuccessful but no error output: %s", key); \
@@ -4823,20 +4823,22 @@ static bool isValidVSMapKey(const std::string& s) {
 // insert and append are guarded and make new copy of actual storage before the modification
 #define PROP_SET_SHARED(vv, appendexpr) \
     assert(map && key); \
-    if (append != paReplace && append != paAppend && append != paTouch) \
+    if (append != AVSPropAppendMode::PROPAPPENDMODE_REPLACE && \
+        append != AVSPropAppendMode::PROPAPPENDMODE_APPEND && \
+        append != AVSPropAppendMode::PROPAPPENDMODE_TOUCH) \
         ThrowError("Invalid prop append mode given when setting key '%s'", key); \
     std::string skey = key; \
     if (!isValidVSMapKey(skey)) \
         return 1; \
-    if (append != paReplace && map->contains(skey)) { \
+    if (append != AVSPropAppendMode::PROPAPPENDMODE_REPLACE && map->contains(skey)) { \
         FramePropVariant &l = map->at(skey); \
         if (l.getType() != (vv)) \
             return 1; \
-        else if (append == paAppend) \
+        else if (append == AVSPropAppendMode::PROPAPPENDMODE_APPEND) \
             map->append(skey, appendexpr); \
     } else { \
         FramePropVariant l((vv)); \
-        if (append != paTouch) \
+        if (append != AVSPropAppendMode::PROPAPPENDMODE_TOUCH) \
             l.append(appendexpr); \
         map->insert(skey, std::move(l)); \
     } \
