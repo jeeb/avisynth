@@ -4201,6 +4201,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   const char* p = f->param_types;
 
   std::vector<AVSValue> args3;
+  std::vector<bool> args3_really_filled;
 
   // remarks for the generic array parameter concept.
   /*
@@ -4243,17 +4244,20 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
       const char* pstart = p + 1;
       p = strchr(pstart, ']');
       if (!p) break;
-      last_was_named = (p - pstart) > 0; // empty parameter name [] is not count as named
+      last_was_named = true;
       p++; // skip closing bracket
     }
-    else if (((p[1] == '*') || (p[1] == '+')) && !last_was_named) {
-      // Case of unnamed arrays, or fake-named arrays
-      // Latter: only [] for name like the first clip array parameter of BlankClip) "[]c*[length]i etc...
-      // They are just comma separated list elements on script level,
-      // not using the bracket-style array definition syntax
+    else if (((p[1] == '*') || (p[1] == '+'))) {
+      // Case of unnamed arrays or named arrays
+      // special named array: [] with no real name
+      // Pre 3.6: filling up named arrays with names from script level was not possible.
+      // Example fake-named array: the first clip array parameter of BlankClip "[]c*[length]i etc.
+      // Example named array (MPP_SharedMemoryServer): csi[aux_clips]c*[max_cache_frames]i etc.
+      // Pre v3.6 script-level array definition: autodetect comma separated list elements
       // The parser detects the end of array: the next argument type is different.
       // Since the end of free-typed (".+" or ".*") arrays cannot be recognized, they are allowed to appear
       // only at the very end of the parameter signature
+      // Option since 3.6: bracket-style array definition syntax
       size_t start = src_index;
       const char arg_type = *p;
 
@@ -4263,6 +4267,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
         AVSFunction::SingleTypeMatchArray(arg_type, args2[argbase + src_index], strict))
       {
         args3.push_back(args2[argbase + src_index]); // can't delete args2 early because of this
+        args3_really_filled.push_back(true); // valid array content
         src_index++;
       }
       else {
@@ -4276,24 +4281,34 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
         assert(args2_count >= size);
 
         // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
-        // because filters like BlankClip might still be expecting it.
+        // because filters like BlankClip or MPP_SharedMemoryServer might still be expecting it.
         args3.push_back(AVSValue(size > 0 ? args2.data() + argbase + start : NULL, (int)size)); // can't delete args2 early because of this
+        if (last_was_named && size > 0)
+          args3_really_filled.push_back(true); // valid array content
+        else
+          args3_really_filled.push_back(false); // zero sized (not found) array can be specified later with argname
       }
 
       p += 2; // skip type-char and '*' or '+'
       last_was_named = false;
     }
     else {
-      if (src_index < args2_count)
+      if (src_index < args2_count) {
         args3.push_back(args2[argbase + src_index]);
-      else
+        args3_really_filled.push_back(true);
+      }
+      else {
         args3.push_back(AVSValue());
+        args3_really_filled.push_back(false);
+      }
       src_index++;
       p++;
       // Skip possible array marker for named arrays like [colors]f+
       // Note: this declaration style is recognized only for versions >= 3.5.3
       // so plugins using this syntax won't load/work with older AviSynth versions
       // Older versions without this check will report various errors like "named parameter was given more than once"
+      // but only when given with names. Providing a named parameter as unnamed was possible from 
+      // direct plugin use formerly as well.
       if ((p[0] == '*') || (p[0] == '+'))
         p++;
 
@@ -4319,7 +4334,9 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
           if (!q) break;
           if (strlen(arg_names[i]) == size_t(q - p) && !_strnicmp(arg_names[i], p, q - p)) {
             // we have a match
-            if (args3[named_arg_index].Defined()) {
+            if (args3[named_arg_index].Defined() && args3_really_filled[named_arg_index]) {
+              // when a parameter like named array was filled as an empty array
+              // from the unnamed section we don't throw error for the first time
               ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
             }
 #ifndef NEW_AVSVALUE
@@ -4339,6 +4356,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
             }
             else {
               args3[named_arg_index] = args[i];
+              args3_really_filled[named_arg_index] = true;
               goto success;
             }
           }
