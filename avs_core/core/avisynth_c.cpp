@@ -1414,6 +1414,8 @@ AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 {
   AVS_ScriptEnvironment* e = new AVS_ScriptEnvironment;
   try {
+    if (version < AVISYNTH_CLASSIC_INTERFACE_VERSION)
+      version = AVISYNTH_CLASSIC_INTERFACE_VERSION; // always request a more modern ScriptEnvironment.
     e->env = CreateScriptEnvironment(version);
     e->error = NULL;
   }
