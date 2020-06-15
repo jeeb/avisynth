@@ -955,17 +955,17 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
     }
   }
   else {
-    error = AVSGetPropErrors::peType;
+    error = AVSGetPropErrors::GETPROPERROR_TYPE;
   }
 
   const char* error_msg = nullptr;
 
   // really, errors are bits
-  if (error & AVSGetPropErrors::peUnset)
+  if (error & AVSGetPropErrors::GETPROPERROR_UNSET)
     error_msg = "property is not set";
-  else if (error & AVSGetPropErrors::peType)
+  else if (error & AVSGetPropErrors::GETPROPERROR_TYPE)
     error_msg = "wrong type";
-  else if (error & AVSGetPropErrors::peIndex)
+  else if (error & AVSGetPropErrors::GETPROPERROR_INDEX)
     error_msg = "index error"; // arrays
 
   if (error)
@@ -1049,11 +1049,11 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
   const char* error_msg = nullptr;
 
   // really, errors are bits
-  if (error & AVSGetPropErrors::peUnset)
+  if (error & AVSGetPropErrors::GETPROPERROR_UNSET)
     error_msg = "property is not set";
-  else if (error & AVSGetPropErrors::peType)
+  else if (error & AVSGetPropErrors::GETPROPERROR_TYPE)
     error_msg = "wrong type";
-  else if (error & AVSGetPropErrors::peIndex)
+  else if (error & AVSGetPropErrors::GETPROPERROR_INDEX)
     error_msg = "index error"; // arrays
 
   if (error)
@@ -1184,11 +1184,11 @@ AVSValue GetPropertyDataSize::Create(AVSValue args, void* , IScriptEnvironment* 
   const char* error_msg = nullptr;
 
   // really, errors are bits
-  if (error & AVSGetPropErrors::peUnset)
+  if (error & AVSGetPropErrors::GETPROPERROR_UNSET)
     error_msg = "property is not set";
-  else if (error & AVSGetPropErrors::peType)
+  else if (error & AVSGetPropErrors::GETPROPERROR_TYPE)
     error_msg = "wrong type";
-  else if (error & AVSGetPropErrors::peIndex)
+  else if (error & AVSGetPropErrors::GETPROPERROR_INDEX)
     error_msg = "index error"; // arrays
 
   if (error)

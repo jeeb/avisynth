@@ -1026,7 +1026,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       for (int i = 0; i < size; i++) {
         if (!result[i].IsString())
             env->ThrowError("Wrong data type in property '%s': all array elements should be the same (string) type", name);
-        res = env->propSetData(avsmap, name, result[i].AsString(), -1, AVSPropAppendMode::paAppend); // all elements should be string
+        res = env->propSetData(avsmap, name, result[i].AsString(), -1, AVSPropAppendMode::PROPAPPENDMODE_APPEND); // all elements should be string
         if (res)
           break;
       }
@@ -1065,9 +1065,9 @@ int __stdcall SetProperty::SetCacheHints(int cachehints, int frame_range)
 AVSValue __cdecl SetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   const int kind = (int)(intptr_t)user_data;
-  const int defaultMode = (int)AVSPropAppendMode::paReplace;
+  const int defaultMode = AVSPropAppendMode::PROPAPPENDMODE_REPLACE;
 
-  int mode = paReplace;
+  int mode = AVSPropAppendMode::PROPAPPENDMODE_REPLACE;
   if(kind != 4) // at propSetArray there is no mode parameter
     mode = args[3].AsInt(defaultMode);
 

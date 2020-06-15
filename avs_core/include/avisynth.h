@@ -22,6 +22,7 @@
 //           Invoke2, Invoke3, InvokeTry, Invoke2Try, Invoke3Try
 //           Interface Version to 8 (classic 2.6 = 6)
 // 20200527  Add IScriptEnvironment_Avs25, used internally
+// 20200607  AVS frame property enums to match existing Avisynth enum style
 
 // http://www.avisynth.org
 
@@ -1148,27 +1149,27 @@ public:
 }; // end class PClip
 
 // enums for frame property functions
-typedef enum AVSPropTypes {
-  ptUnset = 'u',
-  ptInt = 'i',
-  ptFloat = 'f',
-  ptData = 's',
-  ptClip = 'c',
-  ptFrame = 'v',
+enum AVSPropTypes {
+  PROPTYPE_UNSET = 'u', // ptUnset
+  PROPTYPE_INT = 'i', // peType
+  PROPTYPE_FLOAT = 'f', // ptFloat
+  PROPTYPE_DATA = 's', // ptData
+  PROPTYPE_CLIP = 'c', // ptClip
+  PROPTYPE_FRAME = 'v' // ptFrame
   //  ptFunction = 'm'
-} AVSPropTypes;
+};
 
-typedef enum AVSGetPropErrors {
-  peUnset = 1,
-  peType = 2,
-  peIndex = 4
-} AVSGetPropErrors;
+enum AVSGetPropErrors {
+  GETPROPERROR_UNSET = 1, // peUnset
+  GETPROPERROR_TYPE = 2, // peType
+  GETPROPERROR_INDEX = 4 // peIndex
+};
 
-typedef enum AVSPropAppendMode {
-  paReplace = 0,
-  paAppend = 1,
-  paTouch = 2
-} AVSPropAppendMode;
+enum AVSPropAppendMode {
+  PROPAPPENDMODE_REPLACE = 0, // paReplace
+  PROPAPPENDMODE_APPEND = 1, // paAppend
+  PROPAPPENDMODE_TOUCH = 2 // paTouch
+};
 
 
 class AVSValue {
