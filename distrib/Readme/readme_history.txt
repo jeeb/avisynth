@@ -4,13 +4,54 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200602 3.6.1-test5
+20200614 3.6.1
+--------------
+(summary of test versions since 3.6.0)
+
+- Fix: proper handling of autoload directories precedence:
+    PluginDir+ in Software/Avisynth in HKEY_CURRENT_USER (highest priority)
+    PluginDir+ in Software/Avisynth in HKEY_LOCAL_MACHINE
+    PluginDir2_5 in Software/Avisynth in HKEY_CURRENT_USER
+    PluginDir2_5 in Software/Avisynth in HKEY_LOCAL_MACHINE (lowest priority)
+  Plugin (dll file name) found in a lower priority folder will not load if a similarly named plugin 
+  already existed earlier.
+- fix: GeneralConvolution: incorrect parse of negative integer coefficient (added +1)
+  Regression since r2772.
+- Fix: GeneralConvolution: possible crash when chroma=true for 420 and 422 formats
+- Fix: ScriptClip + Runtime function object (which are new in 3.6) under heavy multithreading
+- New: Histogram("levels") to allow greyscale
+- Fix 3.6 regressions
+  - when explicit "return last" was needed when followed by legacy function definition.
+  - Windows XP is supported again (thread local storage workaround)
+  - Stabilize CPP 2.5 plugins
+  - allow forced named arrays usage again from plugins (MP_PipeLine)
+- Frame property related constants to match existing enum style in avisynth.h.
+  Plus they are not colliding now with VapourSynth's definitions.
+
+
+20200607 3.6.1-test8
 --------------------
+- fix: GeneralConvolution: incorrect parse of negative integer coefficient (+1)
+  regression since r2772
+- fix: GeneralConvolution: possible crash when chroma=true for 420 and 422 formats
+- Frame property related constant to match existing enum style in avisynth.h
+
+20200605 3.6.1-test7 (internal)
+- pass V3 (2.5) IScriptEnvironment for CPP plugins which directly load avisynth.dll and
+  request CreateScriptEnvironment with version <= 3 
+
+20200604 3.6.1-test6
+- Fix a 3.6 regression when explicit "return last" was needed when followed by legacy function definition.
+- Further Cpp 2.5 plugin compatibility fix: when a v2.5 filter is calling GetFrame from its constructor
+  (hdragc)
+
+20200603 3.6.1-test5
 - Histogram("levels") to allow greyscale
+- Fix 3.6 regression: CPP 2.5 interface runtime functions
+- Fix 3.6 regression: forced named arrays usage from plugins (MP_PipeLine)
 
 20200531 3.6.1-test4
---------------------
-- Avisynth 2.5 plugin compatibility patch.
+- Avisynth CPP 2.5 plugin compatibility patch.
 - Windows XP patch (thread local storage workaround)
 - Fix: proper handling of autoload directories precedence:
     PluginDir+ in Software/Avisynth in HKEY_CURRENT_USER (highest priority)
