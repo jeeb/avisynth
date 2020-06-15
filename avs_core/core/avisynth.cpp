@@ -1708,7 +1708,18 @@ public:
 
   void* __stdcall ManageCache(int key, void* data)
   {
+    if ((MANAGE_CACHE_KEYS)key == MC_QueryAvs25)
+      return (intptr_t*)0;
     return core->ManageCache(key, data);
+  }
+
+  void* __stdcall ManageCache25(int key, void* data)
+  {
+    // We use a v2.5-special ManageCache call with special key to query if
+    // env ptr is v2.5 even if casted to IScriptEnvironment 
+    if ((MANAGE_CACHE_KEYS)key == MC_QueryAvs25)
+      return (intptr_t *)1;
+    return ManageCache(key, data);
   }
 
   bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key)
@@ -4348,6 +4359,10 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   if(is_runtime) {
     // Invoked by a thread or GetFrame
     AVSValue funcArgs(args3.data(), (int)args3.size());
+
+    if(f->isAvs25) // like GRunT's AverageLuma wrapper
+      *result = f->apply(funcArgs, f->user_data, (IScriptEnvironment *)((IScriptEnvironment_Avs25 *)env_thread));
+    else
     *result = f->apply(funcArgs, f->user_data, env_thread);
     return true;
   }
@@ -5015,7 +5030,13 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version)
   _putenv("OMP_WAIT_POLICY=passive");
 #endif
 
-  if (version <= AVISYNTH_INTERFACE_VERSION)
+  // When a CPP plugin explicitely requests avs2.5 interface
+  if (version <= AVISYNTH_CLASSIC_INTERFACE_VERSION_25) {
+    auto IEnv25 = (new ScriptEnvironment())->GetMainThreadEnv()->GetEnv25();
+    // return a disguised IScriptEnvironment_Avs25
+    return reinterpret_cast<IScriptEnvironment2 *>(IEnv25);
+  }
+  else if (version <= AVISYNTH_INTERFACE_VERSION)
     return (new ScriptEnvironment())->GetMainThreadEnv();
   else
     return NULL;
