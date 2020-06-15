@@ -283,6 +283,15 @@ PExpression ScriptParser::ParseBlock(bool braced, bool *empty)
     } else {
       bool stop;
       PExpression exp = ParseStatement(&stop);
+      if (!braced && exp) {
+        auto ep = dynamic_cast<ExpLegacyFunctionDefinition*>((Expression*)(void*)exp);
+        if (ep != nullptr) {
+          // Inhibit legacy function definition to get into expression tree.
+          // Or else "return last" would be needed before them.
+          // We check actual type runtime with dynamic cast.
+          exp = nullptr;
+        }
+      }
       if (exp && !ignore_remainder) {
         if (filename)
           exp = new ExpLine(exp, filename, tokenizer.GetLine());
@@ -327,11 +336,17 @@ PExpression ScriptParser::ParseStatement(bool* stop)
   if (tokenizer.IsNewline() || tokenizer.IsEOF()) {
     return 0;
   }
-  //// function declaration
-  //else if (tokenizer.IsIdentifier("function")) {
-  //  tokenizer.NextToken();
-  //  return ParseFunctionDefinition();
-  //}
+  /*
+  // original AVS2.6/old Avs+: function definition returns 0
+  // Function declaration moved more inner
+  // Since Neo/3.6.0 we have function objects besides script functions.
+  // Thus return 0 is conditional and handled outside.
+  else if (tokenizer.IsIdentifier("function")) {
+    tokenizer.NextToken();
+    ParseFunctionDefinition();
+    return 0;
+  }
+  */
   // exception handling
   else if (tokenizer.IsIdentifier("try")) {
     tokenizer.NextToken();
