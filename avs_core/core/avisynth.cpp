@@ -86,13 +86,6 @@
   #define YieldProcessor() __nop(void)
 #endif
 
-#if defined(AVS_WINDOWS)
-// Windows XP does not have proper initialization for
-// thread local variables.
-// Use workaround instead __declspec(thread)
-#define XP_TLS
-#endif 
-
 extern const AVSFunction Audio_filters[],
                          Combine_filters[],
                          Convert_filters[],
@@ -1132,9 +1125,9 @@ struct ScriptEnvironmentTLS
 // this is a work-around for that.
 #ifdef AVS_WINDOWS
 #  ifdef XP_TLS
-DWORD dwTlsIndex = 0;
+extern DWORD dwTlsIndex;
 #  else
-// does not work on XP when DLL is dynamic loaded
+// does not work on XP when DLL is dynamic loaded. see dwTlsIndex instead
 __declspec(thread) ScriptEnvironmentTLS* g_TLS = nullptr;
 #  endif
 #else
@@ -2192,8 +2185,8 @@ ScriptEnvironment::ScriptEnvironment()
   nMaxFilterInstances(1)
 {
 #ifdef XP_TLS
-  if ((dwTlsIndex = TlsAlloc()) == TLS_OUT_OF_INDEXES)
-    throw("ScriptEnvironment: TlsAlloc failed");
+    if(dwTlsIndex == 0)
+      throw("ScriptEnvironment: TlsAlloc failed on DLL load");
 #endif
 
   try {
@@ -2434,11 +2427,6 @@ ScriptEnvironment::~ScriptEnvironment() {
     hrfromcoinit = E_FAIL;
     CoUninitialize();
   }
-#endif
-
-#ifdef XP_TLS
-  TlsFree(dwTlsIndex);
-  dwTlsIndex = 0;
 #endif
 
 }
@@ -5150,6 +5138,5 @@ void FramePropVariant::initStorage(FramePropVType t) {
   }
 }
 
-#undef XP_TLS
 ///////////////
 

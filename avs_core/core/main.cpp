@@ -121,6 +121,9 @@ void ReportMe(const char * msg, ...) {
 
 static long gRefCnt=0;
 
+#ifdef XP_TLS
+DWORD dwTlsIndex = 0;
+#endif
 
 extern "C" const GUID CLSID_CAVIFileSynth   // {E6D6B700-124D-11D4-86F3-DB80AFD98778}
 = {0xe6d6b700, 0x124d, 0x11d4, {0x86, 0xf3, 0xdb, 0x80, 0xaf, 0xd9, 0x87, 0x78}};
@@ -276,6 +279,19 @@ BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 
   _RPT4(0,"DllMain: hModule=0x%08x, ulReason=%x, lpReserved=0x%08x, gRefCnt = %ld\n",
     hModule, ulReason, lpReserved, gRefCnt);
+
+#ifdef XP_TLS
+  if (ulReason == DLL_PROCESS_ATTACH) {
+    if ((dwTlsIndex = TlsAlloc()) == TLS_OUT_OF_INDEXES)
+      throw("Avisynth DLL load: TlsAlloc failed");
+    _RPT1(0, "DllMain: TlsAlloc: dwTlsIndex=0x%x\n", dwTlsIndex);
+  }
+  else if (ulReason == DLL_PROCESS_DETACH) {
+    _RPT1(0, "DllMain: TlsFree: dwTlsIndex=0x%x\n", dwTlsIndex);
+    TlsFree(dwTlsIndex);
+    dwTlsIndex = 0;
+  }
+#endif
 
   return TRUE;
 }
