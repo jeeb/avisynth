@@ -37,6 +37,45 @@
 
 #include <avs/types.h>
 
+
+#define CONVERT_DECLARE(func) void (func)(void *, void *, int);
+
+typedef CONVERT_DECLARE(*convert_proc);
+
+CONVERT_DECLARE(convert32To16);
+CONVERT_DECLARE(convert16To32);
+CONVERT_DECLARE(convert32To8);
+CONVERT_DECLARE(convert8To32);
+CONVERT_DECLARE(convert16To8);
+CONVERT_DECLARE(convert8To16);
+CONVERT_DECLARE(convert32To24);
+CONVERT_DECLARE(convert24To32);
+CONVERT_DECLARE(convert24To16);
+CONVERT_DECLARE(convert16To24);
+CONVERT_DECLARE(convert24To8);
+CONVERT_DECLARE(convert8To24);
+CONVERT_DECLARE(convert32ToFLT);
+CONVERT_DECLARE(convertFLTTo32);
+
+#ifdef INTEL_INTRINSICS
+  CONVERT_DECLARE(convert32To16_SSE2);
+  CONVERT_DECLARE(convert16To32_SSE2);
+  CONVERT_DECLARE(convert32To8_SSE2);
+  CONVERT_DECLARE(convert8To32_SSE2);
+  CONVERT_DECLARE(convert16To8_SSE2);
+  CONVERT_DECLARE(convert8To16_SSE2);
+  CONVERT_DECLARE(convert32To24_SSSE3);
+  CONVERT_DECLARE(convert24To32_SSSE3);
+  CONVERT_DECLARE(convert24To16_SSSE3);
+  CONVERT_DECLARE(convert16To24_SSSE3);
+  CONVERT_DECLARE(convert24To8_SSSE3);
+  CONVERT_DECLARE(convert8To24_SSSE3);
+  CONVERT_DECLARE(convert32ToFLT_SSE2);
+  CONVERT_DECLARE(convertFLTTo32_SSE2);
+#endif
+
+#undef CONVERT_DECLARE
+
 class ConvertAudio : public GenericVideoFilter
 /**
   * Helper class to convert audio to any format
@@ -57,27 +96,22 @@ public:
   virtual ~ConvertAudio();
 
 private:
-  void convertToFloat(char* inbuf, float* outbuf, int sample_type, int count);
-  void convertToFloat_3DN(char* inbuf, float* outbuf, int sample_type, int count);
-  void convertToFloat_SSE(char* inbuf, float* outbuf, int sample_type, int count);
-  void convertToFloat_SSE2(char* inbuf, float* outbuf, int sample_type, int count);
-  void convertFromFloat(float* inbuf, void* outbuf, int sample_type, int count);
-  void convertFromFloat_3DN(float* inbuf, void* outbuf, int sample_type, int count);
-  void convertFromFloat_SSE(float* inbuf, void* outbuf, int sample_type, int count);
-  void convertFromFloat_SSE2(float* inbuf, void* outbuf, int sample_type, int count);
-
-  __inline int Saturate_int8(float n);
-  __inline short Saturate_int16(float n);
-  __inline int Saturate_int24(float n);
-  __inline int Saturate_int32(float n);
-
   int src_format;
   int dst_format;
   int src_bps;
-  int tempbuffer_size;
-  char *tempbuffer;
-  int floatbuffer_size;
-  SFLOAT *floatbuffer;
+  int tempbuffer_size {0};
+  char *tempbuffer {nullptr};
+
+  bool two_stage {false};
+  convert_proc convert {nullptr};
+  convert_proc convert_float {nullptr};
+  convert_proc convert_c {nullptr};
+#ifdef INTEL_INTRINSICS
+  convert_proc convert_sse2 {nullptr};
+  convert_proc convert_ssse3 {nullptr};
+  convert_proc convert_avx2 {nullptr};
+#endif
+
 };
 
 #endif //__Convert_Audio_H__
