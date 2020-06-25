@@ -218,7 +218,7 @@ SSSE3 void convert32To24_SSSE3(void *inbuf, void *outbuf, int count) {
      5,  3,  2,  1,
     -1, -1, -1, -1);
 
-  for (int i = 0; i < c_loop; i += 15) {
+  for (int i = 0; i < c_loop; i += 16) {
     inv[0] = _mm_loadu_si128(reinterpret_cast<const __m128i *>(in)); in += 4;
     inv[1] = _mm_loadu_si128(reinterpret_cast<const __m128i *>(in)); in += 4;
     inv[2] = _mm_loadu_si128(reinterpret_cast<const __m128i *>(in)); in += 4;
@@ -237,9 +237,9 @@ SSSE3 void convert32To24_SSSE3(void *inbuf, void *outbuf, int count) {
       _mm_shuffle_epi8(inv[3], mask[5])
     );
 
-    _mm_store_si128(reinterpret_cast<__m128i *>(out8), outv[0]); out8 += 16;
-    _mm_store_si128(reinterpret_cast<__m128i *>(out8), outv[1]); out8 += 16;
-    _mm_store_si128(reinterpret_cast<__m128i *>(out8), outv[2]); out8 += 16;
+    _mm_storeu_si128(reinterpret_cast<__m128i *>(out8), outv[0]); out8 += 16;
+    _mm_storeu_si128(reinterpret_cast<__m128i *>(out8), outv[1]); out8 += 16;
+    _mm_storeu_si128(reinterpret_cast<__m128i *>(out8), outv[2]); out8 += 16;
   }
   // clang-format on
 }
