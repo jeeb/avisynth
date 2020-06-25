@@ -129,6 +129,12 @@ ConvertAudio::~ConvertAudio() {
 }
 
 void __stdcall ConvertAudio::GetAudio(void *buf, int64_t start, int64_t count, IScriptEnvironment *env) {
+  if (src_format == dst_format) {
+    // Shouldn't happen, but just in case
+    child->GetAudio(buf, start, count, env);
+    return;
+  }
+
   int channels = vi.AudioChannels();
 
   if (tempbuffer_size < count) {
