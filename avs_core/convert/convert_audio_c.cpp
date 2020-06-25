@@ -13,10 +13,10 @@
  * |    From: | U 8 | S16 | S24 | S32 | FLT |
  * | To:      |     |     |     |     |     |
  * |  U 8     |  -  | CS  | CS  | CS  |     |
- * |  S16     | CS  |  -  | CS  | CS  |     |
+ * |  S16     | CS  |  -  | CS  | CSA |     |
  * |  S24     | CS  | CS  |  -  | CS  |     |
- * |  S32     | CS  | CS  | CS  |  -  | CS  |
- * |  FLT     |     |     |     | CS  |  -  |
+ * |  S32     | CS  | CSA | CS  |  -  | CSA |
+ * |  FLT     |     |     |     | CSA |  -  |
  * 
  * * C = C, S = SSE2+, A = AVX2
  */

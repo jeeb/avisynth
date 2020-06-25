@@ -97,9 +97,9 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
   #ifdef INTEL_INTRINSICS
     switch(PAIR(src_format, dst_format)) {
       case PAIR(SAMPLE_FLOAT, SAMPLE_INT16):
-      case PAIR(SAMPLE_INT32, SAMPLE_INT16): convert_sse2  = convert32To16_SSE2;  break;
+      case PAIR(SAMPLE_INT32, SAMPLE_INT16): convert_sse2  = convert32To16_SSE2;  convert_avx2 = convert32To16_AVX2;  break;
       case PAIR(SAMPLE_INT16, SAMPLE_FLOAT):
-      case PAIR(SAMPLE_INT16, SAMPLE_INT32): convert_sse2  = convert16To32_SSE2;  break;
+      case PAIR(SAMPLE_INT16, SAMPLE_INT32): convert_sse2  = convert16To32_SSE2;  convert_avx2 = convert16To32_AVX2;  break;
       case PAIR(SAMPLE_FLOAT, SAMPLE_INT8 ):
       case PAIR(SAMPLE_INT32, SAMPLE_INT8 ): convert_sse2  = convert32To8_SSE2;   break;
       case PAIR(SAMPLE_INT8 , SAMPLE_FLOAT):
@@ -114,8 +114,8 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
       case PAIR(SAMPLE_INT16, SAMPLE_INT24): convert_ssse3 = convert16To24_SSSE3; break;
       case PAIR(SAMPLE_INT24, SAMPLE_INT8 ): convert_ssse3 = convert24To8_SSSE3;  break;
       case PAIR(SAMPLE_INT8 , SAMPLE_INT24): convert_ssse3 = convert8To24_SSSE3;  break;
-      case PAIR(SAMPLE_INT32, SAMPLE_FLOAT): convert_sse2  = convert32ToFLT_SSE2; break;
-      case PAIR(SAMPLE_FLOAT, SAMPLE_INT32): convert_sse2  = convertFLTTo32_SSE2; break;
+      case PAIR(SAMPLE_INT32, SAMPLE_FLOAT): convert_sse2  = convert32ToFLT_SSE2; convert_avx2 = convert32ToFLT_AVX2; break;
+      case PAIR(SAMPLE_FLOAT, SAMPLE_INT32): convert_sse2  = convertFLTTo32_SSE2; convert_avx2 = convertFLTTo32_AVX2; break;
     }
   #endif
   #undef PAIR
