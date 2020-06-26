@@ -4,7 +4,14 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20200614 3.6.1
+20200624 3.6.2-test1
+------------------
+- Fix: ConvertBits (YUV): proper rounding when bit depth is reduced and origin is 10-16 bits
+  (added rounder before bit-shift)
+- New: Histogram("color2") to support 10+ bits.
+  Allow bits=x (x=8,9,10,11,12) parameter for this kind of histogram as well.
+
+20200619 3.6.1
 --------------
 (summary of test versions since 3.6.0)
 
