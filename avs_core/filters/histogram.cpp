@@ -32,6 +32,11 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+// FIXME: in general: how to display 32 bit floats?
+// Do we have to assume it as if it is used after a limited -> full scale conversion? (preferred - everywhere!)
+// Or with values simply: pixel_8bit / 255.0?
+// Latter logic converts U=240 to (240-128)/255 instead of (240-128)/226 (=0.5)
+// and Y=235 to 235/255 instead of (235-16)/219 (=1.0)
 
 #include "histogram.h"
 #include "../core/info.h"
@@ -81,7 +86,7 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
   // until all histogram is ported
   bool non8bit = show_bits != 8 || bits_per_pixel != 8;
 
-  if (non8bit && mode != ModeClassic && mode != ModeLevels && mode != ModeColor)
+  if (non8bit && mode != ModeClassic && mode != ModeLevels && mode != ModeColor && mode != ModeColor2)
   {
     env->ThrowError("Histogram: this histogram type is available only for 8 bit formats and parameters");
   }
@@ -543,202 +548,444 @@ PVideoFrame Histogram::DrawModeLuma(int n, IScriptEnvironment* env) {
   return src;
 }
 
+template<typename pixel_t>
+void DrawModeColor2_erase_area(int bits_per_pixel,
+  uint8_t* dstp, uint8_t* dstp_u, uint8_t* dstp_v,
+  int pitch, int pitchUV,
+  int height, int heightUV)
+{
+  pixel_t black;
+  pixel_t middle_chroma;
+
+  constexpr int pixelsize = sizeof(pixel_t);
+
+  if constexpr(std::is_integral<pixel_t>::value) {
+    black = 16 << (bits_per_pixel - 8);
+    middle_chroma = (pixel_t)(128 << (bits_per_pixel - 8));
+  }
+  else {
+    black = 16.0f / 255;
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+    middle_chroma = 0.5f;
+#else
+    middle_chroma = 0.0f;
+#endif
+  }
+
+  const int imgSize = height * pitch / pixelsize;
+  const int imgSizeUV = heightUV * pitchUV / pixelsize;
+
+  std::fill_n((pixel_t *)dstp, imgSize, black);
+  std::fill_n((pixel_t*)dstp_u, imgSizeUV, middle_chroma);
+  std::fill_n((pixel_t*)dstp_v, imgSizeUV, middle_chroma);
+
+}
+
+template<typename pixel_t>
+void DrawModeColor2_draw_misc(int bits_per_pixel,
+  uint8_t* dstp, uint8_t* dstp_u, uint8_t* dstp_v,
+  int pitch, int pitchUV,
+  int height, int heightUV,
+  int show_bits, int swidth, int sheight)
+{
+  pixel_t black;
+  pixel_t middle_chroma;
+  pixel_t luma128;
+
+  constexpr int pixelsize = sizeof(pixel_t);
+
+  if constexpr (std::is_integral<pixel_t>::value) {
+    black = 16 << (bits_per_pixel - 8);
+    middle_chroma = (pixel_t)(128 << (bits_per_pixel - 8));
+    luma128 = (pixel_t)(128 << (bits_per_pixel - 8));
+  }
+  else {
+    black = 16.0f / 255;
+#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
+    middle_chroma = 0.5f;
+#else
+    middle_chroma = 0.0f;
+#endif
+    luma128 = c8tof(128);
+  }
+
+  const int showsize = (1 << show_bits);
+  const int showsizeUV = showsize >> swidth;
+
+  // Erase all - luma
+  for (int y = 0; y < height; y++) {
+    uint8_t* ptr = dstp + y * pitch;
+    std::fill_n((pixel_t *)ptr, showsize, black);
+  }
+
+  // Erase all - chroma
+  for (int y = 0; y < heightUV; y++) {
+    uint8_t* ptrU = dstp_u + y * pitchUV;
+    uint8_t* ptrV = dstp_v + y * pitchUV;
+    std::fill_n((pixel_t*)ptrU, showsizeUV, middle_chroma);
+    std::fill_n((pixel_t*)ptrV, showsizeUV, middle_chroma);
+  }
+
+  // possible to display 10 bit data stuffed into 8 bit size
+  const int show_bit_shift = show_bits - 8;
+
+  // plot valid grey ccir601 square
+  const int size = (240 - 16 + 1) << show_bit_shift; // original 8 bit: 225 
+  std::fill_n((pixel_t*)(&dstp[((16 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, black);
+  std::fill_n((pixel_t*)(&dstp[((240 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, black);
+
+  // vertical lines left and right side
+  for (int y = 17 << show_bit_shift; y < 240 << show_bit_shift; y++) {
+    ((pixel_t*)dstp)[(16 << show_bit_shift) + y * pitch / sizeof(pixel_t)] = luma128;
+    ((pixel_t*)dstp)[(240 << show_bit_shift) + y * pitch / sizeof(pixel_t)] = luma128;
+  }
+
+  // plot circles
+
+  // six hues in the color-wheel:
+  // LC[3j,3j+1,3j+2], RC[3j,3j+1,3j+2] in YRange[j]+1 and YRange[j+1]
+  int YRange[8] = { -1, 26, 104, 127, 191, 197, 248, 256 };
+  // 2x green, 2x yellow, 3x red
+  int LC[21] = {
+    145, 54, 34,
+    145, 54, 34,
+    210, 16, 146,
+    210, 16, 146,
+    81, 90, 240,
+    81, 90, 240,
+    81, 90, 240
+  };
+  // cyan, 4x blue, magenta, red:
+  int RC[21] = {
+    170, 166, 16,
+    41, 240, 110,
+    41, 240, 110,
+    41, 240, 110,
+    41, 240, 110,
+    106, 202, 222,
+    81, 90, 240
+  };
+  float LC_f[21] = {
+    c8tof(145), uv8tof(54), uv8tof(34),
+    c8tof(145), uv8tof(54), uv8tof(34),
+    c8tof(210), uv8tof(16), uv8tof(146),
+    c8tof(210), uv8tof(16), uv8tof(146),
+    c8tof(81), uv8tof(90), uv8tof(240),
+    c8tof(81), uv8tof(90), uv8tof(240),
+    c8tof(81), uv8tof(90), uv8tof(240)
+  };
+  // cyan, 4x blue, magenta, red:
+  float RC_f[21] = {
+    c8tof(170), uv8tof(166), uv8tof(16),
+    c8tof(41), uv8tof(240), uv8tof(110),
+    c8tof(41), uv8tof(240), uv8tof(110),
+    c8tof(41), uv8tof(240), uv8tof(110),
+    c8tof(41), uv8tof(240), uv8tof(110),
+    c8tof(106), uv8tof(202), uv8tof(222),
+    c8tof(81), uv8tof(90), uv8tof(240)
+  };
+
+  // example boundary of cyan and blue:
+  // red = min(r,g,b), blue if g < 2/3 b, green if b < 2/3 g.
+  // cyan between green and blue.
+  // thus boundary of cyan and blue at (r,g,b) = (0,170,255), since 2/3*255 = 170.
+  // => yuv = (127,190,47); hue = -52 degr; sat = 103
+  // => u'v' = (207,27) (same hue, sat=128)
+  // similar for the other hues.
+  // luma
+
+  double innerF = 124.9;  // .9 is for better visuals in subsampled mode
+  double thicknessF = 1.5;
+  double oneOverThicknessF = 1.0 / thicknessF;
+  double outerF = innerF + thicknessF * 2.0;
+  double centerF = innerF + thicknessF;
+  int64_t innerSq = (int64_t)(innerF * innerF * (1 << (show_bit_shift * 2)));
+  int64_t outerSq = (int64_t)(outerF * outerF * (1 << (show_bit_shift * 2)));
+  int activeY = 0;
+  int xRounder = (1 << swidth) / 2;
+  int yRounder = (1 << sheight) / 2;
+
+  const int limit = (1 << (show_bits-1)) - 1;
+  const int limit_showwidth = (1 << show_bits) - 1;
+  for (int y = -limit; y < limit+1; y++) {
+    if (y + limit > YRange[activeY + 1] << show_bit_shift)
+      activeY++;
+    for (int x = -limit; x <= 0; x++) {
+      int64_t distSq = x * x + y * y;
+      if (distSq <= outerSq && distSq >= innerSq) {
+
+        if constexpr (std::is_integral<pixel_t>::value) {
+          const int factorshift = (bits_per_pixel - 8);
+          const int factor = 1 << factorshift;
+          const int MAXINTERP = 256;
+          double dist = fabs(sqrt((double)distSq * (1.0 / (1 << (2*show_bit_shift)))) - centerF);
+          int interp = (int)(256.0f - (255.9f * (oneOverThicknessF * dist)));
+          // 255.9 is to account for float inprecision, which could cause underflow.
+
+          int xP = limit + x;
+          int yP = limit + y;
+
+          pixel_t* pdstb = (pixel_t*)dstp;
+          pixel_t* pdstbU = (pixel_t*)dstp_u;
+          pixel_t* pdstbV = (pixel_t*)dstp_v;
+
+          pdstb[xP + yP * pitch / sizeof(pixel_t)] =
+            (pixel_t)((interp * (LC[3 * activeY] << factorshift)) >> 8); // left upper half
+
+          pdstb[limit_showwidth - xP + yP * pitch / sizeof(pixel_t)] =
+            (pixel_t)((interp * (RC[3 * activeY] << factorshift)) >> 8); // right upper half
+
+          xP = (xP + xRounder) >> swidth;
+          yP = (yP + yRounder) >> sheight;
+
+          interp = min(MAXINTERP, interp);
+          int invInt = (MAXINTERP - interp);
+          
+          int p_uv;
+          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
+          pdstbU[p_uv] = (pixel_t)((pdstbU[p_uv] * invInt + interp * (LC[3 * activeY + 1] << factorshift)) >> 8); // left half
+          pdstbV[p_uv] = (pixel_t)((pdstbV[p_uv] * invInt + interp * (LC[3 * activeY + 2] << factorshift)) >> 8); // left half
+
+          xP = ((limit_showwidth) >> swidth) - xP;
+          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
+
+          pdstbU[p_uv] = (pixel_t)((pdstbU[p_uv] * invInt + interp * (RC[3 * activeY + 1] << factorshift)) >> 8); // right half
+          pdstbV[p_uv] = (pixel_t)((pdstbV[p_uv] * invInt + interp * (RC[3 * activeY + 2] << factorshift)) >> 8); // right half
+        }
+        else {
+          // 32 bit float
+          const float MAXINTERP = 1.0f;
+          double dist = fabs(sqrt((double)distSq * (1.0 / (1 << (2 * show_bit_shift)))) - centerF);
+          float interp = (float)(1.0 - 0.9999 * (oneOverThicknessF * dist));
+          // 255.9 is to account for float inprecision, which could cause underflow.
+
+          int xP = limit + x;
+          int yP = limit + y;
+
+          pixel_t* pdstb = (pixel_t*)dstp;
+          pixel_t* pdstbU = (pixel_t*)dstp_u;
+          pixel_t* pdstbV = (pixel_t*)dstp_v;
+
+          pdstb[xP + yP * pitch / sizeof(pixel_t)] =
+            (pixel_t)(interp * LC_f[3 * activeY]); // left upper half
+
+          pdstb[limit_showwidth - xP + yP * pitch / sizeof(pixel_t)] =
+            (pixel_t)(interp * RC_f[3 * activeY]); // right upper half
+
+          xP = (xP + xRounder) >> swidth;
+          yP = (yP + yRounder) >> sheight;
+
+          interp = min(MAXINTERP, interp);
+          float invInt = (MAXINTERP - interp);
+
+          int p_uv;
+          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
+          pdstbU[p_uv] = (pixel_t)(pdstbU[p_uv] * invInt + interp * LC_f[3 * activeY + 1]); // left half
+          pdstbV[p_uv] = (pixel_t)(pdstbV[p_uv] * invInt + interp * LC_f[3 * activeY + 2]); // left half
+
+          xP = ((limit_showwidth) >> swidth) - xP;
+
+          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
+          pdstbU[p_uv] = (pixel_t)(pdstbU[p_uv] * invInt + interp * RC_f[3 * activeY + 1]); // right half
+          pdstbV[p_uv] = (pixel_t)(pdstbV[p_uv] * invInt + interp * RC_f[3 * activeY + 2]); // right half
+        }
+      }
+    }
+  }
+
+}
+
+template<typename pixel_t>
+void do_vectorscope_color2(
+  pixel_t* pdstb, pixel_t* pdstbU, pixel_t* pdstbV,
+  const pixel_t* pY, const pixel_t* pU, const pixel_t* pV,
+  int dst_pitch, int dst_pitchUV,
+  int src_pitch, int src_pitchUV,
+  int src_widthUV, int src_heightUV,
+  int swidth, int sheight,
+  int shift,
+  int bits_per_pixel
+)
+{
+  if constexpr (sizeof(pixel_t) == 1 || sizeof(pixel_t) == 2) {
+    const int max_value = (1 << bits_per_pixel) - 1;
+    for (int y = 0; y < src_heightUV; y++) {
+      for (int x = 0; x < src_widthUV; x++) {
+        const int uval = max(0, min(max_value, (int)pU[x]));
+        const int vval = max(0, min(max_value, (int)pV[x]));
+        const int uval_posindex = shift<0 ? uval << -shift : uval >> shift;
+        const int vval_posindex = shift<0 ? vval << -shift : vval >> shift;
+        pdstb[uval_posindex + vval_posindex * dst_pitch] = pY[x << swidth];
+        pdstbU[(uval_posindex >> swidth) + (vval_posindex >> sheight) * dst_pitchUV] = uval;
+        pdstbV[(uval_posindex >> swidth) + (vval_posindex >> sheight) * dst_pitchUV] = vval;
+      }
+      pY += (src_pitch << sheight);
+      pU += src_pitchUV;
+      pV += src_pitchUV;
+    }
+  }
+  else { // pixelsize == 4
+    for (int y = 0; y < src_heightUV; y++) {
+      for (int x = 0; x < src_widthUV; x++) {
+        const float uval_f = max(-0.5f, min(0.5f, pU[x])); // clamp to avoid out of frame display
+        const float vval_f = max(-0.5f, min(0.5f, pV[x]));
+        const int uval = (int)((uval_f * 65536 + 32768) + 0.5f); // simulate on 16 bits
+        const int vval = (int)((vval_f * 65536 + 32768) + 0.5f);
+        const int uval_posindex = uval >> shift;
+        const int vval_posindex = vval >> shift;
+        pdstb[uval_posindex + vval_posindex * dst_pitch] = pY[x << swidth];
+        pdstbU[(uval_posindex >> swidth) + (vval_posindex >> sheight) * dst_pitchUV] = uval_f;
+        pdstbV[(uval_posindex >> swidth) + (vval_posindex >> sheight) * dst_pitchUV] = vval_f;
+      }
+      pY += (src_pitch << sheight);
+      pU += src_pitchUV;
+      pV += src_pitchUV;
+    }
+  }
+}
+
 
 PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
   BYTE* pdst = dst->GetWritePtr();
+  BYTE* pdstU = dst->GetWritePtr(PLANAR_U);
+  BYTE* pdstV = dst->GetWritePtr(PLANAR_V);
+  int dst_pitch = dst->GetPitch();
+  int dst_pitchUV = dst->GetPitch(PLANAR_U);
+  int dst_height = dst->GetHeight();
+  int dst_heightUV = dst->GetHeight(PLANAR_U);
 
-  int imgSize = dst->GetHeight()*dst->GetPitch();
+  int imgSize = dst->GetHeight() * dst->GetPitch();
 
 #ifdef FLOAT_CHROMA_IS_HALF_CENTERED
   const float middle_f = 0.5f;
 #else
   const float middle_f = 0.0f;
 #endif
-
   // clear everything
   if (keepsource) {
     if (src->GetHeight() < dst->GetHeight()) {
-      int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-      switch (pixelsize) {
-      case 1:
-        memset(pdst, 16, imgSize);
-        memset(dst->GetWritePtr(PLANAR_U), 128, imgSizeU);
-        memset(dst->GetWritePtr(PLANAR_V), 128, imgSizeU);
-        break;
-      case 2:
-        std::fill_n((uint16_t *)pdst, imgSize / sizeof(uint16_t), 16 << (bits_per_pixel - 8));
-        std::fill_n((uint16_t *)dst->GetWritePtr(PLANAR_U), imgSizeU / sizeof(uint16_t), 128 << (bits_per_pixel - 8));
-        std::fill_n((uint16_t *)dst->GetWritePtr(PLANAR_V), imgSizeU / sizeof(uint16_t), 128 << (bits_per_pixel - 8));
-        break;
-      case 4: // 32 bit float
-        std::fill_n((float *)pdst, imgSize / sizeof(float), 16 / 255.0f);
-        std::fill_n((float *)dst->GetWritePtr(PLANAR_U), imgSizeU / sizeof(float), middle_f);
-        std::fill_n((float *)dst->GetWritePtr(PLANAR_V), imgSizeU / sizeof(float), middle_f);
-        break;
-      }
+      if (bits_per_pixel == 8)
+        DrawModeColor2_erase_area<uint8_t>(bits_per_pixel,
+          pdst, pdstU, pdstV,
+          dst_pitch, dst_pitchUV,
+          dst_height, dst_heightUV
+          );
+      else if (bits_per_pixel <= 16)
+        DrawModeColor2_erase_area<uint16_t>(bits_per_pixel,
+          pdst, pdstU, pdstV,
+          dst_pitch, dst_pitchUV,
+          dst_height, dst_heightUV
+          );
+      else
+        DrawModeColor2_erase_area<float>(bits_per_pixel,
+          pdst, pdstU, pdstV,
+          dst_pitch, dst_pitchUV,
+          dst_height, dst_heightUV
+          );
     }
   }
 
   if (keepsource) {
-    env->BitBlt(pdst, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+    env->BitBlt(pdst, dst_pitch, src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   }
-  if (vi.IsPlanar()) {
-    if (keepsource) {
-      env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-      env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-    }
-    unsigned char* pdstb = pdst;
-    unsigned char* pdstbU = dst->GetWritePtr(PLANAR_U);
-    unsigned char* pdstbV = dst->GetWritePtr(PLANAR_V);
 
-    if (keepsource)
-      pdstb += src->GetRowSize(PLANAR_Y);
+  if (!vi.IsPlanar()) return dst;
 
-    int swidth = vi.GetPlaneWidthSubsampling(PLANAR_U);
-    int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
-
-    int dstPitchY = dst->GetPitch(PLANAR_Y);
-    int dstPitchUV = dst->GetPitch(PLANAR_U);
-
-    // Erase all - luma
-    for (int y = 0; y<dst->GetHeight(PLANAR_Y); y++) {
-      memset(&pdstb[y*dstPitchY], 16, 256);
-    }
-
-    // Erase all - chroma
-    pdstbU = dst->GetWritePtr(PLANAR_U);
-    pdstbV = dst->GetWritePtr(PLANAR_V);
-    if (keepsource) {
-      pdstbU += src->GetRowSize(PLANAR_U);
-      pdstbV += src->GetRowSize(PLANAR_V);
-    }
-
-    for (int y = 0; y<dst->GetHeight(PLANAR_U); y++) {
-      memset(&pdstbU[y*dst->GetPitch(PLANAR_U)], 128, (256>>swidth));
-      memset(&pdstbV[y*dst->GetPitch(PLANAR_V)], 128, (256>>swidth));
-    }
-
-
-    // plot valid grey ccir601 square
-    pdstb = pdst;
-    if (keepsource)
-      pdstb += src->GetRowSize(PLANAR_Y);
-
-    memset(&pdstb[(16*dstPitchY)+16], 128, 225);
-    memset(&pdstb[(240*dstPitchY)+16], 128, 225);
-    for (int y = 17; y<240; y++) {
-      pdstb[16+y*dstPitchY] = 128;
-      pdstb[240+y*dstPitchY] = 128;
-    }
-
-    // plot circles
-    pdstb = pdst;
-    pdstbU = dst->GetWritePtr(PLANAR_U);
-    pdstbV = dst->GetWritePtr(PLANAR_V);
-    if (keepsource) {
-      pdstb += src->GetRowSize(PLANAR_Y);
-      pdstbU += src->GetRowSize(PLANAR_U);
-      pdstbV += src->GetRowSize(PLANAR_V);
-    }
-
-    // six hues in the color-wheel:
-    // LC[3j,3j+1,3j+2], RC[3j,3j+1,3j+2] in YRange[j]+1 and YRange[j+1]
-    int YRange[8] = { -1, 26, 104, 127, 191, 197, 248, 256 };
-    // 2x green, 2x yellow, 3x red
-    int LC[21] = { 145, 54, 34, 145, 54, 34, 210, 16, 146, 210, 16, 146, 81, 90, 240, 81, 90, 240, 81, 90, 240 };
-    // cyan, 4x blue, magenta, red:
-    int RC[21] = { 170, 166, 16, 41, 240, 110, 41, 240, 110, 41, 240, 110, 41, 240, 110, 106, 202, 222, 81, 90, 240 };
-
-    // example boundary of cyan and blue:
-    // red = min(r,g,b), blue if g < 2/3 b, green if b < 2/3 g.
-    // cyan between green and blue.
-    // thus boundary of cyan and blue at (r,g,b) = (0,170,255), since 2/3*255 = 170.
-    // => yuv = (127,190,47); hue = -52 degr; sat = 103
-    // => u'v' = (207,27) (same hue, sat=128)
-    // similar for the other hues.
-    // luma
-
-    float innerF = 124.9f;  // .9 is for better visuals in subsampled mode
-    float thicknessF = 1.5f;
-    float oneOverThicknessF = 1.0f/thicknessF;
-    float outerF = innerF + thicknessF*2.0f;
-    float centerF = innerF + thicknessF;
-    int innerSq = (int)(innerF*innerF);
-    int outerSq = (int)(outerF*outerF);
-    int activeY = 0;
-    int xRounder = (1<<swidth) / 2;
-    int yRounder = (1<<sheight) / 2;
-
-    for (int y = -127; y<128; y++) {
-      if (y+127 > YRange[activeY+1]) activeY++;
-      for (int x = -127; x<=0; x++) {
-        int distSq = x*x+y*y;
-        if (distSq <= outerSq && distSq >= innerSq) {
-          int interp = (int)(256.0f - (255.9f * (oneOverThicknessF * fabs(sqrt((float)distSq)- centerF))));
-          // 255.9 is to account for float inprecision, which could cause underflow.
-
-          int xP = 127 + x;
-          int yP = 127 + y;
-
-          pdstb[xP+yP*dstPitchY]     = (unsigned char)((interp*LC[3*activeY])>>8); // left upper half
-          pdstb[255-xP+yP*dstPitchY] = (unsigned char)((interp*RC[3*activeY])>>8); // right upper half
-
-          xP = (xP+xRounder) >> swidth;
-          yP = (yP+yRounder) >> sheight;
-
-          interp = min(256, interp);
-          int invInt = (256-interp);
-
-          pdstbU[xP+yP*dstPitchUV] = (unsigned char)((pdstbU[xP+yP*dstPitchUV] * invInt + interp * LC[3*activeY+1])>>8); // left half
-          pdstbV[xP+yP*dstPitchUV] = (unsigned char)((pdstbV[xP+yP*dstPitchUV] * invInt + interp * LC[3*activeY+2])>>8); // left half
-
-          xP = ((255)>>swidth) -xP;
-          pdstbU[xP+yP*dstPitchUV] = (unsigned char)((pdstbU[xP+yP*dstPitchUV] * invInt + interp * RC[3*activeY+1])>>8); // right half
-          pdstbV[xP+yP*dstPitchUV] = (unsigned char)((pdstbV[xP+yP*dstPitchUV] * invInt + interp * RC[3*activeY+2])>>8); // right half
-        }
-      }
-    }
-
-    // plot white 15 degree marks
-    pdstb = pdst;
-    if (keepsource)
-      pdstb += src->GetRowSize(PLANAR_Y);
-
-    for (int y = 0; y<24; y++) {
-      pdstb[deg15c[y]+deg15s[y]*dstPitchY] = 235;
-    }
-
-    // plot vectorscope
-    pdstb = pdst;
-    if (keepsource)
-      pdstb += src->GetRowSize(PLANAR_Y);
-
-    const int src_pitch = src->GetPitch(PLANAR_Y);
-
-    const int src_heightUV = src->GetHeight(PLANAR_U);
-    const int src_widthUV = src->GetRowSize(PLANAR_U);
-    const int src_pitchUV = src->GetPitch(PLANAR_U);
-
-    const BYTE* pY = src->GetReadPtr(PLANAR_Y);
-    const BYTE* pU = src->GetReadPtr(PLANAR_U);
-    const BYTE* pV = src->GetReadPtr(PLANAR_V);
-
-    for (int y=0; y<src_heightUV; y++) {
-      for (int x=0; x<src_widthUV; x++) {
-        const unsigned char uval = pU[x];
-        const unsigned char vval = pV[x];
-        pdstb[uval+vval*dstPitchY] = pY[x<<swidth];
-        pdstbU[(uval>>swidth)+(vval>>sheight)*dstPitchUV] = uval;
-        pdstbV[(uval>>swidth)+(vval>>sheight)*dstPitchUV] = vval;
-      }
-      pY += (src_pitch<<sheight);
-      pU += src_pitchUV;
-      pV += src_pitchUV;
-    }
-
+  if (keepsource) {
+    env->BitBlt(pdstU, dst_pitchUV, src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+    env->BitBlt(pdstV, dst_pitchUV, src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
   }
+
+  unsigned char* pdstb = pdst;
+  unsigned char* pdstbU = pdstU;
+  unsigned char* pdstbV = pdstV;
+  if (keepsource) { 
+    // right to the original picture
+    pdstb += src->GetRowSize(PLANAR_Y);
+    pdstbU += src->GetRowSize(PLANAR_U);
+    pdstbV += src->GetRowSize(PLANAR_V);
+  }
+
+  int swidth = vi.GetPlaneWidthSubsampling(PLANAR_U);
+  int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+  if (bits_per_pixel == 8)
+    DrawModeColor2_draw_misc<uint8_t>(bits_per_pixel,
+      pdstb, pdstbU, pdstbV,
+      dst_pitch, dst_pitchUV,
+      dst_height, dst_heightUV,
+      show_bits, swidth, sheight
+      );
+  else if (bits_per_pixel <= 16)
+    DrawModeColor2_draw_misc<uint16_t>(bits_per_pixel,
+      pdstb, pdstbU, pdstbV,
+      dst_pitch, dst_pitchUV,
+      dst_height, dst_heightUV,
+      show_bits, swidth, sheight
+      );
+  else
+    DrawModeColor2_draw_misc<float>(bits_per_pixel,
+      pdstb, pdstbU, pdstbV,
+      dst_pitch, dst_pitchUV,
+      dst_height, dst_heightUV,
+      show_bits, swidth, sheight
+      );
+
+  // plot white 15 degree marks
+  for (int i = 0; i < 24; i++) {
+    if(pixelsize == 1)
+      pdstb[deg15c[i] + deg15s[i] * dst_pitch] = 235; // 235: Y-maxluma
+    else if(pixelsize == 2)
+      ((uint16_t *)pdstb)[deg15c[i] + deg15s[i] * dst_pitch / sizeof(uint16_t)] = 235 << (bits_per_pixel - 8); // 235: Y-maxluma
+    else // if (pixelsize == 4)
+      ((float*)pdstb)[deg15c[i] + deg15s[i] * dst_pitch / sizeof(float)] = c8tof(235); // 235: Y-maxluma
+  }
+
+  // plot vectorscope
+  const int src_pitch = src->GetPitch(PLANAR_Y) / pixelsize;
+  const int src_pitchUV = src->GetPitch(PLANAR_U) / pixelsize;
+  const int src_widthUV = src->GetRowSize(PLANAR_U) / pixelsize;
+  const int src_heightUV = src->GetHeight(PLANAR_U);
+
+  const BYTE* pY = src->GetReadPtr(PLANAR_Y);
+  const BYTE* pU = src->GetReadPtr(PLANAR_U);
+  const BYTE* pV = src->GetReadPtr(PLANAR_V);
+
+  dst_pitch /= pixelsize;
+  dst_pitchUV /= pixelsize;
+
+  // 32 bit float Vectorscope is simulated after a 16 bit conversion
+  int shift = bits_per_pixel == 32 ? (16 - show_bits) : (bits_per_pixel - show_bits);
+
+  if(bits_per_pixel == 8)
+    do_vectorscope_color2<uint8_t>(
+      pdstb, pdstbU, pdstbV, 
+      pY, pU, pV,
+      dst_pitch, dst_pitchUV,
+      src_pitch, src_pitchUV,
+      src_widthUV, src_heightUV,
+      swidth, sheight,
+      shift, bits_per_pixel);
+  else if (bits_per_pixel <= 16)
+    do_vectorscope_color2<uint16_t>(
+      (uint16_t *)pdstb, (uint16_t*)pdstbU, (uint16_t*)pdstbV,
+      (uint16_t*)pY, (uint16_t*)pU, (uint16_t*)pV,
+      dst_pitch, dst_pitchUV,
+      src_pitch, src_pitchUV,
+      src_widthUV, src_heightUV,
+      swidth, sheight,
+      shift, bits_per_pixel);
+  else
+    do_vectorscope_color2<float>(
+      (float*)pdstb, (float*)pdstbU, (float*)pdstbV,
+      (float*)pY, (float*)pU, (float*)pV,
+      dst_pitch, dst_pitchUV,
+      src_pitch, src_pitchUV,
+      src_widthUV, src_heightUV,
+      swidth, sheight,
+      shift, bits_per_pixel);
 
   return dst;
 }
