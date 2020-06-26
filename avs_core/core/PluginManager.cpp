@@ -707,7 +707,7 @@ void PluginManager::AutoloadPlugins()
         for (size_t i = 0; i < AutoLoadedImports.size(); ++i)
         {
 #ifdef AVS_POSIX
-          if (AutoLoadedPlugins[i].BaseName == p.BaseName) // case insensitive
+          if (AutoLoadedImports[i].BaseName == p.BaseName) // case insensitive
 #else
           if (streqi(AutoLoadedImports[i].BaseName.c_str(), p.BaseName.c_str()))
 #endif
