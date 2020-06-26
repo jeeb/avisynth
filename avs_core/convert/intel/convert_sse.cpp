@@ -1340,6 +1340,7 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
 // YUV conversions (bit shifts)
 // BitDepthConvFuncPtr
 // Conversion from 16-14-12-10 to 8 bits (bitshift: 8-6-4-2)
+// both dither and non-dither
 template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH>
 static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
@@ -1379,8 +1380,10 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     if constexpr(dither_mode == 0) _y = (y & MASK) << DITHER_ORDER; // ordered dither
     for (int x = 0; x < src_width; x++)
     {
-      if constexpr(dither_mode < 0) // -1: no dither
-        dstp[x] = srcp0[x] >> (sourcebits-TARGET_BITDEPTH); // no dithering, no range conversion, simply shift
+      if constexpr (dither_mode < 0) { // -1: no dither
+        constexpr auto round = 1 << (sourcebits - TARGET_BITDEPTH - 1);
+        dstp[x] = (srcp0[x] + round) >> (sourcebits - TARGET_BITDEPTH); // no dithering, no range conversion, simply shift
+      }
       else { // dither_mode == 0 -> ordered dither
         int corr = matrix[_y | (x & MASK)];
         //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
@@ -1408,6 +1411,9 @@ static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rows
   int src_width = src_rowsize / sizeof(uint16_t);
   int wmod16 = (src_width / 16) * 16;
 
+  const int round = 1 << (sourcebits - 8 - 1);
+  const __m128i round_simd = _mm_set1_epi16(round);
+
   // no dithering, no range conversion, simply shift
   for (int y = 0; y < src_height; y++)
   {
@@ -1415,15 +1421,15 @@ static void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rows
     {
       __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
       __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8));
-      src_lo = _mm_srli_epi16(src_lo, (sourcebits - 8));
-      src_hi = _mm_srli_epi16(src_hi, (sourcebits - 8));
+      src_lo = _mm_srli_epi16(_mm_adds_epu16(src_lo, round_simd), (sourcebits - 8));
+      src_hi = _mm_srli_epi16(_mm_adds_epu16(src_hi, round_simd), (sourcebits - 8));
       __m128i dst = _mm_packus_epi16(src_lo, src_hi);
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), dst);
     }
     // rest
     for (int x = wmod16; x < src_width; x++)
     {
-      dstp[x] = srcp[x] >> (sourcebits - 8);
+      dstp[x] = (srcp[x] + round) >> (sourcebits - 8);
     }
     dstp += dst_pitch;
     srcp += src_pitch;
@@ -2114,9 +2120,11 @@ static void convert_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_row
         for (int x = 0; x < src_width; x++)
         {
             if(expandrange)
-                dstp0[x] = srcp0[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
-            else
-                dstp0[x] = srcp0[x] >> shiftbits;  // reduce range
+              dstp0[x] = srcp0[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
+            else {
+              constexpr auto round = 1 << (shiftbits - 1);
+              dstp0[x] = (srcp0[x] + round) >> shiftbits;  // reduce range
+            }
         }
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
@@ -2198,6 +2206,7 @@ static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int sr
   int wmod = (src_width / 16) * 16;
 
   __m128i shift = _mm_set_epi32(0,0,0,shiftbits);
+  constexpr auto round = 1 << (shiftbits - 1);
 
   // no dithering, no range conversion, simply shift
   for(int y=0; y<src_height; y++)
@@ -2210,8 +2219,9 @@ static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int sr
         src_lo = _mm_sll_epi16(src_lo, shift);
         src_hi = _mm_sll_epi16(src_hi, shift);
       } else {
-        src_lo = _mm_srl_epi16(src_lo, shift);
-        src_hi = _mm_srl_epi16(src_hi, shift);
+        const auto round_simd = _mm_set1_epi16(round);
+        src_lo = _mm_srl_epi16(_mm_adds_epu16(src_lo, round_simd), shift);
+        src_hi = _mm_srl_epi16(_mm_adds_epu16(src_hi, round_simd), shift);
       }
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), src_lo);
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x+8), src_hi);
@@ -2221,8 +2231,9 @@ static void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int sr
     {
       if(expandrange)
         dstp[x] = srcp[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
-      else
-        dstp[x] = srcp[x] >> shiftbits;  // reduce range
+      else {
+        dstp[x] = (srcp[x] + round) >> shiftbits;  // reduce range
+      }
     }
     dstp += dst_pitch;
     srcp += src_pitch;
@@ -3035,6 +3046,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         // fill shift_range converter functions
         if (bits_per_pixel >= target_bitdepth) { // reduce range 16->14/12/10 14->12/10 12->10. template: bitshift
           if (dither_mode < 0) {
+            // convert down, no dither
             switch (bits_per_pixel - target_bitdepth)
             {
             case 2:
@@ -3049,11 +3061,12 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
             }
           }
           else {
-            // dither
+            // convert down, dither
             conv_function_shifted_scale = get_convert_to_16_16_down_dither_function(false /*not full scale*/, bits_per_pixel, target_bitdepth, dither_mode, dither_bitdepth, 1/*rgb_step n/a*/, 0 /*cpu none*/);
           }
         }
         else { // expand range
+          // convert up
           switch (target_bitdepth - bits_per_pixel)
           {
           case 2: conv_function_shifted_scale = avx2 ? convert_uint16_to_uint16_c_avx2<true, 2> : avx ? convert_uint16_to_uint16_c_avx<true, 2> : (sse2 ? convert_uint16_to_uint16_sse2<true, 2> : convert_uint16_to_uint16_c<true, 2>); break;

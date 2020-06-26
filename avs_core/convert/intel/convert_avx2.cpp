@@ -197,8 +197,10 @@ void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsi
         {
             if(expandrange)
                 dstp0[x] = srcp0[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
-            else
-                dstp0[x] = srcp0[x] >> shiftbits;  // reduce range
+            else {
+              constexpr auto round = 1 << (shiftbits - 1);
+              dstp0[x] = (srcp0[x] + round) >> shiftbits;  // reduce range
+            }
         }
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
