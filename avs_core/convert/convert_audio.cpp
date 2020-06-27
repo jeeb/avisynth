@@ -163,6 +163,7 @@ void __stdcall ConvertAudio::GetAudio(void *buf, int64_t start, int64_t count, I
       if ((cpu_flags & CPUF_AVX2)) {
         if (convert_avx2)
           convert = convert_avx2;
+        convert_float = src_format == SAMPLE_FLOAT ? convertFLTTo32_AVX2 : convert32ToFLT_AVX2;
       }
     #endif
   }
