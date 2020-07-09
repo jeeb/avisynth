@@ -59,7 +59,6 @@ if(NOT HEADERS_ONLY)
 
   option(ENABLE_PLUGINS "Build set of default external plugins" ON)
   option(ENABLE_INTEL_SIMD "Enable SIMD intrinsics for Intel processors" "${INTEL_SIMD}")
-  option(ENABLE_FILESYSTEM_COMPAT "Use compatibility shim for C++17 filesystem" OFF)
 
   if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
@@ -80,6 +79,10 @@ if(NOT HEADERS_ONLY)
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/c_api")
+
+    # Needed to properly handle __has_include(<filesystem>) in avs_core/filesystem.h
+    # See note in filesystem/README.md
+    add_definitions("/Zc:__cplusplus")
 
     IF(MSVC_IDE)
       message("Reported CMAKE_GENERATOR_TOOLSET is: ${CMAKE_GENERATOR_TOOLSET}")
@@ -224,9 +227,6 @@ if(NOT HEADERS_ONLY)
   add_subdirectory("avs_core")
   if(ENABLE_PLUGINS)
     add_subdirectory("plugins")
-  endif()
-  if(ENABLE_FILESYSTEM_COMPAT)
-    add_subdirectory("filesystem")
   endif()
 
 else()

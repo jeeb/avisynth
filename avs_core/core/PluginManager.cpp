@@ -6,16 +6,7 @@
 #include "InternalEnvironment.h"
 #include <cassert>
 #include "function.h"
-
-#ifndef FILESYSTEM_COMPAT
-#include <filesystem>
-
-namespace fs = std::filesystem;
-#else
-#include <ghc/filesystem.hpp>
-
-namespace fs = ghc::filesystem;
-#endif // FILESYSTEM_COMPAT
+#include <avs/filesystem.h>
 
 #ifdef AVS_WINDOWS
   #include <avs/win.h>
@@ -639,11 +630,7 @@ void PluginManager::AutoloadPlugins()
 #else
     const char* binaryFilter = ".dll";
 #endif
-#ifndef FILESYSTEM_COMPAT
-    for (auto& file : fs::directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink, ec))
-#else
-    for (auto& file : fs::directory_iterator(dir, ghc::filesystem::directory_options::skip_permission_denied | ghc::filesystem::directory_options::follow_directory_symlink, ec))
-#endif
+    for (auto& file : fs::directory_iterator(dir, fs::directory_options::skip_permission_denied | fs::directory_options::follow_directory_symlink, ec))
     {
       const bool extensionsMatch =
 #ifdef AVS_POSIX
@@ -683,11 +670,7 @@ void PluginManager::AutoloadPlugins()
     }
 
     const char* scriptFilter = ".avsi";
-#ifndef FILESYSTEM_COMPAT
-    for (auto& file : fs::directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink, ec)) // and not recursive_directory_iterator
-#else
-    for (auto& file : fs::directory_iterator(dir, ghc::filesystem::directory_options::skip_permission_denied | ghc::filesystem::directory_options::follow_directory_symlink, ec)) // and not recursive_directory_iterator
-#endif
+    for (auto& file : fs::directory_iterator(dir, fs::directory_options::skip_permission_denied | fs::directory_options::follow_directory_symlink, ec)) // and not recursive_directory_iterator
     {
       const bool extensionsMatch =
 #ifdef AVS_POSIX

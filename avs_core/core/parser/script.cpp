@@ -40,15 +40,6 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
-#ifndef FILESYSTEM_COMPAT
-#include <filesystem>
-
-namespace fs = std::filesystem;
-#else
-#include <ghc/filesystem.hpp>
-
-namespace fs = ghc::filesystem;
-#endif
 
 #ifdef AVS_WINDOWS
 #include <io.h>
@@ -59,6 +50,7 @@ namespace fs = ghc::filesystem;
 #include <dirent.h>
 #endif
 
+#include <avs/filesystem.h>
 #include <avs/minmax.h>
 #include <new>
 #include "../internal.h"
@@ -586,15 +578,9 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     }
 
 #else // adapted from AvxSynth
-#ifndef FILESYSTEM_COMPAT
-    std::string file_part = std::filesystem::path(script_name).filename().string();
-    std::string full_path = std::filesystem::path(script_name).remove_filename();
-    std::string dir_part = std::filesystem::path(script_name).parent_path();
-#else
-    std::string file_part = ghc::filesystem::path(script_name).filename().string();
-    std::string full_path = ghc::filesystem::path(script_name).remove_filename();
-    std::string dir_part = ghc::filesystem::path(script_name).parent_path();
-#endif
+    std::string file_part = fs::path(script_name).filename().string();
+    std::string full_path = fs::path(script_name).remove_filename();
+    std::string dir_part = fs::path(script_name).parent_path();
 
     FILE* h = fopen(script_name, "r");
     if(NULL == h)

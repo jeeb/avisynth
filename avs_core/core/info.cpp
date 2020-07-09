@@ -26,16 +26,7 @@
 #include <unordered_map>
 #include <array>
 #include <iomanip>
-
-#ifndef FILESYSTEM_COMPAT
-#include <filesystem>
-namespace fs = std::filesystem;
-
-#else
-#include <ghc/filesystem.hpp>
-
-namespace fs = ghc::filesystem;
-#endif // FILESYSTEM_COMPAT
+#include <avs/filesystem.h>
 
 #include "fonts/fixedfonts.h"
 #include "strings.h"
@@ -252,11 +243,7 @@ static BdfFont LoadBMF(std::string name, bool bold) {
   //std::ifstream ss("c:\\Download\\terminus-font-4.48\\terminus-font-4.48\\ter-u16n.bdf");
   std::ifstream ss;
   // explicite font file name
-#ifndef FILESYSTEM_COMPAT
-  auto fname = std::filesystem::path(name);
-#else
-  auto fname = ghc::filesystem::path(name);
-#endif
+  auto fname = fs::path(name);
 
   if (!fs::exists(name))
     return fnt;

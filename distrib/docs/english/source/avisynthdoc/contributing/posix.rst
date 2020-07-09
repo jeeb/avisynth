@@ -103,7 +103,7 @@ macOS
 
 
 GCC isn't strictly necessary for AviSynth+, but it can side-step
-the need to use -DENABLE_FILESYSTEM_COMPAT on High Sierra and
+the need to use `an external implementation`_ on High Sierra and
 Mojave.
 
 
@@ -121,7 +121,7 @@ using `an external implementation`_ as a submodule.
     mkdir avisynth-build && \
     cd avisynth-build
 
-    cmake ../ -G Ninja -DENABLE_FILESYSTEM_COMPAT:bool=on && \
+    cmake ../ -G Ninja && \
     ninja && \
     sudo ninja install
 

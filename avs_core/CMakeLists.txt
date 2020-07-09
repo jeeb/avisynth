@@ -87,14 +87,19 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Specify preprocessor definitions
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
+# If checked out with compat filesystem submodule, add that to system include directories
+get_filename_component(
+    GHS_FILESYSTEM_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/../filesystem/include
+    ABSOLUTE
+)
+if (EXISTS ${GHS_FILESYSTEM_INCLUDE_DIR})
+    target_include_directories("AvsCore" SYSTEM PRIVATE ${GHS_FILESYSTEM_INCLUDE_DIR})
+endif()
+
 # stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
 if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     set(FSLIB "stdc++fs")
-endif()
-
-if (ENABLE_FILESYSTEM_COMPAT)
-    set(FSLIB "ghc_filesystem")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFILESYSTEM_COMPAT")
 endif()
 
 # Windows DLL dependencies

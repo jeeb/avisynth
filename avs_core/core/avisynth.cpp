@@ -62,13 +62,12 @@
 #elif defined(AVS_BSD)
     #include <sys/sysctl.h>
 #else
-    #include <filesystem>
+    #include <avs/filesystem.h>
     #include <set>
     #include <sys/sysinfo.h>
 #endif
     #include <avs/posix.h>
 #endif
-
 
 #include <string>
 #include <cstdio>
@@ -326,7 +325,7 @@ static size_t GetNumPhysicalCPUs()
 #endif
 #elif defined(AVS_LINUX)
   std::set<int> core_ids;
-  for (auto& p : std::filesystem::directory_iterator("/sys/devices/system/cpu")) {
+  for (auto& p : fs::directory_iterator("/sys/devices/system/cpu")) {
     if (!p.path().filename().string().rfind("cpu", 0)) {
       std::ifstream ifs(p.path() / "topology/core_id");
       int core_id;
