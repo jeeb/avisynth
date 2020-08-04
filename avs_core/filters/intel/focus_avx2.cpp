@@ -408,7 +408,7 @@ void af_horizontal_planar_uint16_t_avx2(BYTE* dstp, size_t height, size_t pitch,
     }
 
     //right border
-    if (mod16_width == row_size) { //width is mod32, process with simd
+    if (mod32_width == row_size) { //width is mod32, process with simd
       center = _mm256_load_si256(reinterpret_cast<const __m256i*>(dstp + mod32_width - 32));
       __m128i right_lo128 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dstp + mod32_width - 32 + sizeof(uint16_t)));
       __m128i center_hi128 = _mm256_extractf128_si256(center, 1); // get high 128bit, really right! ptr+16
@@ -421,7 +421,7 @@ void af_horizontal_planar_uint16_t_avx2(BYTE* dstp, size_t height, size_t pitch,
     }
     else { //some stuff left
       uint16_t l = _mm256_cvtsi256_si32(left) & 0xFFFF;
-      af_horizontal_planar_process_line_uint16_c(l, dstp + mod16_width, row_size - mod16_width, center_weight_c, outer_weight_c, bits_per_pixel);
+      af_horizontal_planar_process_line_uint16_c(l, dstp + mod32_width, row_size - mod32_width, center_weight_c, outer_weight_c, bits_per_pixel);
     }
 
     dstp += pitch;
