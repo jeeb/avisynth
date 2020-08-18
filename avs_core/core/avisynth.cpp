@@ -4183,16 +4183,19 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     // [[2,3], [3,4,5]] is flattened as [2,3], [3,4,5]
 
     // find matching function
-    f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names, env_thread);
-    if (!f) {
-      if (!implicit_last.Defined())
-        return false;
+    if (implicit_last.Defined()) {
+      // first search function definitions with implicite "last" given
+      // e.g. Animate has parameter signature "iis.*" and "ciis.*"
       f = this->Lookup(name, args2.data(), args2_count + 1, strict, args_names_count, arg_names, env_thread);
-      if (!f)
-        return false;
-      argbase = 0;
-      args2_count += 1;
+      if (f) {
+        argbase = 0;
+        args2_count += 1;
+      }
     }
+    if (!f)
+      f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names, env_thread);
+    if (!f)
+      return false;
   }
 
   // combine unnamed args into arrays
