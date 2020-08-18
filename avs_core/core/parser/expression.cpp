@@ -558,17 +558,46 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 
   assert(real_name || real_func);
 
-  std::vector<AVSValue> args(arg_expr_count, AVSValue());
-  for (int a=0; a<arg_expr_count; ++a)
-    args[a] = arg_exprs[a]->Evaluate(env);
+  // Keep an entry at the beginning: 0th is implicite_last
+  std::vector<AVSValue> args(arg_expr_count+1, AVSValue());
+  for (size_t a = 0; a < arg_expr_count; ++a)
+    args[a + 1] = arg_exprs[a]->Evaluate(env);
 
   AVSValue implicit_last = oop_notation ? AVSValue() : env2->GetVarDef("last");
+  args[0] = implicit_last;
+  bool notfound = false;
   try
   { // Invoke can always throw by calling a constructor of a filter that throws
+    // first give args with implicite_last as a separate parameter
+    // and w/o implicit_last in the args array
     if (env2->Invoke_(&result, implicit_last,
-      real_name, real_func, AVSValue(args.data(), arg_expr_count), arg_expr_names))
+      real_name, real_func, AVSValue(args.data() + 1, arg_expr_count), arg_expr_names))
       return result;
-  } catch(const IScriptEnvironment::NotFound&){}
+  }
+  catch (const IScriptEnvironment::NotFound&) {
+    notfound = true;
+  }
+
+  if (notfound && implicit_last.IsClip())
+  {
+    // Give a final chance with a forced implicite last trial for functions like "Animate"
+    // which has with-clip and clipless function signatures.
+    // For cases when clipless signature is found but during instantiating a function
+    // inside its internal expression parameter fails to intantiate without a clip input
+    // and it turnes out that the signature with implicit_last would work.
+    try
+    {
+      std::vector<const char *> arg_expr_names2(arg_expr_count + 1);
+      for (int a = 0; a < arg_expr_count; ++a)
+        arg_expr_names2[a + 1] = arg_expr_names[a];
+      arg_expr_names2[0] = nullptr;
+      // with impicite_last inside the array
+      if (env2->Invoke_(&result, AVSValue(),
+        real_name, real_func, AVSValue(args.data(), arg_expr_count + 1), arg_expr_names2.data()))
+        return result;
+    }
+    catch (const IScriptEnvironment::NotFound&) {}
+  }
 
   if (real_name == nullptr) {
     // anonymous function

@@ -4183,20 +4183,26 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     // [[2,3], [3,4,5]] is flattened as [2,3], [3,4,5]
 
     // find matching function
-    if (implicit_last.Defined()) {
-      // first search function definitions with implicite "last" given
-      // e.g. Animate has parameter signature "iis.*" and "ciis.*"
+    f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names, env_thread);
+    if (!f)
+    {
+      if (!implicit_last.Defined())
+        return false;
+      // search function definitions with implicite "last" given
       f = this->Lookup(name, args2.data(), args2_count + 1, strict, args_names_count, arg_names, env_thread);
-      if (f) {
-        argbase = 0;
-        args2_count += 1;
-      }
+      if (!f)
+        return false;
+      argbase = 0;
+      args2_count += 1;
     }
-    if (!f)
-      f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names, env_thread);
-    if (!f)
-      return false;
   }
+  // Problem: Animate has parameter signature both "iis.*" and "ciis.*"
+  //   ColorBars()
+  //   Animate(0, 100, "blur", 0.1, 1.5)
+  // Here we find "iis.*" but it turnes out that its given function parameter "Blur" requires a clip
+  // Thus we got an exception later during the filter instantiation (really it is "Blur" who throws the exception)
+  // (see comment Issue20200818 later).
+  // Expression evaluator would catch NotFound and reissue _Invoke with a forced implicit_last in args.
 
   // combine unnamed args into arrays
   size_t src_index = 0;
@@ -4486,6 +4492,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     }
     catch (...)
     {
+      // comment: Issue20200818
       invoke_stack.pop();
       throw;
     }
