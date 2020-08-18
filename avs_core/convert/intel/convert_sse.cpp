@@ -2359,7 +2359,13 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
   if (dither_mode < 0)
     dither_bitdepth = 8; // default entry in the tables below
   if (dither_mode == 1) // no special version for fullscale dithering down.
+  {
+    // floyd
+    rgb_step = 1; // rgb_step n/a for packed rgb formats.
+    // packed rgb floyd result is not the same as because it treats the rgb pixels
+    // as a consecutive bgrbgrbgr pixel flow, packed rgb is converted to and from planar rgb instead.
     full_scale = false;
+  }
 
   // full scale
 
@@ -3356,7 +3362,31 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   if (fulls != fulld && target_bitdepth != 32 && source_bitdepth != 32)
     env->ThrowError("ConvertBits: fulls must be the same as fulld for non 32bit target and source");
 
-  return new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, fulls, fulld, dither_bitdepth, env);
+  // for floyd, planar rgb conversion happens
+  bool need_convert_48 = vi.IsRGB48() && dither_type == 1 && target_bitdepth == 8;
+  bool need_convert_64 = vi.IsRGB64() && dither_type == 1 && target_bitdepth == 8;
+
+  // convert to planar on the fly
+  if (need_convert_48) {
+    AVSValue new_args[1] = { clip };
+    clip = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+  } else if (need_convert_64) {
+    AVSValue new_args[1] = { clip };
+    clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+  }
+
+  AVSValue result = new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, fulls, fulld, dither_bitdepth, env);
+
+  // convert back to packed rgb on the fly
+  if (need_convert_48) {
+    AVSValue new_args[1] = { result };
+    result = env->Invoke("ConvertToRGB24", AVSValue(new_args, 1)).AsClip();
+  } else if (need_convert_64) {
+    AVSValue new_args[1] = { result };
+    result = env->Invoke("ConvertToRGB32", AVSValue(new_args, 1)).AsClip();
+  }
+
+  return result;
 }
 
 
