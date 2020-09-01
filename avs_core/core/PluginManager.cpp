@@ -369,6 +369,16 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
 #ifdef NEW_AVSVALUE
       case 'a': // PF 2016: script arrays, if possible we are using .* and .+ instead
 #endif
+        // array arguments are not necessarily "flattened" when TypeMatch is called.
+        if (param_types[1] == '+' // parameter indicates an array-type args[i]
+          && args[i].IsArray() // allow single e.g. 'c' parameter in place of a 'c+' requirement
+          && *param_types != 'a'
+          )
+        {
+          ++param_types; // will be found in case '+' section
+          break;
+        }
+
         if (   (!optional || args[i].Defined())
             && !SingleTypeMatch(*param_types, args[i], strict))
           return false;
