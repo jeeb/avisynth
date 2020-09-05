@@ -1,5 +1,17 @@
 Avisynth+
 
+20200831 3.6.2-test2
+--------------------
+- support for Win10 long file path option
+- project: Improve inclusion of the ghc filesystem helper library
+- project: Add a GitHub action workflow
+- posix: fix crash when autoloading imports
+- internally refactored ConvertAudio
+- ConvertBits(8): fix dither=1 (floyd) for RGB48/RGB64
+- Fix: Blur right side garbage: 16 bit+AVX2+non mod32 width
+- Fix: check fn signature with implicite "last" first (3.6 regression)
+- Fix: function parameters provided as arrays (e.g. GrunT callback of WriteFileIf)
+
 20200624 3.6.2-test1
 ------------------
 - Fix: ConvertBits (YUV): proper rounding when bit depth is reduced and origin is 10-16 bits
