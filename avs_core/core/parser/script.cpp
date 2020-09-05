@@ -40,6 +40,7 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
+#include <memory>
 
 #ifdef AVS_WINDOWS
 #include <io.h>
@@ -507,33 +508,43 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
       // filename and path can be full unicode
       // unicode input can come from CAVIFileSynth
 
-    wchar_t full_path_w[MAX_PATH];
+    std::unique_ptr<wchar_t[]> full_path_w;
     wchar_t *file_part_w;
 
     // make wchar_t full path strnig from either ansi or utf8
     auto script_name_w = !bUtf8 ? AnsiToWideChar(script_name) : Utf8ToWideChar(script_name);
 
+    // Long (>MAX_PATH) path support starting in Windows 10, version 1607.
     if (wcschr(script_name_w.get(), '\\') || wcschr(script_name_w.get(), '/')) {
-      uint32_t len = GetFullPathNameW(script_name_w.get(), MAX_PATH, full_path_w, &file_part_w);
-      if (len == 0 || len > MAX_PATH)
+      DWORD len = GetFullPathNameW(script_name_w.get(), 0, NULL, NULL); // buffer size for path + terminating zero
+      full_path_w = std::make_unique<wchar_t[]>(len);
+      len = GetFullPathNameW(script_name_w.get(), len, full_path_w.get(), &file_part_w);
+      if (len == 0)
         env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
     }
     else {
-      uint32_t len = SearchPathW(NULL, script_name_w.get(), NULL, MAX_PATH, full_path_w, &file_part_w);
-      if (len == 0 || len > MAX_PATH)
+      DWORD len = SearchPathW(NULL, script_name_w.get(), NULL, 0, NULL, NULL); // buffer size for path + terminating zero
+      full_path_w = std::make_unique<wchar_t[]>(len);
+      len = SearchPathW(NULL, script_name_w.get(), NULL, len, full_path_w.get(), &file_part_w);
+      if (len == 0)
         env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
     }
 
     // back to 8 bit Ansi and Utf8
-    auto full_path = WideCharToAnsi(full_path_w);
-    auto full_path_utf8 = WideCharToUtf8(full_path_w);
+    auto full_path = WideCharToAnsi(full_path_w.get());
+    auto full_path_utf8 = WideCharToUtf8(full_path_w.get());
     auto file_part = WideCharToAnsi(file_part_w);
     auto file_part_utf8 = WideCharToUtf8(file_part_w);
-    size_t dir_part_len = wcslen(full_path_w) - wcslen(file_part_w);
-    auto dir_part = WideCharToAnsi_maxn(full_path_w, dir_part_len);
-    auto dir_part_utf8 = WideCharToUtf8_maxn(full_path_w, dir_part_len);
+    size_t dir_part_len = wcslen(full_path_w.get()) - wcslen(file_part_w);
+    auto dir_part = WideCharToAnsi_maxn(full_path_w.get(), dir_part_len);
+    auto dir_part_utf8 = WideCharToUtf8_maxn(full_path_w.get(), dir_part_len);
 
-    HANDLE h = ::CreateFileW(full_path_w, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    // supply L"\\\\?\\" if necessary for long file path support
+    std::wstring full_path_ex = std::wstring(full_path_w.get());
+    if (full_path_ex.length() > FILENAME_MAX && full_path_ex.substr(0, 4) != L"\\\\?\\")
+      full_path_ex = L"\\\\?\\" + full_path_ex;
+
+    HANDLE h = ::CreateFileW(full_path_ex.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (h == INVALID_HANDLE_VALUE)
       env->ThrowError("Import: couldn't open \"%s\"", full_path.get());
 
@@ -554,7 +565,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     }
 
     *file_part_w = 0; // trunc full_path_w to dir-only
-    CWDChanger change_cwd(full_path_w);
+    CWDChanger change_cwd(full_path_w.get());
     // end of filename parsing / file open things
 
     DWORD size = GetFileSize(h, NULL);
