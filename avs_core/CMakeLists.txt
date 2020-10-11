@@ -11,7 +11,7 @@ endif()
 # Create library
 project("AvsCore" VERSION "${PROJECT_VERSION}" LANGUAGES CXX)
 Include("Files.cmake")
-add_library("AvsCore" SHARED ${AvsCore_Sources})
+add_library("AvsCore" ${AvsCore_Sources})
 set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "${CoreName}")
 if (NOT WIN32)
   set_target_properties("AvsCore" PROPERTIES VERSION "${PROJECT_VERSION}" SOVERSION "${AVISYNTH_INTERFACE_VERSION}")
