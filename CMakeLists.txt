@@ -23,6 +23,11 @@ file(READ "avs_core/include/avisynth.h" versioning)
 string(REGEX MATCH "AVISYNTH_INTERFACE_VERSION = ([0-9]*)" _ ${versioning})
 set(AVISYNTH_INTERFACE_VERSION ${CMAKE_MATCH_1})
 
+option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones." ON)
+if(NOT ${BUILD_SHARED_LIBS})
+  message(WARNING "You must satisfy the conditions of the GPL license when linking against the AviSynth library.")
+endif()
+
 option(HEADERS_ONLY "Install only the Headers" ${INSTALL_ONLY_HEADER})
 if(${INSTALL_ONLY_HEADER})
   set(INSTALL_ONLY_HEADER OFF)
