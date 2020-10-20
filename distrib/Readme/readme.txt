@@ -1,5 +1,9 @@
 Avisynth+
 
+20201020 3.6.2-test3
+--------------------
+- Fix: GeneralConvolution missing internal rounding on 8-16 bit formats
+
 20200831 3.6.2-test2
 --------------------
 - support for Win10 long file path option
