@@ -119,6 +119,8 @@ static void do_conv_integer(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int s
 
   std::vector<const pixel_t *> src_current_lineptrs(matrix_size); // +/-limit => 2*limit + 1
 
+  constexpr safe_int_t rounder = 1 << (20 - 1);
+
   for (int y = 0; y < height; ++y) {
     // prefill current vertical line pointers
     for (int yy = -limit; yy <= limit; yy++) {
@@ -142,7 +144,7 @@ static void do_conv_integer(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int s
         }
         current_matrix += matrix_size; // next matrix line
       }
-      int result = (int)((sum * iCountDiv) >> 20) + iBias;
+      int result = (int)((sum * iCountDiv + rounder) >> 20) + iBias;
       dstp[x] = static_clip<0, max_pixel_value>(result);
     }
     // middle area: no x check: fast!
@@ -179,7 +181,7 @@ static void do_conv_integer(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int s
         }
         current_matrix += matrix_size; // next matrix line
       }
-      int result = (int)((sum * iCountDiv) >> 20) + iBias;
+      int result = (int)((sum * iCountDiv + rounder) >> 20) + iBias;
       dstp[x] = static_clip<0, max_pixel_value>(result);
     }
     // right area: check valid x
@@ -199,7 +201,7 @@ static void do_conv_integer(BYTE* dstp8, int dst_pitch, const BYTE *srcp8, int s
         }
         current_matrix += matrix_size; // next matrix line
       }
-      int result = (int)((sum * iCountDiv) >> 20) + iBias;
+      int result = (int)((sum * iCountDiv + rounder) >> 20) + iBias;
       dstp[x] = static_clip<0, max_pixel_value>(result);
     }
     dstp += dst_pitch;
@@ -399,6 +401,7 @@ GeneralConvolution::GeneralConvolution(PClip _child, double _divisor, float _nBi
     }
 
     // Truncate instead of round - keep in the spirit of the original code
+    // 3.6.3: we do introduce rounding before scaling back from +20 bit range
     // 0x100000: 20 bit precision integer arithmetic
     // todo: check overflow for matrices larger than 5x5
     iCountDiv = (int)(0x100000 / (iCountT == 0 ? divisor : iCountT * divisor));
