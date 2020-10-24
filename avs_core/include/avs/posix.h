@@ -43,6 +43,9 @@
 #define __single_inheritance
 
 // These things don't exist in Linux
+#if defined(AVS_HAIKU)
+#undef __declspec
+#endif
 #define __declspec(x)
 #define lstrlen strlen
 #define lstrcmp strcmp
@@ -104,8 +107,10 @@
 #define STATUS_STACK_OVERFLOW 0xc00000fd
 
 // Calling convension
+#ifndef AVS_HAIKU
 #define __stdcall
 #define __cdecl
+#endif
 
 // PowerPC OS X is really niche these days, but this painless equivocation
 // of the function/macro names used in posix_get_available_memory()

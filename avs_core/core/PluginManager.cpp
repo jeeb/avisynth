@@ -575,7 +575,13 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 #endif
   std::string ExeFileDir(ExeFilePath);
   replace(ExeFileDir, '\\', '/');
+#ifndef AVS_HAIKU
+// Haiku's exe path stuff differs enough from the *nix OSes
+// that it fails spectacularly when loading the library in a client
+// like avs2yuv or FFmpeg.  Try to skip this for now and hope
+// this doesn't cause more errors.
   ExeFileDir = ExeFileDir.erase(ExeFileDir.rfind('/'), std::string::npos);
+#endif
 
   // variable expansion
   replace_beginning(dir, "SCRIPTDIR", Env->GetVarString("$ScriptDir$", ""));

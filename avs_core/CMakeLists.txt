@@ -102,10 +102,16 @@ if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     set(FSLIB "stdc++fs")
 endif()
 
-# Windows DLL dependencies
+# Per-OS link dependencies
 if (MSVC OR MINGW)
   target_link_libraries("AvsCore" "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
-else()
+endif()
+
+if (HAIKU)
+  target_link_libraries("AvsCore" "pthread" "${FSLIB}")
+endif()
+
+if (LINUX OR APPLE OR BSD)
   target_link_libraries("AvsCore" "pthread" "dl" "${FSLIB}")
 endif()
 

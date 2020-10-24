@@ -67,7 +67,11 @@
 #else
     #include <avs/filesystem.h>
     #include <set>
+#if defined(AVS_HAIKU)
+    #include <kernel/OS.h>
+#else
     #include <sys/sysinfo.h>
+#endif
 #endif
     #include <avs/posix.h>
 #endif
@@ -2062,6 +2066,10 @@ static uint64_t posix_get_physical_memory() {
   int64_t memsize;
   sysctlbyname("hw.physmem", (void*)&memsize, &len, nullptr, 0);
   ullTotalPhys = memsize;
+#elif defined(AVS_HAIKU)
+  // to-do on detecting this dynamically, but for right now limit to 1GB since we're
+  // testing in a VM
+  ullTotalPhys = 1024 * 1024 * 1024;
 #else
   // linux
   struct sysinfo info;
@@ -2087,6 +2095,8 @@ static int64_t posix_get_available_memory() {
 #elif defined(AVS_BSD)
   size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
   sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
+#elif defined(AVS_HAIKU)
+  // to-do
 #else // Linux
   nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
 #endif

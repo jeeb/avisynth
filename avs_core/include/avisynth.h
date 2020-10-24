@@ -71,6 +71,10 @@
 #endif
 
 #if defined(AVS_POSIX)
+#if defined(AVS_HAIKU)
+#undef __stdcall
+#undef __cdecl
+#endif
 #define __stdcall
 #define __cdecl
 #endif

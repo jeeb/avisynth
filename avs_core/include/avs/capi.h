@@ -37,7 +37,9 @@
 
 #ifdef AVS_POSIX
 // this is also defined in avs/posix.h
+#ifndef AVS_HAIKU
 #define __declspec(x)
+#endif
 #endif
 
 #ifdef __cplusplus
