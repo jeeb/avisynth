@@ -41,7 +41,10 @@
 
 #include "text-overlay_sse.h"
 #include "../convert/convert.h"  // for RGB2YUV
+
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+
 #include <sstream>
 #include <cstdint>
 #include <cmath>

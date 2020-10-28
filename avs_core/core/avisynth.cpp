@@ -48,6 +48,8 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
 #ifdef AVS_WINDOWS
