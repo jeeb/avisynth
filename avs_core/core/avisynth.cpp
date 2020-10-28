@@ -58,6 +58,7 @@
 #if defined(AVS_MACOS)
     #include <mach/host_info.h>
     #include <mach/mach_host.h>
+    #include <mach/mach_init.h>
     #include <sys/sysctl.h>
 #elif defined(AVS_BSD)
     #include <sys/sysctl.h>
