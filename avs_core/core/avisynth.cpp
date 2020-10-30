@@ -2067,9 +2067,9 @@ static uint64_t posix_get_physical_memory() {
   sysctlbyname("hw.physmem", (void*)&memsize, &len, nullptr, 0);
   ullTotalPhys = memsize;
 #elif defined(AVS_HAIKU)
-  // to-do on detecting this dynamically, but for right now limit to 1GB since we're
-  // testing in a VM
-  ullTotalPhys = 1024 * 1024 * 1024;
+  system_info sysinf;
+  get_system_info(&sysinf);
+  ullTotalPhys = 4096 * sysinf.max_pages;
 #else
   // linux
   struct sysinfo info;
@@ -2096,7 +2096,9 @@ static int64_t posix_get_available_memory() {
   size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
   sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
 #elif defined(AVS_HAIKU)
-  // to-do
+  system_info sysinf;
+  get_system_info(&sysinf);
+  nAvailablePhysicalPages = sysinf.free_memory;
 #else // Linux
   nAvailablePhysicalPages = sysconf(_SC_AVPHYS_PAGES);
 #endif
