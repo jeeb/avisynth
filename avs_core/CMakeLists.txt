@@ -108,7 +108,7 @@ if (MSVC OR MINGW)
 endif()
 
 if (HAIKU)
-  target_link_libraries("AvsCore" "pthread" "${FSLIB}")
+  target_link_libraries("AvsCore" "root" "${FSLIB}")
 endif()
 
 if (LINUX OR APPLE OR BSD)
