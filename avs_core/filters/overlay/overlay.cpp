@@ -361,6 +361,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   PVideoFrame Oframe;
   AVSValue overlay2;
 
+  PVideoFrame Mframe;
   ImageOverlayInternal* maskImg = NULL;
 
   // overlay clip should be converted to internal format if different, except for internal Y,
@@ -514,7 +515,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     // fetch current mask (if given)
     if (mask) {
       AVSValue mask2;
-      PVideoFrame Mframe;
 
       if (maskVi.IsY() || isInternalGrey)
         greymask = true;
