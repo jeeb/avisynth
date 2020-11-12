@@ -1,5 +1,10 @@
 Avisynth+
 
+20201112 3.6.2-test4
+--------------------
+- Fix: Overlay: Actual frame of a mask clip would be freed up too early in MT environment
+- Fix: ConvertBits to ignore dither parameter instead of throwing error, in a 8 to 8 bit case
+
 20201020 3.6.2-test3
 --------------------
 - Fix: GeneralConvolution missing internal rounding on 8-16 bit formats
