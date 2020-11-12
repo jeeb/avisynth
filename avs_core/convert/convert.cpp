@@ -2170,10 +2170,13 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
       env->ThrowError("ConvertBits: dithering is not allowed only for 32 bit targets");
   }
 
+  if (source_bitdepth == 8 && dither_bitdepth == 8)
+    dither_type = -1; // ignore dithering from 8 to 8 bit
+
   if(dither_type == 0) {
 
     if (source_bitdepth == 32)
-      env->ThrowError("ConvertBits: dithering is not allowed only for 32 bit sources");
+      env->ThrowError("ConvertBits: dithering is not allowed for 32 bit sources");
 
     if (dither_bitdepth < 2 || dither_bitdepth > 16)
       env->ThrowError("ConvertBits: invalid dither_bits specified");
@@ -2185,7 +2188,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
       env->ThrowError("ConvertBits: dither_bits cannot differ with more than 8 bits from source");
 
     if (source_bitdepth == 8)
-      env->ThrowError("ConvertBits: dithering is not supported for 8 bit sources");
+      env->ThrowError("ConvertBits: dithering down to less than 8 bits is not supported for 8 bit sources");
   }
 
   // floyd
