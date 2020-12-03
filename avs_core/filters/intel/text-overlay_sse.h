@@ -123,6 +123,40 @@ private:
   const int textcolor, halocolor;
 };
 
+class ShowCRC32 : public GenericVideoFilter
+  /**
+    * Class to display frame number on a video clip
+   **/
+{
+  uint32_t crc32_table[256];
+
+  void build_crc32_table(void);
+
+public:
+  ShowCRC32(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[], int _size,
+    int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    AVS_UNUSED(frame_range);
+    return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+    // Antialiaser usage -> MT_MULTI_INSTANCE (with NICE_FILTER rect area conflicts)
+  }
+
+private:
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  Antialiaser antialiaser;
+#else
+  std::unique_ptr<BitmapFont> current_font;
+#endif
+  const bool scroll;
+  const int offset;
+  const int size, x, y;
+  const int textcolor, halocolor;
+};
+
 
 
 class ShowSMPTE : public GenericVideoFilter

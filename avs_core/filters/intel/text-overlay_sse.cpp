@@ -71,6 +71,10 @@ extern const AVSFunction Text_filters[] = {
 	"c[scroll]b[offset]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowFrameNumber::Create },
 
+  { "ShowCRC32",BUILTIN_FUNC_PREFIX,
+        "c[scroll]b[offset]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
+        ShowCRC32::Create },
+
   { "ShowSMPTE",BUILTIN_FUNC_PREFIX,
 	"c[fps]f[offset]s[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowSMPTE::CreateSMTPE },
@@ -1192,6 +1196,177 @@ AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironmen
   return new ShowFrameNumber(clip, scroll, offset, x, y, font, size, text_color, halo_color, font_width, font_angle, env);
 }
 
+
+
+
+
+/*************************************
+ *******   Show CRC32 Number    ******
+ ************************************/
+
+ShowCRC32::ShowCRC32(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
+  int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  antialiaser(vi.width, vi.height, _fontname, _size,
+    vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
+    vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
+    font_width, font_angle),
+#endif
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
+{
+  AVS_UNUSED(env);
+  
+  build_crc32_table();
+
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+#else
+  // internal font
+  const bool bold = false;
+  current_font = GetBitmapFont(size, "Terminus", bold, false);
+  if (current_font == nullptr)
+  {
+    // size
+    current_font = GetBitmapFont(size, "", bold, false);
+    if (current_font == nullptr)
+      current_font = GetBitmapFont(size, "", !bold, false);
+  }
+#endif
+}
+
+void ShowCRC32::build_crc32_table(void) {
+  for (uint32_t i = 0; i < 256; i++) {
+    uint32_t ch = i;
+    uint32_t crc = 0;
+    for (size_t j = 0; j < 8; j++) {
+      uint32_t b = (ch ^ crc) & 1;
+      crc >>= 1;
+      if (b) crc = crc ^ 0xEDB88320;
+      ch >>= 1;
+    }
+    crc32_table[i] = crc;
+  }
+}
+
+
+PVideoFrame ShowCRC32::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame frame = child->GetFrame(n, env);
+  n += offset;
+  if (n < 0) return frame;
+
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  HDC hdc = antialiaser.GetDC();
+  if (!hdc) return frame;
+#else
+  if (current_font == nullptr)
+    return frame;
+#endif
+  env->MakeWritable(&frame);
+
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  RECT r = { 0, 0, 32767, 32767 };
+  FillRect(hdc, &r, (HBRUSH)GetStockObject(BLACK_BRUSH));
+#endif
+
+  auto ptr = frame->GetReadPtr();
+  auto pitch = frame->GetPitch();
+  auto width = frame->GetRowSize();
+  auto height = frame->GetHeight();
+  uint32_t crc = 0xFFFFFFFF;;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++)
+    {
+      uint8_t b = ptr[x];
+      uint32_t t = (b ^ crc) & 0xFF;
+      crc = (crc >> 8) ^ crc32_table[t];
+    }
+    ptr += pitch;
+  }
+  crc = ~crc;
+
+  char text[16];
+  snprintf(text, sizeof(text), "%08X", (int)crc);
+  text[15] = 0;
+
+  if (x != DefXY || y != DefXY) {
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+    SetTextAlign(hdc, TA_BASELINE | TA_LEFT);
+    TextOut(hdc, x + 16, y + 16, text, (int)strlen(text));
+#else
+    std::wstring ws = charToWstring(text, true);
+    SimpleTextOutW(current_font.get(), vi, frame, x, y, ws, false, textcolor, halocolor, true, 1);
+#endif
+  }
+  else if (scroll) {
+    int n1 = vi.IsFieldBased() ? (n / 2) : n;
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+    int y2 = size + size * (n1 % (vi.height * 8 / size));
+    SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
+    TextOut(hdc, child->GetParity(n) ? 32 : vi.width * 8 + 8, y2, text, (int)strlen(text));
+#else
+    int y2 = size + size * (n1 % (vi.height / size));
+    std::wstring ws = charToWstring(text, true);
+    if (child->GetParity(n))
+      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
+    else
+      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
+#endif
+
+  }
+  else {
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+    SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
+    int text_len = (int)strlen(text);
+    for (int y2 = size; y2 < vi.height * 8; y2 += size)
+      TextOut(hdc, child->GetParity(n) ? 32 : vi.width * 8 + 8, y2, text, text_len);
+#else
+    std::wstring ws = charToWstring(text, true);
+    for (int y2 = size; y2 < vi.height; y2 += size) {
+      if (child->GetParity(n))
+        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
+      else
+        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
+    }
+#endif
+  }
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  GdiFlush();
+
+  antialiaser.Apply(vi, &frame, frame->GetPitch());
+#endif
+  return frame;
+}
+
+
+AVSValue __cdecl ShowCRC32::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  PClip clip = args[0].AsClip();
+  bool scroll = args[1].AsBool(false);
+  const int offset = args[2].AsInt(0);
+#if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
+  const int x = args[3].IsFloat() ? int(args[3].AsFloat() * 8 + 0.5) : DefXY;
+  const int y = args[4].IsFloat() ? int(args[4].AsFloat() * 8 + 0.5) : DefXY;
+  const char* font = args[5].AsString("Arial");
+  const int size = int(args[6].AsFloat(24) * 8 + 0.5);
+  const int font_width = int(args[9].AsFloat(0) * 8 + 0.5);
+#else
+  const int x = args[3].IsFloat() ? int(args[3].AsFloat() + 0.5) : DefXY;
+  const int y = args[4].IsFloat() ? int(args[4].AsFloat() + 0.5) : DefXY;
+  const char* font = args[5].AsString("Terminus");
+  const int size = int(args[6].AsFloat(24) + 0.5);
+  const int font_width = int(args[9].AsFloat(0) + 0.5);
+#endif
+  const int text_color = args[7].AsInt(0xFFFF00);
+  const int halo_color = args[8].AsInt(0);
+  const int font_angle = int(args[10].AsFloat(0) * 10 + 0.5);
+
+  if ((x == DefXY) ^ (y == DefXY))
+    env->ThrowError("ShowCRC32: both x and y position must be specified");
+
+  return new ShowCRC32(clip, scroll, offset, x, y, font, size, text_color, halo_color, font_width, font_angle, env);
+}
 
 
 
