@@ -329,8 +329,15 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     src_pitch_table_luma     = new int[vi.width];
 
     resampler_luma   = FilteredResizeV::GetResampler(true, pixelsize, bits_per_pixel, filter_storage_luma, resampling_program_luma);
+    if (vi.width < resampling_program_luma->filter_size) {
+      env->ThrowError("Source width (%d) is too small for this resizing method, must be minimum of %d", vi.width, resampling_program_luma->filter_size);
+    }
     if (vi.IsPlanar() && !grey && !isRGBPfamily) {
       resampler_chroma = FilteredResizeV::GetResampler(true, pixelsize, bits_per_pixel, filter_storage_chroma, resampling_program_chroma);
+      const int width_UV = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+      if (width_UV < resampling_program_luma->filter_size) {
+        env->ThrowError("Source chroma width (%d) is too small for this resizing method, must be minimum of %d", width_UV, resampling_program_chroma->filter_size);
+      }
     }
 
     // Temporary buffer size
@@ -532,6 +539,9 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   // Create resampling program and pitch table
   resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, bits_per_pixel, env);
   resampler_luma_aligned   = GetResampler(true , pixelsize, bits_per_pixel, filter_storage_luma_aligned,   resampling_program_luma);
+  if (vi.height < resampling_program_luma->filter_size) {
+    env->ThrowError("Source height (%d) is too small for this resizing method, must be minimum of %d", vi.height, resampling_program_luma->filter_size);
+  }
 
   if (vi.IsPlanar() && !grey && !isRGBPfamily) {
     const int shift = vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -546,6 +556,10 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   env);
 
     resampler_chroma_aligned   = GetResampler(true , pixelsize, bits_per_pixel, filter_storage_chroma_aligned,   resampling_program_chroma);
+    const int height_UV = vi.height >> shift;
+    if (height_UV < resampling_program_chroma->filter_size) {
+        env->ThrowError("Source chroma height (%d) is too small for this resizing method, must be minimum of %d", height_UV, resampling_program_chroma->filter_size);
+      }
   }
 
   // Change target video info size
@@ -577,6 +591,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     src_pitch_table_chromaU = static_cast<int*>(env->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 32, AVS_POOLED_ALLOC));
     src_pitch_table_chromaV = static_cast<int*>(env->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 32, AVS_POOLED_ALLOC));
     if (!src_pitch_table_chromaU || !src_pitch_table_chromaV) {
+      env->Free(src_pitch_table_luma);
       env->Free(src_pitch_table_chromaU);
       env->Free(src_pitch_table_chromaV);
       env->ThrowError("Could not reserve memory in a resampler.");
