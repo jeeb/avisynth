@@ -2528,6 +2528,8 @@ AVSValue RemoveAlphaPlane::Create(AVSValue args, void*, IScriptEnvironment* env)
   const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
   if(vi.IsPlanar() && (vi.IsYUV() || vi.IsPlanarRGB())) // planar and no alpha
     return args[0].AsClip();
+  if (vi.IsYUY2()) // YUY2: no alpha
+    return args[0].AsClip();
   if(vi.IsRGB24() || vi.IsRGB48()) // packed RGB and no alpha
     return args[0].AsClip();
   if (vi.IsRGB32()) {
