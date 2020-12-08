@@ -4,6 +4,21 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20201208 3.6.2-test5
+-----------------------
+- Resizers: throw error on too small dimensions vs. taps
+- Add ShowCRC32 debug filter. Parameters are the same as in ShowFrameNumber
+- Overlay: allow 4:1:1 input
+- Overlay: fix crash when mask is YUV411 and greymask=false
+- Overlay: may work quicker, most input/overlay/mask/output clip format conversions moved to filter constructor
+- RemoveAlphaPlane: do nothing on YUY2 instead of throwing an error message
+- AviSource: support non-printing characters in fourCC code: allow [number] style, e.g. G3[0][16]
+- AviSource: add Y410 (YUVA444P10) format support. Allow 'Y410' pixel_type hints.
+- AviSource: decode b64a, b48r, v210, P210, P010, P016, P216, v410, Y416, r210, R10k, v308, v408, Y410 fourCCs natively.
+- Fix: Average...: check for valid colorspace (e.g. no AverageB for a YUV clip)
+- Add: AverageA
+- New: Average...: allow YUY2, RGB24/32/48/64 inputs
+
 20201112 3.6.2-test4
 --------------------
 - Fix: Overlay: Actual frame of a mask clip would be freed up too early in MT environment
