@@ -167,6 +167,21 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
   PClip child = clip.AsClip();
   VideoInfo vi = child->GetVideoInfo();
 
+  // input clip to always planar
+  if (vi.IsRGB() && !vi.IsPlanar()) {
+    AVSValue new_args[1] = { child };
+    if (vi.IsRGB24() || vi.IsRGB48())
+      child = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+    else // RGB32, RGB64
+      child = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+    vi = child->GetVideoInfo();
+  }
+  else if (vi.IsYUY2()) {
+    AVSValue new_args[2] = { child, false };
+    child = env->Invoke("ConvertToYUV422", AVSValue(new_args, 2)).AsClip();
+    vi = child->GetVideoInfo();
+  }
+
   if (!vi.IsPlanar())
     env->ThrowError("Average Plane: Only planar YUV or planar RGB images supported!");
 
