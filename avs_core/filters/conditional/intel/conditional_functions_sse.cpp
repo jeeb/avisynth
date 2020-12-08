@@ -242,7 +242,7 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
 
   if (plane == PLANAR_A)
   {
-    if (!vi.IsPlanarRGBA() || !vi.IsYUVA())
+    if (!vi.IsPlanarRGBA() && !vi.IsYUVA())
       env->ThrowError("Average Plane: clip has no Alpha plane!");
   }
   else if(vi.IsRGB())
