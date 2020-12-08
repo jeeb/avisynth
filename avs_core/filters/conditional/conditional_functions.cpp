@@ -51,6 +51,7 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   {  "AverageR", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_R },
   {  "AverageG", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_G },
   {  "AverageB", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_B },
+  {  "AverageA", BUILTIN_FUNC_PREFIX, "c[offset]i", AveragePlane::Create, (void *)PLANAR_A },
   //{  "AverageSat","c[offset]i", AverageSat::Create }, Sum(SatLookup[U,V])/N, SatLookup[U,V]=1.4087*sqrt((U-128)**2+(V-128)**2)
 //{  "AverageHue","c[offset]i", AverageHue::Create }, Sum(HueLookup[U,V])/N, HueLookup[U,V]=40.5845*Atan2(U-128,V-128)
 
@@ -168,6 +169,25 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
 
   if (!vi.IsPlanar())
     env->ThrowError("Average Plane: Only planar YUV or planar RGB images supported!");
+
+  if (plane == PLANAR_A)
+  {
+    if (!vi.IsPlanarRGBA() || !vi.IsYUVA())
+      env->ThrowError("Average Plane: clip has no Alpha plane!");
+  }
+  else if(vi.IsRGB())
+  { 
+    if (plane != PLANAR_R && plane != PLANAR_G && plane != PLANAR_B)
+      env->ThrowError("Average Plane: not a valid plane for an RGB clip!");
+  }
+  else if (vi.IsY()){
+    if (plane != PLANAR_Y)
+      env->ThrowError("Average Plane: not a valid plane for an greyscale clip!");
+  }
+  else {
+    if (plane != PLANAR_Y && plane != PLANAR_U && plane != PLANAR_V)
+      env->ThrowError("Average Plane: not a valid plane for a YUV clip!");
+  }
 
   AVSValue cn = env->GetVarDef("current_frame");
   if (!cn.IsInt())
