@@ -38,7 +38,7 @@
 #include <avisynth.h>
 #include <stdint.h>
 
-int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k, bool v308, bool v408);
+int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k, bool v308, bool v408, bool Y410);
 
 template<bool hasAlpha>
 void ToY416_sse2(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height);
@@ -47,6 +47,11 @@ template<bool hasAlpha>
 void ToY416_c(uint8_t *outbuf8, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height);
 template<bool hasAlpha>
 void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, const uint8_t *srcp8, int srcpitch, int width, int height);
+
+template<bool hasAlpha>
+void ToY410_c(uint8_t* outbuf8, int out_pitch, const uint8_t* yptr, int ypitch, const uint8_t* uptr, const uint8_t* vptr, int uvpitch, const uint8_t* aptr, int apitch, int width, int height);
+template<bool hasAlpha>
+void FromY410_c(uint8_t* yptr, int ypitch, uint8_t* uptr, uint8_t* vptr, int uvpitch, uint8_t* aptr, int apitch, const uint8_t* srcp8, int srcpitch, int width, int height);
 
 void From_r210_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t *srcp8, int srcpitch, int width, int height);
 void From_R10k_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t *srcp8, int srcpitch, int width, int height);

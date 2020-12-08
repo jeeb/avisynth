@@ -47,6 +47,8 @@
 #include <emmintrin.h>
 #include <tmmintrin.h>
 #endif
+#include <string>
+#include <sstream>
 
 #include "../../core/AviHelper.h"
 
@@ -57,48 +59,54 @@ static void __cdecl free_buffer(void* buff, IScriptEnvironment* env)
 }
 
 TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
-  bool b64a, bool b48r, bool v210,
-  bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
-  bool r210, bool R10k,
-  bool v308, bool v408,
+  AVI_SpecialFormats specf,
   IScriptEnvironment* env)
 {
   int heightY = vi.height;
   int heightUV = (vi.pixel_type & VideoInfo::CS_INTERLEAVED) ? 0 : heightY >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-  if (Y416)
+  if (specf == AVI_SpecialFormats::Y410)
+  { // Y410 packed 4444 U,Y,V,A
+    // This format is a packed 10-bit representation that includes 2 bits of alpha.
+    // Bits 0 - 9 contain the U sample, bits 10 - 19 contain the Y sample, bits 20 - 29 contain the V sample, 
+    // and bits 30 - 31 contain the alpha value.
+    // To indicate that a pixel is fully opaque, an application must set the two alpha bits equal to 0x03.
+    pitchY = vi.width * sizeof(uint32_t) ; // n/a
+    pitchUV = 0;
+  }
+  else if (specf == AVI_SpecialFormats::Y416)
   { // Y416 packed 4444 U,Y,V,A
     // image_size = vi->width * vi->height * 4 * sizeof(uint16_t);
     pitchY = vi.width * 4 * sizeof(uint16_t); // n/a
     pitchUV = 0;
   }
-  else if (v308)
+  else if (specf == AVI_SpecialFormats::v308)
   { // v308 packed 444
     // image_size = vi->width * vi->height * 3 * sizeof(uint8_t);
     pitchY = vi.width * 3; // n/a
     pitchUV = 0;
   }
-  else if (v408)
+  else if (specf == AVI_SpecialFormats::v408)
   { // v408 packed 4444
     // image_size = vi->width * vi->height * 4 * sizeof(uint8_t);
     pitchY = vi.width * 4; // n/a
     pitchUV = 0;
   }
-  else if (v410)
+  else if (specf == AVI_SpecialFormats::v410)
   { // v410 packed 444 U,Y,V
     // image_size = vi->width * vi->height * 4 (32 bit holds 3x10 bits);
     pitchY = vi.width * 4; // n/a
     pitchUV = 0;
   }
-  else if (v210) {
+  else if (specf == AVI_SpecialFormats::v210) {
     pitchY = ((16 * ((vi.width + 5) / 6) + 127) & ~127);
     pitchUV = 0;
   }
-  else if (r210) {
+  else if (specf == AVI_SpecialFormats::r210) {
     pitchY = ((vi.width + 63) / 64) * 256;
     pitchUV = 0;
   }
-  else if (R10k) {
+  else if (specf == AVI_SpecialFormats::R10k) {
     pitchY = vi.width * 4;
     pitchUV = 0;
   }
@@ -118,7 +126,15 @@ TemporalBuffer::TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
 
   size_t sizeY = pitchY * heightY;
   size_t sizeUV = pitchUV * heightUV;
-  if(r210 || R10k || Y416 || v410 || v210 || v308 || v408)
+  if(specf == AVI_SpecialFormats::r210 || 
+    specf == AVI_SpecialFormats::R10k || 
+    specf == AVI_SpecialFormats::Y416 || 
+    specf == AVI_SpecialFormats::v410 || 
+    specf == AVI_SpecialFormats::v210 || 
+    specf == AVI_SpecialFormats::v308 || 
+    specf == AVI_SpecialFormats::v408 ||
+    specf == AVI_SpecialFormats::Y410
+  )
     size = sizeY;
   else if (vi.IsPlanarRGB())
     size = sizeY * 3;
@@ -164,10 +180,7 @@ mmioFOURCC('G', '4', 00, 14); // ffmpeg GBRAP14LE
 mmioFOURCC('G', '4', 00, 16); // ffmpeg GBRAP16LE
 */
 static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& vi, bool bInvertFrames,
-  bool b64a, bool b48r, bool v210,
-  bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
-  bool r210, bool R10k,
-  bool v308, bool v408,
+  AVI_SpecialFormats specf,
   IScriptEnvironment* env)
 {
     auto result = env->NewVideoFrame(vi);
@@ -180,68 +193,90 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
       pitch = -pitch;
     }
 
-    if (v210) {
+    switch(specf) {
+    case AVI_SpecialFormats::v210:
       v210_to_yuv422p10(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
         frame->GetPtr(), vi.width, vi.height);
-    }
-    else if (P210 || P216 || P010 || P016) {
-      Px10_16_to_yuv42xp10_16(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
-        frame->GetPtr(), frame->GetPitch(), vi.width, vi.height, result->GetHeight(PLANAR_U),
-        P016 || P216, env);
-    }
-    else if (Y416) {
-      FromY416_c<false>(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
-        result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_A),
-        frame->GetPtr(), frame->GetPitch(), vi.width, vi.height);
-    }
-    else if (r210) {
+      break;
+    case AVI_SpecialFormats::P210:
+    case AVI_SpecialFormats::P216:
+    case AVI_SpecialFormats::P010:
+    case AVI_SpecialFormats::P016:
+        Px10_16_to_yuv42xp10_16(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
+          frame->GetPtr(), frame->GetPitch(), vi.width, vi.height, result->GetHeight(PLANAR_U),
+          specf == AVI_SpecialFormats::P016 || specf == AVI_SpecialFormats::P216, env);
+        break;
+    case AVI_SpecialFormats::Y416:
+      if(vi.pixel_type == VideoInfo::CS_YUVA444P16)
+        FromY416_c<true>(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
+          result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_A),
+          frame->GetPtr(), frame->GetPitch(), vi.width, vi.height);
+      else
+        FromY416_c<false>(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
+          result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_A),
+          frame->GetPtr(), frame->GetPitch(), vi.width, vi.height);
+      break;
+    case AVI_SpecialFormats::r210:
       From_r210_c(result->GetWritePtr(PLANAR_R), result->GetWritePtr(PLANAR_G), result->GetWritePtr(PLANAR_B), result->GetPitch(PLANAR_G),
         frame->GetPtr(), frame->GetPitch(), vi.width, vi.height);
-    }
-    else if (R10k) {
+      break;
+    case AVI_SpecialFormats::R10k:
       From_R10k_c(result->GetWritePtr(PLANAR_R), result->GetWritePtr(PLANAR_G), result->GetWritePtr(PLANAR_B), result->GetPitch(PLANAR_G),
         frame->GetPtr(), frame->GetPitch(), vi.width, vi.height);
-    }
-    else if (v410) {
+      break;
+    case AVI_SpecialFormats::v410:
       v410_to_yuv444p10(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
         frame->GetPtr(), vi.width, vi.height);
-    }
-    else if (v308) {
+      break;
+    case AVI_SpecialFormats::v308:
       v308_to_yuv444p8(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
         frame->GetPtr(), vi.width, vi.height);
-    }
-    else if (v408) {
+      break;
+    case AVI_SpecialFormats::v408:
       v408_to_yuva444p8(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_U), result->GetPitch(PLANAR_A),
         frame->GetPtr(), vi.width, vi.height);
-    }
-    else {
-      if (b64a) {
-        // BGRA <-> big endian ARGB with byte swap
-        uint8_t* pdst = dstp;
+      break;
+    case AVI_SpecialFormats::Y410:
+      if (vi.pixel_type == VideoInfo::CS_YUVA444P10)
+        FromY410_c<true>(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
+          result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_A),
+          frame->GetPtr(), frame->GetPitch(), vi.width, vi.height);
+      else
+        FromY410_c<false>(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
+          result->GetWritePtr(PLANAR_A), result->GetPitch(PLANAR_A),
+          frame->GetPtr(), frame->GetPitch(), vi.width, vi.height);
+      break;
+    case AVI_SpecialFormats::b64a:
+    {
+      // BGRA <-> big endian ARGB with byte swap
+      uint8_t* pdst = dstp;
 
-        int srcpitch = frame->GetPitch();
-        const BYTE *src = frame->GetPtr();
+      int srcpitch = frame->GetPitch();
+      const BYTE* src = frame->GetPtr();
 #ifdef INTEL_INTRINSICS
-        const bool ssse3 = (env->GetCPUFlags() & CPUF_SSSE3) != 0;
-        const bool sse2 = (env->GetCPUFlags() & CPUF_SSE2) != 0;
-        if (ssse3)
-          bgra_to_argbBE_ssse3(pdst, pitch, src, srcpitch, vi.width, vi.height);
-        else if (sse2)
-          bgra_to_argbBE_sse2(pdst, pitch, src, srcpitch, vi.width, vi.height);
-        else
+      const bool ssse3 = (env->GetCPUFlags() & CPUF_SSSE3) != 0;
+      const bool sse2 = (env->GetCPUFlags() & CPUF_SSE2) != 0;
+      if (ssse3)
+        bgra_to_argbBE_ssse3(pdst, pitch, src, srcpitch, vi.width, vi.height);
+      else if (sse2)
+        bgra_to_argbBE_sse2(pdst, pitch, src, srcpitch, vi.width, vi.height);
+      else
 #endif // INTEL_INTRINSICS
-          bgra_to_argbBE_c(pdst, pitch, src, srcpitch, vi.width, vi.height);
-      }
-      else if (b48r) {
-        // BGR <-> 16 bits per component big-endian Red, Green and Blue with byte swap
-        uint8_t* pdst = dstp;
+        bgra_to_argbBE_c(pdst, pitch, src, srcpitch, vi.width, vi.height);
+    }
+        break;
+    case AVI_SpecialFormats::b48r:
+    {
+      // BGR <-> 16 bits per component big-endian Red, Green and Blue with byte swap
+      uint8_t* pdst = dstp;
 
-        int srcpitch = frame->GetPitch();
-        const BYTE *src = frame->GetPtr();
-        // c only
-        bgr_to_rgbBE_c(pdst, pitch, src, srcpitch, vi.width, vi.height);
-      }
-      else {
+      int srcpitch = frame->GetPitch();
+      const BYTE* src = frame->GetPtr();
+      // c only
+      bgr_to_rgbBE_c(pdst, pitch, src, srcpitch, vi.width, vi.height);
+    }
+    break;
+    default:
         if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
           env->BitBlt(result->GetWritePtr(PLANAR_G), result->GetPitch(PLANAR_G), frame->GetPtr(PLANAR_G), frame->GetPitch(PLANAR_G), result->GetRowSize(PLANAR_G), result->GetHeight(PLANAR_G));
           env->BitBlt(result->GetWritePtr(PLANAR_B), result->GetPitch(PLANAR_B), frame->GetPtr(PLANAR_B), frame->GetPitch(PLANAR_B), result->GetRowSize(PLANAR_B), result->GetHeight(PLANAR_B));
@@ -251,11 +286,11 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
         }
         else {
           env->BitBlt(dstp, pitch, frame->GetPtr(), frame->GetPitch(), result->GetRowSize(), result->GetHeight());
+          // when no U or V plane these do nothing
           env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetPtr(PLANAR_V), frame->GetPitch(PLANAR_V), result->GetRowSize(PLANAR_V), result->GetHeight(PLANAR_V));
           env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetPtr(PLANAR_U), frame->GetPitch(PLANAR_U), result->GetRowSize(PLANAR_U), result->GetHeight(PLANAR_U));
         }
-      }
-    }
+    } // switch
     return result;
 }
 
@@ -398,6 +433,18 @@ bool AVISource::AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih
     return !!hic;
 }
 
+static std::string fourCCtoString(DWORD fourCC) {
+  std::ostringstream oss;
+  for (int i = 0; i < 4; i++) {
+    uint8_t b = fourCC & 0xFF;
+    fourCC >>= 8;
+    if (b < 32)
+      oss << "[" << std::to_string(b) << "]";
+    else
+      oss << char(b);
+  }
+  return oss.str();
+}
 
 void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   AVISTREAMINFO asi;
@@ -439,13 +486,21 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   vi.SetFPS(asi.dwRate, asi.dwScale);
   vi.num_frames = asi.dwLength;
 
+  bool overridden = false;
+
   // try the requested decoder, if specified
-  if (fourCC != NULL && strlen(fourCC) == 4) {
+  if (fourCC != NULL /*&& strlen(fourCC) == 4*/) { // no strlen! fourCC can contain zeros as well
     DWORD fcc = fourCC[0] | (fourCC[1] << 8) | (fourCC[2] << 16) | (fourCC[3] << 24);
+    if (pbiSrc->biCompression != fcc)
+      overridden = true;
     asi.fccHandler = pbiSrc->biCompression = fcc;
   }
 
   // see if we can handle the video format directly
+  // when recognizing these formats in input fourCC, use them directly
+  // Note: forced overrides may not work
+
+  // check for only basic formats only. Known formats with special unpackers are handled outside.
   if (pbiSrc->biCompression == MAKEFOURCC('Y', 'U', 'Y', '2')) { // :FIXME: Handle UYVY, etc
     vi.pixel_type = VideoInfo::CS_YUY2;
   } else if (pbiSrc->biCompression == MAKEFOURCC('Y', 'V', '1', '2')) {
@@ -456,10 +511,6 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
     vi.pixel_type = VideoInfo::CS_BGR32;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
     vi.pixel_type = VideoInfo::CS_BGR24;
-  } else if (pbiSrc->biCompression == MAKEFOURCC('B','R','A',64)) { // BRA@ ie. BRA[64]
-      vi.pixel_type = VideoInfo::CS_BGR64;
-  } else if (pbiSrc->biCompression == MAKEFOURCC('B','G','R',48)) { // BGR0 ie. BGR[48]
-      vi.pixel_type = VideoInfo::CS_BGR48;
   } else if (pbiSrc->biCompression == MAKEFOURCC('G', 'R', 'E', 'Y')) {
     vi.pixel_type = VideoInfo::CS_Y8;
   } else if (pbiSrc->biCompression == MAKEFOURCC('Y', '8', '0', '0')) {
@@ -471,20 +522,59 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   } else if (pbiSrc->biCompression == MAKEFOURCC('Y', 'V', '1', '6')) {
     vi.pixel_type = VideoInfo::CS_YV16;
   } else if (pbiSrc->biCompression == MAKEFOURCC('Y', '4', '1', 'B')) {
-    vi.pixel_type = VideoInfo::CS_YV411;/*
-  } else if (pbiSrc->biCompression == MAKEFOURCC('U', 'Q', 'R', 'A')) {
-    vi.pixel_type = VideoInfo::CS_BGR64; // bitcount is 40!
-  } else if (pbiSrc->biCompression == MAKEFOURCC('U', 'Q', 'R', 'G')) {
+    vi.pixel_type = VideoInfo::CS_YV411;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('B', 'R', 'A', 64)) { // BRA@ ie. BRA[64]
+    vi.pixel_type = VideoInfo::CS_BGR64;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('b', '6', '4', 'a')) { // b64a
+    vi.pixel_type = VideoInfo::CS_BGR64;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('B', 'G', 'R', 48)) { // BGR0 ie. BGR[48]
     vi.pixel_type = VideoInfo::CS_BGR48;
-  } else if (pbiSrc->biCompression == MAKEFOURCC('U', 'Q', 'Y', '2')) {
-    vi.pixel_type = VideoInfo::CS_YUV422P10;*/
-  /* UT Video codec
-    UQRA	UtVideo Pro RGBA 10bit   RGBA 4:4:4 10bit full-range b64a
-    UQRG	UtVideo Pro RGB 10bit    RGB  4:4:4 10bit full-range b48r (b64a)
-    UQY2	UtVideo Pro YUV422 10bit YCbCr 4:2:2 10bit limited   v210
-  */
-  // otherwise, find someone who will decompress it
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('b', '4', '8', 'r')) { // b48r
+    vi.pixel_type = VideoInfo::CS_BGR48;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('v', '2', '1', '0')) { // v210
+    vi.pixel_type = VideoInfo::CS_YUV422P10;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('P', '2', '1', '0')) { // P210
+    vi.pixel_type = VideoInfo::CS_YUV422P10;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('P', '0', '1', '0')) { // P010
+    vi.pixel_type = VideoInfo::CS_YUV420P10;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('P', '0', '1', '6')) { // P016
+    vi.pixel_type = VideoInfo::CS_YUV420P16;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('P', '2', '1', '6')) { // P216
+    vi.pixel_type = VideoInfo::CS_YUV422P16;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('v', '4', '1', '0')) { // v410
+    vi.pixel_type = VideoInfo::CS_YUV444P10;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('Y', '4', '1', '6')) { // Y416
+    vi.pixel_type = VideoInfo::CS_YUV444P16;
+    // FIXME/Decide: Y416 contains alpha, we ignore it now
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('r', '2', '1', '0')) { // r210
+    vi.pixel_type = VideoInfo::CS_RGBP10;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('R', '1', '0', 'k')) { // R10k
+    vi.pixel_type = VideoInfo::CS_RGBP10;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('v', '3', '0', '8')) { // v308
+    vi.pixel_type = VideoInfo::CS_YV24;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('v', '4', '0', '8')) { // v408
+    vi.pixel_type = VideoInfo::CS_YUVA444;
+  }
+  else if (pbiSrc->biCompression == MAKEFOURCC('Y', '4', '1', '0')) { // Y410
+    vi.pixel_type = VideoInfo::CS_YUVA444P10;
+    // Y410 contains a 2 bit alpha, so we use YUVA
   } else {
+    // otherwise, find someone who will decompress it
     switch(pbiSrc->biCompression) {
     case MAKEFOURCC('M','P','4','3'):    // Microsoft MPEG-4 V3 '34PM'
     case MAKEFOURCC('D','I','V','3'):    // "DivX Low-Motion" (4.10.0.3917) '3VID'
@@ -501,11 +591,160 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
     default:
       if (AttemptCodecNegotiation(asi.fccHandler, pbiSrc)) return;
     }
-    env->ThrowError("AVISource: couldn't locate a decompressor for fourcc %c%c%c%c",
-      asi.fccHandler, asi.fccHandler>>8, asi.fccHandler>>16, asi.fccHandler>>24);
+    auto fourCCstr = fourCCtoString(asi.fccHandler);
+    env->ThrowError("AVISource: couldn't locate a decompressor for fourcc %s", fourCCstr);
   }
+  if (!overridden) return;
+  if (AttemptCodecNegotiation(asi.fccHandler, pbiSrc)) return;
+  // note: it is possible that fourCC G3[0][10] cannot be negotiated
+  // but if e.g. M0RG is negotiated here, the driver can support G3[0][10] later in icDecompressQuery
+  auto fourCCstr = fourCCtoString(asi.fccHandler);
+  env->ThrowError("AVISource: couldn't locate a decompressor for overridden fourcc %s", fourCCstr);
 }
 
+static bool setInternalFormat_b64a(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // BRA@ ie. BRA[64]
+  biDst->biBitCount = 64;
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_BRA64(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // BRA@ ie. BRA[64]
+  biDst->biBitCount = 64;
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_BGR48(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // BGR0 ie. BGR48[64]
+  biDst->biBitCount = 48;
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_b48r(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // BGR0 ie. BGR48[64]
+  biDst->biBitCount = 48;
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_v210(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = AviHelper_ImageSize(&vi, false, true, false, false, false, false, false, false);
+  biDst->biCompression = fourCC; // v210 (422P10)
+  biDst->biBitCount = 30;
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_P210(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // P210 (422P10)
+  biDst->biBitCount = 30; // should be 30, not 10+(10+10)/2
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_P010(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // P010 (420P10)
+  biDst->biBitCount = 15; // 10+(10+10)/4 or 3x10?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_P016(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // P016 (420P16)
+  biDst->biBitCount = 24; // 16+(16+16)/4 or 3x16?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_Y416(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // Y416 (444P16)
+  biDst->biBitCount = 48; // 3x16?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_Y410(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, false, false, false, true);
+  biDst->biCompression = fourCC; // Y410 (444P10)
+  biDst->biBitCount = 32; // 3x10+2?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_P216(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = vi.BMPSize();
+  biDst->biCompression = fourCC; // P216 (422P16)
+  biDst->biBitCount = 32; // 16+(16+16)/2 or 3x16?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_v410(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, false, false, false);
+  biDst->biCompression = fourCC; // v410 (444P10)
+  biDst->biBitCount = 30; // 3x10?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_r210(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = AviHelper_ImageSize(&vi, false, false, false, true, false, false, false, false);
+  biDst->biCompression = fourCC; // r210 (RGBP10)
+  biDst->biBitCount = 30; // 3x10?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_R10k(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, true, false, false, false);
+  biDst->biCompression = fourCC; // R10k (RGBP10)
+  biDst->biBitCount = 30; // 3x10?
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_v308(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, false, true, false, false);
+  biDst->biCompression = fourCC; // v308 (YV24 YUV444P8)
+  biDst->biBitCount = 24;
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
+
+static bool setInternalFormat_v408(VideoInfo& vi, HIC& hic, BITMAPINFOHEADER* pbiSrc, BITMAPINFOHEADER* biDst, DWORD fourCC, int pixel_type) {
+  vi.pixel_type = pixel_type;
+  biDst->biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, false, false, true, false);
+  biDst->biCompression = fourCC; // v408 (YUVA444P8)
+  biDst->biBitCount = 32;
+  if (hic == nullptr) return true;
+  return (ICERR_OK == ICDecompressQuery(hic, pbiSrc, biDst));
+}
 
 AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int vtrack, int atrack, avi_mode_e mode, bool utf8, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
@@ -520,18 +759,8 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   bIsType1 = false;
   hic = 0;
   bInvertFrames = false;
-  // todo: too many vars, move them for enum
-  P010 = P016 = false;
-  P210 = v210 = false;
-  P216 = false;
-  v410 = false;
-  Y416 = false;
-  b64a = false;
-  b48r = false;
-  r210 = false;
-  R10k = false;
-  v308 = false;
-  v408 = false;
+
+  specf = AVI_SpecialFormats::none;
   bMediaPad = false;
   frame = 0;
 
@@ -581,7 +810,45 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       }
 
       if (pvideo) {
-        LocateVideoCodec(fourCC, env);
+        // accept code-in-the-bracker style like G4[0][16]
+        bool inBracket = false;
+        char buf[4+1];
+        int len = 0;
+        char ch;
+        int number = 0;
+        const char* fc = fourCC;
+        while (ch = *fc++) {
+          if (len == 4)
+            env->ThrowError("Avisource: fourCC must be four characters");
+          if (ch == '[') {
+            if (inBracket)
+              env->ThrowError("Avisource: fourCC syntax error: unexpected [");
+            inBracket = true;
+            number = 0;
+            continue;
+          }
+          if (ch == ']') {
+            if (!inBracket)
+              env->ThrowError("Avisource: fourCC syntax error: unexpected ]");
+            buf[len++] = number;
+            inBracket = false;
+            continue;
+          }
+          if (inBracket) {
+            if(!isdigit(ch))
+              env->ThrowError("Avisource: fourCC parsing: only numbers allowed inside brackets");
+            number = number * 10 + (ch - '0');
+            if (number>255)
+              env->ThrowError("Avisource: fourCC parsing: maximum code cannot exceed 255");
+            continue;
+          }
+          buf[len++] =  ch;
+        }
+        if (inBracket)
+          env->ThrowError("Avisource: fourCC syntax error: unclosed [");
+        buf[len] = 0;
+
+        LocateVideoCodec(len == 0 ? nullptr : buf, env);
         if (hic) {
           if (pixel_type[0] == '+') {
             pixel_type += 1;
@@ -619,6 +886,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
           bool fYUV444P10 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YUV444P10") == 0;
           bool fv410 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "v410") == 0;
+          bool fY410 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y410") == 0;
 
           bool fYUV444P16 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YUV444P16") == 0;
           bool fY416 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y416") == 0;
@@ -775,23 +1043,17 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
             if ((fRGBP10 || fr210) && bOpen) {
               vi.pixel_type = VideoInfo::CS_RGBP10;
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, true, false, false, false);
-              biDst.biCompression = MAKEFOURCC('r', '2', '1', '0');
-              biDst.biBitCount = 30;
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              if (setInternalFormat_r210(vi, hic, pbiSrc, &biDst, MAKEFOURCC('r', '2', '1', '0'), VideoInfo::CS_RGBP10)) {
                 _RPT0(0, "AVISource: Opening as r210.\n");
-                r210 = true;
+                specf = AVI_SpecialFormats::r210;
                 bOpen = false;  // Skip further attempts
               }
             }
             if ((fRGBP10 || fR10k) && bOpen) {
               vi.pixel_type = VideoInfo::CS_RGBP10;
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, true, false, false);
-              biDst.biCompression = MAKEFOURCC('R', '1', '0', 'k');
-              biDst.biBitCount = 30;
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              if (setInternalFormat_R10k(vi, hic, pbiSrc, &biDst, MAKEFOURCC('R', '1', '0', 'k'), VideoInfo::CS_RGBP10)) {
                 _RPT0(0, "AVISource: Opening as R10k.\n");
-                R10k = true;
+                specf = AVI_SpecialFormats::R10k;
                 bOpen = false;  // Skip further attempts
               }
             }
@@ -813,22 +1075,16 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             }
             else {
               vi.pixel_type = VideoInfo::CS_RGBP10;
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, true, false, false, false);
-              biDst.biCompression = MAKEFOURCC('r', '2', '1', '0');
-              biDst.biBitCount = 30;
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              if (setInternalFormat_r210(vi, hic, pbiSrc, &biDst, MAKEFOURCC('r', '2', '1', '0'), VideoInfo::CS_RGBP10)) {
                 _RPT0(0, "AVISource: Opening as r210.\n");
-                r210 = true;
+                specf = AVI_SpecialFormats::r210;
                 bOpen = false;  // Skip further attempts
               }
               else {
                 vi.pixel_type = VideoInfo::CS_RGBP10;
-                biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, false, false, true, false, false);
-                biDst.biCompression = MAKEFOURCC('R', '1', '0', 'k');
-                biDst.biBitCount = 30;
-                if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                if (setInternalFormat_R10k(vi, hic, pbiSrc, &biDst, MAKEFOURCC('R', '1', '0', 'k'), VideoInfo::CS_RGBP10)) {
                   _RPT0(0, "AVISource: Opening as R10k.\n");
-                  R10k = true;
+                  specf = AVI_SpecialFormats::R10k;
                   bOpen = false;  // Skip further attempts
                 }
                 else {
@@ -844,7 +1100,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                     biDst.biCompression = MAKEFOURCC('G', '3', 0, 14); // ffmpeg GBRP14LE
                     biDst.biBitCount = 42;
                     if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                      _RPT0(0, "AVISource: Opening as G3[0][1].\n");
+                      _RPT0(0, "AVISource: Opening as G3[0][14].\n");
                       bOpen = false;  // Skip further attempts
                     }
                     else {
@@ -933,21 +1189,15 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
           // RGB48
           if (fRGB48 && bOpen) {
-            vi.pixel_type = VideoInfo::CS_BGR48;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('B', 'G', 'R', 48); // BGR0 ie. BGR[48]
-            biDst.biBitCount = 48;
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_BGR48(vi, hic, pbiSrc, &biDst, MAKEFOURCC('B', 'G', 'R', 48), VideoInfo::CS_BGR48)) {
               _RPT0(0, "AVISource: Opening as BGR0 (BGR[48]).\n");
               bOpen = false;  // Skip further attempts
             }
             else {
-              biDst.biSizeImage = vi.BMPSize();
-              biDst.biCompression = MAKEFOURCC('b', '4', '8', 'r'); // e.g. preferred by UT RGB 10 bits : UQRG
-              biDst.biBitCount = 48;
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              // e.g. preferred by UT RGB 10 bits : UQRG
+              if (setInternalFormat_b48r(vi, hic, pbiSrc, &biDst, MAKEFOURCC('b', '4', '8', 'r'), VideoInfo::CS_BGR48)) {
                 _RPT0(0, "AVISource: Opening as b48r.\n");
-                b48r = true;
+                specf = AVI_SpecialFormats::b48r;
                 bOpen = false;  // Skip further attempts
               }
               else if (forcedType) {
@@ -958,21 +1208,15 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
           // RGB64
           if (fRGB64 && bOpen) {
-            vi.pixel_type = VideoInfo::CS_BGR64;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('B', 'R', 'A', 64); // BRA@ ie. BRA[64]
-            biDst.biBitCount = 64;
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_BRA64(vi, hic, pbiSrc, &biDst, MAKEFOURCC('B', 'R', 'A', 64), VideoInfo::CS_BGR64)) {
               _RPT0(0, "AVISource: Opening as BRA@ (BRA[64]).\n");
               bOpen = false;  // Skip further attempts
             }
             else {
-              biDst.biCompression = MAKEFOURCC('b', '6', '4', 'a'); // e.g. preferred by UT RGBA 10 bits : UQRA
-              biDst.biBitCount = 64;
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              if (setInternalFormat_b64a(vi, hic, pbiSrc, &biDst, MAKEFOURCC('b', '6', '4', 'a'), VideoInfo::CS_BGR64)) {
                 _RPT0(0, "AVISource: Opening as b64a.\n");
                 bOpen = false;  // Skip further attempts
-                b64a = true;
+                specf = AVI_SpecialFormats::b64a;
               }
               else
                 if (forcedType) {
@@ -1057,22 +1301,16 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if ((fYUV422P10 || fv210 || fP210) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV422P10;
             if ((fv210 || fYUV422P10) && bOpen) {
-              biDst.biSizeImage = AviHelper_ImageSize(&vi, false, true, false, false, false, false, false);
-              biDst.biCompression = MAKEFOURCC('v', '2', '1', '0'); // as v210
-              biDst.biBitCount = 30; // should be 30, not 10+(10+10)/2
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              if (setInternalFormat_v210(vi, hic, pbiSrc, &biDst, MAKEFOURCC('v', '2', '1', '0'), VideoInfo::CS_YUV422P10)) {
                 _RPT0(0, "AVISource: Opening as v210.\n");
-                v210 = true;
+                specf = AVI_SpecialFormats::v210;
                 bOpen = false;  // Skip further attempts
               }
             }
             if ((fP210 || fYUV422P10) && bOpen) {
-              biDst.biSizeImage = vi.BMPSize();
-              biDst.biCompression = MAKEFOURCC('P', '2', '1', '0'); // as P210
-              biDst.biBitCount = 30; // should be 30, not 10+(10+10)/2
-              if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              if (setInternalFormat_P210(vi, hic, pbiSrc, &biDst, MAKEFOURCC('P', '2', '1', '0'), VideoInfo::CS_YUV422P10)) {
                 _RPT0(0, "AVISource: Opening as P210.\n");
-                P210 = true;
+                specf = AVI_SpecialFormats::P210;
                 bOpen = false;  // Skip further attempts
               }
             }
@@ -1084,12 +1322,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           // YUV422P16
           if ((fYUV422P16 || fP216) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV422P16;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('P', '2', '1', '6'); // as P216
-            biDst.biBitCount = 32; // 16+(16+16)/2 or 3x16?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_P216(vi, hic, pbiSrc, &biDst, MAKEFOURCC('P', '2', '1', '6'), VideoInfo::CS_YUV422P16)) {
               _RPT0(0, "AVISource: Opening as P216.\n");
-              P216 = true;
+              specf = AVI_SpecialFormats::P216;
               bOpen = false;  // Skip further attempts
             }
             else if (forcedType) {
@@ -1100,27 +1335,22 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           // YUV420P10
           if ((fYUV420P10 || fP010) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV420P10;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('P', '0', '1', '0'); // as P010
-            biDst.biBitCount = 15; // 10+(10+10)/4 or 3x10?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_P010(vi, hic, pbiSrc, &biDst, MAKEFOURCC('P', '0', '1', '0'), VideoInfo::CS_YUV420P10)) {
               _RPT0(0, "AVISource: Opening as P010.\n");
-              P010 = true;
+              specf = AVI_SpecialFormats::P010;
               bOpen = false;  // Skip further attempts
             }
             else if (forcedType) {
               env->ThrowError("AVISource: the video decompressor couldn't produce YUV420P10 output");
             }
           }
+
           // YUV420P16
           if ((fYUV420P16 || fP016) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV420P16;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('P', '0', '1', '6'); // as P016
-            biDst.biBitCount = 24; // 16+(16+16)/4 or 3x16?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_P016(vi, hic, pbiSrc, &biDst, MAKEFOURCC('P', '0', '1', '6'), VideoInfo::CS_YUV420P16)) {
               _RPT0(0, "AVISource: Opening as P016.\n");
-              P016 = true;
+              specf = AVI_SpecialFormats::P016;
               bOpen = false;  // Skip further attempts
             }
             else if (forcedType) {
@@ -1131,12 +1361,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           // YUV444P16
           if ((fYUV444P16 || fY416) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV444P16;
-            biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = MAKEFOURCC('Y', '4', '1', '6'); // as Y416
-            biDst.biBitCount = 48; // 3x16?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_Y416(vi, hic, pbiSrc, &biDst, MAKEFOURCC('Y', '4', '1', '6'), VideoInfo::CS_YUV444P16)) {
               _RPT0(0, "AVISource: Opening as Y416.\n");
-              Y416 = true;
+              specf = AVI_SpecialFormats::Y416;
               bOpen = false;  // Skip further attempts
             }
             else if (forcedType) {
@@ -1145,15 +1372,17 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           }
 
           // YUV444P10
-          if ((fYUV444P10 || fv410) && bOpen) {
+          if ((fYUV444P10 || fv410 || fY410) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUV444P10;
-            biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, false, false);
-            biDst.biCompression = MAKEFOURCC('v', '4', '1', '0'); // as v410
-            biDst.biBitCount = 30; // 3x10?
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if ((fYUV444P10 || fv410) && setInternalFormat_v410(vi, hic, pbiSrc, &biDst, MAKEFOURCC('v', '4', '1', '0'), VideoInfo::CS_YUV444P10)) {
               _RPT0(0, "AVISource: Opening as v410.\n");
-              v410 = true;
+              specf = AVI_SpecialFormats::v410;
               bOpen = false;  // Skip further attempts
+            }
+            else if ((fYUV444P10 || fY410) && setInternalFormat_Y410(vi, hic, pbiSrc, &biDst, MAKEFOURCC('Y', '4', '1', '0'), VideoInfo::CS_YUVA444P10)) {
+                _RPT0(0, "AVISource: Opening as Y410.\n");
+                specf = AVI_SpecialFormats::Y410;
+                bOpen = false;  // Skip further attempts
             }
             else if (forcedType) {
               env->ThrowError("AVISource: the video decompressor couldn't produce YUV444P10 output");
@@ -1163,12 +1392,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           // v308 to YUV444P8 aka YV24
           if ((fv308) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YV24;
-            biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, true, false);
-            biDst.biCompression = MAKEFOURCC('v', '3', '0', '8'); // as v308
-            biDst.biBitCount = 24;
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_v308(vi, hic, pbiSrc, &biDst, MAKEFOURCC('v', '3', '0', '8'), VideoInfo::CS_YV24)) {
               _RPT0(0, "AVISource: Opening as v308.\n");
-              v308 = true;
+              specf = AVI_SpecialFormats::v308;
               bOpen = false;  // Skip further attempts
             }
             else if (forcedType) {
@@ -1179,12 +1405,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           // v408 to YUVA444P8
           if ((fv408) && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUVA444;
-            biDst.biSizeImage = AviHelper_ImageSize(&vi, false, false, true, false, false, false, true);
-            biDst.biCompression = MAKEFOURCC('v', '4', '0', '8'); // as v408
-            biDst.biBitCount = 32;
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (setInternalFormat_v408(vi, hic, pbiSrc, &biDst, MAKEFOURCC('v', '4', '0', '8'), VideoInfo::CS_YUVA444)) {
               _RPT0(0, "AVISource: Opening as v408.\n");
-              v408 = true;
+              specf = AVI_SpecialFormats::v408;
               bOpen = false;  // Skip further attempts
             }
             else if (forcedType) {
@@ -1197,6 +1420,126 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             env->ThrowError("AviSource: Could not open video stream in any supported format.");
 
           DecompressBegin(pbiSrc, &biDst);
+        }
+        else {
+          // no hic
+
+          // when we reach here, maybe a natively supported fourCC format was reported
+          bool bOpen = true;
+          if (pbiSrc->biCompression == MAKEFOURCC('b', '6', '4', 'a')) {
+            if (setInternalFormat_b64a(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_BGR64)) {
+              _RPT0(0, "AVISource: Opening as b64a.\n");
+              bOpen = false;  // Skip further attempts
+              specf = AVI_SpecialFormats::b64a; // special flag!
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('B', 'R', 'A', 64)) {
+            if (setInternalFormat_BRA64(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_BGR64)) {
+              _RPT0(0, "AVISource: Opening as BRA@.\n");
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('B', 'G', 'R', 48)) {
+            if (setInternalFormat_BGR48(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_BGR48)) {
+              _RPT0(0, "AVISource: Opening as BGR[48].\n");
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('b', '4', '8', 'r')) {
+            if (setInternalFormat_b48r(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_BGR48)) {
+              _RPT0(0, "AVISource: Opening as b48r.\n");
+              specf = AVI_SpecialFormats::b48r; // special flag!
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('v', '2', '1', '0')) {
+            if (setInternalFormat_v210(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUV422P10)) {
+              _RPT0(0, "AVISource: Opening as v210.\n");
+              bOpen = false;  // Skip further attempts
+              specf = AVI_SpecialFormats::v210; // special flag!
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('P', '2', '1', '0')) {
+            if (setInternalFormat_P210(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUV422P10)) {
+              _RPT0(0, "AVISource: Opening as P210.\n");
+              specf = AVI_SpecialFormats::P210;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('P', '0', '1', '0')) {
+            if (setInternalFormat_P010(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUV420P10)) {
+              _RPT0(0, "AVISource: Opening as P010.\n");
+              specf = AVI_SpecialFormats::P010;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('P', '0', '1', '6')) {
+            if (setInternalFormat_P016(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUV420P16)) {
+              _RPT0(0, "AVISource: Opening as P016.\n");
+              specf = AVI_SpecialFormats::P016;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('P', '2', '1', '6')) {
+            if (setInternalFormat_P216(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUV422P16)) {
+              _RPT0(0, "AVISource: Opening as P216.\n");
+              specf = AVI_SpecialFormats::P216;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('v', '4', '1', '0')) {
+            if (setInternalFormat_v410(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUV444P10)) {
+              _RPT0(0, "AVISource: Opening as v410.\n");
+              specf = AVI_SpecialFormats::v410;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('Y', '4', '1', '0')) {
+            if (setInternalFormat_Y410(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUVA444P10)) {
+              _RPT0(0, "AVISource: Opening as Y410.\n");
+              specf = AVI_SpecialFormats::Y410;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('Y', '4', '1', '6')) {
+            if (setInternalFormat_Y416(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUV444P16)) {
+              _RPT0(0, "AVISource: Opening as Y416.\n");
+              specf = AVI_SpecialFormats::Y416;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('r', '2', '1', '0')) {
+            if (setInternalFormat_r210(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_RGBP10)) {
+              _RPT0(0, "AVISource: Opening as r210.\n");
+              specf = AVI_SpecialFormats::r210;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('R', '1', '0', 'k')) {
+            if (setInternalFormat_R10k(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_RGBP10)) {
+              _RPT0(0, "AVISource: Opening as R10k.\n");
+              specf = AVI_SpecialFormats::R10k;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('v', '3', '0', '8')) {
+            if (setInternalFormat_v308(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YV24)) {
+              _RPT0(0, "AVISource: Opening as v308.\n");
+              specf = AVI_SpecialFormats::v308;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          if (pbiSrc->biCompression == MAKEFOURCC('v', '4', '0', '8')) {
+            if (setInternalFormat_v408(vi, hic, pbiSrc, &biDst, pbiSrc->biCompression, VideoInfo::CS_YUVA444)) {
+              _RPT0(0, "AVISource: Opening as v408.\n");
+              specf = AVI_SpecialFormats::v408;
+              bOpen = false;  // Skip further attempts
+            }
+          }
+          // No takers!
+          if (bOpen)
+            env->ThrowError("AviSource: Could not open video stream in the requested format.");
+
         }
         // Flip DIB formats if negative height (FIXME: Y8 too?). Flip RGB48/64 always.
         if ((pbiSrc->biHeight < 0 && (vi.IsRGB24() || vi.IsRGB32() || vi.IsY8())) || vi.IsRGB48() || vi.IsRGB64())
@@ -1243,7 +1586,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode != MODE_WAV) {
       bMediaPad = !(!bMediaPad && !vi.IsY8() && vi.IsPlanar());
       int keyframe = pvideo->NearestKeyFrame(0);
-      frame = new TemporalBuffer(vi, bMediaPad, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, v308, v408, env);
+      frame = new TemporalBuffer(vi, bMediaPad, specf, env);
 
       LRESULT error = DecompressFrame(keyframe, false, env);
       if (error != ICERR_OK)   // shutdown, if init not succesful.
@@ -1258,7 +1601,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
       }
       last_frame_no=0;
-      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, v308, v408, env);
+      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, specf, env);
     }
   }
   catch (...) {
@@ -1328,7 +1671,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     } while(not_found_yet);
 
     if (frameok) {
-      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416, r210, R10k, v308, v408, env);
+      last_frame = AdjustFrameAlignment(frame, vi, bInvertFrames, specf, env);
     }
   }
   return last_frame;

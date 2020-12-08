@@ -38,7 +38,16 @@
 
 
 // AVI Decompressors require 4bytes aligned buffer with minimum padding or no padding buffer.
+// or other specialities.
 // Therefore, PVideoFrame shouldn't be used as those.
+
+typedef enum class _AVI_SpecialFormats
+{
+  none, b64a, b48r, v210, P010, P016, P210, P216, v410, Y416,
+  r210, R10k,
+  v308, v408,
+  Y410
+} AVI_SpecialFormats;
 
 class TemporalBuffer {
   void* orig;
@@ -51,10 +60,7 @@ class TemporalBuffer {
   size_t size;
 public:
   TemporalBuffer(const VideoInfo& vi, bool bMediaPad,
-    bool b64a, bool b48r, bool v210,
-    bool P010, bool P016, bool P210, bool P216, bool v410, bool Y416,
-    bool r210, bool R10k,
-    bool v308, bool v408,
+    AVI_SpecialFormats specf,
     IScriptEnvironment* env);
   ~TemporalBuffer() {}
   int GetPitch(int plane=PLANAR_Y) {
@@ -89,21 +95,7 @@ class AVISource : public IClip {
   bool bIsType1;
   bool bInvertFrames;
   bool bMediaPad;
-  // fixme: to enum
-  bool P010;
-  bool P016;
-  bool v210;
-  bool P210;
-  bool P216;
-  bool v410;
-  bool Y416;
-  bool r210;
-  bool R10k;
-  bool b64a;
-  bool b48r;
-  bool v308;
-  bool v408;
-
+  AVI_SpecialFormats specf;
 
   PVideoFrame last_frame;
   int last_frame_no;

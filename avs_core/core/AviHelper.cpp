@@ -46,10 +46,10 @@
 #include <tmmintrin.h>
 #endif
 
-int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k, bool v308, bool v408) {
+int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bool v410, bool r210, bool R10k, bool v308, bool v408, bool Y410) {
   int image_size;
   if (vi->pixel_type == VideoInfo::CS_YUV444P16 || vi->pixel_type == VideoInfo::CS_YUVA444P16)
-    { // Y416 packed 4444 U,Y,V,A
+  { // Y416 packed 4444 U,Y,V,A
     image_size = vi->width * vi->height * 4 * sizeof(uint16_t);
   }
   else if (vi->pixel_type == VideoInfo::CS_RGBP10 && r210)
@@ -71,6 +71,10 @@ int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bo
   else if (vi->pixel_type == VideoInfo::CS_YUV444P10 && v410)
   { // v410 packed 444 U,Y,V
     image_size = vi->width * vi->height * 4; // 4 byte/pixel: 32bits for 3x10 bits
+  }
+  else if ((vi->pixel_type == VideoInfo::CS_YUV444P10 || vi->pixel_type == VideoInfo::CS_YUVA444P10) && Y410)
+  { // Y410 packed 10 bit 444 U,Y,V,A (Alpha is 2 bits)
+    image_size = vi->width * vi->height * 4; // 4 byte/pixel: 32bits for 3x10+2 bits
   }
   else if (vi->pixel_type == VideoInfo::CS_YUV422P10 && v210)
   {
@@ -197,6 +201,66 @@ void FromY416_c(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvp
 // instantiate
 template void FromY416_c<false>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, const uint8_t *srcp8, int srcpitch, int width, int height);
 template void FromY416_c<true>(uint8_t *yptr, int ypitch, uint8_t *uptr, uint8_t *vptr, int uvpitch, uint8_t *aptr, int apitch, const uint8_t *srcp8, int srcpitch, int width, int height);
+
+template<bool hasAlpha>
+void ToY410_c(uint8_t* outbuf8, int out_pitch, const uint8_t* yptr, int ypitch, const uint8_t* uptr, const uint8_t* vptr, int uvpitch, const uint8_t* aptr, int apitch, int width, int height)
+{
+  uint32_t* outbuf = reinterpret_cast<uint32_t*>(outbuf8);
+  out_pitch /= sizeof(uint32_t);
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      uint32_t uyva =
+        reinterpret_cast<const uint16_t*>(uptr)[x] +
+        (reinterpret_cast<const uint16_t*>(yptr)[x] << 10) +
+        (reinterpret_cast<const uint16_t*>(vptr)[x] << 20);
+      if constexpr(hasAlpha)
+        uyva += (reinterpret_cast<const uint16_t*>(aptr)[x] >> 8) << 30; // 2 bits only
+      else
+        uyva += 0x03 << 30; // 2 bits only
+      outbuf[x] = uyva;
+    }
+    outbuf += out_pitch;
+    yptr += ypitch;
+    uptr += uvpitch;
+    vptr += uvpitch;
+    aptr += apitch;
+  }
+}
+// instantiate
+template void ToY410_c<false>(uint8_t* outbuf, int out_pitch, const uint8_t* yptr, int ypitch, const uint8_t* uptr, const uint8_t* vptr, int uvpitch, const uint8_t* aptr, int apitch, int width, int height);
+template void ToY410_c<true>(uint8_t* outbuf, int out_pitch, const uint8_t* yptr, int ypitch, const uint8_t* uptr, const uint8_t* vptr, int uvpitch, const uint8_t* aptr, int apitch, int width, int height);
+
+template<bool hasAlpha>
+void FromY410_c(uint8_t* yptr, int ypitch, uint8_t* uptr, uint8_t* vptr, int uvpitch, uint8_t* aptr, int apitch,
+  const uint8_t* srcp8, int srcpitch,
+  int width, int height)
+{
+  const uint32_t* srcp = reinterpret_cast<const uint32_t*>(srcp8);
+  srcpitch /= sizeof(uint32_t);
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      const uint32_t uyva = srcp[x];
+      reinterpret_cast<uint16_t*>(uptr)[x] = (uyva >> 0) & 0x3FF;
+      reinterpret_cast<uint16_t*>(yptr)[x] = (uyva >> 10) & 0x3FF;
+      reinterpret_cast<uint16_t*>(vptr)[x] = (uyva >> 20) & 0x3FF;
+      if constexpr(hasAlpha) {
+        const int alpha = (uyva >> 30) & 0x3;
+        // keep 03 as 3FF full transparent
+        reinterpret_cast<uint16_t*>(aptr)[x] = alpha == 3 ? 0x3FF : alpha << 8;
+      }
+    }
+    srcp += srcpitch;
+    yptr += ypitch;
+    uptr += uvpitch;
+    vptr += uvpitch;
+    aptr += apitch;
+  }
+}
+// instantiate
+template void FromY410_c<false>(uint8_t* yptr, int ypitch, uint8_t* uptr, uint8_t* vptr, int uvpitch, uint8_t* aptr, int apitch, const uint8_t* srcp8, int srcpitch, int width, int height);
+template void FromY410_c<true>(uint8_t* yptr, int ypitch, uint8_t* uptr, uint8_t* vptr, int uvpitch, uint8_t* aptr, int apitch, const uint8_t* srcp8, int srcpitch, int width, int height);
 
 // Helpers for 10 bit RGB -> Planar RGB
 
