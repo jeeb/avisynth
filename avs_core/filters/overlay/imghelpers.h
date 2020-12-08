@@ -77,7 +77,7 @@ public:
 
   ImageOverlayInternal(
     PVideoFrame &_frame,
-    int _inw, int _inh, VideoInfo &_workingVI, bool _hasAlpha, bool _grey, VideoInfo &_originalVI, IScriptEnvironment* env) :
+    int _inw, int _inh, VideoInfo &_workingVI, bool _hasAlpha, bool _grey, IScriptEnvironment* env) :
     Env(env),
     frame(_frame),
     _w(_inw), _h(_inh), _bits_per_pixel(_workingVI.BitsPerComponent()), grey(_grey), maskChroma(nullptr) {

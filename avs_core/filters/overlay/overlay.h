@@ -67,10 +67,10 @@ private:
 
   VideoInfo overlayVi;
   VideoInfo maskVi;
-  VideoInfo* inputVi;
-  VideoInfo* outputVi;
-  VideoInfo* viInternalWorkingFormat;
-  VideoInfo* viInternalOverlayWorkingFormat; // different size
+  VideoInfo inputVi;
+  VideoInfo outputVi;
+  VideoInfo viInternalWorkingFormat;
+  VideoInfo viInternalOverlayWorkingFormat; // different size
 
   PClip overlay;
   PClip mask;
@@ -88,6 +88,14 @@ private:
   int pixelsize;
   int bits_per_pixel;
   int of_mode;
+
+  const char* output_pixel_format_override;
+
+  bool isInternalRGB; // must be planar rgb
+  bool isInternalGrey;
+  bool isInternal444;
+  bool isInternal422;
+  bool isInternal420;
 
 };
 
