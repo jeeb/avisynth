@@ -1,5 +1,9 @@
 Avisynth+
 
+20201210 3.6.2-test6
+-----------------------
+- AviSource: fix test5 regression which refused handling old formats like YV24
+
 20201208 3.6.2-test5
 -----------------------
 - Resizers: throw error on too small dimensions vs. taps
