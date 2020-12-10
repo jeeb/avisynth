@@ -944,14 +944,14 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
             || fYUV420P16 || fP016
             || fYUV422P10 || fP210 || fv210
             || fYUV422P16 || fP216
-            || fYUV444P10 || fv410
+            || fYUV444P10 || fv410 || fY410
             || fYUV444P16 || fY416
             || fRGBP
             || fRGBP10
             || fr210 || fR10k
             || fGrayscale
             ))
-            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, Y, RGBP, RGBP10, r210, R10k, RGB24/32/48/64, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y416, v308, v408, AUTO or FULL");
+            env->ThrowError("AVISource: requested format must be one of YV12/16/24, YV411, YUY2, Y8, Y, RGBP, RGBP10, r210, R10k, RGB24/32/48/64, YUV420P10/16, YUV422P10/16, YUV444P10/16, v210, P010/16, P210/16, v410, Y410, Y416, v308, v408, AUTO or FULL");
 
           // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24, RGB48, RGB64, YUV422P10 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
