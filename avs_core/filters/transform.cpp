@@ -493,7 +493,7 @@ static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi,
 PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi);
+  PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
   if (vi.IsPlanar()) {
     int bits_per_pixel = vi.BitsPerComponent();
