@@ -894,10 +894,6 @@ SetProperty::~SetProperty() { }
 
 PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
 {
-  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
-  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
-
   // parameter type to set, comes different for each script function version
   int propType = kind;
 
@@ -945,6 +941,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
 
 /*
   usage:
+   propSet("hello",1)
    ScriptClip("""propSetInt("frameluma",func(AverageLuma))""")
    ScriptClip("""propSet("frameluma2",AverageLuma)""")
    ScriptClip("""SubTitle(string(propGetInt("frameluma")))""")
@@ -1091,10 +1088,6 @@ DeleteProperty::~DeleteProperty() { }
 
 PVideoFrame __stdcall DeleteProperty::GetFrame(int n, IScriptEnvironment* env)
 {
-  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
-  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
-
   PVideoFrame frame = child->GetFrame(n, env);
 
   /*
@@ -1142,10 +1135,6 @@ ClearProperties::~ClearProperties() { }
 
 PVideoFrame __stdcall ClearProperties::GetFrame(int n, IScriptEnvironment* env)
 {
-  GlobalVarFrame var_frame(static_cast<InternalEnvironment*>(env)); // allocate new frame
-  env->SetGlobalVar("last", (AVSValue)child);       // Set implicit last
-  env->SetGlobalVar("current_frame", (AVSValue)n);  // Set frame to be tested
-
   PVideoFrame frame = child->GetFrame(n, env);
 
   /*
