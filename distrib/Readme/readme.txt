@@ -1,5 +1,13 @@
 Avisynth+
 
+20201214 3.6.2-WIP
+- Fix: AddBorders did not pass frame properties
+
+20201211 3.6.2-test7
+--------------------
+- Fix: propSet, propDelete and propClearAll not to ruin visibility of variables
+  (property read functions are still kept being runtime only)
+
 20201210 3.6.2-test6
 -----------------------
 - AviSource: fix test5 regression which refused handling old formats like YV24
