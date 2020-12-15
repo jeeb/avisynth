@@ -2268,7 +2268,7 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 #else
-    // system_avs_plugindir relies on install path, it gets
+    // system_avs_plugindir relies on install path, it and user_avs_plugindir_configurable get
     // defined in avisynth_conf.h.in when configuring.
 
     std::string user_avs_plugindir = std::getenv("HOME");
@@ -2276,6 +2276,7 @@ ScriptEnvironment::ScriptEnvironment()
     user_avs_plugindir.append(user_avs_dirname);
 
     plugin_manager->AddAutoloadDir(user_avs_plugindir, false);
+    plugin_manager->AddAutoloadDir(user_avs_plugindir_configurable, false);
     plugin_manager->AddAutoloadDir(system_avs_plugindir, false);
 #endif
 

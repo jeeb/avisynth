@@ -59,6 +59,9 @@ if(NOT HEADERS_ONLY)
 
   option(ENABLE_PLUGINS "Build set of default external plugins" ON)
   option(ENABLE_INTEL_SIMD "Enable SIMD intrinsics for Intel processors" "${INTEL_SIMD}")
+  option(LOCAL_PLUGINDIR "Override path for user-local plugins" "${USER_AVS_PLUGINDIR_LOCATION}")
+
+  set(USER_AVS_PLUGINDIR_LOCATION "$ENV{HOME}/.local/lib/avisynth")
 
   if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES Debug Release RelWithDebInfo)
