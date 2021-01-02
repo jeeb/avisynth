@@ -21,7 +21,11 @@ the necessary prerequisites for building AviSynth+ differ.
 At a bare minimum:
 
 * CMake 3.8 or higher.
-* GCC 8 or higher.
+* GCC 8 or higher, or similarly recent version of Clang or AppleClang.
+
+.. note::
+   The use of Ninja as the generator for CMake is a matter of personal preference.
+   Feel free to use GNU Make if so compelled (i.e. just a plain 'cmake ..' invocation).
 
 Linux
 ^^^^^
@@ -52,25 +56,17 @@ Ubuntu 19.10 or higher
 Ubuntu 18.04 LTS
 ~~~~~~~~~~~~~~~~
 
-18.04 ships with GCC 7, which is not sufficient to
-build AviSynth+.  Adding the following repository will allow
-installing GCC 9:
+18.04 ships with GCC 7, which is not sufficient to build AviSynth+ without
+the use of the `filesystem submodule`_.
 
 ::
 
-    sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-    sudo apt-get update
-    sudo apt-get install build-essential cmake git ninja-build gcc-9 g++-9 checkinstall
-
-
-::
-
-    git clone git://github.com/AviSynth/AviSynthPlus.git && \
+    git clone --recursive git://github.com/AviSynth/AviSynthPlus.git && \
     cd AviSynthPlus && \
     mkdir avisynth-build && \
     cd avisynth-build && \
 
-    CC=gcc-9 CXX=gcc-9 LD=gcc-9 cmake ../ -G Ninja && \
+    cmake ../ -G Ninja && \
     ninja && \
         sudo checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
         Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
@@ -126,12 +122,11 @@ using `an external implementation`_ as a submodule.
     sudo ninja install
 
 
-10.15 Catalina
-~~~~~~~~~~~~~~
+10.15 Catalina and higher
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 C++17 filesystem support is available on Catalina, so it can
-be built with the default Clang installation.  GCC is potentially
-useful later on, though, so install that too.
+be built with the default Clang installation.
 
 ::
 
@@ -239,7 +234,7 @@ Ubuntu
 
 ::
 
-        ./configure --prefix=$HOME/ffavx_build --enable-gpl --enable-version3 \
+        ./configure --prefix=$HOME/ffmpeg_build --enable-gpl --enable-version3 \
         --disable-doc --disable-debug --enable-pic --enable-avisynth && \
     make -j$(nproc) && \
     make install
@@ -261,7 +256,7 @@ macOS
 
 ::
 
-        ./configure --prefix=$HOME/ffavx_build --enable-gpl --enable-version3 --disable-doc \
+        ./configure --prefix=$HOME/ffmpeg_build --enable-gpl --enable-version3 --disable-doc \
         --disable-debug --enable-avisynth
     make -j$(nproc)
     make install
@@ -273,7 +268,7 @@ FreeBSD
 
 ::
 
-        ./configure --prefix=$HOME/ffavx_build --enable-gpl --enable-version3 --disable-doc \
+        ./configure --prefix=$HOME/ffmpeg_build --enable-gpl --enable-version3 --disable-doc \
         --disable-debug --enable-pic --enable-avisynth --cc=cc
     gmake -j$(nproc)
     gmake install
@@ -302,7 +297,7 @@ And running this script in the test build of FFmpeg:
 
 ::
 
-    cd ~/ffavx_build/bin
+    cd ~/ffmpeg_build/bin
     [create the script in this directory, for ease of testing]
 
     # to play the script:
@@ -336,7 +331,7 @@ Ubuntu
 
 ::
 
-        PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        PKG_CONFIG_PATH=$HOME/ffmpeg_build/lib/pkgconfig \
         CPPFLAGS="-I/usr/local/include/avisynth" \
         ./autogen.sh --enable-shared --enable-avisynth && \
     make -j$(nproc) && \
@@ -352,7 +347,7 @@ macOS
 
     brew install autoconf automake libtool m4
 
-        CC=gcc-9 CXX=g++-9 LD=gcc-9 PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        PKG_CONFIG_PATH=$HOME/ffmpeg_build/lib/pkgconfig \
         CPPFLAGS="-I/usr/local/include/avisynth" \
         ./autogen.sh --enable-shared --enable-avisynth && \
     make -j$(nproc) && \
@@ -366,7 +361,7 @@ FreeBSD
 
     pkg install autoconf automake libtool m4
 
-        PKG_CONFIG_PATH=$HOME/ffavx_build/lib/pkgconfig \
+        PKG_CONFIG_PATH=$HOME/ffmpeg_build/lib/pkgconfig \
         CPPFLAGS="-I/usr/local/include/avisynth" \
         ./autogen.sh --enable-shared --enable-avisynth && \
     gmake -j$(nproc) && \
@@ -376,11 +371,12 @@ FreeBSD
 Plugin autoloading
 ------------------
 
-AviSynth+ will use two directories for autoloading:
+AviSynth+ will use several directories for autoloading:
 the `avisynth/` subdirectory where libavisynth.so was installed,
-and `$HOME/.avisynth`.  The latter of which can hold
-plugins (and symlinks to plugins) or AVSI files without needing
-root permissions.
+`$HOME/.avisynth`, and the directory given to the LOCAL_PLUGINDIR
+configuration option (defaults to `$HOME/.local/lib/avisynth`).
+The latter of which can hold plugins (and symlinks to plugins)
+or AVSI files without needing root permissions.
 
 On FreeBSD, procfs needs to be mounted first in order for
 autoloading to function.
@@ -388,6 +384,7 @@ autoloading to function.
 
 Back to the :doc:`main page <../../index>`
 
-$ Date: 2020-05-20 12:50:44-04:00 $
+$ Date: 2021-01-01 20:26:18-05:00 $
 
 .. _an external implementation: https://github.com/gulrak/filesystem
+.. _filesystem submodule: https://github.com/gulrak/filesystem
