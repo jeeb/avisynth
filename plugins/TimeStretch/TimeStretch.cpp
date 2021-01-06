@@ -55,8 +55,8 @@ private:
   int dst_samples_filled;
 
   SFLOAT* dstbuffer;
-  __int64 next_sample;
-  __int64 inputReadOffset;
+  int64_t next_sample;
+  int64_t inputReadOffset;
   long double sample_multiplier; // 64bit mantissa!
 
 public:
@@ -84,7 +84,7 @@ AVSsoundtouch(PClip _child, float _tempo, float _rate, float _pitch, const AVSVa
   sampler->setSampleRate(vi.audio_samples_per_second);
   setSettings(sampler, args, env);
 
-  vi.num_audio_samples = (__int64)(vi.num_audio_samples / sample_multiplier);
+  vi.num_audio_samples = (int64_t)(vi.num_audio_samples / sample_multiplier);
 
   next_sample = 0;  // Next output sample
   inputReadOffset = 0;  // Next input sample
@@ -114,13 +114,13 @@ static void setSettings(SoundTouch* sampler, const AVSValue* args, IScriptEnviro
 
 }
 
-void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
 
   if (start != next_sample) {  // Reset on seek
     sampler->clear();
     next_sample = start;
-    inputReadOffset = (__int64)(sample_multiplier * start);  // Reset at new read position (NOT sample exact :( ).
+    inputReadOffset = (int64_t)(sample_multiplier * start);  // Reset at new read position (NOT sample exact :( ).
     dst_samples_filled=0;
   }
 
@@ -179,6 +179,7 @@ void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
 AVSValue __cdecl Create_SoundTouch(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
+    // 2021?? Probably for VS2005 or so
 
 		PClip clip = args[0].AsClip();
 
@@ -203,6 +204,7 @@ AVSValue __cdecl Create_SoundTouch(AVSValue args, void*, IScriptEnvironment* env
     env->ThrowError("TimeStretch: %s ",error.what());
   }
 	catch (...) { throw; }
+  return AVSValue(); // n/a
 }
 
 const AVS_Linkage * AVS_linkage = 0;
