@@ -31,6 +31,7 @@
 #include <array>
 #include <iomanip>
 #include <vector>
+#include <cstring>
 
 class BitmapFont {
 
