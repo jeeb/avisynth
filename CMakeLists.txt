@@ -32,6 +32,8 @@ if(NOT HEADERS_ONLY)
 
   project("AviSynth+" VERSION ${version_major}.${version_minor}.${version_bugfix} LANGUAGES CXX)
 
+  # message("Compiler ID: ${CMAKE_CXX_COMPILER_ID} ") 
+
   include(GNUInstallDirs)
 
   # Avoid uselessly linking to unused libraries
@@ -202,12 +204,12 @@ if(NOT HEADERS_ONLY)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive-")
     endif()
 
-  if(ENABLE_INTEL_SIMD)
-    add_definitions("/D INTEL_INTRINSICS")
-  endif()
+    if(ENABLE_INTEL_SIMD)
+      add_definitions("/D INTEL_INTRINSICS")
+    endif()
 
   ELSE()
-
+  
   if(ENABLE_INTEL_SIMD)
     SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -msse2 -DINTEL_INTRINSICS" )
   endif()
@@ -218,7 +220,7 @@ if(NOT HEADERS_ONLY)
     # macOS uses Clang's linker, doesn't like --no-undefined
     SET( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,error" )
   else()
-  if(GNUC)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # make sure there are no undefined symbols
     SET( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
   endif()
