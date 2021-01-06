@@ -1,3 +1,4 @@
+avisynth-build/*
 CMakeCache.txt
 CMakeFiles/*
 distrib/docs/english/build/
@@ -39,10 +40,20 @@ plugins/Shibatch/CMakeFiles/*
 plugins/Shibatch/debug/*
 plugins/Shibatch/release/*
 
+plugins/Shibatch/PFC/CMakeCache.txt
+plugins/Shibatch/PFC/CMakeFiles/*
+plugins/Shibatch/PFC/debug/*
+plugins/Shibatch/PFC/release/*
+
 plugins/TimeStretch/CMakeCache.txt
 plugins/TimeStretch/CMakeFiles/*
 plugins/TimeStretch/debug/*
 plugins/TimeStretch/release/*
+
+plugins/TimeStretch/SoundTouch/CMakeCache.txt
+plugins/TimeStretch/SoundTouch/CMakeFiles/*
+plugins/TimeStretch/SoundTouch/debug/*
+plugins/TimeStretch/SoundTouch/release/*
 
 plugins/VDubFilter/CMakeCache.txt
 plugins/VDubFilter/CMakeFiles/*
