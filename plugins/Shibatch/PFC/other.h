@@ -54,6 +54,7 @@ public:
 	int find_reverse(int val) {return g_find_reverse(data,val);}
 };
 
+#if 0
 class fpu_control
 {
 	unsigned old_val;
@@ -87,5 +88,6 @@ class fpu_control_default : private fpu_control
 public:
 	fpu_control_default() : fpu_control(_MCW_DN|_MCW_RC,_DN_FLUSH|_RC_NEAR) {}
 };
+#endif
 
 #endif

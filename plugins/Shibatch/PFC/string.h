@@ -43,8 +43,8 @@ public:
 	inline void add_chars(unsigned c,unsigned count) {for(;count;count--) add_char(c);}
 
 
-	void add_int(signed __int64 val,unsigned base = 10);
-	void add_uint(unsigned __int64 val,unsigned base = 10);
+	void add_int(int64_t val);
+	void add_uint(uint64_t val);
 	void add_float(double val,unsigned digits);
 
 	void add_string_lower(const char * src,unsigned len = -1);
@@ -198,7 +198,7 @@ class string_print_time
 protected:
 	char buffer[128];
 public:
-	string_print_time(__int64 s);
+	string_print_time(int64_t s);
 	operator const char * () const {return buffer;}
 };
 
@@ -219,7 +219,7 @@ public:
 class string_print_time_ex : private string_print_time
 {
 public:
-	string_print_time_ex(double s,unsigned extra = 3) : string_print_time((__int64)s)
+	string_print_time_ex(double s,unsigned extra = 3) : string_print_time((int64_t)s)
 	{
 		if (extra>0)
 		{
@@ -227,7 +227,7 @@ public:
 			for(n=0;n<extra;n++) mul *= 10;
 
 
-			unsigned val = (unsigned)((__int64)(s*mul) % mul);
+			unsigned val = (unsigned)((int64_t)(s*mul) % mul);
 			char fmt[16];
 			sprintf(fmt,".%%0%uu",extra);
 			sprintf(buffer + strlen(buffer),fmt,val);
@@ -410,14 +410,14 @@ unsigned utf8_get_char(const char * src);
 
 inline bool utf8_advance(const char * & var)
 {
-	UINT delta = utf8_char_len(var);
+	unsigned int delta = utf8_char_len(var);
 	var += delta;
 	return delta>0;
 }
 
 inline bool utf8_advance(char * & var)
 {
-	UINT delta = utf8_char_len(var);
+	unsigned int delta = utf8_char_len(var);
 	var += delta;
 	return delta>0;
 }
@@ -469,17 +469,25 @@ public:
 	inline string_simple_t(const T * param) {ptr = t_strdup(param);}
 	inline string_simple_t(const T * param,unsigned len) {ptr = t_strdup(param,len);}
 	inline string_simple_t() {ptr=0;}
-	inline string_simple_t(__int64 val)
+	inline string_simple_t(int64_t val)
 	{
 		T temp[64];
 		if (sizeof(T)==1)
 		{
+#ifdef AVS_WINDOWS
 			_i64toa(val,reinterpret_cast<char*>(&temp),10);
-		}
+#else
+      sprintf(reinterpret_cast<char*>(&temp), "%ld", val);
+#endif
+    }
 		else if (sizeof(T)==2)
 		{
+#ifdef AVS_WINDOWS
 			_i64tow(val,reinterpret_cast<WCHAR*>(&temp),10);
-		}
+#else
+      swprintf(reinterpret_cast<WCHAR*>(&temp), "%ld", val);
+#endif
+    }
 		else
 		{
 			ASSUME(0);
@@ -491,7 +499,7 @@ public:
 	inline const T * operator = (const string_simple_t<T> & param) {set_string(param);return get_ptr();}
 	inline const T * operator += (const T * src) {add_string(src);return get_ptr();}
 
-	inline int string_simple(const string_simple_t<T> & param) {ptr = t_strdup(param);}
+	inline void string_simple(const string_simple_t<T> & param) {ptr = t_strdup(param);}
 	inline void reset() {if (ptr) {mem_ops<T>::free_block(ptr);ptr=0;}}
 	inline bool is_empty() {return !ptr || !*ptr;}
 	inline unsigned length() {return t_strlen(get_ptr());}

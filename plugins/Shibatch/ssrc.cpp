@@ -15,6 +15,7 @@ All rights reserved.
 
 #include "ssrc.h"
 #include <avs/alignment.h>
+#include <avs/config.h>
 #include <cassert>
 
 #pragma warning(disable:4244)
@@ -184,10 +185,20 @@ void Resampler_i_base<REAL>::make_outbuf(int nsmplwrt2, REAL* outbuf, int& delay
 }
 
 
-#ifdef WIN32
-extern "C" {_declspec(dllimport) int _stdcall MulDiv(int nNumber,int nNumerator,int nDenominator);}
+#ifdef _WIN32
+#ifdef GCC
+#ifndef MulDiv
+  #define MulDiv(x,y,z) ((x)*(y)/(z))
+#endif
 #else
-#define MulDiv(x,y,z) ((x)*(y)/(z))
+extern "C" {
+  _declspec(dllimport) int _stdcall MulDiv(int nNumber,int nNumerator,int nDenominator);
+}
+#endif
+#else
+#ifndef MulDiv
+  #define MulDiv(x,y,z) ((x)*(y)/(z))
+#endif
 #endif
 
 unsigned int Resampler_base::GetLatency()
@@ -208,7 +219,7 @@ class Upsampler : public Resampler_i_base<REAL>
   using Resampler_i_base<REAL>::make_outbuf;
   using Resampler_i_base<REAL>::make_inbuf;
 
-  __int64 fs1;
+  int64_t fs1;
   int frqgcd,osf,fs2;
   REAL **stage1,*stage2;
   int n1,n1x,n1y,n2,n2b;
@@ -267,7 +278,7 @@ Upsampler<REAL>::Upsampler(const Resampler_base::CONFIG & c) : Resampler_i_base<
 
     frqgcd = gcd(sfrq, dfrq);
 
-    fs1 = (__int64)(sfrq / frqgcd) * (__int64)dfrq;
+    fs1 = (int64_t)(sfrq / frqgcd) * (int64_t)dfrq;
 
     if (fs1 / dfrq == 1) osf = 1;
     else if (fs1 / dfrq % 2 == 0) osf = 2;

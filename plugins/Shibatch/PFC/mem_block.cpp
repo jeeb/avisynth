@@ -1,6 +1,6 @@
 #include "pfc.h"
 
-void * mem_block::set_size(UINT new_used)
+void * mem_block::set_size(unsigned int new_used)
 {
 	if (new_used==0)
 	{
@@ -12,7 +12,7 @@ void * mem_block::set_size(UINT new_used)
 	}
 	else
 	{
-		UINT new_size;
+		unsigned int new_size;
 		if (mem_logic == ALLOC_FAST || mem_logic == ALLOC_FAST_DONTGODOWN)
 		{
 			new_size = size;
@@ -53,7 +53,7 @@ void * mem_block::set_size(UINT new_used)
 	return data;
 }
 
-void mem_block::prealloc(UINT num)
+void mem_block::prealloc(unsigned int num)
 {
 	if (size<num && mem_logic==ALLOC_FAST_DONTGODOWN)
 	{

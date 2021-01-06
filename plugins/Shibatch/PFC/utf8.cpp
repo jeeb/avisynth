@@ -1,7 +1,7 @@
 #include "pfc.h"
 
 #include <locale.h>
-
+#include <cwctype>
 //utf8 stuff
 
 #ifndef BYTE
@@ -181,7 +181,7 @@ UINT char_lower(UINT param)
 		if (param>='A' && param<='Z') param += 'a' - 'A';
 		return param;
 	}
-	else return towlower(param);
+	else return std::towlower(param);
 }
 
 UINT char_upper(UINT param)
@@ -191,7 +191,7 @@ UINT char_upper(UINT param)
 		if (param>='a' && param<='z') param += 'A' - 'a';
 		return param;
 	}
-	else return towupper(param);
+	else return std::towupper(param);
 }
 
 UINT utf8_get_char(const char * src)
@@ -376,7 +376,7 @@ unsigned convert_ansi_to_utf16(const char * src,WCHAR * dst,unsigned len)
 {
 	len = strlen_max(src,len);
 	unsigned rv;
-#ifdef WIN32
+#ifdef _WIN32
 	rv = MultiByteToWideChar(CP_ACP,0,src,len,dst,estimate_ansi_to_utf16(src));
 #else
 	setlocale(LC_CTYPE,"");
@@ -391,7 +391,7 @@ unsigned convert_utf16_to_ansi(const WCHAR * src,char * dst,unsigned len)
 {
 	len = wcslen_max(src,len);
 	unsigned rv;
-#ifdef WIN32
+#ifdef _WIN32
 	rv = WideCharToMultiByte(CP_ACP,0,src,len,dst,estimate_utf16_to_ansi(src),0,0);
 #else
 	setlocale(LC_CTYPE,"");
@@ -456,7 +456,9 @@ void string_base::add_string_utf16(const WCHAR * src,unsigned len)
 
 bool is_valid_utf8(const char * param)
 {
+#ifdef _MSC_VER
 	__try {
+#endif
 		while(*param)
 		{
 			unsigned d;
@@ -465,11 +467,13 @@ bool is_valid_utf8(const char * param)
 			param += d;
 		}
 		return true;
-	}
-	__except(1)
+#ifdef _MSC_VER
+  }
+  __except(1)
 	{
 		return false;
 	}
+#endif
 }
 
 bool is_lower_ascii(const char * param)
@@ -516,10 +520,14 @@ int stricmp_utf8_max(const char * p1,const char * p2,unsigned p1_bytes)
 
 static bool check_end_of_string(const char * ptr)
 {
-	__try {
+#ifdef _MSC_VER
+  __try {
+#endif
 		return !*ptr;
-	}
+#ifdef _MSC_VER
+  }
 	__except(1) {return true;}
+#endif
 }
 
 unsigned strcpy_utf8_truncate(const char * src,char * out,unsigned maxbytes)
@@ -530,14 +538,18 @@ unsigned strcpy_utf8_truncate(const char * src,char * out,unsigned maxbytes)
 		maxbytes--;//for null
 		while(!check_end_of_string(src) && maxbytes>0)
 		{
-			__try {
+#ifdef _MSC_VER
+      __try {
+#endif
 				unsigned delta = utf8_char_len(src);
 				if (delta>maxbytes || delta==0) break;
 				do
 				{
 					out[ptr++] = *(src++);
 				} while(--delta);
-			} __except(1) { break; }
+#ifdef _MSC_VER
+      } __except(1) { break; }
+#endif
 			rv = ptr;
 		}
 		out[rv]=0;
@@ -550,9 +562,13 @@ void recover_invalid_utf8(const char * src,char * out,unsigned replace)
 	while(!check_end_of_string(src))
 	{
 		unsigned c,d;
-		__try {
+#ifdef _MSC_VER
+    __try {
+#endif
 			d = utf8_decode_char(src,&c);
-		} __except(1) {d = 0;}
+#ifdef _MSC_VER
+    } __except(1) {d = 0;}
+#endif
 		if (d==0) c = replace;
 		out += utf8_encode_char(c,out);
 	}

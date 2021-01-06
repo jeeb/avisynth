@@ -19,7 +19,7 @@ Copyright (c) 2003, Klaus Post
 
 
 #include <avisynth.h>
-#include <malloc.h>
+#include <avs/config.h>
 #include <cstring>
 #include "PFC/mem_block.h"
 
@@ -28,6 +28,11 @@ typedef audio_sample REAL_inout;
 
 #include "fft.h"
 
+#include <stdlib.h>
+#ifndef AVS_WINDOWS
+#define _aligned_malloc(size, alignment) aligned_alloc(alignment, size)
+#define _aligned_free(ptr) free(ptr)
+#endif
 
 class Buffer
 {
@@ -35,9 +40,9 @@ private:
 	mem_block_t<REAL_inout> buffer;
 	int buf_data;
 public:
-	_inline Buffer() {buf_data=0;buffer.set_mem_logic(mem_block::ALLOC_FAST_DONTGODOWN);}
-	_inline REAL_inout * GetBuffer(int * siz) {*siz=buf_data;return buffer;}
-	_inline int Size() {return buf_data;}
+	AVS_FORCEINLINE Buffer() {buf_data=0;buffer.set_mem_logic(mem_block::ALLOC_FAST_DONTGODOWN);}
+	AVS_FORCEINLINE REAL_inout * GetBuffer(int * siz) {*siz=buf_data;return buffer;}
+	AVS_FORCEINLINE int Size() {return buf_data;}
 	void Read(int size);
 	void Write(const REAL_inout * ptr,int size);
 };
@@ -50,7 +55,7 @@ public:
 	{
 	public:
 		int sfrq,dfrq,nch,dither,pdf,fast;
-		_inline CONFIG(int _sfrq,int _dfrq,int _nch,int _dither,int _pdf,int _fast=1)
+		AVS_FORCEINLINE CONFIG(int _sfrq,int _dfrq,int _nch,int _dither,int _pdf,int _fast=1)
 		{
 			sfrq=_sfrq;
 			dfrq=_dfrq;
@@ -68,7 +73,7 @@ protected:
 
 	Resampler_base(const Resampler_base::CONFIG & c);
 
-	void _inline __output(REAL_inout value, int& delay2)
+	void AVS_FORCEINLINE __output(REAL_inout value, int& delay2)
 	{
 		if(delay2 == 0) {
 			out.Write(&value,1);
@@ -91,14 +96,14 @@ public:
 	double GetPeak() {return peak;}//havent tested if this actually still works
 
 void Write(const REAL_inout* input,int size);
-	_inline void Finish() {bufloop(1);}
+	AVS_FORCEINLINE void Finish() {bufloop(1);}
 
-	_inline REAL_inout* GetBuffer(int * s) {return out.GetBuffer(s);}
-	_inline void Read(unsigned int s) {out.Read(s);}
+	AVS_FORCEINLINE REAL_inout* GetBuffer(int * s) {return out.GetBuffer(s);}
+	AVS_FORCEINLINE void Read(unsigned int s) {out.Read(s);}
 
 	unsigned int GetLatency();//returns amount of audio data in in/out buffers in milliseconds
 
-	_inline unsigned int GetDataInInbuf() {return in.Size();}
+	AVS_FORCEINLINE unsigned int GetDataInInbuf() {return in.Size();}
 
 	virtual ~Resampler_base() {}
 

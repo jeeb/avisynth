@@ -25,7 +25,7 @@ Copyright (c) 2003, Klaus Post
 #define _SUPEREQ_H_
 
 #include <avisynth.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <cstring>
 #include "PFC/mem_block.h"
 
@@ -39,16 +39,22 @@ typedef audio_sample REAL_inout;
 AVSValue __cdecl Create_SuperEq(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl Create_SuperEqCustom(AVSValue args, void*, IScriptEnvironment* env);
 
+#ifdef _MSC_VER
+//#define NOVTABLE _declspec(novtable)
+#define NOVTABLE
+#else
+#define NOVTABLE
+#endif
 
-class _declspec(novtable) supereq_base
+class NOVTABLE supereq_base
 {
 public:
-	virtual void equ_makeTable(double *bc,class paramlist *param,double fs);
-	virtual void equ_clearbuf();
+	virtual void equ_makeTable(double *bc,class paramlist *param,double fs) = 0;
+	virtual void equ_clearbuf() = 0;
 
-	virtual void write_samples(audio_sample*buf,int nsamples);
-	virtual audio_sample * get_output(int *nsamples);
-	virtual int samples_buffered();
+	virtual void write_samples(audio_sample*buf,int nsamples) = 0;
+	virtual audio_sample * get_output(int *nsamples) = 0;
+	virtual int samples_buffered() = 0;
 	virtual ~supereq_base() {};
 };
 
@@ -317,7 +323,7 @@ public:
 		equ_init(wb);
 	}
 
-  void equ_makeTable(double *bc,paramlist *param,double fs)
+  void equ_makeTable(double *bc,paramlist *param,double fs) override
 	{
 		int i,cires = cur_ires;
 		REAL *nires;
@@ -348,14 +354,14 @@ public:
 
 	}
 
-	void equ_clearbuf()
+	void equ_clearbuf() override
 	{
 		firstframe = 1;
 		samples_done = 0;
 		nbufsamples = 0;
 	}
 
-	void write_samples(audio_sample*buf,int nsamples)
+	void write_samples(audio_sample*buf,int nsamples) override
 	{
 		int i,p;
 		REAL *ires;
@@ -447,14 +453,14 @@ public:
 		nbufsamples += nsamples;
 	}
 
-	audio_sample * get_output(int *nsamples)
+  audio_sample* get_output(int* nsamples) override
 	{
 		*nsamples = samples_done;
 		samples_done = 0;
 		return done.get_ptr();
 	}
 
-	int samples_buffered() {return nbufsamples;}
+	int samples_buffered() override {return nbufsamples;}
 
 	~supereq()
 	{

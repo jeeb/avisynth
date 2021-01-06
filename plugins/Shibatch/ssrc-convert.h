@@ -55,7 +55,7 @@ public:
      delete res;
      delete[] srcbuffer;
     }
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
@@ -68,8 +68,8 @@ private:
   bool fast;
 
   SFLOAT* srcbuffer;
-  __int64 next_sample;
-  __int64 inputReadOffset;
+  int64_t next_sample;
+  int64_t inputReadOffset;
 
 	Resampler_base * res;
 

@@ -1,7 +1,12 @@
 #include "pfc.h"
+#ifdef __GNUC__
+#include <x86intrin.h>
+#else
 #include <intrin.h>
+#endif
+#include <stdint.h>
 
-__int64 profiler_local::get_timestamp()
+int64_t profiler_local::get_timestamp()
 {
   return __rdtsc();
 }

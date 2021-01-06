@@ -127,9 +127,9 @@ public:
 
 	inline void delete_mask(const bool * mask) {delete_mask(bit_array_table(mask,get_count()));}
 
-	inline void sort(int (__cdecl *compare )(const T ** elem1, const T** elem2 ) )
+  inline void sort(int (__cdecl *compare )(const T** elem1, const T** elem2 ) )
 	{
-		ptr_list::sort((int (__cdecl *)(const void ** elem1, const void ** elem2 )) compare);
+		ptr_list::sort((int (__cdecl *)(void * const* elem1, void * const* elem2 )) compare);
 	}
 
 	inline bool bsearch(int (__cdecl *compare )(T* elem1, T* elem2 ),T* item,int * index) const
@@ -139,7 +139,7 @@ public:
 
 	inline bool bsearch_ref(int (__cdecl *compare )(T* &elem1, T* &elem2 ),T* &item,int * index) const
 	{
-		return ptr_list::bsearch_ref((int (__cdecl *)(void* &elem1, void* &elem2 ))compare,*(const void**)&item,index);
+		return ptr_list::bsearch_ref((int (__cdecl *)(void* const &elem1, void* const &elem2 ))compare,*(void* const*)&item,index);
 	}
 
 	inline bool bsearch_range(int (__cdecl *compare )(T* elem1, T* elem2 ),T* item,int * index,int * count) const

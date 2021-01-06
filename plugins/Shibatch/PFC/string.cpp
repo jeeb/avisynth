@@ -1,11 +1,12 @@
 #include "pfc.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #define STRICT
 #include <windows.h>
 #include <stdio.h>
 #endif
-
+#include <stdarg.h>
+#include <stdlib.h>
 
 void string_base::add_char(unsigned c)
 {
@@ -38,7 +39,7 @@ void string_base::skip_trailing_char(unsigned skip)
 	if (need_trunc) truncate(trunc);
 }
 
-string_print_time::string_print_time(__int64 length)
+string_print_time::string_print_time(int64_t length)
 {
 	if (length<0) length=0;
 	char * out = buffer;
@@ -80,22 +81,34 @@ int strcmp_partial(const char * s1,const char * s2)
 void string_base::add_float(double val,unsigned digits)
 {
 	char temp[64];
+#ifdef _MSC_VER
 	_gcvt(val,digits,temp);
-	add_string(temp);
+#else
+  gcvt(val, digits, temp);
+#endif
+  add_string(temp);
 }
 
-void string_base::add_int(signed __int64 val,unsigned base)
+void string_base::add_int(int64_t val)
 {
 	char temp[64];
-	_i64toa(val,temp,base);
-	add_string(temp);
+#ifdef AVS_WINDOWS
+	_i64toa(val,temp,10);
+#else
+  sprintf(temp, "%ld", val);
+#endif
+add_string(temp);
 }
 
-void string_base::add_uint(unsigned __int64 val,unsigned base)
+void string_base::add_uint(uint64_t val)
 {
 	char temp[64];
-	_ui64toa(val,temp,base);
-	add_string(temp);
+#ifdef AVS_WINDOWS
+  _ui64toa(val,temp,10);
+#else
+  sprintf(temp, "%lu", val);
+#endif
+add_string(temp);
 }
 
 bool is_path_separator(unsigned c)
@@ -105,10 +118,10 @@ bool is_path_separator(unsigned c)
 
 bool is_path_bad_char(unsigned c)
 {
-#ifdef WIN32
+#ifdef _WIN32
 	return c=='\\' || c=='/' || c=='|' || c==':' || c=='*' || c=='?' || c=='\"' || c=='>' || c=='<';
 #else
-#error portme
+  return c == '/';
 #endif
 }
 
@@ -156,7 +169,11 @@ void string_printf::g_run(string_base & out,const char * fmt,va_list list)
 					char temp[8*sizeof(int)];
 					int val = va_arg(list,int);
 					if (force_sign && val>0) out.add_char('+');
+#ifdef AVS_WINDOWS
 					_itoa(val,temp,10);
+#else
+          sprintf(temp, "%d", val);
+#endif
 					int len = strlen(temp);
 					if (pad>len) out.add_chars(padchar,pad-len);
 					out.add_string(temp);
@@ -167,8 +184,12 @@ void string_printf::g_run(string_base & out,const char * fmt,va_list list)
 					char temp[8*sizeof(int)];
 					int val = va_arg(list,int);
 					if (force_sign && val>0) out.add_char('+');
+#ifdef AVS_WINDOWS
 					_ultoa(val,temp,10);
-					int len = strlen(temp);
+#else
+           sprintf(temp, "%u", val);
+#endif
+          int len = strlen(temp);
 					if (pad>len) out.add_chars(padchar,pad-len);
 					out.add_string(temp);
 					fmt++;
@@ -178,8 +199,12 @@ void string_printf::g_run(string_base & out,const char * fmt,va_list list)
 					char temp[8*sizeof(int)];
 					int val = va_arg(list,int);
 					if (force_sign && val>0) out.add_char('+');
+#ifdef AVS_WINDOWS
 					_ultoa(val,temp,16);
-					if (*fmt=='X')
+#else
+          sprintf(temp, "%x", val);
+#endif
+          if (*fmt=='X')
 					{
 						char * t = temp;
 						while(*t)
@@ -196,8 +221,9 @@ void string_printf::g_run(string_base & out,const char * fmt,va_list list)
 				}
 				else if (*fmt=='c' || *fmt=='C')
 				{
-					out.add_char(va_arg(list,char));
-					fmt++;
+					//out.add_char(va_arg(list,char));
+          out.add_char(va_arg(list, int)); // char is promoted to int
+          fmt++;
 				}
 			}
 		}
@@ -221,12 +247,16 @@ string_printf::string_printf(const char * fmt,...)
 unsigned strlen_max(const char * ptr,unsigned max)
 {
 	unsigned int n = 0;
+#ifdef _MSC_VER
 	__try {
 		while(ptr[n] && n<max) n++;
 	} __except(1)
 	{
 		n=0;
 	}
+#else
+  while (ptr[n] && n < max) n++;
+#endif
 	return n;
 }
 
@@ -559,7 +589,11 @@ void pfc_float_to_string(char * out,double val,unsigned precision,bool b_sign)
 	char temp[64];
 	if (val<0) {*(out++) = '-'; val = -val;}
 	else if (b_sign) {*(out++) = '+';}
-	_i64toa((__int64)(val * pow(10.0,(int)precision)),temp,10);
+#ifdef AVS_WINDOWS
+  _i64toa((int64_t)(val * pow(10.0, (int)precision)), temp, 10);
+#else
+  sprintf(temp, "%ld", (int64_t)(val * pow(10.0, (int)precision)));
+#endif
 	unsigned len = strlen(temp);
 	if (len <= precision)
 	{
@@ -585,7 +619,7 @@ void pfc_float_to_string(char * out,double val,unsigned precision,bool b_sign)
 double pfc_string_to_float(const char * src)
 {
 	bool neg = false;
-	__int64 val = 0;
+  int64_t val = 0;
 	int div = 0;
 	bool got_dot = false;
 
