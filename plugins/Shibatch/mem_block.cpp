@@ -1,4 +1,4 @@
-#include "pfc.h"
+#include "mem_block.h"
 
 void * mem_block::set_size(unsigned int new_used)
 {
@@ -82,7 +82,7 @@ inline static void apply_order_swap(unsigned char * base,unsigned size,unsigned 
 	memcpy(realptr1,realptr2,size);
 	memcpy(realptr2,temp,size);
 }
-
+#if 0
 void mem_block::g_apply_order(void * data,unsigned size,const int * order,unsigned num)
 {
 	unsigned char * base = (unsigned char *) data;
@@ -112,3 +112,4 @@ void mem_block::g_apply_order(void * data,unsigned size,const int * order,unsign
 		}
 	}
 }
+#endif

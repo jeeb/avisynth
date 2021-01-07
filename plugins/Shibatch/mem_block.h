@@ -41,7 +41,7 @@ private:
 	unsigned size,used;
 	mem_logic_t mem_logic;
 public:
-	inline void set_mem_logic(mem_logic_t v) {mem_logic=v;}
+  inline void set_mem_logic(mem_logic_t v) {mem_logic=v;}
 	inline mem_logic_t get_mem_logic() const {return mem_logic;}
 
   void prealloc(unsigned size);
@@ -73,7 +73,9 @@ public:
 
 	inline void force_reset() {if (data) free(data);data=0;size=0;used=0;}
 
-	static void g_apply_order(void * data,unsigned size,const int * order,unsigned num);
+#if 0
+  static void g_apply_order(void * data,unsigned size,const int * order,unsigned num);
+#endif
 };
 
 template<class T>
@@ -99,16 +101,16 @@ public:
 	inline operator const T * () const {return get_ptr();}
 	inline operator T * () {return get_ptr();}
 
-	inline T* copy(const T* ptr,unsigned size,unsigned start=0) {return static_cast<T*>(theBlock.copy(static_cast<const void*>(ptr),size*sizeof(T),start*sizeof(T)));}
+#if 0
+  inline T* copy(const T* ptr,unsigned size,unsigned start=0) {return static_cast<T*>(theBlock.copy(static_cast<const void*>(ptr),size*sizeof(T),start*sizeof(T)));}
 	inline T* append(const T* ptr,unsigned size) {return static_cast<T*>(theBlock.append(static_cast<const void*>(ptr),size*sizeof(T)));}
 	inline void append(T item) {theBlock.append(static_cast<const void*>(&item),sizeof(item));}
 
-	inline void swap(unsigned idx1,unsigned idx2)
+  inline void swap(unsigned idx1,unsigned idx2)
 	{
 		T * ptr = get_ptr();
 		mem_ops<T>::swap(ptr[idx1],ptr[idx2]);
 	}
-
 
 	unsigned write_circular(unsigned offset,const T* src,unsigned count)
 	{//returns new offset
@@ -159,7 +161,7 @@ public:
 		}
 		return offset;
 	}
-
+#endif
 	inline void zeromemory() {theBlock.zeromemory();}
 
 	void fill(T val)
@@ -171,13 +173,17 @@ public:
 
 	inline void force_reset() {theBlock.force_reset();}
 
+#if 0
 	void apply_order(const int * order,unsigned num)
 	{
 		assert(num<=get_size());
 		mem_block::g_apply_order(get_ptr(),sizeof(T),order,num);
 	}
+#endif
 
-	inline void prealloc(unsigned size) {theBlock.prealloc(size*sizeof(T));}
+#if 0
+  inline void prealloc(unsigned size) {theBlock.prealloc(size*sizeof(T));}
+#endif
 };
 
 #if 0
@@ -188,6 +194,8 @@ public:
 	mem_block_fastalloc(unsigned initsize=0) {set_mem_logic(mem_block::ALLOC_FAST_DONTGODOWN);if (initsize) prealloc(initsize);}
 };
 #endif
+
+#if 0
 
 #if 0
 
@@ -245,5 +253,5 @@ public:
 	inline operator T * () {return get_ptr();}
 };
 #endif
-
+#endif
 #endif
