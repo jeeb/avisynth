@@ -13,10 +13,11 @@ option(BUILD_VDUBFILTER "Build VDubFilter plugin" ON)
 #option(BUILD_VFAPIFILTER "Build VFAPIFilter plugin" ON)
 endif()
 
-option(BUILD_IMAGESEQ "Build ImageSeq plugin" ${PLUGIN_STATE})
 #preparation, go live when checked by others
+#option(BUILD_IMAGESEQ "Build ImageSeq plugin" ON)
 #option(BUILD_TIMESTRETCH "Build TimeStretch plugin" ON)
 #option(BUILD_SHIBATCH "Build Shibatch plugin" ON)
+option(BUILD_IMAGESEQ "Build ImageSeq plugin" ${PLUGIN_STATE})
 option(BUILD_TIMESTRETCH "Build TimeStretch plugin" ${PLUGIN_STATE})
 option(BUILD_SHIBATCH "Build Shibatch plugin" ${PLUGIN_STATE})
 option(BUILD_CONVERTSTACKED "Build ConvertStacked plugin" ON)
