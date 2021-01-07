@@ -38,8 +38,7 @@
 #include "ImageSeq.h"
 
 // Since devIL isn't threadsafe, we need to ensure that only one thread at the time requests frames
-CRITICAL_SECTION FramesCriticalSection;
-volatile long refcount = 0;
+std::mutex DevIL_mutex;
 volatile ILint DevIL_Version = 0;
 
 AVSValue __cdecl Create_ImageWriter(AVSValue args, void* user_data, IScriptEnvironment* env)
@@ -70,7 +69,11 @@ AVSValue __cdecl Create_ImageWriter(AVSValue args, void* user_data, IScriptEnvir
   }
 
   return new ImageWriter(clip,
+#ifdef AVS_WINDOWS
                          env->SaveString(args[1].AsString("c:\\")),
+#else
+                         env->SaveString(args[1].AsString("")),
+#endif
                          args[2].AsInt(0),
                          args[3].AsInt(0),
                          env->SaveString(args[4].AsString("ebmp")),
@@ -79,7 +82,11 @@ AVSValue __cdecl Create_ImageWriter(AVSValue args, void* user_data, IScriptEnvir
 
 AVSValue __cdecl Create_ImageReader(AVSValue args, void*, IScriptEnvironment* env)
 {
+#ifdef AVS_WINDOWS
   const char * path = args[0].AsString("c:\\%06d.ebmp");
+#else
+  const char* path = args[0].AsString("./%06d.ebmp");
+#endif
 
   ImageReader *IR = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), (float)args[3].AsDblDef(24.0),
                                     args[4].AsBool(false), args[5].AsBool(false), args[6].AsString("rgb24"),

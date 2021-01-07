@@ -38,6 +38,8 @@
 #include "ImageSeq.h"
 #include <algorithm>
 #include <sstream>
+#include <avs/config.h>
+#include <avs/filesystem.h>
 
 #define TEXT_COLOR 0xf0f080
 
@@ -52,6 +54,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   if (DevIL_Version == 0) // Init the DevIL.dll version
     DevIL_Version = ilGetInteger(IL_VERSION_NUM);
 
+#ifdef AVS_WINDOWS
   // treat empty input as current directory
   const char *base_name_good = (*_base_name == 0) ? ".\\" : _base_name;
   // Make sure we have an absolute path.
@@ -61,8 +64,25 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   if (len > sizeof(base_name))
     env->ThrowError("ImageReader: Path to %s too long.", _base_name);
   (void)GetFullPathName(base_name_good, len, base_name, NULL);
+  _snprintf(filename, (sizeof filename) - 1, base_name, start);
 
-  _snprintf(filename, (sizeof filename)-1, base_name, start);
+#else
+  std::string base_name_good = (*_base_name == 0) ? "./" : _base_name;
+  auto path = fs::path(base_name_good);
+  std::error_code ec;
+  auto fullpath = fs::absolute(path, ec);
+  // to-do: check ec
+  //auto fullpath = fs::canonical(path, ec); // canonical removes e.g. dot. Path must exist.
+  std::string fullpaths = fullpath.string();
+  // cout << fullpaths.c_str() << "\n"; // debug
+  if (fullpaths.size() > sizeof(base_name) - 1)
+    env->ThrowError("ImageReader: Path to %s too long.", _base_name);
+  strcpy(base_name, fullpath.c_str());
+
+  snprintf(filename, (sizeof filename) - 1, base_name, start);
+
+#endif
+
 
   memset(&vi, 0, sizeof(vi));
 
@@ -152,17 +172,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 
   if (use_DevIL == true) {  // attempt to open via DevIL
 
-    if (InterlockedIncrement(&refcount) == 1) {
-      if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
-        DWORD error = GetLastError();
-        if (error) {
-          InterlockedExchange(&refcount, 0);
-          env->ThrowError("ImageReader: Could not initialize critical section, 0x%x", error);
-        }
-      }
-    }
-
-    EnterCriticalSection(&FramesCriticalSection);
+    std::unique_lock<std::mutex> lock(DevIL_mutex);
 
     ilInit();
 
@@ -212,7 +222,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     // these would need on-the-fly conversion, todo
     */
     else {
-      LeaveCriticalSection(&FramesCriticalSection);
+      lock.unlock();
       //env->ThrowError("ImageReader: supports the following pixel types: RGB24/32/48/64, Y8/16 or RGB(A)P8/16");
       env->ThrowError("ImageReader: supports the following pixel types: RGB24/32/48/64 or Y8/16");
     }
@@ -220,7 +230,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     if (animation) {
       vi.num_frames = ilGetInteger(IL_NUM_IMAGES) + 1; // bug in DevIL (ilGetInteger is one off in 166 en 178)
       if (vi.num_frames <= 0) {
-        LeaveCriticalSection(&FramesCriticalSection);
+        lock.unlock();
         env->ThrowError("ImageSourceAnim: DevIL can't detect the number of images in the animation");
       }
 
@@ -236,7 +246,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 
     ilDeleteImages(1, &myImage);
 
-    LeaveCriticalSection(&FramesCriticalSection);
+    lock.unlock();
 
     if (err != IL_NO_ERROR) {
       env->ThrowError("ImageReader: error '%s' in DevIL library.\nreading file \"%s\"\nDevIL version %d.", getErrStr(err), filename, DevIL_Version);
@@ -274,12 +284,8 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 ImageReader::~ImageReader()
 {
   if (use_DevIL) {
-    EnterCriticalSection(&FramesCriticalSection);
-    ilShutDown();
-    LeaveCriticalSection(&FramesCriticalSection);
-
-    if (InterlockedDecrement(&refcount) == 0)
-      DeleteCriticalSection(&FramesCriticalSection);
+      std::lock_guard<std::mutex> lock(DevIL_mutex);
+      ilShutDown();
   }
 }
 
@@ -304,14 +310,21 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   const int height = frame->GetHeight();
   const int width = vi.width;
 
+#ifdef AVS_WINDOWS
   _snprintf(filename, (sizeof filename)-1, base_name, n+start);
+#else
+  snprintf(filename, (sizeof filename) - 1, base_name, n+start);
+#endif
+
+  // do not lock right now
+  std::unique_lock<std::mutex> lock(DevIL_mutex, std::defer_lock);
 
   if (use_DevIL)  /* read using DevIL */
   {
-    EnterCriticalSection(&FramesCriticalSection);
+    lock.lock();
 
     // Setup
-    ILuint myImage=0;
+    ILuint myImage = 0;
     ilGenImages(1, &myImage);
     ilBindImage(myImage);
 
@@ -322,40 +335,40 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       // Cleanup
       ilDeleteImages(1, &myImage);
 
-      LeaveCriticalSection(&FramesCriticalSection);
+      lock.unlock();
 
       memset(WritePtr, 0, pitch * height);  // Black frame
       if ((info) || (err != IL_COULD_NOT_OPEN_FILE)) {
         ostringstream ss;
         ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n"
-		      "opening file \"" << filename << "\"\n"
-              "DevIL version " << DevIL_Version << ".";
-        env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+          "opening file \"" << filename << "\"\n"
+          "DevIL version " << DevIL_Version << ".";
+        env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width / 4, TEXT_COLOR, 0, 0);
       }
       return frame;
     }
 
     if (animation) {
-      if (ilActiveImage(n) == IL_FALSE) { // load image N from file
-        // Get errors if any
-        err = ilGetError();
+        if (ilActiveImage(n) == IL_FALSE) { // load image N from file
+          // Get errors if any
+          err = ilGetError();
 
-        // Cleanup
-        ilDeleteImages(1, &myImage);
+          // Cleanup
+          ilDeleteImages(1, &myImage);
 
-        LeaveCriticalSection(&FramesCriticalSection);
+          lock.unlock();
 
-        memset(WritePtr, 0, pitch * height);  // Black frame
-        if (info) {
-          ostringstream ss;
-          ss << "ImageSourceAnim: error '" << getErrStr(err) << "' in DevIL library\n"
-                "processing image " << n << " from file \"" << filename << "\"\n"
-                "DevIL version " << DevIL_Version << ".";
-          env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+          memset(WritePtr, 0, pitch * height);  // Black frame
+          if (info) {
+            ostringstream ss;
+            ss << "ImageSourceAnim: error '" << getErrStr(err) << "' in DevIL library\n"
+              "processing image " << n << " from file \"" << filename << "\"\n"
+              "DevIL version " << DevIL_Version << ".";
+            env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width / 4, TEXT_COLOR, 0, 0);
+          }
+          return frame;
         }
-        return frame;
       }
-    }
     else {
       // Check some parameters
       if (ilGetInteger(IL_IMAGE_HEIGHT) != height)
@@ -363,10 +376,10 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         // Cleanup
         ilDeleteImages(1, &myImage);
 
-        LeaveCriticalSection(&FramesCriticalSection);
+        lock.unlock();
 
         memset(WritePtr, 0, pitch * height);
-        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width / 4, TEXT_COLOR, 0, 0);
         return frame;
       }
 
@@ -375,10 +388,10 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         // Cleanup
         ilDeleteImages(1, &myImage);
 
-        LeaveCriticalSection(&FramesCriticalSection);
+        lock.unlock();
 
         memset(WritePtr, 0, pitch * height);
-        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width / 4, TEXT_COLOR, 0, 0);
         return frame;
       }
     }
@@ -432,7 +445,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     // Cleanup
     ilDeleteImages(1, &myImage);
 
-    LeaveCriticalSection(&FramesCriticalSection);
+    lock.unlock();
 
     if (err != IL_NO_ERROR)
     {

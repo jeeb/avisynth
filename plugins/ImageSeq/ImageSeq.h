@@ -36,10 +36,46 @@
 #define __Image_Sequence_H__
 
 #include "il.h"
+#include <avs/config.h>
+#ifdef AVS_WINDOWS
 #include <avs/win.h>
+#else
+#include <avs/posix.h>
+#endif
+
 #include <cassert>
 #include <fstream>
+#include <atomic>
+#include <mutex>
 
+#ifndef AVS_WINDOWS
+typedef uint16_t      WORD;
+typedef int32_t       LONG;
+typedef uint32_t      DWORD;
+
+typedef struct tagBITMAPFILEHEADER {
+  WORD    bfType;
+  DWORD   bfSize;
+  WORD    bfReserved1;
+  WORD    bfReserved2;
+  DWORD   bfOffBits;
+} BITMAPFILEHEADER;
+
+typedef struct tagBITMAPINFOHEADER {
+  DWORD      biSize;
+  LONG       biWidth;
+  LONG       biHeight;
+  WORD       biPlanes;
+  WORD       biBitCount;
+  DWORD      biCompression;
+  DWORD      biSizeImage;
+  LONG       biXPelsPerMeter;
+  LONG       biYPelsPerMeter;
+  DWORD      biClrUsed;
+  DWORD      biClrImportant;
+} BITMAPINFOHEADER;
+
+#endif
 
 class ImageWriter : public GenericVideoFilter
 /**
@@ -56,7 +92,11 @@ private:
 
   bool info;
 
+#ifdef AVS_WINDOWS
   char base_name[MAX_PATH + 1];
+#else
+  char base_name[PATH_MAX + 1];
+#endif
   const char * ext;
   int start;
   int end;
@@ -81,7 +121,7 @@ public:
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {}
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {}
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return false; }
   int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
@@ -94,7 +134,11 @@ private:
   void BlankApplyMessage(PVideoFrame & frame, const char * text, IScriptEnvironment * env);
   bool checkProperties(std::ifstream & file, PVideoFrame & frame, IScriptEnvironment * env);
 
+#ifdef AVS_WINDOWS
   char base_name[MAX_PATH + 1];
+#else
+  char base_name[PATH_MAX + 1];
+#endif
   const int start;
   bool use_DevIL;
   bool info;
@@ -102,8 +146,12 @@ private:
 
   VideoInfo vi;
 
+#ifdef AVS_WINDOWS
   char filename[MAX_PATH + 1];
-  bool should_flip;
+#else
+  char filename[PATH_MAX + 1];
+#endif
+bool should_flip;
 
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;
@@ -113,8 +161,7 @@ private:
 const char *const getErrStr(ILenum err);
 
 // Since devIL isn't threadsafe, we need to ensure that only one thread at the time requests frames
-extern CRITICAL_SECTION FramesCriticalSection;
-extern volatile long refcount;
+extern std::mutex DevIL_mutex;
 extern volatile ILint DevIL_Version;
 
 #endif // __Image_Sequence_H__

@@ -38,6 +38,9 @@
 #include "ImageSeq.h"
 #include <algorithm>
 #include <sstream>
+#include <avs/config.h>
+#include <avs/filesystem.h>
+#include <iostream>
 
 #define TEXT_COLOR 0xf0f080
 
@@ -48,6 +51,7 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
                          const char * _ext, bool _info, IScriptEnvironment* env)
  : GenericVideoFilter(_child), ext(_ext), info(_info)
 {
+#ifdef AVS_WINDOWS
   // treat empty input as current directory
   const char *base_name_good = (*_base_name == 0) ? ".\\" : _base_name;
   // Make sure we have an absolute path.
@@ -57,6 +61,19 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
   if (len > sizeof(base_name))
     env->ThrowError("ImageWriter: Path to %s too long.", _base_name);
   (void)GetFullPathName(base_name_good, len, base_name, NULL);
+#else
+  std::string base_name_good = (*_base_name == 0) ? "./" : _base_name;
+  auto path = fs::path(base_name_good);
+  std::error_code ec;
+  auto fullpath = fs::absolute(path, ec);
+  // to-do: check ec
+  //auto fullpath = fs::canonical(path, ec); // canonical removes e.g. dot. Path must exist.
+  std::string fullpaths = fullpath.string();
+  // cout << fullpaths.c_str() << "\n"; // debug
+  if (fullpaths.size() > sizeof(base_name) - 1)
+    env->ThrowError("ImageWriter: Path to %s too long.", _base_name);
+  strcpy(base_name, fullpaths.c_str());
+#endif
 
   if (strchr(base_name, '%') == NULL) {
     base_name[(sizeof base_name)-8] = '\0';
@@ -98,19 +115,11 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     if (!((vi.IsY() && (vi.BitsPerComponent() == 8 || vi.BitsPerComponent() == 16)) || (vi.IsRGB() && !vi.IsPlanar())))
       env->ThrowError("ImageWriter: DevIL requires 8 or 16 bits per channel RGB or greyscale input");
 
-    if (InterlockedIncrement(&refcount) == 1) {
-      if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
-        DWORD error = GetLastError();
-        if (error) {
-          InterlockedExchange(&refcount, 0);
-          env->ThrowError("ImageWriter: Could not initialize critical section, 0x%x", error);
-        }
-      }
-    }
 
-    EnterCriticalSection(&FramesCriticalSection);
-    ilInit();
-    LeaveCriticalSection(&FramesCriticalSection);
+    {
+      std::lock_guard<std::mutex> lock(DevIL_mutex);
+      ilInit();
+    }
   }
 
   start = max(_start, 0);
@@ -129,12 +138,8 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
 ImageWriter::~ImageWriter()
 {
   if (!!lstrcmpi(ext, "ebmp")) {
-    EnterCriticalSection(&FramesCriticalSection);
+    std::lock_guard<std::mutex> lock(DevIL_mutex);
     ilShutDown();
-    LeaveCriticalSection(&FramesCriticalSection);
-
-    if (InterlockedDecrement(&refcount) == 0)
-      DeleteCriticalSection(&FramesCriticalSection);
   }
 }
 
@@ -157,9 +162,15 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // construct filename
+#ifdef AVS_WINDOWS
   char filename[MAX_PATH + 1];
   _snprintf(filename, MAX_PATH, base_name, n, ext, 0, 0);
   filename[MAX_PATH] = '\0';
+#else
+  char filename[PATH_MAX + 1];
+  snprintf(filename, PATH_MAX, base_name, n, ext, 0, 0);
+  filename[PATH_MAX] = '\0';
+#endif
 
   if (!lstrcmpi(ext, "ebmp"))  /* Use internal 'ebmp' writer */
   {
@@ -211,10 +222,10 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     file.close();
   }
   else { /* Use DevIL library */
-    EnterCriticalSection(&FramesCriticalSection);
+    std::unique_lock<std::mutex> lock(DevIL_mutex);
 
     // Set up DevIL
-    ILuint myImage=0;
+    ILuint myImage = 0;
     ilGenImages(1, &myImage); // Initialize 1 image structure
     ilBindImage(myImage);     // Set this as the current image
 
@@ -226,10 +237,10 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     if (IL_TRUE == ilTexImage(vi.width, vi.height, 1, ILubyte(bytesPerPixel), il_format, ilPixelType, NULL)) {
 
       // Program actual image raster
-      const BYTE * srcPtr = frame->GetReadPtr();
+      const BYTE* srcPtr = frame->GetReadPtr();
       int pitch = frame->GetPitch();
       if (should_flip) {
-        for (int y = vi.height-1; y >= 0; --y)
+        for (int y = vi.height - 1; y >= 0; --y)
         {
           ilSetPixels(0, y, 0, vi.width, 1, 1, il_format, ilPixelType, (void*)srcPtr);
           srcPtr += pitch;
@@ -244,7 +255,11 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
       }
 
       // DevIL writer fails if the file exists, so delete first
+#ifdef AVS_WINDOWS
       DeleteFile(filename);
+#else
+      fs::remove(fs::path(filename));
+#endif
 
       // Save to disk (format automatically inferred from extension)
       ilSaveImage(filename);
@@ -256,16 +271,16 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     // Clean up
     ilDeleteImages(1, &myImage);
 
-    LeaveCriticalSection(&FramesCriticalSection);
+    lock.unlock();
 
     if (err != IL_NO_ERROR)
     {
       ostringstream ss;
       ss << "ImageWriter: error '" << getErrStr(err) << "' in DevIL library\n"
-	        "writing file \"" << filename << "\"\n"
+            "writing file \"" << filename << "\"\n"
             "DevIL version " << DevIL_Version << ".";
       env->MakeWritable(&frame);
-      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width / 4, TEXT_COLOR, 0, 0);
       return frame;
     }
   }
