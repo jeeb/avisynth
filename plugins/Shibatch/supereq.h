@@ -27,7 +27,7 @@ Copyright (c) 2003, Klaus Post
 #include <avisynth.h>
 #include <stdlib.h>
 #include <cstring>
-#include "PFC/mem_block.h"
+#include "mem_block.h"
 
 #include "paramlist.h"
 

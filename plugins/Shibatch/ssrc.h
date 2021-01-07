@@ -21,7 +21,7 @@ Copyright (c) 2003, Klaus Post
 #include <avisynth.h>
 #include <avs/config.h>
 #include <cstring>
-#include "PFC/mem_block.h"
+#include "mem_block.h"
 
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;

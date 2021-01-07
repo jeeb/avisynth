@@ -21,6 +21,8 @@ list (APPEND SourceFiles
     "ssrc-convert.h"
     "supereq.cpp"
     "supereq.h"
+    "mem_block.cpp"
+    "mem_block.h"
     "shibatch.cpp"
 )
 add_library(${ProjectName} SHARED ${SourceFiles})
@@ -31,8 +33,6 @@ if (MINGW)
 endif()
 
 # Library dependencies
-add_subdirectory("PFC")
-target_link_libraries(${ProjectName} "PFC")
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR})
