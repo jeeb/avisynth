@@ -872,7 +872,7 @@ Downsampler<REAL>::Downsampler(Resampler_base::CONFIG & c) : Resampler_i_base<RE
   // Move last part of D to A.
   // Copy C to D.
 
-  buf1 = (REAL**)_aligned_malloc(sizeof(REAL *)*nch, 64);
+  buf1 = (REAL**)avs_malloc(sizeof(REAL *)*nch, 64);
   for (i = 0; i<nch; i++)
     buf1[i] = (REAL*)avs_malloc(n1b * sizeof(REAL), 64);
 
