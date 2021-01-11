@@ -4,6 +4,15 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
+20210111 3.7.0
+--------------
+- Haiku support
+- PowerPC support
+- Support for building the core as a static library (mcmtroffaes)
+- Fixes for MinGW-w64 compilation
+- Shibatch, TimeStretch, and ImageSeq GCC build support
+- Shibatch, TimeStretch, and ImageSeq non-Windows support
+
 20201214 3.6.2-WIP
 - Fix: AddBorders did not pass frame properties
 
