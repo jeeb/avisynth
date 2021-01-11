@@ -24,6 +24,11 @@ if (MINGW)
   set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
 endif()
 
+# stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
+if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    set(FSLIB "stdc++fs")
+endif()
+
 if(WIN32)
 
   if( CMAKE_SIZEOF_VOID_P EQUAL 4 ) # 32-bit
@@ -59,10 +64,10 @@ else()
   #                  way the DevIL developers release it.
   if(DevIL_FOUND)
     message("Found DevIL library: {$IL_LIBRARIES}") 
-    target_link_libraries(${ProjectName} "${IL_LIBRARIES}")
+    target_link_libraries(${ProjectName} "${IL_LIBRARIES}" "${FSLIB}")
     target_include_directories(${ProjectName} PRIVATE "${IL_INCLUDE_DIR}" ${AvsCore_SOURCE_DIR})
   else()
-    MESSAGE(FATAL_ERROR "DevIL library not found. (get libdevil-dev?)")
+    target_link_libraries(${ProjectName} "${FSLIB}")
   endif()
 endif()
 
