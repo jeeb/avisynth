@@ -1,25 +1,15 @@
 include_directories(${AvsCore_SOURCE_DIR}/include)
 
 if (WIN32)
-  set(PLUGIN_STATE "ON")
-else()
-  set(PLUGIN_STATE "OFF")
-endif()
-
-if (WIN32)
 # These plugins are for Windows only
 option(BUILD_DIRECTSHOWSOURCE "Build DirectShowSource plugin" OFF)
 option(BUILD_VDUBFILTER "Build VDubFilter plugin" ON)
 #option(BUILD_VFAPIFILTER "Build VFAPIFilter plugin" ON)
 endif()
 
-#preparation, go live when checked by others
-#option(BUILD_IMAGESEQ "Build ImageSeq plugin" ON)
-#option(BUILD_TIMESTRETCH "Build TimeStretch plugin" ON)
-#option(BUILD_SHIBATCH "Build Shibatch plugin" ON)
-option(BUILD_IMAGESEQ "Build ImageSeq plugin" ${PLUGIN_STATE})
-option(BUILD_TIMESTRETCH "Build TimeStretch plugin" ${PLUGIN_STATE})
-option(BUILD_SHIBATCH "Build Shibatch plugin" ${PLUGIN_STATE})
+option(BUILD_IMAGESEQ "Build ImageSeq plugin" ON)
+option(BUILD_TIMESTRETCH "Build TimeStretch plugin" ON)
+option(BUILD_SHIBATCH "Build Shibatch plugin" ON)
 option(BUILD_CONVERTSTACKED "Build ConvertStacked plugin" ON)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
