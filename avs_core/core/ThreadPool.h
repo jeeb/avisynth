@@ -42,7 +42,7 @@ public:
     return ret;
   }
 
-  virtual __stdcall ~JobCompletion()
+  virtual ~JobCompletion()
   {
     Wait();
     delete [] pairs;
