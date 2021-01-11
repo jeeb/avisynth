@@ -108,9 +108,11 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   try
   {
     cache_handle.first->value = prefetcher->_pimpl->child->GetFrame(n, env);
+#ifdef INTEL_INTRINSICS
     #ifdef X86_32
     _mm_empty();
     #endif
+#endif
 
     prefetcher->_pimpl->VideoCache->commit_value(&cache_handle);
     --(prefetcher->_pimpl->running_workers);
@@ -290,9 +292,11 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
         result = _pimpl->child->GetFrame(n, env); // P.F. fill result before Commit!
         cache_handle.first->value = result;
         // cache_handle.first->value = _pimpl->child->GetFrame(n, env); // P.F. before Commit!
+#ifdef INTEL_INTRINSICS
   #ifdef X86_32
         _mm_empty();
   #endif
+#endif
         _pimpl->VideoCache->commit_value(&cache_handle);
       }
       catch(...)
