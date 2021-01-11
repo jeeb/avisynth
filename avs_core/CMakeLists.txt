@@ -104,8 +104,10 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Haiku")
     set(SYSLIB "root")
+    set(SYSLIBS "-lroot")
 else()
     set(SYSLIB "pthread" "dl")
+    set(SYSLIBS "-lpthread -ldl")
 endif()
 
 # Per-OS link dependencies
