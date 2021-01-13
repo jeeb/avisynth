@@ -420,7 +420,7 @@ struct AVS_Linkage {
   // this part should be identical with AVS_Linkage entries in interface.cpp
 };
 
-#ifdef BUILDING_AVSCORE
+#if defined(BUILDING_AVSCORE) || defined(AVS_STATIC_LIB)
 /* Macro resolution for code inside Avisynth.dll */
 # define AVS_BakedCode(arg) ;
 # define AVS_LinkCall(arg)
@@ -1861,7 +1861,7 @@ struct PNeoEnv {
   INeoEnv* p;
   PNeoEnv() : p() { }
   PNeoEnv(IScriptEnvironment* env)
-#ifdef BUILDING_AVSCORE
+#if defined(BUILDING_AVSCORE) || defined(AVS_STATIC_LIB)
     ;
 #else
   : p(!AVS_linkage || offsetof(AVS_Linkage, GetNeoEnv) >= AVS_linkage->Size ? 0 : AVS_linkage->GetNeoEnv(env)) { }

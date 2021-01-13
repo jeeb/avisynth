@@ -87,6 +87,10 @@ target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Specify preprocessor definitions
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
+if(NOT ${BUILD_SHARED_LIBS})
+    target_compile_definitions("AvsCore" PRIVATE AVS_STATIC_LIB)
+endif()
+
 # If checked out with compat filesystem submodule, add that to system include directories
 get_filename_component(
     GHS_FILESYSTEM_INCLUDE_DIR

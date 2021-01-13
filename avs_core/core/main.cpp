@@ -274,7 +274,7 @@ private:
   HRESULT Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG cbBuffer, LONG *plBytes, LONG *plSamples);
 };
 
-
+#ifndef AVS_STATIC_LIB
 BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 
   _RPT4(0,"DllMain: hModule=0x%08x, ulReason=%x, lpReserved=0x%08x, gRefCnt = %ld\n",
@@ -316,7 +316,7 @@ STDAPI DllCanUnloadNow() {
 
   return gRefCnt ? S_FALSE : S_OK;
 }
-
+#endif
 
 ///////////////////////////////////////////////////////////////////////////
 //
