@@ -373,7 +373,7 @@ Plugin autoloading
 
 AviSynth+ will use several directories for autoloading:
 the `avisynth/` subdirectory where libavisynth.so was installed,
-`$HOME/.avisynth`, and the directory given to the LOCAL_PLUGINDIR
+`$HOME/.avisynth`, and the directory given to the USER_AVS_PLUGINDIR_LOCATION
 configuration option (defaults to `$HOME/.local/lib/avisynth`).
 The latter of which can hold plugins (and symlinks to plugins)
 or AVSI files without needing root permissions.
