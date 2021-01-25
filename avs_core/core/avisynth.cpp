@@ -2069,7 +2069,7 @@ static uint64_t posix_get_physical_memory() {
 #elif defined(AVS_HAIKU)
   system_info sysinf;
   get_system_info(&sysinf);
-  ullTotalPhys = 4096 * sysinf.max_pages;
+  ullTotalPhys = PAGESIZE * sysinf.max_pages;
 #else
   // linux
   struct sysinfo info;
