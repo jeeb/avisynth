@@ -68,7 +68,7 @@
     #include <avs/filesystem.h>
     #include <set>
 #if defined(AVS_HAIKU)
-    #include <kernel/OS.h>
+    #include <OS.h>
 #else
     #include <sys/sysinfo.h>
 #endif
