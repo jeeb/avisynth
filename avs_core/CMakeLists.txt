@@ -117,6 +117,29 @@ else()
   target_link_libraries("AvsCore" "${SYSLIB}" "${FSLIB}")
 endif()
 
+
+if(ENABLE_CUDA)
+  if(${CMAKE_VERSION} VERSION_LESS "3.19.5")
+    # deprecated since 3.10 but works
+    find_package(CUDA)
+    if(CUDA_FOUND)
+      target_include_directories("AvsCore" PRIVATE ${CUDA_INCLUDE_DIRS})
+      #target_link_libraries ("AvsCore" ${CUDA_LIBRARIES})
+      target_link_libraries ("AvsCore" ${CUDA_cudart_static_LIBRARY})
+      target_compile_definitions("AvsCore" PUBLIC ENABLE_CUDA)
+    endif()
+  else()
+    # Fixed in 3.19.5: https://gitlab.kitware.com/cmake/cmake/-/issues/21740
+    include(FindCUDAToolkit)
+    # FIXME: check supported compiler/platform/CUDA SDK version combinations
+    if(CUDAToolkit_FOUND)
+      target_include_directories("AvsCore" PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+      target_link_libraries ("AvsCore" CUDA::cudart_static)
+      target_compile_definitions("AvsCore" PUBLIC ENABLE_CUDA)
+    endif()
+  endif()
+endif()
+
 if (MSVC_IDE)
   # Copy output to a common folder for easy deployment
   add_custom_command(
