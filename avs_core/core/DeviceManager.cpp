@@ -847,18 +847,18 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
     PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
     TransferFrameData(dst, src, false, env);
 
-#ifndef NEOFP
+#if 1
     AVSMap* mapv = env->getFramePropsRW(dst);
     const int numKeys = env->propNumKeys(mapv);
     for (int i = 0; i < numKeys; i++) {
       const char* key = env->propGetKey(mapv, i);
-      if (env->propGetType(mapv, key) == 'v') {
+      if (env->propGetType(mapv, key) == AVSPropTypes::PROPTYPE_FRAME) {
         // isFrame true
         const int numElements = env->propNumElements(mapv, key);
 
         std::vector<PVideoFrame> frameset;
         int error;
-
+        // avs+: can be more frames in a frame property array
         for (int index = 0; index < numElements; index++) {
           const PVideoFrame srcframe = env->propGetFrame(mapv, key, index, &error);
           frameset.push_back(srcframe);
@@ -870,11 +870,12 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
           PVideoFrame src = frameset[index];
           PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
           TransferFrameData(dst, src, false, env);
-          env->propSetFrame(mapv, key, dst, AVSPropAppendMode::paAppend);
+          env->propSetFrame(mapv, key, dst, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
         }
       }
     }
 #else
+    // kept for reference from neo fork, a single frame in frame properties. No array of frames here
     AVSMap* mapv = env->GetAVSMap(dst);
     for (auto it = mapv->data.begin(), end = mapv->data.end(); it != end; ++it) {
       if (it->second.IsFrame()) {
@@ -904,18 +905,18 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
 
     TransferFrameData(cacheHandle.first->value, item.src, true, env);
 
-#ifndef NEOFP
+#if 1
     AVSMap* mapv = env->getFramePropsRW(cacheHandle.first->value);
     const int numKeys = env->propNumKeys(mapv);
     for (int i = 0; i < numKeys; i++) {
       const char* key = env->propGetKey(mapv, i);
-      if (env->propGetType(mapv, key) == 'v') {
+      if (env->propGetType(mapv, key) == AVSPropTypes::PROPTYPE_FRAME) {
         // isFrame true
         const int numElements = env->propNumElements(mapv, key);
 
         std::vector<PVideoFrame> frameset;
         int error;
-
+        // avs+: can be more frames in a frame property array
         for (int index = 0; index < numElements; index++) {
           const PVideoFrame srcframe = env->propGetFrame(mapv, key, index, &error);
           frameset.push_back(srcframe);
@@ -927,11 +928,12 @@ class CUDAFrameTransferEngine : public FrameTransferEngine
           PVideoFrame src = frameset[index];
           PVideoFrame dst = env->GetOnDeviceFrame(src, downstreamDevice);
           TransferFrameData(dst, src, true, env);
-          env->propSetFrame(mapv, key, dst, AVSPropAppendMode::paAppend);
+          env->propSetFrame(mapv, key, dst, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
         }
       }
     }
 #else
+    // kept for reference from neo fork, a single frame in frame properties. No frame arrays here
     AVSMap* mapv = env->GetAVSMap(cacheHandle.first->value);
     for (auto it = mapv->data.begin(), end = mapv->data.end(); it != end; ++it) {
       if (it->second.IsFrame()) {
