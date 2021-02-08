@@ -2301,16 +2301,12 @@ ScriptEnvironment::ScriptEnvironment()
     top_frame.Set("LOG_DEBUG",   (int)LOGLEVEL_DEBUG);
 
     top_frame.Set("DEV_TYPE_CPU", (int)DEV_TYPE_CPU);
-#ifdef ENABLE_CUDA
     top_frame.Set("DEV_TYPE_CUDA", (int)DEV_TYPE_CUDA);
-#endif
 
     top_frame.Set("CACHE_FAST_START", (int)CACHE_FAST_START);
     top_frame.Set("CACHE_OPTIMAL_SIZE", (int)CACHE_OPTIMAL_SIZE);
-#ifdef ENABLE_CUDA
     top_frame.Set("DEV_CUDA_PINNED_HOST", (int)DEV_CUDA_PINNED_HOST);
     top_frame.Set("DEV_FREE_THRESHOLD", (int)DEV_FREE_THRESHOLD);
-#endif
 
     InitMT();
     thread_pool = new ThreadPool(std::thread::hardware_concurrency(), 1, threadEnv.get());
