@@ -165,6 +165,7 @@ private:
   int video_switchover_point;
   int64_t audio_switchover_point;
   const bool passCache;
+  int child_devs;
 };
 
 

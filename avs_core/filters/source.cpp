@@ -86,10 +86,36 @@ public:
       return 1;
     case CACHE_GET_MTMODE:
       return MT_NICE_FILTER;
+    case CACHE_GET_DEV_TYPE:
+       return DEV_TYPE_CPU;
+    case CACHE_GET_CHILD_DEV_TYPE:
+       return DEV_TYPE_ANY; // any type is ok because this clip does not require child's frames.
     default:
       return 0;
     }
-  };
+  }
+};
+
+// For any frame number, this clip returns the first frame of a child clip .
+// This clip makes cache effective and reduce unnecessary frame transfer.
+class SingleFrame : public GenericVideoFilter {
+public:
+  SingleFrame(PClip _child) : GenericVideoFilter(_child) {}
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return child->GetFrame(0, env); }
+  int __stdcall SetCacheHints(int cachehints, int frame_range)
+  {
+    switch (cachehints)
+    {
+    case CACHE_DONT_CACHE_ME:
+      return 1;
+    case CACHE_GET_MTMODE:
+      return MT_NICE_FILTER;
+    case CACHE_GET_DEV_TYPE:
+      return (child->GetVersion() >= 5) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+    default:
+      return 0;
+    }
+  }
 };
 
 
@@ -449,7 +475,11 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   }
 #endif
 
-  return new StaticImage(vi, CreateBlankFrame(vi, color, mode, colors, colors_f, color_is_array, env), parity);
+  PClip clip = new StaticImage(vi, CreateBlankFrame(vi, color, mode, colors, colors_f, color_is_array, env), parity);
+
+  // wrap in OnCPU to support multi devices
+  AVSValue arg[2]{ clip, 1 }; // prefetch=1: enable cache but not thread
+  return new SingleFrame(env->Invoke("OnCPU", AVSValue(arg, 2)).AsClip());
 }
 
 
@@ -525,7 +555,11 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
 
   PVideoFrame frame = CreateBlankFrame(vi, bgcolor, COLOR_MODE_RGB, nullptr, nullptr, false, env);
   env->ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor);
-  return new StaticImage(vi, frame, false);
+  PClip clip = new StaticImage(vi, frame, false);
+
+  // wrap in OnCPU to support multi devices
+  AVSValue args[2]{ clip, 1 }; // prefetch=1: enable cache but not thread
+  return new SingleFrame(env->Invoke("OnCPU", AVSValue(args, 2)).AsClip());
 };
 
 AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* env) {
@@ -1756,12 +1790,20 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void* _type, IScriptEnvironment* env) {
     const int type = (int)(size_t)_type;
+    bool staticframes = args[3].AsBool(true);
 
-    return new ColorBars(args[0].AsInt(   type ? 1288 : 640),
+    PClip clip = new ColorBars(args[0].AsInt(   type ? 1288 : 640),
                          args[1].AsInt(   type ?  720 : 480),
                          args[2].AsString(type ? "YV24" : "RGB32"),
-                         args[3].AsBool(true), // new staticframes parameter
+                         staticframes, // new staticframes parameter
                          type, env);
+    // wrap in OnCPU to support multi devices
+    AVSValue arg[2]{ clip, 1 }; // prefetch=1: enable cache but not thread
+    AVSValue ret = env->Invoke("OnCPU", AVSValue(arg, 2));
+    if (staticframes) {
+      return new SingleFrame(ret.AsClip());
+    }
+    return ret;
   }
 };
 

@@ -112,6 +112,10 @@ int __stdcall NonCachedGenericVideoFilter::SetCacheHints(int cachehints, int fra
       return 1;
     case CACHE_GET_MTMODE:
       return MT_NICE_FILTER;
+
+    case CACHE_GET_DEV_TYPE:
+      return (child->GetVersion() >= 5) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+
     default:
       return GenericVideoFilter::SetCacheHints(cachehints, frame_range);
   }
@@ -493,6 +497,8 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, bool _passCache
     env->ThrowError("Splice: Maximum number of frames exceeded.");
 
   vi.num_audio_samples = audio_switchover_point + vi2.num_audio_samples;
+
+  child_devs = (GetDeviceTypes(child) & GetDeviceTypes(child2));
 }
 
 
@@ -536,6 +542,8 @@ int Splice::SetCacheHints(int cachehints,int frame_range)
     return 1;
   case CACHE_GET_MTMODE:
     return MT_NICE_FILTER;
+  case CACHE_GET_DEV_TYPE:
+    return child_devs;
   default:
     if (passCache) {
       child2->SetCacheHints(cachehints, frame_range);
@@ -876,6 +884,8 @@ int __stdcall AudioDub::SetCacheHints(int cachehints,int frame_range)
     return 1;
   case CACHE_GET_MTMODE:
     return MT_NICE_FILTER;
+  case CACHE_GET_DEV_TYPE:
+    return (vchild->GetVersion() >= 5) ? vchild->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
   default:
     return 0;
   }

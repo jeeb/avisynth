@@ -52,6 +52,7 @@ private:
   PClip *child_array;
   const bool show;
   bool local;
+  int child_devs;
 };
 
 
@@ -82,6 +83,7 @@ private:
   AVSValue eval2;
   bool show;
   bool local;
+  int child_devs;
 };
 
 class ScriptClip : public GenericVideoFilter

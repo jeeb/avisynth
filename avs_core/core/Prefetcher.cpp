@@ -346,6 +346,9 @@ int __stdcall Prefetcher::SetCacheHints(int cachehints, int frame_range)
   if (CACHE_GET_MTMODE == cachehints)
     return MT_NICE_FILTER;
 
+  if (CACHE_GET_DEV_TYPE == cachehints)
+    return (_pimpl->child->GetVersion() >= 5) ? _pimpl->child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+
   return 0;
 }
 

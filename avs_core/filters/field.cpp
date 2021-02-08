@@ -715,6 +715,7 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
   vi = child_array[0]->GetVideoInfo();
   vi.MulDivFPS(num_children, 1);
   vi.num_frames = (vi.num_frames - 1) * num_children + 1;
+  child_devs = GetDeviceTypes(child_array[0]);
   for (int i=1; i<num_children; ++i)
   {
     const VideoInfo& vi2 = child_array[i]->GetVideoInfo();
@@ -724,6 +725,10 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
       env->ThrowError("Interleave: video formats don't match");
 
     vi.num_frames = max(vi.num_frames, (vi2.num_frames - 1) * num_children + i + 1);
+
+    child_devs &= GetDeviceTypes(child_array[i]);
+    if (child_devs == 0)
+      env->ThrowError("Interleave: device types don't match");
   }
   if (vi.num_frames < 0)
     env->ThrowError("Interleave: Maximum number of frames exceeded.");
@@ -739,6 +744,8 @@ int __stdcall Interleave::SetCacheHints(int cachehints,int frame_range)
     return 1;
   case CACHE_GET_MTMODE:
     return MT_NICE_FILTER;
+  case CACHE_GET_DEV_TYPE:
+    return child_devs;
   default:
     return 0;
   }

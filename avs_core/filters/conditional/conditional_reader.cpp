@@ -578,6 +578,8 @@ int __stdcall ConditionalReader::SetCacheHints(int cachehints, int frame_range)
   {
   case CACHE_GET_MTMODE:
     return MT_NICE_FILTER;
+  case CACHE_GET_DEV_TYPE:
+    return (child->GetVersion() >= 5) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
   }
   return 0;  // We do not pass cache requests upwards.
 }
@@ -862,9 +864,8 @@ int __stdcall UseVar::SetCacheHints(int cachehints, int frame_range) {
   {
   case CACHE_GET_MTMODE:
     return MT_NICE_FILTER;
-  /*case CACHE_GET_DEV_TYPE:
+  case CACHE_GET_DEV_TYPE:
     return (child->GetVersion() >= 5) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
-  */
   }
   return 0;  // We do not pass cache requests upwards.
 }

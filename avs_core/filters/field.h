@@ -356,6 +356,7 @@ private:
   const int num_children;
   const PClip* child_array;
   VideoInfo vi;
+  int child_devs;
 };
 
 

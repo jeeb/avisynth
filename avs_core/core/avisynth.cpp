@@ -3349,7 +3349,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
    */
 
    // See if we could benefit from 64-bit Avisynth
-  if (sizeof(void*) == 4)
+  if (sizeof(void*) == 4 && device == Devices->GetCPUDevice())
   {
 #ifdef AVS_WINDOWS
     // Get system memory information
