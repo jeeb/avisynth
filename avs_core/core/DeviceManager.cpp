@@ -83,6 +83,7 @@ static void CheckDeviceTypes(const char* name, int devicetypes, const AVSValue& 
       if ((devicetypes & childtypes) == 0) {
         std::string parentdevstr = DeviceTypesString(devicetypes);
         std::string childdevstr = DeviceTypesString(childtypes);
+        // e.g.. Device unmatch: XYfilter[CPU] does not support [CUDA] frame
         env->ThrowError(
           "Device unmatch: %s[%s] does not support [%s] frame",
           name, parentdevstr.c_str(), childdevstr.c_str());
@@ -460,9 +461,29 @@ DeviceManager::DeviceManager(InternalEnvironment* env) :
 
 #ifdef ENABLE_CUDA
   int cuda_device_count = 0;
-  if (cudaGetDeviceCount(&cuda_device_count) == cudaSuccess) {
+  cudaError_t status = cudaGetDeviceCount(&cuda_device_count);
+  if (status == cudaSuccess) {
+    // _RPT0(1, "cudaGetDeviceCount = %d\r\n", cuda_device_count);
     for (int i = 0; i < cuda_device_count; ++i) {
       cudaDevices.emplace_back(new CUDADevice(next_device_id++, i, env));
+    }
+  }
+  else {
+    if (status == cudaErrorInitializationError) {
+      // We probably get this error because of current Nvidia driver version is lower than
+      // the minimum required version by the used CUDA SDK, or a Computing Capability is too low.
+      // Example: GTX460: Latest driver is 391.35, latest supporting CUDA SDK is 9.1.85
+      // Consequence: since SDK 9 is unsupported in VS2019, no GTX460 support
+      // As of Jan.2021 Avisynth+ is is using CUDA Toolkit version 11.2.
+      int version;
+      status = cudaRuntimeGetVersion(&version);
+      if(status == cudaSuccess)
+        _RPT1(1, "cudaGetDeviceCount: cudaErrorInitializationError!\r\nMaybe CUDA Runtime version (%d) does not support old drivers. \r\n", version);
+      else
+        _RPT0(1, "cudaGetDeviceCount: cudaErrorInitializationError! Runtime version request failed\r\n");
+    }
+    else {
+      _RPT1(1, "cudaGetDeviceCount failed (%d)\r\n", (int)status);
     }
   }
   // do not modify CUDADevices after this since it causes pointer change
