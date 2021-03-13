@@ -463,7 +463,7 @@ DeviceManager::DeviceManager(InternalEnvironment* env) :
   int cuda_device_count = 0;
   cudaError_t status = cudaGetDeviceCount(&cuda_device_count);
   if (status == cudaSuccess) {
-    // _RPT0(1, "cudaGetDeviceCount = %d\r\n", cuda_device_count);
+    // _RPT0(0, "cudaGetDeviceCount = %d\r\n", cuda_device_count);
     for (int i = 0; i < cuda_device_count; ++i) {
       cudaDevices.emplace_back(new CUDADevice(next_device_id++, i, env));
     }
@@ -478,12 +478,12 @@ DeviceManager::DeviceManager(InternalEnvironment* env) :
       int version;
       status = cudaRuntimeGetVersion(&version);
       if(status == cudaSuccess)
-        _RPT1(1, "cudaGetDeviceCount: cudaErrorInitializationError!\r\nMaybe CUDA Runtime version (%d) does not support old drivers. \r\n", version);
+        _RPT1(0, "cudaGetDeviceCount: cudaErrorInitializationError!\r\nMaybe CUDA Runtime version (%d) does not support old drivers. \r\n", version);
       else
-        _RPT0(1, "cudaGetDeviceCount: cudaErrorInitializationError! Runtime version request failed\r\n");
+        _RPT0(0, "cudaGetDeviceCount: cudaErrorInitializationError! Runtime version request failed\r\n");
     }
     else {
-      _RPT1(1, "cudaGetDeviceCount failed (%d)\r\n", (int)status);
+      _RPT1(0, "cudaGetDeviceCount failed (%d)\r\n", (int)status);
     }
   }
   // do not modify CUDADevices after this since it causes pointer change
