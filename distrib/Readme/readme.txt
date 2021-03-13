@@ -1,5 +1,11 @@
 Avisynth+
 
+20210313 WIP
+------------
+- RGBAdjust: analyse=true 32 bit float support
+- experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
+- Fixes for building the core as a static library
+
 20210111 3.7.0
 --------------
 - Haiku support
