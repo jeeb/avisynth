@@ -941,8 +941,6 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
     bits_per_pixel = vi.BitsPerComponent(); // 8,10..16
 
     if (pixelsize == 4) {
-      if (analyze)
-        env->ThrowError("RGBAdjust: cannot 'analyze' a 32bit float video");
       // dither parameter is silently ignored
       // if (dither) env->ThrowError("RGBAdjust: cannot 'dither' a 32bit float video");
     }
@@ -988,17 +986,63 @@ RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
 template<typename pixel_t>
 static void fill_accum_rgb_planar_c(const BYTE *srcpR, const BYTE* srcpG, const BYTE* srcpB, int pitch,
   unsigned int *accum_r, unsigned int *accum_g, unsigned int *accum_b,
-  int width, int height) {
+  int width, int height, int max_pixel_value) {
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
-        accum_r[reinterpret_cast<const pixel_t *>(srcpR)[x]]++;
-        accum_g[reinterpret_cast<const pixel_t *>(srcpG)[x]]++;
-        accum_b[reinterpret_cast<const pixel_t *>(srcpB)[x]]++;
+        int r = reinterpret_cast<const pixel_t*>(srcpR)[x];
+        int g = reinterpret_cast<const pixel_t*>(srcpG)[x];
+        int b = reinterpret_cast<const pixel_t*>(srcpB)[x];
+        if constexpr (sizeof(pixel_t) != 1) {
+          if (r > max_pixel_value) r = max_pixel_value;
+          if (g > max_pixel_value) g = max_pixel_value;
+          if (b > max_pixel_value) b = max_pixel_value;
+        }
+        accum_r[r]++;
+        accum_g[g]++;
+        accum_b[b]++;
       }
       srcpR += pitch;
       srcpG += pitch;
       srcpB += pitch;
     }
+}
+
+static void fill_accum_rgb_planar_float_c(const BYTE* srcpR, const BYTE* srcpG, const BYTE* srcpB, int pitch,
+  unsigned int* accum_r, unsigned int* accum_g, unsigned int* accum_b,
+  int width, int height, RGBStats &rgbplanedata) {
+
+  for (int i = 0; i < 3; i++) {
+    rgbplanedata.data[i].real_max = std::numeric_limits<float>::min();
+    rgbplanedata.data[i].real_min = std::numeric_limits<float>::max();
+    rgbplanedata.data[i].sum = 0.0;
+  }
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      // convert range 0..1 to 0..65535 for loose_min/max fake histogram
+      float r = reinterpret_cast<const float*>(srcpR)[x];
+      float g = reinterpret_cast<const float*>(srcpG)[x];
+      float b = reinterpret_cast<const float*>(srcpB)[x];
+      int ri = (int)(clamp(r * 65535.0f + 0.5f, 0.0f, 65535.0f));
+      int gi = (int)(clamp(g * 65535.0f + 0.5f, 0.0f, 65535.0f));
+      int bi = (int)(clamp(b * 65535.0f + 0.5f, 0.0f, 65535.0f));
+      if (r > rgbplanedata.data[0].real_max) rgbplanedata.data[0].real_max = r;
+      if (r < rgbplanedata.data[0].real_min) rgbplanedata.data[0].real_min = r;
+      rgbplanedata.data[0].sum += r;
+      if (g > rgbplanedata.data[1].real_max) rgbplanedata.data[1].real_max = g;
+      if (g < rgbplanedata.data[1].real_min) rgbplanedata.data[1].real_min = g;
+      rgbplanedata.data[1].sum += g;
+      if (b > rgbplanedata.data[2].real_max) rgbplanedata.data[2].real_max = b;
+      if (b < rgbplanedata.data[2].real_min) rgbplanedata.data[2].real_min = b;
+      rgbplanedata.data[2].sum += b;
+      accum_r[ri]++;
+      accum_g[gi]++;
+      accum_b[bi]++;
+    }
+    srcpR += pitch;
+    srcpG += pitch;
+    srcpB += pitch;
+  }
 }
 
 template<typename pixel_t>
@@ -1203,66 +1247,146 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
     }
 
     if (analyze) {
-        // no 32bit float here yet
         const int w = frame->GetRowSize() / pixelsize;
         const int h = frame->GetHeight();
 
-        int lookup_size = 1 << bits_per_pixel; // 256, 1024, 4096, 16384, 65536
-        int real_lookup_size = (pixelsize == 1) ? 256 : 65536; // avoids lut overflow in case of non-standard content of a 10 bit clip
-        int pixel_max = lookup_size - 1;
+        const int analyze_lookup_size = pixelsize == 4 ? 1 << 16 : 1 << bits_per_pixel; // 32 bit float is quantized to 16 bits
+        const int max_pixel_value_analyze = analyze_lookup_size - 1;
 
-        // worst case: 65536 for even 10 bits, too. Possible garbage
-        int bufsize = real_lookup_size * sizeof(uint32_t);
         // allocate 3x bufsize for R. G and B will share it
-        accum_r = static_cast<uint32_t*>(env->Allocate(bufsize*3 , 16, AVS_NORMAL_ALLOC));
-        accum_g = accum_r + real_lookup_size;
-        accum_b = accum_g + real_lookup_size;
+        auto accum_r = static_cast<uint32_t*>(env->Allocate(analyze_lookup_size * sizeof(uint32_t) * 3, 16, AVS_NORMAL_ALLOC));
+        auto accum_g = accum_r + analyze_lookup_size;
+        auto accum_b = accum_g + analyze_lookup_size;
         if (!accum_r)
           env->ThrowError("RGBAdjust: Could not reserve memory.");
 
-        for (int i = 0; i < lookup_size; i++) {
+        for (int i = 0; i < analyze_lookup_size; i++) {
           accum_r[i] = 0;
           accum_g[i] = 0;
           accum_b[i] = 0;
         }
 
-        if(vi.IsPlanarRGB() || vi.IsPlanarRGBA())
-        {
-          const BYTE *p_g = frame->GetReadPtr(PLANAR_G);;
-          const BYTE *p_b = frame->GetReadPtr(PLANAR_B);
-          const BYTE *p_r = frame->GetReadPtr(PLANAR_R);
-          if (pixelsize == 1)
-            fill_accum_rgb_planar_c<uint8_t>(p_r, p_g, p_b, pitch, accum_r, accum_g, accum_b, w, h);
-          else
-            fill_accum_rgb_planar_c<uint16_t>(p_r, p_g, p_b, pitch, accum_r, accum_g, accum_b, w, h);
-        } else {
-          // packed RGB
-          const BYTE *srcp = frame->GetReadPtr();
-          const int pixel_step = vi.IsRGB24() || vi.IsRGB48() ? 3 : 4;
+        const int pixels = vi.width * vi.height;
 
-          if (pixelsize == 1)
-            fill_accum_rgb_packed_c<uint8_t>(srcp, pitch, accum_r, accum_g, accum_b, w, h, pixel_step);
-          else
-            fill_accum_rgb_packed_c<uint16_t>(srcp, pitch, accum_r, accum_g, accum_b, w, h, pixel_step);
+        if (bits_per_pixel == 32) {
+          RGBStats rgbplanedata;
+          const BYTE* p_g = frame->GetReadPtr(PLANAR_G);;
+          const BYTE* p_b = frame->GetReadPtr(PLANAR_B);
+          const BYTE* p_r = frame->GetReadPtr(PLANAR_R);
+          fill_accum_rgb_planar_float_c(p_r, p_g, p_b, pitch, accum_r, accum_g, accum_b, w, h, rgbplanedata);
+
+          double avg_r = rgbplanedata.data[0].sum / pixels;
+          double avg_g = rgbplanedata.data[1].sum / pixels;
+          double avg_b = rgbplanedata.data[2].sum / pixels;
+
+          int Amin_r = 0, Amin_g = 0, Amin_b = 0;
+          int Amax_r = 0, Amax_g = 0, Amax_b = 0;
+          bool Ahit_minr = false, Ahit_ming = false, Ahit_minb = false;
+          bool Ahit_maxr = false, Ahit_maxg = false, Ahit_maxb = false;
+          int At_256 = (pixels + 128) / 256; // When 1/256th of all pixels have been reached, trigger "Loose min/max"
+
+          double st_r = 0, st_g = 0, st_b = 0;
+
+          for (int i = 0; i < analyze_lookup_size; i++) {
+            double i_float = i / 65535.0;
+            st_r += accum_r[i] * (i_float - avg_r) * (i_float - avg_r);
+            st_g += accum_g[i] * (i_float - avg_g) * (i_float - avg_g);
+            st_b += accum_b[i] * (i_float - avg_b) * (i_float - avg_b);
+
+            // loose min
+            if (!Ahit_minr) { Amin_r += accum_r[i]; if (Amin_r > At_256) { Ahit_minr = true; Amin_r = i; } }
+            if (!Ahit_ming) { Amin_g += accum_g[i]; if (Amin_g > At_256) { Ahit_ming = true; Amin_g = i; } }
+            if (!Ahit_minb) { Amin_b += accum_b[i]; if (Amin_b > At_256) { Ahit_minb = true; Amin_b = i; } }
+            // loose max
+            if (!Ahit_maxr) { Amax_r += accum_r[max_pixel_value_analyze - i]; if (Amax_r > At_256) { Ahit_maxr = true; Amax_r = max_pixel_value_analyze - i; } }
+            if (!Ahit_maxg) { Amax_g += accum_g[max_pixel_value_analyze - i]; if (Amax_g > At_256) { Ahit_maxg = true; Amax_g = max_pixel_value_analyze - i; } }
+            if (!Ahit_maxb) { Amax_b += accum_b[max_pixel_value_analyze - i]; if (Amax_b > At_256) { Ahit_maxb = true; Amax_b = max_pixel_value_analyze - i; } }
+          }
+
+          auto Fst_r = sqrt(st_r / pixels);
+          auto Fst_g = sqrt(st_g / pixels);
+          auto Fst_b = sqrt(st_b / pixels);
+
+          char text[512];
+          const bool StatsAsInteger16 = false;
+          if(StatsAsInteger16)
+            sprintf(text,
+              "At 16 bits.  Frame: %-8u (   Red   /  Green  /  Blue   )\n"
+              "           Average:      ( %7.2f / %7.2f / %7.2f )\n"
+              "Standard Deviation:      ( %7.2f / %7.2f / %7.2f )\n"
+              "           Minimum:      ( %7.2f / %7.2f / %7.2f )\n"
+              "           Maximum:      ( %7.2f / %7.2f / %7.2f )\n"
+              "     Loose Minimum:      ( %5d    / %5d    / %5d    )\n"
+              "     Loose Maximum:      ( %5d    / %5d    / %5d    )\n"
+              ,
+              (unsigned int)n,
+              avg_r * 65535, avg_g * 65535, avg_b * 65535,
+              Fst_r * 65535, Fst_g * 65535, Fst_b * 65535,
+              rgbplanedata.data[0].real_min * 65535, rgbplanedata.data[1].real_min * 65535, rgbplanedata.data[2].real_min * 65535,
+              rgbplanedata.data[0].real_max * 65535, rgbplanedata.data[1].real_max * 65535, rgbplanedata.data[2].real_max * 65535,
+              Amin_r, Amin_g, Amin_b,
+              Amax_r, Amax_g, Amax_b
+            );
+          else // stats as Float
+            sprintf(text,
+              "             Frame: %-8u (   Red   /  Green  /  Blue   )\n"
+              "           Average:      ( %7.5f / %7.5f / %7.5f )\n"
+              "Standard Deviation:      ( %7.5f / %7.5f / %7.5f )\n"
+              "           Minimum:      ( %7.5f / %7.5f / %7.5f )\n"
+              "           Maximum:      ( %7.5f / %7.5f / %7.5f )\n"
+              "     Loose Minimum:      ( %7.5f / %7.5f / %7.5f )\n"
+              "     Loose Maximum:      ( %7.5f / %7.5f / %7.5f )\n"
+              ,
+              (unsigned int)n,
+              avg_r, avg_g, avg_b,
+              Fst_r, Fst_g, Fst_b,
+              rgbplanedata.data[0].real_min, rgbplanedata.data[1].real_min, rgbplanedata.data[2].real_min,
+              rgbplanedata.data[0].real_max, rgbplanedata.data[1].real_max, rgbplanedata.data[2].real_max,
+              Amin_r / 65535.0, Amin_g / 65535.0, Amin_b / 65535.0,
+              Amax_r / 65535.0, Amax_g / 65535.0, Amax_b / 65535.0
+            );
+          env->ApplyMessage(&frame, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
         }
+        else {
 
-        int pixels = vi.width*vi.height;
-        float avg_r = 0, avg_g = 0, avg_b = 0;
-        float st_r = 0, st_g = 0, st_b = 0;
-        int min_r = 0, min_g = 0, min_b = 0;
-        int max_r = 0, max_g = 0, max_b = 0;
-        bool hit_r = false, hit_g = false, hit_b = false;
-        int Amin_r = 0, Amin_g = 0, Amin_b = 0;
-        int Amax_r = 0, Amax_g = 0, Amax_b = 0;
-        bool Ahit_minr = false, Ahit_ming = false, Ahit_minb = false;
-        bool Ahit_maxr = false, Ahit_maxg = false, Ahit_maxb = false;
-        int At_256 = (pixels + 128) / 256; // When 1/256th of all pixels have been reached, trigger "Loose min/max"
+          if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+          {
+            const BYTE* p_g = frame->GetReadPtr(PLANAR_G);;
+            const BYTE* p_b = frame->GetReadPtr(PLANAR_B);
+            const BYTE* p_r = frame->GetReadPtr(PLANAR_R);
+            if (bits_per_pixel == 8)
+              fill_accum_rgb_planar_c<uint8_t>(p_r, p_g, p_b, pitch, accum_r, accum_g, accum_b, w, h, max_pixel_value_analyze);
+            else if (bits_per_pixel <= 16)
+              fill_accum_rgb_planar_c<uint16_t>(p_r, p_g, p_b, pitch, accum_r, accum_g, accum_b, w, h, max_pixel_value_analyze);
+            else // 32 bit float
+              ;// handled in other branch;
+          }
+          else {
+            // packed RGB
+            const BYTE* srcp = frame->GetReadPtr();
+            const int pixel_step = vi.IsRGB24() || vi.IsRGB48() ? 3 : 4;
 
+            if (pixelsize == 1)
+              fill_accum_rgb_packed_c<uint8_t>(srcp, pitch, accum_r, accum_g, accum_b, w, h, pixel_step);
+            else
+              fill_accum_rgb_packed_c<uint16_t>(srcp, pitch, accum_r, accum_g, accum_b, w, h, pixel_step);
+          }
 
-        for (int i = 0; i < lookup_size; i++) {
-            avg_r += (float)accum_r[i] * (float)i;
-            avg_g += (float)accum_g[i] * (float)i;
-            avg_b += (float)accum_b[i] * (float)i;
+          double avg_r = 0, avg_g = 0, avg_b = 0;
+          double st_r = 0, st_g = 0, st_b = 0;
+          int min_r = 0, min_g = 0, min_b = 0;
+          int max_r = 0, max_g = 0, max_b = 0;
+          bool hit_r = false, hit_g = false, hit_b = false;
+          int Amin_r = 0, Amin_g = 0, Amin_b = 0;
+          int Amax_r = 0, Amax_g = 0, Amax_b = 0;
+          bool Ahit_minr = false, Ahit_ming = false, Ahit_minb = false;
+          bool Ahit_maxr = false, Ahit_maxg = false, Ahit_maxb = false;
+          int At_256 = (pixels + 128) / 256; // When 1/256th of all pixels have been reached, trigger "Loose min/max"
+
+          for (int i = 0; i < analyze_lookup_size; i++) {
+            avg_r += (double)accum_r[i] * i;
+            avg_g += (double)accum_g[i] * i;
+            avg_b += (double)accum_b[i] * i;
 
             if (accum_r[i] != 0) { max_r = i; hit_r = true; }
             else { if (!hit_r) min_r = i + 1; }
@@ -1275,44 +1399,64 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
             if (!Ahit_ming) { Amin_g += accum_g[i]; if (Amin_g > At_256) { Ahit_ming = true; Amin_g = i; } }
             if (!Ahit_minb) { Amin_b += accum_b[i]; if (Amin_b > At_256) { Ahit_minb = true; Amin_b = i; } }
 
-            if (!Ahit_maxr) { Amax_r += accum_r[pixel_max - i]; if (Amax_r > At_256) { Ahit_maxr = true; Amax_r = pixel_max - i; } }
-            if (!Ahit_maxg) { Amax_g += accum_g[pixel_max - i]; if (Amax_g > At_256) { Ahit_maxg = true; Amax_g = pixel_max - i; } }
-            if (!Ahit_maxb) { Amax_b += accum_b[pixel_max - i]; if (Amax_b > At_256) { Ahit_maxb = true; Amax_b = pixel_max - i; } }
+            if (!Ahit_maxr) { Amax_r += accum_r[max_pixel_value_analyze - i]; if (Amax_r > At_256) { Ahit_maxr = true; Amax_r = max_pixel_value_analyze - i; } }
+            if (!Ahit_maxg) { Amax_g += accum_g[max_pixel_value_analyze - i]; if (Amax_g > At_256) { Ahit_maxg = true; Amax_g = max_pixel_value_analyze - i; } }
+            if (!Ahit_maxb) { Amax_b += accum_b[max_pixel_value_analyze - i]; if (Amax_b > At_256) { Ahit_maxb = true; Amax_b = max_pixel_value_analyze - i; } }
+          }
+
+          float Favg_r = (float)(avg_r / pixels);
+          float Favg_g = (float)(avg_g / pixels);
+          float Favg_b = (float)(avg_b / pixels);
+
+          for (int i = 0; i < analyze_lookup_size; i++) {
+            st_r += (float)accum_r[i] * (float(i - Favg_r) * (i - Favg_r));
+            st_g += (float)accum_g[i] * (float(i - Favg_g) * (i - Favg_g));
+            st_b += (float)accum_b[i] * (float(i - Favg_b) * (i - Favg_b));
+          }
+
+          float Fst_r = (float)sqrt(st_r / pixels);
+          float Fst_g = (float)sqrt(st_g / pixels);
+          float Fst_b = (float)sqrt(st_b / pixels);
+
+          char text[512];
+          if (bits_per_pixel == 8)
+            sprintf(text,
+              "             Frame: %-8u (  Red  / Green / Blue  )\n"
+              "           Average:      ( %5.2f / %5.2f / %5.2f )\n"
+              "Standard Deviation:      ( %5.2f / %5.2f / %5.2f )\n"
+              "           Minimum:      ( %3d    / %3d    / %3d    )\n"
+              "           Maximum:      ( %3d    / %3d    / %3d    )\n"
+              "     Loose Minimum:      ( %3d    / %3d    / %3d    )\n"
+              "     Loose Maximum:      ( %3d    / %3d    / %3d    )\n"
+              ,
+              (unsigned int)n,
+              Favg_r, Favg_g, Favg_b,
+              Fst_r, Fst_g, Fst_b,
+              min_r, min_g, min_b,
+              max_r, max_g, max_b,
+              Amin_r, Amin_g, Amin_b,
+              Amax_r, Amax_g, Amax_b
+            );
+          else // if (bits_per_pixel <= 16)
+            sprintf(text,
+              "             Frame: %-8u (  Red  / Green / Blue  )\n"
+              "           Average:      ( %7.2f / %7.2f / %7.2f )\n"
+              "Standard Deviation:      ( %7.2f / %7.2f / %7.2f )\n"
+              "           Minimum:      ( %5d    / %5d    / %5d    )\n"
+              "           Maximum:      ( %5d    / %5d    / %5d    )\n"
+              "     Loose Minimum:      ( %5d    / %5d    / %5d    )\n"
+              "     Loose Maximum:      ( %5d    / %5d    / %5d    )\n"
+              ,
+              (unsigned int)n,
+              Favg_r, Favg_g, Favg_b,
+              Fst_r, Fst_g, Fst_b,
+              min_r, min_g, min_b,
+              max_r, max_g, max_b,
+              Amin_r, Amin_g, Amin_b,
+              Amax_r, Amax_g, Amax_b
+            );
+          env->ApplyMessage(&frame, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
         }
-
-        float Favg_r = avg_r / pixels;
-        float Favg_g = avg_g / pixels;
-        float Favg_b = avg_b / pixels;
-
-        for (int i = 0; i < lookup_size; i++) {
-            st_r += (float)accum_r[i] * (float(i - Favg_r)*(i - Favg_r));
-            st_g += (float)accum_g[i] * (float(i - Favg_g)*(i - Favg_g));
-            st_b += (float)accum_b[i] * (float(i - Favg_b)*(i - Favg_b));
-        }
-
-        float Fst_r = sqrt(st_r / pixels);
-        float Fst_g = sqrt(st_g / pixels);
-        float Fst_b = sqrt(st_b / pixels);
-
-        char text[512];
-        sprintf(text,
-            "             Frame: %-8u (  Red  / Green / Blue  )\n"
-            "           Average:      ( %7.2f / %7.2f / %7.2f )\n"
-            "Standard Deviation:      ( %7.2f / %7.2f / %7.2f )\n"
-            "           Minimum:      ( %3d    / %3d    / %3d    )\n"
-            "           Maximum:      ( %3d    / %3d    / %3d    )\n"
-            "     Loose Minimum:      ( %3d    / %3d    / %3d    )\n"
-            "     Loose Maximum:      ( %3d    / %3d    / %3d    )\n"
-            ,
-            (unsigned int)n,
-            Favg_r, Favg_g, Favg_b,
-            Fst_r, Fst_g, Fst_b,
-            min_r, min_g, min_b,
-            max_r, max_g, max_b,
-            Amin_r, Amin_g, Amin_b,
-            Amax_r, Amax_g, Amax_b
-        );
-        env->ApplyMessage(&frame, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
         env->Free(accum_r);
     }
     return frame;

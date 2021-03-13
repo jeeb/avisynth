@@ -129,6 +129,17 @@ struct RGBAdjustConfig
   RGBAdjustPlaneConfig rgba[4];
 };
 
+struct RGBPlaneStat
+{
+  double sum;
+  float real_min, real_max;
+};
+
+struct RGBStats
+{
+  RGBPlaneStat data[3];
+};
+
 class RGBAdjust : public GenericVideoFilter
 /**
   * Class for adjusting and analyzing colors in RGBA space
@@ -169,8 +180,6 @@ private:
   int real_lookup_size;
 
   float dither_strength;
-
-  unsigned int *accum_r, *accum_g, *accum_b;
 
   void CheckAndConvertParams(RGBAdjustConfig &config, IScriptEnvironment *env);
   void rgbadjust_create_lut(BYTE *lut_buf, const int plane, RGBAdjustConfig &config);
