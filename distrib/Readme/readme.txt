@@ -1,7 +1,72 @@
 Avisynth+
 
-20210313 WIP
+20210405 WIP
 ------------
+- Fix: frame property access from C interface
+  Unfortunately you cannot access frame properties with version <= 3.7, it will crash in those releases.
+
+  Test sequence:
+  
+  AVS_VideoFrame* AVSC_CC demoCfilter_get_frame(AVS_FilterInfo* p, int n)
+  {
+    AVS_VideoFrame* src = avs_get_frame(p->child, n);
+
+    avs_make_writable(p->env, &src);
+
+    // src is an AVS_VideoFrame* 
+    AVS_Map* avsmap;
+    avsmap = avs_get_frame_props_rw(p->env, src);
+    int error; // needed for error report, for now we'll ignore it
+    // read existing propery. For test, we set it by to 77 by propSet("TestIntKey", 77) in Avisynth script
+    int64_t testvalue = avs_prop_get_int(p->env, avsmap, "TestIntKey", 0, &error);
+
+    // set new frame properties (by using the just-read integer property)
+    avs_prop_set_int(p->env, avsmap, "TestIntKey2", testvalue * 2, AVS_PROPAPPENDMODE_REPLACE);
+    avs_prop_set_float(p->env, avsmap, "TestFloatKey2", (testvalue * 2.0f), AVS_PROPAPPENDMODE_REPLACE);
+    // store string (in general: any data), by specifying length = -1 we'll notify set_data to have strlen for getting its real size
+    avs_prop_set_data(p->env, avsmap, "TestStringKey2", "testStringvalue", -1, AVS_PROPAPPENDMODE_REPLACE);
+
+    // array test (double). Note: we can have double here, contrary to the fact that Avisynth scripts can handle only floats.
+    const double test_d_array[] = { 0.5, 1.1 };
+    avs_prop_set_float_array(p->env, avsmap, "TestFloatArray", test_d_array, 2);
+
+    // array test (integer). Note: we can have int64 here, contrary to the fact that Avisynth scripts can handle only 32 bit integers.
+    const int64_t test_i_array[] = { -1, 0, 1 };
+    avs_prop_set_int_array(p->env, avsmap, "TestIntArray", test_i_array, 3);
+
+    // read back the array size of a property (single properties are an 1-element arrays)
+    int numElementsOfIntArray = avs_prop_num_elements(p->env, avsmap, "TestIntArray");
+    avs_prop_set_int(p->env, avsmap, "TestNumElementsOfIntArray", numElementsOfIntArray, AVS_PROPAPPENDMODE_REPLACE);
+
+    // Int property array: read back one-by-one, mul by 2, and put into another array
+    int64_t test_i_array_clone[3];
+    for (auto i = 0; i < numElementsOfIntArray; i++) {
+      test_i_array_clone[i] = avs_prop_get_int(p->env, avsmap, "TestIntArray", i, &error) * 2;
+    }
+    avs_prop_set_int_array(p->env, avsmap, "TestIntArrayCloneMul2", test_i_array_clone, 3);
+    
+    // double property array read back as a whole, div by 3, and put into another array
+    int numElementsOfFloatArray = avs_prop_num_elements(p->env, avsmap, "TestFloatArray");
+    const double * tmpdarray = avs_prop_get_float_array(p->env, avsmap, "TestFloatArray", &error);
+    for (auto i = 0; i < numElementsOfFloatArray; i++) {
+      double tmp_d = tmpdarray[i] / 3.0;
+      // first element: replace frameprop data, next ones: append new element one by one
+      avs_prop_set_float(p->env, avsmap, "TestFloatArrayCloneDiv3", tmp_d, i == 0 ? AVS_PROPAPPENDMODE_REPLACE : AVS_PROPAPPENDMODE_APPEND);
+    }
+
+    // delete the key, we defined in Avisynth script
+    avs_prop_delete_key(p->env, avsmap, "TestIntKey");
+
+    // count all keys (frame property count) and put it into another frame property
+    int numOfKeys = avs_prop_num_keys(p->env, avsmap);
+    avs_prop_set_int(p->env, avsmap, "TestNumKeysWithoutThisOne", numOfKeys, AVS_PROPAPPENDMODE_REPLACE);
+
+    return src;
+
+  }
+
+
+- Fix: StackVertical and packed RGB formats: get audio and parity from the first and not the last clip
 - RGBAdjust: analyse=true 32 bit float support
 - experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
 - Fixes for building the core as a static library

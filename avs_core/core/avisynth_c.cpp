@@ -385,7 +385,7 @@ void AVSC_CC avs_copy_frame_props(AVS_ScriptEnvironment * p, const AVS_VideoFram
 {
   p->error = 0;
   try {
-    p->env->copyFrameProps(*(const PVideoFrame*)(src), *(PVideoFrame*)(dst));
+    p->env->copyFrameProps(*(const PVideoFrame*)&src, *(PVideoFrame*)&dst);
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -397,7 +397,7 @@ const AVS_Map * AVSC_CC avs_get_frame_props_ro(AVS_ScriptEnvironment * p, const 
 {
   p->error = 0;
   try {
-    return (const AVS_Map*)(p->env->getFramePropsRO(*(const PVideoFrame*)frame));
+    return (const AVS_Map*)(p->env->getFramePropsRO(*(const PVideoFrame*)&frame));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -410,7 +410,7 @@ AVS_Map * AVSC_CC avs_get_frame_props_rw(AVS_ScriptEnvironment * p, AVS_VideoFra
 {
   p->error = 0;
   try {
-    return (AVS_Map*)(p->env->getFramePropsRW(*(PVideoFrame*)frame));
+    return (AVS_Map*)(p->env->getFramePropsRW(*(PVideoFrame*)&frame));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
@@ -632,7 +632,7 @@ int AVSC_CC avs_prop_set_frame(AVS_ScriptEnvironment * p, AVS_Map * map, const c
   // length = -1 -> auto strlen
   p->error = 0;
   try {
-    return (p->env->propSetFrame((AVSMap*)map, key, *(PVideoFrame*)frame, append));
+    return (p->env->propSetFrame((AVSMap*)map, key, *(PVideoFrame*)&frame, append));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
