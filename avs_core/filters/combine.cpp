@@ -93,8 +93,14 @@ StackVertical::StackVertical(const std::vector<PClip>& child_array, IScriptEnvir
   }
 
   // reverse the order of the clips in RGB mode because it's upside-down
-  if (vi.IsRGB() && !vi.IsPlanarRGB() && !vi.IsPlanarRGBA())
+  if (vi.IsRGB() && !vi.IsPlanarRGB() && !vi.IsPlanarRGBA()) {
     std::reverse(children.begin(), children.end());
+    // get audio and parity from the first in the original list
+    firstchildindex = (int)children.size() - 1;
+  }
+  else {
+    firstchildindex = 0;
+  }
 }
 
 

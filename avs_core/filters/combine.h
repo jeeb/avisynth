@@ -50,13 +50,14 @@ class StackVertical : public IClip
 private:
   std::vector<PClip> children;
   VideoInfo vi;
+  int firstchildindex;
 
 public:
   StackVertical(const std::vector<PClip>& child_array, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   inline void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
-    children[0]->GetAudio(buf, start, count, env);
+    children[firstchildindex]->GetAudio(buf, start, count, env);
   }
 
   inline const VideoInfo& __stdcall GetVideoInfo() {
@@ -64,7 +65,7 @@ public:
   }
 
   inline bool __stdcall GetParity(int n) {
-    return children[0]->GetParity(n);
+    return children[firstchildindex]->GetParity(n);
   }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) {
