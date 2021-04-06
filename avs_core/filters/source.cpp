@@ -1746,9 +1746,35 @@ public:
       }
   };
 
+  void FillAudioZeros(void* buf, int start_offset, int count) {
+    const int bps = vi.BytesPerAudioSample();
+    unsigned char* byte_buf = (unsigned char*)buf;
+    memset(byte_buf + start_offset * bps, 0, count * bps);
+  }
+
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) {
     AVS_UNUSED(env);
 #if 1
+    // This filter is non-cached so we guard against negative start and overread, like in Cache::GetAudio
+    if ((start + count <= 0) || (start >= vi.num_audio_samples)) {
+      // Completely skip.
+      FillAudioZeros(buf, 0, (int)count);
+      count = 0;
+      return;
+    }
+
+    if (start < 0) {  // Partial initial skip
+      FillAudioZeros(buf, 0, (int)-start);  // Fill all samples before 0 with silence.
+      count += start;  // Subtract start bytes from count.
+      buf = ((BYTE*)buf) - (int)(start * vi.BytesPerAudioSample());
+      start = 0;
+    }
+
+    if (start + count > vi.num_audio_samples) {  // Partial ending skip
+      FillAudioZeros(buf, (int)(vi.num_audio_samples - start), (int)(count - (vi.num_audio_samples - start)));  // Fill end samples
+      count = (vi.num_audio_samples - start);
+    }
+
 	const int d_mod = vi.audio_samples_per_second*2;
 	float* samples = (float*)buf;
 
