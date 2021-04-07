@@ -1,7 +1,12 @@
 Avisynth+
 
-20210405 WIP
+20210407 WIP
 ------------
+- Fix: ConvertAudio integer 32-to-8 bits C code garbage (regression in 3.7)
+- ConvertAudio: Add direct Float from/to 8/16 conversions (C,SSE2,AVX2)
+- Fix: ConvertAudio: float to 32 bit integer conversion max value glitch (regression in 3.7)
+- Fix: Crash in ColorBars very first frame when followed by ResampleAudio
+  Colorbars did not tolerate negative audio sample index requests which can happen at the very first frame of ResampleAudio.
 - Fix: frame property access from C interface
   Unfortunately you cannot access frame properties with version <= 3.7, it will crash in those releases.
 

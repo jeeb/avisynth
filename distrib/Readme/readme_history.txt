@@ -4,9 +4,17 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210313 WIP
+20210407 WIP
 ------------
+- Fix: ConvertAudio integer 32-to-8 bits C code garbage (regression in 3.7)
+- ConvertAudio: Add direct Float from/to 8/16 conversions (C,SSE2,AVX2)
+- Fix: ConvertAudio: float to 32 bit integer conversion max value glitch (regression in 3.7)
+- Fix: Crash in ColorBars very first frame when followed by ResampleAudio
+- Fix: frame property access from C interface (for more info see readme.txt)
+- Fix: StackVertical and packed RGB formats: get audio and parity from the first and not the last clip
 - RGBAdjust: analyse=true 32 bit float support
+- experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
+- Fixes for building the core as a static library- RGBAdjust: analyse=true 32 bit float support
 - experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
 - Fixes for building the core as a static library
 
