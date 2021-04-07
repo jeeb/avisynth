@@ -8,14 +8,16 @@
 
 #include <avs/types.h>
 #include <avs/config.h>
-#include <tmmintrin.h> // SSSE3 at most
+#include <smmintrin.h> // SSE4.1 at most
 
 #if defined(GCC) || defined(CLANG)
   #define SSE2 __attribute__((__target__("sse2")))
   #define SSSE3 __attribute__((__target__("ssse3")))
+  #define SSE41 __attribute__((__target__("sse4.1")))
 #else
   #define SSE2
   #define SSSE3
+  #define SSE41
 #endif
 
 // Easy: 32-16, 16-32, 32-8, 8-32, 16-8, 8-16
@@ -535,31 +537,37 @@ SSE2 void convert32ToFLT_SSE2(void *inbuf, void *outbuf, int count) {
   }
 }
 
-SSE2 void convertFLTTo32_SSE2(void *inbuf, void *outbuf, int count) {
+SSE41 void convertFLTTo32_SSE41(void *inbuf, void *outbuf, int count) {
   auto in = reinterpret_cast<SFLOAT *>(inbuf);
   auto out = reinterpret_cast<int32_t *>(outbuf);
-  const float multiplier = 2147483648.0f;
-  const float max32 = 2147483647.0f;
-  const float min32 = -2147483648.0f;
+  constexpr float multiplier = 2147483648.0f;
+  constexpr float max32 = 2147483647.0f; // 2147483648.0f in reality
+  constexpr float min32 = -2147483648.0f;
 
   const int c_loop = count & ~3;
 
   for (int i = c_loop; i < count; i++) {
     float val = in[i] * multiplier;
-    if (val > max32) val = max32;
-    if (val < min32) val = min32;
-    out[i] = static_cast<int32_t>(val);
+    int32_t result;
+    if (val >= max32) result = 0x7FFFFFFF; // 2147483647
+    else if (val <= min32) result = 0x80000000; // -2147483648
+    else result = static_cast<int32_t>(val);
+    out[i] = result;
   }
 
   __m128 mulv = _mm_set1_ps(multiplier);
   __m128 maxv = _mm_set1_ps(max32);
   __m128 minv = _mm_set1_ps(min32);
+  __m128i maxv_i = _mm_set1_epi32(0x7FFFFFFF); // 2147483647
+  __m128i minv_i = _mm_set1_epi32(0x80000000); // -2147483648
   for (int i = 0; i < c_loop; i += 4) {
     __m128 infl = _mm_loadu_ps(in); in += 4;
     __m128 outfl = _mm_mul_ps(infl, mulv);
-    outfl = _mm_min_ps(outfl, maxv);
-    outfl = _mm_max_ps(outfl, minv);
+    __m128i cmphigh = _mm_castps_si128(_mm_cmpge_ps(outfl, maxv));
+    __m128i cmplow = _mm_castps_si128(_mm_cmpge_ps(minv, outfl));
     __m128i out32 = _mm_cvttps_epi32(outfl);
+    out32 = _mm_blendv_epi8(out32, maxv_i, cmphigh);
+    out32 = _mm_blendv_epi8(out32, minv_i, cmplow);
     _mm_storeu_si128(reinterpret_cast<__m128i *>(out), out32); out += 4;
   }
 }

@@ -86,27 +86,34 @@ void convertFLTTo32_AVX2(void *inbuf, void *outbuf, int count) {
   auto in = reinterpret_cast<SFLOAT *>(inbuf);
   auto out = reinterpret_cast<int32_t *>(outbuf);
   const float multiplier = 2147483648.0f;
-  const float max32 = 2147483647.0f;
+  const float max32 = 2147483647.0f; // 2147483648.0f in reality
   const float min32 = -2147483648.0f;
 
   const int c_loop = count & ~7;
 
   for (int i = c_loop; i < count; i++) {
     float val = in[i] * multiplier;
-    if (val > max32) val = max32;
-    if (val < min32) val = min32;
-    out[i] = static_cast<int32_t>(val);
+    int32_t result;
+    if (val >= max32) result = 0x7FFFFFFF; // 2147483647
+    else if (val <= min32) result = 0x80000000; // -2147483648
+    else result = static_cast<int32_t>(val);
+    out[i] = result;
   }
 
   __m256 mulv = _mm256_set1_ps(multiplier);
   __m256 maxv = _mm256_set1_ps(max32);
   __m256 minv = _mm256_set1_ps(min32);
+  __m256i maxv_i = _mm256_set1_epi32(0x7FFFFFFF); // 2147483647
+  __m256i minv_i = _mm256_set1_epi32(0x80000000); // -2147483648
   for (int i = 0; i < c_loop; i += 8) {
     __m256 infl = _mm256_loadu_ps(in); in += 8;
     __m256 outfl = _mm256_mul_ps(infl, mulv);
-    outfl = _mm256_min_ps(outfl, maxv);
-    outfl = _mm256_max_ps(outfl, minv);
+    __m256i cmphigh = _mm256_castps_si256(_mm256_cmp_ps(outfl, maxv, _CMP_GE_OS));
+    __m256i cmplow = _mm256_castps_si256(_mm256_cmp_ps(minv, outfl, _CMP_GE_OS));
     __m256i out32 = _mm256_cvttps_epi32(outfl);
+    out32 = _mm256_blendv_epi8(out32, maxv_i, cmphigh);
+    out32 = _mm256_blendv_epi8(out32, minv_i, cmplow);
+
     _mm256_storeu_si256(reinterpret_cast<__m256i *>(out), out32); out += 8;
   }
 

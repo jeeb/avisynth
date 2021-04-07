@@ -115,7 +115,7 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
       case PAIR(SAMPLE_INT24, SAMPLE_INT8 ): convert_ssse3 = convert24To8_SSSE3;  break;
       case PAIR(SAMPLE_INT8 , SAMPLE_INT24): convert_ssse3 = convert8To24_SSSE3;  break;
       case PAIR(SAMPLE_INT32, SAMPLE_FLOAT): convert_sse2  = convert32ToFLT_SSE2; convert_avx2 = convert32ToFLT_AVX2; break;
-      case PAIR(SAMPLE_FLOAT, SAMPLE_INT32): convert_sse2  = convertFLTTo32_SSE2; convert_avx2 = convertFLTTo32_AVX2; break;
+      case PAIR(SAMPLE_FLOAT, SAMPLE_INT32): convert_sse41 = convertFLTTo32_SSE41; convert_avx2 = convertFLTTo32_AVX2; break;
     }
   #endif
   #undef PAIR
@@ -154,11 +154,18 @@ void __stdcall ConvertAudio::GetAudio(void *buf, int64_t start, int64_t count, I
       if ((cpu_flags & CPUF_SSE2)) {
         if (convert_sse2)
           convert = convert_sse2;
-        convert_float = src_format == SAMPLE_FLOAT ? convertFLTTo32_SSE2 : convert32ToFLT_SSE2;
+        if (src_format != SAMPLE_FLOAT)
+          convert_float = convert32ToFLT_SSE2;
       }
       if ((cpu_flags & CPUF_SSSE3)) {
         if (convert_ssse3)
           convert = convert_ssse3;
+      }
+      if ((cpu_flags & CPUF_SSE4_1)) {
+        if (convert_sse41)
+          convert = convert_sse41;
+        if (src_format == SAMPLE_FLOAT)
+          convert_float = convertFLTTo32_SSE41;
       }
       if ((cpu_flags & CPUF_AVX2)) {
         if (convert_avx2)

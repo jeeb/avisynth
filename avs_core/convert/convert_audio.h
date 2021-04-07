@@ -71,7 +71,7 @@ CONVERT_DECLARE(convertFLTTo32);
   CONVERT_DECLARE(convert24To8_SSSE3);
   CONVERT_DECLARE(convert8To24_SSSE3);
   CONVERT_DECLARE(convert32ToFLT_SSE2);
-  CONVERT_DECLARE(convertFLTTo32_SSE2);
+  CONVERT_DECLARE(convertFLTTo32_SSE41);
 
   CONVERT_DECLARE(convert32To16_AVX2);
   CONVERT_DECLARE(convert16To32_AVX2);
@@ -114,6 +114,7 @@ private:
 #ifdef INTEL_INTRINSICS
   convert_proc convert_sse2 {nullptr};
   convert_proc convert_ssse3 {nullptr};
+  convert_proc convert_sse41 { nullptr };
   convert_proc convert_avx2 {nullptr};
 #endif
 
