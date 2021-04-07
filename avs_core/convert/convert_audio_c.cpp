@@ -61,13 +61,11 @@ void convert16To32(void *inbuf, void *outbuf, int count) {
   }
 }
 
-void convert32To8(void *inbuf, void *outbuf, int count) {
-  auto in8 = reinterpret_cast<int8_t *>(inbuf);
-  auto out = reinterpret_cast<uint8_t *>(outbuf);
+void convert32To8(void* inbuf, void* outbuf, int count) {
+  auto in8 = reinterpret_cast<int8_t*>(inbuf);
+  auto out = reinterpret_cast<uint8_t*>(outbuf);
 
-  const int c_loop = count & ~15;
-
-  for (int i = c_loop; i < count; i++)
+  for (int i = 0; i < count; i++)
     out[i] = in8[i * 4 + 3] + 128;
 }
 
