@@ -4,7 +4,7 @@
 // This file is part of Avisynth+ which is released under GPL2+ with exception.
 
 // Convert Audio helper functions (Pure C)
-// Copyright (c) 2020 Xinyue Lu
+// Copyright (c) 2020 Xinyue Lu, (c) 2021 pinterf
 
 #include <avs/types.h>
 
@@ -12,11 +12,11 @@
  *
  * |    From: | U 8 | S16 | S24 | S32 | FLT |
  * | To:      |     |     |     |     |     |
- * |  U 8     |  -  | CS  | CS  | CS  |     |
- * |  S16     | CS  |  -  | CS  | CSA |     |
+ * |  U 8     |  -  | CS  | CS  | CS  | CSA |
+ * |  S16     | CS  |  -  | CS  | CSA | CSA |
  * |  S24     | CS  | CS  |  -  | CS  |     |
  * |  S32     | CS  | CSA | CS  |  -  | CSA |
- * |  FLT     |     |     |     | CSA |  -  |
+ * |  FLT     | CSA | CSA |     | CSA |  -  |
  * 
  * * C = C, S = SSE2+, A = AVX2
  */
@@ -164,6 +164,88 @@ void convert8To24(void *inbuf, void *outbuf, int count) {
     out8[i * 3] = 0;
     out8[i * 3 + 1] = 0;
     out8[i * 3 + 2] = in[i] - 128;
+  }
+}
+
+void convert8ToFLT(void* inbuf, void* outbuf, int count) {
+  auto in = reinterpret_cast<uint8_t*>(inbuf);
+  auto out = reinterpret_cast<SFLOAT*>(outbuf);
+  constexpr float divisor = 1.0f / 128.f; // 1 << 7
+
+  for (int i = 0; i < count; i++)
+    out[i] = (in[i] - 128) * divisor;
+}
+
+void convertFLTTo8(void* inbuf, void* outbuf, int count) {
+  auto in = reinterpret_cast<SFLOAT*>(inbuf);
+  auto out = reinterpret_cast<uint8_t*>(outbuf);
+  constexpr float multiplier = 128.f;
+  constexpr float max8 = 127.f;
+  constexpr float min8 = -128.f;
+
+  for (int i = 0; i < count; i++) {
+    float val = in[i] * multiplier;
+    uint8_t result;
+    if (val >= max8) result = 255;
+    else if (val <= min8) result = 0;
+    else result = static_cast<int8_t>(val) + 128;
+    out[i] = result;
+  }
+}
+
+void convert16ToFLT(void* inbuf, void* outbuf, int count) {
+  auto in = reinterpret_cast<int16_t*>(inbuf);
+  auto out = reinterpret_cast<SFLOAT*>(outbuf);
+  constexpr float divisor = 1.0f / 32768.f; // 1 << 15
+
+  for (int i = 0; i < count; i++)
+    out[i] = in[i] * divisor;
+}
+
+void convertFLTTo16(void* inbuf, void* outbuf, int count) {
+  auto in = reinterpret_cast<SFLOAT*>(inbuf);
+  auto out = reinterpret_cast<int16_t*>(outbuf);
+  constexpr float multiplier = 32768.f;
+  constexpr float max16 = 32767.f;
+  constexpr float min16 = -32768.f;
+
+  for (int i = 0; i < count; i++) {
+    float val = in[i] * multiplier;
+    int16_t result;
+    if (val >= max16) result = 32767;
+    else if (val <= min16) result = (int16_t)-32768;
+    else result = static_cast<int16_t>(val);
+    out[i] = result;
+  }
+}
+
+// not yet used directly, 24 bit has 32 bit 2nd stage
+void convert24ToFLT(void* inbuf, void* outbuf, int count) {
+  auto in = reinterpret_cast<uint8_t*>(inbuf);
+  auto out = reinterpret_cast<SFLOAT*>(outbuf);
+  constexpr float divisor = 1.0f / 8388608.f; // 1 << 23
+
+  for (int i = 0; i < count; i++)
+    out[i] = (in[i * 3] | (in[i * 3 + 1] << 8) | (in[i * 3 + 2] << 16)) * divisor;
+}
+
+// not yet used directly, 24 bit has 32 bit 2nd stage
+void convertFLTTo24(void* inbuf, void* outbuf, int count) {
+  auto in = reinterpret_cast<SFLOAT*>(inbuf);
+  auto out = reinterpret_cast<uint8_t*>(outbuf);
+  constexpr float multiplier = 8388608.f;
+  constexpr float max24 = 8388607.f;
+  constexpr float min24 = -8388608.f;
+
+  for (int i = 0; i < count; i++) {
+    float val = in[i] * multiplier;
+    int32_t result;
+    if (val >= max24) result = 0x7FFFFF; // 8388607
+    else if (val <= min24) result = 0x800000; // -8388608
+    else result = static_cast<int32_t>(val);
+    out[i * 3 + 0] = result & 0xFF;
+    out[i * 3 + 1] = (result >> 8) & 0xFF;
+    out[i * 3 + 2] = (result >> 16) & 0xFF;
   }
 }
 

@@ -36,6 +36,7 @@
 // Copyright (c) Klaus Post 2001 - 2004
 // Copyright (c) Ian Brabham 2005
 // Copyright (c) 2020 Xinyue Lu
+// Copyright (c) 2021 pinterf
 
 #include <avisynth.h>
 #include <avs/alignment.h>
@@ -73,13 +74,9 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
 
   #define PAIR(src, dst) ((src << 16) | dst)
   switch(PAIR(src_format, dst_format)) {
-    case PAIR(SAMPLE_FLOAT, SAMPLE_INT16): two_stage = true; // no-break;
     case PAIR(SAMPLE_INT32, SAMPLE_INT16): convert_c = convert32To16; break;
-    case PAIR(SAMPLE_INT16, SAMPLE_FLOAT): two_stage = true; // no-break;
     case PAIR(SAMPLE_INT16, SAMPLE_INT32): convert_c = convert16To32; break;
-    case PAIR(SAMPLE_FLOAT, SAMPLE_INT8 ): two_stage = true; // no-break;
     case PAIR(SAMPLE_INT32, SAMPLE_INT8 ): convert_c = convert32To8; break;
-    case PAIR(SAMPLE_INT8 , SAMPLE_FLOAT): two_stage = true; // no-break;
     case PAIR(SAMPLE_INT8 , SAMPLE_INT32): convert_c = convert8To32; break;
     case PAIR(SAMPLE_INT16, SAMPLE_INT8 ): convert_c = convert16To8; break;
     case PAIR(SAMPLE_INT8 , SAMPLE_INT16): convert_c = convert8To16; break;
@@ -91,18 +88,18 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
     case PAIR(SAMPLE_INT16, SAMPLE_INT24): convert_c = convert16To24; break;
     case PAIR(SAMPLE_INT24, SAMPLE_INT8 ): convert_c = convert24To8; break;
     case PAIR(SAMPLE_INT8 , SAMPLE_INT24): convert_c = convert8To24; break;
+    case PAIR(SAMPLE_INT8 , SAMPLE_FLOAT): convert_c = convert8ToFLT; break;
+    case PAIR(SAMPLE_FLOAT, SAMPLE_INT8): convert_c = convertFLTTo8; break;
+    case PAIR(SAMPLE_INT16, SAMPLE_FLOAT): convert_c = convert16ToFLT; break;
+    case PAIR(SAMPLE_FLOAT, SAMPLE_INT16): convert_c = convertFLTTo16; break;
     case PAIR(SAMPLE_INT32, SAMPLE_FLOAT): convert_c = convert32ToFLT; break;
     case PAIR(SAMPLE_FLOAT, SAMPLE_INT32): convert_c = convertFLTTo32; break;
   }
   #ifdef INTEL_INTRINSICS
     switch(PAIR(src_format, dst_format)) {
-      case PAIR(SAMPLE_FLOAT, SAMPLE_INT16):
       case PAIR(SAMPLE_INT32, SAMPLE_INT16): convert_sse2  = convert32To16_SSE2;  convert_avx2 = convert32To16_AVX2;  break;
-      case PAIR(SAMPLE_INT16, SAMPLE_FLOAT):
       case PAIR(SAMPLE_INT16, SAMPLE_INT32): convert_sse2  = convert16To32_SSE2;  convert_avx2 = convert16To32_AVX2;  break;
-      case PAIR(SAMPLE_FLOAT, SAMPLE_INT8 ):
       case PAIR(SAMPLE_INT32, SAMPLE_INT8 ): convert_sse2  = convert32To8_SSE2;   break;
-      case PAIR(SAMPLE_INT8 , SAMPLE_FLOAT):
       case PAIR(SAMPLE_INT8 , SAMPLE_INT32): convert_sse2  = convert8To32_SSE2;   break;
       case PAIR(SAMPLE_INT16, SAMPLE_INT8 ): convert_sse2  = convert16To8_SSE2;   break;
       case PAIR(SAMPLE_INT8 , SAMPLE_INT16): convert_sse2  = convert8To16_SSE2;   break;
@@ -114,6 +111,10 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
       case PAIR(SAMPLE_INT16, SAMPLE_INT24): convert_ssse3 = convert16To24_SSSE3; break;
       case PAIR(SAMPLE_INT24, SAMPLE_INT8 ): convert_ssse3 = convert24To8_SSSE3;  break;
       case PAIR(SAMPLE_INT8 , SAMPLE_INT24): convert_ssse3 = convert8To24_SSSE3;  break;
+      case PAIR(SAMPLE_INT8 , SAMPLE_FLOAT): convert_sse41 = convert8ToFLT_SSE41; convert_avx2 = convert8ToFLT_AVX2; break;
+      case PAIR(SAMPLE_FLOAT, SAMPLE_INT8) : convert_sse2 = convertFLTTo8_SSE2; convert_avx2 = convertFLTTo8_AVX2; break;
+      case PAIR(SAMPLE_INT16, SAMPLE_FLOAT): convert_sse41 = convert16ToFLT_SSE41; convert_avx2 = convert16ToFLT_AVX2; break;
+      case PAIR(SAMPLE_FLOAT, SAMPLE_INT16): convert_sse2 = convertFLTTo16_SSE2; convert_avx2 = convertFLTTo16_AVX2; break;
       case PAIR(SAMPLE_INT32, SAMPLE_FLOAT): convert_sse2  = convert32ToFLT_SSE2; convert_avx2 = convert32ToFLT_AVX2; break;
       case PAIR(SAMPLE_FLOAT, SAMPLE_INT32): convert_sse41 = convertFLTTo32_SSE41; convert_avx2 = convertFLTTo32_AVX2; break;
     }
@@ -148,7 +149,7 @@ void __stdcall ConvertAudio::GetAudio(void *buf, int64_t start, int64_t count, I
 
   if (convert == nullptr) {
     convert = convert_c;
-    convert_float = src_format == SAMPLE_FLOAT ? convertFLTTo32 : convert32ToFLT;
+    convert_float = src_format == SAMPLE_FLOAT ? convertFLTTo32 : convert32ToFLT; // for two-stage
     #ifdef INTEL_INTRINSICS
       int cpu_flags = env->GetCPUFlags();
       if ((cpu_flags & CPUF_SSE2)) {
