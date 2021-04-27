@@ -51,6 +51,8 @@ set(archdetect_c_code "
     #else
         #error cmake_ARCH ppc
     #endif
+#elif defined(__riscv)
+    #error cmake_ARCH riscv
 #endif
 
 #error cmake_ARCH unknown
