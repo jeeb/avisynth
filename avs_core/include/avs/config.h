@@ -57,6 +57,8 @@
 #   define PPC64
 #elif defined(_M_PPC) || defined(__PPC__) || defined(__POWERPC__)
 #   define PPC32
+#elif defined(__riscv)
+#   define RISCV
 #else
 #   error Unsupported CPU architecture.
 #endif
