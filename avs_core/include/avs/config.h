@@ -59,6 +59,8 @@
 #   define PPC32
 #elif defined(__riscv)
 #   define RISCV
+#elif defined(__sparc_v9__)
+#   define SPARC
 #else
 #   error Unsupported CPU architecture.
 #endif
