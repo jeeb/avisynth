@@ -53,6 +53,8 @@ set(archdetect_c_code "
     #endif
 #elif defined(__riscv)
     #error cmake_ARCH riscv
+#elif defined(__sparc_v9__)
+    #error cmake_ARCH sparc
 #endif
 
 #error cmake_ARCH unknown
