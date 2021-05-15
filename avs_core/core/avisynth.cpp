@@ -2062,9 +2062,16 @@ static uint64_t posix_get_physical_memory() {
   ullTotalPhys = memsize;
 #elif defined(AVS_BSD)
   size_t len;
-  sysctlbyname("hw.physmem", nullptr, &len, nullptr, 0);
   int64_t memsize;
+#if !defined(__OpenBSD__)
+// OpenBSD doesn't have sysctlbyname at all, so this needs to be
+// ported to plain sysctl.
+  sysctlbyname("hw.physmem", nullptr, &len, nullptr, 0);
   sysctlbyname("hw.physmem", (void*)&memsize, &len, nullptr, 0);
+#else
+  sysctl((const int *)HW_PHYSMEM, 4, nullptr, &len, nullptr, 0);
+  sysctl((const int *)HW_PHYSMEM, 4, (void*)&memsize, &len, nullptr, 0);
+#endif
   ullTotalPhys = memsize;
 #elif defined(AVS_HAIKU)
   system_info sysinf;
@@ -2093,8 +2100,11 @@ static int64_t posix_get_available_memory() {
   host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info_t)&vmstats, &vmstatsz);
   nAvailablePhysicalPages = vmstats.free_count;
 #elif defined(AVS_BSD)
+#if !defined(__OpenBSD__)
+// OpenBSD does not have sysctlbyname
   size_t nAvailablePhysicalPagesLen = sizeof(nAvailablePhysicalPages);
   sysctlbyname("vm.stats.vm.v_free_count", &nAvailablePhysicalPages, &nAvailablePhysicalPagesLen, NULL, 0);
+#endif
 #elif defined(AVS_HAIKU)
   system_info sysinf;
   get_system_info(&sysinf);
@@ -2283,6 +2293,7 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 #else
+#if !defined(__OpenBSD__)
     // system_avs_plugindir relies on install path, it and user_avs_plugindir_configurable get
     // defined in avisynth_conf.h.in when configuring.
 
@@ -2293,6 +2304,7 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir(user_avs_plugindir, false);
     plugin_manager->AddAutoloadDir(user_avs_plugindir_configurable, false);
     plugin_manager->AddAutoloadDir(system_avs_plugindir, false);
+#endif
 #endif
 
     top_frame.Set("LOG_ERROR", (int)LOGLEVEL_ERROR);
