@@ -264,7 +264,7 @@ template void FromY410_c<true>(uint8_t* yptr, int ypitch, uint8_t* uptr, uint8_t
 
 // Helpers for 10 bit RGB -> Planar RGB
 
-static AVS_FORCEINLINE uint32_t swap32(uint32_t x) {
+static AVS_FORCEINLINE uint32_t avs_swap32(uint32_t x) {
   x = (x & 0x0000FFFFu) << 16 | (x & 0xFFFF0000u) >> 16;
   x = (x & 0x00FF00FFu) << 8 | (x & 0xFF00FF00u) >> 8;
   return x;
@@ -279,7 +279,7 @@ void From_r210_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      const uint32_t rgb = swap32(srcp[x]);
+      const uint32_t rgb = avs_swap32(srcp[x]);
       reinterpret_cast<uint16_t *>(bptr)[x] = (rgb >> 0) & 0x3FF;
       reinterpret_cast<uint16_t *>(gptr)[x] = (rgb >> 10) & 0x3FF;
       reinterpret_cast<uint16_t *>(rptr)[x] = (rgb >> 20) & 0x3FF;
@@ -300,7 +300,7 @@ void From_R10k_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      const uint32_t rgb = swap32(srcp[x]);
+      const uint32_t rgb = avs_swap32(srcp[x]);
       reinterpret_cast<uint16_t *>(bptr)[x] = (rgb >> 2) & 0x3FF;
       reinterpret_cast<uint16_t *>(gptr)[x] = (rgb >> 12) & 0x3FF;
       reinterpret_cast<uint16_t *>(rptr)[x] = (rgb >> 22) & 0x3FF;
@@ -314,7 +314,7 @@ void From_R10k_c(uint8_t *rptr, uint8_t *gptr, uint8_t *bptr, int pitch, uint8_t
 
 // Helpers for b64a <-> RGB64
 
-static AVS_FORCEINLINE uint64_t swap64(uint64_t x) {
+static AVS_FORCEINLINE uint64_t avs_swap64(uint64_t x) {
   x = (x & 0x00000000FFFFFFFFULL) << 32 | (x & 0xFFFFFFFF00000000ULL) >> 32;
   x = (x & 0x0000FFFF0000FFFFULL) << 16 | (x & 0xFFFF0000FFFF0000ULL) >> 16;
   x = (x & 0x00FF00FF00FF00FFULL) << 8 | (x & 0xFF00FF00FF00FF00ULL) >> 8;
@@ -347,7 +347,7 @@ static AVS_FORCEINLINE __m128i _mm_bswap_epi64_sse2(__m128i x)
 }
 #endif // INTEL_INTRINSICS
 
-static AVS_FORCEINLINE uint16_t swap16(uint16_t x) {
+static AVS_FORCEINLINE uint16_t avs_swap16(uint16_t x) {
   return (x & 0x00FF) << 8 | (x & 0xFF00) >> 8;
 }
 
@@ -361,9 +361,9 @@ void bgr_to_rgbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitc
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      uint16_t r = swap16(reinterpret_cast<const uint16_t *>(src)[x * 3 + 0]);
-      uint16_t g = swap16(reinterpret_cast<const uint16_t *>(src)[x * 3 + 1]);
-      uint16_t b = swap16(reinterpret_cast<const uint16_t *>(src)[x * 3 + 2]);
+      uint16_t r = avs_swap16(reinterpret_cast<const uint16_t *>(src)[x * 3 + 0]);
+      uint16_t g = avs_swap16(reinterpret_cast<const uint16_t *>(src)[x * 3 + 1]);
+      uint16_t b = avs_swap16(reinterpret_cast<const uint16_t *>(src)[x * 3 + 2]);
       reinterpret_cast<uint16_t*>(pdst)[x * 3 + 0] = b;
       reinterpret_cast<uint16_t*>(pdst)[x * 3 + 1] = g;
       reinterpret_cast<uint16_t*>(pdst)[x * 3 + 2] = r;
@@ -423,7 +423,7 @@ void bgra_to_argbBE_c(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpi
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       uint64_t a = reinterpret_cast<const uint64_t *>(src)[x]; // bgra -> argb+byte swap
-      a = swap64(a);
+      a = avs_swap64(a);
       reinterpret_cast<uint64_t*>(pdst)[x] = a;
     }
     src += srcpitch;
