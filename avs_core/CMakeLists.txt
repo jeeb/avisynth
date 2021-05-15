@@ -110,8 +110,13 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Haiku")
     set(SYSLIB "root")
     set(SYSLIBS "-lroot")
 else()
+if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+    set(SYSLIB "pthread")
+    set(SYSLIBS "-lpthread")
+else()
     set(SYSLIB "pthread" "dl")
     set(SYSLIBS "-lpthread -ldl")
+endif()
 endif()
 
 # Per-OS link dependencies
