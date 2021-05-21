@@ -239,15 +239,16 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
     for (int i=0; i<size; i+=4)
       *(uint32_t *)(p+i) = d;
   } else if (vi.IsRGB24()) {
-    const uint8_t color_b  = color_is_array ? clamp(colors[2], 0, max_pixel_value) : (uint8_t)(color & 0xFF);
-    const uint16_t color_rg = color_is_array ?
-                              ((clamp(colors[0], 0, max_pixel_value) << 8) | clamp(colors[1], 0, max_pixel_value)) :
-                              (uint16_t)(color >> 8);
+    const uint8_t color_b = color_is_array ? clamp(colors[2], 0, max_pixel_value) : (uint8_t)(color & 0xFF);
+    const uint8_t color_g = color_is_array ? clamp(colors[1], 0, max_pixel_value) : (uint8_t)(color >> 8);
+    const uint8_t color_r = color_is_array ? clamp(colors[0], 0, max_pixel_value) : (uint8_t)(color >> 16);
     const int rowsize = frame->GetRowSize();
     const int pitch = frame->GetPitch();
     for (int y=frame->GetHeight();y>0;y--) {
       for (int i=0; i<rowsize; i+=3) {
-        p[i] = color_b; *(uint16_t *)(p+i+1) = color_rg;
+        p[i] = color_g;
+        p[i+1] = color_b;
+        p[i+2] = color_r;
       }
       p+=pitch;
     }
