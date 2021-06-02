@@ -4,8 +4,11 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210407 WIP
+20210602 WIP
 ------------
+- Speedup: Overlay mode "multiply": overlay clip is not converted to 4:4:4 internally when 420 or 422 subsampled format 
+  (since only Y is used from that clip)
+- Speedup: Overlay mode "multiply": SSE4.1 and AVX2 code (was: C only), Proper rounding in internal calculations
 - Fix: ConvertAudio integer 32-to-8 bits C code garbage (regression in 3.7)
 - ConvertAudio: Add direct Float from/to 8/16 conversions (C,SSE2,AVX2)
 - Fix: ConvertAudio: float to 32 bit integer conversion max value glitch (regression in 3.7)

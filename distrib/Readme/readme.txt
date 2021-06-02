@@ -1,7 +1,27 @@
 Avisynth+
 
-20210407 WIP
+20210602 WIP
 ------------
+- Speedup: Overlay mode "multiply": overlay clip is not converted to 4:4:4 internally when 420 or 422 subsampled format 
+  (since only Y is used from that clip)
+- Speedup: Overlay mode "multiply": SSE4.1 and AVX2 code (was: C only)
+  Proper rounding in internal calculations
+
+  SSE4.1: ~1.2-2.5X speed, AVX2: ~2-3.5X speed (i7700 x64 single thread, depending on opacity full/not, mask clip yes/no)
+  # results for opacity:0.2 8/16 bit opacity:1.0 8/16 bit
+  Overlay(last, ovr, mask=mask, mode = "multiply", opacity = 0.2 /*or 1.0*/)
+  # 962/562/952/571 # new C
+  # 934/490/1080/596 # old c
+  # 1700/1370/1770/1350 # SSE4.1
+  # 3050/1850/3111/1876 # AVX2
+
+  # with no mask
+  Overlay(last, ovr, mode = "multiply", opacity = 0.2 /*or 1.0*/)
+  # 1330/800/2000/830 # new C
+  # 1200/830/2030/1200 # old C
+  # 2400/2055/2400/2060 # SSE4.1
+  # 3900/3000/4100/3220 # AVX2
+
 - Fix: ConvertAudio integer 32-to-8 bits C code garbage (regression in 3.7)
 - ConvertAudio: Add direct Float from/to 8/16 conversions (C,SSE2,AVX2)
 - Fix: ConvertAudio: float to 32 bit integer conversion max value glitch (regression in 3.7)
