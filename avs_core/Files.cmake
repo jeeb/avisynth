@@ -95,6 +95,7 @@ IF(ENABLE_INTEL_SIMD)
                                    "filters/overlay/OF_blend.cpp"
                                    "filters/overlay/OF_darken.cpp"
                                    "filters/overlay/overlayfunctions.h")
+  # do not remove filters/overlay/OF_multiply.cpp
   LIST(APPEND AvsCore_Sources "${Overlay_Cpu_Sources}")
 ENDIF()
 
