@@ -133,6 +133,9 @@ GenericVideoFilter(_child) {
     overlay = env->Invoke("ConvertToYUV422", AVSValue(new_args, 2)).AsClip();
     overlayVi = overlay->GetVideoInfo();
   }
+
+  SetOfModeByName(name, env); // setting of_mode, checks valid mode strings as well
+
   viInternalOverlayWorkingFormat = overlayVi;
 
   greymask = args[ARG_GREYMASK].AsBool(true);  // Grey mask, default true
@@ -223,6 +226,7 @@ GenericVideoFilter(_child) {
     // filters have to prepare to work for these formats
     viInternalWorkingFormat = vi;
   }
+
   viInternalOverlayWorkingFormat.pixel_type = viInternalWorkingFormat.pixel_type;
 
   // Set GetFrame's real output format
@@ -425,7 +429,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   int con_y_offset;
   FetchConditionals(env, &op_offset, &op_offset_f, &con_x_offset, &con_y_offset, ignore_conditional, condVarSuffix);
 
-  // always use avisynth converters
   AVSValue child2;
   PVideoFrame frame;
 
@@ -501,7 +504,12 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     Oframe = overlay->GetFrame(n, env);
   }
   else if (isInternal444) {
-    if (overlayVi.Is420()) {
+    if (of_mode == OF_Multiply)
+    {
+      // 'multiply' is always using only Y from overlay clip, no need to match chroma
+      Oframe = overlay->GetFrame(n, env);
+    }
+    else if (overlayVi.Is420()) {
       // use blazing fast YV12 -> YV24 converter. Note: not exact chroma placement
       PVideoFrame frame = overlay->GetFrame(n, env);
       Oframe = env->NewVideoFrameP(viInternalOverlayWorkingFormat, &frame);
@@ -532,19 +540,20 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     Oframe = overlay->GetFrame(n, env);
   }
   else if (isInternal420) {
-  if (overlayVi.Is420()) {
+    if (overlayVi.Is420()) {
       Oframe = overlay->GetFrame(n, env);
+    }
+    else if (overlayVi.Is444()) {
+      PVideoFrame frame = overlay->GetFrame(n, env);
+      Oframe = env->NewVideoFrameP(viInternalOverlayWorkingFormat, &frame);
+      // no fancy options for chroma resampler, etc.. simply fast
+      Convert444ToYV12(frame, Oframe, pixelsize, bits_per_pixel, env);
+    }
+    else {
+      env->ThrowError("Overlay: internal error, overlayVi must be 420 or 444 for internal420");
+    }
   }
-  else if (overlayVi.Is444()) {
-    PVideoFrame frame = overlay->GetFrame(n, env);
-    Oframe = env->NewVideoFrameP(viInternalOverlayWorkingFormat, &frame);
-    // no fancy options for chroma resampler, etc.. simply fast
-    Convert444ToYV12(frame, Oframe, pixelsize, bits_per_pixel, env);
-  }
-  else {
-    env->ThrowError("Overlay: internal error, overlayVi must be 420 or 444 for internal420");
-  }
-  } else if(isInternal422) {
+  else if (isInternal422) {
     if (overlayVi.Is422()) {
       Oframe = overlay->GetFrame(n, env);
     } 
@@ -559,7 +568,20 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     }
   }
   // Fetch current overlay and convert it to internal format
-  ImageOverlayInternal* overlayImg = new ImageOverlayInternal(Oframe, overlayVi.width, overlayVi.height, viInternalOverlayWorkingFormat, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), false, env);
+  VideoInfo actual_viInternalOverlayWorkingFormat = viInternalOverlayWorkingFormat;
+  if (of_mode == OF_Multiply) {
+    // this mode does not need chroma for Overlay
+    switch (bits_per_pixel) {
+    case 8: actual_viInternalOverlayWorkingFormat.pixel_type = VideoInfo::CS_Y8; break;
+    case 10: actual_viInternalOverlayWorkingFormat.pixel_type = VideoInfo::CS_Y10; break;
+    case 12: actual_viInternalOverlayWorkingFormat.pixel_type = VideoInfo::CS_Y12; break;
+    case 14: actual_viInternalOverlayWorkingFormat.pixel_type = VideoInfo::CS_Y14; break;
+    case 16: actual_viInternalOverlayWorkingFormat.pixel_type = VideoInfo::CS_Y16; break;
+    case 32: actual_viInternalOverlayWorkingFormat.pixel_type = VideoInfo::CS_Y32; break;
+    }
+  }
+
+  ImageOverlayInternal* overlayImg = new ImageOverlayInternal(Oframe, overlayVi.width, overlayVi.height, actual_viInternalOverlayWorkingFormat, overlay->GetVideoInfo().IsYUVA() || overlay->GetVideoInfo().IsPlanarRGBA(), false, env);
 
   // Clip overlay to original image
   ClipFrames(img, overlayImg, offset_x + con_x_offset, offset_y + con_y_offset);
@@ -637,7 +659,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
 
     }
 
-    OverlayFunction* func = SelectFunction(name, of_mode, env);
+    OverlayFunction* func = SelectFunction();
 
     // Process the image
     func->setMode(of_mode);
@@ -692,76 +714,64 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
  *   Helper functions    *
  *************************/
 
-
-OverlayFunction* Overlay::SelectFunction(const char* name, int &of_mode, IScriptEnvironment* env) {
+void Overlay::SetOfModeByName(const char* name, IScriptEnvironment* env) {
 
   if (!lstrcmpi(name, "Blend")) {
     of_mode = OF_Blend;
-    return new OL_BlendImage();
   }
-
-  if (!lstrcmpi(name, "Add")) {
+  else if (!lstrcmpi(name, "Add")) {
     of_mode = OF_Add;
-    return new OL_AddImage();
   }
-
-  if (!lstrcmpi(name, "Subtract")) {
+  else if (!lstrcmpi(name, "Subtract")) {
     of_mode = OF_Subtract;
-    //return new OL_SubtractImage();
-    return new OL_AddImage(); // common with Add
   }
-
-  if (!lstrcmpi(name, "Multiply")) {
+  else if (!lstrcmpi(name, "Multiply")) {
     of_mode = OF_Multiply;
-    return new OL_MultiplyImage();
   }
-
-  if (!lstrcmpi(name, "Chroma")) {
+  else if (!lstrcmpi(name, "Chroma")) {
     of_mode = OF_Chroma;
-    return new OL_BlendImage(); // Common with BlendImage. plane range differs of_mode checked inside
-    //return new OL_BlendChromaImage();
   }
-
-  if (!lstrcmpi(name, "Luma")) {
+  else if (!lstrcmpi(name, "Luma")) {
     of_mode = OF_Luma;
-    //return new OL_BlendLumaImage();
-    return new OL_BlendImage(); // Common with BlendImage. plane range differs of_mode checked inside
   }
-
-  if (!lstrcmpi(name, "Lighten")) {
+  else if (!lstrcmpi(name, "Lighten")) {
     of_mode = OF_Lighten;
-    //return new OL_LightenImage();
-    return new OL_DarkenImage(); // common with Darken
   }
-
-  if (!lstrcmpi(name, "Darken")) {
+  else if (!lstrcmpi(name, "Darken")) {
     of_mode = OF_Darken;
-    return new OL_DarkenImage();
   }
-
-  if (!lstrcmpi(name, "SoftLight")) {
+  else if (!lstrcmpi(name, "SoftLight")) {
     of_mode = OF_SoftLight;
-    return new OL_SoftLightImage();
   }
-
-  if (!lstrcmpi(name, "HardLight")) {
+  else if (!lstrcmpi(name, "HardLight")) {
     of_mode = OF_HardLight;
-    //return new OL_HardLightImage();
-    return new OL_SoftLightImage(); // Common with SoftLight
   }
-
-  if (!lstrcmpi(name, "Difference")) {
+  else if (!lstrcmpi(name, "Difference")) {
     of_mode = OF_Difference;
-    return new OL_DifferenceImage();
   }
-
-  if (!lstrcmpi(name, "Exclusion")) {
+  else if (!lstrcmpi(name, "Exclusion")) {
     of_mode = OF_Exclusion;
-    return new OL_ExclusionImage();
   }
+  else env->ThrowError("Overlay: Invalid 'Mode' specified.");
+}
 
-  env->ThrowError("Overlay: Invalid 'Mode' specified.");
-  return 0;
+OverlayFunction* Overlay::SelectFunction()
+{
+  switch (of_mode) {
+  case OF_Blend: return new OL_BlendImage();
+  case OF_Add: return new OL_AddImage();
+  case OF_Subtract: return new OL_AddImage(); // common with Add    //return new OL_SubtractImage();
+  case OF_Multiply: return new OL_MultiplyImage();
+  case OF_Chroma: return new OL_BlendImage(); // Common with BlendImage. plane range differs of_mode checked inside
+  case OF_Luma: return new OL_BlendImage(); // Common with BlendImage. plane range differs of_mode checked inside
+  case OF_Lighten: return new OL_DarkenImage(); // common with Darken
+  case OF_Darken: return new OL_DarkenImage();
+  case OF_SoftLight: return new OL_SoftLightImage();
+  case OF_HardLight: return new OL_SoftLightImage(); // Common with SoftLight
+  case OF_Difference: return new OL_DifferenceImage();
+  case OF_Exclusion: return new OL_ExclusionImage();
+  default: return nullptr; // cannot be
+  }
 }
 
 void Overlay::ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* overlay, int x, int y) {

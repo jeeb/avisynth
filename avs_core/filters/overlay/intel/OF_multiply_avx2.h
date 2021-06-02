@@ -32,73 +32,23 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-// Overlay (c) 2003, 2004 by Klaus Post
+#ifndef __of_multiply_avx2_h
+#define __of_multiply_avx2_h
 
-#ifndef __Overlay_h
-#define __Overlay_h
+#include <avs/types.h>
 
-#include <avisynth.h>
-#include "444convert.h"
-#include "overlayfunctions.h"
-#include "blend_common.h"
+template<typename pixel_t, bool opacity_is_full, bool has_mask>
+void of_multiply_avx2(
+  int bits_per_pixel,
+  const float opacity_f,
+  const int opacity,
+  int width, int height,
+  const pixel_t* ovY,
+  int overlaypitch,
+  pixel_t* baseY, pixel_t* baseU, pixel_t* baseV,
+  int basepitch,
+  const pixel_t* maskY, const pixel_t* maskU, const pixel_t* maskV,
+  int maskpitch
+);
 
-
-class Overlay : public GenericVideoFilter
-/**
-  *
-**/
-{
-public:
-  Overlay(PClip _child, AVSValue args, IScriptEnvironment *env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
-  ~Overlay();
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override
-  {
-    AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-private:
-  void SetOfModeByName(const char* name, IScriptEnvironment* env);
-  OverlayFunction* SelectFunction();
-  static void ClipFrames(ImageOverlayInternal* input, ImageOverlayInternal* overlay, int x, int y);
-  static void FetchConditionals(IScriptEnvironment* env, int*, float *, int*, int*, bool, const char *);
-
-  VideoInfo overlayVi;
-  VideoInfo maskVi;
-  VideoInfo inputVi;
-  VideoInfo outputVi;
-  VideoInfo viInternalWorkingFormat;
-  VideoInfo viInternalOverlayWorkingFormat; // different size
-
-  PClip overlay;
-  PClip mask;
-  int opacity;
-  float opacity_f;
-  bool greymask;
-  bool ignore_conditional;
-  bool full_range;
-  int offset_x, offset_y;
-  bool use444; // conversionless support
-  const char* condVarSuffix;
-
-  const char* name; // Blend parameter
-
-  int pixelsize;
-  int bits_per_pixel;
-  int of_mode;
-
-  const char* output_pixel_format_override;
-
-  bool isInternalRGB; // must be planar rgb
-  bool isInternalGrey;
-  bool isInternal444;
-  bool isInternal422;
-  bool isInternal420;
-
-};
-
-
-#endif //Overlay_h
+#endif // __of_multiply_avx2_h

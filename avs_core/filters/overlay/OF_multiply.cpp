@@ -38,7 +38,10 @@
 
 #include <stdint.h>
 #include <type_traits>
-
+#ifdef INTEL_INTRINSICS
+#include "intel/OF_multiply_sse.h"
+#include "intel/OF_multiply_avx2.h"
+#endif
 void OL_MultiplyImage::DoBlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
   if (bits_per_pixel == 8)
     BlendImageMask<uint8_t>(base, overlay, mask);
@@ -58,170 +61,287 @@ void OL_MultiplyImage::DoBlendImage(ImageOverlayInternal* base, ImageOverlayInte
   //  BlendImage<float>(base, overlay);
 }
 
-template<typename pixel_t>
-void OL_MultiplyImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
-  pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
-  pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
-  pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
+// mode multiply: Darkens the image in proportion to overlay lightness.
 
-  pixel_t* ovY = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_Y));
-  pixel_t* ovU = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_U));
-  pixel_t* ovV = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_V));
-
-  pixel_t* maskY = reinterpret_cast<pixel_t *>(mask->GetPtr(PLANAR_Y));
-  pixel_t* maskU = reinterpret_cast<pixel_t *>(mask->GetPtr(PLANAR_U));
-  pixel_t* maskV = reinterpret_cast<pixel_t *>(mask->GetPtr(PLANAR_V));
-
-  const int half_pixel_value_rounding = (sizeof(pixel_t) == 1) ? 128 : (1 << (bits_per_pixel - 1));
+template<typename pixel_t, bool opacity_is_full, bool has_mask>
+static void of_multiply_c(
+  int bits_per_pixel,
+  const float opacity_f,
+  const int opacity,
+  int width, int height,
+  const pixel_t* ovY,
+  int overlaypitch,
+  pixel_t* baseY, pixel_t* baseU, pixel_t* baseV,
+  int basepitch,
+  const pixel_t* maskY, const pixel_t* maskU, const pixel_t* maskV,
+  int maskpitch
+  )
+{
   const int max_pixel_value = (sizeof(pixel_t) == 1) ? 255 : (1 << bits_per_pixel) - 1;
+  const float factor = 1.0f / max_pixel_value;
+  const int half_i = 1 << (bits_per_pixel - 1);
+  const float half_f = (float)half_i;
+
+  float factor_mul_opacity;
+  if constexpr (opacity_is_full)
+    factor_mul_opacity = factor * 1.0f;
+  else
+    factor_mul_opacity = factor * opacity_f;
+
+  // start processing
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int Y, U, V;
+
+      // generic, 8-16 bits
+      // This part re-appears in SSE code (non mod4 end-of-line fragment in C)
+      // Unlike the old integer version here is proper rounding
+      const float overlay_opacity_minus1 = ovY[x] * factor - 1.0f;
+      if constexpr (has_mask) {
+        float final_opacity;
+
+        final_opacity = maskY[x] * factor_mul_opacity;
+        auto Yfactor = 1.0f + overlay_opacity_minus1 * final_opacity;
+        Y = (int)(baseY[x] * Yfactor + 0.5f);
+
+        final_opacity = maskU[x] * factor_mul_opacity;
+        auto Ufactor = 1.0f + overlay_opacity_minus1 * final_opacity;
+        U = (int)(((float)baseU[x] - half_f) * Ufactor + half_f + 0.5f);
+
+        final_opacity = maskV[x] * factor_mul_opacity;
+        auto Vfactor = 1.0f + overlay_opacity_minus1 * final_opacity;
+        V = (int)(((float)baseV[x] - half_f) * Vfactor + half_f + 0.5f);
+      }
+      else {
+        const float common_factor = 1.0f + overlay_opacity_minus1 * opacity_f;
+
+        auto Yfactor = common_factor;
+        Y = (int)((float)baseY[x] * Yfactor + 0.5f);
+
+        auto Ufactor = common_factor;
+        U = (int)(((float)baseU[x] - half_f) * Ufactor + half_f + 0.5f);
+
+        auto Vfactor = common_factor;
+        V = (int)(((float)baseV[x] - half_f) * Vfactor + half_f + 0.5f);
+
+      }
+
+      baseU[x] = (pixel_t)U;
+      baseV[x] = (pixel_t)V;
+      baseY[x] = (pixel_t)Y;
+    }
+
+    if constexpr (has_mask) {
+      maskY += maskpitch;
+      maskU += maskpitch;
+      maskV += maskpitch;
+    }
+
+    baseY += basepitch;
+    baseU += basepitch;
+    baseV += basepitch;
+
+    ovY += overlaypitch;
+
+  }
+}
+
+// old, integer-inside C version.
+// compared to the float-inside version, here is no proper rounding
+// 8 bit processing is quicker though
+template<typename pixel_t, bool opacity_is_full, bool has_mask>
+static void of_multiply_c_old(
+  int bits_per_pixel,
+  const float opacity_f,
+  const int opacity,
+  int width, int height,
+  const pixel_t* ovY,
+  int overlaypitch,
+  pixel_t* baseY, pixel_t* baseU, pixel_t* baseV,
+  int basepitch,
+  const pixel_t* maskY, const pixel_t* maskU, const pixel_t* maskV,
+  int maskpitch
+)
+{
+  const int max_pixel_value = (sizeof(pixel_t) == 1) ? 255 : (1 << bits_per_pixel) - 1;
+  const int chroma_half_corr = (sizeof(pixel_t) == 1) ? 128 : (1 << (bits_per_pixel - 1));
   const int pixel_range = max_pixel_value + 1;
   const int MASK_CORR_SHIFT = (sizeof(pixel_t) == 1) ? 8 : bits_per_pixel;
-  const int OPACITY_SHIFT  = 8; // opacity always max 0..256
+  const int inv_opacity = 256 - opacity;
+
+  // start processing
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int Y, U, V;
+
+      // for 8 bit, which is a bit quicker with integer arithmetics
+      // avoid "uint16*uint16 can't get into int32" overflows
+      typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, int64_t, float>::type >::type result_t;
+
+      if constexpr (has_mask) {
+        result_t overlay_Y = ovY[x];
+
+        int final_opacity;
+        result_t inverse_final_opacity;
+
+        if constexpr (opacity_is_full)
+          final_opacity = maskY[x];
+        else
+          final_opacity = (maskY[x] * opacity) >> 8;
+        inverse_final_opacity = pixel_range - final_opacity;
+        Y = (int)((baseY[x] * (pixel_range * inverse_final_opacity + (overlay_Y * final_opacity))) >> (MASK_CORR_SHIFT * 2));
+
+        if constexpr (opacity_is_full)
+          final_opacity = maskU[x];
+        else
+          final_opacity = (maskU[x] * opacity) >> 8;
+        inverse_final_opacity = pixel_range - final_opacity;
+        U = (int)(((baseU[x] * inverse_final_opacity * pixel_range) + (final_opacity * (baseU[x] * overlay_Y + chroma_half_corr * (pixel_range - overlay_Y)))) >> (MASK_CORR_SHIFT * 2));
+
+        if constexpr (opacity_is_full)
+          final_opacity = maskV[x];
+        else
+          final_opacity = (maskV[x] * opacity) >> 8;
+        inverse_final_opacity = pixel_range - final_opacity;
+        V = (int)(((baseV[x] * inverse_final_opacity * pixel_range) + (final_opacity * (baseV[x] * overlay_Y + chroma_half_corr * (pixel_range - overlay_Y)))) >> (MASK_CORR_SHIFT * 2));
+      }
+      else {
+        // no mask clip
+        if constexpr (opacity_is_full) {
+          result_t ovYx = ovY[x];
+          Y = (int)((baseY[x] * ovYx) >> MASK_CORR_SHIFT);
+          U = (int)((baseU[x] * ovYx + chroma_half_corr * (pixel_range - ovYx)) >> MASK_CORR_SHIFT);
+          V = (int)((baseV[x] * ovYx + chroma_half_corr * (pixel_range - ovYx)) >> MASK_CORR_SHIFT);
+        }
+        else {
+          result_t ovYx = ovY[x];
+          result_t baseYx = baseY[x];
+          Y = (int)((baseYx * (pixel_range * inv_opacity + (ovYx * opacity))) >> (MASK_CORR_SHIFT + 8));
+          result_t baseUx = baseU[x];
+          U = (int)(((baseUx * inv_opacity * pixel_range) + (opacity * (baseUx * ovYx + chroma_half_corr * (pixel_range - ovYx)))) >> (MASK_CORR_SHIFT + 8));
+          result_t baseVx = baseV[x];
+          V = (int)(((baseVx * inv_opacity * pixel_range) + (opacity * (baseVx * ovYx + chroma_half_corr * (pixel_range - ovYx)))) >> (MASK_CORR_SHIFT + 8));
+        }
+      }
+
+      baseU[x] = (pixel_t)U;
+      baseV[x] = (pixel_t)V;
+      baseY[x] = (pixel_t)Y;
+    }
+
+    if constexpr (has_mask) {
+      maskY += maskpitch;
+      maskU += maskpitch;
+      maskV += maskpitch;
+    }
+
+    baseY += basepitch;
+    baseU += basepitch;
+    baseV += basepitch;
+
+    ovY += overlaypitch;
+
+  }
+}
+
+// mode multiply: Darkens the image in proportion to overlay lightness.
+template<typename pixel_t>
+void OL_MultiplyImage::BlendImageMask(ImageOverlayInternal* base, ImageOverlayInternal* overlay, ImageOverlayInternal* mask) {
+  pixel_t* baseY = reinterpret_cast<pixel_t*>(base->GetPtr(PLANAR_Y));
+  pixel_t* baseU = reinterpret_cast<pixel_t*>(base->GetPtr(PLANAR_U));
+  pixel_t* baseV = reinterpret_cast<pixel_t*>(base->GetPtr(PLANAR_V));
+
+  pixel_t* ovY = reinterpret_cast<pixel_t*>(overlay->GetPtr(PLANAR_Y));
+
+  pixel_t* maskY = reinterpret_cast<pixel_t*>(mask->GetPtr(PLANAR_Y));
+  pixel_t* maskU = reinterpret_cast<pixel_t*>(mask->GetPtr(PLANAR_U));
+  pixel_t* maskV = reinterpret_cast<pixel_t*>(mask->GetPtr(PLANAR_V));
+
   const int basepitch = (base->pitch) / sizeof(pixel_t);
   const int overlaypitch = (overlay->pitch) / sizeof(pixel_t);
   const int maskpitch = (mask->pitch) / sizeof(pixel_t);
 
-  // avoid "uint16*uint16 can't get into int32" overflows
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, int64_t, float>::type >::type result_t;
-
   int w = base->w();
   int h = base->h();
-  if (opacity == 256) {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int op = maskY[x];
-        result_t invop = pixel_range - op;
-        result_t ovYx = ovY[x];
-        int Y = (int)((baseY[x] * (pixel_range*invop + (ovYx * op))) >> (MASK_CORR_SHIFT*2));
-
-        op = maskU[x];
-        invop = pixel_range - op;
-        int U = (int)(((baseU[x] * invop * pixel_range)  + (op * (baseU[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
-
-        op = maskV[x];
-        invop = pixel_range-op;
-        int V = (int)(((baseV[x] * invop * pixel_range)  + (op * (baseV[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
-
-        baseU[x] = (pixel_t)U;
-        baseV[x] = (pixel_t)V;
-        baseY[x] = (pixel_t)Y;
-      }
-      maskY += maskpitch;
-      maskU += maskpitch;
-      maskV += maskpitch;
-
-      baseY += basepitch;
-      baseU += basepitch;
-      baseV += basepitch;
-
-      ovY += overlaypitch;
-      ovU += overlaypitch;
-      ovV += overlaypitch;
-
+#ifdef INTEL_INTRINSICS
+  if (!!(env->GetCPUFlags() & CPUF_AVX2))
+  {
+    if (opacity == 256)
+      of_multiply_avx2<pixel_t, true, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
+    else
+      of_multiply_avx2<pixel_t, false, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
+  }
+  else if (!!(env->GetCPUFlags() & CPUF_SSE4_1))
+  {
+    if (opacity == 256)
+      of_multiply_sse41<pixel_t, true, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
+    else
+      of_multiply_sse41<pixel_t, false, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
+  }
+  else
+#endif
+  {
+    // old integer C code: 8 bit is quicker than float-based
+    if (sizeof(pixel_t) == 1) {
+      if (opacity == 256)
+        of_multiply_c_old<pixel_t, true, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
+      else
+        of_multiply_c_old<pixel_t, false, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
     }
-  } else {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int op = (maskY[x]*opacity)>>OPACITY_SHIFT;
-        result_t invop = pixel_range - op;
-        result_t ovYx = ovY[x];
-        int Y = (int)((baseY[x] * (pixel_range*invop + (ovYx * op))) >> (MASK_CORR_SHIFT*2));
-
-        op = (maskU[x]*opacity)>>OPACITY_SHIFT;
-        invop = pixel_range - op;
-        int U = (int)(((baseU[x] * invop * pixel_range)  + (op * (baseU[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
-
-        op = (maskV[x]*opacity)>>OPACITY_SHIFT;
-        invop = pixel_range-op;
-        int V = (int)(((baseV[x] * invop * pixel_range)  + (op * (baseV[x] * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT*2));
-
-        baseU[x] = (pixel_t)U;
-        baseV[x] = (pixel_t)V;
-        baseY[x] = (pixel_t)Y;
-      }
-      baseY += basepitch;
-      baseU += basepitch;
-      baseV += basepitch;
-
-      ovY += overlaypitch;
-      ovU += overlaypitch;
-      ovV += overlaypitch;
-
-      maskY += maskpitch;
-      maskU += maskpitch;
-      maskV += maskpitch;
+    else {
+      if (opacity == 256)
+        of_multiply_c<pixel_t, true, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
+      else
+        of_multiply_c<pixel_t, false, true>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, maskY, maskU, maskV, maskpitch);
     }
   }
-
 }
 
+// no mask involved
 template<typename pixel_t>
 void OL_MultiplyImage::BlendImage(ImageOverlayInternal* base, ImageOverlayInternal* overlay) {
+  pixel_t* baseY = reinterpret_cast<pixel_t*>(base->GetPtr(PLANAR_Y));
+  pixel_t* baseU = reinterpret_cast<pixel_t*>(base->GetPtr(PLANAR_U));
+  pixel_t* baseV = reinterpret_cast<pixel_t*>(base->GetPtr(PLANAR_V));
 
-  pixel_t* baseY = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_Y));
-  pixel_t* baseU = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_U));
-  pixel_t* baseV = reinterpret_cast<pixel_t *>(base->GetPtr(PLANAR_V));
+  pixel_t* ovY = reinterpret_cast<pixel_t*>(overlay->GetPtr(PLANAR_Y));
 
-  pixel_t* ovY = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_Y));
-  pixel_t* ovU = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_U));
-  pixel_t* ovV = reinterpret_cast<pixel_t *>(overlay->GetPtr(PLANAR_V));
-
-  const int half_pixel_value_rounding = (sizeof(pixel_t) == 1) ? 128 : (1 << (bits_per_pixel - 1));
-  const int max_pixel_value = (sizeof(pixel_t) == 1) ? 255 : (1 << bits_per_pixel) - 1;
-  const int pixel_range = max_pixel_value + 1;
-  const int MASK_CORR_SHIFT = (sizeof(pixel_t) == 1) ? 8 : bits_per_pixel;
-  const int OPACITY_SHIFT  = 8; // opacity always max 0..256
   const int basepitch = (base->pitch) / sizeof(pixel_t);
   const int overlaypitch = (overlay->pitch) / sizeof(pixel_t);
 
-  // avoid "uint16*uint16 can't get into int32" overflows
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, int64_t, float>::type >::type result_t;
-
   int w = base->w();
   int h = base->h();
-  if (opacity == 256) {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        result_t ovYx = ovY[x];
-        int Y = (int)((baseY[x] * ovYx) >> MASK_CORR_SHIFT);
-        int U = (int)((baseU[x] * ovYx + half_pixel_value_rounding * (pixel_range - ovYx)) >> MASK_CORR_SHIFT);
-        int V = (int)((baseV[x] * ovYx + half_pixel_value_rounding * (pixel_range - ovYx)) >> MASK_CORR_SHIFT);
-        baseY[x] = (pixel_t)Y;
-        baseU[x] = (pixel_t)U;
-        baseV[x] = (pixel_t)V;
-      }
-      baseY += basepitch;
-      baseU += basepitch;
-      baseV += basepitch;
-
-      ovY += overlaypitch;
-      ovU += overlaypitch;
-      ovV += overlaypitch;
-
+#ifdef INTEL_INTRINSICS
+  if (!!(env->GetCPUFlags() & CPUF_AVX2))
+  {
+    if (opacity == 256)
+      of_multiply_avx2<pixel_t, true, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
+    else
+      of_multiply_avx2<pixel_t, false, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
+  }
+  else if (!!(env->GetCPUFlags() & CPUF_SSE4_1))
+  {
+    if (opacity == 256)
+      of_multiply_sse41<pixel_t, true, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
+    else
+      of_multiply_sse41<pixel_t, false, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
+  }
+  else
+#endif
+  {
+    if (sizeof(pixel_t) == 1) {
+      // old integer C code: 8 bit is quicker than float-based
+      if (opacity == 256)
+        of_multiply_c_old<pixel_t, true, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
+      else
+        of_multiply_c_old<pixel_t, false, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
     }
-  } else {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        result_t ovYx = ovY[x];
-        result_t baseYx = baseY[x];
-        int Y = (int)((baseYx * (pixel_range*inv_opacity + (ovYx * opacity))) >> (MASK_CORR_SHIFT+OPACITY_SHIFT));
-        result_t baseUx = baseU[x];
-        int U = (int)(((baseUx * inv_opacity * pixel_range)  + (opacity * (baseUx * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT+OPACITY_SHIFT));
-        result_t baseVx = baseV[x];
-        int V = (int)(((baseVx * inv_opacity * pixel_range)  + (opacity * (baseVx * ovYx + half_pixel_value_rounding * (pixel_range-ovYx)))) >> (MASK_CORR_SHIFT+OPACITY_SHIFT));
-
-        baseU[x] = (pixel_t)U;
-        baseV[x] = (pixel_t)V;
-        baseY[x] = (pixel_t)Y;
-      }
-      baseY += basepitch;
-      baseU += basepitch;
-      baseV += basepitch;
-
-      ovY += overlaypitch;
-      ovU += overlaypitch;
-      ovV += overlaypitch;
+    else {
+      if (opacity == 256)
+        of_multiply_c<pixel_t, true, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
+      else
+        of_multiply_c<pixel_t, false, false>(bits_per_pixel, opacity_f, opacity, w, h, ovY, overlaypitch, baseY, baseU, baseV, basepitch, nullptr, nullptr, nullptr, 0);
     }
+
   }
 }
-
