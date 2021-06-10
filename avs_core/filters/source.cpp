@@ -594,7 +594,7 @@ static void draw_colorbars_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int pit
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type factor_t; // float support
   factor_t factor = (pixel_t)(sizeof(pixel_t) == 4 ? 1 / 255.0f : 1);
 
-  //                                              LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
+  //                                              LtGrey  Yellow    Cyan   Green Magenta     Red    Blue (all 75%, BT.601)
   static const BYTE top_two_thirdsY[] = { 0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
   static const BYTE top_two_thirdsU[] = { 0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
   static const BYTE top_two_thirdsV[] = { 0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
@@ -877,7 +877,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
   const int p1 = h - p23 * 2 - p4; // remaining 7/12th of height
 
   //               75%  Rec709 -- Grey40 Grey75 Yellow  Cyan   Green Magenta  Red   Blue
-  static const BYTE pattern1Y[] = { 104,   180,   168,   145,   134,    63,    51,    28 };
+  static const BYTE pattern1Y[] = { 104,   180,   168,   145,   133,    63,    51,    28 };
   static const BYTE pattern1U[] = { 128,   128,    44,   147,    63,   193,   109,   212 };
   static const BYTE pattern1V[] = { 128,   128,   136,    44,    52,   204,   212,   120 };
   for (; y < p1; ++y) { // Pattern 1
@@ -920,9 +920,9 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
     pY += pitchY; pU += pitchUV; pV += pitchUV;
   }
   //              100% Rec709       Cyan  Blue Yellow  Red    +I Grey75  White
-  static const BYTE pattern23Y[] = { 188,   32,  219,   63,   16,  180,  235 };
-  static const BYTE pattern23U[] = { 154,  240,   16,  102,   98,  128,  128 };
-  static const BYTE pattern23V[] = {  16,  118,  138,  240,  161,  128,  128 };
+  static const BYTE pattern23Y[] = { 188,   32,  219,   63,   61,  180,  235 };
+  static const BYTE pattern23U[] = { 154,  240,   16,  102,  103,  128,  128 };
+  static const BYTE pattern23V[] = {  16,  118,  138,  240,  157,  128,  128 };
   for (; y < p1 + p23; ++y) { // Pattern 2
     int x = 0;
     for (; x < d; ++x) {
@@ -1079,8 +1079,8 @@ static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
 
   // note we go bottom->top
   static const uint32_t bottom_quarter[] =
-  // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
-  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+  // RGB[16..235]     -I     white        +Q     Black     -4% Black     Black     +4% Black     Black
+  { 0x10466a, 0xebebeb, 0x481076, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
 
   int y = 0;
 
@@ -1139,8 +1139,8 @@ static void draw_colorbars_rgb2448(uint8_t* p8, int pitch, int w, int h)
 
   // note we go bottom->top
   static const uint32_t bottom_quarter[] =
-    // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
-  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+    // RGB[16..235]     -I     white        +Q     Black     -4% Black     Black     +4% Black     Black
+  { 0x10466a, 0xebebeb, 0x481076, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
 
   int y = 0;
 
@@ -1225,8 +1225,8 @@ static void draw_colorbars_rgbp(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int pi
   pB += (h - 1)*pitch;
 
   static const uint32_t bottom_quarter[] =
-    // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
-  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+    // RGB[16..235]     -I     white        +Q     Black     -4% Black     Black     +4% Black     Black
+  { 0x10466a, 0xebebeb, 0x481076, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
 
   int y = 0;
 
