@@ -867,6 +867,77 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
 //		1288 x  720 <- default
 //		1456 x 1080  hd anamorphic
 //		1904 x 1080
+/*
+  ARIB STD-B28  Version 1.0-E1
+
+  *1: 75W/100W/I+: Choice from 75% white, 100% white and +I signal
+  *2: can be changed to any value other than the standard values in accordance with the operation purpose by the user
+
+              |<-------------------------------------------------------- a -------------------------------------------------->|
+              |             |<------------------------------------------3/4 a --------------------------------->|             |
+              |<---- d ---->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<---- d ---->|
+
+              +-------------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+  -----------
+              |             |           |           |           |           |           |           |           |             |      ^   ^
+              |             |           |           |           |           |           |           |           |             |      |   |
+Pattern 1     |     40%     |    75%    |    75%    |    75%    |    75%    |    75%    |    75%    |    75%    |    40%      |      |   |
+              |    Grey     |   White   |   Yellow  |   Cyan    |   Green   |  Magenta  |   Red     |   Blue    |    Grey     | 7/12b|   |
+              |     *2      |           |           |           |           |           |           |           |    *2       |      |   |
+              |             |           |           |           |           |           |           |           |             |      V   |
+              +-------------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+ -------  |
+Pattern 2     | 100% Cyan   |75W/100W/I+|                          75% white (chroma set signal)                | 100% blue   | 1/12b|   | b
+              +-------------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+ ------   |
+Pattern 3     | 100% Yellow |                                       Y ramp                                      | 100% red    | 1/12b|   |
+              +-------------+-----------------+-----------+-----------+-------+----+----+---+---+---+-----------+-------------+ -------  |
+              |     *2      |                 |                       |       |    |    |   |   |   |           |      *2     |      ^   |
+Pattern 4     |     15%     |        0%       |          100%         |   0%  |-2% | 0  |+2%| 0 |+4%|     0%    |     15%     | 3/12 |   |
+              |    Grey     |       Black     |         White         | Black |    |    |   |   |   |   Black   |    Grey     |  b   V   V
+              +-------------+-----------------+-----------+-----------+-------+----+----+---+---+---+-----------+-------------+  -----------
+
+              |<---- d ---->|<---- 3/2 c ---->|<--------- 2c -------->|<5/6c->|1/3c|1/3c|1/3|1/3|1/3|<--- c --->|<---- d ---->|
+
+              a:b = 16:9
+
+
+  2021: SMPTE RP 219-1:2014
+  *1: can be changed to any value other than the standard values in accordance with the operation purpose by the user
+  *2: 75W/100W/+I/-I: Choice from 75% white, 100% white and +I or -I signal
+  *3: 0% Black or +Q (Left from Y ramp)
+  *4: can be changed to any value other than the standard values in accordance with the operation purpose by the user
+  *5: Choice from 0% Black, Sub-black valley
+      The sub-black valley signal shall begin at the 0% black level, shall decrease in a linear ramp to the minimum permitted level at the mid-point,
+      and shall increase in a linear ramp to the 0% black level at the end of the black bar.
+  *6: Choice from 100% White, Super-white Peak
+      The super-white peak signal shall begin at the 100% white level, shall increase in a linear ramp to the maximum permitted level at the midpoint, 
+      and shall decrease in a linear ramp to the 100% white level at the end of the white bar. 
+
+                            |<-------------------------------------------------------- a -------------------------------------------------->|
+              |             |<------------------------------------------3/4 a --------------------------------->|             |
+              |<---- d ---->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<--- c --->|<---- d ---->|
+
+              +-------------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+  -----------
+              |             |           |           |           |           |           |           |           |             |      ^   ^
+              |             |           |           |           |           |           |           |           |             |      |   |
+Pattern 1     |     40%     |    75%    |    75%    |    75%    |    75%    |    75%    |    75%    |    75%    |    40%      |      |   |
+              |    Grey     |   White   |   Yellow  |   Cyan    |   Green   |  Magenta  |   Red     |   Blue    |    Grey     | 7/12b|   |
+              |     *1      |           |           |           |           |           |           |           |    *1       |      |   |
+              |             |           |           |           |           |           |           |           |             |      V   |
+              +-------------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+ -------  |
+Pattern 2     | 100% Cyan   |75/100W/I-+|                          75% white (chroma set signal)                | 100% blue   | 1/12b|   | b
+              +-------------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+ ------   |
+Pattern 3     | 100% Yellow |0%Blk or +Q|                           Y ramp                          | 100% White| 100% red    | 1/12b|   |
+              +-------------+-----------+-----+-----------+-----------+-------+----+----+---+---+---+-----------+-------------+ -------  |
+              |     *4      |   0% Black    *5|      100% White     *6|       |    |    |   |   |   |           |      *4     |      ^   |
+Pattern 4     |     15%     |0% Blk or SubBlck|100%White/SuperWhtePeak|   0%  |-2% | 0  |+2%| 0 |+4%|     0%    |     15%     | 3/12 |   |
+              |    Grey     |   0%  Black     |      100% White       | Black |    |    |   |   |   |   Black   |    Grey     |  b   V   V
+              +-------------+-----------------+-----------+-----------+-------+----+----+---+---+---+-----------+-------------+  -----------
+
+              |<---- d ---->|<---- 3/2 c ---->|<--------- 2c -------->|<5/6c->|1/3c|1/3c|1/3|1/3|1/3|<--- c --->|<---- d ---->|
+
+              a:b = 16:9
+
+*/
+
   int y = 0;
 
   const int c = (w * 3 + 14) / 28; // 1/7th of 3/4 of width
@@ -984,6 +1055,7 @@ static void draw_colorbarsHD_444(uint8_t *pY8, uint8_t *pU8, uint8_t *pV8, int p
         pV[x] = factor * (pattern23V[2] << shift);
       }
     }
+    // FIXME: Y-ramp to conform SMPTE RP 219-1:2014, put 0% Black before and 100% White after
     for (int j = 0; j < c * 7; ++j, ++x) { // Y-Ramp
       pY[x] = pixel_t(factor*(16 << shift) + (factor * (220 << shift) * j) / (c * 7));
       if constexpr(sizeof(pixel_t) == 4) {
@@ -1069,6 +1141,17 @@ static uint64_t rgbcolor32to64(uint32_t color32_8)
     );
 }
 
+// Studio RGB constants for ColorBars
+static const uint32_t bottom_quarter[] =
+// RGB[16..235]     -I     white        +Q     Black     -4% Black     Black     +4% Black     Black
+{ 0x10466a, 0xebebeb, 0x481076, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
+static const int two_thirds_to_three_quarters[] =
+// RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
+{ 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
+static const int top_two_thirds[] =
+// RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
+{ 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
+
 template<typename pixel_t>
 static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
 {
@@ -1078,9 +1161,6 @@ static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
   pitch /= sizeof(pixel_t);
 
   // note we go bottom->top
-  static const uint32_t bottom_quarter[] =
-  // RGB[16..235]     -I     white        +Q     Black     -4% Black     Black     +4% Black     Black
-  { 0x10466a, 0xebebeb, 0x481076, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
 
   int y = 0;
 
@@ -1104,9 +1184,6 @@ static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
     p += pitch;
   }
 
-  static const int two_thirds_to_three_quarters[] =
-  // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
-  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
   for (; y < h / 3; ++y) {
     int x = 0;
     for (int i = 0; i < 7; ++i) {
@@ -1116,9 +1193,6 @@ static void draw_colorbars_rgb3264(uint8_t *p8, int pitch, int w, int h)
     p += pitch;
   }
 
-  static const int top_two_thirds[] =
-  // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
-  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
   for (; y < h; ++y) {
     int x = 0;
     for (int i = 0; i < 7; ++i) {
@@ -1138,10 +1212,6 @@ static void draw_colorbars_rgb2448(uint8_t* p8, int pitch, int w, int h)
   pitch /= sizeof(pixel_t);
 
   // note we go bottom->top
-  static const uint32_t bottom_quarter[] =
-    // RGB[16..235]     -I     white        +Q     Black     -4% Black     Black     +4% Black     Black
-  { 0x10466a, 0xebebeb, 0x481076, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
-
   int y = 0;
 
   constexpr bool isRGB24 = sizeof(pixel_t) == 1;
@@ -1175,9 +1245,6 @@ static void draw_colorbars_rgb2448(uint8_t* p8, int pitch, int w, int h)
     p += pitch;
   }
 
-  static const int two_thirds_to_three_quarters[] =
-    // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
-  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
   for (; y < h / 3; ++y) {
     int x = 0;
     for (int i = 0; i < 7; ++i) {
@@ -1192,9 +1259,6 @@ static void draw_colorbars_rgb2448(uint8_t* p8, int pitch, int w, int h)
     p += pitch;
   }
 
-  static const int top_two_thirds[] =
-    // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
-  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
   for (; y < h; ++y) {
     int x = 0;
     for (int i = 0; i < 7; ++i) {
@@ -1223,10 +1287,6 @@ static void draw_colorbars_rgbp(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int pi
   pR += (h - 1)*pitch;
   pG += (h - 1)*pitch;
   pB += (h - 1)*pitch;
-
-  static const uint32_t bottom_quarter[] =
-    // RGB[16..235]     -I     white        +Q     Black     -4% Black     Black     +4% Black     Black
-  { 0x10466a, 0xebebeb, 0x481076, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
 
   int y = 0;
 
@@ -1290,9 +1350,6 @@ static void draw_colorbars_rgbp(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int pi
     pB -= pitch;
   }
 
-  static const int two_thirds_to_three_quarters[] =
-    // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
-  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
   for (; y < h / 3; ++y) {
     int x = 0;
     for (int i = 0; i < 7; ++i) {
@@ -1315,10 +1372,6 @@ static void draw_colorbars_rgbp(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int pi
     pG -= pitch;
     pB -= pitch;
   }
-
-  static const int top_two_thirds[] =
-    // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
-  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
 
   for (; y < h; ++y) {
     int x = 0;
@@ -1357,10 +1410,6 @@ static void draw_colorbars_rgbp_f(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int 
   pR += (h - 1)*pitch;
   pG += (h - 1)*pitch;
   pB += (h - 1)*pitch;
-
-  static const uint32_t bottom_quarter[] =
-  // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
-  { 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
 
   int y = 0;
 
@@ -1407,9 +1456,6 @@ static void draw_colorbars_rgbp_f(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int 
     pB -= pitch;
   }
 
-  static const int two_thirds_to_three_quarters[] =
-    // RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
-  { 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
   for (; y < h / 3; ++y) {
     int x = 0;
     for (int i = 0; i < 7; ++i) {
@@ -1427,10 +1473,6 @@ static void draw_colorbars_rgbp_f(uint8_t *pR8, uint8_t *pG8, uint8_t *pB8, int 
     pG -= pitch;
     pB -= pitch;
   }
-
-  static const int top_two_thirds[] =
-    // RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
-  { 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
 
   for (; y < h; ++y) {
     int x = 0;
@@ -1588,7 +1630,7 @@ public:
   }
   else if (vi.IsYUY2()) {
     const int pitch = frame->GetPitch() / 4;
-    static const unsigned int top_two_thirds[] =
+    static const unsigned int top_two_thirds_yuy2[] =
 //                LtGrey      Yellow        Cyan       Green     Magenta         Red        Blue
     { 0x80b480b4, 0x8ea22ca2, 0x2c839c83, 0x3a704870, 0xc654b854, 0xd4416441, 0x7223d423 }; //VYUY
     w >>= 1;
@@ -1596,38 +1638,38 @@ public:
       int x = 0;
       for (int i = 0; i < 7; i++) {
         for (; x < (w*(i + 1) + 3) / 7; ++x)
-          p[x] = top_two_thirds[i];
+          p[x] = top_two_thirds_yuy2[i];
       }
       p += pitch;
     }
 
-    static const unsigned  int two_thirds_to_three_quarters[] =
+    static const unsigned  int two_thirds_to_three_quarters_yuy2[] =
 //                 Blue        Black     Magenta       Black        Cyan       Black      LtGrey
     { 0x7223d423, 0x80108010, 0xc654b854, 0x80108010, 0x2c839c83, 0x80108010, 0x80b480b4 }; //VYUY
     for (; y * 4 < h * 3; ++y) {
       int x = 0;
       for (int i = 0; i < 7; i++) {
         for (; x < (w*(i + 1) + 3) / 7; ++x)
-          p[x] = two_thirds_to_three_quarters[i];
+          p[x] = two_thirds_to_three_quarters_yuy2[i];
       }
       p += pitch;
     }
 
-    static const unsigned int bottom_quarter[] =
+    static const unsigned int bottom_quarter_yuy2[] =
 //                    -I       white          +Q       Black       -4ire       Black       +4ire       Black
     { 0x5f109e10, 0x80eb80eb, 0x9510ae10, 0x80108010, 0x80078007, 0x80108010, 0x80198019, 0x80108010 }; //VYUY
     for (; y < h; ++y) {
       int x = 0;
       for (int i = 0; i < 4; ++i) {
         for (; x < (w*(i + 1) * 5 + 14) / 28; ++x)
-          p[x] = bottom_quarter[i];
+          p[x] = bottom_quarter_yuy2[i];
       }
       for (int j = 4; j < 7; ++j) {
         for (; x < (w*(j + 12) + 10) / 21; ++x)
-          p[x] = bottom_quarter[j];
+          p[x] = bottom_quarter_yuy2[j];
       }
       for (; x < w; ++x)
-        p[x] = bottom_quarter[7];
+        p[x] = bottom_quarter_yuy2[7];
       p += pitch;
     }
   }
