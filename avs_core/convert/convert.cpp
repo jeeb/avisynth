@@ -55,7 +55,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", "rec709", "PC.601" or "PC.709" or "rec2020"
+extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", "rec709", "PC.601" or "PC.709" or "rec2020" or "PC.2020"
   { "ConvertToRGB",   BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)0 },
   { "ConvertToRGB24", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)24 },
   { "ConvertToRGB32", BUILTIN_FUNC_PREFIX, "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create, (void *)32 },
@@ -134,6 +134,10 @@ int getMatrix( const char* matrix, IScriptEnvironment* env) {
       return AVERAGE;
     if (!lstrcmpi(matrix, "rec2020"))
       return Rec2020;
+    if (!lstrcmpi(matrix, "PC.2020"))
+      return PC_2020;
+    if (!lstrcmpi(matrix, "PC2020"))
+      return PC_2020;
     env->ThrowError("Convert: Unknown colormatrix");
   }
   return Rec601; // Default colorspace conversion for AviSynth

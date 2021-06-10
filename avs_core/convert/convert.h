@@ -37,7 +37,7 @@
 
 #include "../core/internal.h"
 
-enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4, Rec2020=5 };
+enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4, Rec2020=5, PC_2020=6};
 int getMatrix( const char* matrix, IScriptEnvironment* env);
 
 /*****************************************************

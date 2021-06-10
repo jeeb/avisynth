@@ -173,6 +173,15 @@ ConvertToY::ConvertToY(PClip src, int in_matrix, IScriptEnvironment* env) : Gene
       matrix.r_f = 0.2126f;  //R
       matrix.offset_y = 0;
       matrix.offset_y_f = 0;
+    } else if (in_matrix == PC_2020) {
+      matrix.b = (int16_t)(0.0593 * 32768.0 + 0.5);  //B
+      matrix.g = (int16_t)(0.6780 * 32768.0 + 0.5);  //G
+      matrix.r = (int16_t)(0.2627 * 32768.0 + 0.5);  //R
+      matrix.b_f = 0.0593f;  //B
+      matrix.g_f = 0.6780f;  //G
+      matrix.r_f = 0.2627f;  //R
+      matrix.offset_y = 0;
+      matrix.offset_y_f = 0;
     } else if (in_matrix == AVERAGE) {
       matrix.b = (int16_t)(32768.0/3 + 0.5);  //B
       matrix.g = (int16_t)(32768.0/3 + 0.5);  //G
@@ -647,6 +656,9 @@ ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, int in_matrix, IScriptEnvironm
   }
   else if (in_matrix == Rec2020) {
     BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, false, bits_per_pixel); // false: limited range
+  }
+  else if (in_matrix == PC_2020) {
+    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, true, bits_per_pixel); // true: full scale
   }
   else {
     env->ThrowError("ConvertRGBToYV24/YUV444: Unknown matrix.");
@@ -1622,8 +1634,10 @@ ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, int in_matrix, int _pixel_step
   else if (in_matrix == Rec2020) {
     BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, false, bits_per_pixel); // false: limited range
   }
+  else if (in_matrix == PC_2020) {
+    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, true, bits_per_pixel); // true: full scale
+  }
   else if (in_matrix == AVERAGE) {
-
     BuildMatrix(1.0/3, /* 1.0/3 */ 1.0/3, shift, true, bits_per_pixel); // true: full scale
   }
   else {
