@@ -1,7 +1,12 @@
 Avisynth+
 
-20210602 WIP
+20210610 WIP
 ------------
+- ColorBarsHD: use BT.709-2 for +I (Pattern 2), not BT.601
+  These are from the SMPTE RP 219-1:2014, but those are also on Wikipedia now: https://en.wikipedia.org/wiki/SMPTE_color_bars
+  Former values used BT.601 matrix coeff., which is wrong.
+  Also fixed Pattern 1 Green.Y to conform to SMPTE RP 219-1:2014 (133, not 134).
+  ColorBars: fixed studio RGB values for -I and +Q for rgb pixel types
 - Speedup: Overlay mode "multiply": overlay clip is not converted to 4:4:4 internally when 420 or 422 subsampled format 
   (since only Y is used from that clip)
 - Speedup: Overlay mode "multiply": SSE4.1 and AVX2 code (was: C only)
