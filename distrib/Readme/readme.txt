@@ -2,6 +2,7 @@ Avisynth+
 
 20210610 WIP
 ------------
+- Add "PC.2020" to YUV-RGB conversion matrix set
 - ColorBarsHD: use BT.709-2 for +I (Pattern 2), not BT.601
   These are from the SMPTE RP 219-1:2014, but those are also on Wikipedia now: https://en.wikipedia.org/wiki/SMPTE_color_bars
   Former values used BT.601 matrix coeff., which is wrong.
