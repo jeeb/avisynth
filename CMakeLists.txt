@@ -130,10 +130,14 @@ if(NOT HEADERS_ONLY)
           ENDIF()
         ELSE()
           IF(NOT CLANG_IN_VS STREQUAL "1")
-            set(CMAKE_GENERATOR_TOOLSET "v141_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE) # VS2017, also choosable for VS2019
-            # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
-            message("CMAKE_GENERATOR_TOOLSET is forced to: ${CMAKE_GENERATOR_TOOLSET}")
-            add_definitions("/Zc:threadSafeInit-")
+            # Setting CMAKE_GENERATOR_TOOLSET here has no effect, only when passed or set directly
+            IF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_xp")
+              message("CMAKE_GENERATOR_TOOLSET is XP compatible: ${CMAKE_GENERATOR_TOOLSET}, extra XP options added")
+              # https://connect.microsoft.com/VisualStudio/feedback/details/1789709/visual-c-2015-runtime-broken-on-windows-server-2003-c-11-magic-statics
+              add_definitions("/Zc:threadSafeInit-")
+            ELSE()
+              message(FATAL_ERROR "For XP you must specify v141_xp toolset with -T option (or 'Optional toolset to use' in CMake GUI)!")
+            ENDIF()
           ENDIF()
         ENDIF()
       endif()
