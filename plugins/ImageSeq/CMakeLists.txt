@@ -24,6 +24,16 @@ if (MINGW)
   set_target_properties(${ProjectName} PROPERTIES IMPORT_PREFIX "")
 endif()
 
+# If checked out with compat filesystem submodule, add that to system include directories
+get_filename_component(
+    GHS_FILESYSTEM_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../filesystem/include
+    ABSOLUTE
+)
+if (EXISTS ${GHS_FILESYSTEM_INCLUDE_DIR})
+    target_include_directories(${ProjectName} SYSTEM PRIVATE ${GHS_FILESYSTEM_INCLUDE_DIR})
+endif()
+
 # stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
 if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     set(FSLIB "stdc++fs")
