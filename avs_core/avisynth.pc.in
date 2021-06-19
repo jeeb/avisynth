@@ -10,3 +10,4 @@ Version: @PROJECT_VERSION@
 Libs: -L${libdir} @LIBS@
 Libs.private: -L${libdir} @SYSLIBS@
 Cflags: -I${includedir}
+Cflags.private: -DAVS_STATIC_LIB
