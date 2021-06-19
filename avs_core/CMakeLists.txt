@@ -104,12 +104,15 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Haiku")
 elseif(MSVC OR MINGW)
     set(SYSLIB "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
 else()
-    set(SYSLIB "pthread" "dl" "stdc++" "m")
+    set(SYSLIB "pthread" "dl" "m")
 endif()
 
-# stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
-if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
-    list(APPEND SYSLIB "stdc++fs")
+if (CMAKE_COMPILER_IS_GNUCXX)
+    list(APPEND SYSLIB "stdc++")
+    # stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+        list(APPEND SYSLIB "stdc++fs")
+    endif()
 endif()
 
 target_link_libraries("AvsCore" ${SYSLIB})
