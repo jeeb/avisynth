@@ -8,6 +8,6 @@ Description: A powerful nonlinear scripting language for video.
 Version: @PROJECT_VERSION@
 
 Libs: -L${libdir} @LIBS@
-Libs.private: -L${libdir} @SYSLIBS@
+Libs.private: @SYSLIBS@
 Cflags: -I${includedir}
 Cflags.private: -DAVS_STATIC_LIB
