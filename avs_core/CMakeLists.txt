@@ -107,12 +107,14 @@ else()
     set(SYSLIB "pthread" "dl" "m")
 endif()
 
-if (CMAKE_COMPILER_IS_GNUCXX)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     list(APPEND SYSLIB "stdc++")
     # stdc++fs was mainlined into stdc++ in GCC 9, but GCC 8 can build it too
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
         list(APPEND SYSLIB "stdc++fs")
     endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    list(APPEND SYSLIB "c++")
 endif()
 
 target_link_libraries("AvsCore" ${SYSLIB})
