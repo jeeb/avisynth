@@ -4,7 +4,7 @@ AviSynth+
 **AviSynth+** is an improved version of the [AviSynth frameserver](http://avisynth.nl/index.php/Main_Page), with improved
 features and developer friendliness.
 
-Visit our [forum thread](http://forum.doom9.org/showthread.php?t=168856) for compilation instructions and support.
+Visit our [forum thread](http://forum.doom9.org/showthread.php?t=181351) for compilation instructions and support.
 
 Building the documentation:
 ---------------------------
