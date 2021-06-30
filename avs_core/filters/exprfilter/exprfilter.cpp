@@ -3825,7 +3825,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
     int autoScaleSourceBitDepth = 8; // avs+ scalable constants are in 8 bit range by default
 
     std::vector<std::string> tokens;
-    split(tokens, expr, " ", split1::no_empties);
+    split(tokens, expr, " \r\n\t", split1::no_empties);
 
     size_t maxStackSize = 0;
     size_t stackSize = 0;
