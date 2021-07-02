@@ -125,6 +125,7 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   { "propGetInt", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void *)1 },
   { "propGetFloat", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)2 },
   { "propGetString", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)3 },
+  { "propGetClip", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)4 },
   { "propGetDataSize", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetPropertyDataSize::Create },
   { "propNumElements", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyNumElements::Create},
   { "propNumKeys", BUILTIN_FUNC_PREFIX, "c[offset]i", GetPropertyNumKeys::Create},
@@ -936,11 +937,12 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
     env->ThrowError("propGetxxxxx: This filter can only be used within run-time filters");
 
   int propType = (int)(intptr_t)user_data;
-  // vUnset, vInt, vFloat, vData/*, vNode*/, vFrame/*, vMethod*/ }
+  // vUnset, vInt, vFloat, vData, vNode/Clip, vFrame/*, vMethod*/ }
   // 0: auto
   // 1: integer
   // 2: float
   // 3: char (null terminated data)
+  // 4: Clip
 
   const char* propName = args[1].AsString();
   const int index = args[2].AsInt(0);
@@ -966,7 +968,7 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
     case 'i': propType = 1; break;
     case 'f': propType = 2; break;
     case 's': propType = 3; break;
-    // case 'c': propType = 4; break; Clips not supported
+    case 'c': propType = 4; break;
     default:
       env->ThrowError("Error getting frame property \"%s\": type '%c' not supported", propName, res);
     }
@@ -988,6 +990,11 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
       result = env->SaveString(result); // property had its own storage
       return AVSValue(result);
     }
+  }
+  else if (propType == 4) {
+    PClip result = env->propGetClip(avsmap, propName, index, &error);
+    if (!error)
+      return AVSValue(result);
   }
   else {
     error = AVSGetPropErrors::GETPROPERROR_TYPE;
@@ -1072,6 +1079,7 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
       }
         break;
       case 'v': elem = AVSValue(env->propGetFrame(avsmap, propName, i, &error)); break;
+      case 'c': elem = AVSValue(env->propGetClip(avsmap, propName, i, &error)); break;
       default:
         elem = AVSValue();
       }
@@ -1173,8 +1181,18 @@ AVSValue GetAllProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
       if (!error)
         elem = AVSValue(env->SaveString(s));
     }
+    else if (propType == 'c') {
+      if (propNumElements == 1)
+        elem = AVSValue(env->propGetClip(avsmap, propName, 0, &error));
+      else {
+        std::vector<AVSValue> avsarr(propNumElements);
+        for (int i = 0; i < propNumElements; ++i)
+          avsarr[i] = AVSValue(env->propGetClip(avsmap, propName, i, &error));
+        elem = AVSValue(avsarr.data(), propNumElements); // array deep copy
+      }
+    }
     else {
-      // 'c', 'v': ignore
+      // 'v': ignore no such AVSValue in Avisynth 
     }
 
     pair[1] = elem;

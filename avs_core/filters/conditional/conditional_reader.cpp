@@ -903,10 +903,12 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
   // 2: float from function
   // 3: char (null terminated data) from function
   // 4: array from function (all elements have the same type)
+  // 5: clip from function
   // 10: integer from direct
   // 11: float from direct
   // 12: string from direct
   // 13: array from direct (all elements have the same type)
+  // 14: clip from direct
 
   AVSValue result;
   const char* error_msg = nullptr;
@@ -975,7 +977,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       else if (result.IsArray())
         propType = 4;
       else if (result.IsClip())
-        env->ThrowError("Clip frame properties not yet supported");
+        propType = 5;
       else
         env->ThrowError("Invalid return type (Was a %s)", GetAVSTypeName(result));
     }
@@ -999,7 +1001,7 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       int size = result.ArraySize();
       std::vector<int64_t> int64array(size); // avs can do int only, temporary array needed
       for (int i = 0; i < size; i++) {
-        if(!result[i].IsInt())
+        if (!result[i].IsInt())
           env->ThrowError("Wrong data type in property '%s': all array elements should be the same (integer) type", name);
         int64array[i] = result[i].AsInt(); // all elements should be int
       }
@@ -1023,11 +1025,29 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       env->propDeleteKey(avsmap, name);
       for (int i = 0; i < size; i++) {
         if (!result[i].IsString())
-            env->ThrowError("Wrong data type in property '%s': all array elements should be the same (string) type", name);
+          env->ThrowError("Wrong data type in property '%s': all array elements should be the same (string) type", name);
         res = env->propSetData(avsmap, name, result[i].AsString(), -1, AVSPropAppendMode::PROPAPPENDMODE_APPEND); // all elements should be string
         if (res)
           break;
       }
+    }
+    else if (propType == 4 && result[0].IsClip())
+    {
+      int size = result.ArraySize();
+      // no such api like propSetClipArray
+      env->propDeleteKey(avsmap, name);
+      for (int i = 0; i < size; i++) {
+        if (!result[i].IsClip())
+          env->ThrowError("Wrong data type in property '%s': all array elements should be the same (Clip) type", name);
+        PClip clip = result[i].AsClip();
+        res = env->propSetClip(avsmap, name, clip, AVSPropAppendMode::PROPAPPENDMODE_APPEND); // all elements should be Clip
+        if (res)
+          break;
+      }
+    }
+    else if (propType == 5 && result.IsClip()) {
+      PClip clp = result.AsClip();
+      res = env->propSetClip(avsmap, name, clp, append_mode);
     }
     else
     {

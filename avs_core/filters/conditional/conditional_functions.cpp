@@ -733,6 +733,11 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
       return AVSValue(result);
     }
   }
+  else if (propType == 4) {
+    PClip result = env->propGetClip(avsmap, propName, index, &error);
+    if (!error)
+      return AVSValue(result);
+  }
   else {
     error = AVSGetPropErrors::GETPROPERROR_TYPE;
   }
@@ -816,6 +821,7 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
       }
         break;
       case 'v': elem = AVSValue(env->propGetFrame(avsmap, propName, i, &error)); break;
+      case 'c': elem = AVSValue(env->propGetClip(avsmap, propName, i, &error)); break;
       default:
         elem = AVSValue();
       }
@@ -917,8 +923,18 @@ AVSValue GetAllProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
       if (!error)
         elem = AVSValue(env->SaveString(s));
     }
+    else if (propType == 'c') {
+      if (propNumElements == 1)
+        elem = AVSValue(env->propGetClip(avsmap, propName, 0, &error));
+      else {
+        std::vector<AVSValue> avsarr(propNumElements);
+        for (int i = 0; i < propNumElements; ++i)
+          avsarr[i] = AVSValue(env->propGetClip(avsmap, propName, i, &error));
+        elem = AVSValue(avsarr.data(), propNumElements); // array deep copy
+      }
+    }
     else {
-      // 'c', 'v': ignore
+      // 'v': ignore no such AVSValue in Avisynth 
     }
 
     pair[1] = elem;
