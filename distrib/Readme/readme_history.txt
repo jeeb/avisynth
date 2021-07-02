@@ -4,8 +4,13 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210610 WIP
+20210630 WIP
 ------------
+- Recognize \' and \b and \v in escaped (e"somethg") string literals (see http://avisynth.nl/index.php/The_full_AviSynth_grammar#Literals)
+- Expr: allow TAB, CR and LF characters as whitespace in expression strings
+- Enable propSet to accept Clips from function type input, add propSetClip for direct parameter
+  Enable propGet to return Clip, add propGetClip for direct parameter
+  Clip content support for propGetAsArray propSetArray and propGetAll
 - Add "PC.2020" to YUV-RGB conversion matrix set
 - ColorBarsHD: use BT.709-2 for +I (Pattern 2), not BT.601
   These are from the SMPTE RP 219-1:2014, but those are also on Wikipedia now: https://en.wikipedia.org/wiki/SMPTE_color_bars
