@@ -125,6 +125,13 @@
 #include <avxintrin.h>
 #endif
 
+// rounder constants
+constexpr int FROUND_TO_NEAREST_INT = 0x00;
+constexpr int FROUND_TO_NEG_INF = 0x01;
+constexpr int FROUND_TO_POS_INF = 0x02;
+constexpr int FROUND_TO_ZERO = 0x03;
+constexpr int FROUND_NO_EXC = 0x08;
+
 // normal versions work with two xmm or ymm registers (2*4 or 2*8 pixels per cycle)
 // _Single suffixed versions work only one xmm or ymm registers at a time (1*4 or 1*8 pixels per cycle)
 
@@ -2239,6 +2246,22 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           minps(t3.second, t1.second);
         }
       }
+      else if (iter.op == opRound || iter.op == opFloor || iter.op == opCeil || iter.op == opTrunc) {
+         const int rounder_flag =
+           (iter.op == opRound) ? (FROUND_TO_NEAREST_INT | FROUND_NO_EXC) :
+           (iter.op == opFloor) ? (FROUND_TO_NEG_INF | FROUND_NO_EXC) :
+           (iter.op == opCeil) ? (FROUND_TO_POS_INF | FROUND_NO_EXC) :
+           (FROUND_TO_ZERO | FROUND_NO_EXC); // opTrunc
+        if (processSingle) {
+          auto& t1 = stack1.back();
+          roundps(t1, t1, rounder_flag);
+        }
+        else {
+          auto& t1 = stack.back();
+          roundps(t1.first, t1.first, rounder_flag);
+          roundps(t1.second, t1.second, rounder_flag);
+        }
+      }
 
     }
   }
@@ -3026,6 +3049,22 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vminps(t3.second, t3.second, t1.second);
         }
       }
+      else if (iter.op == opRound || iter.op == opFloor || iter.op == opCeil || iter.op == opTrunc) {
+        const int rounder_flag =
+          (iter.op == opRound) ? (FROUND_TO_NEAREST_INT | FROUND_NO_EXC) :
+          (iter.op == opFloor) ? (FROUND_TO_NEG_INF | FROUND_NO_EXC) :
+          (iter.op == opCeil) ? (FROUND_TO_POS_INF | FROUND_NO_EXC) :
+          (FROUND_TO_ZERO | FROUND_NO_EXC); // opTrunc
+        if (processSingle) {
+          auto& t1 = stack1.back();
+          vroundps(t1, t1, rounder_flag);
+        }
+        else {
+          auto& t1 = stack.back();
+          vroundps(t1.first, t1.first, rounder_flag);
+          vroundps(t1.second, t1.second, rounder_flag);
+        }
+      }
     }
   }
 /*
@@ -3581,6 +3620,18 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
                 si -= 2;
                 stacktop = std::max(std::min(stack[si], stacktop), stack[si + 1]);
                 break;
+              case opRound:
+                stacktop = std::round(stacktop);
+                break;
+              case opFloor:
+                stacktop = std::floor(stacktop);
+                break;
+              case opCeil:
+                stacktop = std::ceil(stacktop);
+                break;
+              case opTrunc:
+                stacktop = std::trunc(stacktop);
+                break;
               case opSqrt:
                 stacktop = std::sqrt(stacktop);
                 break;
@@ -3869,6 +3920,14 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           ONE_ARG_OP(opAtan);
         else if (tokens[i] == "clip")
           THREE_ARG_OP(opClip);
+        else if (tokens[i] == "round")
+          ONE_ARG_OP(opRound);
+        else if (tokens[i] == "floor")
+          ONE_ARG_OP(opFloor);
+        else if (tokens[i] == "ceil")
+          ONE_ARG_OP(opCeil);
+        else if (tokens[i] == "trunc")
+          ONE_ARG_OP(opTrunc);
         else if (tokens[i] == ">")
             TWO_ARG_OP(opGt);
         else if (tokens[i] == "<")
@@ -4691,6 +4750,14 @@ static float calculateOneOperand(uint32_t op, float a) {
           return std::acos(a);
         case opAtan:
           return std::atan(a);
+        case opRound:
+          return std::round(a);
+        case opFloor:
+          return std::floor(a);
+        case opCeil:
+          return std::ceil(a);
+        case opTrunc:
+          return std::trunc(a);
     }
 
     return 0.0f;
@@ -4767,6 +4834,10 @@ static int numOperands(uint32_t op) {
         case opAsin:
         case opAcos:
         case opAtan:
+        case opRound:
+        case opFloor:
+        case opCeil:
+        case opTrunc:
           return 1;
 
         case opSwap:
@@ -4929,6 +5000,10 @@ static std::unordered_map<uint32_t, std::string> op_strings = {
         PAIR(opAsin)
         PAIR(opAcos)
         PAIR(opAtan)
+        PAIR(opRound)
+        PAIR(opFloor)
+        PAIR(opCeil)
+        PAIR(opTrunc)
       };
 #undef PAIR
 
@@ -5035,6 +5110,10 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opAsin:
             case opAcos:
             case opAtan:
+            case opRound:
+            case opFloor:
+            case opCeil:
+            case opTrunc:
               if (ops[i - 1].op == opLoadConst) {
                 ops[i].e.fval = calculateOneOperand(ops[i].op, ops[i - 1].e.fval);
                 ops[i].op = opLoadConst;
@@ -5313,6 +5392,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 #ifdef INTEL_INTRINSICS
       // Check CPU instuction level constraints:
       // opLoadRel8/16/32: minimum SSSE3 (pshufb, alignr) for SIMD, and no AVX2 support
+      // round, floor, ceil, trunc: minimun SSE4.1
       // Trig.func: C only
       d.planeOptAvx2[i] = optAvx2;
       d.planeOptSSE2[i] = optSSE2;
@@ -5328,6 +5408,12 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         if (op == opSin || op == opCos || op == opTan || op == opAsin || op == opAcos || op == opAtan) {
           d.planeOptAvx2[i] = false;
           d.planeOptSSE2[i] = false;
+          break;
+        }
+        // round, trunc, ceil: minimum of SSE4.1
+        if (op == opRound || op == opFloor || op == opCeil || op == opTrunc ) {
+          if (!(env->GetCPUFlags() & CPUF_SSE4_1)) // required minimum (_mm_round_ps...)
+            d.planeOptSSE2[i] = false;
           break;
         }
       }

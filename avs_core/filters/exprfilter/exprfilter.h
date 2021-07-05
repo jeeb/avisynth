@@ -70,7 +70,7 @@ typedef enum {
   opAnd, opOr, opXor, opNeg,
   opExp, opLog, opPow,
   opSin, opCos, opTan, opAsin, opAcos, opAtan,
-  opClip,
+  opClip, opRound, opFloor, opCeil, opTrunc,
   opStoreVar, opLoadVar, opStoreAndPopVar
 } SOperation;
 
