@@ -4825,6 +4825,10 @@ static void findBranches(std::vector<ExprOp> &ops, size_t pos, size_t *start1, s
     if (operands == 0) {
         *start1 = pos;
     } else if (operands == 1) {
+        if (ops[pos].op == opStoreAndPopVar) {
+          findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
+          pos = temp1;
+        } 
         if (isLoadOp(ops[pos - 1].op)) {
             *start1 = pos - 1;
         } else {
