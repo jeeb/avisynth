@@ -1,7 +1,14 @@
 Avisynth+
 
-20210701 WIP
+20210706 WIP
 ------------
+- Expr: allow arbitrary variable names (instead of A..Z), up to 256. Do not use existing keywords.
+  Variable names must start with '_' or alpha, continued with '_' or alphanumeric characters.
+- Expr: add 'round', 'floor', 'ceil', 'trunc' operators (nearest integer, round down, round up, round to zero)
+  Acceleration requires at least SSE4.1 capable processor or else the whole expression is running in C mode.
+- Fix: Expr: wrong constant folding optimization when ternary operator and Store-Only (like M^) operator is used together.
+  For the expression "sxr 0.5 < 128 192 M^ 255 ?" the expected result must be the same as for "sxr 0.5 < 128 255 ?"
+  Since 192 M^ is no-op regarding the expression parts.
 - Recognize \' and \b and \v in escaped (e"somethg") string literals (see http://avisynth.nl/index.php/The_full_AviSynth_grammar#Literals)
 - Expr: allow TAB, CR and LF characters as whitespace in expression strings
 - Enable propSet to accept Clips from function type input, add propSetClip for direct parameter
