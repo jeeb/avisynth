@@ -4616,7 +4616,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           int loadIndex;
           if (it == varnames.end()) {
             if(!isValidVarName(key))
-              env->ThrowError("Expr: invalid variable name '%s'", key);
+              env->ThrowError("Expr: invalid variable name '%s'", key.c_str());
             // first occurance, insert name and actual index
             if (varindex >= MAX_USER_VARIABLES)
               env->ThrowError("Expr: too many variables, maximum reached (%d)", MAX_USER_VARIABLES);
