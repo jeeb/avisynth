@@ -8,7 +8,7 @@
 
 #define MAX_EXPR_INPUTS 26
 #define INTERNAL_VARIABLES 2
-#define MAX_USER_VARIABLES 26
+#define MAX_USER_VARIABLES 256
 
 // indexing RWPTR array (pointer sized elements)
 #define RWPTR_START_OF_OUTPUT 0   // 1

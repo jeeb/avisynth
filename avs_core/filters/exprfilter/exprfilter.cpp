@@ -55,6 +55,8 @@
 *          implement 'clip' three operand operator like in masktools2: x minvalue maxvalue clip -> max(min(x, maxvalue), minvalue)
 * 20191120 yrange_min, yrange_half, yrange_max, clamp_float_UV param, allow "float_UV" for scale_inputs
 *          yscalef, yscaleb forcing non-chroma rules for scaling even when processing chroma planes
+* 202107xx round, floor, ceil, trunc (acceleration from SSE4.1 and up)
+*          arbitrary variable names; instead of 'A' to 'Z', up to 256 of them can be used
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -3832,6 +3834,27 @@ static SOperation getStoreOp(const VideoInfo *vi) {
 #define GENERAL_OP_NOTOKEN(op, v, req, dec) do { if (stackSize < req) env->ThrowError("Expr: Not enough elements on stack to perform an operation"); ops.push_back(ExprOp(op, (v))); stackSize-=(dec); } while(0)
 #define TWO_ARG_OP_NOTOKEN(op) GENERAL_OP_NOTOKEN(op, 0, 2, 1)
 
+static inline bool isAlphaUnderscore(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+}
+
+static inline bool isAlphaNumUnderscore(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
+}
+
+static bool isValidVarName(const std::string& s) {
+  size_t len = s.length();
+  if (!len)
+    return false;
+
+  if (!isAlphaUnderscore(s[0]))
+    return false;
+  for (size_t i = 1; i < len; i++)
+    if (!isAlphaNumUnderscore(s[i]))
+      return false;
+  return true;
+}
+
 
 // finds _X suffix (clip letter) and returns 0..25 for x,y,z,a,b,...w
 // no suffix means 0
@@ -3878,10 +3901,14 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
     std::vector<std::string> tokens;
     split(tokens, expr, " \r\n\t", split1::no_empties);
 
+    std::unordered_map<std::string, int> varnames;
+    int varindex = 0;
+
     size_t maxStackSize = 0;
     size_t stackSize = 0;
 
     for (size_t i = 0; i < tokens.size(); i++) {
+        const size_t tokenlen = tokens[i].length();
         if (tokens[i] == "+")
             TWO_ARG_OP(opAdd);
         else if (tokens[i] == "-")
@@ -4118,24 +4145,6 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             }
           }
 
-        }
-        else if (tokens[i].length() == 1 && tokens[i][0] >= 'A' && tokens[i][0] <= 'Z') { // avs+
-          // use of a variable: single uppercase letter A..Z
-          char srcChar = tokens[i][0];
-          int loadIndex = srcChar - 'A';
-          LOAD_OP(opLoadVar, loadIndex, 0);
-        }
-        else if (tokens[i].length() == 2 && tokens[i][0] >= 'A' && tokens[i][0] <= 'Z') { // avs+
-          // storing a variable: A@ .. Z@
-          // storing a variable and remove from stack: A^..Z^
-          char srcChar = tokens[i][0];
-          int loadIndex = srcChar - 'A';
-          if (tokens[i][1] == '^')
-            VAR_STORE_SPEC_OP(opStoreAndPopVar, loadIndex);
-          else if (tokens[i][1] == '@')
-            VAR_STORE_OP(opStoreVar, loadIndex);
-          else
-            env->ThrowError("Expr: Invalid character, '^' or '@' expected in '%s'", tokens[i].c_str());
         }
         // indexed clips e.g. x[-1,-2]
         else if (tokens[i].length() > 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z' && tokens[i][1] == '[') {
@@ -4596,6 +4605,42 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         else if (tokens[i] == "f32") // avs+
         {
           autoScaleSourceBitDepth = 32;
+        }
+        else if (tokenlen >= 2 && (tokens[i][tokenlen - 1] == '^' || tokens[i][tokenlen - 1] == '@'))
+        {
+          // storing a variable: A@ .. Z@
+          // storing a variable and remove from stack: A^..Z^
+          auto key = tokens[i].substr(0, tokenlen - 1);
+          auto opchar = tokens[i][tokenlen - 1];
+          auto it = varnames.find(key);
+          int loadIndex;
+          if (it == varnames.end()) {
+            if(!isValidVarName(key))
+              env->ThrowError("Expr: invalid variable name '%s'", key);
+            // first occurance, insert name and actual index
+            if (varindex >= MAX_USER_VARIABLES)
+              env->ThrowError("Expr: too many variables, maximum reached (%d)", MAX_USER_VARIABLES);
+            loadIndex = varindex++;
+            varnames[key] = loadIndex;
+          }
+          else {
+            loadIndex = it->second;
+          }
+          if (opchar == '^')
+            VAR_STORE_SPEC_OP(opStoreAndPopVar, loadIndex);
+          else if (tokens[i][1] == '@')
+            VAR_STORE_OP(opStoreVar, loadIndex);
+        }
+        else if (isValidVarName(tokens[i]))
+        {
+          // variable names
+          // the very end, all reserved expr words were processed
+          auto key = tokens[i];
+          auto it = varnames.find(key);
+          if (it == varnames.end())
+            env->ThrowError("Expr: keyword or variable not found: '%s'", key.c_str());
+          auto loadIndex = it->second;
+          LOAD_OP(opLoadVar, loadIndex, 0);
         }
         else {
           // parse a number
