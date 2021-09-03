@@ -546,6 +546,16 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 
   std::string dir(dirPath);
 
+#if !defined(AVS_BSD)
+// Any use of /proc should be avoided on BSD, since
+// most of them have removed it or discourage its use.
+// Thankfully, it actually looks like the need for it
+// is to simply populate the PROGRAMDIR variable for
+// AddAutoloadDirs, but on POSIX systems this variable
+// should probably not be expected to be as flexible
+// as it is on Windows, negating the need for pulling
+// it out programmatically.  Since the macOS and Linux
+// forms of the code still function, leave those alone.
 #ifdef AVS_WINDOWS
   // get folder of our executable
   TCHAR ExeFilePath[AVS_MAX_PATH];
@@ -559,15 +569,15 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 #elif defined(AVS_MACOS)
   uint32_t size = sizeof(buf) - 1;
   if (_NSGetExecutablePath(buf, &size) == 0)
-#elif defined(AVS_BSD)
+//#elif defined(AVS_BSD)
 // The following works under the specific circumstance that
 // you've mounted procfs under a *BSD system that still has
 // that option.
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-  if (readlink("/proc/curproc/file", buf, sizeof(buf) - 1) != -1)
-#elif defined(__NetBSD__)
-  if (readlink("/proc/curproc/exe", buf, sizeof(buf) - 1) != -1)
-#endif
+//#if defined(__FreeBSD__) || defined(__DragonFly__)
+//  if (readlink("/proc/curproc/file", buf, sizeof(buf) - 1) != -1)
+//#elif defined(__NetBSD__)
+//  if (readlink("/proc/curproc/exe", buf, sizeof(buf) - 1) != -1)
+//#endif
 #endif // AVS_LINUX
   {
     ExeFilePath = buf;
@@ -582,11 +592,14 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 // this doesn't cause more errors.
   ExeFileDir = ExeFileDir.erase(ExeFileDir.rfind('/'), std::string::npos);
 #endif
+#endif // !AVS_BSD
 
   // variable expansion
   replace_beginning(dir, "SCRIPTDIR", Env->GetVarString("$ScriptDir$", ""));
   replace_beginning(dir, "MAINSCRIPTDIR", Env->GetVarString("$MainScriptDir$", ""));
+#if !defined(AVS_BSD)
   replace_beginning(dir, "PROGRAMDIR", ExeFileDir);
+#endif
 
   std::string plugin_dir;
 #ifdef AVS_WINDOWS

@@ -2293,7 +2293,6 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 #else
-#if !defined(__OpenBSD__)
     // system_avs_plugindir relies on install path, it and user_avs_plugindir_configurable get
     // defined in avisynth_conf.h.in when configuring.
 
@@ -2304,7 +2303,6 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir(user_avs_plugindir, false);
     plugin_manager->AddAutoloadDir(user_avs_plugindir_configurable, false);
     plugin_manager->AddAutoloadDir(system_avs_plugindir, false);
-#endif
 #endif
 
     top_frame.Set("LOG_ERROR", (int)LOGLEVEL_ERROR);
