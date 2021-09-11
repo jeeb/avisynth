@@ -4,10 +4,13 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210706 WIP
+20210911 WIP
 ------------
-- Expr: allow arbitrary variable names (instead of A..Z), up to 256. Do not use existing keywords.
-  Usual naming rule: starting with '_' or alpha, continued with '_' or alphanumeric characters.
+- Parser: proper error message when a script array is passed to a non-array named function argument
+  (e.g. foo(sigma=[1.1,1.1]) to [foo]f parameter signature)
+- Expr: allow arbitrary variable names (instead of single letters A..Z), up to 256 different one. 
+  Do not use existing keywords.
+  Variable names must start with '_' or alpha, continued with '_' or alphanumeric characters.
 - Expr: add 'round', 'floor', 'ceil', 'trunc' operators (nearest integer, round down, round up, round to zero)
   Acceleration requires at least SSE4.1 capable processor or else the whole expression is running in C mode.
 - Fix: Expr: wrong constant folding optimization when ternary operator and Store-Only (like M^) operator is used together.
