@@ -144,7 +144,6 @@ AVS_FORCEINLINE static __m128i overlay_merge_mask_sse2_uint8(const __m128i& p1, 
 }
 
 template<int bits_per_pixel>
-
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
@@ -1146,7 +1145,7 @@ void overlay_blend_sse41_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BY
           result = _mm_min_epi16(result, max_pixel_value); // SSE2 epi16 is enough
 
         // unlike full opacity==1.0 blend, we have to watch zero mask only, opacity*mask is never max
-        auto msk = _mm_packus_epi16(unpacked_mask_l, unpacked_mask_h); // we have mask here
+        auto msk = _mm_packus_epi32(unpacked_mask_l, unpacked_mask_h); // we have mask here
         auto mask_zero = _mm_cmpeq_epi16(msk, zero);
         result = _mm_blendv_epi8(result, dst, mask_zero); // ensure that zero mask value returns dst
       }
