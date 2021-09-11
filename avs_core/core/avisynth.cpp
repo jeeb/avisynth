@@ -4379,7 +4379,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
 #endif
             else if (args[i].Defined() && args[i].IsArray() && ((q[2] == '*' || q[2] == '+')) && !AVSFunction::SingleTypeMatchArray(q[1], args[i], false))
             {
-              // e.g. passing [235, 128, "Hello"] to [colors]f+
+              // e.g. passing colors=[235, 128, "Hello"] to [colors]f+
               ThrowError("Script error: the named array argument \"%s\" to %s had a wrong element type", arg_names[i], name);
             }
             else if (args[i].Defined() && !args[i].IsArray() && !AVSFunction::SingleTypeMatch(q[1], args[i], false))
@@ -4387,6 +4387,9 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
               ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
             }
             else {
+              // check: do not accept array in the place of a non-array argument. e.g. foo(sigma=[1.0, 1.1]) to [sigma]f is invalid
+              if(args[i].Defined() && args[i].IsArray() && !(q[2] == '*' || q[2] == '+'))
+                ThrowError("Script error: the named argument \"%s\" to %s had the wrong type (passed an array to a non-array parameter)", arg_names[i], name);
               args3[named_arg_index] = args[i];
               args3_really_filled[named_arg_index] = true;
               goto success;
