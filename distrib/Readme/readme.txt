@@ -2,6 +2,7 @@ Avisynth+
 
 20210911 WIP
 ------------
+- Fix: Overlay "blend" with exactly 16 bit clips and "opacity"<1 would treat large mask values as zero (when proc>=SSE4.1)
 - Parser: proper error message when a script array is passed to a non-array named function argument
   (e.g. foo(sigma=[1.1,1.1]) to [foo]f parameter signature)
 - Expr: allow arbitrary variable names (instead of single letters A..Z), up to 256 different one. 
