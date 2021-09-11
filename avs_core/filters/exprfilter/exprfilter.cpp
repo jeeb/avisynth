@@ -4628,7 +4628,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           }
           if (opchar == '^')
             VAR_STORE_SPEC_OP(opStoreAndPopVar, loadIndex);
-          else if (tokens[i][1] == '@')
+          else // if (opchar == '@')
             VAR_STORE_OP(opStoreVar, loadIndex);
         }
         else if (isValidVarName(tokens[i]))
