@@ -1154,7 +1154,7 @@ void overlay_blend_sse41_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BY
     }
 
     // Leftover value
-    for (int x = wMod16; x < width; x++) {
+    for (int x = wMod16 / sizeof(pixel_t); x < width; x++) {
       if constexpr (sizeof(pixel_t) == 1) {
         int new_mask = overlay_merge_mask_c_8(mask[x], opacity);
         BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
@@ -1200,7 +1200,7 @@ void overlay_blend_sse2_plane_masked_opacity_float(BYTE *p1, const BYTE *p2, con
     }
 
     // Leftover value
-    for (int x = wMod16; x < width; x++) {
+    for (int x = wMod16 / sizeof(float); x < width; x++) {
       float new_mask = (reinterpret_cast<const float *>(mask)[x] * opacity_f);
       float p1x = reinterpret_cast<float *>(p1)[x];
       float p2x = reinterpret_cast<const float *>(p2)[x];
