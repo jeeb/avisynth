@@ -246,8 +246,8 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
     const int pitch = frame->GetPitch();
     for (int y=frame->GetHeight();y>0;y--) {
       for (int i=0; i<rowsize; i+=3) {
-        p[i] = color_g;
-        p[i+1] = color_b;
+        p[i] = color_b;
+        p[i+1] = color_g;
         p[i+2] = color_r;
       }
       p+=pitch;
