@@ -4,8 +4,68 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210911 WIP
+20210927 WIP
 ------------
+- Expr: implement atan2(y,x). "yvalue xvalue atan2"
+  Similarly to other trigonometric functions, function is C-only at the moment, SIMD acceleration is disabled when used in an expression.
+  Returns values in the range -PI .. +PI (see C++ std::atan2 rules)
+- Expr: allow x.framePropName syntax (Akarin's idea)
+  Where x is the usual clip identifier letter, and after the . is the name of the frame property.
+  Nonexistent or non-number frame properties return with 0.0 value
+  Example (increasing brightness until frame nunmber 255)
+    ColorbarsHD()
+    ScriptClip("""propset("medi", current_frame)""")
+    expr("x.medi","","")
+
+- More checks on array parameters in user defined functions.
+  Array-typed parameters with "name" have the value "Undefined" when they are not passed.
+  Note: but the value is defined and is a zero-sized array if the parameter is unnamed, like in other Avisynth functions.
+
+  Warning for resolving parameter handling for array of anything parameter when array(s) would be passed directly.
+  Memo:
+  - Avisynth signature: .+/.*
+  - Script function specifier val_array or val_array_nz
+
+  When parameter signature is array of anything (.+/.*) and the
+  parameter is passed unnamed (even if it is a named parameter) then
+  there is an ambiguos situation.
+  Example:
+    1,2,3 will be detected as [1,2,3] (compatibility)
+    1 will be detected as [1] (compatibility)
+    (nothing) will be detected as [], but marked in order to override it later directly by name
+  Following the rule:
+    Passing there a direct script array [1,2,3] will be detected as [[1,2,3]], because unnamed and untyped parameters are
+    put together into an array, which has the size of the list. This is a list of 1 element which happens to be an array.
+    Avisynth cannot 'guess' whether we want to define a single array directly or this array is the only one part of the list.
+    [1,2,3] or [ [1,2,3] ]
+  Syntax hint:
+    When someone would like to pass a directly specified array (e.g. [1,2,3] instead of 1,2,3) to a .+ or .* parameter
+    the parameter must be passed by name!
+    Because of the existing avisynth syntax rule: arguments given as unnamed in the place of an array-of-anything parameter
+    are considered to be list elements from which Avisynth creates an array
+
+    function foo(val_array "n")
+      Call                          n
+      foo()                   O.K.  Undefined
+      foo(1)                  O.K.  [1] (compatible Avisynth way)
+      foo(1,2,3)              O.K.  [1,2,3] (compatible Avisynth way)
+      foo([1,2,3])            !     [[1,2,3]] (compatible Avisynth way)
+      foo([1,2,3],[4,5])      !     [[1,2,3],[4,5]] (compatible Avisynth way)
+      foo(n=[1,2,3])          O.K.  [1,2,3]
+      foo(n=[[1,2,3],[4,5]])  O.K.  [[1,2,3],[4,5]]
+      foo(n=[])               O.K.  []
+      foo(n="hello")          Syntax error, "hello" is not an array
+
+      // unnamed signature
+    function foo(val_array n)
+      Call                          n
+      foo()                   O.K.  [] (defined and array size is zero) Avisynth compatible behaviour
+
+- New: script functions now supports avisynth function array signature '+' (one or more) with _nz type suffix.
+  Previously only '*' style (zero or more) was supported by the original naming.
+  E.g.: val_array -> .* val_array_nz -> .+, int_array -> i* int_array_nz -> i+
+  Others: bool_array_nz, float_array_nz, string_array_nz, clip_array_nz, func_array_nz.
+- Fix: Overlay "blend" 10+ bit clips and "opacity"<1 would leave rightmost non-mod8 (10-16 bit format) or non-mod4 (32 bit format) pixels unprocessed.
 - Fix: Overlay "blend" with exactly 16 bit clips and "opacity"<1 would treat large mask values as zero (when proc>=SSE4.1)
 - Parser: proper error message when a script array is passed to a non-array named function argument
   (e.g. foo(sigma=[1.1,1.1]) to [foo]f parameter signature)
