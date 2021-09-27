@@ -57,6 +57,7 @@
 *          yscalef, yscaleb forcing non-chroma rules for scaling even when processing chroma planes
 * 202107xx round, floor, ceil, trunc (acceleration from SSE4.1 and up)
 *          arbitrary variable names; instead of 'A' to 'Z', up to 256 of them can be used
+* 20210924 frame property access clip.framePropName syntax after VSAkarin idea (no array access yet)
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -662,6 +663,21 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
         else {
           XmmReg r1, r2;
           movd(r1, dword_ptr[regptrs + sizeof(void *) * (iter.e.ival + RWPTR_START_OF_INTERNAL_VARIABLES)]);
+          shufps(r1, r1, 0);
+          movaps(r2, r1);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
+      else if (iter.op == opLoadFramePropVar) {
+        if (processSingle) {
+          XmmReg r1;
+          movd(r1, dword_ptr[regptrs + sizeof(void*) * (iter.e.ival + RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES)]);
+          shufps(r1, r1, 0);
+          stack1.push_back(r1);
+        }
+        else {
+          XmmReg r1, r2;
+          movd(r1, dword_ptr[regptrs + sizeof(void*) * (iter.e.ival + RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES)]);
           shufps(r1, r1, 0);
           movaps(r2, r1);
           stack.push_back(std::make_pair(r1, r2));
@@ -2418,6 +2434,23 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           stack.push_back(std::make_pair(r1, r2));
         }
       }
+      else if (iter.op == opLoadFramePropVar) {
+        if (processSingle) {
+          YmmReg r1;
+          XmmReg r1x;
+          vmovd(r1x, dword_ptr[regptrs + sizeof(void*) * (iter.e.ival + RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES)]);
+          vbroadcastss(r1, r1x);
+          stack1.push_back(r1);
+        }
+        else {
+          YmmReg r1, r2;
+          XmmReg r1x;
+          vmovd(r1x, dword_ptr[regptrs + sizeof(void*) * (iter.e.ival + RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES)]);
+          vbroadcastss(r1, r1x);
+          vmovaps(r2, r1);
+          stack.push_back(std::make_pair(r1, r2));
+        }
+      }
       else if (iter.op == opLoadSrc8) {
         if (processSingle) {
           XmmReg r1x;
@@ -3390,6 +3423,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const uint8_t *srcp_orig[MAX_EXPR_INPUTS] = {}; // for C
   int src_stride[MAX_EXPR_INPUTS] = {};
   float variable_area[MAX_USER_VARIABLES] = {}; // for C, place for expr variables A..Z
+  float frameprop_variable_area[MAX_FRAMEPROP_VARIABLES] = {}; // for C, place for dynamic frame property filling
 
   const float framecount = (float)n; // max precision: 2^24 (16M) frames (32 bit float precision)
   const float relative_time = vi.num_frames > 1 ? (float)((double)n / (vi.num_frames - 1)) : 0.0f; // 0 <= time <= 1
@@ -3402,6 +3436,35 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
     const int plane_enum_d = plane_enums_d[plane];
 
     if (d.plane[plane] == poProcess) {
+
+      // read actually needed frame properties into the variable storage area
+      for (auto &framePropToRead : d.frameprops[plane]) {
+        int srcIndex = framePropToRead.srcIndex;
+        auto fpname = framePropToRead.name;
+        int whereToPut = framePropToRead.var_index;
+
+        const AVSMap* avsmap = env->getFramePropsRO(src[srcIndex]);
+
+        // default is 0f
+        float varToStore = 0.0f; //  std::numeric_limits<float>::quiet_NaN();
+
+        char res = env->propGetType(avsmap, fpname.c_str());
+        // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
+
+        int error;
+        // only float and int are valid
+        if (res == 'i') {
+          int64_t result = env->propGetInt(avsmap, fpname.c_str(), 0, &error);
+          if (!error) varToStore = static_cast<float>(result);
+        }
+        else if (res == 'f') {
+          double result = env->propGetFloat(avsmap, fpname.c_str(), 0, &error);
+          if (!error) varToStore = static_cast<float>(result);
+        }
+
+        framePropToRead.value = varToStore;
+      }
+
       uint8_t *dstp = dst->GetWritePtr(plane_enum_d);
       int dst_stride = dst->GetPitch(plane_enum_d);
       int h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum_d);
@@ -3471,6 +3534,12 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
             rwptrs[i + RWPTR_START_OF_INPUTS] = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
             rwptrs[i + RWPTR_START_OF_STRIDES] = static_cast<intptr_t>(src_stride[i]);
           }
+          // refresh frame properties
+          for (auto& framePropToRead : d.frameprops[plane]) {
+            int whereToPut = framePropToRead.var_index;
+            *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES + whereToPut]) = framePropToRead.value;
+          };
+
           proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
 #ifdef GCC
@@ -3487,9 +3556,14 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         float *stack = stackVector.data();
         float stacktop = 0;
 
-        float internal_vars[6];
+        float internal_vars[INTERNAL_VARIABLES + MAX_FRAMEPROP_VARIABLES];
         internal_vars[INTERNAL_VAR_CURRENT_FRAME] = (float)framecount;
         internal_vars[INTERNAL_VAR_RELTIME] = (float)relative_time;
+        // followed by dynamic frame properties
+        for (auto& framePropToRead : d.frameprops[plane]) {
+          int whereToPut = framePropToRead.var_index;
+          internal_vars[INTERNAL_VAR_FRAMEPROP_VARIABLES_START + whereToPut] = framePropToRead.value;
+        };
 
         for (int y = 0; y < h; y++) {
           for (int x = 0; x < w; x++) {
@@ -3511,6 +3585,11 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
               case opLoadInternalVar:
                 stack[si] = stacktop;
                 stacktop = internal_vars[vops[i].e.ival];
+                ++si;
+                break;
+              case opLoadFramePropVar:
+                stack[si] = stacktop;
+                stacktop = internal_vars[INTERNAL_VAR_FRAMEPROP_VARIABLES_START + vops[i].e.ival];
                 ++si;
                 break;
               case opLoadSrc8:
@@ -3888,7 +3967,7 @@ static int getEffectiveBitsPerComponent(int bitsPerComponent, bool autoconv_conv
   return bitsPerComponent;
 }
 
-static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma,
+static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops, std::vector<ExprFramePropData>& fp, const VideoInfo **vi, const VideoInfo *vi_output, const SOperation storeOp, int numInputs, int planewidth, int planeheight, bool chroma,
   const bool autoconv_full_scale, const bool autoconv_conv_int, const bool autoconv_conv_float, const int clamp_float_i, const bool shift_float,
   IScriptEnvironment *env)
 {
@@ -3903,6 +3982,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
 
     std::unordered_map<std::string, int> varnames;
     int varindex = 0;
+    std::unordered_map<std::string, int> fpnames;
+    int fpindex = 0;
 
     size_t maxStackSize = 0;
     size_t stackSize = 0;
@@ -4606,6 +4687,49 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         {
           autoScaleSourceBitDepth = 32;
         }
+        else if (tokens[i].length() > 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z' && tokens[i][1] == '.') {
+          // frame property access: x.framePropName syntax
+          char srcChar = tokens[i][0];
+          int srcIndex;
+          if (srcChar >= 'x')
+            srcIndex = srcChar - 'x';
+          else
+            srcIndex = srcChar - 'a' + 3;
+          if (srcIndex >= numInputs)
+            env->ThrowError("Expr: Too few input clips supplied to reference '%s'", tokens[i].c_str());
+
+          auto fullname = tokens[i];
+          auto fpname = tokens[i].substr(2); // after '.'
+          if(fpname.length() == 0)
+            env->ThrowError("Expr: no frame property name is specified");
+          if (!isValidVarName(fpname))
+            env->ThrowError("Expr: invalid frame property name '%s'", fpname.c_str());
+
+          // check if frame property already existed in a variable slots
+          auto key = fullname;
+          auto it = fpnames.find(key);
+          int loadIndex;
+          if (it == fpnames.end()) {
+            // first occurance, insert name and actual index
+            if (fpindex >= MAX_FRAMEPROP_VARIABLES)
+              env->ThrowError("Expr: too many frame property references, maximum reached (%d)", MAX_FRAMEPROP_VARIABLES);
+            loadIndex = fpindex++;
+            fpnames[key] = loadIndex;
+            // Register into the list of frame properties to read
+            // input clip index: srcIndex
+            // name of frame property: fpname
+            // variable index to fill: loadindex
+            ExprFramePropData fpData;
+            fpData.name = fpname;
+            fpData.srcIndex = srcIndex;
+            fpData.var_index = loadIndex;
+            fp.push_back(fpData);
+          }
+          else {
+            loadIndex = it->second;
+          }
+          LOAD_OP(opLoadFramePropVar, loadIndex, 0);
+        }
         else if (tokenlen >= 2 && (tokens[i][tokenlen - 1] == '^' || tokens[i][tokenlen - 1] == '@'))
         {
           // storing a variable: A@ .. Z@
@@ -4863,6 +4987,7 @@ static int numOperands(uint32_t op) {
         case opLoadSpatialX:
         case opLoadSpatialY:
         case opLoadVar:
+        case opLoadFramePropVar:
         case opLoadInternalVar:
           return 0;
 
@@ -4926,6 +5051,7 @@ static bool isLoadOp(uint32_t op) {
         case opLoadSpatialX:
         case opLoadSpatialY:
         case opLoadVar:
+        case opLoadFramePropVar:
         case opLoadInternalVar:
           return true;
     }
@@ -5392,7 +5518,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       const int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
       const int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
       const bool chroma = (plane_enum_s == PLANAR_U || plane_enum_s == PLANAR_V);
-      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma,
+      d.maxStackSize = std::max(parseExpression(expr[i], d.ops[i], d.frameprops[i], vi_array, &d.vi, getStoreOp(&d.vi), d.numInputs, planewidth, planeheight, chroma,
         autoconv_full_scale, autoconv_conv_int, autoconv_conv_float, clamp_float_i, shift_float,
         env), d.maxStackSize);
       foldConstants(d.ops[i]);
@@ -5432,6 +5558,12 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
           const int sourceClip = d.ops[i][j].e.ival;
           d.clipsUsed[sourceClip] = true;
         }
+      }
+
+      // input clips with frame property access are used as well
+      for (auto framePropToRead : d.frameprops[i]) {
+        const int sourceClip = framePropToRead.srcIndex;
+        d.clipsUsed[sourceClip] = true;
       }
 
 #ifdef INTEL_INTRINSICS

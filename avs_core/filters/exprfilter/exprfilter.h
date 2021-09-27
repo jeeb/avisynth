@@ -7,7 +7,8 @@
 #endif
 
 #define MAX_EXPR_INPUTS 26
-#define INTERNAL_VARIABLES 2
+#define INTERNAL_VARIABLES 6
+#define MAX_FRAMEPROP_VARIABLES 256
 #define MAX_USER_VARIABLES 256
 
 // indexing RWPTR array (pointer sized elements)
@@ -18,15 +19,18 @@
 #define RWPTR_START_OF_STRIDES 32 // count = 26 for relative_y
 #define RWPTR_START_OF_INTERNAL_VARIABLES 58 // count = 6
 
+// special frame-by-frame variables (incl. frame properties) occupy only float size
 #define INTERNAL_VAR_CURRENT_FRAME 0
 #define INTERNAL_VAR_RELTIME 1
 #define INTERNAL_VAR_RFU2 2
 #define INTERNAL_VAR_RFU3 3
 #define INTERNAL_VAR_RFU4 4
 #define INTERNAL_VAR_RFU5 5
+#define INTERNAL_VAR_FRAMEPROP_VARIABLES_START 6
+#define RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES (RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_FRAMEPROP_VARIABLES_START) // count = 256
 
 // pad to 32 bytes boundary in x86: 64 * sizeof(pointer) is 32 byte aligned
-#define RWPTR_START_OF_USERVARIABLES 64 // count = 26 (for 2*ymm sized variables)
+#define RWPTR_START_OF_USERVARIABLES (RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES + MAX_FRAMEPROP_VARIABLES) // count = max.256 (for 2*ymm sized variables)
 #define RWPTR_SIZE (RWPTR_START_OF_USERVARIABLES + MAX_USER_VARIABLES * (2*32 / sizeof(void *)))
 
 struct split1 {
@@ -71,7 +75,7 @@ typedef enum {
   opExp, opLog, opPow,
   opSin, opCos, opTan, opAsin, opAcos, opAtan,
   opClip, opRound, opFloor, opCeil, opTrunc,
-  opStoreVar, opLoadVar, opStoreAndPopVar
+  opStoreVar, opLoadVar, opLoadFramePropVar, opStoreAndPopVar
 } SOperation;
 
 typedef union {
@@ -100,6 +104,13 @@ struct ExprOp {
   }
 };
 
+struct ExprFramePropData {
+  int srcIndex;
+  std::string name;
+  int var_index;
+  float value;
+};
+
 enum PlaneOp {
   poProcess, poCopy, poUndefined, poFill, poLut
 };
@@ -114,6 +125,7 @@ struct ExprData {
 #endif
   bool clipsUsed[MAX_EXPR_INPUTS]; // not doing GetFrame unreferenced input clips
   std::vector<ExprOp> ops[4]; // 4th: alpha
+  std::vector<ExprFramePropData> frameprops[4];
   int plane[4];
   float planeFillValue[4]; // optimize: fill plane with const
   int planeCopySourceClip[4]; // optimize: copy plane from which clip
