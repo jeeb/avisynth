@@ -3737,6 +3737,10 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
               case opAtan:
                 stacktop = std::atan(stacktop);
                 break;
+              case opAtan2:
+                --si;
+                stacktop = std::atan2(stack[si], stacktop); // y, x -> -Pi..+Pi
+                break;
               case opGt:
                 --si;
                 stacktop = (stack[si] > stacktop) ? 1.0f : 0.0f;
@@ -4026,6 +4030,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           ONE_ARG_OP(opAcos);
         else if (tokens[i] == "atan")
           ONE_ARG_OP(opAtan);
+        else if (tokens[i] == "atan2")
+          TWO_ARG_OP(opAtan2);
         else if (tokens[i] == "clip")
           THREE_ARG_OP(opClip);
         else if (tokens[i] == "round")
@@ -4968,6 +4974,8 @@ static float calculateTwoOperands(uint32_t op, float a, float b) {
             return ((a > 0) != (b > 0)) ? 1.0f : 0.0f;
         case opPow:
             return std::pow(a, b);
+        case opAtan2:
+            return std::atan2(a, b);
     }
 
     return 0.0f;
@@ -5028,7 +5036,8 @@ static int numOperands(uint32_t op) {
         case opOr:
         case opXor:
         case opPow:
-            return 2;
+        case opAtan2:
+          return 2;
 
         case opTernary:
         case opClip:
@@ -5115,85 +5124,6 @@ static void findBranches(std::vector<ExprOp> &ops, size_t pos, size_t *start1, s
     }
 }
 
-/*
-#define PAIR(x) { x, #x }
-static std::unordered_map<uint32_t, std::string> op_strings = {
-        PAIR(opLoadSrc8),
-        PAIR(opLoadSrc16),
-        PAIR(opLoadSrcF32),
-        PAIR(opLoadSrcF16),
-        PAIR(opLoadRelSrc8),
-        PAIR(opLoadRelSrc16),
-        PAIR(opLoadRelSrcF32),
-        PAIR(opLoadSpatialX),
-        PAIR(opLoadSpatialY),
-        PAIR(opLoadConst),
-        PAIR(opLoadInternalVars),
-        PAIR(opLoadVar)
-        PAIR(opLoadAndPopVar)
-        PAIR(opStoreVar)
-        PAIR(opStore8),
-        PAIR(opStore10),
-        PAIR(opStore12),
-        PAIR(opStore14),
-        PAIR(opStore16),
-        PAIR(opStoreF32),
-        PAIR(opStoreF16),
-        PAIR(opDup),
-        PAIR(opSwap),
-        PAIR(opAdd),
-        PAIR(opSub),
-        PAIR(opMul),
-        PAIR(opDiv),
-        PAIR(opFmod),
-        PAIR(opMax),
-        PAIR(opMin),
-        PAIR(opSqrt),
-        PAIR(opAbs),
-        PAIR(opGt),
-        PAIR(opLt),
-        PAIR(opEq),
-        PAIR(opNotEq),
-        PAIR(opLE),
-        PAIR(opGE),
-        PAIR(opTernary),
-        PAIR(opClip),
-        PAIR(opAnd),
-        PAIR(opOr),
-        PAIR(opXor),
-        PAIR(opNeg),
-        PAIR(opExp),
-        PAIR(opLog),
-        PAIR(opPow)
-        PAIR(opSin)
-        PAIR(opCos)
-        PAIR(opTan)
-        PAIR(opAsin)
-        PAIR(opAcos)
-        PAIR(opAtan)
-        PAIR(opRound)
-        PAIR(opFloor)
-        PAIR(opCeil)
-        PAIR(opTrunc)
-      };
-#undef PAIR
-
-
-static void printExpression(const std::vector<ExprOp> &ops) {
-    fprintf(stderr, "Expression: '");
-
-    for (size_t i = 0; i < ops.size(); i++) {
-        fprintf(stderr, " %s", op_strings[ops[i].op].c_str());
-
-        if (ops[i].op == opLoadConst)
-            fprintf(stderr, "(%.3f)", ops[i].e.fval);
-        else if (isLoadOp(ops[i].op))
-            fprintf(stderr, "(%d)", ops[i].e.ival);
-    }
-
-    fprintf(stderr, "'\n");
-}
-*/
 
 static void foldConstants(std::vector<ExprOp> &ops) {
     for (size_t i = 0; i < ops.size(); i++) {
@@ -5320,6 +5250,7 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opOr:
             case opXor:
             case opPow:
+            case opAtan2:
               if (ops[i - 2].op == opLoadConst && ops[i - 1].op == opLoadConst) {
                 ops[i].e.fval = calculateTwoOperands(ops[i].op, ops[i - 2].e.fval, ops[i - 1].e.fval);
                 ops[i].op = opLoadConst;
@@ -5582,7 +5513,8 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
             d.planeOptSSE2[i] = false;
         }
         // trig.functions C only
-        if (op == opSin || op == opCos || op == opTan || op == opAsin || op == opAcos || op == opAtan) {
+        if (op == opSin || op == opCos || op == opTan ||
+          op == opAsin || op == opAcos || op == opAtan || op == opAtan2) {
           d.planeOptAvx2[i] = false;
           d.planeOptSSE2[i] = false;
           break;
