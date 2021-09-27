@@ -326,7 +326,7 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
   { "IsArray",   BUILTIN_FUNC_PREFIX, ".", IsArray },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, ".s", ArrayGet },
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, ".i+", ArrayGet }, // .+i+ syntax is not possible.
-  { "ArraySize", BUILTIN_FUNC_PREFIX, ".*", ArraySize },
+  { "ArraySize", BUILTIN_FUNC_PREFIX, ".", ArraySize },
   */
 
   // arguments are provided in a flattened way (flattened=array elements extracted)

@@ -307,7 +307,7 @@ extern const AVSFunction Script_functions[] = {
     // classic array indexing background helper: e.g. a[3,4] -> ArrayGet(a, [2,3])
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, ".i+", ArrayGet }, // .+i+ syntax is not possible.
     // length can be zero
-  { "ArraySize", BUILTIN_FUNC_PREFIX, ".*", ArraySize },
+  { "ArraySize", BUILTIN_FUNC_PREFIX, ".", ArraySize },
   /*
   { "ArrayAdd",  BUILTIN_FUNC_PREFIX, ".i*", ArrayAdd },
   { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
@@ -2164,14 +2164,6 @@ AVSValue VarExist(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env)
 {
-  if (args[0].IsArray() && args[0].ArraySize() == 1) {
-    AVSValue arg0 = args[0];
-    if (arg0.ArraySize() == 0)
-      return new AVSValue(nullptr, 0); // special case: zero length array
-    else
-      return args[0];
-  }
-else
     return args[0];
 }
 
@@ -2180,9 +2172,9 @@ AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env) { return args[0]
 AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env)
 {
   // signature .i+
-  // parameters: [0] array to index; [1] one or more integer indexes
+  // parameters: [0] array to index; [1] one or more integer indexes or a string
   if (!args[0].IsArray())
-    env->ThrowError("Array required.");
+    env->ThrowError("ArrayGet: array type required.");
   const int size = args[0].ArraySize();
   if (args[1].IsString()) {
     // associative search
@@ -2192,9 +2184,9 @@ AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env)
     {
       AVSValue currentTagValue = args[0][i]; // two elements e.g. { "b", element2 }
       if(!currentTagValue.IsArray())
-        env->ThrowError("Array must contain array[string, any] elements for dictionary lookup");
+        env->ThrowError("ArrayGet: Array must contain array[string, any] elements for dictionary lookup");
       if(currentTagValue.ArraySize() < 2)
-        env->ThrowError("Internal array must have at least two elements (tag, value)");
+        env->ThrowError("ArrayGet: Internal array must have at least two elements (tag, value)");
       AVSValue currentTag = currentTagValue[0];
       if (currentTag.IsString() && !lstrcmpi(currentTag.AsString(), tag))
       {
@@ -2215,20 +2207,20 @@ AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env)
         env->ThrowError("ArrayGet: not an array. Index=%d", i);
       int currentIndex = indexes[i].AsInt();
       if(currentIndex < 0 || currentIndex >= currentValue.ArraySize())
-        env->ThrowError("Array index out of range. Problematic index count: %d", i+1);
+        env->ThrowError("ArrayGet: Array index out of range. Problematic index count: %d", i+1);
       currentValue = currentValue[currentIndex];
     }
     return currentValue;
   }
-  env->ThrowError("Invalid array index, must be integer or string, or comma separated integers");
+  env->ThrowError("ArrayGet: Invalid array index, must be integer or string, or comma separated integers");
   return AVSValue(); // undefined
 }
 
 AVSValue ArraySize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  // func signature: ".*"
-  if (!args[0][0].IsArray())
-    env->ThrowError("Parameter must be array");
-  return args[0][0].ArraySize();
+  // func signature: "."
+  if (!args[0].IsArray())
+    env->ThrowError("ArraySize: parameter must be an array");
+  return args[0].ArraySize();
 }
 #endif

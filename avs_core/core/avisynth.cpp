@@ -4106,7 +4106,8 @@ bool ScriptEnvironment::CheckArguments(const Function* func, const AVSValue* arg
   return false;
 }
 
-#if 0
+#ifdef LISTARGUMENTS
+// debug
 static void ListArguments(const char *name, const AVSValue& args, int &level, bool flattened) {
   if (!strcmp(name, "Import"))
     return;
@@ -4117,11 +4118,12 @@ static void ListArguments(const char *name, const AVSValue& args, int &level, bo
   level++;
   if (args.IsArray()) {
     const int as = args.ArraySize();
-    fprintf(stdout, "Array, size=%d\r\n", as);
+    fprintf(stdout, "Array, size=%d {\r\n", as);
     for (int i = 0; i < as; i++) {
       fprintf(stdout, "Element#%d\r\n", i);
       ListArguments(name, args[i], level, flattened);
     }
+    fprintf(stdout, "}\r\n");
   }
   else {
     if (!args.Defined())
@@ -4169,6 +4171,11 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     name = "<anonymous function>";
   }
 
+  // Step #1: Flattening
+  // arrays received in the place of unnamed parameters are flattened back
+  // to have them as a list again, in order to be compatible with Avisynth's "array elements as comma
+  // delimited parameters" definition style.
+
   // get how many args we will need to store
   size_t args2_count = Flatten(args, NULL, 0, 0, arg_names);
   if (args2_count > ScriptParser::max_args)
@@ -4179,12 +4186,14 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   args2[0] = implicit_last;
   Flatten(args, args2.data() + 1, 0, 0, arg_names);
 
-#if 0
+#ifdef LISTARGUMENTS
   // debug list of Invoke arguments before-after flattening
   int level = 0;
   ListArguments(name, args, level, false); // unflattened remark
   ListArguments2(name, args2.data()+1, level, true, args2_count); // flattened remark
 #endif
+
+  // Step #2: Arguments check and function detection by matching signature.
 
   bool strict = false;
   int argbase = 1;
@@ -4202,7 +4211,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     // Because only one level is flattened, for 2+ Dimension arrays result are
     // at least two parameters which are still arrays)
     // [3,4,5] is flattened as 3,4,5
-    // [[2,3], [3,4,5]] is flattened as [2,3], [3,4,5]
+    // clip, [[2,3], [3,4,5]] is flattened as clip, [2,3], [3,4,5]
 
     // find matching function
     f = this->Lookup(name, args2.data() + 1, args2_count, strict, args_names_count, arg_names, env_thread);
@@ -4218,6 +4227,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
       args2_count += 1;
     }
   }
+
   // Problem: Animate has parameter signature both "iis.*" and "ciis.*"
   //   ColorBars()
   //   Animate(0, 100, "blur", 0.1, 1.5)
@@ -4226,46 +4236,14 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   // (see comment Issue20200818 later).
   // Expression evaluator would catch NotFound and reissue _Invoke with a forced implicit_last in args.
 
+  // Step #3: Unnamed arguments
+
   // combine unnamed args into arrays
   size_t src_index = 0;
   const char* p = f->param_types;
 
   std::vector<AVSValue> args3;
   std::vector<bool> args3_really_filled;
-
-  // remarks for the generic array parameter concept.
-  /*
-  args2 has to be matched to f*[N]i[y]i*
-  ------- Summa (flattened)
-  Array, size=3 (unnamed)
-  Element#0        Int 3
-  Element#1        Int 4
-  Element#2        Int 5
-
-  Int 2 (named "N")
-
-  Array, size=3 (named "Y")
-  Element#0        Int 3
-  Element#1        Int 4
-  Element#2        Int 5
-  */
-
-  /*
-  args2 has to be matched to .*
-  ------- Array (flattened)
-  Array, size=2
-  Element#0
-  Int 1
-  Element#1
-  Int 2
-  Array, size=3
-  Element#0
-  Int 3
-  Element#1
-  Int 4
-  Element#2
-  Int 5
-  */
 
   bool last_was_named = false;
   while (*p) {
@@ -4279,10 +4257,20 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     }
     else if (((p[1] == '*') || (p[1] == '+'))) {
       // Case of unnamed arrays or named arrays
-      // special named array: [] with no real name
+      // Special named array: [] with no real name
       // Pre 3.6: filling up named arrays with names from script level was not possible.
+      // Memo: array function signature types: * means "zero or more". + means "one or more"
       // Example fake-named array: the first clip array parameter of BlankClip "[]c*[length]i etc.
-      // Example named array (MPP_SharedMemoryServer): csi[aux_clips]c*[max_cache_frames]i etc.
+      // Some functions with array signatures:
+      //   Select i.+
+      //   SelectEvery: cii*
+      //   Format: s.*
+      //   MPP_SharedMemoryServer: csi[aux_clips]c*[max_cache_frames]i
+      //   BlankClip []c*[length]i (fake named array)
+      //   ArrayGet .i+
+      //   ArraySize .
+      //   Array/ArrayCreate .*: [[2,3,4], [1,2]] -> [2,3,4], [1,2]
+      //   user_script_function(clip, int_array) c[]i*
       // Pre v3.6 script-level array definition: autodetect comma separated list elements
       // The parser detects the end of array: the next argument type is different.
       // Since the end of free-typed (".+" or ".*") arrays cannot be recognized, they are allowed to appear
@@ -4291,32 +4279,127 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
       size_t start = src_index;
       const char arg_type = *p;
 
+
       if (src_index < args2_count &&
-        args2[argbase + src_index].IsArray() && // after flattening this only happens when 2D (or more D) array was passed
-        arg_type != '.' &&
-        AVSFunction::SingleTypeMatchArray(arg_type, args2[argbase + src_index], strict))
+        args2[argbase + src_index].IsArray() 
+        // After flattening this only happens when an explicite array was passed.
+        // typed array recognition is easy and unambigous
+        && arg_type != '.' // to avoid .+ case when one can pass array of arrays like [[1,2,3],[4,5]] flattened to [1,2,3],[4,5]
+        )
       {
+        if (arg_type != '.') {
+          if (!AVSFunction::SingleTypeMatchArray(arg_type, args2[argbase + src_index], strict))
+            ThrowError("Array elements do not match with the specified type in function %s", name);
+        }
+
+        if(p[1] == '+' && args2[argbase + src_index].ArraySize() == 0) // one or more
+          ThrowError("An array with zero element size was given to function %s which expects a 'one-or-more' style array argument", name);
         args3.push_back(args2[argbase + src_index]); // can't delete args2 early because of this
         args3_really_filled.push_back(true); // valid array content
         src_index++;
       }
-      else {
+      else
+      {
+        // Collect consecutive similary-typed parameters into an array by automatic detection of its end:
+        // The end of a simple-typed array:
+        // - when the comma separated parameter list is changing type
+        // - no more parameters (list ends)
+        // E.g. collect values into an integer array (i*) until values in the list are still integers.
+        // The array collection in parameter sequence 1, 2, 3, "hello1", "hello2" will stop before "hello1"
+        // because type is changed from i to s.
+        // This is why the end of an 'any-type' array (.*) cannot be detected from a comma delimited list:
+        // no stopping condition (no type), only the end of list can stop collecting.
         while ((src_index < args2_count)) {
           const bool match = AVSFunction::SingleTypeMatch(arg_type, args2[argbase + src_index], strict);
           if (!match)
             break;
           src_index++;
         }
-        size_t size = src_index - start;
+        size_t size = src_index - start; // so we have size number of items detected. Put them back into an array.
         assert(args2_count >= size);
 
         // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
-        // because filters like BlankClip or MPP_SharedMemoryServer might still be expecting it.
-        args3.push_back(AVSValue(size > 0 ? args2.data() + argbase + start : NULL, (int)size)); // can't delete args2 early because of this
-        if (last_was_named && size > 0)
-          args3_really_filled.push_back(true); // valid array content
-        else
+        // because filters like BlankClip []c* or MPP_SharedMemoryServer might still be expecting it.
+        // 3.7.1.: This statement is no longer true. BlankClip was modified to handle Undefined AVSValue instead of array[] properly
+
+/*
+  Considerations on resolving parameter handling for "array of anything" parameter when array(s) would be passed directly.
+  Memo:
+  - Avisynth signature: .* or .+
+  - Script function specifier val_array or val_array_nz
+
+  When parameter signature is array of anything (.* or .+) and the
+  parameter is passed unnamed (even if it is a named parameter) then
+  there is an ambiguos situation which 
+
+  Giving a parameter list of 1,2,3 will be detected as [1,2,3] (compatibility: list is grouped together into an array internally).
+  E.g. 1 will be detected as [1]
+  Passing nothing from an Avisynth script in the place of the parameter will be detected as [] (array size is zero, value is defined)
+  initially, then later in the named parameter processing procedure it can be overridden directly by a named value.
+  
+  This rule means that a directly given script array e.g. [1,2,3] will be detected as [[1,2,3]], because unnamed and untyped parameters are
+  put together into an array, which has the size of the list. This is a list of 1 element which happens to be an array.
+  Avisynth cannot 'guess' whether we want to define a single array directly or this array is the only one part of the list.
+  So an unnamedly passed [1,2,3] will appear as [ [1,2,3] ] in the unnamed "array of anything" parameter value.
+
+  Syntax hint:
+  When someone would like to pass a directly specified array (e.g. [1,2,3] instead of 1,2,3) to a .+ or .* parameter
+  the parameter must be passed by name to avoid ambiguity!
+
+  Example script function definition:
+    function foo(val_array "n")
+
+  Value seen inside the function body:
+      Call                          Value of n
+      foo()                         Undefined
+      foo(1)                        [1] (*)
+      foo(1,2,3)                    [1,2,3] (*)
+      foo([1,2,3])            !     [[1,2,3]] (*)
+      foo([1,2,3],[4,5])      !     [[1,2,3],[4,5]] (*)
+      foo(n=[1,2,3])                [1,2,3]
+      foo(n=[[1,2,3],[4,5]])        [[1,2,3],[4,5]]
+      foo(n=[])                     []
+      foo(n=1)                      [1] (**)
+      foo(n="hello")                ["hello"]  (**)
+
+    *  compatible Avisynth way: comma delimited consecutive values form an array
+    ** simple-type value passed to a named array parameter will be created as a 1-element real array
+
+      // unnamed signature
+    function foo(val_array n)
+      Call                          n
+      foo()                         [] (defined and array size is zero) Avisynth compatible behaviour
+*/
+
+        if (size == 0 && p[1] == '+') // '+': one or more
+        {
+          if(!last_was_named)
+            ThrowError("A zero-sized array (or empty parameter list) appeared in the place of an unnamed parameter to function %s which expects a 'one-or-more' style array argument", name);
+          args3.push_back(AVSValue()); // push undefined
           args3_really_filled.push_back(false); // zero sized (not found) array can be specified later with argname
+        }
+        else {
+          if (size == 0) {
+            if (last_was_named)
+              args3.push_back(AVSValue());
+            // Named array is left Undefined here. In a later section it can be overridden with named argument
+            // This ensures that passing empty [] is different than not passing anything (Defined() vs. Undefined())
+            // because of this (undefined instead of zero-sized array) BlankClip was changed to handle to allow the parameter as undefined.
+            else {
+              args3.push_back(AVSValue(NULL, 0));
+              // Unnamed parameter: array of zero size.
+              // Fixme cosmetics: Maybe this one even cannot be reached, because an unnamed compulsory parameter cannot be 'zero or more' array
+            }
+          }
+          else
+            // create a proper array from the list of elements
+            args3.push_back(AVSValue(args2.data() + argbase + start, (int)size)); // can't delete args2 early because of this
+
+          if (last_was_named && size > 0)
+            args3_really_filled.push_back(true); // valid array content
+          else
+            args3_really_filled.push_back(false); // zero sized (not found) array can be specified later with argname
+        }
       }
 
       p += 2; // skip type-char and '*' or '+'
@@ -4350,6 +4433,8 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
 
   const int args3_count = (int)args3.size();
 
+  // Step #4: Named arguments
+
   // copy named args
   for (int i = 0; i<args_names_count; ++i) {
     if (arg_names[i]) {
@@ -4367,7 +4452,7 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
             if (args3[named_arg_index].Defined() && args3_really_filled[named_arg_index]) {
               // when a parameter like named array was filled as an empty array
               // from the unnamed section we don't throw error for the first time
-              ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
+              ThrowError("Script error: the named argument \"%s\" was passed more than once (twice as named or first unnamed then named) to %s", arg_names[i], name);
             }
 #ifndef NEW_AVSVALUE
             //PF 161028 AVS+ arrays as named arguments
@@ -4385,10 +4470,24 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
               ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
             }
             else {
-              // check: do not accept array in the place of a non-array argument. e.g. foo(sigma=[1.0, 1.1]) to [sigma]f is invalid
-              if(args[i].Defined() && args[i].IsArray() && !(q[2] == '*' || q[2] == '+'))
-                ThrowError("Script error: the named argument \"%s\" to %s had the wrong type (passed an array to a non-array parameter)", arg_names[i], name);
-              args3[named_arg_index] = args[i];
+              if (args[i].Defined() && args[i].IsArray()) {
+                // check: do not accept array in the place of a non-array argument. e.g. foo(sigma=[1.0, 1.1]) to [sigma]f is invalid
+                if (!(q[2] == '*' || q[2] == '+'))
+                  ThrowError("Script error: the named argument \"%s\" to %s had the wrong type (passed an array to a non-array parameter)", arg_names[i], name);
+                if (q[2] == '+' && args[i].ArraySize() == 0)
+                  ThrowError("Script error: the named argument \"%s\" to %s is a 'one-or-more' element style array but had zero element count.", arg_names[i], name);
+              }
+              // Note (after having array type parameters in script functions as well)
+              // When passing a simple value to an array parameter, we should really make an array of it
+              // or else script function parameters of array types won't see this parameter as an array inside the function body.
+              // Note: Unlike AVS scripts a real plugin - through Avisynth interface - is 
+              // - allowed to index an AVSValue which is not even an array. Index 0 returns the simple-type value itself.
+              // - calling AVSValue ArraySize() returns 1
+              // But an AVS script syntax indexing and ArraySize() requires a real array, simple base type is not allowed there.
+              if(args[i].Defined() && !args[i].IsArray() && (q[2] == '*' || q[2] == '+'))
+                args3[named_arg_index] = AVSValue(&args[i],1); // really create an array with one element
+              else
+                args3[named_arg_index] = args[i];
               args3_really_filled[named_arg_index] = true;
               goto success;
             }
@@ -4406,6 +4505,8 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   }
 
   std::vector<AVSValue>(args3).shrink_to_fit();
+
+  // end of parameter matching and parsing
 
   if(is_runtime) {
     // Invoked by a thread or GetFrame

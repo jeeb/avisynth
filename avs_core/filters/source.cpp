@@ -315,11 +315,11 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   AVSValue args0 = args[0];
 
   // param#12: "clip" overrides
-  if (args0.ArraySize() == 1 && !args[12].Defined()) {
+  if (args0.Defined() && args0.ArraySize() == 1 && !args[12].Defined()) {
     vi_default = args0[0].AsClip()->GetVideoInfo();
     parity = args0[0].AsClip()->GetParity(0);
   }
-  else if (args0.ArraySize() != 0) {
+  else if (args0.Defined() && args0.ArraySize() != 0) {
     // when "clip" is defined then beginning clip parameter is forbidden
     env->ThrowError("BlankClip: Only 1 Template clip allowed.");
   }
