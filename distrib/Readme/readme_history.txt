@@ -4,8 +4,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210927 WIP
+20210928 WIP
 ------------
+- Expr: sin and cos SIMD acceleration (SSE2 and AVX2) port from VapourSynth (Akarin et al.)
+- SelectRangeEvery: experimental fix on getting audio part (TomArrow; https://github.com/AviSynth/AviSynthPlus/issues/232)
 - Expr: implement atan2(y,x). "yvalue xvalue atan2"
   Similarly to other trigonometric functions, function is C-only at the moment, SIMD acceleration is disabled when used in an expression.
   Returns values in the range -PI .. +PI (see C++ std::atan2 rules)
