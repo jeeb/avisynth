@@ -292,7 +292,7 @@ enum {
   { (int)MAKEDWORD(a0,a1,a2,a3), (int)MAKEDWORD(a4,a5,a6,a7), (int)MAKEDWORD(a8,a9,a10,a11), (int)MAKEDWORD(a12,a13,a14,a15) }
 
 
-static constexpr ExprUnion alignas(16) logexpconst[65][4] = {
+static constexpr ExprUnion logexpconst alignas(16)[65][4] = {
     XCONST(0x7FFFFFFF), // absmask
     XCONST(0x7F), // c7F
     XCONST(0x00800000), // min_norm_pos
@@ -369,7 +369,7 @@ static constexpr ExprUnion alignas(16) logexpconst[65][4] = {
 #undef XCONST
 #define XCONST(x) { x, x, x, x, x, x, x, x }
 
-static constexpr ExprUnion alignas(32) logexpconst_avx[65][8] = {
+static constexpr ExprUnion logexpconst_avx alignas(32)[65][8] = {
   XCONST(0x7FFFFFFF), // absmask
   XCONST(0x7F), // c7F
   XCONST(0x00800000), // min_norm_pos
