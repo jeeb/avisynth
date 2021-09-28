@@ -58,6 +58,7 @@
 * 202107xx round, floor, ceil, trunc (acceleration from SSE4.1 and up)
 *          arbitrary variable names; instead of 'A' to 'Z', up to 256 of them can be used
 * 20210924 frame property access clip.framePropName syntax after VSAkarin idea (no array access yet)
+*          sin and cos as SIMD (VSAkarin, port from VS)
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -272,8 +273,13 @@ enum {
     loadmask1000, loadmask1100, loadmask1110,
     elShuffleForRight0, elShuffleForRight1, elShuffleForRight2, elShuffleForRight3, elShuffleForRight4, elShuffleForRight5, elShuffleForRight6,
     elShuffleForLeft0, elShuffleForLeft1, elShuffleForLeft2, elShuffleForLeft3, elShuffleForLeft4, elShuffleForLeft5, elShuffleForLeft6,
-    elexp_hi, elexp_lo, elcephes_LOG2EF, elcephes_exp_C1, elcephes_exp_C2, elcephes_exp_p0, elcephes_exp_p1, elcephes_exp_p2, elcephes_exp_p3, elcephes_exp_p4, elcephes_exp_p5, elcephes_SQRTHF,
-    elcephes_log_p0, elcephes_log_p1, elcephes_log_p2, elcephes_log_p3, elcephes_log_p4, elcephes_log_p5, elcephes_log_p6, elcephes_log_p7, elcephes_log_p8, elcephes_log_q1 = elcephes_exp_C2, elcephes_log_q2 = elcephes_exp_C1
+    elexp_hi, elexp_lo, elcephes_LOG2EF,
+    elcephes_exp_C1, elcephes_log_q2 = elcephes_exp_C1, elcephes_exp_C2, elcephes_log_q1 = elcephes_exp_C2, elcephes_exp_p0, elcephes_exp_p1, elcephes_exp_p2, elcephes_exp_p3, elcephes_exp_p4, elcephes_exp_p5, elcephes_SQRTHF,
+    elcephes_log_p0, elcephes_log_p1, elcephes_log_p2, elcephes_log_p3, elcephes_log_p4, elcephes_log_p5, elcephes_log_p6, elcephes_log_p7, elcephes_log_p8,
+    float_invpi, float_rintf,
+    float_pi1, float_pi2, float_pi3, float_pi4,
+    float_sinC3, float_sinC5, float_sinC7, float_sinC9,
+    float_cosC2, float_cosC4, float_cosC6, float_cosC8
 };
 
 // constants for xmm
@@ -286,7 +292,7 @@ enum {
   { (int)MAKEDWORD(a0,a1,a2,a3), (int)MAKEDWORD(a4,a5,a6,a7), (int)MAKEDWORD(a8,a9,a10,a11), (int)MAKEDWORD(a12,a13,a14,a15) }
 
 
-alignas(16) static const FloatIntUnion logexpconst[][4] = {
+static constexpr ExprUnion alignas(16) logexpconst[65][4] = {
     XCONST(0x7FFFFFFF), // absmask
     XCONST(0x7F), // c7F
     XCONST(0x00800000), // min_norm_pos
@@ -337,7 +343,21 @@ alignas(16) static const FloatIntUnion logexpconst[][4] = {
     XCONST(-1.6668057665E-1f), // cephes_log_p5
     XCONST(+2.0000714765E-1f), // cephes_log_p6
     XCONST(-2.4999993993E-1f), // cephes_log_p7
-    XCONST(+3.3333331174E-1f) // cephes_log_p8
+    XCONST(+3.3333331174E-1f), // cephes_log_p8
+    XCONST(0x3ea2f983), // float_invpi, 1/pi
+    XCONST(0x4b400000), // float_rintf
+    XCONST(0x40490000), // float_pi1
+    XCONST(0x3a7da000), // float_pi2
+    XCONST(0x34222000), // float_pi3
+    XCONST(0x2cb4611a), // float_pi4
+    XCONST(0xbe2aaaa6), // float_sinC3
+    XCONST(0x3c08876a), // float_sinC5
+    XCONST(0xb94fb7ff), // float_sinC7
+    XCONST(0x362edef8), // float_sinC9
+    XCONST(static_cast<int32_t>(0xBEFFFFE2)), // float_cosC2
+    XCONST(0x3D2AA73C), // float_cosC4
+    XCONST(static_cast<int32_t>(0XBAB58D50)), // float_cosC6
+    XCONST(0x37C1AD76) // float_cosC8 
 };
 
 
@@ -349,7 +369,7 @@ alignas(16) static const FloatIntUnion logexpconst[][4] = {
 #undef XCONST
 #define XCONST(x) { x, x, x, x, x, x, x, x }
 
-alignas(32) static const FloatIntUnion logexpconst_avx[][8] = {
+static constexpr ExprUnion alignas(32) logexpconst_avx[65][8] = {
   XCONST(0x7FFFFFFF), // absmask
   XCONST(0x7F), // c7F
   XCONST(0x00800000), // min_norm_pos
@@ -400,8 +420,23 @@ alignas(32) static const FloatIntUnion logexpconst_avx[][8] = {
   XCONST(-1.6668057665E-1f), // cephes_log_p5
   XCONST(+2.0000714765E-1f), // cephes_log_p6
   XCONST(-2.4999993993E-1f), // cephes_log_p7
-  XCONST(+3.3333331174E-1f) // cephes_log_p8
+  XCONST(+3.3333331174E-1f), // cephes_log_p8
+  XCONST(0x3ea2f983), // float_invpi, 1/pi
+  XCONST(0x4b400000), // float_rintf
+  XCONST(0x40490000), // float_pi1
+  XCONST(0x3a7da000), // float_pi2
+  XCONST(0x34222000), // float_pi3
+  XCONST(0x2cb4611a), // float_pi4
+  XCONST(0xbe2aaaa6), // float_sinC3
+  XCONST(0x3c08876a), // float_sinC5
+  XCONST(0xb94fb7ff), // float_sinC7
+  XCONST(0x362edef8), // float_sinC9
+  XCONST(static_cast<int32_t>(0xBEFFFFE2)), // float_cosC2
+  XCONST(0x3D2AA73C), // float_cosC4
+  XCONST(static_cast<int32_t>(0XBAB58D50)), // float_cosC6
+  XCONST(0x37C1AD76) // float_cosC8 
 };
+#undef XCONST
 
 #define CPTR_AVX(x) (ymmword_ptr[constptr + (x) * 32])
 
@@ -559,6 +594,194 @@ vfnmadd231ps(y, z, CPTR_AVX(elfloat_half)); \
 vaddps(x, x, y); \
 vfmadd231ps(x, emm0, CPTR_AVX(elcephes_log_q2)); \
 vorps(x, x, invalid_mask); }
+
+// Note: VS Expr changed a lot since ported to Avisynth, 
+// Here we are using their VEX macros for easy port of new sin and cos
+// however we do not support VEX encoding or FMA3 in xmm register mode
+#define VEX1(op, arg1, arg2) \
+do { \
+  if constexpr(false /*cpuFlags & CPUF_AVX*/) \
+    v##op(arg1, arg2); \
+  else \
+    op(arg1, arg2); \
+} while (0)
+#define VEX1IMM(op, arg1, arg2, imm) \
+do { \
+  if constexpr(false /*cpuFlags & CPUF_AVX*/) { \
+    v##op(arg1, arg2, imm); \
+  } else if (arg1 == arg2) { \
+    op(arg2, imm); \
+  } else { \
+    movdqa(arg1, arg2); \
+    op(arg1, imm); \
+  } \
+} while (0)
+#define VEX2(op, arg1, arg2, arg3) \
+do { \
+  if constexpr(false /*cpuFlags & CPUF_AVX*/) { \
+    v##op(arg1, arg2, arg3); \
+  } else if (arg1 == arg2) { \
+    op(arg2, arg3); \
+  } else if (arg1 != arg3) { \
+    movdqa(arg1, arg2); \
+    op(arg1, arg3); \
+  } else { \
+    XmmReg tmp; \
+    movdqa(tmp, arg2); \
+    op(tmp, arg3); \
+    movdqa(arg1, tmp); \
+  } \
+} while (0)
+#define VEX2IMM(op, arg1, arg2, arg3, imm) \
+do { \
+  if constexpr(false/*cpuFlags & CPUF_AVX*/) { \
+    v##op(arg1, arg2, arg3, imm); \
+  } else if (arg1 == arg2) { \
+    op(arg2, arg3, imm); \
+  } else if (arg1 != arg3) { \
+    movdqa(arg1, arg2); \
+    op(arg1, arg3, imm); \
+  } else { \
+    XmmReg tmp; \
+    movdqa(tmp, arg2); \
+    op(tmp, arg3, imm); \
+    movdqa(arg1, tmp); \
+  } \
+} while (0)
+
+#define SINCOS_PS(issin, y, x) { \
+XmmReg t1, sign, t2, t3, t4; \
+/* // Remove sign */ \
+VEX1(movaps, t1, CPTR(elabsmask)); \
+if (issin) { \
+  VEX1(movaps, sign, t1); \
+  VEX2(andnps, sign, sign, x); \
+} \
+else { \
+  VEX2(pxor, sign, sign, sign); \
+} \
+VEX2(andps, t1, t1, x); \
+/*// Range reduction*/ \
+VEX1(movaps, t3, CPTR(float_rintf)); \
+VEX2(mulps, t2, t1, CPTR(float_invpi)); \
+VEX2(addps, t2, t2, t3); \
+VEX1IMM(pslld, t4, t2, 31); \
+VEX2(xorps, sign, sign, t4); \
+VEX2(subps, t2, t2, t3); \
+if constexpr(false /*cpuFlags & CPUF_FMA3*/) { \
+  vfnmadd231ps(t1, t2, CPTR(float_pi1)); \
+  vfnmadd231ps(t1, t2, CPTR(float_pi2)); \
+  vfnmadd231ps(t1, t2, CPTR(float_pi3)); \
+  vfnmadd231ps(t1, t2, CPTR(float_pi4)); \
+} \
+else { \
+  VEX2(mulps, t4, t2, CPTR(float_pi1)); \
+  VEX2(subps, t1, t1, t4); \
+  VEX2(mulps, t4, t2, CPTR(float_pi2)); \
+  VEX2(subps, t1, t1, t4); \
+  VEX2(mulps, t4, t2, CPTR(float_pi3)); \
+  VEX2(subps, t1, t1, t4); \
+  VEX2(mulps, t4, t2, CPTR(float_pi4)); \
+  VEX2(subps, t1, t1, t4); \
+} \
+if (issin) { \
+  /* // Evaluate minimax polynomial for sin(x) in [-pi/2, pi/2] interval */ \
+  /* // Y <- X + X * X^2 * (C3 + X^2 * (C5 + X^2 * (C7 + X^2 * C9))) */ \
+  VEX2(mulps, t2, t1, t1); \
+  if constexpr(false /*cpuFlags & CPUF_FMA3*/) { \
+    vmovaps(t3,  CPTR(float_sinC7)); \
+    vfmadd231ps(t3, t2, CPTR(float_sinC9)); \
+    vfmadd213ps(t3, t2, CPTR(float_sinC5)); \
+    vfmadd213ps(t3, t2, CPTR(float_sinC3)); \
+    VEX2(mulps, t3, t3, t2); \
+    vfmadd231ps(t1, t1, t3); \
+  } \
+  else { \
+    VEX2(mulps, t3, t2, CPTR(float_sinC9)); \
+    VEX2(addps, t3, t3, CPTR(float_sinC7)); \
+    VEX2(mulps, t3, t3, t2); \
+    VEX2(addps, t3, t3, CPTR(float_sinC5)); \
+    VEX2(mulps, t3, t3, t2); \
+    VEX2(addps, t3, t3, CPTR(float_sinC3)); \
+    VEX2(mulps, t3, t3, t2); \
+    VEX2(mulps, t3, t3, t1); \
+    VEX2(addps, t1, t1, t3); \
+  } \
+} \
+else { \
+/*  // Evaluate minimax polynomial for cos(x) in [-pi/2, pi/2] interval */ \
+/*  // Y <- 1 + X^2 * (C2 + X^2 * (C4 + X^2 * (C6 + X^2 * C8))) */ \
+  VEX2(mulps, t2, t1, t1); \
+  if constexpr(false /*cpuFlags & CPUF_FMA3*/) { \
+    vmovaps(t1, CPTR(float_cosC6)); \
+    vfmadd231ps(t1, t2, CPTR(float_cosC8)); \
+    vfmadd213ps(t1, t2, CPTR(float_cosC4)); \
+    vfmadd213ps(t1, t2, CPTR(float_cosC2)); \
+    vfmadd213ps(t1, t2, CPTR(elfloat_one)); \
+  } \
+  else { \
+    VEX2(mulps, t1, t2, CPTR(float_cosC8)); \
+    VEX2(addps, t1, t1, CPTR(float_cosC6)); \
+    VEX2(mulps, t1, t1, t2); \
+    VEX2(addps, t1, t1, CPTR(float_cosC4)); \
+    VEX2(mulps, t1, t1, t2); \
+    VEX2(addps, t1, t1, CPTR(float_cosC2)); \
+    VEX2(mulps, t1, t1, t2); \
+    VEX2(addps, t1, t1, CPTR(elfloat_one)); \
+  } \
+} \
+/*// Apply sign */ \
+VEX2(xorps, y, t1, sign); \
+}
+
+// y dst x src
+#define SINCOS_PS_AVX(issin, y, x) { \
+YmmReg t1, sign, t2, t3, t4; \
+/* // Remove sign */ \
+vmovaps(t1, CPTR_AVX(elabsmask)); \
+if (issin) { \
+  vmovaps(sign, t1); \
+  vandnps(sign, sign, x); \
+} \
+else { \
+  vxorps(sign, sign, sign); \
+} \
+vandps(t1, t1, x); \
+/*// Range reduction*/ \
+vmovaps(t3, CPTR_AVX(float_rintf)); \
+vmulps(t2, t1, CPTR_AVX(float_invpi)); \
+vaddps(t2, t2, t3); \
+vpslld(t4, t2, 31); \
+vxorps(sign, sign, t4); \
+vsubps(t2, t2, t3); \
+vfnmadd231ps(t1, t2, CPTR_AVX(float_pi1)); \
+vfnmadd231ps(t1, t2, CPTR_AVX(float_pi2)); \
+vfnmadd231ps(t1, t2, CPTR_AVX(float_pi3)); \
+vfnmadd231ps(t1, t2, CPTR_AVX(float_pi4)); \
+if (issin) { \
+  /* // Evaluate minimax polynomial for sin(x) in [-pi/2, pi/2] interval */ \
+  /* // Y <- X + X * X^2 * (C3 + X^2 * (C5 + X^2 * (C7 + X^2 * C9))) */ \
+  vmulps(t2, t1, t1); \
+  vmovaps(t3,  CPTR_AVX(float_sinC7)); \
+  vfmadd231ps(t3, t2, CPTR_AVX(float_sinC9)); \
+  vfmadd213ps(t3, t2, CPTR_AVX(float_sinC5)); \
+  vfmadd213ps(t3, t2, CPTR_AVX(float_sinC3)); \
+  vmulps(t3, t3, t2); \
+  vfmadd231ps(t1, t1, t3); \
+} \
+else { \
+/*  // Evaluate minimax polynomial for cos(x) in [-pi/2, pi/2] interval */ \
+/*  // Y <- 1 + X^2 * (C2 + X^2 * (C4 + X^2 * (C6 + X^2 * C8))) */ \
+  vmulps(t2, t1, t1); \
+  vmovaps(t1, CPTR_AVX(float_cosC6)); \
+  vfmadd231ps(t1, t2, CPTR_AVX(float_cosC8)); \
+  vfmadd213ps(t1, t2, CPTR_AVX(float_cosC4)); \
+  vfmadd213ps(t1, t2, CPTR_AVX(float_cosC2)); \
+  vfmadd213ps(t1, t2, CPTR_AVX(elfloat_one)); \
+} \
+/*// Apply sign */ \
+vxorps(y, t1, sign); \
+}
 
 // return (x - std::round(x / d)*d);
 #define FMOD_PS(x, d) { \
@@ -2241,6 +2464,28 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           EXP_PS(t2.second)
         }
       }
+      else if (iter.op == opSin) {
+        if (processSingle) {
+          auto& _t1 = stack1.back();
+          SINCOS_PS(true, _t1, _t1)
+        }
+        else {
+          auto& _t1 = stack.back();
+          SINCOS_PS(true, _t1.first, _t1.first);
+          SINCOS_PS(true, _t1.second, _t1.second);
+        }
+      }
+      else if (iter.op == opCos) {
+        if (processSingle) {
+          auto& _t1 = stack1.back();
+          SINCOS_PS(false, _t1, _t1)
+        }
+        else {
+          auto& _t1 = stack.back();
+          SINCOS_PS(false, _t1.first, _t1.first);
+          SINCOS_PS(false, _t1.second, _t1.second);
+        }
+      }
       else if (iter.op == opClip) {
         // clip(a, low, high) = min(max(a, low),high)
         if (processSingle) {
@@ -3059,6 +3304,28 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           LOG_PS_AVX(t2.second);
           vmulps(t2.second, t2.second, t1.second);
           EXP_PS_AVX(t2.second);
+        }
+      }
+      else if (iter.op == opSin) {
+        if (processSingle) {
+          auto& _t1 = stack1.back();
+          SINCOS_PS_AVX(true, _t1, _t1);
+        }
+        else {
+          auto& _t1 = stack.back();
+          SINCOS_PS_AVX(true, _t1.first, _t1.first);
+          SINCOS_PS_AVX(true, _t1.second, _t1.second);
+        }
+      }
+      else if (iter.op == opCos) {
+        if (processSingle) {
+          auto& _t1 = stack1.back();
+          SINCOS_PS_AVX(false, _t1, _t1);
+        }
+        else {
+          auto& _t1 = stack.back();
+          SINCOS_PS_AVX(false, _t1.first, _t1.first);
+          SINCOS_PS_AVX(false, _t1.second, _t1.second);
         }
       }
       else if (iter.op == opClip) {
@@ -5512,8 +5779,8 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
           if(!(env->GetCPUFlags() & CPUF_SSSE3)) // required minimum (pshufb, alignr)
             d.planeOptSSE2[i] = false;
         }
-        // trig.functions C only
-        if (op == opSin || op == opCos || op == opTan ||
+        // trig.functions C only, except Sin and Cos
+        if (op == opTan ||
           op == opAsin || op == opAcos || op == opAtan || op == opAtan2) {
           d.planeOptAvx2[i] = false;
           d.planeOptSSE2[i] = false;

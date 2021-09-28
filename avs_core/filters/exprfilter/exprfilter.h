@@ -78,16 +78,15 @@ typedef enum {
   opStoreVar, opLoadVar, opLoadFramePropVar, opStoreAndPopVar
 } SOperation;
 
-typedef union {
+union ExprUnion {
   float fval;
   int32_t ival;
-} ExprUnion;
-
-struct FloatIntUnion {
-  ExprUnion u;
-  FloatIntUnion(int32_t i) { u.ival = i; }
-  FloatIntUnion(float f) { u.fval = f; }
-};
+  uint32_t uval;
+  constexpr ExprUnion() : uval{} {}
+  constexpr ExprUnion(int32_t _i) : ival(_i) {}
+  constexpr ExprUnion(uint32_t _u) : uval(_u) {}
+  constexpr ExprUnion(float _f) : fval(_f) {}
+} ;
 
 struct ExprOp {
   ExprUnion e;
