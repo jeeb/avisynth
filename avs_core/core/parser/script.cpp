@@ -61,6 +61,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <inttypes.h>
 
 #ifndef MINGW_HAS_SECURE_API
 #define sprintf_s sprintf
@@ -1369,7 +1370,7 @@ AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) {
 #ifdef AVS_WINDOWS
     return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10));
 #else
-    sprintf(s,"%ld",VI(args[0]).num_audio_samples);
+    sprintf(s, "%" PRId64, VI(args[0]).num_audio_samples);
     return env->SaveString(s);
 #endif
 }
