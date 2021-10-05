@@ -55,7 +55,7 @@
 #include <algorithm>
 #include <string>
 
-enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
+enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV, PLACEMENT_TOP_LEFT } ;
 
 static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
 static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
@@ -3043,19 +3043,35 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   float xdInV = 0.0f, txdInV = 0.0f, bxdInV = 0.0f;
   float ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f;
 
+  /*
+    "mpeg1", "center"
+    "mpeg2", "left"
+      - top-field samples are sited 1/4 sample below the luma samples
+      - bottom-field samples are sited 1/4 sample above the luma samples
+    "dv":
+      Chroma samples are sited on top of luma samples, but CB and CR samples are sited on alternate lines.
+      - top: V
+      - bottom: U
+    "top_left"
+  */
+
   if (Is420(vi.pixel_type)) {
     switch (getPlacement(InPlacement, env)) {
       case PLACEMENT_DV:
-        ydInU = 1.0f, tydInU = 1.0f, bydInU = 1.0f; // Cb
-        ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f; // Cr
+        xdInU = 0.0f; ydInU = 1.0f; txdInU = 0.0f; tydInU = 1.0f; bxdInU = 0.0f; bydInU = 1.0f; // Cb
+        xdInV = 0.0f; ydInV = 0.0f; txdInV = 0.0f; tydInV = 0.0f; bxdInV = 0.0f; bydInV = 0.0f; // Cr
         break;
       case PLACEMENT_MPEG1:
-        xdInU = 0.5f, txdInU = 0.5f, bxdInU = 0.5f;
-        xdInV = 0.5f, txdInV = 0.5f, bxdInV = 0.5f;
-        // fall thru
+        xdInU = 0.5f, ydInU = 0.5f; txdInU = 0.5f; tydInU = 0.25f; bxdInU = 0.5f; bydInU = 0.75f;
+        xdInV = 0.5f, ydInV = 0.5f; txdInV = 0.5f; tydInV = 0.25f; bxdInV = 0.5f; bydInV = 0.75f;
+        break;
       case PLACEMENT_MPEG2:
-        ydInU = 0.5f, tydInU = 0.25f, bydInU = 0.75f;
-        ydInV = 0.5f, tydInV = 0.25f, bydInV = 0.75f;
+        xdInU = 0.0f; ydInU = 0.5f; txdInU = 0.0f; tydInU = 0.25f; bxdInU = 0.0f; bydInU = 0.75f;
+        xdInV = 0.0f; ydInV = 0.5f; txdInV = 0.0f; tydInV = 0.25f; bxdInV = 0.0f; bydInV = 0.75f;
+        break;
+      case PLACEMENT_TOP_LEFT:
+        xdInU = 0.0f; ydInU = 0.0f; txdInU = 0.0f; tydInU = 0.0f; bxdInU = 0.0f; bydInU = 0.5f;
+        xdInV = 0.0f; ydInV = 0.0f; txdInV = 0.0f; tydInV = 0.0f; bxdInV = 0.0f; bydInV = 0.5f;
         break;
     }
   }
@@ -3079,16 +3095,20 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   if (Is420(vi.pixel_type)) {
     switch (getPlacement(OutPlacement, env)) {
       case PLACEMENT_DV:
-        ydOutU = 1.0f, tydOutU = 1.0f, bydOutU = 1.0f; // Cb
-        ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f; // Cr
+        xdOutU = 0.0f; ydOutU = 1.0f; txdOutU = 0.0f; tydOutU = 1.0f; bxdOutU = 0.0f; bydOutU = 1.0f; // Cb
+        xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.0f; // Cr
         break;
       case PLACEMENT_MPEG1:
-        xdOutU = 0.5f, txdOutU = 0.5f, bxdOutU = 0.5f;
-        xdOutV = 0.5f, txdOutV = 0.5f, bxdOutV = 0.5f;
-        // fall thru
+        xdOutU = 0.5f, ydOutU = 0.5f; txdOutU = 0.5f; tydOutU = 0.25f; bxdOutU = 0.5f; bydOutU = 0.75f;
+        xdOutV = 0.5f, ydOutV = 0.5f; txdOutV = 0.5f; tydOutV = 0.25f; bxdOutV = 0.5f; bydOutV = 0.75f;
+        break;
       case PLACEMENT_MPEG2:
-        ydOutU = 0.5f, tydOutU = 0.25f, bydOutU = 0.75f;
-        ydOutV = 0.5f, tydOutV = 0.25f, bydOutV = 0.75f;
+        xdOutU = 0.0f; ydOutU = 0.5f; txdOutU = 0.0f; tydOutU = 0.25f; bxdOutU = 0.0f; bydOutU = 0.75f;
+        xdOutV = 0.0f; ydOutV = 0.5f; txdOutV = 0.0f; tydOutV = 0.25f; bxdOutV = 0.0f; bydOutV = 0.75f;
+        break;
+      case PLACEMENT_TOP_LEFT:
+        xdOutU = 0.0f; ydOutU = 0.0f; txdOutU = 0.0f; tydOutU = 0.0f; bxdOutU = 0.0f; bydOutU = 0.5f;
+        xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.5f;
         break;
     }
   }
@@ -3370,14 +3390,17 @@ static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
   const char* placement = _placement.AsString(0);
 
   if (placement) {
-    if (!lstrcmpi(placement, "mpeg2"))
+    if (!lstrcmpi(placement, "mpeg2") || !lstrcmpi(placement, "left"))
       return PLACEMENT_MPEG2;
 
-    if (!lstrcmpi(placement, "mpeg1"))
+    if (!lstrcmpi(placement, "mpeg1") || !lstrcmpi(placement, "jpeg") || !lstrcmpi(placement, "center"))
       return PLACEMENT_MPEG1;
 
     if (!lstrcmpi(placement, "dv"))
       return PLACEMENT_DV;
+
+    if (!lstrcmpi(placement, "top_left"))
+      return PLACEMENT_TOP_LEFT;
 
     env->ThrowError("Convert: Unknown chromaplacement");
   }
