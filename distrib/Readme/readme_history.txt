@@ -4,8 +4,11 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210928 WIP
+20210930 WIP
 ------------
+- 4:2:0 conversions: ChromaInPlacement and ChromaOutPlacement parameters: (see http://avisynth.nl/index.php/Convert)
+  add "top_left" (new)
+  add "center" and "jpeg" (as an alternative to "mpeg1"), "left" (as an alternative to "mpeg2")
 - Expr: sin and cos SIMD acceleration (SSE2 and AVX2) port from VapourSynth (Akarin et al.)
 - SelectRangeEvery: experimental fix on getting audio part (TomArrow; https://github.com/AviSynth/AviSynthPlus/issues/232)
 - Expr: implement atan2(y,x). "yvalue xvalue atan2"
