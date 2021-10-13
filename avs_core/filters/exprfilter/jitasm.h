@@ -105,7 +105,23 @@
 #endif
 
 #if defined(JITASM_GCC)
-#define JITASM_ATTRIBUTE_WEAK __attribute__((weak))
+#define JITASM_ATTRIBUTE_WEAK
+// #define JITASM_ATTRIBUTE_WEAK __attribute__((weak))
+// PF 20211013 remark, intentionally kept here:
+// Do not use weak attribute! GCC Bug?
+// With weak attributes mingw64 g++ 10.3 will miss a few initializations of structs during DLL load,
+// for example these initializations will never be called(!):
+//   Reg8 JITASM_ATTRIBUTE_WEAK Frontend::r8b  = Reg8(R8B);
+//   YmmReg JITASM_ATTRIBUTE_WEAK Frontend::ymm8  = YmmReg(YMM8);
+//   (list not complete).
+// But most horribly: after
+//   Reg32 JITASM_ATTRIBUTE_WEAK Frontend::r13d = Reg32(R13D);
+// but before
+//   Reg32 JITASM_ATTRIBUTE_WEAK Frontend::r14d = Reg32(R14D);
+// it will overwrite some other, already initialized variable areas at a totally different 
+// memory space, some hundred bytes before.
+// Anyway, 'weak' is probably not needed, in ExprFilter use case we do not want a different
+// implementations of these functions.
 #elif defined(_MSC_VER)
 #define JITASM_ATTRIBUTE_WEAK __declspec(selectany)
 #else
