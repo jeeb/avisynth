@@ -2205,33 +2205,6 @@ IJobCompletion* ScriptEnvironment::NewCompletion(size_t capacity)
   return new JobCompletion(capacity);
 }
 
-void printgccdebugone(int index) {
-  fprintf(stdout, "[0][%d] %p %p %p %p %p %p %p\n",
-    index,
-    (void*)(*((uint64_t*)((builtin_functions[0] + index)) + 0)),
-    (void*)(*((uint64_t*)((builtin_functions[0] + index)) + 1)),
-    (void*)(*((uint64_t*)((builtin_functions[0] + index)) + 2)),
-    (void*)(*((uint64_t*)((builtin_functions[0] + index)) + 3)),
-    (void*)(*((uint64_t*)((builtin_functions[0] + index)) + 4)),
-    (void*)(*((uint64_t*)((builtin_functions[0] + index)) + 5)),
-    (void*)(*((uint64_t*)((builtin_functions[0] + index)) + 6))
-  );
-}
-
-int printgccdebug()
-{
-  const size_t NumFunctionArrays = sizeof(builtin_functions) / sizeof(builtin_functions[0]);
-  fprintf(stdout, "**NumFunctionArrays %d\n", NumFunctionArrays);
-  fprintf(stdout, "Address of [0][0] %p\n", (void*)((builtin_functions[0] + 0)->name));
-  fprintf(stdout, "Address of [0][1] %p\n", (void*)((builtin_functions[0] + 1)->name));
-  fprintf(stdout, "Address of [0][2] %p\n", (void*)((builtin_functions[0] + 2)->name));
-
-  printgccdebugone(0);
-  printgccdebugone(1);
-  printgccdebugone(2);
-  return 0;
-}
-
 ScriptEnvironment::ScriptEnvironment()
   : threadEnv(),
   thread_pool(NULL),
@@ -2882,28 +2855,14 @@ MtMode ScriptEnvironment::GetFilterMTMode(const Function* filter, bool* is_force
  */
 void ScriptEnvironment::ExportBuiltinFilters()
 {
-  fprintf(stdout, "Here ExportBuiltinFilters\n");
-
   std::string FunctionList;
   FunctionList.reserve(512);
   const size_t NumFunctionArrays = sizeof(builtin_functions) / sizeof(builtin_functions[0]);
-  /*
-  fprintf(stdout, "NumFunctionArrays %d\n", NumFunctionArrays);
-  fprintf(stdout, "Name of [1][0] %s\n", (builtin_functions[1] + 0)->name);
-  fprintf(stdout, "Address of [1][0] %p\n", (void*)((builtin_functions[1] + 0)->name));
-  fprintf(stdout, "Address of [1][1] %p\n", (void *)((builtin_functions[1]+1)->name));
-  */
   for (size_t i = 0; i < NumFunctionArrays; ++i)
   {
     for (const AVSFunction* f = builtin_functions[i]; !f->empty(); ++f)
     {
-      /*
-      fprintf(stdout, "i=%d diff = %d\n", i, (int)(f - builtin_functions[i]));
       // This builds the $InternalFunctions$ variable, which is a list of space-delimited
-      fprintf(stdout, "Address of f->name %p\n", (void *)f->name);
-      fprintf(stdout, "BeforeBefore2 %d\n", (int)strlen(f->name));
-      fprintf(stdout, "BeforeBefore %s %d\n", f->name, (int)strlen(f->name));
-      */
       // function names. Utilities can learn the names of the builtin function from this.
       FunctionList.append(f->name);
       FunctionList.push_back(' ');
@@ -2913,7 +2872,6 @@ void ScriptEnvironment::ExportBuiltinFilters()
       std::string param_var_name;
       param_var_name.reserve(128);
       param_var_name.append("$Plugin!");
-      fprintf(stdout, "Before %s %d %s\n", param_var_name.c_str(), (int)param_var_name.length(), f->name);
       param_var_name.append(f->name);
       param_var_name.append("!Param$");
       threadEnv->SetGlobalVar(threadEnv->SaveString(param_var_name.c_str(), (int)param_var_name.size()), AVSValue(f->param_types));
