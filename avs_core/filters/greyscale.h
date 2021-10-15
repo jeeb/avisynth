@@ -36,7 +36,7 @@
 #define __Greyscale_H__
 
 #include <avisynth.h>
-#include "..\convert\convert_planar.h"
+#include "../convert/convert_planar.h"
 
 class Greyscale : public GenericVideoFilter
 /**
