@@ -39,6 +39,7 @@
 
 #include <avisynth.h>
 #include <stdint.h>
+#include "convert.h"
 
 // useful functions
 template <typename pixel_t>
@@ -47,16 +48,6 @@ void fill_chroma(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, pixe
 template <typename pixel_t>
 void fill_plane(uint8_t * dstp, int height, int pitch, pixel_t val);
 
-struct ChannelConversionMatrix {
-  int16_t r;    // for 15bit scaled integer arithmetic
-  int16_t g;
-  int16_t b;
-  float r_f;    // for float operation
-  float g_f;
-  float b_f;
-  int offset_y; // always 8 bit
-  float offset_y_f; // for float
-};
 
 class ConvertToY : public GenericVideoFilter
 {
@@ -77,33 +68,9 @@ private:
   bool planar_rgb_input;
   int pixel_step;
   int pixelsize;
-  ChannelConversionMatrix matrix;
+  ConversionMatrix matrix;
 };
 
-struct ConversionMatrix {
-  int16_t y_r;
-  int16_t y_g;
-  int16_t y_b;
-  int16_t u_r;
-  int16_t u_g;
-  int16_t u_b;
-  int16_t v_r;
-  int16_t v_g;
-  int16_t v_b;
-
-  float y_r_f;
-  float y_g_f;
-  float y_b_f;
-  float u_r_f;
-  float u_g_f;
-  float u_b_f;
-  float v_r_f;
-  float v_g_f;
-  float v_b_f;
-
-  int offset_y;
-  float offset_y_f;
-};
 
 class ConvertRGBToYUV444 : public GenericVideoFilter
 {
@@ -118,7 +85,6 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  void BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel);
   ConversionMatrix matrix;
   int pixel_step;
   bool hasAlpha;
@@ -151,10 +117,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-//  static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
-//  static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  void BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel);
   ConversionMatrix matrix;
   int pixel_step;
 };

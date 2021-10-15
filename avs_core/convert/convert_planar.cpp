@@ -118,81 +118,10 @@ ConvertToY::ConvertToY(PClip src, int in_matrix, IScriptEnvironment* env) : Gene
     pixel_step = vi.BytesFromPixels(1); // for packed RGB 3,4,6,8
     vi.pixel_type = target_pixel_type;
 
-    const double range_max = bits_per_pixel == 32 ? 1.0 : (double)((1 << bits_per_pixel) - 1);
-    const double luma_range = bits_per_pixel == 32 ? (235 - 16) / 255.0 : (double)((235 - 16) << (bits_per_pixel - 8));
-    const int ymin = bits_per_pixel == 32 ? 16 : 16 << (bits_per_pixel - 8); // float: n/a
-    const float ymin_f = 16.0f / 255.0f;
+    const int shift = 15; // internally 15 bits precision, still no overflow in calculations
 
-    // 32768: 15bits integer arithmetic precision
-    if (in_matrix == Rec601) {
-      matrix.b = (int16_t)((luma_range / range_max)*0.114*32768.0+0.5);  //B
-      matrix.g = (int16_t)((luma_range / range_max)*0.587*32768.0+0.5);  //G
-      matrix.r = (int16_t)((luma_range / range_max)*0.299*32768.0+0.5);  //R
-      matrix.b_f = (float)((luma_range / range_max)*0.114);  //B
-      matrix.g_f = (float)((luma_range / range_max)*0.587);  //G
-      matrix.r_f = (float)((luma_range / range_max)*0.299);  //R
-      matrix.offset_y = ymin;
-      matrix.offset_y_f = ymin_f;
-    } else if (in_matrix == PC_601) {
-      matrix.b = (int16_t)(0.114*32768.0+0.5);  //B
-      matrix.g = (int16_t)(0.587*32768.0+0.5);  //G
-      matrix.r = (int16_t)(0.299*32768.0+0.5);  //R
-      matrix.b_f = 0.114f;  //B
-      matrix.g_f = 0.587f;  //G
-      matrix.r_f = 0.299f;  //R
-      matrix.offset_y = 0;
-      matrix.offset_y_f = 0;
-    } else if (in_matrix == Rec709) {
-      matrix.b = (int16_t)((luma_range / range_max)*0.0722*32768.0+0.5);  //B
-      matrix.g = (int16_t)((luma_range / range_max)*0.7152*32768.0+0.5);  //G
-      matrix.r = (int16_t)((luma_range / range_max)*0.2126*32768.0+0.5);  //R
-      matrix.b_f = (float)((luma_range / range_max)*0.0722);  //B
-      matrix.g_f = (float)((luma_range / range_max)*0.7152);  //G
-      matrix.r_f = (float)((luma_range / range_max)*0.2126);  //R
-      matrix.offset_y = ymin;
-      matrix.offset_y_f = ymin_f;
-    } else if (in_matrix == Rec2020) {
-      matrix.b = (int16_t)((luma_range / range_max)*0.0593*32768.0+0.5);  //B
-      matrix.g = (int16_t)((luma_range / range_max)*0.6780*32768.0+0.5);  //G
-      matrix.r = (int16_t)((luma_range / range_max)*0.2627*32768.0+0.5);  //R
-      matrix.b_f = (float)((luma_range / range_max)*0.0593);  //B
-      matrix.g_f = (float)((luma_range / range_max)*0.6780);  //G
-      matrix.r_f = (float)((luma_range / range_max)*0.2627);  //R
-      matrix.offset_y = ymin;
-      matrix.offset_y_f = ymin_f;
-    } else if (in_matrix == PC_709) {
-      matrix.b = (int16_t)(0.0722*32768.0+0.5);  //B
-      matrix.g = (int16_t)(0.7152*32768.0+0.5);  //G
-      matrix.r = (int16_t)(0.2126*32768.0+0.5);  //R
-      matrix.b_f = 0.0722f;  //B
-      matrix.g_f = 0.7152f;  //G
-      matrix.r_f = 0.2126f;  //R
-      matrix.offset_y = 0;
-      matrix.offset_y_f = 0;
-    } else if (in_matrix == PC_2020) {
-      matrix.b = (int16_t)(0.0593 * 32768.0 + 0.5);  //B
-      matrix.g = (int16_t)(0.6780 * 32768.0 + 0.5);  //G
-      matrix.r = (int16_t)(0.2627 * 32768.0 + 0.5);  //R
-      matrix.b_f = 0.0593f;  //B
-      matrix.g_f = 0.6780f;  //G
-      matrix.r_f = 0.2627f;  //R
-      matrix.offset_y = 0;
-      matrix.offset_y_f = 0;
-    } else if (in_matrix == AVERAGE) {
-      matrix.b = (int16_t)(32768.0/3 + 0.5);  //B
-      matrix.g = (int16_t)(32768.0/3 + 0.5);  //G
-      matrix.r = (int16_t)(32768.0/3 + 0.5);  //R
-      matrix.b_f = (float)(1.0/3);  //B
-      matrix.g_f = (float)(1.0/3);  //G
-      matrix.r_f = (float)(1.0/3);  //R
-      matrix.offset_y = 0;
-      matrix.offset_y_f = 0;
-    } else {
+    if (!do_BuildMatrix_Rgb2Yuv(in_matrix, shift, bits_per_pixel, /*ref*/matrix))
       env->ThrowError("ConvertToY: Unknown matrix.");
-    }
-    // Anti-Overflow correction
-    if (matrix.offset_y == 0 && matrix.g + matrix.r + matrix.b != 32768)
-      matrix.g = 32768 - (matrix.r + matrix.b);
 
     return;
   }
@@ -240,7 +169,7 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
     if(pixelsize==1) {
       for (int y=0; y<vi.height; y++) {
         for (int x=0; x<vi.width; x++) {
-          const int Y = matrix.offset_y + ((matrix.b * srcp[0] + matrix.g * srcp[1] + matrix.r * srcp[2] + 16384) >> 15);
+          const int Y = matrix.offset_y + ((matrix.y_b * srcp[0] + matrix.y_g * srcp[1] + matrix.y_r * srcp[2] + 16384) >> 15);
           dstp[x] = PixelClip(Y);  // All the safety we can wish for.
           srcp += pixel_step; // 3,4
         }
@@ -253,7 +182,7 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
         for (int x=0; x<vi.width; x++) {
           const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
           // int overflows!
-          const int Y = matrix.offset_y + (int)(((int64_t)(matrix.b * srcp16[0] + matrix.g * srcp16[1]) + (int64_t)matrix.r * srcp16[2] + 16384) >> 15);
+          const int Y = matrix.offset_y + (int)(((int64_t)(matrix.y_b * srcp16[0] + matrix.y_g * srcp16[1]) + (int64_t)matrix.y_r * srcp16[2] + 16384) >> 15);
           reinterpret_cast<uint16_t *>(dstp)[x] = clamp(Y,0,65535);  // All the safety we can wish for. packed RGB 65535
 
           // int64_t version is a bit faster
@@ -278,7 +207,7 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
     if(pixelsize==1) {
       for (int y=0; y<vi.height; y++) {
         for (int x=0; x<vi.width; x++) {
-          const int Y = matrix.offset_y + ((matrix.b * srcpB[x] + matrix.g * srcpG[x] + matrix.r * srcpR[x] + 16384) >> 15);
+          const int Y = matrix.offset_y + ((matrix.y_b * srcpB[x] + matrix.y_g * srcpG[x] + matrix.y_r * srcpR[x] + 16384) >> 15);
           dstp[x] = PixelClip(Y);  // All the safety we can wish for.
         }
         srcpG += pitchG; srcpB += pitchB; srcpR += pitchR;
@@ -290,9 +219,9 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
         for (int x=0; x<vi.width; x++) {
           // int overflows!
           const int Y = matrix.offset_y +
-            (((int64_t)matrix.b * reinterpret_cast<const uint16_t *>(srcpB)[x] +
-              (int64_t)matrix.g * reinterpret_cast<const uint16_t *>(srcpG)[x] +
-              (int64_t)matrix.r * reinterpret_cast<const uint16_t *>(srcpR)[x] +
+            (((int64_t)matrix.y_b * reinterpret_cast<const uint16_t *>(srcpB)[x] +
+              (int64_t)matrix.y_g * reinterpret_cast<const uint16_t *>(srcpG)[x] +
+              (int64_t)matrix.y_r * reinterpret_cast<const uint16_t *>(srcpR)[x] +
               16384) >> 15);
           reinterpret_cast<uint16_t *>(dstp)[x] = (uint16_t)clamp(Y,0,max_pixel_value);  // All the safety we can wish for.
         }
@@ -304,9 +233,9 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
       for (int y=0; y<vi.height; y++) {
         for (int x=0; x<vi.width; x++) {
           const float Y = matrix.offset_y_f +
-            (matrix.b_f * reinterpret_cast<const float *>(srcpB)[x] +
-             matrix.g_f * reinterpret_cast<const float *>(srcpG)[x] +
-             matrix.r_f * reinterpret_cast<const float *>(srcpR)[x]
+            (matrix.y_b_f * reinterpret_cast<const float *>(srcpB)[x] +
+             matrix.y_g_f * reinterpret_cast<const float *>(srcpG)[x] +
+             matrix.y_r_f * reinterpret_cast<const float *>(srcpR)[x]
             );
           reinterpret_cast<float *>(dstp)[x] = Y;  // no clamping
         }
@@ -369,129 +298,12 @@ ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, int in_matrix, IScriptEnvironm
 
   int bits_per_pixel = vi.BitsPerComponent();
 
-  if (in_matrix == Rec601) {
-    /*
-    Y'= 0.299*R' + 0.587*G' + 0.114*B'
-    Cb=-0.169*R' - 0.331*G' + 0.500*B'
-    Cr= 0.500*R' - 0.419*G' - 0.081*B'
-    */
-    BuildMatrix(0.299,  /* 0.587  */ 0.114, shift, false, bits_per_pixel); // false: limited range
-  }
-  else if (in_matrix == PC_601) {
-
-    BuildMatrix(0.299,  /* 0.587  */ 0.114, shift, true, bits_per_pixel); // true: full scale
-  }
-  else if (in_matrix == Rec709) {
-    /*
-    Y'= 0.2126*R' + 0.7152*G' + 0.0722*B'
-    Cb=-0.1145*R' - 0.3855*G' + 0.5000*B'
-    Cr= 0.5000*R' - 0.4542*G' - 0.0458*B'
-    */
-    BuildMatrix(0.2126, /* 0.7152 */ 0.0722, shift, false, bits_per_pixel); // false: limited range
-  }
-  else if (in_matrix == PC_709) {
-
-    BuildMatrix(0.2126, /* 0.7152 */ 0.0722, shift, true, bits_per_pixel); // true: full scale
-  }
-  else if (in_matrix == AVERAGE) {
-
-    BuildMatrix(1.0/3, /* 1.0/3 */ 1.0/3, shift, true, bits_per_pixel); // true: full scale
-  }
-  else if (in_matrix == Rec2020) {
-    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, false, bits_per_pixel); // false: limited range
-  }
-  else if (in_matrix == PC_2020) {
-    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, true, bits_per_pixel); // true: full scale
-  }
-  else {
+  if (!do_BuildMatrix_Rgb2Yuv(in_matrix, shift, bits_per_pixel, /*ref*/matrix))
     env->ThrowError("ConvertRGBToYV24/YUV444: Unknown matrix.");
-  }
-}
-
-void ConvertRGBToYUV444::BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel)
-{
-  int Sy, Suv, Oy;
-  float Sy_f, Suv_f, Oy_f;
-
-  if (bits_per_pixel <= 16) {
-    Oy = full_scale ? 0 : (16 << (bits_per_pixel - 8));
-    Oy_f = (float)Oy; // for 16 bits
-
-    int ymin = (full_scale ? 0 : 16) << (bits_per_pixel - 8);
-    int max_pixel_value = (1 << bits_per_pixel) - 1;
-    int ymax = full_scale ? max_pixel_value : (235 << (bits_per_pixel - 8));
-    Sy = ymax - ymin;
-    Sy_f = (float)Sy;
-
-    int cmin = full_scale ? 0 : (16 << (bits_per_pixel - 8));
-    int cmax = full_scale ? max_pixel_value : (240 << (bits_per_pixel - 8));
-    Suv = (cmax - cmin) / 2;
-    Suv_f = (cmax - cmin) / 2.0f;
-
-  }
-  else {
-    Oy_f = full_scale ? 0.0f : (16.0f / 255.0f);
-    Oy = full_scale ? 0 : 16; // n/a
-
-    Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
-    Suv_f = full_scale ? uv8tof(128) : (uv8tof(240) - uv8tof(16)) / 2;
-  }
-
-
-/*
-  Kr   = {0.299, 0.2126}
-  Kb   = {0.114, 0.0722}
-  Kg   = 1 - Kr - Kb // {0.587, 0.7152}
-  Srgb = 255
-  Sy   = {219, 255}   // { 235-16, 255-0 }
-  Suv  = {112, 127}   // { (240-16)/2, (255-0)/2 }
-  Oy   = {16, 0}
-  Ouv  = 128
-
-  R = r/Srgb                     // 0..1
-  G = g/Srgb
-  B = b*Srgb
-
-  Y = Kr*R + Kg*G + Kb*B         // 0..1
-  U = B - (Kr*R + Kg*G)/(1-Kb)   //-1..1
-  V = R - (Kg*G + Kb*B)/(1-Kr)
-
-  y = Y*Sy  + Oy                 // 16..235, 0..255
-  u = U*Suv + Ouv                // 16..240, 1..255
-  v = V*Suv + Ouv
-*/
-  const double mulfac = double(1<<shift); // integer aritmetic precision scale
-
-  const double Kg = 1.- Kr - Kb;
-
-  if (bits_per_pixel <= 16) {
-    const int Srgb = (1 << bits_per_pixel) - 1;  // 255;
-    matrix.y_b = (int16_t)(Sy  * Kb        * mulfac / Srgb + 0.5); //B
-    matrix.y_g = (int16_t)(Sy  * Kg        * mulfac / Srgb + 0.5); //G
-    matrix.y_r = (int16_t)(Sy  * Kr        * mulfac / Srgb + 0.5); //R
-    matrix.u_b = (int16_t)(Suv             * mulfac / Srgb + 0.5);
-    matrix.u_g = (int16_t)(Suv * Kg / (Kb - 1) * mulfac / Srgb + 0.5);
-    matrix.u_r = (int16_t)(Suv * Kr / (Kb - 1) * mulfac / Srgb + 0.5);
-    matrix.v_b = (int16_t)(Suv * Kb / (Kr - 1) * mulfac / Srgb + 0.5);
-    matrix.v_g = (int16_t)(Suv * Kg / (Kr - 1) * mulfac / Srgb + 0.5);
-    matrix.v_r = (int16_t)(Suv             * mulfac / Srgb + 0.5);
-    matrix.offset_y = Oy;
-  }
-
-  // for 16 bits, float is used, no unsigned 16 bit arithmetic
-  double Srgb_f = bits_per_pixel == 32 ? 1.0 : ((1 << bits_per_pixel) - 1);
-  matrix.y_b_f  = (float)(Sy_f  * Kb /Srgb_f); //B
-  matrix.y_g_f  = (float)(Sy_f  * Kg / Srgb_f); //G
-  matrix.y_r_f  = (float)(Sy_f  * Kr / Srgb_f); //R
-  matrix.u_b_f  = (float)(Suv_f / Srgb_f);
-  matrix.u_g_f  = (float)(Suv_f * Kg/(Kb-1) / Srgb_f);
-  matrix.u_r_f  = (float)(Suv_f * Kr/(Kb-1) / Srgb_f);
-  matrix.v_b_f  = (float)(Suv_f * Kb/(Kr-1) / Srgb_f);
-  matrix.v_g_f  = (float)(Suv_f * Kg/(Kr-1) / Srgb_f);
-  matrix.v_r_f  = (float)(Suv_f / Srgb_f);
-  matrix.offset_y_f = Oy_f;
 
 }
+
+
 
 template<typename pixel_t, int bits_per_pixel>
 static void convert_planarrgb_to_yuv_int_c(BYTE *(&dstp)[3], int (&dstPitch)[3], const BYTE *(&srcp)[3], const int (&srcPitch)[3], int width, int height, const ConversionMatrix &m)
@@ -707,128 +519,11 @@ ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, int in_matrix, int _pixel_step
 
   const int bits_per_pixel = vi.BitsPerComponent();
 
-  if (in_matrix == Rec601) {
-/*
-    B'= Y' + 1.772*U' + 0.000*V'
-    G'= Y' - 0.344*U' - 0.714*V'
-    R'= Y' + 0.000*U' + 1.402*V'
-*/
-    BuildMatrix(0.299,  /* 0.587  */ 0.114, shift, false, bits_per_pixel); // false: limited range
-
-  }
-  else if (in_matrix == PC_601) {
-
-    BuildMatrix(0.299,  /* 0.587  */ 0.114, shift, true, bits_per_pixel); // true: full scale
-  }
-  else if (in_matrix == Rec709) {
-/*
-    B'= Y' + 1.8558*Cb + 0.0000*Cr
-    G'= Y' - 0.1870*Cb - 0.4678*Cr
-    R'= Y' + 0.0000*Cb + 1.5750*Cr
-*/
-    BuildMatrix(0.2126, /* 0.7152 */ 0.0722, shift, false, bits_per_pixel); // false: limited range
-  }
-  else if (in_matrix == PC_709) {
-
-    BuildMatrix(0.2126, /* 0.7152 */ 0.0722, shift, true, bits_per_pixel); // true: full scale
-  }
-  else if (in_matrix == Rec2020) {
-    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, false, bits_per_pixel); // false: limited range
-  }
-  else if (in_matrix == PC_2020) {
-    BuildMatrix(0.2627, /* 0.6780 */ 0.0593, shift, true, bits_per_pixel); // true: full scale
-  }
-  else if (in_matrix == AVERAGE) {
-    BuildMatrix(1.0/3, /* 1.0/3 */ 1.0/3, shift, true, bits_per_pixel); // true: full scale
-  }
-  else {
+  if(!do_BuildMatrix_Yuv2Rgb(in_matrix, shift, bits_per_pixel, /*ref*/matrix))
     env->ThrowError("ConvertYV24ToRGB: Unknown matrix.");
-  }
+
 }
 
-void ConvertYUV444ToRGB::BuildMatrix(double Kr, double Kb, int shift, bool full_scale, int bits_per_pixel)
-{
-  int Sy, Suv, Oy;
-  float Sy_f, Suv_f, Oy_f;
-
-  if (bits_per_pixel <= 16) {
-    Oy = full_scale ? 0 : (16 << (bits_per_pixel - 8));
-    Oy_f = (float)Oy; // for 16 bits
-
-    int ymin = (full_scale ? 0 : 16) << (bits_per_pixel - 8);
-    int max_pixel_value = (1 << bits_per_pixel) - 1;
-    int ymax = full_scale ? max_pixel_value : (235 << (bits_per_pixel - 8));
-    Sy = ymax - ymin;
-    Sy_f = (float)Sy;
-
-    int cmin = full_scale ? 0 : (16 << (bits_per_pixel - 8));
-    int cmax = full_scale ? max_pixel_value : (240 << (bits_per_pixel - 8));
-    Suv = (cmax - cmin) / 2;
-    Suv_f = (cmax - cmin) / 2.0f;
-
-  }
-  else {
-    Oy_f = full_scale ? 0.0f : (16.0f / 255.0f);
-    Oy = full_scale ? 0 : 16; // n/a
-
-    Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
-    Suv_f = full_scale ? (uv8tof(255) - uv8tof(0)) / 2 : (uv8tof(240) - uv8tof(16)) / 2;
-  }
-
-
-/*
-  Kr   = {0.299, 0.2126}
-  Kb   = {0.114, 0.0722}
-  Kg   = 1 - Kr - Kb // {0.587, 0.7152}
-  Srgb = 255
-  Sy   = {219, 255}   // { 235-16, 255-0 }
-  Suv  = {112, 127}   // { (240-16)/2, (255-0)/2 }
-  Oy   = {16, 0}
-  Ouv  = 128
-
-  Y =(y-Oy)  / Sy                         // 0..1
-  U =(u-Ouv) / Suv                        //-1..1
-  V =(v-Ouv) / Suv
-
-  R = Y                  + V*(1-Kr)       // 0..1
-  G = Y - U*(1-Kb)*Kb/Kg - V*(1-Kr)*Kr/Kg
-  B = Y + U*(1-Kb)
-
-  r = R*Srgb                              // 0..255   0..65535
-  g = G*Srgb
-  b = B*Srgb
-*/
-
-  const double mulfac = double(1 << shift); // integer aritmetic precision scale
-
-  const double Kg = 1. - Kr - Kb;
-
-  if (bits_per_pixel <= 16) {
-    const int Srgb = (1 << bits_per_pixel) - 1;  // 255;
-    matrix.y_b = (int16_t)(Srgb * 1.000        * mulfac / Sy + 0.5); //Y
-    matrix.u_b = (int16_t)(Srgb * (1 - Kb)       * mulfac / Suv + 0.5); //U
-    matrix.v_b = (int16_t)(Srgb * 0.000        * mulfac / Suv + 0.5); //V
-    matrix.y_g = (int16_t)(Srgb * 1.000        * mulfac / Sy + 0.5);
-    matrix.u_g = (int16_t)(Srgb * (Kb - 1)*Kb / Kg * mulfac / Suv + 0.5);
-    matrix.v_g = (int16_t)(Srgb * (Kr - 1)*Kr / Kg * mulfac / Suv + 0.5);
-    matrix.y_r = (int16_t)(Srgb * 1.000        * mulfac / Sy + 0.5);
-    matrix.u_r = (int16_t)(Srgb * 0.000        * mulfac / Suv + 0.5);
-    matrix.v_r = (int16_t)(Srgb * (1 - Kr)       * mulfac / Suv + 0.5);
-    matrix.offset_y = -Oy;
-  }
-
-  double Srgb_f = bits_per_pixel == 32 ? 1.0 : ((1 << bits_per_pixel) - 1);
-  matrix.y_b_f = (float)(Srgb_f * 1.000 / Sy_f); //Y
-  matrix.u_b_f = (float)(Srgb_f * (1-Kb)       / Suv_f); //U
-  matrix.v_b_f = (float)(Srgb_f * 0.000        / Suv_f); //V
-  matrix.y_g_f = (float)(Srgb_f * 1.000        / Sy_f);
-  matrix.u_g_f = (float)(Srgb_f * (Kb-1)*Kb/Kg / Suv_f);
-  matrix.v_g_f = (float)(Srgb_f * (Kr-1)*Kr/Kg / Suv_f);
-  matrix.y_r_f = (float)(Srgb_f * 1.000        / Sy_f);
-  matrix.u_r_f = (float)(Srgb_f * 0.000        / Suv_f);
-  matrix.v_r_f = (float)(Srgb_f * (1-Kr)       / Suv_f);
-  matrix.offset_y_f = -Oy_f;
-}
 
 PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* env)
 {

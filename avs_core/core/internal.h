@@ -200,6 +200,10 @@ static AVS_FORCEINLINE float c8tof(int color) {
   return color / 255.0f;
 }
 
+static AVS_FORCEINLINE uint8_t Scaled15bitPixelClip(int i) {
+  return (uint8_t)clamp((i + 16384) >> 15, 0, 255);
+}
+
 static AVS_FORCEINLINE uint8_t ScaledPixelClip(int i) {
   // return PixelClip((i+32768) >> 16);
   // PF: clamp is faster than lut

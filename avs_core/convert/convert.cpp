@@ -84,37 +84,6 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { 0 }
 };
 
-// for YUY2
-static const int crv_rec601 = int(1.596*65536+0.5);
-static const int cgv_rec601 = int(0.813*65536+0.5);
-static const int cgu_rec601 = int(0.391*65536+0.5);
-static const int cbu_rec601 = int(2.018*65536+0.5);
-
-static const int crv_rec709 = int(1.793*65536+0.5);
-static const int cgv_rec709 = int(0.533*65536+0.5);
-static const int cgu_rec709 = int(0.213*65536+0.5);
-static const int cbu_rec709 = int(2.112*65536+0.5);
-
-static const int crv_pc601 = int(1.407*65536+0.5);
-static const int cgv_pc601 = int(0.717*65536+0.5);
-static const int cgu_pc601 = int(0.345*65536+0.5);
-static const int cbu_pc601 = int(1.779*65536+0.5);
-
-static const int crv_pc709 = int(1.581*65536+0.5);
-static const int cgv_pc709 = int(0.470*65536+0.5);
-static const int cgu_pc709 = int(0.188*65536+0.5);
-static const int cbu_pc709 = int(1.863*65536+0.5);
-
-static const int cy_rec = int((255.0/219.0)*65536+0.5);
-static const int cy_pc = 65536;
-
-// still YUY2 only
-static const int crv_values[4] = { crv_rec601, crv_rec709, crv_pc601, crv_pc709 };
-static const int cgv_values[4] = { cgv_rec601, cgv_rec709, cgv_pc601, cgv_pc709 };
-static const int cgu_values[4] = { cgu_rec601, cgu_rec709, cgu_pc601, cgu_pc709 };
-static const int cbu_values[4] = { cbu_rec601, cbu_rec709, cbu_pc601, cbu_pc709 };
-static const int cy_values[4]  = { cy_rec,     cy_rec,     cy_pc,     cy_pc};
-
 
 int getMatrix( const char* matrix, IScriptEnvironment* env) {
   if (matrix) {
@@ -143,34 +112,294 @@ int getMatrix( const char* matrix, IScriptEnvironment* env) {
   return Rec601; // Default colorspace conversion for AviSynth
 }
 
+static void BuildMatrix_Rgb2Yuv_core(double Kr, double Kb, int int_arith_shift, bool full_scale, int bits_per_pixel, ConversionMatrix& matrix)
+{
+  int Sy, Suv, Oy;
+  float Sy_f, Suv_f, Oy_f;
+
+  if (bits_per_pixel <= 16) {
+    Oy = full_scale ? 0 : (16 << (bits_per_pixel - 8));
+    Oy_f = (float)Oy; // for 16 bits
+
+    int ymin = (full_scale ? 0 : 16) << (bits_per_pixel - 8);
+    int max_pixel_value = (1 << bits_per_pixel) - 1;
+    int ymax = full_scale ? max_pixel_value : (235 << (bits_per_pixel - 8));
+    Sy = ymax - ymin;
+    Sy_f = (float)Sy;
+
+    int cmin = full_scale ? 0 : (16 << (bits_per_pixel - 8));
+    int cmax = full_scale ? max_pixel_value : (240 << (bits_per_pixel - 8));
+    Suv = (cmax - cmin) / 2;
+    Suv_f = (cmax - cmin) / 2.0f;
+
+  }
+  else {
+    Oy_f = full_scale ? 0.0f : (16.0f / 255.0f);
+    Oy = full_scale ? 0 : 16; // n/a
+
+    Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
+    Suv_f = full_scale ? uv8tof(128) : (uv8tof(240) - uv8tof(16)) / 2;
+  }
+
+
+  /*
+    Kr   = {0.299, 0.2126}
+    Kb   = {0.114, 0.0722}
+    Kg   = 1 - Kr - Kb // {0.587, 0.7152}
+    Srgb = 255
+    Sy   = {219, 255}   // { 235-16, 255-0 }
+    Suv  = {112, 127}   // { (240-16)/2, (255-0)/2 }
+    Oy   = {16, 0}
+    Ouv  = 128
+
+    R = r/Srgb                     // 0..1
+    G = g/Srgb
+    B = b*Srgb
+
+    Y = Kr*R + Kg*G + Kb*B         // 0..1
+    U = B - (Kr*R + Kg*G)/(1-Kb)   //-1..1
+    V = R - (Kg*G + Kb*B)/(1-Kr)
+
+    y = Y*Sy  + Oy                 // 16..235, 0..255
+    u = U*Suv + Ouv                // 16..240, 1..255
+    v = V*Suv + Ouv
+  */
+  const int mulfac_int = 1 << int_arith_shift;
+  const double mulfac = double(mulfac_int); // integer aritmetic precision scale
+
+  const double Kg = 1. - Kr - Kb;
+
+  if (bits_per_pixel <= 16) {
+    const int Srgb = (1 << bits_per_pixel) - 1;  // 255;
+    /*
+    const int ku = int(127. / (255. * (1.0 - 0.114)) * 65536 + 0.5);
+                       azaz
+                       Suv / (Srgb * (1.0 - Kb)) * mulfac_int + 0.5
+
+    const int kv = int(127. / (255. * (1.0 - 0.299)) * 65536 + 0.5);
+                       azaz
+                       Suv / (Srgb * (1.0 - Kr)) * mulfac_int + 0.5
+
+    */
+    matrix.y_b = (int)(Sy * Kb * mulfac / Srgb + 0.5); //B
+    matrix.y_g = (int)(Sy * Kg * mulfac / Srgb + 0.5); //G
+    matrix.y_r = (int)(Sy * Kr * mulfac / Srgb + 0.5); //R
+    matrix.u_b = (int)(Suv * mulfac / Srgb + 0.5);
+    matrix.u_g = (int)(Suv * Kg / (Kb - 1) * mulfac / Srgb + 0.5);
+    matrix.u_r = (int)(Suv * Kr / (Kb - 1) * mulfac / Srgb + 0.5);
+    matrix.v_b = (int)(Suv * Kb / (Kr - 1) * mulfac / Srgb + 0.5);
+    matrix.v_g = (int)(Suv * Kg / (Kr - 1) * mulfac / Srgb + 0.5);
+    matrix.v_r = (int)(Suv * mulfac / Srgb + 0.5);
+
+    matrix.offset_y = Oy;
+
+    // FIXME: do we need it to expand for the other u and v constants?
+    // anti overflow e.g. for 15 bits the sum must not exceed 32768
+    if (matrix.offset_y == 0 && matrix.y_g + matrix.y_r + matrix.y_b != mulfac_int)
+      matrix.y_g = mulfac_int - (matrix.y_r + matrix.y_b);
+
+    // special precalculations for direct RGB to YUY2
+    double dku = Suv / (Srgb * (1.0 - Kb)) * mulfac;
+    double dkv = Suv / (Srgb * (1.0 - Kr)) * mulfac;
+    matrix.ku = (int)(dku + 0.5);
+    matrix.kv = (int)(dkv + 0.5);
+    matrix.ku_luma = -(int)(dku * Srgb / Sy + 0.5);
+    matrix.kv_luma = -(int)(dkv * Srgb / Sy + 0.5);
+  }
+
+  // for 16 bits, float is used, no unsigned 16 bit arithmetic
+  double Srgb_f = bits_per_pixel == 32 ? 1.0 : ((1 << bits_per_pixel) - 1);
+  matrix.y_b_f = (float)(Sy_f * Kb / Srgb_f); //B
+  matrix.y_g_f = (float)(Sy_f * Kg / Srgb_f); //G
+  matrix.y_r_f = (float)(Sy_f * Kr / Srgb_f); //R
+  matrix.u_b_f = (float)(Suv_f / Srgb_f);
+  matrix.u_g_f = (float)(Suv_f * Kg / (Kb - 1) / Srgb_f);
+  matrix.u_r_f = (float)(Suv_f * Kr / (Kb - 1) / Srgb_f);
+  matrix.v_b_f = (float)(Suv_f * Kb / (Kr - 1) / Srgb_f);
+  matrix.v_g_f = (float)(Suv_f * Kg / (Kr - 1) / Srgb_f);
+  matrix.v_r_f = (float)(Suv_f / Srgb_f);
+  matrix.offset_y_f = Oy_f;
+}
+
+void BuildMatrix_Yuv2Rgb_core(double Kr, double Kb, int int_arith_shift, bool full_scale, int bits_per_pixel, ConversionMatrix& matrix)
+{
+  int Sy, Suv, Oy;
+  float Sy_f, Suv_f, Oy_f;
+
+  if (bits_per_pixel <= 16) {
+    Oy = full_scale ? 0 : (16 << (bits_per_pixel - 8));
+    Oy_f = (float)Oy; // for 16 bits
+
+    int ymin = (full_scale ? 0 : 16) << (bits_per_pixel - 8);
+    int max_pixel_value = (1 << bits_per_pixel) - 1;
+    int ymax = full_scale ? max_pixel_value : (235 << (bits_per_pixel - 8));
+    Sy = ymax - ymin;
+    Sy_f = (float)Sy;
+
+    int cmin = full_scale ? 0 : (16 << (bits_per_pixel - 8));
+    int cmax = full_scale ? max_pixel_value : (240 << (bits_per_pixel - 8));
+    Suv = (cmax - cmin) / 2;
+    Suv_f = (cmax - cmin) / 2.0f;
+  }
+  else {
+    Oy_f = full_scale ? 0.0f : (16.0f / 255.0f);
+    Oy = full_scale ? 0 : 16; // n/a
+
+    Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
+    Suv_f = full_scale ? (uv8tof(255) - uv8tof(0)) / 2 : (uv8tof(240) - uv8tof(16)) / 2;
+  }
+
+
+  /*
+    Kr   = {0.299, 0.2126}
+    Kb   = {0.114, 0.0722}
+    Kg   = 1 - Kr - Kb // {0.587, 0.7152}
+    Srgb = 255
+    Sy   = {219, 255}   // { 235-16, 255-0 }
+    Suv  = {112, 127}   // { (240-16)/2, (255-0)/2 }
+    Oy   = {16, 0}
+    Ouv  = 128
+
+    Y =(y-Oy)  / Sy                         // 0..1
+    U =(u-Ouv) / Suv                        //-1..1
+    V =(v-Ouv) / Suv
+
+    R = Y                  + V*(1-Kr)       // 0..1
+    G = Y - U*(1-Kb)*Kb/Kg - V*(1-Kr)*Kr/Kg
+    B = Y + U*(1-Kb)
+
+    r = R*Srgb                              // 0..255   0..65535
+    g = G*Srgb
+    b = B*Srgb
+  */
+
+  const double mulfac = double(1 << int_arith_shift); // integer aritmetic precision scale
+
+  const double Kg = 1. - Kr - Kb;
+
+  if (bits_per_pixel <= 16) {
+    const int Srgb = (1 << bits_per_pixel) - 1;  // 255;
+    matrix.y_b = (int)(Srgb * 1.000 * mulfac / Sy + 0.5); //Y
+    matrix.u_b = (int)(Srgb * (1 - Kb) * mulfac / Suv + 0.5); //U
+    matrix.v_b = (int)(Srgb * 0.000 * mulfac / Suv + 0.5); //V
+    matrix.y_g = (int)(Srgb * 1.000 * mulfac / Sy + 0.5);
+    matrix.u_g = (int)(Srgb * (Kb - 1) * Kb / Kg * mulfac / Suv + 0.5);
+    matrix.v_g = (int)(Srgb * (Kr - 1) * Kr / Kg * mulfac / Suv + 0.5);
+    matrix.y_r = (int)(Srgb * 1.000 * mulfac / Sy + 0.5);
+    matrix.u_r = (int)(Srgb * 0.000 * mulfac / Suv + 0.5);
+    matrix.v_r = (int)(Srgb * (1 - Kr) * mulfac / Suv + 0.5);
+    matrix.offset_y = -Oy;
+  }
+
+  double Srgb_f = bits_per_pixel == 32 ? 1.0 : ((1 << bits_per_pixel) - 1);
+  matrix.y_b_f = (float)(Srgb_f * 1.000 / Sy_f); //Y
+  matrix.u_b_f = (float)(Srgb_f * (1 - Kb) / Suv_f); //U
+  matrix.v_b_f = (float)(Srgb_f * 0.000 / Suv_f); //V
+  matrix.y_g_f = (float)(Srgb_f * 1.000 / Sy_f);
+  matrix.u_g_f = (float)(Srgb_f * (Kb - 1) * Kb / Kg / Suv_f);
+  matrix.v_g_f = (float)(Srgb_f * (Kr - 1) * Kr / Kg / Suv_f);
+  matrix.y_r_f = (float)(Srgb_f * 1.000 / Sy_f);
+  matrix.u_r_f = (float)(Srgb_f * 0.000 / Suv_f);
+  matrix.v_r_f = (float)(Srgb_f * (1 - Kr) / Suv_f);
+  matrix.offset_y_f = -Oy_f;
+}
+
+bool do_BuildMatrix_Rgb2Yuv(int in_matrix, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix)
+{
+  if (in_matrix == Rec601) {
+    /*
+    Y'= 0.299*R' + 0.587*G' + 0.114*B'
+    Cb=-0.169*R' - 0.331*G' + 0.500*B'
+    Cr= 0.500*R' - 0.419*G' - 0.081*B'
+    */
+    BuildMatrix_Rgb2Yuv_core(0.299,  /* 0.587  */ 0.114, int_arith_shift, false, bits_per_pixel, matrix); // false: limited range
+  }
+  else if (in_matrix == PC_601) {
+
+    BuildMatrix_Rgb2Yuv_core(0.299,  /* 0.587  */ 0.114, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else if (in_matrix == Rec709) {
+    /*
+    Y'= 0.2126*R' + 0.7152*G' + 0.0722*B'
+    Cb=-0.1145*R' - 0.3855*G' + 0.5000*B'
+    Cr= 0.5000*R' - 0.4542*G' - 0.0458*B'
+    */
+    BuildMatrix_Rgb2Yuv_core(0.2126, /* 0.7152 */ 0.0722, int_arith_shift, false, bits_per_pixel, matrix); // false: limited range
+  }
+  else if (in_matrix == PC_709) {
+
+    BuildMatrix_Rgb2Yuv_core(0.2126, /* 0.7152 */ 0.0722, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else if (in_matrix == AVERAGE) {
+
+    BuildMatrix_Rgb2Yuv_core(1.0 / 3, /* 1.0/3 */ 1.0 / 3, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else if (in_matrix == Rec2020) {
+    BuildMatrix_Rgb2Yuv_core(0.2627, /* 0.6780 */ 0.0593, int_arith_shift, false, bits_per_pixel, matrix); // false: limited range
+  }
+  else if (in_matrix == PC_2020) {
+    BuildMatrix_Rgb2Yuv_core(0.2627, /* 0.6780 */ 0.0593, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else {
+    return false;
+  }
+  return true;
+}
+
+bool do_BuildMatrix_Yuv2Rgb(int in_matrix, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix)
+{
+  if (in_matrix == Rec601) {
+    BuildMatrix_Yuv2Rgb_core(0.299,  /* 0.587  */ 0.114, int_arith_shift, false, bits_per_pixel, matrix); // false: limited range
+  }
+  else if (in_matrix == PC_601) {
+    BuildMatrix_Yuv2Rgb_core(0.299,  /* 0.587  */ 0.114, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else if (in_matrix == Rec709) {
+    BuildMatrix_Yuv2Rgb_core(0.2126, /* 0.7152 */ 0.0722, int_arith_shift, false, bits_per_pixel, matrix); // false: limited range
+  }
+  else if (in_matrix == PC_709) {
+    BuildMatrix_Yuv2Rgb_core(0.2126, /* 0.7152 */ 0.0722, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else if (in_matrix == AVERAGE) {
+    BuildMatrix_Yuv2Rgb_core(1.0 / 3, /* 1.0/3 */ 1.0 / 3, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else if (in_matrix == Rec2020) {
+    BuildMatrix_Yuv2Rgb_core(0.2627, /* 0.6780 */ 0.0593, int_arith_shift, false, bits_per_pixel, matrix); // false: limited range
+  }
+  else if (in_matrix == PC_2020) {
+    BuildMatrix_Yuv2Rgb_core(0.2627, /* 0.6780 */ 0.0593, int_arith_shift, true, bits_per_pixel, matrix); // true: full scale
+  }
+  else {
+    return false;
+  }
+  return true;
+}
+
 
 /****************************************
 *******   Convert to RGB / RGBA   ******
 ***************************************/
 
 // YUY2 only
-ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
+ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix_name,
                            IScriptEnvironment* env )
                            : GenericVideoFilter(_child)
 {
   theMatrix = Rec601;
-  // no rec2020 here
-  if (matrix) {
-    if (!lstrcmpi(matrix, "rec709"))
-      theMatrix = Rec709;
-    else if (!lstrcmpi(matrix, "PC.601"))
-      theMatrix = PC_601;
-    else if (!lstrcmpi(matrix, "PC601"))
-      theMatrix = PC_601;
-    else if (!lstrcmpi(matrix, "PC.709"))
-      theMatrix = PC_709;
-    else if (!lstrcmpi(matrix, "PC709"))
-      theMatrix = PC_709;
-    else if (!lstrcmpi(matrix, "rec601"))
-      theMatrix = Rec601;
-    else
-      env->ThrowError("ConvertToRGB: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"PC.601\" or \"PC.709\")");
+
+  if (matrix_name) {
+    theMatrix = getMatrix(matrix_name, env);
   }
+  const int shift = 16; // for integer arithmetic; YUY2 is using 16 bits, later is divided back by 4 or 8
+  const int bits_per_pixel = 8; // YUY2
+  if (!do_BuildMatrix_Yuv2Rgb(theMatrix, shift, bits_per_pixel, /*ref*/matrix))
+    env->ThrowError("ConvertToRGB: invalid \"matrix\" parameter");
+
+  // these constants are used with intentional minus operator in core calculations
+  matrix.v_g = -matrix.v_g;
+  matrix.u_g = -matrix.u_g;
+  matrix.offset_y = -matrix.offset_y;
+
   vi.pixel_type = rgb24 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
 }
 
@@ -233,16 +462,16 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
   const int dst_pitch = dst->GetPitch();
   BYTE* dstp = dst->GetWritePtr();
-  int tv_scale = theMatrix == Rec601 || theMatrix == Rec709 ? 16 : 0;
+  int tv_scale = matrix.offset_y;
 
 
   {
     if (vi.IsRGB32()) {
       convert_yuy2_to_rgb_c<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
-        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
+        matrix.v_r, matrix.v_g, matrix.u_g, matrix.u_b, matrix.y_r, tv_scale);
     } else {
       convert_yuy2_to_rgb_c<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
-        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
+        matrix.v_r, matrix.v_g, matrix.u_g, matrix.u_b, matrix.y_r, tv_scale);
     }
   }
   return dst;
@@ -1679,8 +1908,8 @@ BitDepthConvFuncPtr get_convert_to_16_16_down_dither_function(bool full_scale, i
 
 
 ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth),
-  dither_bitdepth(_dither_bitdepth), truerange(_truerange), fulls(_fulls), fulld(_fulld)
+  GenericVideoFilter(_child), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange),
+  fulls(_fulls), fulld(_fulld), dither_bitdepth(_dither_bitdepth)
 {
 
   pixelsize = vi.ComponentSize();

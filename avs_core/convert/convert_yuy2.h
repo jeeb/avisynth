@@ -50,7 +50,7 @@ class ConvertToYUY2 : public GenericVideoFilter
  **/
 {
 public:
-  ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const char *matrix, IScriptEnvironment* env);
+  ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const char *matrix_name, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -66,8 +66,7 @@ private:
 protected:
   const int src_cs;  // Source colorspace
   int theMatrix;
-  // no rec2020 for YUY2
-  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
+  ConversionMatrix matrix;
 
 };
 

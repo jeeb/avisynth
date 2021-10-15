@@ -40,6 +40,27 @@
 enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4, Rec2020=5, PC_2020=6};
 int getMatrix( const char* matrix, IScriptEnvironment* env);
 
+struct ConversionMatrix {
+  int y_r, y_g, y_b;
+  // for grayscale conversion these may not needed
+  int u_r, u_g, u_b;
+  int v_r, v_g, v_b;
+
+  // used in YUY2 RGB->YUY2 asm
+  int ku, ku_luma;
+  int kv, kv_luma;
+
+  float y_r_f, y_g_f, y_b_f;
+  float u_r_f, u_g_f, u_b_f;
+  float v_r_f, v_g_f, v_b_f;
+
+  int offset_y;
+  float offset_y_f;
+};
+
+bool do_BuildMatrix_Rgb2Yuv(int in_matrix, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix);
+bool do_BuildMatrix_Yuv2Rgb(int in_matrix, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix);
+
 /*****************************************************
  *******   Colorspace Single-Byte Conversions   ******
  ****************************************************/
@@ -73,7 +94,7 @@ class ConvertToRGB : public GenericVideoFilter
  **/
 {
 public:
-  ConvertToRGB(PClip _child, bool rgb24, const char* matrix, IScriptEnvironment* env);
+  ConvertToRGB(PClip _child, bool rgb24, const char* matrix_name, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -85,7 +106,7 @@ public:
 
 private:
   int theMatrix;
-  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3};
+  ConversionMatrix matrix;
 };
 
 // YUY2 only

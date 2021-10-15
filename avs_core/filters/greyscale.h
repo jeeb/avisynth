@@ -36,16 +36,7 @@
 #define __Greyscale_H__
 
 #include <avisynth.h>
-
-
-struct GreyConversionMatrix {
-  int r;    // for 15bit scaled integer arithmetic
-  int g;
-  int b;
-  float r_f;    // for float operation
-  float g_f;
-  float b_f;
-};
+#include "..\convert\convert_planar.h"
 
 class Greyscale : public GenericVideoFilter
 /**
@@ -64,10 +55,9 @@ public:
   }
 
 private:
-  void BuildGreyMatrix();
-  GreyConversionMatrix greyMatrix;
+  void BuildGreyMatrix(IScriptEnvironment *env);
+  ConversionMatrix greyMatrix;
   int matrix_;
-  enum {Rec601 = 0, Rec709, Average, Rec2020 };
   int pixelsize;
   int bits_per_pixel;
 
