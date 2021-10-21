@@ -2735,27 +2735,31 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
 
   /*
     "mpeg1", "center"
-    "mpeg2", "left"
-      - top-field samples are sited 1/4 sample below the luma samples
-      - bottom-field samples are sited 1/4 sample above the luma samples
-    "dv":
+      - 1-1 averaging kernel (4:2:0, 4:2:2 (horizontal only))
+    "mpeg2", "left" (4:2:0, 4:2:2)
+      - top-field samples are sited 1/4 sample below the luma samples (4:2:0)
+      - bottom-field samples are sited 1/4 sample above the luma samples (4:2:0)
+      - horizontal 1-2-1 kernel 
+    "dv": (4:2:0)
       Chroma samples are sited on top of luma samples, but CB and CR samples are sited on alternate lines.
       - top: V
       - bottom: U
-    "top_left"
+    "top_left" (4:2:0)
+      - horizontal 1-2-1 vertical 1-2-1
   */
 
+  const int InPlacementKind = getPlacement(InPlacement, env);
   if (Is420(vi.pixel_type)) {
-    switch (getPlacement(InPlacement, env)) {
+    switch (InPlacementKind) {
       case PLACEMENT_DV:
         xdInU = 0.0f; ydInU = 1.0f; txdInU = 0.0f; tydInU = 1.0f; bxdInU = 0.0f; bydInU = 1.0f; // Cb
         xdInV = 0.0f; ydInV = 0.0f; txdInV = 0.0f; tydInV = 0.0f; bxdInV = 0.0f; bydInV = 0.0f; // Cr
         break;
-      case PLACEMENT_MPEG1:
+      case PLACEMENT_MPEG1: // center
         xdInU = 0.5f, ydInU = 0.5f; txdInU = 0.5f; tydInU = 0.25f; bxdInU = 0.5f; bydInU = 0.75f;
         xdInV = 0.5f, ydInV = 0.5f; txdInV = 0.5f; tydInV = 0.25f; bxdInV = 0.5f; bydInV = 0.75f;
         break;
-      case PLACEMENT_MPEG2:
+      case PLACEMENT_MPEG2: // left
         xdInU = 0.0f; ydInU = 0.5f; txdInU = 0.0f; tydInU = 0.25f; bxdInU = 0.0f; bydInU = 0.75f;
         xdInV = 0.0f; ydInV = 0.5f; txdInV = 0.0f; tydInV = 0.25f; bxdInV = 0.0f; bydInV = 0.75f;
         break;
@@ -2765,12 +2769,27 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
         break;
     }
   }
+  else if (vi.Is422()) {
+    switch (InPlacementKind) {
+    case PLACEMENT_MPEG1: // center
+      xdInU = 0.5f, ydInU = 0.0f; txdInU = 0.5f; tydInU = 0.0f; bxdInU = 0.5f; bydInU = 0.0f;
+      xdInV = 0.5f, ydInV = 0.0f; txdInV = 0.5f; tydInV = 0.0f; bxdInV = 0.5f; bydInV = 0.0f;
+      break;
+    case PLACEMENT_MPEG2: // left
+      xdInU = 0.0f; ydInU = 0.0f; txdInU = 0.0f; tydInU = 0.0f; bxdInU = 0.0f; bydInU = 0.0f;
+      xdInV = 0.0f; ydInV = 0.0f; txdInV = 0.0f; tydInV = 0.0f; bxdInV = 0.0f; bydInV = 0.0f;
+      break;
+    }
+  }
   else if (InPlacement.Defined())
-    env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 source.");
+    env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 or 4:2:2 sources.");
+  if (vi.Is422() && InPlacementKind != PLACEMENT_MPEG1 && InPlacementKind != PLACEMENT_MPEG2)
+    env->ThrowError("Convert: not supported ChromaPlacement for 4:2:2 input.");
 
   const int xsIn = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
   const int ysIn = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
 
+  // change vi to the output format
   vi.pixel_type = dst_space;
 
   if (vi.ComponentSize() != pixelsize)
@@ -2782,17 +2801,18 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   float xdOutV = 0.0f, txdOutV = 0.0f, bxdOutV = 0.0f;
   float ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f;
 
+  const int OutPlacementKind = getPlacement(OutPlacement, env);
   if (Is420(vi.pixel_type)) {
-    switch (getPlacement(OutPlacement, env)) {
+    switch (OutPlacementKind) {
       case PLACEMENT_DV:
         xdOutU = 0.0f; ydOutU = 1.0f; txdOutU = 0.0f; tydOutU = 1.0f; bxdOutU = 0.0f; bydOutU = 1.0f; // Cb
         xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.0f; // Cr
         break;
-      case PLACEMENT_MPEG1:
+      case PLACEMENT_MPEG1: // center
         xdOutU = 0.5f, ydOutU = 0.5f; txdOutU = 0.5f; tydOutU = 0.25f; bxdOutU = 0.5f; bydOutU = 0.75f;
         xdOutV = 0.5f, ydOutV = 0.5f; txdOutV = 0.5f; tydOutV = 0.25f; bxdOutV = 0.5f; bydOutV = 0.75f;
         break;
-      case PLACEMENT_MPEG2:
+      case PLACEMENT_MPEG2: // left
         xdOutU = 0.0f; ydOutU = 0.5f; txdOutU = 0.0f; tydOutU = 0.25f; bxdOutU = 0.0f; bydOutU = 0.75f;
         xdOutV = 0.0f; ydOutV = 0.5f; txdOutV = 0.0f; tydOutV = 0.25f; bxdOutV = 0.0f; bydOutV = 0.75f;
         break;
@@ -2802,8 +2822,22 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
         break;
     }
   }
+  else if (vi.Is422()) {
+    switch (OutPlacementKind) {
+    case PLACEMENT_MPEG1: // center
+      xdOutU = 0.5f, ydOutU = 0.0f; txdOutU = 0.5f; tydOutU = 0.0f; bxdOutU = 0.5f; bydOutU = 0.0f;
+      xdOutV = 0.5f, ydOutV = 0.0f; txdOutV = 0.5f; tydOutV = 0.0f; bxdOutV = 0.5f; bydOutV = 0.0f;
+      break;
+    case PLACEMENT_MPEG2: // left
+      xdOutU = 0.0f; ydOutU = 0.0f; txdOutU = 0.0f; tydOutU = 0.0f; bxdOutU = 0.0f; bydOutU = 0.0f;
+      xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.0f;
+      break;
+    }
+  }
   else if (OutPlacement.Defined())
-    env->ThrowError("Convert: Output ChromaPlacement only available with 4:2:0 output.");
+    env->ThrowError("Convert: Output ChromaPlacement only available with 4:2:0 or 4:2:2 output.");
+  if(vi.Is422() && OutPlacementKind != PLACEMENT_MPEG1 && OutPlacementKind != PLACEMENT_MPEG2)
+    env->ThrowError("Convert: not supported ChromaPlacement for 4:2:2 output.");
 
   const int xsOut = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
   const int xmask = xsOut - 1;
@@ -2952,7 +2986,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     env->ThrowError("%s: Can only convert from Planar YUV.", filter);
 
   int pixel_type = VideoInfo::CS_UNKNOWN;
-  AVSValue outplacement = AVSValue();
+  AVSValue outplacement = AVSValue(); // only for ConvertToYUV420 and ConvertToYUV422
 
   bool hasAlpha = vi.NumComponents() == 4 && !strip_alpha_legacy_8bit;
   bool shouldStripAlpha = vi.NumComponents() == 4 && strip_alpha_legacy_8bit;
@@ -2981,15 +3015,18 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     }
   }
   else if (strcmp(filter, "ConvertToYUV422") == 0) {
-    if (vi.Is422()) {
-      if (shouldStripAlpha)
-        return new RemoveAlphaPlane(clip, env);
-      return clip;
-    }
+    if (vi.Is422())
+      if (getPlacement(args[3], env) == getPlacement(args[5], env))
+      {
+        if (shouldStripAlpha)
+          return new RemoveAlphaPlane(clip, env);
+        return clip;
+      }
 
     if (converted)
       clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
 
+    outplacement = args[5];
     switch (vi.BitsPerComponent())
     {
     case 8 : pixel_type = hasAlpha ? VideoInfo::CS_YUVA422 : VideoInfo::CS_YV16; break;
