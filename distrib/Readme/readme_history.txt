@@ -4,9 +4,32 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20210930 WIP
+20211020 WIP
 ------------
-- 4:2:0 conversions: ChromaInPlacement and ChromaOutPlacement parameters: (see http://avisynth.nl/index.php/Convert)
+- Allow propGetXXX property getter functions called as normal functions, outside runtime
+  By default frame property values are read from frame#0 which index can be overridden by the offset parameter
+
+  Example:
+    Colorbars()
+    PropSet(last, "hello", 1) # Set to 1 for all frames
+    # Override to 2 with runtime function except for frameNo=1
+    ScriptClip("""if(current_frame!=1) {propSet("hello",2)}""")
+    n0 = propGetInt("hello") # same as propGetInt("hello",offset=0)
+    # or get the frame property from the Nth frame
+    n1 = propGetInt("hello",offset=1)
+    n2 = propGetInt("hello",offset=2)
+    # n0 and n2 is 2 (overridden in runtime)
+    # n1 will be 1 (keeps global setting)
+    SubTitle("n0/n1/n2=" + "{n0}/{n1}/{n2}".Format)
+
+- Add parameter string "ChromaOutPlacement" in ConvertToYV16 and ConvertToYUV422 similar to YV12/420 conversions
+  4:2:2 conversions now allow ChromaInPlacement and ChromaOutPlacement parameters
+  "left" ("mpeg2") and "center" ("mpeg1", "jpeg").
+  Note 1: "top_left" and "dv" is still valid only for 4:2:0
+  Note 2: "mpeg2" (sale as "left") was so far the default for 4:2:0 and 4:2:2 sources as well.
+- Source code: use common YUV-RGB conversion matrix values and generation throughout the project
+  Was: constants and calculations and inline code here and there.
+  New: YUY2 RGB conversions now allow matrix "PC.2020" and "Rec2020" (as a side effect)- 4:2:0 conversions: ChromaInPlacement and ChromaOutPlacement parameters: (see http://avisynth.nl/index.php/Convert)
   add "top_left" (new)
   add "center" and "jpeg" (as an alternative to "mpeg1"), "left" (as an alternative to "mpeg2")
 - Expr: sin and cos SIMD acceleration (SSE2 and AVX2) port from VapourSynth (Akarin et al.)
