@@ -124,6 +124,7 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   { "propGetInt", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void *)1 },
   { "propGetFloat", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)2 },
   { "propGetString", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)3 },
+  { "propGetClip", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetProperty::Create, (void*)4 },
   { "propGetDataSize", BUILTIN_FUNC_PREFIX, "cs[index]i[offset]i", GetPropertyDataSize::Create },
   { "propNumElements", BUILTIN_FUNC_PREFIX, "cs[offset]i", GetPropertyNumElements::Create},
   { "propNumKeys", BUILTIN_FUNC_PREFIX, "c[offset]i", GetPropertyNumKeys::Create},
@@ -676,21 +677,21 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propGetxxxxx: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
   int propType = (int)(intptr_t)user_data;
-  // vUnset, vInt, vFloat, vData/*, vNode*/, vFrame/*, vMethod*/ }
+  // vUnset, vInt, vFloat, vData, vNode/Clip, vFrame/*, vMethod*/ }
   // 0: auto
   // 1: integer
   // 2: float
   // 3: char (null terminated data)
+  // 4: Clip
 
   const char* propName = args[1].AsString();
   const int index = args[2].AsInt(0);
   const int offset = args[3].AsInt(0);
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
   PVideoFrame src = child->GetFrame(n, env);
@@ -710,7 +711,7 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
     case 'i': propType = 1; break;
     case 'f': propType = 2; break;
     case 's': propType = 3; break;
-    // case 'c': propType = 4; break; Clips not supported
+    case 'c': propType = 4; break;
     default:
       env->ThrowError("Error getting frame property \"%s\": type '%c' not supported", propName, res);
     }
@@ -769,13 +770,12 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propGetAsArray: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int offset = args[2].AsInt(0);
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
   PVideoFrame src = child->GetFrame(n, env);
@@ -863,12 +863,11 @@ AVSValue GetAllProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propGetAll: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
   const int offset = args[1].AsInt(0);
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
   PVideoFrame src = child->GetFrame(n, env);
@@ -956,14 +955,13 @@ AVSValue GetPropertyDataSize::Create(AVSValue args, void* , IScriptEnvironment* 
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propGetDataSize: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int index = args[2].AsInt(0);
   const int offset = args[3].AsInt(0);
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
   PVideoFrame src = child->GetFrame(n, env);
@@ -1002,13 +1000,12 @@ AVSValue GetPropertyNumElements::Create(AVSValue args, void*, IScriptEnvironment
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propNumElements: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int offset = args[2].AsInt(0);
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
   PVideoFrame src = child->GetFrame(n, env);
@@ -1036,13 +1033,12 @@ AVSValue GetPropertyType::Create(AVSValue args, void*, IScriptEnvironment* env) 
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propGetType: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int offset = args[2].AsInt(0);
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
   PVideoFrame src = child->GetFrame(n, env);
@@ -1082,10 +1078,9 @@ AVSValue GetPropertyNumKeys::Create(AVSValue args, void*, IScriptEnvironment* en
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propNumKeys: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   int offset = args[1].AsInt(0);
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
@@ -1114,13 +1109,12 @@ AVSValue GetPropertyKeyByIndex::Create(AVSValue args, void*, IScriptEnvironment*
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  if (!cn.IsInt())
-    env->ThrowError("propNumKeys: This filter can only be used within run-time filters");
+  const bool calledFromRunTime = !cn.IsInt();
 
   const int index = args[1].AsInt(0);
   const int offset = args[2].AsInt(0);
 
-  int n = cn.AsInt();
+  int n = calledFromRunTime ? cn.AsInt() : 0;
   n = min(max(n + offset, 0), vi.num_frames - 1);
 
   PVideoFrame src = child->GetFrame(n, env);
