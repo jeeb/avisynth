@@ -75,7 +75,7 @@ typedef enum {
   opExp, opLog, opPow,
   opSin, opCos, opTan, opAsin, opAcos, opAtan, opAtan2,
   opClip, opRound, opFloor, opCeil, opTrunc,
-  opStoreVar, opLoadVar, opLoadFramePropVar, opStoreAndPopVar
+  opStoreVar, opLoadVar, opLoadFramePropVar, opStoreVarAndDrop1
 } SOperation;
 
 union ExprUnion {

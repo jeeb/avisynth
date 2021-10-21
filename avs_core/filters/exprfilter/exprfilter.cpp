@@ -357,7 +357,7 @@ static constexpr ExprUnion logexpconst alignas(16)[65][4] = {
     XCONST(static_cast<int32_t>(0xBEFFFFE2)), // float_cosC2
     XCONST(0x3D2AA73C), // float_cosC4
     XCONST(static_cast<int32_t>(0XBAB58D50)), // float_cosC6
-    XCONST(0x37C1AD76) // float_cosC8 
+    XCONST(0x37C1AD76) // float_cosC8
 };
 
 
@@ -2268,13 +2268,13 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           vcvtps2ph(qword_ptr[a + 8], t1.second, 0);
         }
       }
-      else if (iter.op == opStoreVar || iter.op == opStoreAndPopVar) {
+      else if (iter.op == opStoreVar || iter.op == opStoreVarAndDrop1) {
         if (processSingle) {
           auto t1 = stack1.back();
           // 16 bytes/variable
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 16 * iter.e.ival;
           movaps(xmmword_ptr[regptrs + offset], t1);
-          if (iter.op == opStoreAndPopVar)
+          if (iter.op == opStoreVarAndDrop1)
             stack1.pop_back();
         }
         else {
@@ -2283,7 +2283,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
           movaps(xmmword_ptr[regptrs + offset], t1.first);
           movaps(xmmword_ptr[regptrs + offset + 16], t1.second);
-          if (iter.op == opStoreAndPopVar)
+          if (iter.op == opStoreVarAndDrop1)
             stack.pop_back();
         }
       }
@@ -3113,13 +3113,13 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vcvtps2ph(xmmword_ptr[a + 16], t1.second, 0);
         }
       }
-      else if (iter.op == opStoreVar || iter.op == opStoreAndPopVar) {
+      else if (iter.op == opStoreVar || iter.op == opStoreVarAndDrop1) {
         if (processSingle) {
           auto t1 = stack1.back();
           // 32 bytes/variable
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 32 * iter.e.ival;
           vmovaps(ymmword_ptr[regptrs + offset], t1);
-          if (iter.op == opStoreAndPopVar)
+          if (iter.op == opStoreVarAndDrop1)
             stack1.pop_back();
         }
         else {
@@ -3128,7 +3128,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           int offset = sizeof(void *) * RWPTR_START_OF_USERVARIABLES + 64 * iter.e.ival;
           vmovaps(ymmword_ptr[regptrs + offset], t1.first);
           vmovaps(ymmword_ptr[regptrs + offset + 32], t1.second); // this needs 64 byte aligned data to prevent overwrite!
-          if (iter.op == opStoreAndPopVar)
+          if (iter.op == opStoreVarAndDrop1)
             stack.pop_back();
         }
       }
@@ -4072,7 +4072,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
               case opStoreVar:
                 variable_area[vops[i].e.ival] = stacktop;
                 break;
-              case opStoreAndPopVar:
+              case opStoreVarAndDrop1:
                 variable_area[vops[i].e.ival] = stacktop;
                 --si;
                 if(si >= 0)
@@ -5024,7 +5024,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             loadIndex = it->second;
           }
           if (opchar == '^')
-            VAR_STORE_SPEC_OP(opStoreAndPopVar, loadIndex);
+            VAR_STORE_SPEC_OP(opStoreVarAndDrop1, loadIndex);
           else // if (opchar == '@')
             VAR_STORE_OP(opStoreVar, loadIndex);
         }
@@ -5264,6 +5264,9 @@ static int numOperands(uint32_t op) {
         case opLoadVar:
         case opLoadFramePropVar:
         case opLoadInternalVar:
+        case opSwap:
+        case opStoreVar:
+        case opStoreVarAndDrop1:
           return 0;
 
         case opSqrt:
@@ -5271,8 +5274,6 @@ static int numOperands(uint32_t op) {
         case opNeg:
         case opExp:
         case opLog:
-        case opStoreVar:
-        case opStoreAndPopVar:
         case opSin:
         case opCos:
         case opTan:
@@ -5285,7 +5286,6 @@ static int numOperands(uint32_t op) {
         case opTrunc:
           return 1;
 
-        case opSwap:
         case opAdd:
         case opSub:
         case opMul:
@@ -5335,60 +5335,81 @@ static bool isLoadOp(uint32_t op) {
     return false;
 }
 
-static void findBranches(std::vector<ExprOp> &ops, size_t pos, size_t *start1, size_t *start2, size_t *start3) {
-    int operands = numOperands(ops[pos].op);
+static void findBranches(std::vector<ExprOp>& ops, size_t pos, size_t* start1, size_t* start2, size_t* start3) {
+  int operands = numOperands(ops[pos].op);
 
-    size_t temp1, temp2, temp3;
+  size_t temp1, temp2, temp3;
 
-    if (operands == 0) {
-        *start1 = pos;
-    } else if (operands == 1) {
-        if (ops[pos].op == opStoreAndPopVar) {
-          findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
-          pos = temp1;
-        } 
-        if (isLoadOp(ops[pos - 1].op)) {
-            *start1 = pos - 1;
-        } else {
-            findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
-            *start1 = temp1;
-        }
-    } else if (operands == 2) {
-        if (isLoadOp(ops[pos - 1].op)) {
-            *start2 = pos - 1;
-        } else {
-            findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
-            *start2 = temp1;
-        }
-
-        if (isLoadOp(ops[*start2 - 1].op)) {
-            *start1 = *start2 - 1;
-        } else {
-            findBranches(ops, *start2 - 1, &temp1, &temp2, &temp3);
-            *start1 = temp1;
-        }
-    } else if (operands == 3) {
-        if (isLoadOp(ops[pos - 1].op)) {
-            *start3 = pos - 1;
-        } else {
-            findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
-            *start3 = temp1;
-        }
-
-        if (isLoadOp(ops[*start3 - 1].op)) {
-            *start2 = *start3 - 1;
-        } else {
-            findBranches(ops, *start3 - 1, &temp1, &temp2, &temp3);
-            *start2 = temp1;
-        }
-
-        if (isLoadOp(ops[*start2 - 1].op)) {
-            *start1 = *start2 - 1;
-        } else {
-            findBranches(ops, *start2 - 1, &temp1, &temp2, &temp3);
-            *start1 = temp1;
-        }
+  if (operands == 0) {
+    // dup loadsrc loadrel loadconst swap, storevar
+    if (ops[pos].op == opSwap || ops[pos].op == opStoreVar || ops[pos].op == opStoreVarAndDrop1)
+    {
+      findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
+      *start1 = temp1;
+      if (ops[pos].op == opStoreVarAndDrop1) {
+        // StoreAndPopVar: opStoreVar + Ignore topmost stack.
+        // Branch was calculated only for storing its result into var.
+        // Leaves no trace on stack.
+        // So we go on with next branch
+        pos = *start1;
+        findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
+        *start1 = temp1;
+      }
     }
+    else
+      *start1 = pos;
+  }
+  else if (operands == 1) {
+    if (isLoadOp(ops[pos - 1].op)) {
+      *start1 = pos - 1;
+    }
+    else {
+      findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
+      *start1 = temp1;
+    }
+  }
+  else if (operands == 2) {
+    if (isLoadOp(ops[pos - 1].op)) {
+      *start2 = pos - 1;
+    }
+    else {
+      findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
+      *start2 = temp1;
+    }
+
+    if (isLoadOp(ops[*start2 - 1].op)) {
+      *start1 = *start2 - 1;
+    }
+    else {
+      findBranches(ops, *start2 - 1, &temp1, &temp2, &temp3);
+      *start1 = temp1;
+    }
+  }
+  else if (operands == 3) {
+    if (isLoadOp(ops[pos - 1].op)) {
+      *start3 = pos - 1;
+    }
+    else {
+      findBranches(ops, pos - 1, &temp1, &temp2, &temp3);
+      *start3 = temp1;
+    }
+
+    if (isLoadOp(ops[*start3 - 1].op)) {
+      *start2 = *start3 - 1;
+    }
+    else {
+      findBranches(ops, *start3 - 1, &temp1, &temp2, &temp3);
+      *start2 = temp1;
+    }
+
+    if (isLoadOp(ops[*start2 - 1].op)) {
+      *start1 = *start2 - 1;
+    }
+    else {
+      findBranches(ops, *start2 - 1, &temp1, &temp2, &temp3);
+      *start1 = temp1;
+    }
+  }
 }
 
 
@@ -5529,16 +5550,18 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opTernary:
               size_t start1, start2, start3;
               findBranches(ops, i, &start1, &start2, &start3);
-              if (ops[start2 - 1].op == opLoadConst) {
-                ops.erase(ops.begin() + i);
-                if (ops[start1].e.fval > 0.0f) {
-                  ops.erase(ops.begin() + start3, ops.begin() + i);
+              // start1/2/3: condition/true/false branch
+              if (ops[start2 - 1].op == opLoadConst) { // condition expression is a single constant
+                ops.erase(ops.begin() + i); // erase ternary op
+                if (ops[start1].e.fval > 0.0f) { // condition is constant 'true'
+                  // start1 is start2 - 1
+                  ops.erase(ops.begin() + start3, ops.begin() + i); // erase 'false' branch
                   i = start3;
                 } else {
-                  ops.erase(ops.begin() + start2, ops.begin() + start3);
+                  ops.erase(ops.begin() + start2, ops.begin() + start3);  // erase 'true' branch
                   i -= start3 - start2;
                 }
-                ops.erase(ops.begin() + start1);
+                ops.erase(ops.begin() + start1); // erase constant
                 i -= 2;
               }
               break;
