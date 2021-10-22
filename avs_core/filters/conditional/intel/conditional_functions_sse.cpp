@@ -757,6 +757,36 @@ AVSValue MinMaxPlane::Create_minmax(AVSValue args, void* user_data, IScriptEnvir
   return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MINMAX_DIFFERENCE, env);
 }
 
+void get_minmax_float_c(const BYTE* srcp, int pitch, int w, int h, float& min, float& max)
+{
+  min = *reinterpret_cast<const float*>(srcp);
+  max = min;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      const float pix = reinterpret_cast<const float*>(srcp)[x];
+      if (pix < min) min = pix;
+      if (pix > max) max = pix;
+    }
+    srcp += pitch;
+  }
+}
+
+template<typename pixel_t>
+void get_minmax_int_c(const BYTE* srcp, int pitch, int w, int h, int& min, int& max)
+{
+  min = *reinterpret_cast<const pixel_t*>(srcp);
+  max = min;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      const int pix = reinterpret_cast<const pixel_t*>(srcp)[x];
+      if (pix < min) min = pix;
+      if (pix > max) max = pix;
+    }
+    srcp += pitch;
+  }
+}
 
 AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
 
@@ -768,11 +798,6 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
 
   if (!vi.IsPlanar())
     env->ThrowError("MinMax: Image must be planar");
-
-  int pixelsize = vi.ComponentSize();
-  int buffersize = pixelsize == 1 ? 256 : 65536; // 65536 for float, too, reason for 10-14 bits: avoid overflow
-  int real_buffersize = pixelsize == 4 ? 65536 : (1 << vi.BitsPerComponent());
-  uint32_t *accum_buf = new uint32_t[buffersize];
 
   // Get current frame number
   AVSValue cn = env->GetVarDef("current_frame");
@@ -787,11 +812,51 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
 
   const BYTE* srcp = src->GetReadPtr(plane);
   int pitch = src->GetPitch(plane);
-  int w = src->GetRowSize(plane) / pixelsize;
+  int pixelsize = vi.ComponentSize();
+  int w = src->GetRowSize(plane) / pixelsize; // good for packed rgb as well
   int h = src->GetHeight(plane);
 
   if (w == 0 || h == 0)
     env->ThrowError("MinMax: plane does not exist!");
+
+  if (threshold == 0) {
+    // special case, no histogram needed
+
+    if (pixelsize == 4) // 32 bit float
+    {
+      float min_f, max_f;
+      get_minmax_float_c(srcp, pitch, w, h, min_f, max_f);
+      
+      float retval = -1;
+      
+      if (mode == MIN) retval = min_f;
+      else if (mode == MAX) retval = max_f;
+      else if (mode == MINMAX_DIFFERENCE) retval = max_f - min_f;
+
+      return retval;
+    }
+    else
+    {
+      int min, max;
+      // sse4.1 is not any faster
+      if(pixelsize == 1)
+        get_minmax_int_c<uint8_t>(srcp, pitch, w, h, min, max);
+      else
+        get_minmax_int_c<uint16_t>(srcp, pitch, w, h, min, max);
+
+      int retval = -1;
+
+      if (mode == MIN) retval = min;
+      else if (mode == MAX) retval = max;
+      else if (mode == MINMAX_DIFFERENCE) retval = max - min;
+
+      return retval;
+    }
+  }
+
+  int buffersize = pixelsize == 1 ? 256 : 65536; // 65536 for float, too, reason for 10-14 bits: avoid overflow
+  int real_buffersize = pixelsize == 4 ? 65536 : (1 << vi.BitsPerComponent());
+  uint32_t* accum_buf = new uint32_t[buffersize];
 
   // Reset accumulators
   std::fill_n(accum_buf, buffersize, 0);
