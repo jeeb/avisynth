@@ -4,8 +4,16 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20211020 WIP
+20211022 WIP
 ------------
+- New function: propCopy(clip, clip [,bool 'merge'])
+  Copies the frame properties of the second clip to the first.
+  Parameter 'merge' (default false):
+    when false: exact copy (original target properties will be lost)
+    when true: keeps original properties, appends all parameters from source but overwrite if a parameter with the same name already exists.
+- xxxPlaneMin xxxPlaneMax, xxxPlaneMinMaxDifference:
+  - 32 bit float formats: when threshold is 0 then return real values instead of 0..1 (chroma -0.5..0.5) clamped histogram-based result
+  - for threshold 0 they also became a bit quicker for 8-16 bit formats (~10% on i7-7700)
 - Allow propGetXXX property getter functions called as normal functions, outside runtime
   By default frame property values are read from frame#0 which index can be overridden by the offset parameter
 
