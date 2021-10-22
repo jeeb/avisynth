@@ -94,6 +94,8 @@ extern const AVSFunction Conditional_filters[] = {
 
   { "propShow", BUILTIN_FUNC_PREFIX, "c[size]i[showtype]b", ShowProperties::Create },
 
+  { "propCopy", BUILTIN_FUNC_PREFIX, "cc[merge]b", CopyProperties::Create},
+
   { 0 }
 };
 

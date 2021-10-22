@@ -176,6 +176,20 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
+class CopyProperties : public GenericVideoFilter
+{
+private:
+  bool merge;
+  PClip child2;
+
+public:
+  CopyProperties(PClip _child, PClip _child2, bool _merge, IScriptEnvironment* env);
+  ~CopyProperties();
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
 class ShowProperties : public GenericVideoFilter
 {
 private:
