@@ -907,7 +907,7 @@ AVSValue GetProperty::Create(AVSValue args, void* user_data, IScriptEnvironment*
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   int propType = (int)(intptr_t)user_data;
   // vUnset, vInt, vFloat, vData, vNode/Clip, vFrame/*, vMethod*/ }
@@ -1000,7 +1000,7 @@ AVSValue GetPropertyAsArray::Create(AVSValue args, void* , IScriptEnvironment* e
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int offset = args[2].AsInt(0);
@@ -1093,7 +1093,7 @@ AVSValue GetAllProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   const int offset = args[1].AsInt(0);
 
@@ -1185,7 +1185,7 @@ AVSValue GetPropertyDataSize::Create(AVSValue args, void* , IScriptEnvironment* 
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int index = args[2].AsInt(0);
@@ -1230,7 +1230,7 @@ AVSValue GetPropertyNumElements::Create(AVSValue args, void*, IScriptEnvironment
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int offset = args[2].AsInt(0);
@@ -1263,7 +1263,7 @@ AVSValue GetPropertyType::Create(AVSValue args, void*, IScriptEnvironment* env) 
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   const char* propName = args[1].AsString();
   const int offset = args[2].AsInt(0);
@@ -1308,7 +1308,7 @@ AVSValue GetPropertyNumKeys::Create(AVSValue args, void*, IScriptEnvironment* en
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   int n = calledFromRunTime ? cn.AsInt() : 0;
   int offset = args[1].AsInt(0);
@@ -1339,7 +1339,7 @@ AVSValue GetPropertyKeyByIndex::Create(AVSValue args, void*, IScriptEnvironment*
   VideoInfo vi = child->GetVideoInfo();
 
   AVSValue cn = env->GetVarDef("current_frame");
-  const bool calledFromRunTime = !cn.IsInt();
+  const bool calledFromRunTime = cn.IsInt();
 
   const int index = args[1].AsInt(0);
   const int offset = args[2].AsInt(0);
