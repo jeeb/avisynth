@@ -83,7 +83,6 @@ enum MANAGE_CACHE_KEYS
 #include "function.h"
 
 
-int RGB2YUV(int rgb);
 const char *GetPixelTypeName(const int pixel_type); // in script.c
 int GetPixelTypeFromName(const char *pixeltypename); // in script.c
 const char* GetAVSTypeName(AVSValue value); // in script.c

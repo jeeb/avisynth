@@ -34,6 +34,7 @@
 
 #include "convert_yuy2.h"
 #include "convert.h"
+#include "convert_matrix.h"
 #include <avs/alignment.h>
 
 #ifdef AVS_WINDOWS

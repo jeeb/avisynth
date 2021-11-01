@@ -42,6 +42,7 @@
 #else
 #include "convert_yv12.h"
 #endif
+#include "convert_matrix.h"
 #include "convert_planar.h" // 2.60
 
 class ConvertToYUY2 : public GenericVideoFilter

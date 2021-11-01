@@ -34,7 +34,7 @@
 
 
 #include "../core/internal.h"
-#include "../convert/convert.h"
+#include "../convert/convert_matrix.h"
 #include "transform.h"
 #ifdef AVS_WINDOWS
 #include "AviSource/avi_source.h"

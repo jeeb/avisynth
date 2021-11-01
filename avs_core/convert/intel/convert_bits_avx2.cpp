@@ -48,18 +48,18 @@
 #define _mm256_set_m128(v0, v1) _mm256_insertf128_ps(_mm256_castps128_ps256(v1), (v0), 1)
 #endif
 
-#include "convert_avx2.h"
+#include "convert_bits_avx2.h"
 
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4305 4309)
 #endif
 
-template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
+template<typename pixel_t, bool chroma, bool fulls, bool fulld>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("avx2")))
 #endif
-void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
 {
   const float *srcp = reinterpret_cast<const float *>(srcp8);
   pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
@@ -69,10 +69,10 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
 
   int src_width = src_rowsize / sizeof(float);
 
-  const int max_pixel_value = (1 << targetbits) - 1;
+  const int max_pixel_value = (1 << target_bitdepth) - 1;
 
-  const int limit_lo_d = (fulld ? 0 : 16) << (targetbits - 8);
-  const int limit_hi_d = fulld ? ((1 << targetbits) - 1) : ((chroma ? 240 : 235) << (targetbits - 8));
+  const int limit_lo_d = (fulld ? 0 : 16) << (target_bitdepth - 8);
+  const int limit_hi_d = fulld ? ((1 << target_bitdepth) - 1) : ((chroma ? 240 : 235) << (target_bitdepth - 8));
   const float range_diff_d = (float)limit_hi_d - limit_lo_d;
 
   const int limit_lo_s = fulls ? 0 : 16;
@@ -86,10 +86,7 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
   // false true  16/255..235/255    0..1      (16-128)/255..(240-128)/255    0-128-255
   const float factor = range_diff_d / range_diff_s;
 
-  const float half_i = (float)(1 << (targetbits - 1));
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-  const __m256 half_ps = _mm256_set1_ps(0.5f);
-#endif
+  const float half_i = (float)(1 << (target_bitdepth - 1));
   const __m256 halfint_plus_rounder_ps = _mm256_set1_ps(half_i + 0.5f);
   const __m256 limit_lo_s_ps = _mm256_set1_ps(limit_lo_s / 255.0f);
   const __m256 limit_lo_plus_rounder_ps = _mm256_set1_ps(limit_lo_d + 0.5f);
@@ -107,14 +104,6 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
       __m256 src_0 = _mm256_load_ps(reinterpret_cast<const float *>(srcp + x));
       __m256 src_1 = _mm256_load_ps(reinterpret_cast<const float *>(srcp + x + 8));
       if (chroma) {
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-        // shift 0.5 before, shift back half_int after. 0.5->exact half of 128/512/...
-        src_0 = _mm256_sub_ps(src_0, half_ps);
-        src_1 = _mm256_sub_ps(src_1, half_ps);
-        //pixel = (srcp0[x] - 0.5f) * factor + half + 0.5f;
-#else
-        //pixel = (srcp0[x]       ) * factor + half + 0.5f;
-#endif
         src_0 = _mm256_fmadd_ps(src_0, factor_ps, halfint_plus_rounder_ps);
         src_1 = _mm256_fmadd_ps(src_1, factor_ps, halfint_plus_rounder_ps);
       }
@@ -156,32 +145,27 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
 #pragma warning(pop)
 #endif
 
-#define convert_32_to_uintN_avx2_functions_any(type, targetbits) \
-template void convert_32_to_uintN_avx2<type, targetbits, false, true, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch); \
-template void convert_32_to_uintN_avx2<type, targetbits, true, true, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch); \
-template void convert_32_to_uintN_avx2<type, targetbits, false, true, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch); \
-template void convert_32_to_uintN_avx2<type, targetbits, true, true, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch); \
-template void convert_32_to_uintN_avx2<type, targetbits, false, false, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch); \
-template void convert_32_to_uintN_avx2<type, targetbits, true, false, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch); \
-template void convert_32_to_uintN_avx2<type, targetbits, false, false, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch); \
-template void convert_32_to_uintN_avx2<type, targetbits, true, false, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+#define convert_32_to_uintN_avx2_functions(type) \
+template void convert_32_to_uintN_avx2<type, false, true, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_32_to_uintN_avx2<type, true, true, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_32_to_uintN_avx2<type, false, true, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_32_to_uintN_avx2<type, true, true, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_32_to_uintN_avx2<type, false, false, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_32_to_uintN_avx2<type, true, false, true>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_32_to_uintN_avx2<type, false, false, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_32_to_uintN_avx2<type, true, false, false>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
-#define convert_32_to_uintN_avx2_functions_8(targetbits) convert_32_to_uintN_avx2_functions_any(uint8_t, targetbits)
-#define convert_32_to_uintN_avx2_functions(targetbits) convert_32_to_uintN_avx2_functions_any(uint16_t, targetbits)
+convert_32_to_uintN_avx2_functions(uint8_t)
+convert_32_to_uintN_avx2_functions(uint16_t)
 
-convert_32_to_uintN_avx2_functions_8(8)
-convert_32_to_uintN_avx2_functions(10)
-convert_32_to_uintN_avx2_functions(12)
-convert_32_to_uintN_avx2_functions(14)
-convert_32_to_uintN_avx2_functions(16)
+#undef convert_32_to_uintN_avx2_functions
 
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
-// shift right or left, depending on expandrange template param
-template<bool expandrange, uint8_t shiftbits>
+// shift right or left, depending on expandrange
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("avx2")))
 #endif
-void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
 {
     const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
     uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
@@ -190,28 +174,31 @@ void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsi
     dst_pitch = dst_pitch / sizeof(uint16_t);
 
     const int src_width = src_rowsize / sizeof(uint16_t);
-
-    for(int y=0; y<src_height; y++)
+    if (target_bitdepth > source_bitdepth) // expandrange
     {
-        for (int x = 0; x < src_width; x++)
-        {
-            if(expandrange)
-                dstp0[x] = srcp0[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
-            else {
-              constexpr auto round = 1 << (shiftbits - 1);
-              dstp0[x] = (srcp0[x] + round) >> shiftbits;  // reduce range
-            }
+      const int shift_bits = target_bitdepth - source_bitdepth;
+      for (int y = 0; y < src_height; y++)
+      {
+        for (int x = 0; x < src_width; x++) {
+          dstp0[x] = srcp0[x] << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
         }
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
+      }
+    }
+    else
+    {
+      // reduce range
+      const int shift_bits = source_bitdepth - target_bitdepth;
+      const int round = 1 << (shift_bits - 1);
+      for (int y = 0; y < src_height; y++)
+      {
+        for (int x = 0; x < src_width; x++) {
+            dstp0[x] = (srcp0[x] + round) >> shift_bits;  // reduce range
+        }
+        dstp0 += dst_pitch;
+        srcp0 += src_pitch;
+      }
     }
     _mm256_zeroupper();
 }
-
-// instantiate them
-template void convert_uint16_to_uint16_c_avx2<false, 2>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx2<false, 4>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx2<false, 6>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx2<true, 2>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx2<true, 4>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx2<true, 6>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);

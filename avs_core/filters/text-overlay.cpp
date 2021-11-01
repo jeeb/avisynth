@@ -40,7 +40,7 @@
 #endif
 
 #include "text-overlay.h"
-#include "../convert/convert.h"  // for RGB2YUV
+#include "../convert/convert_matrix.h"  // for RGB2YUV
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>

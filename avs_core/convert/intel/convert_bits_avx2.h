@@ -32,15 +32,14 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifndef __Convert_AVX2_H__
-#define __Convert_AVX2_H__
+#ifndef __Convert_bits_AVX2_H__
+#define __Convert_bits_AVX2_H__
 
 #include <avs/types.h>
 
-template<typename pixel_t, uint8_t targetbits, bool chroma, bool fulls, bool fulld>
-void convert_32_to_uintN_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+template<typename pixel_t, bool chroma, bool fulls, bool fulld>
+void convert_32_to_uintN_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
-template<bool expandrange, uint8_t shiftbits>
-void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
+void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
-#endif  // __Convert_AVX2_H__
+#endif  // __Convert_bits_AVX2_H__

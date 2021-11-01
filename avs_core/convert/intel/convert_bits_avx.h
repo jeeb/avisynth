@@ -32,58 +32,11 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifndef __Convert_H__
-#define __Convert_H__
+#ifndef __Convert_bits_AVX_H__
+#define __Convert_bits_AVX_H__
 
-#include "../core/internal.h"
-#include "convert_matrix.h"
+#include <avs/types.h>
 
-/********************************************************
- *******   Colorspace GenericVideoFilter Classes   ******
- *******************************************************/
+void convert_uint16_to_uint16_c_avx(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
-// YUY2 only
-class ConvertToRGB : public GenericVideoFilter
-/**
-  * Class to handle conversion to RGB & RGBA
- **/
-{
-public:
-  ConvertToRGB(PClip _child, bool rgb24, const char* matrix_name, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-private:
-  int theMatrix;
-  ConversionMatrix matrix;
-};
-
-// YUY2 only
-class ConvertToYV12 : public GenericVideoFilter
-/**
-  * Class for conversions to YV12
- **/
-{
-public:
-  ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-  static AVSValue __cdecl Create(AVSValue args,void*, IScriptEnvironment* env);
-
-private:
-  bool interlaced;
-};
-
-
-#endif  // __Convert_H__
+#endif  // __Convert_bits_AVX_H__

@@ -36,7 +36,9 @@
 
 
 #include "../convert.h"
+#include "../convert_matrix.h"
 #include "../convert_planar.h"
+#include "../convert_bits.h"
 #include "convert_planar_avx2.h"
 #include "../filters/intel/resample_sse.h"
 #include "../filters/intel/planeswap_sse.h"

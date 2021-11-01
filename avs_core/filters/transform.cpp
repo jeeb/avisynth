@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "transform.h"
-#include "../convert/convert.h"
+#include "../convert/convert_matrix.h"
 #include <avs/minmax.h>
 #include "../core/bitblt.h"
 #include <stdint.h>

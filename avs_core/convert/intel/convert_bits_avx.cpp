@@ -40,7 +40,7 @@
     #include <x86intrin.h>
 #endif
 
-#include "convert_avx.h"
+#include "convert_bits_avx.h"
 
 #ifndef _mm256_set_m128i
 #define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)
@@ -51,42 +51,44 @@
 #endif
 
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
-// shift right or left, depending on expandrange template param
-template<bool expandrange, uint8_t shiftbits>
+// shift right or left, depending on expandrange
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("avx")))
 #endif
-void convert_uint16_to_uint16_c_avx(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+void convert_uint16_to_uint16_c_avx(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
 {
-  const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-    uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
+  const uint16_t* srcp0 = reinterpret_cast<const uint16_t*>(srcp);
+  uint16_t* dstp0 = reinterpret_cast<uint16_t*>(dstp);
 
-    src_pitch = src_pitch / sizeof(uint16_t);
-    dst_pitch = dst_pitch / sizeof(uint16_t);
+  src_pitch = src_pitch / sizeof(uint16_t);
+  dst_pitch = dst_pitch / sizeof(uint16_t);
 
-    const int src_width = src_rowsize / sizeof(uint16_t);
-
-    for(int y=0; y<src_height; y++)
+  const int src_width = src_rowsize / sizeof(uint16_t);
+  if (target_bitdepth > source_bitdepth) // expandrange
+  {
+    const int shift_bits = target_bitdepth - source_bitdepth;
+    for (int y = 0; y < src_height; y++)
     {
-        for (int x = 0; x < src_width; x++)
-        {
-            if(expandrange)
-                dstp0[x] = srcp0[x] << shiftbits;  // expand range. No clamp before, source is assumed to have valid range
-            else {
-              constexpr auto round = 1 << (shiftbits - 1);
-              dstp0[x] = (srcp0[x] + round)  >> shiftbits;  // reduce range
-            }
-        }
-        dstp0 += dst_pitch;
-        srcp0 += src_pitch;
+      for (int x = 0; x < src_width; x++) {
+        dstp0[x] = srcp0[x] << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
+      }
+      dstp0 += dst_pitch;
+      srcp0 += src_pitch;
     }
-    _mm256_zeroupper();
+  }
+  else
+  {
+    // reduce range
+    const int shift_bits = source_bitdepth - target_bitdepth;
+    const int round = 1 << (shift_bits - 1);
+    for (int y = 0; y < src_height; y++)
+    {
+      for (int x = 0; x < src_width; x++) {
+        dstp0[x] = (srcp0[x] + round) >> shift_bits;  // reduce range
+      }
+      dstp0 += dst_pitch;
+      srcp0 += src_pitch;
+    }
+  }
+  _mm256_zeroupper();
 }
-
-// instantiate them
-template void convert_uint16_to_uint16_c_avx<false, 2>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx<false, 4>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx<false, 6>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx<true, 2>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx<true, 4>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-template void convert_uint16_to_uint16_c_avx<true, 6>(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);

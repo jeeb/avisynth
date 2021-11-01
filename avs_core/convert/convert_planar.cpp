@@ -36,7 +36,9 @@
 
 
 #include "convert.h"
+#include "convert_matrix.h"
 #include "convert_planar.h"
+#include "convert_bits.h"
 #include "../filters/resample.h"
 #include "../filters/planeswap.h"
 #include "../filters/field.h"

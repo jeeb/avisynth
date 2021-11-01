@@ -163,38 +163,6 @@ private:
   PClip Vsource;
 };
 
-
-//--------------- planar bit depth conversions
-// todo: separate file?
-typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch);
-
-class ConvertBits : public GenericVideoFilter
-{
-public:
-  ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
-
-  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
-  }
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-private:
-  BitDepthConvFuncPtr conv_function;
-  BitDepthConvFuncPtr conv_function_chroma; // 32bit float YUV chroma
-  BitDepthConvFuncPtr conv_function_a;
-  int dither_mode;
-  int pixelsize;
-  int bits_per_pixel;
-  int target_bitdepth;
-  int dither_bitdepth;
-  bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
-  bool format_change_only;
-  bool fulls; // source is full range (defaults: rgb=true, yuv=false (bit shift))
-  bool fulld; // destination is full range (defaults: rgb=true, yuv=false (bit shift))
-};
-
 class AddAlphaPlane : public GenericVideoFilter
 {
 public:
