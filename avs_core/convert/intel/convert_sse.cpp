@@ -90,7 +90,7 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
 };
 
 
-int getMatrix( const char* matrix, IScriptEnvironment* env) {
+int getMatrix(const char* matrix, IScriptEnvironment* env) {
   if (matrix) {
     if (!lstrcmpi(matrix, "rec601"))
       return Rec601;
@@ -143,7 +143,7 @@ static void BuildMatrix_Rgb2Yuv_core(double Kr, double Kb, int int_arith_shift, 
     Oy = full_scale ? 0 : 16; // n/a
 
     Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
-    Suv_f = full_scale ? uv8tof(128) : (uv8tof(240) - uv8tof(16)) / 2;
+    Suv_f = full_scale ? (0.5f - -0.5f) / 2 : (uv8tof(240) - uv8tof(16)) / 2;
   }
 
 
@@ -251,7 +251,7 @@ void BuildMatrix_Yuv2Rgb_core(double Kr, double Kb, int int_arith_shift, bool fu
     Oy = full_scale ? 0 : 16; // n/a
 
     Sy_f = full_scale ? c8tof(255) : (c8tof(235) - c8tof(16));
-    Suv_f = full_scale ? (uv8tof(255) - uv8tof(0)) / 2 : (uv8tof(240) - uv8tof(16)) / 2;
+    Suv_f = full_scale ? (0.5f - -0.5f) / 2 : (uv8tof(240) - uv8tof(16)) / 2;
   }
 
 
