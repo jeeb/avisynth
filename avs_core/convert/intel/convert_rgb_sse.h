@@ -32,33 +32,49 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifndef __Convert_bits_sse_H__
-#define __Convert_bits_sse_H__
+#ifndef __Convert_RGB_sse_H__
+#define __Convert_RGB_sse_H__
 
 #include <avs/types.h>
 
-template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-void convert_rgb_uint16_to_8_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-void convert_uint16_to_8_sse2(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-template<uint8_t sourcebits, uint8_t TARGET_DITHER_BITDEPTH>
-void convert_uint16_to_8_dither_sse2(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-template<typename pixel_t, bool chroma, bool fulls, bool fulld>
 #if defined(GCC) || defined(CLANG)
-__attribute__((__target__("sse4.1")))
+__attribute__((__target__("ssse3")))
 #endif
-void convert_32_to_uintN_sse41(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+void convert_rgb48_to_rgb64_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height);
 
-void convert_rgb_8_to_uint16_sse2(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("ssse3")))
+#endif
+void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height);
 
-void convert_8_to_uint16_sse2(const BYTE* srcp, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+#ifdef X86_32
+void convert_rgb24_to_rgb32_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height);
+#endif
 
-void convert_rgb_uint16_to_uint16_sse2(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("ssse3")))
+#endif
+void convert_rgb64_to_rgb48_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height);
 
-void convert_rgb_uint16_to_uint16_sse41(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("ssse3")))
+#endif
+void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height);
 
-void convert_uint16_to_uint16_sse2(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+#ifdef X86_32
+void convert_rgb32_to_rgb24_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height);
+#endif
 
-#endif  // __Convert_bits_sse_H__
+template<typename pixel_t, bool targetHasAlpha>
+void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int(&dst_pitch)[4], int width, int height, int bits_per_pixel);
+
+template<typename pixel_t, bool targetHasAlpha>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("ssse3")))
+#endif
+void convert_rgba_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch, int (&dst_pitch)[4], int width, int height);
+
+template<typename pixel_t, bool hasSrcAlpha>
+void convert_rgbp_to_rgba_sse2(const BYTE *(&srcp)[4], BYTE * dstp, int (&src_pitch)[4], int dst_pitch, int width, int height);
+
+#endif  // __Convert_RGB_sse_H__

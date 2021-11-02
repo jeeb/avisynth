@@ -33,6 +33,11 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "convert_yuy2.h"
+#include "convert_yv12.h"
+#ifdef INTEL_INTRINSICS
+#include "intel/convert_yv12_sse.h"
+#include "intel/convert_yuy2_sse.h"
+#endif
 #include "convert.h"
 #include "convert_matrix.h"
 #include <avs/alignment.h>
@@ -207,10 +212,38 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     int src_heigh = dst->GetHeight();
 
     if (interlaced) {
+#ifdef INTEL_INTRINSICS
+      if (env->GetCPUFlags() & CPUF_SSE2)
+      {
+        convert_yv12_to_yuy2_interlaced_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+      }
+      else
+#ifdef X86_32
+      if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+      {
+        convert_yv12_to_yuy2_interlaced_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+      }
+      else
+#endif
+#endif
       {
         convert_yv12_to_yuy2_interlaced_c(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
       }
     } else {
+#ifdef INTEL_INTRINSICS
+      if (env->GetCPUFlags() & CPUF_SSE2)
+      {
+        convert_yv12_to_yuy2_progressive_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+      }
+      else
+#ifdef X86_32
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+        {
+          convert_yv12_to_yuy2_progressive_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+        }
+        else
+#endif
+#endif
         {
           convert_yv12_to_yuy2_progressive_c(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
         }
@@ -221,6 +254,29 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
   BYTE* yuv = dst->GetWritePtr();
 
+#ifdef INTEL_INTRINSICS
+  if (env->GetCPUFlags() & CPUF_SSE2)
+  {
+    if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
+      convert_rgb_to_yuy2_sse2<4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    } else {
+      convert_rgb_to_yuy2_sse2<3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    }
+    return dst;
+  }
+
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_MMX)
+  {
+    if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
+      convert_rgb_to_yuy2_mmx<4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    } else {
+      convert_rgb_to_yuy2_mmx<3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    }
+    return dst;
+  }
+#endif
+#endif
   const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch();
 
   const int yuv_offset = dst->GetPitch() - dst->GetRowSize();
@@ -359,6 +415,20 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     const int pitchY  = src->GetPitch(PLANAR_Y);
     const int pitchUV = src->GetPitch(PLANAR_U);
 
+#ifdef INTEL_INTRINSICS
+    if (env->GetCPUFlags() & CPUF_SSE2)
+    { 
+      convert_yv24_back_to_yuy2_sse2(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
+    }
+    else
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_MMX)
+    {  // Use MMX
+      convert_yv24_back_to_yuy2_mmx(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
+    }
+    else
+#endif
+#endif
     {
       convert_yv24_back_to_yuy2_c(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
     }
@@ -367,6 +437,30 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
   BYTE* yuv = dst->GetWritePtr();
+
+#ifdef INTEL_INTRINSICS
+  if (env->GetCPUFlags() & CPUF_SSE2)
+  {
+    if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
+      convert_rgb_back_to_yuy2_sse2<4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    } else {
+      convert_rgb_back_to_yuy2_sse2<3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    }
+    return dst;
+  }
+
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_MMX)
+  {
+    if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
+      convert_rgb_back_to_yuy2_mmx<4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    } else {
+      convert_rgb_back_to_yuy2_mmx<3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, matrix);
+    }
+    return dst;
+  }
+#endif
+#endif
 
   const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch(); // Last line
 

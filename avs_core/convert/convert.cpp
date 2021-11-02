@@ -39,6 +39,12 @@
 #include "convert_planar.h"
 #include "convert_rgb.h"
 #include "convert_yv12.h"
+
+#ifdef INTEL_INTRINSICS
+#include "intel/convert_yv12_sse.h"
+#include "intel/convert_sse.h"
+#endif
+
 #include "convert_yuy2.h"
 #include <avs/alignment.h>
 #include <avs/minmax.h>
@@ -176,6 +182,30 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   int tv_scale = matrix.offset_y;
 
 
+#ifdef INTEL_INTRINSICS
+  if (env->GetCPUFlags() & CPUF_SSE2) {
+    if (vi.IsRGB32()) {
+      convert_yuy2_to_rgb_sse2<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
+      matrix.v_r, matrix.v_g, matrix.u_g, matrix.u_b, matrix.y_r, tv_scale);
+    } else {
+      convert_yuy2_to_rgb_sse2<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
+        matrix.v_r, matrix.v_g, matrix.u_g, matrix.u_b, matrix.y_r, tv_scale);
+    }
+  }
+  else
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+    if (vi.IsRGB32()) {
+      convert_yuy2_to_rgb_isse<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
+        matrix.v_r, matrix.v_g, matrix.u_g, matrix.u_b, matrix.y_r, tv_scale);
+    } else {
+      convert_yuy2_to_rgb_isse<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
+        matrix.v_r, matrix.v_g, matrix.u_g, matrix.u_b, matrix.y_r, tv_scale);
+    }
+  }
+  else
+#endif
+#endif
   {
     if (vi.IsRGB32()) {
       convert_yuy2_to_rgb_c<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
@@ -397,11 +427,6 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
     env->ThrowError("ConvertToYV12: Source must be YUY2.");
 
   vi.pixel_type = VideoInfo::CS_YV12;
-
-#ifdef INTEL_INTRINSICS
-  if ((env->GetCPUFlags() & CPUF_MMX) == 0)
-    env->ThrowError("ConvertToYV12: YV12 support require a MMX capable processor.");
-#endif
 }
 
 PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
@@ -409,6 +434,24 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
 
   if (interlaced) {
+#ifdef INTEL_INTRINSICS
+    if (env->GetCPUFlags() & CPUF_SSE2)
+    {
+      convert_yuy2_to_yv12_interlaced_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+    }
+    else
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      {
+        convert_yuy2_to_yv12_interlaced_isse(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+          dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+      }
+      else
+#endif
+#endif
       {
         convert_yuy2_to_yv12_interlaced_c(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
@@ -417,6 +460,24 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   }
   else
   {
+#ifdef INTEL_INTRINSICS
+    if (env->GetCPUFlags() & CPUF_SSE2)
+    {
+      convert_yuy2_to_yv12_progressive_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+    }
+    else
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      {
+        convert_yuy2_to_yv12_progressive_isse(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+          dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+      }
+      else
+#endif
+#endif
       {
         convert_yuy2_to_yv12_progressive_c(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
@@ -427,6 +488,12 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 
 }
+
+
+/**********************************
+*******   Convert to YV12   ******
+*********************************/
+
 
 AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
