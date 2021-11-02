@@ -37,13 +37,7 @@
 
 #include <avisynth.h>
 
-#ifdef INTEL_INTRINSICS
-#include "intel/convert_yv12_sse.h"
-#else
-#include "convert_yv12.h"
-#endif
 #include "convert_matrix.h"
-#include "convert_planar.h" // 2.60
 
 class ConvertToYUY2 : public GenericVideoFilter
 /**
@@ -87,5 +81,8 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
+
+void convert_yuy2_to_yv12_interlaced_c(const BYTE* src, int src_width, int src_pitch, BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV, int height);
+void convert_yuy2_to_yv12_progressive_c(const BYTE* src, int src_width, int src_pitch, BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV, int height);
 
 #endif // __Convert_YUY2_H__

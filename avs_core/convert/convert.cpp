@@ -38,14 +38,13 @@
 #include "convert_bits.h"
 #include "convert_planar.h"
 #include "convert_rgb.h"
-#include "convert_yv12.h"
+#include "convert_yuy2.h"
 
 #ifdef INTEL_INTRINSICS
-#include "intel/convert_yv12_sse.h"
 #include "intel/convert_sse.h"
+#include "intel/convert_yuy2_sse.h"
 #endif
 
-#include "convert_yuy2.h"
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include <avs/config.h>
