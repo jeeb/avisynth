@@ -37,9 +37,6 @@
 
 #include "../core/internal.h"
 
-enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4, Rec2020=5, PC_2020=6};
-int getMatrix( const char* matrix, IScriptEnvironment* env);
-
 struct ConversionMatrix {
   int y_r, y_g, y_b;
   // for grayscale conversion these may not needed
@@ -58,15 +55,15 @@ struct ConversionMatrix {
   float offset_y_f;
 };
 
-bool do_BuildMatrix_Rgb2Yuv(int in_matrix, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix);
-bool do_BuildMatrix_Yuv2Rgb(int in_matrix, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix);
+bool do_BuildMatrix_Rgb2Yuv(int _Matrix, int _ColorRange, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix);
+bool do_BuildMatrix_Yuv2Rgb(int _Matrix, int _ColorRange, int int_arith_shift, int bits_per_pixel, ConversionMatrix& matrix);
 
 /*****************************************************
  *******   Colorspace Single-Byte Conversions   ******
  ****************************************************/
 
 // useful to other filters
-inline int RGB2YUV(int rgb) // limited range
+inline int RGB2YUV_Rec601(int rgb) // limited range
 {
   const int cyb = int(0.114*219/255*65536+0.5);
   const int cyg = int(0.587*219/255*65536+0.5);

@@ -439,7 +439,7 @@ static inline pixel_t GetHbdColorFromByte(uint8_t color, bool fullscale, int bit
 template<typename pixel_t>
 static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi, int top, int bot, int left, int right, int color, bool isYUV, bool force_color_as_yuv, int bits_per_pixel)
 {
-  const unsigned int colr = isYUV && !force_color_as_yuv ? RGB2YUV(color) : color;
+  const unsigned int colr = isYUV && !force_color_as_yuv ? RGB2YUV_Rec601(color) : color;
   const unsigned char YBlack=(unsigned char)((colr >> 16) & 0xff);
   const unsigned char UBlack=(unsigned char)((colr >>  8) & 0xff);
   const unsigned char VBlack=(unsigned char)((colr      ) & 0xff);
@@ -524,7 +524,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     + (dst_pitch - dst_row_size);
 
   if (vi.IsYUY2()) {
-    const unsigned int colr = force_color_as_yuv ? clr : RGB2YUV(clr);
+    const unsigned int colr = force_color_as_yuv ? clr : RGB2YUV_Rec601(clr);
     const uint32_t black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);

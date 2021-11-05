@@ -35,6 +35,7 @@
 
 #include "../core/internal.h"
 #include "../convert/convert_matrix.h"
+#include "../convert/convert_helper.h"
 #include "transform.h"
 #ifdef AVS_WINDOWS
 #include "AviSource/avi_source.h"
@@ -126,6 +127,12 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
   PVideoFrame frame = env->NewVideoFrame(vi);
   // no frame property origin
 
+  // but we set Rec601 (BZ470) if YUV
+  auto props = env->getFramePropsRW(frame);
+  int theMatrix = vi.IsRGB() ? Matrix_e::AVS_MATRIX_RGB : Matrix_e::AVS_MATRIX_BT470_BG;
+  int theColorRange = vi.IsRGB() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
+  update_Matrix_and_ColorRange(props, theMatrix, theColorRange, env);
+
   // RGB 8->16 bit: not << 8 like YUV but 0..255 -> 0..65535 or 0..1023 for 10 bit
   int pixelsize = vi.ComponentSize();
   int bits_per_pixel = vi.BitsPerComponent();
@@ -160,7 +167,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
       }
     }
     else {
-      int color_yuv = (mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
+      int color_yuv = (mode == COLOR_MODE_YUV) ? color : RGB2YUV_Rec601(color);
 
       int val_i = 0;
 
@@ -231,7 +238,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
   int size = frame->GetPitch() * frame->GetHeight();
 
   if (vi.IsYUY2()) {
-    int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
+    int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV_Rec601(color);
     if (color_is_array) {
       color_yuv = (clamp(colors[0], 0, max_pixel_value) << 16) | (clamp(colors[1], 0, max_pixel_value) << 8) | (clamp(colors[2], 0, max_pixel_value));
     }
@@ -1559,10 +1566,27 @@ public:
     vi.num_audio_samples=vi.AudioSamplesFromFrames(vi.num_frames);
 
     frame = env->NewVideoFrame(vi);
-    // FIXME: set colorimetry frame properties
+
     uint32_t* p = (uint32_t *)frame->GetWritePtr();
 
     int y = 0;
+
+    // set basic frame properties
+    auto props = env->getFramePropsRW(frame);
+    int theMatrix;
+    int theColorRange;
+    if (type) {
+      // ColorBarsHD 444 only
+      theMatrix = Matrix_e::AVS_MATRIX_BT709;
+      theColorRange = ColorRange_e::AVS_RANGE_LIMITED;
+    }
+    else {
+      // ColorBars can be rgb or yuv
+      theMatrix = vi.IsRGB() ? Matrix_e::AVS_MATRIX_RGB : Matrix_e::AVS_MATRIX_BT709;
+      // Studio RGB: limited!
+      theColorRange = vi.IsRGB() ? ColorRange_e::AVS_RANGE_LIMITED : ColorRange_e::AVS_RANGE_LIMITED;
+    }
+    update_Matrix_and_ColorRange(props, theMatrix, theColorRange, env);
 
 	// HD colorbars arib_std_b28
 	// Rec709 yuv values calculated by jmac698, Jan 2010, for Midzuki

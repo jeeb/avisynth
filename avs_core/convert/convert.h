@@ -61,6 +61,10 @@ public:
 
 private:
   int theMatrix;
+  int theColorRange;
+  // separate out set for rgb target
+  int theOutMatrix;
+  int theOutColorRange;
   ConversionMatrix matrix;
 };
 

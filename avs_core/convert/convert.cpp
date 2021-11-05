@@ -35,6 +35,7 @@
 
 #include "convert.h"
 #include "convert_matrix.h"
+#include "convert_helper.h"
 #include "convert_bits.h"
 #include "convert_planar.h"
 #include "convert_rgb.h"
@@ -101,15 +102,17 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix_name,
                            IScriptEnvironment* env )
                            : GenericVideoFilter(_child)
 {
-  theMatrix = Rec601;
+  auto frame0 = _child->GetFrame(0, env);
+  const AVSMap* props = env->getFramePropsRO(frame0);
+  matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
 
-  if (matrix_name) {
-    theMatrix = getMatrix(matrix_name, env);
-  }
   const int shift = 16; // for integer arithmetic; YUY2 is using 16 bits, later is divided back by 4 or 8
   const int bits_per_pixel = 8; // YUY2
-  if (!do_BuildMatrix_Yuv2Rgb(theMatrix, shift, bits_per_pixel, /*ref*/matrix))
+  if (!do_BuildMatrix_Yuv2Rgb(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/matrix))
     env->ThrowError("ConvertToRGB: invalid \"matrix\" parameter");
+
+  theOutMatrix = Matrix_e::AVS_MATRIX_RGB;
+  theOutColorRange = ColorRange_e::AVS_RANGE_FULL;
 
   // these constants are used with intentional minus operator in core calculations
   matrix.v_g = -matrix.v_g;
@@ -176,6 +179,11 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   const BYTE* srcp = src->GetReadPtr();
 
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
+
+  auto props = env->getFramePropsRW(dst);
+  update_Matrix_and_ColorRange(props, theOutMatrix, theOutColorRange, env);
+  update_ChromaLocation(props, -1, env); // RGB target: delete _ChromaLocation
+
   const int dst_pitch = dst->GetPitch();
   BYTE* dstp = dst->GetWritePtr();
   int tv_scale = matrix.offset_y;
@@ -223,7 +231,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 {
   const bool haveOpts = args[3].Defined() || args[4].Defined();
   PClip clip = args[0].AsClip();
-  const char* const matrix = args[1].AsString(0);
+  const char* const matrix_name = args[1].AsString(0);
   VideoInfo vi = clip->GetVideoInfo();
 
   // common Create for all CreateRGB24/32/48/64/Planar(RGBP:-1, RGPAP:-2) using user_data
@@ -256,7 +264,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
     }
     else if(target_rgbtype==0 && vi.ComponentSize()==4)
         env->ThrowError("ConvertToRGB: conversion is allowed only from 8 or 16 bit colorspaces");
-    int rgbtype_param;
+    int rgbtype_param = 0;
     bool reallyConvert = true;
     switch (target_rgbtype)
     {
@@ -290,11 +298,13 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
       break; // RGB64
     }
     if (reallyConvert) {
-      clip = new ConvertYUV444ToRGB(clip, getMatrix(matrix, env), rgbtype_param, env);
+      clip = new ConvertYUV444ToRGB(clip, matrix_name, rgbtype_param, env);
 
       if (needConvertFinalBitdepth) {
         // from any planar rgb(a) -> rgb24/32/48/64
-        clip = new ConvertBits(clip, -1 /*dither_type*/, finalBitdepth /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+        clip = new ConvertBits(clip, -1 /*dither_type*/, finalBitdepth /*target_bitdepth*/, true /*assume_truerange*/, 
+          ColorRange_e::AVS_RANGE_FULL /*fulls*/, ColorRange_e::AVS_RANGE_FULL /*fulld*/, 
+          8 /*n/a dither_bitdepth*/, env);
         vi = clip->GetVideoInfo();
 
         // source here is always a 8/16bit planar RGB(A), finally it has to be converted to RGB24/32/48/64
@@ -345,7 +355,9 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
 
     if (needConvertFinalBitdepth) {
       // from any bitdepth planar rgb(a) -> 8/16 bits
-      clip = new ConvertBits(clip, -1 /*dither_type*/, finalBitdepth /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      clip = new ConvertBits(clip, -1 /*dither_type*/, finalBitdepth /*target_bitdepth*/, true /*assume_truerange*/, 
+        ColorRange_e::AVS_RANGE_FULL /*fulls*/, ColorRange_e::AVS_RANGE_FULL /*fulld*/, 
+        8 /*n/a dither_bitdepth*/, env);
       vi = clip->GetVideoInfo();
     }
 
@@ -359,11 +371,11 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
       env->ThrowError("ConvertToRGB: conversion from YUY2 is allowed only to 8 bits");
     if (target_rgbtype < 0) {
       // rgb32 intermediate is faster
-      clip = new ConvertToRGB(clip, false, matrix, env); // YUY2->RGB32
+      clip = new ConvertToRGB(clip, false, matrix_name, env); // YUY2->RGB32
       return new PackedRGBtoPlanarRGB(clip, true, target_rgbtype == -2);
     }
     else
-      return new ConvertToRGB(clip, target_rgbtype == 24, matrix, env);
+      return new ConvertToRGB(clip, target_rgbtype == 24, matrix_name, env);
   }
 
   // conversions from packed RGB
@@ -371,14 +383,18 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   if (target_rgbtype == 24 || target_rgbtype == 32) {
     if (vi.ComponentSize() != 1) {
       // 64->32, 48->24
-      clip = new ConvertBits(clip, -1 /*dither_type*/, 8 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      clip = new ConvertBits(clip, -1 /*dither_type*/, 8 /*target_bitdepth*/, true /*assume_truerange*/, 
+        ColorRange_e::AVS_RANGE_FULL /*fulls*/, ColorRange_e::AVS_RANGE_FULL /*fulld*/, 
+        8 /*n/a dither_bitdepth*/, env);
       vi = clip->GetVideoInfo(); // new format
     }
   }
   else if (target_rgbtype == 48 || target_rgbtype == 64) {
     if (vi.ComponentSize() != 2) {
       // 32->64, 24->48
-      clip = new ConvertBits(clip, -1 /*dither_type*/, 16 /*target_bitdepth*/, true /*assume_truerange*/, true /*fulls*/, true /*fulld*/, 8 /*n/a dither_bitdepth*/, env);
+      clip = new ConvertBits(clip, -1 /*dither_type*/, 16 /*target_bitdepth*/, true /*assume_truerange*/, 
+        ColorRange_e::AVS_RANGE_FULL /*fulls*/, ColorRange_e::AVS_RANGE_FULL /*fulld*/, 
+        8 /*n/a dither_bitdepth*/, env);
       vi = clip->GetVideoInfo(); // new format
     }
   }

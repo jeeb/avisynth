@@ -61,6 +61,7 @@ private:
 protected:
   const int src_cs;  // Source colorspace
   int theMatrix;
+  int theColorRange;
   ConversionMatrix matrix;
 
 };

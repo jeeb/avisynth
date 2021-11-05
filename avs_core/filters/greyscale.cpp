@@ -47,6 +47,7 @@
 #include <stdint.h>
 #include "../convert/convert_planar.h"
 #include "../convert/convert.h"
+#include "../convert/convert_helper.h"
 
 
 /*************************************
@@ -59,22 +60,27 @@ extern const AVSFunction Greyscale_filters[] = {
   { 0 }
 };
 
-Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
+Greyscale::Greyscale(PClip _child, const char* matrix_name, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
-  // no PC range here
-  matrix_ = Rec601;
-  if (matrix) {
-    if (!vi.IsRGB())
-      env->ThrowError("GreyScale: invalid \"matrix\" parameter (RGB data only)");
-    matrix_ = getMatrix(matrix, env);
+  if (matrix_name && !vi.IsRGB())
+    env->ThrowError("GreyScale: invalid \"matrix\" parameter (RGB data only)");
 
-    if( matrix_ != Rec709 && matrix_ != AVERAGE && matrix_ != Rec601 && matrix_ != Rec2020)
-      env->ThrowError("GreyScale: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"Rec2020\" or \"Average\")");
-  }
+  auto frame0 = _child->GetFrame(0, env);
+  const AVSMap* props = env->getFramePropsRO(frame0);
+  matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
+
+  // originally there was no PC range here
   pixelsize = vi.ComponentSize();
   bits_per_pixel = vi.BitsPerComponent();
-  BuildGreyMatrix(env);
+
+  const int shift = 15; // internally 15 bits precision, still no overflow in calculations
+
+  if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/greyMatrix))
+    env->ThrowError("GreyScale: Unknown matrix.");
+
+  // greyscale does not change color space, rgb remains rgb
+  // Leave matrix and range frame properties as is.
 }
 
 template<typename pixel_t, int pixel_step>
@@ -125,13 +131,6 @@ static void greyscale_planar_rgb_float_c(BYTE *srcp_r8, BYTE *srcp_g8, BYTE *src
   }
 }
 
-void Greyscale::BuildGreyMatrix(IScriptEnvironment* env) {
-  const int shift = 15; // internally 15 bits precision, still no overflow in calculations
-  int bits_per_pixel = vi.BitsPerComponent();
-
-  if (!do_BuildMatrix_Rgb2Yuv(matrix_, shift, bits_per_pixel, /*ref*/greyMatrix))
-    env->ThrowError("GreyScale: Unknown matrix.");
-}
 
 PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -144,6 +143,9 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   int pitch = frame->GetPitch();
   int height = vi.height;
   int width = vi.width;
+
+  // greyscale does not change color space, rgb remains rgb
+  // Leave matrix and range frame properties as is.
 
   if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) {
     // planar YUV, set UV plane to neutral

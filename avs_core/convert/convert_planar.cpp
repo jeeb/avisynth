@@ -37,6 +37,7 @@
 
 #include "convert.h"
 #include "convert_matrix.h"
+#include "convert_helper.h"
 #include "convert_planar.h"
 #ifdef INTEL_INTRINSICS
 #include "intel/convert_planar_sse.h"
@@ -57,9 +58,6 @@
 #include <algorithm>
 #include <string>
 
-enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV, PLACEMENT_TOP_LEFT } ;
-
-static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
 static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
 
 template <typename pixel_t>
@@ -85,7 +83,7 @@ template void fill_chroma<uint8_t>(uint8_t * dstp_u, uint8_t * dstp_v, int heigh
 template void fill_chroma<uint16_t>(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, uint16_t val);
 template void fill_chroma<float>(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, float val);
 
-ConvertToY::ConvertToY(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src) {
+ConvertToY::ConvertToY(PClip src, const char *matrix_name, IScriptEnvironment* env) : GenericVideoFilter(src) {
   yuy2_input = blit_luma_only = packed_rgb_input = planar_rgb_input = false;
 
   int target_pixel_type;
@@ -122,12 +120,17 @@ ConvertToY::ConvertToY(PClip src, int in_matrix, IScriptEnvironment* env) : Gene
     else
       packed_rgb_input = true;
     pixel_step = vi.BytesFromPixels(1); // for packed RGB 3,4,6,8
-    vi.pixel_type = target_pixel_type;
 
     const int shift = 15; // internally 15 bits precision, still no overflow in calculations
 
-    if (!do_BuildMatrix_Rgb2Yuv(in_matrix, shift, bits_per_pixel, /*ref*/matrix))
+    auto frame0 = child->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
+    matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
+
+    if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/matrix))
       env->ThrowError("ConvertToY: Unknown matrix.");
+
+    vi.pixel_type = target_pixel_type;
 
     return;
   }
@@ -153,6 +156,11 @@ PVideoFrame __stdcall ConvertToY::GetFrame(int n, IScriptEnvironment* env) {
   int rowsize = dst->GetRowSize(PLANAR_Y);
   int width = rowsize / pixelsize;
   int height = dst->GetHeight(PLANAR_Y);
+
+  if (packed_rgb_input || planar_rgb_input) {
+    auto props = env->getFramePropsRW(dst);
+    update_Matrix_and_ColorRange(props, theMatrix, theColorRange, env);
+  }
 
   if (yuy2_input) {
 #ifdef INTEL_INTRINSICS
@@ -300,18 +308,29 @@ AVSValue __cdecl ConvertToY::Create(AVSValue args, void* user_data, IScriptEnvir
 
   if (clip->GetVideoInfo().NumComponents() == 1)
     return clip;
-  return new ConvertToY(clip, getMatrix(args[1].AsString(0), env), env);
+
+  return new ConvertToY(clip, args[1].AsString(0), env);
 }
 
 /*****************************************************
  * ConvertRGBToYUV444
  ******************************************************/
 
-ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, int in_matrix, IScriptEnvironment* env)
+ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, const char *matrix_name, IScriptEnvironment* env)
   : GenericVideoFilter(src)
 {
   if (!vi.IsRGB())
     env->ThrowError("ConvertRGBToYV24/YUV444: Only RGB data input accepted");
+
+  auto frame0 = child->GetFrame(0, env);
+  const AVSMap* props = env->getFramePropsRO(frame0);
+  matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
+
+  const int shift = 15; // internally 15 bits precision, still no overflow in calculations
+  int bits_per_pixel = vi.BitsPerComponent();
+
+  if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/matrix))
+    env->ThrowError("ConvertRGBToYV24/YUV444: Unknown matrix.");
 
   isPlanarRGBfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
   hasAlpha = vi.IsPlanarRGBA(); // for packed RGB always false (no YUVA target option)
@@ -337,14 +356,6 @@ ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, int in_matrix, IScriptEnvironm
     case 4: vi.pixel_type = VideoInfo::CS_YUV444PS; break; // planar RGB
     }
   }
-
-
-  const int shift = 15; // internally 15 bits precision, still no overflow in calculations
-
-  int bits_per_pixel = vi.BitsPerComponent();
-
-  if (!do_BuildMatrix_Rgb2Yuv(in_matrix, shift, bits_per_pixel, /*ref*/matrix))
-    env->ThrowError("ConvertRGBToYV24/YUV444: Unknown matrix.");
 
 }
 
@@ -410,6 +421,9 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
+
+  auto props = env->getFramePropsRW(dst);
+  update_Matrix_and_ColorRange(props, theMatrix, theColorRange, env);
 
   const BYTE* srcp = src->GetReadPtr();
 
@@ -584,7 +598,7 @@ AVSValue __cdecl ConvertRGBToYUV444::Create(AVSValue args, void*, IScriptEnviron
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().Is444())
     return clip;
-  return new ConvertRGBToYUV444(clip, getMatrix(args[1].AsString(0), env), env);
+  return new ConvertRGBToYUV444(clip, args[1].AsString(0), env);
 }
 
 
@@ -596,12 +610,25 @@ AVSValue __cdecl ConvertRGBToYUV444::Create(AVSValue args, void*, IScriptEnviron
  ******************************************************/
 
 
-ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, int in_matrix, int _pixel_step, IScriptEnvironment* env)
+ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, const char *matrix_name, int _pixel_step, IScriptEnvironment* env)
  : GenericVideoFilter(src), pixel_step(_pixel_step)
 {
 
   if (!vi.Is444())
     env->ThrowError("ConvertYUV444ToRGB: Only 4:4:4 data input accepted");
+
+  auto frame0 = child->GetFrame(0, env);
+  const AVSMap* props = env->getFramePropsRO(frame0);
+  matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
+
+  const int shift = 13; // for integer arithmetic, over 13 bits would overflow the internal calculation
+  const int bits_per_pixel = vi.BitsPerComponent();
+
+  if (!do_BuildMatrix_Yuv2Rgb(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/matrix))
+    env->ThrowError("ConvertYV24ToRGB: Unknown matrix.");
+
+  theOutMatrix = Matrix_e::AVS_MATRIX_RGB;
+  theOutColorRange = ColorRange_e::AVS_RANGE_FULL;
 
   switch (pixel_step)
   {
@@ -626,13 +653,6 @@ ConvertYUV444ToRGB::ConvertYUV444ToRGB(PClip src, int in_matrix, int _pixel_step
     env->ThrowError("ConvertYUV444ToRGB: invalid pixel step: %d", pixel_step);
   }
 
-  const int shift = 13; // for integer arithmetic, over 13 bits would overflow the internal calculation
-
-  const int bits_per_pixel = vi.BitsPerComponent();
-
-  if(!do_BuildMatrix_Yuv2Rgb(in_matrix, shift, bits_per_pixel, /*ref*/matrix))
-    env->ThrowError("ConvertYV24ToRGB: Unknown matrix.");
-
 }
 
 
@@ -640,6 +660,10 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
+
+  auto props = env->getFramePropsRW(dst);
+  update_Matrix_and_ColorRange(props, theOutMatrix, theOutColorRange, env);
+  update_ChromaLocation(props, -1, env); // RGB target: delete _ChromaLocation
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -1082,8 +1106,10 @@ AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironm
  **********************************************/
 
 ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
-                                               const AVSValue& InPlacement, const AVSValue& chromaResampler,
-                                               const AVSValue& OutPlacement, IScriptEnvironment* env) : GenericVideoFilter(src) {
+                                               int _ChromaLocation_In, const AVSValue& chromaResampler,
+                                               int _ChromaLocation_Out, IScriptEnvironment* env) : 
+  GenericVideoFilter(src), ChromaLocation_In(_ChromaLocation_In), ChromaLocation_Out(_ChromaLocation_Out)
+{
   Yinput = vi.NumComponents() == 1;
   pixelsize = vi.ComponentSize();
 
@@ -1130,43 +1156,56 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
       - horizontal 1-2-1 vertical 1-2-1
   */
 
-  const int InPlacementKind = getPlacement(InPlacement, env);
   if (Is420(vi.pixel_type)) {
-    switch (InPlacementKind) {
-      case PLACEMENT_DV:
+    switch (ChromaLocation_In) {
+      case ChromaLocation_e::AVS_CHROMA_DV: // spec. avisynth
         xdInU = 0.0f; ydInU = 1.0f; txdInU = 0.0f; tydInU = 1.0f; bxdInU = 0.0f; bydInU = 1.0f; // Cb
         xdInV = 0.0f; ydInV = 0.0f; txdInV = 0.0f; tydInV = 0.0f; bxdInV = 0.0f; bydInV = 0.0f; // Cr
         break;
-      case PLACEMENT_MPEG1: // center
+      case ChromaLocation_e::AVS_CHROMA_TOP:
+        xdInU = 0.5f, ydInU = 0.0f; txdInU = 0.5f; tydInU = 0.0f; bxdInU = 0.5f; bydInU = 0.5f;
+        xdInV = 0.5f, ydInV = 0.0f; txdInV = 0.5f; tydInV = 0.0f; bxdInV = 0.5f; bydInV = 0.5f;
+        break;
+      case ChromaLocation_e::AVS_CHROMA_CENTER: // mpeg1, center
         xdInU = 0.5f, ydInU = 0.5f; txdInU = 0.5f; tydInU = 0.25f; bxdInU = 0.5f; bydInU = 0.75f;
         xdInV = 0.5f, ydInV = 0.5f; txdInV = 0.5f; tydInV = 0.25f; bxdInV = 0.5f; bydInV = 0.75f;
         break;
-      case PLACEMENT_MPEG2: // left
-        xdInU = 0.0f; ydInU = 0.5f; txdInU = 0.0f; tydInU = 0.25f; bxdInU = 0.0f; bydInU = 0.75f;
-        xdInV = 0.0f; ydInV = 0.5f; txdInV = 0.0f; tydInV = 0.25f; bxdInV = 0.0f; bydInV = 0.75f;
+      case ChromaLocation_e::AVS_CHROMA_BOTTOM:
+        xdInU = 0.5f, ydInU = 1.0f; txdInU = 0.5f; tydInU = 0.5f; bxdInU = 0.5f; bydInU = 1.0f;
+        xdInV = 0.5f, ydInV = 1.0f; txdInV = 0.5f; tydInV = 0.5f; bxdInV = 0.5f; bydInV = 1.0f;
         break;
-      case PLACEMENT_TOP_LEFT:
+      case ChromaLocation_e::AVS_CHROMA_TOP_LEFT:
         xdInU = 0.0f; ydInU = 0.0f; txdInU = 0.0f; tydInU = 0.0f; bxdInU = 0.0f; bydInU = 0.5f;
         xdInV = 0.0f; ydInV = 0.0f; txdInV = 0.0f; tydInV = 0.0f; bxdInV = 0.0f; bydInV = 0.5f;
         break;
+      case ChromaLocation_e::AVS_CHROMA_LEFT: // left, mpeg2
+        xdInU = 0.0f; ydInU = 0.5f; txdInU = 0.0f; tydInU = 0.25f; bxdInU = 0.0f; bydInU = 0.75f;
+        xdInV = 0.0f; ydInV = 0.5f; txdInV = 0.0f; tydInV = 0.25f; bxdInV = 0.0f; bydInV = 0.75f;
+        break;
+      case ChromaLocation_e::AVS_CHROMA_BOTTOM_LEFT:
+        xdInU = 0.0f; ydInU = 1.0f; txdInU = 0.0f; tydInU = 0.5f; bxdInU = 0.0f; bydInU = 1.0f;
+        xdInV = 0.0f; ydInV = 1.0f; txdInV = 0.0f; tydInV = 0.5f; bxdInV = 0.0f; bydInV = 1.0f;
+        break;
+      default:
+        env->ThrowError("Convert: not supported ChromaPlacement for 4:2:0 input.");
     }
   }
   else if (vi.Is422()) {
-    switch (InPlacementKind) {
-    case PLACEMENT_MPEG1: // center
+    switch (ChromaLocation_In) {
+    case ChromaLocation_e::AVS_CHROMA_CENTER: // center
       xdInU = 0.5f, ydInU = 0.0f; txdInU = 0.5f; tydInU = 0.0f; bxdInU = 0.5f; bydInU = 0.0f;
       xdInV = 0.5f, ydInV = 0.0f; txdInV = 0.5f; tydInV = 0.0f; bxdInV = 0.5f; bydInV = 0.0f;
       break;
-    case PLACEMENT_MPEG2: // left
+    case ChromaLocation_e::AVS_CHROMA_LEFT: // left, mpeg2
       xdInU = 0.0f; ydInU = 0.0f; txdInU = 0.0f; tydInU = 0.0f; bxdInU = 0.0f; bydInU = 0.0f;
       xdInV = 0.0f; ydInV = 0.0f; txdInV = 0.0f; tydInV = 0.0f; bxdInV = 0.0f; bydInV = 0.0f;
       break;
+    default:
+      env->ThrowError("Convert: not supported ChromaPlacement for 4:2:2 input.");
     }
   }
-  else if (InPlacement.Defined())
+  else if (ChromaLocation_In >= 0)
     env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 or 4:2:2 sources.");
-  if (vi.Is422() && InPlacementKind != PLACEMENT_MPEG1 && InPlacementKind != PLACEMENT_MPEG2)
-    env->ThrowError("Convert: not supported ChromaPlacement for 4:2:2 input.");
 
   const int xsIn = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
   const int ysIn = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -1183,43 +1222,56 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   float xdOutV = 0.0f, txdOutV = 0.0f, bxdOutV = 0.0f;
   float ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f;
 
-  const int OutPlacementKind = getPlacement(OutPlacement, env);
   if (Is420(vi.pixel_type)) {
-    switch (OutPlacementKind) {
-      case PLACEMENT_DV:
-        xdOutU = 0.0f; ydOutU = 1.0f; txdOutU = 0.0f; tydOutU = 1.0f; bxdOutU = 0.0f; bydOutU = 1.0f; // Cb
-        xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.0f; // Cr
-        break;
-      case PLACEMENT_MPEG1: // center
-        xdOutU = 0.5f, ydOutU = 0.5f; txdOutU = 0.5f; tydOutU = 0.25f; bxdOutU = 0.5f; bydOutU = 0.75f;
-        xdOutV = 0.5f, ydOutV = 0.5f; txdOutV = 0.5f; tydOutV = 0.25f; bxdOutV = 0.5f; bydOutV = 0.75f;
-        break;
-      case PLACEMENT_MPEG2: // left
-        xdOutU = 0.0f; ydOutU = 0.5f; txdOutU = 0.0f; tydOutU = 0.25f; bxdOutU = 0.0f; bydOutU = 0.75f;
-        xdOutV = 0.0f; ydOutV = 0.5f; txdOutV = 0.0f; tydOutV = 0.25f; bxdOutV = 0.0f; bydOutV = 0.75f;
-        break;
-      case PLACEMENT_TOP_LEFT:
-        xdOutU = 0.0f; ydOutU = 0.0f; txdOutU = 0.0f; tydOutU = 0.0f; bxdOutU = 0.0f; bydOutU = 0.5f;
-        xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.5f;
-        break;
+    switch (ChromaLocation_Out) {
+    case ChromaLocation_e::AVS_CHROMA_DV:
+      xdOutU = 0.0f; ydOutU = 1.0f; txdOutU = 0.0f; tydOutU = 1.0f; bxdOutU = 0.0f; bydOutU = 1.0f; // Cb
+      xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.0f; // Cr
+      break;
+    case ChromaLocation_e::AVS_CHROMA_TOP:
+      xdOutU = 0.5f, ydOutU = 0.0f; txdOutU = 0.5f; tydOutU = 0.0f; bxdOutU = 0.5f; bydOutU = 0.5f;
+      xdOutV = 0.5f, ydOutV = 0.0f; txdOutV = 0.5f; tydOutV = 0.0f; bxdOutV = 0.5f; bydOutV = 0.5f;
+      break;
+    case ChromaLocation_e::AVS_CHROMA_CENTER: // mpeg1, center
+      xdOutU = 0.5f, ydOutU = 0.5f; txdOutU = 0.5f; tydOutU = 0.25f; bxdOutU = 0.5f; bydOutU = 0.75f;
+      xdOutV = 0.5f, ydOutV = 0.5f; txdOutV = 0.5f; tydOutV = 0.25f; bxdOutV = 0.5f; bydOutV = 0.75f;
+      break;
+    case ChromaLocation_e::AVS_CHROMA_BOTTOM:
+      xdOutU = 0.5f, ydOutU = 1.0f; txdOutU = 0.5f; tydOutU = 0.5f; bxdOutU = 0.5f; bydOutU = 1.0f;
+      xdOutV = 0.5f, ydOutV = 1.0f; txdOutV = 0.5f; tydOutV = 0.5f; bxdOutV = 0.5f; bydOutV = 1.0f;
+      break;
+    case ChromaLocation_e::AVS_CHROMA_TOP_LEFT:
+      xdOutU = 0.0f; ydOutU = 0.0f; txdOutU = 0.0f; tydOutU = 0.0f; bxdOutU = 0.0f; bydOutU = 0.5f;
+      xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.5f;
+      break;
+    case ChromaLocation_e::AVS_CHROMA_LEFT: // left, mpeg2
+      xdOutU = 0.0f; ydOutU = 0.5f; txdOutU = 0.0f; tydOutU = 0.25f; bxdOutU = 0.0f; bydOutU = 0.75f;
+      xdOutV = 0.0f; ydOutV = 0.5f; txdOutV = 0.0f; tydOutV = 0.25f; bxdOutV = 0.0f; bydOutV = 0.75f;
+      break;
+    case ChromaLocation_e::AVS_CHROMA_BOTTOM_LEFT:
+      xdOutU = 0.0f; ydOutU = 1.0f; txdOutU = 0.0f; tydOutU = 0.5f; bxdOutU = 0.0f; bydOutU = 1.0f;
+      xdOutV = 0.0f; ydOutV = 1.0f; txdOutV = 0.0f; tydOutV = 0.5f; bxdOutV = 0.0f; bydOutV = 1.0f;
+      break;
+    default:
+      env->ThrowError("Convert: not supported ChromaPlacement for 4:2:0 output.");
     }
   }
   else if (vi.Is422()) {
-    switch (OutPlacementKind) {
-    case PLACEMENT_MPEG1: // center
+    switch (ChromaLocation_Out) {
+    case ChromaLocation_e::AVS_CHROMA_CENTER: // mpeg1, center
       xdOutU = 0.5f, ydOutU = 0.0f; txdOutU = 0.5f; tydOutU = 0.0f; bxdOutU = 0.5f; bydOutU = 0.0f;
       xdOutV = 0.5f, ydOutV = 0.0f; txdOutV = 0.5f; tydOutV = 0.0f; bxdOutV = 0.5f; bydOutV = 0.0f;
       break;
-    case PLACEMENT_MPEG2: // left
+    case ChromaLocation_e::AVS_CHROMA_LEFT: // left, mpeg2
       xdOutU = 0.0f; ydOutU = 0.0f; txdOutU = 0.0f; tydOutU = 0.0f; bxdOutU = 0.0f; bydOutU = 0.0f;
       xdOutV = 0.0f; ydOutV = 0.0f; txdOutV = 0.0f; tydOutV = 0.0f; bxdOutV = 0.0f; bydOutV = 0.0f;
       break;
+    default:
+      env->ThrowError("Convert: not supported ChromaPlacement for 4:2:2 output.");
     }
   }
-  else if (OutPlacement.Defined())
+  else if (ChromaLocation_Out >= 0)
     env->ThrowError("Convert: Output ChromaPlacement only available with 4:2:0 or 4:2:2 output.");
-  if(vi.Is422() && OutPlacementKind != PLACEMENT_MPEG1 && OutPlacementKind != PLACEMENT_MPEG2)
-    env->ThrowError("Convert: not supported ChromaPlacement for 4:2:2 output.");
 
   const int xsOut = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
   const int xmask = xsOut - 1;
@@ -1278,6 +1330,9 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
 PVideoFrame __stdcall ConvertToPlanarGeneric::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
+
+  auto props = env->getFramePropsRW(dst);
+  update_ChromaLocation(props, ChromaLocation_Out, env);
 
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y),
               src->GetRowSize(PLANAR_Y_ALIGNED), src->GetHeight(PLANAR_Y));
@@ -1351,7 +1406,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
       vi = clip->GetVideoInfo();
     }
 
-    clip = new ConvertRGBToYUV444(clip, getMatrix(args[2].AsString(0), env), env);
+    clip = new ConvertRGBToYUV444(clip, args[2].AsString(0) /* matrix_name */, env);
     vi = clip->GetVideoInfo();
     converted = true;
   }
@@ -1369,17 +1424,35 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   bool hasAlpha = vi.NumComponents() == 4 && !strip_alpha_legacy_8bit;
   bool shouldStripAlpha = vi.NumComponents() == 4 && strip_alpha_legacy_8bit;
 
-  if (strcmp(filter, "ConvertToYUV420") == 0) {
-    if (vi.Is420())
-      if (getPlacement(args[3], env) == getPlacement(args[5], env))
+  int ChromaLocation_In = -1; // invalid
+  int ChromaLocation_Out = -1;
+
+  const bool to_420 = strcmp(filter, "ConvertToYUV420") == 0;
+  const bool to_422 = strcmp(filter, "ConvertToYUV422") == 0;
+  const bool to_411 = strcmp(filter, "ConvertToYV411") == 0;
+  const bool to_444 = strcmp(filter, "ConvertToYUV444") == 0;
+
+  if (vi.Is420() || vi.Is422() || vi.IsYV411()) {
+    // ChromaInPlacement parameter is valid + input frame properties
+    auto frame0 = clip->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
+    chromaloc_parse_merge_with_props(vi, args[3].AsString(nullptr), props, /* ref*/ChromaLocation_In, env);
+  }
+  if (to_420 || to_422 || to_411) {
+    // ChromaOutPlacement parameter is valid
+    chromaloc_parse_merge_with_props(vi, args[5].AsString(nullptr), nullptr, /* ref*/ChromaLocation_Out, env);
+  }
+
+  if (to_420) {
+    if (vi.Is420()) {
+      // possible shortcut
+      if (ChromaLocation_In == ChromaLocation_Out)
       {
         if (shouldStripAlpha)
           return new RemoveAlphaPlane(clip, env);
         return clip;
       }
-
-    if(converted)
-      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+    }
 
     outplacement = args[5];
     switch (vi.BitsPerComponent())
@@ -1392,17 +1465,16 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     case 32: pixel_type = hasAlpha ? VideoInfo::CS_YUVA420PS  : VideoInfo::CS_YUV420PS; break;
     }
   }
-  else if (strcmp(filter, "ConvertToYUV422") == 0) {
-    if (vi.Is422())
-      if (getPlacement(args[3], env) == getPlacement(args[5], env))
+  else if (to_422) {
+    if (vi.Is422()) {
+      // possible shortcut
+      if (ChromaLocation_In == ChromaLocation_Out)
       {
         if (shouldStripAlpha)
           return new RemoveAlphaPlane(clip, env);
         return clip;
       }
-
-    if (converted)
-      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+    }
 
     outplacement = args[5];
     switch (vi.BitsPerComponent())
@@ -1415,15 +1487,12 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     case 32: pixel_type = hasAlpha ? VideoInfo::CS_YUVA422PS  : VideoInfo::CS_YUV422PS; break;
     }
   }
-  else if (strcmp(filter, "ConvertToYUV444") == 0) {
+  else if (to_444) {
     if (vi.Is444()) {
       if (shouldStripAlpha)
         return new RemoveAlphaPlane(clip, env);
       return clip;
     }
-
-    if (converted)
-      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
 
     switch (vi.BitsPerComponent())
     {
@@ -1435,13 +1504,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     case 32: pixel_type = hasAlpha ? VideoInfo::CS_YUVA444PS  : VideoInfo::CS_YUV444PS; break;
     }
   }
-  else if (strcmp(filter, "ConvertToYV411") == 0) {
+  else if (to_411) {
     if (vi.IsYV411()) return clip;
     if(vi.ComponentSize()!=1)
       env->ThrowError("%s: 8 bit only", filter);
-
-    if (converted)
-      clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
 
     pixel_type = VideoInfo::CS_YV411;
   }
@@ -1450,7 +1516,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   if (pixel_type == VideoInfo::CS_UNKNOWN)
     env->ThrowError("%s: unsupported bit depth", filter);
 
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], outplacement, env);
+  if (converted)
+    clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+
+  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), ChromaLocation_In, args[4], ChromaLocation_Out, env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -1490,7 +1559,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void* user_d
 }
 
 
-
+/*
 static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
   const char* placement = _placement.AsString(0);
 
@@ -1511,6 +1580,7 @@ static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
   }
   return PLACEMENT_MPEG2;
 }
+*/
 
 
 static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env) {

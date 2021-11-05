@@ -38,6 +38,7 @@
 #include "intel/convert_bits_avx.h"
 #include "intel/convert_bits_avx2.h"
 #endif
+#include "convert_helper.h"
 
 #include <avs/alignment.h>
 #include <avs/minmax.h>
@@ -1260,10 +1261,13 @@ static void get_convert_uintN_to_float_functions(int bits_per_pixel, bool fulls,
 #undef convert_uintN_to_float_functions
 }
 
-ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, bool _fulls, bool _fulld, int _dither_bitdepth, IScriptEnvironment* env) :
+ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, 
+  int _ColorRange_src, int _ColorRange_dest,
+  int _dither_bitdepth, IScriptEnvironment* env) :
   GenericVideoFilter(_child), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange),
-  fulls(_fulls), fulld(_fulld), dither_bitdepth(_dither_bitdepth),
-  conv_function(nullptr), conv_function_chroma(nullptr), conv_function_a(nullptr)
+  dither_bitdepth(_dither_bitdepth),
+  conv_function(nullptr), conv_function_chroma(nullptr), conv_function_a(nullptr),
+  fulld(false), fulls(false)
 {
 
   pixelsize = vi.ComponentSize();
@@ -1282,6 +1286,33 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   BitDepthConvFuncPtr conv_function_shifted_scale;
 
   conv_function_chroma = nullptr; // used only for 32bit float
+
+  // full or limited decision
+  // try getting frame props if parameter is not specified
+  auto frame0 = child->GetFrame(0, env);
+  const AVSMap* props = env->getFramePropsRO(frame0);
+  if (_ColorRange_src != ColorRange_e::AVS_RANGE_LIMITED && _ColorRange_src != ColorRange_e::AVS_RANGE_FULL) {
+    // undefined: frame property check
+    if (env->propNumElements(props, "_ColorRange") > 0) {
+      _ColorRange_src = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
+    }
+    else {
+      // no param, no frame property -> rgb is full others are limited
+      _ColorRange_src = vi.IsRGB() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
+    }
+  }
+  // dest: if undefined, use src
+  if (_ColorRange_dest != ColorRange_e::AVS_RANGE_LIMITED && _ColorRange_dest != ColorRange_e::AVS_RANGE_FULL) {
+    _ColorRange_dest = _ColorRange_src;
+  }
+  //
+  fulls = _ColorRange_src == ColorRange_e::AVS_RANGE_FULL;
+  fulld = _ColorRange_dest == ColorRange_e::AVS_RANGE_FULL;
+
+  // check some limitations of Avisynth bit depth converter
+
+  if (fulls != fulld && target_bitdepth != 32 && bits_per_pixel != 32)
+    env->ThrowError("ConvertBits: fulls must be the same as fulld for non 32bit target and source");
 
   if (bits_per_pixel < 32 && target_bitdepth < 32) {
     // 32 bit source: fulls, fulld handled properly
@@ -1606,10 +1637,16 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
       env->ThrowError("ConvertBits: truerange specified for non-planar source");
   }
 
-  // override defaults, e.g. set full range for greyscale clip conversion that is RGB
-  // Post 2664: can be set. Full range is default also for float (and cannot be set to false)
-  bool fulls = args[5].AsBool(vi.IsRGB()/* || ((target_bitdepth == 32 || source_bitdepth == 32))*/);
-  bool fulld = args[6].AsBool(fulls);
+  int ColorRange_src;
+  int ColorRange_dest;
+  if (args[5].Defined())
+    ColorRange_src = args[5].AsBool() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
+  else
+    ColorRange_src = -1; // undefined. A frame property may override
+  if (args[6].Defined())
+    ColorRange_dest = args[6].AsBool() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
+  else
+    ColorRange_dest = -1; // undefined. A frame property or ColorRange_src may override
 
   int dither_type = args[3].AsInt(-1);
   bool dither_defined = args[3].Defined();
@@ -1696,9 +1733,6 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     // source_16_bit.ConvertTo16bit(bits=10, truerange=true)  : downscale range
     // source_16_bit.ConvertTo16bit(bits=10, truerange=false) : leaves data, only format conversion
 
-  if (fulls != fulld && target_bitdepth != 32 && source_bitdepth != 32)
-    env->ThrowError("ConvertBits: fulls must be the same as fulld for non 32bit target and source");
-
   // for floyd, planar rgb conversion happens
   bool need_convert_48 = vi.IsRGB48() && dither_type == 1 && target_bitdepth == 8;
   bool need_convert_64 = vi.IsRGB64() && dither_type == 1 && target_bitdepth == 8;
@@ -1712,7 +1746,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
   }
 
-  AVSValue result = new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, fulls, fulld, dither_bitdepth, env);
+  AVSValue result = new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, ColorRange_src, ColorRange_dest, dither_bitdepth, env);
 
   // convert back to packed rgb on the fly
   if (need_convert_48) {
@@ -1737,6 +1771,9 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
+
+  auto props = env->getFramePropsRW(dst);
+  update_ColorRange(props, fulld ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED, env);
 
   if(vi.IsPlanar())
   {

@@ -52,7 +52,7 @@ void fill_plane(uint8_t * dstp, int height, int pitch, pixel_t val);
 class ConvertToY : public GenericVideoFilter
 {
 public:
-  ConvertToY(PClip src, int matrix, IScriptEnvironment* env);
+  ConvertToY(PClip src, const char *matrix_name, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -68,6 +68,8 @@ private:
   bool planar_rgb_input;
   int pixel_step;
   int pixelsize;
+  int theMatrix;
+  int theColorRange;
   ConversionMatrix matrix;
 };
 
@@ -75,7 +77,7 @@ private:
 class ConvertRGBToYUV444 : public GenericVideoFilter
 {
 public:
-  ConvertRGBToYUV444(PClip src, int matrix, IScriptEnvironment* env);
+  ConvertRGBToYUV444(PClip src, const char *matrix_name, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -85,6 +87,8 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
+  int theMatrix;
+  int theColorRange;
   ConversionMatrix matrix;
   int pixel_step;
   bool hasAlpha;
@@ -105,11 +109,10 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
-// note for AVS16: renamed from ConvertYV24ToRGB (Convert444ToRGB is already used in Overlay)
 class ConvertYUV444ToRGB : public GenericVideoFilter
 {
 public:
-  ConvertYUV444ToRGB(PClip src, int matrix, int pixel_step, IScriptEnvironment* env);
+  ConvertYUV444ToRGB(PClip src, const char *matrix_name, int pixel_step, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -118,6 +121,11 @@ public:
   }
 
 private:
+  int theMatrix;
+  int theColorRange;
+  // separate out set for rgb target
+  int theOutMatrix;
+  int theOutColorRange;
   ConversionMatrix matrix;
   int pixel_step;
 };
@@ -140,8 +148,8 @@ class ConvertToPlanarGeneric : public GenericVideoFilter
 {
 public:
   ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
-                         const AVSValue& InPlacement, const AVSValue& ChromaResampler,
-                         const AVSValue& OutPlacement, IScriptEnvironment* env);
+                         int _ChromaLocation_In, const AVSValue& ChromaResampler,
+                         int _ChromaLocation_Out, IScriptEnvironment* env);
   ~ConvertToPlanarGeneric() {}
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -159,6 +167,8 @@ private:
   static AVSValue Create(AVSValue& args, const char* filter, bool strip_alpha_legacy_8bit, IScriptEnvironment* env);
   bool Yinput;
   int pixelsize;
+  int ChromaLocation_In;
+  int ChromaLocation_Out; // future _ChromaLocation
   PClip Usource;
   PClip Vsource;
 };

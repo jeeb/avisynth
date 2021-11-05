@@ -57,7 +57,8 @@ public:
 private:
   void BuildGreyMatrix(IScriptEnvironment *env);
   ConversionMatrix greyMatrix;
-  int matrix_;
+  int theMatrix;
+  int theColorRange;
   int pixelsize;
   int bits_per_pixel;
 

@@ -40,7 +40,7 @@
 #endif
 
 #include "text-overlay.h"
-#include "../convert/convert_matrix.h"  // for RGB2YUV
+#include "../convert/convert_matrix.h"  // for RGB2YUV_Rec601
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -1070,15 +1070,15 @@ void Antialiaser::GetAlphaRect()
 
 ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env)
- : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), size(_size), x(_x), y(_y),
+ : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   antialiaser(vi.width, vi.height, _fontname, _size,
-     vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
-     vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
+     vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor,
+     vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor,
      font_width, font_angle),
 #endif
-  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
-  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor)
 {
   AVS_UNUSED(env);
 
@@ -1210,12 +1210,12 @@ ShowCRC32::ShowCRC32(PClip _child, bool _scroll, int _offset, int _x, int _y, co
   : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size),
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   antialiaser(vi.width, vi.height, _fontname, _size,
-    vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
-    vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
+    vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor,
+    vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor,
     font_width, font_angle),
 #endif
-  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
-  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor)
 {
   AVS_UNUSED(env);
   
@@ -1384,12 +1384,12 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
   : GenericVideoFilter(_child), x(_x), y(_y),
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   antialiaser(vi.width, vi.height, _fontname, _size,
-      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
-      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor,
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor,
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor,
       font_width, font_angle),
 #endif
-  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
-  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor)
 {
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
 #else
@@ -1620,8 +1620,8 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
 					int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, IScriptEnvironment* env)
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y),
    firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
-   textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
-   halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor),
+   textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor),
+   halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor),
    align(_align), spc(_spc), multiline(_multiline), lsp(_lsp),
    font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced), font_filename(_font_filename), utf8(_utf8)
 {
@@ -1906,18 +1906,15 @@ SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _fi
   int _lastframe, const char _fontname[], int _size, int _textcolor,
   int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
   int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, const bool _bold, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), x(_x), y(_y),
-  firstframe(_firstframe), lastframe(_lastframe), size(_size), lsp(_lsp),
-  font_width(_font_width), font_angle(_font_angle), multiline(_multiline),
-  interlaced(_interlaced),
-  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
-  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor), // not supported
-  align(_align), spc(_spc),
+  : GenericVideoFilter(_child), /*antialiaser(0),*/ text(_text), x(_x), y(_y),
+  firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size),
+  textcolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor),
+  halocolor(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor), // not supported
   halocolor_orig(_halocolor),
-  fontname(_fontname), text(_text),
+  align(_align), spc(_spc), multiline(_multiline), lsp(_lsp),
+  font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced),
   font_filename(_font_filename), utf8(_utf8),
   bold(_bold)
-  /*antialiaser(0),*/
 {
 
   if (*font_filename) {
@@ -2073,11 +2070,11 @@ FilterInfo::FilterInfo( PClip _child, const char _fontname[], int _size, int _te
 : GenericVideoFilter(_child), vii(AdjustVi()), size(_size),
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
       antialiaser(vi.width, vi.height, _fontname, size,
-      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor,
-      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor),
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor,
+      vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor),
 #endif
-  text_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_textcolor) : _textcolor),
-  halo_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV(_halocolor) : _halocolor)
+  text_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor),
+  halo_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor)
 {
   AVS_UNUSED(env);
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
@@ -2365,17 +2362,17 @@ AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* en
 
 Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char *fname, bool _show_graph, IScriptEnvironment* env)
   : GenericVideoFilter(_child1),
+    child2(_child2),
+    log(NULL),
+    show_graph(_show_graph),
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     antialiaser(vi.width, vi.height, "Courier New", 16*8,
     (vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00,
     (vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
 #endif
-    child2(_child2),
-    log(NULL),
-    show_graph(_show_graph),
-    framecount(0),
     text_color((vi.IsYUV() || vi.IsYUVA()) ? 0xD21092 : 0xFFFF00),
-    halo_color((vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0)
+    halo_color((vi.IsYUV() || vi.IsYUVA()) ? 0x108080 : 0),
+    framecount(0)
 {
   const VideoInfo& vi2 = child2->GetVideoInfo();
   psnrs = 0;
@@ -3045,8 +3042,8 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   AVS_UNUSED(bgcolor);
   AVS_UNUSED(env);
   if (vi.IsYUV() || vi.IsYUVA()) {
-    textcolor = RGB2YUV(textcolor);
-    halocolor = RGB2YUV(halocolor);
+    textcolor = RGB2YUV_Rec601(textcolor);
+    halocolor = RGB2YUV_Rec601(halocolor);
   }
 
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)

@@ -38,6 +38,7 @@
 #endif
 #include "convert.h"
 #include "convert_matrix.h"
+#include "convert_helper.h"
 #include "convert_planar.h"
 #include <avs/alignment.h>
 
@@ -65,18 +66,16 @@ ConvertToYUY2::ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const c
   if (vi.width & 1)
     env->ThrowError("ConvertToYUY2: Image width must be even. Use Crop!");
 
-  theMatrix = Rec601;
-  if (matrix_name) {
-    if (!vi.IsRGB())
-      env->ThrowError("ConvertToYUY2: invalid \"matrix\" parameter (RGB data only)");
+  if (matrix_name && !vi.IsRGB())
+    env->ThrowError("ConvertToYUY2: invalid \"matrix\" parameter (RGB data only)");
 
-    theMatrix = getMatrix(matrix_name, env); // handles the default as well
-
-  }
+  auto frame0 = _child->GetFrame(0, env);
+  const AVSMap* props = env->getFramePropsRO(frame0);
+  matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
 
   const int shift = 15;
   const int bits_per_pixel = 8;
-  if (!do_BuildMatrix_Rgb2Yuv(theMatrix, shift, bits_per_pixel, /*ref*/matrix))
+  if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/matrix))
     env->ThrowError("ConvertToYUY2: invalid \"matrix\" parameter");
 
   vi.pixel_type = VideoInfo::CS_YUY2;
@@ -438,8 +437,13 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     return dst;
   }
 
+  // convert from rgb
+
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
   BYTE* yuv = dst->GetWritePtr();
+
+  auto props = env->getFramePropsRW(dst);
+  update_Matrix_and_ColorRange(props, theMatrix, theColorRange, env);
 
 #ifdef INTEL_INTRINSICS
   if (env->GetCPUFlags() & CPUF_SSE2)
