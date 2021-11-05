@@ -261,6 +261,9 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
   delete[] error_ptr_safe;
 }
 
+// FIXME: make it common:
+// convert_uint16_to_8_c and convert_uint16_to_uint16_dither_c
+// make template only source and pixel_types, and probably TARGET_DITHER_BITDEPTH?
 
 // YUV conversions (bit shifts)
 // BitDepthConvFuncPtr
@@ -671,6 +674,8 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   const float factor = range_diff_d / range_diff_s;
 
   const int half = 1 << (source_bitdepth - 1);
+  const int half_full = (int)(range_diff_s / 2.0f + 0.5f);
+  // chroma center when full (but why is chroma 0..255, does not have proper center?)
 
   // 0..255,65535 -> 0..1.0 (or -0.5..+0.5) or less if !full
 
@@ -681,12 +686,60 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
       float pixel;
       if (chroma) {
         if (fulls)
-          pixel = srcp0[x] * factor - 0.5f; // 0..1->-0.5..0.5
+          pixel = (srcp0[x] - half_full) * factor; // (255-0)/2.0f -> 0
         else
           pixel = (srcp0[x] - half) * factor; // -0.5..0.5 when fulld
       }
       else {
         pixel = (srcp0[x] - limit_lo_s) * factor + limit_lo_d / 255.0f;
+      }
+      dstp0[x] = pixel;
+    }
+    dstp0 += dst_pitch;
+    srcp0 += src_pitch;
+  }
+}
+
+// float to float
+template<bool chroma, bool fulls, bool fulld>
+static void convert_float_to_float_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+{
+  // float is good if always full range. For historical reasons Avisynth has "limited" range float,
+  // which is simply a /255.0 reduction of original byte pixels
+  const float* srcp0 = reinterpret_cast<const float*>(srcp);
+  float* dstp0 = reinterpret_cast<float*>(dstp);
+
+  src_pitch = src_pitch / sizeof(float);
+  dst_pitch = dst_pitch / sizeof(float);
+
+  int src_width = src_rowsize / sizeof(float);
+
+  const int limit_lo_s = fulls ? 0 : 16;
+  const int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
+  const float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f;
+
+  const int limit_lo_d = fulld ? 0 : 16;
+  const int limit_hi_d = fulld ? 255 : (chroma ? 240 : 235);
+  const float range_diff_d = (limit_hi_d - limit_lo_d) / 255.0f;
+
+  // fulls fulld luma             luma_new   chroma                          chroma_new
+  // true  false 0..1              16-235     -0.5..0.5                      16-240     - 128 / 255.0
+  // true  true  0..1               0-255     -0.5..0.5                      0-128-255  - 128 / 255.0 
+  // false false 16/255..235/255   16-235     (16-128)/255..(240-128)/255    16-240     - 128 / 255.0
+  // false true  16/255..235/255    0..1      (16-128)/255..(240-128)/255    0-128-255  - 128 / 255.0 
+  const float factor = range_diff_d / range_diff_s;
+  const float limit_lo_s_redu = limit_lo_s / 255.0f;
+  const float limit_lo_d_redu = limit_lo_d / 255.0f;
+  for (int y = 0; y < src_height; y++)
+  {
+    for (int x = 0; x < src_width; x++)
+    {
+      float pixel;
+      if (chroma) {
+        pixel = srcp0[x] * factor; // Zero center does not move
+      }
+      else {
+        pixel = (srcp0[x] - limit_lo_s_redu) * factor + limit_lo_d_redu;
       }
       dstp0[x] = pixel;
     }
@@ -1228,6 +1281,29 @@ static void get_convert_32_to_uintN_functions(int target_bitdepth, bool fulls, b
 #undef convert_32_to_uintN_functions
 }
 
+static void get_convert_float_to_float_functions(bool fulls, bool fulld,
+  BitDepthConvFuncPtr& conv_function, BitDepthConvFuncPtr& conv_function_chroma, BitDepthConvFuncPtr& conv_function_a)
+{
+  // 32bit->32bits support fulls fulld, alpha is always full-full
+  conv_function_a = convert_float_to_float_c<false, true, true>; /* full-full */
+  if (fulls && fulld) {
+    conv_function = convert_float_to_float_c<false, true, true>;
+    conv_function_chroma = convert_float_to_float_c<true, true, true>;
+  }
+  else if (fulls && !fulld) {
+    conv_function = convert_float_to_float_c<false, true, false>;
+    conv_function_chroma = convert_float_to_float_c<true, true, false>;
+  }
+  else if (!fulls && fulld) { \
+    conv_function = convert_float_to_float_c<false, false, true>;
+    conv_function_chroma = convert_float_to_float_c<true, false, true>;
+  }
+  else if (!fulls && !fulld) {
+    conv_function = convert_float_to_float_c<false, false, false>;
+    conv_function_chroma = convert_float_to_float_c<true, false, false>;
+  }
+}
+
 static void get_convert_uintN_to_float_functions(int bits_per_pixel, bool fulls, bool fulld,
   BitDepthConvFuncPtr& conv_function, BitDepthConvFuncPtr& conv_function_chroma, BitDepthConvFuncPtr& conv_function_a)
 {
@@ -1288,19 +1364,6 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   conv_function_chroma = nullptr; // used only for 32bit float
 
   // full or limited decision
-  // try getting frame props if parameter is not specified
-  auto frame0 = child->GetFrame(0, env);
-  const AVSMap* props = env->getFramePropsRO(frame0);
-  if (_ColorRange_src != ColorRange_e::AVS_RANGE_LIMITED && _ColorRange_src != ColorRange_e::AVS_RANGE_FULL) {
-    // undefined: frame property check
-    if (env->propNumElements(props, "_ColorRange") > 0) {
-      _ColorRange_src = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
-    }
-    else {
-      // no param, no frame property -> rgb is full others are limited
-      _ColorRange_src = vi.IsRGB() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
-    }
-  }
   // dest: if undefined, use src
   if (_ColorRange_dest != ColorRange_e::AVS_RANGE_LIMITED && _ColorRange_dest != ColorRange_e::AVS_RANGE_FULL) {
     _ColorRange_dest = _ColorRange_src;
@@ -1311,15 +1374,10 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
 
   // check some limitations of Avisynth bit depth converter
 
+  // 3.7.1 t25: this case is covered with float32 bit intermediate in Create
+  // so we cannot reach here. Kept here for memo, until direct way is implemented
   if (fulls != fulld && target_bitdepth != 32 && bits_per_pixel != 32)
-    env->ThrowError("ConvertBits: fulls must be the same as fulld for non 32bit target and source");
-
-  if (bits_per_pixel < 32 && target_bitdepth < 32) {
-    // 32 bit source: fulls, fulld handled properly
-    if (fulls != fulld)
-      env->ThrowError("ConvertBits: fulls and fulld should be the same for non-32bit float formats");
-  }
-
+     env->ThrowError("ConvertBits: fulls must be the same as fulld for non 32bit target and source");
 
   // ConvertToFloat
   if (target_bitdepth == 32) {
@@ -1335,7 +1393,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         get_convert_uintN_to_float_functions(16, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
     }
     else
-      env->ThrowError("ConvertToFloat: internal error 32->32 is not valid here");
+      get_convert_float_to_float_functions(fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
 
     if (vi.NumComponents() == 1)
       vi.pixel_type = VideoInfo::CS_Y32;
@@ -1637,6 +1695,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
       env->ThrowError("ConvertBits: truerange specified for non-planar source");
   }
 
+  // retrieve full/limited
   int ColorRange_src;
   int ColorRange_dest;
   if (args[5].Defined())
@@ -1647,6 +1706,26 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     ColorRange_dest = args[6].AsBool() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
   else
     ColorRange_dest = -1; // undefined. A frame property or ColorRange_src may override
+  // try getting frame props if parameter is not specified
+  auto frame0 = clip->GetFrame(0, env);
+  const AVSMap* props = env->getFramePropsRO(frame0);
+  if (ColorRange_src != ColorRange_e::AVS_RANGE_LIMITED && ColorRange_src != ColorRange_e::AVS_RANGE_FULL) {
+    // undefined: frame property check
+    if (env->propNumElements(props, "_ColorRange") > 0) {
+      ColorRange_src = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
+    }
+    else {
+      // no param, no frame property -> rgb is full others are limited
+      ColorRange_src = vi.IsRGB() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
+    }
+  }
+  // cr_dest = cr_source if not specified
+  if (ColorRange_dest != ColorRange_e::AVS_RANGE_LIMITED && ColorRange_dest != ColorRange_e::AVS_RANGE_FULL) {
+    ColorRange_dest = ColorRange_src;
+  }
+  bool fulls = ColorRange_src == ColorRange_e::AVS_RANGE_FULL;
+  bool fulld = ColorRange_dest == ColorRange_e::AVS_RANGE_FULL;
+
 
   int dither_type = args[3].AsInt(-1);
   bool dither_defined = args[3].Defined();
@@ -1659,7 +1738,22 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     if (dither_bitdepth > target_bitdepth)
       env->ThrowError("ConvertBits: dither_bits must be <= target bitdepth");
     if (target_bitdepth == 32)
-      env->ThrowError("ConvertBits: dithering is not allowed only for 32 bit targets");
+      env->ThrowError("ConvertBits: dithering is not allowed into 32 bit float target");
+  }
+
+  // 3.7.1 t25
+  // Unfortunately 32 bit float dithering is not implemented, thus we convert to 16 bit 
+  // intermediate clip
+  if (source_bitdepth == 32 && (dither_type == 0 || dither_type == 1)) {
+    // c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
+    AVSValue new_args[7] = { clip, 16, true, -1 /* no dither */, AVSValue() /*dither_bits*/, fulls, fulld };
+    clip = env->Invoke("ConvertBits", AVSValue(new_args, 7)).AsClip();
+
+    clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+    source_bitdepth = 16;
+    // and now the source range becomes the previous target
+    fulls = fulld;
+    ColorRange_src = ColorRange_dest;
   }
 
   if (source_bitdepth == 8 && dither_bitdepth == 8)
@@ -1667,8 +1761,10 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   if(dither_type == 0) {
 
+    /* note: two-phase, using 16 bit intermediate
     if (source_bitdepth == 32)
       env->ThrowError("ConvertBits: dithering is not allowed for 32 bit sources");
+    */
 
     if (dither_bitdepth < 2 || dither_bitdepth > 16)
       env->ThrowError("ConvertBits: invalid dither_bits specified");
@@ -1698,10 +1794,10 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   // no change -> return unmodified if no dithering required, or dither bitdepth is the same as target
   if (source_bitdepth == target_bitdepth) { // 10->10 .. 16->16
-    if(dither_type < 0 || dither_bitdepth == target_bitdepth)
+    if((dither_type < 0 || dither_bitdepth == target_bitdepth) && fulls == fulld)
       return clip;
     if(vi.IsRGB() && !vi.IsPlanar())
-      env->ThrowError("ConvertBits: dithering_bits should be the as target bitdepth for packed RGB formats");
+      env->ThrowError("ConvertBits: dithering_bits should be the same as target bitdepth for packed RGB formats");
     // here: we allow e.g. a 16->16 bit conversion with dithering bitdepth of 8
   }
 
@@ -1744,6 +1840,25 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   } else if (need_convert_64) {
     AVSValue new_args[1] = { clip };
     clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+  }
+
+  // 3.7.1 t25: this case is covered with float32 bit intermediate
+  if (fulls != fulld && target_bitdepth < 32 && source_bitdepth < 32) {
+    // Convert to float
+
+    // c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
+    AVSValue new_args[7] = { clip, 32, true, -1 /* no dither */, AVSValue() /*dither_bits*/, fulls, fulld };
+    auto clip = env->Invoke("ConvertBits", AVSValue(new_args, 7)).AsClip();
+
+    clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+    source_bitdepth = 16;
+    // and now the source range becomes the previous target
+    fulls = fulld;
+    ColorRange_src = ColorRange_dest;
+
+    // Convert back to integer
+    AVSValue new_args2[7] = { clip, target_bitdepth, true, dither_type, dither_bitdepth /*dither_bits*/, fulls, fulld };
+    return env->Invoke("ConvertBits", AVSValue(new_args2, 7)).AsClip();
   }
 
   AVSValue result = new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, ColorRange_src, ColorRange_dest, dither_bitdepth, env);
