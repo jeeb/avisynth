@@ -3686,11 +3686,9 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   else
     dst = env->NewVideoFrame(d.vi);
 
-  const uint8_t *srcp[MAX_EXPR_INPUTS] = {};
-  const uint8_t *srcp_orig[MAX_EXPR_INPUTS] = {}; // for C
-  int src_stride[MAX_EXPR_INPUTS] = {};
-  float variable_area[MAX_USER_VARIABLES] = {}; // for C, place for expr variables A..Z
-  float frameprop_variable_area[MAX_FRAMEPROP_VARIABLES] = {}; // for C, place for dynamic frame property filling
+  std::vector<const uint8_t*> srcp(MAX_EXPR_INPUTS);
+  std::vector<const uint8_t*> srcp_orig(MAX_EXPR_INPUTS);
+  std::vector<int> src_stride(MAX_EXPR_INPUTS);
 
   const float framecount = (float)n; // max precision: 2^24 (16M) frames (32 bit float precision)
   const float relative_time = vi.num_frames > 1 ? (float)((double)n / (vi.num_frames - 1)) : 0.0f; // 0 <= time <= 1
@@ -3823,7 +3821,8 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         float *stack = stackVector.data();
         float stacktop = 0;
 
-        float internal_vars[INTERNAL_VARIABLES + MAX_FRAMEPROP_VARIABLES];
+        std::vector<float> variable_area(MAX_USER_VARIABLES); // for C, place for expr variables A..Z
+        std::vector<float> internal_vars(INTERNAL_VARIABLES + MAX_FRAMEPROP_VARIABLES);
         internal_vars[INTERNAL_VAR_CURRENT_FRAME] = (float)framecount;
         internal_vars[INTERNAL_VAR_RELTIME] = (float)relative_time;
         // followed by dynamic frame properties
