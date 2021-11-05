@@ -34,6 +34,9 @@
 
 
 #include "greyscale.h"
+#ifdef INTEL_INTRINSICS
+#include "intel/greyscale_sse.h"
+#endif
 #include "../core/internal.h"
 #include <avs/alignment.h>
 #include <avs/minmax.h>
@@ -174,6 +177,16 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   }
 
   if (vi.IsYUY2()) {
+#ifdef INTEL_INTRINSICS
+    if ((env->GetCPUFlags() & CPUF_SSE2) && width > 4 && IsPtrAligned(srcp, 16)) {
+      greyscale_yuy2_sse2(srcp, width, height, pitch);
+    } else
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_MMX) && width > 2) {
+        greyscale_yuy2_mmx(srcp, width, height, pitch);
+      } else
+#endif
+#endif
       {
         for (int y = 0; y<height; ++y)
         {
@@ -185,6 +198,27 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 
       return frame;
   }
+#ifdef INTEL_INTRINSICS
+  if(vi.IsRGB64()) {
+    if ((env->GetCPUFlags() & CPUF_SSE4_1) && IsPtrAligned(srcp, 16)) {
+      greyscale_rgb64_sse41(srcp, width, height, pitch, greyMatrix.y_b, greyMatrix.y_g, greyMatrix.y_r);
+      return frame;
+    }
+  }
+
+  if (vi.IsRGB32()) {
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
+      greyscale_rgb32_sse2(srcp, width, height, pitch, greyMatrix.y_b, greyMatrix.y_g, greyMatrix.y_r);
+      return frame;
+    }
+#ifdef X86_32
+    else if (env->GetCPUFlags() & CPUF_MMX) {
+      greyscale_rgb32_mmx(srcp, width, height, pitch, greyMatrix.y_b, greyMatrix.y_g, greyMatrix.y_r);
+      return frame;
+    }
+#endif
+  }
+#endif
 
   if (vi.IsRGB())
   {  // RGB C.
