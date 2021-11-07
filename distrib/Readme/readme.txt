@@ -1,7 +1,139 @@
 Avisynth+
 
-20211022 WIP
+20211107 WIP
 ------------
+- CMake/source: Intel C++ Compiler 2021 and Intel C++ Compiler 19.2 support
+- ConvertBits: allow dither from 32 bits to 8-16 bits (through an internal 16 bit immediate clip)
+- ConvertBits: allow different fulls fulld when converting between integer bit depths
+- ConvertBits: allow 32 bit to 32 bit conversion
+
+    ColorbarsHD()
+    # another method for converting to full range
+    ConvertToRGB(matrix="709:f")
+    ConvertToYUV444(matrix="709:l")
+    # 8 to 32 bits
+    ConvertBits(32, fulls=true, fulld=false)
+    ConvertBits(32, fulld=true) # fulls=false: auto from frame prop _ColorRange
+    ConvertBits(8, fulld=false, dither = 1, dither_bits=1) # low dither_bits just for fun :)
+    Histogram("levels")
+
+- Expr: consume less bytes on stack. 48x Expr call in sequence caused stack overflow
+- frame property support: _ChromaLocation in various filters (e.g. ConvertToYUV422)
+  New location parameter values: "top", "bottom_left", "bottom", "auto"
+  "ChromaInLocation" rules:
+  - if source has _ChromaLocation frame property it will be used else the default is "mpeg2" ("left")
+  - if parameter is "auto" or not given at all, ChromaInLocation will be set to the above mentioned default value
+  - if parameter is explicitely given, it will be used
+  "ChromaOutLocation" rules:
+  - default is "mpeg2" ("left")
+  - if parameter is "auto" or not given at all, ChromaOutLocation will be set to the above mentioned default value
+  - if parameter is explicitely given, it will be used
+  
+  Accepted values for "ChromaInLocation" and "ChromaOutLocation" (when source/target is a chroma subsampled format)
+  (full list):
+  - "left" or "mpeg2"
+  - "center" or "jpeg" or "mpeg1"
+  - "top_left"
+  - "dv"
+  - "top" 
+  - "bottom_left"
+  - "bottom"
+
+  _ChromaLocation constants - as seen in propShow()
+  
+  AVS_CHROMA_LEFT        = 0
+  AVS_CHROMA_CENTER      = 1
+  AVS_CHROMA_TOP_LEFT    = 2 (4:2:0 only)
+  AVS_CHROMA_TOP         = 3 (4:2:0 only)
+  AVS_CHROMA_BOTTOM_LEFT = 4 (4:2:0 only)
+  AVS_CHROMA_BOTTOM      = 5 (4:2:0 only)
+  AVS_CHROMA_DV          = 6  Special to Avisynth
+
+  _ChromaLocation property will be cleared when the result clip is not a chroma subsampled format (4:4:4 or RGB)
+
+- frame propery support: preliminary _Matrix and _ColorRange in various filters
+ 
+  Summary:
+
+  _Matrix constants - as seen in propShow()
+
+  AVS_MATRIX_RGB            0
+  AVS_MATRIX_BT709          1
+  AVS_MATRIX_UNSPECIFIED    2
+  AVS_MATRIX_FCC            4
+  AVS_MATRIX_BT470_BG       5 (BT601)
+  AVS_MATRIX_ST170_M        6 (practically same as 5)
+  AVS_MATRIX_ST240_M        7
+  AVS_MATRIX_YCGCO          8 (not supported by internal converters)
+  AVS_MATRIX_BT2020_NCL     9
+  AVS_MATRIX_BT2020_CL      10 (same as 9)
+  AVS_MATRIX_CHROMATICITY_DERIVED_NCL 12 (not supported by internal converters)
+  AVS_MATRIX_CHROMATICITY_DERIVED_CL  13 (not supported by internal converters)
+  AVS_MATRIX_ICTCP          14 (not supported by internal converters)
+
+  _ColorRange constants:
+
+  AVS_RANGE_FULL    = 0
+  AVS_RANGE_LIMITED = 1
+
+  string "matrix" parameter possible values and their mapping (used in YUV-RGB converters)
+
+  "rgb"          AVS_MATRIX_RGB
+  "709"          AVS_MATRIX_BT709
+  "unspec"       AVS_MATRIX_UNSPECIFIED
+  "170m"         AVS_MATRIX_ST170_M
+  "240m"         AVS_MATRIX_ST240_M
+  "470bg"        AVS_MATRIX_BT470_BG
+  "fcc"          AVS_MATRIX_FCC
+  "ycgco"        AVS_MATRIX_YCGCO      not supported
+  "2020ncl"      AVS_MATRIX_BT2020_NCL
+  "2020cl"       AVS_MATRIX_BT2020_CL  same as 2020ncl
+  "chromacl"     AVS_MATRIX_CHROMATICITY_DERIVED_CL  not supported
+  "chromancl"    AVS_MATRIX_CHROMATICITY_DERIVED_NCL not supported
+  "ictcp"        AVS_MATRIX_ICTCP      not supported
+  "601"          AVS_MATRIX_BT470_BG   compatibility alias
+  "2020"         AVS_MATRIX_BT2020_NCL compatibility alias
+
+  the above "matrix" parameters can be followed by a "full" or "f" and "limited" or "l" or "auto" marker after a ":"
+  e.g. "709:f" means the same as the old "PC.709"
+  When there is no limited-ness marker, or is set to "auto" then value of _ColorRange frame property is used
+
+  old-style "matrix" parameters are kept, their name indicate the full/limited
+  For memo and the similar new string
+  "rec601" same as         "470bg:l"
+  "rec709"                 "709:l" 
+  "pc.601" and "pc601"     "470bg:f"
+  "pc.709" and "pc709"     "709:f" 
+  "average"                - kept for compatibility, really it has no standard _Matrix equivalent
+  "rec2020"                "2020cl:l"
+  "pc.2020" and "pc2020"   "2020cl:f"
+  
+- RGB<->YUV (YUY2) conversions: frame property support _Matrix and _ColorRange
+  Unlike smart external plugins, in Avisynth there is a single "matrix" parameter,
+  since the function names explicitely tell whether we are converting from RGB or to RGB.
+
+  New: additional "matrix" parameter values: see table above.
+  With a new syntax "170m", "240m", "fcc" are newly available matrixes.
+  New-style matrix name can be: 
+    matrix name
+  or
+    matrix name : full_or_limited_marker
+  "auto" can appear on before and after the ":" character, e.g. "auto:full" will take matrix from frame property or default
+  When converting to RGB the _Matrix parameter is set to 0 ("rgb")
+- ConvertBits: frame property support: _ColorRange 
+  When parameter "fulls" is not specified, whether the source clip is full or limited is decided on _ColorRange frame property.
+  When no property available, then RGB clips are treated as fulls=true, while YUV are fulls=false.
+  If not specified, "fulld" parameter will inherit the value of the established fulls
+- ColorBars: frame property support: writes _Matrix and _ColorRange. 
+  RGB: _ColorRange = 1 ("limited") - ColorBars is using studio RGB values
+       _Matrix = 0 ("rgb")
+- ColorBarsHD: frame property support:
+        _ColorRange = 1 ("limited"), _Matrix = 1 ("709")
+- BlankClip: frame property support:
+   RGB: _ColorRange = 0 ("full"), _Matrix = 1 ("709")
+   YUV: _ColorRange = 1 ("limited"), _Matrix = 5 ("709")
+
+- Fix: Planar RGB 32 bit -> YUV matrix="PC.709"/"PC.601"/"PC.2020" resulted in greyscale image
 - New function: propCopy(clip, clip [,bool 'merge'])
   Copies the frame properties of the second clip to the first.
   Parameter 'merge' (default false):
