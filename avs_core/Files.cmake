@@ -56,8 +56,6 @@ IF(ENABLE_INTEL_SIMD)
     "filters/intel/*.h")
   LIST(REMOVE_ITEM AvsCore_Sources "filters/focus.cpp"
                                    "filters/focus.h"
-                                   "filters/greyscale.cpp"
-                                   "filters/greyscale.h"
                                    "filters/layer.cpp"
                                    "filters/layer.h"
                                    "filters/levels.cpp"
