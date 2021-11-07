@@ -363,12 +363,14 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
   if (height != height2 || width != width2)
     env->ThrowError("Plane Difference: Images are not the same size!");
 
+#ifdef X86_32
   int total_pixels = width*height;
   bool sum_in_32bits;
   if (pixelsize == 4)
     sum_in_32bits = false;
   else // worst case check
     sum_in_32bits = ((int64_t)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
+#endif
 
   double sad = 0.0;
 
@@ -444,11 +446,13 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
     env->ThrowError("Plane Difference: No chroma planes in greyscale clip!");
 
   int total_pixels = width*height;
+#ifdef X86_32
   bool sum_in_32bits;
   if (pixelsize == 4)
     sum_in_32bits = false;
   else // worst case check
     sum_in_32bits = ((int64_t)total_pixels * ((1 << bits_per_pixel) - 1)) <= std::numeric_limits<int>::max();
+#endif
 
   double sad = 0;
   // for c: width, for sse: rowsize
@@ -505,7 +509,6 @@ void get_minmax_float_c(const BYTE* srcp, int pitch, int w, int h, float& min, f
 {
   min = *reinterpret_cast<const float*>(srcp);
   max = min;
-  srcp += pitch;
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {

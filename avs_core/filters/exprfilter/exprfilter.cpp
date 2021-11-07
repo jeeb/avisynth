@@ -3706,7 +3706,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
       for (auto &framePropToRead : d.frameprops[plane]) {
         int srcIndex = framePropToRead.srcIndex;
         auto fpname = framePropToRead.name;
-        int whereToPut = framePropToRead.var_index;
 
         const AVSMap* avsmap = env->getFramePropsRO(src[srcIndex]);
 

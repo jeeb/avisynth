@@ -1278,10 +1278,10 @@ PVideoFrame ShowCRC32::GetFrame(int n, IScriptEnvironment* env) {
   auto height = frame->GetHeight();
   uint32_t crc = 0xFFFFFFFF;;
 
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++)
+  for (int yy = 0; yy < height; yy++) {
+    for (int xx = 0; xx < width; xx++)
     {
-      uint8_t b = ptr[x];
+      uint8_t b = ptr[xx];
       uint32_t t = (b ^ crc) & 0xFF;
       crc = (crc >> 8) ^ crc32_table[t];
     }

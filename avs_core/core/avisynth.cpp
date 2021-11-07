@@ -3318,7 +3318,6 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
       {
         vfb->device->memory_used -= vfb->GetDataSize(); // frame->vfb->GetDataSize();
         delete vfb;
-        const VideoFrameArrayType::iterator end_it3 = it2->second.end(); // const
         for (auto &it3: it2->second)
         {
           VideoFrame *currentframe = it3.frame;
@@ -4430,8 +4429,6 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
   }
   if (src_index < args2_count)
     ThrowError("Too many arguments to function %s", name);
-
-  const int args3_count = (int)args3.size();
 
   // Step #4: Named arguments
 

@@ -1479,11 +1479,10 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         }
         else {// expand
           // no dither here
-          if (bits_per_pixel != target_bitdepth)
-            conv_function_full_scale = 
+          conv_function_full_scale =
 #ifdef INTEL_INTRINSICS
             sse4 ? convert_rgb_uint16_to_uint16_sse41 :
-            sse2 ? convert_rgb_uint16_to_uint16_sse2 : 
+            sse2 ? convert_rgb_uint16_to_uint16_sse2 :
 #endif
             convert_rgb_uint16_to_uint16_c;
           conv_function_full_scale_no_dither = conv_function_full_scale; // save ditherless, used for possible alpha

@@ -1699,7 +1699,7 @@ AVSValue MergeRGB::Create(AVSValue args, void* mode, IScriptEnvironment* env)
 
 Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y,
               int _t, bool _chroma, float _opacity, int _placement, IScriptEnvironment* env )
-  : child1(_child1), child2(_child2), Op(_op), levelB(_lev), ofsX(_x), ofsY(_y),
+  : child1(_child1), child2(_child2), levelB(_lev), ofsX(_x), ofsY(_y), Op(_op),
     chroma(_chroma), opacity(_opacity), placement(_placement)
 {
   const VideoInfo& vi1 = child1->GetVideoInfo();
@@ -1837,7 +1837,7 @@ static void layer_yuv_mul_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, 
 
     for (int x = 0; x < width; ++x) {
       int alpha_mask;
-      int effective_mask;
+      int effective_mask = 0;
       if constexpr (has_alpha) {
 
         if constexpr (maskMode == MASK411) {
@@ -1945,7 +1945,7 @@ static void layer_yuv_mul_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8
 
     for (int x = 0; x < width; ++x) {
       float alpha_mask;
-      float effective_mask;
+      float effective_mask = 0;
       if constexpr (has_alpha) {
         if constexpr (maskMode == MASK411) {
           // +------+------+------+------+
@@ -2078,7 +2078,7 @@ static void layer_yuv_add_subtract_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE*
 
     for (int x = 0; x < width; ++x) {
       int alpha_mask;
-      int effective_mask;
+      int effective_mask = 0;
       if constexpr (has_alpha) {
 
         if constexpr (maskMode == MASK411) {
@@ -2185,7 +2185,7 @@ static void layer_yuv_add_subtract_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYT
 
     for (int x = 0; x < width; ++x) {
       float alpha_mask;
-      float effective_mask;
+      float effective_mask = 0;
       if constexpr (has_alpha) {
         if constexpr (maskMode == MASK411) {
           // +------+------+------+------+
@@ -2439,7 +2439,7 @@ static void layer_yuv_lighten_darken_c(
       int alpha_mask;
       int ovr;
       int src;
-      int effective_mask;
+      int effective_mask = 0;
       if constexpr (maskMode == MASK411) {
         // +------+------+------+------+
         // | 0.25 | 0.25 | 0.25 | 0.25 |
@@ -2641,7 +2641,7 @@ static void layer_yuv_lighten_darken_f_c(
       float alpha_mask;
       float ovr;
       float src;
-      float effective_mask;
+      float effective_mask = 0;
       if constexpr (maskMode == MASK411) {
         // +------+------+------+------+
         // | 0.25 | 0.25 | 0.25 | 0.25 |

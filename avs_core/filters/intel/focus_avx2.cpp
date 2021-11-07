@@ -363,7 +363,6 @@ void af_horizontal_planar_avx2(BYTE* dstp, size_t height, size_t pitch, size_t w
 
 void af_horizontal_planar_uint16_t_avx2(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount, int bits_per_pixel) {
   size_t mod32_width = (row_size / 32) * 32;
-  size_t mod16_width = (row_size / 16) * 16;
   size_t sse_loop_limit = row_size == mod32_width ? mod32_width - 32 : mod32_width;
   int center_weight_c = int(amount * 2);
   int outer_weight_c = int(32768 - amount);

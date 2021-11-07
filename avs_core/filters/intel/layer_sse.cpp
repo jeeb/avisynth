@@ -1073,7 +1073,6 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     env->ThrowError("Show%s: Planar RGB source is not supported", ShowText[channel]);
     */
 
-  int target_pixelsize;
   int target_bits_per_pixel;
 
   if(input_type_is_yuv || input_type_is_yuva)
@@ -1091,7 +1090,6 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     case 16: vi.pixel_type = VideoInfo::CS_BGR64; break;
     default: env->ThrowError("Show%s: source must be 8 or 16 bits", ShowText[orig_channel]);
     }
-    target_pixelsize = pixelsize;
     target_bits_per_pixel = bits_per_pixel;
   } else {
     int new_pixel_type = GetPixelTypeFromName(pixel_type);
@@ -1119,7 +1117,6 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
       }
     }
 
-    target_pixelsize = vi.ComponentSize();
     target_bits_per_pixel = vi.BitsPerComponent();
   }
 
@@ -2268,7 +2265,7 @@ static void layer_yuv_mul_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, 
 
     for (int x = 0; x < width; ++x) {
       int alpha_mask;
-      int effective_mask;
+      int effective_mask = 0;
       if constexpr (has_alpha) {
 
         if constexpr (maskMode == MASK411) {
@@ -2376,7 +2373,7 @@ static void layer_yuv_mul_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8
 
     for (int x = 0; x < width; ++x) {
       float alpha_mask;
-      float effective_mask;
+      float effective_mask = 0;
       if constexpr (has_alpha) {
         if constexpr (maskMode == MASK411) {
           // +------+------+------+------+
@@ -2596,7 +2593,7 @@ static void layer_yuv_add_subtract_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE*
 
     for (int x = 0; x < width; ++x) {
       int alpha_mask;
-      int effective_mask;
+      int effective_mask = 0;
       if constexpr (has_alpha) {
 
         if constexpr (maskMode == MASK411) {
@@ -2703,7 +2700,7 @@ static void layer_yuv_add_subtract_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYT
 
     for (int x = 0; x < width; ++x) {
       float alpha_mask;
-      float effective_mask;
+      float effective_mask = 0;
       if constexpr (has_alpha) {
         if constexpr (maskMode == MASK411) {
           // +------+------+------+------+
@@ -3233,7 +3230,7 @@ static void layer_yuv_lighten_darken_c(
       int alpha_mask;
       int ovr;
       int src;
-      int effective_mask;
+      int effective_mask = 0;
       if constexpr (maskMode == MASK411) {
         // +------+------+------+------+
         // | 0.25 | 0.25 | 0.25 | 0.25 |
@@ -3435,7 +3432,7 @@ static void layer_yuv_lighten_darken_f_c(
       float alpha_mask;
       float ovr;
       float src;
-      float effective_mask;
+      float effective_mask = 0;
       if constexpr (maskMode == MASK411) {
         // +------+------+------+------+
         // | 0.25 | 0.25 | 0.25 | 0.25 |
