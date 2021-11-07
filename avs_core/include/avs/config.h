@@ -88,6 +88,11 @@
 #elif defined(__GNUC__)
 #   define GCC
 #   define AVS_FORCEINLINE __attribute__((always_inline)) inline
+#elif defined(__INTEL_COMPILER) || defined(__INTEL_LLVM_COMPILER)
+// Intel C++ Compilers with MSVC command line interface will not appear here rather at _MSC_VER
+#   define AVS_FORCEINLINE inline
+#   undef __forceinline
+#   define __forceinline inline
 #else
 #   error Unsupported compiler.
 #   define AVS_FORCEINLINE inline
