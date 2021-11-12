@@ -42,4 +42,7 @@ void convert_32_to_uintN_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
 
 void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+void convert_uint_avx2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+
 #endif  // __Convert_bits_AVX2_H__

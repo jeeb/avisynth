@@ -272,11 +272,12 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
 template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH>
 static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
 {
+  assert(dither_mode == 0);
+  // ordered dither only
+
   const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
   src_pitch = src_pitch / sizeof(uint16_t);
   int src_width = src_rowsize / sizeof(uint16_t);
-
-  int _y = 0; // for ordered dither
 
   const int TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
   const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
@@ -305,26 +306,20 @@ static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 
   for(int y=0; y<src_height; y++)
   {
-    if constexpr(dither_mode == 0) _y = (y & MASK) << DITHER_ORDER; // ordered dither
+    int _y = (y & MASK) << DITHER_ORDER; // ordered dither
     for (int x = 0; x < src_width; x++)
     {
-      if constexpr (dither_mode < 0) { // -1: no dither
-        constexpr auto round = 1 << (sourcebits - TARGET_BITDEPTH - 1);
-        dstp[x] = (srcp0[x] + round) >> (sourcebits - TARGET_BITDEPTH); // no dithering, no range conversion, simply shift
-      }
-      else { // dither_mode == 0 -> ordered dither
-        int corr = matrix[_y | (x & MASK)];
-        //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
-        int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
-        new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-        // scale back to the required bit depth
-        // for generality. Now target == 8 bit, and dither_target is also 8 bit
-        // for test: source:10 bit, target=8 bit, dither_target=4 bit
-        const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-        if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-          new_pixel = new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // closest in palette: simple shift with
-        dstp[x] = (BYTE)new_pixel;
-      }
+      int corr = matrix[_y | (x & MASK)];
+      //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
+      int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
+      new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
+      // scale back to the required bit depth
+      // for generality. Now target == 8 bit, and dither_target is also 8 bit
+      // for test: source:10 bit, target=8 bit, dither_target=4 bit
+      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
+      if constexpr (BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
+        new_pixel = new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // closest in palette: simple shift with
+      dstp[x] = (BYTE)new_pixel;
     }
     dstp += dst_pitch;
     srcp0 += src_pitch;
@@ -347,7 +342,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   const float max_dst_pixelvalue = (float)((1<< target_bitdepth) - 1); // 255, 1023, 4095, 16383, 65535.0
   const float half = (float)(1 << (target_bitdepth - 1));
 
-  const int limit_lo_d = (fulld ? 0 : 16) << (target_bitdepth - 8);
+  const int limit_lo_d = fulld ? 0 : (16 << (target_bitdepth - 8));
   const int limit_hi_d = fulld ? ((1 << target_bitdepth) - 1) : ((chroma ? 240 : 235) << (target_bitdepth - 8));
   const float range_diff_d = (float)limit_hi_d - limit_lo_d;
 
@@ -384,99 +379,122 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   }
 }
 
-// rgb/alpha: full scale. No bit shift, scale full ranges
-static void convert_rgb_8_to_uint16_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+// YUV: bit shift 8-16 <=> 8-16 bits
+// shift right or left, depending on expandrange
+template<typename pixel_t_s, typename pixel_t_d>
+static void convert_uint_limited_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
 {
-  const uint8_t* srcp0 = reinterpret_cast<const uint8_t*>(srcp);
-  uint16_t* dstp0 = reinterpret_cast<uint16_t*>(dstp);
+  const pixel_t_s* srcp0 = reinterpret_cast<const pixel_t_s*>(srcp);
+  pixel_t_d* dstp0 = reinterpret_cast<pixel_t_d*>(dstp);
 
-  src_pitch = src_pitch / sizeof(uint8_t);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
+  src_pitch = src_pitch / sizeof(pixel_t_s);
+  dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
-  int src_width = src_rowsize / sizeof(uint8_t);
+  const int src_width = src_rowsize / sizeof(pixel_t_s);
 
-  if (target_bitdepth == 16) {
-    // * 65535 / 255 = *257 exactly
-    for (int y = 0; y < src_height; y++)
-    {
-      for (int x = 0; x < src_width; x++)
-      {
-        dstp0[x] = (uint16_t)(srcp0[x] * 257);
-      }
-      dstp0 += dst_pitch;
-      srcp0 += src_pitch;
-    }
-  }
-  else {
-    // target_bitdepth == 16: 65535 / 255 = 257 exactly
-    const int MUL = (1 << target_bitdepth) - 1;
-    const int DIV = 255;
-    const float mul_factor = (float)MUL / DIV;
-
-    for (int y = 0; y < src_height; y++)
-    {
-      for (int x = 0; x < src_width; x++)
-      {
-        dstp0[x] = (uint16_t)(srcp0[x] * mul_factor + 0.5f);
-      }
-      dstp0 += dst_pitch;
-      srcp0 += src_pitch;
-    }
-  }
-}
-
-
-// YUV: bit shift 8 to 10-12-14-16 bits
-static void convert_8_to_uint16_c(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-
-  int src_width = src_rowsize / sizeof(uint8_t); // intentional
-
-  const int shift_bits = target_bitdepth - 8;
-
-  for(int y=0; y<src_height; y++)
+  if (target_bitdepth > source_bitdepth) // expandrange
   {
-    for (int x = 0; x < src_width; x++)
+    const int shift_bits = target_bitdepth - source_bitdepth;
+    for (int y = 0; y < src_height; y++)
     {
-        dstp[x] = srcp[x] << shift_bits;
+      for (int x = 0; x < src_width; x++) {
+        dstp0[x] = (pixel_t_d)(srcp0[x]) << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
+      }
+      dstp0 += dst_pitch;
+      srcp0 += src_pitch;
     }
-    dstp += dst_pitch;
-    srcp += src_pitch;
+  }
+  else
+  {
+    // reduce range
+    const int shift_bits = source_bitdepth - target_bitdepth;
+    const int round = 1 << (shift_bits - 1);
+    for (int y = 0; y < src_height; y++)
+    {
+      for (int x = 0; x < src_width; x++) {
+        dstp0[x] = (srcp0[x] + round) >> shift_bits;  // reduce range
+      }
+      dstp0 += dst_pitch;
+      srcp0 += src_pitch;
+    }
   }
 }
 
-
-// RGB full range: 10-12-14-16 <=> 10-12-14-16 bits
-static void convert_rgb_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+// rgb/alpha: full scale. No bit shift, scale full ranges
+// chroma is special in full range
+// mixed cases
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
 {
-    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-    uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
+  // limited to limited is bitshift, see in other function
+  if constexpr (!fulls && !fulld) {
+    convert_uint_limited_c< pixel_t_s, pixel_t_d>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth);
+    return;
+  }
 
-    src_pitch = src_pitch / sizeof(uint16_t);
-    dst_pitch = dst_pitch / sizeof(uint16_t);
+  const pixel_t_s* srcp0 = reinterpret_cast<const pixel_t_s*>(srcp);
+  pixel_t_d* dstp0 = reinterpret_cast<pixel_t_d*>(dstp);
 
-    const int src_width = src_rowsize / sizeof(uint16_t);
+  src_pitch = src_pitch / sizeof(pixel_t_s);
+  dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
-    const int source_max = (1 << source_bitdepth) - 1;
-    const int target_max = (1 << target_bitdepth) - 1;
+  int src_width = src_rowsize / sizeof(pixel_t_s);
 
-    const float factor1 = (float)target_max / source_max;
-
-    for(int y=0; y<src_height; y++)
-    {
+  if constexpr (sizeof(pixel_t_s) == 1 && sizeof(pixel_t_d) == 2) {
+    if (fulls && fulld && !chroma && source_bitdepth == 8 && target_bitdepth == 16) {
+      // special case * 65535 / 255 = *257 exactly
+      for (int y = 0; y < src_height; y++)
+      {
         for (int x = 0; x < src_width; x++)
         {
-          dstp0[x] = (uint16_t)std::min((int)((float)srcp0[x] * factor1 + 0.5f), target_max);
+          dstp0[x] = (pixel_t_d)(srcp0[x] * 257);
         }
         dstp0 += dst_pitch;
         srcp0 += src_pitch;
+      }
+      return;
     }
+  }
+
+  const int target_max = (1 << target_bitdepth) - 1;
+
+  float mul_factor;
+  int src_offset, dst_offset;
+
+  if constexpr (chroma) {
+    // chroma: go into signed world, factor, then go back to biased range
+    src_offset = 1 << (source_bitdepth - 1); // chroma center of source
+    dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
+    mul_factor =
+      fulls && fulld ? (float)(dst_offset - 1) / (src_offset - 1) :
+      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-127 ==> +-112 (240-16)/2
+      /*fulld*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-112 (240-16)/2 ==> +-127
+  }
+  else {
+    // luma/limited: subtract offset, convert, add offset
+    src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
+    dst_offset = fulld ? 0 : 16 << (target_bitdepth - 8); // // full/limited range low limit
+    const int source_max = (1 << source_bitdepth) - 1;
+    mul_factor =
+      fulls && fulld ? (float)target_max / source_max :
+      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 0..255 ==> 16-235 (219)
+      /*fulld*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 16-235 ==> 0..255
+  }
+
+  auto dst_offset_plus_round = dst_offset + 0.5f;
+  constexpr auto target_min = chroma && fulld ? 1 : 0;
+
+  for (int y = 0; y < src_height; y++) {
+    for (int x = 0; x < src_width; x++)
+    {
+      const float val = (srcp0[x] - src_offset) * mul_factor + dst_offset_plus_round;
+      dstp0[x] = clamp((int)val, target_min, target_max);
+    }
+
+    dstp0 += dst_pitch;
+    srcp0 += src_pitch;
+  }
 }
-
-
 
 
 
@@ -545,44 +563,6 @@ static void convert_rgb_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8
 
 }
 
-// YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
-// shift right or left, depending on expandrange
-static void convert_uint16_to_uint16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-    uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
-
-    src_pitch = src_pitch / sizeof(uint16_t);
-    dst_pitch = dst_pitch / sizeof(uint16_t);
-
-    const int src_width = src_rowsize / sizeof(uint16_t);
-    if (target_bitdepth > source_bitdepth) // expandrange
-    {
-      const int shift_bits = target_bitdepth - source_bitdepth;
-      for (int y = 0; y < src_height; y++)
-      {
-        for (int x = 0; x < src_width; x++) {
-          dstp0[x] = srcp0[x] << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
-        }
-        dstp0 += dst_pitch;
-        srcp0 += src_pitch;
-      }
-    }
-    else
-    {
-      // reduce range
-      const int shift_bits = source_bitdepth - target_bitdepth;
-      const int round = 1 << (shift_bits - 1);
-      for (int y = 0; y < src_height; y++)
-      {
-        for (int x = 0; x < src_width; x++) {
-          dstp0[x] = (srcp0[x] + round) >> shift_bits;  // reduce range
-        }
-        dstp0 += dst_pitch;
-        srcp0 += src_pitch;
-      }
-    }
-}
 
 // YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
 // shift right or left, depending on expandrange template param
@@ -777,27 +757,6 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
 
   // full scale
 
-  // no dither, C
-  func_copy[make_tuple(true, 10, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<10, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 12, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<12, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 14, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<14, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  // for RGB48 and RGB64 source
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 3, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 4, 0)] = convert_rgb_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
-
-#ifdef INTEL_INTRINSICS
-  //-----------
-  // full scale, no dither, SSE2
-  func_copy[make_tuple(true, 10, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 12, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 14, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<14, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, -1, DITHER_TARGET_BITDEPTH_8, 1>;
-  // for RGB48 and RGB64 source
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 3, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
-  func_copy[make_tuple(true, 16, -1, DITHER_TARGET_BITDEPTH_8, 4, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, -1, DITHER_TARGET_BITDEPTH_8, 1>; // dither rgb_step param is n/a
-#endif
-
   //-----------
   // full scale, dither, C
   func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_8, 1>;
@@ -886,20 +845,6 @@ BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdep
   func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_0>;
 
   // shifted scale (YUV)
-
-  // no dither, C
-  func_copy[make_tuple(false, 10, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<10, -1, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 12, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<12, -1, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 14, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<14, -1, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 16, -1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<16, -1, DITHER_TARGET_BITDEPTH_8>;
-
-#ifdef INTEL_INTRINSICS
-  // no dither, SSE2
-  func_copy[make_tuple(false, 10, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2;
-  func_copy[make_tuple(false, 12, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2;
-  func_copy[make_tuple(false, 14, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2;
-  func_copy[make_tuple(false, 16, -1, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_sse2;
-#endif
 
   // dither, C, dither to 8 bits
   func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_8>;
@@ -1337,6 +1282,82 @@ static void get_convert_uintN_to_float_functions(int bits_per_pixel, bool fulls,
 #undef convert_uintN_to_float_functions
 }
 
+static void get_convert_uintN_to_uintN_functions(int source_bitdepth, int target_bitdepth, bool fulls, bool fulld,
+#ifdef INTEL_INTRINSICS
+  bool sse2, bool sse4, bool avx2,
+#endif
+  BitDepthConvFuncPtr& conv_function, BitDepthConvFuncPtr& conv_function_chroma, BitDepthConvFuncPtr& conv_function_a)
+{
+  // 8-16->8-16 bits support any fulls fulld combination
+  // pure C
+#define convert_uintN_to_uintN_functions(uint_X_t, uint_X_dest_t) \
+      conv_function_a = convert_uint_c<uint_X_t, uint_X_dest_t, false, true, true>; /* full-full */ \
+      if (fulls && fulld) { \
+        conv_function = convert_uint_c<uint_X_t, uint_X_dest_t, false, true, true>; \
+        conv_function_chroma = convert_uint_c<uint_X_t, uint_X_dest_t, true, true, true>; \
+      } \
+      else if (fulls && !fulld) { \
+        conv_function = convert_uint_c<uint_X_t, uint_X_dest_t, false, true, false>; \
+        conv_function_chroma = convert_uint_c<uint_X_t, uint_X_dest_t, true, true, false>; \
+      } \
+      else if (!fulls && fulld) { \
+        conv_function = convert_uint_c<uint_X_t, uint_X_dest_t, false, false, true>; \
+        conv_function_chroma = convert_uint_c<uint_X_t, uint_X_dest_t, true, false, true>; \
+      } \
+      else if (!fulls && !fulld) { \
+        conv_function = convert_uint_c<uint_X_t, uint_X_dest_t, false, false, false>; \
+        conv_function_chroma = convert_uint_c<uint_X_t, uint_X_dest_t, true, false, false>; \
+      }
+
+#ifdef INTEL_INTRINSICS
+#undef convert_uintN_to_uintN_functions
+
+#define convert_uintN_to_uintN_functions(uint_X_t, uint_X_dest_t) \
+      conv_function_a = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, false, true, true> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, true> : convert_uint_c<uint_X_t, uint_X_dest_t, false, true, true>; /* full-full */ \
+      if (fulls && fulld) { \
+        conv_function = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, false, true, true> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, true> : convert_uint_c<uint_X_t, uint_X_dest_t, false, true, true>; \
+        conv_function_chroma = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, true, true, true> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, true> : convert_uint_c<uint_X_t, uint_X_dest_t, true, true, true>; \
+      } \
+      else if (fulls && !fulld) { \
+        conv_function = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, false, true, false> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, false> : convert_uint_c<uint_X_t, uint_X_dest_t, false, true, false>; \
+        conv_function_chroma = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, true, true, false> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, false> : convert_uint_c<uint_X_t, uint_X_dest_t, true, true, false>; \
+      } \
+      else if (!fulls && fulld) { \
+        conv_function = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, false, false, true> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, true> : convert_uint_c<uint_X_t, uint_X_dest_t, false, false, true>; \
+        conv_function_chroma = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, true, false, true> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, true> : convert_uint_c<uint_X_t, uint_X_dest_t, true, false, true>; \
+      } \
+      else if (!fulls && !fulld) { \
+        conv_function = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, false, false, false> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, false> : convert_uint_c<uint_X_t, uint_X_dest_t, false, false, false>; \
+        conv_function_chroma = avx2 ? convert_uint_avx2<uint_X_t, uint_X_dest_t, true, false, false> : sse4 ? convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, false> : convert_uint_c<uint_X_t, uint_X_dest_t, true, false, false>; \
+      }
+#endif
+
+   // all variations of fulls fulld byte/word source/target
+  switch (target_bitdepth)
+  {
+  case 8:
+    if (source_bitdepth == 8) {
+      convert_uintN_to_uintN_functions(uint8_t, uint8_t);
+    }
+    else {
+      convert_uintN_to_uintN_functions(uint16_t, uint8_t);
+    }
+    break;
+  default:
+    // 10-16 bits
+    if (source_bitdepth == 8)
+    {
+      convert_uintN_to_uintN_functions(uint8_t, uint16_t);
+    }
+    else {
+      convert_uintN_to_uintN_functions(uint16_t, uint16_t);
+    }
+    break;
+  }
+
+#undef convert_uintN_to_uintN_functions
+}
+
 ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, 
   int _ColorRange_src, int _ColorRange_dest,
   int _dither_bitdepth, IScriptEnvironment* env) :
@@ -1358,10 +1379,7 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
 #endif
 
   BitDepthConvFuncPtr conv_function_full_scale;
-  BitDepthConvFuncPtr conv_function_full_scale_no_dither;
   BitDepthConvFuncPtr conv_function_shifted_scale;
-
-  conv_function_chroma = nullptr; // used only for 32bit float
 
   // full or limited decision
   // dest: if undefined, use src
@@ -1371,13 +1389,6 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   //
   fulls = _ColorRange_src == ColorRange_e::AVS_RANGE_FULL;
   fulld = _ColorRange_dest == ColorRange_e::AVS_RANGE_FULL;
-
-  // check some limitations of Avisynth bit depth converter
-
-  // 3.7.1 t25: this case is covered with float32 bit intermediate in Create
-  // so we cannot reach here. Kept here for memo, until direct way is implemented
-  if (fulls != fulld && target_bitdepth != 32 && bits_per_pixel != 32)
-     env->ThrowError("ConvertBits: fulls must be the same as fulld for non 32bit target and source");
 
   // ConvertToFloat
   if (target_bitdepth == 32) {
@@ -1414,7 +1425,6 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   }
   // ConvertToFloat end
 
-
   // ConvertTo16bit() (10, 12, 14, 16)
   // Conversion to uint16_t targets
   // planar YUV(A) and RGB(A):
@@ -1431,97 +1441,34 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
       if (!truerange)
         target_bitdepth = 16;
 
-      conv_function_full_scale = 
+      // 8->10+ bits: do dither for sure
 #ifdef INTEL_INTRINSICS
-        sse2 ? convert_rgb_8_to_uint16_sse2 :
+      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
+#else
+      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
 #endif
-        convert_rgb_8_to_uint16_c;
-      
-      conv_function_shifted_scale = 
-#ifdef INTEL_INTRINSICS
-        sse2 ? convert_8_to_uint16_sse2 :
-#endif
-        convert_8_to_uint16_c;
-
-      if (fulls)
-        conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
-      else
-        conv_function = conv_function_shifted_scale; // yuv default
-
-      conv_function_a = conv_function_full_scale; // alpha copy is the same full scale
     }
     else if (pixelsize == 2)
     {
       // 10-16->10-16
       if (truerange)
       {
-
-        // full_scale is used for alpha plane always (keep max opacity 255, 1023, 4095, 16383, 65535)
-
-        // fill conv_function_full_scale and conv_function_shifted_scale
-        // first get full_scale converter functions, normal and optional dithered
-        if (bits_per_pixel >= target_bitdepth) // reduce range or dither down keeping bit-depth format
+        // get basic non-dithered versions
+        if (bits_per_pixel != target_bitdepth || fulls != fulld || dither_mode >= 0)
         {
-          conv_function_full_scale = nullptr; // BitBlt in GetFrame
-          if (bits_per_pixel != target_bitdepth) {
-            conv_function_full_scale = 
 #ifdef INTEL_INTRINSICS
-              sse4 ? convert_rgb_uint16_to_uint16_sse41 : 
-              sse2 ? convert_rgb_uint16_to_uint16_sse2 : 
+          get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
+#else
+          get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
 #endif
-              convert_rgb_uint16_to_uint16_c;
+          if (bits_per_pixel >= target_bitdepth && dither_mode >= 0) { // reduce range or dither down keeping bit-depth format
+            conv_function = get_convert_to_16_16_down_dither_function(fulls, bits_per_pixel, target_bitdepth, dither_mode, dither_bitdepth, 1/*rgb_step n/a*/, 0 /*cpu none*/);
+            conv_function_chroma = nullptr; // fixme: no mixed fulls/fulld scale exists, and no special chroma handling :(
           }
-          conv_function_full_scale_no_dither = conv_function_full_scale; // save ditherless, used for possible alpha
-
-          if (dither_mode >= 0) {
-            conv_function_full_scale = get_convert_to_16_16_down_dither_function(true /*full scale*/, bits_per_pixel, target_bitdepth, dither_mode, dither_bitdepth, 1/*rgb_step n/a*/, 0 /*cpu none*/);
-          }
-        }
-        else {// expand
-          // no dither here
-          conv_function_full_scale =
-#ifdef INTEL_INTRINSICS
-            sse4 ? convert_rgb_uint16_to_uint16_sse41 :
-            sse2 ? convert_rgb_uint16_to_uint16_sse2 :
-#endif
-            convert_rgb_uint16_to_uint16_c;
-          conv_function_full_scale_no_dither = conv_function_full_scale; // save ditherless, used for possible alpha
-        }
-
-        // fill shift_range converter functions
-        if (dither_mode < 0 || bits_per_pixel < target_bitdepth) {
-          // convert down or up, no dither
-          conv_function_shifted_scale = 
-#ifdef INTEL_INTRINSICS
-            avx2 ? convert_uint16_to_uint16_c_avx2 :
-            avx ? convert_uint16_to_uint16_c_avx : 
-            sse2 ? convert_uint16_to_uint16_sse2 : 
-#endif
-            convert_uint16_to_uint16_c;
-        }
-        else {
-          // convert down, dither
-          conv_function_shifted_scale = get_convert_to_16_16_down_dither_function(false /*not full scale*/, bits_per_pixel, target_bitdepth, dither_mode, dither_bitdepth, 1/*rgb_step n/a*/, 0 /*cpu none*/);
         }
       }
       else {
         // no conversion for truerange == false
-      }
-
-      // 10/12/14 -> 16 bit or 16 bit -> 10/12/14 bit
-      // range reducing or expansion (truerange=true), or just overriding the pixel_type, keeping scale at 16 bits
-      // 10-16 -> 10->16 truerange == false already handled
-      if (truerange) {
-        if (fulls)
-          conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
-        else
-          conv_function = conv_function_shifted_scale; // yuv default
-
-        conv_function_a = conv_function_full_scale_no_dither; // alpha copy is always full scale w/o dithering
-      }
-      else { // truerange==false
-             // 10->12 .. 16->12 etc
-             // only vi bit_depth format override
         format_change_only = true;
       }
     }
@@ -1574,10 +1521,19 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
 
   // ConvertTo8bit()
   if (target_bitdepth == 8) {
-    if (pixelsize == 2) // 16(,14,12,10)->8 bit
+    if (pixelsize == 1) {
+      // 8->8 bits: do dither for sure
+      // fixme: really?? lower dither_bits?
+#ifdef INTEL_INTRINSICS
+      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
+#else
+      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
+#endif
+    }
+    else if (pixelsize == 2) // 16(,14,12,10)->8 bit
     {
       // it gets complicated, so we better using tuples for function lookup
-      // parameters for full scale: source bitdepth, dither_type (-1:none, 0:ordered), target_dither_bitdepth(default 8, 2,4,6), rgb_step(3 for RGB48, 4 for RGB64, 1 for all planars)
+      // parameters for full scale: source bitdepth, dither_type (0:ordered 1:floyc), target_dither_bitdepth(default 8, 2,4,6), rgb_step(3 for RGB48, 4 for RGB64, 1 for all planars)
       // rgb_step can differ from 1 only when source bits_per_pixel==16 and packed RGB type
       // target_dither_bitdepth==8 (RFU for dithering down from e.g. 10->2 bit)
 
@@ -1590,34 +1546,41 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
         cpuType = CPUF_SSE2;
 #endif
 
-      // fill conv_function_full_scale and conv_function_shifted_scale
-      // conv_function_full_scale_no_dither: for alpha plane
-      if (truerange) {
+      if (!truerange)
+        bits_per_pixel = 16;
+
+      // get basic non-dithered versions
+#ifdef INTEL_INTRINSICS
+      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
+#else
+      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
+#endif
+
+      if (dither_mode >= 0) {
+        conv_function_chroma = nullptr; // fixme: no mixed fulls/fulld scale exists, and no special chroma handling :( make it 'full'-friendly like at regular conversions
+
+        // fill conv_function_full_scale and conv_function_shifted_scale
+        // conv_function_full_scale_no_dither: for alpha plane
         conv_function_full_scale = get_convert_to_8_function(true, bits_per_pixel, dither_mode, dither_bitdepth, 1, cpuType);
-        conv_function_full_scale_no_dither = get_convert_to_8_function(true, bits_per_pixel, -1, dither_bitdepth /* n/a */, 1, cpuType); // force dither_mode==-1
         conv_function_shifted_scale = get_convert_to_8_function(false, bits_per_pixel, dither_mode, dither_bitdepth, 1, cpuType);
+
+        // FIXME: Check it below, really do we have a special case because of these old formats?
+        // For Floyd we convert them to PlanarRGB, maybe we should act for ordered dither as well.
+        // // Until then, we support them.
+        // override for RGB48 and 64 (internal rgb_step may differ when dithering is used
+        if (vi.IsRGB48()) { // packed RGB: specify rgb_step 3 or 4 for dither table access
+          conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, dither_bitdepth, 3, cpuType);
+        }
+        else if (vi.IsRGB64()) {
+          conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, dither_bitdepth, 4, cpuType);
+        }
+
+        // packed RGB scaling is full_scale 0..65535->0..255
+        if (fulls)
+          conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
+        else
+          conv_function = conv_function_shifted_scale; // yuv default
       }
-      else {
-        conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, dither_bitdepth, 1, cpuType);
-        conv_function_full_scale_no_dither = get_convert_to_8_function(true, 16, -1, dither_bitdepth /* n/a */, 1, cpuType);
-        conv_function_shifted_scale = get_convert_to_8_function(false, 16, dither_mode, dither_bitdepth, 1, cpuType);
-      }
-
-      // override for RGB48 and 64 (internal rgb_step may differ when dithering is used
-      if(vi.IsRGB48()) { // packed RGB: specify rgb_step 3 or 4 for dither table access
-        conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, dither_bitdepth, 3, cpuType);
-      } else if(vi.IsRGB64()) {
-        conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, dither_bitdepth, 4, cpuType);
-      }
-
-      // packed RGB scaling is full_scale 0..65535->0..255
-      if (fulls)
-        conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
-      else
-        conv_function = conv_function_shifted_scale; // yuv default
-
-      conv_function_a = conv_function_full_scale_no_dither; // alpha copy is the same full scale, w/o dithering
-
     }
     else if (vi.ComponentSize() == 4) // 32->8 bit, no dithering option atm
     {
@@ -1791,7 +1754,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
       env->ThrowError("ConvertBits: Floyd-S: dither_bits must be 0..8, 10, 12, 14, 16");
   }
 
-  // no change -> return unmodified if no dithering required, or dither bitdepth is the same as target
+  // no change -> return unmodified if no transform required
   if (source_bitdepth == target_bitdepth) { // 10->10 .. 16->16
     if((dither_type < 0 || dither_bitdepth == target_bitdepth) && fulls == fulld)
       return clip;
@@ -1842,7 +1805,8 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   }
 
   // 3.7.1 t25: this case is covered with float32 bit intermediate
-  if (fulls != fulld && target_bitdepth < 32 && source_bitdepth < 32) {
+  // 3.7.1 t26: only dither option + different fulls-fulld was left behind to do FIXME
+  if (fulls != fulld && target_bitdepth < 32 && source_bitdepth < 32 && dither_type>=0) {
     // Convert to float
 
     // c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
@@ -1853,7 +1817,6 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     source_bitdepth = 16;
     // and now the source range becomes the previous target
     fulls = fulld;
-    ColorRange_src = ColorRange_dest;
 
     // Convert back to integer
     AVSValue new_args2[7] = { clip, target_bitdepth, true, dither_type, dither_bitdepth /*dither_bits*/, fulls, fulld };
@@ -1911,7 +1874,7 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
       else {
         const bool chroma = (plane == PLANAR_U || plane == PLANAR_V);
         if (chroma && conv_function_chroma != nullptr)
-          // 32bit float needs separate conversion (chroma -0.5 .. 0.5 option)
+          // 32bit float and 8-16 when full-range involved needs separate signed-aware conversion
           conv_function_chroma(src->GetReadPtr(plane), dst->GetWritePtr(plane),
             src->GetRowSize(plane), src->GetHeight(plane),
             src->GetPitch(plane), dst->GetPitch(plane),

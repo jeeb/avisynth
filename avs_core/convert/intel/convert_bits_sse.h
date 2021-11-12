@@ -40,8 +40,6 @@
 template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
 void convert_rgb_uint16_to_8_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
-void convert_uint16_to_8_sse2(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
 template<uint8_t sourcebits, uint8_t TARGET_DITHER_BITDEPTH>
 void convert_uint16_to_8_dither_sse2(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
@@ -51,14 +49,10 @@ __attribute__((__target__("sse4.1")))
 #endif
 void convert_32_to_uintN_sse41(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
-void convert_rgb_8_to_uint16_sse2(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-void convert_8_to_uint16_sse2(const BYTE* srcp, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-void convert_rgb_uint16_to_uint16_sse2(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-void convert_rgb_uint16_to_uint16_sse41(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-void convert_uint16_to_uint16_sse2(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
+void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 
 #endif  // __Convert_bits_sse_H__

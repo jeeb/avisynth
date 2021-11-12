@@ -214,11 +214,6 @@ void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 
 // Instantiate them
 //<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-// no dither
-template void convert_rgb_uint16_to_8_sse2<10, -1, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<12, -1, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<14, -1, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<16, -1, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 // dither, src 10
 template void convert_rgb_uint16_to_8_sse2<10, 0, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 template void convert_rgb_uint16_to_8_sse2<10, 0, 6, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
@@ -236,43 +231,6 @@ template void convert_rgb_uint16_to_8_sse2<16, 0, 8, 1>(const BYTE* srcp, BYTE* 
 // packed rgb src 16
 template void convert_rgb_uint16_to_8_sse2<16, 0, 8, 3>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
 template void convert_rgb_uint16_to_8_sse2<16, 0, 8, 4>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-
-
-
-void convert_uint16_to_8_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-  int wmod16 = (src_width / 16) * 16;
-
-  const int source_bitdepth_m8 = source_bitdepth - 8;
-  const int round = 1 << (source_bitdepth_m8 - 1);
-  const __m128i round_simd = _mm_set1_epi16(round);
-
-
-  // no dithering, no range conversion, simply shift
-  for (int y = 0; y < src_height; y++)
-  {
-    for (int x = 0; x < src_width; x += 16)
-    {
-      __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-      __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8));
-      src_lo = _mm_srli_epi16(_mm_adds_epu16(src_lo, round_simd), source_bitdepth_m8);
-      src_hi = _mm_srli_epi16(_mm_adds_epu16(src_hi, round_simd), source_bitdepth_m8);
-      __m128i dst = _mm_packus_epi16(src_lo, src_hi);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), dst);
-    }
-    // rest
-    for (int x = wmod16; x < src_width; x++)
-    {
-      dstp[x] = (srcp[x] + round) >> source_bitdepth_m8;
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
 
 
 #ifdef _MSC_VER
@@ -540,297 +498,298 @@ DEF_convert_32_to_uintN_functions(uint16_t)
 
 #undef DEF_convert_32_to_uintN_functions
 
-
-// rgb/alpha: full scale. No bit shift, scale full ranges
-void convert_rgb_8_to_uint16_sse2(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  const uint8_t* srcp = reinterpret_cast<const uint8_t*>(srcp8);
-  uint16_t* dstp = reinterpret_cast<uint16_t*>(dstp8);
-
-  src_pitch = src_pitch / sizeof(uint8_t);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-
-  int src_width = src_rowsize / sizeof(uint8_t);
-  int wmod16 = (src_width / 16) * 16;
-
-  if (target_bitdepth == 16) {
-    // special case * 65535 / 255 = *257
-    __m128i zero = _mm_setzero_si128();
-    __m128i multiplier = _mm_set1_epi16(257);
-
-    for (int y = 0; y < src_height; y++)
-    {
-      for (int x = 0; x < src_width; x += 16)
-      {
-        __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 16* uint8
-        __m128i src_lo = _mm_unpacklo_epi8(src, zero);             // 8* uint16
-        __m128i src_hi = _mm_unpackhi_epi8(src, zero);             // 8* uint16
-          // *257 mullo is faster than x*257 = (x<<8 + x) add/or solution (i7)
-        __m128i res_lo = _mm_mullo_epi16(src_lo, multiplier); // lower 16 bit of multiplication is enough
-        __m128i res_hi = _mm_mullo_epi16(src_hi, multiplier);
-        // dstp[x] = srcp[x] * 257; // RGB: full range 0..255 <-> 0..65535 (257 = 65535 / 255)
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), res_lo);
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x + 8), res_hi);
-      } // for x
-      // rest
-      for (int x = wmod16; x < src_width; x++)
-      {
-        dstp[x] = (uint16_t)(srcp[x] * 257);
-      }
-      dstp += dst_pitch;
-      srcp += src_pitch;
-    } // for y
-  }
-  else {
-    // target < 16 bits
-    const int MUL = (1 << target_bitdepth) - 1;
-    const int DIV = 255;
-    // for others: // *16383 *4095 *1023  and /255
-
-    __m128i zero = _mm_setzero_si128();
-    const float mul_factor = (float)MUL / DIV;
-    __m128 multiplier_float = _mm_set1_ps(mul_factor);
-    const auto half = _mm_set1_ps(0.5f);
-
-    for (int y = 0; y < src_height; y++)
-    {
-      for (int x = 0; x < src_width; x += 16)
-      {
-        __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 16* uint8
-        __m128i src_lo = _mm_unpacklo_epi8(src, zero);             // 8* uint16
-        __m128i src_hi = _mm_unpackhi_epi8(src, zero);             // 8* uint16
-        // src_lo: 8*uint16
-        // convert to int32 then float, multiply and convert back
-        __m128 res_lo = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpacklo_epi16(src_lo, zero)), multiplier_float);
-        __m128 res_hi = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpackhi_epi16(src_lo, zero)), multiplier_float);
-        // Converts the four single-precision, floating-point values of a to signed 32-bit integer values.
-        __m128i result_l = _mm_cvttps_epi32(_mm_add_ps(res_lo, half));
-        __m128i result_h = _mm_cvttps_epi32(_mm_add_ps(res_hi, half));
-        // Pack and store no need for packus for <= 14 bit
-        __m128i result = _mm_packs_epi32(result_l, result_h); // 4*32+4*32 = 8*16
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
-
-        // src_hi: 8*uint16
-        // convert to int32 then float, multiply and convert back
-        res_lo = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpacklo_epi16(src_hi, zero)), multiplier_float);
-        res_hi = _mm_mul_ps(_mm_cvtepi32_ps(_mm_unpackhi_epi16(src_hi, zero)), multiplier_float);
-        // Converts the four single-precision, floating-point values of a to signed 32-bit integer values.
-        result_l = _mm_cvttps_epi32(_mm_add_ps(res_lo, half));
-        result_h = _mm_cvttps_epi32(_mm_add_ps(res_hi, half));
-        // Pack and store no need for packus for <= 14 bit
-        result = _mm_packs_epi32(result_l, result_h); // 4*32+4*32 = 8*16
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x + 8), result);
-      } // for x
-      // rest
-      for (int x = wmod16; x < src_width; x++)
-      {
-        dstp[x] = (uint16_t)(srcp[x] * mul_factor + 0.5f); // RGB: full range 0..255 <-> 0..16384-1
-      }
-      dstp += dst_pitch;
-      srcp += src_pitch;
-    } // for y
-  }
-}
-
-
-// YUV: bit shift 8 to 10-12-14-16 bits
-void convert_8_to_uint16_sse2(const BYTE *srcp, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-
-  int src_width = src_rowsize / sizeof(uint8_t);
-  int wmod16 = (src_width / 16) * 16;
-
-  __m128i zero = _mm_setzero_si128();
-  const int shift_bits = target_bitdepth - 8;
-
-  for(int y=0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x+=16)
-    {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 16 bytes
-      __m128i dst_lo = _mm_unpacklo_epi8(src, zero);
-      __m128i dst_hi = _mm_unpackhi_epi8(src, zero);
-      dst_lo = _mm_slli_epi16(dst_lo, shift_bits);
-      dst_hi = _mm_slli_epi16(dst_hi, shift_bits);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), dst_lo);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x + 8), dst_hi);
-    }
-    // rest
-    for (int x = wmod16; x < src_width; x++)
-    {
-      dstp[x] = srcp[x] << shift_bits;
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-
-// RGB full range: 10-12-14-16 <=> 10-12-14-16 bits
-void convert_rgb_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-  int wmod = (src_width / 8) * 8;
-
-  const int source_max = (1 << source_bitdepth) - 1;
-  const int target_max = (1 << target_bitdepth) - 1;
-
-  const float factor1 = (float)target_max / source_max;
-  __m128 factor = _mm_set1_ps(factor1);
-  __m128i max_pixel_value = _mm_set1_epi16(target_max);
-  __m128i zero = _mm_setzero_si128();
-
-  for(int y=0; y<src_height; y++)
-  {
-    for (int x = 0; x < src_width; x+=8)
-    {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-
-      __m128i src_lo = _mm_unpacklo_epi16(src, zero);
-      __m128i src_hi = _mm_unpackhi_epi16(src, zero);
-
-      __m128 result_lo = _mm_mul_ps(_mm_cvtepi32_ps(src_lo), factor);
-      __m128 result_hi = _mm_mul_ps(_mm_cvtepi32_ps(src_hi), factor);
-
-      __m128i result;
-      result = _MM_PACKUS_EPI32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
-      result = _MM_MIN_EPU16(result, max_pixel_value);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
-    }
-
-    // rest
-    for (int x = wmod; x < src_width; x++)
-    {
-      dstp[x] = (uint16_t)std::min((int)((float)srcp[x] * factor1 + 0.5f), target_max);
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-
-// YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
-// shift right or left, depending on expandrange template param
-
+// YUV: bit shift 8-16 <=> 8-16 bits
+// shift right or left, depending on expandrange
+template<typename pixel_t_s, typename pixel_t_d>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-void convert_rgb_uint16_to_uint16_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+static void convert_uint_limited_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
 {
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-  int wmod = (src_width / 8) * 8;
+  const pixel_t_s* srcp0 = reinterpret_cast<const pixel_t_s*>(srcp);
+  pixel_t_d* dstp0 = reinterpret_cast<pixel_t_d*>(dstp);
 
-  const int source_max = (1 << source_bitdepth) - 1;
-  const int target_max = (1 << target_bitdepth) - 1;
+  src_pitch = src_pitch / sizeof(pixel_t_s);
+  dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
-  const float factor1 = (float)target_max / source_max;
-
-  __m128 factor = _mm_set1_ps(factor1);
-#pragma warning(push)
-#pragma warning(disable: 4309)
-  __m128i max_pixel_value = _mm_set1_epi16(target_max);
-#pragma warning(pop)
-  __m128i zero = _mm_setzero_si128();
-
-  for (int y = 0; y < src_height; y++)
-  {
-    for (int x = 0; x < src_width; x += 8)
-    {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-
-      __m128i src_lo = _mm_unpacklo_epi16(src, zero);
-      __m128i src_hi = _mm_unpackhi_epi16(src, zero);
-
-      __m128 result_lo = _mm_mul_ps(_mm_cvtepi32_ps(src_lo), factor);
-      __m128 result_hi = _mm_mul_ps(_mm_cvtepi32_ps(src_hi), factor);
-
-      __m128i result;
-      result = _mm_packus_epi32(_mm_cvtps_epi32(result_lo), _mm_cvtps_epi32(result_hi));
-
-      result = _mm_min_epu16(result, max_pixel_value);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
-    }
-    // rest
-    for (int x = wmod; x < src_width; x++)
-    {
-      dstp[x] = (uint16_t)std::min((int)((float)srcp[x] * factor1 + 0.5f), target_max);;
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-void convert_uint16_to_uint16_sse2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
+  const int src_width = src_rowsize / sizeof(pixel_t_s);
   int wmod = (src_width / 16) * 16;
 
-  if (target_bitdepth > source_bitdepth) // expandrange
+  if (target_bitdepth > source_bitdepth) // expandrange. pixel_t_d is always uint16_t
   {
     const int shift_bits = target_bitdepth - source_bitdepth;
     __m128i shift = _mm_set_epi32(0, 0, 0, shift_bits);
-
-    // no dithering, no range conversion, simply shift
     for (int y = 0; y < src_height; y++)
     {
       for (int x = 0; x < src_width; x += 16)
       {
-        __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-        __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8)); // 8* uint16
+        __m128i src_lo, src_hi;
+        if constexpr (sizeof(pixel_t_s) == 1) {
+          auto src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x)); // 16* uint8
+          src_lo = _mm_cvtepu8_epi16(src);                       // 8* uint16
+          src_hi = _mm_unpackhi_epi8(src, _mm_setzero_si128());  // 8* uint16
+        }
+        else {
+          src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x)); // 8* uint_16
+          src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x + 8)); // 8* uint_16
+        }
         src_lo = _mm_sll_epi16(src_lo, shift);
         src_hi = _mm_sll_epi16(src_hi, shift);
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), src_lo);
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x + 8), src_hi);
+        if constexpr (sizeof(pixel_t_d) == 1) {
+          // upconvert always to 2 bytes
+          assert(0);
+        }
+        else {
+          _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x), src_lo);
+          _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x + 8), src_hi);
+        }
       }
       // rest
-      for (int x = wmod; x < src_width; x++)
-      {
-        dstp[x] = srcp[x] << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
+      for (int x = wmod; x < src_width; x++) {
+        dstp0[x] = (pixel_t_d)(srcp0[x]) << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
       }
-      dstp += dst_pitch;
-      srcp += src_pitch;
+      dstp0 += dst_pitch;
+      srcp0 += src_pitch;
     }
   }
-  else {
+  else
+  {
     // reduce range
     const int shift_bits = source_bitdepth - target_bitdepth;
-    __m128i shift = _mm_set_epi32(0, 0, 0, shift_bits);
     const int round = 1 << (shift_bits - 1);
+    __m128i shift = _mm_set_epi32(0, 0, 0, shift_bits);
     const auto round_simd = _mm_set1_epi16(round);
-    // no dithering, no range conversion, simply shift
+
     for (int y = 0; y < src_height; y++)
     {
       for (int x = 0; x < src_width; x += 16)
       {
-        __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-        __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8)); // 8* uint16
+        if constexpr (sizeof(pixel_t_s) == 1)
+          assert(0);
+        // downconvert always from 2 bytes
+        auto src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x)); // 8* uint_16
+        auto src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x + 8)); // 8* uint_16
         src_lo = _mm_srl_epi16(_mm_adds_epu16(src_lo, round_simd), shift);
         src_hi = _mm_srl_epi16(_mm_adds_epu16(src_hi, round_simd), shift);
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), src_lo);
-        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x + 8), src_hi);
+        if constexpr (sizeof(pixel_t_d) == 1) {
+          // to 8 bits
+          auto dst = _mm_packus_epi16(src_lo, src_hi);
+          _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x), dst);
+        }
+        else {
+          _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x), src_lo);
+          _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x + 8), src_hi);
+        }
       }
       // rest
-      for (int x = wmod; x < src_width; x++)
-      {
-        dstp[x] = (srcp[x] + round) >> shift_bits;  // reduce range
+      for (int x = wmod; x < src_width; x++) {
+        dstp0[x] = (srcp0[x] + round) >> shift_bits;  // reduce range
       }
-      dstp += dst_pitch;
-      srcp += src_pitch;
+      dstp0 += dst_pitch;
+      srcp0 += src_pitch;
     }
   }
 }
+
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
+void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+{
+  // limited to limited is bitshift, see in other function
+  if constexpr (!fulls && !fulld) {
+    convert_uint_limited_sse41< pixel_t_s, pixel_t_d>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth);
+    return;
+  }
+
+  const pixel_t_s* srcp0 = reinterpret_cast<const pixel_t_s*>(srcp);
+  pixel_t_d* dstp0 = reinterpret_cast<pixel_t_d*>(dstp);
+
+  src_pitch = src_pitch / sizeof(pixel_t_s);
+  dst_pitch = dst_pitch / sizeof(pixel_t_d);
+
+  int src_width = src_rowsize / sizeof(pixel_t_s);
+  int wmod16 = (src_width / 16) * 16;
+
+  if constexpr (sizeof(pixel_t_s) == 1 && sizeof(pixel_t_d) == 2) {
+    if (fulls && fulld && !chroma && source_bitdepth == 8 && target_bitdepth == 16) {
+      // special case 8->16 bit full scale: * 65535 / 255 = *257
+      __m128i zero = _mm_setzero_si128();
+      __m128i multiplier = _mm_set1_epi16(257);
+
+      for (int y = 0; y < src_height; y++)
+      {
+        for (int x = 0; x < src_width; x += 16)
+        {
+          __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x)); // 16* uint8
+          __m128i src_lo = _mm_unpacklo_epi8(src, zero);             // 8* uint16
+          __m128i src_hi = _mm_unpackhi_epi8(src, zero);             // 8* uint16
+            // *257 mullo is faster than x*257 = (x<<8 + x) add/or solution (i7)
+          __m128i res_lo = _mm_mullo_epi16(src_lo, multiplier); // lower 16 bit of multiplication is enough
+          __m128i res_hi = _mm_mullo_epi16(src_hi, multiplier);
+          // dstp[x] = srcp0[x] * 257; // RGB: full range 0..255 <-> 0..65535 (257 = 65535 / 255)
+          _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x), res_lo);
+          _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x + 8), res_hi);
+        } // for x
+        // rest
+        for (int x = wmod16; x < src_width; x++)
+        {
+          dstp0[x] = (pixel_t_d)(srcp0[x] * 257);
+        }
+        dstp0 += dst_pitch;
+        srcp0 += src_pitch;
+      } // for y
+      return;
+    }
+  }
+
+  const int target_max = (1 << target_bitdepth) - 1;
+
+  float mul_factor;
+  int src_offset, dst_offset;
+
+  if constexpr (chroma) {
+    // chroma: go into signed world, factor, then go back to biased range
+    src_offset = 1 << (source_bitdepth - 1); // chroma center of source
+    dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
+    mul_factor =
+      fulls && fulld ? (float)(dst_offset - 1) / (src_offset - 1) :
+      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-127 ==> +-112 (240-16)/2
+      /*fulld*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-112 (240-16)/2 ==> +-127
+  }
+  else {
+    // luma/limited: subtract offset, convert, add offset
+    src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
+    dst_offset = fulld ? 0 : 16 << (target_bitdepth - 8); // // full/limited range low limit
+    const int source_max = (1 << source_bitdepth) - 1;
+    mul_factor =
+      fulls && fulld ? (float)target_max / source_max :
+      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 0..255 ==> 16-235 (219)
+      /*fulld*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 16-235 ==> 0..255
+  }
+
+  auto vect_mul_factor = _mm_set1_ps(mul_factor);
+  auto vect_src_offset = _mm_set1_epi32(src_offset);
+  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto vect_dst_offset_plus_round = _mm_set1_ps(dst_offset_plus_round);
+
+  auto vect_target_max = _mm_set1_epi16(target_max);
+  constexpr auto target_min = chroma && fulld ? 1 : 0;
+  auto vect_target_min = _mm_set1_epi32(target_min); // chroma-only. 0 is not valid in full case. We leave limited as is.
+
+  auto zero = _mm_setzero_si128();
+
+  for (int y = 0; y < src_height; y++)
+  {
+    for (int x = 0; x < src_width; x += 16)
+    {
+      __m128i src_lo, src_hi;
+      if constexpr (sizeof(pixel_t_s) == 1) {
+        auto src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x)); // 16* uint8
+        src_lo = _mm_cvtepu8_epi16(src);                   // 8* uint16
+        src_hi = _mm_unpackhi_epi8(src, zero);             // 8* uint16
+      }
+      else {
+        src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x)); // 8* uint_16
+        src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp0 + x + 8)); // 8* uint_16
+      }
+
+      __m128i result1, result2;
+      {
+        // src: 8*uint16
+        // convert to int32, bias, to float
+        auto res_lo_i = _mm_cvtepu16_epi32(src_lo);
+        auto res_hi_i = _mm_unpackhi_epi16(src_lo, zero);
+        if constexpr (chroma || !fulls) {
+          // src_offset is not zero
+          res_lo_i = _mm_sub_epi32(res_lo_i, vect_src_offset);
+          res_hi_i = _mm_sub_epi32(res_hi_i, vect_src_offset);
+        }
+        auto res_lo = _mm_cvtepi32_ps(res_lo_i);
+        auto res_hi = _mm_cvtepi32_ps(res_hi_i);
+        // multiply, bias back+round
+        res_lo = _mm_add_ps(_mm_mul_ps(res_lo, vect_mul_factor), vect_dst_offset_plus_round);
+        res_hi = _mm_add_ps(_mm_mul_ps(res_hi, vect_mul_factor), vect_dst_offset_plus_round);
+        // convert back w/ truncate
+        auto result_l = _mm_cvttps_epi32(res_lo); // no banker's rounding
+        auto result_h = _mm_cvttps_epi32(res_hi);
+        if constexpr (chroma) {
+          result_l = _mm_max_epi32(result_l, vect_target_min);
+          result_h = _mm_max_epi32(result_h, vect_target_min);
+        }
+        // back to 16 bit
+        result1 = _mm_packus_epi32(result_l, result_h); // 8 * 16 bit pixels
+        result1 = _mm_min_epu16(result1, vect_target_max);
+      }
+
+      // byte target: not yet
+      if constexpr (sizeof(pixel_t_d) == 2)
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x), result1);
+
+      {
+        // src: 8*uint16
+        // convert to int32, bias, to float
+        auto res_lo_i = _mm_cvtepu16_epi32(src_hi);
+        auto res_hi_i = _mm_unpackhi_epi16(src_hi, zero);
+        if constexpr (chroma || !fulls) {
+          // src_offset is not zero
+          res_lo_i = _mm_sub_epi32(res_lo_i, vect_src_offset);
+          res_hi_i = _mm_sub_epi32(res_hi_i, vect_src_offset);
+        }
+        auto res_lo = _mm_cvtepi32_ps(res_lo_i);
+        auto res_hi = _mm_cvtepi32_ps(res_hi_i);
+        // multiply, bias back+round
+        res_lo = _mm_add_ps(_mm_mul_ps(res_lo, vect_mul_factor), vect_dst_offset_plus_round);
+        res_hi = _mm_add_ps(_mm_mul_ps(res_hi, vect_mul_factor), vect_dst_offset_plus_round);
+        // convert back w/ truncate
+        auto result_l = _mm_cvttps_epi32(res_lo);
+        auto result_h = _mm_cvttps_epi32(res_hi);
+        if constexpr (chroma) {
+          result_l = _mm_max_epi32(result_l, vect_target_min);
+          result_h = _mm_max_epi32(result_h, vect_target_min);
+        }
+        // back to 16 bit
+        result2 = _mm_packus_epi32(result_l, result_h); // 8 * 16 bit pixels
+        result2 = _mm_min_epu16(result2, vect_target_max);
+      }
+
+      if constexpr (sizeof(pixel_t_d) == 2)
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x + 8), result2);
+      else {
+        // byte target: store both
+        auto result12 = _mm_packus_epi16(result1, result2);
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x), result12);
+      }
+    } // for x
+
+    // rest
+    for (int x = wmod16; x < src_width; x++)
+    {
+      const float val = (srcp0[x] - src_offset) * mul_factor + dst_offset_plus_round;
+      dstp0[x] = clamp((int)val, target_min, target_max);
+    }
+
+    dstp0 += dst_pitch;
+    srcp0 += src_pitch;
+  }
+}
+
+// instantiate them all
+#define convert_uint_sse4_functions(uint_X_t, uint_X_dest_t) \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+
+convert_uint_sse4_functions(uint8_t, uint8_t)
+convert_uint_sse4_functions(uint8_t, uint16_t)
+convert_uint_sse4_functions(uint16_t, uint8_t)
+convert_uint_sse4_functions(uint16_t, uint16_t)
+
+#undef convert_uint_sse4_functions
+
