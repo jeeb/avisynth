@@ -251,7 +251,7 @@ bool do_BuildMatrix_Rgb2Yuv(int _Matrix, int _ColorRange, int int_arith_shift, i
   else if (_Matrix == Matrix_e::AVS_MATRIX_BT2020_CL || _Matrix == Matrix_e::AVS_MATRIX_BT2020_NCL) {
     BuildMatrix_Rgb2Yuv_core(0.2627, /* 0.6780 */ 0.0593, int_arith_shift, is_full, bits_per_pixel, matrix);
   }
-  else if (_Matrix == Matrix_e::AVS_MATRIX_FCC) {
+  else if (_Matrix == Matrix_e::AVS_MATRIX_BT470_M) {
     BuildMatrix_Rgb2Yuv_core(0.3, /* 0.59 */ 0.11, int_arith_shift, is_full, bits_per_pixel, matrix);
   }
   else if (_Matrix == Matrix_e::AVS_MATRIX_ST240_M) {
@@ -292,7 +292,7 @@ bool do_BuildMatrix_Yuv2Rgb(int _Matrix, int _ColorRange, int int_arith_shift, i
   else if (_Matrix == Matrix_e::AVS_MATRIX_BT2020_CL || _Matrix == Matrix_e::AVS_MATRIX_BT2020_NCL) {
     BuildMatrix_Yuv2Rgb_core(0.2627, /* 0.6780 */ 0.0593, int_arith_shift, is_full, bits_per_pixel, matrix);
   }
-  else if (_Matrix == Matrix_e::AVS_MATRIX_FCC) {
+  else if (_Matrix == Matrix_e::AVS_MATRIX_BT470_M) {
     BuildMatrix_Yuv2Rgb_core(0.3, /* 0.59 */ 0.11, int_arith_shift, is_full, bits_per_pixel, matrix);
   }
   else if (_Matrix == Matrix_e::AVS_MATRIX_ST240_M) {

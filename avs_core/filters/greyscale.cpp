@@ -69,19 +69,17 @@ Greyscale::Greyscale(PClip _child, const char* matrix_name, IScriptEnvironment* 
   if (matrix_name && !vi.IsRGB())
     env->ThrowError("GreyScale: invalid \"matrix\" parameter (RGB data only)");
 
-  auto frame0 = _child->GetFrame(0, env);
-  const AVSMap* props = env->getFramePropsRO(frame0);
-  matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
-
   // originally there was no PC range here
   pixelsize = vi.ComponentSize();
   bits_per_pixel = vi.BitsPerComponent();
 
-  const int shift = 15; // internally 15 bits precision, still no overflow in calculations
+  if (vi.IsRGB()) {
+    matrix_parse_merge_with_props(vi, matrix_name, nullptr, theMatrix, theColorRange, env);
+    const int shift = 15; // internally 15 bits precision, still no overflow in calculations
 
-  if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/greyMatrix))
-    env->ThrowError("GreyScale: Unknown matrix.");
-
+    if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/greyMatrix))
+      env->ThrowError("GreyScale: Unknown matrix.");
+  }
   // greyscale does not change color space, rgb remains rgb
   // Leave matrix and range frame properties as is.
 }

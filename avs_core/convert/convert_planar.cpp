@@ -123,9 +123,8 @@ ConvertToY::ConvertToY(PClip src, const char *matrix_name, IScriptEnvironment* e
 
     const int shift = 15; // internally 15 bits precision, still no overflow in calculations
 
-    auto frame0 = child->GetFrame(0, env);
-    const AVSMap* props = env->getFramePropsRO(frame0);
-    matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
+    // no input frame properties for RGB source. FIXME: handle studio range limited rgb?
+    matrix_parse_merge_with_props(vi, matrix_name, nullptr, theMatrix, theColorRange, env);
 
     if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/matrix))
       env->ThrowError("ConvertToY: Unknown matrix.");
@@ -322,9 +321,8 @@ ConvertRGBToYUV444::ConvertRGBToYUV444(PClip src, const char *matrix_name, IScri
   if (!vi.IsRGB())
     env->ThrowError("ConvertRGBToYV24/YUV444: Only RGB data input accepted");
 
-  auto frame0 = child->GetFrame(0, env);
-  const AVSMap* props = env->getFramePropsRO(frame0);
-  matrix_parse_merge_with_props(vi, matrix_name, props, theMatrix, theColorRange, env);
+  // no input frame properties for RGB source. FIXME: handle studio range limited rgb?
+  matrix_parse_merge_with_props(vi, matrix_name, nullptr, theMatrix, theColorRange, env);
 
   const int shift = 15; // internally 15 bits precision, still no overflow in calculations
   int bits_per_pixel = vi.BitsPerComponent();

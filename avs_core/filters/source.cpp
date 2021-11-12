@@ -127,9 +127,9 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, co
   PVideoFrame frame = env->NewVideoFrame(vi);
   // no frame property origin
 
-  // but we set Rec601 (BZ470) if YUV
+  // but we set Rec601 (ST170) if YUV
   auto props = env->getFramePropsRW(frame);
-  int theMatrix = vi.IsRGB() ? Matrix_e::AVS_MATRIX_RGB : Matrix_e::AVS_MATRIX_BT470_BG;
+  int theMatrix = vi.IsRGB() ? Matrix_e::AVS_MATRIX_RGB : Matrix_e::AVS_MATRIX_ST170_M;
   int theColorRange = vi.IsRGB() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
   update_Matrix_and_ColorRange(props, theMatrix, theColorRange, env);
 

@@ -48,7 +48,6 @@
 #include <vector>
 #include <sstream>
 
-//const std::unordered_map<std::string, ColorRange_e> g_range_table{
 const std::vector<std::pair<const char*, ColorRange_e>> g_range_table{
     { "limited", AVS_RANGE_LIMITED },
     { "full",    AVS_RANGE_FULL },
@@ -56,7 +55,6 @@ const std::vector<std::pair<const char*, ColorRange_e>> g_range_table{
     { "f",       AVS_RANGE_FULL },
 };
 
-//const std::unordered_map<std::string, ChromaLocation_e> g_chromaloc_table{
 const std::vector<std::pair<const char*, ChromaLocation_e>> g_chromaloc_table{
     { "left",        AVS_CHROMA_LEFT },
     { "center",      AVS_CHROMA_CENTER },
@@ -73,7 +71,6 @@ const std::vector<std::pair<const char*, ChromaLocation_e>> g_chromaloc_table{
 
 // unlike Avisynth conventions, the strings do not contain hints on full or limited range
 // e.g. PC.709 or Rec709
-//const std::unordered_map<std::string, Matrix_e> g_matrix_table{
 const std::vector<std::pair<const char*, Matrix_e>> g_matrix_table{
     { "rgb",         AVS_MATRIX_RGB },
     { "709",         AVS_MATRIX_BT709 },
@@ -81,7 +78,8 @@ const std::vector<std::pair<const char*, Matrix_e>> g_matrix_table{
     { "170m",        AVS_MATRIX_ST170_M },
     { "240m",        AVS_MATRIX_ST240_M },
     { "470bg",       AVS_MATRIX_BT470_BG },
-    { "fcc",         AVS_MATRIX_FCC },
+    { "fcc",         AVS_MATRIX_BT470_M },
+    { "470m",        AVS_MATRIX_BT470_M }, // as of 20211111 name is an add-on in Avisynth+
     { "ycgco",       AVS_MATRIX_YCGCO },
     { "2020ncl",     AVS_MATRIX_BT2020_NCL },
     { "2020cl",      AVS_MATRIX_BT2020_CL },
@@ -107,8 +105,7 @@ const std::vector<std::pair<const char*, Old_Avs_Matrix_e>> g_old_avs_matrix_tab
     { "pc2020",      AVS_OLD_MATRIX_PC_2020 }
 };
 
-// not used in Avisynth
-//const std::unordered_map<std::string, Transfer_e> g_transfer_table{
+// not used in Avisynth (yet)
 const std::vector<std::pair<const char*, Transfer_e>> g_transfer_table{
     { "709",     AVS_TRANSFER_BT709 },
     { "unspec",  AVS_TRANSFER_UNSPECIFIED },
@@ -127,8 +124,7 @@ const std::vector<std::pair<const char*, Transfer_e>> g_transfer_table{
     { "xvycc",   AVS_TRANSFER_IEC_61966_2_4 },
 };
 
-// not used in Avisynth
-// const std::unordered_map<std::string, Primaries_e> g_primaries_table{
+// not used in Avisynth (yet)
 const std::vector<std::pair<const char*, Primaries_e>> g_primaries_table{
     { "709",       AVS_PRIMARIES_BT709 },
     { "unspec",    AVS_PRIMARIES_UNSPECIFIED },
@@ -223,11 +219,11 @@ static bool getOldMatrix(const char* matrix_name, int &_Matrix, int &_ColorRange
 
   switch (old_matrix_enum) {
   case Old_Avs_Matrix_e::AVS_OLD_MATRIX_Rec601:
-    _Matrix = Matrix_e::AVS_MATRIX_BT470_BG;
+    _Matrix = Matrix_e::AVS_MATRIX_ST170_M;
     _ColorRange = ColorRange_e::AVS_RANGE_LIMITED;
     break;
   case Old_Avs_Matrix_e::AVS_OLD_MATRIX_PC_601:
-    _Matrix = Matrix_e::AVS_MATRIX_BT470_BG;
+    _Matrix = Matrix_e::AVS_MATRIX_ST170_M;
     _ColorRange = ColorRange_e::AVS_RANGE_FULL;
     break;
   case Old_Avs_Matrix_e::AVS_OLD_MATRIX_Rec709:
@@ -269,31 +265,26 @@ static bool is_paramstring_empty_or_auto(const char* param) {
   return !lstrcmpi(param, "auto"); // true is match
 }
 
-// yuv -> rgb: yuv can have
-void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const AVSMap* props, int& _Matrix, int& _ColorRange, IScriptEnvironment* env) {
-  int _Matrix_default = Matrix_e::AVS_MATRIX_BT470_BG; // Rec601
+// called from yuv <-> rgb and to_greyscale converters
+void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const AVSMap* props, int& _Matrix, int& _ColorRange, /*int& _ColorRange_In, */IScriptEnvironment* env) {
+  int _Matrix_default = Matrix_e::AVS_MATRIX_ST170_M; // Rec601 AVS_MATRIX_ST170_M (6-NTSC) and not AVS_MATRIX_BT470_BG (5-PAL)
   int _ColorRange_default = ColorRange_e::AVS_RANGE_LIMITED;
 
+  // if once we'd like to use input colorrange when input is rgb (e.g. studio rgb of ColorBars is limited)
+  int _ColorRange_In = vi.IsRGB() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
+
   if (props) {
+    // theoretically props==nullptr when input is RGB
+    if (env->propNumElements(props, "_ColorRange") > 0) {
+      _ColorRange_In = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
+      if (!vi.IsRGB())
+        _ColorRange_default = _ColorRange_In;
+    }
     if (!vi.IsRGB()) {
-      // do not inherit RGB matrix
       if (env->propNumElements(props, "_Matrix") > 0) {
-        _Matrix_default = env->propGetInt(props, "_Matrix", 0, nullptr); // fixme: range check
-      }
-    }
-    if (!vi.IsRGB()) {
-      // do not inherit RGB range. Avisynth conversions assume full range RGB everywhere
-      if (env->propNumElements(props, "_ColorRange") > 0) {
-        _ColorRange_default = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
-      }
-    }
-    else {
-      // Check if RGB is limited (studio) range. ColorBars can output such frame format
-      if (env->propNumElements(props, "_ColorRange") > 0) {
-        int tmp_ColorRange = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
-        if (tmp_ColorRange == ColorRange_e::AVS_RANGE_LIMITED) {
-          // hmmmm. Do nothing. We should really throw an error if we are serious before a RGB->YUV conversion
-        }
+        auto tmp_matrix = env->propGetInt(props, "_Matrix", 0, nullptr); // fixme: range check
+        if (tmp_matrix != Matrix_e::AVS_MATRIX_UNSPECIFIED)
+          _Matrix_default = tmp_matrix;
       }
     }
   }
@@ -325,6 +316,9 @@ void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const
   if (is_paramstring_empty_or_auto(s_matrix_name) || !getMatrix(s_matrix_name.c_str(), env, _Matrix)) {
     _Matrix = _Matrix_default;
   }
+  if (_Matrix == Matrix_e::AVS_MATRIX_UNSPECIFIED) {
+    _Matrix = _Matrix_default;
+  }
   if (is_paramstring_empty_or_auto(s_color_range_name) || !getColorRange(s_color_range_name.c_str(), env, _ColorRange)) {
     _ColorRange = _ColorRange_default;
   }
@@ -342,7 +336,8 @@ void chromaloc_parse_merge_with_props(VideoInfo& vi, const char* chromaloc_name,
     else {
       // Theoretically RGB and not subsampled formats must not have chroma location
       if (env->propNumElements(props, "_ChromaLocation") > 0) {
-        env->ThrowError("Error: _ChromaLocation property found at a non-subsampled source.");
+        // Uncommented for a while, just ignore when there is any
+        // env->ThrowError("Error: _ChromaLocation property found at a non-subsampled source.");
       }
     }
   }
@@ -356,10 +351,8 @@ void export_frame_props(VideoInfo& vi, AVSMap* props, int _Matrix, int _ColorRan
   // fixme: what to do with the special "AVERAGE" non standard matrix? Solution 1: delete entry
   if (_Matrix == Matrix_e::AVS_MATRIX_AVERAGE)
     env->propDeleteKey(props, "_Matrix");
-  else if (_Matrix < 0 || vi.IsRGB())
+  else if (_Matrix < 0)
     env->propDeleteKey(props, "_Matrix");
-  else if(vi.IsY())
-    env->propSetInt(props, "_Matrix", Matrix_e::AVS_MATRIX_UNSPECIFIED, AVSPropAppendMode::PROPAPPENDMODE_REPLACE);
   else
     env->propSetInt(props, "_Matrix", _Matrix, AVSPropAppendMode::PROPAPPENDMODE_REPLACE);
 

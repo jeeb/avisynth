@@ -38,7 +38,6 @@
 #include <avisynth.h>
 #include <string>
 #include <cstring>
-#include <unordered_map>
 
 typedef enum ColorRange_e {
   AVS_RANGE_FULL = 0,
@@ -61,23 +60,39 @@ typedef enum FieldBased_e {
   AVS_FIELD_TOP = 2
 } FieldBased_e;
 
+// https://www.itu.int/rec/T-REC-H.265-202108-I
+/* ITU-T H.265 Table E.5 */
 typedef enum Matrix_e {
-  AVS_MATRIX_RGB = 0,
-  AVS_MATRIX_BT709 = 1,
-  AVS_MATRIX_UNSPECIFIED = 2,
-  AVS_MATRIX_FCC = 4,
-  AVS_MATRIX_BT470_BG = 5,
+  AVS_MATRIX_RGB = 0, /* The identity matrix. Typically used for RGB, may also be used for XYZ */
+  AVS_MATRIX_BT709 = 1, /* ITU-R Rec. BT.709-5 */
+  AVS_MATRIX_UNSPECIFIED = 2, /* Image characteristics are unknown or are determined by the application */
+  AVS_MATRIX_BT470_M = 4, // instead of AVS_MATRIX_FCC
+  // FCC Title 47 Code of Federal Regulations (2003) 73.682 (a) (20)
+  // Rec. ITU-R BT.470-6 System M (historical)
+  AVS_MATRIX_BT470_BG = 5, /* Equivalent to 6. */
+  // ITU-R Rec. BT.470-6 System B, G (historical)
+  // Rec. ITU-R BT.601-7 625
+  // Rec. ITU-R BT.1358-0 625 (historical)
+  // Rec. ITU-R BT.1700-0 625 PAL and 625 SECAM
   AVS_MATRIX_ST170_M = 6,  /* Equivalent to 5. */
-  AVS_MATRIX_ST240_M = 7,
+  // Rec. ITU-R BT.601-7 525
+  // Rec. ITU-R BT.1358-1 525 or 625 (historical)
+  // Rec. ITU-R BT.1700-0 NTSC
+  // SMPTE ST 170 (2004)
+  // SMPTE 170M (2004)
+  AVS_MATRIX_ST240_M = 7, // SMPTE ST 240 (1999, historical)
   AVS_MATRIX_YCGCO = 8,
-  AVS_MATRIX_BT2020_NCL = 9,
-  AVS_MATRIX_BT2020_CL = 10,
-  AVS_MATRIX_CHROMATICITY_DERIVED_NCL = 12,
-  AVS_MATRIX_CHROMATICITY_DERIVED_CL = 13,
-  AVS_MATRIX_ICTCP = 14, // REC_2100_ICTCP
-  AVS_MATRIX_AVERAGE = 9999, // compatibility
+  AVS_MATRIX_BT2020_NCL = 9, 
+  // Rec. ITU-R BT.2020 non-constant luminance system
+  // Rec. ITU-R BT.2100-2 Y'CbCr
+  AVS_MATRIX_BT2020_CL = 10, /* Rec. ITU-R BT.2020 constant luminance system */
+  AVS_MATRIX_CHROMATICITY_DERIVED_NCL = 12, /* Chromaticity derived non-constant luminance system */
+  AVS_MATRIX_CHROMATICITY_DERIVED_CL = 13, /* Chromaticity derived constant luminance system */
+  AVS_MATRIX_ICTCP = 14, // REC_2100_ICTCP, Rec. ITU-R BT.2100-2 ICTCP
+  AVS_MATRIX_AVERAGE = 9999, // Avisynth compatibility
 } Matrix_e;
 
+// Pre-Avisynth 3.7.1 matrix constants, with implicite PC/limited range
 typedef enum Old_Avs_Matrix_e {
   AVS_OLD_MATRIX_Rec601 = 0, 
   AVS_OLD_MATRIX_Rec709 = 1,
@@ -88,7 +103,7 @@ typedef enum Old_Avs_Matrix_e {
   AVS_OLD_MATRIX_PC_2020 = 6
 } Old_Avs_Matrix_e;
 
-// transfer characteristics
+// transfer characteristics ITU-T H.265 Table E.4
 typedef enum Transfer_e {
   AVS_TRANSFER_BT709 = 1,
   AVS_TRANSFER_UNSPECIFIED = 2,
@@ -107,7 +122,7 @@ typedef enum Transfer_e {
   AVS_TRANSFER_ARIB_B67 = 18
 } Transfer_e;
 
-// color primaries
+// color primaries ITU-T H.265 Table E.3
 typedef enum Primaries_e {
   AVS_PRIMARIES_BT709 = 1,
   AVS_PRIMARIES_UNSPECIFIED = 2,
