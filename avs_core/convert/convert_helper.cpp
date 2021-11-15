@@ -324,11 +324,9 @@ void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const
   }
 }
 
-void chromaloc_parse_merge_with_props(VideoInfo& vi, const char* chromaloc_name, const AVSMap* props, int& _ChromaLocation, IScriptEnvironment* env) {
-  int _ChromaLocation_Default = ChromaLocation_e::AVS_CHROMA_LEFT; // tradition
-
+void chromaloc_parse_merge_with_props(VideoInfo& vi, const char* chromaloc_name, const AVSMap* props, int& _ChromaLocation, int _ChromaLocation_Default, IScriptEnvironment* env) {
   if (props) {
-    if (vi.Is420() || vi.Is422() || vi.IsYV411()) {
+    if (vi.Is420() || vi.Is422() || vi.IsYV411()) { // ?? does YV411 has a valid _ChromaLocation?
       if (env->propNumElements(props, "_ChromaLocation") > 0) {
         _ChromaLocation_Default = env->propGetInt(props, "_ChromaLocation", 0, nullptr); // fixme: range check
       }

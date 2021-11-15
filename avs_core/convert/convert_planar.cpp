@@ -1428,15 +1428,21 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   const bool to_411 = strcmp(filter, "ConvertToYV411") == 0;
   const bool to_444 = strcmp(filter, "ConvertToYUV444") == 0;
 
-  if (vi.Is420() || vi.Is422() || vi.IsYV411()) {
+  if (vi.IsYV411()) {
+    // ChromaInPlacement parameter exists, but not valid for YV411 (default none/-1) + input frame properties
+    auto frame0 = clip->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
+    chromaloc_parse_merge_with_props(vi, args[3].AsString(nullptr), props, /* ref*/ChromaLocation_In, -1 /*default none chromaloc */, env);
+  }
+  else if (vi.Is420() || vi.Is422()) {
     // ChromaInPlacement parameter is valid + input frame properties
     auto frame0 = clip->GetFrame(0, env);
     const AVSMap* props = env->getFramePropsRO(frame0);
-    chromaloc_parse_merge_with_props(vi, args[3].AsString(nullptr), props, /* ref*/ChromaLocation_In, env);
+    chromaloc_parse_merge_with_props(vi, args[3].AsString(nullptr), props, /* ref*/ChromaLocation_In, ChromaLocation_e::AVS_CHROMA_LEFT /*default*/, env);
   }
-  if (to_420 || to_422 || to_411) {
+  if (to_420 || to_422) {
     // ChromaOutPlacement parameter is valid
-    chromaloc_parse_merge_with_props(vi, args[5].AsString(nullptr), nullptr, /* ref*/ChromaLocation_Out, env);
+    chromaloc_parse_merge_with_props(vi, args[5].AsString(nullptr), nullptr, /* ref*/ChromaLocation_Out, ChromaLocation_e::AVS_CHROMA_LEFT /*default*/, env);
   }
 
   if (to_420) {
@@ -1503,7 +1509,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   else if (to_411) {
     if (vi.IsYV411()) return clip;
     if(vi.ComponentSize()!=1)
-      env->ThrowError("%s: 8 bit only", filter);
+      env->ThrowError("%s: 8 bit input only", filter);
 
     pixel_type = VideoInfo::CS_YV411;
   }
