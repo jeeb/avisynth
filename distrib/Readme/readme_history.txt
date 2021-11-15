@@ -4,10 +4,47 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20211107 WIP
+20211115 WIP
 ------------
+- ConvertBits: source: dither almost full refactor
+- ConvertBits: allow dithering down from 8 bit sources (use case: specify parameter "dither_bits" less than 8)
+  Example: My8bitVideo.ConvertBits(8, fulls=true, fulld=true, dither = 0, dither_bits=1)
+- ConvertBits: ordered dither (dither_type=0) new features
+  - add AVX2
+  - allow odd dither_bits values, 1-16 bits (was: 2,4,6,8,..). The difference is still maximum 8, so dither_bits=1 is available
+    only for 8 bit sources. (memo: for Floyd (dither=1) the minimum remained 0, allowed range is 0-16)
+  - correct conversion of full-range chroma at 8-16 bits, keeping center
+  - fulls-fulld mix support (conversion - if any - happens before dithering)
+  - when dither target bitdepth is less than 8, then special measures are taken in order to show 'nice' output;
+    using dither_bits=1 would be especially ugly without this. (dither table is treated as signed float, autocorrect levels)
+    Why autocorrect? Ordered dither produces (2^dither_bits) different pixel values.
+    e.g. dither_bits=1 results in pixel values 0 and 1; dither_bits=2 => 0 to 3, and so on, dither_bits=7 => 0 to 127
+    When these dithered pixel values are scaled back to 8 bits, Avisynth stretches the upper extremes to 255 (8 bit case).
+    At dither_bits=1 instead of 0, 128 we get 0 and 255. Or at dither_bits=2 the values 0, 64, 128, 192 are translated to 0, 85, 170, 255.
+    Note: for low dither targets RGB definitely looks better.
+
+- Use _Matrix name "bt470m" for value=4 ("fcc" is still kept)
+  Source: Rename AVS_MATRIX_FCC to AVS_MATRIX_BT470_M 
+- ConvertBits: Correct conversion of full-range chroma at 8-16 bits, keeping center (32 bit float was O.K.) (ditherless case)
+- ConvertBits: Direct, much quicker conversions between 8-16 bit formats when either source or target is full range, avx2 support (ditherless case)
+               Special even quicker case: 8->16 bit fulls=true, fulld=true (simply *257)
+- ConvertBits: Fix: fulls=true->fulld=true 16->8 bit missing rounding
 - CMake/source: Intel C++ Compiler 2021 and Intel C++ Compiler 19.2 support
-- ConvertBits: allow dither from 32 bits to 8-16 bits (through an internal 16 bit immediate clip)
+  With the help of CMake GUI:
+  - Generator: "Visual Studio 16 2019"
+  - Optional toolset to use (-T option): (type to the editbox)
+    For LLVM based icx: Intel C++ Compiler 2021
+    For classic 19.2 icl: Intel C++ Compiler 19.2
+  - Specify native compilers (choose radiobutton),
+    then browse for the appropriate compiler executable path. For example:
+    icx: C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\icx.exe
+    icl: C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\intel64\icl.exe
+  There are some bugs in the Intel-VS integration: 
+  If you have errors like "xilink: : error : Assertion failed (shared/driver/drvutils.c, line 312" then
+  as a workaround you must copy clang.exe (by default it is located in C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin)
+  to the folder beside xilink (for x64 configuration it is in C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\intel64).
+- CMake/source: Intel C++ Compiler 2021 and Intel C++ Compiler 19.2 support
+- ConvertBits: allow dither from 32 bits to 8-16 bits (through an internal 16 bit intermediate clip)
 - ConvertBits: allow different fulls fulld when converting between integer bit depths
 - ConvertBits: allow 32 bit to 32 bit conversion
 
@@ -64,7 +101,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   AVS_MATRIX_RGB            0
   AVS_MATRIX_BT709          1
   AVS_MATRIX_UNSPECIFIED    2
-  AVS_MATRIX_FCC            4
+  AVS_MATRIX_BT470_M        4 (instead of AVS_MATRIX_FCC)
   AVS_MATRIX_BT470_BG       5 (BT601)
   AVS_MATRIX_ST170_M        6 (practically same as 5)
   AVS_MATRIX_ST240_M        7
@@ -88,7 +125,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   "170m"         AVS_MATRIX_ST170_M
   "240m"         AVS_MATRIX_ST240_M
   "470bg"        AVS_MATRIX_BT470_BG
-  "fcc"          AVS_MATRIX_FCC
+  "fcc"          AVS_MATRIX_BT470_M
+  "bt470m"       AVS_MATRIX_BT470_M
   "ycgco"        AVS_MATRIX_YCGCO      not supported
   "2020ncl"      AVS_MATRIX_BT2020_NCL
   "2020cl"       AVS_MATRIX_BT2020_CL  same as 2020ncl
@@ -104,9 +142,9 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
   old-style "matrix" parameters are kept, their name indicate the full/limited
   For memo and the similar new string
-  "rec601" same as         "470bg:l"
+  "rec601" same as         "170m:l"
   "rec709"                 "709:l" 
-  "pc.601" and "pc601"     "470bg:f"
+  "pc.601" and "pc601"     "170m:f"
   "pc.709" and "pc709"     "709:f" 
   "average"                - kept for compatibility, really it has no standard _Matrix equivalent
   "rec2020"                "2020cl:l"
@@ -117,7 +155,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   since the function names explicitely tell whether we are converting from RGB or to RGB.
 
   New: additional "matrix" parameter values: see table above.
-  With a new syntax "170m", "240m", "fcc" are newly available matrixes.
+  With a new syntax "170m", "240m", "bt470m" are newly available matrixes.
   New-style matrix name can be: 
     matrix name
   or
@@ -134,8 +172,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 - ColorBarsHD: frame property support:
         _ColorRange = 1 ("limited"), _Matrix = 1 ("709")
 - BlankClip: frame property support:
-   RGB: _ColorRange = 0 ("full"), _Matrix = 1 ("709")
-   YUV: _ColorRange = 1 ("limited"), _Matrix = 5 ("709")
+   RGB: _ColorRange = 0 ("full"), _Matrix = 0 ("RGB")
+   YUV: _ColorRange = 1 ("limited"), _Matrix = 6 ("170m") aka old Rec601
 
 - Fix: Planar RGB 32 bit -> YUV matrix="PC.709"/"PC.601"/"PC.2020" resulted in greyscale image
 - New function: propCopy(clip, clip [,bool 'merge'])
@@ -169,7 +207,8 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   Note 2: "mpeg2" (sale as "left") was so far the default for 4:2:0 and 4:2:2 sources as well.
 - Source code: use common YUV-RGB conversion matrix values and generation throughout the project
   Was: constants and calculations and inline code here and there.
-  New: YUY2 RGB conversions now allow matrix "PC.2020" and "Rec2020" (as a side effect)- 4:2:0 conversions: ChromaInPlacement and ChromaOutPlacement parameters: (see http://avisynth.nl/index.php/Convert)
+  New: YUY2 RGB conversions now allow matrix "PC.2020" and "Rec2020" (as a side effect)
+- 4:2:0 conversions: ChromaInPlacement and ChromaOutPlacement parameters: (see http://avisynth.nl/index.php/Convert)
   add "top_left" (new)
   add "center" and "jpeg" (as an alternative to "mpeg1"), "left" (as an alternative to "mpeg2")
 - Expr: sin and cos SIMD acceleration (SSE2 and AVX2) port from VapourSynth (Akarin et al.)
@@ -258,16 +297,98 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   ColorBars: fixed studio RGB values for -I and +Q for rgb pixel types
 - Speedup: Overlay mode "multiply": overlay clip is not converted to 4:4:4 internally when 420 or 422 subsampled format 
   (since only Y is used from that clip)
-- Speedup: Overlay mode "multiply": SSE4.1 and AVX2 code (was: C only), Proper rounding in internal calculations
+- Speedup: Overlay mode "multiply": SSE4.1 and AVX2 code (was: C only)
+  Proper rounding in internal calculations
+
+  SSE4.1: ~1.2-2.5X speed, AVX2: ~2-3.5X speed (i7700 x64 single thread, depending on opacity full/not, mask clip yes/no)
+  # results for opacity:0.2 8/16 bit opacity:1.0 8/16 bit
+  Overlay(last, ovr, mask=mask, mode = "multiply", opacity = 0.2 /*or 1.0*/)
+  # 962/562/952/571 # new C
+  # 934/490/1080/596 # old c
+  # 1700/1370/1770/1350 # SSE4.1
+  # 3050/1850/3111/1876 # AVX2
+
+  # with no mask
+  Overlay(last, ovr, mode = "multiply", opacity = 0.2 /*or 1.0*/)
+  # 1330/800/2000/830 # new C
+  # 1200/830/2030/1200 # old C
+  # 2400/2055/2400/2060 # SSE4.1
+  # 3900/3000/4100/3220 # AVX2
+
 - Fix: ConvertAudio integer 32-to-8 bits C code garbage (regression in 3.7)
 - ConvertAudio: Add direct Float from/to 8/16 conversions (C,SSE2,AVX2)
 - Fix: ConvertAudio: float to 32 bit integer conversion max value glitch (regression in 3.7)
 - Fix: Crash in ColorBars very first frame when followed by ResampleAudio
-- Fix: frame property access from C interface (for more info see readme.txt)
+  Colorbars did not tolerate negative audio sample index requests which can happen at the very first frame of ResampleAudio.
+- Fix: frame property access from C interface
+  Unfortunately you cannot access frame properties with version <= 3.7, it will crash in those releases.
+
+  Test sequence:
+  
+  AVS_VideoFrame* AVSC_CC demoCfilter_get_frame(AVS_FilterInfo* p, int n)
+  {
+    AVS_VideoFrame* src = avs_get_frame(p->child, n);
+
+    avs_make_writable(p->env, &src);
+
+    // src is an AVS_VideoFrame* 
+    AVS_Map* avsmap;
+    avsmap = avs_get_frame_props_rw(p->env, src);
+    int error; // needed for error report, for now we'll ignore it
+    // read existing propery. For test, we set it by to 77 by propSet("TestIntKey", 77) in Avisynth script
+    int64_t testvalue = avs_prop_get_int(p->env, avsmap, "TestIntKey", 0, &error);
+
+    // set new frame properties (by using the just-read integer property)
+    avs_prop_set_int(p->env, avsmap, "TestIntKey2", testvalue * 2, AVS_PROPAPPENDMODE_REPLACE);
+    avs_prop_set_float(p->env, avsmap, "TestFloatKey2", (testvalue * 2.0f), AVS_PROPAPPENDMODE_REPLACE);
+    // store string (in general: any data), by specifying length = -1 we'll notify set_data to have strlen for getting its real size
+    avs_prop_set_data(p->env, avsmap, "TestStringKey2", "testStringvalue", -1, AVS_PROPAPPENDMODE_REPLACE);
+
+    // array test (double). Note: we can have double here, contrary to the fact that Avisynth scripts can handle only floats.
+    const double test_d_array[] = { 0.5, 1.1 };
+    avs_prop_set_float_array(p->env, avsmap, "TestFloatArray", test_d_array, 2);
+
+    // array test (integer). Note: we can have int64 here, contrary to the fact that Avisynth scripts can handle only 32 bit integers.
+    const int64_t test_i_array[] = { -1, 0, 1 };
+    avs_prop_set_int_array(p->env, avsmap, "TestIntArray", test_i_array, 3);
+
+    // read back the array size of a property (single properties are an 1-element arrays)
+    int numElementsOfIntArray = avs_prop_num_elements(p->env, avsmap, "TestIntArray");
+    avs_prop_set_int(p->env, avsmap, "TestNumElementsOfIntArray", numElementsOfIntArray, AVS_PROPAPPENDMODE_REPLACE);
+
+    // Int property array: read back one-by-one, mul by 2, and put into another array
+    int64_t test_i_array_clone[3];
+    for (auto i = 0; i < numElementsOfIntArray; i++) {
+      test_i_array_clone[i] = avs_prop_get_int(p->env, avsmap, "TestIntArray", i, &error) * 2;
+    }
+    avs_prop_set_int_array(p->env, avsmap, "TestIntArrayCloneMul2", test_i_array_clone, 3);
+    
+    // double property array read back as a whole, div by 3, and put into another array
+    int numElementsOfFloatArray = avs_prop_num_elements(p->env, avsmap, "TestFloatArray");
+    const double * tmpdarray = avs_prop_get_float_array(p->env, avsmap, "TestFloatArray", &error);
+    for (auto i = 0; i < numElementsOfFloatArray; i++) {
+      double tmp_d = tmpdarray[i] / 3.0;
+      // first element: replace frameprop data, next ones: append new element one by one
+      avs_prop_set_float(p->env, avsmap, "TestFloatArrayCloneDiv3", tmp_d, i == 0 ? AVS_PROPAPPENDMODE_REPLACE : AVS_PROPAPPENDMODE_APPEND);
+    }
+
+    // delete the key, we defined in Avisynth script
+    avs_prop_delete_key(p->env, avsmap, "TestIntKey");
+
+    // count all keys (frame property count) and put it into another frame property
+    int numOfKeys = avs_prop_num_keys(p->env, avsmap);
+    avs_prop_set_int(p->env, avsmap, "TestNumKeysWithoutThisOne", numOfKeys, AVS_PROPAPPENDMODE_REPLACE);
+
+    return src;
+
+  }
+
+
 - Fix: StackVertical and packed RGB formats: get audio and parity from the first and not the last clip
 - RGBAdjust: analyse=true 32 bit float support
 - experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
-- Fixes for building the core as a static library- RGBAdjust: analyse=true 32 bit float support
+- Fixes for building the core as a static library
+- RGBAdjust: analyse=true 32 bit float support
 - experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
 - Fixes for building the core as a static library
 

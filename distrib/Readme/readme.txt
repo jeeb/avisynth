@@ -1,9 +1,46 @@
 Avisynth+
 
-20211107 WIP
+20211115 WIP
 ------------
+- ConvertBits: source: dither almost full refactor
+- ConvertBits: allow dithering down from 8 bit sources (use case: specify parameter "dither_bits" less than 8)
+  Example: My8bitVideo.ConvertBits(8, fulls=true, fulld=true, dither = 0, dither_bits=1)
+- ConvertBits: ordered dither (dither_type=0) new features
+  - add AVX2
+  - allow odd dither_bits values, 1-16 bits (was: 2,4,6,8,..). The difference is still maximum 8, so dither_bits=1 is available
+    only for 8 bit sources. (memo: for Floyd (dither=1) the minimum remained 0, allowed range is 0-16)
+  - correct conversion of full-range chroma at 8-16 bits, keeping center
+  - fulls-fulld mix support (conversion - if any - happens before dithering)
+  - when dither target bitdepth is less than 8, then special measures are taken in order to show 'nice' output;
+    using dither_bits=1 would be especially ugly without this. (dither table is treated as signed float, autocorrect levels)
+    Why autocorrect? Ordered dither produces (2^dither_bits) different pixel values.
+    e.g. dither_bits=1 results in pixel values 0 and 1; dither_bits=2 => 0 to 3, and so on, dither_bits=7 => 0 to 127
+    When these dithered pixel values are scaled back to 8 bits, Avisynth stretches the upper extremes to 255 (8 bit case).
+    At dither_bits=1 instead of 0, 128 we get 0 and 255. Or at dither_bits=2 the values 0, 64, 128, 192 are translated to 0, 85, 170, 255.
+    Note: for low dither targets RGB definitely looks better.
+
+- Use _Matrix name "bt470m" for value=4 ("fcc" is still kept)
+  Source: Rename AVS_MATRIX_FCC to AVS_MATRIX_BT470_M 
+- ConvertBits: Correct conversion of full-range chroma at 8-16 bits, keeping center (32 bit float was O.K.) (ditherless case)
+- ConvertBits: Direct, much quicker conversions between 8-16 bit formats when either source or target is full range, avx2 support (ditherless case)
+               Special even quicker case: 8->16 bit fulls=true, fulld=true (simply *257)
+- ConvertBits: Fix: fulls=true->fulld=true 16->8 bit missing rounding
 - CMake/source: Intel C++ Compiler 2021 and Intel C++ Compiler 19.2 support
-- ConvertBits: allow dither from 32 bits to 8-16 bits (through an internal 16 bit immediate clip)
+  With the help of CMake GUI:
+  - Generator: "Visual Studio 16 2019"
+  - Optional toolset to use (-T option): (type to the editbox)
+    For LLVM based icx: Intel C++ Compiler 2021
+    For classic 19.2 icl: Intel C++ Compiler 19.2
+  - Specify native compilers (choose radiobutton),
+    then browse for the appropriate compiler executable path. For example:
+    icx: C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\icx.exe
+    icl: C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\intel64\icl.exe
+  There are some bugs in the Intel-VS integration: 
+  If you have errors like "xilink: : error : Assertion failed (shared/driver/drvutils.c, line 312" then
+  as a workaround you must copy clang.exe (by default it is located in C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin)
+  to the folder beside xilink (for x64 configuration it is in C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\intel64).
+- CMake/source: Intel C++ Compiler 2021 and Intel C++ Compiler 19.2 support
+- ConvertBits: allow dither from 32 bits to 8-16 bits (through an internal 16 bit intermediate clip)
 - ConvertBits: allow different fulls fulld when converting between integer bit depths
 - ConvertBits: allow 32 bit to 32 bit conversion
 
@@ -60,7 +97,7 @@ Avisynth+
   AVS_MATRIX_RGB            0
   AVS_MATRIX_BT709          1
   AVS_MATRIX_UNSPECIFIED    2
-  AVS_MATRIX_FCC            4
+  AVS_MATRIX_BT470_M        4 (instead of AVS_MATRIX_FCC)
   AVS_MATRIX_BT470_BG       5 (BT601)
   AVS_MATRIX_ST170_M        6 (practically same as 5)
   AVS_MATRIX_ST240_M        7
@@ -84,7 +121,8 @@ Avisynth+
   "170m"         AVS_MATRIX_ST170_M
   "240m"         AVS_MATRIX_ST240_M
   "470bg"        AVS_MATRIX_BT470_BG
-  "fcc"          AVS_MATRIX_FCC
+  "fcc"          AVS_MATRIX_BT470_M
+  "bt470m"       AVS_MATRIX_BT470_M
   "ycgco"        AVS_MATRIX_YCGCO      not supported
   "2020ncl"      AVS_MATRIX_BT2020_NCL
   "2020cl"       AVS_MATRIX_BT2020_CL  same as 2020ncl
@@ -100,9 +138,9 @@ Avisynth+
 
   old-style "matrix" parameters are kept, their name indicate the full/limited
   For memo and the similar new string
-  "rec601" same as         "470bg:l"
+  "rec601" same as         "170m:l"
   "rec709"                 "709:l" 
-  "pc.601" and "pc601"     "470bg:f"
+  "pc.601" and "pc601"     "170m:f"
   "pc.709" and "pc709"     "709:f" 
   "average"                - kept for compatibility, really it has no standard _Matrix equivalent
   "rec2020"                "2020cl:l"
@@ -113,7 +151,7 @@ Avisynth+
   since the function names explicitely tell whether we are converting from RGB or to RGB.
 
   New: additional "matrix" parameter values: see table above.
-  With a new syntax "170m", "240m", "fcc" are newly available matrixes.
+  With a new syntax "170m", "240m", "bt470m" are newly available matrixes.
   New-style matrix name can be: 
     matrix name
   or
@@ -130,8 +168,8 @@ Avisynth+
 - ColorBarsHD: frame property support:
         _ColorRange = 1 ("limited"), _Matrix = 1 ("709")
 - BlankClip: frame property support:
-   RGB: _ColorRange = 0 ("full"), _Matrix = 1 ("709")
-   YUV: _ColorRange = 1 ("limited"), _Matrix = 5 ("709")
+   RGB: _ColorRange = 0 ("full"), _Matrix = 0 ("RGB")
+   YUV: _ColorRange = 1 ("limited"), _Matrix = 6 ("170m") aka old Rec601
 
 - Fix: Planar RGB 32 bit -> YUV matrix="PC.709"/"PC.601"/"PC.2020" resulted in greyscale image
 - New function: propCopy(clip, clip [,bool 'merge'])
@@ -232,6 +270,8 @@ Avisynth+
   Others: bool_array_nz, float_array_nz, string_array_nz, clip_array_nz, func_array_nz.    
 - Fix: Overlay "blend" 10+ bit clips and "opacity"<1 would leave rightmost non-mod8 (10-16 bit format) or non-mod4 (32 bit format) pixels unprocessed.
 - Fix: Overlay "blend" with exactly 16 bit clips and "opacity"<1 would treat large mask values as zero (when proc>=SSE4.1)
+- Parser: proper error message when a script array is passed to a non-array named function argument
+  (e.g. foo(sigma=[1.1,1.1]) to [foo]f parameter signature)
 - Expr: allow arbitrary variable names (instead of single letters A..Z), up to 256 different one. 
   Do not use existing keywords.
   Variable names must start with '_' or alpha, continued with '_' or alphanumeric characters.
@@ -341,6 +381,9 @@ Avisynth+
 
 
 - Fix: StackVertical and packed RGB formats: get audio and parity from the first and not the last clip
+- RGBAdjust: analyse=true 32 bit float support
+- experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
+- Fixes for building the core as a static library
 - RGBAdjust: analyse=true 32 bit float support
 - experimental! Fix CUDA support on specific builds (apply lost-during-merge differences from Nekopanda branch), add CMake support for the option.
 - Fixes for building the core as a static library
