@@ -39,7 +39,7 @@
 #include <stdint.h>
 #include "convert.h"
 
-typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+typedef void (*BitDepthConvFuncPtr)(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth);
 
 class ConvertBits : public GenericVideoFilter
 {
@@ -57,22 +57,40 @@ private:
   BitDepthConvFuncPtr conv_function;
   BitDepthConvFuncPtr conv_function_chroma; // 32bit float YUV chroma
   BitDepthConvFuncPtr conv_function_a;
-  int dither_mode;
-  int pixelsize;
-  int bits_per_pixel;
   int target_bitdepth;
+  int dither_mode;
   int dither_bitdepth;
-  bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
-  bool format_change_only;
   bool fulls; // source is full range (defaults: rgb=true, yuv=false (bit shift))
   bool fulld; // destination is full range (defaults: rgb=true, yuv=false (bit shift))
+  bool truerange; // if 16->10 range reducing or e.g. 14->16 bit range expansion needed
+  int pixelsize;
+  int bits_per_pixel;
+  bool format_change_only;
 };
 
 /**********************************
 ******  Bitdepth conversions  *****
 **********************************/
-// 10->8
-// repeated 4x for sse size 16
+// for odd dither bit differences, we still take even size but
+// correction values are halved (shifted by 1)
+
+// repeated 8x for sse size 16
+static const struct dither2x2a_t
+{
+  const BYTE data[4] = {
+    0, 1,
+    1, 0,
+  };
+  // cycle: 2
+  alignas(16) const BYTE data_sse2[2 * 16] = {
+    0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+    1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0
+  };
+  dither2x2a_t() {};
+} dither2x2a;
+
+// e.g. 10->8 bits
+// repeated 8x for sse size 16
 static const struct dither2x2_t
 {
   const BYTE data[4] = {
@@ -87,8 +105,26 @@ static const struct dither2x2_t
   dither2x2_t() {};
 } dither2x2;
 
+// e.g. 8->5 bits
+static const struct dither4x4a_t
+{
+  const BYTE data[16] = {
+     0,  4,  1,  5,
+     6,  2,  7,  3,
+     1,  5,  0,  4,
+     7,  3,  6,  2
+  };
+  // cycle: 4
+  alignas(16) const BYTE data_sse2[4 * 16] = {
+     0,  4,  1,  5,  0,  4,  1,  5,  0,  4,  1,  5,  0,  4,  1,  5,
+     6,  2,  7,  3,  6,  2,  7,  3,  6,  2,  7,  3,  6,  2,  7,  3,
+     1,  5,  0,  4,  1,  5,  0,  4,  1,  5,  0,  4,  1,  5,  0,  4,
+     7,  3,  6,  2,  7,  3,  6,  2,  7,  3,  6,  2,  7,  3,  6,  2,
+  };
+  dither4x4a_t() {};
+} dither4x4a;
 
-// 12->8
+// e.g. 12->8 bits
 static const struct dither4x4_t
 {
   const BYTE data[16] = {
@@ -107,26 +143,53 @@ static const struct dither4x4_t
   dither4x4_t() {};
 } dither4x4;
 
-// 14->8
+// e.g. 14->9 bits
+static const struct dither8x8a_t
+{
+  const BYTE data[8][8] = {
+    { 0, 16,  4, 20,  1, 17,  5, 21}, /* 8x8 Bayer ordered dithering pattern */
+    {24,  8, 28, 12, 25,  9, 29, 13},
+    { 6, 22,  2, 18,  7, 23,  3, 19},
+    {30, 14, 26, 10, 31, 15, 27, 11},
+    { 1, 17,  5, 21,  0, 16,  4, 20},
+    {25,  9, 29, 13, 24,  8, 28, 12},
+    { 7, 23,  3, 19,  6, 22,  2, 18},
+    {31, 15, 27, 11, 30, 14, 26, 10}
+  };
+  // cycle: 8
+  alignas(16) const BYTE data_sse2[8][16] = {
+    {  0, 16,  4, 20,  1, 17,  5, 21,  0, 16,  4, 20,  1, 17,  5, 21 },
+    { 24,  8, 28, 12, 25,  9, 29, 13, 24,  8, 28, 12, 25,  9, 29, 13 },
+    {  6, 22,  2, 18,  7, 23,  3, 19,  6, 22,  2, 18,  7, 23,  3, 19 },
+    { 30, 14, 26, 10, 31, 15, 27, 11, 30, 14, 26, 10, 31, 15, 27, 11 },
+    {  1, 17,  5, 21,  0, 16,  4, 20,  1, 17,  5, 21,  0, 16,  4, 20 },
+    { 25,  9, 29, 13, 24,  8, 28, 12, 25,  9, 29, 13, 24,  8, 28, 12 },
+    {  7, 23,  3, 19,  6, 22,  2, 18,  7, 23,  3, 19,  6, 22,  2, 18 },
+    { 31, 15, 27, 11, 30, 14, 26, 10, 31, 15, 27, 11, 30, 14, 26, 10 }
+  };
+  dither8x8a_t() {};
+} dither8x8a;
+
+// e.g. 14->8 bits
 static const struct dither8x8_t
 {
   const BYTE data[8][8] = {
-    { 0, 32,  8, 40,  2, 34, 10, 42}, /* 8x8 Bayer ordered dithering */
-    {48, 16, 56, 24, 50, 18, 58, 26}, /* pattern. Each input pixel */
-    {12, 44,  4, 36, 14, 46,  6, 38}, /* is scaled to the 0..63 range */
-    {60, 28, 52, 20, 62, 30, 54, 22}, /* before looking in this table */
-    { 3, 35, 11, 43,  1, 33,  9, 41}, /* to determine the action. */
+    { 0, 32,  8, 40,  2, 34, 10, 42},
+    {48, 16, 56, 24, 50, 18, 58, 26},
+    {12, 44,  4, 36, 14, 46,  6, 38},
+    {60, 28, 52, 20, 62, 30, 54, 22},
+    { 3, 35, 11, 43,  1, 33,  9, 41},
     {51, 19, 59, 27, 49, 17, 57, 25},
     {15, 47,  7, 39, 13, 45,  5, 37},
     {63, 31, 55, 23, 61, 29, 53, 21}
   };
   // cycle: 8
   alignas(16) const BYTE data_sse2[8][16] = {
-    {  0, 32,  8, 40,  2, 34, 10, 42,  0, 32,  8, 40,  2, 34, 10, 42 }, /* 8x8 Bayer ordered dithering */
-    { 48, 16, 56, 24, 50, 18, 58, 26, 48, 16, 56, 24, 50, 18, 58, 26 }, /* pattern. Each input pixel */
-    { 12, 44,  4, 36, 14, 46,  6, 38, 12, 44,  4, 36, 14, 46,  6, 38 }, /* is scaled to the 0..63 range */
-    { 60, 28, 52, 20, 62, 30, 54, 22, 60, 28, 52, 20, 62, 30, 54, 22 }, /* before looking in this table */
-    {  3, 35, 11, 43,  1, 33,  9, 41,  3, 35, 11, 43,  1, 33,  9, 41 }, /* to determine the action. */
+    {  0, 32,  8, 40,  2, 34, 10, 42,  0, 32,  8, 40,  2, 34, 10, 42 },
+    { 48, 16, 56, 24, 50, 18, 58, 26, 48, 16, 56, 24, 50, 18, 58, 26 },
+    { 12, 44,  4, 36, 14, 46,  6, 38, 12, 44,  4, 36, 14, 46,  6, 38 },
+    { 60, 28, 52, 20, 62, 30, 54, 22, 60, 28, 52, 20, 62, 30, 54, 22 },
+    {  3, 35, 11, 43,  1, 33,  9, 41,  3, 35, 11, 43,  1, 33,  9, 41 },
     { 51, 19, 59, 27, 49, 17, 57, 25, 51, 19, 59, 27, 49, 17, 57, 25 },
     { 15, 47,  7, 39, 13, 45,  5, 37, 15, 47,  7, 39, 13, 45,  5, 37 },
     { 63, 31, 55, 23, 61, 29, 53, 21, 63, 31, 55, 23, 61, 29, 53, 21 }
@@ -134,10 +197,35 @@ static const struct dither8x8_t
   dither8x8_t() {};
 } dither8x8;
 
+// e.g. 16->9 or 8->1 bits
+static const struct dither16x16a_t
+{
+  // cycle: 16x. No special 16 byte sse2
+  alignas(16) const BYTE data[16][16] = {
+    {   0, 96, 24,120,  6,102, 30,126,  1, 97, 25,121,  7,103, 31,127 },
+    {  64, 32, 88, 56, 70, 38, 94, 62, 65, 33, 89, 57, 71, 39, 95, 63 },
+    {  16,112,  8,104, 22,118, 14,110, 17,113,  9,105, 23,119, 15,111 },
+    {  80, 48, 72, 40, 86, 54, 78, 46, 81, 49, 73, 41, 87, 55, 79, 47 },
+    {   4,100, 28,124,  2, 98, 26,122,  5,101, 29,125,  3, 99, 27,123 },
+    {  68, 36, 92, 60, 66, 34, 90, 58, 69, 37, 93, 61, 67, 35, 91, 59 },
+    {  20,116, 12,108, 18,114, 10,106, 21,117, 13,109, 19,115, 11,107 },
+    {  84, 52, 76, 44, 82, 50, 74, 42, 85, 53, 77, 45, 83, 51, 75, 43 },
+    {   1, 97, 25,121,  7,103, 31,127,  0, 96, 24,120,  6,102, 30,126 },
+    {  75, 33, 89, 57, 71, 39, 95, 63, 64, 32, 88, 56, 70, 38, 94, 62 },
+    {  17,113,  9,105, 23,119, 15,111, 16,112,  8,104, 22,118, 14,110 },
+    {  81, 49, 73, 41, 87, 55, 79, 47, 80, 48, 72, 40, 86, 54, 78, 46 },
+    {   5,101, 29,125,  3, 99, 27,123,  4,100, 28,124,  2, 98, 26,122 },
+    {  69, 37, 93, 61, 67, 35, 91, 59, 68, 36, 92, 60, 66, 34, 90, 58 },
+    {  21,117, 13,109, 19,115, 11,107, 20,116, 12,108, 18,114, 10,106 },
+    {  85, 53, 77, 45, 83, 51, 75, 43, 84, 52, 76, 44, 82, 50, 74, 42 }
+  };
+  dither16x16a_t() {};
+} dither16x16a;
+
 // 16->8
 static const struct dither16x16_t
 {
-  // cycle: 16x
+  // cycle: 16x. No special 16 byte sse2
   alignas(16) const BYTE data[16][16] = {
     {   0,192, 48,240, 12,204, 60,252,  3,195, 51,243, 15,207, 63,255 },
     { 128, 64,176,112,140, 76,188,124,131, 67,179,115,143, 79,191,127 },

@@ -35,7 +35,6 @@
 #include "convert_bits.h"
 #ifdef INTEL_INTRINSICS
 #include "intel/convert_bits_sse.h"
-#include "intel/convert_bits_avx.h"
 #include "intel/convert_bits_avx2.h"
 #endif
 #include "convert_helper.h"
@@ -53,104 +52,156 @@
 #include <avs/posix.h>
 #endif
 
-
-template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-static void convert_rgb_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld, bool TEMPLATE_NEED_BACKSCALE, bool TEMPLATE_LOW_DITHER_BITDEPTH>
+static void do_convert_ordered_dither_uint_c(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
-  const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
+  const pixel_t_s* srcp = reinterpret_cast<const pixel_t_s*>(srcp8);
+  pixel_t_d* dstp = reinterpret_cast<pixel_t_d*>(dstp8);
+  dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
-  int _y = 0; // for ordered dither
+  src_pitch = src_pitch / sizeof(pixel_t_s);
+  const int src_width = src_rowsize / sizeof(pixel_t_s);
 
-  const int TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
+  // helps compiler optimization
+  if constexpr (sizeof(pixel_t_s) == 1)
+    source_bitdepth = 8;
+  if constexpr (sizeof(pixel_t_d) == 1) {
+    target_bitdepth = 8;
+    if (!TEMPLATE_NEED_BACKSCALE) {
+      dither_target_bitdepth = 8;
+    }
+  }
 
-  // for test, make it 2,4,6,8. sourcebits-TARGET_DITHER_BITDEPTH cannot exceed 8 bit
-  // const int TARGET_DITHER_BITDEPTH = 2;
-
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
+  const int max_pixel_value_target = (1 << target_bitdepth) - 1;
+  const int max_pixel_value_dithered = (1 << dither_target_bitdepth) - 1;
   // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const int DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const int PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but generality)
-  const int DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const int DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const int MASK = DITHER_SIZE - 1;
+  // target_bitdepth >= dither_target_bitdepth
+  // source_bitdepth - dither_target_bitdepth <= 8 (max precalculated table is 16x16)
+  const bool odd_diff = (source_bitdepth - dither_target_bitdepth) & 1;
+  const int dither_bit_diff = (source_bitdepth - dither_target_bitdepth);
+  const int dither_order = (dither_bit_diff + 1) / 2;
+  const int dither_mask = (1 << dither_order) - 1; // 9,10=2  11,12=4  13,14=8  15,16=16
   // 10->8: 0x01 (2x2)
   // 11->8: 0x03 (4x4)
   // 12->8: 0x03 (4x4)
   // 14->8: 0x07 (8x8)
   // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  switch (sourcebits - TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data); break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data); break;
-  case 6: matrix = reinterpret_cast<const BYTE *>(dither8x8.data); break;
-  case 8: matrix = reinterpret_cast<const BYTE *>(dither16x16.data); break;
+  const BYTE* matrix;
+  switch (dither_order) {
+  case 1: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither2x2a.data : dither2x2.data); break;
+  case 2: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither4x4a.data : dither4x4.data); break;
+  case 3: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither8x8a.data : dither8x8.data); break;
+  case 4: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither16x16a.data : dither16x16.data); break;
   default: return; // n/a
   }
 
-  for(int y=0; y<src_height; y++)
+  const int bitdiff_between_dither_and_target = target_bitdepth - dither_target_bitdepth;
+  assert(TEMPLATE_NEED_BACKSCALE == (target_bitdepth != dither_target_bitdepth));  // dither to x, target to y
+
+  assert(TEMPLATE_LOW_DITHER_BITDEPTH == (dither_target_bitdepth < 8));
+  // e.g. instead of 0,1 => -0.5,+0.5;  0,1,2,3 => -1.5,-0.5,0.5,1.5
+  const float half_maxcorr_value = ((1 << dither_bit_diff) - 1) / 2.0f;
+
+  const int source_max = (1 << source_bitdepth) - 1;
+  //-----------------------
+  float mul_factor;
+  int src_offset = 0;
+  int dst_offset = 0;
+
+  if constexpr (fulls != fulld) {
+    // When calculating src_pixel, src and dst are of the same bit depth
+    if constexpr (chroma) {
+      // chroma: go into signed world, factor, then go back to biased range
+      src_offset = 1 << (source_bitdepth - 1); // chroma center of source
+      dst_offset = 1 << (source_bitdepth - 1); // chroma center of target
+      mul_factor =
+        fulls == fulld ? 1.0f :
+        fulld ? (float)(src_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
+        /*fulld*/ (float)(112 << (source_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
+    }
+    else {
+      // luma/limited: subtract offset, convert, add offset
+      src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
+      dst_offset = fulld ? 0 : 16 << (source_bitdepth - 8); // // full/limited range low limit
+      mul_factor =
+        fulls == fulld ? 1.0f : // no change
+        fulld ? (float)source_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
+        /*fulls ?*/ (float)(219 << (source_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
+    }
+  }
+
+  auto dst_offset_plus_round = dst_offset + 0.5f;
+  constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
+  const auto src_pixel_max = source_max;
+  const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
+  //-----------------------
+
+  for (int y = 0; y < src_height; y++)
   {
-    if constexpr(dither_mode == 0)
-      _y = (y & MASK) << DITHER_ORDER; // ordered dither
+    int _y = (y & dither_mask) << dither_order; // ordered dither
     for (int x = 0; x < src_width; x++)
     {
-      if constexpr(dither_mode < 0) // -1: no dither
-      {
-        const float mulfactor = sourcebits == 16 ? (1.0f / 257.0f) :
-          sourcebits == 14 ? (255.0f / 16383.0f) :
-          sourcebits == 12 ? (255.0f / 4095.0f) :
-          (255.0f / 1023.0f); // 10 bits
+      const int corr = matrix[_y | (x & dither_mask)];
 
-        dstp[x] = (uint8_t)(srcp0[x] * mulfactor + 0.5f);
-        // C cast truncates, use +0.5f rounder, which uses cvttss2si
+      int src_pixel = srcp[x];
 
-        // old method: no rounding but fast
-        // no integer division (fast tricky algorithm by compiler), rounding problems, pic gets darker
-        // dstp[x] = srcp0[x] / 257; // RGB: full range 0..255 <-> 0..65535 (*255 / 65535)
-        // dstp[x] = srcp0[x] * 255 / 16383; // RGB: full range 0..255 <-> 0..16384-1
-        // dstp[x] = srcp0[x] * 255 / 4095; // RGB: full range 0..255 <-> 0..4096-1
-        // dstp[x] = srcp0[x] * 255 / 1023; // RGB: full range 0..255 <-> 0..1024-1
+      if constexpr(fulls != fulld) {
+        const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;
+        src_pixel = clamp((int)val, src_pixel_min, src_pixel_max);
       }
-      else { // dither_mode == 0 -> ordered dither
-        const int corr = matrix[_y | ((x / rgb_step) & MASK)];
-        // vvv for the non-fullscale version: int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
-        int new_pixel;
 
-        const float mulfactor =
-          DITHER_BIT_DIFF == 8 ? (1.0f / 257.0f) :
-          DITHER_BIT_DIFF == 6 ? (255.0f / 16383.0f) :
-          DITHER_BIT_DIFF == 4 ? (255.0f / 4095.0f) :
-          DITHER_BIT_DIFF == 2 ? (255.0f / 1023.0f) : // 10 bits
-          1.0f;
-
-        if constexpr(TARGET_DITHER_BITDEPTH <= 4)
-          new_pixel = (uint16_t)((srcp0[x] + corr) * mulfactor); // rounding here makes brightness shift
-        else if constexpr(DITHER_BIT_DIFF > 0)
-          new_pixel = (uint16_t)((srcp0[x] + corr) * mulfactor + 0.5f);
-        else
-          new_pixel = (uint16_t)(srcp0[x] + corr);
-
-        new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-
-        // scale back to the required bit depth
-        // for generality. Now target == 8 bit, and dither_target is also 8 bit
-        // for test: source:10 bit, target=8 bit, dither_target=4 bit
-        const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-        if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-          new_pixel = new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // if implemented non-8bit dither target, this should be fullscale
-        dstp[x] = (BYTE)new_pixel;
+      int new_pixel;
+      if (TEMPLATE_LOW_DITHER_BITDEPTH) {
+        // accurate dither: +/-
+        // accurately positioned to the center
+        const float corr_f = corr - half_maxcorr_value;
+        new_pixel = (int)(src_pixel + corr_f) >> dither_bit_diff;
       }
-    } // x
+      else
+        new_pixel = ((src_pixel + corr) >> dither_bit_diff);
+
+      // scale back to the required bit depth
+      if constexpr (TEMPLATE_NEED_BACKSCALE) { // dither to x, target to y
+        new_pixel = min(new_pixel, max_pixel_value_dithered);
+        // Interesting problem of dither_bits==1 (or in general at small dither_bits)
+        // After simple slli 0,1 becomes 0,128, we'd expect 0,255 instead. So we make cosmetics.
+        if (TEMPLATE_LOW_DITHER_BITDEPTH) {
+          new_pixel = (int)(new_pixel * mul_factor_backfromlowdither + 0.5f);
+        }
+        else {
+          new_pixel = new_pixel << bitdiff_between_dither_and_target;
+        }
+        // dither_bits
+        // 1            0,1     => 0,128        => 0,255
+        // 2            0,1,2,3 => 0,64,128,192 => 0,?,?,255
+        // 3            0,...,7 => 0,32,...,224 => 0,?,?,255
+        // 4            0,..,15 => 0,16,...,240 => 0,?,?,255
+        // 5            0,..,31 => 0,8,....,248 => 0,?,?,255
+        // 6            0,..,63 => 0,4,....,252 => 0,?,?,255
+        // 7            0,.,127 => 0,2.  ..,254 => 0,?,?,255
+      }
+      dstp[x] = (pixel_t_d)(max(min((int)new_pixel, max_pixel_value_target),0));
+    }
     dstp += dst_pitch;
-    srcp0 += src_pitch;
+    srcp += src_pitch;
   }
 }
 
-
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+static void convert_ordered_dither_uint_c(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
+{
+  const bool need_backscale = target_bitdepth != dither_target_bitdepth; // dither to x, target to y
+  const bool low_dither_bitdepth = dither_target_bitdepth < 8; // 1-7 bits dither targets, need_backscale is always true, since 8 bit format is the minimum
+  if (need_backscale) {
+    if (low_dither_bitdepth)
+      do_convert_ordered_dither_uint_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, true, true>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+    else
+      do_convert_ordered_dither_uint_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, true, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+  }
+  else {
+    do_convert_ordered_dither_uint_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, false, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+  }
+}
 
 // idea borrowed from fmtConv
 #define FS_OPTIMIZED_SERPENTINE_COEF
@@ -195,28 +246,35 @@ static void diffuse_floyd_f(float err, float &nextError, float *error_ptr)
   nextError += e7;
 }
 
-template<typename source_pixel_t, typename target_pixel_t, uint8_t sourcebits, uint8_t TARGET_BITDEPTH, int TARGET_DITHER_BITDEPTH>
-static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+// fixme: use bool chroma, bool fulls, bool fulld
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
-  const source_pixel_t *srcp = reinterpret_cast<const source_pixel_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(source_pixel_t);
-  int src_width = src_rowsize / sizeof(source_pixel_t);
+  const pixel_t_s *srcp = reinterpret_cast<const pixel_t_s *>(srcp8);
+  src_pitch = src_pitch / sizeof(pixel_t_s);
+  const int src_width = src_rowsize / sizeof(pixel_t_s);
 
-  target_pixel_t *dstp = reinterpret_cast<target_pixel_t *>(dstp8);
-  dst_pitch = dst_pitch / sizeof(target_pixel_t);
+  pixel_t_d *dstp = reinterpret_cast<pixel_t_d *>(dstp8);
+  dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
-  const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1;
-  const int DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
+  // perhaps helps compiler to optimize
+  if constexpr (sizeof(pixel_t_s) == 1)
+    source_bitdepth = 8;
+  if constexpr (sizeof(pixel_t_d) == 1)
+    target_bitdepth = 8;
+
+  const int max_pixel_value = (1 << target_bitdepth) - 1;
+  const int DITHER_BIT_DIFF = (source_bitdepth - dither_target_bitdepth);
+  const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (source_bitdepth - target_bitdepth);
 
   int *error_ptr_safe = new int[1 + src_width + 1]; // accumulated errors
   std::fill_n(error_ptr_safe, src_width + 2, 0);
 
   int *error_ptr = error_ptr_safe + 1;
 
-  const int INTERNAL_BITS = DITHER_BIT_DIFF < 6 ? sourcebits+8 : sourcebits; // keep accuracy
-  const int SHIFTBITS_TO_INTERNAL = INTERNAL_BITS - sourcebits;
-  const int SHIFTBITS_FROM_INTERNAL = INTERNAL_BITS - TARGET_DITHER_BITDEPTH;
+  const int INTERNAL_BITS = DITHER_BIT_DIFF < 6 ? source_bitdepth + 8 : source_bitdepth; // keep accuracy
+  const int SHIFTBITS_TO_INTERNAL = INTERNAL_BITS - source_bitdepth;
+  const int SHIFTBITS_FROM_INTERNAL = INTERNAL_BITS - dither_target_bitdepth;
   const int ROUNDER = 1 << (SHIFTBITS_FROM_INTERNAL - 1); // rounding
 
   for (int y = 0; y < src_height; y++)
@@ -234,7 +292,7 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
         err = sum - (quantized << SHIFTBITS_FROM_INTERNAL);
         quantized <<= BITDIFF_BETWEEN_DITHER_AND_TARGET;
         int pix = max(min(max_pixel_value, quantized), 0); // clamp to target bit
-        dstp[x] = (target_pixel_t)pix;
+        dstp[x] = (pixel_t_d)pix;
         diffuse_floyd<1>(err, nextError, error_ptr+x);
       }
     }
@@ -249,7 +307,7 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
         err = sum - (quantized << SHIFTBITS_FROM_INTERNAL);
         quantized <<= BITDIFF_BETWEEN_DITHER_AND_TARGET;
         int pix = max(min(max_pixel_value, quantized), 0); // clamp to target bit
-        dstp[x] = (target_pixel_t)pix;
+        dstp[x] = (pixel_t_d)pix;
         diffuse_floyd<-1>(err, nextError, error_ptr + x);
       }
     }
@@ -261,75 +319,9 @@ static void convert_uint_floyd_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize
   delete[] error_ptr_safe;
 }
 
-// FIXME: make it common:
-// convert_uint16_to_8_c and convert_uint16_to_uint16_dither_c
-// make template only source and pixel_types, and probably TARGET_DITHER_BITDEPTH?
-
-// YUV conversions (bit shifts)
-// BitDepthConvFuncPtr
-// Conversion from 16-14-12-10 to 8 bits (bitshift: 8-6-4-2)
-// both dither and non-dither
-template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH>
-static void convert_uint16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  assert(dither_mode == 0);
-  // ordered dither only
-
-  const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-
-  const int TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
-  // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const int DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const int PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but generality)
-  const int DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const int DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const int MASK = DITHER_SIZE - 1;
-  // 10->8: 0x01 (2x2)
-  // 11->8: 0x03 (4x4)
-  // 12->8: 0x03 (4x4)
-  // 14->8: 0x07 (8x8)
-  // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  switch (sourcebits-TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data); break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data); break;
-  case 6: matrix = reinterpret_cast<const BYTE *>(dither8x8.data); break;
-  case 8: matrix = reinterpret_cast<const BYTE *>(dither16x16.data); break;
-  default: return; // n/a
-  }
-
-  for(int y=0; y<src_height; y++)
-  {
-    int _y = (y & MASK) << DITHER_ORDER; // ordered dither
-    for (int x = 0; x < src_width; x++)
-    {
-      int corr = matrix[_y | (x & MASK)];
-      //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
-      int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
-      new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-      // scale back to the required bit depth
-      // for generality. Now target == 8 bit, and dither_target is also 8 bit
-      // for test: source:10 bit, target=8 bit, dither_target=4 bit
-      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-      if constexpr (BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-        new_pixel = new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // closest in palette: simple shift with
-      dstp[x] = (BYTE)new_pixel;
-    }
-    dstp += dst_pitch;
-    srcp0 += src_pitch;
-  }
-}
-
-// float to 8 bit, float to 10/12/14/16 bit
-
+// float to 8-16 bits
 template<typename pixel_t, bool chroma, bool fulls, bool fulld>
-static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   const float *srcp0 = reinterpret_cast<const float *>(srcp);
   pixel_t *dstp0 = reinterpret_cast<pixel_t *>(dstp);
@@ -337,7 +329,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   src_pitch = src_pitch / sizeof(float);
   dst_pitch = dst_pitch / sizeof(pixel_t);
 
-  int src_width = src_rowsize / sizeof(float);
+  const int src_width = src_rowsize / sizeof(float);
 
   const float max_dst_pixelvalue = (float)((1<< target_bitdepth) - 1); // 255, 1023, 4095, 16383, 65535.0
   const float half = (float)(1 << (target_bitdepth - 1));
@@ -382,7 +374,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
 // YUV: bit shift 8-16 <=> 8-16 bits
 // shift right or left, depending on expandrange
 template<typename pixel_t_s, typename pixel_t_d>
-static void convert_uint_limited_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+static void convert_uint_limited_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   const pixel_t_s* srcp0 = reinterpret_cast<const pixel_t_s*>(srcp);
   pixel_t_d* dstp0 = reinterpret_cast<pixel_t_d*>(dstp);
@@ -420,15 +412,13 @@ static void convert_uint_limited_c(const BYTE* srcp, BYTE* dstp, int src_rowsize
   }
 }
 
-// rgb/alpha: full scale. No bit shift, scale full ranges
 // chroma is special in full range
-// mixed cases
 template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
-static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   // limited to limited is bitshift, see in other function
   if constexpr (!fulls && !fulld) {
-    convert_uint_limited_c< pixel_t_s, pixel_t_d>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth);
+    convert_uint_limited_c< pixel_t_s, pixel_t_d>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
     return;
   }
 
@@ -438,7 +428,7 @@ static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int sr
   src_pitch = src_pitch / sizeof(pixel_t_s);
   dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
-  int src_width = src_rowsize / sizeof(pixel_t_s);
+  const int src_width = src_rowsize / sizeof(pixel_t_s);
 
   if constexpr (sizeof(pixel_t_s) == 1 && sizeof(pixel_t_d) == 2) {
     if (fulls && fulld && !chroma && source_bitdepth == 8 && target_bitdepth == 16) {
@@ -467,8 +457,8 @@ static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int sr
     dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
     mul_factor =
       fulls && fulld ? (float)(dst_offset - 1) / (src_offset - 1) :
-      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-127 ==> +-112 (240-16)/2
-      /*fulld*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-112 (240-16)/2 ==> +-127
+      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
+      /*fulls*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
   }
   else {
     // luma/limited: subtract offset, convert, add offset
@@ -477,8 +467,8 @@ static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int sr
     const int source_max = (1 << source_bitdepth) - 1;
     mul_factor =
       fulls && fulld ? (float)target_max / source_max :
-      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 0..255 ==> 16-235 (219)
-      /*fulld*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 16-235 ==> 0..255
+      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
+      /*fulls ?*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
   }
 
   auto dst_offset_plus_round = dst_offset + 0.5f;
@@ -498,137 +488,9 @@ static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int sr
 
 
 
-template<uint8_t sourcebits, uint8_t targetbits, int TARGET_DITHER_BITDEPTH>
-static void convert_rgb_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-
-  src_pitch = src_pitch / sizeof(uint16_t);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-
-  const int src_width = src_rowsize / sizeof(uint16_t);
-
-  const int source_max = (1 << sourcebits) - 1;
-
-  int _y = 0; // for ordered dither
-
-  const int TARGET_BITDEPTH = targetbits;
-  const int max_pixel_value = (1 << TARGET_BITDEPTH) - 1;
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
-  // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const int DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const int PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but generality)
-  const int DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const int DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const int MASK = DITHER_SIZE - 1;
-  // 10->8: 0x01 (2x2)
-  // 11->8: 0x03 (4x4)
-  // 12->8: 0x03 (4x4)
-  // 14->8: 0x07 (8x8)
-  // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  switch (sourcebits - TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data); break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data); break;
-  case 6: matrix = reinterpret_cast<const BYTE *>(dither8x8.data); break;
-  case 8: matrix = reinterpret_cast<const BYTE *>(dither16x16.data); break;
-  default: return; // n/a
-  }
-
-  for (int y = 0; y < src_height; y++)
-  {
-    _y = (y & MASK) << DITHER_ORDER; // ordered dither
-    for (int x = 0; x < src_width; x++)
-    {
-      int corr = matrix[_y | (x & MASK)];
-      //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
-      //int new_pixel = ((srcp[x] + corr) >> DITHER_BIT_DIFF);
-      int64_t new_pixel = (int64_t)(srcp[x] + corr) * max_pixel_value_dithered / source_max;
-
-      // new_pixel = min(new_pixel, max_pixel_value_dithered_i); // clamp upper
-      // scale back to the required bit depth
-      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-      if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0) {
-        new_pixel = new_pixel * max_pixel_value / max_pixel_value_dithered;
-      }
-      dstp[x] = (uint16_t)(min((int)new_pixel, max_pixel_value));
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-
-}
-
-
-// YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
-// shift right or left, depending on expandrange template param
-template<uint8_t sourcebits, uint8_t targetbits, int TARGET_DITHER_BITDEPTH>
-static void convert_uint16_to_uint16_dither_c(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  uint16_t *dstp = reinterpret_cast<uint16_t *>(dstp8);
-
-  src_pitch = src_pitch / sizeof(uint16_t);
-  dst_pitch = dst_pitch / sizeof(uint16_t);
-
-  const int src_width = src_rowsize / sizeof(uint16_t);
-
-  int _y = 0; // for ordered dither
-
-  const int TARGET_BITDEPTH = targetbits;
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
-  // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const int DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const int PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but generality)
-  const int DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const int DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const int MASK = DITHER_SIZE - 1;
-  // 10->8: 0x01 (2x2)
-  // 11->8: 0x03 (4x4)
-  // 12->8: 0x03 (4x4)
-  // 14->8: 0x07 (8x8)
-  // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  switch (sourcebits - TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data); break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data); break;
-  case 6: matrix = reinterpret_cast<const BYTE *>(dither8x8.data); break;
-  case 8: matrix = reinterpret_cast<const BYTE *>(dither16x16.data); break;
-  default: return; // n/a
-  }
-
-  for (int y = 0; y < src_height; y++)
-  {
-    _y = (y & MASK) << DITHER_ORDER; // ordered dither
-    for (int x = 0; x < src_width; x++)
-    {
-      int corr = matrix[_y | (x & MASK)];
-      //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
-      int new_pixel = ((srcp[x] + corr) >> DITHER_BIT_DIFF);
-      new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-      // scale back to the required bit depth
-      // for generality. Now target == 8 bit, and dither_target is also 8 bit
-      // for test: source:10 bit, target=8 bit, dither_target=4 bit
-      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-      if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-        new_pixel = new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // closest in palette: simple shift with
-      dstp[x] = (uint16_t)new_pixel;
-    }
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
 // 8 bit to float, 16/14/12/10 bits to float
 template<typename pixel_t, bool chroma, bool fulls, bool fulld>
-static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   const pixel_t *srcp0 = reinterpret_cast<const pixel_t *>(srcp);
   float *dstp0 = reinterpret_cast<float *>(dstp);
@@ -636,7 +498,7 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   src_pitch = src_pitch / sizeof(pixel_t);
   dst_pitch = dst_pitch / sizeof(float);
 
-  int src_width = src_rowsize / sizeof(pixel_t);
+  const int src_width = src_rowsize / sizeof(pixel_t);
 
   const int limit_lo_s = (fulls ? 0 : 16) << (source_bitdepth - 8);
   const int limit_hi_s = fulls ? ((1 << source_bitdepth) - 1) : ((chroma ? 240 : 235) << (source_bitdepth - 8));
@@ -682,7 +544,7 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
 
 // float to float
 template<bool chroma, bool fulls, bool fulld>
-static void convert_float_to_float_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+static void convert_float_to_float_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   // float is good if always full range. For historical reasons Avisynth has "limited" range float,
   // which is simply a /255.0 reduction of original byte pixels
@@ -692,7 +554,7 @@ static void convert_float_to_float_c(const BYTE* srcp, BYTE* dstp, int src_rowsi
   src_pitch = src_pitch / sizeof(float);
   dst_pitch = dst_pitch / sizeof(float);
 
-  int src_width = src_rowsize / sizeof(float);
+  const int src_width = src_rowsize / sizeof(float);
 
   const int limit_lo_s = fulls ? 0 : 16;
   const int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
@@ -726,440 +588,6 @@ static void convert_float_to_float_c(const BYTE* srcp, BYTE* dstp, int src_rowsi
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
   }
-}
-
-BitDepthConvFuncPtr get_convert_to_8_function(bool full_scale, int source_bitdepth, int dither_mode, int dither_bitdepth, int rgb_step, int cpu)
-{
-  std::map<std::tuple<bool, int, int, int, int, int>, BitDepthConvFuncPtr> func_copy;
-  using std::make_tuple;
- 
-
-  const int DITHER_TARGET_BITDEPTH_8 = 8;
-  const int DITHER_TARGET_BITDEPTH_7 = 7;
-  const int DITHER_TARGET_BITDEPTH_6 = 6;
-  const int DITHER_TARGET_BITDEPTH_5 = 5;
-  const int DITHER_TARGET_BITDEPTH_4 = 4;
-  const int DITHER_TARGET_BITDEPTH_3 = 3;
-  const int DITHER_TARGET_BITDEPTH_2 = 2;
-  const int DITHER_TARGET_BITDEPTH_1 = 1;
-  const int DITHER_TARGET_BITDEPTH_0 = 0;
-
-  if (dither_mode < 0)
-    dither_bitdepth = 8; // default entry in the tables below
-  if (dither_mode == 1) // no special version for fullscale dithering down.
-  {
-    // floyd
-    rgb_step = 1; // rgb_step n/a for packed rgb formats.
-    // packed rgb floyd result is not the same as because it treats the rgb pixels
-    // as a consecutive bgrbgrbgr pixel flow, packed rgb is converted to and from planar rgb instead.
-    full_scale = false;
-  }
-
-  // full scale
-
-  //-----------
-  // full scale, dither, C
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_4, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_rgb_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_2, 1>;
-
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_rgb_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_4, 1>;
-
-  func_copy[make_tuple(true, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<14, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_8_c<14, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  // for RGB48 and RGB64 source
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 3, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_TARGET_BITDEPTH_8, 3>; // dither rgb_step param is filled
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 4, 0)] = convert_rgb_uint16_to_8_c<16, 0, DITHER_TARGET_BITDEPTH_8, 4>; // dither rgb_step param is filled
-
-#ifdef INTEL_INTRINSICS
-  //-----------
-  // full scale, dither, SSE2
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_4, 1>;
-  func_copy[make_tuple(true, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<10, 0, DITHER_TARGET_BITDEPTH_2, 1>;
-
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-  func_copy[make_tuple(true, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<12, 0, DITHER_TARGET_BITDEPTH_4, 1>;
-
-  func_copy[make_tuple(true, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<14, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  func_copy[make_tuple(true, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<14, 0, DITHER_TARGET_BITDEPTH_6, 1>;
-
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, 0, DITHER_TARGET_BITDEPTH_8, 1>;
-  // for RGB48 and RGB64 source
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 3, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, 0, DITHER_TARGET_BITDEPTH_8, 3>; // dither rgb_step param is filled
-  func_copy[make_tuple(true, 16, 0, DITHER_TARGET_BITDEPTH_8, 4, CPUF_SSE2)] = convert_rgb_uint16_to_8_sse2<16, 0, DITHER_TARGET_BITDEPTH_8, 4>; // dither rgb_step param is filled
-#endif
-
-  //-----------
-  // Floyd dither, C, dither to 8 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_8>;
-  // Floyd dither, C, dither to 7 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_7>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_7>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_7>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_7>;
-  // Floyd dither, C, dither to 6 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_6>;
-  // Floyd dither, C, dither to 5 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_5>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_5>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_5>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_5>;
-  // Floyd dither, C, dither to 4 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_4>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_4>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_4>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_4>;
-  // Floyd dither, C, dither to 3 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_3>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_3>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_3>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_3>;
-  // Floyd dither, C, dither to 2 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_2>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_2>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_2>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_2>;
-  // Floyd dither, C, dither to 1 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_1>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_1>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_1>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_1>;
-  // Floyd dither, C, dither to 0 bits
-  func_copy[make_tuple(false, 10, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 10, 8, DITHER_TARGET_BITDEPTH_0>;
-  func_copy[make_tuple(false, 12, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 12, 8, DITHER_TARGET_BITDEPTH_0>;
-  func_copy[make_tuple(false, 14, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 14, 8, DITHER_TARGET_BITDEPTH_0>;
-  func_copy[make_tuple(false, 16, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint8_t, 16, 8, DITHER_TARGET_BITDEPTH_0>;
-
-  // shifted scale (YUV)
-
-  // dither, C, dither to 8 bits
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<14, 0, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_8_c<16, 0, DITHER_TARGET_BITDEPTH_8>;
-
-#ifdef INTEL_INTRINSICS
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<12, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<14, DITHER_TARGET_BITDEPTH_8>;
-  func_copy[make_tuple(false, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<16, DITHER_TARGET_BITDEPTH_8>;
-#endif
-
-  // dither, C, dither to 6 bits, max diff 8, allowed from 10-14 bits
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_8_c<14, 0, DITHER_TARGET_BITDEPTH_6>;
-
-#ifdef INTEL_INTRINSICS
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<12, DITHER_TARGET_BITDEPTH_6>;
-  func_copy[make_tuple(false, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<14, DITHER_TARGET_BITDEPTH_6>;
-#endif
-
-  // dither, C, dither to 4 bits, max diff 8, allowed from 10-12 bits
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_4>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint16_to_8_c<12, 0, DITHER_TARGET_BITDEPTH_4>;
-#ifdef INTEL_INTRINSICS
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_4>;
-  func_copy[make_tuple(false, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<12, DITHER_TARGET_BITDEPTH_4>;
-#endif
-
-  // dither, C, dither to 2 bits, max diff 8, allowed from 10 bits
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint16_to_8_c<10, 0, DITHER_TARGET_BITDEPTH_2>;
-#ifdef INTEL_INTRINSICS
-  // dither, SSE2
-  func_copy[make_tuple(false, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, CPUF_SSE2)] = convert_uint16_to_8_dither_sse2<10, DITHER_TARGET_BITDEPTH_2>;
-#endif
-
-  BitDepthConvFuncPtr result = func_copy[make_tuple(full_scale, source_bitdepth, dither_mode, dither_bitdepth, rgb_step, cpu)];
-  if (result == nullptr)
-    result = func_copy[make_tuple(full_scale, source_bitdepth, dither_mode, dither_bitdepth, rgb_step, 0)]; // fallback to C
-  return result;
-}
-
-BitDepthConvFuncPtr get_convert_to_16_16_down_dither_function(bool full_scale, int source_bitdepth, int target_bitdepth, int dither_mode, int dither_bitdepth, int rgb_step, int cpu)
-{
-  std::map<std::tuple<bool, int /*src*/, int /*target*/, int /*dithermode*/, int /*ditherbits*/, int /*rgbstep*/, int /*cpu*/>, BitDepthConvFuncPtr> func_copy;
-  using std::make_tuple;
-
-  const int DITHER_TARGET_BITDEPTH_14 = 14;
-  const int DITHER_TARGET_BITDEPTH_12 = 12;
-  const int DITHER_TARGET_BITDEPTH_10 = 10;
-  const int DITHER_TARGET_BITDEPTH_8 = 8;
-  const int DITHER_TARGET_BITDEPTH_7 = 7;
-  const int DITHER_TARGET_BITDEPTH_6 = 6;
-  const int DITHER_TARGET_BITDEPTH_5 = 5;
-  const int DITHER_TARGET_BITDEPTH_4 = 4;
-  const int DITHER_TARGET_BITDEPTH_3 = 3;
-  const int DITHER_TARGET_BITDEPTH_2 = 2; // only for 10->10 bits, but dithering_bits==2
-  const int DITHER_TARGET_BITDEPTH_1 = 1; // FloydSteinberg allows any difference in the implementation
-  const int DITHER_TARGET_BITDEPTH_0 = 0; // FloydSteinberg allows any difference in the implementation
-
-  if (dither_mode == 1) // no special version for fullscale dithering down.
-    full_scale = false;
-
-  if (full_scale) {
-    // 16->10,12,14
-    // dither, C, dither to N bits
-    func_copy[make_tuple(true, 16, 10, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 16, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 10, DITHER_TARGET_BITDEPTH_8>;
-
-    func_copy[make_tuple(true, 16, 12, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(true, 16, 12, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 16, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_8>;
-
-    func_copy[make_tuple(true, 16, 14, 0, DITHER_TARGET_BITDEPTH_14, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 14, DITHER_TARGET_BITDEPTH_14>;
-    func_copy[make_tuple(true, 16, 14, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(true, 16, 14, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 16, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_8>;
-
-    func_copy[make_tuple(true, 16, 16, 0, DITHER_TARGET_BITDEPTH_14, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_14>;
-    func_copy[make_tuple(true, 16, 16, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(true, 16, 16, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 16, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_8>;
-
-    // 14->10,12
-    // dither, C, dither to N bits
-    func_copy[make_tuple(true, 14, 10, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 14, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(true, 14, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 10, DITHER_TARGET_BITDEPTH_6>;
-
-    func_copy[make_tuple(true, 14, 12, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(true, 14, 12, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 14, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(true, 14, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_6>;
-
-    func_copy[make_tuple(true, 14, 14, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(true, 14, 14, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 14, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(true, 14, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_6>;
-
-    // 12->10
-    // dither, C, dither to N bits
-    func_copy[make_tuple(true, 12, 10, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 12, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(true, 12, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(true, 12, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_4>;
-
-    func_copy[make_tuple(true, 12, 12, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(true, 12, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(true, 12, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(true, 12, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_4>;
-
-    // 10->10
-    // dither, C, dither to N bits
-    func_copy[make_tuple(true, 10, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(true, 10, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(true, 10, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(true, 10, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_rgb_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_2>;
-  }
-  else {
-
-    // floyd 16->
-    // 16->10,12,14
-    // dither, C, dither to N bits
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 16, 10, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 10, DITHER_TARGET_BITDEPTH_0>;
-
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 16, 12, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 12, DITHER_TARGET_BITDEPTH_0>;
-
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_14, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_14>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 16, 14, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 14, DITHER_TARGET_BITDEPTH_0>;
-    // keeping bit depth but dither down
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_14, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_14>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 16, 16, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 16, 16, DITHER_TARGET_BITDEPTH_0>;
-    // floyd 14->
-    // 14->10,12
-    // dither, C, dither to N bits
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 14, 10, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 10, DITHER_TARGET_BITDEPTH_0>;
-
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 14, 12, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 12, DITHER_TARGET_BITDEPTH_0>;
-    // keeping bit depth but dither down
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 14, 14, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 14, 14, DITHER_TARGET_BITDEPTH_0>;
-    // floyd 12->
-    // 12->10
-    // dither, C, dither to N bits
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 12, 10, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 10, DITHER_TARGET_BITDEPTH_0>;
-    // keeping bit depth but dither down
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 12, 12, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 12, 12, DITHER_TARGET_BITDEPTH_0>;
-    // floyd 12->
-    // 10->10
-    // dither, C, dither to N bits
-    // keeping bit depth but dither down
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_7, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_7>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_5, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_5>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_3, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_3>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_2>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_1, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_1>;
-    func_copy[make_tuple(false, 10, 10, 1, DITHER_TARGET_BITDEPTH_0, 1, 0)] = convert_uint_floyd_c<uint16_t, uint16_t, 10, 10, DITHER_TARGET_BITDEPTH_0>;
-
-    // end of floyd
-
-    // shifted scale
-    // 16->10,12,14
-    // dither, C, dither to N bits
-    func_copy[make_tuple(false, 16, 10, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 10, DITHER_TARGET_BITDEPTH_8>;
-
-    func_copy[make_tuple(false, 16, 12, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 16, 12, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_8>;
-
-    func_copy[make_tuple(false, 16, 14, 0, DITHER_TARGET_BITDEPTH_14, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 14, DITHER_TARGET_BITDEPTH_14>;
-    func_copy[make_tuple(false, 16, 14, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 16, 14, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 12, DITHER_TARGET_BITDEPTH_8>;
-
-    func_copy[make_tuple(false, 16, 16, 0, DITHER_TARGET_BITDEPTH_14, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_14>;
-    func_copy[make_tuple(false, 16, 16, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 16, 16, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 16, 16, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<16, 16, DITHER_TARGET_BITDEPTH_8>;
-
-    // 14->10,12
-    // dither, C, dither to N bits
-    func_copy[make_tuple(false, 14, 10, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 14, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 14, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 10, DITHER_TARGET_BITDEPTH_6>;
-
-    func_copy[make_tuple(false, 14, 12, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 14, 12, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 14, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 14, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 12, DITHER_TARGET_BITDEPTH_6>;
-
-    func_copy[make_tuple(false, 14, 14, 0, DITHER_TARGET_BITDEPTH_12, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_12>;
-    func_copy[make_tuple(false, 14, 14, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 14, 14, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 14, 14, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_uint16_dither_c<14, 14, DITHER_TARGET_BITDEPTH_6>;
-
-    // 12->10
-    // dither, C, dither to N bits
-    func_copy[make_tuple(false, 12, 10, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 12, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 12, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 12, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 10, DITHER_TARGET_BITDEPTH_4>;
-
-    func_copy[make_tuple(false, 12, 12, 0, DITHER_TARGET_BITDEPTH_10, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_10>;
-    func_copy[make_tuple(false, 12, 12, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 12, 12, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 12, 12, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint16_to_uint16_dither_c<12, 12, DITHER_TARGET_BITDEPTH_4>;
-
-    // 10->10 only dither down
-    // dither, C, dither to N bits
-    func_copy[make_tuple(false, 10, 10, 0, DITHER_TARGET_BITDEPTH_8, 1, 0)] = convert_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_8>;
-    func_copy[make_tuple(false, 10, 10, 0, DITHER_TARGET_BITDEPTH_6, 1, 0)] = convert_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_6>;
-    func_copy[make_tuple(false, 10, 10, 0, DITHER_TARGET_BITDEPTH_4, 1, 0)] = convert_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_4>;
-    func_copy[make_tuple(false, 10, 10, 0, DITHER_TARGET_BITDEPTH_2, 1, 0)] = convert_uint16_to_uint16_dither_c<10, 10, DITHER_TARGET_BITDEPTH_2>;
-
-  }
-  BitDepthConvFuncPtr result = func_copy[make_tuple(full_scale, source_bitdepth, target_bitdepth, dither_mode, dither_bitdepth, rgb_step, cpu)];
-  if (result == nullptr)
-    result = func_copy[make_tuple(full_scale, source_bitdepth, target_bitdepth, dither_mode, dither_bitdepth, rgb_step, 0)]; // fallback to C
-  return result;
 }
 
 static void get_convert_32_to_uintN_functions(int target_bitdepth, bool fulls, bool fulld, 
@@ -1282,6 +710,119 @@ static void get_convert_uintN_to_float_functions(int bits_per_pixel, bool fulls,
 #undef convert_uintN_to_float_functions
 }
 
+static void get_convert_uintN_to_uintN_ordered_dither_functions(int source_bitdepth, int target_bitdepth, bool fulls, bool fulld,
+#ifdef INTEL_INTRINSICS
+  bool sse2, bool sse4, bool avx2,
+#endif
+  BitDepthConvFuncPtr& conv_function, BitDepthConvFuncPtr& conv_function_chroma)
+{
+// 8-16->8-16 bits support any fulls fulld combination
+// dither has no "conv_function_a"
+// pure C
+#define convert_uintN_to_uintN_ordered_dither_functions(uint_X_t, uint_X_dest_t) \
+      if (fulls && fulld) { \
+        conv_function = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, true, true>; \
+        conv_function_chroma = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, true, true>; \
+      } \
+      else if (fulls && !fulld) { \
+        conv_function = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, true, false>; \
+        conv_function_chroma = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, true, false>; \
+      } \
+      else if (!fulls && fulld) { \
+        conv_function = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, false, true>; \
+        conv_function_chroma = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, false, true>; \
+      } \
+      else if (!fulls && !fulld) { \
+        conv_function = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, false, false>; \
+        conv_function_chroma = convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, false, false>; \
+      }
+
+#ifdef INTEL_INTRINSICS
+#undef convert_uintN_to_uintN_ordered_dither_functions
+// dither has no "conv_function_a"
+#define convert_uintN_to_uintN_ordered_dither_functions(uint_X_t, uint_X_dest_t) \
+      if (fulls && fulld) { \
+        conv_function = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, false, true, true> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, true, true> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, true, true>; \
+        conv_function_chroma = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, true, true, true> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, true, true> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, true, true>; \
+      } \
+      else if (fulls && !fulld) { \
+        conv_function = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, false, true, false> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, true, false> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, true, false>; \
+        conv_function_chroma = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, true, true, false> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, true, false> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, true, false>; \
+      } \
+      else if (!fulls && fulld) { \
+        conv_function = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, false, false, true> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, false, true> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, false, true>; \
+        conv_function_chroma = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, true, false, true> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, false, true> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, false, true>; \
+      } \
+      else if (!fulls && !fulld) { \
+       conv_function = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, false, false, false> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, false, false> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, false, false, false>; \
+       conv_function_chroma = avx2 ? convert_ordered_dither_uint_avx2<uint_X_t, uint_X_dest_t, true, false, false> : sse4 ? convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, false, false> : convert_ordered_dither_uint_c<uint_X_t, uint_X_dest_t, true, false, false>; \
+      }
+#endif
+  // all variations of fulls fulld byte/word source/target
+  switch (target_bitdepth)
+  {
+  case 8:
+    if (source_bitdepth == 8) {
+      convert_uintN_to_uintN_ordered_dither_functions(uint8_t, uint8_t);
+    }
+    else {
+      convert_uintN_to_uintN_ordered_dither_functions(uint16_t, uint8_t);
+    }
+    break;
+  default:
+    // uint16_t target is always uint16_t source
+    convert_uintN_to_uintN_ordered_dither_functions(uint16_t, uint16_t);
+    break;
+  }
+
+#undef convert_uintN_to_uintN_ordered_dither_functions
+}
+
+static void get_convert_uintN_to_uintN_floyd_dither_functions(int source_bitdepth, int target_bitdepth, bool fulls, bool fulld,
+  BitDepthConvFuncPtr& conv_function, BitDepthConvFuncPtr& conv_function_chroma)
+{
+  // 8-16->8-16 bits support any fulls fulld combination
+  // dither has no "conv_function_a"
+  // pure C
+#define convert_uintN_to_uintN_floyd_dither_functions(uint_X_t, uint_X_dest_t) \
+      if (fulls && fulld) { \
+        conv_function = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, false, true, true>; \
+        conv_function_chroma = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, true, true, true>; \
+      } \
+      else if (fulls && !fulld) { \
+        conv_function = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, false, true, false>; \
+        conv_function_chroma = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, true, true, false>; \
+      } \
+      else if (!fulls && fulld) { \
+        conv_function = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, false, false, true>; \
+        conv_function_chroma = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, true, false, true>; \
+      } \
+      else if (!fulls && !fulld) { \
+        conv_function = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, false, false, false>; \
+        conv_function_chroma = convert_uint_floyd_c<uint_X_t, uint_X_dest_t, true, false, false>; \
+      }
+
+  // all variations of fulls fulld byte/word source/target
+  switch (target_bitdepth)
+  {
+  case 8:
+    if (source_bitdepth == 8) {
+      convert_uintN_to_uintN_floyd_dither_functions(uint8_t, uint8_t);
+    }
+    else {
+      convert_uintN_to_uintN_floyd_dither_functions(uint16_t, uint8_t);
+    }
+    break;
+  default:
+    // uint16_t target is always uint16_t source
+    convert_uintN_to_uintN_floyd_dither_functions(uint16_t, uint16_t);
+    break;
+  }
+
+#undef convert_uintN_to_uintN_ordered_dither_functions
+}
+
+
 static void get_convert_uintN_to_uintN_functions(int source_bitdepth, int target_bitdepth, bool fulls, bool fulld,
 #ifdef INTEL_INTRINSICS
   bool sse2, bool sse4, bool avx2,
@@ -1358,13 +899,13 @@ static void get_convert_uintN_to_uintN_functions(int source_bitdepth, int target
 #undef convert_uintN_to_uintN_functions
 }
 
-ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, 
+ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange,
   int _ColorRange_src, int _ColorRange_dest,
   int _dither_bitdepth, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), dither_mode(_dither_mode), target_bitdepth(_target_bitdepth), truerange(_truerange),
-  dither_bitdepth(_dither_bitdepth),
+  GenericVideoFilter(_child),
   conv_function(nullptr), conv_function_chroma(nullptr), conv_function_a(nullptr),
-  fulld(false), fulls(false)
+  target_bitdepth(_target_bitdepth), dither_mode(_dither_mode), dither_bitdepth(_dither_bitdepth),
+  fulls(false), fulld(false), truerange(_truerange)
 {
 
   pixelsize = vi.ComponentSize();
@@ -1374,12 +915,8 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
 #ifdef INTEL_INTRINSICS
   const bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   const bool sse4 = !!(env->GetCPUFlags() & CPUF_SSE4_1);
-  const bool avx =  !!(env->GetCPUFlags() & CPUF_AVX);
-  const bool avx2 =  !!(env->GetCPUFlags() & CPUF_AVX2);
+  const bool avx2 = !!(env->GetCPUFlags() & CPUF_AVX2);
 #endif
-
-  BitDepthConvFuncPtr conv_function_full_scale;
-  BitDepthConvFuncPtr conv_function_shifted_scale;
 
   // full or limited decision
   // dest: if undefined, use src
@@ -1390,22 +927,106 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   fulls = _ColorRange_src == ColorRange_e::AVS_RANGE_FULL;
   fulld = _ColorRange_dest == ColorRange_e::AVS_RANGE_FULL;
 
-  // ConvertToFloat
+  if (!truerange) {
+    if ((target_bitdepth == 8 || target_bitdepth == 32) && pixelsize == 2)
+      bits_per_pixel = 16;
+    if (target_bitdepth > 8 && target_bitdepth <= 16 && (bits_per_pixel == 8 || bits_per_pixel == 32))
+      target_bitdepth = 16;
+    if (target_bitdepth > 8 && target_bitdepth <= 16 && bits_per_pixel > 8 && bits_per_pixel <= 16)
+      format_change_only = true;
+  }
+
+  if (bits_per_pixel <= 16 && target_bitdepth <= 16)
+  {
+    // get basic non-dithered versions
+#ifdef INTEL_INTRINSICS
+    get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
+#else
+    get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
+#endif
+    if (target_bitdepth <= bits_per_pixel) {
+      // dither is only down
+      if (dither_mode == 0) {
+        // ordered dither
+#ifdef INTEL_INTRINSICS
+        get_convert_uintN_to_uintN_ordered_dither_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma);
+#else
+        get_convert_uintN_to_uintN_ordered_dither_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma);
+#endif
+      }
+      else if (dither_mode == 1) {
+        // Floyd, no SIMD there
+        get_convert_uintN_to_uintN_floyd_dither_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma);
+      }
+    }
+  }
+
+  // 32->8-16 bit
+  if (bits_per_pixel == 32 && target_bitdepth <= 16) {
+#ifdef INTEL_INTRINSICS
+    get_convert_32_to_uintN_functions(target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
+#else
+    get_convert_32_to_uintN_functions(target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
+#endif
+  }
+
+  // 8-32->32
   if (target_bitdepth == 32) {
-    if (pixelsize == 1) // 8->32 bit
-    {
-      get_convert_uintN_to_float_functions(8, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-    }
-    else if (pixelsize == 2) // 16->32 bit
-    {
-      if (vi.IsPlanar() && truerange)
-        get_convert_uintN_to_float_functions(bits_per_pixel, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-      else
-        get_convert_uintN_to_float_functions(16, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-    }
+    if (bits_per_pixel <= 16) // 8-16->32 bit
+      get_convert_uintN_to_float_functions(bits_per_pixel, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
     else
       get_convert_float_to_float_functions(fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
+  }
 
+  // Set VideoInfo
+  if (target_bitdepth == 8) {
+    if (vi.NumComponents() == 1)
+      vi.pixel_type = VideoInfo::CS_Y8;
+    else if (vi.Is420() || vi.IsYV12())
+      vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA420 : VideoInfo::CS_YV12;
+    else if (vi.Is422())
+      vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA422 : VideoInfo::CS_YV16;
+    else if (vi.Is444())
+      vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA444 : VideoInfo::CS_YV24;
+    else if (vi.IsRGB48() || vi.IsRGB24())
+      vi.pixel_type = VideoInfo::CS_BGR24;
+    else if (vi.IsRGB64() || vi.IsRGB32())
+      vi.pixel_type = VideoInfo::CS_BGR32;
+    else if (vi.IsPlanarRGB())
+      vi.pixel_type = VideoInfo::CS_RGBP;
+    else if (vi.IsPlanarRGBA())
+      vi.pixel_type = VideoInfo::CS_RGBAP;
+    else
+      env->ThrowError("ConvertTo8bit: unsupported color space");
+
+    return;
+  }
+  else if (target_bitdepth > 8 && target_bitdepth <= 16) {
+    // set output vi format
+    if (vi.IsRGB24() || vi.IsRGB48()) {
+      vi.pixel_type = VideoInfo::CS_BGR48;
+    }
+    else if (vi.IsRGB32() || vi.IsRGB64()) {
+      vi.pixel_type = VideoInfo::CS_BGR64;
+    }
+    else {
+      // Y or YUV(A) or PlanarRGB(A)
+      if (vi.IsYV12()) // YV12 can have an exotic compatibility constant
+        vi.pixel_type = VideoInfo::CS_YV12; // override for known
+      int new_bitdepth_bits;
+      switch (target_bitdepth) {
+      case 8: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_8; break;
+      case 10: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_10; break;
+      case 12: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_12; break;
+      case 14: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_14; break;
+      case 16: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_16; break;
+      case 32: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_32; break;
+      }
+      vi.pixel_type = (vi.pixel_type & ~VideoInfo::CS_Sample_Bits_Mask) | new_bitdepth_bits;
+    }
+    return;
+  }
+  else if (target_bitdepth == 32) {
     if (vi.NumComponents() == 1)
       vi.pixel_type = VideoInfo::CS_Y32;
     else if (vi.Is420())
@@ -1420,197 +1041,6 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
       vi.pixel_type = VideoInfo::CS_RGBAPS;
     else
       env->ThrowError("ConvertToFloat: unsupported color space");
-
-    return;
-  }
-  // ConvertToFloat end
-
-  // ConvertTo16bit() (10, 12, 14, 16)
-  // Conversion to uint16_t targets
-  // planar YUV(A) and RGB(A):
-  //   from 8 bit -> 10/12/14/16 with strict range expansion or expansion to 16
-  //   from 10/12/14 -> 16 bit with strict source range (expansion from 10/12/14 to 16 bit) or just casting pixel_type
-  //   from 16 bit -> 10/12/14 bit with strict target range (reducing range from 16 bit to 10/12/14 bits) or just casting pixel_type
-  //   from float -> 10/12/14/16 with strict range expansion or expansion to 16
-  // packed RGB:
-  //   RGB24->RGB48, RGB32->RGB64
-  if (target_bitdepth > 8 && target_bitdepth <= 16) {
-    // 8,10-16,32 -> 16 bit
-    if (pixelsize == 1) // 8->10-12-14-16 bit
-    {
-      if (!truerange)
-        target_bitdepth = 16;
-
-      // 8->10+ bits: do dither for sure
-#ifdef INTEL_INTRINSICS
-      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
-#else
-      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-#endif
-    }
-    else if (pixelsize == 2)
-    {
-      // 10-16->10-16
-      if (truerange)
-      {
-        // get basic non-dithered versions
-        if (bits_per_pixel != target_bitdepth || fulls != fulld || dither_mode >= 0)
-        {
-#ifdef INTEL_INTRINSICS
-          get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
-#else
-          get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-#endif
-          if (bits_per_pixel >= target_bitdepth && dither_mode >= 0) { // reduce range or dither down keeping bit-depth format
-            conv_function = get_convert_to_16_16_down_dither_function(fulls, bits_per_pixel, target_bitdepth, dither_mode, dither_bitdepth, 1/*rgb_step n/a*/, 0 /*cpu none*/);
-            conv_function_chroma = nullptr; // fixme: no mixed fulls/fulld scale exists, and no special chroma handling :(
-          }
-        }
-      }
-      else {
-        // no conversion for truerange == false
-        format_change_only = true;
-      }
-    }
-    else if (pixelsize == 4) // 32->10-16 bit
-    {
-      if (!truerange)
-        target_bitdepth = 16;
-
-#ifdef INTEL_INTRINSICS
-      get_convert_32_to_uintN_functions(target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
-#else
-      get_convert_32_to_uintN_functions(target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-#endif
-    }
-    else {
-      env->ThrowError("ConvertTo16bit: unsupported bit depth");
-    }
-
-    // set output vi format
-    if (vi.IsRGB24()) {
-      if (target_bitdepth == 16)
-        vi.pixel_type = VideoInfo::CS_BGR48;
-      else
-        env->ThrowError("ConvertTo16bit: unsupported bit depth");
-    }
-    else if (vi.IsRGB32()) {
-      if (target_bitdepth == 16)
-        vi.pixel_type = VideoInfo::CS_BGR64;
-      else
-        env->ThrowError("ConvertTo16bit: unsupported bit depth");
-    }
-    else {
-      // Y or YUV(A) or PlanarRGB(A)
-      if (vi.IsYV12()) // YV12 can have an exotic compatibility constant
-        vi.pixel_type = VideoInfo::CS_YV12;
-      int new_bitdepth_bits;
-      switch (target_bitdepth) {
-      case 8: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_8; break;
-      case 10: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_10; break;
-      case 12: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_12; break;
-      case 14: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_14; break;
-      case 16: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_16; break;
-      case 32: new_bitdepth_bits = VideoInfo::CS_Sample_Bits_32; break;
-      }
-      vi.pixel_type = (vi.pixel_type & ~VideoInfo::CS_Sample_Bits_Mask) | new_bitdepth_bits;
-    }
-
-    return;
-  }
-
-  // ConvertTo8bit()
-  if (target_bitdepth == 8) {
-    if (pixelsize == 1) {
-      // 8->8 bits: do dither for sure
-      // fixme: really?? lower dither_bits?
-#ifdef INTEL_INTRINSICS
-      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
-#else
-      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-#endif
-    }
-    else if (pixelsize == 2) // 16(,14,12,10)->8 bit
-    {
-      // it gets complicated, so we better using tuples for function lookup
-      // parameters for full scale: source bitdepth, dither_type (0:ordered 1:floyc), target_dither_bitdepth(default 8, 2,4,6), rgb_step(3 for RGB48, 4 for RGB64, 1 for all planars)
-      // rgb_step can differ from 1 only when source bits_per_pixel==16 and packed RGB type
-      // target_dither_bitdepth==8 (RFU for dithering down from e.g. 10->2 bit)
-
-      if(dither_mode==0 && (dither_bitdepth !=2 && dither_bitdepth != 4 && dither_bitdepth != 6 && dither_bitdepth != 8))
-        env->ThrowError("ConvertBits: invalid dither target bitdepth %d", dither_bitdepth);
-
-      int cpuType = 0;
-#ifdef INTEL_INTRINSICS
-      if (sse2)
-        cpuType = CPUF_SSE2;
-#endif
-
-      if (!truerange)
-        bits_per_pixel = 16;
-
-      // get basic non-dithered versions
-#ifdef INTEL_INTRINSICS
-      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a);
-#else
-      get_convert_uintN_to_uintN_functions(bits_per_pixel, target_bitdepth, fulls, fulld, conv_function, conv_function_chroma, conv_function_a);
-#endif
-
-      if (dither_mode >= 0) {
-        conv_function_chroma = nullptr; // fixme: no mixed fulls/fulld scale exists, and no special chroma handling :( make it 'full'-friendly like at regular conversions
-
-        // fill conv_function_full_scale and conv_function_shifted_scale
-        // conv_function_full_scale_no_dither: for alpha plane
-        conv_function_full_scale = get_convert_to_8_function(true, bits_per_pixel, dither_mode, dither_bitdepth, 1, cpuType);
-        conv_function_shifted_scale = get_convert_to_8_function(false, bits_per_pixel, dither_mode, dither_bitdepth, 1, cpuType);
-
-        // FIXME: Check it below, really do we have a special case because of these old formats?
-        // For Floyd we convert them to PlanarRGB, maybe we should act for ordered dither as well.
-        // // Until then, we support them.
-        // override for RGB48 and 64 (internal rgb_step may differ when dithering is used
-        if (vi.IsRGB48()) { // packed RGB: specify rgb_step 3 or 4 for dither table access
-          conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, dither_bitdepth, 3, cpuType);
-        }
-        else if (vi.IsRGB64()) {
-          conv_function_full_scale = get_convert_to_8_function(true, 16, dither_mode, dither_bitdepth, 4, cpuType);
-        }
-
-        // packed RGB scaling is full_scale 0..65535->0..255
-        if (fulls)
-          conv_function = conv_function_full_scale; // rgb default, RGB scaling is not shift by 2/4/6/8 as in YUV but like 0..255->0..65535
-        else
-          conv_function = conv_function_shifted_scale; // yuv default
-      }
-    }
-    else if (vi.ComponentSize() == 4) // 32->8 bit, no dithering option atm
-    {
-#ifdef INTEL_INTRINSICS
-      get_convert_32_to_uintN_functions(8, fulls, fulld, sse2, sse4, avx2, conv_function, conv_function_chroma, conv_function_a); // all combinations of fulls, fulld
-#else
-      get_convert_32_to_uintN_functions(8, fulls, fulld, conv_function, conv_function_chroma, conv_function_a); // all combinations of fulls, fulld
-#endif
-    }
-    else
-      env->ThrowError("ConvertTo8bit: unsupported bit depth");
-
-    if (vi.NumComponents() == 1)
-      vi.pixel_type = VideoInfo::CS_Y8;
-    else if (vi.Is420())
-      vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA420 : VideoInfo::CS_YV12;
-    else if (vi.Is422())
-      vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA422 : VideoInfo::CS_YV16;
-    else if (vi.Is444())
-      vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA444 : VideoInfo::CS_YV24;
-    else if (vi.IsRGB48())
-      vi.pixel_type = VideoInfo::CS_BGR24;
-    else if (vi.IsRGB64())
-      vi.pixel_type = VideoInfo::CS_BGR32;
-    else if (vi.IsPlanarRGB())
-      vi.pixel_type = VideoInfo::CS_RGBP;
-    else if (vi.IsPlanarRGBA())
-      vi.pixel_type = VideoInfo::CS_RGBAP;
-    else
-      env->ThrowError("ConvertTo8bit: unsupported color space");
 
     return;
   }
@@ -1718,8 +1148,8 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     ColorRange_src = ColorRange_dest;
   }
 
-  if (source_bitdepth == 8 && dither_bitdepth == 8)
-    dither_type = -1; // ignore dithering from 8 to 8 bit
+  if (source_bitdepth == dither_bitdepth)
+    dither_type = -1; // ignore dithering
 
   if(dither_type == 0) {
 
@@ -1728,59 +1158,41 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
       env->ThrowError("ConvertBits: dithering is not allowed for 32 bit sources");
     */
 
-    if (dither_bitdepth < 2 || dither_bitdepth > 16)
-      env->ThrowError("ConvertBits: invalid dither_bits specified");
-
-    if (dither_bitdepth % 2)
-      env->ThrowError("ConvertBits: dither_bits must be even");
+    if (dither_bitdepth < 1 || dither_bitdepth > 16)
+      env->ThrowError("ConvertBits: invalid dither_bits specified for ordered dither (1-16 allowed)");
 
     if(source_bitdepth - dither_bitdepth > 8)
       env->ThrowError("ConvertBits: dither_bits cannot differ with more than 8 bits from source");
 
-    if (source_bitdepth == 8)
-      env->ThrowError("ConvertBits: dithering down to less than 8 bits is not supported for 8 bit sources");
   }
 
   // floyd
   if (dither_type == 1) {
 
-    if (source_bitdepth == 8 || source_bitdepth == 32)
-      env->ThrowError("ConvertBits: Floyd-S: dithering is allowed only for 10-16 bit sources");
-
     if (dither_bitdepth < 0 || dither_bitdepth > 16)
-      env->ThrowError("ConvertBits: Floyd-S: invalid dither_bits specified");
+      env->ThrowError("ConvertBits: Floyd-S: invalid dither_bits specified (0-16 allowed)");
 
-    if ((dither_bitdepth > 8 && (dither_bitdepth%2) != 0)) // must be even above 8 bits. 0 is ok, means real b/w
-      env->ThrowError("ConvertBits: Floyd-S: dither_bits must be 0..8, 10, 12, 14, 16");
   }
 
   // no change -> return unmodified if no transform required
   if (source_bitdepth == target_bitdepth) { // 10->10 .. 16->16
     if((dither_type < 0 || dither_bitdepth == target_bitdepth) && fulls == fulld)
       return clip;
-    if(vi.IsRGB() && !vi.IsPlanar())
-      env->ThrowError("ConvertBits: dithering_bits should be the same as target bitdepth for packed RGB formats");
-    // here: we allow e.g. a 16->16 bit conversion with dithering bitdepth of 8
   }
 
   // YUY2 conversion is limited
   if (vi.IsYUY2()) {
-    env->ThrowError("ConvertBits: YUY2 source is 8-bit only");
+    env->ThrowError("ConvertBits: YUY2 source is not supported");
   }
 
   if (vi.IsYV411()) {
-    env->ThrowError("ConvertBits: YV411 source cannot be converted");
+    env->ThrowError("ConvertBits: YV411 source is not supported");
   }
 
   // packed RGB conversion is limited
-  if (vi.IsRGB24() || vi.IsRGB32()) {
-    if (target_bitdepth != 16)
-      env->ThrowError("ConvertBits: invalid bit-depth specified for packed RGB");
-  }
-
-  if (vi.IsRGB48() || vi.IsRGB64()) {
-    if (target_bitdepth != 8)
-      env->ThrowError("ConvertBits: invalid bit-depth specified for packed RGB");
+  if (vi.IsRGB() && !vi.IsPlanar()) {
+    if (target_bitdepth != 8 && target_bitdepth != 16)
+      env->ThrowError("ConvertBits: invalid bit-depth for packed RGB formats, only 8 or 16 possible");
   }
 
     // remark
@@ -1791,22 +1203,24 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     // source_16_bit.ConvertTo16bit(bits=10, truerange=true)  : downscale range
     // source_16_bit.ConvertTo16bit(bits=10, truerange=false) : leaves data, only format conversion
 
-  // for floyd, planar rgb conversion happens
-  bool need_convert_48 = vi.IsRGB48() && dither_type == 1 && target_bitdepth == 8;
-  bool need_convert_64 = vi.IsRGB64() && dither_type == 1 && target_bitdepth == 8;
+  // for dither, planar rgb conversion happens
+  bool need_convert_24 = vi.IsRGB24() && dither_type >= 0;
+  bool need_convert_32 = vi.IsRGB32() && dither_type >= 0;
+  bool need_convert_48 = vi.IsRGB48() && dither_type >= 0;
+  bool need_convert_64 = vi.IsRGB64() && dither_type >= 0;
 
-  // convert to planar on the fly
-  if (need_convert_48) {
+  // convert to planar on the fly if dither was asked
+  if (need_convert_24 || need_convert_48) {
     AVSValue new_args[1] = { clip };
     clip = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
-  } else if (need_convert_64) {
+  } else if (need_convert_32 || need_convert_64) {
     AVSValue new_args[1] = { clip };
     clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
   }
 
   // 3.7.1 t25: this case is covered with float32 bit intermediate
-  // 3.7.1 t26: only dither option + different fulls-fulld was left behind to do FIXME
-  if (fulls != fulld && target_bitdepth < 32 && source_bitdepth < 32 && dither_type>=0) {
+  // 3.7.1 t26: Floyd dither option + different fulls-fulld FIXME
+  if (fulls != fulld && target_bitdepth < 32 && source_bitdepth < 32 && dither_type==1) {
     // Convert to float
 
     // c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
@@ -1825,13 +1239,19 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   AVSValue result = new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, ColorRange_src, ColorRange_dest, dither_bitdepth, env);
 
-  // convert back to packed rgb on the fly
-  if (need_convert_48) {
+  // convert back to packed rgb from planar on the fly
+  if ((need_convert_24 || need_convert_48)) {
     AVSValue new_args[1] = { result };
-    result = env->Invoke("ConvertToRGB24", AVSValue(new_args, 1)).AsClip();
-  } else if (need_convert_64) {
+    if(target_bitdepth == 8)
+      result = env->Invoke("ConvertToRGB24", AVSValue(new_args, 1)).AsClip();
+    else
+      result = env->Invoke("ConvertToRGB48", AVSValue(new_args, 1)).AsClip();
+  } else if (need_convert_32 || need_convert_64) {
     AVSValue new_args[1] = { result };
-    result = env->Invoke("ConvertToRGB32", AVSValue(new_args, 1)).AsClip();
+    if (target_bitdepth == 8)
+      result = env->Invoke("ConvertToRGB32", AVSValue(new_args, 1)).AsClip();
+    else
+      result = env->Invoke("ConvertToRGB64", AVSValue(new_args, 1)).AsClip();
   }
 
   return result;
@@ -1866,7 +1286,7 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
           conv_function_a(src->GetReadPtr(plane), dst->GetWritePtr(plane),
             src->GetRowSize(plane), src->GetHeight(plane),
             src->GetPitch(plane), dst->GetPitch(plane),
-            bits_per_pixel, target_bitdepth
+            bits_per_pixel, target_bitdepth, dither_bitdepth
           );
       }
       else if (conv_function == nullptr)
@@ -1878,12 +1298,12 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
           conv_function_chroma(src->GetReadPtr(plane), dst->GetWritePtr(plane),
             src->GetRowSize(plane), src->GetHeight(plane),
             src->GetPitch(plane), dst->GetPitch(plane),
-            bits_per_pixel, target_bitdepth);
+            bits_per_pixel, target_bitdepth, dither_bitdepth);
         else
           conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
             src->GetRowSize(plane), src->GetHeight(plane),
             src->GetPitch(plane), dst->GetPitch(plane),
-            bits_per_pixel, target_bitdepth);
+            bits_per_pixel, target_bitdepth, dither_bitdepth);
       }
     }
   }
@@ -1892,7 +1312,7 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
     conv_function(src->GetReadPtr(), dst->GetWritePtr(),
       src->GetRowSize(), src->GetHeight(),
       src->GetPitch(), dst->GetPitch(),
-      bits_per_pixel, target_bitdepth);
+      bits_per_pixel, target_bitdepth, dither_bitdepth);
   }
   return dst;
 }

@@ -51,349 +51,6 @@
 #include <emmintrin.h>
 #include <smmintrin.h> // SSE4.1
 
-
-
-
-template<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-void convert_rgb_uint16_to_8_sse2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t);
-
-  int _y = 0; // for ordered dither
-
-  const int TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
-
-  // for test, make it 2,4,6,8. sourcebits-TARGET_DITHER_BITDEPTH cannot exceed 8 bit
-  // const int TARGET_DITHER_BITDEPTH = 2;
-
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1;
-  // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const int DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const int PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but generality)
-  const int DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const int DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const int MASK = DITHER_SIZE - 1;
-  // 10->8: 0x01 (2x2)
-  // 11->8: 0x03 (4x4)
-  // 12->8: 0x03 (4x4)
-  // 14->8: 0x07 (8x8)
-  // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  switch (sourcebits - TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data); break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data); break;
-  case 6: matrix = reinterpret_cast<const BYTE *>(dither8x8.data); break;
-  case 8: matrix = reinterpret_cast<const BYTE *>(dither16x16.data); break;
-  default: return; // n/a
-  }
-
-  // 20171024: given up integer division, rounding problems
-  const float mulfactor =
-    sourcebits == 16 ? (1.0f / 257.0f) :
-    sourcebits == 14 ? (255.0f / 16383.0f) :
-    sourcebits == 12 ? (255.0f / 4095.0f) :
-    (255.0f / 1023.0f); // 10 bits
-  const __m128 mulfactor_simd = _mm_set1_ps(mulfactor);
-  const __m128i zero = _mm_setzero_si128();
-
-  for (int y = 0; y < src_height; y++)
-  {
-    if constexpr(dither_mode == 0)
-      _y = (y & MASK) << DITHER_ORDER; // ordered dither
-    for (int x = 0; x < src_width; x += 8) // 8 * uint16_t at a time
-    {
-      if constexpr(dither_mode < 0) // -1: no dither
-      {
-
-        // C: dstp[x] = (uint8_t)(srcp0[x] * mulfactor + 0.5f);
-        // C cast truncates, use +0.5f rounder, which uses cvttss2si
-
-        __m128i pixel_i = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp0 + x)); // 16 bytes 8 pixels
-
-        __m128 pixel_f_lo = _mm_cvtepi32_ps(_mm_unpacklo_epi16(pixel_i, zero)); // 4 floats
-        __m128 mulled_lo = _mm_mul_ps(pixel_f_lo, mulfactor_simd);
-        __m128i converted32_lo = _mm_cvtps_epi32(mulled_lo); // rounding ok, nearest. no +0.5 needed
-
-        __m128 pixel_f_hi = _mm_cvtepi32_ps(_mm_unpackhi_epi16(pixel_i, zero)); // 4 floats
-        __m128 mulled_hi = _mm_mul_ps(pixel_f_hi, mulfactor_simd);
-        __m128i converted32_hi = _mm_cvtps_epi32(mulled_hi);
-
-        __m128i converted_16 = _mm_packs_epi32(converted32_lo, converted32_hi);
-        __m128i converted_8 = _mm_packus_epi16(converted_16, zero);
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(&dstp[x]), converted_8); // store 8 bytes
-      }
-      else { // dither_mode == 0 -> ordered dither
-             //  const int corr = matrix[_y | ((x / rgb_step) & MASK)];
-        __m128i corr_lo = _mm_set_epi32(
-          matrix[_y | (((x + 3) / rgb_step) & MASK)],
-          matrix[_y | (((x + 2) / rgb_step) & MASK)],
-          matrix[_y | (((x + 1) / rgb_step) & MASK)],
-          matrix[_y | (((x + 0) / rgb_step) & MASK)]
-        );
-        __m128i corr_hi = _mm_set_epi32(
-          matrix[_y | (((x + 7) / rgb_step) & MASK)],
-          matrix[_y | (((x + 6) / rgb_step) & MASK)],
-          matrix[_y | (((x + 5) / rgb_step) & MASK)],
-          matrix[_y | (((x + 4) / rgb_step) & MASK)]
-        );
-        // vvv for the non-fullscale version: int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
-
-        // no integer division, rounding problems
-        const float mulfactor_dith =
-          DITHER_BIT_DIFF == 8 ? (1.0f / 257.0f) :
-          DITHER_BIT_DIFF == 6 ? (255.0f / 16383.0f) :
-          DITHER_BIT_DIFF == 4 ? (255.0f / 4095.0f) :
-          DITHER_BIT_DIFF == 2 ? (255.0f / 1023.0f) :
-          1.0f;
-        __m128 mulfactor_dith_simd = _mm_set1_ps(mulfactor_dith);
-
-        __m128i pixel_i = _mm_load_si128(reinterpret_cast<const __m128i *>(srcp0 + x)); // 16 bytes 8 pixels
-        __m128i pixel_i_lo = _mm_add_epi32(_mm_unpacklo_epi16(pixel_i, zero), corr_lo);
-        __m128i pixel_i_hi = _mm_add_epi32(_mm_unpackhi_epi16(pixel_i, zero), corr_hi);
-        __m128i converted32_lo, converted32_hi;
-
-        /* C:
-        if (TARGET_DITHER_BITDEPTH <= 4)
-        new_pixel = (uint16_t)((srcp0[x] + corr) * mulfactor); // rounding here makes brightness shift
-        else if (DITHER_BIT_DIFF > 0)
-        new_pixel = (uint16_t)((srcp0[x] + corr) * mulfactor + 0.5f);
-        else
-        new_pixel = (uint16_t)(srcp0[x] + corr);
-        */
-        if constexpr(TARGET_DITHER_BITDEPTH <= 4) {
-          // round: truncate
-          __m128 pixel_f_lo = _mm_cvtepi32_ps(pixel_i_lo); // 4 floats
-          __m128 mulled_lo = _mm_mul_ps(pixel_f_lo, mulfactor_dith_simd);
-          converted32_lo = _mm_cvttps_epi32(mulled_lo); // truncate! rounding here makes brightness shift
-
-          __m128 pixel_f_hi = _mm_cvtepi32_ps(pixel_i_hi); // 4 floats
-          __m128 mulled_hi = _mm_mul_ps(pixel_f_hi, mulfactor_dith_simd);
-          converted32_hi = _mm_cvttps_epi32(mulled_hi); // truncate! rounding here makes brightness shift
-        }
-        else if constexpr(DITHER_BIT_DIFF > 0) {
-          // round: nearest
-          __m128 pixel_f_lo = _mm_cvtepi32_ps(pixel_i_lo); // 4 floats
-          __m128 mulled_lo = _mm_mul_ps(pixel_f_lo, mulfactor_dith_simd);
-          converted32_lo = _mm_cvtps_epi32(mulled_lo); // rounding ok, nearest. no +0.5 needed
-
-          __m128 pixel_f_hi = _mm_cvtepi32_ps(pixel_i_hi); // 4 floats
-          __m128 mulled_hi = _mm_mul_ps(pixel_f_hi, mulfactor_dith_simd);
-          converted32_hi = _mm_cvtps_epi32(mulled_hi);
-        }
-        else {
-          // new_pixel = (uint8_t)(srcp0[x] + corr);
-          converted32_lo = pixel_i_lo;
-          converted32_hi = pixel_i_hi;
-        }
-
-        __m128i converted_16 = _mm_packs_epi32(converted32_lo, converted32_hi);
-        if constexpr(max_pixel_value_dithered <= 16384) // when <= 14 bits. otherwise packus_epi16 handles well. min_epi16 is sse2 only unlike min_epu16
-          converted_16 = _mm_min_epi16(converted_16, _mm_set1_epi16(max_pixel_value_dithered)); // new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-
-        // scale back to the required bit depth
-        // for generality. Now target == 8 bit, and dither_target is also 8 bit
-        // for test: source:10 bit, target=8 bit, dither_target=4 bit
-        const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-        if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-          converted_16 = _mm_slli_epi16(converted_16, BITDIFF_BETWEEN_DITHER_AND_TARGET); // new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // if implemented non-8bit dither target, this should be fullscale
-
-        __m128i converted_8 = _mm_packus_epi16(converted_16, zero);
-
-        _mm_storel_epi64(reinterpret_cast<__m128i *>(&dstp[x]), converted_8);
-      }
-    } // x
-    dstp += dst_pitch;
-    srcp0 += src_pitch;
-  }
-}
-
-// Instantiate them
-//<uint8_t sourcebits, int dither_mode, int TARGET_DITHER_BITDEPTH, int rgb_step>
-// dither, src 10
-template void convert_rgb_uint16_to_8_sse2<10, 0, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<10, 0, 6, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<10, 0, 4, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<10, 0, 2, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-// dither, src 12
-template void convert_rgb_uint16_to_8_sse2<12, 0, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<12, 0, 6, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<12, 0, 4, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-// dither, src 14
-template void convert_rgb_uint16_to_8_sse2<14, 0, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<14, 0, 6, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-// dither, src 16
-template void convert_rgb_uint16_to_8_sse2<16, 0, 8, 1>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-// packed rgb src 16
-template void convert_rgb_uint16_to_8_sse2<16, 0, 8, 3>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_rgb_uint16_to_8_sse2<16, 0, 8, 4>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4305 4309)
-#endif
-
-template<uint8_t sourcebits, uint8_t TARGET_DITHER_BITDEPTH>
-void convert_uint16_to_8_dither_sse2(const BYTE *srcp8, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
-{
-  // Full general ordered dither from 10-16 bits to 2-8 bits, keeping the final 8 bit depth
-  // Avisynth's ConvertBits parameter "dither_bits" default 8 goes to TARGET_DITHER_BITDEPTH
-  // TARGET_BITDEPTH is always 8 bits, but the dither target can be less than 8.
-  // The difference between source bitdepth and TARGET_DITHER_BITDEPTH cannot be more than 8
-  // Basic usage: dither down to 8 bits from 10-16 bits.
-  // Exotic usage: dither down to 2 bits from 10 bits
-
-  const uint16_t *srcp = reinterpret_cast<const uint16_t *>(srcp8);
-  src_pitch = src_pitch / sizeof(uint16_t);
-  int src_width = src_rowsize / sizeof(uint16_t); // real width. We take 2x8 word pixels at a time
-  int wmod16 = (src_width / 16) * 16;
-
-  int _y_c = 0; // Bayer matrix shift for ordered dither
-
-  const uint8_t TARGET_BITDEPTH = 8; // here is constant (uint8_t target)
-  const int max_pixel_value_dithered = (1 << TARGET_DITHER_BITDEPTH) - 1; //may be less than 255, e.g. 15 for dither target 4 bits
-
-  const __m128i max_pixel_value_dithered_epi8 = _mm_set1_epi8(max_pixel_value_dithered);
-  // precheck ensures:
-  // TARGET_BITDEPTH >= TARGET_DITHER_BITDEPTH
-  // sourcebits - TARGET_DITHER_BITDEPTH <= 8
-  // sourcebits - TARGET_DITHER_BITDEPTH is even (later we can use PRESHIFT)
-  const uint8_t DITHER_BIT_DIFF = (sourcebits - TARGET_DITHER_BITDEPTH); // 2, 4, 6, 8
-  const uint8_t PRESHIFT = DITHER_BIT_DIFF & 1;  // 0 or 1: correction for odd bit differences (not used here but for the sake of generality)
-  const uint8_t DITHER_ORDER = (DITHER_BIT_DIFF + PRESHIFT) / 2;
-  const uint8_t DITHER_SIZE = 1 << DITHER_ORDER; // 9,10=2  11,12=4  13,14=8  15,16=16
-  const uint8_t MASK = DITHER_SIZE - 1;
-  // 10->8: 0x01 (2x2)
-  // 11->8: 0x03 (4x4)
-  // 12->8: 0x03 (4x4)
-  // 14->8: 0x07 (8x8)
-  // 16->8: 0x0F (16x16)
-  const BYTE *matrix;
-  const BYTE *matrix_c;
-  switch (sourcebits - TARGET_DITHER_BITDEPTH) {
-  case 2: matrix = reinterpret_cast<const BYTE *>(dither2x2.data_sse2);
-    matrix_c = reinterpret_cast<const BYTE *>(dither2x2.data);
-    break;
-  case 4: matrix = reinterpret_cast<const BYTE *>(dither4x4.data_sse2);
-    matrix_c = reinterpret_cast<const BYTE *>(dither4x4.data);
-    break;
-  case 6:
-    matrix = reinterpret_cast<const BYTE *>(dither8x8.data_sse2);
-    matrix_c = reinterpret_cast<const BYTE *>(dither8x8.data);
-    break;
-  case 8:
-    matrix = reinterpret_cast<const BYTE *>(dither16x16.data);
-    matrix_c = matrix;
-    break;
-  default: return; // n/a
-  }
-
-  const BYTE *current_matrix_line;
-
-  __m128i zero = _mm_setzero_si128();
-
-  for (int y = 0; y < src_height; y++)
-  {
-    _y_c = (y & MASK) << DITHER_ORDER; // matrix lines stride for C
-    current_matrix_line = matrix + ((y & MASK) << 4); // always 16 byte boundary
-
-    __m128i corr = _mm_load_si128(reinterpret_cast<const __m128i*>(current_matrix_line)); // int corr = matrix[_y | (x & MASK)];
-    __m128i corr_lo = _mm_unpacklo_epi8(corr, zero); // lower 8 byte->uint16_t
-    __m128i corr_hi = _mm_unpackhi_epi8(corr, zero); // upper 8 byte->uint16_t
-
-    for (int x = 0; x < src_width; x += 16)
-    {
-      __m128i src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
-      __m128i src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8));
-
-      // int new_pixel = ((srcp0[x] + corr) >> DITHER_BIT_DIFF);
-
-      __m128i new_pixel_lo, new_pixel_hi;
-
-      if constexpr(sourcebits < 16) { // no overflow
-        new_pixel_lo = _mm_srli_epi16(_mm_add_epi16(src_lo, corr_lo), DITHER_BIT_DIFF);
-        new_pixel_hi = _mm_srli_epi16(_mm_add_epi16(src_hi, corr_hi), DITHER_BIT_DIFF);
-        // scale down after adding dithering noise
-      }
-      else { // source bits: 16. Overflow can happen when 0xFFFF it dithered up. Go 32 bits
-        // lower
-        __m128i src_lo_lo = _mm_unpacklo_epi16(src_lo, zero);
-        __m128i corr_lo_lo = _mm_unpacklo_epi16(corr_lo, zero);
-        __m128i new_pixel_lo_lo = _mm_srli_epi32(_mm_add_epi32(src_lo_lo, corr_lo_lo), DITHER_BIT_DIFF);
-
-        __m128i src_lo_hi = _mm_unpackhi_epi16(src_lo, zero);
-        __m128i corr_lo_hi = _mm_unpackhi_epi16(corr_lo, zero);
-        __m128i new_pixel_lo_hi = _mm_srli_epi32(_mm_add_epi32(src_lo_hi, corr_lo_hi), DITHER_BIT_DIFF);
-
-        new_pixel_lo = _mm_packs_epi32(new_pixel_lo_lo, new_pixel_lo_hi); // packs is enough
-        // upper
-        __m128i src_hi_lo = _mm_unpacklo_epi16(src_hi, zero);
-        __m128i corr_hi_lo = _mm_unpacklo_epi16(corr_hi, zero);
-        __m128i new_pixel_hi_lo = _mm_srli_epi32(_mm_add_epi32(src_hi_lo, corr_hi_lo), DITHER_BIT_DIFF);
-
-        __m128i src_hi_hi = _mm_unpackhi_epi16(src_hi, zero);
-        __m128i corr_hi_hi = _mm_unpackhi_epi16(corr_hi, zero);
-        __m128i new_pixel_hi_hi = _mm_srli_epi32(_mm_add_epi32(src_hi_hi, corr_hi_hi), DITHER_BIT_DIFF);
-
-        new_pixel_hi = _mm_packs_epi32(new_pixel_hi_lo, new_pixel_hi_hi); // packs is enough
-      }
-
-      __m128i new_pixel = _mm_packus_epi16(new_pixel_lo, new_pixel_hi); // 2x8 x16 bit -> 16 byte. Clamp is automatic
-
-      if constexpr(TARGET_DITHER_BITDEPTH < 8) { // generic (not used) fun option to dither 10->4 bits then back to 8 bit
-        new_pixel = _mm_min_epu8(new_pixel, max_pixel_value_dithered_epi8);
-      }
-
-      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-      if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0) { //==0 when dither and target are both 8
-        // scale back, when e.g. 10 bit data is dithered down to 4,6,8 bits but the target bit depth is still 8 bit.
-        new_pixel = _mm_and_si128(_mm_set1_epi8((0xFF << BITDIFF_BETWEEN_DITHER_AND_TARGET) & 0xFF), _mm_slli_epi32(new_pixel, BITDIFF_BETWEEN_DITHER_AND_TARGET));
-        // non-existant _mm_slli_epi8. closest in palette: simple shift
-      }
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), new_pixel);
-    }
-
-    // rest, C
-    for (int x = wmod16; x < src_width; x++)
-    {
-      int corr = matrix_c[_y_c | (x & MASK)];
-      //BYTE new_pixel = (((srcp0[x] << PRESHIFT) >> (sourcebits - 8)) + corr) >> PRESHIFT; // >> (sourcebits - 8);
-      int new_pixel = ((srcp[x] + corr) >> DITHER_BIT_DIFF);
-      new_pixel = min(new_pixel, max_pixel_value_dithered); // clamp upper
-      // scale back to the required bit depth
-      // for generality. Now target == 8 bit, and dither_target is also 8 bit
-      // for test: source:10 bit, target=8 bit, dither_target=4 bit
-      const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (sourcebits - TARGET_BITDEPTH);
-      if constexpr(BITDIFF_BETWEEN_DITHER_AND_TARGET != 0)  // dither to 8, target to 8
-        new_pixel = new_pixel << BITDIFF_BETWEEN_DITHER_AND_TARGET; // closest in palette: simple shift with
-      dstp[x] = (BYTE)new_pixel;
-    }
-
-    dstp += dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-// instantiate them
-//template<uint8_t sourcebits, uint8_t TARGET_DITHER_BITDEPTH>
-template void convert_uint16_to_8_dither_sse2<10, 8>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<12, 8>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<14, 8>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<16, 8>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<10, 6>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<12, 6>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<14, 6>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<10, 4>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<12, 4>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-template void convert_uint16_to_8_dither_sse2<10, 2>(const BYTE* srcp8, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
-
-
 // float to 8 bit, float to 10/12/14/16 bit
 
 // sse4.1
@@ -401,7 +58,7 @@ template<typename pixel_t, bool chroma, bool fulls, bool fulld>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   const float *srcp = reinterpret_cast<const float *>(srcp8);
   pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
@@ -409,7 +66,7 @@ void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, 
   src_pitch = src_pitch / sizeof(float);
   dst_pitch = dst_pitch / sizeof(pixel_t);
 
-  int src_width = src_rowsize / sizeof(float);
+  const int src_width = src_rowsize / sizeof(float);
 
   const int max_pixel_value = (1 << target_bitdepth) - 1;
 
@@ -477,21 +134,18 @@ void convert_32_to_uintN_sse41(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, 
     srcp += src_pitch;
   }
 }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 // instantiate them
 //template<typename pixel_t, bool chroma, bool fulls, bool fulld>
 #define DEF_convert_32_to_uintN_functions(uint_X_t) \
-template void convert_32_to_uintN_sse41<uint_X_t, false, true, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_32_to_uintN_sse41<uint_X_t, true, true, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_32_to_uintN_sse41<uint_X_t, false, true, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_32_to_uintN_sse41<uint_X_t, true, true, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_32_to_uintN_sse41<uint_X_t, false, false, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_32_to_uintN_sse41<uint_X_t, true, false, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_32_to_uintN_sse41<uint_X_t, false, false, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_32_to_uintN_sse41<uint_X_t, true, false, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+template void convert_32_to_uintN_sse41<uint_X_t, false, true, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_32_to_uintN_sse41<uint_X_t, true, true, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_32_to_uintN_sse41<uint_X_t, false, true, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_32_to_uintN_sse41<uint_X_t, true, true, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_32_to_uintN_sse41<uint_X_t, false, false, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_32_to_uintN_sse41<uint_X_t, true, false, true>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_32_to_uintN_sse41<uint_X_t, false, false, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_32_to_uintN_sse41<uint_X_t, true, false, false>(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth);
 
 DEF_convert_32_to_uintN_functions(uint8_t)
 DEF_convert_32_to_uintN_functions(uint16_t)
@@ -504,7 +158,7 @@ template<typename pixel_t_s, typename pixel_t_d>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-static void convert_uint_limited_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+static void convert_uint_limited_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   const pixel_t_s* srcp0 = reinterpret_cast<const pixel_t_s*>(srcp);
   pixel_t_d* dstp0 = reinterpret_cast<pixel_t_d*>(dstp);
@@ -595,11 +249,11 @@ template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool f
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth)
+void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
   // limited to limited is bitshift, see in other function
   if constexpr (!fulls && !fulld) {
-    convert_uint_limited_sse41< pixel_t_s, pixel_t_d>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth);
+    convert_uint_limited_sse41< pixel_t_s, pixel_t_d>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
     return;
   }
 
@@ -609,8 +263,8 @@ void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_h
   src_pitch = src_pitch / sizeof(pixel_t_s);
   dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
-  int src_width = src_rowsize / sizeof(pixel_t_s);
-  int wmod16 = (src_width / 16) * 16;
+  const int src_width = src_rowsize / sizeof(pixel_t_s);
+  const int wmod16 = (src_width / 16) * 16;
 
   if constexpr (sizeof(pixel_t_s) == 1 && sizeof(pixel_t_d) == 2) {
     if (fulls && fulld && !chroma && source_bitdepth == 8 && target_bitdepth == 16) {
@@ -655,8 +309,8 @@ void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_h
     dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
     mul_factor =
       fulls && fulld ? (float)(dst_offset - 1) / (src_offset - 1) :
-      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-127 ==> +-112 (240-16)/2
-      /*fulld*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-112 (240-16)/2 ==> +-127
+      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
+      /*fulls*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
   }
   else {
     // luma/limited: subtract offset, convert, add offset
@@ -665,8 +319,8 @@ void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_h
     const int source_max = (1 << source_bitdepth) - 1;
     mul_factor =
       fulls && fulld ? (float)target_max / source_max :
-      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 0..255 ==> 16-235 (219)
-      /*fulld*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 16-235 ==> 0..255
+      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
+      /*fulls ?*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
   }
 
   auto vect_mul_factor = _mm_set1_ps(mul_factor);
@@ -776,15 +430,16 @@ void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_h
 }
 
 // instantiate them all
+// template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
 #define convert_uint_sse4_functions(uint_X_t, uint_X_dest_t) \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth); \
-template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth);
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, false, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_uint_sse41<uint_X_t, uint_X_dest_t, true, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth);
 
 convert_uint_sse4_functions(uint8_t, uint8_t)
 convert_uint_sse4_functions(uint8_t, uint16_t)
@@ -792,4 +447,358 @@ convert_uint_sse4_functions(uint16_t, uint8_t)
 convert_uint_sse4_functions(uint16_t, uint16_t)
 
 #undef convert_uint_sse4_functions
+
+// for optimization this one has extra template parameters
+// TEMPLATE_NEED_BACKSCALE to support dither_target_bits being lower than target bit depth
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld, bool TEMPLATE_NEED_BACKSCALE, bool TEMPLATE_LOW_DITHER_BITDEPTH>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
+static void do_convert_ordered_dither_uint_sse41(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
+{
+  const pixel_t_s* srcp = reinterpret_cast<const pixel_t_s*>(srcp8);
+  pixel_t_d* dstp = reinterpret_cast<pixel_t_d*>(dstp8);
+  dst_pitch = dst_pitch / sizeof(pixel_t_d);
+
+  src_pitch = src_pitch / sizeof(pixel_t_s);
+  // we can safely process whole 16 (8 bit src) / 32 byte (16 bit source) chunks, Avisynth ensures at least 32 byte alignment
+  const int src_width = (src_rowsize / sizeof(pixel_t_s) + 15) & ~15;
+
+  // helps compiler optimization
+  if constexpr (sizeof(pixel_t_s) == 1)
+    source_bitdepth = 8;
+  if constexpr (sizeof(pixel_t_d) == 1) {
+    target_bitdepth = 8;
+    if (!TEMPLATE_NEED_BACKSCALE) {
+      dither_target_bitdepth = 8;
+    }
+  }
+
+  const int max_pixel_value_target = (1 << target_bitdepth) - 1;
+  const int max_pixel_value_dithered = (1 << dither_target_bitdepth) - 1;
+  // precheck ensures:
+  // target_bitdepth >= dither_target_bitdepth
+  // source_bitdepth - dither_target_bitdepth <= 8 (max precalculated table is 16x16)
+  const bool odd_diff = (source_bitdepth - dither_target_bitdepth) & 1;
+  const int dither_bit_diff = (source_bitdepth - dither_target_bitdepth);
+  const int dither_order = (dither_bit_diff + 1) / 2;
+  const int dither_mask = (1 << dither_order) - 1; // 9,10=2  11,12=4  13,14=8  15,16=16
+  // 10->8: 0x01 (2x2)
+  // 11->8: 0x03 (4x4)
+  // 12->8: 0x03 (4x4)
+  // 14->8: 0x07 (8x8)
+  // 16->8: 0x0F (16x16)
+  const BYTE* matrix;
+  switch (dither_order) {
+  case 1: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither2x2a.data_sse2 : dither2x2.data_sse2); break;
+  case 2: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither4x4a.data_sse2 : dither4x4.data_sse2); break;
+  case 3: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither8x8a.data_sse2 : dither8x8.data_sse2); break;
+  case 4: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither16x16a.data : dither16x16.data); break; // no spec sse, already 16 bytes long
+  default: return; // n/a
+  }
+
+  const int bitdiff_between_dither_and_target = target_bitdepth - dither_target_bitdepth;
+  assert(TEMPLATE_NEED_BACKSCALE == (target_bitdepth != dither_target_bitdepth));  // dither to x, target to y
+
+  assert(TEMPLATE_LOW_DITHER_BITDEPTH == (dither_target_bitdepth < 8));
+  // e.g. instead of 0,1 => -0.5,+0.5;  0,1,2,3 => -1.5,-0.5,0.5,1.5
+  const float half_maxcorr_value = ((1 << dither_bit_diff) - 1) / 2.0f;
+
+  const int source_max = (1 << source_bitdepth) - 1;
+  //-----------------------
+  float mul_factor = 1.0f;
+  int src_offset = 0;
+  int dst_offset = 0;
+
+  if constexpr (fulls != fulld) {
+    // When calculating src_pixel, src and dst are of the same bit depth
+    if constexpr (chroma) {
+      // chroma: go into signed world, factor, then go back to biased range
+      src_offset = 1 << (source_bitdepth - 1); // chroma center of source
+      dst_offset = 1 << (source_bitdepth - 1); // chroma center of target
+      mul_factor =
+        fulls == fulld ? 1.0f :
+        fulld ? (float)(src_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
+        /*fulld*/ (float)(112 << (source_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
+    }
+    else {
+      // luma/limited: subtract offset, convert, add offset
+      src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
+      dst_offset = fulld ? 0 : 16 << (source_bitdepth - 8); // // full/limited range low limit
+      mul_factor =
+        fulls == fulld ? 1.0f : // no change
+        fulld ? (float)source_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
+        /*fulls ?*/ (float)(219 << (source_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
+    }
+  }
+
+  auto dst_offset_plus_round = dst_offset + 0.5f;
+  constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
+  const auto src_pixel_max = source_max;
+  const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
+  //-----------------------
+
+  const auto mul_factor_simd = _mm_set1_ps(mul_factor);
+  const auto mul_factor_backfromlowdither_simd = _mm_set1_ps(mul_factor_backfromlowdither);
+  const auto half_maxcorr_value_simd = _mm_set1_ps(half_maxcorr_value);
+  const auto zero = _mm_setzero_si128();
+  const BYTE* matrix_simd16 = matrix;
+  const BYTE* current_matrix_line;
+
+  for (int y = 0; y < src_height; y++)
+  {
+   // int _y = (y & dither_mask) << dither_order; // for C version
+    current_matrix_line = matrix_simd16 + ((y & dither_mask) << 4); // always 16 byte boundary instead of dither order
+    __m128i corr = _mm_load_si128(reinterpret_cast<const __m128i*>(current_matrix_line)); // int corr = matrix[_y | (x & dither_mask)];
+    // convert corr to 16 bit
+    __m128i corr_lo = _mm_unpacklo_epi8(corr, zero);
+    __m128i corr_hi = _mm_unpackhi_epi8(corr, zero);
+
+    for (int x = 0; x < src_width; x += 16)
+    {
+      //const int corr = matrix[_y | (x & dither_mask)];
+
+      //int src_pixel = srcp[x];
+      __m128i src_lo, src_hi;
+      if constexpr (sizeof(pixel_t_s) == 1) {
+        auto src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 16* uint8
+        src_lo = _mm_unpacklo_epi8(src, zero); // 8* uint16
+        src_hi = _mm_unpackhi_epi8(src, zero); // 8* uint16
+      }
+      else {
+        src_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); // 8* uint16
+        src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8));
+      }
+
+      __m128i src_lo_lo, src_lo_hi, src_hi_lo, src_hi_hi;
+      if constexpr (fulls != fulld) {
+        // goint to 32 float
+        // const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;
+        const auto src_offset_simd = _mm_set1_epi32(src_offset);
+        const auto dst_offset_plus_round_simd = _mm_set1_ps(dst_offset_plus_round);
+
+        auto src_lo_lo_ps = _mm_cvtepi32_ps(_mm_sub_epi32(_mm_unpacklo_epi16(src_lo, zero), src_offset_simd));
+        auto src_lo_hi_ps = _mm_cvtepi32_ps(_mm_sub_epi32(_mm_unpackhi_epi16(src_lo, zero), src_offset_simd));
+        src_lo_lo_ps = _mm_add_ps(_mm_mul_ps(src_lo_lo_ps, mul_factor_simd), dst_offset_plus_round_simd);
+        src_lo_hi_ps = _mm_add_ps(_mm_mul_ps(src_lo_hi_ps, mul_factor_simd), dst_offset_plus_round_simd);
+
+        auto src_hi_lo_ps = _mm_cvtepi32_ps(_mm_sub_epi32(_mm_unpacklo_epi16(src_hi, zero), src_offset_simd));
+        auto src_hi_hi_ps = _mm_cvtepi32_ps(_mm_sub_epi32(_mm_unpackhi_epi16(src_hi, zero), src_offset_simd));
+        src_hi_lo_ps = _mm_add_ps(_mm_mul_ps(src_hi_lo_ps, mul_factor_simd), dst_offset_plus_round_simd);
+        src_hi_hi_ps = _mm_add_ps(_mm_mul_ps(src_hi_hi_ps, mul_factor_simd), dst_offset_plus_round_simd);
+
+        // src_pixel = clamp((int)val, src_pixel_min, src_pixel_max);
+        if constexpr (sizeof(pixel_t_s) == 1 && !TEMPLATE_LOW_DITHER_BITDEPTH) {
+          // Source is 8 bits. This branch is ineffective if we define TEMPLATE_LOW_DITHER_BITDEPTH for all <8 bits, as we do now
+          // We would reach this code for 5-7 bits when lo limit would be e.g. 4 bits
+          // 8 bit source: we can go back from 32 to 16 bit int
+          src_lo = _mm_packus_epi32(_mm_cvttps_epi32(src_lo_lo_ps), _mm_cvttps_epi32(src_lo_hi_ps));
+          src_hi = _mm_packus_epi32(_mm_cvttps_epi32(src_hi_lo_ps), _mm_cvttps_epi32(src_hi_hi_ps));
+          if constexpr (chroma && fulld) {
+            // otherwise it is 0, which was ensured by packus
+            const auto src_pixel_min_simd = _mm_set1_epi16(src_pixel_min);
+            src_lo = _mm_max_epu16(src_lo, src_pixel_min_simd);
+            src_hi = _mm_max_epu16(src_hi, src_pixel_min_simd);
+          }
+          const auto src_pixel_max_simd = _mm_set1_epi16(src_pixel_max);
+          src_lo = _mm_min_epu16(src_lo, src_pixel_max_simd);
+          src_hi = _mm_min_epu16(src_hi, src_pixel_max_simd);
+          // tmp result 16 bits in src_lo, src_hi
+        }
+        else {
+          // go back to int32 only
+          src_lo_lo = _mm_cvttps_epi32(src_lo_lo_ps);
+          src_lo_hi = _mm_cvttps_epi32(src_lo_hi_ps);
+          src_hi_lo = _mm_cvttps_epi32(src_hi_lo_ps);
+          src_hi_hi = _mm_cvttps_epi32(src_hi_hi_ps);
+          if (true)/*constexpr (chroma && fulld)*/ {
+            // no packus to ensure  min 0
+            const auto src_pixel_min_simd = _mm_set1_epi32(src_pixel_min);
+            src_lo_lo = _mm_max_epi32(src_lo_lo, src_pixel_min_simd);
+            src_lo_hi = _mm_max_epi32(src_lo_hi, src_pixel_min_simd);
+            src_hi_lo = _mm_max_epi32(src_hi_lo, src_pixel_min_simd);
+            src_hi_hi = _mm_max_epi32(src_hi_hi, src_pixel_min_simd);
+          }
+          const auto src_pixel_max_simd = _mm_set1_epi32(src_pixel_max);
+          src_lo_lo = _mm_min_epi32(src_lo_lo, src_pixel_max_simd);
+          src_lo_hi = _mm_min_epi32(src_lo_hi, src_pixel_max_simd);
+          src_hi_lo = _mm_min_epi32(src_hi_lo, src_pixel_max_simd);
+          src_hi_hi = _mm_min_epi32(src_hi_hi, src_pixel_max_simd);
+          // tmp result 32 bits in src_lo_lo, src_lo_hi, src_hi_lo, src_hi_hi
+        }
+      }
+      else {
+        // 10-16 bits: go into 32 bit int
+        if constexpr (sizeof(pixel_t_s) == 2 || TEMPLATE_LOW_DITHER_BITDEPTH) {
+          src_lo_lo = _mm_unpacklo_epi16(src_lo, zero);
+          src_lo_hi = _mm_unpackhi_epi16(src_lo, zero);
+          src_hi_lo = _mm_unpacklo_epi16(src_hi, zero);
+          src_hi_hi = _mm_unpackhi_epi16(src_hi, zero);
+          // tmp result 32 bits in src_lo_lo, src_lo_hi, src_hi_lo, src_hi_hi
+        }
+      }
+
+      __m128i new_pixel_lo, new_pixel_hi;
+
+      // scale down after adding dithering noise
+      // int new_pixel = ((src_pixel + corr) >> dither_bit_diff);
+      if constexpr (sizeof(pixel_t_s) == 1 && !TEMPLATE_LOW_DITHER_BITDEPTH) {
+        new_pixel_lo = _mm_srai_epi16(_mm_add_epi16(src_lo, corr_lo), dither_bit_diff);
+        new_pixel_hi = _mm_srai_epi16(_mm_add_epi16(src_hi, corr_hi), dither_bit_diff);
+        // new_pixel_lo/hi is ready with 16 bit data
+      }
+      else { 
+        // source bits: >8 or 8 bit but PRESHIFT
+        // At 16 bit overflow can happen when 0xFFFF it dithered up. This is why we are at 32 bits int
+        // Theoretically fulls == fulld && <16 bit would allow 16 bit int workflow but we do not specialize for that
+        // low dither bitdepth is special as well
+
+        /*
+        int new_pixel;
+        if (TEMPLATE_LOW_DITHER_BITDEPTH) {
+          // accurate dither: +/-
+          const float corr_f = corr - half_maxcorr_value;
+          new_pixel = (int)(src_pixel + corr_f) >> dither_bit_diff;
+        }
+        else
+          new_pixel = ((src_pixel + corr) >> dither_bit_diff);
+        */
+        __m128i new_pixel_lo_lo, new_pixel_lo_hi, new_pixel_hi_lo, new_pixel_hi_hi;
+        auto corr_lo_lo = _mm_unpacklo_epi16(corr_lo, zero);
+        auto corr_lo_hi = _mm_unpackhi_epi16(corr_lo, zero);
+        auto corr_hi_lo = _mm_unpacklo_epi16(corr_hi, zero);
+        auto corr_hi_hi = _mm_unpackhi_epi16(corr_hi, zero);
+        if constexpr(TEMPLATE_LOW_DITHER_BITDEPTH) {
+          // accurately positioned to the center
+          auto corr_lo_lo_ps = _mm_sub_ps(_mm_cvtepi32_ps(corr_lo_lo), half_maxcorr_value_simd);
+          auto corr_lo_hi_ps = _mm_sub_ps(_mm_cvtepi32_ps(corr_lo_hi), half_maxcorr_value_simd);
+          auto corr_hi_lo_ps = _mm_sub_ps(_mm_cvtepi32_ps(corr_hi_lo), half_maxcorr_value_simd);
+          auto corr_hi_hi_ps = _mm_sub_ps(_mm_cvtepi32_ps(corr_hi_hi), half_maxcorr_value_simd);
+          // accurate dither: +/-
+          new_pixel_lo_lo = _mm_srai_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_cvtepi32_ps(src_lo_lo), corr_lo_lo_ps)), dither_bit_diff);
+          new_pixel_lo_hi = _mm_srai_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_cvtepi32_ps(src_lo_hi), corr_lo_hi_ps)), dither_bit_diff);
+          new_pixel_hi_lo = _mm_srai_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_cvtepi32_ps(src_hi_lo), corr_hi_lo_ps)), dither_bit_diff);
+          new_pixel_hi_hi = _mm_srai_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_cvtepi32_ps(src_hi_hi), corr_hi_hi_ps)), dither_bit_diff);
+        }
+        else {
+          // Arrgh. If dither_bit_diff would be an immediate constant (e.g. template parameter) then we get 2390 fps vs 1378!
+          // for a simple Vide16bit.ConvertBits(8, dither=0, dither_bits=8)
+          // const auto dither_bit_diff = 8;
+          new_pixel_lo_lo = _mm_srai_epi32(_mm_add_epi32(src_lo_lo, corr_lo_lo), dither_bit_diff);
+          new_pixel_lo_hi = _mm_srai_epi32(_mm_add_epi32(src_lo_hi, corr_lo_hi), dither_bit_diff);
+          new_pixel_hi_lo = _mm_srai_epi32(_mm_add_epi32(src_hi_lo, corr_hi_lo), dither_bit_diff);
+          new_pixel_hi_hi = _mm_srai_epi32(_mm_add_epi32(src_hi_hi, corr_hi_hi), dither_bit_diff);
+        }
+        new_pixel_lo = _mm_packus_epi32(new_pixel_lo_lo, new_pixel_lo_hi);
+        new_pixel_hi = _mm_packus_epi32(new_pixel_hi_lo, new_pixel_hi_hi);
+        // new_pixel_lo/hi is ready with 16 bit data
+      }
+
+      // scale back to the required bit depth
+       // dither to x, target to y
+      if constexpr (TEMPLATE_NEED_BACKSCALE) {
+        /*
+        new_pixel = min(new_pixel, max_pixel_value_dithered);
+        if (TEMPLATE_LOW_DITHER_BITDEPTH) {
+          new_pixel = (int)(new_pixel * mul_factor_backfromlowdither + 0.5f);
+        }
+        else {
+          new_pixel = new_pixel << bitdiff_between_dither_and_target;
+        }
+        */
+        const auto max_pixel_value_dithered_simd = _mm_set1_epi16(max_pixel_value_dithered);
+        new_pixel_lo = _mm_min_epu16(new_pixel_lo, max_pixel_value_dithered_simd);
+        new_pixel_hi = _mm_min_epu16(new_pixel_hi, max_pixel_value_dithered_simd);
+        // Interesting problem of dither_bits==1 (or in general at small dither_bits)
+        // After simple slli 0,1 becomes 0,128, we'd expect 0,255 instead. So we make cosmetics.
+        // dither_bits
+        // 1            0,1     => 0,128        => 0,255
+        // 2            0,1,2,3 => 0,64,128,192 => 0,?,?,255
+        // 3            0,...,7 => 0,32,...,224 => 0,?,?,255
+        // 4            0,..,15 => 0,16,...,240 => 0,?,?,255
+        // 5            0,..,31 => 0,8,....,248 => 0,?,?,255
+        // 6            0,..,63 => 0,4,....,252 => 0,?,?,255
+        // 7            0,.,127 => 0,2.  ..,254 => 0,?,?,255
+        if constexpr(TEMPLATE_LOW_DITHER_BITDEPTH) {
+          // new_pixel = (int)(new_pixel * mul_factor_backfromlowdither + 0.5f);
+          auto rounder_half_simd = _mm_set1_ps(0.5f);
+
+          auto new_pixel_lo_lo_ps = _mm_cvtepi32_ps(_mm_unpacklo_epi16(new_pixel_lo, zero));
+          auto new_pixel_lo_hi_ps = _mm_cvtepi32_ps(_mm_unpackhi_epi16(new_pixel_lo, zero));
+          new_pixel_lo = _mm_packus_epi32(
+            _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(new_pixel_lo_lo_ps, mul_factor_backfromlowdither_simd), rounder_half_simd)),
+            _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(new_pixel_lo_hi_ps, mul_factor_backfromlowdither_simd), rounder_half_simd))
+          );
+          auto new_pixel_hi_lo_ps = _mm_cvtepi32_ps(_mm_unpacklo_epi16(new_pixel_hi, zero));
+          auto new_pixel_hi_hi_ps = _mm_cvtepi32_ps(_mm_unpackhi_epi16(new_pixel_hi, zero));
+          new_pixel_hi = _mm_packus_epi32(
+            _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(new_pixel_hi_lo_ps, mul_factor_backfromlowdither_simd), rounder_half_simd)),
+            _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(new_pixel_hi_hi_ps, mul_factor_backfromlowdither_simd), rounder_half_simd))
+          );
+        }
+        else {
+          new_pixel_lo = _mm_slli_epi16(new_pixel_lo, bitdiff_between_dither_and_target);
+          new_pixel_hi = _mm_slli_epi16(new_pixel_hi, bitdiff_between_dither_and_target);
+        }
+      }
+
+      // dstp[x] = (pixel_t_d)(min((int)new_pixel, max_pixel_value_target));
+      if constexpr(sizeof(pixel_t_d) == 1)
+      {
+        auto result = _mm_packus_epi16(new_pixel_lo, new_pixel_hi);
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), result);
+      }
+      else {
+        const auto max_pixel_value_target_simd = _mm_set1_epi16(max_pixel_value_target);
+        // max is unnecessary for exact 16 bit pixel type but we are not specialized for that case
+        new_pixel_lo = _mm_min_epu16(new_pixel_lo, max_pixel_value_target_simd);
+        new_pixel_hi = _mm_min_epu16(new_pixel_hi, max_pixel_value_target_simd);
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x), new_pixel_lo);
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x + 8), new_pixel_hi);
+      }
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+#if defined(GCC) || defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
+void convert_ordered_dither_uint_sse41(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
+{
+  const bool need_backscale = target_bitdepth != dither_target_bitdepth; // dither to x, target to y
+  const bool low_dither_bitdepth = dither_target_bitdepth < 8; // 1-7 bits dither targets, need_backscale is always true, since 8 bit format is the minimum
+  if (need_backscale) {
+    if (low_dither_bitdepth)
+      do_convert_ordered_dither_uint_sse41<pixel_t_s, pixel_t_d, chroma, fulls, fulld, true, true>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+    else
+    do_convert_ordered_dither_uint_sse41<pixel_t_s, pixel_t_d, chroma, fulls, fulld, true, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+  }
+  else {
+    do_convert_ordered_dither_uint_sse41<pixel_t_s, pixel_t_d, chroma, fulls, fulld, false, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+  }
+}
+
+// instantiate them all
+// template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
+// spec: fulld=false, fulls=false
+#define convert_ordered_dither_uint_sse4_functions(uint_X_t, uint_X_dest_t) \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, false, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, false, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, false, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, true, false>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth); \
+template void convert_ordered_dither_uint_sse41<uint_X_t, uint_X_dest_t, true, true, true>(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth);
+
+// dither only same of less bit depth
+convert_ordered_dither_uint_sse4_functions(uint8_t, uint8_t)
+convert_ordered_dither_uint_sse4_functions(uint16_t, uint8_t)
+convert_ordered_dither_uint_sse4_functions(uint16_t, uint16_t)
+
+#undef convert_ordered_dither_uint_sse4_functions
+
 
