@@ -135,7 +135,7 @@ AVS_FORCEINLINE static void resize_v_create_pitch_table(int* table, int pitch, i
 /***************************************
  ********* Horizontal Resizer** ********
  ***************************************/
-
+#if 0
 static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {
   AVS_UNUSED(bits_per_pixel);
 
@@ -157,7 +157,9 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
     src += src_pitch;
   }
 }
+#endif
 
+#if 0
 // make the resampling coefficient array mod8 or mod16 friendly for simd, padding non-used coeffs with zeros
 static void resize_h_prepare_coeff_8or16(ResamplingProgram* p, IScriptEnvironment* env, int alignFilterSize8or16) {
   p->filter_size_alignment = alignFilterSize8or16;
@@ -206,6 +208,7 @@ static void resize_h_prepare_coeff_8or16(ResamplingProgram* p, IScriptEnvironmen
     p->pixel_coefficient = new_coeff;
   }
 }
+#endif
 
 template<typename pixel_t>
 static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel) {

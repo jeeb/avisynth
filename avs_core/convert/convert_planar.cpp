@@ -523,7 +523,6 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
       const int Apitch = dst->GetPitch(PLANAR_A);
       env->BitBlt(dstA, Apitch, src->GetReadPtr(PLANAR_A), src->GetPitch(PLANAR_A), src->GetRowSize(PLANAR_A_ALIGNED), src->GetHeight(PLANAR_A));
     }
-    int pixelsize = vi.ComponentSize();
     int bits_per_pixel = vi.BitsPerComponent();
 
     const BYTE *srcp[3] = { src->GetReadPtr(PLANAR_G), src->GetReadPtr(PLANAR_B), src->GetReadPtr(PLANAR_R) };
@@ -550,7 +549,7 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
     // float arithmetic - more precision
     // decided to use it for 10+bits
     if (bits_per_pixel >= 10 && (env->GetCPUFlags() & CPUF_SSE2)) {
-      if (pixelsize == 4) // float 32 bit
+      if (bits_per_pixel == 32) // float 32 bit
         convert_planarrgb_to_yuv_float_sse2(dstp, dstPitch, srcp, srcPitch, vi.width, vi.height, matrix);
       else if (env->GetCPUFlags() & CPUF_AVX2) {
         switch (bits_per_pixel) {
@@ -840,13 +839,13 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
     int pixelsize = vi.ComponentSize();
     int bits_per_pixel = vi.BitsPerComponent();
 
-    const BYTE *srcp[3] = { src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V) };
+#ifdef INTEL_INTRINSICS
+    const BYTE* srcp[3] = { src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V) };
     const int srcPitch[3] = { src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), src->GetPitch(PLANAR_V) };
 
-    BYTE *dstp[3] = { dstpG, dstpB, dstpR };
+    BYTE* dstp[3] = { dstpG, dstpB, dstpR };
     int dstPitch[3] = { dst_pitchG, dst_pitchB, dst_pitchR };
 
-#ifdef INTEL_INTRINSICS
     if (bits_per_pixel < 16 && (env->GetCPUFlags() & CPUF_SSE2) )
     {
       switch (bits_per_pixel) {
@@ -898,7 +897,6 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
         srcV += src_pitch_uv;
       }
     } else if (pixelsize==2) {
-      int bits_per_pixel = vi.BitsPerComponent();
       int half_pixel_value = 1 << (bits_per_pixel - 1);
       int max_pixel_value = (1 << bits_per_pixel) - 1;
       for (int y = 0; y < vi.height; y++) {

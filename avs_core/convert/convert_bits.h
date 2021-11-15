@@ -45,7 +45,7 @@ class ConvertBits : public GenericVideoFilter
 {
 public:
   ConvertBits(PClip _child, const int _dither_mode, const int _target_bitdepth, bool _truerange, int _ColorRange_src, int _ColorRange_dest, int _dither_bitdepth, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);

@@ -49,7 +49,7 @@ class AdjustFocusV : public GenericVideoFilter
 {
 public:
   AdjustFocusV(double _amount, PClip _child);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -69,7 +69,7 @@ class AdjustFocusH : public GenericVideoFilter
 {
 public:
   AdjustFocusH(double _amount, PClip _child);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -94,7 +94,7 @@ class TemporalSoften : public GenericVideoFilter
 {
 public:
   TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, unsigned chroma_thresh,int _scenechange, IScriptEnvironment* env );
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -127,7 +127,7 @@ class SpatialSoften : public GenericVideoFilter
 {
 public:
   SpatialSoften(PClip _child, int _radius, unsigned _luma_threshold, unsigned _chroma_threshold, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 

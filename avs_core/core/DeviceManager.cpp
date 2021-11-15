@@ -1269,10 +1269,11 @@ public:
         return new OnDevice(clip, numPrefetch, (Device*)(void*)env->GetDevice(DEV_TYPE_CPU, 0), env);
       case DEV_TYPE_CUDA:
         return new OnDevice(clip, numPrefetch, (Device*)(void*)env->GetDevice(DEV_TYPE_CUDA, upstreamIndex), env);
+      default:
+        env->ThrowError("Not supported device ...");
+        return AVSValue();
       }
 
-      env->ThrowError("Not supported device ...");
-      return AVSValue();
     }
     else {
       assert(args[0].IsFunction());

@@ -55,7 +55,7 @@ class Turn : public GenericVideoFilter {
 public:
     Turn(PClip _child, int direction, IScriptEnvironment* env);
 
-    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
     int __stdcall SetCacheHints(int cachehints, int frame_range) override;
 
     static AVSValue __cdecl create_turnleft(AVSValue args, void* user_data, IScriptEnvironment* env);

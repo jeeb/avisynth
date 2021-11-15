@@ -179,8 +179,8 @@ public:
 class CopyProperties : public GenericVideoFilter
 {
 private:
-  bool merge;
   PClip child2;
+  bool merge;
 
 public:
   CopyProperties(PClip _child, PClip _child2, bool _merge, IScriptEnvironment* env);

@@ -56,13 +56,13 @@ class Mask : public IClip
 {
 public:
   Mask(PClip _child1, PClip _child2, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
-  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
+  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) override
     { child1->GetAudio(buf, start, count, env); }
-  inline virtual const VideoInfo& __stdcall GetVideoInfo()
+  inline virtual const VideoInfo& __stdcall GetVideoInfo() override
     { return vi; }
-  inline virtual bool __stdcall GetParity(int n)
+  inline virtual bool __stdcall GetParity(int n) override
     { return child1->GetParity(n); }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -90,7 +90,7 @@ class ColorKeyMask : public GenericVideoFilter
 {
 public:
   ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _tolR, IScriptEnvironment *env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -118,7 +118,7 @@ class ResetMask : public GenericVideoFilter
 {
 public:
   ResetMask(PClip _child, float _mask_f, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -141,7 +141,7 @@ class Invert : public GenericVideoFilter
 {
 public:
   Invert(PClip _child, const char * _channels, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -168,7 +168,7 @@ class ShowChannel : public GenericVideoFilter
 {
 public:
   ShowChannel(PClip _child, const char * _pixel_type, int _channel, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -199,7 +199,7 @@ class MergeRGB : public GenericVideoFilter
 public:
   MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _alpha,
            const char * _pixel_type, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -224,13 +224,13 @@ class Layer: public IClip
 public:
   Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y,
          int _t, bool _chroma, float _strength, int _placement, IScriptEnvironment* env );
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
-  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
+  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) override
     { child1->GetAudio(buf, start, count, env); }
-  inline virtual const VideoInfo& __stdcall GetVideoInfo()
+  inline virtual const VideoInfo& __stdcall GetVideoInfo() override
     { return vi; }
-  inline virtual bool __stdcall GetParity(int n)
+  inline virtual bool __stdcall GetParity(int n) override
     { return child1->GetParity(n); }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -263,13 +263,13 @@ class Subtract : public IClip
 {
 public:
   Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
-  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
+  inline virtual void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) override
     { child1->GetAudio(buf, start, count, env);  }
-  inline virtual const VideoInfo& __stdcall GetVideoInfo()
+  inline virtual const VideoInfo& __stdcall GetVideoInfo() override
     { return vi; }
-  inline virtual bool __stdcall GetParity(int n)
+  inline virtual bool __stdcall GetParity(int n) override
     { return child1->GetParity(n); }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {

@@ -53,7 +53,7 @@ class ConvertToY : public GenericVideoFilter
 {
 public:
   ConvertToY(PClip src, const char *matrix_name, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -78,7 +78,7 @@ class ConvertRGBToYUV444 : public GenericVideoFilter
 {
 public:
   ConvertRGBToYUV444(PClip src, const char *matrix_name, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -99,7 +99,7 @@ class ConvertYUY2ToYV16 : public GenericVideoFilter
 {
 public:
   ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -113,7 +113,7 @@ class ConvertYUV444ToRGB : public GenericVideoFilter
 {
 public:
   ConvertYUV444ToRGB(PClip src, const char *matrix_name, int pixel_step, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -134,7 +134,7 @@ class ConvertYV16ToYUY2 : public GenericVideoFilter
 {
 public:
   ConvertYV16ToYUY2(PClip src, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -151,7 +151,7 @@ public:
                          int _ChromaLocation_In, const AVSValue& ChromaResampler,
                          int _ChromaLocation_Out, IScriptEnvironment* env);
   ~ConvertToPlanarGeneric() {}
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -177,7 +177,7 @@ class AddAlphaPlane : public GenericVideoFilter
 {
 public:
   AddAlphaPlane(PClip _child, PClip _maskClip, float _mask_f, bool isMaskDefined, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -197,7 +197,7 @@ class RemoveAlphaPlane : public GenericVideoFilter
 {
 public:
   RemoveAlphaPlane(PClip _child, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);

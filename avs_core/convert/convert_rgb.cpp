@@ -235,7 +235,9 @@ PVideoFrame __stdcall PackedRGBtoPlanarRGB::GetFrame(int n, IScriptEnvironment* 
 
   srcp += src_pitch * (vi.height - 1); // start from bottom: packed RGB is upside down
 
+#ifdef INTEL_INTRINSICS
   const bool targetHasAlpha = vi.IsPlanarRGBA();
+#endif
 
   if(pixelsize==1)
   {
@@ -359,7 +361,9 @@ PVideoFrame __stdcall PlanarRGBtoPackedRGB::GetFrame(int n, IScriptEnvironment* 
 
   dstp += dst_pitch * (vi.height - 1); // start from bottom: packed RGB is upside down
 
+#ifdef INTEL_INTRINSICS
   bool hasSrcAlpha = (src_pitch[3] != 0); // Planar RGBA
+#endif
   bool hasTargetAlpha = (vi.NumComponents() == 4);
 
   if(pixelsize==1)

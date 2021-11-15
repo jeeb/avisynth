@@ -1001,7 +1001,7 @@ PNeoEnv::operator IScriptEnvironment2* () { return static_cast<InternalEnvironme
 
 /**********************************************************************/
 
-static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
+static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
 
   sizeof(AVS_Linkage),                      //   int Size;
 

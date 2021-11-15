@@ -1709,11 +1709,11 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
 
 TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh,
                                 unsigned chroma_thresh, int _scenechange, IScriptEnvironment* env )
-  : GenericVideoFilter  (_child),
-    chroma_threshold    (min(chroma_thresh,255u)),
-    luma_threshold      (min(luma_thresh,255u)),
-    kernel              (2*min(radius,(unsigned int)MAX_RADIUS)+1),
-    scenechange (_scenechange)
+  : GenericVideoFilter(_child),
+  scenechange(_scenechange),
+  luma_threshold(min(luma_thresh, 255u)),
+  chroma_threshold(min(chroma_thresh, 255u)),
+  kernel(2 * min(radius, (unsigned int)MAX_RADIUS) + 1)
 {
 
   child->SetCacheHints(CACHE_WINDOW,kernel);
@@ -1858,7 +1858,7 @@ static void accumulate_line_yuy2_c(BYTE* c_plane, const BYTE** planeP, int plane
   }
 }
 
-#ifdef __SSE2__
+#if 0
 static AVS_FORCEINLINE __m128i ts_multiply_repack_sse2(const __m128i &src, const __m128i &div, __m128i &halfdiv, __m128i &zero) {
   __m128i acc = _mm_madd_epi16(src, div);
   acc = _mm_add_epi32(acc, halfdiv);
@@ -1866,6 +1866,7 @@ static AVS_FORCEINLINE __m128i ts_multiply_repack_sse2(const __m128i &src, const
   acc = _mm_packs_epi32(acc, acc);
   return _mm_packus_epi16(acc, zero);
 }
+#endif
 
 static inline __m128i _mm_cmple_epu8(__m128i x, __m128i y)
 {
@@ -2124,8 +2125,6 @@ static void accumulate_line_16_sse41(BYTE* c_plane, const BYTE** planeP, int pla
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane + x), acc);
   }
 }
-
-#endif
 
 #ifdef X86_32
 
@@ -2655,8 +2654,9 @@ AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment
 
 SpatialSoften::SpatialSoften( PClip _child, int _radius, unsigned _luma_threshold,
                               unsigned _chroma_threshold, IScriptEnvironment* env )
-  : GenericVideoFilter(_child), diameter(_radius*2+1),
-    luma_threshold(_luma_threshold), chroma_threshold(_chroma_threshold)
+  : GenericVideoFilter(_child),
+  luma_threshold(_luma_threshold), chroma_threshold(_chroma_threshold),
+  diameter(_radius * 2 + 1)
 {
   if (!vi.IsYUY2())
     env->ThrowError("SpatialSoften: requires YUY2 input");

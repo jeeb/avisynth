@@ -592,8 +592,6 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
   pixel_t middle_chroma;
   pixel_t luma128;
 
-  constexpr int pixelsize = sizeof(pixel_t);
-
   if constexpr (std::is_integral<pixel_t>::value) {
     black = 16 << (bits_per_pixel - 8);
     middle_chroma = (pixel_t)(128 << (bits_per_pixel - 8));
@@ -716,7 +714,6 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
 
         if constexpr (std::is_integral<pixel_t>::value) {
           const int factorshift = (bits_per_pixel - 8);
-          const int factor = 1 << factorshift;
           const int MAXINTERP = 256;
           double dist = fabs(sqrt((double)distSq * (1.0 / (1 << (2*show_bit_shift)))) - centerF);
           int interp = (int)(256.0f - (255.9f * (oneOverThicknessF * dist)));
@@ -856,13 +853,6 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
   int dst_height = dst->GetHeight();
   int dst_heightUV = dst->GetHeight(PLANAR_U);
 
-  int imgSize = dst->GetHeight() * dst->GetPitch();
-
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-  const float middle_f = 0.5f;
-#else
-  const float middle_f = 0.0f;
-#endif
   // clear everything
   if (keepsource) {
     if (src->GetHeight() < dst->GetHeight()) {

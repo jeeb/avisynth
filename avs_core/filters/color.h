@@ -76,7 +76,7 @@ public:
              const char *condVarSuffix,
              IScriptEnvironment* env);
 
-    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
     int __stdcall SetCacheHints(int cachehints, int frame_range) override
     {

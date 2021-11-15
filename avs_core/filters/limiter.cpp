@@ -753,15 +753,11 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   }
   if (vi.IsPlanar())
   {
-    if ((pixelsize == 2) && IsPtrAligned(srcp, 16) &&
-      IsPtrAligned(frame->GetWritePtr(PLANAR_U), 16) && IsPtrAligned(frame->GetWritePtr(PLANAR_V), 16))
-
     // C
-
     // luma
-    if(pixelsize == 1)
+    if(pixelsize == 1) {
       limit_plane_c<uint8_t>(srcp, pitch, min_luma, max_luma, width, height);
-    else if(pixelsize == 2)
+    }else if(pixelsize == 2)
       limit_plane_c<uint16_t>(srcp, pitch, min_luma, max_luma, width, height);
     else // pixelsize == 4: 32 bit float
       limit_plane_f_c(srcp, pitch, min_luma_f, max_luma_f, width, height);

@@ -2005,8 +2005,8 @@ AVSValue MergeRGB::Create(AVSValue args, void* mode, IScriptEnvironment* env)
 
 Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y,
               int _t, bool _chroma, float _opacity, int _placement, IScriptEnvironment* env )
-  : child1(_child1), child2(_child2), levelB(_lev), ofsX(_x), ofsY(_y), Op(_op),
-    chroma(_chroma), opacity(_opacity), placement(_placement)
+  : child1(_child1), child2(_child2), Op(_op), levelB(_lev), ofsX(_x), ofsY(_y),
+  chroma(_chroma), opacity(_opacity), placement(_placement)
 {
   const VideoInfo& vi1 = child1->GetVideoInfo();
   const VideoInfo& vi2 = child2->GetVideoInfo();

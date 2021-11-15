@@ -221,7 +221,7 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   else if (vi.IsRGB48()) {
     dstp += width - 3 * sizeof(uint16_t);
     for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width / sizeof(uint16_t); x += 3) {
+      for (int x = 0; x < width / 2 /*sizeof(uint16_t)*/; x += 3) {
         reinterpret_cast<uint16_t*>(dstp)[-x + 0] = reinterpret_cast<const uint16_t*>(srcp)[x + 0];
         reinterpret_cast<uint16_t*>(dstp)[-x + 1] = reinterpret_cast<const uint16_t*>(srcp)[x + 1];
         reinterpret_cast<uint16_t*>(dstp)[-x + 2] = reinterpret_cast<const uint16_t*>(srcp)[x + 2];

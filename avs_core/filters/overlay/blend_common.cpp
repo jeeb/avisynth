@@ -70,9 +70,11 @@ AVS_FORCEINLINE static uint16_t overlay_blend_c_core_16(const uint16_t p1, const
     return (uint16_t)(((p1 << bits_per_pixel) + (p2 - p1)*mask + half_rounder) >> bits_per_pixel);
 }
 
+#if 0
 AVS_FORCEINLINE static float overlay_blend_c_core_f(const float p1, const float p2, const float mask) {
   return p1 + (p2-p1)*mask; // p1*(1-mask) + p2*mask
 }
+#endif
 
 
 /*******************************************
@@ -82,11 +84,6 @@ template<typename pixel_t, typename intermediate_result_t, int bits_per_pixel>
 AVS_FORCEINLINE static pixel_t overlay_merge_mask_c(const pixel_t p1, const pixel_t p2) {
   return ((intermediate_result_t)p1*p2) >> bits_per_pixel;
 }
-
-AVS_FORCEINLINE static BYTE overlay_merge_mask_c_8(const BYTE p1, const int p2) {
-  return (p1*p2) >> 8;
-}
-
 
 /********************************
  ********* Blend Opaque *********

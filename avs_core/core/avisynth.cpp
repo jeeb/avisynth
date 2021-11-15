@@ -2207,17 +2207,17 @@ IJobCompletion* ScriptEnvironment::NewCompletion(size_t capacity)
 
 ScriptEnvironment::ScriptEnvironment()
   : threadEnv(),
-  thread_pool(NULL),
   at_exit(),
+  thread_pool(NULL),
   plugin_manager(NULL),
+  EnvCount(0),
   PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
   hrfromcoinit(E_FAIL), coinitThreadId(0),
-  EnvCount(0),
   Devices(),
   FrontCache(NULL),
-  graphAnalysisEnable(false),
   nTotalThreads(1),
-  nMaxFilterInstances(1)
+  nMaxFilterInstances(1),
+  graphAnalysisEnable(false)
 {
 #ifdef XP_TLS
     if(dwTlsIndex == 0)
@@ -3036,10 +3036,8 @@ static void DebugOut(char* s)
 void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
 {
   char buf[1024];
-  int linearsearchcount;
   //#define FULL_LIST_OF_VFBs
   //#define LIST_ALSO_SOME_FRAMES
-  linearsearchcount = 0;
   int size1 = 0;
   int size2 = 0;
   int size3 = 0;
@@ -3063,7 +3061,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
       VideoFrameBuffer* vfb = it2.first;
       total_vfb_size += vfb->GetDataSize();
       size_t inner_frame_count_size = it2.second.size();
-      snprintf(buf, 1023, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
+      snprintf(buf, 1023, ">>>> IterateLevel #3 %5zu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3ld seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber());
       DebugOut(buf);
       // iterate the frame list of this vfb
       int inner_frame_count = 0;
@@ -3090,7 +3088,7 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
             // if (elapsed_seconds.count() > 100.0f && frame->refcount > 0)
             if (frame->refcount > 0)
             {
-              snprintf(buf, 1023, "  >> Frame#%6d: vfb=%p frame=%p frame_refcount=%3d timestamp=%f ago\n", inner_frame_count, vfb, frame, frame->refcount, elapsed_seconds.count());
+              snprintf(buf, 1023, "  >> Frame#%6d: vfb=%p frame=%p frame_refcount=%3ld timestamp=%f ago\n", inner_frame_count, vfb, frame, frame->refcount, elapsed_seconds.count());
               DebugOut(buf);
             }
           }
@@ -3099,14 +3097,14 @@ void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool
             // log the last one
             if (frame->refcount > 0)
             {
-              snprintf(buf, 1023, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount);
+              snprintf(buf, 1023, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3ld \n", inner_frame_count, vfb, frame, frame->refcount);
               DebugOut(buf);
             }
             _RPT2(0, "  == TOTAL of %d frames. Number of nonzero refcount=%d \n", inner_frame_count, inner_frame_count_for_frame_refcount_nonzero);
           }
           if (0 == vfb->refcount && 0 != frame->refcount)
           {
-            snprintf(buf, 1023, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n", vfb, frame, frame->refcount);
+            snprintf(buf, 1023, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3ld \n", vfb, frame, frame->refcount);
             DebugOut(buf);
           }
         }
@@ -3978,6 +3976,10 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
       }
     }
     break;
+  }
+  case MC_QueryAvs25:
+  {
+    break; // not cache related
   }
   } // switch
   return 0;

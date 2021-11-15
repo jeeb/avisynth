@@ -50,7 +50,7 @@ class ConvertToRGB : public GenericVideoFilter
 {
 public:
   ConvertToRGB(PClip _child, bool rgb24, const char* matrix_name, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
@@ -76,7 +76,7 @@ class ConvertToYV12 : public GenericVideoFilter
 {
 public:
   ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);

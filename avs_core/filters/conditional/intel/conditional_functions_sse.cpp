@@ -463,7 +463,6 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
   PVideoFrame src2 = child2->GetFrame(n,env);
 
   int pixelsize = vi.ComponentSize();
-  int bits_per_pixel = vi.BitsPerComponent();
 
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
@@ -486,6 +485,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
     env->ThrowError("Plane Difference: Images are not the same size!");
 
 #ifdef X86_32
+  int bits_per_pixel = vi.BitsPerComponent();
   int total_pixels = width*height;
   bool sum_in_32bits;
   if (pixelsize == 4)
@@ -576,7 +576,6 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
   PVideoFrame src2 = child->GetFrame(n2,env);
 
   int pixelsize = vi.ComponentSize();
-  int bits_per_pixel = vi.BitsPerComponent();
 
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
@@ -589,8 +588,9 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
   if (width == 0 || height == 0)
     env->ThrowError("Plane Difference: No chroma planes in greyscale clip!");
 
-  int total_pixels = width*height;
 #ifdef X86_32
+  int bits_per_pixel = vi.BitsPerComponent();
+  int total_pixels = width * height;
   bool sum_in_32bits;
   if (pixelsize == 4)
     sum_in_32bits = false;

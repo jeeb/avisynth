@@ -205,7 +205,7 @@ AVS_FORCEINLINE float Levels::calcPixel(const float pixel)
 
 Levels::Levels(PClip _child, float _in_min, double _gamma, float _in_max, float _out_min, float _out_max, bool _coring, bool _dither,
   IScriptEnvironment* env)
-  : GenericVideoFilter(_child), in_min_f(_in_min), gamma(_gamma), in_max_f(_in_max), out_min_f(_out_min), out_max_f(_out_max), coring(_coring), dither(_dither)
+  : GenericVideoFilter(_child), coring(_coring), dither(_dither), gamma(_gamma), in_min_f(_in_min), in_max_f(_in_max), out_min_f(_out_min), out_max_f(_out_max)
 {
   if (gamma <= 0.0)
     env->ThrowError("Levels: gamma must be positive");
