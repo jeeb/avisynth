@@ -45,6 +45,7 @@
 #include <tuple>
 #include <map>
 #include <algorithm>
+#include <vector>
 
 #ifdef AVS_WINDOWS
 #include <avs/win.h>
@@ -982,6 +983,8 @@ ConvertBits::ConvertBits(PClip _child, const int _dither_mode, const int _target
   if (target_bitdepth == 8) {
     if (vi.NumComponents() == 1)
       vi.pixel_type = VideoInfo::CS_Y8;
+    else if (vi.IsYV411())
+      vi.pixel_type = VideoInfo::CS_YV411;
     else if (vi.Is420() || vi.IsYV12())
       vi.pixel_type = vi.IsYUVA() ? VideoInfo::CS_YUVA420 : VideoInfo::CS_YV12;
     else if (vi.Is422())
@@ -1058,19 +1061,16 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   int create_param = (int)reinterpret_cast<intptr_t>(user_data);
 
-  // bits parameter is compulsory
-  if (!args[1].Defined() && create_param == 0) {
-    env->ThrowError("ConvertBits: missing bits parameter");
-  }
-
   // when converting from/true 10-16 bit formats, truerange=false indicates bitdepth of 16 bits regardless of the 10-12-14 bit format
   // FIXME: stop supporting this parameter (a workaround in the dawn of hbd?)
   bool assume_truerange = args[2].AsBool(true); // n/a for non planar formats
-                                                // bits parameter
 
-  int target_bitdepth = args[1].AsInt(create_param); // default comes by calling from old To8,To16,ToFloat functions
   int source_bitdepth = vi.BitsPerComponent();
-  int dither_bitdepth = args[4].AsInt(target_bitdepth);
+  // default comes from old legacy To8,To16,ToFloat functions
+  // or the clip's actual bit depth
+  const int default_target_bitdepth = create_param == 0 ? source_bitdepth : create_param;
+  int target_bitdepth = args[1].AsInt(default_target_bitdepth); // "bits" parameter
+  int dither_bitdepth = args[4].AsInt(target_bitdepth); // "dither_bits" parameter
 
   if(target_bitdepth!=8 && target_bitdepth!=10 && target_bitdepth!=12 && target_bitdepth!=14 && target_bitdepth!=16 && target_bitdepth!=32)
     env->ThrowError("ConvertBits: invalid bit depth: %d", target_bitdepth);
@@ -1182,11 +1182,13 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
 
   // YUY2 conversion is limited
   if (vi.IsYUY2()) {
-    env->ThrowError("ConvertBits: YUY2 source is not supported");
+    if (target_bitdepth != 8)
+      env->ThrowError("ConvertBits: YUY2 input must stay in 8 bits");
   }
 
   if (vi.IsYV411()) {
-    env->ThrowError("ConvertBits: YV411 source is not supported");
+    if (target_bitdepth != 8)
+      env->ThrowError("ConvertBits: YV411 input must stay in 8 bits");
   }
 
   // packed RGB conversion is limited
@@ -1203,6 +1205,8 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     // source_16_bit.ConvertTo16bit(bits=10, truerange=true)  : downscale range
     // source_16_bit.ConvertTo16bit(bits=10, truerange=false) : leaves data, only format conversion
 
+  // yuy2 is autoconverted to/from YV16. fulls-fulld and dither to lower bit depths are supported
+  bool need_convert_yuy2 = vi.IsYUY2();
   // for dither, planar rgb conversion happens
   bool need_convert_24 = vi.IsRGB24() && dither_type >= 0;
   bool need_convert_32 = vi.IsRGB32() && dither_type >= 0;
@@ -1213,9 +1217,14 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   if (need_convert_24 || need_convert_48) {
     AVSValue new_args[1] = { clip };
     clip = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
-  } else if (need_convert_32 || need_convert_64) {
+  }
+  else if (need_convert_32 || need_convert_64) {
     AVSValue new_args[1] = { clip };
     clip = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+  }
+  else if (need_convert_yuy2) {
+    AVSValue new_args[1] = { clip };
+    clip = env->Invoke("ConvertToYV16", AVSValue(new_args, 1)).AsClip();
   }
 
   // 3.7.1 t25: this case is covered with float32 bit intermediate
@@ -1228,7 +1237,6 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     auto clip = env->Invoke("ConvertBits", AVSValue(new_args, 7)).AsClip();
 
     clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
-    source_bitdepth = 16;
     // and now the source range becomes the previous target
     fulls = fulld;
 
@@ -1240,7 +1248,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   AVSValue result = new ConvertBits(clip, dither_type, target_bitdepth, assume_truerange, ColorRange_src, ColorRange_dest, dither_bitdepth, env);
 
   // convert back to packed rgb from planar on the fly
-  if ((need_convert_24 || need_convert_48)) {
+  if (need_convert_24 || need_convert_48) {
     AVSValue new_args[1] = { result };
     if(target_bitdepth == 8)
       result = env->Invoke("ConvertToRGB24", AVSValue(new_args, 1)).AsClip();
@@ -1252,6 +1260,10 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
       result = env->Invoke("ConvertToRGB32", AVSValue(new_args, 1)).AsClip();
     else
       result = env->Invoke("ConvertToRGB64", AVSValue(new_args, 1)).AsClip();
+  }
+  else if (need_convert_yuy2) {
+    AVSValue new_args[1] = { result };
+    result = env->Invoke("ConvertToYUY2", AVSValue(new_args, 1)).AsClip();
   }
 
   return result;
