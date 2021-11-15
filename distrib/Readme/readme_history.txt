@@ -6,6 +6,10 @@ For a more logical (non-historical) arrangement of changes see readme.txt
 
 20211115 WIP
 ------------
+- (fix YV411 to and from conversion - regression since recent chroma placement addition)
+- ConvertBits: Support YUY2 (by autoconverting to and from YV16), support YV411
+- ConvertBits: "bits" parameter is not compulsory, since the dit depths can stay as it was before. One can call like ConvertBits(fulld=true)
+- ConvertBits: "dither" parameter: type changed to integer. Why was it float? :) valid values were 0 and 1
 - ConvertBits: source: dither almost full refactor
 - ConvertBits: allow dithering down from 8 bit sources (use case: specify parameter "dither_bits" less than 8)
   Example: My8bitVideo.ConvertBits(8, fulls=true, fulld=true, dither = 0, dither_bits=1)
