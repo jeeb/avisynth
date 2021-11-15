@@ -141,7 +141,6 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
     dstp += dst_pitch;
     srcp += src_pitch;
   }
-  _mm256_zeroupper();
 }
 
 #ifdef _MSC_VER
@@ -203,7 +202,62 @@ void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsi
         srcp0 += src_pitch;
       }
     }
-    _mm256_zeroupper();
+/*
+3.7.1 test26: stop using manual _mm256_zeroupper()
+This warning is left in Avisynth at one single place.
+1.) compilers do it automatically
+2.) clang is getting mad and produces suboptimal prologue and epilogue, saving and loading all xmm registers!
+** Good (no manual zeroupper) **
+  push	rsi
+  .seh_pushreg rsi
+  push	rdi
+  .seh_pushreg rdi
+  .seh_endprologue 
+[...]
+  pop	rdi
+  pop	rsi
+  vzeroupper
+  ret
+
+** Bad, manual _mm256_zeroupper() **
+
+  vmovaps	xmmword ptr [rsp + 144], xmm15  # 16-byte Spill
+  .seh_savexmm xmm15, 144
+  vmovaps	xmmword ptr [rsp + 128], xmm14  # 16-byte Spill
+  .seh_savexmm xmm14, 128
+  vmovaps	xmmword ptr [rsp + 112], xmm13  # 16-byte Spill
+  .seh_savexmm xmm13, 112
+  vmovaps	xmmword ptr [rsp + 96], xmm12   # 16-byte Spill
+  .seh_savexmm xmm12, 96
+  vmovaps	xmmword ptr [rsp + 80], xmm11   # 16-byte Spill
+  .seh_savexmm xmm11, 80
+  vmovaps	xmmword ptr [rsp + 64], xmm10   # 16-byte Spill
+  .seh_savexmm xmm10, 64
+  vmovaps	xmmword ptr [rsp + 48], xmm9    # 16-byte Spill
+  .seh_savexmm xmm9, 48
+  vmovaps	xmmword ptr [rsp + 32], xmm8    # 16-byte Spill
+  .seh_savexmm xmm8, 32
+  vmovaps	xmmword ptr [rsp + 16], xmm7    # 16-byte Spill
+  .seh_savexmm xmm7, 16
+  vmovaps	xmmword ptr [rsp], xmm6         # 16-byte Spill
+  .seh_savexmm xmm6, 0
+  .seh_endprologue 
+[...]
+  pop	rdi
+  pop	rsi
+  vzeroupper
+  vmovaps	xmm6, xmmword ptr [rsp]         # 16-byte Reload
+  vmovaps	xmm7, xmmword ptr [rsp + 16]    # 16-byte Reload
+  vmovaps	xmm8, xmmword ptr [rsp + 32]    # 16-byte Reload
+  vmovaps	xmm9, xmmword ptr [rsp + 48]    # 16-byte Reload
+  vmovaps	xmm10, xmmword ptr [rsp + 64]   # 16-byte Reload
+  vmovaps	xmm11, xmmword ptr [rsp + 80]   # 16-byte Reload
+  vmovaps	xmm12, xmmword ptr [rsp + 96]   # 16-byte Reload
+  vmovaps	xmm13, xmmword ptr [rsp + 112]  # 16-byte Reload
+  vmovaps	xmm14, xmmword ptr [rsp + 128]  # 16-byte Reload
+  vmovaps	xmm15, xmmword ptr [rsp + 144]  # 16-byte Reload
+  ret
+  */
 }
 
 // YUV: bit shift 8-16 <=> 8-16 bits

@@ -180,7 +180,6 @@ void convert_rgb_to_rgbp_avx2(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitch
       dstp[3] += dst_pitch[3];
 #endif
   }
-  _mm256_zeroupper();
 #undef SRC_ADDRESS_ADVANCES
 }
 

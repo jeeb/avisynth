@@ -249,7 +249,6 @@ void of_multiply_avx2(
     ovY += overlaypitch;
 
   }
-  _mm256_zeroupper();
 }
 
 // instantiate
