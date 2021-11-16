@@ -2,6 +2,7 @@ Avisynth+
 
 20211116 WIP
 ------------
+- Expr: add "neg": negates stack top: a = -a.
 - Floyd dither ("dither"=1)
   - add native fulls-fulld support, add special chroma handling when full-range = true involved
   - valid "dither_bits" parameter 1 to 16 (similar to ordered dither)
