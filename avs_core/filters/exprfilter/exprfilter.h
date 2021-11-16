@@ -71,7 +71,7 @@ typedef enum {
   opAdd, opSub, opMul, opDiv, opMax, opMin, opSqrt, opAbs,
   opFmod,
   opGt, opLt, opEq, opNotEq, opLE, opGE, opTernary,
-  opAnd, opOr, opXor, opNeg,
+  opAnd, opOr, opXor, opNeg, opNegSign,
   opExp, opLog, opPow,
   opSin, opCos, opTan, opAsin, opAcos, opAtan, opAtan2,
   opClip, opRound, opFloor, opCeil, opTrunc,

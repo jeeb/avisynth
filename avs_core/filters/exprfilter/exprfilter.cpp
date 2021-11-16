@@ -268,7 +268,7 @@ stack1.push_back(t1);
 
 enum {
     elabsmask, elc7F, elmin_norm_pos, elinv_mant_mask,
-    elfloat_one, elfloat_half, elstore8, elstore10, elstore12, elstore14, elstore16,
+    elfloat_one, elfloat_half, elsignmask, elstore8, elstore10, elstore12, elstore14, elstore16,
     spatialX, spatialX2,
     loadmask1000, loadmask1100, loadmask1110,
     elShuffleForRight0, elShuffleForRight1, elShuffleForRight2, elShuffleForRight3, elShuffleForRight4, elShuffleForRight5, elShuffleForRight6,
@@ -292,13 +292,14 @@ enum {
   { (int)MAKEDWORD(a0,a1,a2,a3), (int)MAKEDWORD(a4,a5,a6,a7), (int)MAKEDWORD(a8,a9,a10,a11), (int)MAKEDWORD(a12,a13,a14,a15) }
 
 
-static constexpr ExprUnion logexpconst alignas(16)[65][4] = {
+static constexpr ExprUnion logexpconst alignas(16)[66][4] = {
     XCONST(0x7FFFFFFF), // absmask
     XCONST(0x7F), // c7F
     XCONST(0x00800000), // min_norm_pos
     XCONST(~0x7f800000), // inv_mant_mask
     XCONST(1.0f), // float_one
     XCONST(0.5f), // float_half
+    XCONST(0x80000000), // signmask
     XCONST(255.0f), // store8
     XCONST(1023.0f), // store10 (avs+)
     XCONST(4095.0f), // store12 (avs+)
@@ -369,13 +370,14 @@ static constexpr ExprUnion logexpconst alignas(16)[65][4] = {
 #undef XCONST
 #define XCONST(x) { x, x, x, x, x, x, x, x }
 
-static constexpr ExprUnion logexpconst_avx alignas(32)[65][8] = {
+static constexpr ExprUnion logexpconst_avx alignas(32)[66][8] = {
   XCONST(0x7FFFFFFF), // absmask
   XCONST(0x7F), // c7F
   XCONST(0x00800000), // min_norm_pos
   XCONST(~0x7f800000), // inv_mant_mask
   XCONST(1.0f), // float_one
   XCONST(0.5f), // float_half
+  XCONST(0x80000000), // signmask
   XCONST(255.0f), // store8
   XCONST(1023.0f), // store10 (avs+)
   XCONST(4095.0f), // store12 (avs+)
@@ -2312,6 +2314,17 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           andps(t1.second, CPTR(elfloat_one));
         }
       }
+      else if (iter.op == opNegSign) {
+        if (processSingle) {
+          auto& t1 = stack1.back();
+          xorps(t1, CPTR(elsignmask));
+        }
+        else {
+          auto& t1 = stack.back();
+          xorps(t1.first, CPTR(elsignmask));
+          xorps(t1.second, CPTR(elsignmask));
+        }
+      }
       else if (iter.op == opAnd) {
         if (processSingle) {
           LogicOp_Single(andps)
@@ -3154,6 +3167,17 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vcmpps(t1.second, t1.second, zero, _CMP_LE_OQ);
           vandps(t1.first, t1.first, CPTR_AVX(elfloat_one));
           vandps(t1.second, t1.second, CPTR_AVX(elfloat_one));
+        }
+      }
+      else if (iter.op == opNegSign) {
+        if (processSingle) {
+          auto& t1 = stack1.back();
+          vxorps(t1, t1, CPTR_AVX(elsignmask));
+        }
+        else {
+          auto& t1 = stack.back();
+          vxorps(t1.first, t1.first, CPTR_AVX(elsignmask));
+          vxorps(t1.second, t1.second, CPTR_AVX(elsignmask));
         }
       }
       else if (iter.op == opAnd) {
@@ -4049,6 +4073,9 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
               case opNeg:
                 stacktop = (stacktop > 0) ? 0.0f : 1.0f;
                 break;
+              case opNegSign:
+                stacktop = -stacktop;
+                break;
               case opStore8:
                 dstp[x] = (uint8_t)(std::max(0.0f, std::min(stacktop, 255.0f)) + 0.5f);
                 goto loopend;
@@ -4329,6 +4356,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             TWO_ARG_OP(opXor);
         else if (tokens[i] == "not")
             ONE_ARG_OP(opNeg);
+        else if (tokens[i] == "neg")
+            ONE_ARG_OP(opNegSign);
         else if (tokens[i].substr(0, 3) == "dup")
             if (tokens[i].size() == 3) {
                 LOAD_OP(opDup, 0, 1);
@@ -5174,6 +5203,8 @@ static float calculateOneOperand(uint32_t op, float a) {
             return std::abs(a);
         case opNeg:
             return (a > 0) ? 0.0f : 1.0f;
+        case opNegSign:
+            return -a;
         case opExp:
             return std::exp(a);
         case opLog:
@@ -5270,6 +5301,7 @@ static int numOperands(uint32_t op) {
         case opSqrt:
         case opAbs:
         case opNeg:
+        case opNegSign:
         case opExp:
         case opLog:
         case opSin:
@@ -5455,13 +5487,19 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             }
           }
           break;
-          // optimize Mul 1 Div 1
+          // optimize Mul 1 Div 1, Mul -1, Div -1
         case opMul: case opDiv:
           if (ops[i - 1].op == opLoadConst) {
             if (ops[i - 1].e.fval == 1.0f) {
               // replace mul 1 or div 1 with nothing
               ops.erase(ops.begin() + i - 1, ops.begin() + i + 1);
               i -= 2;
+            }
+            else if (ops[i - 1].e.fval == -1.0f) {
+              // replace mul -1 or div -1 with neg
+              ops[i].op = opNegSign;
+              ops.erase(ops.begin() + i - 1);
+              i--;
             }
           }
           break;
@@ -5489,6 +5527,7 @@ static void foldConstants(std::vector<ExprOp> &ops) {
             case opSqrt:
             case opAbs:
             case opNeg:
+            case opNegSign:
             case opExp:
             case opLog:
             case opSin:
