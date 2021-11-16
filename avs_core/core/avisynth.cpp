@@ -1855,7 +1855,8 @@ public:
     core->SetLogParams(target, level);
   }
 
-  void __stdcall LogMsg(int level, const char* fmt, ...)
+  // stdcall calling convention is not supported on variadic function
+  void LogMsg(int level, const char* fmt, ...)
   {
     va_list val;
     va_start(val, fmt);
@@ -1868,7 +1869,8 @@ public:
     core->LogMsg_valist(level, fmt, va);
   }
 
-  void __stdcall LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...)
+  // stdcall calling convention is not supported on variadic function
+  void LogMsgOnce(const OneTimeLogTicket& ticket, int level, const char* fmt, ...)
   {
     va_list val;
     va_start(val, fmt);

@@ -206,9 +206,9 @@ public:
   virtual ClipDataStore* __stdcall ClipData(IClip *clip) = 0;
   virtual MtMode __stdcall GetDefaultMtMode() const = 0;
   virtual void __stdcall SetLogParams(const char *target, int level) = 0;
-  virtual void __stdcall LogMsg(int level, const char* fmt, ...) = 0;
+  virtual void LogMsg(int level, const char* fmt, ...) = 0;
   virtual void __stdcall LogMsg_valist(int level, const char* fmt, va_list va) = 0;
-  virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...) = 0;
+  virtual void LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...) = 0;
   virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va) = 0;
   virtual void __stdcall VThrowError(const char* fmt, va_list va) = 0;
   virtual void __stdcall SetMaxCPU(const char *feature) = 0;
