@@ -130,33 +130,34 @@ if(NOT HEADERS_ONLY)
 
     IF(MSVC_IDE)
       message("MSVC_IDE support found, reported CMAKE_GENERATOR_TOOLSET is: ${CMAKE_GENERATOR_TOOLSET}")
+      string( TOLOWER "${CMAKE_GENERATOR_TOOLSET}" cmake_gentoolset_lower)
 
-      IF(CMAKE_GENERATOR_TOOLSET STREQUAL "Intel C++ Compiler 2021")
+      IF(cmake_gentoolset_lower STREQUAL "intel c++ compiler 2021")
         # IntelLLVM
         set(IntelLLVM_IN_VS "1")
-      ELSEIF(CMAKE_GENERATOR_TOOLSET STREQUAL "Intel C++ Compiler 19.2")
+      ELSEIF(cmake_gentoolset_lower STREQUAL "intel c++ compiler 19.2")
         # Intel Classic
         set(IntelClassic_IN_VS "1")
-      ELSEIF(CMAKE_GENERATOR_TOOLSET MATCHES "Intel")
+      ELSEIF(cmake_gentoolset_lower MATCHES "intel")
         MESSAGE(FATAL_ERROR "Possibly unknown or unsupported Intel compiler") # version update needed in the above lines
-      ELSEIF(CMAKE_GENERATOR_TOOLSET STREQUAL "LLVM" OR CMAKE_GENERATOR_TOOLSET STREQUAL "llvm" OR CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
+      ELSEIF(cmake_gentoolset_lower STREQUAL "llvm" OR cmake_gentoolset_lower STREQUAL "clangcl")
         if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")  # hope: always
           message("LLVM toolset was specified via -T. Compiler ID is: ${CMAKE_CXX_COMPILER_ID}; CMAKE_CXX_COMPILER_VERSION is: ${CMAKE_CXX_COMPILER_VERSION}")
           # Clang; 9.0.0
           # These are probably not supported when clang is downloaded as a ready-made binary: CLANG_VERSION_MAJOR CLANG_VERSION_MINOR CLANG_VERSION_STRING
           # string (REGEX REPLACE ".*clang version ([0-9]+\\.[0-9]+).*" "\\1" CLANG_VERSION_STRING ${clang_full_version_string})
           if( CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0.1 )
-            MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required") # as of 2019.december actually we are using 9.0
+            MESSAGE(FATAL_ERROR "Clang 7.0.1 or newer required") # as of November 2021 actually we are using 12.0
           endif()
         endif()
         set(CLANG_IN_VS "1")
-      ELSEIF(CMAKE_GENERATOR_TOOLSET STREQUAL "v141_clang_c2")
+      ELSEIF(cmake_gentoolset_lower STREQUAL "v141_clang_c2")
          #1900 is reported
         message("v141_clang_c2 toolset was specified via -T. Reported MSVC_VERSION is: ${MSVC_VERSION}")
-        message("May not work, try LLVM")
+        message("May not work, try clangcl or LLVM")
         set(CLANG_IN_VS "1")
-        # For LLVM Clang installed separately, specify llvm or LLVM
-        # Since Visual Studio 2019 v16.4, LLVM 9.0 is integrated, for this use Toolset: ClangCL
+        # For LLVM Clang installed separately, specify llvm
+        # Since Visual Studio 2019 v16.4, LLVM 9.0 or newer is integrated, for this use Toolset: clangcl
       ENDIF()
 
       option(WINXP_SUPPORT "Make binaries compatible with Windows XP and Vista" OFF)
