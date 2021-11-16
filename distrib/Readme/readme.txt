@@ -1,7 +1,13 @@
 Avisynth+
 
-20211115 WIP
+20211116 WIP
 ------------
+- Floyd dither ("dither"=1)
+  - add native fulls-fulld support, add special chroma handling when full-range = true involved
+  - valid "dither_bits" parameter 1 to 16 (similar to ordered dither)
+  - special handling of low (1-7 bits) "dither_bits" => result looks nice, same as at ordered dither
+  - more optimized to frequently used source and dither target bits differences: 2,4,6 and 8
+    (covers typical 16->8, 10->8, 16->10 bit conversions; others have ~-10% speed, less than 8 bit targets are -20-25% )
 - (fix YV411 to and from conversion - regression since recent chroma placement addition)
 - ConvertBits: Support YUY2 (by autoconverting to and from YV16), support YV411
 - ConvertBits: "bits" parameter is not compulsory, since the dit depths can stay as it was before. One can call like ConvertBits(fulld=true)
