@@ -59,6 +59,8 @@
 *          arbitrary variable names; instead of 'A' to 'Z', up to 256 of them can be used
 * 20210924 frame property access clip.framePropName syntax after VSAkarin idea (no array access yet)
 *          sin and cos as SIMD (VSAkarin, port from VS)
+* 20211116 neg
+* 20211117 atan2 as SIMD
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -279,7 +281,8 @@ enum {
     float_invpi, float_rintf,
     float_pi1, float_pi2, float_pi3, float_pi4,
     float_sinC3, float_sinC5, float_sinC7, float_sinC9,
-    float_cosC2, float_cosC4, float_cosC6, float_cosC8
+    float_cosC2, float_cosC4, float_cosC6, float_cosC8,
+    float_atan2f_rmul, float_atan2f_radd, float_atan2f_tmul, float_atan2f_tadd, float_atan2f_halfpi, float_atan2f_pi
 };
 
 // constants for xmm
@@ -292,14 +295,14 @@ enum {
   { (int)MAKEDWORD(a0,a1,a2,a3), (int)MAKEDWORD(a4,a5,a6,a7), (int)MAKEDWORD(a8,a9,a10,a11), (int)MAKEDWORD(a12,a13,a14,a15) }
 
 
-static constexpr ExprUnion logexpconst alignas(16)[66][4] = {
+static constexpr ExprUnion logexpconst alignas(16)[72][4] = {
     XCONST(0x7FFFFFFF), // absmask
     XCONST(0x7F), // c7F
     XCONST(0x00800000), // min_norm_pos
     XCONST(~0x7f800000), // inv_mant_mask
     XCONST(1.0f), // float_one
     XCONST(0.5f), // float_half
-    XCONST(0x80000000), // signmask
+    XCONST(0x80000000), // elsignmask
     XCONST(255.0f), // store8
     XCONST(1023.0f), // store10 (avs+)
     XCONST(4095.0f), // store12 (avs+)
@@ -358,7 +361,13 @@ static constexpr ExprUnion logexpconst alignas(16)[66][4] = {
     XCONST(static_cast<int32_t>(0xBEFFFFE2)), // float_cosC2
     XCONST(0x3D2AA73C), // float_cosC4
     XCONST(static_cast<int32_t>(0XBAB58D50)), // float_cosC6
-    XCONST(0x37C1AD76) // float_cosC8
+    XCONST(0x37C1AD76), // float_cosC8
+    XCONST(0x3ccb7dda), // float_atan2f_rmul 0.024840285f
+    XCONST(0x3e3f4c37), // float_atan2f_radd 0.18681418f
+    XCONST(0xbdc0b66d), // float_atan2f_tmul -0.094097948f
+    XCONST(0xbeaa0d0a), // float_atan2f_tadd -0.33213072f
+    XCONST(0x3fc90fdb), // float_atan2f_halfpi 1.57079637f
+    XCONST(0x40490fdb), // float_atan2f_pi 3.14159274f
 };
 
 
@@ -370,14 +379,14 @@ static constexpr ExprUnion logexpconst alignas(16)[66][4] = {
 #undef XCONST
 #define XCONST(x) { x, x, x, x, x, x, x, x }
 
-static constexpr ExprUnion logexpconst_avx alignas(32)[66][8] = {
+static constexpr ExprUnion logexpconst_avx alignas(32)[72][8] = {
   XCONST(0x7FFFFFFF), // absmask
   XCONST(0x7F), // c7F
   XCONST(0x00800000), // min_norm_pos
   XCONST(~0x7f800000), // inv_mant_mask
   XCONST(1.0f), // float_one
   XCONST(0.5f), // float_half
-  XCONST(0x80000000), // signmask
+  XCONST(0x80000000), // elsignmask
   XCONST(255.0f), // store8
   XCONST(1023.0f), // store10 (avs+)
   XCONST(4095.0f), // store12 (avs+)
@@ -436,7 +445,13 @@ static constexpr ExprUnion logexpconst_avx alignas(32)[66][8] = {
   XCONST(static_cast<int32_t>(0xBEFFFFE2)), // float_cosC2
   XCONST(0x3D2AA73C), // float_cosC4
   XCONST(static_cast<int32_t>(0XBAB58D50)), // float_cosC6
-  XCONST(0x37C1AD76) // float_cosC8 
+  XCONST(0x37C1AD76), // float_cosC8 
+  XCONST(0x3ccb7dda), // float_atan2f_rmul 0.024840285f
+  XCONST(0x3e3f4c37), // float_atan2f_radd 0.18681418f
+  XCONST(0xbdc0b66d), // float_atan2f_tmul -0.094097948f
+  XCONST(0xbeaa0d0a), // float_atan2f_tadd -0.33213072f
+  XCONST(0x3fc90fdb), // float_atan2f_halfpi 1.57079637f
+  XCONST(0x40490fdb) // float_atan2f_pi 3.14159274f
 };
 #undef XCONST
 
@@ -600,17 +615,18 @@ vorps(x, x, invalid_mask); }
 // Note: VS Expr changed a lot since ported to Avisynth, 
 // Here we are using their VEX macros for easy port of new sin and cos
 // however we do not support VEX encoding or FMA3 in xmm register mode
+// Note: VEX2 cmpltps -> vcmpltps does not work so we uncomment v##op parts as well (comparisons changed in vex)
 #define VEX1(op, arg1, arg2) \
 do { \
   if constexpr(false /*cpuFlags & CPUF_AVX*/) \
-    v##op(arg1, arg2); \
+    /*v##op(arg1, arg2)*/; \
   else \
     op(arg1, arg2); \
 } while (0)
 #define VEX1IMM(op, arg1, arg2, imm) \
 do { \
   if constexpr(false /*cpuFlags & CPUF_AVX*/) { \
-    v##op(arg1, arg2, imm); \
+    /*v##op(arg1, arg2, imm)*/; \
   } else if (arg1 == arg2) { \
     op(arg2, imm); \
   } else { \
@@ -621,7 +637,7 @@ do { \
 #define VEX2(op, arg1, arg2, arg3) \
 do { \
   if constexpr(false /*cpuFlags & CPUF_AVX*/) { \
-    v##op(arg1, arg2, arg3); \
+    /*v##op(arg1, arg2, arg3)*/; \
   } else if (arg1 == arg2) { \
     op(arg2, arg3); \
   } else if (arg1 != arg3) { \
@@ -637,7 +653,7 @@ do { \
 #define VEX2IMM(op, arg1, arg2, arg3, imm) \
 do { \
   if constexpr(false/*cpuFlags & CPUF_AVX*/) { \
-    v##op(arg1, arg2, arg3, imm); \
+    /*v##op(arg1, arg2, arg3, imm)*/; \
   } else if (arg1 == arg2) { \
     op(arg2, arg3, imm); \
   } else if (arg1 != arg3) { \
@@ -650,6 +666,162 @@ do { \
     movdqa(arg1, tmp); \
   } \
 } while (0)
+
+// atan2: based on https://stackoverflow.com/questions/46210708/atan2-approximation-with-11bits-in-mantissa-on-x86with-sse2-and-armwith-vfpv4?noredirect=1&lq=1
+#if 0
+float fast_atan2f(float y, float x)
+{
+  // max rel err = 3.53486939e-5
+  const float atan2f_rmul = 0.024840285f;
+  const float atan2f_radd = 0.18681418f;
+  const float atan2f_tmul = -0.094097948f;
+  const float atan2f_tadd = -0.33213072f;
+  const float atan2f_halfpi = 1.57079637f;
+  const float atan2f_pi = 3.14159274f;
+
+  float a, r, s, t, c, q, ax, ay, mx, mn;
+  ax = fabsf(x);
+  ay = fabsf(y);
+
+  mx = fmaxf(ay, ax);
+  mn = fminf(ay, ax);
+  a = mn / mx;
+  // Minimax polynomial approximation to atan(a) on [0,1]
+  s = a * a;
+  c = s * a;
+  q = s * s;
+  r = atan2f_rmul * q + atan2f_radd;
+  t = atan2f_tmul * q + atan2f_tadd;
+  r = r * s + t;
+  r = r * c + a;
+  // Map to full circle
+  if (ay > ax) r = atan2f_halfpi - r;
+  if (x < 0) r = atan2f_pi - r;
+  if (y < 0) r = -r;
+  return r;
+}
+#endif
+
+// atan2(0, 0) = 0
+// ~speed: "y x atan2" C/SSE2/AVX2:52/480/1000 fps
+#define ATAN2_PS(y, x) { \
+XmmReg x0, x1, x2, x3, x4, x5, x6, x7, x8; \
+VEX1(movaps, x1, x); \
+VEX1(movaps, x0, y); \
+/* Remove sign */ \
+VEX1(movaps, x3, CPTR(elabsmask)); \
+VEX1(movaps, x2, x1); \
+VEX2(andps, x2, x2, x3); /* ax = fabsf (x); */ \
+VEX2(andps, x3, x3, x0); /* ay = fabsf (y); */ \
+VEX1(movaps, x4, x3); \
+VEX2(maxps, x4, x4, x2); /* mx = fmaxf (ay, ax); */ \
+VEX1(movaps, x5, x3); \
+VEX2(minps, x5, x5, x2); /* fminf (ay, ax); */ \
+VEX2(divps, x5, x5, x4); /* a = mn / mx; */ \
+VEX1(movaps, x4, x5); \
+VEX2(mulps, x4, x4, x5); /* s = a * a; */ \
+VEX1(movaps, x6, x4); \
+VEX2(mulps, x6, x6, x4); /* q = s * s; */ \
+VEX1(movaps, x7, CPTR(float_atan2f_rmul)); \
+VEX2(mulps, x7, x7, x6); /* r = atan2f_rmul * q (+ atan2f_radd) */ \
+VEX2(addps, x7, x7, CPTR(float_atan2f_radd)); /* r = (atan2f_rmul * q) + atan2f_radd; */ \
+VEX2(mulps, x7, x7, x4); /* r = r * s (+ t) */ \
+VEX2(mulps, x4, x4, x5); /* c = s * a; */ \
+VEX2(mulps, x6, x6, CPTR(float_atan2f_tmul)); /* t = atan2f_tmul * q (+ atan2f_tadd) */ \
+VEX2(addps, x6, x6, CPTR(float_atan2f_tadd)); /* t = (atan2f_tmul * q) + atan2f_tadd; */ \
+VEX2(addps, x7, x7, x6); /* r = (r * s) + t; */ \
+VEX2(mulps, x7, x7, x4); /* r = r * c (+ a) */ \
+VEX2(addps, x7, x7, x5); /* r = (r * c) + a */ \
+/* Map to full circle */ \
+/* if (ay > ax) r = atan2f_halfpi - r; */ \
+/* if (x < 0) r = atan2f_pi - r; */ \
+/* if (y < 0) r = -r; */ \
+/* r = atan2f_halfpi - r */ \
+VEX1(movaps, x4, CPTR(float_atan2f_halfpi)); \
+VEX2(subps, x4, x4, x7); /* r = atan2f_halfpi - r */ \
+VEX2(cmpltps, x2, x2, x3); /* if (ay > ax) */ \
+/* blend */ \
+VEX1(movaps, x3, x2); \
+VEX2(andnps, x3, x3, x7); \
+VEX2(andps, x2, x2, x4); \
+VEX2(orps, x2, x2, x3); \
+/* r = atan2f_pi - r; */ \
+VEX1(movaps, x3, CPTR(float_atan2f_pi)); \
+VEX2(subps, x3, x3, x2); /* r = atan2f_pi - r */ \
+/* if (x < 0) */ \
+VEX2(xorps, x4, x4, x4); /* zero */ \
+VEX2(cmpltps, x1, x1, x4); /* if (x < 0) */ \
+/* blend */ \
+VEX1(movaps, x5, x1); \
+VEX2(andnps, x5, x5, x2); \
+VEX2(andps, x1, x1, x3); \
+VEX2(orps, x1, x1, x5); \
+/* r = -r; */ \
+VEX1(movaps, x2, CPTR(elsignmask)); \
+VEX2(subps, x2, x2, x1); /* r = -r */ \
+/* if (y < 0) */ \
+VEX2(cmpltps, x0, x0, x4); /* if (y < 0) */ \
+/* blend */ \
+VEX1(movaps, x3, x0); \
+VEX2(andnps, x3, x3, x1); \
+VEX2(andps, x0, x0, x2); \
+VEX2(orps, x0, x0, x3); \
+/* extra check when 0,0 given -> convert NaN to 0 */ \
+VEX1(movaps, x3, x0); \
+VEX2(cmpordps, x3, x3, x3);/* find NaNs. 0: NaN in either. FFFF: both non-Nan */ \
+/* mask NaN to zero */ \
+VEX2(andps, x0, x0, x3); \
+/* return value in y */ \
+VEX1(movaps, y, x0); \
+}
+
+#define ATAN2_PS_AVX(y, x) { \
+YmmReg x0, x1, x2, x3, x4, x5, x6, x7, x8; \
+/* Remove sign */ \
+vmovaps(x1, x); \
+vmovaps(x0, y); \
+vmovaps(y, x0); \
+vmovaps(x2, CPTR_AVX(elabsmask)); \
+vandps(x8, x1, x2); /* ax = fabsf (x); */ \
+vandps(x2, x0, x2); /* ay = fabsf (y); */ \
+vmaxps(x4, x8, x2); /* mx = fmaxf (ay, ax); */ \
+vminps(x5, x8, x2); /* fminf (ay, ax); */ \
+vdivps(x4, x5, x4); /* a = mn / mx; */ \
+vmulps(x5, x4, x4); /* s = a * a; */ \
+vmulps(x6, x5, x5); /* q = s * s; */ \
+vmovaps(x7, CPTR_AVX(float_atan2f_rmul)); \
+vmovaps(x3, CPTR_AVX(float_atan2f_radd)); \
+vfmadd213ps(x7, x6, CPTR_AVX(float_atan2f_radd)); /* r = atan2f_rmul * q + atan2f_radd; */ \
+vmovaps(x3, CPTR_AVX(float_atan2f_tmul)); \
+vfmadd213ps(x3, x6, CPTR_AVX(float_atan2f_tadd)); /* t = atan2f_tmul * q + atan2f_tadd */ \
+vmulps(x6, x5, x4); \
+vfmadd231ps(x3, x5, x7); /* r = r * s + t; */ \
+vfmadd213ps(x3, x6, x4); /* r = (r * c) + a */ \
+/* Map to full circle */ \
+/* if (ay > ax) r = atan2f_halfpi - r; */ \
+/* if (x < 0) r = atan2f_pi - r; */ \
+/* if (y < 0) r = -r; */ \
+/* r = atan2f_pi - r */ \
+vmovaps(x4, CPTR_AVX(float_atan2f_halfpi)); \
+vsubps(x4, x4, x3); /* r = atan2f_halfpi - r */ \
+vcmpps(x2, x8, x2, _CMP_LT_OQ); /*vcmpltps(x2, x8, x2);*/ /* if (ay > ax) */ \
+vblendvps(x2, x3, x4, x2); \
+vmovaps(x3, CPTR_AVX(float_atan2f_pi)); \
+vsubps(x3, x3, x2); /* r = atan2f_pi - r */ \
+vxorps(x4, x4, x4); \
+vcmpps(x1, x1, x4, _CMP_LT_OQ); /* vcmpltps(x1, x1, x4); */ /* if (x < 0) */ \
+vblendvps(x1, x2, x3, x1); \
+vmovaps(x2, CPTR_AVX(elsignmask)); \
+vxorps(x2, x1, x2); /* r = -r */ \
+vcmpps(x0, x0, x4, _CMP_LT_OQ); /* vcmpltps(x0, x0, x4); */ /* if (y < 0) */ \
+vblendvps(x0, x1, x2, x0); \
+/* extra check when 0,0 given -> convert NaN to 0 */ \
+vcmpps(x3, x0, x0, _CMP_ORD_Q); /* vcmpordps, x3, x3, x3);*/ /* find NaNs. 0: NaN in either. FFFF: both non-Nan */ \
+/* mask NaN to zero */ \
+vandps(x0, x0, x3); \
+/* return value in y */ \
+vmovaps(y, x0); \
+}
 
 #define SINCOS_PS(issin, y, x) { \
 XmmReg t1, sign, t2, t3, t4; \
@@ -2499,6 +2671,21 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           SINCOS_PS(false, _t1.second, _t1.second);
         }
       }
+      else if (iter.op == opAtan2) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto& t2 = stack1.back();
+          ATAN2_PS(t2, t1);
+        }
+        else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto& t2 = stack.back();
+          ATAN2_PS(t2.first, t1.first);
+          ATAN2_PS(t2.second, t1.second);
+        }
+      }
       else if (iter.op == opClip) {
         // clip(a, low, high) = min(max(a, low),high)
         if (processSingle) {
@@ -3350,6 +3537,20 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           auto& _t1 = stack.back();
           SINCOS_PS_AVX(false, _t1.first, _t1.first);
           SINCOS_PS_AVX(false, _t1.second, _t1.second);
+        }
+      }
+      else if (iter.op == opAtan2) {
+        if (processSingle) {
+          auto t1 = stack1.back();
+          stack1.pop_back();
+          auto &t2 = stack1.back();
+          ATAN2_PS_AVX(t2, t1);
+        } else {
+          auto t1 = stack.back();
+          stack.pop_back();
+          auto &t2 = stack.back();
+          ATAN2_PS_AVX(t2.first, t1.first);
+          ATAN2_PS_AVX(t2.second, t1.second);
         }
       }
       else if (iter.op == opClip) {
@@ -5839,9 +6040,8 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
           if(!(env->GetCPUFlags() & CPUF_SSSE3)) // required minimum (pshufb, alignr)
             d.planeOptSSE2[i] = false;
         }
-        // trig.functions C only, except Sin and Cos
-        if (op == opTan ||
-          op == opAsin || op == opAcos || op == opAtan || op == opAtan2) {
+        // trig.functions C only, except Sin and Cos and Atan2
+        if (op == opTan || op == opAsin || op == opAcos || op == opAtan) {
           d.planeOptAvx2[i] = false;
           d.planeOptSSE2[i] = false;
           break;
