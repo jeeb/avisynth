@@ -4016,6 +4016,11 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 #endif
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_CURRENT_FRAME]) = (float)framecount;
         *reinterpret_cast<float *>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_RELTIME]) = (float)relative_time;
+        // refresh frame properties
+        for (auto& framePropToRead : d.frameprops[plane]) {
+          int whereToPut = framePropToRead.var_index;
+          *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES + whereToPut]) = framePropToRead.value;
+        };
         for (int y = 0; y < h; y++) {
           rwptrs[RWPTR_START_OF_OUTPUT] = reinterpret_cast<intptr_t>(dstp + dst_stride * y);
           rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
@@ -4023,11 +4028,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
             rwptrs[i + RWPTR_START_OF_INPUTS] = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
             rwptrs[i + RWPTR_START_OF_STRIDES] = static_cast<intptr_t>(src_stride[i]);
           }
-          // refresh frame properties
-          for (auto& framePropToRead : d.frameprops[plane]) {
-            int whereToPut = framePropToRead.var_index;
-            *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES + whereToPut]) = framePropToRead.value;
-          };
 
           proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
         }
