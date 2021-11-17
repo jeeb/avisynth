@@ -257,7 +257,9 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
 {
   if constexpr (TEMPLATE_DITHER_BIT_DIFF > 0) {
     assert(TEMPLATE_DITHER_BIT_DIFF == (source_bitdepth - dither_target_bitdepth));
+    assert(target_bitdepth == dither_target_bitdepth);
     dither_target_bitdepth = source_bitdepth - TEMPLATE_DITHER_BIT_DIFF;
+    target_bitdepth = dither_target_bitdepth;
     // seems that direct shift with known constant bits is really quicker than shift by 'cl'. 
     // Dithering from 16 to 10 bit: 109 vs 101 fps
     // PF note: experienced the same with SIMD _mm_srl and _mm_srli in the other bit converter
@@ -282,7 +284,8 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
   const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (source_bitdepth - target_bitdepth);
   const int max_pixel_value_dithered = (1 << dither_target_bitdepth) - 1;
 
-  std::vector<int>error_ptr_safe(1 + src_width + 1); // accumulated errors
+  auto error_ptr_safe = new int[1 + src_width + 1]; // accumulated errors
+  std::fill_n(error_ptr_safe, 1 + src_width + 1, 0);
 
   int error_ptr = 1;
 
@@ -399,6 +402,7 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
     dstp += dst_pitch;
     srcp += src_pitch;
   }
+  delete[]error_ptr_safe;
 }
 
 template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
@@ -410,21 +414,27 @@ static void convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rowsize
   // do not make templates for all 1-16 target bit combinations
   if (low_dither_bitdepth) {
     do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, true>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
-  } else {
-    switch (dither_bit_diff) {
-    case 2: // e.g. 10->8
-      do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
-      break;
-    case 4: // e.g. 12->8
-      do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 4, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
-      break;
-    case 6: // e.g. 16->10
-      do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
-      break;
-    case 8: // e.g. 16->8
-      do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 8, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
-      break;
-    default: // difference is more than 8 or exotic dither to less than 8 bits, we accept 10-15% speed minus
+  }
+  else {
+    if (target_bitdepth == dither_target_bitdepth) {
+      switch (dither_bit_diff) {
+      case 2: // e.g. 10->8
+        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        break;
+      case 4: // e.g. 12->8
+        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 4, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        break;
+      case 6: // e.g. 16->10
+        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        break;
+      case 8: // e.g. 16->8
+        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 8, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        break;
+      default: // difference is more than 8 or exotic dither to less than 8 bits, we accept 10-15% speed minus
+        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+      }
+    }
+    else {
       do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
     }
   }
