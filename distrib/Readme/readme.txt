@@ -1,7 +1,22 @@
 Avisynth+
 
-20211116 WIP
+20211117 WIP
 ------------
+- Expr: atan2 to SSE2 and AVX2. Up to 20x speed.
+  Reference: https://stackoverflow.com/questions/46210708/atan2-approximation-with-11bits-in-mantissa-on-x86with-sse2-and-armwith-vfpv4
+  max relative error = 3.53486939e-5
+  Its only protection that atan2(0,0) returns 0 instead on NaN.
+
+    ColorbarsHD(pixel_type="YUV444PS")
+    x=ExtractU
+    y=ExtractV
+    clip_C = Expr(x,y,"y x atan2", optSSE2=false) # 52 fps
+    clip_SSE2 = Expr(x,y,"y x atan2", optAVX2=false) # 484 fps
+    clip_AVX2 = Expr(x,y,"y x atan2") # 1000 fps
+    clip_AVX2
+
+  (Hint: in actual AvsPMod you can check actual 16 bit or even float Y-U-V values with its color-picker)
+  
 - Expr: add "neg": negates stack top: a = -a.
 - Floyd dither ("dither"=1)
   - add native fulls-fulld support, add special chroma handling when full-range = true involved
