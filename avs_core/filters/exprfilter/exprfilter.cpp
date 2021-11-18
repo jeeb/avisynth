@@ -61,6 +61,7 @@
 *          sin and cos as SIMD (VSAkarin, port from VS)
 * 20211116 neg
 * 20211117 atan2 as SIMD
+* 20211118 sgn
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -270,7 +271,7 @@ stack1.push_back(t1);
 
 enum {
     elabsmask, elc7F, elmin_norm_pos, elinv_mant_mask,
-    elfloat_one, elfloat_half, elsignmask, elstore8, elstore10, elstore12, elstore14, elstore16,
+    elfloat_one, elfloat_minusone, elfloat_half, elsignmask, elstore8, elstore10, elstore12, elstore14, elstore16,
     spatialX, spatialX2,
     loadmask1000, loadmask1100, loadmask1110,
     elShuffleForRight0, elShuffleForRight1, elShuffleForRight2, elShuffleForRight3, elShuffleForRight4, elShuffleForRight5, elShuffleForRight6,
@@ -295,12 +296,13 @@ enum {
   { (int)MAKEDWORD(a0,a1,a2,a3), (int)MAKEDWORD(a4,a5,a6,a7), (int)MAKEDWORD(a8,a9,a10,a11), (int)MAKEDWORD(a12,a13,a14,a15) }
 
 
-static constexpr ExprUnion logexpconst alignas(16)[72][4] = {
+static constexpr ExprUnion logexpconst alignas(16)[73][4] = {
     XCONST(0x7FFFFFFF), // absmask
     XCONST(0x7F), // c7F
     XCONST(0x00800000), // min_norm_pos
     XCONST(~0x7f800000), // inv_mant_mask
     XCONST(1.0f), // float_one
+    XCONST(-1.0f), // float_minusone
     XCONST(0.5f), // float_half
     XCONST(0x80000000), // elsignmask
     XCONST(255.0f), // store8
@@ -379,12 +381,13 @@ static constexpr ExprUnion logexpconst alignas(16)[72][4] = {
 #undef XCONST
 #define XCONST(x) { x, x, x, x, x, x, x, x }
 
-static constexpr ExprUnion logexpconst_avx alignas(32)[72][8] = {
+static constexpr ExprUnion logexpconst_avx alignas(32)[73][8] = {
   XCONST(0x7FFFFFFF), // absmask
   XCONST(0x7F), // c7F
   XCONST(0x00800000), // min_norm_pos
   XCONST(~0x7f800000), // inv_mant_mask
   XCONST(1.0f), // float_one
+  XCONST(-1.0f), // float_minusone
   XCONST(0.5f), // float_half
   XCONST(0x80000000), // elsignmask
   XCONST(255.0f), // store8
@@ -2471,6 +2474,51 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           andps(t1.second, CPTR(elabsmask));
         }
       }
+      else if (iter.op == opSgn) {
+        // 1, 0, -1
+        /*
+          __m128 sgn(__m128 value) {
+            const __m128 zero = _mm_set_ps1 (0.0f);
+            __m128 p = _mm_and_ps(_mm_cmpgt_ps(value, zero), _mm_set_ps1(1.0f));
+            __m128 n = _mm_and_ps(_mm_cmplt_ps(value, zero), _mm_set_ps1(-1.0f));
+            return _mm_or_ps(p, n);
+          }
+        */
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          XmmReg r1, r2;
+          xorps(r2, r2);
+          movaps(r1, t1);
+          movaps(t1, r2);
+          cmpltps(t1, r1);
+          cmpltps(r1, r2);
+          andps(t1, CPTR(elfloat_one));
+          andps(r1, CPTR(elfloat_minusone));
+          orps(t1, r1);
+        }
+        else {
+          auto &t1 = stack.back();
+          XmmReg r2, r3, r4, r5;
+          xorps(r2, r2);
+          xorps(r3, r3);
+          cmpltps(r3, t1.first);
+          cmpltps(t1.first, r2);
+          movaps(r4, t1.first);
+          andnps(r4, r3);
+          movaps(r3, CPTR(elfloat_one));
+          xorps(r5, r5);
+          cmpltps(r5, t1.second);
+          cmpltps(t1.second, r2);
+          movaps(r2, CPTR(elfloat_minusone));
+          andps(t1.first, r2);
+          andps(r2, t1.second);
+          andnps(t1.second, r5);
+          andps(r4, r3);
+          orps(t1.first, r4);
+          andps(t1.second, r3);
+          orps(t1.second, r2);
+        }
+      }
       else if (iter.op == opNeg) {
         if (processSingle) {
           auto &t1 = stack1.back();
@@ -3341,7 +3389,36 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           vandps(t1.first, t1.first, CPTR_AVX(elabsmask));
           vandps(t1.second, t1.second, CPTR_AVX(elabsmask));
         }
-      } else if (iter.op == opNeg) {
+      } 
+      else if (iter.op == opSgn) {
+        // 1, 0, -1
+        if (processSingle) {
+          auto &t1 = stack1.back();
+          YmmReg r1, r2;
+          vxorps(r2, r2, r2);
+          vcmpps(r1, t1, r2, _CMP_GT_OQ);
+          vcmpps(t1, t1, r2, _CMP_LT_OQ);
+          vandps(r1, r1, CPTR_AVX(elfloat_one));
+          vandps(t1, t1, CPTR_AVX(elfloat_minusone));
+          vorps(t1, r1, t1);
+        }
+        else {
+          auto &t1 = stack.back();
+          YmmReg r2, r3, r4, r5;
+          vxorps(r2, r2, r2);
+          vcmpps(r3, t1.first, r2, _CMP_GT_OQ);
+          vcmpps(t1.first, t1.first, r2, _CMP_LT_OQ);
+          vcmpps(r4, t1.second, r2, _CMP_GT_OQ);
+          vcmpps(t1.second, t1.second, r2, _CMP_LT_OQ);
+          vmovaps(r2, CPTR_AVX(elfloat_one));
+          vandps(r3, r3, r2);
+          vmovaps(r5, CPTR_AVX(elfloat_minusone));
+          vblendvps(t1.first, r3, r5, t1.first);
+          vandps(r2, r4, r2);
+          vblendvps(t1.second, r2, r5, t1.second);
+        }
+      }
+      else if (iter.op == opNeg) {
         if (processSingle) {
           auto &t1 = stack1.back();
           vcmpps(t1, t1, zero, _CMP_LE_OQ); // cmpleps
@@ -4208,6 +4285,9 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
               case opAbs:
                 stacktop = std::abs(stacktop);
                 break;
+              case opSgn:
+                stacktop = stacktop < 0 ? -1.0f : stacktop > 0 ? 1.0f : 0.0f;
+                break;
               case opSin:
                 stacktop = std::sin(stacktop);
                 break;
@@ -4510,6 +4590,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             ONE_ARG_OP(opSqrt);
         else if (tokens[i] == "abs")
             ONE_ARG_OP(opAbs);
+        else if (tokens[i] == "sgn")
+          ONE_ARG_OP(opSgn);
         else if (tokens[i] == "sin")
           ONE_ARG_OP(opSin);
         else if (tokens[i] == "cos")
@@ -5401,7 +5483,9 @@ static float calculateOneOperand(uint32_t op, float a) {
             return std::sqrt(a);
         case opAbs:
             return std::abs(a);
-        case opNeg:
+        case opSgn:
+            return (a < 0) ? -1.0f : (a > 0) ? 1.0f : 0.0f;
+        case opNeg: // Expr "boolean": not
             return (a > 0) ? 0.0f : 1.0f;
         case opNegSign:
             return -a;
@@ -5500,6 +5584,7 @@ static int numOperands(uint32_t op) {
 
         case opSqrt:
         case opAbs:
+        case opSgn:
         case opNeg:
         case opNegSign:
         case opExp:
@@ -5726,6 +5811,7 @@ static void foldConstants(std::vector<ExprOp> &ops) {
 
             case opSqrt:
             case opAbs:
+            case opSgn:
             case opNeg:
             case opNegSign:
             case opExp:
