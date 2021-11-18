@@ -704,10 +704,10 @@ float fast_atan2f(float y, float x)
 
 // atan2(0, 0) = 0
 // ~speed: "y x atan2" C/SSE2/AVX2:52/480/1000 fps
-#define ATAN2_PS(y, x) { \
-XmmReg x0, x1, x2, x3, x4, x5, x6, x7, x8; \
-VEX1(movaps, x1, x); \
-VEX1(movaps, x0, y); \
+#define ATAN2_PS(x0 /*y*/, /*x*/x1) { \
+XmmReg x2, x3, x4, x5, x6, x7, x8; \
+/*VEX1(movaps, x1, x);*/ \
+/*VEX1(movaps, x0, y);*/ \
 /* Remove sign */ \
 VEX1(movaps, x3, CPTR(elabsmask)); \
 VEX1(movaps, x2, x1); \
@@ -772,15 +772,14 @@ VEX2(cmpordps, x3, x3, x3);/* find NaNs. 0: NaN in either. FFFF: both non-Nan */
 /* mask NaN to zero */ \
 VEX2(andps, x0, x0, x3); \
 /* return value in y */ \
-VEX1(movaps, y, x0); \
+/* input was "x0 for y */ \
 }
 
-#define ATAN2_PS_AVX(y, x) { \
-YmmReg x0, x1, x2, x3, x4, x5, x6, x7, x8; \
+#define ATAN2_PS_AVX(x0 /*y*/, x1 /*x*/) { \
+YmmReg x2, x3, x4, x5, x6, x7, x8; \
 /* Remove sign */ \
-vmovaps(x1, x); \
-vmovaps(x0, y); \
-vmovaps(y, x0); \
+/* vmovaps(x1, x); */ \
+/* vmovaps(x0, y); */ \
 vmovaps(x2, CPTR_AVX(elabsmask)); \
 vandps(x8, x1, x2); /* ax = fabsf (x); */ \
 vandps(x2, x0, x2); /* ay = fabsf (y); */ \
@@ -820,7 +819,7 @@ vcmpps(x3, x0, x0, _CMP_ORD_Q); /* vcmpordps, x3, x3, x3);*/ /* find NaNs. 0: Na
 /* mask NaN to zero */ \
 vandps(x0, x0, x3); \
 /* return value in y */ \
-vmovaps(y, x0); \
+/* no need. input was "x0" for y */ \
 }
 
 #define SINCOS_PS(issin, y, x) { \
