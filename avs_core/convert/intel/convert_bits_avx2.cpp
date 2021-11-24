@@ -62,41 +62,47 @@ template<typename pixel_t, bool chroma, bool fulls, bool fulld>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("avx2")))
 #endif
-void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
+void convert_32_to_uintN_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
-  const float *srcp = reinterpret_cast<const float *>(srcp8);
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
+  const float* srcp0 = reinterpret_cast<const float*>(srcp);
+  pixel_t* dstp0 = reinterpret_cast<pixel_t*>(dstp);
 
   src_pitch = src_pitch / sizeof(float);
   dst_pitch = dst_pitch / sizeof(pixel_t);
 
   const int src_width = src_rowsize / sizeof(float);
 
-  const int max_pixel_value = (1 << target_bitdepth) - 1;
+  //-----------------------
+  float mul_factor;
+  float src_offset = 0;
+  int dst_offset = 0;
 
-  const int limit_lo_d = (fulld ? 0 : 16) << (target_bitdepth - 8);
-  const int limit_hi_d = fulld ? ((1 << target_bitdepth) - 1) : ((chroma ? 240 : 235) << (target_bitdepth - 8));
-  const float range_diff_d = (float)limit_hi_d - limit_lo_d;
+  if constexpr (chroma) {
+    // chroma: go into signed world, factor, then go back to biased range
+    src_offset = 0.0f; // chroma center of source. Float: always zero
+    dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
+    const float chroma_span_source = fulls ? 0.5f : 112.0f / 127.0f / 2.0f; // +-127/+-112
+    const int chroma_span_dest = fulld ? (1 << (target_bitdepth - 1)) - 1 : (112 << (target_bitdepth - 8)); // +-127/+-112
+    mul_factor = chroma_span_dest / chroma_span_source;
+  }
+  else {
+    // luma/limited: subtract offset, convert, add offset
+    src_offset = fulls ? 0 : 16.0f / 255; // full/limited range low limit
+    dst_offset = fulld ? 0 : 16 << (target_bitdepth - 8); // // full/limited range low limit
+    const float src_size = fulls ? 1.0f : 219 / 255.0f;
+    const int target_size = fulld ? ((1 << target_bitdepth) - 1) : (219 << (target_bitdepth - 8)); // 0..255, 16..235
+    mul_factor = target_size / src_size;
+  }
 
-  const int limit_lo_s = fulls ? 0 : 16;
-  const int limit_hi_s = fulls ? 255 : (chroma ? 240 : 235);
-  const float range_diff_s = (limit_hi_s - limit_lo_s) / 255.0f;
+  auto dst_offset_plus_round = dst_offset + 0.5f;
+  constexpr auto dst_pixel_min = chroma && fulld ? 1 : 0;
+  const auto dst_pixel_max = (1 << target_bitdepth) - 1;
 
-  // fulls fulld luma             luma_new   chroma                          chroma_new
-  // true  false 0..1              16-235     -0.5..0.5                      16-240       Y = Y * ((235-16) << (bpp-8)) + 16, Chroma= Chroma * ((240-16) << (bpp-8)) + 16
-  // true  true  0..1               0-255     -0.5..0.5                      0-128-255
-  // false false 16/255..235/255   16-235     (16-128)/255..(240-128)/255    16-240
-  // false true  16/255..235/255    0..1      (16-128)/255..(240-128)/255    0-128-255
-  const float factor = range_diff_d / range_diff_s;
-
-  const float half_i = (float)(1 << (target_bitdepth - 1));
-  const __m256 halfint_plus_rounder_ps = _mm256_set1_ps(half_i + 0.5f);
-  const __m256 limit_lo_s_ps = _mm256_set1_ps(limit_lo_s / 255.0f);
-  const __m256 limit_lo_plus_rounder_ps = _mm256_set1_ps(limit_lo_d + 0.5f);
-  const __m256 max_dst_pixelvalue = _mm256_set1_ps((float)max_pixel_value); // 255, 1023, 4095, 16383, 65535.0
-  const __m256 zero = _mm256_setzero_ps();
-
-  __m256 factor_ps = _mm256_set1_ps(factor);
+  auto src_offset_ps = _mm256_set1_ps(src_offset);
+  auto factor_ps = _mm256_set1_ps(mul_factor);
+  auto dst_offset_plus_round_ps = _mm256_set1_ps(dst_offset_plus_round);
+  auto dst_pixel_min_ps = _mm256_set1_ps((float)dst_pixel_min);
+  auto dst_pixel_max_ps = _mm256_set1_ps((float)dst_pixel_max);
 
   for (int y = 0; y < src_height; y++)
   {
@@ -104,30 +110,25 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
     {
       __m256i result;
       __m256i result_0, result_1;
-      __m256 src_0 = _mm256_load_ps(reinterpret_cast<const float *>(srcp + x));
-      __m256 src_1 = _mm256_load_ps(reinterpret_cast<const float *>(srcp + x + 8));
-      if (chroma) {
-        src_0 = _mm256_fmadd_ps(src_0, factor_ps, halfint_plus_rounder_ps);
-        src_1 = _mm256_fmadd_ps(src_1, factor_ps, halfint_plus_rounder_ps);
-      }
-      else {
-        if constexpr(!fulls) {
-          src_0 = _mm256_sub_ps(src_0, limit_lo_s_ps);
-          src_1 = _mm256_sub_ps(src_1, limit_lo_s_ps);
-        }
-        src_0 = _mm256_fmadd_ps(src_0, factor_ps, limit_lo_plus_rounder_ps);
-        src_1 = _mm256_fmadd_ps(src_1, factor_ps, limit_lo_plus_rounder_ps);
-        //pixel = (srcp0[x] - limit_lo_s_ps) * factor + half + limit_lo + 0.5f;
+      __m256 src_0 = _mm256_load_ps(reinterpret_cast<const float*>(srcp0 + x));
+      __m256 src_1 = _mm256_load_ps(reinterpret_cast<const float*>(srcp0 + x + 8));
+      if constexpr (!chroma && !fulls) {
+        // when offset is different from 0
+        src_0 = _mm256_sub_ps(src_0, src_offset_ps);
+        src_1 = _mm256_sub_ps(src_1, src_offset_ps);
       }
 
-      src_0 = _mm256_max_ps(_mm256_min_ps(src_0, max_dst_pixelvalue), zero);
-      src_1 = _mm256_max_ps(_mm256_min_ps(src_1, max_dst_pixelvalue), zero);
+      src_0 = _mm256_fmadd_ps(src_0, factor_ps, dst_offset_plus_round_ps);
+      src_1 = _mm256_fmadd_ps(src_1, factor_ps, dst_offset_plus_round_ps);
+
+      src_0 = _mm256_max_ps(_mm256_min_ps(src_0, dst_pixel_max_ps), dst_pixel_min_ps);
+      src_1 = _mm256_max_ps(_mm256_min_ps(src_1, dst_pixel_max_ps), dst_pixel_min_ps);
       result_0 = _mm256_cvttps_epi32(src_0); // truncate
       result_1 = _mm256_cvttps_epi32(src_1);
-      if constexpr(sizeof(pixel_t) == 2) {
+      if constexpr (sizeof(pixel_t) == 2) {
         result = _mm256_packus_epi32(result_0, result_1);
         result = _mm256_permute4x64_epi64(result, (0 << 0) | (2 << 2) | (1 << 4) | (3 << 6));
-        _mm256_store_si256(reinterpret_cast<__m256i*>(dstp + x), result);
+        _mm256_store_si256(reinterpret_cast<__m256i*>(dstp0 + x), result);
       }
       else {
         result = _mm256_packs_epi32(result_0, result_1);
@@ -135,11 +136,15 @@ void convert_32_to_uintN_avx2(const BYTE *srcp8, BYTE *dstp8, int src_rowsize, i
         __m128i result128_lo = _mm256_castsi256_si128(result);
         __m128i result128_hi = _mm256_extractf128_si256(result, 1);
         __m128i result128 = _mm_packus_epi16(result128_lo, result128_hi);
-        _mm_store_si128(reinterpret_cast<__m128i *>(dstp + x), result128);
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp0 + x), result128);
       }
+
+      // c: 
+      //const int pixel = (int)((srcp0[x] - src_offset) * mul_factor + dst_offset_plus_round);
+      //dstp0[x] = pixel_t(clamp(pixel, dst_pixel_min, dst_pixel_max));
     }
-    dstp += dst_pitch;
-    srcp += src_pitch;
+    dstp0 += dst_pitch;
+    srcp0 += src_pitch;
   }
 }
 

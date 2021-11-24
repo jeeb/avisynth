@@ -41,7 +41,7 @@ template<typename pixel_t, bool chroma, bool fulls, bool fulld>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-void convert_32_to_uintN_sse41(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth);
+void convert_32_to_uintN_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth);
 
 template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
 #if defined(GCC) || defined(CLANG)
