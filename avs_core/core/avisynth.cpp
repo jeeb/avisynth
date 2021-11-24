@@ -4410,7 +4410,20 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     }
     else {
       if (src_index < args2_count) {
-        args3.push_back(args2[argbase + src_index]);
+        // At this point we could still have an array in AVSValue because a directly given (e.g. [1,2,3]) array is accepted at the place of a "." (any) type
+        // The signature checker recognizes and reports a signature match in AVSFunction::TypeMatch
+        // Example call: fn([1,2,3]) where fn has a signature of "c[n]."
+        // Allowing it does not do any harm
+        // FIXME, When removed, we'd better remove the limitation in (look for: QWERTZUIOP)
+#ifdef DISABLE_ARRAYS_WHEN_DOT_ALONE
+        if (args2[argbase + src_index].IsArray() && p[0] != 'a') {
+          ThrowError((std::string("An array is passed to a non-array parameter type in function ") + std::string(name)).c_str());
+        }
+        else 
+#endif
+        {
+          args3.push_back(args2[argbase + src_index]);
+        }
         args3_really_filled.push_back(true);
       }
       else {
@@ -4472,20 +4485,20 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
             }
             else {
               if (args[i].Defined() && args[i].IsArray()) {
-                // check: do not accept array in the place of a non-array argument. e.g. foo(sigma=[1.0, 1.1]) to [sigma]f is invalid
-                if (!(q[2] == '*' || q[2] == '+'))
-                  ThrowError("Script error: the named argument \"%s\" to %s had the wrong type (passed an array to a non-array parameter)", arg_names[i], name);
+                // e.g. foo(sigma=[1.0, 1.1]) to [sigma]f is invalid 
+                if (!(q[2] == '*' || q[2] == '+') && q[1] != '.' && q[1] != 'a')
+                  ThrowError("Script error: the named argument \"%s\" to %s had the wrong type (passed an array to a non-array and not-any parameter)", arg_names[i], name);
                 if (q[2] == '+' && args[i].ArraySize() == 0)
                   ThrowError("Script error: the named argument \"%s\" to %s is a 'one-or-more' element style array but had zero element count.", arg_names[i], name);
               }
-              // Note (after having array type parameters in script functions as well)
+              // Note (after having array type parameters in script functions)
               // When passing a simple value to an array parameter, we should really make an array of it
               // or else script function parameters of array types won't see this parameter as an array inside the function body.
               // Note: Unlike AVS scripts a real plugin - through Avisynth interface - is 
               // - allowed to index an AVSValue which is not even an array. Index 0 returns the simple-type value itself.
               // - calling AVSValue ArraySize() returns 1
               // But an AVS script syntax indexing and ArraySize() requires a real array, simple base type is not allowed there.
-              if(args[i].Defined() && !args[i].IsArray() && (q[2] == '*' || q[2] == '+'))
+              if(args[i].Defined() && !args[i].IsArray() && (q[2] == '*' || q[2] == '+' || q[1] == 'a'))
                 args3[named_arg_index] = AVSValue(&args[i],1); // really create an array with one element
               else
                 args3[named_arg_index] = args[i];

@@ -310,7 +310,8 @@ extern const AVSFunction Script_functions[] = {
     // length can be zero
   { "ArraySize", BUILTIN_FUNC_PREFIX, ".", ArraySize },
   /*
-  { "ArrayAdd",  BUILTIN_FUNC_PREFIX, ".i*", ArrayAdd },
+  { "IsArrayOf", BUILTIN_FUNC_PREFIX, ".s", IsArrayOf },
+  { "ArrayAdd",  BUILTIN_FUNC_PREFIX, "..*", ArrayAdd },
   { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
   { "ArrayIns",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
   */

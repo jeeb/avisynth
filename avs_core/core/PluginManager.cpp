@@ -367,7 +367,13 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
       case 'b': case 'i': case 'f': case 's': case 'c':
       case 'n':
 #ifdef NEW_AVSVALUE
-      case 'a': // PF 2016: script arrays, if possible we are using .* and .+ instead
+      case 'a':
+        // PF 2016: 'a' is special letter for script arrays, but if possible we are using .* and .+ (legacy Avisynth style) instead
+        // Note (2021): 'a' is still not used
+        // cons: no z or nz (+ or *) possibility
+        //       no type check (array of int)
+        //       cannot be used in plugins which are intended to work for Avisynth 2.6 Classic. ("a" is invalid in function signature -> plugin load error)
+        // pros: clean syntax, accept _only_ arrays when required, no comma-delimited-list-to-array option (like in old Avisynth syntax)
 #endif
         // array arguments are not necessarily "flattened" when TypeMatch is called.
         if (param_types[1] == '+' // parameter indicates an array-type args[i]
@@ -382,18 +388,26 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
         if (   (!optional || args[i].Defined())
             && !SingleTypeMatch(*param_types, args[i], strict))
           return false;
-        // fall through
+
+        ++param_types;
+        ++i;
+        break;
+
       case '.': // any type
+        // This allows even an array in the place of a "."
+        // Use cases: IsArray "." can be fed with any AvsValue. ArrayGet ".i+" requires an array in the place of "." as well.
+        // Array-ness of such AVSValue parameters can be checked in the function itself.
         ++param_types;
         ++i;
         break;
       case '+': case '*':
 #ifdef NEW_AVSVALUE
+        // check array content type if required
         if (args[i].IsArray() && param_types[-1] != '.') {
           // A script can provide an array argument in an direct array-type variable.
           // e.g. a user defined script function function Summa(int_array "x") will translate to "[x]i*"
           // parameter list. Passing an integer array directly e.g. [1,2,3] will be handled here.
-          // All elements in the array should match with the type char preceding '+' or '*'
+          // All elements in the array should match with the type character preceding '+' or '*'
           // (There was another option in legacy AviSynth: the comma separated values e.g. 1,2,3
           // could be recognized and moved to an unnamed array, this is check later)
           if (!SingleTypeMatchArray(param_types[-1], args[i], strict))
@@ -403,6 +417,7 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_
         }
         else
 #endif
+        // Legacy Avisynth array check.
         // Array of arguments of known types last until an argument of another type is found.
         // This is the reason why an .+ or .* (array of anything) must only appear at the end
         // of the parameter list since we cannot detect type-change in an any-type argument sequence.
