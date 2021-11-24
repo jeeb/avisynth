@@ -266,9 +266,7 @@ static bool is_paramstring_empty_or_auto(const char* param) {
 }
 
 // called from yuv <-> rgb and to_greyscale converters
-void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const AVSMap* props, int& _Matrix, int& _ColorRange, /*int& _ColorRange_In, */IScriptEnvironment* env) {
-  int _Matrix_default = Matrix_e::AVS_MATRIX_ST170_M; // Rec601 AVS_MATRIX_ST170_M (6-NTSC) and not AVS_MATRIX_BT470_BG (5-PAL)
-  int _ColorRange_default = ColorRange_e::AVS_RANGE_LIMITED;
+void matrix_parse_merge_with_props_def(VideoInfo& vi, const char* matrix_name, const AVSMap* props, int& _Matrix, int& _ColorRange, int _Matrix_Default, int _ColorRange_Default, IScriptEnvironment* env) {
 
   // if once we'd like to use input colorrange when input is rgb (e.g. studio rgb of ColorBars is limited)
   int _ColorRange_In = vi.IsRGB() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
@@ -278,13 +276,13 @@ void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const
     if (env->propNumElements(props, "_ColorRange") > 0) {
       _ColorRange_In = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
       if (!vi.IsRGB())
-        _ColorRange_default = _ColorRange_In;
+        _ColorRange_Default = _ColorRange_In;
     }
     if (!vi.IsRGB()) {
       if (env->propNumElements(props, "_Matrix") > 0) {
         auto tmp_matrix = env->propGetInt(props, "_Matrix", 0, nullptr); // fixme: range check
         if (tmp_matrix != Matrix_e::AVS_MATRIX_UNSPECIFIED)
-          _Matrix_default = tmp_matrix;
+          _Matrix_Default = tmp_matrix;
       }
     }
   }
@@ -314,14 +312,20 @@ void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const
   }
 
   if (is_paramstring_empty_or_auto(s_matrix_name) || !getMatrix(s_matrix_name.c_str(), env, _Matrix)) {
-    _Matrix = _Matrix_default;
+    _Matrix = _Matrix_Default;
   }
   if (_Matrix == Matrix_e::AVS_MATRIX_UNSPECIFIED) {
-    _Matrix = _Matrix_default;
+    _Matrix = _Matrix_Default;
   }
   if (is_paramstring_empty_or_auto(s_color_range_name) || !getColorRange(s_color_range_name.c_str(), env, _ColorRange)) {
-    _ColorRange = _ColorRange_default;
+    _ColorRange = _ColorRange_Default;
   }
+}
+
+void matrix_parse_merge_with_props(VideoInfo& vi, const char* matrix_name, const AVSMap* props, int& _Matrix, int& _ColorRange, /* int& ColorRange_In, */ IScriptEnvironment * env) {
+  int _Matrix_Default = Matrix_e::AVS_MATRIX_ST170_M; // Rec601 AVS_MATRIX_ST170_M (6-NTSC) and not AVS_MATRIX_BT470_BG (5-PAL)
+  int _ColorRange_Default = ColorRange_e::AVS_RANGE_LIMITED;
+  matrix_parse_merge_with_props_def(vi, matrix_name, props, _Matrix, _ColorRange, _Matrix_Default, _ColorRange_Default, env);
 }
 
 void chromaloc_parse_merge_with_props(VideoInfo& vi, const char* chromaloc_name, const AVSMap* props, int& _ChromaLocation, int _ChromaLocation_Default, IScriptEnvironment* env) {
