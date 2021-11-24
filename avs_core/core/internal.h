@@ -173,17 +173,14 @@ public:
 /*** Inline helper methods ***/
 
 // 8 bit uv to float
-// 16-128-240 -> -112-0-112 -> -112/255..112/255
+// 16-128-240 -> -112-0-112 -> 1..255: +/-127 -> +/-0.5
 [[maybe_unused]] static AVS_FORCEINLINE float uv8tof(int color) {
-  const float shift = 0.0f;
-  return (color - 128) / 255.0f + shift;
+  return (color - 128) / 127.0f / 2.0f;
 }
 
 // 16-128-240 -> -112-0-112 -> -0.5..0.5
 [[maybe_unused]] static AVS_FORCEINLINE float uv8tof_limited(int color) {
-  const float range = (float)(240 - 16);
-  const float shift = 0.0f;
-  return (color - 128) / range + shift;
+  return (color - 128) / 112.0f / 2.0f;
 }
 
 // 8 bit fullscale to float

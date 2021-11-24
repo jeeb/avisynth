@@ -42,6 +42,7 @@
 #include "../core/info.h"
 #include "../core/internal.h"
 #include "../convert/convert_audio.h"
+#include "../convert/convert_helper.h"
 
 #ifdef AVS_WINDOWS
     #include <avs/win.h>
@@ -1316,6 +1317,18 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
   BYTE* dstp = dst->GetWritePtr();
 
+  // Full range or limited?
+  // When the histogram's virtual bit size is different from the real video bit depth
+  // then video bit depth must be converted to the histogram's bit depth either by
+  // limited (shift) or full range (stretch) method.
+  bool full_range = vi.IsRGB(); // default for RGB
+  auto props = env->getFramePropsRO(dst);
+  int error;
+  auto val = env->propGetInt(props, "_ColorRange", 0, &error);
+  if (!error) full_range = val == ColorRange_e::AVS_RANGE_FULL;
+
+  // Note: drawing colors are of limited range independently from clip range
+
   int show_size = 1 << show_bits;
 
   // of source
@@ -1336,9 +1349,9 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     RGB ? 0 : (128 << color_shift)
   };
   float plane_default_black_f[3] = {
-    RGB ? 0 : (16/255.0f),
-    RGB ? 0 : middle_chroma_f,
-    RGB ? 0 : middle_chroma_f
+    RGB ? 0 : 16 / 255.0f,
+    RGB ? 0 : 0.0f,
+    RGB ? 0 : 0.0f
   };
 
   const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
@@ -1402,9 +1415,13 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       }
     }
 
-    // accumulate population
+    const int max_pixel_value = show_size - 1;
+
+    // ---------------------------------------------------
+    // accumulate population: fill histogram array from pixels
     for (int p = 0; p < planecount; p++) {
       const int plane = planes[p];
+      const bool chroma = (plane == PLANAR_U || plane == PLANAR_V);
       const BYTE* srcp = src->GetReadPtr(plane);
 
       const int w = src->GetRowSize(plane) / pixelsize;
@@ -1417,66 +1434,150 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
       if(pixelsize==1) {
         const uint8_t *srcp8 = reinterpret_cast<const uint8_t *>(srcp);
-        int invshift = show_bits - bits_per_pixel;
-        // 8 bit clip into 8,9,... bit histogram
-        for (int y = 0; y < h; y++) {
-          for (int x = 0; x < w; x++) {
-            hist[(int)srcp8[x] << invshift]++;
-            //hist[srcp[y*dstpitch + x]]++;
+        if (show_bits == bits_per_pixel) {
+          // Exact. 8 bit clip into 8 bit histogram
+          for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+              hist[srcp8[x]]++;
+            }
+            srcp8 += pitch;
           }
-          srcp8 += pitch;
+        }
+        else {
+          // 8 bit clip into 8,9,... bit histogram
+          if (full_range) {
+            // full range: stretch
+            if (chroma) {
+              const int src_offset = (1 << (bits_per_pixel - 1)); // +/-128
+              const int dst_offset = (1 << (show_bits - 1)); // +/-128
+              const int chroma_span_dst = (1 << (show_bits - 1)) - 1; // +/-127
+              const int chroma_span_src = (1 << (bits_per_pixel - 1)) - 1;
+              const float multiplier = (float)chroma_span_dst / chroma_span_src;
+              const float dst_offset_plus_round = dst_offset + 0.5f;
+              for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                  hist[clamp((int)((srcp8[x] - src_offset) * multiplier + dst_offset_plus_round), 0, max_pixel_value)]++;
+                }
+                srcp8 += pitch;
+              }
+            }
+            else {
+              const int max_src_pixel = (1 << bits_per_pixel) - 1;
+              const float factor = (float)max_pixel_value / max_src_pixel;
+              for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                  hist[min((int)(srcp8[x] * factor + 0.5f), max_pixel_value)]++;
+                }
+                srcp8 += pitch;
+              }
+            }
+          }
+          else {
+            const int invshift = show_bits - bits_per_pixel;
+            // limited range: shift
+            for (int y = 0; y < h; y++) {
+              for (int x = 0; x < w; x++) {
+                hist[(int)srcp8[x] << invshift]++;
+              }
+              srcp8 += pitch;
+            }
+          }
         }
       }
       else if (pixelsize == 2) {
-        const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
-        int shift = bits_per_pixel - show_bits;
-        int max_pixel_value = show_size - 1;
-        if (shift < 0) {
-          // 10 bit clip into 11 bit histogram
-          int invshift = -shift;
+        const uint16_t* srcp16 = reinterpret_cast<const uint16_t*>(srcp);
+        if (show_bits == bits_per_pixel) {
+          // Exact. e.g. 10 bit clip into 10 bit histogram
           for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-              hist[srcp16[x] << invshift]++;
+              hist[min((int)srcp16[x], max_pixel_value)]++;
             }
             srcp16 += pitch;
           }
-        } else {
-          // e.g.10 bit clip into 8-9-10 bit histogram
-          for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-              hist[min(srcp16[x] >> shift, max_pixel_value)]++;
+        }
+        else {
+          // 10 bit clip into 8,9,10,11,12,... bit histogram
+          if (full_range) {
+            // full range: stretch
+            if (chroma) {
+              const int src_offset = (1 << (bits_per_pixel - 1)); // +/-128
+              const int dst_offset = (1 << (show_bits - 1)); // +/-128
+              const int chroma_span_dst = (1 << (show_bits - 1)) - 1; // +/-127
+              const int chroma_span_src = (1 << (bits_per_pixel - 1)) - 1;
+              const float multiplier = (float)chroma_span_dst / chroma_span_src;
+              const float dst_offset_plus_round = dst_offset + 0.5f;
+              for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                  hist[clamp((int)((srcp16[x] - src_offset) * multiplier + dst_offset_plus_round), 0, max_pixel_value)]++;
+                }
+                srcp16 += pitch;
+              }
             }
-            srcp16 += pitch;
+            else {
+              const int max_src_pixel = (1 << bits_per_pixel) - 1;
+              const float factor = (float)max_pixel_value / max_src_pixel;
+              for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                  hist[min((int)(srcp16[x] * factor + 0.5f), max_pixel_value)]++;
+                }
+                srcp16 += pitch;
+              }
+            }
+          }
+          else {
+            // limited range: shift. Up or down
+            const int shift = bits_per_pixel - show_bits;
+            if (shift < 0) {
+              // 10 bit clip into 11 bit histogram
+              int invshift = -shift;
+              for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                  hist[min(srcp16[x] << invshift, max_pixel_value)]++;
+                }
+                srcp16 += pitch;
+              }
+            }
+            else {
+              // e.g.10 bit clip into 8-9 bit histogram
+              const int round = 1 << (shift - 1);
+              for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                  hist[min((srcp16[x] + round) >> shift, max_pixel_value)]++;
+                }
+                srcp16 += pitch;
+              }
+            }
           }
         }
       }
       else {
-        // float
+        // create fake Histogram 32 bit float
         const float *srcp32 = reinterpret_cast<const float *>(srcp);
-        const float multiplier = (float)(show_size - 1);
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-        const float preshift = 0.0f;
-#else
-        const float preshift = 0.5f;
-#endif
-        if (plane == PLANAR_U || plane == PLANAR_V) {
+        if (chroma) {
+          const int chroma_span_dst = full_range ? (1 << (show_bits - 1)) - 1 : (112 << (show_bits - 8)); // +/- 0.5 -> +/-127
+          const float chroma_span_src = full_range ? 0.5f : (112.0f / 127.0f) / 2.0f;
+          const float multiplier = chroma_span_dst / chroma_span_src;
+          const float dst_offset_plus_round = (1 << (show_bits - 1)) + 0.5f;
           for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-              hist[(int)(clamp(srcp32[x] + preshift, 0.0f, 1.0f)*multiplier + 0.5f)]++;
+              hist[clamp((int)(srcp32[x] * multiplier + dst_offset_plus_round), 0, max_pixel_value)]++;
             }
             srcp32 += pitch;
           }
         }
         else {
+          const float multiplier = (float)((1 << show_bits) - 1);
           for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-              hist[(int)(clamp(srcp32[x], 0.0f, 1.0f)*multiplier + 0.5f)]++;
+              hist[clamp((int)(srcp32[x] * multiplier + 0.5f), 0, max_pixel_value)]++;
             }
             srcp32 += pitch;
           }
         }
       }
-    } // accumulate end
+    }
+    // accumulate end
+    // ---------------------------------------------------
 
     int pos_shift = (show_bits - 8);
     int show_middle_pos = (128 << pos_shift);
