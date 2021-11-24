@@ -36,6 +36,7 @@
 #include <sstream>
 #include <iomanip>
 #include <string>
+#include "../convert/convert_helper.h"
 
 
 /*****************************************************************************
@@ -1324,6 +1325,7 @@ PVideoFrame __stdcall ShowProperties::GetFrame(int n, IScriptEnvironment* env)
 
   for (int index = 0; index < propNum; index++) {
     const char* propName = env->propGetKey(avsmap, index);
+    std::string propName_s = propName;
 
     const char propType = env->propGetType(avsmap, propName);
     ss << propName;
@@ -1350,6 +1352,45 @@ PVideoFrame __stdcall ShowProperties::GetFrame(int n, IScriptEnvironment* env)
       }
       if (propNumElements > 1)
         ss << "]";
+
+      if (propName_s == "_ColorRange") {
+        ss << " = ";
+        switch (arr[0]) {
+        case ColorRange_e::AVS_RANGE_LIMITED: ss << "limited"; break;
+        case ColorRange_e::AVS_RANGE_FULL: ss << "full"; break;
+        }
+      }
+      else if (propName_s == "_Matrix") {
+        ss << " = ";
+        switch (arr[0]) {
+          case Matrix_e::AVS_MATRIX_RGB: ss << "rgb"; break;
+          case Matrix_e::AVS_MATRIX_BT709: ss << "709"; break;
+          case Matrix_e::AVS_MATRIX_UNSPECIFIED: ss << "unspec"; break;
+          case Matrix_e::AVS_MATRIX_ST170_M: ss << "170m"; break;
+          case Matrix_e::AVS_MATRIX_ST240_M: ss << "240m"; break;
+          case Matrix_e::AVS_MATRIX_BT470_BG: ss << "470bg (601)"; break;
+          case Matrix_e::AVS_MATRIX_BT470_M: ss << "470m (fcc)"; break;
+          case Matrix_e::AVS_MATRIX_YCGCO: ss << "YCgCo"; break;
+          case Matrix_e::AVS_MATRIX_BT2020_NCL: ss << "2020ncl (2020)"; break;
+          case Matrix_e::AVS_MATRIX_BT2020_CL: ss << "2020cl"; break;
+          case Matrix_e::AVS_MATRIX_CHROMATICITY_DERIVED_CL: ss << "chromacl"; break;
+          case Matrix_e::AVS_MATRIX_CHROMATICITY_DERIVED_NCL: ss << "chromancl"; break;
+          case Matrix_e::AVS_MATRIX_ICTCP: ss << "ictcp"; break;
+          case Matrix_e::AVS_MATRIX_AVERAGE: ss << "AVERAGE-Legacy Avisynth"; break;
+        }
+      }
+      else if (propName_s == "_ChromaLocation") {
+        ss << " = ";
+        switch (arr[0]) {
+        case ChromaLocation_e::AVS_CHROMA_LEFT: ss << "left (mpeg2)"; break;
+        case ChromaLocation_e::AVS_CHROMA_CENTER: ss << "center (mpeg1, jpeg)"; break;
+        case ChromaLocation_e::AVS_CHROMA_TOP_LEFT: ss << "top_left"; break;
+        case ChromaLocation_e::AVS_CHROMA_TOP: ss << "top"; break;
+        case ChromaLocation_e::AVS_CHROMA_BOTTOM_LEFT: ss << "bottom_left"; break;
+        case ChromaLocation_e::AVS_CHROMA_BOTTOM: ss << "bottom"; break;
+        case ChromaLocation_e::AVS_CHROMA_DV: ss << "dv-Legacy Avisynth"; break;
+        }
+      }
     }
     else if (propType == 'f') {
       if (propNumElements > 1)
