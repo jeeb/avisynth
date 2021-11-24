@@ -1,7 +1,61 @@
 Avisynth+
 
-20211117 WIP
+20211124 WIP
 ------------
+- Language syntax: accept arrays in the place of "val" script function parameter type regardless of being named or unnamed. 
+  (Note: "val" is "." in internal function signatures)
+  Example:
+    BlankClip(pixel_type="yv12")
+    r([1, 2, 3])
+    r(n=[10,11,[12,13]])
+    r("hello")
+    function r(clip c, val "n")
+    {
+      if (IsArray(n)) {
+       if (IsArray(n[2])) {
+         return Subtitle(c, String(n[2,1]), align=8) #13 at the top
+       } else {
+         return Subtitle(c, String(n[2]), align=2) #3 at the bottom
+       }
+      } else {
+        return Subtitle(c, String(n), align=5) #hello in the center
+      }
+    }
+
+- Histogram "Levels": more precise drawing when bit depth is different from histogram's resolution bit depth
+- Expr: no more banker's rounding when converting back float result to integer pixels. Using the usual truncate(x+0.5) rounding method
+- ColorYUV: fix 32 bit float output
+- ColorYUV: More consistent and accurate output across different color spaces, match with ConvertBits fulls-fulld conversions
+- ColorYUV: set _ColorRange frame property
+  levels = "TV->PC" -> full
+  levels = "PC->TV" or "PC->TV.Y" or "TV" -> limited
+  levels = (not given) and _ColorRange property exists -> keeps _ColorRange 
+  levels = (not given) and no _ColorRange property  -> full range (old default behaviour)
+- ColorYUV: when no hint is given by parameter "levels" then use _ColorRange (limited/full) frame property for establishing source range 
+  If _ColorRange does not exist, it treats input as full range (old default behaviour)
+  Why: when there is no limited<->full conversion, but gamma is provided then this info is still used in gamma calculation.
+- ColorYUV: fixes for showyuv=true:
+  - fix display when bits=32
+  - "showyuv_fullrange"=true case: U and V range is chroma center +/- span (1..max) for integer bit depths instead of 0..max
+    Shown ranges:
+    For bits=8: 128 +/- 127 (range 1..255 is shown) (UV size is 255x255 -> 510x510 image YV12)
+    bits=10: range 512 +/- 511 (UV size is 1023x1023 -> 2046x2046 image YUV420P10)
+    bits=12: range 2048 +/- 2047 (UV size is same as 10 bits 1023x1023 -> 2046x2046 image YUV420P12)
+    bits=14: range 8192 +/- 8191 (UV size is same as 10 bits 1023x1023 -> 2046x2046 image YUV420P14)
+    bits=16: range 32768 +/- 32767 (UV size is same as 10 bits 1023x1023 -> 2046x2046 image YUV420P16)
+    bits=32: range 0.0 +/- 0.5 (UV size is same as 10 bits 1023x1023 -> 2046x2046 image YUV420PS)
+    In general: chroma center is 2^(N-1); span is (2^(N-1))-1 where N is the bit depth
+- propShow: display _Matrix, _ColorRange and _ChromaLocation constants with friendly names
+- Info on Wincows XP compatibility (Microsoft side)
+  Avisynth+ can be build to be XP compatible (VS2019): v141_xp toolset and -Z-threadSafeInit flag.
+  But in order to work, a _compatible_ (=not latest) Visual C++ runtime is still needed (XP support has been stopped by MS meanwhile)
+  As experienced here: https://github.com/AviSynth/AviSynthPlus/issues/241
+  The latest XP compatible version is probably 14.28.29213.0.
+  Links to official installers for last XP compatible Microsoft Visual C++ 2015-2019 Redistributable (version 14.28.29213):
+  x64 - https://download.visualstudio.microsoft.com/download/pr/566435ac-4e1c-434b-b93f-aecc71e8cffc/B75590149FA14B37997C35724BC93776F67E08BFF9BD5A69FACBF41B3846D084/VC_redist.x64.exe
+  x86 - https://download.visualstudio.microsoft.com/download/pr/566435ac-4e1c-434b-b93f-aecc71e8cffc/0D59EC7FDBF05DE813736BF875CEA5C894FFF4769F60E32E87BD48406BBF0A3A/VC_redist.x86.exe 
+
+- Expr: new function "sgn". Returns -1 when x is negative; 0 if zero; 1 when x is positive
 - Expr: atan2 to SSE2 and AVX2. Up to 20x speed.
   Reference: https://stackoverflow.com/questions/46210708/atan2-approximation-with-11bits-in-mantissa-on-x86with-sse2-and-armwith-vfpv4
   max relative error = 3.53486939e-5
