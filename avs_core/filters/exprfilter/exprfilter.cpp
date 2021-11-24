@@ -2272,16 +2272,18 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
       //  1.5   2   2
       //  2.5   3   2
       //  3.5   4   4
+      // 3.7.1test27: no more banker's rounding. Using cvttps and +0.5f
       else if (iter.op == opStore8) {
         if (processSingle) {
           auto t1 = stack1.back();
           stack1.pop_back();
           XmmReg r1;
           Reg a;
+          addps(t1, CPTR(elfloat_half)); // rounder for truncate! no banker's rounding
           maxps(t1, zero);
           minps(t1, CPTR(elstore8));
           mov(a, ptr[regptrs]);
-          cvtps2dq(t1, t1);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+          cvttps2dq(t1, t1);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
           packssdw(t1, zero);  // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
           packuswb(t1, zero);  // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
           movd(dword_ptr[a], t1);
@@ -2291,13 +2293,15 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           stack.pop_back();
           XmmReg r1, r2;
           Reg a;
+          addps(t1.first, CPTR(elfloat_half)); // rounder for truncate! no banker's rounding
           maxps(t1.first, zero);
+          addps(t1.second, CPTR(elfloat_half)); // rounder for truncate! no banker's rounding
           maxps(t1.second, zero);
           minps(t1.first, CPTR(elstore8));
           minps(t1.second, CPTR(elstore8));
           mov(a, ptr[regptrs]);
-          cvtps2dq(t1.first, t1.first);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
-          cvtps2dq(t1.second, t1.second);  // 00 w7 00 w6 00 w5 00 w4
+          cvttps2dq(t1.first, t1.first);    // 00 w3 00 w2 00 w1 00 w0 -- min/max clamp ensures that high words are zero
+          cvttps2dq(t1.second, t1.second);  // 00 w7 00 w6 00 w5 00 w4
           // t1.second is the lo
           packssdw(t1.first, t1.second);   // _mm_packs_epi32: w7 w6 w5 w4 w3 w2 w1 w0
           packuswb(t1.first, zero);       // _mm_packus_epi16: 0 0 0 0 0 0 0 0 b7 b6 b5 b4 b3 b2 b1 b0
@@ -2314,6 +2318,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           stack1.pop_back();
           XmmReg r1;
           Reg a;
+          addps(t1, CPTR(elfloat_half)); // rounder for truncate! no banker's rounding
           maxps(t1, zero);
           switch (iter.op) {
           case opStore10:
@@ -2330,7 +2335,7 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             break;
           }
           mov(a, ptr[regptrs]);
-          cvtps2dq(t1, t1);
+          cvttps2dq(t1, t1); // no cvtps, but cvttps
           // new
           switch (iter.op) {
           case opStore10:
@@ -2359,7 +2364,9 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
           stack.pop_back();
           XmmReg r1, r2;
           Reg a;
+          addps(t1.first, CPTR(elfloat_half)); // rounder for truncate! no banker's rounding
           maxps(t1.first, zero);
+          addps(t1.second, CPTR(elfloat_half)); // rounder for truncate! no banker's rounding
           maxps(t1.second, zero);
           switch (iter.op) {
           case opStore10:
@@ -2380,8 +2387,8 @@ struct ExprEval : public jitasm::function<void, ExprEval, uint8_t *, const intpt
             break;
           }
           mov(a, ptr[regptrs]);
-          cvtps2dq(t1.first, t1.first);
-          cvtps2dq(t1.second, t1.second);
+          cvttps2dq(t1.first, t1.first); // no bankers rounding
+          cvttps2dq(t1.second, t1.second);
           // new
           switch (iter.op) {
           case opStore10:
@@ -3208,10 +3215,11 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           auto t1 = stack1.back();
           stack1.pop_back();
           Reg a;
+          vaddps(t1, t1, CPTR_AVX(elfloat_half)); // rounder for truncate! no banker's rounding
           vmaxps(t1, t1, zero);
           vminps(t1, t1, CPTR_AVX(elstore8));
           mov(a, ptr[regptrs]);
-          vcvtps2dq(t1, t1);   // float to int32
+          vcvttps2dq(t1, t1);   // float to int32 no bankers rounding
           XmmReg r1x, r2x;
           // 32 -> 16 bits from ymm 8 integers to xmm 8 words
           // first
@@ -3226,13 +3234,15 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           auto t1 = stack.back();
           stack.pop_back();
           Reg a;
+          vaddps(t1.first, t1.first, CPTR_AVX(elfloat_half)); // rounder for truncate! no banker's rounding
           vmaxps(t1.first, t1.first, zero);
+          vaddps(t1.second, t1.second, CPTR_AVX(elfloat_half)); // rounder for truncate! no banker's rounding
           vmaxps(t1.second, t1.second, zero);
           vminps(t1.first, t1.first, CPTR_AVX(elstore8));
           vminps(t1.second, t1.second, CPTR_AVX(elstore8));
           mov(a, ptr[regptrs]);
-          vcvtps2dq(t1.first, t1.first);   // float to int32
-          vcvtps2dq(t1.second, t1.second);
+          vcvttps2dq(t1.first, t1.first);   // float to int32 no bankers rounding
+          vcvttps2dq(t1.second, t1.second);
           // we have 8 integers in t.first and another 8 in t.second
           // second                           first
           // d15 d14 d13 d12 d11 d10 d9 d8    d7 d6 d5 d4 d3 d2 d1 d0  // 16x32 bit integers in two ymm registers. not really 256 bits, but 2x128 bits
@@ -3260,6 +3270,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           auto t1 = stack1.back();
           stack1.pop_back();
           Reg a;
+          vaddps(t1, t1, CPTR_AVX(elfloat_half)); // rounder for truncate! no banker's rounding
           vmaxps(t1, t1, zero);
           switch (iter.op) {
           case opStore10:
@@ -3276,7 +3287,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
             break;
           }
           mov(a, ptr[regptrs]);
-          vcvtps2dq(t1, t1);   // min / max clamp ensures that high words are zero
+          vcvttps2dq(t1, t1);   // min / max clamp ensures that high words are zero
           XmmReg r1x, r2x;
           // 32 -> 16 bits from ymm 8 integers to xmm 8 words
           vextracti128(r1x, t1, 0); // not perfect, lower 128 bits of t1 could be used as xmm in packus. Cannot tell jitasm that xxmN is lower ymmN
@@ -3288,7 +3299,9 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
           auto t1 = stack.back();
           stack.pop_back();
           Reg a;
+          vaddps(t1.first, t1.first, CPTR_AVX(elfloat_half)); // rounder for truncate! no banker's rounding
           vmaxps(t1.first, t1.first, zero);
+          vaddps(t1.second, t1.second, CPTR_AVX(elfloat_half)); // rounder for truncate! no banker's rounding
           vmaxps(t1.second, t1.second, zero);
           switch (iter.op) {
           case opStore10:
@@ -3309,8 +3322,8 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
             break;
           }
           mov(a, ptr[regptrs]);
-          vcvtps2dq(t1.first, t1.first);   // min / max clamp ensures that high words are zero
-          vcvtps2dq(t1.second, t1.second);
+          vcvttps2dq(t1.first, t1.first);   // min / max clamp ensures that high words are zero
+          vcvttps2dq(t1.second, t1.second);
           // we have 8 integers in t.first and another 8 in t.second
           // second                           first
           // d15 d14 d13 d12 d11 d10 d9 d8    d7 d6 d5 d4 d3 d2 d1 d0  // 16x32 bit integers in two ymm registers. not really 256 bits, but 2x128 bits
