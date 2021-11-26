@@ -42,8 +42,6 @@ IF(ENABLE_INTEL_SIMD)
   FILE(GLOB Conditional_Filter_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "filters/conditional/intel/*.cpp"
     "filters/conditional/intel/*.h")
-  LIST(REMOVE_ITEM AvsCore_Sources "filters/conditional/conditional_functions.cpp"
-                                   "filters/conditional/conditional_functions.h")
   LIST(APPEND AvsCore_Sources "${Conditional_Filter_Cpu_Sources}")
 
   FILE(GLOB Convert_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -54,26 +52,12 @@ IF(ENABLE_INTEL_SIMD)
   FILE(GLOB Filters_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "filters/intel/*.cpp"
     "filters/intel/*.h")
-  LIST(REMOVE_ITEM AvsCore_Sources "filters/focus.cpp"
-                                   "filters/focus.h"
-                                   "filters/layer.cpp"
+  LIST(REMOVE_ITEM AvsCore_Sources "filters/layer.cpp"
                                    "filters/layer.h"
-                                   "filters/levels.cpp"
-                                   "filters/levels.h"
-                                   "filters/limiter.cpp"
-                                   "filters/limiter.h"
-                                   "filters/merge.cpp"
-                                   "filters/merge.h"
-                                   "filters/planeswap.cpp"
-                                   "filters/planeswap.h"
                                    "filters/resample.cpp"
                                    "filters/resample.h"
                                    "filters/resize.cpp"
-                                   "filters/resize.h"
-                                   "filters/text-overlay.cpp"
-                                   "filters/text-overlay.h"
-                                   "filters/turn.cpp"
-                                   "filters/turn.h")
+                                   "filters/resize.h")
   LIST(APPEND AvsCore_Sources "${Filters_Cpu_Sources}")
 
   FILE(GLOB Overlay_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

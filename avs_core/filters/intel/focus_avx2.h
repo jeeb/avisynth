@@ -32,12 +32,14 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+#ifndef __Focus_AVX2_H__
+#define __Focus_AVX2_H__
 
 #include <avisynth.h>
 
-double get_sum_of_pixels_sse2(const uint8_t* srcp, size_t height, size_t width, size_t pitch);
-#ifdef X86_32
-double get_sum_of_pixels_isse(const uint8_t* srcp, size_t height, size_t width, size_t pitch);
-size_t get_sad_isse(const uint8_t* src_ptr, const uint8_t* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch);
-size_t get_sad_rgb_isse(const uint8_t* src_ptr, const uint8_t* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch);
-#endif
+void af_horizontal_planar_uint16_t_avx2(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount, int bits_per_pixel);
+void af_horizontal_planar_avx2(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount);
+void af_vertical_avx2(BYTE* line_buf, BYTE* dstp, int height, int pitch, int width, int amount);
+void af_vertical_uint16_t_avx2(BYTE* line_buf, BYTE* dstp, int height, int pitch, int row_size, int amount);
+
+#endif  // __Focus_AVX2_H__

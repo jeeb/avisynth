@@ -45,6 +45,9 @@
 #include <avs/posix.h>
 #endif
 #include "planeswap.h"
+#ifdef INTEL_INTRINSICS
+#include "intel/planeswap_sse.h"
+#endif
 #include "../core/internal.h"
 #include <algorithm>
 #include <avs/alignment.h>
@@ -141,8 +144,20 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env)
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   int rowsize = src->GetRowSize();
-
+#ifdef INTEL_INTRINSICS
+  if ((env->GetCPUFlags() & CPUF_SSSE3))
+    yuy2_swap_ssse3(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
+  else if ((env->GetCPUFlags() & CPUF_SSE2))
+    yuy2_swap_sse2(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
+#ifdef X86_32
+  else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) // need pshufw
+    yuy2_swap_isse(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
+#endif
+  else
+#endif
+{
   yuy2_swap_c(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height);
+}
   return dst;
 }
 
@@ -304,6 +319,12 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
 
     if (vi.IsYUY2()) {  // YUY2 To YUY2
       int rowsize = dst->GetRowSize();
+#ifdef INTEL_INTRINSICS
+      if (env->GetCPUFlags() & CPUF_SSE2) {
+        yuy2_uvtoy_sse2(srcp, dstp, src_pitch, dst_pitch, rowsize, vi.height, pos);
+        return dst;
+      }
+#endif
 
       srcp += pos;
       for (int y = 0; y < vi.height; ++y) {
@@ -318,6 +339,12 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     }
 
     // YUY2 to Y8
+#ifdef INTEL_INTRINSICS
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      yuy2_uvtoy8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, pos);
+      return dst;
+    }
+#endif
     srcp += pos;
     for (int y = 0; y < vi.height; ++y) {
       for (int x = 0; x < vi.width; ++x) {
@@ -509,8 +536,12 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
       PVideoFrame srcy = clipY->GetFrame(n, env);
       const BYTE* srcp_y = srcy->GetReadPtr();
       const int pitch_y = srcy->GetPitch();
-
-      yuy2_ytouv_c<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
+#ifdef INTEL_INTRINSICS
+      if (env->GetCPUFlags() & CPUF_SSE2)
+        yuy2_ytouv_sse2<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
+      else
+#endif
+        yuy2_ytouv_c<true>(srcp_y, srcp_u, srcp_v, dstp, pitch_y, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
     }
     else
       yuy2_ytouv_c<false>(nullptr, srcp_u, srcp_v, dstp, 0, pitch_u, pitch_v, dst_pitch, rowsize, vi.height);
@@ -520,11 +551,11 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
 
   // Planar:
   env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U),
-              src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
+    src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
 
   src = clip->GetFrame(n, env);
   env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
-              src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
+    src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
 
   if (clipA) {
     int source_plane = (clipA->GetVideoInfo().IsPlanarRGBA() ||
@@ -537,7 +568,7 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   if (clipY) {
     src = clipY->GetFrame(n, env);
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
-                src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
+      src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
     return dst;
   }
 
@@ -552,7 +583,8 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   else if (vi.ComponentSize() == 2) { // 16bit
     uint16_t luma_val = 0x7e << (vi.BitsPerComponent() - 8);
     fill_plane<uint16_t>(dstp, rowsize, vi.height, pitch, luma_val);
-  } else { // 32bit(float)
+  }
+  else { // 32bit(float)
     fill_plane<float>(dstp, rowsize, vi.height, pitch, 126.0f / 256);
   }
 

@@ -38,6 +38,7 @@
 #include "../core/internal.h"
 
 #include "../transform.h"
+#include "../turn.h"
 #include "turn_sse.h"
 #include <avs/alignment.h>
 #include <avs/minmax.h>

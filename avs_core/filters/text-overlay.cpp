@@ -40,6 +40,9 @@
 #endif
 
 #include "text-overlay.h"
+#ifdef INTEL_INTRINSICS
+#include "intel/text-overlay_sse.h"
+#endif
 #include "../convert/convert_matrix.h"  // for RGB2YUV_Rec601
 
 #define __STDC_FORMAT_MACROS
@@ -2078,7 +2081,7 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
 FilterInfo::FilterInfo( PClip _child, const char _fontname[], int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
   : GenericVideoFilter(_child), vii(AdjustVi()), size(_size),
   text_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor),
-  halo_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor),
+  halo_color(vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_halocolor) : _halocolor)
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
   ,antialiaser(vi.width, vi.height, _fontname, size,
     vi.IsYUV() || vi.IsYUVA() ? RGB2YUV_Rec601(_textcolor) : _textcolor,
@@ -2137,17 +2140,84 @@ const char* const t_ABFF="Assumed Bottom Field First ";
 const char* const t_STFF="Top Field (Separated)      ";
 const char* const t_SBFF="Bottom Field (Separated)   ";
 
+#ifdef INTEL_INTRINSICS
+std::string GetCpuMsg(IScriptEnvironment * env, bool avx512)
+{
+  int flags = env->GetCPUFlags();
+  std::stringstream ss;
 
+  if (!avx512) {
+#ifndef _M_X64
+    // don't display old capabilities when at least AVX is used
+    if (!(flags & CPUF_AVX)) {
+    //if (flags & CPUF_FPU)
+    //  ss << "x87 ";
+      if (flags & CPUF_MMX)
+        ss << "MMX ";
+      if (flags & CPUF_INTEGER_SSE)
+        ss << "ISSE ";
+
+      if (flags & CPUF_3DNOW_EXT)
+        ss << "3DNOW_EXT";
+      else if (flags & CPUF_3DNOW)
+        ss << "3DNOW ";
+    }
+
+    if (flags & CPUF_SSE)
+      ss << "SSE ";
+#endif
+    if (flags & CPUF_SSE2)
+      ss << "SSE2 ";
+    if (flags & CPUF_SSE3)
+      ss << "SSE3 ";
+    if (flags & CPUF_SSSE3)
+      ss << "SSSE3 ";
+    if (flags & CPUF_SSE4_1)
+      ss << "SSE4.1 ";
+    if (flags & CPUF_SSE4_2)
+      ss << "SSE4.2 ";
+
+    if (flags & CPUF_AVX)
+      ss << "AVX ";
+    if (flags & CPUF_AVX2)
+      ss << "AVX2 ";
+    if (flags & CPUF_FMA3)
+      ss << "FMA3 ";
+    if (flags & CPUF_FMA4)
+      ss << "FMA4 ";
+    if (flags & CPUF_F16C)
+      ss << "F16C ";
+  }
+  else {
+    if (flags & CPUF_AVX512F)
+      ss << "AVX512F ";
+    if (flags & CPUF_AVX512DQ)
+      ss << "AVX512DQ ";
+    if (flags & CPUF_AVX512PF)
+      ss << "AVX512PF ";
+    if (flags & CPUF_AVX512ER)
+      ss << "AVX512ER ";
+    if (flags & CPUF_AVX512CD)
+      ss << "AVX512CD ";
+    if (flags & CPUF_AVX512BW)
+      ss << "AVX512BW ";
+    if (flags & CPUF_AVX512VL)
+      ss << "AVX512VL ";
+    if (flags & CPUF_AVX512IFMA)
+      ss << "AVX512IFMA ";
+    if (flags & CPUF_AVX512VBMI)
+      ss << "AVX512VBMI ";
+  }
+  return ss.str();
+}
+#else
 std::string GetCpuMsg(IScriptEnvironment * env)
 {
-#ifdef INTEL_INTRINSICS
-  int flags = env->GetCPUFlags();
-#endif
   std::stringstream ss;
 
   return ss.str();
 }
-
+#endif
 
 bool FilterInfo::GetParity(int n)
 {
@@ -2261,8 +2331,23 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     // CPU capabilities
     tlen += snprintf(text + tlen, sizeof(text) - tlen,
       "CPU: %s\n"
+#ifdef INTEL_INTRINSICS
+      , GetCpuMsg(env, false).c_str()
+#else
       , GetCpuMsg(env).c_str()
+#endif
     );
+#ifdef INTEL_INTRINSICS
+    // AVX512 flags in new line (too long)
+    std::string avx512 = GetCpuMsg(env, true);
+    if (avx512.length() > 0) {
+      tlen += snprintf(text + tlen, sizeof(text) - tlen,
+        "     %s\n"
+        , avx512.c_str()
+      );
+    }
+#endif
+
 
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     // So far RECT dimensions were hardcoded: RECT r = { 32, 16, min(3440,vi.width * 8), 900*2 };
@@ -2682,21 +2767,41 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     const int height = f1->GetHeight();
 
     bytecount = (rowsize / pixelsize) * height * masked_bytes / 4;
+#ifdef INTEL_INTRINSICS
 
-    if(pixelsize==1)
-        compare_c(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+    if (((vi.IsRGB32() && (rowsize % 16 == 0)) || (vi.IsRGB24() && (rowsize % 12 == 0)) || (vi.IsYUY2() && (rowsize % 16 == 0))) &&
+      (pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2)) // only for uint8_t (pixelsize==1), todo
+    {
+
+      compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+    }
     else
-        compare_uint16_t_c(mask64, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
+#ifdef X86_32
+      if (((vi.IsRGB32() && (rowsize % 8 == 0)) || (vi.IsRGB24() && (rowsize % 6 == 0)) || (vi.IsYUY2() && (rowsize % 8 == 0))) &&
+        (pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) // only for uint8_t (pixelsize==1), todo
+      {
+        compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+      }
+      else
+#endif
+#endif
+      {
+
+        if (pixelsize == 1)
+          compare_c(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+        else
+          compare_uint16_t_c(mask64, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
+      }
   }
   else { // Planar
 
     int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
     int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
-    int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
-    for (int p=0; p<3; p++) {
+    int* planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+    for (int p = 0; p < 3; p++) {
       const int plane = planes[p];
 
-	  if (planar_plane & plane) {
+      if (planar_plane & plane) {
 
         const BYTE* f1ptr = f1->GetReadPtr(plane);
         const BYTE* f2ptr = f2->GetReadPtr(plane);
@@ -2706,11 +2811,28 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
         const int height = f1->GetHeight(plane);
 
         bytecount += (rowsize / pixelsize) * height;
+#ifdef INTEL_INTRINSICS
 
-        if(pixelsize==1)
-            compare_planar_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+        if ((pixelsize == 1) && (rowsize % 16 == 0) && (env->GetCPUFlags() & CPUF_SSE2))
+        {
+          compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+        }
         else
-            compare_planar_uint16_t_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
+#ifdef X86_32
+          if ((pixelsize == 1) && (rowsize % 8 == 0) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+          {
+            compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+          }
+          else
+#endif
+#endif
+          {
+
+            if (pixelsize == 1)
+              compare_planar_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+            else
+              compare_planar_uint16_t_c(f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD_64, SD_64, pos_D, neg_D, SSD);
+          }
       }
     }
   }

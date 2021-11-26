@@ -35,11 +35,7 @@
 #include "edit.h"
 #include "../convert/convert_audio.h"
 #include "../core/internal.h"
-#ifdef INTEL_INTRINSICS
-#include "intel/merge_sse.h"
-#else
 #include "merge.h"
-#endif
 #include <climits>
 #include <cmath>
 

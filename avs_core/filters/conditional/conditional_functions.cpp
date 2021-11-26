@@ -34,6 +34,11 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "conditional_functions.h"
+#include "../focus.h" // sad
+#ifdef INTEL_INTRINSICS
+#include "intel/conditional_functions_sse.h"
+#include "../intel/focus_sse.h" // sad
+#endif
 #include "../../core/internal.h"
 #include <avs/config.h>
 #include <avs/minmax.h>
@@ -41,7 +46,6 @@
 #include <limits>
 #include <algorithm>
 #include <cmath>
-#include "../focus.h" // sad
 #include "../core/AVSMap.h"
 
 extern const AVSFunction Conditional_funtions_filters[] = {
@@ -234,6 +238,16 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* , int plane, int offset, IS
   else // worst case
     sum_in_32bits = ((int64_t)total_pixels * (pixelsize == 1 ? 255 : 65535)) <= std::numeric_limits<int>::max();
 
+#ifdef INTEL_INTRINSICS
+  if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_SSE2) && width >= 16) {
+    sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
+  } else
+#ifdef X86_32
+  if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+    sum = get_sum_of_pixels_isse(srcp, height, width, pitch);
+  } else
+#endif
+#endif
   {
     if(pixelsize==1)
       sum = get_sum_of_pixels_c<uint8_t>(srcp, height, width, pitch);
@@ -376,6 +390,19 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
 
   // for c: width, for sse: rowsize
   if (vi.IsRGB32() || vi.IsRGB64()) {
+#ifdef INTEL_INTRINSICS
+    if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      // int64 internally, no sum_in_32bits
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,true>(srcp, srcp2, pitch, pitch2, width*pixelsize, height); // in focus. 21.68/21.39
+    } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else
+#ifdef X86_32
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
+      } else
+#endif
+#endif
       {
         if (pixelsize == 1)
           sad = (double)get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
@@ -383,6 +410,19 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* , int plane
           sad = (double)get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
+#ifdef INTEL_INTRINSICS
+    if ((pixelsize==2) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else
+      if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else
+#ifdef X86_32
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
+      } else
+#endif
+#endif
       {
         if(pixelsize==1)
           sad = get_sad_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
@@ -457,6 +497,19 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
   double sad = 0;
   // for c: width, for sse: rowsize
   if (vi.IsRGB32() || vi.IsRGB64()) {
+#ifdef INTEL_INTRINSICS
+    if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      // int64 internally, no sum_in_32bits
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus. 21.68/21.39
+    } else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,true>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else
+#ifdef X86_32
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_rgb_isse(srcp, srcp2, height, rowsize, pitch, pitch2);
+      } else
+#endif
+#endif
       {
         if(pixelsize==1)
           sad = get_sad_rgb_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
@@ -464,6 +517,18 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
           sad = get_sad_rgb_c<uint16_t>(srcp, srcp2, height, width, pitch, pitch2);
       }
   } else {
+#ifdef INTEL_INTRINSICS
+    if ((pixelsize==2) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint16_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else if ((pixelsize==1) && (env->GetCPUFlags() & CPUF_SSE2) && rowsize >= 16) {
+      sad = (double)calculate_sad_8_or_16_sse2<uint8_t,false>(srcp, srcp2, pitch, pitch2, rowsize, height); // in focus, no overflow
+    } else
+#ifdef X86_32
+      if ((pixelsize==1) && sum_in_32bits && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
+      } else
+#endif
+#endif
       {
         if(pixelsize==1)
           sad = get_sad_c<uint8_t>(srcp, srcp2, height, width, pitch, pitch2);
@@ -632,14 +697,10 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
     // See similar in colors, ColorYUV analyze
     const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
     if (chroma) {
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-      const float shift = 0.0f;
-#else
       const float shift = 32768.0f;
-#endif
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-          // -0.5..0.5 (0..1.0 when FLOAT_CHROMA_IS_HALF_CENTERED) to 0..65535
+          // -0.5..0.5 to 0..65535
           const float pixel = reinterpret_cast<const float *>(srcp)[x];
           accum_buf[clamp((int)(65535.0f*pixel + shift + 0.5f), 0, 65535)]++;
         }
@@ -721,11 +782,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   if (pixelsize == 4) {
     const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
     if (chroma && (mode == MIN || mode == MAX)) {
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-      const float shift = 0.0f;
-#else
       const float shift = 32768.0f;
-#endif
       return AVSValue((double)(retval - shift) / (real_buffersize - 1)); // convert back to float, /65535
     }
     else {
