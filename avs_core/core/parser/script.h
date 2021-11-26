@@ -292,6 +292,8 @@ AVSValue ArrayCreate(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsArray(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ArraySize(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ArrayIns(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ArrayDel(AVSValue args, void*, IScriptEnvironment* env);
 #endif
 
 #endif  // __Script_H__

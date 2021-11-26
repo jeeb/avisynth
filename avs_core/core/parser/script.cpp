@@ -309,11 +309,11 @@ extern const AVSFunction Script_functions[] = {
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, ".i+", ArrayGet }, // .+i+ syntax is not possible.
     // length can be zero
   { "ArraySize", BUILTIN_FUNC_PREFIX, ".", ArraySize },
+  { "ArrayAdd",  BUILTIN_FUNC_PREFIX, "..", ArrayIns, (void *)1 },
+  { "ArrayIns",  BUILTIN_FUNC_PREFIX, "..i", ArrayIns, (void*)0 },
+  { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
   /*
   { "IsArrayOf", BUILTIN_FUNC_PREFIX, ".s", IsArrayOf },
-  { "ArrayAdd",  BUILTIN_FUNC_PREFIX, "..*", ArrayAdd },
-  { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
-  { "ArrayIns",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
   */
 #endif
   { 0 }
@@ -2225,4 +2225,64 @@ AVSValue ArraySize(AVSValue args, void*, IScriptEnvironment* env)
     env->ThrowError("ArraySize: parameter must be an array");
   return args[0].ArraySize();
 }
+
+AVSValue ArrayIns(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  const bool append = 1 == (intptr_t)user_data;
+  // signature .. and ..i
+  // parameters:
+  // [0] array to be appended; [1] element to insert at the end (ArrayAdd and ArrayIns)
+  // [2] inserting index (ArrayIns)
+  if (!args[0].IsArray())
+    env->ThrowError("%s error: array type required.", append ? "ArrayAdd" : "ArrayIns");
+
+  const auto orig_size = args[0].ArraySize();
+  int insert_pos = orig_size; // at the end
+
+  if (!append) {
+    insert_pos = args[2].AsInt();
+    if (insert_pos < 0 || insert_pos >orig_size)
+      env->ThrowError("ArrayIns error: index must be between 0 and array size (inclusive)");
+  }
+
+  std::vector<AVSValue> new_val(orig_size + 1);
+
+  for (int i = 0; i < insert_pos; i++)
+    new_val[i] = args[0][i]; // avs+: automatic deep copy
+
+  new_val[insert_pos] = args[1];
+
+  for (int i = insert_pos; i < orig_size; i++)
+    new_val[i+1] = args[0][i]; // avs+: automatic deep copy
+
+  return AVSValue(new_val.data(), orig_size + 1);
+}
+
+AVSValue ArrayDel(AVSValue args, void*, IScriptEnvironment* env)
+{
+  // signature .i
+  // parameters: [0] array to be deleted from; [1] index
+  if (!args[0].IsArray())
+    env->ThrowError("ArrayDel error: array type required.");
+
+  const auto orig_size = args[0].ArraySize();
+  const auto delete_pos = args[1].AsInt();
+
+  if (delete_pos < 0 || delete_pos >= orig_size)
+      env->ThrowError("ArrayDel error: index is out of array's bounds. size is %d", orig_size);
+
+  if (orig_size == 1)
+    return AVSValue(nullptr, 0); // zero array
+
+  std::vector<AVSValue> new_val(orig_size - 1);
+
+  for (int i = 0; i < delete_pos; i++)
+    new_val[i] = args[0][i]; // avs+: automatic deep copy
+
+  for (int i = delete_pos + 1; i < orig_size; i++)
+    new_val[i - 1] = args[0][i]; // avs+: automatic deep copy
+
+  return AVSValue(new_val.data(), orig_size - 1);
+}
+
 #endif
