@@ -1,7 +1,49 @@
 Avisynth+
 
-20211124 WIP
+20211126 WIP
 ------------
+- New: ArrayAdd(a, b): appends b to the end of a (a and b are arrays)
+  Example:
+    a = []
+    a=ArrayAdd(a,[1,2]) # [[1,2]]
+    a=ArrayIns(a,3,0) # [3,[1,2]]
+    a=ArrayAdd(a,"s1") # [3,[1,2],"s1"]
+    a=ArrayAdd(a,"s2") # [3,[1,2],"s1","s2"]
+    a=ArrayDel(a,2) # [3,[1,2],"s2"]
+- New: ArrayIns(a, b, n): inserts b into a to position n (a and b are arrays, n is a zero based index. 0: inserts at the beginning, array_size: inserts after the last element)
+- New: ArrayDel(a, n): removes the n-th element from a (a is array, n is a zero based index, must be a valid index between 0 and arraysize-1)
+- Enhancement: xPlaneMin/Max/Median/MinMaxDifference runtime functions to accept old packed formats (RGB24/32/48/64 and YUY2)
+  (By autoconverting them to Planar RGB or YV16)
+- New runtime function: PlaneMinMaxStats(clip, float "threshold", int "offset", int "plane", bool "setvar")
+  Returns an 5-element array with [min,max,thresholded minimum,thresholded maximum,median]
+  Parameters:
+    float 'threshold': a percent number between 0.0 and 100.0%
+    int 'offset': if not 0, they can be used for pulling statistics from a frame number relative to the actual one
+    int 'plane' (default 0): 
+         0, 1, 2 or 3 
+         for YUV inputs they mean Y=0,U=1,V=2,A=3 planes
+         for RGB inputs R=0,G=0,B=0 and A=3 planes
+    bool 'setvar' (default false): 
+         when true then it writes a global variables named 
+        "PlaneStats_min" "PlaneStats_max" "PlaneStats_thmin" "PlaneStats_thmax" "PlaneStats_median"
+
+  Note: using global variables are thread safe from ScriptClip only when used with 'function'-syntax call with its default 'local'=true
+
+  Example:
+
+  # function-syntax ScriptClip + runtime function call + dedicated global var demo
+  # Here 'local'=true (for the sake of the demo; this is the default for this mode).
+  # 'local'=true makes a dedicated global variable area, in which 'last' and 'current frame'
+  # 'c' is a parameter which must be passed to the function. Name is not important, it moves the actual clip into function's scope.
+  # This is why we can SubTitle on it.
+  # A function can see only global variables. 'last' and 'current_frame' are available here - they are global variables which were
+  # set by ScriptClip after creating a safe global variable stack.
+  # PlaneMinMaxStats writes five global variables "PlaneStats_min", "PlaneStats_max", "PlaneStats_thmin", "PlaneStats_thmax", "PlaneStats_median"
+  ScriptClip( function [] () {
+    x=PlaneMinMaxStats(threshold=30, offset=0, plane=1, setvar=true)
+    subtitle("min=" + string(PlaneStats_min) + " thmax" + String(PlaneStats_thmax) + " median = " + String(PlaneStats_Median) + " median_too=" + String(x[4]))
+    } , local = true) 
+
 - Language syntax: accept arrays in the place of "val" script function parameter type regardless of being named or unnamed. 
   (Note: "val" is "." in internal function signatures)
   Example:
