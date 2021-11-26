@@ -58,15 +58,16 @@ public:
 class MinMaxPlane {
 
 public:
-  static AVSValue MinMax(AVSValue clip, void* user_data, double threshold, int offset, int plane, int mode, IScriptEnvironment* env);
+  static AVSValue MinMax(AVSValue clip, void* user_data, double threshold, int offset, int plane, int mode, bool setvar, IScriptEnvironment* env);
 
   static AVSValue Create_max(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_min(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_median(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_minmax(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_minmax_stats(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
-  enum { MIN = 1, MAX = 2, MEDIAN = 3, MINMAX_DIFFERENCE = 4 };
+  enum { MIN = 1, MAX = 2, MEDIAN = 3, MINMAX_DIFFERENCE = 4, STATS = 5 };
 
 };
 

@@ -88,6 +88,7 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   {  "BDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c[offset]i", ComparePlane::Create_next, (void *)PLANAR_B },
   //{  "SatDifferenceFromNext","c[offset]i", CompareSat::Create_next },
 //{  "HueDifferenceFromNext","c[offset]i", CompareHue::Create_next },
+  {  "PlaneMinMaxStats", BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i[plane]i[setvar]b", MinMaxPlane::Create_minmax_stats, (void*)-1 },
   {  "YPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_max, (void *)PLANAR_Y },
   {  "YPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f[offset]i", MinMaxPlane::Create_min, (void *)PLANAR_Y },
   {  "YPlaneMedian", BUILTIN_FUNC_PREFIX, "c[offset]i", MinMaxPlane::Create_median, (void *)PLANAR_Y },
@@ -549,25 +550,45 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* , int offset, int plane
   return (AVSValue)f;
 }
 
+AVSValue MinMaxPlane::Create_minmax_stats(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  const int plane = args[3].AsInt(0); // 0:Y or R  1:U or G  2: V or B  3:A
+  if (plane < 0 || plane>3)
+    env->ThrowError("MinMax Stats: plane index must be between 0-3!");
+
+  if (!args[0].IsClip())
+    env->ThrowError("MinMax Stats: No clip supplied!");
+
+  VideoInfo vi = args[0].AsClip()->GetVideoInfo();
+  const int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+  const int planes_r[4] = { PLANAR_R, PLANAR_G, PLANAR_B, PLANAR_A }; // in 'logical' RGB order
+  const int* planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
+
+  const int current_plane = planes[plane];
+
+  const int setvar = args[4].AsBool(false);
+
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), current_plane, MinMaxPlane::STATS, setvar, env);
+}
+
 
 AVSValue MinMaxPlane::Create_max(AVSValue args, void* user_data, IScriptEnvironment* env) {
   int plane = (int)reinterpret_cast<intptr_t>(user_data);
-  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MAX, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MinMaxPlane::MAX, false, env);
 }
 
 AVSValue MinMaxPlane::Create_min(AVSValue args, void* user_data, IScriptEnvironment* env) {
   int plane = (int)reinterpret_cast<intptr_t>(user_data);
-  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MIN, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MinMaxPlane::MIN, false, env);
 }
 
 AVSValue MinMaxPlane::Create_median(AVSValue args, void* user_data, IScriptEnvironment* env) {
   int plane = (int)reinterpret_cast<intptr_t>(user_data);
-  return MinMax(args[0], user_data, 50.0, args[1].AsInt(0), plane, MIN, env);
+  return MinMax(args[0], user_data, 50.0, args[1].AsInt(0), plane, MinMaxPlane::MIN, false, env);
 }
 
 AVSValue MinMaxPlane::Create_minmax(AVSValue args, void* user_data, IScriptEnvironment* env) {
   int plane = (int)reinterpret_cast<intptr_t>(user_data);
-  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MINMAX_DIFFERENCE, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MinMaxPlane::MINMAX_DIFFERENCE, false, env);
 }
 
 void get_minmax_float_c(const BYTE* srcp, int pitch, int w, int h, float& min, float& max)
@@ -601,13 +622,28 @@ void get_minmax_int_c(const BYTE* srcp, int pitch, int w, int h, int& min, int& 
   }
 }
 
-AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
+AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset, int plane, int mode, bool setvar, IScriptEnvironment* env) {
 
   if (!clip.IsClip())
     env->ThrowError("MinMax: No clip supplied!");
 
   PClip child = clip.AsClip();
   VideoInfo vi = child->GetVideoInfo();
+
+  // input clip to always planar
+  if (vi.IsRGB() && !vi.IsPlanar()) {
+    AVSValue new_args[1] = { child };
+    if (vi.IsRGB24() || vi.IsRGB48())
+      child = env->Invoke("ConvertToPlanarRGB", AVSValue(new_args, 1)).AsClip();
+    else // RGB32, RGB64
+      child = env->Invoke("ConvertToPlanarRGBA", AVSValue(new_args, 1)).AsClip();
+    vi = child->GetVideoInfo();
+  }
+  else if (vi.IsYUY2()) {
+    AVSValue new_args[2] = { child, false };
+    child = env->Invoke("ConvertToYUV422", AVSValue(new_args, 2)).AsClip();
+    vi = child->GetVideoInfo();
+  }
 
   if (!vi.IsPlanar())
     env->ThrowError("MinMax: Image must be planar");
@@ -632,21 +668,23 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   if (w == 0 || h == 0)
     env->ThrowError("MinMax: plane does not exist!");
 
-  if (threshold == 0) {
+  float stats_min;
+  float stats_max;
+  float stats_median;
+  float stats_thresholded_min;
+  float stats_thresholded_max;
+
+  if (threshold == 0 || mode == MinMaxPlane::STATS) {
     // special case, no histogram needed
 
     if (pixelsize == 4) // 32 bit float
     {
-      float min_f, max_f;
-      get_minmax_float_c(srcp, pitch, w, h, min_f, max_f);
+      get_minmax_float_c(srcp, pitch, w, h, stats_min, stats_max);
       
-      float retval = -1;
-      
-      if (mode == MIN) retval = min_f;
-      else if (mode == MAX) retval = max_f;
-      else if (mode == MINMAX_DIFFERENCE) retval = max_f - min_f;
-
-      return retval;
+      if (mode == MinMaxPlane::MIN) return stats_min;
+      else if (mode == MinMaxPlane::MAX) return stats_max;
+      else if (mode == MinMaxPlane::MINMAX_DIFFERENCE) return stats_max - stats_min;
+      // STATS: go on
     }
     else
     {
@@ -657,18 +695,20 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
       else
         get_minmax_int_c<uint16_t>(srcp, pitch, w, h, min, max);
 
-      int retval = -1;
+      if (mode == MinMaxPlane::MIN) return min;
+      else if (mode == MinMaxPlane::MAX) return max;
+      else if (mode == MinMaxPlane::MINMAX_DIFFERENCE) return max - min;
 
-      if (mode == MIN) retval = min;
-      else if (mode == MAX) retval = max;
-      else if (mode == MINMAX_DIFFERENCE) retval = max - min;
-
-      return retval;
+      // STATS: go on
+      stats_min = (float)min;
+      stats_max = (float)max;
     }
   }
 
-  int buffersize = pixelsize == 1 ? 256 : 65536; // 65536 for float, too, reason for 10-14 bits: avoid overflow
-  int real_buffersize = pixelsize == 4 ? 65536 : (1 << vi.BitsPerComponent());
+  const int bits_per_pixel = vi.BitsPerComponent();
+  const int max_pixel_value = (1 << bits_per_pixel) - 1;
+
+  const int buffersize = pixelsize == 4 ? 65536 : (1 << bits_per_pixel); // 65536 for float, too, reason for 10-14 bits: avoid overflow
   uint32_t* accum_buf = new uint32_t[buffersize];
 
   // Reset accumulators
@@ -678,7 +718,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   if (pixelsize == 1) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        accum_buf[srcp[x]]++;
+        accum_buf[srcp[x]]++; // safe
       }
       srcp += pitch;
     }
@@ -686,7 +726,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   else if (pixelsize == 2) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        accum_buf[reinterpret_cast<const uint16_t *>(srcp)[x]]++;
+        accum_buf[min((int)(reinterpret_cast<const uint16_t *>(srcp)[x]), max_pixel_value)]++;
       }
       srcp += pitch;
     }
@@ -727,31 +767,35 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   int retval;
 
     // Find the value we need.
-  if (mode == MIN) {
+  if (mode == MinMaxPlane::MIN) {
     unsigned int counted=0;
-    retval = real_buffersize - 1;
-    for (int i = 0; i< real_buffersize;i++) {
+    retval = buffersize - 1;
+    for (int i = 0; i< buffersize;i++) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         retval = i;
         break;
       }
     }
-  } else if (mode == MAX) {
+  }
+  
+  if (mode == MinMaxPlane::MAX) {
     unsigned int counted=0;
     retval = 0;
-    for (int i = real_buffersize-1; i>=0;i--) {
+    for (int i = buffersize-1; i>=0;i--) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         retval = i;
         break;
       }
     }
-  } else if (mode == MINMAX_DIFFERENCE) {
+  }
+  
+  if (mode == MinMaxPlane::MINMAX_DIFFERENCE || mode == MinMaxPlane::STATS) {
     unsigned int counted=0;
     int i, t_min = 0;
     // Find min
-    for (i = 0; i < real_buffersize;i++) {
+    for (i = 0; i < buffersize;i++) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         t_min=i;
@@ -761,8 +805,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
 
     // Find max
     counted=0;
-    int t_max = real_buffersize-1;
-    for (i = real_buffersize-1; i>=0;i--) {
+    int t_max = buffersize-1;
+    for (i = buffersize-1; i>=0;i--) {
       counted += accum_buf[i];
       if (counted>tpixels) {
         t_max=i;
@@ -771,6 +815,24 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
     }
 
     retval = t_max - t_min; // results <0 will be returned if threshold > 50
+    stats_thresholded_min = (float)t_min;
+    stats_thresholded_max = (float)t_max;
+  }
+  
+  if (mode == MinMaxPlane::STATS) {
+    // for STATS we already have min and max, thresholded min and max
+    // let's gather median, which is equal to 50% MIN
+    unsigned int tpixels = (unsigned int)(pixels * 0.5f);
+    unsigned int counted = 0;
+    retval = buffersize - 1;
+    for (int i = 0; i < buffersize; i++) {
+      counted += accum_buf[i];
+      if (counted > tpixels) {
+        retval = i;
+        break;
+      }
+    }
+    stats_median = (float)retval;
   }
   else {
     retval = -1;
@@ -779,14 +841,36 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   delete[] accum_buf;
   //_RPT2(0, "End of MinMax cn=%d n=%d\r", cn.AsInt(), n);
 
+  if (mode == MinMaxPlane::STATS) {
+  if (pixelsize == 4) {
+    const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
+      const float shift = chroma ? 32768.0f : 0;
+      stats_thresholded_min = (float)((double)(stats_thresholded_min - shift) / (buffersize - 1)); // convert back to float, /65535
+      stats_thresholded_max = (float)((double)(stats_thresholded_max - shift) / (buffersize - 1)); // convert back to float, /65535
+      stats_median = (float)((double)(stats_median - shift) / (buffersize - 1)); // convert back to float, /65535
+    }
+
+    AVSValue result[] = { stats_min, stats_max, stats_thresholded_min, stats_thresholded_max, stats_median };
+    AVSValue ret = AVSValue(result, 5);
+    if (setvar) {
+      env->SetGlobalVar("PlaneStats_min", stats_min);
+      env->SetGlobalVar("PlaneStats_max", stats_max);
+      env->SetGlobalVar("PlaneStats_thmin", stats_thresholded_min);
+      env->SetGlobalVar("PlaneStats_thmax", stats_thresholded_max);
+      env->SetGlobalVar("PlaneStats_median", stats_median);
+    }
+
+    return ret;
+  }
+
   if (pixelsize == 4) {
     const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
     if (chroma && (mode == MIN || mode == MAX)) {
       const float shift = 32768.0f;
-      return AVSValue((double)(retval - shift) / (real_buffersize - 1)); // convert back to float, /65535
+      return AVSValue((double)(retval - shift) / (buffersize - 1)); // convert back to float, /65535
     }
     else {
-      return AVSValue((double)retval / (real_buffersize - 1)); // convert back to float, /65535
+      return AVSValue((double)retval / (buffersize - 1)); // convert back to float, /65535
     }
   }
   else
