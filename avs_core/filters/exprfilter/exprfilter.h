@@ -2,6 +2,7 @@
 #define __Exprfilter_h
 
 #include <avisynth.h>
+#include <mutex>
 #ifdef AVS_POSIX
 #include <sys/mman.h>
 #endif
@@ -111,7 +112,7 @@ struct ExprFramePropData {
 };
 
 enum PlaneOp {
-  poProcess, poCopy, poUndefined, poFill, poLut
+  poProcess, poCopy, poUndefined, poFill
 };
 
 struct ExprData {
@@ -119,7 +120,7 @@ struct ExprData {
   VSNodeRef *node[MAX_EXPR_INPUTS];
   VSVideoInfo vi;
 #else
-  PClip node[MAX_EXPR_INPUTS];
+  PClip clips[MAX_EXPR_INPUTS];
   VideoInfo vi;
 #endif
   bool clipsUsed[MAX_EXPR_INPUTS]; // not doing GetFrame unreferenced input clips
@@ -130,14 +131,19 @@ struct ExprData {
   int planeCopySourceClip[4]; // optimize: copy plane from which clip
   bool planeOptAvx2[4]; // instruction set constraints
   bool planeOptSSE2[4];
+
+  int lutmode; // 0: no, 1:1D (lutx), 2:2D (lutxy)
+  bool lut_initialized;
+  std::mutex lut_init_mutex;
   std::vector<uint8_t> luts[4]; // different lut tables, reusable by multiple planes
-  int planeLutIndex[4]; // which luts is used by the plane
+  // int planeLutIndex[4]; // which luts is used by the plane. todo: when luts are the same for different planes
+  
   size_t maxStackSize;
   int numInputs;
 #ifdef VS_TARGET_CPU_X86
   typedef void(*ProcessLineProc)(void *rwptrs, intptr_t ptroff[RWPTR_SIZE], intptr_t niter, uint32_t spatialY);
   ProcessLineProc proc[4]; // 4th: alpha
-  ExprData() : node(), vi(), proc() {}
+  ExprData() : clips(), vi(), proc() {}
 #else
   ExprData() : node(), vi() {}
 #endif
@@ -173,6 +179,7 @@ private:
   bool autoconv_conv_int;
   bool autoconv_conv_float;
   const int clamp_float_i;
+  int lutmode;
 
   // special internal flag since v2.2.20: set when scale_inputs is "floatUV"
   // like in masktools 2.2.20+, preshifts chroma -0.5..+0.5 to 0..1.0 range and then shifts the result back.
@@ -180,7 +187,7 @@ private:
 
 public:
   Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2,
-    const bool _optSingleMode2, const bool _optSSE2, const std::string _scale_inputs, const int _clamp_float, IScriptEnvironment *env);
+    const bool _optSingleMode2, const bool _optSSE2, const std::string _scale_inputs, const int _clamp_float, const int _lutmode, IScriptEnvironment *env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
   ~Exprfilter();
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
