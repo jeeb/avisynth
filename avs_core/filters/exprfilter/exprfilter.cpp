@@ -4957,7 +4957,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               if (autoconv_full_scale) {
                 // FIXME: this 'stretch' is not correct for chroma which is signed +/- (2^(n-1)-1)   e.g. 128 +/-127; 32768 +/- 32767 and must keep 2^(n-1) center
                 // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
-                const float strech_mul = (float)(1 << (autoScaleSourceBitDepth - 1)) / (float)(1 << (realSourceBitdepth - 1));
+                const float strech_mul = (float)((1 << autoScaleSourceBitDepth) - 1) / (float)((1 << realSourceBitdepth) - 1);
                 LOAD_OP(opLoadConst, strech_mul, 0);
                 TWO_ARG_OP(opMul);
               }
