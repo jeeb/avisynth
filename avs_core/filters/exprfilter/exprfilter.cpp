@@ -4955,11 +4955,28 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               if (autoScaleSourceBitDepth == 32)
                 env->ThrowError("Expr: cannot use scale_inputs with 32bit float as internal scale target (f32)");
               if (autoconv_full_scale) {
-                // FIXME: this 'stretch' is not correct for chroma which is signed +/- (2^(n-1)-1)   e.g. 128 +/-127; 32768 +/- 32767 and must keep 2^(n-1) center
-                // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
-                const float strech_mul = (float)((1 << autoScaleSourceBitDepth) - 1) / (float)((1 << realSourceBitdepth) - 1);
-                LOAD_OP(opLoadConst, strech_mul, 0);
-                TWO_ARG_OP(opMul);
+                if (chroma) {
+                  // int-int fullscale chroma conversion must keep center 128 +/-127 => 32768 +/-32767
+                  // correct stretch for chroma (signed) +/- (2^(n-1)-1)   e.g. 128 +/-127; 32768 +/- 32767 and must keep 2^(n-1) center
+                  // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
+                  int source_middle_chroma = 1 << (realSourceBitdepth - 1);
+                  LOAD_OP(opLoadConst, (float)source_middle_chroma, 0);
+                  TWO_ARG_OP(opSub);
+
+                  const float strech_mul = (float)((1 << (autoScaleSourceBitDepth - 1)) - 1) / (float)((1 << (realSourceBitdepth - 1)) - 1);
+                  LOAD_OP(opLoadConst, strech_mul, 0);
+                  TWO_ARG_OP(opMul);
+
+                  int target_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
+                  LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
+                  TWO_ARG_OP(opAdd);
+                }
+                else {
+                  // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0 for non chroma it is O.K.
+                  const float strech_mul = (float)((1 << autoScaleSourceBitDepth) - 1) / (float)((1 << realSourceBitdepth) - 1);
+                  LOAD_OP(opLoadConst, strech_mul, 0);
+                  TWO_ARG_OP(opMul);
+                }
               }
               else {
                 if (autoScaleSourceBitDepth > realSourceBitdepth)
@@ -4985,10 +5002,6 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
               if (chroma) {
                 // (x-src_middle_chroma)*factor + target_middle_chroma
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-                LOAD_OP(opLoadConst, 0.5f, 0);
-                TWO_ARG_OP(opSub);
-#endif
                 float q = (float)((1 << autoScaleSourceBitDepth) - 1);
                 LOAD_OP(opLoadConst, q, 0);
                 TWO_ARG_OP(opMul);
@@ -5011,10 +5024,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           // the effect of this pre-shift is reversed at the storage phase
           if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && realSourceBitdepth == 32) {
             if (chroma && shift_float) {
-#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
               LOAD_OP(opLoadConst, 0.5f, 0);
               TWO_ARG_OP(opAdd);
-#endif
             }
           }
 
@@ -5142,9 +5153,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
 
           float q = bitsPerComponent == 32 ? uv8tof(16) : (16 << (bitsPerComponent - 8)); // scale chroma min 16
-#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
           if (shift_float && bitsPerComponent) q += 0.5f;
-#endif
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 4) == "cmax") // avs+
@@ -5160,9 +5169,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
 
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? uv8tof(240) : (240 << (bitsPerComponent - 8)); // scale chroma max 240
-#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
           if (shift_float && bitsPerComponent == 32) q += 0.5f;
-#endif
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 10) == "range_size") // avs+
@@ -5194,9 +5201,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           // 0.0 (or -0.5 for zero based 32bit float chroma)
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) - 0.5f : 0.0f) : 0;
-#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
           if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
-#endif
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 10) == "yrange_min")
@@ -5228,9 +5233,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           // 1.0 (or 0.5 for zero based 32bit float chroma), 255, 1023,... 65535
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) + 0.5f : 1.0f) : ((1 << bitsPerComponent) - 1);
-#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
           if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
-#endif
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 10) == "yrange_max")
@@ -5263,9 +5266,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           // for chroma: range_half is 0.0 for 32bit float (or 0.5 for old float chroma representation)
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
           float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) : 0.5f) : (1 << (bitsPerComponent - 1)); // 0.5f, 128, 512, ... 32768
-#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
           if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
-#endif
           LOAD_OP(opLoadConst, q, 0);
         }
         else if (tokens[i].substr(0, 11) == "yrange_half") // avs+
@@ -5306,15 +5307,10 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 float q = (float)((1 << autoScaleSourceBitDepth) - 1);
                 LOAD_OP(opLoadConst, 1.0f / q, 0);
                 TWO_ARG_OP(opMul);
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-                LOAD_OP(opLoadConst, 0.5f, 0);
-                TWO_ARG_OP(opAdd);
-#else
                 if (shift_float) { // floatUV
                   LOAD_OP(opLoadConst, 0.5f, 0);
                   TWO_ARG_OP(opAdd);
                 }
-#endif
                 // (x-src_middle_chroma)/factor + target_chroma_middle
               }
               else
@@ -5341,10 +5337,6 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
               if (chroma && !forceNonUV) {
                 // (x-src_middle_chroma)*factor + target_middle_chroma
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-                LOAD_OP(opLoadConst, 0.5f, 0);
-                TWO_ARG_OP(opSub);
-#endif
                 float q = (float)((1 << effectivetargetBitDepth) - 1);
                 LOAD_OP(opLoadConst, q, 0);
                 TWO_ARG_OP(opMul);
@@ -5392,10 +5384,6 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
                 LOAD_OP(opLoadConst, 1.0f / q, 0);
                 TWO_ARG_OP(opMul);
                 // (x-src_middle_chroma)*factor + target_middle_chroma
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-                LOAD_OP(opLoadConst, 0.5f, 0);
-                TWO_ARG_OP(opAdd);
-#endif
                 if (shift_float) { // floatUV
                   LOAD_OP(opLoadConst, 0.5f, 0);
                   TWO_ARG_OP(opAdd);
@@ -5424,10 +5412,6 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
               if (chroma && !forceNonUV) {
                 // (x-src_middle_chroma)*factor + target_middle_chroma
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-                LOAD_OP(opLoadConst, 0.5f, 0);
-                TWO_ARG_OP(opSub);
-#endif
                 const float q = (float)((1 << effectivetargetBitDepth) - 1);
                 LOAD_OP(opLoadConst, q, 0);
                 TWO_ARG_OP(opMul);
@@ -5588,9 +5572,25 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             // convert back internal integer to other integer
             if (autoconv_full_scale) {
               // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
-              const float strech_mul = (float)(1 << (targetBitDepth - 1)) / (float)(1 << (autoScaleSourceBitDepth - 1));
-              LOAD_OP_NOTOKEN(opLoadConst, strech_mul, 0);
-              TWO_ARG_OP_NOTOKEN(opMul);
+              if (chroma) {
+                // correct chroma fullscale conversion
+                int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
+                LOAD_OP_NOTOKEN(opLoadConst, (float)src_middle_chroma, 0);
+                TWO_ARG_OP_NOTOKEN(opSub);
+
+                const float strech_mul = (float)((1 << (targetBitDepth - 1)) - 1) / (float)((1 << (autoScaleSourceBitDepth - 1)) - 1);
+                LOAD_OP_NOTOKEN(opLoadConst, strech_mul, 0);
+                TWO_ARG_OP_NOTOKEN(opMul);
+
+                int target_middle_chroma = 1 << (targetBitDepth - 1);
+                LOAD_OP_NOTOKEN(opLoadConst, (float)target_middle_chroma, 0);
+                TWO_ARG_OP_NOTOKEN(opAdd);
+              }
+              else {
+                const float strech_mul = (float)((1 << targetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
+                LOAD_OP_NOTOKEN(opLoadConst, strech_mul, 0);
+                TWO_ARG_OP_NOTOKEN(opMul);
+              }
             }
             else {
               if (targetBitDepth > autoScaleSourceBitDepth)
@@ -5624,10 +5624,6 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               LOAD_OP_NOTOKEN(opLoadConst, 1.0f / q, 0);
               TWO_ARG_OP_NOTOKEN(opMul);
 
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-              LOAD_OP_NOTOKEN(opLoadConst, 0.5f, 0);
-              TWO_ARG_OP_NOTOKEN(opAdd);
-#endif
             }
             else
             {
@@ -5646,10 +5642,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // Thus expressions, which rely on a working range of 0..1.0 will work transparently
         if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && targetBitDepth == 32) {
           if (chroma && shift_float) {
-#ifndef FLOAT_CHROMA_IS_HALF_CENTERED
             LOAD_OP_NOTOKEN(opLoadConst, 0.5f, 0);
             TWO_ARG_OP_NOTOKEN(opSub);
-#endif
           }
         }
 
@@ -5659,17 +5653,10 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             // false       x                 0               0..1              -0.5..+0.5
             // true        false             1               0..1              -0.5..+0.5
             // true        true              2               0..1              0..1
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-            LOAD_OP_NOTOKEN(opLoadConst, 0.0f, 0);
-            TWO_ARG_OP_NOTOKEN(opMax);
-            LOAD_OP_NOTOKEN(opLoadConst, 1.0f, 0);
-            TWO_ARG_OP_NOTOKEN(opMin);
-#else
             LOAD_OP_NOTOKEN(opLoadConst, clamp_float_i == 2 ? 0.0f : -0.5f, 0);
             TWO_ARG_OP_NOTOKEN(opMax);
             LOAD_OP_NOTOKEN(opLoadConst, clamp_float_i == 2 ? 1.0f : 0.5f, 0);
             TWO_ARG_OP_NOTOKEN(opMin);
-#endif
           }
           else
           { // luma
