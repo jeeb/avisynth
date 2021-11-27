@@ -4,9 +4,17 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20211126 WIP
+20211127 WIP
 ------------
-- New: ArrayAdd(a, b): appends b to the end of a (a and b are arrays)
+- Expr: fix conversion factor (+correct chroma scaling) when integer-to-integer full-scale automatic range scaling was required
+- New: Expr: new parameter integer 'lut'
+  integer 'lut' (default 0)
+    0: realtime expression
+    1: expression is converted to 1D lut (lut_x)
+    2: expression is converted to 2D lut (lut_xy)
+   Valid bit depths: lut=1 : 8-16 bits. lut=2 : 8-14 bits. Note: a 14 bit 2D lut needs (2^14)*(2^14)*2 bytes buffer in memory per plane (~1GByte)
+   In lut mode some keywords are forbidden in the expression: sx, sy, sxr, syr, frameno, time
+- New: ArrayAdd(a, b): appends b to the end of a (a is array, b any value to append)
   Example:
     a = []
     a=ArrayAdd(a,[1,2]) # [[1,2]]
@@ -14,7 +22,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     a=ArrayAdd(a,"s1") # [3,[1,2],"s1"]
     a=ArrayAdd(a,"s2") # [3,[1,2],"s1","s2"]
     a=ArrayDel(a,2) # [3,[1,2],"s2"]
-- New: ArrayIns(a, b, n): inserts b into a to position n (a and b are arrays, n is a zero based index. 0: inserts at the beginning, array_size: inserts after the last element)
+- New: ArrayIns(a, b, n): inserts b into a to position n (a is array, b is the value to insert, n is a zero based index. 0: inserts at the beginning, array_size: inserts after the last element)
 - New: ArrayDel(a, n): removes the n-th element from a (a is array, n is a zero based index, must be a valid index between 0 and arraysize-1)
 - Enhancement: xPlaneMin/Max/Median/MinMaxDifference runtime functions to accept old packed formats (RGB24/32/48/64 and YUY2)
   (By autoconverting them to Planar RGB or YV16)
@@ -26,7 +34,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     int 'plane' (default 0): 
          0, 1, 2 or 3 
          for YUV inputs they mean Y=0,U=1,V=2,A=3 planes
-         for RGB inputs R=0,G=0,B=0 and A=3 planes
+         for RGB inputs R=0,G=1,B=2 and A=3 planes
     bool 'setvar' (default false): 
          when true then it writes a global variables named 
         "PlaneStats_min" "PlaneStats_max" "PlaneStats_thmin" "PlaneStats_thmax" "PlaneStats_median"
@@ -38,8 +46,6 @@ For a more logical (non-historical) arrangement of changes see readme.txt
   # function-syntax ScriptClip + runtime function call + dedicated global var demo
   # Here 'local'=true (for the sake of the demo; this is the default for this mode).
   # 'local'=true makes a dedicated global variable area, in which 'last' and 'current frame'
-  # 'c' is a parameter which must be passed to the function. Name is not important, it moves the actual clip into function's scope.
-  # This is why we can SubTitle on it.
   # A function can see only global variables. 'last' and 'current_frame' are available here - they are global variables which were
   # set by ScriptClip after creating a safe global variable stack.
   # PlaneMinMaxStats writes five global variables "PlaneStats_min", "PlaneStats_max", "PlaneStats_thmin", "PlaneStats_thmax", "PlaneStats_median"
