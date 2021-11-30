@@ -5018,6 +5018,9 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if(numStream >> s)
             env->ThrowError("Expr: Failed to convert '%s' to [x,y], invalid character after ']'", tokens[i].c_str());
 
+          if (lutmode > 0)
+            env->ThrowError("Expr: relative pixel addressing is forbidden in lut mode");
+
           if(dx <= -vi_output->width || dx >= vi_output->width)
             env->ThrowError("Expr: dx must be between +/- (width-1) in '%s'", tokens[i].c_str());
           if (dy <= -vi_output->height || dy >= vi_output->height)
