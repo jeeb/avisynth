@@ -175,12 +175,7 @@ public:
 // 8 bit uv to float
 // 16-128-240 -> -112-0-112 -> 1..255: +/-127 -> +/-0.5
 [[maybe_unused]] static AVS_FORCEINLINE float uv8tof(int color) {
-  return (color - 128) / 127.0f / 2.0f;
-}
-
-// 16-128-240 -> -112-0-112 -> -0.5..0.5
-[[maybe_unused]] static AVS_FORCEINLINE float uv8tof_limited(int color) {
-  return (color - 128) / 112.0f / 2.0f;
+  return (color - 128) / 255.f; // consistent with convert_uintN_to_float_c
 }
 
 // 8 bit fullscale to float
