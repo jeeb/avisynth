@@ -54,6 +54,7 @@
 #include "../convert/convert_planar.h"
 #include "../convert/convert_rgb.h"
 #include "../convert/convert.h"
+#include "../convert/convert_helper.h"
 #include "stdint.h"
 
 
@@ -306,7 +307,17 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     // !! if offsets would be size_t, be cautious when you subtract two unsigned size_t variables
     const int offset = src->GetOffset(source_plane) - src->GetOffset(target_plane); // very naughty - don't do this at home!!
                                                                                     // Abuse Subframe to snatch the U/V/R/G/B/A plane
-    return env->Subframe(src, offset, src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
+    PVideoFrame sub = env->Subframe(src, offset, src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
+    // We have a single plane. It's safe to mod props after a subframe.
+    // Remove props that are irrelevant to a single plane.
+    // _ChromaLocation, (_Primaries, _Transfer)
+    auto props = env->getFramePropsRW(sub);
+    env->propDeleteKey(props, "_ChromaLocation");
+    // keep _Matrix (?) fixme: really?
+    if (mode == AToY8) // alpha is always full range, otherwise keep source
+      env->propSetInt(props, "_ColorRange", ColorRange_e::AVS_RANGE_FULL, AVSPropAppendMode::PROPAPPENDMODE_REPLACE);
+    // else we keep _ColorRange value (if any)
+    return sub;
   }
 
   PVideoFrame dst = env->NewVideoFrameP(vi, &src);
@@ -339,6 +350,10 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     }
 
     // YUY2 to Y8
+
+    auto props = env->getFramePropsRW(dst);
+    env->propDeleteKey(props, "_ChromaLocation");
+
 #ifdef INTEL_INTRINSICS
     if (env->GetCPUFlags() & CPUF_SSE2) {
       yuy2_uvtoy8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, pos);
@@ -356,7 +371,8 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     return dst;
   }
 
-  // Planar to Planar
+  // Planar to Planar. Only two modes possible UToY and VToY
+  // Copy U or V to Y and set the other chroma planes to grey
   const int plane = mode == UToY ? PLANAR_U : PLANAR_V;
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), src->GetReadPtr(plane),
     src->GetPitch(plane), src->GetRowSize(plane), src->GetHeight(plane));
