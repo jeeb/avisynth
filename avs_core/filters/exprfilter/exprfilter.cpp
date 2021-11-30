@@ -63,6 +63,7 @@
 * 20211117 atan2 as SIMD
 * 20211118 sgn
 * 20211127 lutx, lutxy (lut=1 and 2)
+* 20211128 allow f32 for 'scale_inputs' when "int", "intf", "all", "allf"
 *
 * Differences from masktools 2.2.15
 * ---------------------------------
@@ -98,6 +99,7 @@
 #include <stdlib.h>
 #include "../../core/internal.h"
 #include "../../convert/convert_planar.h" // fill_plane
+#include "../../convert/convert_helper.h"
 #include "avs/alignment.h"
 
 #if (defined(_WIN64) && (defined(_M_AMD64) || defined(_M_X64))) || defined(__x86_64__)
@@ -4943,92 +4945,48 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           }
 
           // avs+: 'scale_inputs': converts input pixels to a common specified range
-          // Apply to integer and/or float bit depths.
+          // Apply full or limited conversion to integer and/or float bit depths.
           // For integers bit-shift or full-scale-stretch method can be chosen
           // There is no precision loss, since the multiplication/division occurs when original pixels
           // are already loaded as float
-          const int realSourceBitdepth = vi[loadIndex]->BitsPerComponent();
-          // need any conversion?
-          if (autoScaleSourceBitDepth != realSourceBitdepth && (autoconv_conv_int || autoconv_conv_float)) {
-            if (autoconv_conv_int && realSourceBitdepth != 32) {
-              // convert from integer to other integer (float: not supported as an internal scale target)
-              if (autoScaleSourceBitDepth == 32)
-                env->ThrowError("Expr: cannot use scale_inputs with 32bit float as internal scale target (f32)");
-              if (autoconv_full_scale) {
-                if (chroma) {
-                  // int-int fullscale chroma conversion must keep center 128 +/-127 => 32768 +/-32767
-                  // correct stretch for chroma (signed) +/- (2^(n-1)-1)   e.g. 128 +/-127; 32768 +/- 32767 and must keep 2^(n-1) center
-                  // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
-                  int source_middle_chroma = 1 << (realSourceBitdepth - 1);
-                  LOAD_OP(opLoadConst, (float)source_middle_chroma, 0);
-                  TWO_ARG_OP(opSub);
+          const int srcBitDepth = vi[loadIndex]->BitsPerComponent();
+          const int dstBitDepth = autoScaleSourceBitDepth; // internal precision
 
-                  const float strech_mul = (float)((1 << (autoScaleSourceBitDepth - 1)) - 1) / (float)((1 << (realSourceBitdepth - 1)) - 1);
-                  LOAD_OP(opLoadConst, strech_mul, 0);
-                  TWO_ARG_OP(opMul);
+          const bool use_chroma = chroma; // && !forceNonUV;
+          const bool isfull = autoconv_full_scale;
 
-                  int target_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
-                  LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
-                  TWO_ARG_OP(opAdd);
-                }
-                else {
-                  // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0 for non chroma it is O.K.
-                  const float strech_mul = (float)((1 << autoScaleSourceBitDepth) - 1) / (float)((1 << realSourceBitdepth) - 1);
-                  LOAD_OP(opLoadConst, strech_mul, 0);
-                  TWO_ARG_OP(opMul);
-                }
+          if (autoconv_conv_int || autoconv_conv_float) {
+
+            if ((srcBitDepth != 32 && autoconv_conv_int) ||
+              ((srcBitDepth == 32 && autoconv_conv_float))) {
+
+              bits_conv_constants d;
+              get_bits_conv_constants(d, use_chroma, isfull, isfull, srcBitDepth, dstBitDepth);
+              // chroma is spec: signed. Limited:16-240 is really 128 +/-112. Full:1-255 is really 128+/-127
+
+              if (d.src_offset != 0) {
+                LOAD_OP(opLoadConst, (float)d.src_offset, 0);
+                TWO_ARG_OP(opSub);
               }
-              else {
-                if (autoScaleSourceBitDepth > realSourceBitdepth)
-                {
-                  // not fullscale, e.g. conversion from 8 to 16 bits YUV: *256
-                  const float shift_mul = (float)(1 << (autoScaleSourceBitDepth - realSourceBitdepth));
-                  LOAD_OP(opLoadConst, shift_mul, 0);
-                  TWO_ARG_OP(opMul);
-                }
-                else {
-                  // not fullscale, e.g. conversion from 16 to 8 bits YUV: /256
-                  const float shift_mul = 1.0f / (float)(1 << (realSourceBitdepth - autoScaleSourceBitDepth));
-                  LOAD_OP(opLoadConst, shift_mul, 0);
-                  TWO_ARG_OP(opMul);
-                }
-              }
-            }
-            else if (autoconv_conv_float && realSourceBitdepth == 32) {
-              // convert from float to 8-16 bit integer
-              // no difference between autoconv_full_scale or not
-              // scale 32 bits (0..1.0) -> 8-16 bits
-              // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
-              // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
-              if (chroma) {
-                // (x-src_middle_chroma)*factor + target_middle_chroma
-                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-                LOAD_OP(opLoadConst, q, 0);
+              if (d.mul_factor != 1.0f) {
+                LOAD_OP(opLoadConst, d.mul_factor, 0);
                 TWO_ARG_OP(opMul);
-
-                int target_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
-                LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
+              }
+              if (d.dst_offset != 0) {
+                LOAD_OP(opLoadConst, (float)d.dst_offset, 0);
                 TWO_ARG_OP(opAdd);
               }
-              else
-              {
-                // conversion from float: mul by max_pixel_value
-                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-                LOAD_OP(opLoadConst, q, 0);
-                TWO_ARG_OP(opMul);
-              }
-            }
-          } // end of scale inputs
-
-          // "floatUV" - shifts -0.5 .. +0.5 chroma range to 0 .. 1.0 only when no other autoscaling is active
-          // the effect of this pre-shift is reversed at the storage phase
-          if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && realSourceBitdepth == 32) {
-            if (chroma && shift_float) {
-              LOAD_OP(opLoadConst, 0.5f, 0);
-              TWO_ARG_OP(opAdd);
             }
           }
 
+          // "floatUV" - shifts -0.5 .. +0.5 chroma range to 0 .. 1.0 only when no other autoscaling is active
+          // the effect of this pre-shift is reversed at the storage phase
+          if ((!autoconv_conv_float || dstBitDepth == 32) && srcBitDepth == 32) {
+            if (chroma && shift_float) {
+              LOAD_OP(opLoadConst, 0.5f, 0);
+              TWO_ARG_OP(opAdd); // at the end pixel exit: opSub
+            }
+          }
         }
         // indexed clips e.g. x[-1,-2]
         else if (tokens[i].length() > 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z' && tokens[i][1] == '[') {
@@ -5199,8 +5157,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
-          // 0.0 (or -0.5 for zero based 32bit float chroma)
-          float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) - 0.5f : 0.0f) : 0;
+          // 0.0 (or -0.5 for 32bit float chroma)
+          float q = bitsPerComponent == 32 ? (chroma ? -0.5f : 0.0f) : 0;
           if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -5231,8 +5189,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
             env->ThrowError("Expr: Too few input clips supplied for reference '%s'", tokens[i].c_str());
 
           int bitsPerComponent = getEffectiveBitsPerComponent(vi[loadIndex]->BitsPerComponent(), autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
-          // 1.0 (or 0.5 for zero based 32bit float chroma), 255, 1023,... 65535
-          float q = bitsPerComponent == 32 ? (chroma ? uv8tof(128) + 0.5f : 1.0f) : ((1 << bitsPerComponent) - 1);
+          // 1.0 (or 0.5 for 32bit float chroma), 255, 1023,... 65535
+          float q = bitsPerComponent == 32 ? (chroma ? + 0.5f : 1.0f) : ((1 << bitsPerComponent) - 1);
           if (chroma && shift_float && bitsPerComponent == 32) q += 0.5f;
           LOAD_OP(opLoadConst, q, 0);
         }
@@ -5287,156 +5245,40 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // "scaleb" and "scalef" functions scale their operand from 8 bit to the bit depth of the first clip.
         // "i8", "i10", "i14", "i16" and "f32" (typically at the beginning of the expression) sets the scale-base to 8..16 bits or float, respectively.
         // "i8".."f32" keywords can appear anywhere in the expression, but only the last occurence will be effective for the whole expression.
-        else if (tokens[i] == "scaleb" || tokens[i] == "yscaleb") // avs+, scale by bit shift
+        else if (tokens[i] == "scaleb" || tokens[i] == "yscaleb" || tokens[i] == "scalef" || tokens[i] == "yscalef") // avs+, scale by bit shift
         {
-          int effectivetargetBitDepth = getEffectiveBitsPerComponent(targetBitDepth, autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
-          const bool forceNonUV = (tokens[i] == "yscaleb");
-
-          if (effectivetargetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
-          {
-            // upscale
-            if (effectivetargetBitDepth == 32) { // upscale to float
-              // divide by max, e.g. x -> x/255
-              // for new 0-based chroma  : x -> (x-src_chroma_middle)/factor;
-              // for old 0.5 based chroma: x -> (x-src_chroma_middle)/factor + 0.5;
-              if (chroma && !forceNonUV) {
-                int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
-                LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
-                TWO_ARG_OP(opSub);
-
-                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-                LOAD_OP(opLoadConst, 1.0f / q, 0);
-                TWO_ARG_OP(opMul);
-                if (shift_float) { // floatUV
-                  LOAD_OP(opLoadConst, 0.5f, 0);
-                  TWO_ARG_OP(opAdd);
-                }
-                // (x-src_middle_chroma)/factor + target_chroma_middle
-              }
-              else
-              {
-                float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-                LOAD_OP(opLoadConst, 1.0f / q, 0);
-                TWO_ARG_OP(opMul);
-              }
-            }
-            else {
-              // shift left by (targetBitDepth - currentBaseBitDepth), that is mul by (1 << (targetBitDepth - currentBaseBitDepth))
-              int shifts_to_left = effectivetargetBitDepth - autoScaleSourceBitDepth;
-              float q = (float)(1 << shifts_to_left);
-              LOAD_OP(opLoadConst, q, 0);
-              TWO_ARG_OP(opMul);
-            }
-          }
-          else if (effectivetargetBitDepth < autoScaleSourceBitDepth) // scale constant from 12 bits to 8 bit target: /16
-          {
-            // downscale
-            if (autoScaleSourceBitDepth == 32) {
-              // scale 32 bits (0..1.0) -> 8-16 bits
-              // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
-              // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
-              if (chroma && !forceNonUV) {
-                // (x-src_middle_chroma)*factor + target_middle_chroma
-                float q = (float)((1 << effectivetargetBitDepth) - 1);
-                LOAD_OP(opLoadConst, q, 0);
-                TWO_ARG_OP(opMul);
-
-                int target_middle_chroma = 1 << (effectivetargetBitDepth - 1);
-                LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
-                TWO_ARG_OP(opAdd);
-              }
-              else
-              {
-                float q = (float)((1 << effectivetargetBitDepth) - 1);
-                LOAD_OP(opLoadConst, q, 0);
-                TWO_ARG_OP(opMul);
-              }
-            }
-            else {
-              // shift right by (targetBitDepth - currentBaseBitDepth), that is div by (1 << (currentBaseBitDepth - targetBitDepth))
-              int shifts_to_right = autoScaleSourceBitDepth - effectivetargetBitDepth;
-              float q = (float)(1 << shifts_to_right); // e.g. / 4.0  -> mul by 1/4.0 faster
-              LOAD_OP(opLoadConst, 1.0f / q, 0);
-              TWO_ARG_OP(opMul);
-            }
-          }
-          else {
-            // no scaling is needed. Bit depth of constant is the same as of the reference clip
-          }
-        }
-        else if (tokens[i] == "scalef" || tokens[i] == "yscalef") // avs+, scale by full scale
-        {
-          // if scale_float is used then all float input is automatically converted to integer
+          // Note: if 'scale_float' is used then all float input is automatically converted to integer
           // in this case the targetBitDepth is not 32 for float clips but the actual autoscaleSourceBitDepth
           int effectivetargetBitDepth = getEffectiveBitsPerComponent(targetBitDepth, autoconv_conv_float, autoconv_conv_int, autoScaleSourceBitDepth);
-          const bool forceNonUV = (tokens[i] == "yscalef");
+          // number to scale is not chroma-related one even if we are in chroma (U,V) plane
+          const bool forceNonUV = (tokens[i] == "yscaleb") || (tokens[i] == "yscalef");
 
-          if (effectivetargetBitDepth > autoScaleSourceBitDepth) // scale constant from 8 bits to 10 bit target: *4
-          {
-            // upscale
-            if (effectivetargetBitDepth == 32) { // upscale to float
-              if (chroma && !forceNonUV) {
-                int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
-                LOAD_OP(opLoadConst, (float)src_middle_chroma, 0);
-                TWO_ARG_OP(opSub);
+          const int srcBitDepth = autoScaleSourceBitDepth;
+          const int dstBitDepth = effectivetargetBitDepth;
+          const bool use_chroma = chroma && !forceNonUV;
 
-                float q = (float)((1 << autoScaleSourceBitDepth) - 1); // divide by max, e.g. x -> x/255
-                LOAD_OP(opLoadConst, 1.0f / q, 0);
-                TWO_ARG_OP(opMul);
-                // (x-src_middle_chroma)*factor + target_middle_chroma
-                if (shift_float) { // floatUV
-                  LOAD_OP(opLoadConst, 0.5f, 0);
-                  TWO_ARG_OP(opAdd);
-                }
-              }
-              else {
-                float q = (float)((1 << autoScaleSourceBitDepth) - 1); // divide by max, e.g. x -> x/255
-                LOAD_OP(opLoadConst, 1.0f / q, 0);
-                TWO_ARG_OP(opMul);
-              }
-            }
-            else {
-              // keep max pixel value e.g. 8->12 bits: x * 4095.0 / 255.0
-              float q = (float)((1 << effectivetargetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
-              LOAD_OP(opLoadConst, q, 0);
-              TWO_ARG_OP(opMul);
-            }
+          const bool isfull = tokens[i] == "scalef" || tokens[i] == "yscalef";
+
+          bits_conv_constants d;
+          get_bits_conv_constants(d, use_chroma, isfull, isfull, srcBitDepth, dstBitDepth);
+          // chroma is spec: signed. Limited:16-240 is really 128 +/-112. Full:1-255 is really 128+/-127
+
+          // floatUV
+          if (use_chroma && shift_float && dstBitDepth == 32 && srcBitDepth < 32) {
+            d.dst_offset = 0.5f; // get out from -0.5..0.5 to 0..1
           }
-          else if (effectivetargetBitDepth < autoScaleSourceBitDepth)
-          {
-            // downscale
-            if (autoScaleSourceBitDepth == 32) {
-              // float->integer
-              // scale 32 bits (0..1.0) -> 8-16 bits
-              // for new 0-based chroma: -0.5..0.5 -> 8*16 bits 0..max-1;
-              // for old 0.5-based chroma: 0.0..1.0 -> 8*16 bits 0..max-1;
-              if (chroma && !forceNonUV) {
-                // (x-src_middle_chroma)*factor + target_middle_chroma
-                const float q = (float)((1 << effectivetargetBitDepth) - 1);
-                LOAD_OP(opLoadConst, q, 0);
-                TWO_ARG_OP(opMul);
 
-                const int target_middle_chroma = 1 << (effectivetargetBitDepth - 1);
-                LOAD_OP(opLoadConst, (float)target_middle_chroma, 0);
-                TWO_ARG_OP(opAdd);
-              }
-              else
-              {
-                const float q = (float)((1 << effectivetargetBitDepth) - 1);
-                LOAD_OP(opLoadConst, q, 0);
-                TWO_ARG_OP(opMul);
-              }
-            }
-            else {
-              // integer->integer
-              // keep max pixel value e.g. 12->8 bits: x * 255.0 / 4095.0
-              const float q = (float)((1 << effectivetargetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
-              LOAD_OP(opLoadConst, q, 0);
-              TWO_ARG_OP(opMul);
-            }
+          if (d.src_offset != 0) {
+            LOAD_OP(opLoadConst, (float)d.src_offset, 0);
+            TWO_ARG_OP(opSub);
           }
-          else {
-            // no scaling is needed. Bit depth of constant is the same as of the reference clip
+          if (d.mul_factor != 1.0f) {
+            LOAD_OP(opLoadConst, d.mul_factor, 0);
+            TWO_ARG_OP(opMul);
+          }
+          if (d.dst_offset != 0) {
+            LOAD_OP(opLoadConst, (float)d.dst_offset, 0);
+            TWO_ARG_OP(opAdd);
           }
         }
         else if (tokens[i] == "i8") // avs+
@@ -5564,86 +5406,44 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         // we have to scale pixels before storing them back
         // need any conversion?
         // or use effectiveTargetBitDepth instead of autoScaleSourceBitDepth
+        const int srcBitDepth = autoScaleSourceBitDepth;
+        const int dstBitDepth = targetBitDepth;
+        const bool use_chroma = chroma; // && !forceNonUV;
 
-        if (autoScaleSourceBitDepth != targetBitDepth && (autoconv_conv_int || autoconv_conv_float)) {
-          // We can be sure that internal source was not 32 bits float:
-          // (was checked during input conversion)
-          if (targetBitDepth != 32 && autoconv_conv_int) {
-            // convert back internal integer to other integer
-            if (autoconv_full_scale) {
-              // e.g. conversion from 8 to 16 bits fullscale: /255.0*65535.0
-              if (chroma) {
-                // correct chroma fullscale conversion
-                int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
-                LOAD_OP_NOTOKEN(opLoadConst, (float)src_middle_chroma, 0);
-                TWO_ARG_OP_NOTOKEN(opSub);
+        const bool isfull = autoconv_full_scale;
 
-                const float strech_mul = (float)((1 << (targetBitDepth - 1)) - 1) / (float)((1 << (autoScaleSourceBitDepth - 1)) - 1);
-                LOAD_OP_NOTOKEN(opLoadConst, strech_mul, 0);
-                TWO_ARG_OP_NOTOKEN(opMul);
+        if (autoconv_conv_int || autoconv_conv_float) {
 
-                int target_middle_chroma = 1 << (targetBitDepth - 1);
-                LOAD_OP_NOTOKEN(opLoadConst, (float)target_middle_chroma, 0);
-                TWO_ARG_OP_NOTOKEN(opAdd);
-              }
-              else {
-                const float strech_mul = (float)((1 << targetBitDepth) - 1) / (float)((1 << autoScaleSourceBitDepth) - 1);
-                LOAD_OP_NOTOKEN(opLoadConst, strech_mul, 0);
-                TWO_ARG_OP_NOTOKEN(opMul);
-              }
-            }
-            else {
-              if (targetBitDepth > autoScaleSourceBitDepth)
-              {
-                // not fullscale, e.g. conversion from 8 to 16 bits YUV: *256
-                const float shift_mul = (float)(1 << (targetBitDepth - autoScaleSourceBitDepth));
-                LOAD_OP_NOTOKEN(opLoadConst, shift_mul, 0);
-                TWO_ARG_OP_NOTOKEN(opMul);
-              }
-              else {
-                // not fullscale, e.g. conversion from 16 to 8 bits YUV: *256
-                const float shift_mul = 1.0f / (float)(1 << (autoScaleSourceBitDepth - targetBitDepth));
-                LOAD_OP_NOTOKEN(opLoadConst, shift_mul, 0);
-                TWO_ARG_OP_NOTOKEN(opMul);
-              }
-            }
-          }
-          else if (targetBitDepth == 32 && autoconv_conv_float) {
-            // For targetBitDepth == 32 we are converting 8-16 bits integer back to float
-            // No difference between full_scale or not
-            // 8-16 bits -> scale 32 bits (0..1.0)
-            // for new 0-based chroma: 8*16 bits 0..max-1 -> -0.5..0.5
-            // for old 0.5-based chroma:8*16 bits 0..max-1 -> 0.0..1.0
-            if (chroma) {
-              // (x-src_middle_chroma)*factor + target_middle_chroma
-              int src_middle_chroma = 1 << (autoScaleSourceBitDepth - 1);
-              LOAD_OP_NOTOKEN(opLoadConst, (float)src_middle_chroma, 0);
+          if ((targetBitDepth != 32 && autoconv_conv_int) || 
+            ((targetBitDepth == 32 && autoconv_conv_float))) {
+
+            bits_conv_constants d;
+            get_bits_conv_constants(d, use_chroma, isfull, isfull, srcBitDepth, dstBitDepth);
+            // chroma is spec: signed. Limited:16-240 is really 128 +/-112. Full:1-255 is really 128+/-127
+
+            if (d.src_offset != 0) {
+              LOAD_OP_NOTOKEN(opLoadConst, (float)d.src_offset, 0);
               TWO_ARG_OP_NOTOKEN(opSub);
-
-              float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-              LOAD_OP_NOTOKEN(opLoadConst, 1.0f / q, 0);
-              TWO_ARG_OP_NOTOKEN(opMul);
-
             }
-            else
-            {
-              // 0..max-1 -> 0.0..1.0
-              float q = (float)((1 << autoScaleSourceBitDepth) - 1);
-              LOAD_OP_NOTOKEN(opLoadConst, 1.0f / q, 0);
+            if (d.mul_factor != 1.0f) {
+              LOAD_OP_NOTOKEN(opLoadConst, d.mul_factor, 0);
               TWO_ARG_OP_NOTOKEN(opMul);
+            }
+            if (d.dst_offset != 0) {
+              LOAD_OP_NOTOKEN(opLoadConst, (float)d.dst_offset, 0);
+              TWO_ARG_OP_NOTOKEN(opAdd);
             }
           }
-        } // end of scale inputs
-
+        }
         // "floatUV" -
         // this reverses the effect of the 0.5 float-type pre-shift is the pixel load phase
         // pre-shifts chroma pixels by +0.5 before applying the expression (see at pixel load),
         // then here the result is shifted back by -0.5
         // Thus expressions, which rely on a working range of 0..1.0 will work transparently
-        if ((!autoconv_conv_float || autoScaleSourceBitDepth == 32) && targetBitDepth == 32) {
+        if ((!autoconv_conv_float || srcBitDepth == 32) && targetBitDepth == 32) {
           if (chroma && shift_float) {
             LOAD_OP_NOTOKEN(opLoadConst, 0.5f, 0);
-            TWO_ARG_OP_NOTOKEN(opSub);
+            TWO_ARG_OP_NOTOKEN(opSub); // at pixel load it was opAdd
           }
         }
 
@@ -6100,7 +5900,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   if(lutmode == 2 && vi.BitsPerComponent() > 14)
     env->ThrowError("'Expr: maximum bit depth is 14 for lut_xy");
   d.lutmode = lutmode;
-  d.lut_initialized = false;
+  d.lut_initialized = false; // FIXME: extract somehow lut table init from GetFrame
 
   // parse "scale_inputs"
   autoconv_full_scale = false;
