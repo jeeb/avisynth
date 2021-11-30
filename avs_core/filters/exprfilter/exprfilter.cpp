@@ -5897,8 +5897,10 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   d.vi = vi;
   if (lutmode < 0 || lutmode>2)
     env->ThrowError("'Expr: 'lut' can be 0 (no lut), 1 (lut_x) or 2 (lut_xy)");
-  if(lutmode == 2 && vi.BitsPerComponent() > 14)
-    env->ThrowError("'Expr: maximum bit depth is 14 for lut_xy");
+  if (lutmode == 1 && vi.BitsPerComponent() == 32)
+    lutmode = 0; // fallback to realtime
+  if (lutmode == 2 && vi.BitsPerComponent() > 14)
+    lutmode = 0; // fallback to realtime
   d.lutmode = lutmode;
   d.lut_initialized = false; // FIXME: extract somehow lut table init from GetFrame
 
