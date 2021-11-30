@@ -52,6 +52,7 @@
 
 #include "convert_bits_avx2.h"
 #include "../convert_bits.h"
+#include "../convert_helper.h"
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -73,33 +74,15 @@ void convert_32_to_uintN_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
   const int src_width = src_rowsize / sizeof(float);
 
   //-----------------------
-  float mul_factor;
-  float src_offset = 0;
-  int dst_offset = 0;
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
-  if constexpr (chroma) {
-    // chroma: go into signed world, factor, then go back to biased range
-    src_offset = 0.0f; // chroma center of source. Float: always zero
-    dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
-    const float chroma_span_source = fulls ? 0.5f : 112.0f / 127.0f / 2.0f; // +-127/+-112
-    const int chroma_span_dest = fulld ? (1 << (target_bitdepth - 1)) - 1 : (112 << (target_bitdepth - 8)); // +-127/+-112
-    mul_factor = chroma_span_dest / chroma_span_source;
-  }
-  else {
-    // luma/limited: subtract offset, convert, add offset
-    src_offset = fulls ? 0 : 16.0f / 255; // full/limited range low limit
-    dst_offset = fulld ? 0 : 16 << (target_bitdepth - 8); // // full/limited range low limit
-    const float src_size = fulls ? 1.0f : 219 / 255.0f;
-    const int target_size = fulld ? ((1 << target_bitdepth) - 1) : (219 << (target_bitdepth - 8)); // 0..255, 16..235
-    mul_factor = target_size / src_size;
-  }
-
-  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto dst_offset_plus_round = d.dst_offset + 0.5f;
   constexpr auto dst_pixel_min = chroma && fulld ? 1 : 0;
   const auto dst_pixel_max = (1 << target_bitdepth) - 1;
 
-  auto src_offset_ps = _mm256_set1_ps(src_offset);
-  auto factor_ps = _mm256_set1_ps(mul_factor);
+  auto src_offset_ps = _mm256_set1_ps(d.src_offset);
+  auto factor_ps = _mm256_set1_ps(d.mul_factor);
   auto dst_offset_plus_round_ps = _mm256_set1_ps(dst_offset_plus_round);
   auto dst_pixel_min_ps = _mm256_set1_ps((float)dst_pixel_min);
   auto dst_pixel_max_ps = _mm256_set1_ps((float)dst_pixel_max);
@@ -167,46 +150,6 @@ convert_32_to_uintN_avx2_functions(uint16_t)
 
 #undef convert_32_to_uintN_avx2_functions
 
-// YUV: bit shift 10-12-14-16 <=> 10-12-14-16 bits
-// shift right or left, depending on expandrange
-#if defined(GCC) || defined(CLANG)
-__attribute__((__target__("avx2")))
-#endif
-void convert_uint16_to_uint16_c_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
-{
-    const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
-    uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
-
-    src_pitch = src_pitch / sizeof(uint16_t);
-    dst_pitch = dst_pitch / sizeof(uint16_t);
-
-    const int src_width = src_rowsize / sizeof(uint16_t);
-    if (target_bitdepth > source_bitdepth) // expandrange
-    {
-      const int shift_bits = target_bitdepth - source_bitdepth;
-      for (int y = 0; y < src_height; y++)
-      {
-        for (int x = 0; x < src_width; x++) {
-          dstp0[x] = srcp0[x] << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
-        }
-        dstp0 += dst_pitch;
-        srcp0 += src_pitch;
-      }
-    }
-    else
-    {
-      // reduce range
-      const int shift_bits = source_bitdepth - target_bitdepth;
-      const int round = 1 << (shift_bits - 1);
-      for (int y = 0; y < src_height; y++)
-      {
-        for (int x = 0; x < src_width; x++) {
-            dstp0[x] = (srcp0[x] + round) >> shift_bits;  // reduce range
-        }
-        dstp0 += dst_pitch;
-        srcp0 += src_pitch;
-      }
-    }
 /*
 3.7.1 test26: stop using manual _mm256_zeroupper()
 This warning is left in Avisynth at one single place.
@@ -262,8 +205,7 @@ This warning is left in Avisynth at one single place.
   vmovaps	xmm14, xmmword ptr [rsp + 128]  # 16-byte Reload
   vmovaps	xmm15, xmmword ptr [rsp + 144]  # 16-byte Reload
   ret
-  */
-}
+*/
 
 // YUV: bit shift 8-16 <=> 8-16 bits
 // shift right or left, depending on expandrange
@@ -277,7 +219,6 @@ static void convert_uint_limited_avx2(const BYTE* srcp, BYTE* dstp, int src_rows
   dst_pitch = dst_pitch / sizeof(pixel_t_d);
 
   const int src_width = src_rowsize / sizeof(pixel_t_s);
-  int wmod = (src_width / 32) * 32;
 
   if (target_bitdepth > source_bitdepth) // expandrange. pixel_t_d is always uint16_t
   {
@@ -295,6 +236,7 @@ static void convert_uint_limited_avx2(const BYTE* srcp, BYTE* dstp, int src_rows
           src_hi = _mm256_cvtepu8_epi16(src_hi_128); // 16* uint16
         }
         else {
+          // 64 bytes per cycle. Ok in avs+
           src_lo = _mm256_load_si256(reinterpret_cast<const __m256i*>(srcp0 + x)); // 16* uint_16
           src_hi = _mm256_load_si256(reinterpret_cast<const __m256i*>(srcp0 + x + 16)); // 16* uint_16
         }
@@ -308,10 +250,6 @@ static void convert_uint_limited_avx2(const BYTE* srcp, BYTE* dstp, int src_rows
           _mm256_store_si256(reinterpret_cast<__m256i*>(dstp0 + x), src_lo);
           _mm256_store_si256(reinterpret_cast<__m256i*>(dstp0 + x + 16), src_hi);
         }
-      }
-      // rest
-      for (int x = wmod; x < src_width; x++) {
-        dstp0[x] = (pixel_t_d)(srcp0[x]) << shift_bits;  // expand range. No clamp before, source is assumed to have valid range
       }
       dstp0 += dst_pitch;
       srcp0 += src_pitch;
@@ -332,6 +270,7 @@ static void convert_uint_limited_avx2(const BYTE* srcp, BYTE* dstp, int src_rows
         if constexpr (sizeof(pixel_t_s) == 1)
           assert(0);
         // downconvert always from 2 bytes
+        // 64 bytes per cycle. Ok in avs+
         auto src_lo = _mm256_load_si256(reinterpret_cast<const __m256i*>(srcp0 + x)); // 16* uint_16
         auto src_hi = _mm256_load_si256(reinterpret_cast<const __m256i*>(srcp0 + x + 16)); // 16* uint_16
         src_lo = _mm256_srl_epi16(_mm256_adds_epu16(src_lo, round_simd), shift);
@@ -346,10 +285,6 @@ static void convert_uint_limited_avx2(const BYTE* srcp, BYTE* dstp, int src_rows
           _mm256_store_si256(reinterpret_cast<__m256i*>(dstp0 + x), src_lo);
           _mm256_store_si256(reinterpret_cast<__m256i*>(dstp0 + x + 16), src_hi);
         }
-      }
-      // rest
-      for (int x = wmod; x < src_width; x++) {
-        dstp0[x] = (srcp0[x] + round) >> shift_bits;  // reduce range
       }
       dstp0 += dst_pitch;
       srcp0 += src_pitch;
@@ -410,32 +345,12 @@ void convert_uint_avx2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_he
 
   const int target_max = (1 << target_bitdepth) - 1;
 
-  float mul_factor;
-  int src_offset, dst_offset;
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
-  if constexpr (chroma) {
-    // chroma: go into signed world, factor, then go back to biased range
-    src_offset = 1 << (source_bitdepth - 1); // chroma center of source
-    dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
-    mul_factor =
-      fulls && fulld ? (float)(dst_offset - 1) / (src_offset - 1) :
-      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
-      /*fulls*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
-  }
-  else {
-    // luma/limited: subtract offset, convert, add offset
-    src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
-    dst_offset = fulld ? 0 : 16 << (target_bitdepth - 8); // // full/limited range low limit
-    const int source_max = (1 << source_bitdepth) - 1;
-    mul_factor =
-      fulls && fulld ? (float)target_max / source_max :
-      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
-      /*fulls ?*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
-  }
-
-  auto vect_mul_factor = _mm256_set1_ps(mul_factor);
-  auto vect_src_offset = _mm256_set1_epi32(src_offset);
-  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto vect_mul_factor = _mm256_set1_ps(d.mul_factor);
+  auto vect_src_offset = _mm256_set1_epi32(d.src_offset_i);
+  auto dst_offset_plus_round = d.dst_offset + 0.5f;
   auto vect_dst_offset_plus_round = _mm256_set1_ps(dst_offset_plus_round);
 
   auto vect_target_max = _mm256_set1_epi16(target_max);
@@ -456,6 +371,7 @@ void convert_uint_avx2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_he
         src_hi = _mm256_cvtepu8_epi16(src_hi_128); // 16* uint16
       }
       else {
+        // 64 bytes per cycle. Ok in avs+
         src_lo = _mm256_load_si256(reinterpret_cast<const __m256i*>(srcp0 + x)); // 8* uint_16
         src_hi = _mm256_load_si256(reinterpret_cast<const __m256i*>(srcp0 + x + 16)); // 8* uint_16
       }
@@ -529,13 +445,6 @@ void convert_uint_avx2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_he
         _mm256_store_si256(reinterpret_cast<__m256i*>(dstp0 + x), result12);
       }
     } // for x
-
-    // rest
-    for (int x = wmod32; x < src_width; x++)
-    {
-      const float val = (srcp0[x] - src_offset) * mul_factor + dst_offset_plus_round;
-      dstp0[x] = clamp((int)val, target_min, target_max);
-    }
 
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
@@ -615,39 +524,17 @@ static void do_convert_ordered_dither_uint_avx2(const BYTE* srcp8, BYTE* dstp8, 
 
   const int source_max = (1 << source_bitdepth) - 1;
   //-----------------------
-  float mul_factor = 1.0f;
-  int src_offset = 0;
-  int dst_offset = 0;
+  // When calculating src_pixel, src and dst are of the same bit depth
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, source_bitdepth); // both is src_bitdepth
 
-  if constexpr (fulls != fulld) {
-    // When calculating src_pixel, src and dst are of the same bit depth
-    if constexpr (chroma) {
-      // chroma: go into signed world, factor, then go back to biased range
-      src_offset = 1 << (source_bitdepth - 1); // chroma center of source
-      dst_offset = 1 << (source_bitdepth - 1); // chroma center of target
-      mul_factor =
-        fulls == fulld ? 1.0f :
-        fulld ? (float)(src_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
-        /*fulld*/ (float)(112 << (source_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
-    }
-    else {
-      // luma/limited: subtract offset, convert, add offset
-      src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
-      dst_offset = fulld ? 0 : 16 << (source_bitdepth - 8); // // full/limited range low limit
-      mul_factor =
-        fulls == fulld ? 1.0f : // no change
-        fulld ? (float)source_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
-        /*fulls ?*/ (float)(219 << (source_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
-    }
-  }
-
-  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto dst_offset_plus_round = d.dst_offset + 0.5f;
   constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
   //-----------------------
 
-  const auto mul_factor_simd = _mm256_set1_ps(mul_factor);
+  const auto mul_factor_simd = _mm256_set1_ps(d.mul_factor);
   const auto mul_factor_backfromlowdither_simd = _mm256_set1_ps(mul_factor_backfromlowdither);
   const auto half_maxcorr_value_simd = _mm256_set1_ps(half_maxcorr_value);
   const auto zero = _mm256_setzero_si256();
@@ -679,7 +566,7 @@ static void do_convert_ordered_dither_uint_avx2(const BYTE* srcp8, BYTE* dstp8, 
       if constexpr (fulls != fulld) {
         // goint to 32 float
         // const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;
-        const auto src_offset_simd = _mm256_set1_epi32(src_offset);
+        const auto src_offset_simd = _mm256_set1_epi32(d.src_offset_i);
         const auto dst_offset_plus_round_simd = _mm256_set1_ps(dst_offset_plus_round);
 
         auto src_lo_ps = _mm256_cvtepi32_ps(_mm256_sub_epi32(_mm256_unpacklo_epi16(src, zero), src_offset_simd));

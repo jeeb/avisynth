@@ -105,33 +105,11 @@ static void do_convert_ordered_dither_uint_c(const BYTE* srcp8, BYTE* dstp8, int
 
   const int source_max = (1 << source_bitdepth) - 1;
   //-----------------------
-  float mul_factor;
-  int src_offset = 0;
-  int dst_offset = 0;
+  // When calculating src_pixel, src and dst are of the same bit depth
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, source_bitdepth);
 
-  if constexpr (fulls != fulld) {
-    // When calculating src_pixel, src and dst are of the same bit depth
-    if constexpr (chroma) {
-      // chroma: go into signed world, factor, then go back to biased range
-      src_offset = 1 << (source_bitdepth - 1); // chroma center of source
-      dst_offset = 1 << (source_bitdepth - 1); // chroma center of target
-      mul_factor =
-        fulls == fulld ? 1.0f :
-        fulld ? (float)(src_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
-        /*fulld*/ (float)(112 << (source_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
-    }
-    else {
-      // luma/limited: subtract offset, convert, add offset
-      src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
-      dst_offset = fulld ? 0 : 16 << (source_bitdepth - 8); // // full/limited range low limit
-      mul_factor =
-        fulls == fulld ? 1.0f : // no change
-        fulld ? (float)source_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
-        /*fulls ?*/ (float)(219 << (source_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
-    }
-  }
-
-  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto dst_offset_plus_round = d.dst_offset + 0.5f;
   constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
@@ -147,7 +125,7 @@ static void do_convert_ordered_dither_uint_c(const BYTE* srcp8, BYTE* dstp8, int
       int src_pixel = srcp[x];
 
       if constexpr(fulls != fulld) {
-        const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;
+        const float val = (srcp[x] - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
         src_pixel = clamp((int)val, src_pixel_min, src_pixel_max);
       }
 
@@ -292,37 +270,13 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
   const int ROUNDER = 1 << (DITHER_BIT_DIFF - 1); // rounding
   const int source_max = (1 << source_bitdepth) - 1;
   //-----------------------
-  float mul_factor;
-  int src_offset = 0;
-  int dst_offset = 0;
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, source_bitdepth);
 
-  if constexpr (fulls != fulld) {
-    // When calculating src_pixel, src and dst are of the same bit depth
-    if constexpr (chroma) {
-      // chroma: go into signed world, factor, then go back to biased range
-      src_offset = 1 << (source_bitdepth - 1); // chroma center of source
-      dst_offset = 1 << (source_bitdepth - 1); // chroma center of target
-      mul_factor =
-        fulls == fulld ? 1.0f :
-        fulld ? (float)(src_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
-        /*fulld*/ (float)(112 << (source_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
-    }
-    else {
-      // luma/limited: subtract offset, convert, add offset
-      src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
-      dst_offset = fulld ? 0 : 16 << (source_bitdepth - 8); // // full/limited range low limit
-      mul_factor =
-        fulls == fulld ? 1.0f : // no change
-        fulld ? (float)source_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
-        /*fulls ?*/ (float)(219 << (source_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
-    }
-  }
-
-  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto dst_offset_plus_round = d.dst_offset + 0.5f;
   constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
-
 
   for (int y = 0; y < src_height; y++)
   {
@@ -336,7 +290,7 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
         int src_pixel = srcp[x];
 
         if constexpr (fulls != fulld) {
-          const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;
+          const float val = (srcp[x] - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
           src_pixel = clamp((int)val, src_pixel_min, src_pixel_max);
         }
 
@@ -371,7 +325,7 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
         int src_pixel = srcp[x];
 
         if constexpr (fulls != fulld) {
-          const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;
+          const float val = (srcp[x] - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
           src_pixel = clamp((int)val, src_pixel_min, src_pixel_max);
         }
 
@@ -453,28 +407,11 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   const int src_width = src_rowsize / sizeof(float);
 
   //-----------------------
-  float mul_factor;
-  float src_offset = 0;
-  int dst_offset = 0;
 
-  if constexpr (chroma) {
-    // chroma: go into signed world, factor, then go back to biased range
-    src_offset = 0.0f; // chroma center of source. Float: always zero
-    dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
-    const float chroma_span_source = fulls ? 0.5f : 112.0f / 127.0f / 2.0f; // +-127/+-112
-    const int chroma_span_dest = fulld ? (1 << (target_bitdepth - 1)) - 1 : (112 << (target_bitdepth - 8)); // +-127/+-112
-    mul_factor = chroma_span_dest / chroma_span_source;
-  }
-  else {
-    // luma/limited: subtract offset, convert, add offset
-    src_offset = fulls ? 0 : 16.0f / 255; // full/limited range low limit
-    dst_offset = fulld ? 0 : 16 << (target_bitdepth - 8); // // full/limited range low limit
-    const float src_size = fulls ? 1.0f : 219 / 255.0f;
-    const int target_size = fulld ? ((1 << target_bitdepth) - 1) : (219 << (target_bitdepth - 8)); // 0..255, 16..235
-    mul_factor = target_size / src_size;
-  }
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
-  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto dst_offset_plus_round = d.dst_offset + 0.5f;
   constexpr auto dst_pixel_min = chroma && fulld ? 1 : 0;
   const auto dst_pixel_max = (1 << target_bitdepth) - 1;
 
@@ -482,7 +419,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   {
     for (int x = 0; x < src_width; x++)
     {
-      const int pixel = (int)((srcp0[x] - src_offset) * mul_factor + dst_offset_plus_round);
+      const int pixel = (int)((srcp0[x] - d.src_offset) * d.mul_factor + dst_offset_plus_round);
       dstp0[x] = pixel_t(clamp(pixel, dst_pixel_min, dst_pixel_max));
     }
     dstp0 += dst_pitch;
@@ -567,36 +504,16 @@ static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int sr
 
   const int target_max = (1 << target_bitdepth) - 1;
 
-  float mul_factor;
-  int src_offset, dst_offset;
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
-  if constexpr (chroma) {
-    // chroma: go into signed world, factor, then go back to biased range
-    src_offset = 1 << (source_bitdepth - 1); // chroma center of source
-    dst_offset = 1 << (target_bitdepth - 1); // chroma center of target
-    mul_factor =
-      fulls && fulld ? (float)(dst_offset - 1) / (src_offset - 1) :
-      fulld ? (float)(dst_offset - 1) / (112 << (source_bitdepth - 8)) : // +-112 (240-16)/2 ==> +-127
-      /*fulls*/ (float)(112 << (target_bitdepth - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
-  }
-  else {
-    // luma/limited: subtract offset, convert, add offset
-    src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
-    dst_offset = fulld ? 0 : 16 << (target_bitdepth - 8); // // full/limited range low limit
-    const int source_max = (1 << source_bitdepth) - 1;
-    mul_factor =
-      fulls && fulld ? (float)target_max / source_max :
-      fulld ? (float)target_max / (219 << (source_bitdepth - 8)) : // 16-235 ==> 0..255
-      /*fulls ?*/ (float)(219 << (target_bitdepth - 8)) / source_max; // 0..255 ==> 16-235 (219)
-  }
-
-  auto dst_offset_plus_round = dst_offset + 0.5f;
+  auto dst_offset_plus_round = d.dst_offset + 0.5f;
   constexpr auto target_min = chroma && fulld ? 1 : 0;
 
   for (int y = 0; y < src_height; y++) {
     for (int x = 0; x < src_width; x++)
     {
-      const float val = (srcp0[x] - src_offset) * mul_factor + dst_offset_plus_round;
+      const float val = (srcp0[x] - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
       dstp0[x] = clamp((int)val, target_min, target_max);
     }
 
@@ -620,40 +537,14 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   const int src_width = src_rowsize / sizeof(pixel_t);
 
   //-----------------------
-  float mul_factor;
-  int src_offset = 0;
-  float dst_offset = 0;
-
-  // khhm. for limited 32 bit float we must define levels of 16 and 235 as 16/255.0 and 235/225.0
-  // bit depths over 8 bit would require (16 << 4) / (1023.0 / 255.0) to be consistent
-  if constexpr (chroma) {
-    // chroma: go into signed world, factor, then go back to biased range
-    src_offset = 1 << (source_bitdepth - 1); // chroma center of source.
-    dst_offset = 0.0f; // chroma center of target. Float: always zero
-    const int chroma_span_source = fulls ? (1 << (source_bitdepth - 1)) - 1 : (112 << (source_bitdepth - 8)); // +-127/+-112
-    const float chroma_span_dest = fulld ? 0.5f : 112.0f / 127.0f / 2.0f; // +-127/+-112
-    mul_factor = chroma_span_dest / chroma_span_source;
-  }
-  else {
-    // luma/limited: subtract offset, convert, add offset
-    src_offset = fulls ? 0 : 16 << (source_bitdepth - 8); // full/limited range low limit
-    dst_offset = fulld ? 0 : 16.0f / 255; // full/limited range low limit
-    const int src_size = fulls ? ((1 << source_bitdepth) - 1) : (219 << (source_bitdepth - 8)); // 0..255, 16..235
-    const float target_size = fulld ? 1.0f : 219 / 255.0f;
-    mul_factor = target_size / src_size;
-  }
-  /*
-  * 8->32 limited -> full      src_offset  dst_offset  src_size   target_size   mul_factor     (srcp0[x] - src_offset) * mul_factor + dst_offset;
-  64@8 bit = 256@10 bit        16          0.0         219        1.0           1.0/219        (64-16)/219        0.219178
-  16+48      16*4 + 48*4       64          0.0         219*4      1.0           1.0/(219*4)    (256-48)/(219*4)   0.219178
-  16+48      64 + 192
-  */
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
   for (int y = 0; y < src_height; y++)
   {
     for (int x = 0; x < src_width; x++)
     {
-      const float pixel = (srcp0[x] - src_offset) * mul_factor + dst_offset;
+      const float pixel = (srcp0[x] - d.src_offset_i) * d.mul_factor + d.dst_offset;
       dstp0[x] = pixel; // no clamp
     }
     dstp0 += dst_pitch;
@@ -676,32 +567,26 @@ static void convert_float_to_float_c(const BYTE* srcp, BYTE* dstp, int src_rowsi
   const int src_width = src_rowsize / sizeof(float);
 
   //-----------------------
-  float mul_factor;
-  float src_offset = 0;
-  float dst_offset = 0;
+  bits_conv_constants d;
+  get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
-  if constexpr (chroma) {
-    // chroma: go into signed world, factor, then go back to biased range
-    src_offset = 0.0f; // chroma center of source. Float: always zero
-    dst_offset = 0.0f; // chroma center of target. Float: always zero
-    const float chroma_span_source = fulls ? 0.5f : 112.0f / 127.0f / 2.0f; // +-127/+-112
-    const float chroma_span_dest = fulld ? 0.5f : 112.0f / 127.0f / 2.0f; // +-127/+-112
-    mul_factor = chroma_span_dest / chroma_span_source;
+#if 0
+  float src_offset = 0;
+
+  if constexpr (/*chroma ||*/ !fulls) {
+    src_offset = d.src_offset;
   }
   else {
-    // luma/limited: subtract offset, convert, add offset
-    src_offset = fulls ? 0 : 16.0f / 255; // full/limited range low limit
-    dst_offset = fulld ? 0 : 16.0f / 255; // full/limited range low limit
-    const float src_size = fulls ? 1.0f : 219 / 255.0f;
-    const float target_size = fulld ? 1.0f : 219 / 255.0f;
-    mul_factor = target_size / src_size;
+    assert(d.src_offset == 0);
+    src_offset = 0; // helps optimizer
   }
+#endif
 
   for (int y = 0; y < src_height; y++)
   {
     for (int x = 0; x < src_width; x++)
     {
-      const float pixel = (srcp0[x] - src_offset) * mul_factor + dst_offset;
+      const float pixel = (srcp0[x] - d.src_offset) * d.mul_factor + d.dst_offset;
       dstp0[x] = pixel; // no clamp
     }
     dstp0 += dst_pitch;
