@@ -5953,6 +5953,11 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
     for (int i = 0; i < d.numInputs; i++)
       d.clips[i] = children[i];
 
+    if (d.lutmode > 0) {
+      if(d.numInputs != d.lutmode)
+        env->ThrowError("Expr lut: number of input clips must be the same as LUT's dimension. LUT is %dD. Passed clip(s): %d", d.lutmode, d.numInputs);
+    }
+
     // checking formats
     const VideoInfo* vi_array[MAX_EXPR_INPUTS] = {};
     for (int i = 0; i < d.numInputs; i++)
@@ -6120,7 +6125,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
       }
 
       if (lutmode > 0) {
-        for (i = 0; i < lutmode; i++) // lut: always get. Needed for the init
+        for (int i = 0; i < lutmode; i++) // lut: always get. Needed for the init
           d.clipsUsed[i] = true;
         // * bit depth of input clip(s) and output must match
         bool lut_ok = 
