@@ -9,8 +9,8 @@
 
 #define MAX_EXPR_INPUTS 26
 #define INTERNAL_VARIABLES 6
-#define MAX_FRAMEPROP_VARIABLES 256
-#define MAX_USER_VARIABLES 256
+#define MAX_FRAMEPROP_VARIABLES 64
+#define MAX_USER_VARIABLES 128
 
 // indexing RWPTR array (pointer sized elements)
 #define RWPTR_START_OF_OUTPUT 0   // 1
@@ -133,8 +133,6 @@ struct ExprData {
   bool planeOptSSE2[4];
 
   int lutmode; // 0: no, 1:1D (lutx), 2:2D (lutxy)
-  bool lut_initialized;
-  std::mutex lut_init_mutex;
   std::vector<uint8_t> luts[4]; // different lut tables, reusable by multiple planes
   // int planeLutIndex[4]; // which luts is used by the plane. todo: when luts are the same for different planes
   
@@ -185,9 +183,14 @@ private:
   // like in masktools 2.2.20+, preshifts chroma -0.5..+0.5 to 0..1.0 range and then shifts the result back.
   bool shift_float;
 
+  void preReadFrameProps(int plane, std::vector<PVideoFrame>& src, IScriptEnvironment* env);
+  void calculate_lut(IScriptEnvironment *env);
 public:
   Exprfilter(const std::vector<PClip>& _child_array, const std::vector<std::string>& _expr_array, const char *_newformat, const bool _optAvx2,
     const bool _optSingleMode2, const bool _optSSE2, const std::string _scale_inputs, const int _clamp_float, const int _lutmode, IScriptEnvironment *env);
+  void processFrame(int plane, int w, int h, int pixels_per_iter, float framecount, float relative_time, int numInputs,
+    uint8_t*& dstp, int dst_stride,
+    std::vector<const uint8_t*>& srcp, std::vector<int>& src_stride, std::vector<intptr_t>& ptroffsets, std::vector<const uint8_t*>& srcp_orig);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
   ~Exprfilter();
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

@@ -3982,10 +3982,450 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
 
 }
 
+void Exprfilter::processFrame(int plane, int w, int h, int pixels_per_iter, float framecount, float relative_time, int numInputs, 
+  uint8_t*& dstp, int dst_stride,
+  std::vector<const uint8_t*>& srcp, std::vector<int>& src_stride, std::vector<intptr_t>& ptroffsets, std::vector<const uint8_t*>& srcp_orig)
+{
+#ifdef VS_TARGET_CPU_X86
+  if (optSSE2 && d.planeOptSSE2[plane]) {
+
+    int nfulliterations = w / pixels_per_iter;
+
+    ExprData::ProcessLineProc proc = d.proc[plane];
+
+#ifdef GCC
+    // the following local allocation in gcc 8.3 results in warning:
+    // alignas(32) intptr_t rwptrs[RWPTR_SIZE];
+    // requested alignment 32 is larger than 16 [-Wattributes]
+    // Some sources say this is only a bug, a false warning
+
+    // Using c++17 feature instead: new with alignment
+    intptr_t* rwptrs = new (std::align_val_t(32)) intptr_t[RWPTR_SIZE];
+
+    // Note: this method is giving immediate build error in VS2019 16.0.4 (bug?). Clang 8.0 and gcc 8.3 is O.K.
+    // error C2956: sized deallocation function 'operator delete(void*, size_t)' would be chosen as placement deallocation function.
+    // See https://developercommunity.visualstudio.com/content/problem/528320/using-c17-new-stdalign-val-tn-syntax-results-in-er.html
+    // Anyway, we are using it only for gcc)
+    // Possible MSVC 16.0 workaround: c++17: direct call of operator new with alignment-type parameters
+    //intptr_t* rwptrs = (intptr_t*) operator new[]((size_t)(sizeof(intptr_t) * RWPTR_SIZE), (std::align_val_t)(32));
+#else
+    // msvc, clang
+    alignas(32) intptr_t rwptrs[RWPTR_SIZE];
+#endif
+    
+    *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_CURRENT_FRAME]) = (float)framecount;
+    *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_RELTIME]) = (float)relative_time;
+    // refresh frame properties
+    for (auto& framePropToRead : d.frameprops[plane]) {
+      int whereToPut = framePropToRead.var_index;
+      *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES + whereToPut]) = framePropToRead.value;
+    };
+    for (int y = 0; y < h; y++) {
+      rwptrs[RWPTR_START_OF_OUTPUT] = reinterpret_cast<intptr_t>(dstp + dst_stride * y);
+      rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
+      for (int i = 0; i < numInputs; i++) {
+        rwptrs[i + RWPTR_START_OF_INPUTS] = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
+        rwptrs[i + RWPTR_START_OF_STRIDES] = static_cast<intptr_t>(src_stride[i]);
+      }
+
+      proc(rwptrs, ptroffsets.data(), nfulliterations, y); // parameters are put directly in registers
+    }
+#ifdef GCC
+    operator delete[](rwptrs, (std::align_val_t)(32)); // paired with aligned new
+#endif
+  }
+  else
+#endif // VS_TARGET_CPU_X86
+  {
+    // C version
+    std::vector<float> stackVector(d.maxStackSize);
+
+    const ExprOp* vops = d.ops[plane].data();
+    float* stack = stackVector.data();
+    float stacktop = 0;
+
+    std::vector<float> variable_area(MAX_USER_VARIABLES); // for C, place for expr variables A..Z
+    std::vector<float> internal_vars(INTERNAL_VARIABLES + MAX_FRAMEPROP_VARIABLES);
+    internal_vars[INTERNAL_VAR_CURRENT_FRAME] = (float)framecount;
+    internal_vars[INTERNAL_VAR_RELTIME] = (float)relative_time;
+    // followed by dynamic frame properties
+    for (auto& framePropToRead : d.frameprops[plane]) {
+      int whereToPut = framePropToRead.var_index;
+      internal_vars[INTERNAL_VAR_FRAMEPROP_VARIABLES_START + whereToPut] = framePropToRead.value;
+    };
+
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        int si = 0;
+        int i = -1;
+        while (true) {
+          i++;
+          switch (vops[i].op) {
+          case opLoadSpatialX:
+            stack[si] = stacktop;
+            stacktop = (float)x;
+            ++si;
+            break;
+          case opLoadSpatialY:
+            stack[si] = stacktop;
+            stacktop = (float)y;
+            ++si;
+            break;
+          case opLoadInternalVar:
+            stack[si] = stacktop;
+            stacktop = internal_vars[vops[i].e.ival];
+            ++si;
+            break;
+          case opLoadFramePropVar:
+            stack[si] = stacktop;
+            stacktop = internal_vars[INTERNAL_VAR_FRAMEPROP_VARIABLES_START + vops[i].e.ival];
+            ++si;
+            break;
+          case opLoadSrc8:
+            stack[si] = stacktop;
+            stacktop = srcp[vops[i].e.ival][x];
+            ++si;
+            break;
+          case opLoadSrc16:
+            stack[si] = stacktop;
+            stacktop = reinterpret_cast<const uint16_t*>(srcp[vops[i].e.ival])[x];
+            ++si;
+            break;
+          case opLoadSrcF32:
+            stack[si] = stacktop;
+            stacktop = reinterpret_cast<const float*>(srcp[vops[i].e.ival])[x];
+            ++si;
+            break;
+          case opLoadRelSrc8:
+            stack[si] = stacktop;
+            {
+              const int newx = x + vops[i].dx;
+              const int newy = y + vops[i].dy;
+              const int clipIndex = vops[i].e.ival;
+              const uint8_t* srcp2 = srcp_orig[clipIndex] + max(0, min(newy, h - 1)) * src_stride[clipIndex];
+              stacktop = srcp2[max(0, min(newx, w - 1))];
+            }
+            ++si;
+            break;
+          case opLoadRelSrc16:
+            stack[si] = stacktop;
+            {
+              const int newx = x + vops[i].dx;
+              const int newy = y + vops[i].dy;
+              const int clipIndex = vops[i].e.ival;
+              const uint16_t* srcp2 = reinterpret_cast<const uint16_t*>(srcp_orig[clipIndex] + max(0, min(newy, h - 1)) * src_stride[clipIndex]);
+              stacktop = srcp2[max(0, min(newx, w - 1))];
+            }
+            ++si;
+            break;
+          case opLoadRelSrcF32:
+            stack[si] = stacktop;
+            {
+              const int newx = x + vops[i].dx;
+              const int newy = y + vops[i].dy;
+              const int clipIndex = vops[i].e.ival;
+              const float* srcp2 = reinterpret_cast<const float*>(srcp_orig[clipIndex] + max(0, min(newy, h - 1)) * src_stride[clipIndex]);
+              stacktop = srcp2[max(0, min(newx, w - 1))];
+            }
+            ++si;
+            break;
+          case opLoadConst:
+            stack[si] = stacktop;
+            stacktop = vops[i].e.fval;
+            ++si;
+            break;
+          case opLoadVar:
+            stack[si] = stacktop;
+            stacktop = variable_area[vops[i].e.ival];
+            ++si;
+            break;
+          case opDup:
+            stack[si] = stacktop;
+            stacktop = stack[si - vops[i].e.ival];
+            ++si;
+            break;
+          case opSwap:
+            std::swap(stacktop, stack[si - vops[i].e.ival]);
+            break;
+          case opAdd:
+            --si;
+            stacktop += stack[si];
+            break;
+          case opSub:
+            --si;
+            stacktop = stack[si] - stacktop;
+            break;
+          case opMul:
+            --si;
+            stacktop *= stack[si];
+            break;
+          case opDiv:
+            --si;
+            stacktop = stack[si] / stacktop;
+            break;
+          case opFmod:
+            --si;
+            stacktop = std::fmod(stack[si], stacktop);
+            break;
+          case opMax:
+            --si;
+            stacktop = std::max(stacktop, stack[si]);
+            break;
+          case opMin:
+            --si;
+            stacktop = std::min(stacktop, stack[si]);
+            break;
+          case opExp:
+            stacktop = std::exp(stacktop);
+            break;
+          case opLog:
+            stacktop = std::log(stacktop);
+            break;
+          case opPow:
+            --si;
+            stacktop = std::pow(stack[si], stacktop);
+            break;
+          case opClip:
+            // clip(a, low, high) = min(max(a, low),high)
+            si -= 2;
+            stacktop = std::max(std::min(stack[si], stacktop), stack[si + 1]);
+            break;
+          case opRound:
+            stacktop = std::round(stacktop);
+            break;
+          case opFloor:
+            stacktop = std::floor(stacktop);
+            break;
+          case opCeil:
+            stacktop = std::ceil(stacktop);
+            break;
+          case opTrunc:
+            stacktop = std::trunc(stacktop);
+            break;
+          case opSqrt:
+            stacktop = std::sqrt(stacktop);
+            break;
+          case opAbs:
+            stacktop = std::abs(stacktop);
+            break;
+          case opSgn:
+            stacktop = stacktop < 0 ? -1.0f : stacktop > 0 ? 1.0f : 0.0f;
+            break;
+          case opSin:
+            stacktop = std::sin(stacktop);
+            break;
+          case opCos:
+            stacktop = std::cos(stacktop);
+            break;
+          case opTan:
+            stacktop = std::tan(stacktop);
+            break;
+          case opAsin:
+            stacktop = std::asin(stacktop);
+            break;
+          case opAcos:
+            stacktop = std::acos(stacktop);
+            break;
+          case opAtan:
+            stacktop = std::atan(stacktop);
+            break;
+          case opAtan2:
+            --si;
+            stacktop = std::atan2(stack[si], stacktop); // y, x -> -Pi..+Pi
+            break;
+          case opGt:
+            --si;
+            stacktop = (stack[si] > stacktop) ? 1.0f : 0.0f;
+            break;
+          case opLt:
+            --si;
+            stacktop = (stack[si] < stacktop) ? 1.0f : 0.0f;
+            break;
+          case opEq:
+            --si;
+            stacktop = (stack[si] == stacktop) ? 1.0f : 0.0f;
+            break;
+          case opNotEq:
+            --si;
+            stacktop = (stack[si] != stacktop) ? 1.0f : 0.0f;
+            break;
+          case opLE:
+            --si;
+            stacktop = (stack[si] <= stacktop) ? 1.0f : 0.0f;
+            break;
+          case opGE:
+            --si;
+            stacktop = (stack[si] >= stacktop) ? 1.0f : 0.0f;
+            break;
+          case opTernary:
+            si -= 2;
+            stacktop = (stack[si] > 0) ? stack[si + 1] : stacktop;
+            break;
+          case opAnd:
+            --si;
+            stacktop = (stacktop > 0 && stack[si] > 0) ? 1.0f : 0.0f;
+            break;
+          case opOr:
+            --si;
+            stacktop = (stacktop > 0 || stack[si] > 0) ? 1.0f : 0.0f;
+            break;
+          case opXor:
+            --si;
+            stacktop = ((stacktop > 0) != (stack[si] > 0)) ? 1.0f : 0.0f;
+            break;
+          case opNeg:
+            stacktop = (stacktop > 0) ? 0.0f : 1.0f;
+            break;
+          case opNegSign:
+            stacktop = -stacktop;
+            break;
+          case opStore8:
+            dstp[x] = (uint8_t)(std::max(0.0f, std::min(stacktop, 255.0f)) + 0.5f);
+            goto loopend;
+          case opStore10:
+            reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 1023.0f)) + 0.5f);
+            goto loopend;
+          case opStore12:
+            reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 4095.0f)) + 0.5f);
+            goto loopend;
+          case opStore14:
+            reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 16383.0f)) + 0.5f);
+            goto loopend;
+          case opStore16:
+            reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 65535.0f)) + 0.5f);
+            goto loopend;
+          case opStoreF32:
+            reinterpret_cast<float*>(dstp)[x] = stacktop;
+            goto loopend;
+          case opStoreVar:
+            variable_area[vops[i].e.ival] = stacktop;
+            break;
+          case opStoreVarAndDrop1:
+            variable_area[vops[i].e.ival] = stacktop;
+            --si;
+            if (si >= 0)
+              stacktop = stack[si];
+            break;
+          }
+        }
+      loopend:;
+      }
+      dstp += dst_stride;
+      if (d.lutmode == 0) {
+        for (int i = 0; i < numInputs; i++)
+          srcp[i] += src_stride[i];
+      }
+    }
+  }
+}
+
+void Exprfilter::preReadFrameProps(int plane, std::vector<PVideoFrame>& src, IScriptEnvironment* env)
+{
+  for (auto& framePropToRead : d.frameprops[plane]) {
+    int srcIndex = framePropToRead.srcIndex;
+    auto fpname = framePropToRead.name;
+
+    const AVSMap* avsmap = env->getFramePropsRO(src[srcIndex]);
+
+    // default is 0f
+    float varToStore = 0.0f; //  std::numeric_limits<float>::quiet_NaN();
+
+    char res = env->propGetType(avsmap, fpname.c_str());
+    // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
+
+    int error;
+    // only float and int are valid
+    if (res == 'i') {
+      int64_t result = env->propGetInt(avsmap, fpname.c_str(), 0, &error);
+      if (!error) varToStore = static_cast<float>(result);
+    }
+    else if (res == 'f') {
+      double result = env->propGetFloat(avsmap, fpname.c_str(), 0, &error);
+      if (!error) varToStore = static_cast<float>(result);
+    }
+
+    framePropToRead.value = varToStore;
+  }
+}
+
+void Exprfilter::calculate_lut(IScriptEnvironment* env)
+{
+  // ExprData d class variable already filled
+
+  // Only when there are frame props.
+  // frame property set from GetFrame(0) is treated as Clip prop
+
+  std::vector<PVideoFrame> src;
+
+  bool frameprops = false;
+  for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
+    if (d.frameprops[plane].size() > 0) {
+      frameprops = true;
+      break;
+    }
+  }
+
+  if (frameprops) {
+    src.reserve(children.size());
+    // fetch 0th frame only when needed in lut
+    for (size_t i = 0; i < children.size(); i++) {
+      const auto& child = children[i];
+      src.emplace_back(child->GetFrame(0, env));
+    }
+  }
+
+  std::vector<const uint8_t*> srcp(MAX_EXPR_INPUTS);
+  std::vector<const uint8_t*> srcp_orig(MAX_EXPR_INPUTS);
+  std::vector<int> src_stride(MAX_EXPR_INPUTS);
+
+  for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
+    // calculate only if plane is processed
+    if (d.plane[plane] != poProcess)
+      continue;
+
+    // read actually needed frame properties into the variable storage area
+    preReadFrameProps(plane, src, env);
+
+    uint8_t* dstp;
+    int dst_stride;
+    int h, w;
+
+    // no buffer allocated yet, prepare lut target buffer, and fake input frame dimensions
+    const int bits_per_pixel = d.vi.BitsPerComponent();
+    const int pixelsize = d.vi.ComponentSize();
+    const auto lut1d_size = (1 << bits_per_pixel); // 1 or 2 bytes per entry
+    const auto lut1d_bytesize = lut1d_size * pixelsize;
+    const auto lut_size = d.lutmode == 1 ? lut1d_bytesize : lut1d_bytesize * lut1d_bytesize;
+    d.luts[plane].resize(lut_size); // 256 lut_x    65536: lut_xy (8 bit)
+    dstp = d.luts[plane].data();
+    dst_stride = lut1d_bytesize;
+    h = lutmode == 1 ? 1 : lut1d_size; // 1x256, 256x256. 10 bit: 1024, 1024x1024
+    w = lut1d_size;
+
+    // for simd:
+    // same as in GetFrame
+    const int pixels_per_iter = (optAvx2 && d.planeOptAvx2[plane]) ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
+    std::vector<intptr_t> ptroffsets(1 + 1 + MAX_EXPR_INPUTS);
+    ptroffsets[RWPTR_START_OF_OUTPUT] = d.vi.ComponentSize() * pixels_per_iter; // stepping for output pointer
+    ptroffsets[RWPTR_START_OF_XCOUNTER] = pixels_per_iter; // stepping for xcounter
+
+    // no srcp pointers in lut. Technically only inputless sx,sy relative coordinates are in there
+    for (int i = 0; i < d.numInputs; i++) {
+      srcp[i] = nullptr;
+      srcp_orig[i] = nullptr;
+      src_stride[i] = 0;
+      ptroffsets[RWPTR_START_OF_INPUTS + i] = 0;
+    }
+
+    const int dummy_framecount = 0;
+    const int dummy_relative_time = 0;
+    processFrame(plane, w, h, pixels_per_iter, dummy_framecount, dummy_relative_time, d.numInputs, dstp, dst_stride, srcp, src_stride, ptroffsets, srcp_orig);
+  } // for planes
+}
+
 
 PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   // ExprData d class variable already filled
-  int numInputs = d.numInputs;
 
   std::vector<PVideoFrame> src;
   src.reserve(children.size());
@@ -3996,7 +4436,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
     src.emplace_back(d.clipsUsed[i] ? child->GetFrame(n, env) : nullptr); // GetFrame only when really referenced
     if (first_used_clip_index < 0) {
       if (d.clipsUsed[i])
-        first_used_clip_index = (int)i;
+        first_used_clip_index = (int)i; // inherit frameprop from
     }
   }
 
@@ -4016,18 +4456,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   const int planes_r[4] = { PLANAR_R, PLANAR_G, PLANAR_B, PLANAR_A }; // expression string order is R G B unlike internal G B R plane order
   const int *plane_enums_d = (d.vi.IsYUV() || d.vi.IsYUVA()) ? planes_y : planes_r;
 
-  bool lut_init = false;
-
-  if (d.lutmode) {
-    if (!d.lut_initialized) {
-      d.lut_init_mutex.lock(); // try to reserve the init right
-      if (!d.lut_initialized) // someone one was quicker?
-        lut_init = true;
-      else
-        d.lut_init_mutex.unlock();
-    }
-  }
-
   for (int plane = 0; plane < d.vi.NumComponents(); plane++) {
 
     const int plane_enum_d = plane_enums_d[plane];
@@ -4035,63 +4463,24 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
     if (d.plane[plane] == poProcess) {
 
       // read actually needed frame properties into the variable storage area
-      for (auto &framePropToRead : d.frameprops[plane]) {
-        int srcIndex = framePropToRead.srcIndex;
-        auto fpname = framePropToRead.name;
-
-        const AVSMap* avsmap = env->getFramePropsRO(src[srcIndex]);
-
-        // default is 0f
-        float varToStore = 0.0f; //  std::numeric_limits<float>::quiet_NaN();
-
-        char res = env->propGetType(avsmap, fpname.c_str());
-        // 'u'nset, 'i'nteger, 'f'loat, 's'string, 'c'lip, 'v'ideoframe, 'm'ethod };
-
-        int error;
-        // only float and int are valid
-        if (res == 'i') {
-          int64_t result = env->propGetInt(avsmap, fpname.c_str(), 0, &error);
-          if (!error) varToStore = static_cast<float>(result);
-        }
-        else if (res == 'f') {
-          double result = env->propGetFloat(avsmap, fpname.c_str(), 0, &error);
-          if (!error) varToStore = static_cast<float>(result);
-        }
-
-        framePropToRead.value = varToStore;
-      }
+      preReadFrameProps(plane, src, env);
 
       uint8_t* dstp;
       int dst_stride;
       int h, w;
 
-      if (lut_init) {
-        // no buffer allocated yet, prepare lut target buffer, and fake input frame dimensions
-        const int bits_per_pixel = d.vi.BitsPerComponent();
-        const int pixelsize = d.vi.ComponentSize();
-        const auto lut1d_size = (1 << bits_per_pixel); // 1 or 2 bytes per entry
-        const auto lut1d_bytesize = lut1d_size * pixelsize;
-        const auto lut_size = d.lutmode == 1 ? lut1d_bytesize : lut1d_bytesize * lut1d_bytesize;
-        d.luts[plane].resize(lut_size); // 256 lut_x    65536: lut_xy (8 bit)
-        dstp = d.luts[plane].data();
-        dst_stride = lut1d_bytesize;
-        h = lutmode == 1 ? 1 : lut1d_size; // 1x256, 256x256. 10 bit: 1024, 1024x1024
-        w = lut1d_size;
-      }
-      else {
-        dstp = dst->GetWritePtr(plane_enum_d);
-        dst_stride = dst->GetPitch(plane_enum_d);
-        h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum_d);
-        w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum_d);
-      }
+      dstp = dst->GetWritePtr(plane_enum_d);
+      dst_stride = dst->GetPitch(plane_enum_d);
+      h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum_d);
+      w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum_d);
 
       // for simd:
       const int pixels_per_iter = (optAvx2 && d.planeOptAvx2[plane]) ? (optSingleMode ? 8 : 16) : (optSingleMode ? 4 : 8);
-      intptr_t ptroffsets[1 + 1 + MAX_EXPR_INPUTS];
+      std::vector<intptr_t> ptroffsets(1 + 1 + MAX_EXPR_INPUTS);
       ptroffsets[RWPTR_START_OF_OUTPUT] = d.vi.ComponentSize() * pixels_per_iter; // stepping for output pointer
       ptroffsets[RWPTR_START_OF_XCOUNTER] = pixels_per_iter; // stepping for xcounter
 
-      for (int i = 0; i < numInputs; i++) {
+      for (int i = 0; i < d.numInputs; i++) {
         if (d.clips[i]) {
           if (d.clipsUsed[i]) {
             // when input is a single Y, use PLANAR_Y instead of the plane matching to the output
@@ -4115,347 +4504,14 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         }
       }
 
-      if (lutmode == 0 || lut_init) {
-#ifdef VS_TARGET_CPU_X86
-        if (optSSE2 && d.planeOptSSE2[plane]) {
-
-          int nfulliterations = w / pixels_per_iter;
-
-          ExprData::ProcessLineProc proc = d.proc[plane];
-
-#ifdef GCC
-          // the following local allocation in gcc 8.3 results in warning:
-          // alignas(32) intptr_t rwptrs[RWPTR_SIZE];
-          // requested alignment 32 is larger than 16 [-Wattributes]
-
-          // Using c++17 feature instead: new with alignment
-          intptr_t* rwptrs = new (std::align_val_t(32)) intptr_t[RWPTR_SIZE];
-
-          // Note: this method is giving immediate build error in VS2019 16.0.4 (bug?). Clang 8.0 and gcc 8.3 is O.K.
-          // error C2956: sized deallocation function 'operator delete(void*, size_t)' would be chosen as placement deallocation function.
-          // See https://developercommunity.visualstudio.com/content/problem/528320/using-c17-new-stdalign-val-tn-syntax-results-in-er.html
-          // Anyway, we are using it only for gcc)
-          // Possible MSVC 16.0 workaround: c++17: direct call of operator new with alignment-type parameters
-          //intptr_t* rwptrs = (intptr_t*) operator new[]((size_t)(sizeof(intptr_t) * RWPTR_SIZE), (std::align_val_t)(32));
-#else
-          // msvc, clang
-          alignas(32) intptr_t rwptrs[RWPTR_SIZE];
-#endif
-          * reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_CURRENT_FRAME]) = (float)framecount;
-          *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_VARIABLES + INTERNAL_VAR_RELTIME]) = (float)relative_time;
-          // refresh frame properties
-          for (auto& framePropToRead : d.frameprops[plane]) {
-            int whereToPut = framePropToRead.var_index;
-            *reinterpret_cast<float*>(&rwptrs[RWPTR_START_OF_INTERNAL_FRAMEPROP_VARIABLES + whereToPut]) = framePropToRead.value;
-          };
-          for (int y = 0; y < h; y++) {
-            rwptrs[RWPTR_START_OF_OUTPUT] = reinterpret_cast<intptr_t>(dstp + dst_stride * y);
-            rwptrs[RWPTR_START_OF_XCOUNTER] = 0; // xcounter internal variable
-            for (int i = 0; i < numInputs; i++) {
-              rwptrs[i + RWPTR_START_OF_INPUTS] = reinterpret_cast<intptr_t>(srcp[i] + src_stride[i] * y); // input pointers 1..Nth
-              rwptrs[i + RWPTR_START_OF_STRIDES] = static_cast<intptr_t>(src_stride[i]);
-            }
-
-            proc(rwptrs, ptroffsets, nfulliterations, y); // parameters are put directly in registers
-          }
-#ifdef GCC
-          operator delete[](rwptrs, (std::align_val_t)(32)); // paired with aligned new
-#endif
-        }
-        else
-#endif // VS_TARGET_CPU_X86
-        {
-          // C version
-          std::vector<float> stackVector(d.maxStackSize);
-
-          const ExprOp* vops = d.ops[plane].data();
-          float* stack = stackVector.data();
-          float stacktop = 0;
-
-          std::vector<float> variable_area(MAX_USER_VARIABLES); // for C, place for expr variables A..Z
-          std::vector<float> internal_vars(INTERNAL_VARIABLES + MAX_FRAMEPROP_VARIABLES);
-          internal_vars[INTERNAL_VAR_CURRENT_FRAME] = (float)framecount;
-          internal_vars[INTERNAL_VAR_RELTIME] = (float)relative_time;
-          // followed by dynamic frame properties
-          for (auto& framePropToRead : d.frameprops[plane]) {
-            int whereToPut = framePropToRead.var_index;
-            internal_vars[INTERNAL_VAR_FRAMEPROP_VARIABLES_START + whereToPut] = framePropToRead.value;
-          };
-
-          for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-              int si = 0;
-              int i = -1;
-              while (true) {
-                i++;
-                switch (vops[i].op) {
-                case opLoadSpatialX:
-                  stack[si] = stacktop;
-                  stacktop = (float)x;
-                  ++si;
-                  break;
-                case opLoadSpatialY:
-                  stack[si] = stacktop;
-                  stacktop = (float)y;
-                  ++si;
-                  break;
-                case opLoadInternalVar:
-                  stack[si] = stacktop;
-                  stacktop = internal_vars[vops[i].e.ival];
-                  ++si;
-                  break;
-                case opLoadFramePropVar:
-                  stack[si] = stacktop;
-                  stacktop = internal_vars[INTERNAL_VAR_FRAMEPROP_VARIABLES_START + vops[i].e.ival];
-                  ++si;
-                  break;
-                case opLoadSrc8:
-                  stack[si] = stacktop;
-                  stacktop = srcp[vops[i].e.ival][x];
-                  ++si;
-                  break;
-                case opLoadSrc16:
-                  stack[si] = stacktop;
-                  stacktop = reinterpret_cast<const uint16_t*>(srcp[vops[i].e.ival])[x];
-                  ++si;
-                  break;
-                case opLoadSrcF32:
-                  stack[si] = stacktop;
-                  stacktop = reinterpret_cast<const float*>(srcp[vops[i].e.ival])[x];
-                  ++si;
-                  break;
-                case opLoadRelSrc8:
-                  stack[si] = stacktop;
-                  {
-                    const int newx = x + vops[i].dx;
-                    const int newy = y + vops[i].dy;
-                    const int clipIndex = vops[i].e.ival;
-                    const uint8_t* srcp2 = srcp_orig[clipIndex] + max(0, min(newy, h - 1)) * src_stride[clipIndex];
-                    stacktop = srcp2[max(0, min(newx, w - 1))];
-                  }
-                  ++si;
-                  break;
-                case opLoadRelSrc16:
-                  stack[si] = stacktop;
-                  {
-                    const int newx = x + vops[i].dx;
-                    const int newy = y + vops[i].dy;
-                    const int clipIndex = vops[i].e.ival;
-                    const uint16_t* srcp2 = reinterpret_cast<const uint16_t*>(srcp_orig[clipIndex] + max(0, min(newy, h - 1)) * src_stride[clipIndex]);
-                    stacktop = srcp2[max(0, min(newx, w - 1))];
-                  }
-                  ++si;
-                  break;
-                case opLoadRelSrcF32:
-                  stack[si] = stacktop;
-                  {
-                    const int newx = x + vops[i].dx;
-                    const int newy = y + vops[i].dy;
-                    const int clipIndex = vops[i].e.ival;
-                    const float* srcp2 = reinterpret_cast<const float*>(srcp_orig[clipIndex] + max(0, min(newy, h - 1)) * src_stride[clipIndex]);
-                    stacktop = srcp2[max(0, min(newx, w - 1))];
-                  }
-                  ++si;
-                  break;
-                case opLoadConst:
-                  stack[si] = stacktop;
-                  stacktop = vops[i].e.fval;
-                  ++si;
-                  break;
-                case opLoadVar:
-                  stack[si] = stacktop;
-                  stacktop = variable_area[vops[i].e.ival];
-                  ++si;
-                  break;
-                case opDup:
-                  stack[si] = stacktop;
-                  stacktop = stack[si - vops[i].e.ival];
-                  ++si;
-                  break;
-                case opSwap:
-                  std::swap(stacktop, stack[si - vops[i].e.ival]);
-                  break;
-                case opAdd:
-                  --si;
-                  stacktop += stack[si];
-                  break;
-                case opSub:
-                  --si;
-                  stacktop = stack[si] - stacktop;
-                  break;
-                case opMul:
-                  --si;
-                  stacktop *= stack[si];
-                  break;
-                case opDiv:
-                  --si;
-                  stacktop = stack[si] / stacktop;
-                  break;
-                case opFmod:
-                  --si;
-                  stacktop = std::fmod(stack[si], stacktop);
-                  break;
-                case opMax:
-                  --si;
-                  stacktop = std::max(stacktop, stack[si]);
-                  break;
-                case opMin:
-                  --si;
-                  stacktop = std::min(stacktop, stack[si]);
-                  break;
-                case opExp:
-                  stacktop = std::exp(stacktop);
-                  break;
-                case opLog:
-                  stacktop = std::log(stacktop);
-                  break;
-                case opPow:
-                  --si;
-                  stacktop = std::pow(stack[si], stacktop);
-                  break;
-                case opClip:
-                  // clip(a, low, high) = min(max(a, low),high)
-                  si -= 2;
-                  stacktop = std::max(std::min(stack[si], stacktop), stack[si + 1]);
-                  break;
-                case opRound:
-                  stacktop = std::round(stacktop);
-                  break;
-                case opFloor:
-                  stacktop = std::floor(stacktop);
-                  break;
-                case opCeil:
-                  stacktop = std::ceil(stacktop);
-                  break;
-                case opTrunc:
-                  stacktop = std::trunc(stacktop);
-                  break;
-                case opSqrt:
-                  stacktop = std::sqrt(stacktop);
-                  break;
-                case opAbs:
-                  stacktop = std::abs(stacktop);
-                  break;
-                case opSgn:
-                  stacktop = stacktop < 0 ? -1.0f : stacktop > 0 ? 1.0f : 0.0f;
-                  break;
-                case opSin:
-                  stacktop = std::sin(stacktop);
-                  break;
-                case opCos:
-                  stacktop = std::cos(stacktop);
-                  break;
-                case opTan:
-                  stacktop = std::tan(stacktop);
-                  break;
-                case opAsin:
-                  stacktop = std::asin(stacktop);
-                  break;
-                case opAcos:
-                  stacktop = std::acos(stacktop);
-                  break;
-                case opAtan:
-                  stacktop = std::atan(stacktop);
-                  break;
-                case opAtan2:
-                  --si;
-                  stacktop = std::atan2(stack[si], stacktop); // y, x -> -Pi..+Pi
-                  break;
-                case opGt:
-                  --si;
-                  stacktop = (stack[si] > stacktop) ? 1.0f : 0.0f;
-                  break;
-                case opLt:
-                  --si;
-                  stacktop = (stack[si] < stacktop) ? 1.0f : 0.0f;
-                  break;
-                case opEq:
-                  --si;
-                  stacktop = (stack[si] == stacktop) ? 1.0f : 0.0f;
-                  break;
-                case opNotEq:
-                  --si;
-                  stacktop = (stack[si] != stacktop) ? 1.0f : 0.0f;
-                  break;
-                case opLE:
-                  --si;
-                  stacktop = (stack[si] <= stacktop) ? 1.0f : 0.0f;
-                  break;
-                case opGE:
-                  --si;
-                  stacktop = (stack[si] >= stacktop) ? 1.0f : 0.0f;
-                  break;
-                case opTernary:
-                  si -= 2;
-                  stacktop = (stack[si] > 0) ? stack[si + 1] : stacktop;
-                  break;
-                case opAnd:
-                  --si;
-                  stacktop = (stacktop > 0 && stack[si] > 0) ? 1.0f : 0.0f;
-                  break;
-                case opOr:
-                  --si;
-                  stacktop = (stacktop > 0 || stack[si] > 0) ? 1.0f : 0.0f;
-                  break;
-                case opXor:
-                  --si;
-                  stacktop = ((stacktop > 0) != (stack[si] > 0)) ? 1.0f : 0.0f;
-                  break;
-                case opNeg:
-                  stacktop = (stacktop > 0) ? 0.0f : 1.0f;
-                  break;
-                case opNegSign:
-                  stacktop = -stacktop;
-                  break;
-                case opStore8:
-                  dstp[x] = (uint8_t)(std::max(0.0f, std::min(stacktop, 255.0f)) + 0.5f);
-                  goto loopend;
-                case opStore10:
-                  reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 1023.0f)) + 0.5f);
-                  goto loopend;
-                case opStore12:
-                  reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 4095.0f)) + 0.5f);
-                  goto loopend;
-                case opStore14:
-                  reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 16383.0f)) + 0.5f);
-                  goto loopend;
-                case opStore16:
-                  reinterpret_cast<uint16_t*>(dstp)[x] = (uint16_t)(std::max(0.0f, std::min(stacktop, 65535.0f)) + 0.5f);
-                  goto loopend;
-                case opStoreF32:
-                  reinterpret_cast<float*>(dstp)[x] = stacktop;
-                  goto loopend;
-                case opStoreVar:
-                  variable_area[vops[i].e.ival] = stacktop;
-                  break;
-                case opStoreVarAndDrop1:
-                  variable_area[vops[i].e.ival] = stacktop;
-                  --si;
-                  if (si >= 0)
-                    stacktop = stack[si];
-                  break;
-                }
-              }
-            loopend:;
-            }
-            dstp += dst_stride;
-            if (d.lutmode == 0) {
-              for (int i = 0; i < numInputs; i++)
-                srcp[i] += src_stride[i];
-            }
-          }
-        }
-      }
-
-      if (d.lutmode > 0) {
+      if (lutmode == 0) {
+        processFrame(plane, w, h, pixels_per_iter, framecount, relative_time, d.numInputs, dstp, dst_stride, srcp, src_stride, ptroffsets, srcp_orig);
+      } else {
         // lut table for plane is filled, do lookup now
-        dstp = dst->GetWritePtr(plane_enum_d);
-        dst_stride = dst->GetPitch(plane_enum_d);
-        h = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum_d);
-        w = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum_d);
         const int bits_per_pixel = d.vi.BitsPerComponent();
 
         if (d.lutmode == 1) {
+          // lut_x
           if (bits_per_pixel == 8)
           {
             uint8_t* lut = d.luts[plane].data();
@@ -4572,7 +4628,6 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           assert(0); // no lut_xyz
         }
       } // lut branch
-
     }
     // avs+: copy plane here
     else if (d.plane[plane] == poCopy) {
@@ -4594,41 +4649,24 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
       const int dst_stride = dst->GetPitch(plane_enum_d);
       const int h = dst->GetHeight(plane_enum_d);
 
-      int val;
+      const int bits_per_pixel = vi.BitsPerComponent();
 
-      switch (vi.BitsPerComponent())
-      {
-      case 8:
-        val = (uint8_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 255.0f)) + 0.5f);
-        fill_plane<BYTE>(dstp, h, dst_stride, val);
-        break;
-      case 10:
-        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 1023.0f)) + 0.5f);
-        fill_plane<uint16_t>(dstp, h, dst_stride, val);
-        break;
-      case 12:
-        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 4095.0f)) + 0.5f);
-        fill_plane<uint16_t>(dstp, h, dst_stride, val);
-        break;
-      case 14:
-        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 16383.0f)) + 0.5f);
-        fill_plane<uint16_t>(dstp, h, dst_stride, val);
-        break;
-      case 16:
-        val = (uint16_t)(std::max(0.0f, std::min(d.planeFillValue[plane], 65535.0f)) + 0.5f);
-        fill_plane<uint16_t>(dstp, h, dst_stride, val);
-        break;
-      case 32:
-        fill_plane<float>(dstp, h, dst_stride, d.planeFillValue[plane]);
-        break;
+      float val = d.planeFillValue[plane];
+      int val_i = 0;
+      if (bits_per_pixel <= 16) {
+        const int max_pixel_value = (1 << bits_per_pixel) - 1;
+        val_i = (int)(std::max(0.0f, std::min(val, (float)max_pixel_value)) + 0.5f);
       }
+
+      if(bits_per_pixel == 8)
+        fill_plane<BYTE>(dstp, h, dst_stride, val_i);
+      else if(bits_per_pixel <= 16)
+        fill_plane<uint16_t>(dstp, h, dst_stride, val_i);
+      else // 32 bit float
+        fill_plane<float>(dstp, h, dst_stride, val);
+
     } // plane modes
   } // for planes
-
-  if (lut_init) {
-    d.lut_initialized = true;
-    d.lut_init_mutex.unlock(); // release the init right.
-  }
 
   return dst;
 }
@@ -5905,7 +5943,6 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   if (lutmode == 2 && vi.BitsPerComponent() > 14)
     lutmode = 0; // fallback to realtime
   d.lutmode = lutmode;
-  d.lut_initialized = false; // FIXME: extract somehow lut table init from GetFrame
 
   // parse "scale_inputs"
   autoconv_full_scale = false;
@@ -6218,6 +6255,8 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
 #endif
 #endif
 
+    if (lutmode > 0)
+      calculate_lut(env);
   }
   catch (std::runtime_error &e) {
     for (int i = 0; i < MAX_EXPR_INPUTS; i++)
