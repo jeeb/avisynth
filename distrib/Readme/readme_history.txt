@@ -4,8 +4,31 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20211127 WIP
+20211201 WIP
 ------------
+- Fix: MinMax runtime filter family: check plane existance (e.g. error when requesting RPlaneMinMaxDifference on YV12)
+- Fix: prevent x64 debug AviSynth builds from crashing in VirtualDub2 (in general when opened through CAVIStreamSynth)
+- ExtractY/U/V/R/G/B/A, PlaneToY: delete _ChromaLocation property. Set _ColorRange property to "full" if source is Alpha plane
+- Avisynth programming interface (preliminary V9):
+  Add 'MakePropertyWritable' to the IScriptEnvironment (CPP interface), avs_make_property_writable (C interface)
+  Add 'VideoFrame::IsPropertyWritable' (CPP interface), avs_is_property_writable (C interface)
+  (AviSynth interface version will be stepped to V9 in the release version)
+
+    bool env->MakePropertyWritable(PVideoFrame *);
+    bool VideoFrame::IsPropertyWritable();
+  
+  'MakePropertyWritable' is similar to 'MakeWritable' but it does not copy all bytes of the frame content in order to have a writable property set.
+  
+  Reason: 'propSet' is a filter which does not alter frame content, but sets the given frame property in its each GetFrame.
+  So far it used MakeWritable to obtain a safely modifiable copy of frame properties, however - as a side-effect - full copy of frame content was performed.
+  (env->getFramePropsRW alone does not ensure a uniquely modifiable property set, it just obtains a pointer which can be used in the property setter functions)
+  (Note: frame properties of frames obtained by NewVideoFrame, MakeWritable and SubFrame are still safe to modify)
+- Expr: when actual bit depth is too large for building LUT table, fallback to realtime mode.
+  lut_x 1D (realtime when 32 bit) 
+  lut_xy 2D (realtime when 16 or 32 bits)
+- Expr: allow 'f32' as internal autoscale target (was: i8, i10, i12, i14, i16 were accepted, only integers)
+  affects: 'scale_inputs' when "int", "intf", "all", "allf"
+  more on that (todo: refresh docs) http://avisynth.nl/index.php/Expr
 - Expr: fix conversion factor (+correct chroma scaling) when integer-to-integer full-scale automatic range scaling was required
 - New: Expr: new parameter integer 'lut'
   integer 'lut' (default 0)
@@ -13,7 +36,7 @@ For a more logical (non-historical) arrangement of changes see readme.txt
     1: expression is converted to 1D lut (lut_x)
     2: expression is converted to 2D lut (lut_xy)
    Valid bit depths: lut=1 : 8-16 bits. lut=2 : 8-14 bits. Note: a 14 bit 2D lut needs (2^14)*(2^14)*2 bytes buffer in memory per plane (~1GByte)
-   In lut mode some keywords are forbidden in the expression: sx, sy, sxr, syr, frameno, time
+   In lut mode some keywords are forbidden in the expression: sx, sy, sxr, syr, frameno, time, relative pixel addressing
 - New: ArrayAdd(a, b): appends b to the end of a (a is array, b any value to append)
   Example:
     a = []
