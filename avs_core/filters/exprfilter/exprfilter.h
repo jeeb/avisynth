@@ -145,7 +145,7 @@ struct ExprData {
   ProcessLineProc proc[4]; // 4th: alpha
   ExprData() : clips(), vi(), proc() {}
 #else
-  ExprData() : node(), vi() {}
+  ExprData() : clips(), vi() {}
 #endif
   ~ExprData() {
 #ifdef VS_TARGET_CPU_X86
