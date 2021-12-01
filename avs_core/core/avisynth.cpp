@@ -758,6 +758,8 @@ public:
 
   PVideoFrame NewVideoFrame(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN);
 
+  bool MakePropertyWritable(PVideoFrame* pvf); // V9
+
   /* IScriptEnvironment2 */
   bool LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
   void AddAutoloadDir(const char* dirPath, bool toFront);
@@ -1440,6 +1442,11 @@ public:
   PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA)
   {
     return core->SubframePlanarA(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
+  }
+
+  bool __stdcall MakePropertyWritable(PVideoFrame* pvf)
+  {
+    return core->MakePropertyWritable(pvf);
   }
 
   void __stdcall copyFrameProps(const PVideoFrame& src, PVideoFrame& dst)
@@ -4842,6 +4849,35 @@ void ScriptEnvironment::VThrowError(const char* fmt, va_list va)
 PVideoFrame ScriptEnvironment::SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA)
 {
   return SubframePlanar(src, rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
+}
+
+bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf)
+{
+  const PVideoFrame& vf = *pvf;
+
+  // If the frame is already writable, do nothing.
+  if (vf->IsPropertyWritable())
+    return false;
+
+  // Otherwise, allocate a new frame (using Subframe)
+  // Thus we avoid the frame-content copy overhead and still get a new frame with its unique frameprop
+  PVideoFrame dst;
+  if (vf->GetPitch(PLANAR_A)) {
+    // planar + alpha
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U), 0);
+  }
+  else if (vf->GetPitch(PLANAR_U)) {
+    // planar
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U));
+  }
+  else {
+    // single plane
+    dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight());
+  }
+
+  copyFrameProps(vf, dst);
+  *pvf = dst;
+  return true;
 }
 
 // since IF V8 frame property helpers are part of IScriptEnvironment

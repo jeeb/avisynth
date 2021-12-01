@@ -328,6 +328,16 @@ int AVSC_CC avs_is_writable(const AVS_VideoFrame * p)
   return 0;
 }
 
+// V9
+extern "C"
+int AVSC_CC avs_is_property_writable(const AVS_VideoFrame * p)
+{
+  if (p->refcount == 1) {
+    return 1;
+  }
+  return 0;
+}
+
 extern "C"
 BYTE * AVSC_CC avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane)
 {
@@ -1166,6 +1176,20 @@ int AVSC_CC avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * *pvf)
   p->error = 0;
   try {
     return p->env->MakeWritable((PVideoFrame*)(pvf));
+  }
+  catch (const AvisynthError& err) {
+    p->error = err.msg;
+  }
+  return -1;
+}
+
+// Since V9
+extern "C"
+int AVSC_CC avs_make_property_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * *pvf)
+{
+  p->error = 0;
+  try {
+    return p->env->MakePropertyWritable((PVideoFrame*)(pvf));
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;

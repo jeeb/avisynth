@@ -685,6 +685,9 @@ AVSC_API(const BYTE *, avs_get_read_ptr_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_API(int, avs_is_writable)(const AVS_VideoFrame * p);
 
+// V9
+AVSC_API(int, avs_is_property_writable)(const AVS_VideoFrame* p);
+
 AVSC_API(BYTE *, avs_get_write_ptr_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_API(void, avs_release_video_frame)(AVS_VideoFrame *);
@@ -1002,6 +1005,9 @@ AVSC_INLINE AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env,
 
 AVSC_API(int, avs_make_writable)(AVS_ScriptEnvironment *, AVS_VideoFrame * * pvf);
 
+// V9
+AVSC_API(int, avs_make_property_writable)(AVS_ScriptEnvironment*, AVS_VideoFrame** pvf);
+
 AVSC_API(void, avs_bit_blt)(AVS_ScriptEnvironment *, BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
 
 typedef void (AVSC_CC *AVS_ShutdownFunc)(void* user_data, AVS_ScriptEnvironment * env);
@@ -1266,6 +1272,10 @@ struct AVS_Library {
 
   AVSC_DECLARE_FUNC(avs_pool_allocate);
   AVSC_DECLARE_FUNC(avs_pool_free);
+
+  // V9
+  AVSC_DECLARE_FUNC(avs_is_property_writable);
+  AVSC_DECLARE_FUNC(avs_make_property_writable);
 };
 
 #undef AVSC_DECLARE_FUNC

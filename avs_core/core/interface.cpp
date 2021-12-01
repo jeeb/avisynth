@@ -548,6 +548,9 @@ bool VideoFrame::IsWritable() const {
   return false;
 }
 
+bool VideoFrame::IsPropertyWritable() const {
+  return (refcount == 1);
+}
 
 BYTE* VideoFrame::GetWritePtr(int plane) const {
   if (!plane || plane == PLANAR_Y || plane == PLANAR_G) { // planar RGB order GBR
@@ -1207,7 +1210,8 @@ static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
   &PDevice::GetName,
   // end class PDevice
 
-  NULL,                                     //   reserved for AviSynth+
+  &VideoFrame::IsPropertyWritable,          //   V9
+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+

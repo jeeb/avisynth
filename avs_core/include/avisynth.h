@@ -23,6 +23,7 @@
 //           Interface Version to 8 (classic 2.6 = 6)
 // 20200527  Add IScriptEnvironment_Avs25, used internally
 // 20200607  AVS frame property enums to match existing Avisynth enum style
+// 202112xx  pre V9-MakePropertyWritable, IsPropertyWritable
 
 // http://www.avisynth.org
 
@@ -407,9 +408,12 @@ struct AVS_Linkage {
   const char*   (PDevice::* PDevice_GetName)() const;
   // end class PDevice
 
+  // V9: VideoFrame helper
+  bool              (VideoFrame::* IsPropertyWritable)() const;
+
   /**********************************************************************/
   // Reserve pointer space for Avisynth+
-  void          (VideoInfo::* reserved2[64 - 23])();
+  void          (VideoInfo::* reserved2[64 - 24])();
   /**********************************************************************/
 
   // AviSynth Neo additions
@@ -999,6 +1003,8 @@ public:
   // 0: OK, 1: NG, -1: disabled or non CPU frame
   int CheckMemory() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_CheckMemory)())
 
+  bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(IsPropertyWritable)())
+
   ~VideoFrame() AVS_BakedCode( AVS_LinkCall_Void(VideoFrame_DESTRUCTOR)() )
 #ifdef BUILDING_AVSCORE
 public:
@@ -1527,7 +1533,10 @@ public:
   virtual AVSValue __stdcall Invoke3(const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
   virtual bool __stdcall Invoke3Try(AVSValue* result, const AVSValue& implicit_last, const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
 
-}; // end class IScriptEnvironment
+  // V9
+  virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
+
+}; // end class IScriptEnvironment. Order is important.
 
 // used internally
 class IScriptEnvironment_Avs25 {
@@ -1607,7 +1616,7 @@ public:
   // noThrow version of GetVar
   virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
 
-}; // end class IScriptEnvironment_Avs25
+}; // end class IScriptEnvironment_Avs25. Order is important.
 
 
 enum MtMode
@@ -1731,6 +1740,9 @@ public:
   virtual bool __stdcall Invoke3Try(
     AVSValue* result, const AVSValue& implicit_last,
     const PFunction& func, const AVSValue args, const char* const* arg_names = 0) = 0;
+
+  // V9
+  virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
 
   // Throws exception when the requested variable is not found.
   virtual AVSValue __stdcall GetVar(const char* name) = 0;
