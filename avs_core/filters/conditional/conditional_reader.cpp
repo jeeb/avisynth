@@ -36,6 +36,7 @@
 #include <sstream>
 #include <iomanip>
 #include <string>
+#include <cstring>
 #include "../convert/convert_helper.h"
 
 
@@ -961,10 +962,6 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
   }
 */
 
-  env->MakeWritable(&frame);
-
-  AVSMap* avsmap = env->getFramePropsRW(frame);
-
   try {
     // check auto
     if (propType == 0) {
@@ -982,6 +979,50 @@ PVideoFrame __stdcall SetProperty::GetFrame(int n, IScriptEnvironment* env)
       else
         env->ThrowError("Invalid return type (Was a %s)", GetAVSTypeName(result));
     }
+
+    // env->MakeWritable(&frame);
+    // do we need this? Yes! better: MakePropertyWritable since V9 interface
+
+    // Check setting a constant value to the same as it was before (int, float, string case)
+    // We'd avoid even MakePropertyWritable and return a fully unaltered frame
+    do {
+      if (append_mode != AVSPropAppendMode::PROPAPPENDMODE_REPLACE) break; // only optimize replace
+      if (propType != 1 && propType != 2 && propType != 3) break; // only optimize traditional types
+
+      const AVSMap* avsmap_r = env->getFramePropsRO(frame);
+      auto size = env->propNumElements(avsmap_r, name); // 1 if single item, >1 size of array, 0 if not exists
+      if(size != 1) break; // no such property or property is an array
+
+      char x = env->propGetType(avsmap_r, name);
+      if (propType == 1 && x != 'i') break; // int does not match
+      if (propType == 2 && x != 'f') break; // float does not match
+      if (propType == 3 && x != 's') break; // string does not match
+      
+      if (propType == 1) {
+        if (!result.IsInt()) break;
+        auto val = env->propGetInt(avsmap_r, name, 0, nullptr);
+        if (val == result.AsInt()) return frame; // value match -> return unaltered
+      } 
+      else if (propType == 2) {
+        if (!result.IsFloat()) break;
+        auto val = env->propGetFloat(avsmap_r, name, 0, nullptr);
+        if (val == result.AsFloat()) return frame; // value match -> return unaltered
+      }
+      else if (propType == 3) {
+        if (!result.IsString()) break;
+        const char* val_to_set = result.AsString();
+        if (val_to_set == nullptr) break;
+        auto length_to_set = strlen(val_to_set);
+        auto length = env->propGetDataSize(avsmap_r, name, 0, nullptr);
+        if (length != length_to_set) break; // different size
+        const char* val_storage = env->propGetData(avsmap_r, name, 0, nullptr);
+        if(std::memcmp(val_to_set, val_storage, length) == 0) return frame; // value match -> return unaltered
+      }
+      break;
+    } while (0);
+
+    env->MakePropertyWritable(&frame);
+    AVSMap* avsmap = env->getFramePropsRW(frame);
 
     int res = 0;
 
