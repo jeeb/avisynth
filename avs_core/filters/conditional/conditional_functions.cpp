@@ -630,6 +630,21 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   PClip child = clip.AsClip();
   VideoInfo vi = child->GetVideoInfo();
 
+  if (vi.IsRGB()) {
+    if (plane == PLANAR_Y || plane == PLANAR_U || plane == PLANAR_V)
+      env->ThrowError("MinMax: no such plane in RGB format");
+  }
+  else if (vi.IsY()) {
+    if (plane != PLANAR_Y)
+      env->ThrowError("MinMax: no such plane in Y (greyscale) format");
+  }
+  else {
+    if (plane == PLANAR_R || plane == PLANAR_G || plane == PLANAR_B)
+      env->ThrowError("MinMax: no such plane in YUV format");
+  }
+  if (vi.NumComponents() < 4 && plane == PLANAR_A)
+    env->ThrowError("MinMax: no Alpha plane in this format");
+
   // input clip to always planar
   if (vi.IsRGB() && !vi.IsPlanar()) {
     AVSValue new_args[1] = { child };
