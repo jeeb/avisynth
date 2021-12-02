@@ -2,6 +2,12 @@ Avisynth+
 
 20211202 WIP
 ------------
+- ConvertBits: ordered dither: possible to dither down with more than 8 bits difference like in
+    Clip16.ConvertBits(8, dither=0, dither_bits=4)
+  Such conversion is made in two phases. First the clip is converted to (dither_bits+8) bits; in the above example it is 12.
+  If the temporary bit depth would be odd (no 9 or 11 bit support in Avisynth+) then it is made even.
+  bit depth that differs in only 8 bits for the target. Then this intermediate clip is converted to the required end target.
+- Quicker ClearProperties and CopyProperties filters (by using MakePropertyWritable instead of MakeWritable).
 - Fix: MinMax runtime filter family: check plane existance (e.g. error when requesting RPlaneMinMaxDifference on YV12)
 - Fix: prevent x64 debug AviSynth builds from crashing in VirtualDub2 (opened through CAVIStreamSynth)
 - ExtractY/U/V/R/G/B/A, PlaneToY: delete _ChromaLocation property. Set _ColorRange property to "full" if source is Alpha plane
