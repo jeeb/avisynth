@@ -2845,7 +2845,7 @@ struct ExprEvalAvx2 : public jitasm::function<void, ExprEvalAvx2, uint8_t *, con
   std::vector<ExprOp> ops;
   int numInputs;
   int cpuFlags;
-  int planewidth;
+  int planewidth; // original, lut can overwrite
   int planeheight;
   bool singleMode;
 
@@ -4423,6 +4423,34 @@ void Exprfilter::calculate_lut(IScriptEnvironment* env)
   } // for planes
 }
 
+template<typename pixel_t, int bits_per_pixel>
+static void do_lut_xy(const uint8_t* lut8, uint8_t* dstp, int dst_stride, const uint8_t** srcp, const int* src_stride, int w, int h)
+{
+  const int max_pixel_value = (1 << bits_per_pixel) - 1;
+  const pixel_t* lut = reinterpret_cast<const pixel_t*>(lut8);
+  const uint8_t* src0 = srcp[0];
+  const uint8_t* src1 = srcp[1];
+  const auto pitch0 = src_stride[0];
+  const auto pitch1 = src_stride[1];
+  for (auto y = 0; y < h; y++) {
+    for (auto x = 0; x < w; x++) {
+      if constexpr (bits_per_pixel == 8 || bits_per_pixel == 16) {
+        // no limit check
+        const int pixel0 = reinterpret_cast<const pixel_t*>(src0)[x];
+        const int pixel1 = reinterpret_cast<const pixel_t*>(src1)[x];
+        reinterpret_cast<pixel_t*>(dstp)[x] = lut[(pixel1 << bits_per_pixel) + pixel0];
+      }
+      else {
+        const int pixel0 = min((int)reinterpret_cast<const pixel_t*>(src0)[x], max_pixel_value);
+        const int pixel1 = min((int)reinterpret_cast<const pixel_t*>(src1)[x], max_pixel_value);
+        reinterpret_cast<pixel_t*>(dstp)[x] = lut[(pixel1 << bits_per_pixel) + pixel0];
+      }
+    }
+    src0 += pitch0;
+    src1 += pitch1;
+    dstp += dst_stride;
+  }
+}
 
 PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
   // ExprData d class variable already filled
@@ -4516,12 +4544,13 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           {
             uint8_t* lut = d.luts[plane].data();
             const uint8_t* src0 = srcp[0];
+            const auto pitch0 = src_stride[0];
             for (auto y = 0; y < h; y++) {
               for (auto x = 0; x < w; x++) {
-                int pixel = src0[x];
+                const int pixel = src0[x];
                 dstp[x] = lut[pixel];
               }
-              srcp[0] += src_stride[0];
+              src0 += pitch0;
               dstp += dst_stride;
             }
           }
@@ -4530,100 +4559,46 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
             uint16_t* lut = reinterpret_cast<uint16_t*>(d.luts[plane].data());
             const uint8_t* src0 = srcp[0];
             const auto pitch0 = src_stride[0];
-            for (auto y = 0; y < h; y++) {
-              for (auto x = 0; x < w; x++) {
-                int pixel = reinterpret_cast<const uint16_t*>(src0)[x];
-                ((uint16_t* )dstp)[x] = lut[min(pixel, max_pixel_value)]; // e.g. 10 bits in 2 byte safety
+            if (bits_per_pixel == 16) {
+              // no limit check
+              for (auto y = 0; y < h; y++) {
+                for (auto x = 0; x < w; x++) {
+                  const int pixel = reinterpret_cast<const uint16_t*>(src0)[x];
+                  reinterpret_cast<uint16_t*>(dstp)[x] = lut[pixel];
+                }
+                src0 += pitch0;
+                dstp += dst_stride;
               }
-              src0 += pitch0;
-              dstp += dst_stride;
+            }
+            else {
+              for (auto y = 0; y < h; y++) {
+                for (auto x = 0; x < w; x++) {
+                  const int pixel = reinterpret_cast<const uint16_t*>(src0)[x];
+                  reinterpret_cast<uint16_t*>(dstp)[x] = lut[min(pixel, max_pixel_value)]; // e.g. 10 bits in 2 byte safety
+                }
+                src0 += pitch0;
+                dstp += dst_stride;
+              }
             }
           }
         }
         else if (d.lutmode == 2) {
           // lut_xy
+          // templates for speed: bitshift with immediate constant
+          const uint8_t* lut = d.luts[plane].data();
           if (bits_per_pixel == 8)
-          {
-            // lut_xy 8 bit
-            uint8_t* lut = d.luts[plane].data();
-            const uint8_t* src0 = srcp_orig[0];
-            const uint8_t* src1 = srcp_orig[1];
-            const auto pitch0 = src_stride[0];
-            const auto pitch1 = src_stride[1];
-            for (auto y = 0; y < h; y++) {
-              for (auto x = 0; x < w; x++) {
-                int pixel0 = src0[x];
-                int pixel1 = src1[x];
-                dstp[x] = lut[(pixel1 << 8) + pixel0]; // lut1d_size is 256: << 8
-              }
-              src0 += pitch0;
-              src1 += pitch1;
-              dstp += dst_stride;
-            }
-          }
-          else {
-            // lut_xy 10-16 bit
-            const int max_pixel_value = (1 << bits_per_pixel) - 1;
-            uint16_t* lut = reinterpret_cast<uint16_t*>(d.luts[plane].data());
-            const uint8_t* src0 = srcp[0];
-            const uint8_t* src1 = srcp[1];
-            const auto pitch0 = src_stride[0];
-            const auto pitch1 = src_stride[1];
-            // optimized a bit: direct shifts
-            if (bits_per_pixel == 10) {
-              for (auto y = 0; y < h; y++) {
-                for (auto x = 0; x < w; x++) {
-                  int pixel0 = min((int)reinterpret_cast<const uint16_t*>(src0)[x], max_pixel_value);
-                  int pixel1 = min((int)reinterpret_cast<const uint16_t*>(src1)[x], max_pixel_value);
-                  ((uint16_t*)dstp)[x] = lut[(pixel1 << 10) + pixel0];
-                }
-                src0 += pitch0;
-                src1 += pitch1;
-                dstp += dst_stride;
-              }
-            }
-            else if (bits_per_pixel == 12) {
-              for (auto y = 0; y < h; y++) {
-                for (auto x = 0; x < w; x++) {
-                  int pixel0 = min((int)reinterpret_cast<const uint16_t*>(src0)[x], max_pixel_value);
-                  int pixel1 = min((int)reinterpret_cast<const uint16_t*>(src1)[x], max_pixel_value);
-                  ((uint16_t*)dstp)[x] = lut[(pixel1 << 12) + pixel0];
-                }
-                src0 += pitch0;
-                src1 += pitch1;
-                dstp += dst_stride;
-              }
-            }
-            else if (bits_per_pixel == 14) {
-              for (auto y = 0; y < h; y++) {
-                for (auto x = 0; x < w; x++) {
-                  int pixel0 = min((int)reinterpret_cast<const uint16_t*>(src0)[x], max_pixel_value);
-                  int pixel1 = min((int)reinterpret_cast<const uint16_t*>(src1)[x], max_pixel_value);
-                  ((uint16_t*)dstp)[x] = lut[(pixel1 << 14) + pixel0];
-                }
-                src0 += pitch0;
-                src1 += pitch1;
-                dstp += dst_stride;
-              }
-            }
-            else if (bits_per_pixel == 16) {
-              // no, I think we don't have 16bit lut_xy. Left here for experimenting
-              for (auto y = 0; y < h; y++) {
-                for (auto x = 0; x < w; x++) {
-                  int pixel0 = min((int)reinterpret_cast<const uint16_t*>(src0)[x], max_pixel_value);
-                  int pixel1 = min((int)reinterpret_cast<const uint16_t*>(src1)[x], max_pixel_value);
-                  ((uint16_t*)dstp)[x] = lut[(pixel1 << 16) + pixel0];
-                }
-                src0 += pitch0;
-                src1 += pitch1;
-                dstp += dst_stride;
-              }
-            }
-            else {
-              assert(0);
-            }
-          }
-        } 
+            do_lut_xy<uint8_t, 8>(lut, dstp, dst_stride, srcp_orig.data(), src_stride.data(), w, h);
+          else if (bits_per_pixel == 10)
+            do_lut_xy<uint16_t, 10>(lut, dstp, dst_stride, srcp_orig.data(), src_stride.data(), w, h);
+          else if (bits_per_pixel == 12)
+            do_lut_xy<uint16_t, 12>(lut, dstp, dst_stride, srcp_orig.data(), src_stride.data(), w, h);
+          else if (bits_per_pixel == 14)
+            do_lut_xy<uint16_t, 14>(lut, dstp, dst_stride, srcp_orig.data(), src_stride.data(), w, h);
+          else if (bits_per_pixel == 16) // well, this is not enabled 16bit lutxy would take a 8GB table
+            do_lut_xy<uint16_t, 16>(lut, dstp, dst_stride, srcp_orig.data(), src_stride.data(), w, h);
+          else
+            assert(0);
+        }
         else { // 1d lut, 2d lut
           assert(0); // no lut_xyz
         }
@@ -6221,10 +6196,14 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         int planewidth = d.vi.width >> d.vi.GetPlaneWidthSubsampling(plane_enum);
         int planeheight = d.vi.height >> d.vi.GetPlaneHeightSubsampling(plane_enum);
 
+        const int planewidth_real_or_lut = (lutmode == 0) ? planewidth: (1 << d.vi.BitsPerComponent());
+        // to decide if partial chunk is left from the width at the end of the 4/8/16 pixel processing unit big main loops
+        // when lut: fake width (x size of lut table) of the lut-init
+
         if (optAvx2 && d.planeOptAvx2[i]) {
 
           // avx2
-          ExprEvalAvx2 ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth, planeheight, optSingleMode);
+          ExprEvalAvx2 ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth_real_or_lut, planeheight, optSingleMode);
           if (ExprObj.GetCode(true) && ExprObj.GetCodeSize()) { // PF modded jitasm. true: epilog with vmovaps, and vzeroupper
 #ifdef VS_TARGET_OS_WINDOWS
             d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -6236,7 +6215,7 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
         }
         else if (optSSE2 && d.planeOptSSE2[i]) {
           // sse2, sse4
-          ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth, planeheight, optSingleMode);
+          ExprEval ExprObj(d.ops[i], d.numInputs, env->GetCPUFlags(), planewidth_real_or_lut, planeheight, optSingleMode);
           if (ExprObj.GetCode() && ExprObj.GetCodeSize()) {
 #ifdef VS_TARGET_OS_WINDOWS
             d.proc[i] = (ExprData::ProcessLineProc)VirtualAlloc(nullptr, ExprObj.GetCodeSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
