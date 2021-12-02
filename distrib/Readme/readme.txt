@@ -1,14 +1,106 @@
 Avisynth+
 
-20211201 WIP
+20211202 WIP
 ------------
 - Fix: MinMax runtime filter family: check plane existance (e.g. error when requesting RPlaneMinMaxDifference on YV12)
-- Fix: prevent x64 debug AviSynth builds from crashing in VirtualDub2 (in general when opened through CAVIStreamSynth)
+- Fix: prevent x64 debug AviSynth builds from crashing in VirtualDub2 (opened through CAVIStreamSynth)
 - ExtractY/U/V/R/G/B/A, PlaneToY: delete _ChromaLocation property. Set _ColorRange property to "full" if source is Alpha plane
-- Avisynth programming interface (preliminary V9):
+- AviSynth interface additions: extend queryable internal environment properties.
+  Since Interface version 8 IScriptEnvironment::GetEnvProperty (Avisynth.h) and avs_get_env_property (avisynth_c.h)
+  interface functions can query some specific internal properties of AviSynth core. Thread count, etc..
+  These are mainly for internal use but some can be useful for plugins and external applications.
+  Each requested property has an identification number, they are found in avisynth.h and avisynth_c.h
+
+  This addition brought new properties to query: host system's endianness, interface version and bugfix subversion.
+  Relevant enum names start with AEP_ (cpp) or AVS_AEP_ (c) (AEP stands for Avisynth Environment Property)
+  
+  Details:
+  
+  AEP_HOST_SYSTEM_ENDIANNESS (c++) AVS_AEP_HOST_SYSTEM_ENDIANNESS (c)
+    Populated by 'little', 'big', or 'middle' based on what GCC and/or Clang report at compile time.
+
+  AEP_INTERFACE_VERSION (c++) AVS_AEP_INTERFACE_VERSION (c)
+    for requesting actual interface (main) version. An long awaited function. 
+    So far the actual interface version could be queried only indirectly, with trial and error, by starting from e.g. 10 then
+    going back one by one until CheckVersion() did not report an exception/error code. 
+
+    Even for V8 interface this was a bit tricky, the only way to detect was the infamous
+      has_at_least_v8 = true;
+      try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8 = false; }
+    method.
+    
+    Now (starting from interface version 8.1) a direct version query is supported as well.
+    Of course this (one or two direct call only) is the future.
+    Programs or plugins which would like to identify older systems still must rely partially on the CheckVersion method.
+
+    CPP interface (through avisynth.h).
+
+      IScriptEnvironment *env = ...
+      int avisynth_if_ver = 6;
+      int avisynth_bugfix_ver = 0;
+      try { 
+        avisynth_if_ver = env->GetEnvProperty(AEP_INTERFACE_VERSION); 
+        avisynth_bugfix_ver = env->GetEnvProperty(AEP_INTERFACE_BUGFIX);      
+      } 
+      catch (const AvisynthError&) { 
+        try { env->CheckVersion(8); avisynth_if_ver = 8; } catch (const AvisynthError&) { }
+      }
+      has_at_least_v8 = avisynth_if_ver >= 8; // frame properties, NewVideoFrameP, other V8 environment functions
+      has_at_least_v8_1 = avisynth_if_ver > 8 || (avisynth_if_ver == 8 && avisynth_bugfix_ver >= 1);
+      // 8.1: C interface frameprop access fixed, IsPropertyWritable/MakePropertyWritable support, extended GetEnvProperty queries
+      has_at_least_v9 = avisynth_if_ver >= 9; // future
+
+    C interface (through avisynth_c.h)
+
+      AVS_ScriptEnvironment *env = ...
+      int avisynth_if_ver = 6; // guessed minimum
+      int avisynth_bugfix_ver = 0;
+      int retval = avs_check_version(env, 8);
+      if (retval == 0) {
+        avisynth_if_ver = 8;
+        // V8 at least, we have avs_get_env_property but AVS_AEP_INTERFACE_VERSION query may not be supported
+        int retval = avs_get_env_property(env, AVS_AEP_INTERFACE_VERSION);
+        if(env->error == 0) {
+          avisynth_if_ver = retval;
+          retval = avs_get_env_property(env, AVS_AEP_INTERFACE_BUGFIX);
+          if(env->error == 0)
+            avisynth_bugfix_ver = retval;
+        }
+      }
+      has_at_least_v8 = avisynth_if_ver >= 8; // frame properties, NewVideoFrameP, other V8 environment functions
+      has_at_least_v8_1 = avisynth_if_ver > 8 || (avisynth_if_ver == 8 && avisynth_bugfix_ver >= 1);
+      // 8.1: C interface frameprop access fixed, IsPropertyWritable/MakePropertyWritable support, extended GetEnvProperty queries
+      has_at_least_v9 = avisynth_if_ver >= 9; // future
+ 
+
+  AEP_INTERFACE_BUGFIX (c++) AVS_AEP_INTERFACE_BUGFIX (c)
+    Denotes situations where there isn't a breaking change to the API,
+    but we need to identify when a particular change, fix or addition
+    to various API-adjacent bits might have occurred.  Could also be
+    used when any new functions get added.
+
+    Since the number is modelled as 'changes since API bump' and
+    intended to be used in conjunction with checking the main
+    AVISYNTH_INTERFACE_VERSION, whenever the main INTERFACE_VERSION
+    gets raised, the value of INTERFACE_BUGFIX should be reset to zero.
+
+    The BUGFIX version is added here with already incremented once,
+    both because the addition of AVISYNTH_INTERFACE_BUGFIX_VERSION
+    itself would require it, but also because it's intended to signify
+    the fix to the C interface allowing frame properties to be read
+    back (which was the situation that spurred this define to exist
+    in the first place).
+
+- CMake build environment:
+  While we do need the compiler to support C++17 features, we can 
+  get by on older GCC using CMake 3.6 and -std=c++-1z with some other fixes.
+  CMAKE_CXX_STANDARD can be raised intelligently to 17 based on whether we detect CMake 3.8 or higher.
+- Add AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION
+
+- Avisynth programming interface V8.1 or V9(?)):
   Add 'MakePropertyWritable' to the IScriptEnvironment (CPP interface), avs_make_property_writable (C interface)
   Add 'VideoFrame::IsPropertyWritable' (CPP interface), avs_is_property_writable (C interface)
-  (AviSynth interface version will be stepped to V9 in the release version)
+  (AviSynth interface version will be stepped to V9 in the release version?)
 
     bool env->MakePropertyWritable(PVideoFrame *);
     bool VideoFrame::IsPropertyWritable();
