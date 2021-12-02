@@ -38,11 +38,13 @@
 // by "poptones" (poptones@myrealbox.com)
 
 #include "layer.h"
-
+#ifdef INTEL_INTRINSICS
+#include "intel/layer_sse.h"
+#endif
 #ifdef AVS_WINDOWS
-    #include <avs/win.h>
+#include <avs/win.h>
 #else
-    #include <avs/posix.h>
+#include <avs/posix.h>
 #endif
 
 #include <avs/minmax.h>
@@ -53,18 +55,6 @@
 
 enum { PLACEMENT_MPEG2, PLACEMENT_MPEG1 }; // for Layer 420, 422
 
-// 15 bit scaled constants used for calculating luma mask from RGB
-// original constants (3736,19235,9798) cause int32 overfloat at 16 bits as sum()=32769
-// modified constants (3736,19234,9798) O.K. at 16 bits as sum()=32768
-// 32769 * 65535 + 16384 = 8000BFFF int32 overflow
-// 32768 * 65535 + 16384 = 7FFFC000 OK
-const int cyb = 3736;      // int(0.114 * 32768 + 0.5); // 3736
-const int cyg = 19235 - 1; // int(0.587 * 32768 + 0.5); // 19235
-const int cyr = 9798;      // int(0.299 * 32768 + 0.5); // 9798
-// w/o correction: 32769
-const float cyb_f = 0.114f;
-const float cyg_f = 0.587f;
-const float cyr_f = 0.299f;
 
 enum MaskMode {
   MASK411,
@@ -128,13 +118,13 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   const VideoInfo& vi2 = child2->GetVideoInfo();
   if (vi1.width != vi2.width || vi1.height != vi2.height)
     env->ThrowError("Mask error: image dimensions don't match");
-  if (! ((vi1.IsRGB32() && vi2.IsRGB32()) ||
-        (vi1.IsRGB64() && vi2.IsRGB64()) ||
-        (vi1.IsPlanarRGBA() && vi2.IsPlanarRGBA()))
+  if (!((vi1.IsRGB32() && vi2.IsRGB32()) ||
+    (vi1.IsRGB64() && vi2.IsRGB64()) ||
+    (vi1.IsPlanarRGBA() && vi2.IsPlanarRGBA()))
     )
     env->ThrowError("Mask error: sources must be RGB32, RGB64 or Planar RGBA");
 
-  if(vi1.BitsPerComponent() != vi2.BitsPerComponent())
+  if (vi1.BitsPerComponent() != vi2.BitsPerComponent())
     env->ThrowError("Mask error: Components are not of the same bit depths");
 
   vi = vi1;
@@ -145,17 +135,18 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   mask_frames = vi2.num_frames;
 }
 
+
 template<typename pixel_t>
-static void mask_c(BYTE *srcp8, const BYTE *alphap8, int src_pitch, int alpha_pitch, size_t width, size_t height) {
-  pixel_t *srcp = reinterpret_cast<pixel_t *>(srcp8);
-  const pixel_t *alphap = reinterpret_cast<const pixel_t *>(alphap8);
+static void mask_c(BYTE* srcp8, const BYTE* alphap8, int src_pitch, int alpha_pitch, size_t width, size_t height) {
+  pixel_t* srcp = reinterpret_cast<pixel_t*>(srcp8);
+  const pixel_t* alphap = reinterpret_cast<const pixel_t*>(alphap8);
 
   src_pitch /= sizeof(pixel_t);
   alpha_pitch /= sizeof(pixel_t);
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      srcp[x*4+3] = (cyb*alphap[x*4+0] + cyg*alphap[x*4+1] + cyr*alphap[x*4+2] + 16384) >> 15;
+      srcp[x * 4 + 3] = (cyb * alphap[x * 4 + 0] + cyg * alphap[x * 4 + 1] + cyr * alphap[x * 4 + 2] + 16384) >> 15;
     }
     srcp += src_pitch;
     alphap += alpha_pitch;
@@ -163,17 +154,17 @@ static void mask_c(BYTE *srcp8, const BYTE *alphap8, int src_pitch, int alpha_pi
 }
 
 template<typename pixel_t>
-static void mask_planar_rgb_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height, int bits_per_pixel) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *srcp_r = reinterpret_cast<const pixel_t *>(srcp_r8);
-  const pixel_t *srcp_g = reinterpret_cast<const pixel_t *>(srcp_g8);
-  const pixel_t *srcp_b = reinterpret_cast<const pixel_t *>(srcp_b8);
+static void mask_planar_rgb_c(BYTE* dstp8, const BYTE* srcp_r8, const BYTE* srcp_g8, const BYTE* srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height, int bits_per_pixel) {
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* srcp_r = reinterpret_cast<const pixel_t*>(srcp_r8);
+  const pixel_t* srcp_g = reinterpret_cast<const pixel_t*>(srcp_g8);
+  const pixel_t* srcp_b = reinterpret_cast<const pixel_t*>(srcp_b8);
   src_pitch /= sizeof(pixel_t);
   dst_pitch /= sizeof(pixel_t);
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      dstp[x] = ((cyb*srcp_b[x] + cyg*srcp_g[x] + cyr*srcp_r[x] + 16384) >> 15);
+      dstp[x] = ((cyb * srcp_b[x] + cyg * srcp_g[x] + cyr * srcp_r[x] + 16384) >> 15);
     }
     dstp += dst_pitch;
     srcp_r += src_pitch;
@@ -182,18 +173,18 @@ static void mask_planar_rgb_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp
   }
 }
 
-static void mask_planar_rgb_float_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE *srcp_g8, const BYTE *srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height) {
+static void mask_planar_rgb_float_c(BYTE* dstp8, const BYTE* srcp_r8, const BYTE* srcp_g8, const BYTE* srcp_b8, int dst_pitch, int src_pitch, size_t width, size_t height) {
 
-  float *dstp = reinterpret_cast<float *>(dstp8);
-  const float *srcp_r = reinterpret_cast<const float *>(srcp_r8);
-  const float *srcp_g = reinterpret_cast<const float *>(srcp_g8);
-  const float *srcp_b = reinterpret_cast<const float *>(srcp_b8);
+  float* dstp = reinterpret_cast<float*>(dstp8);
+  const float* srcp_r = reinterpret_cast<const float*>(srcp_r8);
+  const float* srcp_g = reinterpret_cast<const float*>(srcp_g8);
+  const float* srcp_b = reinterpret_cast<const float*>(srcp_b8);
   src_pitch /= sizeof(float);
   dst_pitch /= sizeof(float);
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      dstp[x] = cyb_f*srcp_b[x] + cyg_f*srcp_g[x] + cyr_f*srcp_r[x];
+      dstp[x] = cyb_f * srcp_b[x] + cyg_f * srcp_g[x] + cyr_f * srcp_r[x];
     }
     dstp += dst_pitch;
     srcp_r += src_pitch;
@@ -205,7 +196,7 @@ static void mask_planar_rgb_float_c(BYTE *dstp8, const BYTE *srcp_r8, const BYTE
 PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
-  PVideoFrame src2 = child2->GetFrame(min(n,mask_frames-1), env);
+  PVideoFrame src2 = child2->GetFrame(min(n, mask_frames - 1), env);
 
   env->MakeWritable(&src1);
 
@@ -227,7 +218,8 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
       mask_planar_rgb_c<uint16_t>(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height, bits_per_pixel);
     else
       mask_planar_rgb_float_c(dstp, srcp_r, srcp_g, srcp_b, dst_pitch, src_pitch, vi.width, vi.height);
-  } else {
+  }
+  else {
     // Packed RGB32/64
     BYTE* src1p = src1->GetWritePtr();
     const BYTE* src2p = src2->GetReadPtr();
@@ -236,16 +228,31 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
     const int src2_pitch = src2->GetPitch();
 
     // clip1_alpha = greyscale(clip2)
+#ifdef INTEL_INTRINSICS
+    if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
     {
-      if (pixelsize == 1) {
-        mask_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
-      } else { // if (pixelsize == 2)
-        mask_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
-      }
+      mask_sse2(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
     }
+    else
+#ifdef X86_32
+      if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
+      {
+        mask_mmx(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
+      }
+      else
+#endif
+#endif
+      {
+        if (pixelsize == 1) {
+          mask_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
+        }
+        else { // if (pixelsize == 2)
+          mask_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height);
+        }
+      }
   }
 
-    return src1;
+  return src1;
 }
 
 AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
@@ -259,7 +266,7 @@ AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
  **************************************/
 
 
-ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _tolR, IScriptEnvironment *env)
+ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _tolR, IScriptEnvironment* env)
   : GenericVideoFilter(_child), color(_color & 0xffffff), tolB(_tolB & 0xff), tolG(_tolG & 0xff), tolR(_tolR & 0xff)
 {
   if (!vi.IsRGB32() && !vi.IsRGB64() && !vi.IsPlanarRGBA())
@@ -271,8 +278,8 @@ ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _
   auto rgbcolor8to16 = [](uint8_t color8, int max_pixel_value) { return (uint16_t)(color8 * max_pixel_value / 255); };
 
   uint64_t r = rgbcolor8to16((color >> 16) & 0xFF, max_pixel_value);
-  uint64_t g = rgbcolor8to16((color >> 8 ) & 0xFF, max_pixel_value);
-  uint64_t b = rgbcolor8to16((color      ) & 0xFF, max_pixel_value);
+  uint64_t g = rgbcolor8to16((color >> 8) & 0xFF, max_pixel_value);
+  uint64_t b = rgbcolor8to16((color) & 0xFF, max_pixel_value);
   uint64_t a = rgbcolor8to16((color >> 24) & 0xFF, max_pixel_value);
   color64 = (a << 48) + (r << 32) + (g << 16) + (b);
   tolR16 = rgbcolor8to16(tolR & 0xFF, max_pixel_value); // scale tolerance
@@ -280,15 +287,16 @@ ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _
   tolB16 = rgbcolor8to16(tolB & 0xFF, max_pixel_value);
 }
 
+
 template<typename pixel_t>
 static void colorkeymask_c(BYTE* pf8, int pitch, int R, int G, int B, int height, int rowsize, int tolB, int tolG, int tolR) {
-  pixel_t *pf = reinterpret_cast<pixel_t *>(pf8);
+  pixel_t* pf = reinterpret_cast<pixel_t*>(pf8);
   rowsize /= sizeof(pixel_t);
   pitch /= sizeof(pixel_t);
-  for (int y = 0; y< height; y++) {
-    for (int x = 0; x < rowsize; x+=4) {
-      if (IsClose(pf[x],B,tolB) && IsClose(pf[x+1],G,tolG) && IsClose(pf[x+2],R,tolR))
-        pf[x+3]=0;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < rowsize; x += 4) {
+      if (IsClose(pf[x], B, tolB) && IsClose(pf[x + 1], G, tolG) && IsClose(pf[x + 2], R, tolR))
+        pf[x + 3] = 0;
     }
     pf += pitch;
   }
@@ -296,15 +304,15 @@ static void colorkeymask_c(BYTE* pf8, int pitch, int R, int G, int B, int height
 
 template<typename pixel_t>
 static void colorkeymask_planar_c(const BYTE* pfR8, const BYTE* pfG8, const BYTE* pfB8, BYTE* pfA8, int pitch, int R, int G, int B, int height, int width, int tolB, int tolG, int tolR) {
-  const pixel_t *pfR = reinterpret_cast<const pixel_t *>(pfR8);
-  const pixel_t *pfG = reinterpret_cast<const pixel_t *>(pfG8);
-  const pixel_t *pfB = reinterpret_cast<const pixel_t *>(pfB8);
-  pixel_t *pfA = reinterpret_cast<pixel_t *>(pfA8);
+  const pixel_t* pfR = reinterpret_cast<const pixel_t*>(pfR8);
+  const pixel_t* pfG = reinterpret_cast<const pixel_t*>(pfG8);
+  const pixel_t* pfB = reinterpret_cast<const pixel_t*>(pfB8);
+  pixel_t* pfA = reinterpret_cast<pixel_t*>(pfA8);
   pitch /= sizeof(pixel_t);
-  for (int y = 0; y< height; y++) {
+  for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      if (IsClose(pfB[x],B,tolB) && IsClose(pfG[x],G,tolG) && IsClose(pfR[x],R,tolR))
-        pfA[x]=0;
+      if (IsClose(pfB[x], B, tolB) && IsClose(pfG[x], G, tolG) && IsClose(pfR[x], R, tolR))
+        pfA[x] = 0;
     }
     pfR += pitch;
     pfG += pitch;
@@ -315,15 +323,15 @@ static void colorkeymask_planar_c(const BYTE* pfR8, const BYTE* pfG8, const BYTE
 
 static void colorkeymask_planar_float_c(const BYTE* pfR8, const BYTE* pfG8, const BYTE* pfB8, BYTE* pfA8, int pitch, float R, float G, float B, int height, int width, float tolB, float tolG, float tolR) {
   typedef float pixel_t;
-  const pixel_t *pfR = reinterpret_cast<const pixel_t *>(pfR8);
-  const pixel_t *pfG = reinterpret_cast<const pixel_t *>(pfG8);
-  const pixel_t *pfB = reinterpret_cast<const pixel_t *>(pfB8);
-  pixel_t *pfA = reinterpret_cast<pixel_t *>(pfA8);
+  const pixel_t* pfR = reinterpret_cast<const pixel_t*>(pfR8);
+  const pixel_t* pfG = reinterpret_cast<const pixel_t*>(pfG8);
+  const pixel_t* pfB = reinterpret_cast<const pixel_t*>(pfB8);
+  pixel_t* pfA = reinterpret_cast<pixel_t*>(pfA8);
   pitch /= sizeof(pixel_t);
-  for (int y = 0; y< height; y++) {
+  for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      if (IsCloseFloat(pfB[x],B,tolB) && IsCloseFloat(pfG[x],G,tolG) && IsCloseFloat(pfR[x],R,tolR))
-        pfA[x]=0;
+      if (IsCloseFloat(pfB[x], B, tolB) && IsCloseFloat(pfG[x], G, tolG) && IsCloseFloat(pfR[x], R, tolR))
+        pfA[x] = 0;
     }
     pfR += pitch;
     pfG += pitch;
@@ -333,7 +341,7 @@ static void colorkeymask_planar_float_c(const BYTE* pfR8, const BYTE* pfG8, cons
 }
 
 
-PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
+PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
@@ -342,7 +350,7 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
   const int pitch = frame->GetPitch();
   const int rowsize = frame->GetRowSize();
 
-  if(vi.IsPlanarRGBA()) {
+  if (vi.IsPlanarRGBA()) {
     const BYTE* pf_g = frame->GetReadPtr(PLANAR_G);
     const BYTE* pf_b = frame->GetReadPtr(PLANAR_B);
     const BYTE* pf_r = frame->GetReadPtr(PLANAR_R);
@@ -351,37 +359,55 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
     const int pitch = frame->GetPitch();
     const int width = vi.width;
 
-    if(pixelsize == 1) {
+    if (pixelsize == 1) {
       const int R = (color >> 16) & 0xff;
       const int G = (color >> 8) & 0xff;
       const int B = color & 0xff;
       colorkeymask_planar_c<uint8_t>(pf_r, pf_g, pf_b, pf_a, pitch, R, G, B, vi.height, width, tolB, tolG, tolR);
-    } else if (pixelsize == 2) {
+    }
+    else if (pixelsize == 2) {
       const int R = (color64 >> 32) & 0xffff;
       const int G = (color64 >> 16) & 0xffff;
       const int B = color64 & 0xffff;
       colorkeymask_planar_c<uint16_t>(pf_r, pf_g, pf_b, pf_a, pitch, R, G, B, vi.height, width, tolB16, tolG16, tolR16);
-    } else { // float
+    }
+    else { // float
       const float R = ((color >> 16) & 0xff) / 255.0f;
       const float G = ((color >> 8) & 0xff) / 255.0f;
       const float B = (color & 0xff) / 255.0f;
       colorkeymask_planar_float_c(pf_r, pf_g, pf_b, pf_a, pitch, R, G, B, vi.height, width, tolB / 255.0f, tolG / 255.0f, tolR / 255.0f);
     }
-  } else {
+  }
+  else {
     // RGB32, RGB64
+#ifdef INTEL_INTRINSICS
+    if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(pf, 16))
     {
-      if(pixelsize == 1) {
-        const int R = (color >> 16) & 0xff;
-        const int G = (color >> 8) & 0xff;
-        const int B = color & 0xff;
-        colorkeymask_c<uint8_t>(pf, pitch, R, G, B, vi.height, rowsize, tolB, tolG, tolR);
-      } else {
-        const int R = (color64 >> 32) & 0xffff;
-        const int G = (color64 >> 16) & 0xffff;
-        const int B = color64 & 0xffff;
-        colorkeymask_c<uint16_t>(pf, pitch, R, G, B, vi.height, rowsize, tolB16, tolG16, tolR16);
-      }
+      colorkeymask_sse2(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
     }
+    else
+#ifdef X86_32
+      if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
+      {
+        colorkeymask_mmx(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
+      }
+      else
+#endif
+#endif
+      {
+        if (pixelsize == 1) {
+          const int R = (color >> 16) & 0xff;
+          const int G = (color >> 8) & 0xff;
+          const int B = color & 0xff;
+          colorkeymask_c<uint8_t>(pf, pitch, R, G, B, vi.height, rowsize, tolB, tolG, tolR);
+        }
+        else {
+          const int R = (color64 >> 32) & 0xffff;
+          const int G = (color64 >> 16) & 0xffff;
+          const int B = color64 & 0xffff;
+          colorkeymask_c<uint16_t>(pf, pitch, R, G, B, vi.height, rowsize, tolB16, tolG16, tolR16);
+        }
+      }
   }
 
   return frame;
@@ -389,7 +415,7 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
 
 AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  enum { CHILD, COLOR, TOLERANCE_B, TOLERANCE_G, TOLERANCE_R};
+  enum { CHILD, COLOR, TOLERANCE_B, TOLERANCE_G, TOLERANCE_R };
   return new ColorKeyMask(args[CHILD].AsClip(),
     args[COLOR].AsInt(0),
     args[TOLERANCE_B].AsInt(10),
@@ -412,7 +438,7 @@ ResetMask::ResetMask(PClip _child, float _mask_f, IScriptEnvironment* env)
   // new: resetmask has parameter. If none->max transparency
 
   int max_pixel_value = (1 << vi.BitsPerComponent()) - 1;
-  if(_mask_f < 0) {
+  if (_mask_f < 0) {
     mask_f = 1.0f;
     mask = max_pixel_value;
   }
@@ -458,9 +484,9 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
   int rowsize = f->GetRowSize();
   int height = f->GetHeight();
 
-  if(vi.IsRGB32()) {
-    for (int y = 0; y<height; y++) {
-      for (int x = 3; x<rowsize; x += 4) {
+  if (vi.IsRGB32()) {
+    for (int y = 0; y < height; y++) {
+      for (int x = 3; x < rowsize; x += 4) {
         pf[x] = mask;
       }
       pf += pitch;
@@ -468,9 +494,9 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
   }
   else if (vi.IsRGB64()) {
     rowsize /= sizeof(uint16_t);
-    for (int y = 0; y<height; y++) {
-      for (int x = 3; x<rowsize; x += 4) {
-        reinterpret_cast<uint16_t *>(pf)[x] = mask;
+    for (int y = 0; y < height; y++) {
+      for (int x = 3; x < rowsize; x += 4) {
+        reinterpret_cast<uint16_t*>(pf)[x] = mask;
       }
       pf += pitch;
     }
@@ -491,7 +517,7 @@ AVSValue ResetMask::Create(AVSValue args, void*, IScriptEnvironment* env)
  ********************************/
 
 
-Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
+Invert::Invert(PClip _child, const char* _channels, IScriptEnvironment* env)
   : GenericVideoFilter(_child)
 {
   doB = doG = doR = doA = doY = doU = doV = false;
@@ -557,6 +583,7 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
   }
 }
 
+
 //mod4 width is required
 static void invert_frame_c(BYTE* frame, int pitch, int width, int height, int mask) {
   for (int y = 0; y < height; ++y) {
@@ -572,7 +599,7 @@ static void invert_frame_c(BYTE* frame, int pitch, int width, int height, int ma
 static void invert_frame_uint16_c(BYTE* frame, int pitch, int width, int height, uint64_t mask64) {
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width / 8; ++x) {
-      reinterpret_cast<uint64_t *>(frame)[x] = reinterpret_cast<uint64_t *>(frame)[x] ^ mask64;
+      reinterpret_cast<uint64_t*>(frame)[x] = reinterpret_cast<uint64_t*>(frame)[x] ^ mask64;
     }
     frame += pitch;
   }
@@ -600,11 +627,11 @@ static void invert_plane_uint16_c(BYTE* frame, int pitch, int row_size, int heig
   for (int y = 0; y < height; ++y) {
 
     for (int x = 0; x < mod8_width / 8; ++x) {
-      reinterpret_cast<uint64_t *>(frame)[x] ^= mask64;
+      reinterpret_cast<uint64_t*>(frame)[x] ^= mask64;
     }
 
     for (int x = mod8_width; x < row_size; ++x) {
-      reinterpret_cast<uint16_t *>(frame)[x] ^= mask16;
+      reinterpret_cast<uint16_t*>(frame)[x] ^= mask16;
     }
     frame += pitch;
   }
@@ -619,24 +646,56 @@ static void invert_plane_float_c(BYTE* frame, int pitch, int row_size, int heigh
 #endif
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      reinterpret_cast<float *>(frame)[x] = max - reinterpret_cast<float *>(frame)[x];
+      reinterpret_cast<float*>(frame)[x] = max - reinterpret_cast<float*>(frame)[x];
     }
     frame += pitch;
   }
 }
 
-static void invert_frame(BYTE* frame, int pitch, int rowsize, int height, int mask, uint64_t mask64, int pixelsize, IScriptEnvironment *env) {
+static void invert_frame(BYTE* frame, int pitch, int rowsize, int height, int mask, uint64_t mask64, int pixelsize, IScriptEnvironment* env) {
+#ifdef INTEL_INTRINSICS
+  if ((pixelsize == 1 || pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16))
   {
-    if(pixelsize == 1)
+    if (pixelsize == 1)
+      invert_frame_sse2(frame, pitch, rowsize, height, mask);
+    else
+      invert_frame_uint16_sse2(frame, pitch, rowsize, height, mask64);
+  }
+#ifdef X86_32
+  else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
+  {
+    invert_frame_mmx(frame, pitch, rowsize, height, mask);
+  }
+#endif
+  else
+#endif
+  {
+    if (pixelsize == 1)
       invert_frame_c(frame, pitch, rowsize, height, mask);
     else
       invert_frame_uint16_c(frame, pitch, rowsize, height, mask64);
   }
 }
 
-static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pixelsize, uint64_t mask64, bool chroma, IScriptEnvironment *env) {
+static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, int pixelsize, uint64_t mask64, bool chroma, IScriptEnvironment* env) {
+#ifdef INTEL_INTRINSICS
+  if ((pixelsize == 1 || pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16))
   {
-    if(pixelsize == 1)
+    if (pixelsize == 1)
+      invert_frame_sse2(frame, pitch, rowsize, height, 0xffffffff);
+    else if (pixelsize == 2)
+      invert_frame_uint16_sse2(frame, pitch, rowsize, height, mask64);
+  }
+#ifdef X86_32
+  else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX))
+  {
+    invert_plane_mmx(frame, pitch, rowsize, height);
+  }
+#endif
+  else
+#endif
+  {
+    if (pixelsize == 1)
       invert_plane_c(frame, pitch, rowsize, height);
     else if (pixelsize == 2)
       invert_plane_uint16_c(frame, pitch, rowsize, height, mask64);
@@ -684,28 +743,28 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     invert_frame(pf, pitch, rowsize, height, mask, mask64, pixelsize, env);
   }
   else if (vi.IsRGB24()) {
-    int rMask= doR ? 0xff : 0;
-    int gMask= doG ? 0xff : 0;
-    int bMask= doB ? 0xff : 0;
-    for (int i=0; i<height; i++) {
+    int rMask = doR ? 0xff : 0;
+    int gMask = doG ? 0xff : 0;
+    int bMask = doB ? 0xff : 0;
+    for (int i = 0; i < height; i++) {
 
-      for (int j=0; j<rowsize; j+=3) {
-        pf[j+0] = pf[j+0] ^ bMask;
-        pf[j+1] = pf[j+1] ^ gMask;
-        pf[j+2] = pf[j+2] ^ rMask;
+      for (int j = 0; j < rowsize; j += 3) {
+        pf[j + 0] = pf[j + 0] ^ bMask;
+        pf[j + 1] = pf[j + 1] ^ gMask;
+        pf[j + 2] = pf[j + 2] ^ rMask;
       }
       pf += pitch;
     }
   }
   else if (vi.IsRGB48()) {
-    int rMask= doR ? 0xffff : 0;
-    int gMask= doG ? 0xffff : 0;
-    int bMask= doB ? 0xffff : 0;
-    for (int i=0; i<height; i++) {
-      for (int j=0; j<rowsize/pixelsize; j+=3) {
-        reinterpret_cast<uint16_t *>(pf)[j+0] ^= bMask;
-        reinterpret_cast<uint16_t *>(pf)[j+1] ^= gMask;
-        reinterpret_cast<uint16_t *>(pf)[j+2] ^= rMask;
+    int rMask = doR ? 0xffff : 0;
+    int gMask = doG ? 0xffff : 0;
+    int bMask = doB ? 0xffff : 0;
+    for (int i = 0; i < height; i++) {
+      for (int j = 0; j < rowsize / pixelsize; j += 3) {
+        reinterpret_cast<uint16_t*>(pf)[j + 0] ^= bMask;
+        reinterpret_cast<uint16_t*>(pf)[j + 1] ^= gMask;
+        reinterpret_cast<uint16_t*>(pf)[j + 2] ^= rMask;
       }
       pf += pitch;
     }
@@ -726,11 +785,11 @@ AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
  **********************************/
 
 
-ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IScriptEnvironment* env)
+ShowChannel::ShowChannel(PClip _child, const char* pixel_type, int _channel, IScriptEnvironment* env)
   : GenericVideoFilter(_child), channel(_channel), input_type(_child->GetVideoInfo().pixel_type),
-    pixelsize(_child->GetVideoInfo().ComponentSize()), bits_per_pixel(_child->GetVideoInfo().BitsPerComponent())
+  pixelsize(_child->GetVideoInfo().ComponentSize()), bits_per_pixel(_child->GetVideoInfo().BitsPerComponent())
 {
-  static const char * const ShowText[7] = {"Blue", "Green", "Red", "Alpha", "Y", "U", "V"};
+  static const char* const ShowText[7] = { "Blue", "Green", "Red", "Alpha", "Y", "U", "V" };
 
   input_type_is_planar_rgb = vi.IsPlanarRGB();
   input_type_is_planar_rgba = vi.IsPlanarRGBA();
@@ -738,7 +797,7 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
   input_type_is_yuv = vi.IsYUV() && vi.IsPlanar();
   input_type_is_planar = vi.IsPlanar();
 
-  if(vi.IsYUY2())
+  if (vi.IsYUY2())
     env->ThrowError("Show%s: YUY2 source not supported", ShowText[channel]);
 
   int orig_channel = channel;
@@ -748,14 +807,14 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     env->ThrowError("ShowAlpha: RGB32, RGB64, Planar RGBA or YUVA data only");
 
   // R, G, B channel
-  if ((channel >=0) && (channel <= 2) && !vi.IsRGB())
+  if ((channel >= 0) && (channel <= 2) && !vi.IsRGB())
     env->ThrowError("Show%s: plane is valid only with RGB or planar RGB(A) source", ShowText[channel]);
 
   // Y, U, V channel (4,5,6)
-  if ((channel >=4) && (channel <= 6)) {
+  if ((channel >= 4) && (channel <= 6)) {
     if (!vi.IsYUV() && !vi.IsYUVA())
       env->ThrowError("Show%s: plane is valid only with YUV(A) source", ShowText[channel]);
-    if(channel != 4 && vi.IsY())
+    if (channel != 4 && vi.IsY())
       env->ThrowError("Show%s: invalid plane for greyscale source", ShowText[channel]);
     channel -= 4; // map to 0,1,2
   }
@@ -764,12 +823,11 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     env->ThrowError("Show%s: Planar RGB source is not supported", ShowText[channel]);
     */
 
-  int target_pixelsize;
   int target_bits_per_pixel;
 
-  if(input_type_is_yuv || input_type_is_yuva)
+  if (input_type_is_yuv || input_type_is_yuva)
   {
-    if(channel == 1 || channel == 2) // U or V: target can be smaller than Y
+    if (channel == 1 || channel == 2) // U or V: target can be smaller than Y
     {
       vi.width >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
       vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -782,11 +840,11 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
     case 16: vi.pixel_type = VideoInfo::CS_BGR64; break;
     default: env->ThrowError("Show%s: source must be 8 or 16 bits", ShowText[orig_channel]);
     }
-    target_pixelsize = pixelsize;
     target_bits_per_pixel = bits_per_pixel;
-  } else {
+  }
+  else {
     int new_pixel_type = GetPixelTypeFromName(pixel_type);
-    if(new_pixel_type == VideoInfo::CS_UNKNOWN)
+    if (new_pixel_type == VideoInfo::CS_UNKNOWN)
       env->ThrowError("Show%s: invalid pixel_type!", ShowText[orig_channel]);
     // new output format
     vi.pixel_type = new_pixel_type;
@@ -804,17 +862,16 @@ ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IS
         env->ThrowError("Show%s: height must be mod 2 for 4:2:0 target", ShowText[orig_channel]);
       }
     }
-    if(vi.Is422()) {
+    if (vi.Is422()) {
       if (vi.width & 1) {
         env->ThrowError("Show%s: width must be mod 2 for 4:2:2 target", ShowText[orig_channel]);
       }
     }
 
-    target_pixelsize = vi.ComponentSize();
     target_bits_per_pixel = vi.BitsPerComponent();
   }
 
-  if(target_bits_per_pixel != bits_per_pixel)
+  if (target_bits_per_pixel != bits_per_pixel)
     env->ThrowError("Show%s: source bit depth must be %d for %s", ShowText[orig_channel], target_bits_per_pixel, pixel_type);
 }
 
@@ -843,18 +900,18 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       if (src->IsWritable()) {
         // we can do it in-place
         BYTE* dstp = src->GetWritePtr();
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=4) {
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 4) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = dstp[j + channel];
             }
             dstp += pitch;
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=4) {
-              uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 4) {
+              uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
               dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = dstp16[j + channel];
             }
             dstp += pitch;
@@ -864,12 +921,12 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else { // RGB32->RGB32 not in-place
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-        BYTE * dstp = dst->GetWritePtr();
+        BYTE* dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
 
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=4) {
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 4) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = srcp[j + channel];
               dstp[j + 3] = srcp[j + 3];
             }
@@ -878,13 +935,13 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=4) {
-              uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(srcp)[j + channel];
-              dstp16[j + 3] = reinterpret_cast<const uint16_t *>(srcp)[j + 3];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 4) {
+              uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t*>(srcp)[j + channel];
+              dstp16[j + 3] = reinterpret_cast<const uint16_t*>(srcp)[j + 3];
             }
-            srcp   += pitch;
+            srcp += pitch;
             dstp += dstpitch;
           }
         }
@@ -894,24 +951,24 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // RGB32->RGB24, RGB64->RGB48
     {
       PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-      BYTE * dstp = dst->GetWritePtr();
+      BYTE* dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
-      if(pixelsize==1) {
-        for (int i=0; i<height; ++i) {
-          for (int j=0; j<width/4; j++) {
-            dstp[j*3 + 0] = dstp[j*3 + 1] = dstp[j*3 + 2] = srcp[j*4 + channel];
+      if (pixelsize == 1) {
+        for (int i = 0; i < height; ++i) {
+          for (int j = 0; j < width / 4; j++) {
+            dstp[j * 3 + 0] = dstp[j * 3 + 1] = dstp[j * 3 + 2] = srcp[j * 4 + channel];
           }
-          srcp   += pitch;
+          srcp += pitch;
           dstp += dstpitch;
         }
       }
       else { // pixelsize==2
-        for (int i=0; i<height; ++i) {
-          for (int j=0; j<width/4; j++) {
-            uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-            dstp16[j*3 + 0] = dstp16[j*3 + 1] = dstp16[j*3 + 2] = reinterpret_cast<const uint16_t *>(srcp)[j*4 + channel];
+        for (int i = 0; i < height; ++i) {
+          for (int j = 0; j < width / 4; j++) {
+            uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+            dstp16[j * 3 + 0] = dstp16[j * 3 + 1] = dstp16[j * 3 + 2] = reinterpret_cast<const uint16_t*>(srcp)[j * 4 + channel];
           }
-          srcp   += pitch;
+          srcp += pitch;
           dstp += dstpitch;
         }
 
@@ -921,16 +978,16 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB32->YUY2
     {
       PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-      BYTE * dstp = dst->GetWritePtr();
+      BYTE* dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       const int dstrowsize = dst->GetRowSize();
 
       // RGB is upside-down
-      srcp += (height-1) * pitch;
+      srcp += (height - 1) * pitch;
 
-      for (int i=0; i<height; ++i) {
-        for (int j=0; j<dstrowsize; j+=2) {
-          dstp[j + 0] = srcp[j*2 + channel];
+      for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < dstrowsize; j += 2) {
+          dstp[j + 0] = srcp[j * 2 + channel];
           dstp[j + 1] = 128;
         }
         srcp -= pitch;
@@ -944,27 +1001,27 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-        BYTE * dstp = dst->GetWritePtr();
+        BYTE* dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // packed RGB is upside-down
-        srcp += (height-1) * pitch;
+        srcp += (height - 1) * pitch;
 
         // copy to luma
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              dstp[j] = srcp[j*4 + channel];
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              dstp[j] = srcp[j * 4 + channel];
             }
             srcp -= pitch;
             dstp += dstpitch;
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*4 + channel];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              reinterpret_cast<uint16_t*>(dstp)[j] = reinterpret_cast<const uint16_t*>(srcp)[j * 4 + channel];
             }
             srcp -= pitch;
             dstp += dstpitch;
@@ -974,8 +1031,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         {
           dstpitch = dst->GetPitch(PLANAR_U);
           int dstheight = dst->GetHeight(PLANAR_U);
-          BYTE * dstp_u = dst->GetWritePtr(PLANAR_U);
-          BYTE * dstp_v = dst->GetWritePtr(PLANAR_V);
+          BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
+          BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
           switch (pixelsize) {
           case 1: fill_chroma<BYTE>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
@@ -989,20 +1046,20 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB32/64 -> Planar RGB 8/16 bit
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-        BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
-        BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
-        BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
+        BYTE* dstp_g = dst->GetWritePtr(PLANAR_G);
+        BYTE* dstp_b = dst->GetWritePtr(PLANAR_B);
+        BYTE* dstp_r = dst->GetWritePtr(PLANAR_R);
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // packed RGB is upside-down
-        srcp += (height-1) * pitch;
+        srcp += (height - 1) * pitch;
 
         // copy to luma
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j*4 + channel];
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j * 4 + channel];
             }
             srcp -= pitch;
             dstp_g += dstpitch;
@@ -1011,11 +1068,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp_g)[j] =
-                reinterpret_cast<uint16_t *>(dstp_b)[j] =
-                  reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*4 + channel];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              reinterpret_cast<uint16_t*>(dstp_g)[j] =
+                reinterpret_cast<uint16_t*>(dstp_b)[j] =
+                reinterpret_cast<uint16_t*>(dstp_r)[j] = reinterpret_cast<const uint16_t*>(srcp)[j * 4 + channel];
             }
             srcp -= pitch;
             dstp_g += dstpitch;
@@ -1034,18 +1091,18 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         // we can do it in-place
         BYTE* dstp = src->GetWritePtr();
 
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=3) {
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 3) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = dstp[j + channel];
             }
             dstp += pitch;
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=3) {
-              uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 3) {
+              uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
               dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = dstp16[j + channel];
             }
             dstp += pitch;
@@ -1055,25 +1112,25 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else { // RGB24->RGB24 not in-place
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-        BYTE * dstp = dst->GetWritePtr();
+        BYTE* dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
 
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=3) {
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 3) {
               dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = srcp[j + channel];
             }
-            srcp   += pitch;
+            srcp += pitch;
             dstp += dstpitch;
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<width; j+=3) {
-              uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t *>(srcp)[j + channel];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; j += 3) {
+              uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+              dstp16[j + 0] = dstp16[j + 1] = dstp16[j + 2] = reinterpret_cast<const uint16_t*>(srcp)[j + channel];
             }
-            srcp   += pitch;
+            srcp += pitch;
             dstp += dstpitch;
           }
         }
@@ -1085,25 +1142,25 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) // RGB24->RGB32
     {
       PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-      BYTE * dstp = dst->GetWritePtr();
+      BYTE* dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
 
-      if(pixelsize==1) {
-        for (int i=0; i<height; ++i) {
-          for (int j=0; j<width/3; j++) {
-            dstp[j*4 + 0] = dstp[j*4 + 1] = dstp[j*4 + 2] = dstp[j*4 + 3] = srcp[j*3 + channel];
+      if (pixelsize == 1) {
+        for (int i = 0; i < height; ++i) {
+          for (int j = 0; j < width / 3; j++) {
+            dstp[j * 4 + 0] = dstp[j * 4 + 1] = dstp[j * 4 + 2] = dstp[j * 4 + 3] = srcp[j * 3 + channel];
           }
-          srcp   += pitch;
+          srcp += pitch;
           dstp += dstpitch;
         }
       }
       else {
-        for (int i=0; i<height; ++i) {
-          for (int j=0; j<width/3; j++) {
-            uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-            dstp16[j*4 + 0] = dstp16[j*4 + 1] = dstp16[j*4 + 2] = dstp16[j*4 + 3] = reinterpret_cast<const uint16_t *>(srcp)[j*3 + channel];
+        for (int i = 0; i < height; ++i) {
+          for (int j = 0; j < width / 3; j++) {
+            uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+            dstp16[j * 4 + 0] = dstp16[j * 4 + 1] = dstp16[j * 4 + 2] = dstp16[j * 4 + 3] = reinterpret_cast<const uint16_t*>(srcp)[j * 3 + channel];
           }
-          srcp   += pitch;
+          srcp += pitch;
           dstp += dstpitch;
         }
       }
@@ -1112,17 +1169,17 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // RGB24->YUY2
     {
       PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-      BYTE * dstp = dst->GetWritePtr();
+      BYTE* dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
-      const int dstrowsize = dst->GetRowSize()/2;
+      const int dstrowsize = dst->GetRowSize() / 2;
 
       // RGB is upside-down
-      srcp += (height-1) * pitch;
+      srcp += (height - 1) * pitch;
 
-      for (int i=0; i<height; ++i) {
-        for (int j=0; j<dstrowsize; j++) {
-          dstp[j*2 + 0] = srcp[j*3 + channel];
-          dstp[j*2 + 1] = 128;
+      for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < dstrowsize; j++) {
+          dstp[j * 2 + 0] = srcp[j * 3 + channel];
+          dstp[j * 2 + 1] = 128;
         }
         srcp -= pitch;
         dstp += dstpitch;
@@ -1134,26 +1191,26 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-        BYTE * dstp = dst->GetWritePtr();
+        BYTE* dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // RGB is upside-down
-        srcp += (height-1) * pitch;
+        srcp += (height - 1) * pitch;
 
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              dstp[j] = srcp[j*3 + channel];
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              dstp[j] = srcp[j * 3 + channel];
             }
             srcp -= pitch;
             dstp += dstpitch;
           }
         }
         else {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*3 + channel];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              reinterpret_cast<uint16_t*>(dstp)[j] = reinterpret_cast<const uint16_t*>(srcp)[j * 3 + channel];
             }
             srcp -= pitch;
             dstp += dstpitch;
@@ -1163,8 +1220,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         {
           dstpitch = dst->GetPitch(PLANAR_U);
           int dstheight = dst->GetHeight(PLANAR_U);
-          BYTE * dstp_u = dst->GetWritePtr(PLANAR_U);
-          BYTE * dstp_v = dst->GetWritePtr(PLANAR_V);
+          BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
+          BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
           switch (pixelsize) {
           case 1: fill_chroma<uint8_t>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
@@ -1178,19 +1235,19 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // RGB24/48 -> Planar RGB 8/16 bit
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-        BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
-        BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
-        BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
+        BYTE* dstp_g = dst->GetWritePtr(PLANAR_G);
+        BYTE* dstp_b = dst->GetWritePtr(PLANAR_B);
+        BYTE* dstp_r = dst->GetWritePtr(PLANAR_R);
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
         // packed RGB is upside-down
-        srcp += (height-1) * pitch;
+        srcp += (height - 1) * pitch;
 
         // copy to luma
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j*3 + channel];
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j * 3 + channel];
             }
             srcp -= pitch;
             dstp_g += dstpitch;
@@ -1199,11 +1256,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp_g)[j] =
-                reinterpret_cast<uint16_t *>(dstp_b)[j] =
-                reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(srcp)[j*3 + channel];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              reinterpret_cast<uint16_t*>(dstp_g)[j] =
+                reinterpret_cast<uint16_t*>(dstp_b)[j] =
+                reinterpret_cast<uint16_t*>(dstp_r)[j] = reinterpret_cast<const uint16_t*>(srcp)[j * 3 + channel];
             }
             srcp -= pitch;
             dstp_g += dstpitch;
@@ -1217,9 +1274,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
   } // end of RGB24/48 source
   else if (input_type_is_planar_rgb || input_type_is_planar_rgba || input_type_is_yuv || input_type_is_yuva) {
     // planar source
-    const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A};
-    const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
-    const int *planes = (input_type_is_planar_rgb || input_type_is_planar_rgba) ? planesRGB : planesYUV;
+    const int planesYUV[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
+    const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    const int* planes = (input_type_is_planar_rgb || input_type_is_planar_rgba) ? planesRGB : planesYUV;
     const int plane = planes[channel];
 
     bool hasAlpha = input_type_is_planar_rgba || input_type_is_yuva;
@@ -1234,12 +1291,12 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     {
       { // Planar RGBA/YUVA  ->RGB32/64
         PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-        BYTE * dstp = dst->GetWritePtr();
+        BYTE* dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
         // RGB is upside-down
-        dstp += (height-1) * dstpitch;
+        dstp += (height - 1) * dstpitch;
 
-        if(pixelsize==1) {
+        if (pixelsize == 1) {
           if (hasAlpha) {
             for (int i = 0; i < height; ++i) {
               for (int j = 0; j < width; j++) {
@@ -1267,9 +1324,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           if (hasAlpha) {
             for (int i = 0; i < height; ++i) {
               for (int j = 0; j < width; j++) {
-                uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-                dstp16[j * 4 + 0] = dstp16[j * 4 + 1] = dstp16[j * 4 + 2] = reinterpret_cast<const uint16_t *>(srcp)[j];
-                dstp16[j * 4 + 3] = reinterpret_cast<const uint16_t *>(srcp_a)[j];
+                uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+                dstp16[j * 4 + 0] = dstp16[j * 4 + 1] = dstp16[j * 4 + 2] = reinterpret_cast<const uint16_t*>(srcp)[j];
+                dstp16[j * 4 + 3] = reinterpret_cast<const uint16_t*>(srcp_a)[j];
               }
               srcp += pitch;
               srcp_a += pitch;
@@ -1280,8 +1337,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
             const int alpha = 0xFFFF;
             for (int i = 0; i < height; ++i) {
               for (int j = 0; j < width; j++) {
-                uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-                dstp16[j * 4 + 0] = dstp16[j * 4 + 1] = dstp16[j * 4 + 2] = reinterpret_cast<const uint16_t *>(srcp)[j];
+                uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+                dstp16[j * 4 + 0] = dstp16[j * 4 + 1] = dstp16[j * 4 + 2] = reinterpret_cast<const uint16_t*>(srcp)[j];
                 dstp16[j * 4 + 3] = alpha;
               }
               srcp += pitch;
@@ -1295,25 +1352,25 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) // PRGB(A)/YUVA->RGB24, PRGB(A)16/YUVA16->RGB48
     {
       PVideoFrame dst = env->NewVideoFrameP(vi, &src);
-      BYTE * dstp = dst->GetWritePtr();
+      BYTE* dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
       // RGB is upside-down
-      dstp += (height-1) * dstpitch;
+      dstp += (height - 1) * dstpitch;
 
-      if(pixelsize==1) {
-        for (int i=0; i<height; ++i) {
-          for (int j=0; j<width; j++) {
-            dstp[j*3 + 0] = dstp[j*3 + 1] = dstp[j*3 + 2] = srcp[j];
+      if (pixelsize == 1) {
+        for (int i = 0; i < height; ++i) {
+          for (int j = 0; j < width; j++) {
+            dstp[j * 3 + 0] = dstp[j * 3 + 1] = dstp[j * 3 + 2] = srcp[j];
           }
-          srcp   += pitch;
+          srcp += pitch;
           dstp -= dstpitch;
         }
       }
       else { // pixelsize==2
-        for (int i=0; i<height; ++i) {
-          for (int j=0; j<width; j++) {
-            uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-            dstp16[j*3 + 0] = dstp16[j*3 + 1] = dstp16[j*3 + 2] = reinterpret_cast<const uint16_t *>(srcp)[j];
+        for (int i = 0; i < height; ++i) {
+          for (int j = 0; j < width; j++) {
+            uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+            dstp16[j * 3 + 0] = dstp16[j * 3 + 1] = dstp16[j * 3 + 2] = reinterpret_cast<const uint16_t*>(srcp)[j];
           }
           srcp += pitch;
           dstp -= dstpitch;
@@ -1325,13 +1382,13 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     else if (vi.pixel_type == VideoInfo::CS_YUY2) // // PRGB(A)/YUVA->YUY2
     {
       PVideoFrame dst = env->NewVideoFrame(vi);
-      BYTE * dstp = dst->GetWritePtr();
+      BYTE* dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
 
-      for (int i=0; i<height; ++i) {
-        for (int j=0; j<width; j++) {
-          dstp[j*2 + 0] = srcp[j];
-          dstp[j*2 + 1] = 128;
+      for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; j++) {
+          dstp[j * 2 + 0] = srcp[j];
+          dstp[j * 2 + 1] = 128;
         }
         srcp += pitch;
         dstp += dstpitch;
@@ -1346,33 +1403,33 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
       if (vi.Is444() || vi.Is422() || vi.Is420() || vi.IsY()) // Y8, YV12, Y16, YUV420P16, etc.
       {
-        BYTE * dstp = dst->GetWritePtr();
+        BYTE* dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // copy to luma
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
               dstp[j] = srcp[j];
             }
             srcp += pitch;
             dstp += dstpitch;
           }
         }
-        else if (pixelsize == 2 ) { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp)[j] = reinterpret_cast<const uint16_t *>(srcp)[j];
+        else if (pixelsize == 2) { // pixelsize==2
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              reinterpret_cast<uint16_t*>(dstp)[j] = reinterpret_cast<const uint16_t*>(srcp)[j];
             }
             srcp += pitch;
             dstp += dstpitch;
           }
         }
         else { // pixelsize == 4
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<float *>(dstp)[j] = reinterpret_cast<const float *>(srcp)[j];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              reinterpret_cast<float*>(dstp)[j] = reinterpret_cast<const float*>(srcp)[j];
             }
             srcp += pitch;
             dstp += dstpitch;
@@ -1382,8 +1439,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         {
           dstpitch = dst->GetPitch(PLANAR_U);
           int dstheight = dst->GetHeight(PLANAR_U);
-          BYTE * dstp_u = dst->GetWritePtr(PLANAR_U);
-          BYTE * dstp_v = dst->GetWritePtr(PLANAR_V);
+          BYTE* dstp_u = dst->GetWritePtr(PLANAR_U);
+          BYTE* dstp_v = dst->GetWritePtr(PLANAR_V);
           switch (pixelsize) {
           case 1: fill_chroma<BYTE>(dstp_u, dstp_v, dstheight, dstpitch, (BYTE)0x80); break;
           case 2: fill_chroma<uint16_t>(dstp_u, dstp_v, dstheight, dstpitch, 1 << (vi.BitsPerComponent() - 1)); break;
@@ -1393,17 +1450,17 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       }
       else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
       {  // PRGB(A)/YUVA -> Planar RGB
-        BYTE * dstp_g = dst->GetWritePtr(PLANAR_G);
-        BYTE * dstp_b = dst->GetWritePtr(PLANAR_B);
-        BYTE * dstp_r = dst->GetWritePtr(PLANAR_R);
+        BYTE* dstp_g = dst->GetWritePtr(PLANAR_G);
+        BYTE* dstp_b = dst->GetWritePtr(PLANAR_B);
+        BYTE* dstp_r = dst->GetWritePtr(PLANAR_R);
 
         int dstpitch = dst->GetPitch();
         int dstwidth = dst->GetRowSize() / pixelsize;
 
         // copy to luma
-        if(pixelsize==1) {
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
+        if (pixelsize == 1) {
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
               dstp_g[j] = dstp_b[j] = dstp_r[j] = srcp[j];
             }
             srcp += pitch;
@@ -1413,11 +1470,11 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           }
         }
         else { // pixelsize==2
-          for (int i=0; i<height; ++i) {
-            for (int j=0; j<dstwidth; ++j) {
-              reinterpret_cast<uint16_t *>(dstp_g)[j] =
-                reinterpret_cast<uint16_t *>(dstp_b)[j] =
-                reinterpret_cast<uint16_t *>(dstp_r)[j] = reinterpret_cast<const uint16_t *>(srcp)[j];
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < dstwidth; ++j) {
+              reinterpret_cast<uint16_t*>(dstp_g)[j] =
+                reinterpret_cast<uint16_t*>(dstp_b)[j] =
+                reinterpret_cast<uint16_t*>(dstp_r)[j] = reinterpret_cast<const uint16_t*>(srcp)[j];
             }
             srcp += pitch;
             dstp_g += dstpitch;
@@ -1466,39 +1523,39 @@ AVSValue ShowChannel::Create(AVSValue args, void* channel, IScriptEnvironment* e
 
 
 MergeRGB::MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _alpha,
-                   const char * pixel_type, IScriptEnvironment* env)
+  const char* pixel_type, IScriptEnvironment* env)
   : GenericVideoFilter(_child), blue(_blue), green(_green), red(_red), alpha(_alpha),
-    viB(blue->GetVideoInfo()), viG(green->GetVideoInfo()), viR(red->GetVideoInfo()),
-    viA(((alpha) ? alpha : child)->GetVideoInfo()), myname((alpha) ? "MergeARGB" : "MergeRGB")
+  viB(blue->GetVideoInfo()), viG(green->GetVideoInfo()), viR(red->GetVideoInfo()),
+  viA(((alpha) ? alpha : child)->GetVideoInfo()), myname((alpha) ? "MergeARGB" : "MergeRGB")
 {
 
-  if (!lstrcmpi(pixel_type, "rgb32") || (!lstrcmpi(pixel_type, "") && vi.ComponentSize()==1)) {
-      // default for 1 byte pixels
+  if (!lstrcmpi(pixel_type, "rgb32") || (!lstrcmpi(pixel_type, "") && vi.ComponentSize() == 1)) {
+    // default for 1 byte pixels
     vi.pixel_type = VideoInfo::CS_BGR32;
     if (alpha && (viA.pixel_type == VideoInfo::CS_BGR24))
       env->ThrowError("MergeARGB: Alpha source channel may not be RGB24");
   }
-  else if (!lstrcmpi(pixel_type, "rgb64") || (!lstrcmpi(pixel_type, "") && vi.ComponentSize()==2)) {
-      // default for 2 byte pixels
-      vi.pixel_type = VideoInfo::CS_BGR64;
-      if (alpha && (viA.pixel_type == VideoInfo::CS_BGR48))
-          env->ThrowError("MergeARGB: Alpha source channel may not be RGB48");
+  else if (!lstrcmpi(pixel_type, "rgb64") || (!lstrcmpi(pixel_type, "") && vi.ComponentSize() == 2)) {
+    // default for 2 byte pixels
+    vi.pixel_type = VideoInfo::CS_BGR64;
+    if (alpha && (viA.pixel_type == VideoInfo::CS_BGR48))
+      env->ThrowError("MergeARGB: Alpha source channel may not be RGB48");
   }
   else if (!lstrcmpi(pixel_type, "rgb24")) {
     vi.pixel_type = VideoInfo::CS_BGR24;
   }
   else if (!lstrcmpi(pixel_type, "rgb48")) {
-      vi.pixel_type = VideoInfo::CS_BGR48;
+    vi.pixel_type = VideoInfo::CS_BGR48;
   }
   else {
     env->ThrowError("MergeRGB: supports the following output pixel types: RGB24, RGB32, RGB48, RGB64");
   }
 
   if ((vi.ComponentSize() != viB.ComponentSize()) || (vi.ComponentSize() != viG.ComponentSize()) ||
-      (vi.ComponentSize() != viR.ComponentSize()) || (vi.ComponentSize() != viA.ComponentSize()))
-      env->ThrowError("%s: All clips must have the same bit depth.", myname);
+    (vi.ComponentSize() != viR.ComponentSize()) || (vi.ComponentSize() != viA.ComponentSize()))
+    env->ThrowError("%s: All clips must have the same bit depth.", myname);
 
-  if ((vi.width  != viB.width)  || (vi.width  != viG.width)  || (vi.width  != viR.width)  || (vi.width != viA.width))
+  if ((vi.width != viB.width) || (vi.width != viG.width) || (vi.width != viR.width) || (vi.width != viA.width))
     env->ThrowError("%s: All clips must have the same width.", myname);
 
   if ((vi.height != viB.height) || (vi.height != viG.height) || (vi.height != viR.height) || (vi.height != viA.height))
@@ -1531,9 +1588,9 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   const int Rpitch = (viR.IsYUV()) ? -(R->GetPitch()) : R->GetPitch();
 
   // Bump any RGB channels, move any YUV channels to last line
-  const BYTE* Bp = B->GetReadPtr() + ((Bpitch < 0) ? Bpitch * (1-height) : 0);
-  const BYTE* Gp = G->GetReadPtr() + ((Gpitch < 0) ? Gpitch * (1-height) : (1 * pixelsize));
-  const BYTE* Rp = R->GetReadPtr() + ((Rpitch < 0) ? Rpitch * (1-height) : (2 * pixelsize));
+  const BYTE* Bp = B->GetReadPtr() + ((Bpitch < 0) ? Bpitch * (1 - height) : 0);
+  const BYTE* Gp = G->GetReadPtr() + ((Gpitch < 0) ? Gpitch * (1 - height) : (1 * pixelsize));
+  const BYTE* Rp = R->GetReadPtr() + ((Rpitch < 0) ? Rpitch * (1 - height) : (2 * pixelsize));
 
   // Adjustment from the end of 1 line to the start of the next
   const int Bmodulo = Bpitch - B->GetRowSize();
@@ -1541,140 +1598,140 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   const int Rmodulo = Rpitch - R->GetRowSize();
 
   // Number of bytes per pixel (1, 2, 3 or 4 .. 8)
-  const int Bstride = viB.IsPlanar() ? pixelsize : (viB.BitsPerPixel()>>3);
-  const int Gstride = viG.IsPlanar() ? pixelsize : (viG.BitsPerPixel()>>3);
-  const int Rstride = viR.IsPlanar() ? pixelsize : (viR.BitsPerPixel()>>3);
+  const int Bstride = viB.IsPlanar() ? pixelsize : (viB.BitsPerPixel() >> 3);
+  const int Gstride = viG.IsPlanar() ? pixelsize : (viG.BitsPerPixel() >> 3);
+  const int Rstride = viR.IsPlanar() ? pixelsize : (viR.BitsPerPixel() >> 3);
 
   // End of VFB
-  BYTE const * yend = dstp + pitch*height;
+  BYTE const* yend = dstp + pitch * height;
 
   if (alpha) { // ARGB mode
     const int Apitch = (viA.IsYUV()) ? -(A->GetPitch()) : A->GetPitch();
-    const BYTE* Ap = A->GetReadPtr() + ((Apitch < 0) ? Apitch * (1-height) : (3 * pixelsize));
+    const BYTE* Ap = A->GetReadPtr() + ((Apitch < 0) ? Apitch * (1 - height) : (3 * pixelsize));
     const int Amodulo = Apitch - A->GetRowSize();
-    const int Astride = viA.IsPlanar() ? pixelsize : (viA.BitsPerPixel()>>3);
+    const int Astride = viA.IsPlanar() ? pixelsize : (viA.BitsPerPixel() >> 3);
 
-    switch(pixelsize) {
+    switch (pixelsize) {
     case 1:
-        while (dstp < yend) {
-          BYTE const * xend = dstp + rowsize;
-          while (dstp < xend) {
-            *dstp++ = *Bp; Bp += Bstride;
-            *dstp++ = *Gp; Gp += Gstride;
-            *dstp++ = *Rp; Rp += Rstride;
-            *dstp++ = *Ap; Ap += Astride;
-          }
-          dstp += modulo;
-          Bp += Bmodulo;
-          Gp += Gmodulo;
-          Rp += Rmodulo;
-          Ap += Amodulo;
+      while (dstp < yend) {
+        BYTE const* xend = dstp + rowsize;
+        while (dstp < xend) {
+          *dstp++ = *Bp; Bp += Bstride;
+          *dstp++ = *Gp; Gp += Gstride;
+          *dstp++ = *Rp; Rp += Rstride;
+          *dstp++ = *Ap; Ap += Astride;
         }
-        break;
+        dstp += modulo;
+        Bp += Bmodulo;
+        Gp += Gmodulo;
+        Rp += Rmodulo;
+        Ap += Amodulo;
+      }
+      break;
     case 2:
-        {
-            uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-            uint16_t const * yend16 = dstp16 + pitch*height/sizeof(uint16_t);
-            while (dstp16 < yend16) {
-                uint16_t const * xend16 = dstp16 + rowsize / sizeof(uint16_t);
-                while (dstp16 < xend16) {
-                    *dstp16++ = *reinterpret_cast<const uint16_t *>(Bp); Bp += Bstride;
-                    *dstp16++ = *reinterpret_cast<const uint16_t *>(Gp); Gp += Gstride;
-                    *dstp16++ = *reinterpret_cast<const uint16_t *>(Rp); Rp += Rstride;
-                    *dstp16++ = *reinterpret_cast<const uint16_t *>(Ap); Ap += Astride;
-                }
-                dstp16 += modulo / sizeof(uint16_t);
-                Bp += Bmodulo;
-                Gp += Gmodulo;
-                Rp += Rmodulo;
-                Ap += Amodulo;
-            }
+    {
+      uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+      uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
+      while (dstp16 < yend16) {
+        uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
+        while (dstp16 < xend16) {
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Ap); Ap += Astride;
         }
-        break;
+        dstp16 += modulo / sizeof(uint16_t);
+        Bp += Bmodulo;
+        Gp += Gmodulo;
+        Rp += Rmodulo;
+        Ap += Amodulo;
+      }
+    }
+    break;
     default:
-        env->ThrowError("%s: float pixel type not supported", myname);
-        break;
+      env->ThrowError("%s: float pixel type not supported", myname);
+      break;
     }
   }
   else if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) { // RGB32 mode
-      switch(pixelsize) {
-      case 1:
-        while (dstp < yend) {
-            BYTE const * xend = dstp + rowsize;
-            while (dstp < xend) {
-            *dstp++ = *Bp; Bp += Bstride;
-            *dstp++ = *Gp; Gp += Gstride;
-            *dstp++ = *Rp; Rp += Rstride;
-            *dstp++ = 0;
-            }
-            dstp += modulo;
-            Bp += Bmodulo;
-            Gp += Gmodulo;
-            Rp += Rmodulo;
+    switch (pixelsize) {
+    case 1:
+      while (dstp < yend) {
+        BYTE const* xend = dstp + rowsize;
+        while (dstp < xend) {
+          *dstp++ = *Bp; Bp += Bstride;
+          *dstp++ = *Gp; Gp += Gstride;
+          *dstp++ = *Rp; Rp += Rstride;
+          *dstp++ = 0;
         }
-        break;
-      case 2:
-      {
-          uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-          uint16_t const * yend16 = dstp16 + pitch*height/sizeof(uint16_t);
-          while (dstp16 < yend16) {
-              uint16_t const * xend16 = dstp16 + rowsize / sizeof(uint16_t);
-              while (dstp16 < xend16) {
-                  *dstp16++ = *reinterpret_cast<const uint16_t *>(Bp); Bp += Bstride;
-                  *dstp16++ = *reinterpret_cast<const uint16_t *>(Gp); Gp += Gstride;
-                  *dstp16++ = *reinterpret_cast<const uint16_t *>(Rp); Rp += Rstride;
-                  *dstp16++ = 0;
-              }
-              dstp16 += modulo / sizeof(uint16_t);
-              Bp += Bmodulo;
-              Gp += Gmodulo;
-              Rp += Rmodulo;
-          }
+        dstp += modulo;
+        Bp += Bmodulo;
+        Gp += Gmodulo;
+        Rp += Rmodulo;
       }
       break;
-      default:
-          env->ThrowError("%s: float pixel type not supported", myname);
-          break;
+    case 2:
+    {
+      uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+      uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
+      while (dstp16 < yend16) {
+        uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
+        while (dstp16 < xend16) {
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
+          *dstp16++ = 0;
+        }
+        dstp16 += modulo / sizeof(uint16_t);
+        Bp += Bmodulo;
+        Gp += Gmodulo;
+        Rp += Rmodulo;
       }
+    }
+    break;
+    default:
+      env->ThrowError("%s: float pixel type not supported", myname);
+      break;
+    }
   }
   else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) { // RGB24 mode
-      switch(pixelsize) {
-      case 1:
-          while (dstp < yend) {
-              BYTE const * xend = dstp + rowsize;
-              while (dstp < xend) {
-                *dstp++ = *Bp; Bp += Bstride;
-                *dstp++ = *Gp; Gp += Gstride;
-                *dstp++ = *Rp; Rp += Rstride;
-              }
-              dstp += modulo;
-              Bp += Bmodulo;
-              Gp += Gmodulo;
-              Rp += Rmodulo;
-         }
-          break;
-      case 2:
-      {
-          uint16_t *dstp16 = reinterpret_cast<uint16_t *>(dstp);
-          uint16_t const * yend16 = dstp16 + pitch*height/sizeof(uint16_t);
-          while (dstp16 < yend16) {
-              uint16_t const * xend16 = dstp16 + rowsize / sizeof(uint16_t);
-              while (dstp16 < xend16) {
-                  *dstp16++ = *reinterpret_cast<const uint16_t *>(Bp); Bp += Bstride;
-                  *dstp16++ = *reinterpret_cast<const uint16_t *>(Gp); Gp += Gstride;
-                  *dstp16++ = *reinterpret_cast<const uint16_t *>(Rp); Rp += Rstride;
-              }
-              dstp16 += modulo / sizeof(uint16_t);
-              Bp += Bmodulo;
-              Gp += Gmodulo;
-              Rp += Rmodulo;
-          }
+    switch (pixelsize) {
+    case 1:
+      while (dstp < yend) {
+        BYTE const* xend = dstp + rowsize;
+        while (dstp < xend) {
+          *dstp++ = *Bp; Bp += Bstride;
+          *dstp++ = *Gp; Gp += Gstride;
+          *dstp++ = *Rp; Rp += Rstride;
+        }
+        dstp += modulo;
+        Bp += Bmodulo;
+        Gp += Gmodulo;
+        Rp += Rmodulo;
       }
       break;
-      default:
-          env->ThrowError("%s: float pixel type not supported", myname);
-          break;
+    case 2:
+    {
+      uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+      uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
+      while (dstp16 < yend16) {
+        uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
+        while (dstp16 < xend16) {
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
+          *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
+        }
+        dstp16 += modulo / sizeof(uint16_t);
+        Bp += Bmodulo;
+        Gp += Gmodulo;
+        Rp += Rmodulo;
       }
+    }
+    break;
+    default:
+      env->ThrowError("%s: float pixel type not supported", myname);
+      break;
+    }
   }
   else
     env->ThrowError("%s: unexpected end of function", myname);
@@ -1697,10 +1754,10 @@ AVSValue MergeRGB::Create(AVSValue args, void* mode, IScriptEnvironment* env)
  *******   Layer Filter   ******
  *******************************/
 
-Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y,
-              int _t, bool _chroma, float _opacity, int _placement, IScriptEnvironment* env )
+Layer::Layer(PClip _child1, PClip _child2, const char _op[], int _lev, int _x, int _y,
+  int _t, bool _chroma, float _opacity, int _placement, IScriptEnvironment* env)
   : child1(_child1), child2(_child2), Op(_op), levelB(_lev), ofsX(_x), ofsY(_y),
-    chroma(_chroma), opacity(_opacity), placement(_placement)
+  chroma(_chroma), opacity(_opacity), placement(_placement)
 {
   const VideoInfo& vi1 = child1->GetVideoInfo();
   const VideoInfo& vi2 = child2->GetVideoInfo();
@@ -1731,41 +1788,41 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
       opacity = (float)levelB / ((1 << bits_per_pixel)); // YUY2 or other non-Alpha, gives 1.0f for 256 (@8bit)
     // we'll calculate back the level as: level = opacity * ((1 << bits_per_pixel))
   }
-  else if(!strengthSpecified)
+  else if (!strengthSpecified)
     opacity = 1.0f;
 
   if (vi.IsRGB32() || vi.IsRGB64() || vi.IsRGB24() || vi.IsRGB48())
-    ofsY = vi.height-vi2.height-ofsY; // packed RGB is upside down
-  else if((vi.IsYUV() || vi.IsYUVA()) && !vi.IsY()) {
+    ofsY = vi.height - vi2.height - ofsY; // packed RGB is upside down
+  else if ((vi.IsYUV() || vi.IsYUVA()) && !vi.IsY()) {
     // make offsets subsampling friendly
     // e.g. for YUY2: ofsX = ofsX & 0xFFFFFFFE; // X offset for YUY2 must be aligned on even pixels
     ofsX = ofsX & ~((1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1);
     ofsY = ofsY & ~((1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1);
   }
 
-  xdest=(ofsX < 0)? 0: ofsX;
-  ydest=(ofsY < 0)? 0: ofsY;
+  xdest = (ofsX < 0) ? 0 : ofsX;
+  ydest = (ofsY < 0) ? 0 : ofsY;
 
-  xsrc=(ofsX < 0)? (0-ofsX): 0;
-  ysrc=(ofsY < 0)? (0-ofsY): 0;
+  xsrc = (ofsX < 0) ? (0 - ofsX) : 0;
+  ysrc = (ofsY < 0) ? (0 - ofsY) : 0;
 
   xcount = (vi.width < (ofsX + vi2.width)) ? (vi.width - xdest) : (vi2.width - xsrc);
   ycount = (vi.height < (ofsY + vi2.height)) ? (vi.height - ydest) : (vi2.height - ysrc);
 
-  if (!( !lstrcmpi(Op, "Mul") || !lstrcmpi(Op, "Add") || !lstrcmpi(Op, "Fast") ||
-         !lstrcmpi(Op, "Subtract") || !lstrcmpi(Op, "Lighten") || !lstrcmpi(Op, "Darken") ))
+  if (!(!lstrcmpi(Op, "Mul") || !lstrcmpi(Op, "Add") || !lstrcmpi(Op, "Fast") ||
+    !lstrcmpi(Op, "Subtract") || !lstrcmpi(Op, "Lighten") || !lstrcmpi(Op, "Darken")))
     env->ThrowError("Layer supports the following ops: Fast, Lighten, Darken, Add, Subtract, Mul");
 
   if (!chroma)
   {
-    if (!lstrcmpi(Op, "Darken") ) env->ThrowError("Layer: monochrome darken illegal op");
+    if (!lstrcmpi(Op, "Darken")) env->ThrowError("Layer: monochrome darken illegal op");
     if (!lstrcmpi(Op, "Lighten")) env->ThrowError("Layer: monochrome lighten illegal op");
-    if (!lstrcmpi(Op, "Fast")   ) env->ThrowError("Layer: this mode not allowed in FAST; use ADD instead");
+    if (!lstrcmpi(Op, "Fast")) env->ThrowError("Layer: this mode not allowed in FAST; use ADD instead");
   }
 
   // autoscale ThresholdParam from 8 bit base
   // todo check validity
-  if(bits_per_pixel == 32)
+  if (bits_per_pixel == 32)
     ThresholdParam = _t; // n/a
   else
     ThresholdParam = _t << (bits_per_pixel - 8);
@@ -1774,12 +1831,6 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   overlay_frames = vi2.num_frames;
 }
 
-enum
-{
-  LIGHTEN = 0,
-  DARKEN = 1
-};
-
 /* YUY2 */
 
 template<bool use_chroma>
@@ -1787,14 +1838,15 @@ static void layer_yuy2_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       // luma
-      dstp[x*2]   = dstp[x*2]  + (((((ovrp[x*2] * dstp[x*2]) >> 8) - dstp[x*2]) * level) >> 8);
+      dstp[x * 2] = dstp[x * 2] + (((((ovrp[x * 2] * dstp[x * 2]) >> 8) - dstp[x * 2]) * level) >> 8);
       // chroma
       if (use_chroma) {
-        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
+        dstp[x * 2 + 1] = dstp[x * 2 + 1] + (((ovrp[x * 2 + 1] - dstp[x * 2 + 1]) * level) >> 8);
         // U = U + ( ((Uovr - U)*level) >> 8 )
         // V = V + ( ((Vovr - V)*level) >> 8 )
-      } else {
-        dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * (level/2)) >> 8);
+      }
+      else {
+        dstp[x * 2 + 1] = dstp[x * 2 + 1] + (((128 - dstp[x * 2 + 1]) * (level / 2)) >> 8);
         // U = U + ( ((128 - U)*(level/2)) >> 8 )
         // V = V + ( ((128 - V)*(level/2)) >> 8 )
       }
@@ -1813,9 +1865,9 @@ DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
 // When use_alpha == false maskMode ignored
 template<MaskMode maskMode, typename pixel_t, int bits_per_pixel, bool is_chroma, bool use_chroma, bool has_alpha>
 static void layer_yuv_mul_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, int dst_pitch, int overlay_pitch, int mask_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
-  const pixel_t *maskp = reinterpret_cast<const pixel_t *>(maskp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
+  const pixel_t* maskp = reinterpret_cast<const pixel_t*>(maskp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   mask_pitch /= sizeof(pixel_t);
@@ -1889,9 +1941,9 @@ static void layer_yuv_mul_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, 
 
       // fixme: no rounding? (code from YUY2)
       // for mul: no.
-      if constexpr(!is_chroma)
+      if constexpr (!is_chroma)
         dstp[x] = (pixel_t)(dstp[x] + ((((((calc_t)ovrp[x] * dstp[x]) >> bits_per_pixel) - dstp[x]) * alpha_mask) >> bits_per_pixel));
-      else if constexpr(use_chroma) {
+      else if constexpr (use_chroma) {
         // chroma mode + process chroma
         dstp[x] = (pixel_t)(dstp[x] + (((calc_t)(ovrp[x] - dstp[x]) * alpha_mask) >> bits_per_pixel));
         // U = U + ( ((Uovr - U)*level) >> 8 )
@@ -1923,9 +1975,9 @@ DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
 // YUV(A) mul 32 bits
 template<MaskMode maskMode, bool is_chroma, bool use_chroma, bool has_alpha>
 static void layer_yuv_mul_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, int dst_pitch, int overlay_pitch, int mask_pitch, int width, int height, float opacity) {
-  float *dstp = reinterpret_cast<float *>(dstp8);
-  const float *ovrp = reinterpret_cast<const float *>(ovrp8);
-  const float *maskp = reinterpret_cast<const float *>(maskp8);
+  float* dstp = reinterpret_cast<float*>(dstp8);
+  const float* ovrp = reinterpret_cast<const float*>(ovrp8);
+  const float* maskp = reinterpret_cast<const float*>(maskp8);
   dst_pitch /= sizeof(float);
   overlay_pitch /= sizeof(float);
   mask_pitch /= sizeof(float);
@@ -1996,7 +2048,7 @@ static void layer_yuv_mul_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8
 
       if constexpr (!is_chroma)
         dstp[x] = dstp[x] + (ovrp[x] * dstp[x] - dstp[x]) * alpha_mask;
-      else if constexpr(use_chroma) {
+      else if constexpr (use_chroma) {
         // chroma mode + process chroma
         dstp[x] = dstp[x] + (ovrp[x] - dstp[x]) * alpha_mask;
         // U = U + ( ((Uovr - U)*level) >> 8 )
@@ -2028,11 +2080,12 @@ static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
   constexpr int rounder = 128;
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * level + rounder) >> 8);
+      dstp[x * 2] = dstp[x * 2] + (((ovrp[x * 2] - dstp[x * 2]) * level + rounder) >> 8);
       if (use_chroma) {
-        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * level + rounder) >> 8);
-      } else {
-        dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level + rounder) >> 8);
+        dstp[x * 2 + 1] = dstp[x * 2 + 1] + (((ovrp[x * 2 + 1] - dstp[x * 2 + 1]) * level + rounder) >> 8);
+      }
+      else {
+        dstp[x * 2 + 1] = dstp[x * 2 + 1] + (((128 - dstp[x * 2 + 1]) * level + rounder) >> 8);
       }
     }
     dstp += dst_pitch;
@@ -2052,9 +2105,9 @@ DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
 // warning C4101 : 'mask_right' : unreferenced local variable
 template<MaskMode maskMode, typename pixel_t, int bits_per_pixel, bool is_chroma, bool use_chroma, bool has_alpha, bool subtract, bool allow_leftminus1>
 static void layer_yuv_add_subtract_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* mask8, int dst_pitch, int overlay_pitch, int mask_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
-  const pixel_t *maskp = reinterpret_cast<const pixel_t *>(mask8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
+  const pixel_t* maskp = reinterpret_cast<const pixel_t*>(mask8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   mask_pitch /= sizeof(pixel_t);
@@ -2165,9 +2218,9 @@ DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
 // YUV(A) mul 32 bits
 template<MaskMode maskMode, bool is_chroma, bool use_chroma, bool has_alpha, bool subtract, bool allow_leftminus1>
 static void layer_yuv_add_subtract_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* maskp8, int dst_pitch, int overlay_pitch, int mask_pitch, int width, int height, float opacity) {
-  float *dstp = reinterpret_cast<float *>(dstp8);
-  const float *ovrp = reinterpret_cast<const float *>(ovrp8);
-  const float *maskp = reinterpret_cast<const float *>(maskp8);
+  float* dstp = reinterpret_cast<float*>(dstp8);
+  const float* ovrp = reinterpret_cast<const float*>(ovrp8);
+  const float* maskp = reinterpret_cast<const float*>(maskp8);
   dst_pitch /= sizeof(float);
   overlay_pitch /= sizeof(float);
   mask_pitch /= sizeof(float);
@@ -2294,13 +2347,13 @@ static void layer_yuv_subtract_f_c(BYTE* dstp8, const BYTE* ovrp8, const BYTE* m
 template<typename pixel_t>
 static void layer_yuy2_fast_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   AVS_UNUSED(level);
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width*2; ++x) {
+    for (int x = 0; x < width * 2; ++x) {
       dstp[x] = (dstp[x] + ovrp[x] + 1) / 2;
     }
     dstp += dst_pitch;
@@ -2312,8 +2365,8 @@ static void layer_yuy2_fast_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int
 template<typename pixel_t>
 static void layer_genericplane_fast_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   AVS_UNUSED(level);
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
 
@@ -2328,8 +2381,8 @@ static void layer_genericplane_fast_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pi
 
 static void layer_genericplane_fast_f_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float level) {
   AVS_UNUSED(level);
-  float *dstp = reinterpret_cast<float *>(dstp8);
-  const float *ovrp = reinterpret_cast<const float *>(ovrp8);
+  float* dstp = reinterpret_cast<float*>(dstp8);
+  const float* ovrp = reinterpret_cast<const float*>(ovrp8);
   dst_pitch /= sizeof(float);
   overlay_pitch /= sizeof(float);
 
@@ -2348,11 +2401,12 @@ static void layer_yuy2_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, i
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      dstp[x*2]   = dstp[x*2]  + (((255 - ovrp[x*2] - dstp[x*2]) * level + rounder) >> 8);
+      dstp[x * 2] = dstp[x * 2] + (((255 - ovrp[x * 2] - dstp[x * 2]) * level + rounder) >> 8);
       if (use_chroma) {
-        dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2+1] - dstp[x*2+1]) * level + rounder) >> 8);
-      } else {
-        dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level + rounder) >> 8);
+        dstp[x * 2 + 1] = dstp[x * 2 + 1] + (((255 - ovrp[x * 2 + 1] - dstp[x * 2 + 1]) * level + rounder) >> 8);
+      }
+      else {
+        dstp[x * 2 + 1] = dstp[x * 2 + 1] + (((128 - dstp[x * 2 + 1]) * level + rounder) >> 8);
       }
     }
     dstp += dst_pitch;
@@ -2371,9 +2425,9 @@ static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pi
       else // DARKEN
         alpha_mask = ovrp[x * 2] < (dstp[x * 2] - thresh) ? level : 0;
 
-      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * alpha_mask + rounder) >> 8);
+      dstp[x * 2] = dstp[x * 2] + (((ovrp[x * 2] - dstp[x * 2]) * alpha_mask + rounder) >> 8);
       // fixme: not too correct but probably fast. U is masked by even Y, V is masked by odd Y
-      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * alpha_mask + rounder) >> 8);
+      dstp[x * 2 + 1] = dstp[x * 2 + 1] + (((ovrp[x * 2 + 1] - dstp[x * 2 + 1]) * alpha_mask + rounder) >> 8);
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2395,15 +2449,15 @@ static void layer_yuv_lighten_darken_c(
   int mask_pitch,
   int width, int height, int level, int thresh) {
 
-  pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
-  pixel_t* dstp_u = reinterpret_cast<pixel_t *>(dstp8_u);
-  pixel_t* dstp_v = reinterpret_cast<pixel_t *>(dstp8_v);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  pixel_t* dstp_u = reinterpret_cast<pixel_t*>(dstp8_u);
+  pixel_t* dstp_v = reinterpret_cast<pixel_t*>(dstp8_v);
   // pixel_t* dstp_a = reinterpret_cast<pixel_t *>(dstp8_a); // not destination alpha update
 
-  const pixel_t* ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
-  const pixel_t* ovrp_u = reinterpret_cast<const pixel_t *>(ovrp8_u);
-  const pixel_t* ovrp_v = reinterpret_cast<const pixel_t *>(ovrp8_v);
-  const pixel_t* maskp = reinterpret_cast<const pixel_t *>(maskp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
+  const pixel_t* ovrp_u = reinterpret_cast<const pixel_t*>(ovrp8_u);
+  const pixel_t* ovrp_v = reinterpret_cast<const pixel_t*>(ovrp8_v);
+  const pixel_t* maskp = reinterpret_cast<const pixel_t*>(maskp8);
 
   dst_pitch /= sizeof(pixel_t);
   dst_pitchUV /= sizeof(pixel_t);
@@ -2575,7 +2629,7 @@ static void layer_yuv_lighten_darken_c(
   mask_pitch *= sizeof(pixel_t);
 
   // make luma
-  if constexpr(!lumaonly && maskMode != MASK444)
+  if constexpr (!lumaonly && maskMode != MASK444)
     layer_yuv_lighten_darken_c<mode, MASK444, pixel_t, bits_per_pixel, allow_leftminus1, true /* lumaonly*/, has_alpha>(
       dstp8, dstp8_u, dstp8_v, //dstp8_a,
       ovrp8, ovrp8_u, ovrp8_v, maskp8,
@@ -2599,15 +2653,15 @@ static void layer_yuv_lighten_darken_f_c(
   int mask_pitch,
   int width, int height, float opacity, float thresh) {
 
-  float* dstp = reinterpret_cast<float *>(dstp8);
-  float* dstp_u = reinterpret_cast<float *>(dstp8_u);
-  float* dstp_v = reinterpret_cast<float *>(dstp8_v);
+  float* dstp = reinterpret_cast<float*>(dstp8);
+  float* dstp_u = reinterpret_cast<float*>(dstp8_u);
+  float* dstp_v = reinterpret_cast<float*>(dstp8_v);
   //float* dstp_a = reinterpret_cast<float *>(dstp8_a);
 
-  const float* ovrp = reinterpret_cast<const float *>(ovrp8);
-  const float* ovrp_u = reinterpret_cast<const float *>(ovrp8_u);
-  const float* ovrp_v = reinterpret_cast<const float *>(ovrp8_v);
-  const float* maskp = reinterpret_cast<const float *>(maskp8);
+  const float* ovrp = reinterpret_cast<const float*>(ovrp8);
+  const float* ovrp_u = reinterpret_cast<const float*>(ovrp8_u);
+  const float* ovrp_v = reinterpret_cast<const float*>(ovrp8_v);
+  const float* maskp = reinterpret_cast<const float*>(maskp8);
 
   dst_pitch /= sizeof(float);
   dst_pitchUV /= sizeof(float);
@@ -2627,7 +2681,7 @@ static void layer_yuv_lighten_darken_f_c(
     if constexpr (maskMode == MASK420_MPEG2) {
       ovr_right = allow_leftminus1 ? ovrp[-1] + ovrp[-1 + overlay_pitch] : ovrp[0] + ovrp[0 + overlay_pitch];
       src_right = allow_leftminus1 ? dstp[-1] + dstp[-1 + dst_pitch] : dstp[0] + dstp[0 + dst_pitch];
-      if(has_alpha)
+      if (has_alpha)
         mask_right = allow_leftminus1 ? maskp[-1] + maskp[-1 + overlay_pitch] : maskp[0] + maskp[0 + overlay_pitch];
     }
     else if constexpr (maskMode == MASK422_MPEG2) {
@@ -2648,7 +2702,7 @@ static void layer_yuv_lighten_darken_f_c(
         // +------+------+------+------+
         ovr = (ovrp[x * 4] + ovrp[x * 4 + 1] + ovrp[x * 4 + 2] + ovrp[x * 4 + 3]) * 0.25f;
         src = (dstp[x * 4] + dstp[x * 4 + 1] + dstp[x * 4 + 2] + dstp[x * 4 + 3]) * 0.25f;
-        if(has_alpha)
+        if (has_alpha)
           effective_mask = (maskp[x * 4] + maskp[x * 4 + 1] + maskp[x * 4 + 2] + maskp[x * 4 + 3]) * 0.25f;
       }
       else if constexpr (maskMode == MASK420) {
@@ -2691,7 +2745,7 @@ static void layer_yuv_lighten_darken_f_c(
         // +------+------+
         ovr = (ovrp[x * 2] + ovrp[x * 2 + 1]) * 0.5f;
         src = (dstp[x * 2] + dstp[x * 2 + 1]) * 0.5f;
-        if(has_alpha)
+        if (has_alpha)
           effective_mask = (maskp[x * 2] + maskp[x * 2 + 1]) * 0.5f;
       }
       else if constexpr (maskMode == MASK422_MPEG2) {
@@ -2790,8 +2844,8 @@ DISABLE_WARNING_POP
 
 template<typename pixel_t>
 static void layer_rgb32_mul_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
@@ -2799,13 +2853,13 @@ static void layer_rgb32_mul_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pit
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
+    for (int x = 0; x < width; ++x) {
+      calc_t alpha = ((calc_t)ovrp[x * 4 + 3] * level + 1) >> SHIFT;
 
-      dstp[x*4+0] = (pixel_t)(dstp[x*4+0] + ((((((calc_t)ovrp[x*4+0] * dstp[x*4+0]) >> SHIFT) - dstp[x*4+0]) * alpha) >> SHIFT));
-      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + ((((((calc_t)ovrp[x*4+1] * dstp[x*4+1]) >> SHIFT) - dstp[x*4+1]) * alpha) >> SHIFT));
-      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + ((((((calc_t)ovrp[x*4+2] * dstp[x*4+2]) >> SHIFT) - dstp[x*4+2]) * alpha) >> SHIFT));
-      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + ((((((calc_t)ovrp[x*4+3] * dstp[x*4+3]) >> SHIFT) - dstp[x*4+3]) * alpha) >> SHIFT));
+      dstp[x * 4 + 0] = (pixel_t)(dstp[x * 4 + 0] + ((((((calc_t)ovrp[x * 4 + 0] * dstp[x * 4 + 0]) >> SHIFT) - dstp[x * 4 + 0]) * alpha) >> SHIFT));
+      dstp[x * 4 + 1] = (pixel_t)(dstp[x * 4 + 1] + ((((((calc_t)ovrp[x * 4 + 1] * dstp[x * 4 + 1]) >> SHIFT) - dstp[x * 4 + 1]) * alpha) >> SHIFT));
+      dstp[x * 4 + 2] = (pixel_t)(dstp[x * 4 + 2] + ((((((calc_t)ovrp[x * 4 + 2] * dstp[x * 4 + 2]) >> SHIFT) - dstp[x * 4 + 2]) * alpha) >> SHIFT));
+      dstp[x * 4 + 3] = (pixel_t)(dstp[x * 4 + 3] + ((((((calc_t)ovrp[x * 4 + 3] * dstp[x * 4 + 3]) >> SHIFT) - dstp[x * 4 + 3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2814,8 +2868,8 @@ static void layer_rgb32_mul_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pit
 
 template<typename pixel_t>
 static void layer_rgb32_mul_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
@@ -2823,14 +2877,14 @@ static void layer_rgb32_mul_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int
   typedef typename std::conditional < sizeof(pixel_t) == 1, int, int64_t>::type calc_t;
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
-      calc_t luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
+    for (int x = 0; x < width; ++x) {
+      calc_t alpha = ((calc_t)ovrp[x * 4 + 3] * level + 1) >> SHIFT;
+      calc_t luma = (cyb * ovrp[x * 4] + cyg * ovrp[x * 4 + 1] + cyr * ovrp[x * 4 + 2]) >> 15;
 
-      dstp[x*4+0] = (pixel_t)(dstp[x*4+0] + (((((luma * dstp[x*4+0]) >> SHIFT) - dstp[x*4+0]) * alpha) >> SHIFT));
-      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((((luma * dstp[x*4+1]) >> SHIFT) - dstp[x*4+1]) * alpha) >> SHIFT));
-      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((((luma * dstp[x*4+2]) >> SHIFT) - dstp[x*4+2]) * alpha) >> SHIFT));
-      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((((luma * dstp[x*4+3]) >> SHIFT) - dstp[x*4+3]) * alpha) >> SHIFT));
+      dstp[x * 4 + 0] = (pixel_t)(dstp[x * 4 + 0] + (((((luma * dstp[x * 4 + 0]) >> SHIFT) - dstp[x * 4 + 0]) * alpha) >> SHIFT));
+      dstp[x * 4 + 1] = (pixel_t)(dstp[x * 4 + 1] + (((((luma * dstp[x * 4 + 1]) >> SHIFT) - dstp[x * 4 + 1]) * alpha) >> SHIFT));
+      dstp[x * 4 + 2] = (pixel_t)(dstp[x * 4 + 2] + (((((luma * dstp[x * 4 + 2]) >> SHIFT) - dstp[x * 4 + 2]) * alpha) >> SHIFT));
+      dstp[x * 4 + 3] = (pixel_t)(dstp[x * 4 + 3] + (((((luma * dstp[x * 4 + 3]) >> SHIFT) - dstp[x * 4 + 3]) * alpha) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2839,14 +2893,14 @@ static void layer_rgb32_mul_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int
 
 template<typename pixel_t, int bits_per_pixel, bool chroma, bool has_alpha>
 static void layer_planarrgb_mul_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp_g = reinterpret_cast<pixel_t *>(dstp8[0]);
-  pixel_t *dstp_b = reinterpret_cast<pixel_t *>(dstp8[1]);
-  pixel_t *dstp_r = reinterpret_cast<pixel_t *>(dstp8[2]);
-  pixel_t *dstp_a = reinterpret_cast<pixel_t *>(dstp8[3]);
-  const pixel_t *ovrp_g = reinterpret_cast<const pixel_t *>(ovrp8[0]);
-  const pixel_t *ovrp_b = reinterpret_cast<const pixel_t *>(ovrp8[1]);
-  const pixel_t *ovrp_r = reinterpret_cast<const pixel_t *>(ovrp8[2]);
-  const pixel_t *maskp = reinterpret_cast<const pixel_t *>(ovrp8[3]);
+  pixel_t* dstp_g = reinterpret_cast<pixel_t*>(dstp8[0]);
+  pixel_t* dstp_b = reinterpret_cast<pixel_t*>(dstp8[1]);
+  pixel_t* dstp_r = reinterpret_cast<pixel_t*>(dstp8[2]);
+  pixel_t* dstp_a = reinterpret_cast<pixel_t*>(dstp8[3]);
+  const pixel_t* ovrp_g = reinterpret_cast<const pixel_t*>(ovrp8[0]);
+  const pixel_t* ovrp_b = reinterpret_cast<const pixel_t*>(ovrp8[1]);
+  const pixel_t* ovrp_r = reinterpret_cast<const pixel_t*>(ovrp8[2]);
+  const pixel_t* maskp = reinterpret_cast<const pixel_t*>(ovrp8[3]);
 
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
@@ -2857,7 +2911,7 @@ static void layer_planarrgb_mul_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitc
     for (int x = 0; x < width; ++x) {
       calc_t alpha = has_alpha ? ((calc_t)maskp[x] * level + 1) >> bits_per_pixel : level;
 
-      if constexpr(chroma) {
+      if constexpr (chroma) {
         dstp_r[x] = (pixel_t)(dstp_r[x] + ((((((calc_t)ovrp_r[x] * dstp_r[x]) >> bits_per_pixel) - dstp_r[x]) * alpha) >> bits_per_pixel));
         dstp_g[x] = (pixel_t)(dstp_g[x] + ((((((calc_t)ovrp_g[x] * dstp_g[x]) >> bits_per_pixel) - dstp_g[x]) * alpha) >> bits_per_pixel));
         dstp_b[x] = (pixel_t)(dstp_b[x] + ((((((calc_t)ovrp_b[x] * dstp_b[x]) >> bits_per_pixel) - dstp_b[x]) * alpha) >> bits_per_pixel));
@@ -2870,14 +2924,14 @@ static void layer_planarrgb_mul_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitc
         dstp_r[x] = (pixel_t)(dstp_r[x] + (((((luma * dstp_r[x]) >> bits_per_pixel) - dstp_r[x]) * alpha) >> bits_per_pixel));
         dstp_g[x] = (pixel_t)(dstp_g[x] + (((((luma * dstp_g[x]) >> bits_per_pixel) - dstp_g[x]) * alpha) >> bits_per_pixel));
         dstp_b[x] = (pixel_t)(dstp_b[x] + (((((luma * dstp_b[x]) >> bits_per_pixel) - dstp_b[x]) * alpha) >> bits_per_pixel));
-        if constexpr(has_alpha)
+        if constexpr (has_alpha)
           dstp_a[x] = (pixel_t)(dstp_a[x] + (((((luma * dstp_a[x]) >> bits_per_pixel) - dstp_a[x]) * alpha) >> bits_per_pixel));
       }
     }
     dstp_g += dst_pitch;
     dstp_b += dst_pitch;
     dstp_r += dst_pitch;
-    if constexpr(has_alpha)
+    if constexpr (has_alpha)
       dstp_a += dst_pitch;
     ovrp_g += overlay_pitch;
     ovrp_b += overlay_pitch;
@@ -2889,14 +2943,14 @@ static void layer_planarrgb_mul_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitc
 
 template<bool chroma, bool has_alpha>
 static void layer_planarrgb_mul_f_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity) {
-  float *dstp_g = reinterpret_cast<float *>(dstp8[0]);
-  float *dstp_b = reinterpret_cast<float *>(dstp8[1]);
-  float *dstp_r = reinterpret_cast<float *>(dstp8[2]);
-  float *dstp_a = reinterpret_cast<float *>(dstp8[3]);
-  const float *ovrp_g = reinterpret_cast<const float *>(ovrp8[0]);
-  const float *ovrp_b = reinterpret_cast<const float *>(ovrp8[1]);
-  const float *ovrp_r = reinterpret_cast<const float *>(ovrp8[2]);
-  const float *maskp = reinterpret_cast<const float *>(ovrp8[3]);
+  float* dstp_g = reinterpret_cast<float*>(dstp8[0]);
+  float* dstp_b = reinterpret_cast<float*>(dstp8[1]);
+  float* dstp_r = reinterpret_cast<float*>(dstp8[2]);
+  float* dstp_a = reinterpret_cast<float*>(dstp8[3]);
+  const float* ovrp_g = reinterpret_cast<const float*>(ovrp8[0]);
+  const float* ovrp_b = reinterpret_cast<const float*>(ovrp8[1]);
+  const float* ovrp_r = reinterpret_cast<const float*>(ovrp8[2]);
+  const float* maskp = reinterpret_cast<const float*>(ovrp8[3]);
 
   dst_pitch /= sizeof(float);
   overlay_pitch /= sizeof(float);
@@ -2936,8 +2990,8 @@ static void layer_planarrgb_mul_f_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pi
 
 template<typename pixel_t>
 static void layer_rgb32_add_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
@@ -2947,13 +3001,13 @@ static void layer_rgb32_add_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pit
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
+    for (int x = 0; x < width; ++x) {
+      calc_t alpha = ((calc_t)ovrp[x * 4 + 3] * level + 1) >> SHIFT;
 
-      dstp[x*4]   = (pixel_t)(dstp[x*4]   + ((((calc_t)ovrp[x*4]   - dstp[x*4])   * alpha + rounder) >> SHIFT));
-      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + ((((calc_t)ovrp[x*4+1] - dstp[x*4+1]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + ((((calc_t)ovrp[x*4+2] - dstp[x*4+2]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + ((((calc_t)ovrp[x*4+3] - dstp[x*4+3]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4] = (pixel_t)(dstp[x * 4] + ((((calc_t)ovrp[x * 4] - dstp[x * 4]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 1] = (pixel_t)(dstp[x * 4 + 1] + ((((calc_t)ovrp[x * 4 + 1] - dstp[x * 4 + 1]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 2] = (pixel_t)(dstp[x * 4 + 2] + ((((calc_t)ovrp[x * 4 + 2] - dstp[x * 4 + 2]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 3] = (pixel_t)(dstp[x * 4 + 3] + ((((calc_t)ovrp[x * 4 + 3] - dstp[x * 4 + 3]) * alpha + rounder) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2962,8 +3016,8 @@ static void layer_rgb32_add_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pit
 
 template<typename pixel_t>
 static void layer_rgb32_add_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
@@ -2973,14 +3027,14 @@ static void layer_rgb32_add_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
-      calc_t luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
+    for (int x = 0; x < width; ++x) {
+      calc_t alpha = ((calc_t)ovrp[x * 4 + 3] * level + 1) >> SHIFT;
+      calc_t luma = (cyb * ovrp[x * 4] + cyg * ovrp[x * 4 + 1] + cyr * ovrp[x * 4 + 2]) >> 15;
 
-      dstp[x*4]   = (pixel_t)(dstp[x*4]   + (((luma - dstp[x*4])   * alpha + rounder) >> SHIFT));
-      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4] = (pixel_t)(dstp[x * 4] + (((luma - dstp[x * 4]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 1] = (pixel_t)(dstp[x * 4 + 1] + (((luma - dstp[x * 4 + 1]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 2] = (pixel_t)(dstp[x * 4 + 2] + (((luma - dstp[x * 4 + 2]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 3] = (pixel_t)(dstp[x * 4 + 3] + (((luma - dstp[x * 4 + 3]) * alpha + rounder) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -2989,14 +3043,14 @@ static void layer_rgb32_add_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int
 
 template<typename pixel_t, int bits_per_pixel, bool chroma, bool has_alpha, bool subtract>
 static void layer_planarrgb_add_subtract_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp_g = reinterpret_cast<pixel_t *>(dstp8[0]);
-  pixel_t *dstp_b = reinterpret_cast<pixel_t *>(dstp8[1]);
-  pixel_t *dstp_r = reinterpret_cast<pixel_t *>(dstp8[2]);
-  pixel_t *dstp_a = reinterpret_cast<pixel_t *>(dstp8[3]);
-  const pixel_t *ovrp_g = reinterpret_cast<const pixel_t *>(ovrp8[0]);
-  const pixel_t *ovrp_b = reinterpret_cast<const pixel_t *>(ovrp8[1]);
-  const pixel_t *ovrp_r = reinterpret_cast<const pixel_t *>(ovrp8[2]);
-  const pixel_t *maskp = reinterpret_cast<const pixel_t *>(ovrp8[3]);
+  pixel_t* dstp_g = reinterpret_cast<pixel_t*>(dstp8[0]);
+  pixel_t* dstp_b = reinterpret_cast<pixel_t*>(dstp8[1]);
+  pixel_t* dstp_r = reinterpret_cast<pixel_t*>(dstp8[2]);
+  pixel_t* dstp_a = reinterpret_cast<pixel_t*>(dstp8[3]);
+  const pixel_t* ovrp_g = reinterpret_cast<const pixel_t*>(ovrp8[0]);
+  const pixel_t* ovrp_b = reinterpret_cast<const pixel_t*>(ovrp8[1]);
+  const pixel_t* ovrp_r = reinterpret_cast<const pixel_t*>(ovrp8[2]);
+  const pixel_t* maskp = reinterpret_cast<const pixel_t*>(ovrp8[3]);
 
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
@@ -3063,14 +3117,14 @@ static void layer_planarrgb_add_subtract_c(BYTE** dstp8, const BYTE** ovrp8, int
 
 template<bool chroma, bool has_alpha, bool subtract>
 static void layer_planarrgb_add_subtract_f_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity) {
-  float *dstp_g = reinterpret_cast<float *>(dstp8[0]);
-  float *dstp_b = reinterpret_cast<float *>(dstp8[1]);
-  float *dstp_r = reinterpret_cast<float *>(dstp8[2]);
-  float *dstp_a = reinterpret_cast<float *>(dstp8[3]);
-  const float *ovrp_g = reinterpret_cast<const float *>(ovrp8[0]);
-  const float *ovrp_b = reinterpret_cast<const float *>(ovrp8[1]);
-  const float *ovrp_r = reinterpret_cast<const float *>(ovrp8[2]);
-  const float *maskp = reinterpret_cast<const float *>(ovrp8[3]);
+  float* dstp_g = reinterpret_cast<float*>(dstp8[0]);
+  float* dstp_b = reinterpret_cast<float*>(dstp8[1]);
+  float* dstp_r = reinterpret_cast<float*>(dstp8[2]);
+  float* dstp_a = reinterpret_cast<float*>(dstp8[3]);
+  const float* ovrp_g = reinterpret_cast<const float*>(ovrp8[0]);
+  const float* ovrp_b = reinterpret_cast<const float*>(ovrp8[1]);
+  const float* ovrp_r = reinterpret_cast<const float*>(ovrp8[2]);
+  const float* maskp = reinterpret_cast<const float*>(ovrp8[3]);
 
   dst_pitch /= sizeof(float);
   overlay_pitch /= sizeof(float);
@@ -3152,14 +3206,14 @@ static void layer_planarrgb_subtract_f_c(BYTE** dstp8, const BYTE** ovrp8, int d
 
 template<typename pixel_t>
 static void layer_rgb32_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  layer_genericplane_fast_c<pixel_t>(dstp, ovrp, dst_pitch, overlay_pitch, width*4, height, level);
+  layer_genericplane_fast_c<pixel_t>(dstp, ovrp, dst_pitch, overlay_pitch, width * 4, height, level);
 }
 
 
 template<typename pixel_t>
 static void layer_rgb32_subtract_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
@@ -3170,13 +3224,13 @@ static void layer_rgb32_subtract_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int ds
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
+    for (int x = 0; x < width; ++x) {
+      calc_t alpha = ((calc_t)ovrp[x * 4 + 3] * level + 1) >> SHIFT;
 
-      dstp[x*4]   = (pixel_t)(dstp[x*4]   + (((MAX_PIXEL_VALUE - ovrp[x*4]   - dstp[x*4])   * alpha + rounder) >> SHIFT));
-      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((MAX_PIXEL_VALUE - ovrp[x*4+1] - dstp[x*4+1]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((MAX_PIXEL_VALUE - ovrp[x*4+2] - dstp[x*4+2]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((MAX_PIXEL_VALUE - ovrp[x*4+3] - dstp[x*4+3]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4] = (pixel_t)(dstp[x * 4] + (((MAX_PIXEL_VALUE - ovrp[x * 4] - dstp[x * 4]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 1] = (pixel_t)(dstp[x * 4 + 1] + (((MAX_PIXEL_VALUE - ovrp[x * 4 + 1] - dstp[x * 4 + 1]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 2] = (pixel_t)(dstp[x * 4 + 2] + (((MAX_PIXEL_VALUE - ovrp[x * 4 + 2] - dstp[x * 4 + 2]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 3] = (pixel_t)(dstp[x * 4 + 3] + (((MAX_PIXEL_VALUE - ovrp[x * 4 + 3] - dstp[x * 4 + 3]) * alpha + rounder) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -3185,8 +3239,8 @@ static void layer_rgb32_subtract_chroma_c(BYTE* dstp8, const BYTE* ovrp8, int ds
 
 template<typename pixel_t>
 static void layer_rgb32_subtract_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
@@ -3197,14 +3251,14 @@ static void layer_rgb32_subtract_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
-      calc_t luma = (cyb * (MAX_PIXEL_VALUE - ovrp[x*4]) + cyg * (MAX_PIXEL_VALUE - ovrp[x*4+1]) + cyr * (MAX_PIXEL_VALUE - ovrp[x*4+2])) >> 15;
+    for (int x = 0; x < width; ++x) {
+      calc_t alpha = ((calc_t)ovrp[x * 4 + 3] * level + 1) >> SHIFT;
+      calc_t luma = (cyb * (MAX_PIXEL_VALUE - ovrp[x * 4]) + cyg * (MAX_PIXEL_VALUE - ovrp[x * 4 + 1]) + cyr * (MAX_PIXEL_VALUE - ovrp[x * 4 + 2])) >> 15;
 
-      dstp[x*4]   = (pixel_t)(dstp[x*4]   + (((luma - dstp[x*4])   * alpha + rounder) >> SHIFT));
-      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4] = (pixel_t)(dstp[x * 4] + (((luma - dstp[x * 4]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 1] = (pixel_t)(dstp[x * 4 + 1] + (((luma - dstp[x * 4 + 1]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 2] = (pixel_t)(dstp[x * 4 + 2] + (((luma - dstp[x * 4 + 2]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 3] = (pixel_t)(dstp[x * 4 + 3] + (((luma - dstp[x * 4 + 3]) * alpha + rounder) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -3214,8 +3268,8 @@ static void layer_rgb32_subtract_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch
 
 template<int mode, typename pixel_t>
 static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
-  pixel_t *dstp = reinterpret_cast<pixel_t *>(dstp8);
-  const pixel_t *ovrp = reinterpret_cast<const pixel_t *>(ovrp8);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  const pixel_t* ovrp = reinterpret_cast<const pixel_t*>(ovrp8);
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
   const int SHIFT = sizeof(pixel_t) == 1 ? 8 : 16;
@@ -3225,20 +3279,20 @@ static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst
   constexpr int rounder = sizeof(pixel_t) == 1 ? 128 : 32768;
 
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      calc_t alpha = ((calc_t)ovrp[x*4+3] * level + 1) >> SHIFT;
-      int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
-      int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
+    for (int x = 0; x < width; ++x) {
+      calc_t alpha = ((calc_t)ovrp[x * 4 + 3] * level + 1) >> SHIFT;
+      int luma_ovr = (cyb * ovrp[x * 4] + cyg * ovrp[x * 4 + 1] + cyr * ovrp[x * 4 + 2]) >> 15;
+      int luma_src = (cyb * dstp[x * 4] + cyg * dstp[x * 4 + 1] + cyr * dstp[x * 4 + 2]) >> 15;
 
       if constexpr (mode == LIGHTEN)
         alpha = luma_ovr > luma_src + thresh ? alpha : 0;
       else // DARKEN
         alpha = luma_ovr < luma_src - thresh ? alpha : 0;
 
-      dstp[x*4]   = (pixel_t)(dstp[x*4]   + ((((calc_t)ovrp[x*4]   - dstp[x*4])   * alpha + rounder) >> SHIFT));
-      dstp[x*4+1] = (pixel_t)(dstp[x*4+1] + ((((calc_t)ovrp[x*4+1] - dstp[x*4+1]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+2] = (pixel_t)(dstp[x*4+2] + ((((calc_t)ovrp[x*4+2] - dstp[x*4+2]) * alpha + rounder) >> SHIFT));
-      dstp[x*4+3] = (pixel_t)(dstp[x*4+3] + ((((calc_t)ovrp[x*4+3] - dstp[x*4+3]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4] = (pixel_t)(dstp[x * 4] + ((((calc_t)ovrp[x * 4] - dstp[x * 4]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 1] = (pixel_t)(dstp[x * 4 + 1] + ((((calc_t)ovrp[x * 4 + 1] - dstp[x * 4 + 1]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 2] = (pixel_t)(dstp[x * 4 + 2] + ((((calc_t)ovrp[x * 4 + 2] - dstp[x * 4 + 2]) * alpha + rounder) >> SHIFT));
+      dstp[x * 4 + 3] = (pixel_t)(dstp[x * 4 + 3] + ((((calc_t)ovrp[x * 4 + 3] - dstp[x * 4 + 3]) * alpha + rounder) >> SHIFT));
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -3247,14 +3301,14 @@ static void layer_rgb32_lighten_darken_c(BYTE* dstp8, const BYTE* ovrp8, int dst
 
 template<int mode, typename pixel_t, int bits_per_pixel, bool has_alpha>
 static void layer_planarrgb_lighten_darken_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) {
-  pixel_t *dstp_g = reinterpret_cast<pixel_t *>(dstp8[0]);
-  pixel_t *dstp_b = reinterpret_cast<pixel_t *>(dstp8[1]);
-  pixel_t *dstp_r = reinterpret_cast<pixel_t *>(dstp8[2]);
-  pixel_t *dstp_a = reinterpret_cast<pixel_t *>(dstp8[3]);
-  const pixel_t *ovrp_g = reinterpret_cast<const pixel_t *>(ovrp8[0]);
-  const pixel_t *ovrp_b = reinterpret_cast<const pixel_t *>(ovrp8[1]);
-  const pixel_t *ovrp_r = reinterpret_cast<const pixel_t *>(ovrp8[2]);
-  const pixel_t *maskp = reinterpret_cast<const pixel_t *>(ovrp8[3]);
+  pixel_t* dstp_g = reinterpret_cast<pixel_t*>(dstp8[0]);
+  pixel_t* dstp_b = reinterpret_cast<pixel_t*>(dstp8[1]);
+  pixel_t* dstp_r = reinterpret_cast<pixel_t*>(dstp8[2]);
+  pixel_t* dstp_a = reinterpret_cast<pixel_t*>(dstp8[3]);
+  const pixel_t* ovrp_g = reinterpret_cast<const pixel_t*>(ovrp8[0]);
+  const pixel_t* ovrp_b = reinterpret_cast<const pixel_t*>(ovrp8[1]);
+  const pixel_t* ovrp_r = reinterpret_cast<const pixel_t*>(ovrp8[2]);
+  const pixel_t* maskp = reinterpret_cast<const pixel_t*>(ovrp8[3]);
 
   dst_pitch /= sizeof(pixel_t);
   overlay_pitch /= sizeof(pixel_t);
@@ -3296,14 +3350,14 @@ static void layer_planarrgb_lighten_darken_c(BYTE** dstp8, const BYTE** ovrp8, i
 
 template<int mode, bool has_alpha>
 static void layer_planarrgb_lighten_darken_f_c(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity, float thresh) {
-  float *dstp_g = reinterpret_cast<float *>(dstp8[0]);
-  float *dstp_b = reinterpret_cast<float *>(dstp8[1]);
-  float *dstp_r = reinterpret_cast<float *>(dstp8[2]);
-  float *dstp_a = reinterpret_cast<float *>(dstp8[3]);
-  const float *ovrp_g = reinterpret_cast<const float *>(ovrp8[0]);
-  const float *ovrp_b = reinterpret_cast<const float *>(ovrp8[1]);
-  const float *ovrp_r = reinterpret_cast<const float *>(ovrp8[2]);
-  const float *maskp = reinterpret_cast<const float *>(ovrp8[3]);
+  float* dstp_g = reinterpret_cast<float*>(dstp8[0]);
+  float* dstp_b = reinterpret_cast<float*>(dstp8[1]);
+  float* dstp_r = reinterpret_cast<float*>(dstp8[2]);
+  float* dstp_a = reinterpret_cast<float*>(dstp8[3]);
+  const float* ovrp_g = reinterpret_cast<const float*>(ovrp8[0]);
+  const float* ovrp_b = reinterpret_cast<const float*>(ovrp8[1]);
+  const float* ovrp_r = reinterpret_cast<const float*>(ovrp8[2]);
+  const float* maskp = reinterpret_cast<const float*>(ovrp8[3]);
 
   dst_pitch /= sizeof(float);
   overlay_pitch /= sizeof(float);
@@ -3343,20 +3397,20 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
 
-  if (xcount<=0 || ycount<=0) return src1;
+  if (xcount <= 0 || ycount <= 0) return src1;
 
-  PVideoFrame src2 = child2->GetFrame(min(n,overlay_frames-1), env);
+  PVideoFrame src2 = child2->GetFrame(min(n, overlay_frames - 1), env);
 
   env->MakeWritable(&src1);
 
   const int mylevel = hasAlpha ? (int)(opacity * ((1 << bits_per_pixel) + 1) + 0.5f) : (int)(opacity * (1 << bits_per_pixel) + 0.5f);
-    // Alpha mode: opacity of 1.0f gives 257 (@8bit) and 65537 (@16 bits), used in (alpha*level + 1) / range_size,
-    // non-Alpha mode: 1.0f gives 256 (@8bit)
+  // Alpha mode: opacity of 1.0f gives 257 (@8bit) and 65537 (@16 bits), used in (alpha*level + 1) / range_size,
+  // non-Alpha mode: 1.0f gives 256 (@8bit)
 
   const int height = ycount; // these may be divided by subsampling factor
   const int width = xcount;
 
-  if(vi.IsYUY2()) {
+  if (vi.IsYUY2()) {
     const int src1_pitch = src1->GetPitch();
     const int src2_pitch = src2->GetPitch();
     BYTE* src1p = src1->GetWritePtr();
@@ -3368,35 +3422,187 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     if (!lstrcmpi(Op, "Mul"))
     {
       if (chroma) // Use chroma of the overlay_clip.
+      {
+#ifdef INTEL_INTRINSICS
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_yuy2_mul_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if (env->GetCPUFlags() & CPUF_MMX)
+        {
+          layer_yuy2_mul_mmx<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
+
           layer_yuy2_mul_c<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-      else
+        }
+
+      }
+      else {
+#ifdef INTEL_INTRINSICS
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_yuy2_mul_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if (env->GetCPUFlags() & CPUF_MMX)
+        {
+          layer_yuy2_mul_mmx<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
           layer_yuy2_mul_c<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+      }
     }
     if (!lstrcmpi(Op, "Add"))
     {
       if (chroma)
+      {
+#ifdef INTEL_INTRINSICS
+        if (env->GetCPUFlags() & CPUF_SSE2)
+        {
+          layer_yuy2_add_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if (env->GetCPUFlags() & CPUF_MMX)
+        {
+          layer_yuy2_add_mmx<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
           layer_yuy2_add_c<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-      else
+        }
+      }
+      else {
+#ifdef INTEL_INTRINSICS
+        if (env->GetCPUFlags() & CPUF_SSE2)
+        {
+          layer_yuy2_add_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if (env->GetCPUFlags() & CPUF_MMX)
+        {
+          layer_yuy2_add_mmx<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
           layer_yuy2_add_c<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+      }
     }
     if (!lstrcmpi(Op, "Fast"))
     {
-      if (chroma)
+      if (chroma) {
+#ifdef INTEL_INTRINSICS
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_yuy2_fast_sse2(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+        {
+          layer_yuy2_fast_isse(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
           layer_yuy2_fast_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+      }
       else
+      {
         env->ThrowError("Layer: this mode not allowed in FAST; use ADD instead");
+      }
     }
     if (!lstrcmpi(Op, "Subtract"))
     {
-      if (chroma)
+      if (chroma) {
+#ifdef INTEL_INTRINSICS
+        if (env->GetCPUFlags() & CPUF_SSE2)
+        {
+          layer_yuy2_subtract_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if (env->GetCPUFlags() & CPUF_MMX)
+        {
+          layer_yuy2_subtract_mmx<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
           layer_yuy2_subtract_c<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-      else
+        }
+      }
+      else {
+#ifdef INTEL_INTRINSICS
+        if (env->GetCPUFlags() & CPUF_SSE2)
+        {
+          layer_yuy2_subtract_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if (env->GetCPUFlags() & CPUF_MMX)
+        {
+          layer_yuy2_subtract_mmx<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
           layer_yuy2_subtract_c<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+      }
     }
-    if (!lstrcmpi(Op, "Lighten"))
+    if (!lstrcmpi(Op, "Lighten")) {
+      // only chroma == true
+#ifdef INTEL_INTRINSICS
+      if (env->GetCPUFlags() & CPUF_SSE2)
+      {
+        layer_yuy2_lighten_darken_sse2<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
+      }
+#ifdef X86_32
+      else if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+      {
+        layer_yuy2_lighten_darken_isse<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
+      }
+#endif
+      else
+#endif
+      {
         layer_yuy2_lighten_darken_c<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
-    if (!lstrcmpi(Op, "Darken"))
+      }
+    }
+    if (!lstrcmpi(Op, "Darken")) {
+      // only chroma == true
+#ifdef INTEL_INTRINSICS
+      if (env->GetCPUFlags() & CPUF_SSE2)
+      {
+        layer_yuy2_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
+      }
+#ifdef X86_32
+      else if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+      {
+        layer_yuy2_lighten_darken_isse<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
+      }
+#endif
+      else
+#endif
+      {
         layer_yuy2_lighten_darken_c<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, ThresholdParam);
+      }
+    }
   }
   else if (vi.IsRGB32() || vi.IsRGB64())
   {
@@ -3418,17 +3624,47 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma)
       {
-          if(pixelsize == 1)
+#ifdef INTEL_INTRINSICS
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+        {
+          layer_rgb32_mul_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+        {
+          layer_rgb32_mul_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
+          if (pixelsize == 1)
             layer_rgb32_mul_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_mul_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
       }
       else // Mul, chroma==false
       {
-          if(pixelsize == 1)
+#ifdef INTEL_INTRINSICS
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+        {
+          layer_rgb32_mul_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+        {
+          layer_rgb32_mul_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
+          if (pixelsize == 1)
             layer_rgb32_mul_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_mul_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
       }
     }
     if (!lstrcmpi(Op, "Add"))
@@ -3438,36 +3674,96 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // yuy2: base = base + ((overlay-base)*(      level    )/256)/256 (no alpha)
       if (chroma)
       {
-          if(pixelsize == 1)
+#ifdef INTEL_INTRINSICS
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+        {
+          layer_rgb32_add_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+        {
+          layer_rgb32_add_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
+          if (pixelsize == 1)
             layer_rgb32_add_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_add_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
       }
       else // Add, chroma == false
       {
-          if(pixelsize == 1)
+#ifdef INTEL_INTRINSICS
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+        {
+          layer_rgb32_add_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+        {
+          layer_rgb32_add_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
+          if (pixelsize == 1)
             layer_rgb32_add_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_add_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
       }
     }
     if (!lstrcmpi(Op, "Lighten"))
     {
       // Copy overlay_clip over base_clip in areas where overlay_clip is lighter by threshold.
       // only chroma == true
+#ifdef INTEL_INTRINSICS
+      if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+      {
+        layer_rgb32_lighten_darken_sse2<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+      }
+#ifdef X86_32
+      else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      {
+        layer_rgb32_lighten_darken_isse<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+      }
+#endif
+      else
+#endif 
+      {
         if (pixelsize == 1)
           layer_rgb32_lighten_darken_c<LIGHTEN, uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         else
           layer_rgb32_lighten_darken_c<LIGHTEN, uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+      }
     }
     if (!lstrcmpi(Op, "Darken"))
     {
       // Copy overlay_clip over base_clip in areas where overlay_clip is darker by threshold.
       // only chroma == true
+#ifdef INTEL_INTRINSICS
+      if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+      {
+        layer_rgb32_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+      }
+#ifdef X86_32
+      else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      {
+        layer_rgb32_lighten_darken_isse<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+      }
+#endif
+      else
+#endif
+      {
         if (pixelsize == 1)
           layer_rgb32_lighten_darken_c<DARKEN, uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         else
           layer_rgb32_lighten_darken_c<DARKEN, uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+      }
     }
     if (!lstrcmpi(Op, "Fast"))
     {
@@ -3475,10 +3771,25 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // use_chroma must be true; level and threshold are not used.
       // The result is simply the average of base_clip and overlay_clip.
       // only chroma == true
+#ifdef INTEL_INTRINSICS
+      if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+      {
+        layer_rgb32_fast_sse2(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+      }
+#ifdef X86_32
+      else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      {
+        layer_rgb32_fast_isse(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+      }
+#endif
+      else
+#endif
+      {
         if (pixelsize == 1)
           layer_rgb32_fast_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         else // rgb64
           layer_rgb32_fast_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+      }
     }
     if (!lstrcmpi(Op, "Subtract"))
     {
@@ -3486,21 +3797,52 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // Similar to add, but overlay_clip is inverted before adding.
       if (chroma)
       {
-          if(pixelsize==1)
+#ifdef INTEL_INTRINSICS
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+        {
+          layer_rgb32_subtract_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+        {
+          layer_rgb32_subtract_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
+          if (pixelsize == 1)
             layer_rgb32_subtract_chroma_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_subtract_chroma_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
       }
       else
       {
-          if(pixelsize==1)
+#ifdef INTEL_INTRINSICS
+        if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2))
+        {
+          layer_rgb32_subtract_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#ifdef X86_32
+        else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+        {
+          layer_rgb32_subtract_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
+#endif
+        else
+#endif
+        {
+          if (pixelsize == 1)
             layer_rgb32_subtract_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
           else
             layer_rgb32_subtract_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        }
       }
     }
   }
-  else if (vi.IsYUV() || vi.IsYUVA()) {
+  else if (vi.IsYUV() || vi.IsYUVA())
+  {
     // planar YUV(A) source
 
     const int pixelsize = vi.ComponentSize();
@@ -3524,8 +3866,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       const int ws = grey ? 1 : vi.GetPlaneWidthSubsampling(PLANAR_U);
       const int hs = grey ? 1 : vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      BYTE* src1p = src1->GetWritePtr(PLANAR_Y) + src1_pitch * (ydest)+(xdest)* pixelsize; // in-place source and destination
-      const BYTE* src2p = src2->GetReadPtr(PLANAR_Y) + src2_pitch * (ysrc)+(xsrc)* pixelsize; // overlay
+      BYTE* src1p = src1->GetWritePtr(PLANAR_Y) + src1_pitch * (ydest)+(xdest)*pixelsize; // in-place source and destination
+      const BYTE* src2p = src2->GetReadPtr(PLANAR_Y) + src2_pitch * (ysrc)+(xsrc)*pixelsize; // overlay
 
       BYTE* src1p_u = grey ? nullptr : src1->GetWritePtr(PLANAR_U) + src1_pitchUV * (ydest >> hs) + (xdest >> ws) * pixelsize;
       const BYTE* src2p_u = grey ? nullptr : src2->GetReadPtr(PLANAR_U) + src2_pitchUV * (ysrc >> hs) + (xsrc >> ws) * pixelsize;
@@ -3535,7 +3877,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
       // target alpha channel is unaffected
       //BYTE* src1p_a = hasAlpha ? src1->GetWritePtr(PLANAR_Y) + src1_pitch * (ydest)+(xdest)* pixelsize : nullptr;
-      const BYTE* maskp = hasAlpha ? src2->GetReadPtr(PLANAR_A) + src2_pitch * (ysrc)+(xsrc)* pixelsize : nullptr; // overlay alpha
+      const BYTE* maskp = hasAlpha ? src2->GetReadPtr(PLANAR_A) + src2_pitch * (ysrc)+(xsrc)*pixelsize : nullptr; // overlay alpha
       const int mask_pitch = src2->GetPitch(PLANAR_A);
 
       // called only once, for all planes
@@ -3546,7 +3888,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         int overlay_pitch, int overlay_pitchUV,
         int mask_pitch,
         int width, int height, int level, int thresh);
-      layer_yuv_lighten_darken_c_t *layer_fn = nullptr;
+      layer_yuv_lighten_darken_c_t* layer_fn = nullptr;
 
       // 32 bit float version
       using layer_yuv_lighten_darken_f_c_t = void (BYTE* dstp8, BYTE* dstp8_u, BYTE* dstp8_v,
@@ -3555,7 +3897,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         int overlay_pitch, int overlay_pitchUV,
         int mask_pitch,
         int width, int height, float level, float thresh);
-      layer_yuv_lighten_darken_f_c_t *layer_f_fn = nullptr;
+      layer_yuv_lighten_darken_f_c_t* layer_f_fn = nullptr;
 
 #define YUV_LIGHTEN_DARKEN_DISPATCH(L_or_D, MaskType, lumaonly, has_alpha) \
       switch (bits_per_pixel) { \
@@ -3578,7 +3920,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
             YUV_LIGHTEN_DARKEN_DISPATCH(LIGHTEN, MASK420, false, false)
           else
             YUV_LIGHTEN_DARKEN_DISPATCH(LIGHTEN, MASK420_MPEG2, false, false);
-            // PLACEMENT_MPEG2
+          // PLACEMENT_MPEG2
         }
         else if (vi.Is422())
         {
@@ -3714,42 +4056,42 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
           if (is_chroma) // not luma channel
           {
             //YUV_MUL_CHROMA_DISPATCH
-              if (vi.IsYV411())
-              {
-                if (chroma) layer_yuv_mul_c<MASK411, uint8_t, 8, true, true, false /*has_alpha*/>(src1p, src2p, maskp, src1_pitch, src2_pitch, mask_pitch, currentwidth, currentheight, mylevel); \
-                else layer_yuv_mul_c<MASK411, uint8_t, 8, true, false, false /*has_alpha*/>(src1p, src2p, maskp, src1_pitch, src2_pitch, mask_pitch, currentwidth, currentheight, mylevel); \
+            if (vi.IsYV411())
+            {
+              if (chroma) layer_yuv_mul_c<MASK411, uint8_t, 8, true, true, false /*has_alpha*/>(src1p, src2p, maskp, src1_pitch, src2_pitch, mask_pitch, currentwidth, currentheight, mylevel); \
+              else layer_yuv_mul_c<MASK411, uint8_t, 8, true, false, false /*has_alpha*/>(src1p, src2p, maskp, src1_pitch, src2_pitch, mask_pitch, currentwidth, currentheight, mylevel); \
                 // no 411 Alpha version
+            }
+            else if (vi.Is420())
+            {
+              if (placement == PLACEMENT_MPEG1) {
+                if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK420, true)
+                else YUV_MUL_CHROMA_DISPATCH(MASK420, false)
               }
-              else if (vi.Is420())
-              {
-                if (placement == PLACEMENT_MPEG1) {
-                  if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK420, true)
-                  else YUV_MUL_CHROMA_DISPATCH(MASK420, false)
-                }
-                else {
-                  if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK420_MPEG2, true)
-                  else YUV_MUL_CHROMA_DISPATCH(MASK420_MPEG2, false)
-                }
+              else {
+                if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK420_MPEG2, true)
+                else YUV_MUL_CHROMA_DISPATCH(MASK420_MPEG2, false)
               }
-              else if (vi.Is422())
-              {
-                if (placement == PLACEMENT_MPEG1) {
-                  if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK422, true)
-                  else YUV_MUL_CHROMA_DISPATCH(MASK422, false)
-                }
-                else {
-                  if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK422_MPEG2, true)
-                  else YUV_MUL_CHROMA_DISPATCH(MASK422_MPEG2, false)
-                }
+            }
+            else if (vi.Is422())
+            {
+              if (placement == PLACEMENT_MPEG1) {
+                if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK422, true)
+                else YUV_MUL_CHROMA_DISPATCH(MASK422, false)
               }
-              else if (vi.Is444())
-              {
-                if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK444, true)
-                else YUV_MUL_CHROMA_DISPATCH(MASK444, false)
+              else {
+                if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK422_MPEG2, true)
+                else YUV_MUL_CHROMA_DISPATCH(MASK422_MPEG2, false)
               }
-              else if (vi.IsY()) {
-                // n/a
-              }
+            }
+            else if (vi.Is444())
+            {
+              if (hasAlpha) YUV_MUL_CHROMA_DISPATCH(MASK444, true)
+              else YUV_MUL_CHROMA_DISPATCH(MASK444, false)
+            }
+            else if (vi.IsY()) {
+              // n/a
+            }
           }
           else
           {
@@ -3803,6 +4145,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
             case 32: layer_yuv_add_f_c<MaskType, false, false, has_alpha>(src1p, src2p, maskp, src1_pitch, src2_pitch, mask_pitch, currentwidth, currentheight, opacity); break; \
             }
 
+          // todo sse2, except 8 bit and float, vs2017 compiler is optimizing well
           // parameter chroma: Use chroma of the overlay_clip.
 
           if (is_chroma) // not luma channel
@@ -3859,12 +4202,24 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         if (!lstrcmpi(Op, "Fast"))
         {
           // only chroma == true
+#ifdef INTEL_INTRINSICS
+          if (env->GetCPUFlags() & CPUF_SSE2 && bits_per_pixel != 32)
+          {
+            if (bits_per_pixel == 8)
+              layer_genericplane_fast_sse2<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, currentwidth, currentheight, mylevel);
+            else if (bits_per_pixel <= 16) // simply averaging, no difference for 10-16 bits
+              layer_genericplane_fast_sse2<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, currentwidth, currentheight, mylevel);
+          }
+          else
+#endif
+          {
             if (bits_per_pixel == 8)
               layer_genericplane_fast_c<uint8_t>(src1p, src2p, src1_pitch, src2_pitch, currentwidth, currentheight, mylevel);
             else if (bits_per_pixel <= 16) // simply averaging, no difference for 10-16 bits
               layer_genericplane_fast_c<uint16_t>(src1p, src2p, src1_pitch, src2_pitch, currentwidth, currentheight, mylevel);
             else // 32 bit
               layer_genericplane_fast_f_c(src1p, src2p, src1_pitch, src2_pitch, currentwidth, currentheight, opacity /*n/a*/);
+          }
         }
         if (!lstrcmpi(Op, "Subtract"))
         {
@@ -3963,7 +4318,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     } // if lighten/darken else
 
   }
-  else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
+  else if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
+  {
     const int pixelsize = vi.ComponentSize();
 
     BYTE* dstp[4];
@@ -3985,11 +4341,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // called only once, for all planes
       // integer 8-16 bits version
       using layer_planarrgb_mul_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level);
-      layer_planarrgb_mul_c_t *layer_fn = nullptr;
+      layer_planarrgb_mul_c_t* layer_fn = nullptr;
 
       // 32 bit float version
       using layer_planarrgb_mul_f_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity);
-      layer_planarrgb_mul_f_c_t *layer_f_fn = nullptr;
+      layer_planarrgb_mul_f_c_t* layer_f_fn = nullptr;
 
 #define PLANARRGB_MUL_DISPATCH(chroma, has_alpha) \
       switch (bits_per_pixel) { \
@@ -4033,11 +4389,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // called only once, for all planes
       // integer 8-16 bits version
       using layer_planarrgb_add_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level);
-      layer_planarrgb_add_c_t *layer_fn = nullptr;
+      layer_planarrgb_add_c_t* layer_fn = nullptr;
 
       // 32 bit float version
       using layer_planarrgb_add_f_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity);
-      layer_planarrgb_add_f_c_t *layer_f_fn = nullptr;
+      layer_planarrgb_add_f_c_t* layer_f_fn = nullptr;
 
       if (isAdd) {
 #define PLANARRGB_ADD_DISPATCH(chroma, has_alpha) \
@@ -4118,11 +4474,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // called only once, for all planes
       // integer 8-16 bits version
       using layer_planarrgb_lighten_darken_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh);
-      layer_planarrgb_lighten_darken_c_t *layer_fn = nullptr;
+      layer_planarrgb_lighten_darken_c_t* layer_fn = nullptr;
 
       // 32 bit float version
       using layer_planarrgb_lighten_darken_f_c_t = void(BYTE** dstp8, const BYTE** ovrp8, int dst_pitch, int overlay_pitch, int width, int height, float opacity, float thresh);
-      layer_planarrgb_lighten_darken_f_c_t *layer_f_fn = nullptr;
+      layer_planarrgb_lighten_darken_f_c_t* layer_f_fn = nullptr;
 
 #define PLANARRGB_LD_DISPATCH(LorD, has_alpha) \
       switch (bits_per_pixel) { \
@@ -4163,12 +4519,24 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       // only chroma == true
       // target alpha channel is unaffected
       for (int i = 0; i < std::min(vi.NumComponents(), 3); i++) {
+#ifdef INTEL_INTRINSICS
+        if (env->GetCPUFlags() & CPUF_SSE2 && bits_per_pixel != 32)
+        {
+          if (bits_per_pixel == 8)
+            layer_genericplane_fast_sse2<uint8_t>(dstp[i], ovrp[i], dstp_pitch, ovrp_pitch, width, height, mylevel);
+          else if (bits_per_pixel <= 16) // simply averaging, no difference for 10-16 bits
+            layer_genericplane_fast_sse2<uint16_t>(dstp[i], ovrp[i], dstp_pitch, ovrp_pitch, width, height, mylevel);
+        }
+        else
+#endif
+        {
           if (bits_per_pixel == 8)
             layer_genericplane_fast_c<uint8_t>(dstp[i], ovrp[i], dstp_pitch, ovrp_pitch, width, height, mylevel);
           else if (bits_per_pixel <= 16) // simply averaging, no difference for 10-16 bits
             layer_genericplane_fast_c<uint16_t>(dstp[i], ovrp[i], dstp_pitch, ovrp_pitch, width, height, mylevel);
           else // 32 bit
             layer_genericplane_fast_f_c(dstp[i], ovrp[i], dstp_pitch, ovrp_pitch, width, height, opacity /*n/a*/);
+        }
       }
     }
     // Layer planar RGB(A) end
@@ -4284,25 +4652,25 @@ Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
 
   if (!DiffFlag) { // Init the global Diff table
     DiffFlag = true;
-    for (int i=0; i<=512; i++) LUT_Diff8[i] = max(0,min(255,i-129));
+    for (int i = 0; i <= 512; i++) LUT_Diff8[i] = max(0, min(255, i - 129));
     // 0 ..  129  130 131   ... 255 256 257 258     384 ... 512
     // 0 ..   0    1   2  3 ... 126 127 128 129 ... 255 ... 255
   }
 }
 
 template<typename pixel_t, int midpixel, bool chroma>
-static void subtract_plane(BYTE *src1p, const BYTE *src2p, int src1_pitch, int src2_pitch, int width, int height, int bits_per_pixel)
+static void subtract_plane(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int bits_per_pixel)
 {
   typedef typename std::conditional < sizeof(pixel_t) == 4, float, int>::type limits_t;
 
   const limits_t limit_lo = sizeof(pixel_t) <= 2 ? 0 : (limits_t)(chroma ? uv8tof(0) : c8tof(0));
   const limits_t limit_hi = sizeof(pixel_t) == 1 ? 255 : sizeof(pixel_t) == 2 ? ((1 << bits_per_pixel) - 1) : (limits_t)(chroma ? uv8tof(255) : c8tof(255));
-  const limits_t equal_luma = sizeof(pixel_t) == 1 ? midpixel : sizeof(pixel_t) == 2 ? (midpixel << (bits_per_pixel - 8)) : (limits_t)( chroma ? uv8tof(midpixel) : c8tof(midpixel));
-  for (int y=0; y<height; y++) {
-    for (int x=0; x<width; x++) {
-      reinterpret_cast<pixel_t *>(src1p)[x] =
+  const limits_t equal_luma = sizeof(pixel_t) == 1 ? midpixel : sizeof(pixel_t) == 2 ? (midpixel << (bits_per_pixel - 8)) : (limits_t)(chroma ? uv8tof(midpixel) : c8tof(midpixel));
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      reinterpret_cast<pixel_t*>(src1p)[x] =
         (pixel_t)clamp(
-        (limits_t)(reinterpret_cast<pixel_t *>(src1p)[x] - reinterpret_cast<const pixel_t *>(src2p)[x] + equal_luma), // 126: luma of equality
+          (limits_t)(reinterpret_cast<pixel_t*>(src1p)[x] - reinterpret_cast<const pixel_t*>(src2p)[x] + equal_luma), // 126: luma of equality
           limit_lo,
           limit_hi);
     }
@@ -4331,20 +4699,21 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
     // alpha
     if (pixelsize == 1) {
       // LUT is a bit faster than clamp version
-      for (int y=0; y<vi.height; y++) {
-        for (int x=0; x<row_size; x++) {
+      for (int y = 0; y < vi.height; y++) {
+        for (int x = 0; x < row_size; x++) {
           src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 126 + 129];
         }
         src1p += src1->GetPitch();
         src2p += src2->GetPitch();
       }
-    } else if (pixelsize==2)
+    }
+    else if (pixelsize == 2)
       subtract_plane<uint16_t, 126, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
     else //if (pixelsize==4)
       subtract_plane<float, 126, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
 
     // chroma
-    row_size=src1->GetRowSize(PLANAR_U);
+    row_size = src1->GetRowSize(PLANAR_U);
     if (row_size) {
       width = row_size / pixelsize;
       height = src1->GetHeight(PLANAR_U);
@@ -4358,8 +4727,8 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
 
       if (pixelsize == 1) {
         // LUT is a bit faster than clamp version
-        for (int y=0; y<height; y++) {
-          for (int x=0; x<width; x++) {
+        for (int y = 0; y < height; y++) {
+          for (int x = 0; x < width; x++) {
             src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 128 + 129];
             src1pV[x] = LUT_Diff8[src1pV[x] - src2pV[x] + 128 + 129];
           }
@@ -4368,10 +4737,12 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
           src1pV += src1_pitch;
           src2pV += src2_pitch;
         }
-      } else if (pixelsize==2) {
+      }
+      else if (pixelsize == 2) {
         subtract_plane<uint16_t, 128, true>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
         subtract_plane<uint16_t, 128, true>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
-      } else { //if (pixelsize==4)
+      }
+      else { //if (pixelsize==4)
         subtract_plane<float, 128, true>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
         subtract_plane<float, 128, true>(src1pV, src2pV, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       }
@@ -4381,10 +4752,10 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
 
   // For YUY2, 50% gray is about (126,128,128) instead of (128,128,128).  Grr...
   if (vi.IsYUY2()) {
-    for (int y=0; y<vi.height; ++y) {
-      for (int x=0; x<row_size; x+=2) {
+    for (int y = 0; y < vi.height; ++y) {
+      for (int x = 0; x < row_size; x += 2) {
         src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 126 + 129];
-        src1p[x+1] = LUT_Diff8[src1p[x+1] - src2p[x+1] + 128 + 129];
+        src1p[x + 1] = LUT_Diff8[src1p[x + 1] - src2p[x + 1] + 128 + 129];
       }
       src1p += src1->GetPitch();
       src2p += src2->GetPitch();
@@ -4392,7 +4763,7 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
   }
   else { // RGB
     if (vi.IsPlanarRGB() || vi.IsPlanarRGBA()) {
-      const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A};
+      const int planesRGB[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
 
       // do not diff Alpha
       for (int p = 0; p < 3; p++) {
@@ -4401,17 +4772,18 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
         src2p = src2->GetReadPtr(plane);
         src1_pitch = src1->GetPitch(plane);
         src2_pitch = src2->GetPitch(plane);
-        if(pixelsize==1)
+        if (pixelsize == 1)
           subtract_plane<uint8_t, 128, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
-        else if(pixelsize==2)
+        else if (pixelsize == 2)
           subtract_plane<uint16_t, 128, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
         else
           subtract_plane<float, 128, false>(src1p, src2p, src1_pitch, src2_pitch, width, height, bits_per_pixel);
       }
-    } else { // packed RGB
-      if(pixelsize == 1) {
-        for (int y=0; y<vi.height; ++y) {
-          for (int x=0; x<row_size; ++x)
+    }
+    else { // packed RGB
+      if (pixelsize == 1) {
+        for (int y = 0; y < vi.height; ++y) {
+          for (int x = 0; x < row_size; ++x)
             src1p[x] = LUT_Diff8[src1p[x] - src2p[x] + 128 + 129];
 
           src1p += src1->GetPitch();
