@@ -1208,7 +1208,7 @@ PVideoFrame __stdcall ClearProperties::GetFrame(int n, IScriptEnvironment* env)
   // Erase only if needed
   const AVSMap* avsmap_test = env->getFramePropsRO(frame);
   if (0 != env->propNumKeys(avsmap_test)) {
-    env->MakeWritable(&frame);
+    env->MakePropertyWritable(&frame);
     AVSMap* avsmap = env->getFramePropsRW(frame);
     env->clearMap(avsmap);
   }
@@ -1274,7 +1274,7 @@ PVideoFrame __stdcall CopyProperties::GetFrame(int n, IScriptEnvironment* env)
       // Erase only if needed
       const AVSMap* avsmap_to_test = env->getFramePropsRO(frame);
       if (0 != env->propNumKeys(avsmap_to_test)) {
-        env->MakeWritable(&frame);
+        env->MakePropertyWritable(&frame);
         AVSMap* avsmap_to = env->getFramePropsRW(frame);
         env->clearMap(avsmap_to);
       }
@@ -1283,7 +1283,7 @@ PVideoFrame __stdcall CopyProperties::GetFrame(int n, IScriptEnvironment* env)
     return frame;
   }
 
-  env->MakeWritable(&frame);
+  env->MakePropertyWritable(&frame);
 
   if (!merge) {
     // exact copy
