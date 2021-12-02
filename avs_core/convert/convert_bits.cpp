@@ -1141,11 +1141,37 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
   // intermediate clip
   if (source_bitdepth == 32 && (dither_type == 0 || dither_type == 1)) {
     // c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
-    AVSValue new_args[7] = { clip, 16, true, -1 /* no dither */, AVSValue() /*dither_bits*/, fulls, fulld };
+
+    source_bitdepth = 16;
+    // solving ordered dither maximum bit depth difference of 8 problem
+    // by automatic preconversion
+    if (dither_type == 0 && source_bitdepth - dither_bitdepth > 8) {
+      source_bitdepth = dither_bitdepth + 8;
+      if (source_bitdepth % 2)
+        source_bitdepth--; // must be even
+    }
+    
+    AVSValue new_args[7] = { clip, source_bitdepth, true, -1 /* no dither */, AVSValue() /*dither_bits*/, fulls, fulld };
     clip = env->Invoke("ConvertBits", AVSValue(new_args, 7)).AsClip();
 
     clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
-    source_bitdepth = 16;
+    // and now the source range becomes the previous target
+    fulls = fulld;
+    ColorRange_src = ColorRange_dest;
+  }
+
+  // solving ordered dither maximum bit depth difference of 8 problem
+  // by automatic preconversion
+  if (source_bitdepth <= 16 && dither_type == 0 && source_bitdepth - dither_bitdepth > 8) {
+    // c[bits]i[truerange]b[dither]i[dither_bits]i[fulls]b[fulld]b
+    source_bitdepth = dither_bitdepth + 8;
+    if (source_bitdepth % 2)
+      source_bitdepth--; // must be even
+
+    AVSValue new_args[7] = { clip, source_bitdepth, true, -1 /* no dither */, AVSValue() /*dither_bits*/, fulls, fulld };
+    clip = env->Invoke("ConvertBits", AVSValue(new_args, 7)).AsClip();
+
+    clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
     // and now the source range becomes the previous target
     fulls = fulld;
     ColorRange_src = ColorRange_dest;
@@ -1158,6 +1184,7 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     if (dither_bitdepth < 1 || dither_bitdepth > 16)
       env->ThrowError("ConvertBits: ordered dither: invalid dither_bits specified (1-16 allowed)");
 
+    // this error message cannot appear if the automatic bit depth reducing conversions above are done
     if(source_bitdepth - dither_bitdepth > 8)
       env->ThrowError("ConvertBits: dither_bits cannot differ with more than 8 bits from source");
   }
