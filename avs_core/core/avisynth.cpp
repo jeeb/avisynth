@@ -2914,7 +2914,7 @@ size_t  ScriptEnvironment::GetEnvProperty(AvsEnvProperty prop)
     return AVS_SEQREV;
 #endif
   case AEP_HOST_SYSTEM_ENDIANNESS:
-    return (uint64_t)AVS_ENDIANNESS;
+    return (uintptr_t)AVS_ENDIANNESS;
   case AEP_INTERFACE_VERSION:
     return AVISYNTH_INTERFACE_VERSION;
   case AEP_INTERFACE_BUGFIX:
