@@ -8630,9 +8630,9 @@ namespace detail {
 			}
 #else
 			if (val_.IsMem()) {
-				// from memory
-				Mem32 lo(val_.GetAddressBaseSize(), val_.GetBase(), val_.GetIndex(), val_.GetScale(), val_.GetDisp());
-				Mem32 hi(val_.GetAddressBaseSize(), val_.GetBase(), val_.GetIndex(), val_.GetScale(), val_.GetDisp() + 4);
+        // from memory
+        Mem32 lo(val_.GetAddressBaseSize(), val_.GetAddressIndexSize(), val_.GetBase(), val_.GetIndex(), val_.GetScale(), val_.GetDisp());
+				Mem32 hi(val_.GetAddressBaseSize(), val_.GetAddressIndexSize(), val_.GetBase(), val_.GetIndex(), val_.GetScale(), val_.GetDisp() + 4);
 				f.mov(f.eax, lo);
 				f.mov(f.edx, hi);
 			} else if (val_.IsImm()) {
