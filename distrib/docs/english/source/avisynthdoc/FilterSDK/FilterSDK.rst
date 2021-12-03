@@ -282,6 +282,10 @@ What's new in the 2.6 api
         - enumeration constants for frame property, system property access
         - various other constants (MT modes, cache modes)
 
+- C++ API (AVISYNTH_INTERFACE_VERSION = 9):
+        - :ref:`MakePropertyWritable <cplusplus_makepropertywritable>` like MakeWritable but for frame properties only.
+        - :ref:`IsPropertyWritable <cplusplus_ispropertywritable>` like IsWritable but for frame properties only.
+
 - C API (AVISYNTH_INTERFACE_VERSION = 8):
         - mostly the same functions as provided in C++ interface.
           naming convention is kept. E.g. propSetFloat in C++ is prop_set_float in C
