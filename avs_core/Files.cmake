@@ -52,10 +52,8 @@ IF(ENABLE_INTEL_SIMD)
   FILE(GLOB Filters_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "filters/intel/*.cpp"
     "filters/intel/*.h")
-  LIST(REMOVE_ITEM AvsCore_Sources "filters/resample.cpp"
-                                   "filters/resample.h"
-                                   "filters/resize.cpp"
-                                   "filters/resize.h")
+  LIST(REMOVE_ITEM AvsCore_Sources "")
+
   LIST(APPEND AvsCore_Sources "${Filters_Cpu_Sources}")
 
   FILE(GLOB Overlay_Cpu_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
