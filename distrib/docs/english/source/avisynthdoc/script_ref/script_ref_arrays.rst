@@ -14,6 +14,84 @@ Beginning Avisynth+ 3.6 script arrays are supported. Functionality is different 
 -  untyped and unconstrained element number
 -  arrays can appear as internal filter parameters (named and unnamed).
 -  access with indexes or in a dictionary-like associative way
+-  Array modifier functions allow multidimensional subarray indexes
+
+  - ArrayAdd - append
+  - ArrayDel - delete from position
+  - ArrayIns - insert before position
+  - ArraySet - replace at position
+
+ArrayIns
+^^^^^^^^
+
+ArrayIns(array_to_mod, value_to_insert, index1 [, index2, index3...])
+
+    Insert a value into an array or into its subarray.
+    Returns a new array with value_to_insert inserted into array_to_mod (1D array) or array_to_mod[index1 (, index2, index3...)] (multi-dimensional array)
+    The indexes point to the insertion point. Index 0 will insert at the beginning of the array.
+    Index (ArraySize) will insert after the last element (same as ArrayAdd - append)
+    Original array (as with the other functions) remains untouched.
+
+ArrayAdd
+^^^^^^^^
+
+ArrayAdd(array_to_mod, value_to_append [, index1, index2, index3...])
+
+    Appends value to the end of an array or its subarray
+    Returns a new array with value_to_append appended to array_to_mod (1D array) or array_to_mod[index1 (, index2, index3...)] (multi-dimensional array).
+    Original array (as with the other functions) remains untouched.
+
+ArrayDel
+^^^^^^^^
+
+ArrayDel(array_to_mod, index1 (, index2, index3...])
+
+    Returns a new array in which the requested position was deleted.
+    Original array (as with the other functions) remains untouched.
+
+ArraySet
+^^^^^^^^
+
+ArraySet(array_to_mod, replacement_value, index1 [, index2, index3...])
+
+    Returns a new array with array_to_mod[index1 (, index2, index3...)] = replacement_value
+    Original array (as with the other functions) remains untouched.
+
+ArraySize
+^^^^^^^^^
+
+int ArraySize(array_value)
+
+    Returns the size of the parameter.
+    For getting the size of a subarray, pass the inner element.
+
+Example:
+
+::
+
+      ColorbarsHD()
+      # array indexes are zero based
+      a = []
+      a=ArrayAdd(a,[1,2]) # [[1,2]]
+      a=ArrayIns(a,3,0) # [3,[1,2]]
+      a=ArrayAdd(a,"s1") # [3,[1,2],"s1"]
+      a=ArrayAdd(a,"s2") # [3,[1,2],"s1","s2"]
+      a=ArrayDel(a,2) # [3,[1,2],"s2"]
+      a=ArraySet(a,"g",1,0) # [3,["g",2],"s2"]
+      a=ArrayAdd(a,"h",1) # [3,["g",2,"h"],"s2"]
+      a=ArrayAdd(a,[10,11,12],1) # append to (1) -> [3,["g",2,"h",[10,11,12]],"s2"]
+      a=ArrayDel(a,1,3,0) # del from (1,3,0) -> [3,["g",2,"h",[11,12]],"s2"]
+      a=ArrayAdd(a,"added") # [3,["g",2,"h",[11,12]],"s2","added"]
+      a=ArrayAdd(a,["yet","another","sub"]) # [3,["g",2,"h",[11,12]],"s2","added",["yet","another","sub"]]
+      x=a[0] #3
+      x=a[1,0] #g
+      x=a[1,2] #h
+      x=a[1,3,1] #12
+      x=a[3] #"added"
+      x=a[4,1] #"another"
+      SubTitle("x = " + String(x) + " Size=" + String(a.ArraySize()))
+
+Example:
 
 ::
 
@@ -92,8 +170,11 @@ Example:
         return a
       }
 
-Accept arrays in the place of "val" script function parameter type regardless of being named or unnamed.
-(Note: "val" is "." in internal function signatures)
+Arrays in user defined functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Avisynth accepts arrays in the place of "val" script function parameter type regardless of being named or unnamed.
+(Note: "val" is translateed to "." in internal function signatures)
 
 Example:
 
@@ -116,17 +197,20 @@ Example:
         }
       }
 
-More checks on array parameters in user defined functions.
+Some facts which are inherited from the compatible Avisynth functionality.
 
-Array-typed parameters with "name" have the value "Undefined" when they are not passed.
+-  Array-typed parameters with "name" have the value "Undefined" when they are not passed.
+-  But the value is "Defined" and its value is a zero-sized array if the parameter is unnamed, like in other Avisynth functions.
 
-Note: but the value is defined and is a zero-sized array if the parameter is unnamed, like in other Avisynth functions.
+**"Array of Anything" issues**
 
-Warning for resolving parameter handling for array of anything parameter when array(s) would be passed directly.
-Memo:
+What about parameter handling for "array of anything" parameter when array(s) would be passed directly.
 
-- Avisynth signature: .+ or .*
-- Script function specifier val_array or val_array_nz
+Avisynth traditionally makes difference between zero-or-more and one-or-more kind of array parameters.
+The special case is "array of anything"
+
+- Avisynth signature: .* or .+
+- Script function specifier val_array or val_array_nz (nz denotes to nonzero)
 
 When parameter signature is array of anything (.+ or .*) and the
 parameter is passed unnamed (even if it is a named parameter) then
@@ -134,25 +218,26 @@ there is an ambiguos situation.
 
 Example:
 
-    1,2,3 will be detected as [1,2,3] (compatibility)
+    1,2,3 will be detected as [1,2,3] (compatibility: Avisynth collects arrays from comma separated function values, when such function signature is found)
 
     1 will be detected as [1] (compatibility)
 
     (nothing) will be detected as [], but marked in order to override it later directly by name
 
-Following the rule:
+Consequences:
 
-    Passing there a direct script array [1,2,3] will be detected as [[1,2,3]], because unnamed and untyped parameters are
-    put together into an array, which has the size of the list. This is a list of 1 element which happens to be an array.
+    Passing a direct script array [1,2,3] will be detected as [[1,2,3]], because unnamed and untyped parameters are
+    put together into an array, which has the size (number of elements) of the list. This is a list of 1 element which happens to be an array.
     Avisynth cannot 'guess' whether we want to define a single array directly or this array is the only one part of the list.
     [1,2,3] or [ [1,2,3] ]
 
 Syntax hint:
 
 When someone would like to pass a directly specified array (e.g. [1,2,3] instead of 1,2,3) to a .+ or .* parameter
-the parameter must be passed by name!
+the parameter must be passed by name! Or better: instead of "array of anything" use the val (function signature ".") type.
+It will acceopt any type, including arrays. Then you can check inside your function with IsArray() and ArraySize() if it is really an array.
 
-Because of the existing avisynth syntax rule: arguments given as unnamed in the place of an array-of-anything parameter
+Because of the existing AviSynth syntax rule: arguments given as unnamed in the place of an array-of-anything parameter
 are considered to be list elements from which Avisynth creates an array
 
 ::
@@ -174,20 +259,20 @@ are considered to be list elements from which Avisynth creates an array
         Call                          n
         foo()                   O.K.  [] (defined and array size is zero) Avisynth compatible behaviour
 
-Script functions now supports avisynth function array signature '+' (one or more) with _nz type suffix.
-
-Previously only '*' style (zero or more) was supported by the original naming.
+Script functions supports avisynth function array 
+- signature '+' (one or more) with _nz type suffix. E.g. int_array_nz
+- signature '*' (zero or more) without _nz type suffix. E.g. float_array
 
 E.g.: val_array -> .* val_array_nz -> .+, int_array -> i* int_array_nz -> i+
+Each basic type has its array and array_nz variant.
+Such as bool_array_nz, float_array_nz, string_array_nz, clip_array_nz, func_array_nz.
 
-Others: bool_array_nz, float_array_nz, string_array_nz, clip_array_nz, func_array_nz.
-
-There is an error message when a script array is passed to a non-array named function argument
+Note 1: There is an error message when a script array is passed to a non-array named function argument
 (e.g. foo(sigma=[1.1,1.1]) to [foo]f parameter signature
 
-Note2: Type-free unnamed arrays ".+" or ".*" cannot be followed by additional parameters
+Note 2: Type-free unnamed arrays ".+" or ".*" cannot be followed by additional parameters
 
-Note3: A backward compatible way (AVS 2.6 and non-script-array AviSynth+ versions) of using named
+Note 3: A backward compatible way (AVS 2.6 and non-script-array AviSynth+ versions) of using named
 or unnamed arrays is to specify a single type as "." and the plugin would check the argument type by IsArray
 
 User defined functions get array parameter types:
@@ -201,6 +286,10 @@ User defined functions get array parameter types:
 -  "bool_array" "int_array", "float_array", "string_array", "clip_array", "func_array"
 
     Translates to "b*", "i*", "f*", "s*", "c*", "f*" in a plugin parameter definition rule.
+
+-  "bool_array_nz" "int_array_nz", "float_array_nz", "string_array_nz", "clip_array_nz", "func_array_nz"
+
+    Translates to "b+", "i+", "f+", "s+", "c+", "n+" in a plugin parameter definition rule.
 
 Example:
 
@@ -232,8 +321,6 @@ Example:
         }
         return sum
       }
-
-todo: add descriptions
 
 Arrays (pre AviSynth+: AVSLib)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

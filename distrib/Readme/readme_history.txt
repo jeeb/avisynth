@@ -2,10 +2,83 @@ Avisynth Plus change log
 ------------------------
 Source: https://github.com/AviSynth/AviSynthPlus
 
-For a more logical (non-historical) arrangement of changes see readme.txt
-
 20211205 WIP
 ------------
+- Array modifier functions to allow multidimensional subarray indexes
+  Memo:
+    ArrayAdd - append
+    ArrayDel - delete from position
+    ArrayIns - insert before position
+    ArraySet - replace at position
+
+Example:
+
+    ColorbarsHD()
+    # array indexes are zero based
+    a = []
+    a=ArrayAdd(a,[1,2]) # [[1,2]]
+    a=ArrayIns(a,3,0) # [3,[1,2]]
+    a=ArrayAdd(a,"s1") # [3,[1,2],"s1"]
+    a=ArrayAdd(a,"s2") # [3,[1,2],"s1","s2"]
+    a=ArrayDel(a,2) # [3,[1,2],"s2"]
+    a=ArraySet(a,"g",1,0) # [3,["g",2],"s2"]
+    a=ArrayAdd(a,"h",1) # [3,["g",2,"h"],"s2"]
+    a=ArrayAdd(a,[10,11,12],1) # append to (1) -> [3,["g",2,"h",[10,11,12]],"s2"]
+    a=ArrayDel(a,1,3,0) # del from (1,3,0) -> [3,["g",2,"h",[11,12]],"s2"]
+    a=ArrayAdd(a,"added") # [3,["g",2,"h",[11,12]],"s2","added"]
+    a=ArrayAdd(a,["yet","another","sub"]) # [3,["g",2,"h",[11,12]],"s2","added",["yet","another","sub"]]
+    x=a[0] #3
+    x=a[1,0] #g
+    x=a[1,2] #h
+    x=a[1,3,1] #12
+    x=a[3] #"added"
+    x=a[4,1] #"another"
+    SubTitle("x = " + String(x) + " Size=" + String(a.ArraySize()))
+
+- New array modifier function: ArraySet
+
+   For memo here is the list of avaliable array manipulator functions
+  - ArrayAdd - append
+  - ArrayDel - delete from position
+  - ArrayIns - insert before position
+  - ArraySet - replace at position
+
+  ArrayIns
+  ^^^^^^^^
+
+  ArrayIns(array_to_mod, value_to_insert, index1 [, index2, index3...])
+
+      Insert a value into an array or into its subarray.
+      Returns a new array with value_to_insert inserted into array_to_mod (1D array) or array_to_mod[index1 (, index2, index3...)] (multi-dimensional array)
+      The indexes point to the insertion point. Index 0 will insert at the beginning of the array.
+      Index (ArraySize) will insert after the last element (same as ArrayAdd - append)
+      Original array (as with the other functions) remains untouched.
+
+  ArrayAdd
+  ^^^^^^^^
+
+  ArrayAdd(array_to_mod, value_to_append [, index1, index2, index3...])
+
+      Appends value to the end of an array or its subarray
+      Returns a new array with value_to_append appended to array_to_mod (1D array) or array_to_mod[index1 (, index2, index3...)] (multi-dimensional array).
+      Original array (as with the other functions) remains untouched.
+
+  ArrayDel
+  ^^^^^^^^
+
+  ArrayDel(array_to_mod, index1 (, index2, index3...])
+
+      Returns a new array in which the requested position was deleted.
+      Original array (as with the other functions) remains untouched.
+
+  ArraySet
+  ^^^^^^^^
+
+  ArraySet(array_to_mod, replacement_value, index1 [, index2, index3...])
+
+      Returns a new array with array_to_mod[index1 (, index2, index3...)] = replacement_value
+      Original array (as with the other functions) remains untouched.
+
 - Expr: allow auto scaling effect on pixels obtained from relative addressing
 - ConvertBits: ordered dither: possible to dither down with more than 8 bits difference like in
     Clip16.ConvertBits(8, dither=0, dither_bits=4)
