@@ -4932,7 +4932,8 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
         else if (tokens[i] == "height") { // avs+
           LOAD_OP(opLoadConst, (float)planeheight, 0);
         }
-        else if (tokens[i].length() == 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z') {
+        else if ((tokens[i].length() == 1 || (tokens[i].length() > 1 && tokens[i][1] == '[')) && tokens[i][0] >= 'a' && tokens[i][0] <= 'z') {
+          const bool rel = tokens[i].length() > 1; // relative pixel addressing; indexed clips e.g. x[-1,-2]
           // loading source clip pixels
           char srcChar = tokens[i][0];
           int loadIndex;
@@ -4943,18 +4944,50 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
           if (loadIndex >= numInputs)
             env->ThrowError("Expr: Too few input clips supplied to reference '%s'", tokens[i].c_str());
 
-          if (lutmode == 0) {
-            LOAD_OP(getLoadOp(vi[loadIndex], false), loadIndex, 0);
+          if (rel) {
+            int dx, dy;
+            std::string s;
+            std::istringstream numStream(tokens[i].substr(2)); // after '['
+            numStream.imbue(std::locale::classic());
+            // first coord
+            if (!(numStream >> dx))
+              env->ThrowError("Expr: Failed to convert '%s' to integer, relative index dx", tokens[i].c_str());
+            // separator ','
+            if (numStream.get() != ',')
+              env->ThrowError("Expr: Failed to convert '%s', character ',' expected between the coordinates", tokens[i].c_str());
+            // second coord
+            if (!(numStream >> dy))
+              env->ThrowError("Expr: Failed to convert '%s' to integer, relative index dy", tokens[i].c_str());
+            // ending ']'
+            if (numStream.get() != ']')
+              env->ThrowError("Expr: Failed to convert '%s' to [x,y], closing ']' expected ", tokens[i].c_str());
+            if (numStream >> s)
+              env->ThrowError("Expr: Failed to convert '%s' to [x,y], invalid character after ']'", tokens[i].c_str());
+
+            if (lutmode > 0)
+              env->ThrowError("Expr: relative pixel addressing is forbidden in lut mode");
+
+            if (dx <= -vi_output->width || dx >= vi_output->width)
+              env->ThrowError("Expr: dx must be between +/- (width-1) in '%s'", tokens[i].c_str());
+            if (dy <= -vi_output->height || dy >= vi_output->height)
+              env->ThrowError("Expr: dy must be between +/- (height-1) in '%s'", tokens[i].c_str());
+            LOAD_REL_OP(getLoadOp(vi[loadIndex], true), loadIndex, 0, dx, dy);
           }
           else {
-            // for lut we replace x and y to sx and sy to make the initialization
-            if (loadIndex >= lutmode) // lutx
-              env->ThrowError("Expr: more input clips than lut's dimension. Problematic clip: '%s'", tokens[i].c_str());
-            // spatial
-            if(loadIndex == 0)
-              LOAD_OP(opLoadSpatialX, 0, 0);
-            else // if (loadIndex == 1)
-              LOAD_OP(opLoadSpatialY, 0, 0);
+            // not relative, single clip letter
+            if (lutmode == 0) {
+              LOAD_OP(getLoadOp(vi[loadIndex], false), loadIndex, 0);
+            }
+            else {
+              // for lut we replace x and y to sx and sy to make the initialization
+              if (loadIndex >= lutmode) // lutx
+                env->ThrowError("Expr: more input clips than lut's dimension. Problematic clip: '%s'", tokens[i].c_str());
+              // spatial
+              if (loadIndex == 0)
+                LOAD_OP(opLoadSpatialX, 0, 0);
+              else // if (loadIndex == 1)
+                LOAD_OP(opLoadSpatialY, 0, 0);
+            }
           }
 
           // avs+: 'scale_inputs': converts input pixels to a common specified range
@@ -5000,45 +5033,6 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
               TWO_ARG_OP(opAdd); // at the end pixel exit: opSub
             }
           }
-        }
-        // indexed clips e.g. x[-1,-2]
-        else if (tokens[i].length() > 1 && tokens[i][0] >= 'a' && tokens[i][0] <= 'z' && tokens[i][1] == '[') {
-          char srcChar = tokens[i][0];
-          int loadIndex;
-          if (srcChar >= 'x')
-            loadIndex = srcChar - 'x';
-          else
-            loadIndex = srcChar - 'a' + 3;
-          if (loadIndex >= numInputs)
-            env->ThrowError("Expr: Too few input clips supplied to reference '%s'", tokens[i].c_str());
-
-          int dx, dy;
-          std::string s;
-          std::istringstream numStream(tokens[i].substr(2)); // after '['
-          numStream.imbue(std::locale::classic());
-          // first coord
-          if (!(numStream >> dx))
-            env->ThrowError("Expr: Failed to convert '%s' to integer, relative index dx", tokens[i].c_str());
-          // separator ','
-          if (numStream.get() != ',')
-            env->ThrowError("Expr: Failed to convert '%s', character ',' expected between the coordinates", tokens[i].c_str());
-          // second coord
-          if (!(numStream >> dy))
-            env->ThrowError("Expr: Failed to convert '%s' to integer, relative index dy", tokens[i].c_str());
-          // ending ']'
-          if (numStream.get() != ']')
-            env->ThrowError("Expr: Failed to convert '%s' to [x,y], closing ']' expected ", tokens[i].c_str());
-          if(numStream >> s)
-            env->ThrowError("Expr: Failed to convert '%s' to [x,y], invalid character after ']'", tokens[i].c_str());
-
-          if (lutmode > 0)
-            env->ThrowError("Expr: relative pixel addressing is forbidden in lut mode");
-
-          if(dx <= -vi_output->width || dx >= vi_output->width)
-            env->ThrowError("Expr: dx must be between +/- (width-1) in '%s'", tokens[i].c_str());
-          if (dy <= -vi_output->height || dy >= vi_output->height)
-            env->ThrowError("Expr: dy must be between +/- (height-1) in '%s'", tokens[i].c_str());
-          LOAD_REL_OP(getLoadOp(vi[loadIndex], true), loadIndex, 0, dx, dy);
         }
         else if (tokens[i] == "pi") // avs+
         {
