@@ -4,8 +4,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 
 For a more logical (non-historical) arrangement of changes see readme.txt
 
-20211202 WIP
+20211205 WIP
 ------------
+- Expr: allow auto scaling effect on pixels obtained from relative addressing
 - ConvertBits: ordered dither: possible to dither down with more than 8 bits difference like in
     Clip16.ConvertBits(8, dither=0, dither_bits=4)
   Such conversion is made in two phases. First the clip is converted to (dither_bits+8) bits; in the above example it is 12.
