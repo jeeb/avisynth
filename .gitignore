@@ -73,6 +73,7 @@ plugins/VFAPIFilter/release/*
 *.vcxproj.filters
 arch.c
 avs_core/arch.h
+avs_core/avisynth_conf.h
 avs_core/version.h
 avs_core/avisynth.pc
 cmake_install.cmake
