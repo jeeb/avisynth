@@ -309,9 +309,10 @@ extern const AVSFunction Script_functions[] = {
   { "ArrayGet",  BUILTIN_FUNC_PREFIX, ".i+", ArrayGet }, // .+i+ syntax is not possible.
     // length can be zero
   { "ArraySize", BUILTIN_FUNC_PREFIX, ".", ArraySize },
-  { "ArrayAdd",  BUILTIN_FUNC_PREFIX, "..", ArrayIns, (void *)1 },
-  { "ArrayIns",  BUILTIN_FUNC_PREFIX, "..i", ArrayIns, (void*)0 },
-  { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i", ArrayDel },
+  { "ArrayIns",  BUILTIN_FUNC_PREFIX, "..i+", ArrayIns, (void*)0 },
+  { "ArrayAdd",  BUILTIN_FUNC_PREFIX, "..i*", ArrayIns, (void*)1 },
+  { "ArraySet",  BUILTIN_FUNC_PREFIX, "..i+", ArrayIns, (void*)2 },
+  { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i+", ArrayIns, (void*)3 },
   /*
   { "IsArrayOf", BUILTIN_FUNC_PREFIX, ".s", IsArrayOf },
   */
@@ -2178,38 +2179,38 @@ AVSValue ArrayGet(AVSValue args, void*, IScriptEnvironment* env)
   if (args[1].IsString()) {
     // associative search
     // { {"a", element1}, { "b", element2 }, etc..}
-    const char *tag = args[1].AsString();
-    for (int i = 0; i < size; i++)
-    {
-      AVSValue currentTagValue = args[0][i]; // two elements e.g. { "b", element2 }
-      if(!currentTagValue.IsArray())
-        env->ThrowError("ArrayGet: Array must contain array[string, any] elements for dictionary lookup");
-      if(currentTagValue.ArraySize() < 2)
-        env->ThrowError("ArrayGet: Internal array must have at least two elements (tag, value)");
-      AVSValue currentTag = currentTagValue[0];
-      if (currentTag.IsString() && !lstrcmpi(currentTag.AsString(), tag))
-      {
-        return currentTagValue[1];
-      }
-    }
-    return AVSValue(); // undefined
+const char* tag = args[1].AsString();
+for (int i = 0; i < size; i++)
+{
+  AVSValue currentTagValue = args[0][i]; // two elements e.g. { "b", element2 }
+  if (!currentTagValue.IsArray())
+    env->ThrowError("ArrayGet: Array must contain array[string, any] elements for dictionary lookup");
+  if (currentTagValue.ArraySize() < 2)
+    env->ThrowError("ArrayGet: Internal array must have at least two elements (tag, value)");
+  AVSValue currentTag = currentTagValue[0];
+  if (currentTag.IsString() && !lstrcmpi(currentTag.AsString(), tag))
+  {
+    return currentTagValue[1];
+  }
+}
+return AVSValue(); // undefined
   }
   else if (args[1].IsArray()) {
-    AVSValue indexes = args[1];
-    AVSValue currentValue = args[0];
-    int index_count = indexes.ArraySize(); // array of parameters. a[1,2] -> [1,2]
-    if(index_count == 0)
-      env->ThrowError("ArrayGet: no index specified");
-    for (int i = 0; i < index_count; i++)
-    {
-      if(!currentValue.IsArray())
-        env->ThrowError("ArrayGet: not an array. Index=%d", i);
-      int currentIndex = indexes[i].AsInt();
-      if(currentIndex < 0 || currentIndex >= currentValue.ArraySize())
-        env->ThrowError("ArrayGet: Array index out of range. Problematic index count: %d", i+1);
-      currentValue = currentValue[currentIndex];
-    }
-    return currentValue;
+  AVSValue indexes = args[1];
+  AVSValue currentValue = args[0];
+  int index_count = indexes.ArraySize(); // array of parameters. a[1,2] -> [1,2]
+  if (index_count == 0)
+    env->ThrowError("ArrayGet: no index specified");
+  for (int i = 0; i < index_count; i++)
+  {
+    if (!currentValue.IsArray())
+      env->ThrowError("ArrayGet: not an array. Index=%d", i);
+    int currentIndex = indexes[i].AsInt();
+    if (currentIndex < 0 || currentIndex >= currentValue.ArraySize())
+      env->ThrowError("ArrayGet: Array index out of range. Problematic index count: %d", i + 1);
+    currentValue = currentValue[currentIndex];
+  }
+  return currentValue;
   }
   env->ThrowError("ArrayGet: Invalid array index, must be integer or string, or comma separated integers");
   return AVSValue(); // undefined
@@ -2225,60 +2226,90 @@ AVSValue ArraySize(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue ArrayIns(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  const bool append = 1 == (intptr_t)user_data;
+  int mode = (int)(intptr_t)user_data;
+  enum ArrayMode {
+    INSERT = 0,
+    APPEND = 1,
+    REPLACE = 2,
+    DEL = 3
+  };
   // signature .. and ..i
   // parameters:
-  // [0] array to be appended; [1] element to insert at the end (ArrayAdd and ArrayIns)
-  // [2] inserting index (ArrayIns)
+  // [0] array to modify;
+  // [1] element to insert (ArrayAdd, ArrayIns and ArraySet) [2] inserting index(es) (ArrayIns, ArraySet)
+  // or [1] delete index(es) ArrayDel
+
+  const char* funcname = mode == DEL ? "ArrayDel" : mode == REPLACE ? "ArraySet" : mode == APPEND ? "ArrayAdd" : "ArrayIns";
+
   if (!args[0].IsArray())
-    env->ThrowError("%s error: array type required.", append ? "ArrayAdd" : "ArrayIns");
+    env->ThrowError("%s error: array type required.", funcname);
 
   const auto orig_size = args[0].ArraySize();
-  int insert_pos = orig_size; // at the end
 
-  if (!append) {
-    insert_pos = args[2].AsInt();
-    if (insert_pos < 0 || insert_pos >orig_size)
-      env->ThrowError("ArrayIns error: index must be between 0 and array size (inclusive)");
+  const int index_param_pos = mode == DEL ? 1 : 2;
+  AVSValue indexes = args[index_param_pos];
+  int index_count = indexes.ArraySize(); // array of parameters. a[1,2] -> [1,2]
+
+  if (mode == INSERT || mode == REPLACE || mode == DEL) {
+    if (index_count == 0)
+      env->ThrowError("%s: no index specified", funcname);
   }
 
-  std::vector<AVSValue> new_val(orig_size + 1);
+  const int new_size =
+    mode == DEL && index_count == 1 ? orig_size - 1 :
+    mode == APPEND && index_count == 0 ? orig_size + 1 :
+    mode == INSERT && index_count == 1 ? orig_size + 1 :
+    orig_size; // replace and recurside other cases
 
-  for (int i = 0; i < insert_pos; i++)
+  std::vector<AVSValue> new_val(new_size);
+
+  int action_pos;
+  if (mode == APPEND)
+    action_pos = orig_size; // at the end
+  else
+    action_pos = indexes[0].AsInt();
+
+  // copy before insertion/replace point
+  for (int i = 0; i < action_pos; i++)
     new_val[i] = args[0][i]; // avs+: automatic deep copy
 
-  new_val[insert_pos] = args[1];
+  if (
+    ((mode == REPLACE || mode == INSERT || mode == DEL) && index_count > 1) ||
+    ((mode == APPEND) && index_count >= 1))
+  {
+    int current_index = indexes[0].AsInt();
+    // for multi-level array recursion is needed because there is no exact reference to an inner element
+    if (mode == DEL) {
+      AVSValue params[2] = { args[0][current_index], index_count <= 1 ? AVSValue(nullptr, 0) : AVSValue(&indexes[1], index_count - 1) };
+      new_val[current_index] = env->Invoke(funcname, AVSValue(params, 2)); // recursively
+    }
+    else {
+      AVSValue params[3] = { args[0][current_index], args[1], index_count <= 1 ? AVSValue(nullptr, 0) : AVSValue(&indexes[1], index_count - 1) };
+      new_val[current_index] = env->Invoke(funcname, AVSValue(params, 3)); // recursively
+    }
+    mode = REPLACE;
+  }
+  else if (mode != DEL) {
+    new_val[action_pos] = args[1];
+  }
 
-  for (int i = insert_pos; i < orig_size; i++)
-    new_val[i+1] = args[0][i]; // avs+: automatic deep copy
+  // copy from after insertion/replace/delete point
+  if (mode == DEL) {
+    for (int i = action_pos + 1; i < orig_size; i++)
+      new_val[i - 1] = args[0][i]; // avs+: automatic deep copy
+  }
+  else if (mode == REPLACE) {
+    for (int i = action_pos+1; i < orig_size; i++)
+      new_val[i] = args[0][i]; // avs+: automatic deep copy
+  }
+  else {
+    for (int i = action_pos; i < orig_size; i++)
+      new_val[i + 1] = args[0][i]; // avs+: automatic deep copy
+  }
 
-  return AVSValue(new_val.data(), orig_size + 1);
-}
-
-AVSValue ArrayDel(AVSValue args, void*, IScriptEnvironment* env)
-{
-  // signature .i
-  // parameters: [0] array to be deleted from; [1] index
-  if (!args[0].IsArray())
-    env->ThrowError("ArrayDel error: array type required.");
-
-  const auto orig_size = args[0].ArraySize();
-  const auto delete_pos = args[1].AsInt();
-
-  if (delete_pos < 0 || delete_pos >= orig_size)
-      env->ThrowError("ArrayDel error: index is out of array's bounds. size is %d", orig_size);
-
-  if (orig_size == 1)
+  if(new_size == 0)
     return AVSValue(nullptr, 0); // zero array
 
-  std::vector<AVSValue> new_val(orig_size - 1);
-
-  for (int i = 0; i < delete_pos; i++)
-    new_val[i] = args[0][i]; // avs+: automatic deep copy
-
-  for (int i = delete_pos + 1; i < orig_size; i++)
-    new_val[i - 1] = args[0][i]; // avs+: automatic deep copy
-
-  return AVSValue(new_val.data(), orig_size - 1);
+  return AVSValue(new_val.data(), new_size);
 }
 
