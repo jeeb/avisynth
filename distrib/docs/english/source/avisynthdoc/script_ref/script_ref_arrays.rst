@@ -2,7 +2,243 @@
 Arrays
 ======
 
-As everybody using Avisynth knows, arrays are not supported natively by the
+Arrays (AviSynth+)
+^^^^^^^^^^^^^^^^^^
+
+Beginning Avisynth+ 3.6 script arrays are supported. Functionality is different from `AVSLib`_ described below.
+
+-  Arrays can have one or more dimensions
+-  They even can be empty.
+-  AVSValue (internal representation of any Avisynth variable) is deep copied for arrays (arrays in arrays in ...)
+   (note: this is true when using them through c++ plugins. C interface is different, there is no deep-copy there)
+-  untyped and unconstrained element number
+-  arrays can appear as internal filter parameters (named and unnamed).
+-  access with indexes or in a dictionary-like associative way
+
+::
+
+      array_variable = [[1, 2, 3], [4, 5, 8], "hello"]
+      dictionary = [["one", 1], ["two", 2]]
+      empty = []
+      subarray = array_variable[0]
+      val = subarray[2]
+      val2 = array_variable[1, 3]
+      str = array_variable[2]
+      n = ArraySize(array_variable) #3
+      n2 = ArraySize(empty) #0
+      val3 = dictionary["two"]
+
+Example:
+
+::
+
+      a = []
+      a=ArrayAdd(a,[1,2]) # [[1,2]]
+      a=ArrayIns(a,3,0) # [3,[1,2]]
+      a=ArrayAdd(a,"s1") # [3,[1,2],"s1"]
+      a=ArrayAdd(a,"s2") # [3,[1,2],"s1","s2"]
+      a=ArrayDel(a,2) # [3,[1,2],"s2"]
+      
+      b = ["hello", "leo"]
+
+Example:
+
+::
+
+      ColorBars()
+      clip=last
+      a = [[1,2],[3,4]]
+      aa = [1]
+      b = a[1,1] + ArrayGet(a, 1,0) + aa[0]
+      
+      empty_array = []
+      empty_array_2 = empty_array
+      #n3 = empty_array_2.ArrayGet(0) # array index out out range error!
+      
+      black_yuv_16 = [0,32768,32768]
+      grey_yuv_16 = [32768,32768,32768]
+      white_yuv_16 = [65535,32768,32768]
+      aSelectColors = [\
+        ["black", black_yuv_16],\
+        ["grey", grey_yuv_16],\
+        ["white",white_yuv_16],\
+        ["empty",empty_array]\
+      ]
+      test_array = [99, 1.0, "this is a string"] # mixed types
+      test_array2 = [199, 2.0, "This is a string"]
+
+      n = ArraySize(test_array) # 3
+      n2 = ArraySize(empty_array_2) # 0
+      sum = FirstNSum(grey_yuv_16,2)
+      b = b
+      
+      clip = clip.Text(e"Array size = " + String(n) +\
+       e"\n Empty array size = " + String(n2) +\
+       e"\n sum = " + String(sum) +\
+       e"\n b = " + String(b) +\
+       e"\n white_yuv_16[1]=" + String(aSelectColors["white"][1]) + \
+       e"\n [0]=" + String(ArrayGet(test_array,0)) + \
+       e"\n [1]=" + String(ArrayGet(test_array,1)) + \
+       e"\n [2]=" + ArrayGet(test_array,2), lsp=0, bold=true, font="info_h")
+      
+      return clip
+      
+      function FirstNSum(array x, int n)
+      {
+        a = 0
+        for (i=0, x.ArraySize()-1) {
+          a = a + x[i]
+        }
+        return a
+      }
+
+Accept arrays in the place of "val" script function parameter type regardless of being named or unnamed.
+(Note: "val" is "." in internal function signatures)
+
+Example:
+
+::
+
+      BlankClip(pixel_type="yv12")
+      r([1, 2, 3])
+      r(n=[10,11,[12,13]])
+      r("hello")
+      function r(clip c, val "n")
+      {
+        if (IsArray(n)) {
+         if (IsArray(n[2])) {
+           return Subtitle(c, String(n[2,1]), align=8) #13 at the top
+         } else {
+           return Subtitle(c, String(n[2]), align=2) #3 at the bottom
+         }
+        } else {
+          return Subtitle(c, String(n), align=5) #hello in the center
+        }
+      }
+
+More checks on array parameters in user defined functions.
+
+Array-typed parameters with "name" have the value "Undefined" when they are not passed.
+
+Note: but the value is defined and is a zero-sized array if the parameter is unnamed, like in other Avisynth functions.
+
+Warning for resolving parameter handling for array of anything parameter when array(s) would be passed directly.
+Memo:
+
+- Avisynth signature: .+ or .*
+- Script function specifier val_array or val_array_nz
+
+When parameter signature is array of anything (.+ or .*) and the
+parameter is passed unnamed (even if it is a named parameter) then
+there is an ambiguos situation.
+
+Example:
+
+    1,2,3 will be detected as [1,2,3] (compatibility)
+
+    1 will be detected as [1] (compatibility)
+
+    (nothing) will be detected as [], but marked in order to override it later directly by name
+
+Following the rule:
+
+    Passing there a direct script array [1,2,3] will be detected as [[1,2,3]], because unnamed and untyped parameters are
+    put together into an array, which has the size of the list. This is a list of 1 element which happens to be an array.
+    Avisynth cannot 'guess' whether we want to define a single array directly or this array is the only one part of the list.
+    [1,2,3] or [ [1,2,3] ]
+
+Syntax hint:
+
+When someone would like to pass a directly specified array (e.g. [1,2,3] instead of 1,2,3) to a .+ or .* parameter
+the parameter must be passed by name!
+
+Because of the existing avisynth syntax rule: arguments given as unnamed in the place of an array-of-anything parameter
+are considered to be list elements from which Avisynth creates an array
+
+::
+
+      function foo(val_array "n")
+        Call                          n
+        foo()                   O.K.  Undefined
+        foo(1)                  O.K.  [1] (compatible Avisynth way)
+        foo(1,2,3)              O.K.  [1,2,3] (compatible Avisynth way)
+        foo([1,2,3])            !     [[1,2,3]] (compatible Avisynth way)
+        foo([1,2,3],[4,5])      !     [[1,2,3],[4,5]] (compatible Avisynth way)
+        foo(n=[1,2,3])          O.K.  [1,2,3]
+        foo(n=[[1,2,3],[4,5]])  O.K.  [[1,2,3],[4,5]]
+        foo(n=[])               O.K.  []
+        foo(n="hello")          Syntax error, "hello" is not an array
+
+        // unnamed signature
+      function foo(val_array n)
+        Call                          n
+        foo()                   O.K.  [] (defined and array size is zero) Avisynth compatible behaviour
+
+Script functions now supports avisynth function array signature '+' (one or more) with _nz type suffix.
+
+Previously only '*' style (zero or more) was supported by the original naming.
+
+E.g.: val_array -> .* val_array_nz -> .+, int_array -> i* int_array_nz -> i+
+
+Others: bool_array_nz, float_array_nz, string_array_nz, clip_array_nz, func_array_nz.
+
+There is an error message when a script array is passed to a non-array named function argument
+(e.g. foo(sigma=[1.1,1.1]) to [foo]f parameter signature
+
+Note2: Type-free unnamed arrays ".+" or ".*" cannot be followed by additional parameters
+
+Note3: A backward compatible way (AVS 2.6 and non-script-array AviSynth+ versions) of using named
+or unnamed arrays is to specify a single type as "." and the plugin would check the argument type by IsArray
+
+User defined functions get array parameter types:
+
+- "array" or "val_array": array of any type.
+
+    When unnamed, then this kind of parameter must be the very last one.
+    Unnamed free-typed parametes cannot be followed by any other parameter.
+    Translates to ".*" in a plugin parameter definition rule.
+
+-  "bool_array" "int_array", "float_array", "string_array", "clip_array", "func_array"
+
+    Translates to "b*", "i*", "f*", "s*", "c*", "f*" in a plugin parameter definition rule.
+
+Example:
+
+::
+
+      a = [1.0, 2.0, 4.2]
+      b = [3, 4, 5]
+      multi = [a,b]
+
+      sum = Summa(multi[0], multi[1], 2)
+      SubTitle(Format({sum}))
+
+      Function Summa(array "x", array "y", int "N")
+      {
+        sum = 0.0
+        FOR(i=0,N-1) {
+          sum = sum + x[i] * y[i]
+        }
+        return sum
+      }
+
+      or
+
+      Function Summa(float_array x, float_array y, int "N")
+      {
+        sum = 0.0
+        FOR(i=0,N-1) {
+          sum = sum + x[i] * y[i]
+        }
+        return sum
+      }
+
+todo: add descriptions
+
+Arrays (pre AviSynth+: AVSLib)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Before Avisynth+ 3.6 arrays were not supported natively by the
 scripting language.
 
 However, a library named [`AVSLib`_] exists that provides a functional

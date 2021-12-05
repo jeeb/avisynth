@@ -7,20 +7,51 @@ You must have some compatible development tool
 
 - Historically there were Microsoft Visual C/C++ 9 (2008), 10 (2010),
   11 (2012), 12 (2013) and 14 (2017) versions.
-- Presently the latest one is Microsoft Visual C++ 2019 (v15)
+- Actual source requires c++ 17. (or c++1z for gcc 7.0)
+- Microsoft compilers:
+
+  Presently the latest one is Microsoft Visual C++ 2019 (v15) and 
+  2022 was just launched (as of December 2021)
+
   Community Edition is free for open source development.
   (`free download <http://www.visualstudio.com/en-us/downloads/>`__
   (web version is fine); )
-- Intel ICL Compiler v10.1 or newer
-- LLVM 9 and up, or clang-cl integrated into Visual Studio
-- Gnu C++ 9.0
+- Intel ICX NextGen 2021.3 or ICL 2021.3 (19.2 Classic)
+
+  Intel oneAPI Base Kit +:
+  `download <https://www.intel.com/content/www/us/en/developer/articles/news/free-intel-software-developer-tools.html>`__
+
+  Need: Intel® oneAPI DPC++/C++ Compiler.
+  Includes C++ 2021.4 (Intel C++ 2021 is O.K., DPC++ is not for Avisynth+)
+
+  No Python, No Math kernel Library, No Video Processing, No Deep Neural.
+
+  Component for C++:
+  `download <https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html>`__
+  Intel® oneAPI HPC Toolkit for Windows for having
+  Intel® C++ Compiler Classic (v19.2 at the time of writing this document).
+  Choose Custom Installation (Fortran support not needed)
+- LLVM 9 and up, or use LLVM (clang-cl) platform toolset integrated into Visual Studio
+- Gnu C++ 9.0 (7.0 with special flags is working as well)
 
 Notes
 
+- AviSynth+ is no longer restricted to Windows and Intel processors.
+  It runs under several platforms: Linux, Haiku, MacOS.
+  Either gcc or clang compilers are used for them.
+
+  See also:
+
+  :doc:`Contributing with git <../contributing/contributing_with_git>`,
+  :doc:`Compiling AviSynth+ <../contributing/compiling_avsplus>` and
+  :doc:`posix <../contributing/posix>`.
+
 - Free registration is mandatory to use Community Edition versions
+- Since Visual Studio 2022 targeting Windows XP is no longer possible.
+- with Visual Studio 2019 one can still author XP compatible versions
+  with choosing v141_xp platform and a special compiler flag.
 
 Our aim is that sources can be built with all these compilers.
-And since we are in 2020, c++17 conformity is also a nice-to-have feature.
 Though AviSynth+ itself requires c++17, plugins are not obeyed to use it.
 
 
@@ -37,9 +68,12 @@ For some very special plugins (GPU) you might need the DirectX SDK
 Finally, you must include the main header file 'avisynth.h'
 ------------------------------------------------------------
 
-You can get it with this FilterSDK, download with AviSynth source code, or
-take from some plugin source package. There are several versions of this
-header file from various AviSynth versions.
+Avisynth+ source code can be found on github.
+`github repository <https://github.com/AviSynth/AviSynthPlus>`__
+
+For plugin development you can get the header with this FilterSDK, or download 
+with AviSynth source code, or take from some plugin source package.
+There are several versions of this header file from various AviSynth versions.
 
 Header file avisynth.h from v1.0.x to v2.0.x have
 ``AVISYNTH_INTERFACE_VERSION = 1.`` Plugins compiled with them will not be
@@ -62,6 +96,9 @@ currently ``AVISYNTH_INTERFACE_VERSION = 6.`` Plugins compiled with
 AviSynth v2.5.x header will work in AviSynth 2.6.x and specific
 (without script array support) Avisynth+ versions.
 
+Note: since Avisynth+ ``avisynth.h`` alone is not enough, some other helper headers
+exist under ``avs`` folder.
+
 Avisynth+ version (though a bit late) changed version to
 ``AVISYNTH_INTERFACE_VERSION = 7.``
 
@@ -69,9 +106,14 @@ From AviSynth+ version 3.6.0 new interface functions arrived
 along with frame properties support
 ``AVISYNTH_INTERFACE_VERSION = 8.``
 
+From AviSynth+ version 3.7.1.test.32 new interface functions arrived
+``AVISYNTH_INTERFACE_VERSION = 8`` ``AVISYNTH_INTERFACE_BUGFIX = 1``
+or ``AVISYNTH_INTERFACE_VERSION = 9``
+
 Generally good start is to take some similar plugin source code as a draft
 for improving or own development. Attention: there are many old plugins
 source code packages with older avisynth.h included. Simply replace it by new one.
+
 
 
 Compiling options
@@ -81,16 +123,23 @@ On Windows plugin CPP source code must be compiled as Win32 or x64 DLL (multi-th
 multi-threaded DLL (MD)) without MFC. Latter is recommended in general and
 requires the actual Microsoft Visual C++ redistributables.
 
+In Visual Studio Windows XP builds require v141_xp platform toolset 
+(Visual Studio 2019's default is v142) along 
+with compiler option /Zc:threadSafeInit-
+
 Note that GCC and the other builds cannot be mixed due to the different ABI.
 
-Of course, use Release build with optimization. Typical compiler switches are
-/MT /O2 and /dll /nologo for linker
+Of course, use Release build with optimization.
+
+Use CMake make environment, for MSVC it generates the solution file as well
+(note: you cannot have both x86 and x64 configured in the solution at the same time)
 
 See step by step :doc:`compiling instructions. <CompilingAvisynthPlugins>`
 
 
 Other compilers
 ---------------
+note from 2021: this section maybe a bit outdated.
 
 Since v2.5.7, AviSynth includes an updated version of Kevin Atkinson's
 AviSynth C API you can use to create "C-Plugins" with compilers such as

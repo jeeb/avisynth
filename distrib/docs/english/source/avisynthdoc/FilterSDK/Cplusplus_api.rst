@@ -1700,8 +1700,8 @@ Return the value of the requested variable. If the variable was not found or had
 
 .. _cplusplus_makepropertywritable:
 
-MakePropertyWritable, v9
-^^^^^^^^^^^^^^^^^^^^^^^^
+MakePropertyWritable v9
+^^^^^^^^^^^^^^^^^^^^^^^
 
 ::
 

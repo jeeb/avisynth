@@ -113,6 +113,7 @@ Advanced Topics
 Versions History
 ----------------
 
+-   :doc:`AviSynth+<avisynthplus>`
 -   :doc:`AviSynth 2.6 <twopointsix>`
 -   :doc:`AviSynth 2.5 <twopointfive>`
 -   :doc:`Release Notes v2.58 <releasenotes>`
