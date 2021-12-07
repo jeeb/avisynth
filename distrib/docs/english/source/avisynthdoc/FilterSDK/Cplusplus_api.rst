@@ -1,4 +1,3 @@
-
 C++ API
 =======
 
@@ -10,7 +9,7 @@ a plugin. All external plugins should #include it:
     #include "avisynth.h"
 
 Note, sometimes there is a reference to a version number of the plugin
-api (for example v3 or v6). This refers to the value of
+api (for example v3, v6, v8). This refers to the value of
 :doc:`AVISYNTH_INTERFACE_VERSION <AviSynthInterfaceVersion>`. The
 classes and miscellaneous constants are described below.
 
@@ -76,12 +75,12 @@ VideoFrameBuffer
 VideoFrameBuffer (VFB) holds information about a memory block which is
 used for video data. For efficiency, instances of this class are not
 deleted when the refcount reaches zero; instead they are stored in a
-linked list to be reused. The instances are deleted when the
-corresponding AVS file is closed. Or more accurately, a
-VideoFrameBuffer once new'd generally is not released until the
-IScriptEnvironment is deleted, except if SetMemoryMax is exceeded by
-too much then not in use VideoFrameBuffer's are forcible deleted until
-SetMemoryMax is satisfied.
+linked list to be reused. In Avisynth+ this is called frame registry.
+The instances are deleted when the corresponding AVS file is closed.
+Or more accurately, a VideoFrameBuffer once new'd generally is not 
+released until the IScriptEnvironment is deleted, except if SetMemoryMax
+is exceeded by too much then not in use VideoFrameBuffer's are forcible
+deleted until SetMemoryMax is satisfied.
 
 
 .. _cplusplus_videoframe:
@@ -124,15 +123,18 @@ next. The source and destination buffers won't necessarily have the
 same pitch. The pitch can vary among frames in a clip, and it can
 differ from the width of the clip. [todo add link]
 
-| The scan line will be padded to a multiple of 8 (if necessary) due to
-  speed reasons, so the pitch will always be a multiple of 8. Image
-  processing is expensive, so SIMD instructions are used to speed tasks
-  up:
+| The scan line will be padded to a multiple of 8 or 16 (classic Avisynth) 
+  or even 64 bytes (Avisynth+) due to speed reasons, so the pitch will 
+  always be a multiple of that (e.g. mod64). Image processing is expensive, 
+  so SIMD instructions are used to speed tasks up:
 
-| SSE uses 128 bit = 16 byte registers, so 8 YUY2 pixels can be processed
+| SSE uses 128 bit = 16 byte registers, so 16 byte-pixels (4 floats) can be processed
   the same time.
 
-| AVX uses 256 bit = 32 byte registers, so 16 YUY2 pixels can be
+| AVX uses 256 bit = 32 byte registers, so 32 byte-pixels (8 floats) can be
+  processed the same time.
+
+| AVX512 uses 512 bit = 64 byte registers, so 64 byte-pixels (16 floats) can be
   processed the same time.
 
 NOTE that the pitch can change anytime, so in most use cases you must
@@ -291,12 +293,17 @@ The rule about writability is this: A buffer is writable if and only if
 there is exactly one PVideoFrame pointing to it. In other words, you
 can only write to a buffer if no one else might be reading it. This
 rule guarantees that as long as you hold on to a PVideoFrame and don't
-write to it yourself, that frame will remain unchanged. 
+write to it yourself, that frame will remain unchanged.
+
+See also :ref:`getFramePropsRW <cplusplus_getframepropsrw>`.
+
 ::
 
     PVideoFrame src = child->GetFrame(n, env);
-    if (src->IsPropertyWritable()) {...}
-      AVSMap *props = env->getFramePropsRW(dst);
+    if (!src->IsPropertyWritable())
+      env->MakePropertyWritable(&src);
+    }
+    AVSMap *props = env->getFramePropsRW(dst);
 
 
 
@@ -1143,6 +1150,16 @@ getFramePropsRW, v8
 
 get pointer for reading/writing frame properties.
 
+Important note: a frame property set is safely writable if
+
+- frame is just obtained with NewVideoFrame
+- frame is obtained with SubFrame, SubFramePlanar or SubFramePlanarA
+- env->MakeWritable is used
+- or env->MakePropertyWritable is used
+
+MakePropertyWritable (v9) vs MakeWritable: MakePropertyWritable does not make
+a full copy of video buffer content, just re-references the frame (internally
+is working like SubFramePlanarA)
 
 .. _cplusplus_propnumkeys:
 
@@ -1193,7 +1210,7 @@ get property data type.
 
 ::
 
-    // enums for frame property functions
+    // enums for frame property types
     enum AVSPropTypes {
       PROPTYPE_UNSET = 'u', // ptUnset
       PROPTYPE_INT = 'i', // peType
@@ -1216,6 +1233,11 @@ propGetInt, v8
 
 get property value as integer (int64).
 You can pass nullptr to error, but if given, the following error codes are set (0 = O.K.)
+Though AVSValue in Avisynth does not support int64_t (as of December 2021), you can freely
+use int64_t frame property values in plugins. Internally there is no special 32 bit integer
+version, only 64 bit integer exists.
+
+Possible error codes defined in Avisynth.h:
 
 ::
 
@@ -1236,7 +1258,8 @@ propGetFloat, v8
 
     virtual double __stdcall propGetFloat(const AVSMap* map, const char* key, int index, int* error) = 0;
 
-get property value as float (double).
+Get property value as float (double).
+No special 32 bit float is handled for frame properties, only 64 bit double.
 
 
 .. _cplusplus_propgetdata:
@@ -1261,6 +1284,7 @@ propGetDataSize, v8
     virtual int __stdcall propGetDataSize(const AVSMap* map, const char* key, int index, int* error) = 0;
 
 get string/data buffer size.
+String length is without the terminating 0.
 
 
 .. _cplusplus_propgetclip:
@@ -1708,7 +1732,9 @@ MakePropertyWritable v9
     virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
 
 like MakeWritable but for frame properties only.
-See also :ref:`IsPropertyWritable <cplusplus_ispropertywritable>` like IsWritable but for frame properties only.
+See also 
+- :ref:`IsPropertyWritable <cplusplus_ispropertywritable>` like IsWritable but for frame properties only.
+- :ref:`getFramePropsRW <cplusplus_getframepropsrw>`.
 
 
 
@@ -1736,6 +1762,16 @@ In this example it gives a pointer to a new created VideoFrame from vi
 ::
 
     PVideoFrame dst = env->NewVideoFrame(vi);
+
+Interface V8 introduced frame properties. One can create a new frame with
+specifying a source frame from which the frame properties are copied.
+
+In this example it gives a pointer to a new created VideoFrame from vi,
+with the actual child clip as frame property source:
+::
+
+    PVideoFrame src = child->GetFrame(n, env);
+    PVideoFrame dst = env->NewVideoFrameP(vi, src);
 
 
 "vi" is another protected member of GenericVideoFilter (the only other
@@ -1864,6 +1900,11 @@ SetCacheHints
     // We do not pass cache requests upwards, only to the next filter.
 
 
+Avisynth+: frame cacheing was completely rewritten compared to Avisynth 5 or 6.
+Specifying cache ranges are not relevant.
+
+Avisynth classic up to v6:
+
 SetCacheHints should be used in filters that request multiple frames
 from any single PClip source per input GetFrame call. frame_range is
 maximal 21.
@@ -1915,7 +1956,7 @@ MT_MULTI_INSTANCE and MT_SERIALIZED (not MT friendly) can be returned.
       MT_NICE_FILTER = 1,
       MT_MULTI_INSTANCE = 2,
       MT_SERIALIZED = 3,
-      MT_SPECIAL_MT = 4,
+      MT_SPECIAL_MT = 4, // do not use, test only
       MT_MODE_COUNT = 5
     }; 
 
@@ -1948,11 +1989,11 @@ For obvious reasons, you should always use PFunction rather than IFunction* to
 refer to function.
 
 Like a genuine pointer, a PFunction is only four/eight bytes long, so you can
-pass it around by value. Also like a pointer, a PClip can be assigned a
+pass it around by value. Also like a pointer, a PFunction can be assigned a
 null value (0), which is often useful as a sentinel. Unlike a pointer,
 PFunction is initialized to 0 by default.
 
-A function is a new object in Avisynth+ since V8, originally introduced in Neo fork.
+A function is a new object type in Avisynth+ since V8, originally introduced in Neo fork.
 
 
 .. _cplusplus_pclip:
@@ -1998,8 +2039,8 @@ AVSValue
 
 AVSValue is a variant type which can hold any one of the following
 types: a boolean value (true/false); an integer; a floating-point
-number; a string; a video clip (PClip); an array of AVSValues; or
-nothing ("undefined").
+number; a string; a video clip (PClip); an array of AVSValues; 
+a function (Avisynth+) or nothing ("undefined").
 
 It holds an array of AVSValues in the following way:
 ::

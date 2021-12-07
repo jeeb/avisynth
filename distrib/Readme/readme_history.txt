@@ -2,44 +2,18 @@ Avisynth Plus change log
 ------------------------
 Source: https://github.com/AviSynth/AviSynthPlus
 
-20211205 WIP
+This file contains all change log, with detailed examples and explanations.
+The "rst" version of the documentation just lists changes in brief.
+
+20211207 WIP
 ------------
-- Array modifier functions to allow multidimensional subarray indexes
-  Memo:
-    ArrayAdd - append
-    ArrayDel - delete from position
-    ArrayIns - insert before position
-    ArraySet - replace at position
-
-Example:
-
-    ColorbarsHD()
-    # array indexes are zero based
-    a = []
-    a=ArrayAdd(a,[1,2]) # [[1,2]]
-    a=ArrayIns(a,3,0) # [3,[1,2]]
-    a=ArrayAdd(a,"s1") # [3,[1,2],"s1"]
-    a=ArrayAdd(a,"s2") # [3,[1,2],"s1","s2"]
-    a=ArrayDel(a,2) # [3,[1,2],"s2"]
-    a=ArraySet(a,"g",1,0) # [3,["g",2],"s2"]
-    a=ArrayAdd(a,"h",1) # [3,["g",2,"h"],"s2"]
-    a=ArrayAdd(a,[10,11,12],1) # append to (1) -> [3,["g",2,"h",[10,11,12]],"s2"]
-    a=ArrayDel(a,1,3,0) # del from (1,3,0) -> [3,["g",2,"h",[11,12]],"s2"]
-    a=ArrayAdd(a,"added") # [3,["g",2,"h",[11,12]],"s2","added"]
-    a=ArrayAdd(a,["yet","another","sub"]) # [3,["g",2,"h",[11,12]],"s2","added",["yet","another","sub"]]
-    x=a[0] #3
-    x=a[1,0] #g
-    x=a[1,2] #h
-    x=a[1,3,1] #12
-    x=a[3] #"added"
-    x=a[4,1] #"another"
-    SubTitle("x = " + String(x) + " Size=" + String(a.ArraySize()))
+- Working on traditional rst documentation. Filter SDK, Changelog, etc.
 
 - New array modifier function: ArraySet
 
-   For memo here is the list of avaliable array manipulator functions
+  For memo here is the list of avaliable array manipulator functions
   - ArrayAdd - append
-  - ArrayDel - delete from position
+  - ArrayDel - delete at position
   - ArrayIns - insert before position
   - ArraySet - replace at position
 
@@ -78,6 +52,32 @@ Example:
 
       Returns a new array with array_to_mod[index1 (, index2, index3...)] = replacement_value
       Original array (as with the other functions) remains untouched.
+
+- Array modifier functions to allow multidimensional subarray indexes
+
+Example:
+
+    ColorbarsHD()
+    # array indexes are zero based
+    a = []
+    a=ArrayAdd(a,[1,2]) # [[1,2]]
+    a=ArrayIns(a,3,0) # [3,[1,2]]
+    a=ArrayAdd(a,"s1") # [3,[1,2],"s1"]
+    a=ArrayAdd(a,"s2") # [3,[1,2],"s1","s2"]
+    a=ArrayDel(a,2) # [3,[1,2],"s2"]
+    a=ArraySet(a,"g",1,0) # [3,["g",2],"s2"]
+    a=ArrayAdd(a,"h",1) # [3,["g",2,"h"],"s2"]
+    a=ArrayAdd(a,[10,11,12],1) # append to (1) -> [3,["g",2,"h",[10,11,12]],"s2"]
+    a=ArrayDel(a,1,3,0) # del from (1,3,0) -> [3,["g",2,"h",[11,12]],"s2"]
+    a=ArrayAdd(a,"added") # [3,["g",2,"h",[11,12]],"s2","added"]
+    a=ArrayAdd(a,["yet","another","sub"]) # [3,["g",2,"h",[11,12]],"s2","added",["yet","another","sub"]]
+    x=a[0] #3
+    x=a[1,0] #g
+    x=a[1,2] #h
+    x=a[1,3,1] #12
+    x=a[3] #"added"
+    x=a[4,1] #"another"
+    SubTitle("x = " + String(x) + " Size=" + String(a.ArraySize()))
 
 - Expr: allow auto scaling effect on pixels obtained from relative addressing
 - ConvertBits: ordered dither: possible to dither down with more than 8 bits difference like in
