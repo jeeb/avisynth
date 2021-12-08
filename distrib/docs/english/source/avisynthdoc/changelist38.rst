@@ -49,8 +49,8 @@ Additions
 - RGB<->YUV (YUY2) conversions: frame property support _Matrix and _ColorRange (_Primaries and _Transfer is not used at all yet)
 - ConvertBits: use input frame property _ColorRange to detect full/limited range of input clip
 - ColorBars, ColorBarsHD, BlankClip: set frame properties _ColorRange and _Matrix
-- New function: propCopy to copy or merge frame properties from one second to another.
-- xxxPlaneMin xxxPlaneMax, xxxPlaneMinMaxDifference for 32 bit float formats
+- New function: propCopy to copy or merge frame properties from one clip to another.
+- xxxPlaneMin xxxPlaneMax, xxxPlaneMinMaxDifference for 32 bit float formats:
   when threshold is 0 then return real values instead of 0..1 (chroma -0.5..0.5) clamped histogram-based result
 - Allow propGetXXX property getter functions called as normal functions, outside runtime. Frame number offset can be used.
 - YUY2 RGB conversions now allow matrix "PC.2020" and "Rec2020"
@@ -65,7 +65,7 @@ Additions
 - Expr: arbitrary variable names (instead of single letters A..Z), up to 128 different one. 
 - Expr: add 'round', 'floor', 'ceil', 'trunc' operators (nearest integer, round down, round up, round to zero)
   Acceleration requires at least SSE4.1 capable processor or else the whole expression is running in C mode.
-- Recognize \' and \b and \v in escaped (e"somethg") string literals (see http://avisynth.nl/index.php/The_full_AviSynth_grammar#Literals)
+- Recognize \\' and \\b and \\v in escaped (e"somethg") string literals (see http://avisynth.nl/index.php/The_full_AviSynth_grammar#Literals)
 - Expr: allow TAB, CR and LF characters as whitespace in expression strings
 - Clip types for propSet, propGet, add propSetClip, propGetClip
 - Clip content support for propGetAsArray, propSetArray and propGetAll

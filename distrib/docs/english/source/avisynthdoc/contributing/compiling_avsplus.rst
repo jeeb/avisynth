@@ -5,6 +5,8 @@ Compiling AviSynth+
 This guide uses a command line-based compilation methodology, because
 it's easier to provide direct instructions for this that can just be copy/pasted.
 
+Later on some other compiling method (CMake GUI, Visual Studio solution) is shown as well with different compilers.
+
 `MSys2 <https://msys2.github.io/>`_ and `7zip <http://www.7-zip.org/>`_ should
 already be installed, and msys2's bin directory should have been added to Windows'
 %PATH% variable.
@@ -21,9 +23,13 @@ AviSynth+ prerequisites
 
 AviSynth+ can be built by a few different compilers:
 
-* Visual Studio 2017 or higher.
+* Visual Studio 2019 or higher. (May work for VS2017)
+  - native or clang-cl
 * Clang 7.0.1 or higher.
 * GCC 8 or higher.
+* Intel C++ Compiler 2021 (LLVM based NextGen)
+* Intel C++ Compiler 19.2 (classic)
+
 
 | Download and install Visual Studio Community:
 | `<https://visualstudio.microsoft.com/downloads/>`_
@@ -160,7 +166,7 @@ one line.  Make sure to copy/paste all of the lines in the command.
 Download the AviSynth+ source:
 ::
 
-    git clone -b MT git://github.com/pinterf/AviSynthPlus.git && \
+    git clone -b git://github.com/AviSynth/AviSynthPlus.git && \
     cd AviSynthPlus
 
 Set up the packaging directory for later:
@@ -238,6 +244,130 @@ Packaging up everything can be quickly done with 7-zip:
     7z a -mx9 $AVSDIRNAME.7z $AVSDIRNAME
 
 
+Building with Intel C++ Compiler ICX or ICL (Windows)
+-----------------------------------------------------
+
+Prerequisites:
+~~~~~~~~~~~~~~
+
+Download Intel oneAPI Base Kit + 
+https://www.intel.com/content/www/us/en/developer/articles/news/free-intel-software-developer-tools.html
+
+- Download Intel® oneAPI DPC++/C++ Compiler
+
+  - Includes C++ 2021.4 (Intel C++ 2021 is O.K., DPC++ is not for Avisynth+)
+  - No Python, No Math kernel Library, No Video Processing, No Deep Neural
+
+- Download component for C++
+
+  - https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html
+  - Intel® oneAPI HPC Toolkit for Windows*
+  - Why: Intel® C++ Compiler Classic
+  - Choose Custom Installation (Fortran support not needed)
+
+Howto: https://www.intel.com/content/www/us/en/developer/articles/technical/using-oneapi-compilers-with-cmake-in-visual-studio.html
+
+Choose "Intel(R) oneAPI DPC++ Compiler", there are two flavours (DPCPP is not compatible with Avisynth)
+
+- Intel® NextGen Compiler (in base kit, LLVM based)
+
+  TOOLSET = "Intel C++ Compiler 2021", COMPILER EXE NAME = icx.exe
+
+- Intel® Classic Compiler (in extra HPC kit)
+
+  TOOLSET = "Intel C++ Compiler 19.2", COMPILER EXE NAME = icl.exe
+
+Once installed one or both, check some files.
+
+There are CMake support files (info from: c:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\cmake\\SYCL\\)
+
+Copy
+
+  c:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\cmake\\SYCL\\FindIntelDPCPP.cmake
+
+to
+
+  c:\\Program Files\\CMake\\share\\cmake-3.20\\Modules\\
+
+Note: Intel C++ Compilers need Cmake 3.20 as a minimum.
+
+From CMake GUI:
+~~~~~~~~~~~~~~~
+
+1. Delete Cache
+2. ``Where is source code`` and ``Where to build binaries``: git project folder e.g. C:/Github/AviSynthPlus
+3. Press Configure
+4. Choose generator: `Visual Studio 16 2019` (solution will be generated for VS2019)
+5. Choose optional platform generator: default is `x64` when left empty, `Win32` is another option
+6. Set ``Optional toolset to use (-T option)``:
+
+  - For LLVM based icx: `Intel C++ Compiler 2021`
+  - For classic 19.2 icl: `Intel C++ Compiler 19.2`
+
+7. Specify native compilers (checkbox): browse for the appropriate compiler executable path.
+
+  - icx: C:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\bin\\icx.exe
+  - icl: C:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\bin\\intel64\\icl.exe
+
+If you have errors like ``xilink: : error : Assertion failed (shared/driver/drvutils.c, line 312`` then
+as a workaround you must copy clang.exe (by default it is located in C:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\bin)
+to the folder beside xilink (for x64 configuration it is in C:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\bin\\intel64).
+
+Successful log looks like:
+
+::
+
+      The CXX compiler identification is IntelLLVM 2021.4.0 with MSVC-like command-line
+      Check for working CXX compiler: C:/Program Files (x86)/Intel/oneAPI/compiler/2021.4.0/windows/bin/icx.exe
+
+or
+
+::
+
+      The CXX compiler identification is Intel 2021.4.0.20210910
+      Check for working CXX compiler: C:/Program Files (x86)/Intel/oneAPI/compiler/2021.4.0/windows/bin/intel64/icl.exe
+
+8. Fill options, Generate
+9. Open the generated solution with Visual Studio GUI, build/debug
+
+
+Command line
+~~~~~~~~~~~~
+
+Examples (assuming we are in ``avisynth-build`` folder)
+
+``x_icl_cleanfirst.bat`` 
+
+::
+
+      @rem cd avisynth-build
+      del .\CMakeCache.txt
+      C:\Program Files (x86)\Intel\oneAPI\setvars.bat
+      cmake ../ -T "Intel C++ Compiler 19.2" -DCMAKE_CXX_COMPILER="icl.exe" -DBUILD_DIRECTSHOWSOURCE:bool=off -DENABLE_PLUGINS:bool=on -DENABLE_INTEL_SIMD:bool=ON
+      cmake --build . --config Debug --clean-first
+
+``x_icx_cleanfirst.bat``
+
+::
+
+      @rem cd avisynth-build
+      del .\CMakeCache.txt
+      C:\Program Files (x86)\Intel\oneAPI\setvars.bat
+      cmake ../ -T "Intel C++ Compiler 2021" -DCMAKE_CXX_COMPILER="icx.exe" -DBUILD_DIRECTSHOWSOURCE:bool=off -DENABLE_PLUGINS:bool=on -DENABLE_INTEL_SIMD:bool=ON
+      cmake --build . --config Debug --clean-first
+
+``x_icx_cleanfirst_no_simd.bat``
+This one will build only Avisynth.dll, no external plugins, plain C code (no SIMD)
+
+::
+
+      @rem cd avisynth-build
+      del .\CMakeCache.txt
+      C:\Program Files (x86)\Intel\oneAPI\setvars.bat
+      cmake ../ -T "Intel C++ Compiler 2021" -DCMAKE_CXX_COMPILER="icx.exe" -DBUILD_DIRECTSHOWSOURCE:bool=off -DENABLE_PLUGINS:bool=OFF -DENABLE_INTEL_SIMD:bool=OFF
+      cmake --build . --config Debug --clean-first
+
+
 Building with Clang
 -------------------
 
@@ -246,24 +376,28 @@ Command line: todo
 Using Cmake GUI:
 ~~~~~~~~~~~~~~~~
 
-1) Delete Cache
-2) Choose optional platform generator (Win32 or x64)
-3) Configure.
+1. Delete Cache
+2. ``Where is source code`` and ``Where to build binaries``: git project folder e.g. C:/Github/AviSynthPlus
+3. Press Configure
+4. Choose generator: `Visual Studio 16 2019` (solution will be generated for VS2019)
+5. Choose optional platform generator: default is `x64` when left empty, `Win32` is another option
+6. Set ``Optional toolset to use (-T option)``:
 
-Specify optional toolset to use (-T) for Cmake:
+  Type ``llvm`` or ``clangcl``
 
-A) When you have installed LLVM separately, specify "llvm" or "LLVM" as platform toolset.
-B) Since Visual Studio 2019 16.4, Clang-cl 9.0 is embedded in VS. For using that, set "ClangCL" for platform toolset.
+  clangcl (Clang-cl) comes with Visual Studio.
+  
+  for native LLVM you may need to specify native compilers (checkbox): browse for the appropriate compiler executable path.
 
-::
+Hint: How to install Clang-cl in Visual Studio: as it appears in VS2019:
 
-    How to install VS support (as it appears in VS2019 16.4):
     Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes
+    
         [X] C++ Clang compiler for Windows
         [X] C++ Clang-cl for v142 build tools (x64/x86)
 
-4) Fill options, Generate
-5) Open the generated solution with Visual Studio GUI, build/debug
+7. Fill options, Generate
+8. Open the generated solution with Visual Studio GUI, build/debug
 
 
 Building with GCC
@@ -284,7 +418,7 @@ Grab the AviSynth+ source code:
 ::
 
     cd $HOME && \
-    git clone -b MT git://github.com/pinterf/AviSynthPlus.git && \
+    git clone -b git://github.com/AviSynth/AviSynthPlus.git && \
     cd AviSynthPlus && \
     mkdir -p avisynth-build/i686 avisynth-build/amd64
 
@@ -340,7 +474,7 @@ The full instructions for that are contained in the first section of
 Download the source code and prepare the build directories:
 ::
 
-    git clone -b MT git://github.com/pinterf/AviSynthPlus.git && \
+    git clone -b git://github.com/AviSynth/AviSynthPlus.git && \
     cd AviSynthPlus && \
     mkdir -p avisynth-build/i686 avisynth-build/amd64 && \
     AVSDIRNAME=avisynth+-gcc_r$(git rev-list --count HEAD)-g$(git rev-parse --short HEAD)-$(date --rfc-3339=date | sed 's/-//g') && \
@@ -379,4 +513,4 @@ Packaging:
 
 Back to the :doc:`main page <../../index>`
 
-$ Date: 2019-04-11 21:48:49 -04:00 $
+$ Date: 2021-12-08 12:12:00 +01:00 $
