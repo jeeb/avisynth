@@ -413,7 +413,7 @@ FilteredResizeH::FilteredResizeH(PClip _child, double subrange_left, double subr
       }
     }
     else {
-#ifdef INTEKL_INTRINSICS
+#ifdef INTEL_INTRINSICS
       // Planar + SSSE3 = use new horizontal resizer routines
       resampler_h_luma = GetResampler(cpu, true, pixelsize, bits_per_pixel, resampling_program_luma, env);
 
