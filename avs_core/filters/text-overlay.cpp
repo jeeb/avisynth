@@ -1156,11 +1156,12 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
       TextOut(hdc, child->GetParity(n) ? 32 : vi.width * 8 + 8, y2, text, text_len);
 #else
     std::wstring ws = charToWstring(text, true);
-    for (int y2 = size; y2 < vi.height; y2 += size) {
+    // size-1 because of bottom alignment
+    for (int y2 = size - 1; y2 < vi.height; y2 += size) {
       if (child->GetParity(n))
-        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
+        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // bottom-left
       else
-        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
+        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // bottom-right
     }
 #endif
   }
