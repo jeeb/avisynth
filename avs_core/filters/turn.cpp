@@ -85,6 +85,10 @@ void turn_right_plane_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int heigh
 }
 
 
+// Explicit instantiation, can be used from other modules.
+template void turn_right_plane_c<uint64_t>(const BYTE*, BYTE*, int, int, int, int);
+
+
 void turn_right_plane_8_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
     turn_right_plane_c<BYTE>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
