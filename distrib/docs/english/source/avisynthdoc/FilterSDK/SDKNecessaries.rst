@@ -10,27 +10,38 @@ You must have some compatible development tool
 - Actual source requires c++ 17. (or c++1z for gcc 7.0)
 - Microsoft compilers:
 
-  Presently the latest one is Microsoft Visual C++ 2019 (v15) and 
-  2022 was just launched (as of December 2021)
+  As of December 2021 the latest one is Microsoft Visual C++ 2022 (v16) and 
+  Microsoft Visual C++ 2019 (v15)
 
   Community Edition is free for open source development.
   (`free download <http://www.visualstudio.com/en-us/downloads/>`__
   (web version is fine); )
-- Intel ICX NextGen 2021.3 or ICL 2021.3 (19.2 Classic)
+  
+  Both 2019 and 2022 versions still support Windows XP when you include Visual Studio 2017 XP (v141_xp) platform toolset in the customized installation.
+  (Though user must not update their VC++ redistributables after a specific version point, when XP support has been stopped)
+  
+- Intel ICX NextGen 2021.4 or ICL 2021.4 (19.2 Classic)
 
-  Intel oneAPI Base Kit +:
-  `download <https://www.intel.com/content/www/us/en/developer/articles/news/free-intel-software-developer-tools.html>`__
+  You need either or both Intel C++ compiler engine:
+  
+  - Intel C++ 2021 (ICX: LLVM based NextGen) in Base Kit
+  
+    Intel oneAPI Base Kit `download <https://www.intel.com/content/www/us/en/developer/articles/news/free-intel-software-developer-tools.html>`__
 
-  Need: Intel® oneAPI DPC++/C++ Compiler.
-  Includes C++ 2021.4 (Intel C++ 2021 is O.K., DPC++ is not for Avisynth+)
+    We need it for Intel® oneAPI DPC++/C++ Compiler. It includes C++ 2021.4 but we don't need DPC++ - it is not suitable for Avisynth+)
 
-  No Python, No Math kernel Library, No Video Processing, No Deep Neural.
+  - Intel C++ Classic (ICL 19.2) addon in HPC toolkit
 
-  Component for C++:
-  `download <https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html>`__
-  Intel® oneAPI HPC Toolkit for Windows for having
-  Intel® C++ Compiler Classic (v19.2 at the time of writing this document).
-  Choose Custom Installation (Fortran support not needed)
+    From Intel oneAPI toolkit explorer homepage choose Intel® oneAPI HPC Toolkit
+    <https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html#hpc-kit>
+    
+    The oneAPI HPC Toolkit is an addon (complements) to the base toolkit.
+    For less disk space and omit unnecassary components, choose Custom Installation (Fortran support not needed)
+
+  During installation they integrate with Visual Studio IDE (2017, 2019 and 2022).
+  Note: when you install VS2022 after installing base toolkit,
+  you'll need to install the toolkit again to have VS2022 integration.
+
 - LLVM 9 and up, or use LLVM (clang-cl) platform toolset integrated into Visual Studio
 - Gnu C++ 9.0 (7.0 with special flags is working as well)
 
@@ -47,9 +58,8 @@ Notes
   :doc:`posix <../contributing/posix>`.
 
 - Free registration is mandatory to use Community Edition versions
-- Since Visual Studio 2022 targeting Windows XP is no longer possible.
-- with Visual Studio 2019 one can still author XP compatible versions
-  with choosing v141_xp platform and a special compiler flag.
+- Targeting Windows XP requires v141_xp (Visual Studio 2017 - XP) platform toolset
+  along with a special compiler flag. Moreover XP requires that running system must not have the latest VC++ redistributable but the last XP compatible one.
 
 Our aim is that sources can be built with all these compilers.
 Though AviSynth+ itself requires c++17, plugins are not obeyed to use it.
@@ -128,6 +138,8 @@ In Visual Studio Windows XP builds require v141_xp platform toolset
 with compiler option /Zc:threadSafeInit-
 
 Note that GCC and the other builds cannot be mixed due to the different ABI.
+This affects "only" C++ (and not C) interface but since 99% of plugins are using C++ 
+interfaces we can say that GCC Avisynth host and non-GCC user plugins are fully incompatible.
 
 Of course, use Release build with optimization.
 

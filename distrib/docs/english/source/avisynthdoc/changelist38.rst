@@ -8,6 +8,7 @@ Changes from 3.7 to 3.8
 
 Additions
 ~~~~~~~~~
+- Linux: Show more information when dlopen fails
 - Expr: allow auto scaling effect on pixels obtained from relative addressing
 - New array manipulators: ArrayDel, ArrayAdd, ArrayIns, ArraySet with accepting multi dimensional indexes
 - ExtractY/U/V/R/G/B/A, PlaneToY: delete _ChromaLocation property. Set _ColorRange property to "full" if source is Alpha plane
@@ -74,6 +75,8 @@ Additions
 
 Build environment, Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Visual Studio 2022: Add /fp:contract to compilation parameters (addition to /fp:precise)
+- Check Visual Studio 2022, add build examples to documentation. Recognized: it has still an option to use v141_xp toolkit
 - CMake build environment: older GCC can be used which knows only -std=c++-1z instead of c++17
 - AviSynth programming interface V8.1 / V9:
   Add 'MakePropertyWritable' to the IScriptEnvironment (CPP interface), avs_make_property_writable (C interface)
@@ -86,6 +89,7 @@ Build environment, Interface
 
 Bugfixes
 ~~~~~~~~
+- Fix: "Text" filter would crash when y coord is odd and format has vertical subsampling
 - Fix: MinMax runtime filter family: check plane existance (e.g. error when requesting RPlaneMinMaxDifference on YV12)
 - Fix: prevent x64 debug AviSynth builds from crashing in VirtualDub2 (opened through CAVIStreamSynth)
 - Expr: fix conversion factor (+correct chroma scaling) when integer-to-integer full-scale automatic range scaling was required
