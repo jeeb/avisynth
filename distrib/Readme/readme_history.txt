@@ -5,8 +5,52 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20211207 WIP
+20211221 WIP
 ------------
+- Fix: Debug build does not crash with stack overflow when some 1000+ clips are in filter chain.
+- Fix memory and speed issues when Prefetch was not the last position or there are multiple Prefetch.
+  Thanks to magiblot for reporting the issue and pointing out the possible resolution https://github.com/AviSynth/AviSynthPlus/issues/244
+  Phenomenon: 
+  - MT_MULTI_INSTANCE filters were kept multithreaded and instantiated after the Prefetch line.
+    When another Prefetch appeared later, its intended value was not set properly.
+  - MT_MULTI_INSTANCE filters were instantiated in a larger count that the actual Prefetch value.
+    E.g. Prefetch 3 created 4 filter instances, values 4 to 7 were resulting in 8 filter instances
+    and Prefetch 8 to 15 created 16 filter instances, etc.
+    When the filter was memory-allocation heavy (like DepanEstimate which allocates large fftw3 buffers in its constructor)
+    it caused excession memory consumption because unnecessary filter instances were created.
+    For example Prefetch(8) created 16 instances of which 8 was not even used.
+  
+  Fixes:
+  - limit and set proper thread count for 2nd, 3rd.. or no further Prefetch
+  - MT_MULTI_INSTANCE filter instances limited to N (Prefetch value) and not the next power of two N
+
+- CombinePlanes: a bit optimized MergeLuma-like cases. (Dogway's finding)
+  Theory behind: when a frame has exactly one 'user' (no other frames are yet referencing it) then it can 
+  directly be grabbed and made writable without any frame plane content copying.
+  When this "I'm the only one" condition is fulfilled and the below-written conditions are set then it can be a bit quicker
+  then the ordinary "make a new frame and copy the referenced input frames into that" logic works.
+  1.) Source clip has the same format as the target, and the first plane ID is the same.
+      Y comes from first clip (no Y plane copy, the input frame containing Y is reused), U and V are copied
+  2.) Second clip has the same format as the target, and the 2nd and 3rd plane ID is the same
+      U and V comes from 2nd clip (no UV copy, frame containing U and V is reused), 
+      while Y (or the given first plane ID) is copied from first clip. When there is a 
+
+Example:
+
+    Colorbars(pixel_type="YV12")
+    ConvertBits(16)
+    a=last # UV is kept
+    Blur(1)
+    #luma comes from LAST, a's UV is copied to last
+    x=MergeLuma(a,last)
+    y=CombinePlanes(last,a,planes="YUV",pixel_type="YUV420P16")
+    y  # or x
+    Prefetch(4)
+
+  Comparison: new CombinePlanes and the usual MergeLuma showed ~4600 fps while old CombinePlanes run at only 3540 fps
+
+- Linux: Show more information when dlopen fails
+- Fix: "Text" filter would crash when y coord is odd and format has vertical subsampling
 - Working on traditional rst documentation. Filter SDK, Changelog, etc.
 
 - New array modifier function: ArraySet
