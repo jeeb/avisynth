@@ -3947,10 +3947,14 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     MTGuard* guard = reinterpret_cast<MTGuard*>(data);
 
     // If we already have a prefetcher, enable MT on the guard
+#ifdef OLD_PREFETCH
+    // FIXME: MTGuardRegistry is processed when creating thread pools for Prefetch() as well
+    // Why is it needed here?
     if (ThreadPoolRegistry.size() > 0)
     {
       guard->EnableMT(nMaxFilterInstances);
     }
+#endif
 
     MTGuardRegistry.push_back(guard);
 
@@ -5134,24 +5138,97 @@ PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* 
 
 ThreadPool* ScriptEnvironment::NewThreadPool(size_t nThreads)
 {
+  // Creates threads with threadIDs (which envI->GetThreadId() is returning) starting from 
+  // (nTotalThreads+0) to (nTotalThreads+nThreads-1)
+#ifndef OLD_PREFETCH
+  auto nThreadsBase = nTotalThreads;
+#endif
   ThreadPool* pool = new ThreadPool(nThreads, nTotalThreads, threadEnv.get());
   ThreadPoolRegistry.emplace_back(pool);
 
   nTotalThreads += nThreads;
 
+  // TotalThreads: 1
+  //*Prefetch(3)
+  // added threads are 3, threadids: 1+0,1+1,1+2 (1,2,3)
+  // TotalThreads = 4 from now
+  // MaxFilterInstances -> 3->rounded up to 4 (next power of two). Number of instantiations
+  // ChildFilter[0..3] (size = MaxFilterInstances)
+  // GetThreadID & (4-1) = GetThreadID & 3
+  // ThreadID 1,2,3 will map to ChildFilter[x] where x is 1,2,3
+
+  // TotalThreads: 4
+  //*Prefetch(6)
+  // added threads are 6, threadids: 4+0,4+1,4+2,4+3,4+4,4+5 (4,5,6,7,8,9)
+  // TotalThreads = 10 from now
+  // MaxFilterInstances -> 6->rounded up to 8 (next power of two). Number of instantiations
+  // ChildFilter[0..7] (size = MaxFilterInstances)
+  // GetThreadID & (8-1) = GetThreadID & 7
+  // ThreadID 4,5,6,7,8,9 will map to ChildFilter[x] where x is 4,5,6,7,0,1
+
+  // TotalThreads: 10
+  //*Prefetch(3)
+  // added threads are 3, threadids: 10+0,10+1,10+2  (10,11,12)
+  // TotalThreads = 13 from now
+  // MaxFilterInstances -> 3->rounded up to 4 (next power of two). Number of instantiations
+  // ChildFilter[0..3] (size = MaxFilterInstances)
+  // GetThreadID & (4-1) = GetThreadID & 3
+  // ThreadID 10,11,12 will map to ChildFilter[x] where x is 2,3,0
+
+  // PF remark: this is not too memory friendly, because the excessive numbers of MT_MULTI_INSTANCE filters
+  // Prefetch(3) will create 4 instances
+  // Prefetch(4) will create 8 instances
+  // Prefetch(9) will still create 16 instances, of which 7 is not accessed at all
+
+#ifdef OLD_PREFETCH
   if (nMaxFilterInstances < nThreads + 1) {
     // make 2^n
     nMaxFilterInstances = 1;
     while (nThreads + 1 > (nMaxFilterInstances <<= 1));
+
+    // Why: 
+    // Check assert on Reason #1.
+    // void MTGuard::EnableMT(size_t nThreads)
+    //  assert((nThreads & (nThreads - 1)) == 0); // must be 2^n
+      // 2^N: needed because of directly accessing a masked array
+      // PVideoFrame __stdcall MTGuard::GetFrame
+      // envI->GetThreadId() & (nThreads - 1)
+
+    // Real reason #1.
+    // PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
+    // auto& child = ChildFilters[envI->GetThreadId() & (nThreads - 1)];
+
   }
+#else
+  nMaxFilterInstances = nThreads; // really n/a
+  // FIXME: 
+  // AEP_FILTERCHAIN_THREADS environment property ID returns this value. Unlikely if someone used it
+  // for meaningful purposes.
+  // Avisynth does not use that internally.
+#endif
 
   // Since this method basically enables MT operation,
   // upgrade all MTGuards to MT-mode.
   for (MTGuard* guard : MTGuardRegistry)
   {
     if (guard != NULL)
-      guard->EnableMT(nMaxFilterInstances);
+      guard->EnableMT(
+#ifndef OLD_PREFETCH
+        nThreads
+#else
+        nMaxFilterInstances
+#endif
+);
   }
+
+#if 0
+  // For OLD_PREFETCH this assignment healed the Prefetch value kept issue
+  // but it finally was not needed in the solution.
+  nMaxFilterInstances = 1;
+  // After Prefetch reset to 1,
+  // or else a filter chain ended with a smaller thread count (on multiple Prefetch) or no Prefetch
+  // will remember the latest Prefetch number when it is bigger than the latest Prefetch's value
+#endif
 
   return pool;
 }
