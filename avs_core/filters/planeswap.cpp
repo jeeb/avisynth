@@ -890,13 +890,86 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
     }
   }
 
+  // check if first clip could be used as the target clip
+  PVideoFrame src = clips[0]->GetFrame(n, env);
+  PVideoFrame src1 = clips[1] ? clips[1]->GetFrame(n, env) : nullptr;
+
+  // case 1: when Y is kept from the original clip and other planes may be merged
+  if (vi_src.IsSameColorspace(vi) && target_planes[0] == source_planes[0]) {
+    // source (clip#0) has the same format as the target, and the first plane is the same
+    // luma (Y) comes w/o BitBlt. Only U and V (and optionally A) is copied.
+    if (src->IsWritable()) // we are the only one
+    {
+      PVideoFrame src_other = nullptr;
+      bool writeptr_obtained = false;
+      for (int i = 1; i < planecount; i++) {
+        int target_plane = target_planes[i];
+        int source_plane = source_planes[i];
+        if (clips[i]) { // source clips can be less than defined planes
+          if (!writeptr_obtained) {
+            src->GetWritePtr(PLANAR_Y); //Must be requested BUT only if we actually do something
+            writeptr_obtained = true;
+          }
+          if (i == 1)
+            src_other = src1; // already requested
+          else
+            src_other = clips[i]->GetFrame(n, env); // last defined clip is used for the others
+        }
+        if (src_other) {
+          env->BitBlt(src->GetWritePtr(target_plane), src->GetPitch(target_plane),
+            src_other->GetReadPtr(source_plane), src_other->GetPitch(source_plane), src_other->GetRowSize(source_plane), src_other->GetHeight(source_plane));
+        }
+        else {
+          // we are still at the first (master) clip, no need for plane copy
+        }
+      }
+      return src;
+    }
+  }
+  else if (clips[1] && !clips[2]){
+    // Try to optimize a MergeLuma case, where luma comes from Y (can even be a format of single plane), 
+    // Clip a's UV is kept.
+    // MergeLuma's speed gain: if 'a' is IsWritable() then there is no need for BitBlt chroma planes.
+    // We can only make a BitBlt from Y.
+    // We'd like to recognize the following scenario
+    // Output YUV:
+    // - Y from clip #0 (format:Y)
+    // - UV from clip #1 (format YUV420, same as output)
+    // planes: "YUV"
+    // 
+    // clip #0 format does not match with the output, maybe it is a single plane
+    // let's try with the second (clip #1) if it can be used
+    if (clips[1]->GetVideoInfo().IsSameColorspace(vi) &&
+      // the rest plane IDs are matching between source and target
+      vi.NumComponents() >= 3 && target_planes[1] == source_planes[1] && target_planes[2] == source_planes[2] &&
+      (vi.NumComponents() < 4 || (vi.NumComponents() == 4 && target_planes[3] == source_planes[3])))
+    {
+      if (src1->IsWritable()) // we are the only one
+      {
+        src1->GetWritePtr(PLANAR_Y); //Must be requested BUT only if we actually do something
+        int target_plane = target_planes[0];
+        int source_plane = source_planes[0];
+        // Copy from first clip
+        env->BitBlt(src1->GetWritePtr(target_plane), src1->GetPitch(target_plane),
+          src->GetReadPtr(source_plane), src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
+        env->copyFrameProps(src, src1);
+        return src1;
+      }
+    }
+  }
+
   PVideoFrame dst = env->NewVideoFrame(vi);
   bool propCopied = false;
 
-  PVideoFrame src;
   for (int i = 0; i < planecount; i++) {
     if (clips[i]) { // source clips can be less than defined planes
-      src = clips[i]->GetFrame(n, env); // last defined clip is used for the others
+      if (i > 0) // clip #0 was already requested
+      {
+        if (i == 1) // clip #1 was already requested
+          src = src1;
+        else
+          src = clips[i]->GetFrame(n, env); // last defined clip is used for the others
+      }
       if (!propCopied) {
         env->copyFrameProps(src, dst);
         propCopied = true;
