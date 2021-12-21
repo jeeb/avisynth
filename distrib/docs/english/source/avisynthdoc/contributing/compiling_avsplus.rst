@@ -414,7 +414,7 @@ We need Intel oneAPI Base Kit and optionally oneAPI HPC Toolkit
 - Download Intel® oneAPI DPC++/C++ Compiler
 
   - https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html#base-kit
-  - Includes C++ 2021.4 (we need Intel C++ 2021, DPC++ is suitable for Avisynth+)
+  - Includes C++ 2021.4 (we need Intel C++ 2021; DPC++ is not suitable for Avisynth+)
   - Save disk space: No Python, No Math kernel Library, No Video Processing, No Deep Neural
 
 - Download component for C++
