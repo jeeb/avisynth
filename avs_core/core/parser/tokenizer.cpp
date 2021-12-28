@@ -64,6 +64,7 @@ Tokenizer::Tokenizer(Tokenizer* old)
 {
   pc = old->pc;
   line = old->line;
+  type = old->type;
   NextToken();
 }
 

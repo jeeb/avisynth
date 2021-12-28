@@ -570,7 +570,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
   GetModuleFileName(NULL, ExeFilePath, AVS_MAX_PATH);
 #else // AVS_POSIX
   std::string ExeFilePath;
-  char buf[PATH_MAX + 1];
+  char buf[PATH_MAX + 1] {};
 #ifdef AVS_LINUX
   if (readlink("/proc/self/exe", buf, sizeof(buf) - 1) != -1)
 #elif defined(AVS_MACOS)

@@ -2222,7 +2222,9 @@ ScriptEnvironment::ScriptEnvironment()
   FrontCache(NULL),
   nTotalThreads(1),
   nMaxFilterInstances(1),
-  graphAnalysisEnable(false)
+  graphAnalysisEnable(false),
+  LogLevel(LOGLEVEL_NONE),
+  cacheMode(CACHE_DEFAULT)
 {
 #ifdef XP_TLS
     if(dwTlsIndex == 0)
@@ -2256,8 +2258,6 @@ ScriptEnvironment::ScriptEnvironment()
       plane_align = max(plane_align, align);
     }
 #endif
-
-
 
     auto cpuDevice = Devices->GetCPUDevice();
     threadEnv->GetTLS()->currentDevice = cpuDevice;
