@@ -5,8 +5,8 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20211221 WIP
-------------
+20211231 3.7.1
+--------------
 - Fix: Debug build does not crash with stack overflow when some 1000+ clips are in filter chain.
 - Fix memory and speed issues when Prefetch was not the last position or there are multiple Prefetch.
   Thanks to magiblot for reporting the issue and pointing out the possible resolution https://github.com/AviSynth/AviSynthPlus/issues/244

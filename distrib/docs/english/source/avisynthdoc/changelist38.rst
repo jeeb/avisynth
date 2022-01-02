@@ -3,8 +3,8 @@ Changes.
 ========
 
 
-Changes from 3.7 to 3.8
------------------------
+Changes from 3.7 to 3.7.1
+-------------------------
 
 Additions
 ~~~~~~~~~
@@ -89,6 +89,8 @@ Build environment, Interface
 
 Bugfixes
 ~~~~~~~~
+- Fix: Debug build does not crash with stack overflow when some 1000+ clips are in filter chain.
+- Fix memory and speed issues when Prefetch was not the last position or there are multiple Prefetch.
 - Fix: "Text" filter would crash when y coord is odd and format has vertical subsampling
 - Fix: MinMax runtime filter family: check plane existance (e.g. error when requesting RPlaneMinMaxDifference on YV12)
 - Fix: prevent x64 debug AviSynth builds from crashing in VirtualDub2 (opened through CAVIStreamSynth)
@@ -117,6 +119,7 @@ Bugfixes
 
 Optimizations
 ~~~~~~~~~~~~~
+- CombinePlanes: a bit optimized MergeLuma-like cases
 - Quicker ClearProperties and CopyProperties filters (by using MakePropertyWritable instead of MakeWritable).
 - ConvertBits: AVX2 support
 - ConvertBits: Special case for: 8->16 bit fulls=true, fulld=true
