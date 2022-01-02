@@ -263,6 +263,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   const int w = src->GetRowSize();
   const int channels = vi.AudioChannels();
 
+  constexpr int TEXT_HEIGHT = 20; // for DrawString
   int bar_w = 60;  // Must be divideable by 4 (for subsampling)
   int total_width = (1+channels*2)*bar_w; // Total width in pixels.
 
@@ -316,7 +317,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
     lines_y[i] = (int)(line_every*i);
     if (!(i&1)) {
       snprintf(text, sizeof(text), "%3ddB", -i*6);
-      DrawStringPlanar(vi, src, 0, i ? lines_y[i]-10 : 0, text);
+      DrawStringPlanar(vi, src, 0, i ? lines_y[i] : TEXT_HEIGHT / 2, text);
     }
   }
   for (int x=bar_w-16; x<total_width-bar_w+16; x++) {
@@ -384,9 +385,9 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
     }
     // Draw text
     snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_db);
-    DrawStringPlanar(vi, src, ((ch*2)+1)*bar_w, vi.height-40, text);
+    DrawStringPlanar(vi, src, ((ch*2)+1)*bar_w, vi.height- 2 * TEXT_HEIGHT + TEXT_HEIGHT / 2, text);
     snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_rms);
-    DrawStringPlanar(vi, src, ((ch*2)+1)*bar_w, vi.height-20, text);
+    DrawStringPlanar(vi, src, ((ch*2)+1)*bar_w, vi.height- 1 * TEXT_HEIGHT + TEXT_HEIGHT / 2, text);
 
   }
 
