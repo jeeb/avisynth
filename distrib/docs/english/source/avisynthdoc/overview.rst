@@ -116,6 +116,7 @@ Versions History
 -   :doc:`AviSynth+<avisynthplus>`
 -   :doc:`AviSynth 2.6 <twopointsix>`
 -   :doc:`AviSynth 2.5 <twopointfive>`
+-   :doc:`Changelist 3.7.2 <changelist372>`
 -   :doc:`Changelist 3.7.1 <changelist371>`
 -   :doc:`Changelist 3.7 <changelist37>`
 -   :doc:`Changelist 3.6 <changelist36>`

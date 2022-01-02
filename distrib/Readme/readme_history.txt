@@ -5,6 +5,11 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
+20220102 3.7.2-WIP
+------------------
+- Fix: Histogram AudioLevels half character upshift (regression since v3.6)
+- Bump Copyright year to 2022
+
 20211231 3.7.1
 --------------
 - Bump AVISYNTH_INTERFACE_VERSION to 9, AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION to 0
