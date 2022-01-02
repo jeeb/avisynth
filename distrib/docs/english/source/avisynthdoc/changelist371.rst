@@ -8,6 +8,7 @@ Changes from 3.7 to 3.7.1
 
 Additions
 ~~~~~~~~~
+- Bump AVISYNTH_INTERFACE_VERSION to 9, AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION to 0
 - Linux: Show more information when dlopen fails
 - Expr: allow auto scaling effect on pixels obtained from relative addressing
 - New array manipulators: ArrayDel, ArrayAdd, ArrayIns, ArraySet with accepting multi dimensional indexes
