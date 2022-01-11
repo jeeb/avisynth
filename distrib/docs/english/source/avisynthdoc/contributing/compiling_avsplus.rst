@@ -168,7 +168,7 @@ one line.  Make sure to copy/paste all of the lines in the command.
 Download the AviSynth+ source:
 ::
 
-    git clone -b git://github.com/AviSynth/AviSynthPlus.git && \
+    git clone https://github.com/AviSynth/AviSynthPlus && \
     cd AviSynthPlus
 
 Set up the packaging directory for later:
@@ -582,7 +582,7 @@ Grab the AviSynth+ source code:
 ::
 
     cd $HOME && \
-    git clone -b git://github.com/AviSynth/AviSynthPlus.git && \
+    git clone https://github.com/AviSynth/AviSynthPlus && \
     cd AviSynthPlus && \
     mkdir -p avisynth-build/i686 avisynth-build/amd64
 
@@ -638,7 +638,7 @@ The full instructions for that are contained in the first section of
 Download the source code and prepare the build directories:
 ::
 
-    git clone -b git://github.com/AviSynth/AviSynthPlus.git && \
+    git clone https://github.com/AviSynth/AviSynthPlus && \
     cd AviSynthPlus && \
     mkdir -p avisynth-build/i686 avisynth-build/amd64 && \
     AVSDIRNAME=avisynth+-gcc_r$(git rev-list --count HEAD)-g$(git rev-parse --short HEAD)-$(date --rfc-3339=date | sed 's/-//g') && \
