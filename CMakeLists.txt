@@ -304,9 +304,13 @@ endif()
 
     # Enable standards-conformance mode for MSVC compilers that support this
     # flag (Visual C++ 2017 and later). Default. DirectShowSource will remove if needed.
-    if (NOT (MSVC_VERSION LESS 1910))
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive-")
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive-")
+    # The headers in the XP-side SDK also have errors if built in conformance mode,
+    # so if we're building for XP, don't turn that on.
+    if (NOT WINXP_SUPPORT)
+      if (NOT (MSVC_VERSION LESS 1910))
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive-")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive-")
+      endif()
     endif()
 
     if(ENABLE_INTEL_SIMD)
