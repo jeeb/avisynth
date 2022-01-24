@@ -45,8 +45,8 @@
 #endif
 
 struct MTGuardChildFilter {
-	PClip filter;
-	std::mutex mutex;
+  PClip filter;
+  std::mutex mutex;
 };
 
 MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor>&& funcCtor, InternalEnvironment* env) :
@@ -60,8 +60,8 @@ MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterCo
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
 
-	ChildFilters = std::unique_ptr<MTGuardChildFilter[]>(new MTGuardChildFilter[1]);
-	ChildFilters[0].filter = firstChild;
+  ChildFilters = std::unique_ptr<MTGuardChildFilter[]>(new MTGuardChildFilter[1]);
+  ChildFilters[0].filter = firstChild;
   vi = ChildFilters[0].filter->GetVideoInfo();
 
   Env->ManageCache(MC_RegisterMTGuard, reinterpret_cast<void*>(this));
@@ -185,6 +185,28 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
   case MT_SERIALIZED:
   {
     std::lock_guard<std::mutex> lock(ChildFilters[0].mutex);
+    /*
+    // Debug lines left here intentionally: allow maximum of 4000ms for obtaining the lock.
+    // Invoke-GetFrame deadlock situation detection.
+    // When GetFrame(0) was called from an Invoke (more exactly from a filter constructor to read
+    // frame properties of 0th frame), which operated on a Clip AVSValue variable
+    // resulted by a previous Eval operation (which had Prefetch inside).
+    // Invoke put a lock a memory_mutex and called a GetFrame(0).
+    // But the existing Prefetch of the Eval'd script had already running a GetFrame(0) from
+    // another thread and thus would also like to obtain a lock on the common memory_mutex
+    // (for expanding the frame registry).
+    // This was solved in 3.7.2 by separating memory_mutex from invoke_mutex.
+    std::lock_guard<std::timed mutex> lock(ChildFilters[0].mutex);
+    while(!ChildFilters[0].mutex.try_lock_for(std::chrono::milliseconds(4000)))
+    {
+      _RPT3(0, "MTGuard::GetFrame lock DEADLOCK %d w=%d p=%p\n", n, ChildFilters[0].filter->GetVideoInfo().width, (void*)&ChildFilters[0].mutex);
+      envI->ThrowError("Deadlock!");
+      break;
+    }
+    // possible frame registry expansion thus memory mutex requiration here:
+    frame = ChildFilters[0].filter->GetFrame(n, env);
+    ChildFilters[0].mutex.unlock();
+    */
     frame = ChildFilters[0].filter->GetFrame(n, env);
     break;
   }
@@ -209,36 +231,36 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
 
   if (nThreads == 1)
   {
-		ChildFilters[0].filter->GetAudio(buf, start, count, env);
+    ChildFilters[0].filter->GetAudio(buf, start, count, env);
     return;
   }
 
-	InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
+  InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
 
   switch (MTMode)
   {
   case MT_NICE_FILTER:
     {
-			ChildFilters[0].filter->GetAudio(buf, start, count, env);
+      ChildFilters[0].filter->GetAudio(buf, start, count, env);
       break;
     }
   case MT_MULTI_INSTANCE:
     {
-			auto& child = ChildFilters[envI->GetThreadId() & (nThreads - 1)];
-			std::lock_guard<std::mutex> lock(child.mutex);
-			child.filter->GetAudio(buf, start, count, env);
+      auto& child = ChildFilters[envI->GetThreadId() & (nThreads - 1)];
+      std::lock_guard<std::mutex> lock(child.mutex);
+      child.filter->GetAudio(buf, start, count, env);
       break;
     }
   case MT_SERIALIZED:
     {
-			std::lock_guard<std::mutex> lock(ChildFilters[0].mutex);
-			ChildFilters[0].filter->GetAudio(buf, start, count, env);
+      std::lock_guard<std::mutex> lock(ChildFilters[0].mutex);
+      ChildFilters[0].filter->GetAudio(buf, start, count, env);
       break;
     }
   default:
     {
       assert(0);
-			envI->ThrowError("Invalid Avisynth logic.");
+      envI->ThrowError("Invalid Avisynth logic.");
       break;
     }
   } // switch
