@@ -5,8 +5,19 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220102 3.7.2-WIP
+20220124 3.7.2-WIP
 ------------------
+- Fix: Attempt to resolve deadlock when an Eval'd (Prefetch inside) Clip result is 
+  used in Invoke which calls a filter with GetFrame in its constructor.
+  (AvsPMod use case which Invokes frame prop read / ConvertToRGB32 after having the AVS script evaluated)
+  Remark: problem emerged in 3.7.1test22 which is trying to read frame properties of the 0th frame in its constructor.
+  A similar deadlock situation was already fixed earlier in Neo branch and had been backported but it did not cover this use case.
+
+20220122 3.7.1a
+---------------
+(no binaries)
+- Update some rst docs
+- Linux: avs_core/CMakeLists: provide version.h and arch.h with installed headers
 - Fix: Histogram AudioLevels half character upshift (regression since v3.6)
 - Bump Copyright year to 2022
 

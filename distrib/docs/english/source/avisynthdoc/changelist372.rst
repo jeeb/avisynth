@@ -17,6 +17,7 @@ Build environment, Interface
 
 Bugfixes
 ~~~~~~~~
+- Fix deadlock in GetFrame and Invoke (AvsPMod use case)
 - Fix Histogram AudioLevels half character upshift (regression since v3.6)
 
 
@@ -28,7 +29,7 @@ Optimizations
 Please report bugs at `github AviSynthPlus page`_ - or - `Doom9's AviSynth+
 forum`_
 
-$Date: 2022/01/02 0:0:0 $
+$Date: 2022/01/24 0:0:0 $
 
 .. _github AviSynthPlus page:
     https://github.com/AviSynth/AviSynthPlus
