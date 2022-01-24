@@ -929,6 +929,40 @@ private:
   void ShrinkCache(Device* device);
   VideoFrame* AllocateFrame(size_t vfb_size, size_t margin, Device* device);
   std::recursive_mutex memory_mutex;
+  std::recursive_mutex invoke_mutex; // 3.7.2
+  // 3.7.2: 
+  // Distinct invoke mutex from memory_mutex because a background GetFrame and Invoke would deadlock
+  // when called specially by AvsPMod: Eval, then the resulting clip variable is ConvertToRGB32'd
+  // by using Invoke.
+  // 
+  // GetFrame can require accessing FrameRegistry (NewVideoFrame).
+  // When an Clip is obtained from Eval which script has e.g. Prefetch(2) at the end then it runs 
+  // worker threads in the background, doing GetFrame calls.
+  // When this AVS Clip is further ConvertToYUV444'd (using Invoke) it calles GetFrame(0) in its
+  // constructor for getting frame properties and prepare the filter upon them. (this is not a real
+  // frame property but rather a clip property which is the same for all frames, we are using frame#0 for
+  // frame property source.
+  // 
+  // Two things are running parallel: 
+  // - a GetFrame from Invoke which holds a memory_mutex, then locks a MT_SERIALIZED mutex.
+  // - a GetFrame from the prefetcher of the already Eval'd Clip which first holds a
+  //   MT_SERIALIZED mutex then may lock a memory_mutex.
+  // Finally they deadlock on the source filter's ChildFilter MT guard (MtGuard::GetFrame, MT_SERIALIZED).
+  // Serialized access from prefetch 
+  // - gets a ChildFilter mutex, calls GetFrame which would require memory_mutex (NewVideoFrame).
+  // Serialized access from Invoke 
+  // - _Invoke locks the memory_mutex, then would obtain ChildFilter mutex.
+  // 
+  // Under specific timing conditions which surely happens in tenth of seconds we get deadlock.
+  //
+  // Solution: a new invoke_mutex is introduced besides memory_mutex.
+  // Other sub-tasks are already guarded with other mutexes: e.g. plugin_mutex, string_mutex.
+  // Note: An earlier attempt to avoid this problem was introducing
+  //   int ScriptEnvironment::suppressThreadCount; (GetSuppressThreadCount)
+  //   "Concurrent GetFrame with Invoke causes deadlock.
+  //   Increment this variable when Invoke running
+  //   to prevent submitting job to threadpool"
+  // But this cannot handle the above mentioned case, because by that time threadpool is already working.
 
   int frame_align;
   int plane_align;
@@ -4538,8 +4572,15 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
     return true;
   }
 
-  std::lock_guard<std::recursive_mutex> env_lock(memory_mutex);
+  // 3.7.2: changed memory_mutex to invoke_mutex
+  // Concurrent GetFrame with Invoke causes deadlock.
+  // Healing mode #2
+  std::lock_guard<std::recursive_mutex> env_lock(invoke_mutex);
 
+  // Concurrent GetFrame with Invoke causes deadlock.
+  // Increment this variable when Invoke running
+  // to prevent submitting job to threadpool
+  // Healing mode #1 from Neo
   ScopedCounter suppressThreadCount_(threadEnv->GetSuppressThreadCount());
 
   // chainedCtor is true if we are being constructed inside/by the
