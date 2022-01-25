@@ -167,8 +167,10 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
   __m64 v128 = _mm_set1_pi16(0x0080);
   __m64 zero = _mm_setzero_si64();
 
+  int wMod8 = (width/8) * 8;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x += 8) {
+    for (int x = 0; x < wMod8; x += 8) {
       __m64 p1_l = *(reinterpret_cast<const __m64*>(p1+x));
       __m64 p2_l = *(reinterpret_cast<const __m64*>(p2+x));
       __m64 mask_l = *(reinterpret_cast<const __m64*>(mask+x));
@@ -188,6 +190,12 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
       __m64 result = _m_packuswb(result_l, result_h);
 
       *reinterpret_cast<__m64*>(p1+x) = result;
+    }
+
+    // Leftover value
+    for (int x = wMod8; x < width; x++) {
+      BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(mask[x]));
+      p1[x] = result;
     }
 
     p1   += p1_pitch;
@@ -221,8 +229,10 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 
   __m128i zero = _mm_setzero_si128();
 
+  int wMod16 = (realwidth/16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i dst;
       __m128i src;
       __m128i msk;
@@ -259,6 +269,13 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
     }
 
+    // Leftover value
+
+    for (int x = wMod16/sizeof(uint8_t); x < width; x++) {
+      BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(mask[x]));
+      p1[x] = result;
+    }
+
     p1   += p1_pitch;
     p2   += p2_pitch;
     mask += mask_pitch;
@@ -285,8 +302,10 @@ void overlay_blend_sse41_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask
 
   __m128i zero = _mm_setzero_si128();
 
+  int wMod16 = (realwidth / 16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i dst;
       __m128i src;
       __m128i msk;
@@ -357,6 +376,21 @@ void overlay_blend_sse41_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
     }
 
+    // Leftover value
+
+    for (int x = wMod16 / sizeof(pixel_t); x < width; x++) {
+      if constexpr (sizeof(pixel_t) == 1) {
+        BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(mask[x]));
+        p1[x] = result;
+      }
+      else if constexpr (sizeof(pixel_t) == 2) {
+        int new_mask = static_cast<int>(reinterpret_cast<const uint16_t *>(mask)[x]);
+        uint16_t result = overlay_blend_c_core_16<bits_per_pixel>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], new_mask);
+        reinterpret_cast<pixel_t *>(p1)[x] = (pixel_t)result;
+      }
+    }
+
+
     p1 += p1_pitch;
     p2 += p2_pitch;
     mask += mask_pitch;
@@ -368,8 +402,10 @@ void overlay_blend_sse2_plane_masked_float(BYTE *p1, const BYTE *p2, const BYTE 
   const int width, const int height) {
   const int realwidth = width * sizeof(float);
 
+  int wMod16 = (realwidth / 16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i p1_f = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1 + x));
       __m128i p2_f = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2 + x));
       __m128i mask_f = _mm_loadu_si128(reinterpret_cast<const __m128i*>(mask + x));
@@ -378,6 +414,14 @@ void overlay_blend_sse2_plane_masked_float(BYTE *p1, const BYTE *p2, const BYTE 
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
     }
+
+    // Leftover value
+
+    for (int x = wMod16 / sizeof(float); x < width; x++) {
+      float result = overlay_blend_c_core_f(reinterpret_cast<float *>(p1)[x], reinterpret_cast<const float *>(p2)[x], reinterpret_cast<const float *>(mask)[x]);
+      reinterpret_cast<float *>(p1)[x] = result;
+    }
+
 
     p1 += p1_pitch;
     p2 += p2_pitch;
@@ -409,8 +453,10 @@ void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
   __m64 zero = _mm_setzero_si64();
   __m64 mask = _mm_set1_pi16(static_cast<short>(opacity));
 
+  int wMod8 = (width/8) * 8;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x += 8) {
+    for (int x = 0; x < wMod8; x += 8) {
       __m64 p1_l = *(reinterpret_cast<const __m64*>(p1+x));
       __m64 p2_l = *(reinterpret_cast<const __m64*>(p2+x));
 
@@ -426,6 +472,12 @@ void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
       __m64 result = _m_packuswb(result_l, result_h);
 
       *reinterpret_cast<__m64*>(p1+x) = result;
+    }
+
+    // Leftover value
+    for (int x = wMod8; x < width; x++) {
+      BYTE result = overlay_blend_c_core_8(p1[x], p2[x], opacity);
+      p1[x] = result;
     }
 
     p1   += p1_pitch;
@@ -464,8 +516,10 @@ void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
   mask = _mm_set1_epi16(static_cast<short>(opacity));
   const int realwidth = width * sizeof(uint8_t);
 
+  int wMod16 = (realwidth/16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i p1_l, p1_h;
       __m128i p2_l, p2_h;
 
@@ -488,6 +542,12 @@ void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
       result = _mm_packus_epi16(result_l, result_h);
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
+    }
+
+    // Leftover value
+    for (int x = wMod16/sizeof(uint8_t); x < width; x++) {
+      BYTE result = overlay_blend_c_core_8(p1[x], p2[x], opacity);
+      p1[x] = result;
     }
 
     p1   += p1_pitch;
@@ -533,8 +593,10 @@ void overlay_blend_sse41_plane_opacity_uint16(BYTE *p1, const BYTE *p2,
   mask = _mm_set1_epi32(opacity_scaled); // opacity always max 0..256, have to scale
   const int realwidth = width * sizeof(uint16_t);
 
+  int wMod16 = (realwidth / 16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i p1_l, p1_h;
       __m128i p2_l, p2_h;
 
@@ -559,6 +621,22 @@ void overlay_blend_sse41_plane_opacity_uint16(BYTE *p1, const BYTE *p2,
       result = _mm_packus_epi32(result_l, result_h);
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
+    }
+
+    // Leftover value
+    for (int x = wMod16 / sizeof(uint16_t); x < width; x++) {
+      uint16_t result;
+      switch (bits_per_pixel) {
+      case 10: result = overlay_blend_c_core_16<10>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], opacity_scaled);
+        break;
+      case 12: result = overlay_blend_c_core_16<12>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], opacity_scaled);
+        break;
+      case 14: result = overlay_blend_c_core_16<14>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], opacity_scaled);
+        break;
+      case 16: result = overlay_blend_c_core_16<16>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], opacity_scaled);
+        break;
+      }
+      reinterpret_cast<uint16_t *>(p1)[x] = (uint16_t)result;
     }
 
     p1 += p1_pitch;
@@ -593,8 +671,10 @@ void overlay_blend_sse2_plane_opacity_float(BYTE *p1, const BYTE *p2,
   mask = _mm_castps_si128(_mm_set1_ps(opacity_f));
   const int realwidth = width * sizeof(float);
 
+  int wMod16 = (realwidth / 16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i p1_f, p2_f;
 
       p1_f = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1 + x));
@@ -605,6 +685,12 @@ void overlay_blend_sse2_plane_opacity_float(BYTE *p1, const BYTE *p2,
       result = overlay_blend_sse2_float_core(p1_f, p2_f, mask);
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
+    }
+
+    // Leftover value
+    for (int x = wMod16 / sizeof(float); x < width; x++) {
+      float result = overlay_blend_c_core_f(reinterpret_cast<float *>(p1)[x], reinterpret_cast<const float *>(p2)[x], opacity_f);
+      reinterpret_cast<float *>(p1)[x] = result;
     }
 
     p1 += p1_pitch;
@@ -642,8 +728,10 @@ void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE
   __m64 zero = _mm_setzero_si64();
   __m64 opacity_mask = _mm_set1_pi16(static_cast<short>(opacity));
 
+  int wMod8 = (width/8) * 8;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x += 8) {
+    for (int x = 0; x < wMod8; x += 8) {
       __m64 p1_l = *(reinterpret_cast<const __m64*>(p1+x));
       __m64 p2_l = *(reinterpret_cast<const __m64*>(p2+x));
       __m64 mask_l = *(reinterpret_cast<const __m64*>(mask+x));
@@ -668,6 +756,13 @@ void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE
       *reinterpret_cast<__m64*>(p1+x) = result;
     }
 
+    // Leftover value
+    for (int x = wMod8; x < width; x++) {
+      int new_mask = overlay_merge_mask_c<BYTE, int, 8>(mask[x], opacity);
+      BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
+      p1[x] = result;
+    }
+
     p1   += p1_pitch;
     p2   += p2_pitch;
     mask += mask_pitch;
@@ -689,8 +784,10 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
   opacity_mask = _mm_set1_epi16(static_cast<short>(opacity));
   const int realwidth = width * sizeof(uint8_t);
 
+  int wMod16 = (realwidth/16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i dst = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1 + x));
       __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2 + x));
       __m128i msk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(mask + x));
@@ -721,6 +818,13 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
       result = _MM_BLENDV_EPI8(result, dst, mask_00); // ensure that zero mask value returns dst
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
+    }
+
+    // Leftover value
+    for (int x = wMod16; x < width; x++) {
+      int new_mask = overlay_merge_mask_c<BYTE, int, 8>(mask[x], opacity);
+      BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
+      p1[x] = result;
     }
 
     p1   += p1_pitch;
@@ -758,8 +862,10 @@ void overlay_blend_sse41_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BY
   }
   const int realwidth = width * sizeof(pixel_t);
 
+  int wMod16 = (realwidth / 16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i dst;
       __m128i src;
       __m128i msk;
@@ -828,6 +934,20 @@ void overlay_blend_sse41_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BY
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
     }
 
+    // Leftover value
+    for (int x = wMod16 / sizeof(pixel_t); x < width; x++) {
+      if constexpr (sizeof(pixel_t) == 1) {
+        int new_mask = overlay_merge_mask_c<BYTE, int, 8>(mask[x], opacity);
+        BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
+        p1[x] = result;
+      }
+      else if constexpr (sizeof(pixel_t) == 2) {
+        int new_mask = (reinterpret_cast<const uint16_t *>(mask)[x] * opacity) >> OPACITY_SHIFT; // int is enough, opacity is 8 bits
+        uint16_t result = overlay_blend_c_core_16<bits_per_pixel>(reinterpret_cast<uint16_t *>(p1)[x], reinterpret_cast<const uint16_t *>(p2)[x], new_mask);
+        reinterpret_cast<uint16_t *>(p1)[x] = result;
+      }
+    }
+
     p1 += p1_pitch;
     p2 += p2_pitch;
     mask += mask_pitch;
@@ -843,8 +963,10 @@ void overlay_blend_sse2_plane_masked_opacity_float(BYTE *p1, const BYTE *p2, con
   __m128i opacity_mask = _mm_castps_si128(_mm_set1_ps(opacity_f));
   const int realwidth = width * sizeof(float);
 
+  int wMod16 = (realwidth / 16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < realwidth; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i p1_f, p2_f;
       __m128i mask_f;
 
@@ -856,6 +978,16 @@ void overlay_blend_sse2_plane_masked_opacity_float(BYTE *p1, const BYTE *p2, con
       __m128i result = overlay_blend_sse2_float_core(p1_f, p2_f, mask_f);
 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1 + x), result);
+    }
+
+    // Leftover value
+    for (int x = wMod16 / sizeof(float); x < width; x++) {
+      float new_mask = (reinterpret_cast<const float *>(mask)[x] * opacity_f);
+      float p1x = reinterpret_cast<float *>(p1)[x];
+      float p2x = reinterpret_cast<const float *>(p2)[x];
+
+      float result = p1x + (p2x - p1x)*new_mask;
+      reinterpret_cast<float *>(p1)[x] = result;
     }
 
     p1 += p1_pitch;
@@ -882,13 +1014,49 @@ typedef __m128i (OverlaySseCompare)(const __m128i&, const __m128i&, const __m128
 typedef   __m64 (OverlayMmxCompare)(const __m64&, const __m64&, const __m64&);
 #endif
 
+typedef int (OverlayCCompare)(BYTE, BYTE);
+
+template<typename pixel_t, bool darken /* OverlayCCompare<pixel_t> compare*/>
+AVS_FORCEINLINE void overlay_darklighten_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
+  pixel_t* p1Y = reinterpret_cast<pixel_t *>(p1Y_8);
+  pixel_t* p1U = reinterpret_cast<pixel_t *>(p1U_8);
+  pixel_t* p1V = reinterpret_cast<pixel_t *>(p1V_8);
+
+  const pixel_t* p2Y = reinterpret_cast<const pixel_t *>(p2Y_8);
+  const pixel_t* p2U = reinterpret_cast<const pixel_t *>(p2U_8);
+  const pixel_t* p2V = reinterpret_cast<const pixel_t *>(p2V_8);
+
+  // pitches are already scaled
+  //p1_pitch /= sizeof(pixel_t);
+  //p2_pitch /= sizeof(pixel_t);
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int mask = darken ? (p2Y[x] <= p1Y[x]) : (p2Y[x] >= p1Y[x]); // compare(p1Y[x], p2Y[x]);
+      p1Y[x] = overlay_blend_opaque_c_core<pixel_t>(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core<pixel_t>(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core<pixel_t>(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+}
+
 #ifdef X86_32
-template<OverlayMmxCompare compare>
+template<OverlayMmxCompare compare, OverlayCCompare compare_c>
 AVS_FORCEINLINE void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
   __m64 zero = _mm_setzero_si64();
 
+  int wMod8 = (width/8) * 8;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x+=8) {
+    for (int x = 0; x < wMod8; x+=8) {
       // Load Y Plane
       __m64 p1_y = *(reinterpret_cast<const __m64*>(p1Y+x));
       __m64 p2_y = *(reinterpret_cast<const __m64*>(p2Y+x));
@@ -915,6 +1083,14 @@ AVS_FORCEINLINE void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, co
       *reinterpret_cast<__m64*>(p1V+x) = result_v;
     }
 
+    // Leftover value
+    for (int x = wMod8; x < width; x++) {
+      int mask = compare_c(p1Y[x], p2Y[x]);
+      p1Y[x] = overlay_blend_opaque_c_core<uint8_t>(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core<uint8_t>(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core<uint8_t>(p1V[x], p2V[x], mask);
+    }
+
     p1Y += p1_pitch;
     p1U += p1_pitch;
     p1V += p1_pitch;
@@ -928,12 +1104,14 @@ AVS_FORCEINLINE void overlay_darklighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, co
 }
 #endif
 
-template <OverlaySseCompare compare>
+template <OverlaySseCompare compare, OverlayCCompare compare_c>
 void overlay_darklighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
   __m128i zero = _mm_setzero_si128();
 
+  int wMod16 = (width/16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x+=16) {
+    for (int x = 0; x < wMod16; x+=16) {
       // Load Y Plane
       __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1Y+x));
       __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2Y+x));
@@ -960,6 +1138,14 @@ void overlay_darklighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, 
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
     }
 
+    // Leftover value
+    for (int x = wMod16; x < width; x++) {
+      int mask = compare_c(p1Y[x], p2Y[x]);
+      p1Y[x] = overlay_blend_opaque_c_core<uint8_t>(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core<uint8_t>(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core<uint8_t>(p1V[x], p2V[x], mask);
+    }
+
     p1Y += p1_pitch;
     p1U += p1_pitch;
     p1V += p1_pitch;
@@ -970,7 +1156,7 @@ void overlay_darklighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, 
   }
 }
 
-template <OverlaySseCompare compare>
+template <OverlaySseCompare compare, OverlayCCompare compare_c>
 #if defined(GCC) || defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
@@ -978,8 +1164,10 @@ void overlay_darklighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y,
 {
   __m128i zero = _mm_setzero_si128();
 
+  int wMod16 = (width / 16) * 16;
+
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x += 16) {
+    for (int x = 0; x < wMod16; x += 16) {
       // Load Y Plane
       __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1Y + x));
       __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2Y + x));
@@ -1006,6 +1194,14 @@ void overlay_darklighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y,
       _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V + x), result_v);
     }
 
+    // Leftover value
+    for (int x = wMod16; x < width; x++) {
+      int mask = compare_c(p1Y[x], p2Y[x]);
+      p1Y[x] = overlay_blend_opaque_c_core<uint8_t>(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core<uint8_t>(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core<uint8_t>(p1V[x], p2V[x], mask);
+    }
+
     p1Y += p1_pitch;
     p1U += p1_pitch;
     p1V += p1_pitch;
@@ -1014,6 +1210,11 @@ void overlay_darklighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y,
     p2U += p2_pitch;
     p2V += p2_pitch;
   }
+}
+
+// Compare functions for lighten and darken mode
+AVS_FORCEINLINE static int overlay_darken_c_cmp(BYTE p1, BYTE p2) {
+  return p2 <= p1;
 }
 
 #ifdef X86_32
@@ -1047,23 +1248,23 @@ AVS_FORCEINLINE __m128i overlay_lighten_sse_cmp(const __m128i& p1, const __m128i
 
 #ifdef X86_32
 void overlay_darken_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_mmx<overlay_darken_mmx_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+  overlay_darklighten_mmx<overlay_darken_mmx_cmp, overlay_darken_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
 }
 void overlay_lighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_mmx<overlay_lighten_mmx_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+  overlay_darklighten_mmx<overlay_lighten_mmx_cmp, overlay_lighten_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
 }
 #endif
 
 void overlay_darken_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_sse2<overlay_darken_sse_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+  overlay_darklighten_sse2<overlay_darken_sse_cmp, overlay_darken_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
 }
 void overlay_lighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_sse2<overlay_lighten_sse_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+  overlay_darklighten_sse2<overlay_lighten_sse_cmp, overlay_lighten_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
 }
 
 void overlay_darken_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_sse41<overlay_darken_sse_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+  overlay_darklighten_sse41<overlay_darken_sse_cmp, overlay_darken_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
 }
 void overlay_lighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_sse41<overlay_lighten_sse_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
+  overlay_darklighten_sse41<overlay_lighten_sse_cmp, overlay_lighten_c_cmp>(p1Y, p1U, p1V, p2Y, p2U, p2V, p1_pitch, p2_pitch, width, height);
 }
