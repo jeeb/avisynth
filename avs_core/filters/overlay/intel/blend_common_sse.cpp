@@ -34,48 +34,25 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include <avs/config.h>
+#include <avisynth.h>
 
 #include "blend_common_sse.h"
-#include "overlayfunctions_sse.h"
+#include "../blend_common.h"
 
 // Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
 #include <emmintrin.h>
 #include <smmintrin.h>
 #include <stdint.h>
-#include <type_traits>
+//#include <type_traits>
 
 
 /*******************************
  ********* Masked Blend ********
  *******************************/
 
-AVS_FORCEINLINE static BYTE overlay_blend_c_core_8(const BYTE p1, const BYTE p2, const int mask) {
-  if (mask == 0)
-    return p1;
-  if (mask == 0xFF)
-    return p2;
-  //  p1*(1-mask_f) + p2*mask_f -> p1 + (p2-p1)*mask_f
-  return (BYTE)(((p1 << 8) + (p2 - p1)*mask + 128) >> 8);
-}
 
-template<int bits_per_pixel>
-AVS_FORCEINLINE static uint16_t overlay_blend_c_core_16(const uint16_t p1, const uint16_t p2, const int mask) {
-  if (mask == 0)
-    return p1;
-  if (mask >= (1 << bits_per_pixel) -1)
-    return p2;
-  //  p1*(1-mask_f) + p2*mask_f -> p1 + (p2-p1)*mask_f
-  const int half_rounder = 1 << (bits_per_pixel - 1);
-  if constexpr(bits_per_pixel == 16) // int32 intermediate overflows
-    return (uint16_t)((((int64_t)(p1) << bits_per_pixel) + (p2 - p1)*(int64_t)mask + half_rounder) >> bits_per_pixel);
-  else // signed int arithmetic is enough
-    return (uint16_t)(((p1 << bits_per_pixel) + (p2 - p1)*mask + half_rounder) >> bits_per_pixel);
-}
 
-AVS_FORCEINLINE static float overlay_blend_c_core_f(const float p1, const float p2, const float mask) {
-  return p1 + (p2-p1)*mask; // p1*(1-mask) + p2*mask
-}
+
 
 
 #ifdef X86_32
@@ -120,17 +97,10 @@ AVS_FORCEINLINE static __m128i overlay_blend_sse2_float_core(const __m128i& p1, 
 /*******************************************
  ********* Merge Two Masks Function ********
  *******************************************/
-template<typename pixel_t, typename intermediate_result_t, int bits_per_pixel>
-AVS_FORCEINLINE static pixel_t overlay_merge_mask_c(const pixel_t p1, const pixel_t p2) {
-  return ((intermediate_result_t)p1*p2) >> bits_per_pixel;
-}
-
-AVS_FORCEINLINE static BYTE overlay_merge_mask_c_8(const BYTE p1, const int p2) {
-  return (p1*p2) >> 8;
-}
 
 #ifdef X86_32
 AVS_FORCEINLINE static __m64 overlay_merge_mask_mmx(const __m64& p1, const __m64& p2) {
+  // (p1*p2) >> 8;
   __m64 t1 = _mm_mullo_pi16(p1, p2);
   __m64 t2 = _mm_srli_pi16(t1, 8);
   return t2;
@@ -138,6 +108,7 @@ AVS_FORCEINLINE static __m64 overlay_merge_mask_mmx(const __m64& p1, const __m64
 #endif
 
 AVS_FORCEINLINE static __m128i overlay_merge_mask_sse2_uint8(const __m128i& p1, const __m128i& p2) {
+  // (p1*p2) >> 8;
   __m128i t1 = _mm_mullo_epi16(p1, p2);
   __m128i t2 = _mm_srli_epi16(t1, 8);
   return t2;
@@ -149,6 +120,7 @@ __attribute__((__target__("sse4.1")))
 #endif
 AVS_FORCEINLINE static __m128i overlay_merge_mask_sse41_uint16(const __m128i& p1, const __m128i& p2)
 {
+  //   return ((intermediate_result_t)p1*p2) >> bits_per_pixel;
   __m128i t1 = _mm_mullo_epi32(p1, p2);
   __m128i t2 = _mm_srli_epi32(t1, bits_per_pixel);
   return t2;
@@ -164,13 +136,10 @@ AVS_FORCEINLINE static __m128i overlay_merge_mask_sse2_float(const __m128i& p1, 
  ********* Blend Opaque *********
  ** Use for Lighten and Darken **
  ********************************/
-template<typename pixel_t>
-AVS_FORCEINLINE pixel_t overlay_blend_opaque_c_core(const pixel_t p1, const pixel_t p2, const pixel_t mask) {
-  return (mask) ? p2 : p1;
-}
 
 #ifdef X86_32
 AVS_FORCEINLINE __m64 overlay_blend_opaque_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask) {
+  // return (mask) ? p2 : p1;
   __m64 r1 = _mm_andnot_si64(mask, p1);
   __m64 r2 = _mm_and_si64   (mask, p2);
   return _mm_or_si64(r1, r2);
@@ -178,83 +147,16 @@ AVS_FORCEINLINE __m64 overlay_blend_opaque_mmx_core(const __m64& p1, const __m64
 #endif
 
 AVS_FORCEINLINE __m128i overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+  // return (mask) ? p2 : p1;
   __m128i r1 = _mm_andnot_si128(mask, p1);
   __m128i r2 = _mm_and_si128   (mask, p2);
   return _mm_or_si128(r1, r2);
 }
 
-/******************************
- ********* Mode: Blend ********
- ******************************/
 
-template<typename pixel_t, int bits_per_pixel>
-void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
-                                  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-                                  const int width, const int height)
-{
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      int new_mask = reinterpret_cast<const pixel_t *>(mask)[x];
-      pixel_t p1x = reinterpret_cast<pixel_t *>(p1)[x];
-      pixel_t p2x = reinterpret_cast<const pixel_t *>(p2)[x];
-      pixel_t result;
-      if constexpr(bits_per_pixel == 8)
-        result = (pixel_t)overlay_blend_c_core_8((BYTE)p1x, (BYTE)p2x, new_mask);
-      else
-        result = (pixel_t)overlay_blend_c_core_16<bits_per_pixel>((uint16_t)p1x, (uint16_t)p2x, new_mask);
-      reinterpret_cast<pixel_t *>(p1)[x] = result;
-    }
-
-    p1   += p1_pitch;
-    p2   += p2_pitch;
-    mask += mask_pitch;
-  }
-}
-
-void overlay_blend_c_plane_masked_f(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height) {
-
-  typedef float pixel_t;
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      pixel_t new_mask = reinterpret_cast<const pixel_t *>(mask)[x];
-      pixel_t p1x = reinterpret_cast<pixel_t *>(p1)[x];
-      pixel_t p2x = reinterpret_cast<const pixel_t *>(p2)[x];
-      pixel_t result = p1x + (p2x-p1x)*new_mask; // p1x*(1-new_mask) + p2x*mask
-
-      //pixel_t result = overlay_blend_c_core(reinterpret_cast<pixel_t *>(p1)[x], reinterpret_cast<pixel_t *>(p2)[x], static_cast<int>(reinterpret_cast<pixel_t *>(mask)[x]));
-      reinterpret_cast<pixel_t *>(p1)[x] = result;
-    }
-
-    p1   += p1_pitch;
-    p2   += p2_pitch;
-    mask += mask_pitch;
-  }
-}
-
-// instantiate
-template void overlay_blend_c_plane_masked<uint8_t, 8>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_c_plane_masked<uint16_t,10>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_c_plane_masked<uint16_t,12>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_c_plane_masked<uint16_t,14>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-template void overlay_blend_c_plane_masked<uint16_t,16>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
 
 
 #ifdef X86_32
-// The following disable EMMS warning, since it's caller-called.
-#pragma warning (push)
-#pragma warning (disable: 4799)
 void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                     const int width, const int height) {
@@ -300,8 +202,8 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
     p2   += p2_pitch;
     mask += mask_pitch;
   }
+  _mm_empty();
 }
-#pragma warning (pop)
 #endif
 
 // SSE4.1 simulation for SSE2
@@ -535,75 +437,15 @@ template void overlay_blend_sse41_plane_masked<uint16_t, 12>(BYTE *p1, const BYT
 template void overlay_blend_sse41_plane_masked<uint16_t, 14>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
 template void overlay_blend_sse41_plane_masked<uint16_t, 16>(BYTE *p1, const BYTE *p2, const BYTE *mask, const int p1_pitch, const int p2_pitch, const int mask_pitch, const int width, const int height);
 
-template<typename pixel_t, int bits_per_pixel>
-void overlay_blend_c_plane_opacity(BYTE *p1, const BYTE *p2,
-                                   const int p1_pitch, const int p2_pitch,
-                                   const int width, const int height, const int opacity) {
-
-  const int OPACITY_SHIFT  = 8; // opacity always max 0..256
-  const int MASK_CORR_SHIFT = OPACITY_SHIFT; // no mask, mask = opacity, 8 bits always
-  const int half_pixel_value_rounding = (1 << (MASK_CORR_SHIFT - 1));
-
-  // avoid "uint16*uint16 can't get into int32" overflows
-  // no need here, opacity as mask is always 8 bit
-  // typedef std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, int64_t, float>::type >::type result_t;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      pixel_t p1x = reinterpret_cast<pixel_t *>(p1)[x];
-      pixel_t p2x = reinterpret_cast<const pixel_t *>(p2)[x];
-      pixel_t result = (pixel_t)((((p1x << MASK_CORR_SHIFT) | half_pixel_value_rounding) + (p2x-p1x)*opacity) >> MASK_CORR_SHIFT);
-      //BYTE result = overlay_blend_c_core_8(p1[x], p2[x], opacity);
-      reinterpret_cast<pixel_t *>(p1)[x] = result;
-    }
-
-    p1   += p1_pitch;
-    p2   += p2_pitch;
-  }
-}
-
-void overlay_blend_c_plane_opacity_f(BYTE *p1, const BYTE *p2,
-  const int p1_pitch, const int p2_pitch,
-  const int width, const int height, const float opacity_f) {
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      float p1x = reinterpret_cast<float *>(p1)[x];
-      float p2x = reinterpret_cast<const float *>(p2)[x];
-      float result = p1x + (p2x-p1x)*opacity_f;
-      reinterpret_cast<float *>(p1)[x] = result;
-    }
-
-    p1   += p1_pitch;
-    p2   += p2_pitch;
-  }
-}
-
-// instantiate
-template void overlay_blend_c_plane_opacity<uint8_t, 8>(BYTE *p1, const BYTE *p2,
-  const int p1_pitch, const int p2_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_opacity<uint16_t,10>(BYTE *p1, const BYTE *p2,
-  const int p1_pitch, const int p2_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_opacity<uint16_t,12>(BYTE *p1, const BYTE *p2,
-  const int p1_pitch, const int p2_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_opacity<uint16_t,14>(BYTE *p1, const BYTE *p2,
-  const int p1_pitch, const int p2_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_opacity<uint16_t,16>(BYTE *p1, const BYTE *p2,
-  const int p1_pitch, const int p2_pitch,
-  const int width, const int height, const int opacity);
 
 
 #ifdef X86_32
-// The following disable EMMS warning, since it's caller-called.
-#pragma warning (push)
-#pragma warning (disable: 4799)
 void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
                                      const int p1_pitch, const int p2_pitch,
-                                     const int width, const int height, const int opacity) {
+                                     const int width, const int height, const int opacity, const float opacity_f) {
+
+  AVS_UNUSED(opacity_f);
+
         BYTE* original_p1 = p1;
   const BYTE* original_p2 = p2;
 
@@ -641,8 +483,8 @@ void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
     p1   += p1_pitch;
     p2   += p2_pitch;
   }
+  _mm_empty();
 }
-#pragma warning (pop)
 #endif
 
 void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
@@ -666,6 +508,8 @@ void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
       reinterpret_cast<pixel_t *>(p1)[x] = result;
     }
 */
+  AVS_UNUSED(opacity_f);
+
   __m128i v128, mask;
   __m128i zero = _mm_setzero_si128();
   v128 = _mm_set1_epi16(0x0080);
@@ -737,6 +581,7 @@ void overlay_blend_sse41_plane_opacity_uint16(BYTE *p1, const BYTE *p2,
         reinterpret_cast<pixel_t *>(p1)[x] = result;
       }
   */
+  AVS_UNUSED(opacity_f);
 
   __m128i v128, mask;
   __m128i zero = _mm_setzero_si128();
@@ -820,6 +665,8 @@ void overlay_blend_sse2_plane_opacity_float(BYTE *p1, const BYTE *p2,
         reinterpret_cast<pixel_t *>(p1)[x] = result;
       }
   */
+  AVS_UNUSED(opacity);
+
   __m128i mask;
   mask = _mm_castps_si128(_mm_set1_ps(opacity_f));
   const int realwidth = width * sizeof(float);
@@ -865,80 +712,14 @@ template void overlay_blend_sse41_plane_opacity_uint16<16>(BYTE *p1, const BYTE 
   const int p1_pitch, const int p2_pitch,
   const int width, const int height, const int opacity, const float opacity_f);
 
-template<typename pixel_t, int bits_per_pixel>
-void overlay_blend_c_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
-                                  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-                                  const int width, const int height, const int opacity) {
-  const int MASK_CORR_SHIFT = (sizeof(pixel_t) == 1) ? 8 : bits_per_pixel;
-  const int OPACITY_SHIFT  = 8; // opacity always max 0..256
-  const int half_pixel_value_rounding = (1 << (MASK_CORR_SHIFT - 1));
-
-  // avoid "uint16*uint16 can't get into int32" overflows
-  typedef typename std::conditional < sizeof(pixel_t) == 1, int, typename std::conditional < sizeof(pixel_t) == 2, int64_t, float>::type >::type result_t;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      int new_mask = (reinterpret_cast<const pixel_t *>(mask)[x] * opacity) >> OPACITY_SHIFT; // int is enough, opacity is 8 bits
-      result_t p1x = reinterpret_cast<pixel_t *>(p1)[x];
-      pixel_t p2x = reinterpret_cast<const pixel_t *>(p2)[x];
-
-      pixel_t result = (pixel_t)((((p1x << MASK_CORR_SHIFT) | half_pixel_value_rounding) + (p2x-p1x)*new_mask) >> MASK_CORR_SHIFT);
-      //int new_mask = overlay_merge_mask_c<pixel_t, intermediate_result_t, bits_per_pixel>(mask[x], opacity);
-      //BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
-      reinterpret_cast<pixel_t *>(p1)[x] = result;
-    }
-
-    p1   += p1_pitch;
-    p2   += p2_pitch;
-    mask += mask_pitch;
-  }
-}
-
-// instantiate
-template void overlay_blend_c_plane_masked_opacity<uint8_t, 8>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_masked_opacity<uint16_t,10>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_masked_opacity<uint16_t,12>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_masked_opacity<uint16_t,14>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity);
-template void overlay_blend_c_plane_masked_opacity<uint16_t,16>(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const int opacity);
-
-void overlay_blend_c_plane_masked_opacity_f(BYTE *p1, const BYTE *p2, const BYTE *mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height, const float opacity_f) {
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      float new_mask = (reinterpret_cast<const float *>(mask)[x] * opacity_f);
-      float p1x = reinterpret_cast<float *>(p1)[x];
-      float p2x = reinterpret_cast<const float *>(p2)[x];
-
-      float result = p1x + (p2x-p1x)*new_mask;
-      reinterpret_cast<float *>(p1)[x] = result;
-    }
-
-    p1   += p1_pitch;
-    p2   += p2_pitch;
-    mask += mask_pitch;
-  }
-}
 
 
 #ifdef X86_32
-// The following disable EMMS warning, since it's caller-called.
-#pragma warning (push)
-#pragma warning (disable: 4799)
 void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
-                                    const int width, const int height, const int opacity) {
+                                    const int width, const int height, const int opacity, const float opacity_f) {
+  AVS_UNUSED(opacity_f);
+
         BYTE* original_p1 = p1;
   const BYTE* original_p2 = p2;
   const BYTE* original_mask = mask;
@@ -977,7 +758,7 @@ void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE
 
     // Leftover value
     for (int x = wMod8; x < width; x++) {
-      int new_mask = overlay_merge_mask_c_8(mask[x], opacity);
+      int new_mask = overlay_merge_mask_c<BYTE, int, 8>(mask[x], opacity);
       BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
       p1[x] = result;
     }
@@ -986,8 +767,8 @@ void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE
     p2   += p2_pitch;
     mask += mask_pitch;
   }
+  _mm_empty();
 }
-#pragma warning(pop)
 #endif
 
 // sse2: 8 bit only
@@ -1041,7 +822,7 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
 
     // Leftover value
     for (int x = wMod16; x < width; x++) {
-      int new_mask = overlay_merge_mask_c_8(mask[x], opacity);
+      int new_mask = overlay_merge_mask_c<BYTE, int, 8>(mask[x], opacity);
       BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
       p1[x] = result;
     }
@@ -1156,7 +937,7 @@ void overlay_blend_sse41_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BY
     // Leftover value
     for (int x = wMod16 / sizeof(pixel_t); x < width; x++) {
       if constexpr (sizeof(pixel_t) == 1) {
-        int new_mask = overlay_merge_mask_c_8(mask[x], opacity);
+        int new_mask = overlay_merge_mask_c<BYTE, int, 8>(mask[x], opacity);
         BYTE result = overlay_blend_c_core_8(p1[x], p2[x], static_cast<int>(new_mask));
         p1[x] = result;
       }
@@ -1432,7 +1213,7 @@ void overlay_darklighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y,
 }
 
 // Compare functions for lighten and darken mode
-AVS_FORCEINLINE int overlay_darken_c_cmp(BYTE p1, BYTE p2) {
+AVS_FORCEINLINE static int overlay_darken_c_cmp(BYTE p1, BYTE p2) {
   return p2 <= p1;
 }
 
@@ -1464,25 +1245,6 @@ AVS_FORCEINLINE __m128i overlay_lighten_sse_cmp(const __m128i& p1, const __m128i
   __m128i diff = _mm_subs_epu8(p1, p2);
   return _mm_cmpeq_epi8(diff, zero);
 }
-
-// Exported function
-template<typename pixel_t>
-void overlay_darken_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_c<pixel_t, true /*overlay_darken_c_cmp */>(p1Y_8, p1U_8, p1V_8, p2Y_8, p2U_8, p2V_8, p1_pitch, p2_pitch, width, height);
-}
-// instantiate
-template void overlay_darken_c<uint8_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
-template void overlay_darken_c<uint16_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
-
-template<typename pixel_t>
-void overlay_lighten_c(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height) {
-  overlay_darklighten_c<pixel_t, false /*overlay_lighten_c_cmp*/>(p1Y_8, p1U_8, p1V_8, p2Y_8, p2U_8, p2V_8, p1_pitch, p2_pitch, width, height);
-}
-
-// instantiate
-template void overlay_lighten_c<uint8_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
-template void overlay_lighten_c<uint16_t>(BYTE *p1Y_8, BYTE *p1U_8, BYTE *p1V_8, const BYTE *p2Y_8, const BYTE *p2U_8, const BYTE *p2V_8, int p1_pitch, int p2_pitch, int width, int height);
-
 
 #ifdef X86_32
 void overlay_darken_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
