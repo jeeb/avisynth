@@ -5,8 +5,22 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220124 3.7.2-WIP
+20220129 3.7.2-WIP
 ------------------
+- Fix #256: ColorYUV(analyse=true) to not set _ColorRange property to "full" if input has no such 
+  property and range cannot be 100% sure established. In general: when no _ColorRange for input and 
+  no parameter which would rely on a supposed default (such as full range for gamma), then an
+  output frame property is not added.
+  When no _ColorRange for input and no other parameters to hint color range then 
+  - gamma<>0 sets full range
+  - opt="coring" sets limited range
+  - otherwise no _ColorRange for output would be set
+- Overlay (#255): "blend": using accurate formula using float calculation. 8 bit basic case is slower now when opacity=1.0.
+  Higher bit depths and opacity<1.0 cases are quicker.
+  Mask processing suffered from inaccuracy. For speed reasons mask value 0 to 255 were handled
+  as mask/256 instead of mask/255. Since with such calculation maximum value was not the expected 1.0 but rather 255/256 (0.996)
+  this case was specially treated as 1.0 to give Overlay proper results at least the the two extremes.
+  But for example applying mask=129 to pixel=255 resulted in result_pixel=128 instead of 129. This was valid on higher bit depths as well.
 - Fix: Attempt to resolve deadlock when an Eval'd (Prefetch inside) Clip result is 
   used in Invoke which calls a filter with GetFrame in its constructor.
   (AvsPMod use case which Invokes frame prop read / ConvertToRGB32 after having the AVS script evaluated)
