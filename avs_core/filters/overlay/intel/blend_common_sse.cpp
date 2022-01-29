@@ -728,8 +728,8 @@ template void overlay_blend_sse2_float<true>(BYTE* p1, const BYTE* p2, const BYT
 
 
 #ifdef X86_32
-void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
-                                     const int p1_pitch, const int p2_pitch,
+void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2, const BYTE* /*mask*/,
+                                     const int p1_pitch, const int p2_pitch, const int /*mask_pitch*/,
                                      const int width, const int height, const int opacity, const float opacity_f) {
 
   AVS_UNUSED(opacity_f);
