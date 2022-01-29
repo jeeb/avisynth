@@ -40,14 +40,6 @@
 #include <avs/types.h>
 #include <avs/config.h>
 
-using overlay_blend_plane_masked_t = void(BYTE* p1, const BYTE* p2, const BYTE* mask,
-  const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
-
-using overlay_blend_plane_opacity_t = void(BYTE* p1, const BYTE* p2,
-  const int p1_pitch, const int p2_pitch,
-  const int width, const int height, const int opacity, const float opacity_f);
-
 using overlay_blend_plane_masked_opacity_t = void(BYTE* p1, const BYTE* p2, const BYTE* mask,
   const int p1_pitch, const int p2_pitch, const int mask_pitch,
   const int width, const int height, const int opacity, const float opacity_f);
@@ -79,6 +71,12 @@ AVS_FORCEINLINE static uint16_t overlay_blend_c_core_16(const uint16_t p1, const
     return (uint16_t)(((p1 << bits_per_pixel) + (p2 - p1)*mask + half_rounder) >> bits_per_pixel);
 }
 
+AVS_FORCEINLINE static float overlay_blend_c_core_simple(const int p1, const int p2, const float factor) {
+  //  p1*(1-mask_f) + p2*mask_f -> p1 + (p2-p1)*mask_f
+  const float res = p1 + (p2 - p1) * factor;
+  return res;
+}
+
 AVS_FORCEINLINE static float overlay_blend_c_core_f(const float p1, const float p2, const float mask) {
   return p1 + (p2-p1)*mask; // p1*(1-mask) + p2*mask
 }
@@ -103,19 +101,29 @@ AVS_FORCEINLINE pixel_t overlay_blend_opaque_c_core(const pixel_t p1, const pixe
 // Mode: Overlay
 void overlay_blend_c_plane_masked_f(BYTE *p1, const BYTE *p2, const BYTE *mask,
   const int p1_pitch, const int p2_pitch, const int mask_pitch,
-  const int width, const int height);
+  const int width, const int height, const int opacity, const float opacity_f);
 
 template<typename pixel_t, int bits_per_pixel>
 void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                   const int p1_pitch, const int p2_pitch, const int mask_pitch,
-                                  const int width, const int height);
+                                  const int width, const int height, const int opacity, const float opacity_f);
+
+template<bool has_mask, typename pixel_t, int bits_per_pixel>
+void overlay_blend_c_uint(BYTE* p1, const BYTE* p2, const BYTE* mask,
+  const int p1_pitch, const int p2_pitch, const int mask_pitch,
+  const int width, const int height, const int opacity, const float opacity_f);
+
+template<bool has_mask>
+void overlay_blend_c_float(BYTE* p1, const BYTE* p2, const BYTE* mask,
+  const int p1_pitch, const int p2_pitch, const int mask_pitch,
+  const int width, const int height, const int opacity, const float opacity_f);
 
 template<typename pixel_t, int bits_per_pixel>
-void overlay_blend_c_plane_opacity(BYTE *p1, const BYTE *p2,
-                                   const int p1_pitch, const int p2_pitch,
+void overlay_blend_c_plane_opacity(BYTE *p1, const BYTE *p2, const BYTE* mask,
+                                   const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                    const int width, const int height, const int opacity, const float opacity_f);
-void overlay_blend_c_plane_opacity_f(BYTE *p1, const BYTE *p2,
-  const int p1_pitch, const int p2_pitch,
+void overlay_blend_c_plane_opacity_f(BYTE *p1, const BYTE *p2, const BYTE* mask,
+  const int p1_pitch, const int p2_pitch, const int mask_pitch,
   const int width, const int height, const int opacity, const float opacity_f);
 
 template<typename pixel_t, int bits_per_pixel>
