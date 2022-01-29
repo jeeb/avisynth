@@ -860,6 +860,13 @@ ColorYUV::ColorYUV(PClip child,
   if (!vi.IsYUV() && !vi.IsYUVA())
     env->ThrowError("ColorYUV: Only work with YUV colorspace.");
 
+  bool ColorRangeCanBeGuessed = false;
+  if (gamma_y != 0) {
+    ColorRangeCanBeGuessed = true;
+    // when gamma is used then we must know the color range full/limited
+    // and the default is full_scale if gamma is not zero
+  }
+
   configY.gain = gain_y;
   configY.offset = offset_y;
   configY.gamma = gamma_y;
@@ -890,19 +897,25 @@ ColorYUV::ColorYUV(PClip child,
   // Range
   if (lstrcmpi(level, "TV->PC") == 0)
   {
+    ColorRangeCanBeGuessed = true; // will be full
     configV.range = configU.range = configY.range = COLORYUV_RANGE_TV_PC;
   }
   else if (lstrcmpi(level, "PC->TV") == 0)
   {
+    ColorRangeCanBeGuessed = true;// will be limited
     configV.range = configU.range = configY.range = COLORYUV_RANGE_PC_TV;
   }
   else if (lstrcmpi(level, "PC->TV.Y") == 0)
   {   // ?
+    ColorRangeCanBeGuessed = true;// will be limited
     configV.range = configU.range = COLORYUV_RANGE_NONE;
     configY.range = COLORYUV_RANGE_PC_TV;
   }
   else if (lstrcmpi(level, "TV") == 0)
   {
+    // When no range conversion occurs only gamma correction
+    // By this parameter we know it will be limited, this info is used for gamma adjustment
+    ColorRangeCanBeGuessed = true;
     configV.force_tv_range = configU.force_tv_range = configY.force_tv_range = true;
   }
   else if (lstrcmpi(level, "") != 0)
@@ -910,13 +923,14 @@ ColorYUV::ColorYUV(PClip child,
     env->ThrowError("ColorYUV: invalid parameter : levels");
   }
   else {
-    // avs+: missing init to none
     configV.range = configU.range = configY.range = COLORYUV_RANGE_NONE;
   }
 
   // Option
   if (lstrcmpi(opt, "coring") == 0)
   {
+    // note: this setting can conflict with e.g. TV->PC but we do not report an error
+    ColorRangeCanBeGuessed = true; // used to set _ColorRange=limited only if not conversion mode is specified
     configY.clip_tv = true;
     configU.clip_tv = true;
     configV.clip_tv = true;
@@ -957,7 +971,9 @@ ColorYUV::ColorYUV(PClip child,
   const AVSMap* props = env->getFramePropsRO(frame0);
   matrix_parse_merge_with_props_def(vi, nullptr, props, theMatrix, theColorRange,
     Matrix_e::AVS_MATRIX_UNSPECIFIED, // default matrix n/a
-    configY.force_tv_range ? ColorRange_e::AVS_RANGE_LIMITED : ColorRange_e::AVS_RANGE_FULL, env);
+    configY.force_tv_range ? 
+    ColorRange_e::AVS_RANGE_LIMITED :  
+    ColorRangeCanBeGuessed ? ColorRange_e::AVS_RANGE_FULL : -1 /* n/a invalid */, env);
   // although we read _ColorRange full/limited, nothing stops us to feed with full-range clip a "TV->PC" conversion
   // Anyway: a frame property can set theColorRange from the default "FULL" to the actual one.
   switch (configY.range) {
@@ -970,6 +986,8 @@ ColorYUV::ColorYUV(PClip child,
     break;
   default:
     if (configY.force_tv_range) // "TV" overrides default "PC". Info is needed for gamma correction
+      theColorRange = ColorRange_e::AVS_RANGE_LIMITED;
+    else if (configY.clip_tv) // coring is also sets this frame property
       theColorRange = ColorRange_e::AVS_RANGE_LIMITED;
     break;
     // leave color range as is
@@ -1246,8 +1264,11 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
         env->ApplyMessage(&dst, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
     }
 
-    auto props = env->getFramePropsRW(dst);
-    update_ColorRange(props, theColorRange, env);
+    // when there was no such property from constructor and it could not be guessed then we do not put one
+    if (theColorRange == ColorRange_e::AVS_RANGE_FULL || theColorRange == ColorRange_e::AVS_RANGE_LIMITED) {
+      auto props = env->getFramePropsRW(dst);
+      update_ColorRange(props, theColorRange, env);
+    }
 
     return dst;
 }
