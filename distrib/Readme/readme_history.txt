@@ -5,8 +5,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220129 3.7.2-WIP
+20220130 3.7.2-WIP
 ------------------
+- Fix #257: regression in 3.7.1:  GreyScale to not convert to limited range when input is RGB. Regression in 3.7.1
+  Accepts only matrix names of limited range as it is put in the documentation.
 - Fix #256: ColorYUV(analyse=true) to not set _ColorRange property to "full" if input has no such 
   property and range cannot be 100% sure established. In general: when no _ColorRange for input and 
   no parameter which would rely on a supposed default (such as full range for gamma), then an

@@ -75,6 +75,10 @@ Greyscale::Greyscale(PClip _child, const char* matrix_name, IScriptEnvironment* 
 
   if (vi.IsRGB()) {
     matrix_parse_merge_with_props(vi, matrix_name, nullptr, theMatrix, theColorRange, env);
+    if(theColorRange == ColorRange_e::AVS_RANGE_FULL)
+      env->ThrowError("GreyScale: only limited range matrix definition is allowed.");
+    // and then we make it full range because the result will get back into RGB planes, so no range conversion occurs.
+    theColorRange = ColorRange_e::AVS_RANGE_FULL;
     const int shift = 15; // internally 15 bits precision, still no overflow in calculations
 
     if (!do_BuildMatrix_Rgb2Yuv(theMatrix, theColorRange, shift, bits_per_pixel, /*ref*/greyMatrix))
