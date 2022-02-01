@@ -5,8 +5,13 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220130 3.7.2-WIP
+20220201 3.7.2-WIP
 ------------------
+- Allow top_left (2) and bottom_left (4) chroma placements for 422 in colorspace conversions, they act as "left" (0, "mpeg2")
+  in order not to give error with video sources which have _ChromaLocation set to other than "mpeg2"
+  See https://trac.ffmpeg.org/ticket/9598#comment:5
+- Fix: Expr LUT operation Access Violation on x86 + AVX2 due to an unaligned internal buffer (<32 bytes)
+- Fix: Chroma full scale as ITU Rec H.273 (e.g +/-127.5 and not +/-127) in internal converters, ColorYUV and Histogram
 - Fix #257: regression in 3.7.1:  GreyScale to not convert to limited range when input is RGB. Regression in 3.7.1
   Accepts only matrix names of limited range as it is put in the documentation.
 - Fix #256: ColorYUV(analyse=true) to not set _ColorRange property to "full" if input has no such 
