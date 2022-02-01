@@ -4396,8 +4396,10 @@ void Exprfilter::calculate_lut(IScriptEnvironment* env)
     const auto lut1d_size = (1 << bits_per_pixel); // 1 or 2 bytes per entry
     const auto lut1d_bytesize = lut1d_size * pixelsize;
     const auto lut_size = d.lutmode == 1 ? lut1d_bytesize : lut1d_bytesize * lut1d_bytesize;
-    d.luts[plane].resize(lut_size); // 256 lut_x    65536: lut_xy (8 bit)
-    dstp = d.luts[plane].data();
+    // buffer start must be aligned to at least 32 bytes for avx2.
+    // Size must be mod64 but it is fulfilled always.
+    d.luts[plane] = (uint8_t *)avs_malloc(lut_size, 32); // 256 lut_x    65536: lut_xy (8 bit)
+    dstp = d.luts[plane];
     dst_stride = lut1d_bytesize;
     h = lutmode == 1 ? 1 : lut1d_size; // 1x256, 256x256. 10 bit: 1024, 1024x1024
     w = lut1d_size;
@@ -4542,7 +4544,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           // lut_x
           if (bits_per_pixel == 8)
           {
-            uint8_t* lut = d.luts[plane].data();
+            uint8_t* lut = d.luts[plane];
             const uint8_t* src0 = srcp[0];
             const auto pitch0 = src_stride[0];
             for (auto y = 0; y < h; y++) {
@@ -4556,7 +4558,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
           }
           else {
             const int max_pixel_value = (1 << bits_per_pixel) - 1;
-            uint16_t* lut = reinterpret_cast<uint16_t*>(d.luts[plane].data());
+            uint16_t* lut = reinterpret_cast<uint16_t*>(d.luts[plane]);
             const uint8_t* src0 = srcp[0];
             const auto pitch0 = src_stride[0];
             if (bits_per_pixel == 16) {
@@ -4585,7 +4587,7 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
         else if (d.lutmode == 2) {
           // lut_xy
           // templates for speed: bitshift with immediate constant
-          const uint8_t* lut = d.luts[plane].data();
+          const uint8_t* lut = d.luts[plane];
           if (bits_per_pixel == 8)
             do_lut_xy<uint8_t, 8>(lut, dstp, dst_stride, srcp_orig.data(), src_stride.data(), w, h);
           else if (bits_per_pixel == 10)
@@ -4649,6 +4651,8 @@ PVideoFrame __stdcall Exprfilter::GetFrame(int n, IScriptEnvironment *env) {
 Exprfilter::~Exprfilter() {
   for (int i = 0; i < MAX_EXPR_INPUTS; i++)
     d.clips[i] = nullptr;
+  for (int i = 0; i < 4; i++)
+    if(d.luts[i]) avs_free(d.luts[i]); // aligned free
 }
 
 static SOperation getLoadOp(const VideoInfo *vi, bool relativeKind) {
@@ -5912,6 +5916,9 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   if (lutmode == 2 && vi.BitsPerComponent() > 14)
     lutmode = 0; // fallback to realtime
   d.lutmode = lutmode;
+
+  for (int i = 0; i < 4; i++)
+    d.luts[i] = nullptr;
 
   // parse "scale_inputs"
   autoconv_full_scale = false;

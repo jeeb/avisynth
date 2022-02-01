@@ -133,7 +133,7 @@ struct ExprData {
   bool planeOptSSE2[4];
 
   int lutmode; // 0: no, 1:1D (lutx), 2:2D (lutxy)
-  std::vector<uint8_t> luts[4]; // different lut tables, reusable by multiple planes
+  uint8_t* luts[4]; // different lut tables, reusable by multiple planes
   // int planeLutIndex[4]; // which luts is used by the plane. todo: when luts are the same for different planes
   
   size_t maxStackSize;
