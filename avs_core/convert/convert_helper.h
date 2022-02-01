@@ -175,12 +175,15 @@ typedef struct bits_conv_constants {
       d.src_offset = (srcBitDepth == 32) ? 0.0f : (1 << (srcBitDepth - 1));
       d.dst_offset = (dstBitDepth == 32) ? 0.0f : (1 << (dstBitDepth - 1));
       // decision: 'limited' range float +/-112 is +/-112/255.0. Must be consistent with Expr, ColorYUV etc
+      // 3.7.2: full range chroma: as per ITU Rec H.273 eq.30 p.10: Cb=Clip1_C(Round(((1<<BitDepth_C)-1)*E'_PB)+(1<<(BitDepth_C-1)))
+      // For 8 bit this results in 128 +/-127.5 instead of 128 +/-127
+      // In general the span is ((1 << srcBitDepth) - 1) / 2.0 instead of (1 << (srcBitDepth - 1)) - 1
       src_span = (srcBitDepth == 32) ?
         (fulls ? 0.5f : 112 / 255.0f) :
-        (fulls ? (float)((1 << (srcBitDepth - 1)) - 1) : (float)(112 << (srcBitDepth - 8)));
+        (fulls ? (float)((1 << srcBitDepth) - 1) / 2.0f : (float)(112 << (srcBitDepth - 8)));
       dst_span = (dstBitDepth == 32) ?
         (fulld ? 0.5f : 112 / 255.0f) :
-        (fulld ? (float)((1 << (dstBitDepth - 1)) - 1) : (float)(112 << (dstBitDepth - 8)));
+        (fulld ? (float)((1 << dstBitDepth) - 1) / 2.0f : (float)(112 << (dstBitDepth - 8)));
 
       /*
       fulls=fulld=false case:

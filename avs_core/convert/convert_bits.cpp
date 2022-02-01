@@ -110,7 +110,7 @@ static void do_convert_ordered_dither_uint_c(const BYTE* srcp8, BYTE* dstp8, int
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, source_bitdepth);
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
+  constexpr auto src_pixel_min = 0;
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
   //-----------------------
@@ -274,7 +274,7 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, source_bitdepth);
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
+  constexpr auto src_pixel_min = 0;
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
 
@@ -412,7 +412,7 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto dst_pixel_min = chroma && fulld ? 1 : 0;
+  constexpr auto dst_pixel_min = 0;
   const auto dst_pixel_max = (1 << target_bitdepth) - 1;
 
   for(int y=0; y<src_height; y++)
@@ -508,7 +508,7 @@ static void convert_uint_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int sr
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto target_min = chroma && fulld ? 1 : 0;
+  constexpr auto target_min = 0;
 
   for (int y = 0; y < src_height; y++) {
     for (int x = 0; x < src_width; x++)

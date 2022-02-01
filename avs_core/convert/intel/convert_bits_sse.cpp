@@ -73,7 +73,7 @@ void convert_32_to_uintN_sse41(const BYTE *srcp, BYTE *dstp, int src_rowsize, in
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto dst_pixel_min = chroma && fulld ? 1 : 0;
+  constexpr auto dst_pixel_min = 0;
   const auto dst_pixel_max = (1 << target_bitdepth) - 1;
 
   auto src_offset_ps = _mm_set1_ps(d.src_offset);
@@ -280,8 +280,6 @@ void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_h
   auto vect_dst_offset_plus_round = _mm_set1_ps(dst_offset_plus_round);
 
   auto vect_target_max = _mm_set1_epi16(target_max);
-  constexpr auto target_min = chroma && fulld ? 1 : 0;
-  auto vect_target_min = _mm_set1_epi32(target_min); // chroma-only. 0 is not valid in full case. We leave limited as is.
 
   auto zero = _mm_setzero_si128();
 
@@ -319,10 +317,7 @@ void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_h
         // convert back w/ truncate
         auto result_l = _mm_cvttps_epi32(res_lo); // no banker's rounding
         auto result_h = _mm_cvttps_epi32(res_hi);
-        if constexpr (chroma) {
-          result_l = _mm_max_epi32(result_l, vect_target_min);
-          result_h = _mm_max_epi32(result_h, vect_target_min);
-        }
+        // 0 min is ensured by packus
         // back to 16 bit
         result1 = _mm_packus_epi32(result_l, result_h); // 8 * 16 bit pixels
         result1 = _mm_min_epu16(result1, vect_target_max);
@@ -350,10 +345,7 @@ void convert_uint_sse41(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_h
         // convert back w/ truncate
         auto result_l = _mm_cvttps_epi32(res_lo);
         auto result_h = _mm_cvttps_epi32(res_hi);
-        if constexpr (chroma) {
-          result_l = _mm_max_epi32(result_l, vect_target_min);
-          result_h = _mm_max_epi32(result_h, vect_target_min);
-        }
+        // 0 min is ensured by packus
         // back to 16 bit
         result2 = _mm_packus_epi32(result_l, result_h); // 8 * 16 bit pixels
         result2 = _mm_min_epu16(result2, vect_target_max);
@@ -455,7 +447,7 @@ static void do_convert_ordered_dither_uint_sse41(const BYTE* srcp8, BYTE* dstp8,
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, source_bitdepth); // both is src_bitdepth
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
+  constexpr auto src_pixel_min = 0;
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
   //-----------------------
@@ -516,12 +508,7 @@ static void do_convert_ordered_dither_uint_sse41(const BYTE* srcp8, BYTE* dstp8,
           // 8 bit source: we can go back from 32 to 16 bit int
           src_lo = _mm_packus_epi32(_mm_cvttps_epi32(src_lo_lo_ps), _mm_cvttps_epi32(src_lo_hi_ps));
           src_hi = _mm_packus_epi32(_mm_cvttps_epi32(src_hi_lo_ps), _mm_cvttps_epi32(src_hi_hi_ps));
-          if constexpr (chroma && fulld) {
-            // otherwise it is 0, which was ensured by packus
-            const auto src_pixel_min_simd = _mm_set1_epi16(src_pixel_min);
-            src_lo = _mm_max_epu16(src_lo, src_pixel_min_simd);
-            src_hi = _mm_max_epu16(src_hi, src_pixel_min_simd);
-          }
+          // 0 min is ensured by packus
           const auto src_pixel_max_simd = _mm_set1_epi16(src_pixel_max);
           src_lo = _mm_min_epu16(src_lo, src_pixel_max_simd);
           src_hi = _mm_min_epu16(src_hi, src_pixel_max_simd);
@@ -533,14 +520,14 @@ static void do_convert_ordered_dither_uint_sse41(const BYTE* srcp8, BYTE* dstp8,
           src_lo_hi = _mm_cvttps_epi32(src_lo_hi_ps);
           src_hi_lo = _mm_cvttps_epi32(src_hi_lo_ps);
           src_hi_hi = _mm_cvttps_epi32(src_hi_hi_ps);
-          if (true)/*constexpr (chroma && fulld)*/ {
-            // no packus to ensure  min 0
-            const auto src_pixel_min_simd = _mm_set1_epi32(src_pixel_min);
-            src_lo_lo = _mm_max_epi32(src_lo_lo, src_pixel_min_simd);
-            src_lo_hi = _mm_max_epi32(src_lo_hi, src_pixel_min_simd);
-            src_hi_lo = _mm_max_epi32(src_hi_lo, src_pixel_min_simd);
-            src_hi_hi = _mm_max_epi32(src_hi_hi, src_pixel_min_simd);
-          }
+
+          // no packus to ensure min 0
+          const auto src_pixel_min_simd = _mm_set1_epi32(src_pixel_min);
+          src_lo_lo = _mm_max_epi32(src_lo_lo, src_pixel_min_simd);
+          src_lo_hi = _mm_max_epi32(src_lo_hi, src_pixel_min_simd);
+          src_hi_lo = _mm_max_epi32(src_hi_lo, src_pixel_min_simd);
+          src_hi_hi = _mm_max_epi32(src_hi_hi, src_pixel_min_simd);
+
           const auto src_pixel_max_simd = _mm_set1_epi32(src_pixel_max);
           src_lo_lo = _mm_min_epi32(src_lo_lo, src_pixel_max_simd);
           src_lo_hi = _mm_min_epi32(src_lo_hi, src_pixel_max_simd);

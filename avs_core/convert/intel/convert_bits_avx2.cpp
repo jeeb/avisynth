@@ -78,7 +78,7 @@ void convert_32_to_uintN_avx2(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, target_bitdepth);
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto dst_pixel_min = chroma && fulld ? 1 : 0;
+  constexpr auto dst_pixel_min = 0;
   const auto dst_pixel_max = (1 << target_bitdepth) - 1;
 
   auto src_offset_ps = _mm256_set1_ps(d.src_offset);
@@ -354,8 +354,6 @@ void convert_uint_avx2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_he
   auto vect_dst_offset_plus_round = _mm256_set1_ps(dst_offset_plus_round);
 
   auto vect_target_max = _mm256_set1_epi16(target_max);
-  constexpr auto target_min = chroma && fulld ? 1 : 0;
-  auto vect_target_min = _mm256_set1_epi32(target_min); // chroma-only. 0 is not valid in full case. We leave limited as is.
 
   auto zero = _mm256_setzero_si256();
 
@@ -396,10 +394,7 @@ void convert_uint_avx2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_he
         // convert back w/ truncate
         auto result_l = _mm256_cvttps_epi32(res_lo); // no banker's rounding
         auto result_h = _mm256_cvttps_epi32(res_hi);
-        if constexpr (chroma) {
-          result_l = _mm256_max_epi32(result_l, vect_target_min);
-          result_h = _mm256_max_epi32(result_h, vect_target_min);
-        }
+        // 0 min is ensured by packus
         // back to 16 bit
         result1 = _mm256_packus_epi32(result_l, result_h); // 8 * 16 bit pixels
         result1 = _mm256_min_epu16(result1, vect_target_max);
@@ -427,10 +422,7 @@ void convert_uint_avx2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_he
         // convert back w/ truncate
         auto result_l = _mm256_cvttps_epi32(res_lo);
         auto result_h = _mm256_cvttps_epi32(res_hi);
-        if constexpr (chroma) {
-          result_l = _mm256_max_epi32(result_l, vect_target_min);
-          result_h = _mm256_max_epi32(result_h, vect_target_min);
-        }
+        // 0 min is ensured by packus
         // back to 16 bit
         result2 = _mm256_packus_epi32(result_l, result_h); // 8 * 16 bit pixels
         result2 = _mm256_min_epu16(result2, vect_target_max);
@@ -529,7 +521,7 @@ static void do_convert_ordered_dither_uint_avx2(const BYTE* srcp8, BYTE* dstp8, 
   get_bits_conv_constants(d, chroma, fulls, fulld, source_bitdepth, source_bitdepth); // both is src_bitdepth
 
   auto dst_offset_plus_round = d.dst_offset + 0.5f;
-  constexpr auto src_pixel_min = chroma && fulld ? 1 : 0;
+  //constexpr auto src_pixel_min = 0;
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
   //-----------------------
@@ -580,11 +572,7 @@ static void do_convert_ordered_dither_uint_avx2(const BYTE* srcp8, BYTE* dstp8, 
           // We would reach this code for 5-7 bits when lo limit would be e.g. 4 bits
           // 8 bit source: we can go back from 32 to 16 bit int
           src = _mm256_packus_epi32(_mm256_cvttps_epi32(src_lo_ps), _mm256_cvttps_epi32(src_hi_ps));
-          if constexpr (chroma && fulld) {
-            // otherwise it is 0, which was ensured by packus
-            const auto src_pixel_min_simd = _mm256_set1_epi16(src_pixel_min);
-            src = _mm256_max_epu16(src, src_pixel_min_simd);
-          }
+          // min is 0, which was ensured by packus
           const auto src_pixel_max_simd = _mm256_set1_epi16(src_pixel_max);
           src = _mm256_min_epu16(src, src_pixel_max_simd);
           // tmp result 16 bits in src
@@ -593,12 +581,7 @@ static void do_convert_ordered_dither_uint_avx2(const BYTE* srcp8, BYTE* dstp8, 
           // go back to int32 only
           src_lo = _mm256_cvttps_epi32(src_lo_ps);
           src_hi = _mm256_cvttps_epi32(src_hi_ps);
-          if (true)/*constexpr (chroma && fulld)*/ {
-            // no packus to ensure  min 0
-            const auto src_pixel_min_simd = _mm256_set1_epi32(src_pixel_min);
-            src_lo = _mm256_max_epi32(src_lo, src_pixel_min_simd);
-            src_hi = _mm256_max_epi32(src_hi, src_pixel_min_simd);
-          }
+          // min is 0, which was ensured by packus
           const auto src_pixel_max_simd = _mm256_set1_epi32(src_pixel_max);
           src_lo = _mm256_min_epi32(src_lo, src_pixel_max_simd);
           src_hi = _mm256_min_epi32(src_hi, src_pixel_max_simd);

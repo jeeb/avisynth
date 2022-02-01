@@ -249,31 +249,12 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
   // when COLORYUV_RANGE_NONE both are the same false
 
   //-----------------------
-  double mul_factor = 1.0;
-  double src_offset = 0;
-  double dst_offset = 0;
+  bits_conv_constants d;
+  // When calculating src_pixel, src and dst are of the same bit depth
+  get_bits_conv_constants(d, chroma, fulls, fulld, bits_per_pixel, bits_per_pixel);
 
-  if (fulls != fulld) {
-    // When calculating src_pixel, src and dst are of the same bit depth
-    if (chroma) {
-      // chroma: go into signed world, factor, then go back to biased range
-      src_offset = (double)((int64_t)1 << (bits_per_pixel - 1)); // chroma center of source
-      dst_offset = (double)((int64_t)1 << (bits_per_pixel - 1)); // chroma center of target
-      mul_factor = fulld ?
-        (src_offset - 1) / ((int64_t)112 << (bits_per_pixel - 8)) : // +-112 (240-16)/2 ==> +-127
-        /*fulls*/ ((int64_t)112 << (bits_per_pixel - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
-    }
-    else {
-      // luma/limited: subtract offset, convert, add offset
-      src_offset = fulls ? 0 : (16 << (bits_per_pixel - 8)); // full/limited range low limit
-      dst_offset = fulld ? 0 : (16 << (bits_per_pixel - 8)); // // full/limited range low limit
-      mul_factor = fulld ?
-        (double)source_max / ((int64_t)219 << (bits_per_pixel - 8)) : // 16-235 ==> 0..255
-        /*fulls ?*/ ((int64_t)219 << (bits_per_pixel - 8)) / (double)source_max; // 0..255 ==> 16-235 (219)
-    }
-  }
-  auto dst_offset_plus_round = dst_offset + 0.5;
-  const int src_pixel_min = chroma && fulld ? 1 : 0;
+  auto dst_offset_plus_round = d.dst_offset + 0.5;
+  const int src_pixel_min = 0;
   const int src_pixel_max = source_max;
 
   // parameters are not scaled by bitdepth (legacy 8 bit behaviour)
@@ -327,7 +308,7 @@ static void coloryuv_create_lut(BYTE* lut8, const ColorYUVPlaneConfig* config, i
 
     if (fulls != fulld)
       // Range conversion
-      value = (value - src_offset) * mul_factor + dst_offset_plus_round;
+      value = (value - d.src_offset) * d.mul_factor + dst_offset_plus_round;
     else
       value = value + 0.5; // rounder
 
@@ -360,55 +341,12 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
   const bool fulld = config->range == COLORYUV_RANGE_TV_PC;
   // when COLORYUV_RANGE_NONE both are the same false
 
-  //-----------------------
-  double mul_factor = 1.0;
-  double src_offset = 0;
-  double dst_offset = 0;
+  bits_conv_constants d;
+  // When calculating src_pixel, src and dst are of the same bit depth
+  get_bits_conv_constants(d, chroma, fulls, fulld, bits_per_pixel, bits_per_pixel);
 
-  if (fulls != fulld) {
-    if (!f32) {
-      // When calculating src_pixel, src and dst are of the same bit depth
-      if (chroma) {
-        // chroma: go into signed world, factor, then go back to biased range
-        src_offset = (double)((int64_t)1 << (bits_per_pixel - 1)); // chroma center of source
-        dst_offset = (double)((int64_t)1 << (bits_per_pixel - 1)); // chroma center of target
-        mul_factor = fulld ? 
-          (src_offset - 1) / ((int64_t)112 << (bits_per_pixel - 8)) : // +-112 (240-16)/2 ==> +-127
-          /*fulls*/ ((int64_t)112 << (bits_per_pixel - 8)) / (src_offset - 1); // +-127 ==> +-112 (240-16)/2
-      }
-      else {
-        // luma/limited: subtract offset, convert, add offset
-        src_offset = fulls ? 0 : (16 << (bits_per_pixel - 8)); // full/limited range low limit
-        dst_offset = fulld ? 0 : (16 << (bits_per_pixel - 8)); // // full/limited range low limit
-        mul_factor = fulld ? 
-          source_max / ((int64_t)219 << (bits_per_pixel - 8)) : // 16-235 ==> 0..255
-          /*fulls ?*/ ((int64_t)219 << (bits_per_pixel - 8)) / source_max; // 0..255 ==> 16-235 (219)
-      }
-    }
-    else {
-      // 32 bit float
-      // When calculating src_pixel, src and dst are of the same bit depth
-      if (chroma) {
-        // chroma: go into signed world, factor, then go back to biased range
-        src_offset = 0.0; // chroma center of source
-        dst_offset = 0.0; // chroma center of target
-        mul_factor = fulld ? 
-          127.0 / 112.0 : // +-112 (240-16)/2 ==> +-127
-          /*fulld*/ 112.0 / 127.0; // +-127 ==> +-112 (240-16)/2
-      }
-      else {
-        // luma/limited: subtract offset, convert, add offset
-        src_offset = fulls ? 0 : (16 / 255.0); // full/limited range low limit
-        dst_offset = fulld ? 0 : (16 / 255.0); // // full/limited range low limit
-        mul_factor = fulld ? 
-          255.0 / 219.0 : // 16-235 ==> 0..255
-          /*fulls ?*/ 219.0 / 255.0; // 0..255 ==> 16-235 (219)
-      }
-    }
-  }
-  auto dst_offset_no_round = dst_offset;
-  const auto src_pixel_min = chroma && fulld ? 1 : 0;
-  const auto src_pixel_max = source_max;
+  auto dst_offset_no_round = d.dst_offset;
+  //const auto src_pixel_max = source_max;
 
   // parameters are not scaled by bitdepth (legacy 8 bit behaviour)
   double gain = tweaklike_params ? config->gain : (config->gain / 256 + 1.0);
@@ -470,8 +408,8 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
     ss << " " << value_normalization_scale << " * "; // value *= value_normalization_scale; // back from [0..1) range
 
   if (fulls != fulld) {
-    ss << src_offset << " - " << mul_factor << " * " << dst_offset_no_round << " + ";
-    // value = (value - src_offset) * mul_factor + dst_offset_no_round; // no rounder, Expr will round automatically before return
+    ss << d.src_offset << " - " << d.mul_factor << " * " << dst_offset_no_round << " + ";
+    // value = (value - d.src_offset) * d.mul_factor + dst_offset_no_round; // no rounder, Expr will round automatically before return
   }
   else {
     // value = value + 0.5; // no rounder, Expr rounds
