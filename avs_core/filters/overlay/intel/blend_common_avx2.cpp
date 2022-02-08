@@ -101,8 +101,7 @@ void overlay_blend_avx2_uint(BYTE* p1, const BYTE* p2, const BYTE* mask,
 
   auto rounder = _mm256_set1_ps(0.5f);
   const int max_pixel_value = (1 << bits_per_pixel) - 1;
-  auto factor = 1.0f / max_pixel_value;
-  factor = factor * opacity_f;
+  auto factor = has_mask ? opacity_f / max_pixel_value : opacity_f;
   auto factor_v = _mm256_set1_ps(factor);
 
   const int realwidth = width * sizeof(pixel_t);

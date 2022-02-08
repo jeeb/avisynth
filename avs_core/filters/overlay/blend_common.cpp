@@ -54,8 +54,7 @@ void overlay_blend_c_uint(BYTE* p1, const BYTE* p2, const BYTE* mask,
   const int width, const int height, const int opacity, const float opacity_f)
 {
   const int max_pixel_value = (1 << bits_per_pixel) - 1;
-  auto factor = 1.0f / max_pixel_value;
-  factor = factor * opacity_f;
+  auto factor = has_mask ? opacity_f / max_pixel_value : opacity_f;
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
