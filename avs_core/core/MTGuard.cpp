@@ -143,10 +143,14 @@ void MTGuard::EnableMT(size_t nThreads)
 PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
 {
   assert(nThreads > 0);
-
+  /*
+  // We can't call child filter without mutex guards even when nThreads is 1,
+  // because a lately invoked filter may call GetFrame again, see
+  // MT_SERIALIZED considerations below.
+  // Code left here intentionally but commented out.
   if (nThreads == 1)
     return ChildFilters[0].filter->GetFrame(n, env);
-
+  */
   InternalEnvironment* envI = static_cast<InternalEnvironment*>(env);
   PVideoFrame frame = NULL;
 
@@ -196,6 +200,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
     // another thread and thus would also like to obtain a lock on the common memory_mutex
     // (for expanding the frame registry).
     // This was solved in 3.7.2 by separating memory_mutex from invoke_mutex.
+    // Solving part#2: mutex may be needed even for single threaded mode, see above.
     std::lock_guard<std::timed mutex> lock(ChildFilters[0].mutex);
     while(!ChildFilters[0].mutex.try_lock_for(std::chrono::milliseconds(4000)))
     {
