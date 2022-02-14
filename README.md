@@ -61,7 +61,7 @@ using CMake to do a limited install as well.
 
 > mkdir avisynth-build && cd avisynth-build
 > <br>cmake ../ -DHEADERS_ONLY:bool=on
-> <br>make install
+> <br>make VersionGen install
 
 `-DCMAKE_INSTALL_PREFIX` can be used to override the
 install location if need be.

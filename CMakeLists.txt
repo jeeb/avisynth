@@ -355,12 +355,30 @@ endif()
 
 else()
 
-  project(AviSynth-Headers VERSION ${version_major}.${version_minor}.${version_bugfix} LANGUAGES)
+  project(AviSynth-Headers VERSION ${version_major}.${version_minor}.${version_bugfix} LANGUAGES CXX)
   message(STATUS "Install Only Headers: ON")
 
   add_library(${PROJECT_NAME} INTERFACE)
   target_include_directories(${PROJECT_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include")
   add_library(AviSynth::Headers ALIAS ${PROJECT_NAME})
+
+  # Determine target architecture
+  include("${CMAKE_CURRENT_LIST_DIR}/avs_core/TargetArch.cmake")
+  target_architecture(AVS_ARCH)
+  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/avs_core/core/arch.h.in ${CMAKE_CURRENT_BINARY_DIR}/arch.h @ONLY)
+
+  # Dynamically generate the sequential version info from Git
+  # Based on the example here: http://www.cmake.org/pipermail/cmake/2010-July/038015.html
+  FIND_PACKAGE(Git)
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
+  ADD_CUSTOM_TARGET(
+      VersionGen
+      ${CMAKE_COMMAND} -D SRC=${CMAKE_CURRENT_SOURCE_DIR}/avs_core/core/version.h.in
+                       -D DST=${CMAKE_CURRENT_BINARY_DIR}/version.h
+                       -D GIT=${GIT_EXECUTABLE}
+                       -D REPO=${CMAKE_SOURCE_DIR}
+                       -P ${CMAKE_CURRENT_SOURCE_DIR}/avs_core/Version.cmake
+  )
 
   include(GNUInstallDirs)
 
@@ -374,6 +392,13 @@ else()
           DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/avs_core/include/avs
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/avisynth
   )
+
+  install(
+          FILES "${CMAKE_CURRENT_BINARY_DIR}/version.h"
+                "${CMAKE_CURRENT_BINARY_DIR}/arch.h"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avisynth/avs"
+  )
+
 
 endif()
 
