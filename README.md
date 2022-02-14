@@ -50,10 +50,9 @@ Due to this, it's not actually necessary to build the
 AviSynth+ library itself in order for applications using
 it this way to find it.
 
-To facilitate this, we offer two ways to install just
-the headers.  The GNUmakefile method has been the way
-to do so for the past few years, but we also support
-using CMake to do a limited install as well.
+To facilitate this, we support using CMake to do a
+limited, headers-only install.  The GNUmakefile is
+deprecated and will eventually be removed.
 
 ### Using CMake:
 
