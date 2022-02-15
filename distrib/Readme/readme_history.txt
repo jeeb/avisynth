@@ -5,8 +5,44 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220201 3.7.2-WIP
+20220215 3.7.2-WIP
 ------------------
+- ShowRed/Green/Blue/Alpha/Y/U/V
+  - support YUY2 input
+  - support YV411 output
+  - (not changed: ShowU/ShowV may give error for 420, 422 or 411 format outputs when clip dimensions are
+    not eligible for a given output subsampling (check for appropriate mod2 or mod4 width or height)
+  - Copy alpha from source when target is alpha-capable
+  - Fill alpha with maximum pixel value when target is alpha-capable but source ha no alpha component
+  - Delete _Matrix and _ChromaLocation frame properties when needed.
+  - More consistent behaviour for YUV and planar RGB sources.
+    
+    Default pixel_type is adaptive. If none or empty ("") is given for pixel_type then target format is
+    - YUV444 when source is Y, YUV or YUVA
+    - RGB32/64 (packed RGB) when source is RGB24/32/48/64
+    - RGBP (planar RGB) when source is RGBP or RGBAP
+
+    When 'rgb' is given for pixel_type then then target format is
+
+    - RGB32/64 (packed) when source is RGB24/32/48/64 - old, compatible way
+    - RGB planar when source is planar RGB(A) or YUV(A) or Y - changed from rgb32/64 because all bit depth must be supported
+
+    When 'yuv' is given (new option!) for pixel_type then then target format is
+
+    - YUV444 for all sources
+
+    Also there is a new option when pixel_type is still not exact, and is given w/o bit depth.
+    pixel_type which describes the format without bit depth is automatically extended to a valid video string constant:
+
+      y, yuv420, yuv422, yuv444, yuva420, yuva422, yuva444, rgbp, rgbap
+
+    Examples:
+
+      32 bit video and pixel_type 'y' will result in "Y32"
+      16 bit video and pixel_type 'yuv444' will result in "YUV444P16"
+      8 bit video and pixel_type 'rgbap' will result in "RGBAP8"
+
+- Fix #263. Escaping double-quotes results in error
 - Allow top_left (2) and bottom_left (4) chroma placements for 422 in colorspace conversions, they act as "left" (0, "mpeg2")
   in order not to give error with video sources which have _ChromaLocation set to other than "mpeg2"
   See https://trac.ffmpeg.org/ticket/9598#comment:5
@@ -28,11 +64,13 @@ The "rst" version of the documentation just lists changes in brief.
   as mask/256 instead of mask/255. Since with such calculation maximum value was not the expected 1.0 but rather 255/256 (0.996)
   this case was specially treated as 1.0 to give Overlay proper results at least the the two extremes.
   But for example applying mask=129 to pixel=255 resulted in result_pixel=128 instead of 129. This was valid on higher bit depths as well.
+  Note 3.7.2 Test2 has a regression of broken maskless mode for 0<opacity<1 which was fixed in 3.7.2 test 3
 - Fix: Attempt to resolve deadlock when an Eval'd (Prefetch inside) Clip result is 
   used in Invoke which calls a filter with GetFrame in its constructor.
   (AvsPMod use case which Invokes frame prop read / ConvertToRGB32 after having the AVS script evaluated)
   Remark: problem emerged in 3.7.1test22 which is trying to read frame properties of the 0th frame in its constructor.
   A similar deadlock situation was already fixed earlier in Neo branch and had been backported but it did not cover this use case.
+  Note: Prefetch(1) case was fixed in 3.7.2 Test3
 
 20220122 3.7.1a
 ---------------
