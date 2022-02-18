@@ -2479,6 +2479,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     env->ThrowError("Compare: Clips have unknown pixel format. RGB24/32/48/64, YUY2 and YUV/RGB Planar supported.");
 
   pixelsize = vi.ComponentSize();
+  bits_per_pixel = vi.BitsPerComponent();
 
   if (pixelsize == 4)
       env->ThrowError("Compare: Float pixel format not supported.");
@@ -2598,7 +2599,7 @@ Compare::~Compare()
     fprintf(log,"Mean Absolute Deviation: %9.4f %9.4f %9.4f\n", MAD_min, MAD_tot/framecount, MAD_max);
     fprintf(log,"         Mean Deviation: %+9.4f %+9.4f %+9.4f\n", MD_min, MD_tot/framecount, MD_max);
     fprintf(log,"                   PSNR: %9.4f %9.4f %9.4f\n", PSNR_min, PSNR_tot/framecount, PSNR_max);
-    double factor = pixelsize == 1 ? 255.0 : 65535.0;
+    double factor = (1 << bits_per_pixel) - 1;
     double PSNR_overall = 10.0 * log10(bytecount_overall * factor * factor / SSD_overall);
     fprintf(log,"           Overall PSNR: %9.4f\n", PSNR_overall);
     fclose(log);
@@ -2843,7 +2844,8 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
   double MAD = ((pixelsize==1) ? (double)SAD : (double)SAD_64) / bytecount;
   double MD = ((pixelsize==1) ? (double)SD : (double)SD_64) / bytecount;
   if (SSD == 0.0) SSD = 1.0;
-  double factor = (pixelsize == 1) ? 255.0 : 65535.0;
+  const int max_pixel_value = (1 << bits_per_pixel) - 1;
+  double factor = (double)(max_pixel_value);
   double PSNR = 10.0 * log10(bytecount * factor * factor / SSD);
 
   framecount++;
@@ -2988,9 +2990,9 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
                                     dstp_RGBP[1][x] = 0xFF;
                                     dstp_RGBP[2][x] = 0xFF;
                                 } else {
-                                    reinterpret_cast<uint16_t *>(dstp_RGBP[0])[x] = 0xFFFF;
-                                    reinterpret_cast<uint16_t *>(dstp_RGBP[1])[x] = 0xFFFF;
-                                    reinterpret_cast<uint16_t *>(dstp_RGBP[2])[x] = 0xFFFF;
+                                    reinterpret_cast<uint16_t *>(dstp_RGBP[0])[x] = max_pixel_value;
+                                    reinterpret_cast<uint16_t *>(dstp_RGBP[1])[x] = max_pixel_value;
+                                    reinterpret_cast<uint16_t *>(dstp_RGBP[2])[x] = max_pixel_value;
                                 }
                             }
                         }
@@ -3002,6 +3004,8 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
             } else {
                 // planar YUV
                 dstp += (vi.height - 1) * dst_pitch;
+                const int black = 16 << (bits_per_pixel - 8);
+                const int white = 235 << (bits_per_pixel - 8);
                 for (int y = 0; y <= 100; y++) {
                     for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
                         if (y <= psnrs[n - vi.width + 1 + x]) {
@@ -3009,19 +3013,19 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
                                 if(pixelsize==1)
                                     dstp[x] = 16; // Y
                                 else
-                                    reinterpret_cast<uint16_t *>(dstp)[x] = 16*256; // Y
+                                    reinterpret_cast<uint16_t *>(dstp)[x] = black; // Y
                             } else {
                                 if(pixelsize==1)
                                     dstp[x] = 235; // Y
                                 else
-                                    reinterpret_cast<uint16_t *>(dstp)[x] = 235*256; // Y
+                                    reinterpret_cast<uint16_t *>(dstp)[x] = white; // Y
                             }
                         }
                     } // for x
                     dstp -= dst_pitch;
             }
           } // for y
-        } else {  // RGB
+        } else {  // packed RGB 8 or 16 bits
           for (int y = 0; y <= 100; y++) {
             for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
               if (y <= psnrs[n - vi.width + 1 + x]) {

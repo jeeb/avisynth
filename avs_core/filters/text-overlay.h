@@ -342,6 +342,7 @@ private:
   int framecount;
   int planar_plane;
   int pixelsize;
+  int bits_per_pixel;
   const int text_color, halo_color;
 
 };
