@@ -2486,6 +2486,8 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
   if (channels[0] == 0) {
     if (vi.IsRGB())
       channels = "RGB";
+    else if (vi.IsY())
+      channels = "Y";
     else if (vi.IsYUV() || vi.IsYUVA())
       channels = "YUV";
     else env->ThrowError("Compare: Clips have unknown colorspace. RGB and YUV supported.");
