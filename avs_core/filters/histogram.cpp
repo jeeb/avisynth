@@ -993,11 +993,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
 
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-  const float middle_f = 0.5f;
-#else
   const float middle_f = 0.0f;
-#endif
 
   // clear everything
   if (keepsource) {
@@ -1043,7 +1039,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
     const BYTE* pU = src->GetReadPtr(PLANAR_U);
     const BYTE* pV = src->GetReadPtr(PLANAR_V);
 
-    int w = origwidth;
+    int w = origwidth >> vi.GetPlaneWidthSubsampling(PLANAR_U);
     int h = src->GetHeight(PLANAR_U);
     int p = src->GetPitch(PLANAR_U) / pixelsize;
 
@@ -1104,11 +1100,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
       }
     }
     else { // float
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-      const float shift = 0.0;
-#else
       const float shift = 0.5;
-#endif
       // 32 bit data on show_bits bit sized screen
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
