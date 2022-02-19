@@ -5,8 +5,17 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220215 3.7.2-WIP
+20220219 3.7.2-WIP
 ------------------
+- Fix: Histogram "color" may crash on certain dimensions for subsampled formats. Regression since 20180301.
+- Fix: Histogram "color" and "color2" mode check and give error on Planar RGB
+- Fix: missing Histogram "color2" CCIR rectangle top and bottom line
+- Fix: Compare to support 10-14 bits 
+  was: factor was always using 65535 (2^16-1) instead of (2^bit depth - 1)
+  was: 16 bit luma/rgb color values were used for drawing graph
+- Fix: Compare
+  'channels' parameter default to "Y" when input is greyscale;
+  instead of "YUV" which was giving error because of U and V does not exist for this format.
 - ShowRed/Green/Blue/Alpha/Y/U/V
   - support YUY2 input
   - support YV411 output
