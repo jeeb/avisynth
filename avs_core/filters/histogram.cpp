@@ -126,6 +126,9 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
   }
 
   if (mode == ModeColor) {
+    if (vi.IsRGB()) {
+      env->ThrowError("Histogram: Color mode is not available in RGB.");
+    }
     if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Color mode only available in PLANAR.");
     }
@@ -144,6 +147,9 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
   }
 
   if (mode == ModeColor2) {
+    if (vi.IsRGB()) {
+      env->ThrowError("Histogram: Color2 mode is not available in RGB.");
+    }
     if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Color2 mode only available in PLANAR.");
     }
@@ -600,12 +606,8 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
     luma128 = (pixel_t)(128 << (bits_per_pixel - 8));
   }
   else {
-    black = 16.0f / 255;
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-    middle_chroma = 0.5f;
-#else
+    black = 16.0f / 255; // 'limited' 32 bit float
     middle_chroma = 0.0f;
-#endif
     luma128 = c8tof(128);
   }
 
@@ -631,8 +633,8 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
 
   // plot valid grey ccir601 square
   const int size = (240 - 16 + 1) << show_bit_shift; // original 8 bit: 225 
-  std::fill_n((pixel_t*)(&dstp[((16 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, black);
-  std::fill_n((pixel_t*)(&dstp[((240 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, black);
+  std::fill_n((pixel_t*)(&dstp[((16 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, luma128);
+  std::fill_n((pixel_t*)(&dstp[((240 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, luma128);
 
   // vertical lines left and right side
   for (int y = 17 << show_bit_shift; y < 240 << show_bit_shift; y++) {
