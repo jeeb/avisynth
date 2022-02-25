@@ -41,6 +41,7 @@
 #include "histogram.h"
 #include "../core/info.h"
 #include "../core/internal.h"
+#include "../convert/convert_planar.h"
 #include "../convert/convert_audio.h"
 #include "../convert/convert_helper.h"
 
@@ -87,7 +88,7 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
   // until all histogram is ported
   bool non8bit = show_bits != 8 || bits_per_pixel != 8;
 
-  if (non8bit && mode != ModeClassic && mode != ModeLevels && mode != ModeColor && mode != ModeColor2)
+  if (non8bit && mode != ModeClassic && mode != ModeLevels && mode != ModeColor && mode != ModeColor2 && mode != ModeLuma)
   {
     env->ThrowError("Histogram: this histogram type is available only for 8 bit formats and parameters");
   }
@@ -527,12 +528,15 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
 
 
 PVideoFrame Histogram::DrawModeLuma(int n, IScriptEnvironment* env) {
+  // amplify luminance.
+  // In this mode a 1 pixel luminance difference (8 bits world) will show as 
+  // a 16 pixel luminance, thus seriously enhancing small flaws
   PVideoFrame src = child->GetFrame(n, env);
   env->MakeWritable(&src);
-  int h = src->GetHeight();
-  int imgsize = h*src->GetPitch();
+  const int h = src->GetHeight();
   BYTE* srcp = src->GetWritePtr();
   if (vi.IsYUY2()) {
+    int imgsize = h * src->GetPitch();
     for (int i=0; i<imgsize; i+=2) {
       int p = srcp[i];
       p<<=4;
@@ -540,18 +544,69 @@ PVideoFrame Histogram::DrawModeLuma(int n, IScriptEnvironment* env) {
       srcp[i] = BYTE((p&256) ? (255-(p&0xff)) : p&0xff);
     }
   } else {
-    for (int i=0; i<imgsize; i++) {
-      int p = srcp[i];
-      p<<=4;
-      srcp[i] = BYTE((p&256) ? (255-(p&0xff)) : p&0xff);
+    const int w = vi.width;
+    const int pitch = src->GetPitch();
+    if (bits_per_pixel == 8) {
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+          const int pixel = srcp[x] << 4; // *16
+          srcp[x] = BYTE((pixel & 256) ? (255 - (pixel & 0xff)) : pixel & 0xff);
+        }
+        srcp += pitch;
+      }
     }
-  }
-  if (vi.IsPlanar()) {
-    srcp = src->GetWritePtr(PLANAR_U);
-    imgsize = src->GetHeight(PLANAR_U) * src->GetPitch(PLANAR_U);
-    memset(srcp, 128, imgsize);
-    srcp = src->GetWritePtr(PLANAR_V);
-    memset(srcp, 128, imgsize);
+    else if (bits_per_pixel <= 16) {
+      const int overlimit = (1 << bits_per_pixel);
+      const int max_pixel_value = (1 << bits_per_pixel) - 1;
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+          const int pixel = reinterpret_cast<uint16_t*>(srcp)[x] << 4;
+          reinterpret_cast<uint16_t*>(srcp)[x] = (uint16_t)((pixel & overlimit) ? (max_pixel_value - (pixel & max_pixel_value)) : pixel & max_pixel_value);
+        }
+        srcp += pitch;
+      }
+    }
+    else {
+      // 32 bit float
+      // just simulated by converting to 8 bits
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+          const float pixel_f = reinterpret_cast<float*>(srcp)[x];
+          const int pixel_i = (int)(pixel_f * 255.0f + 0.5f);
+          const int pixel = pixel_i << 4; // *16
+          int pixel_out = BYTE((pixel & 256) ? (255 - (pixel & 0xff)) : pixel & 0xff);
+          const float pixel_out_f = pixel_out / 255.0f;
+          reinterpret_cast<float*>(srcp)[x] = pixel_out_f;
+        }
+        srcp += pitch;
+      }
+    }
+    
+    if (vi.NumComponents() >= 3) {
+      auto dstp_u = src->GetWritePtr(PLANAR_U);
+      auto dstp_v = src->GetWritePtr(PLANAR_V);
+      auto height_uv = src->GetHeight(PLANAR_U);
+      auto pitch_uv = src->GetPitch(PLANAR_U);
+      if (bits_per_pixel == 8)
+        fill_chroma<uint8_t>(dstp_u, dstp_v, height_uv, pitch_uv, 128);
+      else if (bits_per_pixel <= 16)
+        fill_chroma<uint16_t>(dstp_u, dstp_v, height_uv, pitch_uv, 128 << (bits_per_pixel - 8));
+      else // 32)
+        fill_chroma<float>(dstp_u, dstp_v, height_uv, pitch_uv, 0.0f);
+
+      // alpha
+      if (vi.NumComponents() == 4) {
+        auto dstp_a = src->GetWritePtr(PLANAR_A);
+        auto height_a = src->GetHeight(PLANAR_A);
+        auto pitch_a = src->GetPitch(PLANAR_A);
+        if (bits_per_pixel == 8)
+          fill_plane<uint8_t>(dstp_a, height_a, pitch_a, 255);
+        else if (bits_per_pixel <= 16)
+          fill_plane<uint16_t>(dstp_a, height_a, pitch_a, (1 << bits_per_pixel) -  1);
+        else // 32)
+          fill_chroma<float>(dstp_u, dstp_v, height_uv, pitch_uv, 1.0f);
+      }
+    }
   }
   return src;
 }
