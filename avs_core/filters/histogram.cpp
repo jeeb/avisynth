@@ -634,11 +634,7 @@ void DrawModeColor2_erase_area(int bits_per_pixel,
   }
   else {
     black = 16.0f / 255;
-#ifdef FLOAT_CHROMA_IS_HALF_CENTERED
-    middle_chroma = 0.5f;
-#else
     middle_chroma = 0.0f;
-#endif
   }
 
   const int imgSize = height * pitch / pixelsize;
@@ -1387,10 +1383,6 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
   int show_size = 1 << show_bits;
 
-  // of source
-  int src_width = src->GetRowSize() / pixelsize;
-  int src_height = src->GetHeight();
-
   const bool isGrey = vi.IsY();
   const int planecount = isGrey ? 1 : 3;
   const bool RGB = vi.IsRGB();
@@ -1900,6 +1892,11 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       for (int n = 0; n < planecount; n++) {
 
         // Draw histograms
+
+        // total pixel count must be divided by subsampling factors for U and V
+        int src_width = src->GetRowSize(planes[n]) / pixelsize;
+        int src_height = src->GetHeight(planes[n]);
+
         const uint32_t clampval = (int)((src_width*src_height)*option.AsDblDef(100.0) / 100.0); // Population limit % factor
         uint32_t maxval = 0;
         uint32_t *hist;
