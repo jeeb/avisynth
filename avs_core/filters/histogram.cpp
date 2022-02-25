@@ -198,8 +198,11 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
         vi.height = 512;
         vi.width = 512;
       }
+      if (vi.IsRGB()) {
+        env->ThrowError("Histogram: StereoOverlay mode is not available in RGB.");
+      }
       if (!vi.IsPlanar()) {
-        env->ThrowError("Histogram: StereoOverlay requires a Planar video format (YV12, YV24, etc).");
+        env->ThrowError("Histogram: StereoOverlay only available in Y or YUV(A).");
       }
     } else if (mode == ModeStereoY8) {
       vi.pixel_type = VideoInfo::CS_Y8;
@@ -222,6 +225,9 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
 
   if (mode == ModeAudioLevels) {
     child->SetCacheHints(CACHE_AUDIO, 4096*1024);
+    if (vi.IsRGB()) {
+      env->ThrowError("Histogram: Audiolevels mode is not available in RGB.");
+    }
     if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Audiolevels mode only available in planar YUV.");
     }
