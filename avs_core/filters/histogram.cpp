@@ -1907,7 +1907,8 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
           maxval = max(hist[i], maxval);
         }
 
-        float scale = float(64.0 / maxval);
+        // factor 0%: maxval may stay at 0.
+        float scale = maxval == 0 ? 64.0f : float(64.0 / maxval);
 
         int color = 235; // also good for RGB
         int color_i = color << color_shift; // max_luma
