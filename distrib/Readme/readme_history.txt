@@ -5,11 +5,22 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220219 3.7.2-WIP
+20220225 3.7.2-WIP
 ------------------
-- Fix: Histogram "color" may crash on certain dimensions for subsampled formats. Regression since 20180301.
+- Histogram Levels: stop using shades of grey on top of bars.
+- Histogram Levels: use bar color 255 for RGB instead of Y's 235. (and scaled eqivivalents)
+- Fix: Histogram "Levels": prevent crash when factor=0.0
+- Fix: Histogram "Levels": fix regression incorrect "factor" applied for U/V part drawing when format was subsampled (non-444)
+  Regression since 20160916 r2666 (commit 986e2756)
+- Histogram "Audiolevels" and StereoOverlay to deny planar RGB
+- Histogram "Luma": support 10-16 and 32 bits
+- Histogram: give parameter name "factor" and type 'float' for Histogram's unnamed optional parameter used in "Level" mode.
+  Other modes just ignore this parameter if given.
+- Fix: Histogram "color" may crash on certain dimensions for subsampled formats. 
+  Regression since 20180301 r2632.
 - Fix: Histogram "color" and "color2" mode check and give error on Planar RGB
-- Fix: missing Histogram "color2" CCIR rectangle top and bottom line
+- Fix: missing Histogram "color2" CCIR rectangle top and bottom line (black on black) 
+  Regression since 3.6.2-test1 (commit 1fc82f03)
 - Fix: Compare to support 10-14 bits 
   was: factor was always using 65535 (2^16-1) instead of (2^bit depth - 1)
   was: 16 bit luma/rgb color values were used for drawing graph
