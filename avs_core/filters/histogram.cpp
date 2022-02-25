@@ -418,7 +418,7 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
     env->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
   );
   if (!samples) {
-	  env->ThrowError("Histogram: Could not reserve memory.");
+    env->ThrowError("Histogram: Could not reserve memory.");
   }
 
   int h = dst->GetHeight();
@@ -486,7 +486,7 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
     env->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
   );
   if (!samples) {
-	  env->ThrowError("Histogram: Could not reserve memory.");
+    env->ThrowError("Histogram: Could not reserve memory.");
   }
 
   int h = src->GetHeight();
@@ -2047,17 +2047,17 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       else if (pixelsize == 2) {
         const uint16_t *srcp16 = reinterpret_cast<const uint16_t *>(srcp);
         int shift = bits_per_pixel - show_bits;
-        int max_pixel_value = show_size - 1;
+        int max_show_pixel_value = show_size - 1;
         if (shift < 0) {
           // 10 bit clip into 11 bit histogram
           int invshift = -shift;
           for (int x = 0; x < source_width; x++) {
-            hist[min(srcp16[x] << invshift, max_pixel_value)]++;
+            hist[min(srcp16[x] << invshift, max_show_pixel_value)]++;
           }
         } else {
           // e.g.10 bit clip into 8-9-10 bit histogram
           for (int x = 0; x < source_width; x++) {
-            hist[min(srcp16[x] >> shift, max_pixel_value)]++;
+            hist[min(srcp16[x] >> shift, max_show_pixel_value)]++;
           }
         }
       }
