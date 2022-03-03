@@ -448,8 +448,6 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       env->ThrowError("BlankClip: color_yuv only valid for YUV color spaces");
     color = args[11].AsInt();
     mode=COLOR_MODE_YUV;
-    if (!vi.IsYUVA() && (unsigned)color > 0xffffff)
-      env->ThrowError("BlankClip: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
   int colors[4] = { 0 };
@@ -463,8 +461,8 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       if (!args[13].IsArray())
         env->ThrowError("BlankClip: colors must be an array");
       int color_count = args[13].ArraySize();
-      if (vi.NumComponents() != color_count)
-        env->ThrowError("BlankClip: color count %d does not match to component count %d", color_count, vi.NumComponents());
+      if (color_count < vi.NumComponents())
+        env->ThrowError("BlankClip: 'colors' size %d is less than component count %d", color_count, vi.NumComponents());
       int pixelsize = vi.ComponentSize();
       int bits_per_pixel = vi.BitsPerComponent();
       for (int i = 0; i < color_count; i++) {

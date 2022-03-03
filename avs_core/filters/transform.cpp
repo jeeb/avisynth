@@ -678,8 +678,6 @@ AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* en
       env->ThrowError("AddBorders: color_yuv only valid for YUV color spaces");
     color = args[6].AsInt(); // override
     color_as_yuv = true;
-    if (!vi.IsYUVA() && (unsigned)color > 0xffffff)
-      env->ThrowError("AddBorders: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
   return new AddBorders( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(),
@@ -782,8 +780,6 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
       env->ThrowError("LetterBox: color_yuv only valid for YUV color spaces");
     color = args[6].AsInt(); // override
     color_as_yuv = true;
-    if (!vi.IsYUVA() && (unsigned)color > 0xffffff)
-      env->ThrowError("LetterBox: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
   if ( (top<0) || (bot<0) || (left<0) || (right<0) )
