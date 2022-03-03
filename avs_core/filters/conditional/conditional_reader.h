@@ -154,10 +154,11 @@ public:
 class DeleteProperty : public GenericVideoFilter
 {
 private:
-  const char* name;
+  bool propNames_defined;
+  std::vector<std::string> propNames;
 
 public:
-  DeleteProperty(PClip _child, const char* name, IScriptEnvironment* env);
+  DeleteProperty(PClip _child, AVSValue _propNames, IScriptEnvironment* env);
   ~DeleteProperty();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);
@@ -181,9 +182,11 @@ class CopyProperties : public GenericVideoFilter
 private:
   PClip child2;
   bool merge;
+  bool propNames_defined;
+  std::vector<std::string> propNames;
 
 public:
-  CopyProperties(PClip _child, PClip _child2, bool _merge, IScriptEnvironment* env);
+  CopyProperties(PClip _child, PClip _child2, bool _merge, AVSValue _propNames, IScriptEnvironment* env);
   ~CopyProperties();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);

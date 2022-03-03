@@ -1140,12 +1140,31 @@ AVSValue __cdecl SetProperty::Create(AVSValue args, void* user_data, IScriptEnvi
 }
 
 //**************************************************
+// helper for property name list
+
+static bool PropNamesToArray(const char* filtername, AVSValue& _propNames, std::vector<std::string>& propNames, IScriptEnvironment* env)
+{
+  if (!_propNames.Defined())
+    return false;
+  const int size = _propNames.ArraySize();
+  propNames.resize(size);
+  for (int i = 0; i < size; i++) {
+    const char* name = _propNames[i].AsString();
+    if (name == nullptr || !*name)
+      env->ThrowError("%s error: list contains empty name", filtername);
+    propNames[i] = name;
+  }
+  return true;
+}
+
+//**************************************************
 // propDelete
 
-DeleteProperty::DeleteProperty(PClip _child, const char* name, IScriptEnvironment* env)
+DeleteProperty::DeleteProperty(PClip _child, AVSValue _propNames, IScriptEnvironment* env)
   : GenericVideoFilter(_child)
-  , name(name)
-{ }
+{ 
+  propNames_defined = PropNamesToArray("propDelete", _propNames, propNames, env);
+}
 
 DeleteProperty::~DeleteProperty() { }
 
@@ -1153,19 +1172,33 @@ PVideoFrame __stdcall DeleteProperty::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
 
+  // Erase only if needed
+  const AVSMap* avsmap_test = env->getFramePropsRO(frame);
+  if (0 == env->propNumKeys(avsmap_test))
+    return frame;
+
   /*
     usage:
-      ScriptClip("""propDelete("frameluma")""")
+      propDelete("frameluma")
+      propDelete(["_Matrix","prop2"])
   */
 
-  env->MakeWritable(&frame);
+  env->MakePropertyWritable(&frame);
 
   AVSMap* avsmap = env->getFramePropsRW(frame);
-  int res = env->propDeleteKey(avsmap, name); // 0 is success
 
+  /*
+  // ignore when property does not exist
   if (!res) {
     const char *error_msg = env->Sprintf("propDelete: error deleting property '%s'", name);
     env->ApplyMessage(&frame, vi, error_msg, vi.width / W_DIVISOR, 0xa0a0a0, 0, 0);
+  }
+  */
+  // delete selected names
+  AVSMap* mapv = env->getFramePropsRW(frame);
+  for (auto &s : propNames) {
+    const char* key = s.c_str();
+    env->propDeleteKey(avsmap, key); // 0 is success, ignored
   }
 
   return frame;
@@ -1184,7 +1217,7 @@ int __stdcall DeleteProperty::SetCacheHints(int cachehints, int frame_range)
 
 AVSValue __cdecl DeleteProperty::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new DeleteProperty(args[0].AsClip(), args[1].AsString(), env);
+  return new DeleteProperty(args[0].AsClip(), args[1], env);
 }
 
 //**************************************************
@@ -1235,16 +1268,18 @@ AVSValue __cdecl ClearProperties::Create(AVSValue args, void*, IScriptEnvironmen
 //**************************************************
 // propCopy
 
-CopyProperties::CopyProperties(PClip _child, PClip _child2, bool _merge, IScriptEnvironment* env)
+CopyProperties::CopyProperties(PClip _child, PClip _child2, bool _merge, AVSValue _propNames, IScriptEnvironment* env)
   : GenericVideoFilter(_child), child2(_child2), merge(_merge)
-{ }
+{ 
+  propNames_defined = PropNamesToArray("propCopy", _propNames, propNames, env);
+}
 
 CopyProperties::~CopyProperties() { }
 
 AVSValue __cdecl CopyProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   const bool merge = args[2].AsBool(false);
-  return new CopyProperties(args[0].AsClip(), args[1].AsClip(), merge, env);
+  return new CopyProperties(args[0].AsClip(), args[1].AsClip(), merge, args[3], env);
 }
 
 int __stdcall CopyProperties::SetCacheHints(int cachehints, int frame_range)
@@ -1258,6 +1293,47 @@ int __stdcall CopyProperties::SetCacheHints(int cachehints, int frame_range)
   return 0;  // We do not pass cache requests upwards.
 }
 
+static void CopyOneFrameProp(const char* key, AVSMap* mapv, const AVSMap* avsmap_from, IScriptEnvironment* env)
+{
+  const int numElements = env->propNumElements(avsmap_from, key);
+  char propType = env->propGetType(avsmap_from, key);
+  int error;
+
+  // int and float (int64 and double) supports array get set
+  if (propType == AVSPropTypes::PROPTYPE_INT) {
+    auto srcval = env->propGetIntArray(avsmap_from, key, &error);
+    env->propSetIntArray(mapv, key, srcval, numElements);
+  }
+  else if (propType == AVSPropTypes::PROPTYPE_FLOAT) {
+    auto srcval = env->propGetFloatArray(avsmap_from, key, &error);
+    env->propSetFloatArray(mapv, key, srcval, numElements);
+  }
+  else {
+    // assumes the property is cleared beforehand
+
+    // frame, clip and data (string)
+    if (propType == AVSPropTypes::PROPTYPE_FRAME) {
+      for (int index = 0; index < numElements; index++) {
+        auto src = env->propGetFrame(avsmap_from, key, index, &error);
+        env->propSetFrame(mapv, key, src, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
+      }
+    }
+    else if (propType == AVSPropTypes::PROPTYPE_CLIP) {
+      for (int index = 0; index < numElements; index++) {
+        auto src = env->propGetClip(avsmap_from, key, index, &error);
+        env->propSetClip(mapv, key, src, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
+      }
+    }
+    else if (propType == AVSPropTypes::PROPTYPE_DATA) {
+      for (int index = 0; index < numElements; index++) {
+        // string, byte array in general
+        auto src = env->propGetData(avsmap_from, key, index, &error);
+        auto size = env->propGetDataSize(avsmap_from, key, index, &error);
+        env->propSetData(mapv, key, src, size, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
+      }
+    }
+  }
+}
 
 PVideoFrame __stdcall CopyProperties::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -1287,7 +1363,17 @@ PVideoFrame __stdcall CopyProperties::GetFrame(int n, IScriptEnvironment* env)
 
   if (!merge) {
     // exact copy
-    env->copyFrameProps(frame2, frame);
+    if (!propNames_defined)
+      env->copyFrameProps(frame2, frame);
+    else {
+      // copy only selected names
+      AVSMap* mapv = env->getFramePropsRW(frame);
+      env->clearMap(mapv); // clear all
+      for (auto &s : propNames) {
+        const char* key = s.c_str();
+        CopyOneFrameProp(key, mapv, avsmap_from, env);
+      }
+    }
     return frame;
   }
 
@@ -1298,43 +1384,16 @@ PVideoFrame __stdcall CopyProperties::GetFrame(int n, IScriptEnvironment* env)
   const int numKeys = env->propNumKeys(avsmap_from);
   for (int i = 0; i < numKeys; i++) {
     const char* key = env->propGetKey(avsmap_from, i);
-    env->propDeleteKey(mapv, key); // delete if existed
+    // merge if no list specified or name is in the list
+    bool need_copy;
+    if (propNames_defined)
+      need_copy = std::find(propNames.begin(), propNames.end(), key) != propNames.end();
+    else
+      need_copy = true;
 
-    const int numElements = env->propNumElements(avsmap_from, key);
-    char propType = env->propGetType(avsmap_from, key);
-    int error;
-
-    // int and float (int64 and double) supports array get set
-    if (propType == AVSPropTypes::PROPTYPE_INT) {
-      auto srcval = env->propGetIntArray(avsmap_from, key, &error);
-      env->propSetIntArray(mapv, key, srcval, numElements);
-    }
-    else if (propType == AVSPropTypes::PROPTYPE_FLOAT) {
-      auto srcval = env->propGetFloatArray(avsmap_from, key, &error);
-      env->propSetFloatArray(mapv, key, srcval, numElements);
-    }
-    else {
-      // frame, clip and data (string)
-      if (propType == AVSPropTypes::PROPTYPE_FRAME) {
-        for (int index = 0; index < numElements; index++) {
-          auto src = env->propGetFrame(avsmap_from, key, index, &error);
-          env->propSetFrame(mapv, key, src, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
-        }
-      }
-      else if (propType == AVSPropTypes::PROPTYPE_CLIP) {
-        for (int index = 0; index < numElements; index++) {
-          auto src = env->propGetClip(avsmap_from, key, index, &error);
-          env->propSetClip(mapv, key, src, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
-        }
-      }
-      else if (propType == AVSPropTypes::PROPTYPE_DATA) {
-        for (int index = 0; index < numElements; index++) {
-          // string, byte array in general
-          auto src = env->propGetData(avsmap_from, key, index, &error);
-          auto size = env->propGetDataSize(avsmap_from, key, index, &error);
-          env->propSetData(mapv, key, src, size, AVSPropAppendMode::PROPAPPENDMODE_APPEND);
-        }
-      }
+    if(need_copy) {
+      env->propDeleteKey(mapv, key); // delete if existed
+      CopyOneFrameProp(key, mapv, avsmap_from, env);
     }
   }
 

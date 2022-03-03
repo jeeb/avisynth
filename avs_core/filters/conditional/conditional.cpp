@@ -87,12 +87,12 @@ extern const AVSFunction Conditional_filters[] = {
   { "propSet", BUILTIN_FUNC_PREFIX, "csa", SetProperty::Create, (void*)13 }, // no mode parameter, full entry refresh
   { "propSet", BUILTIN_FUNC_PREFIX, "csc[mode]i", SetProperty::Create, (void*)14 },
 
-  { "propDelete", BUILTIN_FUNC_PREFIX, "cs", DeleteProperty::Create },
+  { "propDelete", BUILTIN_FUNC_PREFIX, "cs+", DeleteProperty::Create },
   { "propClearAll", BUILTIN_FUNC_PREFIX, "c", ClearProperties::Create },
 
   { "propShow", BUILTIN_FUNC_PREFIX, "c[size]i[showtype]b", ShowProperties::Create },
 
-  { "propCopy", BUILTIN_FUNC_PREFIX, "cc[merge]b", CopyProperties::Create},
+  { "propCopy", BUILTIN_FUNC_PREFIX, "cc[merge]b[props]s+", CopyProperties::Create},
 
   { 0 }
 };
