@@ -4750,7 +4750,8 @@ bool ScriptEnvironment::Invoke_(AVSValue *result, const AVSValue& implicit_last,
 
       // Nekopanda: moved here from above.
       // some filters invoke complex filters in its constructor, and they need cache.
-      *result = CacheGuard::Create(*result, NULL, threadEnv.get());
+      AVSValue args_cacheguard[2]{ *result, f->name };
+      *result = CacheGuard::Create(AVSValue(args_cacheguard, 2), NULL, threadEnv.get());
 
       // Check that the filter returns zero for unknown queries in SetCacheHints().
       // This is actually something we rely upon.

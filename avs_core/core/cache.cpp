@@ -46,8 +46,8 @@
 
 
 extern const AVSFunction Cache_filters[] = {
-  { "Cache", BUILTIN_FUNC_PREFIX, "c", CacheGuard::Create },
-  { "InternalCache", BUILTIN_FUNC_PREFIX, "c", CacheGuard::Create },
+  { "Cache", BUILTIN_FUNC_PREFIX, "c[name]s", CacheGuard::Create },
+  { "InternalCache", BUILTIN_FUNC_PREFIX, "c[name]s", CacheGuard::Create },
   { 0 }
 };
 
@@ -451,11 +451,14 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
   return 0;
 }
 
-CacheGuard::CacheGuard(const PClip& child, IScriptEnvironment* env) :
+CacheGuard::CacheGuard(const PClip& child, const char *name, IScriptEnvironment* env) :
     child(child),
     vi(child->GetVideoInfo()),
     globalEnv(env)
-{ }
+{
+  if (name)
+    this->name = name;
+}
 
 CacheGuard::~CacheGuard()
 { }
@@ -519,6 +522,10 @@ PVideoFrame __stdcall CacheGuard::GetFrame(int n, IScriptEnvironment* env)
   }
   ScopedCounter getframe_counter(IEnv->GetFrameRecursiveCount());
   IScriptEnvironment* env_real = static_cast<IScriptEnvironment*>(IEnv);
+  /*
+  if (!name.empty())
+    _RPT2(0, "CacheGuard::GetFrame call further GetFrame: %s %d\n", name.c_str(), n);
+  */
   return GetCache(env_real)->GetFrame(n, env_real);
 }
 
@@ -690,6 +697,9 @@ AVSValue __cdecl CacheGuard::Create(AVSValue args, void*, IScriptEnvironment* en
   {
     p = args[0].AsClip();
   }
+  const char* name = nullptr;
+  if (args.IsArray() && args.ArraySize() >= 2 && args[1].IsString())
+    name = args[1].AsString();
 
   if (p)  // If the child is a clip
   {
@@ -701,7 +711,7 @@ AVSValue __cdecl CacheGuard::Create(AVSValue args, void*, IScriptEnvironment* en
     }
     else
     {
-      return new CacheGuard(p, env);
+      return new CacheGuard(p, name, env);
     }
   }
   else
