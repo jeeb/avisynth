@@ -502,7 +502,9 @@ extern bool GetTextBoundingBoxFixed(const char* text, const char* fontname, int 
 
 
 PClip Create_MessageClip(const char* message, int width, int height, int pixel_type, bool shrink,
-                         int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env) {
+                         int textcolor, int halocolor, int bgcolor,
+                         int fps_numerator, int fps_denominator, int num_frames,
+                         IScriptEnvironment* env) {
   int size;
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     // MessageClip produces a clip containing a text message.Used internally for error reporting.
@@ -554,9 +556,9 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   vi.width = width;
   vi.height = height;
   vi.pixel_type = pixel_type;
-  vi.fps_numerator = 24;
-  vi.fps_denominator = 1;
-  vi.num_frames = 240;
+  vi.fps_numerator = fps_numerator > 0 ? fps_numerator : 24;
+  vi.fps_denominator = fps_denominator > 0 ? fps_denominator : 1;
+  vi.num_frames = num_frames > 0 ? num_frames : 240;
 
   PVideoFrame frame = CreateBlankFrame(vi, bgcolor, COLOR_MODE_RGB, nullptr, nullptr, false, env);
   env->ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor);
@@ -570,7 +572,9 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
 AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(args[0].AsString(), args[1].AsInt(-1),
       args[2].AsInt(-1), VideoInfo::CS_BGR32, args[3].AsBool(false),
-      args[4].AsInt(0xFFFFFF), args[5].AsInt(0), args[6].AsInt(0), env);
+      args[4].AsInt(0xFFFFFF), args[5].AsInt(0), args[6].AsInt(0),
+      -1, -1, -1, // fps_numerator, fps_denominator, num_frames: auto
+    env);
 }
 
 
@@ -2135,13 +2139,43 @@ public:
 
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
+  //     0       1       2           3         4
+  // [length]i[width]i[height]i[pixel_type]s[clip]c
+  VideoInfo vi_default;
+
+  int i_pixel_type = VideoInfo::CS_BGR24;
+
+  const bool has_clip = args[4].Defined();
+  if (has_clip) {
+    // clip overrides
+    vi_default = args[4].AsClip()->GetVideoInfo();
+    i_pixel_type = vi_default.pixel_type;
+  }
+
+  if (args[3].Defined()) {
+    i_pixel_type = GetPixelTypeFromName(args[3].AsString());
+    if (i_pixel_type == VideoInfo::CS_UNKNOWN)
+      env->ThrowError("Version: invalid 'pixel_type'");
+  }
+
+  int num_frames = args[0].AsInt(has_clip ? vi_default.num_frames : -1); // auto (240)
+  int w = args[1].AsInt(has_clip ? vi_default.width : -1); // auto
+  int h = args[2].AsInt(has_clip ? vi_default.height : -1); // auto
+  const bool shrink = false;
+  const int textcolor = 0xECF2BF;
+  const int halocolor = 0;
+  const int bgcolor = 0x404040;
+
+  const int fps_numerator = has_clip ? vi_default.fps_numerator :-1; // auto
+  const int fps_denominator = has_clip ? vi_default.fps_denominator : -1; // auto
+
   return Create_MessageClip(
 #ifdef AVS_POSIX
     AVS_FULLVERSION AVS_COPYRIGHT_UTF8
 #else
     AVS_FULLVERSION AVS_COPYRIGHT
 #endif
-    ,-1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
+    , w, h, i_pixel_type, shrink, textcolor, halocolor, bgcolor, fps_numerator, fps_denominator, num_frames, env);
 }
 
 
@@ -2169,7 +2203,7 @@ extern const AVSFunction Source_filters[] = {
   { "ColorBarsHD", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s[staticframes]b", ColorBars::Create, (void*)1 },
   { "Tone", BUILTIN_FUNC_PREFIX, "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
-  { "Version", BUILTIN_FUNC_PREFIX, "", Create_Version },
+  { "Version", BUILTIN_FUNC_PREFIX, "[length]i[width]i[height]i[pixel_type]s[clip]c", Create_Version },
 
   { NULL }
 };

@@ -808,7 +808,7 @@ bool CAVIFileSynth::DelayInit2() {
 
 void CAVIFileSynth::MakeErrorStream(const char* msg) {
   error_msg = msg;
-  filter_graph = Create_MessageClip(msg, vi->width, vi->height, vi->pixel_type, false, 0xFF3333, 0, 0, env);
+  filter_graph = Create_MessageClip(msg, vi->width, vi->height, vi->pixel_type, false, 0xFF3333, 0, 0, -1, -1, -1, env);
 }
 
 void CAVIFileSynth::Lock() {
