@@ -92,6 +92,7 @@ size_t GetFrameTail(const PVideoFrame& vf); // in DeviceManager.cpp
 
 PClip Create_MessageClip(const char* message, int width, int height,
   int pixel_type, bool shrink, int textcolor, int halocolor, int bgcolor,
+  int fps_numerator, int fps_denominator, int num_frames,
   IScriptEnvironment* env);
 
 PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env);
