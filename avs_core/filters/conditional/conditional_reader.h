@@ -184,9 +184,10 @@ private:
   bool merge;
   bool propNames_defined;
   std::vector<std::string> propNames;
+  bool exclude;
 
 public:
-  CopyProperties(PClip _child, PClip _child2, bool _merge, AVSValue _propNames, IScriptEnvironment* env);
+  CopyProperties(PClip _child, PClip _child2, bool _merge, AVSValue _propNames, bool _exclude, IScriptEnvironment* env);
   ~CopyProperties();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   int __stdcall SetCacheHints(int cachehints, int frame_range);

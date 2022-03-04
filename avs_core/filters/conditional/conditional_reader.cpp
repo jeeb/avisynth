@@ -1268,8 +1268,8 @@ AVSValue __cdecl ClearProperties::Create(AVSValue args, void*, IScriptEnvironmen
 //**************************************************
 // propCopy
 
-CopyProperties::CopyProperties(PClip _child, PClip _child2, bool _merge, AVSValue _propNames, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), child2(_child2), merge(_merge)
+CopyProperties::CopyProperties(PClip _child, PClip _child2, bool _merge, AVSValue _propNames, bool _exclude, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), child2(_child2), merge(_merge), exclude(_exclude)
 { 
   propNames_defined = PropNamesToArray("propCopy", _propNames, propNames, env);
 }
@@ -1279,7 +1279,8 @@ CopyProperties::~CopyProperties() { }
 AVSValue __cdecl CopyProperties::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   const bool merge = args[2].AsBool(false);
-  return new CopyProperties(args[0].AsClip(), args[1].AsClip(), merge, args[3], env);
+  const bool exclude = args[4].AsBool(false);
+  return new CopyProperties(args[0].AsClip(), args[1].AsClip(), merge, args[3], exclude, env);
 }
 
 int __stdcall CopyProperties::SetCacheHints(int cachehints, int frame_range)
@@ -1366,12 +1367,26 @@ PVideoFrame __stdcall CopyProperties::GetFrame(int n, IScriptEnvironment* env)
     if (!propNames_defined)
       env->copyFrameProps(frame2, frame);
     else {
-      // copy only selected names
+      // copy only selected / not excluded names
       AVSMap* mapv = env->getFramePropsRW(frame);
       env->clearMap(mapv); // clear all
-      for (auto &s : propNames) {
-        const char* key = s.c_str();
-        CopyOneFrameProp(key, mapv, avsmap_from, env);
+      if (!exclude) {
+        // positive list
+        for (auto& s : propNames) {
+          const char* key = s.c_str();
+          CopyOneFrameProp(key, mapv, avsmap_from, env);
+        }
+      }
+      else {
+        // negative list
+        const int numKeys = env->propNumKeys(avsmap_from);
+        for (int i = 0; i < numKeys; i++) {
+          const char* key = env->propGetKey(avsmap_from, i);
+          if (std::find(propNames.begin(), propNames.end(), key) == propNames.end()) {
+            // not in negative list -> copy
+            CopyOneFrameProp(key, mapv, avsmap_from, env);
+          }
+        }
       }
     }
     return frame;
@@ -1386,8 +1401,11 @@ PVideoFrame __stdcall CopyProperties::GetFrame(int n, IScriptEnvironment* env)
     const char* key = env->propGetKey(avsmap_from, i);
     // merge if no list specified or name is in the list
     bool need_copy;
-    if (propNames_defined)
+    if (propNames_defined) {
       need_copy = std::find(propNames.begin(), propNames.end(), key) != propNames.end();
+      if (exclude)
+        need_copy = !need_copy;
+    }
     else
       need_copy = true;
 
