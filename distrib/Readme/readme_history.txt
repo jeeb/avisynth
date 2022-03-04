@@ -5,8 +5,64 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220225 3.7.2-WIP
+20220303 3.7.2-WIP
 ------------------
+- propCopy: able to specify that the property list is negative.
+    bool "exclude" = false # default: "props" is positive list
+    
+    propCopy(org,true,props=["_Matrix", "_ColorRange"], exclude=false) # merge only two properties
+    propCopy(org,true,props=["_Matrix", "_ColorRange"], exclude=true) # merge all, except listed ones
+    propCopy(org,props=["_Matrix", "_ColorRange"]) # erase all then copy only selected
+    propCopy(org,props=["_Matrix", "_ColorRange"], exclude = true) # erase all, then copy all, except listed ones
+
+- Version()
+  New optional parameters 
+
+    int length, int width, int height, string pixel_type, clip c
+
+  Version clip defaults: 
+    length=240, width = -1, height = -1 (-1: automatically sized to fit for font size 24)
+    pixel_type = "RGB24"
+
+  When 'clip' (a format template) is specified then pixel_type, length, 
+  fps data, width and height are defined from it.
+  If any additional 'length', 'width', 'height', 'pixel_type' parameter is given, it overrides defaults.
+  When width and height is given and is <= 0 then it is treated as 'automatic'
+
+  Covers feature request Issue #261
+
+- BlankClip: allow 'colors' with array size more than the number of actual planes.
+  If an array is larger, further values are simply ignored.
+- BlankClip, AddBorders, LetterBox: no A=0 check for non-YUVA
+- Fade filter family new parameters
+    int 'color_yuv' 
+    array of float 'colors'
+  similar to BlankClip
+- MergeRGB, MergeARGB
+  - add MergeARGB parameter "pixel_type", similar to MergeRGB
+  - accept pixel_type other than packed RGB formats, plus a special one is "rgb"
+  - output format is planar rgb(a) (MergeRGB/MergeARGB) when
+    - pixel_type = "rgb" or
+    - pixel_type is empty and 
+      - either input is planar RGB
+      - either input is different from 8 or 16 bits (no packed RGB formats there)
+    - pixel_type is explicitely set to a valid planar rgb constant e.g. "RGBP10"
+  - Accept planar RGB clip in place of input clips and the appropriate color plane is copied from them
+  - Fill alpha channel with zero when MergeRGB output pixel_type format is specified to have an alpha plane
+  - frame property source is the R clip; _Matrix and _ChromaLocation are removed if R is not an RGB clip
+- PropDelete: accept a non-empty array string as list of property names to remove
+  Parameter is not optional, and has no name. It can be either a string (as before) or an array of strings
+    propDelete("_Matrix") # old syntax, still accepted
+    propDelete(["_Matrix", "_ColorRange"])
+- PropCopy: new string parameter "props" as list of property names to remove
+    "props": a non-empty array of strings
+    
+    old syntax, still accepted:
+      propCopy(org,true) # merge from all org's properties
+      propCopy(org,false) # erase all then copy all org's properties (exact copy)
+    new syntax
+      propCopy(org,true,props=["_Matrix", "_ColorRange"]) # merge
+      propCopy(org,props=["_Matrix", "_ColorRange"]) # erase all then copy only selected
 - Histogram Levels: stop using shades of grey on top of bars.
 - Histogram Levels: use bar color 255 for RGB instead of Y's 235. (and scaled eqivivalents)
 - Fix: Histogram "Levels": prevent crash when factor=0.0
