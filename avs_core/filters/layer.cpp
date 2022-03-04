@@ -97,7 +97,7 @@ extern const AVSFunction Layer_filters[] = {
   { "ShowU",        BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)5 }, // AVS+
   { "ShowV",        BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)6 }, // AVS+
   { "MergeRGB",     BUILTIN_FUNC_PREFIX, "ccc[pixel_type]s", MergeRGB::Create, (void*)0 },
-  { "MergeARGB",    BUILTIN_FUNC_PREFIX, "cccc",             MergeRGB::Create, (void*)1 },
+  { "MergeARGB",    BUILTIN_FUNC_PREFIX, "cccc[pixel_type]s", MergeRGB::Create, (void*)1 },
   { "Layer",        BUILTIN_FUNC_PREFIX, "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b[opacity]f[placement]s", Layer::Create },
   /**
     * Layer(clip, overlayclip, operation, amount, xpos, ypos, [threshold=0], [use_chroma=true])
@@ -1412,31 +1412,10 @@ MergeRGB::MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _a
   viB(blue->GetVideoInfo()), viG(green->GetVideoInfo()), viR(red->GetVideoInfo()),
   viA(((alpha) ? alpha : child)->GetVideoInfo()), myname((alpha) ? "MergeARGB" : "MergeRGB")
 {
+  vi = viR; // comparison base
 
-  if (!lstrcmpi(pixel_type, "rgb32") || (!lstrcmpi(pixel_type, "") && vi.ComponentSize() == 1)) {
-    // default for 1 byte pixels
-    vi.pixel_type = VideoInfo::CS_BGR32;
-    if (alpha && (viA.pixel_type == VideoInfo::CS_BGR24))
-      env->ThrowError("MergeARGB: Alpha source channel may not be RGB24");
-  }
-  else if (!lstrcmpi(pixel_type, "rgb64") || (!lstrcmpi(pixel_type, "") && vi.ComponentSize() == 2)) {
-    // default for 2 byte pixels
-    vi.pixel_type = VideoInfo::CS_BGR64;
-    if (alpha && (viA.pixel_type == VideoInfo::CS_BGR48))
-      env->ThrowError("MergeARGB: Alpha source channel may not be RGB48");
-  }
-  else if (!lstrcmpi(pixel_type, "rgb24")) {
-    vi.pixel_type = VideoInfo::CS_BGR24;
-  }
-  else if (!lstrcmpi(pixel_type, "rgb48")) {
-    vi.pixel_type = VideoInfo::CS_BGR48;
-  }
-  else {
-    env->ThrowError("MergeRGB: supports the following output pixel types: RGB24, RGB32, RGB48, RGB64");
-  }
-
-  if ((vi.ComponentSize() != viB.ComponentSize()) || (vi.ComponentSize() != viG.ComponentSize()) ||
-    (vi.ComponentSize() != viR.ComponentSize()) || (vi.ComponentSize() != viA.ComponentSize()))
+  if ((vi.BitsPerComponent() != viB.BitsPerComponent()) || (vi.BitsPerComponent() != viG.BitsPerComponent()) ||
+    (vi.BitsPerComponent() != viR.BitsPerComponent()) || (vi.BitsPerComponent() != viA.BitsPerComponent()))
     env->ThrowError("%s: All clips must have the same bit depth.", myname);
 
   if ((vi.width != viB.width) || (vi.width != viG.width) || (vi.width != viR.width) || (vi.width != viA.width))
@@ -1444,6 +1423,90 @@ MergeRGB::MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _a
 
   if ((vi.height != viB.height) || (vi.height != viG.height) || (vi.height != viR.height) || (vi.height != viA.height))
     env->ThrowError("%s: All clips must have the same height.", myname);
+
+  const int is_any_planar_rgb =
+    viR.IsPlanarRGB() || viR.IsPlanarRGBA() ||
+    viG.IsPlanarRGB() || viG.IsPlanarRGBA() ||
+    viB.IsPlanarRGB() || viB.IsPlanarRGBA() ||
+    viA.IsPlanarRGB() || viA.IsPlanarRGBA();
+
+  const int bits_per_pixel = viR.BitsPerComponent();
+  const bool empty_pixel_type = pixel_type == nullptr || *pixel_type == 0;
+
+  // planar rgb target if
+  // - pixel_type is "rgb" or
+  // - pixel_type not specified and
+  //   - bit depth is not 8 or 16 (cannot have packed rgb representation) or
+  //   - any of the input clips is planar rgb
+
+  if (!lstrcmpi(pixel_type, "rgb") ||
+    (empty_pixel_type && (is_any_planar_rgb || (bits_per_pixel != 8 && bits_per_pixel != 16))))
+  {
+    switch (bits_per_pixel) {
+    case 8: vi.pixel_type = alpha ? VideoInfo::CS_RGBAP8 : VideoInfo::CS_RGBP8; break;
+    case 10: vi.pixel_type = alpha ? VideoInfo::CS_RGBAP10 : VideoInfo::CS_RGBP10; break;
+    case 12: vi.pixel_type = alpha ? VideoInfo::CS_RGBAP12 : VideoInfo::CS_RGBP12; break;
+    case 14: vi.pixel_type = alpha ? VideoInfo::CS_RGBAP14 : VideoInfo::CS_RGBP14; break;
+    case 16: vi.pixel_type = alpha ? VideoInfo::CS_RGBAP16 : VideoInfo::CS_RGBP16; break;
+    case 32: vi.pixel_type = alpha ? VideoInfo::CS_RGBAPS : VideoInfo::CS_RGBPS; break;
+    }
+  }
+  else if (empty_pixel_type && vi.BitsPerComponent() == 8) {
+    // default for 8 bit
+    vi.pixel_type = VideoInfo::CS_BGR32;
+  }
+  else if (empty_pixel_type && vi.BitsPerComponent() == 16) {
+    // default for 16 bit
+    vi.pixel_type = VideoInfo::CS_BGR64;
+  }
+  else {
+    // explicitely given output pixel type
+
+    // first try
+    // Append bit depth and check
+    std::string format = pixel_type;
+    // RGBP --> RGBPS, Y -> Y16, YUV420 -> YUV420P10
+    if (!lstrcmpi(pixel_type, "y")) {
+      format = format + std::to_string(bits_per_pixel); // Y8..Y16, also Y32
+    }
+    else if (!lstrcmpi(pixel_type, "rgbp") || !lstrcmpi(pixel_type, "rgbap")) {
+      if (bits_per_pixel == 32)
+        format = format + "S"; // RGBAPS
+      else
+        format = format + std::to_string(bits_per_pixel); // RGBP16
+    }
+    else {
+      // hopefully like "yuv420" or "yuva444"
+      if (bits_per_pixel == 32)
+        format = format + "PS"; // YUV420PS
+      else
+        format = format + "P" + std::to_string(bits_per_pixel); // YUV420P16
+    }
+
+    int new_pixel_type = GetPixelTypeFromName(format.c_str());
+    if (new_pixel_type == VideoInfo::CS_UNKNOWN) {
+      new_pixel_type = GetPixelTypeFromName(pixel_type);
+      if (new_pixel_type == VideoInfo::CS_UNKNOWN)
+        env->ThrowError("%s: invalid pixel_type!", myname);
+    }
+    // new output format
+    vi.pixel_type = new_pixel_type;
+  }
+
+  if (vi.BitsPerComponent() != bits_per_pixel)
+    env->ThrowError("%s: target bit depth (%d) must match with sources (%d)", myname, vi.BitsPerComponent(), bits_per_pixel);
+
+  if (!vi.IsRGB())
+    env->ThrowError("%s: target format must be an RGB format", myname);
+
+  if(alpha && vi.NumComponents() != 4)
+    env->ThrowError("MergeARGB: target format must have an alpha channel");
+
+  // When not in ARGB mode, target is still allowed to have an alpha channel.
+  // If no alpha source is given, target alpha will be filled by default 0 value.
+
+  if (alpha && (viA.IsRGB24() || viA.IsRGB48() || viA.IsPlanarRGB()))
+    env->ThrowError("MergeARGB: Alpha source channel cannot be obtained from RGB24, RGB48 or alphaless planar RGB");
 }
 
 
@@ -1454,172 +1517,264 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame R = red->GetFrame(n, env);
   PVideoFrame A = (alpha) ? alpha->GetFrame(n, env) : 0;
 
-  // choose one: R
+  // choose one for frame property source: R
   PVideoFrame dst = env->NewVideoFrameP(vi, &R);
 
-  const int height = dst->GetHeight();
-  const int pitch = dst->GetPitch();
-  const int rowsize = dst->GetRowSize();
-  const int modulo = pitch - rowsize;
+  auto props = env->getFramePropsRW(dst);
+  if (!viR.IsRGB()) {
+    // delete _Matrix and ChromaLocation when source is not RGB
+    env->propDeleteKey(props, "_Matrix");
+    env->propDeleteKey(props, "_ChromaLocation");
+  }
 
-  BYTE* dstp = dst->GetWritePtr();
+  const int pixelsize = viR.ComponentSize();
 
-  int pixelsize = viA.ComponentSize();
+  if (!vi.IsPlanar()) {
+    // target is packed RGB
+    const int height = dst->GetHeight();
+    const int pitch = dst->GetPitch();
+    const int rowsize = dst->GetRowSize();
+    const int modulo = pitch - rowsize;
 
-  // RGB is upside-down, backscan any YUV to match
-  const int Bpitch = (viB.IsYUV()) ? -(B->GetPitch()) : B->GetPitch();
-  const int Gpitch = (viG.IsYUV()) ? -(G->GetPitch()) : G->GetPitch();
-  const int Rpitch = (viR.IsYUV()) ? -(R->GetPitch()) : R->GetPitch();
+    BYTE* dstp = dst->GetWritePtr();
 
-  // Bump any RGB channels, move any YUV channels to last line
-  const BYTE* Bp = B->GetReadPtr() + ((Bpitch < 0) ? Bpitch * (1 - height) : 0);
-  const BYTE* Gp = G->GetReadPtr() + ((Gpitch < 0) ? Gpitch * (1 - height) : (1 * pixelsize));
-  const BYTE* Rp = R->GetReadPtr() + ((Rpitch < 0) ? Rpitch * (1 - height) : (2 * pixelsize));
 
-  // Adjustment from the end of 1 line to the start of the next
-  const int Bmodulo = Bpitch - B->GetRowSize();
-  const int Gmodulo = Gpitch - G->GetRowSize();
-  const int Rmodulo = Rpitch - R->GetRowSize();
+    int planeB = viB.IsPlanar() && viB.IsRGB() ? PLANAR_B : vi.IsRGB() ? 0 : PLANAR_Y;
+    int planeG = viG.IsPlanar() && viG.IsRGB() ? PLANAR_G : vi.IsRGB() ? 0 : PLANAR_Y;
+    int planeR = viR.IsPlanar() && viR.IsRGB() ? PLANAR_R : vi.IsRGB() ? 0 : PLANAR_Y;
+    int planeA = viA.IsPlanar() && viA.IsRGB() ? PLANAR_A : vi.IsRGB() ? 0 : PLANAR_Y;
 
-  // Number of bytes per pixel (1, 2, 3 or 4 .. 8)
-  const int Bstride = viB.IsPlanar() ? pixelsize : (viB.BitsPerPixel() >> 3);
-  const int Gstride = viG.IsPlanar() ? pixelsize : (viG.BitsPerPixel() >> 3);
-  const int Rstride = viR.IsPlanar() ? pixelsize : (viR.BitsPerPixel() >> 3);
+    // RGB is upside-down, backscan any Planar to match
+    const int Bpitch = (viB.IsPlanar()) ? -(B->GetPitch(planeB)) : B->GetPitch();
+    const int Gpitch = (viG.IsPlanar()) ? -(G->GetPitch(planeG)) : G->GetPitch();
+    const int Rpitch = (viR.IsPlanar()) ? -(R->GetPitch(planeR)) : R->GetPitch();
 
-  // End of VFB
-  BYTE const* yend = dstp + pitch * height;
+    // Bump any RGB channels, move any YUV channels to last line
+    const BYTE* Bp = B->GetReadPtr(planeB) + (viB.IsPlanar() ? Bpitch * (1 - height) : 0);
+    const BYTE* Gp = G->GetReadPtr(planeG) + (viG.IsPlanar() ? Gpitch * (1 - height) : (1 * pixelsize));
+    const BYTE* Rp = R->GetReadPtr(planeR) + (viR.IsPlanar() ? Rpitch * (1 - height) : (2 * pixelsize));
 
-  if (alpha) { // ARGB mode
-    const int Apitch = (viA.IsYUV()) ? -(A->GetPitch()) : A->GetPitch();
-    const BYTE* Ap = A->GetReadPtr() + ((Apitch < 0) ? Apitch * (1 - height) : (3 * pixelsize));
-    const int Amodulo = Apitch - A->GetRowSize();
-    const int Astride = viA.IsPlanar() ? pixelsize : (viA.BitsPerPixel() >> 3);
+    // Adjustment from the end of 1 line to the start of the next
+    const int Bmodulo = Bpitch - B->GetRowSize(planeB);
+    const int Gmodulo = Gpitch - G->GetRowSize(planeG);
+    const int Rmodulo = Rpitch - R->GetRowSize(planeR);
 
-    switch (pixelsize) {
-    case 1:
-      while (dstp < yend) {
-        BYTE const* xend = dstp + rowsize;
-        while (dstp < xend) {
-          *dstp++ = *Bp; Bp += Bstride;
-          *dstp++ = *Gp; Gp += Gstride;
-          *dstp++ = *Rp; Rp += Rstride;
-          *dstp++ = *Ap; Ap += Astride;
+    // Number of bytes per pixel (1, 2, 3 or 4 .. 8)
+    const int Bstride = viB.IsPlanar() ? pixelsize : (viB.BitsPerPixel() >> 3);
+    const int Gstride = viG.IsPlanar() ? pixelsize : (viG.BitsPerPixel() >> 3);
+    const int Rstride = viR.IsPlanar() ? pixelsize : (viR.BitsPerPixel() >> 3);
+
+    // End of VFB
+    BYTE const* yend = dstp + pitch * height;
+
+    if (alpha) { // ARGB mode
+      const int Apitch = (viA.IsPlanar()) ? -(A->GetPitch(planeA)) : A->GetPitch();
+      const BYTE* Ap = A->GetReadPtr(planeA) + (viA.IsPlanar() ? Apitch * (1 - height) : (3 * pixelsize));
+      const int Amodulo = Apitch - A->GetRowSize(planeA);
+      const int Astride = viA.IsPlanar() ? pixelsize : (viA.BitsPerPixel() >> 3);
+
+      switch (pixelsize) {
+      case 1:
+        while (dstp < yend) {
+          BYTE const* xend = dstp + rowsize;
+          while (dstp < xend) {
+            *dstp++ = *Bp; Bp += Bstride;
+            *dstp++ = *Gp; Gp += Gstride;
+            *dstp++ = *Rp; Rp += Rstride;
+            *dstp++ = *Ap; Ap += Astride;
+          }
+          dstp += modulo;
+          Bp += Bmodulo;
+          Gp += Gmodulo;
+          Rp += Rmodulo;
+          Ap += Amodulo;
         }
-        dstp += modulo;
-        Bp += Bmodulo;
-        Gp += Gmodulo;
-        Rp += Rmodulo;
-        Ap += Amodulo;
+        break;
+      case 2:
+      {
+        uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+        uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
+        while (dstp16 < yend16) {
+          uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
+          while (dstp16 < xend16) {
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Ap); Ap += Astride;
+          }
+          dstp16 += modulo / sizeof(uint16_t);
+          Bp += Bmodulo;
+          Gp += Gmodulo;
+          Rp += Rmodulo;
+          Ap += Amodulo;
+        }
       }
       break;
-    case 2:
-    {
-      uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
-      uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
-      while (dstp16 < yend16) {
-        uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
-        while (dstp16 < xend16) {
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Ap); Ap += Astride;
-        }
-        dstp16 += modulo / sizeof(uint16_t);
-        Bp += Bmodulo;
-        Gp += Gmodulo;
-        Rp += Rmodulo;
-        Ap += Amodulo;
+      default:
+        env->ThrowError("%s: float pixel type not supported", myname);
+        break;
       }
     }
-    break;
-    default:
-      env->ThrowError("%s: float pixel type not supported", myname);
+    else if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) { // RGB32 mode
+      switch (pixelsize) {
+      case 1:
+        while (dstp < yend) {
+          BYTE const* xend = dstp + rowsize;
+          while (dstp < xend) {
+            *dstp++ = *Bp; Bp += Bstride;
+            *dstp++ = *Gp; Gp += Gstride;
+            *dstp++ = *Rp; Rp += Rstride;
+            *dstp++ = 0; // default Alpha is 0!
+          }
+          dstp += modulo;
+          Bp += Bmodulo;
+          Gp += Gmodulo;
+          Rp += Rmodulo;
+        }
+        break;
+      case 2:
+      {
+        uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+        uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
+        while (dstp16 < yend16) {
+          uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
+          while (dstp16 < xend16) {
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
+            *dstp16++ = 0; // default Alpha is 0!
+          }
+          dstp16 += modulo / sizeof(uint16_t);
+          Bp += Bmodulo;
+          Gp += Gmodulo;
+          Rp += Rmodulo;
+        }
+      }
       break;
+      default:
+        env->ThrowError("%s: float pixel type not supported", myname);
+        break;
+      }
+    }
+    else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) { // RGB24 mode
+      switch (pixelsize) {
+      case 1:
+        while (dstp < yend) {
+          BYTE const* xend = dstp + rowsize;
+          while (dstp < xend) {
+            *dstp++ = *Bp; Bp += Bstride;
+            *dstp++ = *Gp; Gp += Gstride;
+            *dstp++ = *Rp; Rp += Rstride;
+          }
+          dstp += modulo;
+          Bp += Bmodulo;
+          Gp += Gmodulo;
+          Rp += Rmodulo;
+        }
+        break;
+      case 2:
+      {
+        uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
+        uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
+        while (dstp16 < yend16) {
+          uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
+          while (dstp16 < xend16) {
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
+            *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
+          }
+          dstp16 += modulo / sizeof(uint16_t);
+          Bp += Bmodulo;
+          Gp += Gmodulo;
+          Rp += Rmodulo;
+        }
+      }
+      break;
+      default:
+        env->ThrowError("%s: float pixel type not supported", myname);
+        break;
+      }
+    }
+    else
+      env->ThrowError("%s: unexpected end of function", myname);
+
+    return dst;
+  }
+
+  // target is planar RGB
+  for (int p = 0; p < vi.NumComponents(); p++) {
+    int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
+    const int plane = planes_r[p];
+
+    const VideoInfo& vi_src =
+      plane == PLANAR_G ? viG :
+      plane == PLANAR_B ? viB :
+      plane == PLANAR_R ? viR : viA;
+
+    PVideoFrame& src =
+      plane == PLANAR_G ? G :
+      plane == PLANAR_B ? B :
+      plane == PLANAR_R ? R : A;
+
+    // actual plane source is not a packed RGB type
+
+    if (p == 3 && !alpha) {
+      // fill alpha, but not ARGB mode
+
+      const int dst_pitchA = dst->GetPitch(PLANAR_A);
+      BYTE* dstp_a = dst->GetWritePtr(PLANAR_A);
+      const int heightA = dst->GetHeight(PLANAR_A);
+      // unlike in other filters, default alpha value here is 0 instead of max transparent 255
+      switch (vi.ComponentSize())
+      {
+      case 1:
+        fill_plane<uint8_t>(dstp_a, heightA, dst_pitchA, 0);
+        break;
+      case 2:
+        fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, 0);
+        break;
+      case 4:
+        fill_plane<float>(dstp_a, heightA, dst_pitchA, 0.0f);
+        break;
+      }
+    }
+    else {
+      if (vi_src.IsPlanar())
+      {
+        // plane copy
+        const int plane_src = vi_src.IsRGB() ? plane : PLANAR_Y;
+        env->BitBlt(dst->GetWritePtr(plane), dst->GetPitch(plane), src->GetReadPtr(plane_src),
+          src->GetPitch(plane_src), src->GetRowSize(plane_src), src->GetHeight(plane_src));
+      }
+      else {
+        // fill a plane from packed RGB
+        // packed RGB -> Y, YUV(A)
+        BYTE* dstp = dst->GetWritePtr(plane);
+        int dstpitch = dst->GetPitch(plane);
+
+
+        const BYTE* srcp = src->GetReadPtr();
+        const int pitch = src->GetPitch();
+        const int packed_rgb_channel =
+          plane == PLANAR_G ? 1 :
+          plane == PLANAR_B ? 0 :
+          plane == PLANAR_R ? 2 : 3;
+
+        if (pixelsize == 1) {
+          if (vi_src.NumComponents() == 3)
+            packed_to_luma_alpha<uint8_t, false, false>(dstp, nullptr, dstpitch, srcp, pitch, vi.width, vi.height, packed_rgb_channel);
+          else
+            packed_to_luma_alpha<uint8_t, true, false>(dstp, nullptr, dstpitch, srcp, pitch, vi.width, vi.height, packed_rgb_channel);
+        }
+        else {
+          if (vi_src.NumComponents() == 3)
+            packed_to_luma_alpha<uint16_t, false, false>(dstp, nullptr, dstpitch, srcp, pitch, vi.width, vi.height, packed_rgb_channel);
+          else
+            packed_to_luma_alpha<uint16_t, true, false>(dstp, nullptr, dstpitch, srcp, pitch, vi.width, vi.height, packed_rgb_channel);
+        }
+      }
     }
   }
-  else if (vi.pixel_type == VideoInfo::CS_BGR32 || vi.pixel_type == VideoInfo::CS_BGR64) { // RGB32 mode
-    switch (pixelsize) {
-    case 1:
-      while (dstp < yend) {
-        BYTE const* xend = dstp + rowsize;
-        while (dstp < xend) {
-          *dstp++ = *Bp; Bp += Bstride;
-          *dstp++ = *Gp; Gp += Gstride;
-          *dstp++ = *Rp; Rp += Rstride;
-          *dstp++ = 0;
-        }
-        dstp += modulo;
-        Bp += Bmodulo;
-        Gp += Gmodulo;
-        Rp += Rmodulo;
-      }
-      break;
-    case 2:
-    {
-      uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
-      uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
-      while (dstp16 < yend16) {
-        uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
-        while (dstp16 < xend16) {
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
-          *dstp16++ = 0;
-        }
-        dstp16 += modulo / sizeof(uint16_t);
-        Bp += Bmodulo;
-        Gp += Gmodulo;
-        Rp += Rmodulo;
-      }
-    }
-    break;
-    default:
-      env->ThrowError("%s: float pixel type not supported", myname);
-      break;
-    }
-  }
-  else if (vi.pixel_type == VideoInfo::CS_BGR24 || vi.pixel_type == VideoInfo::CS_BGR48) { // RGB24 mode
-    switch (pixelsize) {
-    case 1:
-      while (dstp < yend) {
-        BYTE const* xend = dstp + rowsize;
-        while (dstp < xend) {
-          *dstp++ = *Bp; Bp += Bstride;
-          *dstp++ = *Gp; Gp += Gstride;
-          *dstp++ = *Rp; Rp += Rstride;
-        }
-        dstp += modulo;
-        Bp += Bmodulo;
-        Gp += Gmodulo;
-        Rp += Rmodulo;
-      }
-      break;
-    case 2:
-    {
-      uint16_t* dstp16 = reinterpret_cast<uint16_t*>(dstp);
-      uint16_t const* yend16 = dstp16 + pitch * height / sizeof(uint16_t);
-      while (dstp16 < yend16) {
-        uint16_t const* xend16 = dstp16 + rowsize / sizeof(uint16_t);
-        while (dstp16 < xend16) {
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Bp); Bp += Bstride;
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Gp); Gp += Gstride;
-          *dstp16++ = *reinterpret_cast<const uint16_t*>(Rp); Rp += Rstride;
-        }
-        dstp16 += modulo / sizeof(uint16_t);
-        Bp += Bmodulo;
-        Gp += Gmodulo;
-        Rp += Rmodulo;
-      }
-    }
-    break;
-    default:
-      env->ThrowError("%s: float pixel type not supported", myname);
-      break;
-    }
-  }
-  else
-    env->ThrowError("%s: unexpected end of function", myname);
-
   return dst;
 }
 
@@ -1627,10 +1782,9 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
 AVSValue MergeRGB::Create(AVSValue args, void* mode, IScriptEnvironment* env)
 {
   if (mode) // ARGB
-    return new MergeRGB(args[0].AsClip(), args[3].AsClip(), args[2].AsClip(), args[1].AsClip(), args[0].AsClip(), "", env);
+    return new MergeRGB(args[0].AsClip(), args[3].AsClip(), args[2].AsClip(), args[1].AsClip(), args[0].AsClip(), args[4].AsString(""), env);
   else      // RGB[type]
     return new MergeRGB(args[0].AsClip(), args[2].AsClip(), args[1].AsClip(), args[0].AsClip(), 0, args[3].AsString(""), env);
-  // default pixel_type now dynamic by bit_depth: RGB32 or RGB64
 }
 
 
