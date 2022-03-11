@@ -1500,6 +1500,8 @@ static bool ProcessPixel(double X, double Y, double startHue, double endHue,
     if (p == 0.0) return false;
 
     // Interpolation range is +/-p for p>0
+    // 180 is not in degrees!
+    // its sqrt(127^2 + 127^2): max overshoot for 8 bits; U and V is 0 +/- 127
     const double max = min(maxSat + p, 180.0);
     const double min = ::max(minSat - p, 0.0);
 
