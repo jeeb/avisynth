@@ -3956,7 +3956,8 @@ AVSValue __cdecl Exprfilter::Create(AVSValue args, void* , IScriptEnvironment* e
   }
   next_paramindex++;
 
-  const std::string scale_inputs = args[next_paramindex].Defined() ? args[next_paramindex].AsString("none") : "none";
+  std::string scale_inputs = args[next_paramindex].Defined() ? args[next_paramindex].AsString("none") : "none";
+  transform(scale_inputs.begin(), scale_inputs.end(), scale_inputs.begin(), ::tolower);
   next_paramindex++;
 
   const bool clamp_float = args[next_paramindex].AsBool(false);
@@ -5949,13 +5950,13 @@ Exprfilter::Exprfilter(const std::vector<PClip>& _child_array, const std::vector
   else if (scale_inputs == "float") {
     autoconv_conv_float = true;
   }
-  else if (scale_inputs == "floatUV") {
+  else if (scale_inputs == "floatuv") {
     autoconv_conv_float = false; // !! really
     // like in masktools2 2.2.20+
     shift_float = true; // !!
   }
   else if (scale_inputs != "none") {
-    env->ThrowError("Expr: scale_inputs must be 'all','allf','int','intf','float','floatf' or 'none'");
+    env->ThrowError("Expr: scale_inputs must be 'all','allf','int','intf','float','floatf','floatUV' or 'none'");
   }
 
   try {
