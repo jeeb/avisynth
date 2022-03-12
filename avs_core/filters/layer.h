@@ -193,6 +193,8 @@ private:
   bool input_type_is_yuva;
   bool input_type_is_planar;
   bool input_type_is_packed_rgb;
+  bool target_hasalpha;
+  bool source_hasalpha;
 };
 
 

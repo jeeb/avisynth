@@ -819,6 +819,9 @@ ShowChannel::ShowChannel(PClip _child, const char* pixel_type, int _channel, ISc
 
   int target_bits_per_pixel;
 
+  const int orig_width = vi.width;
+  const int orig_height = vi.height;
+
   if (input_type_is_yuv || input_type_is_yuva)
   {
     if (channel == 1 || channel == 2) // U or V: target can be smaller than Y
@@ -935,6 +938,14 @@ ShowChannel::ShowChannel(PClip _child, const char* pixel_type, int _channel, ISc
 
   if (target_bits_per_pixel != bits_per_pixel)
     env->ThrowError("Show%s: source bit depth must be %d for %s", ShowText[orig_channel], target_bits_per_pixel, pixel_type);
+
+  target_hasalpha = vi.IsRGB32() || vi.IsRGB64() || vi.IsPlanarRGBA() || vi.IsYUVA();
+  source_hasalpha = input_type == VideoInfo::CS_BGR32 || input_type == VideoInfo::CS_BGR64 || input_type_is_planar_rgba || input_type_is_yuva;
+
+  if (target_hasalpha && source_hasalpha && (vi.width != orig_width || vi.height != orig_height)) {
+    env->ThrowError("Show%s: subsampled source plane and alpha-aware source and destination format: alpha dimensions must be the same", ShowText[orig_channel]);
+  }
+
 }
 
 
@@ -1053,8 +1064,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
   const float chroma_center_f = 0.0f;
 
-  const bool target_hasalpha = vi.IsRGB32() || vi.IsRGB64() || vi.IsPlanarRGBA() || vi.IsYUVA();
-  const bool source_hasalpha = input_type == VideoInfo::CS_BGR32 || input_type == VideoInfo::CS_BGR64 || input_type_is_planar_rgba || input_type_is_yuva;
   const int max_pixel_value = (1 << bits_per_pixel) - 1;
 
   if (input_type_is_packed_rgb) {
@@ -1215,8 +1224,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       BYTE* dstp = dst->GetWritePtr();
       const int dstpitch = dst->GetPitch();
 
-      auto props = env->getFramePropsRW(dst);
       if (!input_type_is_planar_rgb && !input_type_is_planar_rgba) {
+        auto props = env->getFramePropsRW(dst);
         // delete _Matrix and ChromaLocation when source is not RGB
         env->propDeleteKey(props, "_Matrix");
         env->propDeleteKey(props, "_ChromaLocation");
@@ -1244,13 +1253,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         else {
           planar_to_packedrgb<uint16_t, false, false>(dstp, dstpitch, srcp, srcp_a, pitch, width, height);
         }
-      }
-
-      if (!input_type_is_planar_rgb && !input_type_is_planar_rgba) {
-        // YUV origin to RGB
-        auto props = env->getFramePropsRW(dst);
-        env->propDeleteKey(props, "_Matrix");
-        env->propDeleteKey(props, "_ChromaLocation");
       }
 
       return dst;
@@ -1365,17 +1367,23 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         BYTE* dstp_a = dst->GetWritePtr(PLANAR_A);
         const int heightA = dst->GetHeight(PLANAR_A);
 
-        switch (vi.ComponentSize())
-        {
-        case 1:
-          fill_plane<uint8_t>(dstp_a, heightA, dst_pitchA, 0xFF);
-          break;
-        case 2:
-          fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, (1 << vi.BitsPerComponent()) - 1);
-          break;
-        case 4:
-          fill_plane<float>(dstp_a, heightA, dst_pitchA, 1.0f);
-          break;
+        if (source_hasalpha) {
+          // copy source alpha plane to target alpha plane
+          env->BitBlt(dstp_a, dst_pitchA, srcp_a, pitch, width* pixelsize, height);
+        }
+        else {
+          switch (vi.ComponentSize())
+          {
+          case 1:
+            fill_plane<uint8_t>(dstp_a, heightA, dst_pitchA, 0xFF);
+            break;
+          case 2:
+            fill_plane<uint16_t>(dstp_a, heightA, dst_pitchA, (1 << vi.BitsPerComponent()) - 1);
+            break;
+          case 4:
+            fill_plane<float>(dstp_a, heightA, dst_pitchA, 1.0f);
+            break;
+          }
         }
       }
       return dst;
@@ -1397,7 +1405,7 @@ AVSValue ShowChannel::Create(AVSValue args, void* channel, IScriptEnvironment* e
     AVSValue new_args[1] = { clip };
     clip = env->Invoke("ConvertToYV16", AVSValue(new_args, 1)).AsClip();
   }
-  return new ShowChannel(clip, args[1].AsString(), (int)(size_t)channel, env);
+  return new ShowChannel(clip, args[1].AsString(""), (int)(size_t)channel, env);
 }
 
 
