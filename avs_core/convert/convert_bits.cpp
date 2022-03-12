@@ -1101,11 +1101,10 @@ AVSValue __cdecl ConvertBits::Create(AVSValue args, void* user_data, IScriptEnvi
     ColorRange_dest = args[6].AsBool() ? ColorRange_e::AVS_RANGE_FULL : ColorRange_e::AVS_RANGE_LIMITED;
   else
     ColorRange_dest = -1; // undefined. A frame property or ColorRange_src may override
-  // try getting frame props if parameter is not specified
-  auto frame0 = clip->GetFrame(0, env);
-  const AVSMap* props = env->getFramePropsRO(frame0);
   if (ColorRange_src != ColorRange_e::AVS_RANGE_LIMITED && ColorRange_src != ColorRange_e::AVS_RANGE_FULL) {
-    // undefined: frame property check
+    // try getting frame props if parameter is not specified
+    auto frame0 = clip->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
     if (env->propNumElements(props, "_ColorRange") > 0) {
       ColorRange_src = env->propGetInt(props, "_ColorRange", 0, nullptr); // fixme: range check
     }
