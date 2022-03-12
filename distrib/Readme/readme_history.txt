@@ -5,8 +5,20 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220311 3.7.2-WIP
+20220312 3.7.2-WIP
 ------------------
+- ShowRed/Green/Blue/Alpha/Y/U/V: addition to earlier fixes:
+  When clips are planar and both source and destination format have alpha plane, 
+  then it will be copied instead of filled with 255d.
+  Additional checking is done for alpha plane size when ShowU/V, because when
+  source is subsampled the original alpha plane cannot be copied (larger).
+- ConvertBits: 
+  Does not get frame 0 in constructor for frame properties if 'fulls' is directly specified. (magiblot)
+  May make script initialization much quicker (Issue #275)
+  https://github.com/AviSynth/AviSynthPlus/issues/275
+- Trim, AudioTrim: bool 'cache' (default true) parameter. 
+  Workaround for Issue #274, lower memory consumption but may be slower. 
+  Benefits heavily depend on how trimmed clips are used later.
 - Expr: scale_inputs to case insensitive and add floatUV to error message as an allowed value.
 - propCopy: able to specify that the property list is negative.
     bool "exclude" = false # default: "props" is positive list
