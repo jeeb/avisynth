@@ -58,14 +58,14 @@
 enum { FADE_MODE_OUT0, FADE_MODE_OUT, FADE_MODE_OUT2, FADE_MODE_IN0, FADE_MODE_IN, FADE_MODE_IN2, FADE_MODE_IO0, FADE_MODE_IO, FADE_MODE_IO2 };
 
 extern const AVSFunction Edit_filters[] = {
-  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cff",          Trim::CreateA, (void*)Trim::Default}, // start time, end time
-  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf",           Trim::CreateA, (void*)Trim::Invalid}, // Throw Invalid argument to AudioTrim
-  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[length]f",  Trim::CreateA, (void*)Trim::Length},  // start time, duration
-  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[end]f",     Trim::CreateA, (void*)Trim::End},     // start time, end time
-  { "Trim", BUILTIN_FUNC_PREFIX, "cii[pad]b",         Trim::Create,  (void*)Trim::Default}, // first frame, last frame[, pad audio]
-  { "Trim", BUILTIN_FUNC_PREFIX, "ci[pad]b",          Trim::Create,  (void*)Trim::Invalid}, // Throw Invalid argument to Trim
-  { "Trim", BUILTIN_FUNC_PREFIX, "ci[length]i[pad]b", Trim::Create,  (void*)Trim::Length},  // first frame, frame count[, pad audio]
-  { "Trim", BUILTIN_FUNC_PREFIX, "ci[end]i[pad]b",    Trim::Create,  (void*)Trim::End},     // first frame, last frame[, pad audio]
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cff[cache]b",          Trim::CreateA, (void*)Trim::Default}, // start time, end time
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[cache]b",           Trim::CreateA, (void*)Trim::Invalid}, // Throw Invalid argument to AudioTrim because 4 parameters expected
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[length]f[cache]b",  Trim::CreateA, (void*)Trim::Length},  // start time, duration
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[end]f[cache]b",     Trim::CreateA, (void*)Trim::End},     // start time, end time
+  { "Trim", BUILTIN_FUNC_PREFIX, "cii[pad]b[cache]b",         Trim::Create,  (void*)Trim::Default}, // first frame, last frame[, pad audio]
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[pad]b[cache]b",          Trim::Create,  (void*)Trim::Invalid}, // Throw Invalid argument to Trim because 5 parameters expected
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[length]i[pad]b[cache]b", Trim::Create,  (void*)Trim::Length},  // first frame, frame count[, pad audio]
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[end]i[pad]b[cache]b",    Trim::Create,  (void*)Trim::End},     // first frame, last frame[, pad audio]
   { "FreezeFrame", BUILTIN_FUNC_PREFIX, "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
   { "DeleteFrame", BUILTIN_FUNC_PREFIX, "ci+", DeleteFrame::Create },            // frame #
   { "DuplicateFrame",  BUILTIN_FUNC_PREFIX, "ci+", DuplicateFrame::Create },      // frame #
@@ -124,8 +124,8 @@ int __stdcall NonCachedGenericVideoFilter::SetCacheHints(int cachehints, int fra
  *******   AudioTrim Filter   ******
  ******************************/
 
-Trim::Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, IScriptEnvironment* env)
- : GenericVideoFilter(_child)
+Trim::Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, bool _cache, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), cache(_cache)
 {
   int64_t esampleno = 0;
 
@@ -189,7 +189,9 @@ AVSValue __cdecl Trim::CreateA(AVSValue args, void* user_arg, IScriptEnvironment
     if (mode == Trim::Invalid)
         env->ThrowError("Script error: Invalid arguments to function \"AudioTrim\"");
 
-    return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), mode, env);
+    const bool cache = args[3].AsBool(true);
+
+    return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), mode, cache, env);
 }
 
 
@@ -197,8 +199,8 @@ AVSValue __cdecl Trim::CreateA(AVSValue args, void* user_arg, IScriptEnvironment
  *******   Trim Filter   ******
  ******************************/
 
-Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, IScriptEnvironment* env)
- : GenericVideoFilter(_child)
+Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, bool _cache, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), cache(_cache)
 {
   int lastframe = 0;
 
@@ -294,7 +296,9 @@ AVSValue __cdecl Trim::Create(AVSValue args, void* user_arg, IScriptEnvironment*
     if (mode == Trim::Invalid)
         env->ThrowError("Script error: Invalid arguments to function \"Trim\"");
 
-    return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), mode, env);
+    const bool cache = args[4].AsBool(true);
+
+    return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), mode, cache, env);
 }
 
 

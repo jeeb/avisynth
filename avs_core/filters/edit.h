@@ -49,15 +49,24 @@ class Trim : public GenericVideoFilter
 public:
   typedef enum { Invalid = 0, Default, Length, End } trim_mode_e;
 
-  Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
-  Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
+  Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, bool _cache, IScriptEnvironment* env);
+  Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, bool _cache, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env) override;
   bool __stdcall GetParity(int n) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
     AVS_UNUSED(frame_range);
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+    switch (cachehints) {
+    case CACHE_DONT_CACHE_ME:
+      return cache ? 0 : 1; // adaptively cache-able
+    case CACHE_GET_MTMODE:
+      return MT_NICE_FILTER;
+    case CACHE_GET_DEV_TYPE:
+      return (child->GetVersion() >= 5) ? child->SetCacheHints(CACHE_GET_DEV_TYPE, 0) : 0;
+    default:
+      return 0;
+    }
   }
 
   static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);
@@ -66,6 +75,7 @@ public:
 private:
   int firstframe;
   int64_t audio_offset;
+  bool cache;
 };
 
 
