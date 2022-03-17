@@ -5,8 +5,11 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220312 3.7.2-WIP
-------------------
+20220317 3.7.2
+--------------
+- C interface Win32 access: fix issue by adding V8 interface function names to avisynth.def
+  or else names are decorated (Issue #276) 
+  e.g. DLL published _avs_get_frame_props_ro@8 instead of avs_get_frame_props_ro
 - ShowRed/Green/Blue/Alpha/Y/U/V: addition to earlier fixes:
   When clips are planar and both source and destination format have alpha plane, 
   then it will be copied instead of filled with 255d.
