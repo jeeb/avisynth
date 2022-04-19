@@ -240,6 +240,9 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
   //  0: not specified (leave if input is packed RGB, convert to rgb32/64 input colorspace dependent)
   // 24,32,48,64: RGB24/32/48/64
 
+  if (target_rgbtype == 0 && vi.BitsPerComponent() != 8 && vi.BitsPerComponent() != 16)
+    env->ThrowError("ConvertToRGB: conversion is allowed only from 8 or 16 bit colorspaces");
+
   // planar YUV-like
   if (vi.IsPlanar() && (vi.IsYUV() || vi.IsYUVA())) {
     bool needConvertFinalBitdepth = false;
@@ -262,8 +265,6 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
         target_rgbtype = (target_rgbtype == 48) ? -1 : -2; // planar rgb intermediate
       }
     }
-    else if(target_rgbtype==0 && vi.ComponentSize()==4)
-        env->ThrowError("ConvertToRGB: conversion is allowed only from 8 or 16 bit colorspaces");
     int rgbtype_param = 0;
     bool reallyConvert = true;
     switch (target_rgbtype)
@@ -361,7 +362,10 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void* user_data, IScriptEnv
       vi = clip->GetVideoInfo();
     }
 
-    return new PlanarRGBtoPackedRGB(clip, (target_rgbtype == 32 || target_rgbtype == 64));
+    bool hasAlpha = target_rgbtype == 32 || target_rgbtype == 64 ||
+      (target_rgbtype == 0 && vi.IsPlanarRGBA());
+
+    return new PlanarRGBtoPackedRGB(clip, hasAlpha);
   }
 
   // YUY2
