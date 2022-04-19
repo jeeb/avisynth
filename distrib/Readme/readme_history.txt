@@ -5,6 +5,14 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
+20220419 3.7.3 WIP
+------------------
+- Fix (#283): broken runtime functions min/max/minmaxdifference when threshold is not 0 (returned -1). Regression in 3.7.2
+- New: add a sixth array element to PlaneMinMaxStats: average. Defines variable "PlaneStats_average" as well if setting variables is required.
+- Fix (#282): ConvertToRGB
+  - do check for exact 8 or 16 bit input, because packed RGB formats exist only for 8 and 16 bits
+  - keep alpha for RGBA planar - convert RGBAP8/16 to RGB32/64, while RGBP8/16 is still RGB24/48
+
 20220317 3.7.2
 --------------
 - C interface Win32 access: fix issue by adding V8 interface function names to avisynth.def
