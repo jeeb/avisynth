@@ -590,14 +590,18 @@ AVSValue MinMaxPlane::Create_minmax(AVSValue args, void* user_data, IScriptEnvir
   return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), plane, MinMaxPlane::MINMAX_DIFFERENCE, false, env);
 }
 
-void get_minmax_float_c(const BYTE* srcp, int pitch, int w, int h, float& min, float& max)
+template<bool average>
+void get_minmax_float_c(const BYTE* srcp, int pitch, int w, int h, float& min, float& max, double &sum)
 {
   min = *reinterpret_cast<const float*>(srcp);
   max = min;
+  sum = 0;
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       const float pix = reinterpret_cast<const float*>(srcp)[x];
+      if constexpr(average)
+        sum += pix;
       if (pix < min) min = pix;
       if (pix > max) max = pix;
     }
@@ -605,18 +609,24 @@ void get_minmax_float_c(const BYTE* srcp, int pitch, int w, int h, float& min, f
   }
 }
 
-template<typename pixel_t>
-void get_minmax_int_c(const BYTE* srcp, int pitch, int w, int h, int& min, int& max)
+template<typename pixel_t, bool average>
+void get_minmax_int_c(const BYTE* srcp, int pitch, int w, int h, int& min, int& max, int64_t& sum)
 {
   min = *reinterpret_cast<const pixel_t*>(srcp);
   max = min;
+  sum = 0;
 
   for (int y = 0; y < h; y++) {
+    int tmpsum = 0;
     for (int x = 0; x < w; x++) {
       const int pix = reinterpret_cast<const pixel_t*>(srcp)[x];
+      if constexpr (average)
+        sum += pix;
       if (pix < min) min = pix;
       if (pix > max) max = pix;
     }
+    if constexpr (average)
+      sum += tmpsum;
     srcp += pitch;
   }
 }
@@ -687,27 +697,40 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   float stats_median;
   float stats_thresholded_min;
   float stats_thresholded_max;
+  float stats_average;
 
   if (threshold == 0 || mode == MinMaxPlane::STATS) {
     // special case, no histogram needed
 
     if (pixelsize == 4) // 32 bit float
     {
-      get_minmax_float_c(srcp, pitch, w, h, stats_min, stats_max);
-      
+      double sum = 0;
+      if (mode == MinMaxPlane::STATS)
+        get_minmax_float_c<true>(srcp, pitch, w, h, stats_min, stats_max, sum);
+      else
+        get_minmax_float_c<false>(srcp, pitch, w, h, stats_min, stats_max, sum);
+
       if (mode == MinMaxPlane::MIN) return stats_min;
       else if (mode == MinMaxPlane::MAX) return stats_max;
       else if (mode == MinMaxPlane::MINMAX_DIFFERENCE) return stats_max - stats_min;
+      stats_average = (float)(sum / (w * h));
       // STATS: go on
     }
     else
     {
       int min, max;
+      int64_t sum = 0;
       // sse4.1 is not any faster
       if(pixelsize == 1)
-        get_minmax_int_c<uint8_t>(srcp, pitch, w, h, min, max);
+        if (mode == MinMaxPlane::STATS)
+          get_minmax_int_c<uint8_t, true>(srcp, pitch, w, h, min, max, sum);
+        else
+          get_minmax_int_c<uint8_t, false>(srcp, pitch, w, h, min, max, sum);
       else
-        get_minmax_int_c<uint16_t>(srcp, pitch, w, h, min, max);
+        if (mode == MinMaxPlane::STATS)
+          get_minmax_int_c<uint16_t, true>(srcp, pitch, w, h, min, max, sum);
+        else
+          get_minmax_int_c<uint16_t, false>(srcp, pitch, w, h, min, max, sum);
 
       if (mode == MinMaxPlane::MIN) return min;
       else if (mode == MinMaxPlane::MAX) return max;
@@ -716,6 +739,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
       // STATS: go on
       stats_min = (float)min;
       stats_max = (float)max;
+      stats_average = (float)((double)sum / (w * h));
     }
   }
 
@@ -867,14 +891,15 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
       stats_median = (float)((double)(stats_median - shift) / (buffersize - 1)); // convert back to float, /65535
     }
 
-    AVSValue result[] = { stats_min, stats_max, stats_thresholded_min, stats_thresholded_max, stats_median };
-    AVSValue ret = AVSValue(result, 5);
+    AVSValue result[] = { stats_min, stats_max, stats_thresholded_min, stats_thresholded_max, stats_median, stats_average };
+    AVSValue ret = AVSValue(result, 6);
     if (setvar) {
       env->SetGlobalVar("PlaneStats_min", stats_min);
       env->SetGlobalVar("PlaneStats_max", stats_max);
       env->SetGlobalVar("PlaneStats_thmin", stats_thresholded_min);
       env->SetGlobalVar("PlaneStats_thmax", stats_thresholded_max);
       env->SetGlobalVar("PlaneStats_median", stats_median);
+      env->SetGlobalVar("PlaneStats_average", stats_average);
     }
 
     return ret;
