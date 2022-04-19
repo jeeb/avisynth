@@ -581,6 +581,7 @@ AVSValue MinMaxPlane::Create_min(AVSValue args, void* user_data, IScriptEnvironm
 
 AVSValue MinMaxPlane::Create_median(AVSValue args, void* user_data, IScriptEnvironment* env) {
   int plane = (int)reinterpret_cast<intptr_t>(user_data);
+  // MEDIAN: min 50%
   return MinMax(args[0], user_data, 50.0, args[1].AsInt(0), plane, MinMaxPlane::MIN, false, env);
 }
 
@@ -781,6 +782,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
 
     // Find the value we need.
   if (mode == MinMaxPlane::MIN) {
+    // threshold == 0 was covered already
     unsigned int counted=0;
     retval = buffersize - 1;
     for (int i = 0; i< buffersize;i++) {
@@ -791,8 +793,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
       }
     }
   }
-  
-  if (mode == MinMaxPlane::MAX) {
+  else if (mode == MinMaxPlane::MAX) {
     unsigned int counted=0;
     retval = 0;
     for (int i = buffersize-1; i>=0;i--) {
@@ -803,8 +804,13 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
       }
     }
   }
-  
-  if (mode == MinMaxPlane::MINMAX_DIFFERENCE || mode == MinMaxPlane::STATS) {
+  else if (mode == MinMaxPlane::STATS && threshold == 0) {
+    stats_thresholded_min = (float)stats_min;
+    stats_thresholded_max = (float)stats_max;
+    retval = -1; // stats: n/a
+  }
+  else if (mode == MinMaxPlane::MINMAX_DIFFERENCE || mode == MinMaxPlane::STATS) {
+    // thresholded case
     unsigned int counted=0;
     int i, t_min = 0;
     // Find min
@@ -835,6 +841,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   if (mode == MinMaxPlane::STATS) {
     // for STATS we already have min and max, thresholded min and max
     // let's gather median, which is equal to 50% MIN
+    // comment: no separate MEDIAN mode is used, already converted to MIN 50% in ctor
     unsigned int tpixels = (unsigned int)(pixels * 0.5f);
     unsigned int counted = 0;
     retval = buffersize - 1;
@@ -855,8 +862,8 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
   //_RPT2(0, "End of MinMax cn=%d n=%d\r", cn.AsInt(), n);
 
   if (mode == MinMaxPlane::STATS) {
-  if (pixelsize == 4) {
-    const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
+    if (pixelsize == 4) {
+      const bool chroma = (plane == PLANAR_U) || (plane == PLANAR_V);
       const float shift = chroma ? 32768.0f : 0;
       stats_thresholded_min = (float)((double)(stats_thresholded_min - shift) / (buffersize - 1)); // convert back to float, /65535
       stats_thresholded_max = (float)((double)(stats_thresholded_max - shift) / (buffersize - 1)); // convert back to float, /65535
