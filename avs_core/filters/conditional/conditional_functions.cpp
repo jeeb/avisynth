@@ -854,9 +854,6 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* , double threshold, int offset
     }
     stats_median = (float)retval;
   }
-  else {
-    retval = -1;
-  }
 
   delete[] accum_buf;
   //_RPT2(0, "End of MinMax cn=%d n=%d\r", cn.AsInt(), n);
