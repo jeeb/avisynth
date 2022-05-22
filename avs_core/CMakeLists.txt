@@ -101,10 +101,20 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Haiku")
     set(SYSLIB "root")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+    set(SYSLIB "pthread")
 elseif(MSVC OR MINGW)
     set(SYSLIB "uuid" "winmm" "vfw32" "msacm32" "gdi32" "user32" "advapi32" "ole32" "imagehlp")
 else()
     set(SYSLIB "pthread" "dl" "m")
+endif()
+
+if(MINGW)
+    set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+    set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+    find_package(Threads REQUIRED)
+
+    list(APPEND SYSLIB "pthread")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -194,6 +204,11 @@ set(LIBS "-l${LIB_NAME}")
 set(_SYSLIBS_ITEMS ${SYSLIB})
 list(TRANSFORM _SYSLIBS_ITEMS PREPEND "-l")
 list(JOIN _SYSLIBS_ITEMS " " SYSLIBS)
+
+if(MINGW)
+set(SYSLIBS "${SYSLIBS} -static")
+endif()
+
 CONFIGURE_FILE("avisynth.pc.in" "avisynth.pc" @ONLY)
 
 # Generate avisynth.conf
