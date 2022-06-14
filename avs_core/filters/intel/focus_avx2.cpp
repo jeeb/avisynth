@@ -306,10 +306,14 @@ void af_horizontal_planar_avx2(BYTE* dstp, size_t height, size_t pitch, size_t w
   __m256i zero = _mm256_setzero_si256();
 
   __m128i left_mask_128 = _mm_set_epi32(0, 0, 0, 0xFF);
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4309)
+#endif
   __m128i right_mask_128 = _mm_set_epi8(0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
   __m256i left;
 
@@ -372,11 +376,15 @@ void af_horizontal_planar_uint16_t_avx2(BYTE* dstp, size_t height, size_t pitch,
   __m256i round_mask = _mm256_set1_epi32(0x40);
   __m256i zero = _mm256_setzero_si256();
 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4309)
+#endif
   __m128i left_mask_128 = _mm_set_epi16(0, 0, 0, 0, 0, 0, 0, 0xFFFF); // 0, 0, 0, 0, 0, 0, 0, FFFF
   __m128i right_mask_128 = _mm_set_epi16(0xFFFF, 0, 0, 0, 0, 0, 0, 0);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
   __m256i left;
 

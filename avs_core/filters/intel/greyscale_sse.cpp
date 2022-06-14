@@ -43,10 +43,14 @@
 
 void greyscale_yuy2_sse2(BYTE *srcp, size_t /*width*/, size_t height, size_t pitch) {
   __m128i luma_mask = _mm_set1_epi16(0x00FF);
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4309)
+#endif
   __m128i chroma_value = _mm_set1_epi16(0x8000);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
   BYTE* end_point = srcp + pitch * height;
 
   while(srcp < end_point) {
@@ -146,10 +150,14 @@ void greyscale_yuy2_mmx(BYTE *srcp, size_t width, size_t height, size_t pitch) {
   size_t loop_limit = min((pitch / 8) * 8, ((width*4 + 7) / 8) * 8);
 
   __m64 luma_mask = _mm_set1_pi16(0x00FF);
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4309)
+#endif
   __m64 chroma_value = _mm_set1_pi16(0x8000);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < loop_limit; x+=8) {

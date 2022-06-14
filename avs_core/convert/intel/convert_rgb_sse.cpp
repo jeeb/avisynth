@@ -47,11 +47,15 @@ __attribute__((__target__("ssse3")))
 void convert_rgb48_to_rgb64_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
 {
   size_t mod16_width = sizeof(uint16_t)*(width & (~size_t(7)));
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4309)
+#endif
   __m128i mask0 = _mm_set_epi8(0x80, 0x80, 11, 10, 9, 8, 7, 6, 0x80, 0x80, 5, 4, 3, 2, 1, 0);
   __m128i mask1 = _mm_set_epi8(0x80, 0x80, 15, 14, 13, 12, 11, 10, 0x80, 0x80, 9, 8, 7, 6, 5, 4);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
   __m128i alpha = _mm_set_epi32(0xFFFF0000,0x00000000,0xFFFF0000,0x00000000);
 
   for (size_t y = 0; y < height; ++y) {
@@ -96,11 +100,15 @@ __attribute__((__target__("ssse3")))
 void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
 {
   size_t mod16_width = (width + 3) & (~size_t(15)); //when the modulo is more than 13, a problem does not happen
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4309)
+#endif
   __m128i mask0 = _mm_set_epi8(0x80, 11, 10, 9, 0x80, 8, 7, 6, 0x80, 5, 4, 3, 0x80, 2, 1, 0);
   __m128i mask1 = _mm_set_epi8(0x80, 15, 14, 13, 0x80, 12, 11, 10, 0x80, 9, 8, 7, 0x80, 6, 5, 4);
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
   __m128i alpha = _mm_set1_epi32(0xFF000000);
 
   for (size_t y = 0; y < height; ++y) {
@@ -333,14 +341,18 @@ void convert_rgb_to_rgbp_ssse3(const BYTE *srcp, BYTE * (&dstp)[4], int src_pitc
   else
     mask = _mm_set_epi8(15, 14, 13, 12, 11, 10, 5, 4, 9, 8, 3, 2, 7, 6, 1, 0);
 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4309)
+#endif
   __m128i max_pixel_value;
   if constexpr(sizeof(pixel_t) == 1)
     max_pixel_value = _mm_set1_epi8(0xFF);
   else
     max_pixel_value = _mm_set1_epi16((1 << bits_per_pixel) - 1); // bits_per_pixel is 16
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
   for (int y = height; y > 0; --y) {
     __m128i BGRA_1, BGRA_2, BGRA_3;
