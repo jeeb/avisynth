@@ -5,8 +5,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220419 3.7.3 WIP
+20220627 3.7.3 WIP
 ------------------
+- Fix: C interface crash when using avs_new_video_frame_p(_a)
 - Fix (#283): broken runtime functions min/max/minmaxdifference when threshold is not 0 (returned -1). Regression in 3.7.2
 - New: add a sixth array element to PlaneMinMaxStats: average. Defines variable "PlaneStats_average" as well if setting variables is required.
 - Fix (#282): ConvertToRGB
