@@ -526,10 +526,10 @@ const char* AVSC_CC avs_prop_get_data(AVS_ScriptEnvironment * p, const AVS_Map *
   p->error = 0;
   try {
     const char* data = p->env->propGetData((const AVSMap*)map, key, index, error);
-    if (error)
+    if (!data)
       return nullptr;
     else
-      return p->env->SaveString(data);
+      return data;
   }
   catch (const AvisynthError& err) {
     p->error = err.msg;
