@@ -933,6 +933,8 @@ certain interface version for it to work.
 Interface V9 (8.1) introduced new methods for establishing actual interface version both on C++ and C interfaces.
 See :ref:`GetEnvProperty <cplusplus_getenvproperty>`
 
+Interface V9.1 introduced important fixes for C interface methods: avs_new_video_frame_p(_a), avs_prop_get_data
+
 ::
 
     Example of usage with CPP interface (through avisynth.h).
@@ -951,7 +953,9 @@ See :ref:`GetEnvProperty <cplusplus_getenvproperty>`
     has_at_least_v8_1 = avisynth_if_ver > 8 || (avisynth_if_ver == 8 && avisynth_bugfix_ver >= 1);
     // 8.1: C interface frameprop access fixed, IsPropertyWritable/MakePropertyWritable support, extended GetEnvProperty queries
     has_at_least_v9 = avisynth_if_ver >= 9; // future
-
+    has_at_least_v9_1 = avisynth_if_ver > 9 || (avisynth_if_ver == 9 && avisynth_bugfix_ver >= 1);
+    // 9.1: C interface fixes: avs_new_video_frame_p(_a), avs_prop_get_data
+    
 
 .. _cplusplus_subframe:
 
@@ -1273,6 +1277,8 @@ propGetData, v8
 
 get property value as string buffer.
 
+Note: C interface counterpart avs_prop_get_data behaviour was fixed and made similar to C++ propGetData in interface version 9.1
+
 
 .. _cplusplus_propgetdatasize:
 
@@ -1487,6 +1493,8 @@ NewVideoFrameP, v8
     virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
 
 NewVideoFrame with frame property source.
+
+Note: C interface counterpart avs_new_video_frame_p(_a) crash was fixed in interface version 9.1
 
 
 .. _cplusplus_getenvproperty:

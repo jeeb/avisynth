@@ -291,15 +291,20 @@ What's new in the api V8
         - Important note: frame property access in V8 is broken. Safely available since V8.1
 
 - C API (AVISYNTH_INTERFACE_VERSION = 8, AVISYNTH_INTERFACE_BUGFIX = 1):
-        - working frame property access
+        - working frame property access (see 9.1 comments for fixes)
 
-What's new in the api V9
+What's new in the API V9
 ------------------------
 
 - C and C++ API (AVISYNTH_INTERFACE_VERSION = 9):
         - :ref:`MakePropertyWritable <cplusplus_makepropertywritable>` like MakeWritable but for frame properties only.
         - :ref:`IsPropertyWritable <cplusplus_ispropertywritable>` like IsWritable but for frame properties only.
         - C interface equivalents: avs_make_property_writable and avs_is_property_writable
+
+- C API (AVISYNTH_INTERFACE_VERSION = 9, AVISYNTH_INTERFACE_BUGFIX = 1):
+        - Fix: C interface crash when using avs_new_video_frame_p(_a)
+        - Fix: C interface avs_prop_get_data behave like C++ counterpart.
+
 
 Some history
 ------------

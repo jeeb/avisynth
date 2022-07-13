@@ -13,6 +13,10 @@ Additions, changes
 Build environment, Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Fix: C interface crash when using avs_new_video_frame_p(_a)
+- Fix: C interface avs_prop_get_data behave like C++ counterpart.
+- Bump Interface version bugfix part. Interface version is 9.1
+  AVISYNTH_INTERFACE_VERSION = 9,
+  AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 1
 
 Bugfixes
 ~~~~~~~~
