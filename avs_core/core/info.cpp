@@ -1275,7 +1275,7 @@ std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold,
     // fixme: make cache
     BdfFont bdf;
     bdf = LoadBMF(name, bold);
-    if (bdf.font_info.chars == 0)
+    if (bdf.codepoints_array.size() == 0)
       return nullptr;
 
     current_font = new BitmapFont(
