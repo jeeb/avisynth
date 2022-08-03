@@ -20,6 +20,9 @@ Build environment, Interface
 
 Bugfixes
 ~~~~~~~~
+- Fix: (#293) "Text" to throw proper error message if the specified font name (e.g. Arial) is not found among internal bitmap fonts.
+- Fix: (#293) "Subtitle" and "Text" filter to respect the explicitely given coorditanes for y=-1 or x=-1, 
+  instead of applying vertical/horizontal center alignment.
 - Fix (#283): broken runtime functions Min/Max/MinMaxDifference when threshold is not 0 (returned -1). Regression in 3.7.2
 - Fix (#282): ConvertToRGB
   - do check for exact 8 or 16 bit input, because packed RGB formats exist only for 8 and 16 bits
@@ -32,7 +35,7 @@ Optimizations
 Please report bugs at `github AviSynthPlus page`_ - or - `Doom9's AviSynth+
 forum`_
 
-$Date: 2022/06/27 0:0:0 $
+$Date: 2022/08/02 0:0:0 $
 
 .. _github AviSynthPlus page:
     https://github.com/AviSynth/AviSynthPlus

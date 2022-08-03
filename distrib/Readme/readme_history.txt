@@ -5,8 +5,11 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220627 3.7.3 WIP
+20220801 3.7.3 WIP
 ------------------
+- Fix (#293): "Text" to throw proper error message if the specified font name (e.g. Arial) is not found among internal bitmap fonts.
+- Fix (#293): "Subtitle" and "Text" filter to respect the explicitely given coorditanes for y=-1 or x=-1, 
+  instead of applying vertical/horizontal center alignment.
 - Fix: C interface crash when using avs_new_video_frame_p(_a)
 - Fix (#283): broken runtime functions min/max/minmaxdifference when threshold is not 0 (returned -1). Regression in 3.7.2
 - New: add a sixth array element to PlaneMinMaxStats: average. Defines variable "PlaneStats_average" as well if setting variables is required.
