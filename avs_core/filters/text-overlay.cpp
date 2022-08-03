@@ -1715,19 +1715,40 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
      env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
 
     int defx, defy;
-    switch (align) {
-	 case 1: case 4: case 7: defx = 8; break;
-     case 2: case 5: case 8: defx = -1; break;
-     case 3: case 6: case 9: defx = clip->GetVideoInfo().width-8; break;
-     default: defx = 8; break; }
-    switch (align) {
-     case 1: case 2: case 3: defy = clip->GetVideoInfo().height-2; break;
-     case 4: case 5: case 6: defy = -1; break;
-	 case 7: case 8: case 9: defy = 0; break;
-     default: defy = (size+4)/8; break; }
+    bool x_center = false;
+    bool y_center = false;
 
-    const int x = int(args[2].AsDblDef(defx)*8+0.5);
-    const int y = int(args[3].AsDblDef(defy)*8+0.5);
+    switch (align) {
+    case 1: case 4: case 7: defx = 8; break;
+    case 2: case 5: case 8:
+      defx = 0; // n/a if not set later
+      x_center = true;
+      break;
+    case 3: case 6: case 9: defx = clip->GetVideoInfo().width - 8; break;
+    default: defx = 8; break;
+    }
+
+    switch (align) {
+    case 1: case 2: case 3: defy = clip->GetVideoInfo().height - 2; break;
+    case 4: case 5: case 6:
+      defy = 0; // n/a if not set later
+      y_center = true;
+      break;
+    case 7: case 8: case 9: defy = 0; break;
+    default: defy = (size + 4) / 8; break;
+    }
+
+    const bool isXdefined = args[2].Defined();
+    const bool isYdefined = args[3].Defined();
+
+    int x = int(args[2].AsDblDef(defx)*8+0.5);
+    int y = int(args[3].AsDblDef(defy)*8+0.5);
+
+    if (!isXdefined && x_center)
+      x = (clip->GetVideoInfo().width >> 1) * 8;
+
+    if (!isYdefined && y_center)
+      y = (clip->GetVideoInfo().height >> 1) * 8;
 
     return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color,
 	                    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, env);
@@ -1761,9 +1782,6 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
   }
   if (SetTextCharacterExtra(hdcAntialias, spc) == 0x80000000) goto GDIError;
   if (SetTextAlign(hdcAntialias, al) == GDI_ERROR) goto GDIError;
-
-  if (x==-7) real_x = (vi.width>>1)*8;
-  if (y==-7) real_y = (vi.height>>1)*8;
 
   if (utf8) {
     // Test:
@@ -2041,15 +2059,24 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
     env->ThrowError("SimpleText: Align values are 1 - 9 mapped to your numeric pad");
 
   int defx, defy;
+  bool x_center = false;
+  bool y_center = false;
+
   switch (align) {
   case 1: case 4: case 7: defx = 8; break;
-  case 2: case 5: case 8: defx = -1; break;
+  case 2: case 5: case 8:
+    defx = 0; // n/a if not set later
+    x_center = true;
+    break;
   case 3: case 6: case 9: defx = clip->GetVideoInfo().width - 8; break;
   default: defx = 8; break;
   }
   switch (align) {
   case 1: case 2: case 3: defy = clip->GetVideoInfo().height - 2; break;
-  case 4: case 5: case 6: defy = -1; break;
+  case 4: case 5: case 6:
+    defy = 0; // n/a if not set later
+    y_center = true;
+    break;
   case 7: case 8: case 9: defy = 0; break;
   default: defy = /*(size + 4) / 8;*/ (size + 1) / 2; break; // no mul 8
   }
@@ -2062,11 +2089,12 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
 
   int real_x = x;
   int real_y = y;
+
   // center check
-  if (defx == -1 && !isXdefined)
+  if (!isXdefined && x_center)
     real_x = (clip->GetVideoInfo().width >> 1) /* * 8 */; // no mul 8 like in SubTitle
 
-  if (defy == -1 && !isYdefined)
+  if (!isYdefined && y_center)
     real_y = (clip->GetVideoInfo().height >> 1) /* * 8 */; // no mul 8 like in SubTitle
 
   return new SimpleText(clip, text, real_x, real_y, first_frame, last_frame, font, size, text_color,
