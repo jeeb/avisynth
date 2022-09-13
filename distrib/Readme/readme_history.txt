@@ -5,8 +5,11 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220801 3.7.3 WIP
+20220912 3.7.3 WIP
 ------------------
+- Fix: C API undefined behavior when upstream throw runtime error
+- Mute compilation warnings in avisynth.h
+- CMakeLists.txt: fix clang-cl/intel with ninja generator
 - Fix (#293): "Text" to throw proper error message if the specified font name (e.g. Arial) is not found among internal bitmap fonts.
 - Fix (#293): "Subtitle" and "Text" filter to respect the explicitely given coorditanes for y=-1 or x=-1, 
   instead of applying vertical/horizontal center alignment.

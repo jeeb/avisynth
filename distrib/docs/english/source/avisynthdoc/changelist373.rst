@@ -8,15 +8,18 @@ Changes from 3.7.2 to 3.7.3
 
 Additions, changes
 ~~~~~~~~~~~~~~~~~~
+- MIPS build support
 - New: add a sixth array element to PlaneMinMaxStats: average. Defines variable "PlaneStats_average" as well if setting variables is required.
 
 Build environment, Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Fix: C API undefined behavior when upstream throw runtime error
+- CMakeLists.txt: fix clang-cl/intel with ninja generator
 - Fix: C interface crash when using avs_new_video_frame_p(_a)
 - Fix: C interface avs_prop_get_data behave like C++ counterpart.
-- Bump Interface version bugfix part. Interface version is 9.1
+- Bump Interface version bugfix part. Interface version is 9.2
   AVISYNTH_INTERFACE_VERSION = 9,
-  AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 1
+  AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 2
 
 Bugfixes
 ~~~~~~~~
@@ -35,7 +38,7 @@ Optimizations
 Please report bugs at `github AviSynthPlus page`_ - or - `Doom9's AviSynth+
 forum`_
 
-$Date: 2022/08/02 0:0:0 $
+$Date: 2022/09/12 21:10:38 $
 
 .. _github AviSynthPlus page:
     https://github.com/AviSynth/AviSynthPlus
