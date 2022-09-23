@@ -2549,7 +2549,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
           case 'v':
           case 'V': mask |= 0xffffffff; planar_plane |= PLANAR_V; break;
           case 'a':
-          case 'A': mask |= 0xffffffff; planar_plane |= PLANAR_A; if (!vi.IsYUVA()) break;  // else no alpha -> fall thru
+          case 'A': mask |= 0xffffffff; planar_plane |= PLANAR_A; if (vi.IsYUVA()) break;  // else no alpha -> fall thru
           default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
           }
           if (vi.IsY() && ((planar_plane & PLANAR_U) || (planar_plane & PLANAR_V))) {
@@ -2565,7 +2565,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
             case 'b':
             case 'B': mask |= 0xffffffff; planar_plane |= PLANAR_B; break;
             case 'a':
-            case 'A': mask |= 0xffffffff; planar_plane |= PLANAR_A; if (!vi.IsPlanarRGBA()) break;  // else no alpha -> fall thru
+            case 'A': mask |= 0xffffffff; planar_plane |= PLANAR_A; if (vi.IsPlanarRGBA()) break;  // else no alpha -> fall thru
             default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
             }
         }
@@ -2830,7 +2830,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     int planes_y[4] = { PLANAR_Y, PLANAR_U, PLANAR_V, PLANAR_A };
     int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
     int* planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
-    for (int p = 0; p < 3; p++) {
+    for (int p = 0; p < 4; p++) {
       const int plane = planes[p];
 
       if (planar_plane & plane) {
