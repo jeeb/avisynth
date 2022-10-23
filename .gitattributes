@@ -1,7 +1,10 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text eol=lf
 
-distrib/* linguist-documentation
+distrib/**/*.css linguist-documentation
+
+distrib/**/*.htm linguist-documentation
+distrib/**/*.html linguist-documentation
 
 # Denote all files that are truly binary and should not be modified.
 *.bmp binary
