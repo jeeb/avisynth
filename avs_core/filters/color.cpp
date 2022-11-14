@@ -635,9 +635,9 @@ static void coloryuv_analyse_yuy2(const BYTE* pSrc, int src_pitch, int width, in
         pSrc += src_pitch;
     }
 
-    coloryuv_analyse_core<false>(freqY, width*height, dataY, 1);
-    coloryuv_analyse_core<false>(freqU, width*height/2, dataU, 1);
-    coloryuv_analyse_core<false>(freqV, width*height/2, dataV, 1);
+    coloryuv_analyse_core<false>(freqY, width*height, dataY, 8);
+    coloryuv_analyse_core<false>(freqU, width*height/2, dataU, 8);
+    coloryuv_analyse_core<false>(freqV, width*height/2, dataV, 8);
 }
 
 static void coloryuv_autogain(const ColorYUVPlaneData* dY, const ColorYUVPlaneData* dU, const ColorYUVPlaneData* dV, ColorYUVPlaneConfig* cY, ColorYUVPlaneConfig* cU, ColorYUVPlaneConfig* cV,
