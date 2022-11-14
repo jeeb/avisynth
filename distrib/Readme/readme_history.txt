@@ -5,8 +5,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20220912 3.7.3 WIP
+20221014 3.7.3 WIP
 ------------------
+- Fix (#304): ColorYUV analyze=true was displaying wrong min-max values for YUY2
 - Fix: C API undefined behavior when upstream throw runtime error
 - Mute compilation warnings in avisynth.h
 - CMakeLists.txt: fix clang-cl/intel with ninja generator

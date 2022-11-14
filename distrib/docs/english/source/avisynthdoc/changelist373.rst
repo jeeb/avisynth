@@ -23,6 +23,7 @@ Build environment, Interface
 
 Bugfixes
 ~~~~~~~~
+- Fix: (#304) "ColorYUV" analyze=true was displaying wrong min-max values for YUY2
 - Fix: (#293) "Text" to throw proper error message if the specified font name (e.g. Arial) is not found among internal bitmap fonts.
 - Fix: (#293) "Subtitle" and "Text" filter to respect the explicitely given coorditanes for y=-1 or x=-1, 
   instead of applying vertical/horizontal center alignment.
@@ -38,7 +39,7 @@ Optimizations
 Please report bugs at `github AviSynthPlus page`_ - or - `Doom9's AviSynth+
 forum`_
 
-$Date: 2022/09/12 21:10:38 $
+$Date: 2022/11/14 14:34:00 $
 
 .. _github AviSynthPlus page:
     https://github.com/AviSynth/AviSynthPlus
