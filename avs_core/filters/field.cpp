@@ -663,7 +663,18 @@ SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
 
 PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
 {
+#ifdef CACHE_GROWTH_INFINITELY_TEST
+  // FIXME: debug for Issue #270
+  // See other occurencies of this define
+  // When filter is combined with non-SeparateFielded frames
+  // the cache can grow infinitely, behaves like a memory leak.
+  // Tried putting n or (n-1) or (n*2) instead of n >> 1 then the problem does not occur.
+  _RPT2(0, "SeparateFields::GetFrame before %d, >>1: %d\n", n, n >> 1);
+#endif
   PVideoFrame frame = child->GetFrame(n>>1, env);
+#ifdef CACHE_GROWTH_INFINITELY_TEST
+  _RPT2(0, "SeparateFields::GetFrame after %d, >>1: %d\n", n, n >> 1);
+#endif
   if (vi.IsPlanar()) {
     const bool topfield = GetParity(n);
 
