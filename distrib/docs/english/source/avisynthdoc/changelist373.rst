@@ -13,6 +13,7 @@ Additions, changes
 
 Build environment, Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Address Issue #305: Support for non-decorated 'avisynth_c_plugin_init' in C-plugins
 - Fix: C API undefined behavior when upstream throw runtime error
 - CMakeLists.txt: fix clang-cl/intel with ninja generator
 - Fix: C interface crash when using avs_new_video_frame_p(_a)
@@ -35,11 +36,14 @@ Bugfixes
 Optimizations
 ~~~~~~~~~~~~~
 
+Documentation
+~~~~~~~~~~~~~
+- Internal plugins, syntax, ...: almost fully revised and made up-to-date. Big thanks to Reel-Deal!
 
 Please report bugs at `github AviSynthPlus page`_ - or - `Doom9's AviSynth+
 forum`_
 
-$Date: 2022/11/14 14:34:00 $
+$Date: 2022/11/25 13:52:00 $
 
 .. _github AviSynthPlus page:
     https://github.com/AviSynth/AviSynthPlus

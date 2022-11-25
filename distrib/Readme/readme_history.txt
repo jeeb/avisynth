@@ -5,8 +5,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20221014 3.7.3 WIP
+20221125 3.7.3 WIP
 ------------------
+- Address Issue #305: Support for non-decorated avisynth_c_plugin_init in 32 bit C-plugins
+- Huge documentation update by Real-Deal
 - Fix (#304): ColorYUV analyze=true was displaying wrong min-max values for YUY2
 - Fix: C API undefined behavior when upstream throw runtime error
 - Mute compilation warnings in avisynth.h
