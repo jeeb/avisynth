@@ -1193,6 +1193,8 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
   AvisynthCPluginInitFunc AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "_avisynth_c_plugin_init@4");
   if (!AvisynthCPluginInit)
     AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init@4");
+  if (!AvisynthCPluginInit)
+    AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init");
 #endif
 #endif // AVS_POSIX
 
