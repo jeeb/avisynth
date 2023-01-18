@@ -2019,8 +2019,9 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
     std::wstring ws = charToWstring(s.c_str(), utf8); // to wchar_t either from utf8 (win/linux) or ansi (win)
 
     // halocolor MSB
-    // FF: fadeIt
-    // 01-FE: no halo
+    // FF: fadeIt, no halo
+    // FE: fadeIt, use halocolor
+    // 01-FD: no halo
     // 00: use halocolor
     SimpleTextOutW_multi(current_font.get(), vi, frame, real_x, real_y, ws,
       halocolor_orig == 0xFF000000, // fadeIt, special halocolor, when MSB byte is FF
