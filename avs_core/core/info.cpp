@@ -800,12 +800,14 @@ void do_DrawStringPlanar(const int width, const int height, BYTE **dstps, int *p
     return (pixel_t)(color / 255.0f); // 0..255 -> 0..1.0
   };
 
+  const bool is444 = !isRGB && (planeCount >= 3) && (logXRatioUV == 0) && (logYRatioUV == 0);
+
   for (int p = 0; p < planeCount; p++)
   {
     int plane = planes[p];
 
-    if (!isRGB && plane != PLANAR_Y)
-      continue; // handle U and V specially. Y, R, G, B is O.K.
+    if (!(isRGB || plane == PLANAR_Y || ((plane == PLANAR_U || plane == PLANAR_V) && is444)))
+      continue; // Y, R, G, B is O.K. U, V is OK if 444
 
     int planecolor = getColorForPlane(plane, color);
     int planecolor_outline = getColorForPlane(plane, halocolor);
@@ -829,8 +831,8 @@ void do_DrawStringPlanar(const int width, const int height, BYTE **dstps, int *p
     for (int ty = ystart; ty < yend; ty++) {
       int num = s[0];
 
-      unsigned int fontline;
-      unsigned int fontoutline;
+      uint32_t fontline;
+      uint32_t fontoutline;
 
       fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
 
@@ -875,8 +877,13 @@ void do_DrawStringPlanar(const int width, const int height, BYTE **dstps, int *p
   if constexpr (isRGB)
     return;
 
+  if (is444)
+    return;
+
   if (planeCount < 3)
     return; // Y
+
+  // Subsampled cases
 
   // draw U and V in one step
   pixel_t color_u = getHBDColor_UV((color >> 8) & 0xff);
