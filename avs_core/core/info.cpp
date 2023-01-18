@@ -734,7 +734,7 @@ static void adjustWriteLimits(std::vector<int>& s, const int width, const int he
 
   // Roll in start index
   if (startindex > 0) {
-    s.erase(s.begin(), s.begin() + startindex - 1);
+    s.erase(s.begin(), s.begin() + startindex);
     len -= startindex;
   }
 }
