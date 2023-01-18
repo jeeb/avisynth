@@ -2083,9 +2083,9 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
 
   const bool isXdefined = args[2].Defined();
   const bool isYdefined = args[3].Defined();
-
-  const int x = int(args[2].AsDblDef(defx) /* * 8 */ + 0.5); // no mul 8 like in SubTitle
-  const int y = int(args[3].AsDblDef(defy) /* * 8 */ + 0.5);
+  // prevent turning exactly given x or y == -1 into 0, use lround instead of int cast. int(-1 + 0.5) --> 0 :(
+  const int x = std::lround(args[2].AsDblDef(defx));
+  const int y = std::lround(args[3].AsDblDef(defy));
 
   int real_x = x;
   int real_y = y;
