@@ -220,9 +220,11 @@ file.
     except for the transparency values. There is no transparency for ``text_color``
     and for ``halo_color`` only these options are available:
 
-    * FF : semi-transparent box around text without halo.
+    MSB byte of ``halo_color``:
+    * $FF : semi-transparent box around text without halo.
+    * $FE : semi-transparent box around text and use ordinary color bytes of ``halo_color``.
     * 00 : use ``halo_color``.
-    * 01 - FE : no halo.
+    * 01 - FD : no halo.
 
     Default: $00FFFF00, $00000000
 
@@ -364,6 +366,13 @@ Changelog
 +-----------------+--------------------------------------------------------------------------+
 | Version         | Changes                                                                  |
 +=================+==========================================================================+
+| AviSynth+ 3.7.3 || Fix: "Text" filter negative x or y coordinates (e.g. 0 instead of -1)   |
+|                 || Fix: "Text" filter would omit last character when x<0                   |
+|                 || "Text" Fix: ``halo_color`` needs only MSB=$FF and not the exact         |
+|                 |   $FF000000 constant for fade                                            |
+|                 || "Text" ``halo_color`` allows to have both halo and shaded background    |
+|                 || "Text" much nicer rendering of subsampled formats                       |
++=================+==========================================================================+
 | AviSynth+ 3.7.1 | Fix: "Text" filter would crash when y coord is odd and format has        |
 |                 | vertical subsampling.                                                    |
 +-----------------+--------------------------------------------------------------------------+
@@ -389,7 +398,7 @@ Changelog
 |                 | (undocumented prior to v2.07)                                            |
 +-----------------+--------------------------------------------------------------------------+
 
-$Date: 2022/03/16 15:28:44 $
+$Date: 2023/01/18 14:30:00 $
 
 .. _BDF:
     https://en.wikipedia.org/wiki/Glyph_Bitmap_Distribution_Format

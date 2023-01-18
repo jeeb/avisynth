@@ -10,6 +10,8 @@ Additions, changes
 ~~~~~~~~~~~~~~~~~~
 - MIPS build support
 - New: add a sixth array element to PlaneMinMaxStats: average. Defines variable "PlaneStats_average" as well if setting variables is required.
+- "Text" ``halo_color`` allows to have both halo and shaded background
+- "Text" (#308) much nicer rendering of subsampled formats
 
 Build environment, Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,6 +26,9 @@ Build environment, Interface
 
 Bugfixes
 ~~~~~~~~
+- Fix: "Text" filter negative x or y coordinates (e.g. 0 instead of -1)
+- Fix: "Text" filter would omit last character when x<0
+- Fix: "Text" halo_color needs only MSB=$FF and not the exact $FF000000 constant for fade
 - Fix: (#304) "ColorYUV" analyze=true was displaying wrong min-max values for YUY2
 - Fix: (#293) "Text" to throw proper error message if the specified font name (e.g. Arial) is not found among internal bitmap fonts.
 - Fix: (#293) "Subtitle" and "Text" filter to respect the explicitely given coorditanes for y=-1 or x=-1, 
