@@ -2023,10 +2023,11 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
     // FE: fadeIt, use halocolor
     // 01-FD: no halo
     // 00: use halocolor
+    int halocolor_msb = (halocolor_orig & 0xFF000000) >> 24;
     SimpleTextOutW_multi(current_font.get(), vi, frame, real_x, real_y, ws,
-      halocolor_orig == 0xFF000000, // fadeIt, special halocolor, when MSB byte is FF
+      halocolor_msb == 0xFF || halocolor_msb == 0xFE, // fadeIt, special halocolor, when MSB byte is FF or FE
       textcolor, halocolor,
-      (halocolor_orig & 0xFF000000) == 0, // use halocolor when MSB byte is zero
+      halocolor_msb == 0x00 || halocolor_msb == 0xFE, // use halocolor when MSB byte is 00 or FE
       align, lsp);
   }
 
