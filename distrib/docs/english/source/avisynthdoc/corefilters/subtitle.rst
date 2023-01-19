@@ -10,6 +10,7 @@ Set of filters to overlay text on a clip:
   with bitmap fonts and the set of features are limited. Available on Windows
   and other non-Windows OSes.
 
+.. _Subtitle:
 
 Subtitle
 --------
@@ -171,6 +172,7 @@ versions of a frame at once, and you want to label them to remember which is whi
 
     Default: false
 
+.. _Text:
 
 Text
 ----
@@ -218,17 +220,18 @@ file.
 
     Colors for font fill and outline respectively. Works the same as Subtitle,
     except for the transparency values. There is no transparency for ``text_color``
-    and for ``halo_color`` only these options are available:
+    and for ``halo_color`` only the following options are available.
 
     MSB byte of ``halo_color``:
-    * $FF : semi-transparent box around text without halo.
-    * $FE : semi-transparent box around text and use ordinary color bytes of ``halo_color``.
+
+    * FF : semi-transparent box around text without halo.
+    * FE : semi-transparent box around text and use ordinary color bytes of ``halo_color``.
     * 00 : use ``halo_color``.
     * 01 - FD : no halo.
 
     Default: $00FFFF00, $00000000
 
-.. describe:: align, spc, ls
+.. describe:: align, spc, lsp
 
     Same as Subtitle; ``spc`` not available.
 
@@ -372,7 +375,7 @@ Changelog
 |                 |   $FF000000 constant for fade                                            |
 |                 || "Text" ``halo_color`` allows to have both halo and shaded background    |
 |                 || "Text" much nicer rendering of subsampled formats                       |
-+=================+==========================================================================+
++-----------------+--------------------------------------------------------------------------+
 | AviSynth+ 3.7.1 | Fix: "Text" filter would crash when y coord is odd and format has        |
 |                 | vertical subsampling.                                                    |
 +-----------------+--------------------------------------------------------------------------+
@@ -398,7 +401,7 @@ Changelog
 |                 | (undocumented prior to v2.07)                                            |
 +-----------------+--------------------------------------------------------------------------+
 
-$Date: 2023/01/18 14:30:00 $
+$Date: 2022/01/19 15:28:44 $
 
 .. _BDF:
     https://en.wikipedia.org/wiki/Glyph_Bitmap_Distribution_Format
