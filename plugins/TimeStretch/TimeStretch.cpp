@@ -98,14 +98,14 @@ static void setSettings(SoundTouch* sampler, const AVSValue* args, IScriptEnviro
   if (args[3].Defined()) sampler->setSetting(SETTING_USE_QUICKSEEK, args[3].AsBool() ? 1 : 0);
 
   if (args[4].Defined()) {
-       int i = args[4].AsInt();
-       if (i<0 || i%4 != 0)
-         env->ThrowError("TimeStretch: AntiAliaser filter length must divisible by 4.");
+    int i = args[4].AsInt();
+    if (i<0 || i%4 != 0)
+      env->ThrowError("TimeStretch: AntiAliaser filter length must divisible by 4.");
 
-       if (i)
-         sampler->setSetting(SETTING_AA_FILTER_LENGTH, i);
-       else
-         sampler->setSetting(SETTING_USE_AA_FILTER,    0);
+    if (i)
+      sampler->setSetting(SETTING_AA_FILTER_LENGTH, i);
+    else
+      sampler->setSetting(SETTING_USE_AA_FILTER,    0);
   }
 
 }
@@ -175,70 +175,70 @@ void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironm
 // Percentage float arguments.
 AVSValue __cdecl Create_SoundTouch(AVSValue args, void*, IScriptEnvironment* env)
 {
-       try {       // HIDE DAMN SEH COMPILER BUG!!!
+    try { // HIDE DAMN SEH COMPILER BUG!!!
     // 2021?? Probably for VS2005 or so
 
-              PClip clip = args[0].AsClip();
+        PClip clip = args[0].AsClip();
 
-              if (!clip->GetVideoInfo().HasAudio())
-                     env->ThrowError("Input clip does not have audio.");
+        if (!clip->GetVideoInfo().HasAudio())
+            env->ThrowError("Input clip does not have audio.");
 
-              if (!(clip->GetVideoInfo().SampleType()&SAMPLE_FLOAT))
-                     env->ThrowError("Input audio sample format to TimeStretch must be float.");
+        if (!(clip->GetVideoInfo().SampleType()&SAMPLE_FLOAT))
+            env->ThrowError("Input audio sample format to TimeStretch must be float.");
 
-              return new AVSsoundtouch(
-                     args[0].AsClip(),
-                        args[1].AsFloat(100.0) / 100.0,
-                        args[2].AsFloat(100.0) / 100.0,
-                        args[3].AsFloat(100.0) / 100.0,
-                     &args[4],
-                     env
-              );
+        return new AVSsoundtouch(
+            args[0].AsClip(),
+            args[1].AsFloat(100.0) / 100.0,
+            args[2].AsFloat(100.0) / 100.0,
+            args[3].AsFloat(100.0) / 100.0,
+            &args[4],
+            env
+        );
 
-       }
+  }
   catch (const std::runtime_error &error)
   {
     env->ThrowError("TimeStretch: %s ",error.what());
   }
-       catch (...) { throw; }
+  catch (...) { throw; }
   return AVSValue(); // n/a
 }
 
 // Rational pair arguments
 AVSValue __cdecl CreateRational_SoundTouch(AVSValue args, void*, IScriptEnvironment* env)
 {
-       try {       // HIDE DAMN SEH COMPILER BUG!!!
+    try { // HIDE DAMN SEH COMPILER BUG!!!
     // 2021?? Probably for VS2005 or so
 
-              PClip clip = args[0].AsClip();
+        PClip clip = args[0].AsClip();
 
-              if (!clip->GetVideoInfo().HasAudio())
-                     env->ThrowError("Input clip does not have audio.");
+        if (!clip->GetVideoInfo().HasAudio())
+            env->ThrowError("Input clip does not have audio.");
 
-              if (!(clip->GetVideoInfo().SampleType()&SAMPLE_FLOAT))
-                     env->ThrowError("Input audio sample format to TimeStretch must be float.");
+        if (!(clip->GetVideoInfo().SampleType()&SAMPLE_FLOAT))
+            env->ThrowError("Input audio sample format to TimeStretch must be float.");
 
-              return new AVSsoundtouch(
-                        args[0].AsClip(),
-                        (double)args[1].AsInt(1) / args[2].AsInt(1),
-                        (double)args[3].AsInt(1) / args[4].AsInt(1),
-                        (double)args[5].AsInt(1) / args[6].AsInt(1),
-                        &args[7],
-                     env
-              );
+        return new AVSsoundtouch(
+            args[0].AsClip(),
+            (double)args[1].AsInt(1) / args[2].AsInt(1),
+            (double)args[3].AsInt(1) / args[4].AsInt(1),
+            (double)args[5].AsInt(1) / args[6].AsInt(1),
+            &args[7],
+            env
+        );
 
-       }
+  }
   catch (const std::runtime_error &error)
   {
     env->ThrowError("TimeStretch: %s ",error.what());
   }
-       catch (...) { throw; }
+  catch (...) { throw; }
   return AVSValue(); // n/a
 }
 
 const AVS_Linkage * AVS_linkage = 0;
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors) {
-       AVS_linkage = vectors;
+  AVS_linkage = vectors;
 
   // clip, base filename, start, end, image format/extension, info
   env->AddFunction("TimeStretch", "c[tempo]f[rate]f[pitch]f[sequence]i[seekwindow]i[overlap]i[quickseek]b[aa]i", Create_SoundTouch, 0);
