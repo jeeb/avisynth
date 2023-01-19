@@ -120,7 +120,7 @@ accepted.
     * Due to `chroma subsampling`_ restrictions, some dimensions are not
       compatible with YUV420 and YUV422 color formats.
 
-    If a ``clipY`` is not given, the Y channel of the output clip will be set to
+    If ``clipY`` is not given, the Y channel of the output clip will be set to
     grey (0x7e).
 
 .. describe:: clipA
@@ -187,7 +187,7 @@ Changelog
     | AviSynth 2.5.0  | Added UToY, VToY, YToUV.                     |
     +-----------------+----------------------------------------------+
 
-$Date: 2022/03/24 14:12:41 $
+$Date: 2022/09/17 14:12:41 $
 
 .. _chroma subsampling:
     https://en.wikipedia.org/wiki/Chroma_subsampling
