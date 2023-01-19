@@ -1,4 +1,4 @@
-
+========
 Dissolve
 ========
 
@@ -23,8 +23,9 @@ Syntax and Parameters
 
     Source clips; the dimensions of the clips and their color formats must be 
     the same. If the clips contain audio, the audio properties must also be the 
-    same. The framerate is taken from the first clip, - see :ref:`here <multiclip>` 
-    for the resulting :doc:`clip properties <../syntax/syntax_clip_properties>`.
+    same. The framerate is taken from the first clip, - see 
+    :doc:`filters with multiple input clips <../filters_mult_input_clips>` for 
+    the resulting :doc:`clip properties <../syntax/syntax_clip_properties>`.
 
 .. describe:: overlap
 
@@ -59,13 +60,15 @@ Changelog
 ----------
 
 .. table::
-    :widths: 45 55
+    :widths: 40 60
     
-    +----------------+--------------------------+
-    | Version        | Changes                  |
-    +================+==========================+
-    | AviSynth 2.5.6 | Added ``fps`` parameter. |
-    +----------------+--------------------------+
+    +-----------------+------------------------------+
+    | Version         | Changes                      |
+    +=================+==============================+
+    | AviSynth+ r2290 | Added 16 and 32-bit support. |
+    +-----------------+------------------------------+
+    | AviSynth 2.5.6  | Added ``fps`` parameter.     |
+    +-----------------+------------------------------+
 
 
-$Date: 2022/02/06 12:22:43 $
+$Date: 2022/09/18 12:22:43 $
