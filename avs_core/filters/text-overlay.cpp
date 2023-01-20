@@ -2044,6 +2044,10 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   const int size = int(args[7].AsFloat(18)); // height 12, 14, 16, 18, 20, 24, 28, 32
   const int text_color = args[8].AsInt(0xFFFF00);
   const int halo_color = args[9].AsInt(0);
+  // Warning: if x=-1 passed + no align specified: sets bottom center alignment.
+  // This is why: SubTitle definition: Can be set to -1 to automatically center the text horizontally or vertically, respectively. 
+  // Negative values of x and y not equal to -1 can be used to move subtitles partially off the screen.
+  // Contrary to the documentation, y=-1 is not checked at all
   const int align = args[10].AsInt(args[2].AsFloat(0) == -1 ? 2 : 7);
   const int spc = args[11].AsInt(0);
   const bool multiline = args[12].Defined();
