@@ -39,27 +39,40 @@ class BitmapFont {
   std::string font_name;
   std::string font_filename;
 
+  template<typename fontline_t>
+  void do_generateOutline(uint32_t* outlined, int fontindex) const;
+
 public:
   const int width;
   const int height;
   const bool bold;
   std::vector<uint16_t> font_bitmaps;
+  // memory considerations, keep small fonts in 16 bit array
+  std::vector<uint32_t> font_bitmaps_large;
+  bool fontover16;
 
   std::unordered_map<uint16_t, int> charReMap; // unicode code point vs. font image index
 
   void SaveAsC(const uint16_t* _codepoints);
 
-  BitmapFont(int _number_of_chars, const uint16_t* _src_font_bitmaps, const uint16_t* _codepoints, int _w, int _h, std::string _font_name, std::string _font_filename, bool _bold, bool debugSave) :
+  BitmapFont(int _number_of_chars, const uint16_t* _src_font_bitmaps, const uint32_t* _src_font_bitmaps_large, const uint16_t* _codepoints, int _w, int _h, std::string _font_name, std::string _font_filename, bool _bold, bool debugSave) :
     number_of_chars(_number_of_chars),
     font_name(_font_name),
     font_filename(_font_filename),
     width(_w), height(_h),
+    fontover16(_w > 16),
     bold(_bold)
     //font_bitmaps(_font_bitmaps),
   {
     //fixme: do not copy data
-    font_bitmaps.resize(height * number_of_chars);
-    std::memcpy(font_bitmaps.data(), _src_font_bitmaps, font_bitmaps.size() * sizeof(uint16_t));
+    if (fontover16) {
+      font_bitmaps_large.resize(height * number_of_chars);
+      std::memcpy(font_bitmaps_large.data(), _src_font_bitmaps_large, font_bitmaps_large.size() * sizeof(uint32_t));
+    }
+    else {
+      font_bitmaps.resize(height * number_of_chars);
+      std::memcpy(font_bitmaps.data(), _src_font_bitmaps, font_bitmaps.size() * sizeof(uint16_t));
+    }
 
     for (int i = 0; i < _number_of_chars; i++) {
       charReMap[_codepoints[i]] = i;
@@ -73,7 +86,7 @@ public:
   std::vector<int> remap(const std::wstring& s16);
 
   // generate outline on-the-fly
-  void generateOutline(uint16_t* outlined, int fontindex) const;
+  void generateOutline(uint32_t* outlined, int fontindex) const;
 };
 
 std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char* name, bool bold, bool debugSave);

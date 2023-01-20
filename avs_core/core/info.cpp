@@ -34,44 +34,62 @@
 
 // generate outline on-the-fly
 // consider: thicker outline for font sizes over 24?
-void BitmapFont::generateOutline(uint16_t* outlined, int fontindex) const
+
+// fontline_t is either uint16_t or uint32_t
+// always fill a 32 bit wide target
+// Limitation: cannot produce outline outside the original character matrix
+template<typename fontline_t>
+void BitmapFont::do_generateOutline(uint32_t* outlined, int fontindex) const
 {
-  const uint16_t* currentfont = &font_bitmaps[height * fontindex];
+  const fontline_t* currentfont;
+  if constexpr (sizeof(fontline_t) == 2)
+    currentfont = reinterpret_cast<const fontline_t*>(&font_bitmaps[height * fontindex]);
+  else
+    currentfont = reinterpret_cast<const fontline_t*>(&font_bitmaps_large[height * fontindex]);
+
   for (int i = 0; i < height; i++)
     outlined[i] = 0;
 
-  auto make_dizzyLR = [](uint16_t fontline) {
-    return (uint16_t)((fontline << 1) | (fontline >> 1));
+  auto make_dizzyLR = [](fontline_t fontline) {
+    return (fontline_t)((fontline << 1) | (fontline >> 1));
   };
-  auto make_dizzyLCR = [](uint16_t fontline) {
-    return (uint16_t)(fontline | (fontline << 1) | (fontline >> 1));
+  auto make_dizzyLCR = [](fontline_t fontline) {
+    return (fontline_t)(fontline | (fontline << 1) | (fontline >> 1));
   };
 
-  // font bitmap is left (msb) aligned, if width is less than 16
-  // fixme: why? because having 0x8000 as a fixed position rendering mask?
-  const uint16_t mask = ((1 << width) - 1) << (16 - width);
+  // font bitmap is left (msb) aligned within 16 bits, if width is less than 16, 32 bits otherwise
+  constexpr int bits = 8 * sizeof(fontline_t);
+  const fontline_t mask = (((uint64_t)1 << width) - 1) << (bits - width);
   // 5432109876543210
   // 0000001111111111
 
-  uint16_t prev_line = 0;
-  uint16_t current_line = 0;
-  uint16_t next_line;
+  fontline_t prev_line = 0;
+  fontline_t current_line = 0;
+  fontline_t next_line;
   for (int i = 0; i < height - 1; i++)
   {
     current_line = currentfont[i];
     next_line = currentfont[i + 1];
-    uint16_t line = make_dizzyLCR(prev_line) | make_dizzyLR(current_line) | make_dizzyLCR(next_line);
+    fontline_t line = make_dizzyLCR(prev_line) | make_dizzyLR(current_line) | make_dizzyLCR(next_line);
 
-    uint16_t value = (line & ~current_line) & mask;
+    fontline_t value = (line & ~current_line) & mask;
     outlined[i] = value;
 
     prev_line = current_line;
     current_line = next_line;
   }
   // last one, no next line
-  uint16_t line = make_dizzyLCR(prev_line) | make_dizzyLR(current_line) | make_dizzyLCR(0);
-  uint16_t value = (line & ~current_line) & mask;
+  fontline_t line = make_dizzyLCR(prev_line) | make_dizzyLR(current_line) | make_dizzyLCR(0);
+  fontline_t value = (line & ~current_line) & mask;
   outlined[height - 1] = value;
+}
+
+void BitmapFont::generateOutline(uint32_t* outlined, int fontindex) const
+{
+  if (fontover16)
+    do_generateOutline<uint32_t>(outlined, fontindex);
+  else
+    do_generateOutline<uint16_t>(outlined, fontindex);
 }
 
 // helper function for remapping a wchar_t string to font index entry list
@@ -123,8 +141,14 @@ void BitmapFont::SaveAsC(const uint16_t* _codepoints)
   {
     constexpr int LINES_BY_N = 16; // maximum number of constants per line
     for (int y = 0; y < height; y++) {
-      int charline = font_bitmaps[charcount * height + y];
-      ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << charline;
+      if (fontover16) {
+        uint32_t charline = font_bitmaps_large[charcount * height + y];
+        ss << "0x" << std::setfill('0') << std::setw(8) << std::hex << charline;
+      }
+      else {
+        uint16_t charline = font_bitmaps[charcount * height + y];
+        ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << charline;
+      }
       const bool last = charcount == number_of_chars - 1 && y == height - 1;
       if (!last) ss << ",";
       if (y == height - 1)
@@ -214,11 +238,13 @@ typedef struct FontInfo {
 class BdfFont {
 public:
   std::string font_filename;
+  bool width_over_16;
   FontInfo font_info;
   FontProperties font_properties;
   std::vector<uint16_t> codepoints_array;
   std::vector<std::string> charnames_array;
   std::vector<uint16_t> font_bitmaps; // uint16_t: max. width is 16
+  std::vector<uint32_t> font_bitmaps_large; // uint32_t: max. width is 32
 };
 
 #include <locale>
@@ -302,6 +328,9 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         fnt.font_info.font_bounding_box_what = std::stoi(token);
         std::getline(ssline, token, ' ');
         fnt.font_info.font_bounding_box_what2 = std::stoi(token);
+
+        // using uint32_t array instead of uint16_t internally
+        fnt.width_over_16 = fnt.font_info.font_bounding_box_x > 16;
       }
       else if (token == "STARTPROPERTIES") {
         // STARTPROPERTIES 20
@@ -312,7 +341,10 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         std::getline(ssline, token);
         fnt.font_info.chars = std::stoi(token);
         // allocate area for "character_count" * "height"
-        fnt.font_bitmaps.resize(fnt.font_info.chars* fnt.font_info.font_bounding_box_y);
+        if (fnt.width_over_16)
+          fnt.font_bitmaps_large.resize(fnt.font_info.chars* fnt.font_info.font_bounding_box_y);
+        else
+          fnt.font_bitmaps.resize(fnt.font_info.chars* fnt.font_info.font_bounding_box_y);
         fnt.charnames_array.resize(fnt.font_info.chars);
         fnt.codepoints_array.resize(fnt.font_info.chars);
       }
@@ -453,15 +485,22 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         char_counter++;
         for(int count = 0; count < fnt.font_info.font_bounding_box_y; count++)
         {
-          uint16_t charline;
           std::getline(ss, temp);
           std::stringstream sss(temp);
-          sss >> std::hex >> charline;
-          // charlines are left aligned. Over 8 bits they come on 2 bytes
-          if(fnt.font_info.font_bounding_box_x<=8)
-            charline <<= 8; // less than 8 bits is on a single byte. Make it uint16_t left aligned
-
-          fnt.font_bitmaps[line_counter++] = charline;
+          // charlines are left aligned.
+          if (fnt.width_over_16) {
+            uint32_t charline;
+            sss >> std::hex >> charline;
+            fnt.font_bitmaps_large[line_counter++] = charline;
+          }
+          else {
+            uint16_t charline;
+            sss >> std::hex >> charline;
+            // Over 8 bits they come on 2 bytes
+            if (fnt.font_info.font_bounding_box_x <= 8)
+              charline <<= 8; // less than 8 bits is on a single byte. Make it uint16_t left aligned
+            fnt.font_bitmaps[line_counter++] = charline;
+          }
         }
       }
       break;
@@ -660,7 +699,7 @@ void AVS_FORCEINLINE LightOnePixel(const bool lightIt, pixel_t* dstp, int j, pix
   }
 }
 
-template<typename pixel_t, int bits_per_pixel, bool fadeBackground, bool isRGB>
+template<typename pixel_t, int bits_per_pixel, bool fadeBackground>
 void LightOneUVPixel(pixel_t* dstpU, int j, pixel_t* dstpV, pixel_t& font_color_u, pixel_t& font_color_v, pixel_t& halo_color_u, pixel_t& halo_color_v,
   int fontpixelcount, int halopixelcount,
   int logXRatioUV, int logYRatioUV
@@ -782,8 +821,6 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
   // define pixel_t as uint8_t, uint16_t or float, based on bits_per_pixel
   typedef typename std::conditional<bits_per_pixel == 8, uint8_t, typename std::conditional < bits_per_pixel <= 16, uint16_t, float > ::type >::type pixel_t;
 
-  std::vector<uint16_t> current_outlined_char(bmfont->height);
-  const uint16_t* fonts = bmfont->font_bitmaps.data();
   const int FONT_WIDTH = bmfont->width;
   const int FONT_HEIGHT = bmfont->height;
 
@@ -837,6 +874,12 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
 
   const bool is444 = !isRGB && (planeCount >= 3) && (logXRatioUV == 0) && (logYRatioUV == 0);
 
+  std::vector<uint32_t> current_outlined_char(bmfont->height);
+  const uint16_t* fonts = bmfont->font_bitmaps.data();
+  const uint32_t* fonts_large = bmfont->font_bitmaps_large.data();
+
+  const uint32_t FONTMASK_HIBIT = bmfont->fontover16 ? 0x80000000 : 0x8000;
+
   for (int p = 0; p < planeCount; p++)
   {
     int plane = planes[p];
@@ -862,51 +905,60 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
     const int pitch = pitches[p];
     BYTE* dstp = dstps[p] + x * pixelsize + y * pitch;
 
-    // Start rendering
-    for (int ty = ystart; ty < yend; ty++) {
-      int num = s[0];
+    // moved to lambda, we have two kinds of font vector base sizes
+    auto Render1 = [&](auto fonts) {
+      // Start rendering
+      for (int ty = ystart; ty < yend; ty++) {
+        int num = s[0];
 
-      uint32_t fontline;
-      uint32_t fontoutline;
+        uint32_t fontline; // max supported size is 32 for a character line
+        uint32_t fontoutline;
 
-      fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
+        fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
 
-      if (useHalocolor) {
-        bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
-        fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
-      }
-
-      int current_xstart = xstart; // leftmost can be chopped
-      int j = 0;
-      pixel_t* _dstp = reinterpret_cast<pixel_t*>(dstp);
-
-      for (int i = 0; i < len; i++) {
-        for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
-          const bool lightIt = fontline & 0x8000;
-          LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(lightIt, _dstp, j, val_color);
-          if (useHalocolor) {
-            if (!lightIt) // it can be outline
-              LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(fontoutline & 0x8000, _dstp, j, val_color_outline);
-          }
-          j += 1;
-          fontline <<= 1; // next pixel to the left
-          if (useHalocolor)
-            fontoutline <<= 1;
+        if (useHalocolor) {
+          bmfont->generateOutline(current_outlined_char.data(), num);
+          fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
         }
-        current_xstart = 0; // further characters are not chopped
 
-        if (i + 1 < len)
-        {
-          num = s[i + 1];
-          if (useHalocolor) {
-            bmfont->generateOutline(current_outlined_char.data(), num);
-            fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+        int current_xstart = xstart; // leftmost can be chopped
+        int j = 0;
+        pixel_t* _dstp = reinterpret_cast<pixel_t*>(dstp);
+
+        for (int i = 0; i < len; i++) {
+          for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+            const bool lightIt = fontline & FONTMASK_HIBIT;
+            LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(lightIt, _dstp, j, val_color);
+            if (useHalocolor) {
+              if (!lightIt) // it can be outline
+                LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(fontoutline & FONTMASK_HIBIT, _dstp, j, val_color_outline);
+            }
+            j += 1;
+            fontline <<= 1; // next pixel to the left
+            if (useHalocolor)
+              fontoutline <<= 1;
           }
-          fontline = fonts[num * FONT_HEIGHT + ty];
+          current_xstart = 0; // further characters are not chopped
+
+          if (i + 1 < len)
+          {
+            num = s[i + 1];
+            if (useHalocolor) {
+              bmfont->generateOutline(current_outlined_char.data(), num);
+              fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+            }
+            fontline = fonts[num * FONT_HEIGHT + ty];
+          }
         }
+        dstp += pitch;
       }
-      dstp += pitch;
-    }
+    };
+
+    if (bmfont->fontover16)
+      Render1(fonts_large);
+    else
+      Render1(fonts);
+
   }
 
   if constexpr (isRGB)
@@ -970,199 +1022,212 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
   //       001111                     font mask for 411 when x mod 4 == 2
   //       0001111                    font mask for 411 when x mod 4 == 3
 
-  uint32_t fontmask = 0;
-  uint32_t fontmask_first = 0; // used when unaligned_x_start
-  for (int i = 0; i < xSubS; i++) {
-    fontmask >>= 1;
-    fontmask |= 0x8000 << FONT_WIDTH;
-  }
+  auto RenderUV = [&](auto fonts) {
 
-  // position the mask on chroma-aligned X coordinates
-  // compute a special font mask for the leftmost font pixels which cover a chroma area only partially
-  if (unaligned_x_start) {
-    fontmask_first = 0;
-    for (int i = 0; i < xSubS - (x % xSubS); i++) {
-      fontmask_first >>= 1;
-      fontmask_first |= (0x8000 << FONT_WIDTH);
+    typedef typename std::conditional<sizeof(*fonts) == 2, uint32_t, uint64_t>::type doublefontline_t;
+    constexpr int MASKSHIFT = sizeof(doublefontline_t) == 8 ? 32 : 0; // shift to get a byte for bitcount
+
+    doublefontline_t fontmask = 0;
+    doublefontline_t fontmask_first = 0; // used when unaligned_x_start
+    for (int i = 0; i < xSubS; i++) {
       fontmask >>= 1;
+      fontmask |= (doublefontline_t)FONTMASK_HIBIT << FONT_WIDTH;
     }
-  }
 
-  for (int ty = ystart; ty < yend; ty += ySubS) {
-    int i, j, num;
-
-    // vertical subsampling, at most 2
-    uint32_t fontlines[2] = { 0,0 };
-    uint32_t fontoutlines[2] = { 0,0 };
-
-    int _xs = xstart; // possible beginning left crop, later it'll be 0
-
-    pixel_t* _dstpU = reinterpret_cast<pixel_t*>(dstpU);
-    pixel_t* _dstpV = reinterpret_cast<pixel_t*>(dstpV);
-
-    // Two characters at a time because one chroma pixel may consist of two neighboring fonts.
-    // Important, when we have horizontal subsampling.
-    // Note: extremely ugly for 411!
-
-    // preload first character
-    num = s[0];
-    if (useHalocolor)
-      bmfont->generateOutline(current_outlined_char.data(), num);
-
-    if (odd_y_start && ty == ystart) {
-      // when vertically subsampled 420, if font is displayed on odd y coordinate
-      // top font line on odd y position
-      fontlines[0] = 0;
-      fontlines[1] = fonts[num * FONT_HEIGHT + ty];
-      if (useHalocolor) {
-        fontoutlines[0] = 0;
-        fontoutlines[1] = current_outlined_char[ty];
-      }
-    }
-    else if (ty + 1 - yshift >= FONT_HEIGHT) {
-      // bottom font line on even y position
-      fontlines[0] = fonts[num * FONT_HEIGHT + ty - yshift];
-      fontlines[1] = 0;
-      if (useHalocolor) {
-        fontoutlines[0] = current_outlined_char[ty - yshift];
-        fontoutlines[1] = 0;
-      }
-    }
-    else {
-      // all font lines can safely be used
-      for (int m = 0; m < ySubS; m++)
-        fontlines[m] = fonts[num * FONT_HEIGHT + ty + m - yshift];
-
-      if (useHalocolor) {
-        for (int m = 0; m < ySubS; m++)
-          fontoutlines[m] = current_outlined_char[ty + m - yshift];
+    // position the mask on chroma-aligned X coordinates
+    // compute a special font mask for the leftmost font pixels which cover a chroma area only partially
+    if (unaligned_x_start) {
+      fontmask_first = 0;
+      for (int i = 0; i < xSubS - (x % xSubS); i++) {
+        fontmask_first >>= 1;
+        fontmask_first |= ((doublefontline_t)FONTMASK_HIBIT << FONT_WIDTH);
+        fontmask >>= 1;
       }
     }
 
-    // shift left, to make place for the next character bitmap
-    for (int m = 0; m < ySubS; m++) {
-      fontlines[m] <<= FONT_WIDTH;;
+    for (int ty = ystart; ty < yend; ty += ySubS) {
+      int i, j, num;
+
+      // vertical subsampling, at most 2
+      doublefontline_t fontlines[2] = { 0,0 };
+      doublefontline_t fontoutlines[2] = { 0,0 };
+
+      int _xs = xstart; // possible beginning left crop, later it'll be 0
+
+      pixel_t* _dstpU = reinterpret_cast<pixel_t*>(dstpU);
+      pixel_t* _dstpV = reinterpret_cast<pixel_t*>(dstpV);
+
+      // Two characters at a time because one chroma pixel may consist of two neighboring fonts.
+      // Important, when we have horizontal subsampling.
+      // Note: extremely ugly for 411!
+
+      // preload first character
+      num = s[0];
       if (useHalocolor)
-        fontoutlines[m] <<= FONT_WIDTH;
-    }
+        bmfont->generateOutline(current_outlined_char.data(), num);
 
-    // render
-    // fontlines and fontoutlines always contains two characters at a time
-    for (i = 0, j = 0; i < len; i += 1) {
-      // merge next char on the right side LSB bits
-      // using bitwise "or" for filling the lines
-      if (i + 1 < len) {
-        num = s[i + 1];
-        if (useHalocolor)
-          bmfont->generateOutline(current_outlined_char.data(), num);
-
-        if (odd_y_start && ty == ystart) {
-          // when vertically subsampled 420, if font is displayed on odd y coordinate
-          // top font line on odd y position
-          fontlines[0] |= 0;
-          fontlines[1] |= fonts[num * FONT_HEIGHT + ty];
-          if (useHalocolor) {
-            fontoutlines[0] |= 0;
-            fontoutlines[1] |= current_outlined_char[ty];
-          }
-        }
-        else if (ty + 1 - yshift >= FONT_HEIGHT) {
-          // bottom font line on even y position
-          fontlines[0] |= fonts[num * FONT_HEIGHT + ty - yshift];
-          fontlines[1] |= 0;
-          if (useHalocolor) {
-            fontoutlines[0] |= current_outlined_char[ty - yshift];
-            fontoutlines[1] |= 0;
-          }
-        }
-        else {
-          // all font lines can safely be used
-          for (int m = 0; m < ySubS; m++)
-            fontlines[m] |= fonts[num * FONT_HEIGHT + ty + m - yshift];
-
-          if (useHalocolor) {
-            for (int m = 0; m < ySubS; m++)
-              fontoutlines[m] |= current_outlined_char[ty + m - yshift];
-          }
+      if (odd_y_start && ty == ystart) {
+        // when vertically subsampled 420, if font is displayed on odd y coordinate
+        // top font line on odd y position
+        fontlines[0] = 0;
+        fontlines[1] = fonts[num * FONT_HEIGHT + ty];
+        if (useHalocolor) {
+          fontoutlines[0] = 0;
+          fontoutlines[1] = current_outlined_char[ty];
         }
       }
-
-      // special case: first character would start out-of-screen on the left
-      if (i == 0) {
-        // Cope with left crop of glyph
+      else if (ty + 1 - yshift >= FONT_HEIGHT) {
+        // bottom font line on even y position
+        fontlines[0] = fonts[num * FONT_HEIGHT + ty - yshift];
+        fontlines[1] = 0;
+        if (useHalocolor) {
+          fontoutlines[0] = current_outlined_char[ty - yshift];
+          fontoutlines[1] = 0;
+        }
+      }
+      else {
+        // all font lines can safely be used
         for (int m = 0; m < ySubS; m++)
-          fontlines[m] <<= xstart;
+          fontlines[m] = fonts[num * FONT_HEIGHT + ty + m - yshift];
 
         if (useHalocolor) {
           for (int m = 0; m < ySubS; m++)
-            fontoutlines[m] <<= xstart;
+            fontoutlines[m] = current_outlined_char[ty + m - yshift];
         }
       }
 
-      // horizontal line
-      int plus = 0;
-      // 420, 422 horizontal subsampling: one more loop because of the leftmost orphan pixel(s)
-      if (unaligned_x_start && i == 0)
-        plus = xSubS;
+      // shift left, to make place for the next character bitmap
+      for (int m = 0; m < ySubS; m++) {
+        fontlines[m] <<= FONT_WIDTH;;
+        if (useHalocolor)
+          fontoutlines[m] <<= FONT_WIDTH;
+      }
 
-      for (int tx = _xs; tx < FONT_WIDTH + plus; tx += xSubS) {
-        int fontpixels = 0;
-        int halopixels = 0;
-        int backgroundpixels = 0; // totalpixels - fontpixels - halopixels
+      // render
+      // fontlines and fontoutlines always contains two characters at a time
+      for (i = 0, j = 0; i < len; i += 1) {
+        // merge next char on the right side LSB bits
+        // using bitwise "or" for filling the lines
+        if (i + 1 < len) {
+          num = s[i + 1];
+          if (useHalocolor)
+            bmfont->generateOutline(current_outlined_char.data(), num);
 
-        if (unaligned_x_start && i == 0 && tx == _xs) {
-          // leftmost pixel on odd position
-          fontpixels = std::bitset<32>(fontlines[0] & fontmask_first).count();
-          if (ySubS == 2) fontpixels += (int)std::bitset<32>(fontlines[1] & fontmask_first).count();
-
-          if (useHalocolor) {
-            halopixels = std::bitset<32>(fontoutlines[0] & fontmask_first).count();
-            if (ySubS == 2) halopixels += (int)std::bitset<32>(fontoutlines[1] & fontmask_first).count();
+          if (odd_y_start && ty == ystart) {
+            // when vertically subsampled 420, if font is displayed on odd y coordinate
+            // top font line on odd y position
+            fontlines[0] |= 0;
+            fontlines[1] |= fonts[num * FONT_HEIGHT + ty];
+            if (useHalocolor) {
+              fontoutlines[0] |= 0;
+              fontoutlines[1] |= current_outlined_char[ty];
+            }
           }
-          // no shift, fontmask was shifted in the initialization phase instead
+          else if (ty + 1 - yshift >= FONT_HEIGHT) {
+            // bottom font line on even y position
+            fontlines[0] |= fonts[num * FONT_HEIGHT + ty - yshift];
+            fontlines[1] |= 0;
+            if (useHalocolor) {
+              fontoutlines[0] |= current_outlined_char[ty - yshift];
+              fontoutlines[1] |= 0;
+            }
+          }
+          else {
+            // all font lines can safely be used
+            for (int m = 0; m < ySubS; m++)
+              fontlines[m] |= fonts[num * FONT_HEIGHT + ty + m - yshift];
+
+            if (useHalocolor) {
+              for (int m = 0; m < ySubS; m++)
+                fontoutlines[m] |= current_outlined_char[ty + m - yshift];
+            }
+          }
         }
-        else {
-          fontpixels = std::bitset<32>(fontlines[0] & fontmask).count();
-          if (ySubS == 2) fontpixels += (int)std::bitset<32>(fontlines[1] & fontmask).count();
 
-          if (useHalocolor) {
-            halopixels = std::bitset<32>(fontoutlines[0] & fontmask).count();
-            if (ySubS == 2) halopixels += (int)std::bitset<32>(fontoutlines[1] & fontmask).count();
-          }
-
+        // special case: first character would start out-of-screen on the left
+        if (i == 0) {
+          // Cope with left crop of glyph
           for (int m = 0; m < ySubS; m++)
-            fontlines[m] <<= xSubS;
+            fontlines[m] <<= xstart;
 
           if (useHalocolor) {
             for (int m = 0; m < ySubS; m++)
-              fontoutlines[m] <<= xSubS;
+              fontoutlines[m] <<= xstart;
           }
         }
 
-        LightOneUVPixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(_dstpU, j, _dstpV,
-          color_u, color_v, color_outline_u, color_outline_v, fontpixels, halopixels,
-          logXRatioUV, logYRatioUV
-          );
+        // horizontal line
+        int plus = 0;
+        // 420, 422 horizontal subsampling: one more loop because of the leftmost orphan pixel(s)
+        if (unaligned_x_start && i == 0)
+          plus = xSubS;
 
-        j += 1;
+        for (int tx = _xs; tx < FONT_WIDTH + plus; tx += xSubS) {
+          int fontpixels = 0;
+          int halopixels = 0;
+          int backgroundpixels = 0; // totalpixels - fontpixels - halopixels
+
+          if (unaligned_x_start && i == 0 && tx == _xs) {
+            // leftmost pixel on odd position
+            fontpixels = (int)std::bitset<32>((fontlines[0] & fontmask_first) >> MASKSHIFT).count();
+            if (ySubS == 2) fontpixels += (int)std::bitset<32>((fontlines[1] & fontmask_first) >> MASKSHIFT).count();
+
+            if (useHalocolor) {
+              halopixels = (int)std::bitset<32>((fontoutlines[0] & fontmask_first) >> MASKSHIFT).count();
+              if (ySubS == 2) halopixels += (int)std::bitset<32>((fontoutlines[1] & fontmask_first) >> MASKSHIFT).count();
+            }
+            // no shift, fontmask was shifted in the initialization phase instead
+          }
+          else {
+            fontpixels = (int)std::bitset<32>((fontlines[0] & fontmask) >> MASKSHIFT).count();
+            if (ySubS == 2) fontpixels += (int)std::bitset<32>((fontlines[1] & fontmask) >> MASKSHIFT).count();
+
+            if (useHalocolor) {
+              halopixels = (int)std::bitset<32>((fontoutlines[0] & fontmask) >> MASKSHIFT).count();
+              if (ySubS == 2) halopixels += (int)std::bitset<32>((fontoutlines[1] & fontmask) >> MASKSHIFT).count();
+            }
+
+            for (int m = 0; m < ySubS; m++)
+              fontlines[m] <<= xSubS;
+
+            if (useHalocolor) {
+              for (int m = 0; m < ySubS; m++)
+                fontoutlines[m] <<= xSubS;
+            }
+          }
+
+          LightOneUVPixel<pixel_t, bits_per_pixel, fadeBackground>(_dstpU, j, _dstpV,
+            color_u, color_v, color_outline_u, color_outline_v, fontpixels, halopixels,
+            logXRatioUV, logYRatioUV
+            );
+
+          j += 1;
+        }
+
+        // next char, the rendering starts on the leftmost pixel
+        _xs = 0;
       }
 
-      // next char, the rendering starts on the leftmost pixel
-      _xs = 0;
+      dstpU += pitchUV;
+      dstpV += pitchUV;
     }
+  };
 
-    dstpU += pitchUV;
-    dstpV += pitchUV;
-  }
+  if (bmfont->fontover16)
+    RenderUV(fonts_large);
+  else
+    RenderUV(fonts);
 }
 
 template<bool fadeBackground>
-static void do_DrawStringYUY2(const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont *bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
+static void do_DrawStringYUY2(const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont* bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
 {
-  // fixedFontRec_t current_outlined_char;
+  std::vector<uint32_t> current_outlined_char(bmfont->height);
+  const uint16_t* fonts = bmfont->font_bitmaps.data();
+  const uint32_t* fonts_large = bmfont->font_bitmaps_large.data();
 
-  std::vector<uint16_t> current_outlined_char(bmfont->height);
-  const uint16_t *fonts = bmfont->font_bitmaps.data();
+  const uint32_t FONTMASK_HIBIT = bmfont->fontover16 ? 0x80000000 : 0x8000;
+
   const int FONT_WIDTH = bmfont->width;
   const int FONT_HEIGHT = bmfont->height;
 
@@ -1189,51 +1254,59 @@ static void do_DrawStringYUY2(const int width, const int height, BYTE* _dstp, in
 
   BYTE* dstp = _dstp + x * 2 + y * pitch;
 
-  // Start rendering
-  for (int ty = ystart; ty < yend; ty++, dstp += pitch) {
-    BYTE* dp = dstp;
+  // moved to lambda, we have two kinds of font vector base sizes
+  auto Render1 = [&](auto fonts) {
+    // Start rendering
+    for (int ty = ystart; ty < yend; ty++, dstp += pitch) {
+      BYTE* dp = dstp;
 
-    int num = s[0];
+      int num = s[0];
 
-    unsigned int fontline;
-    unsigned int fontoutline;
+      uint32_t fontline; // max supported size is 32 for a character line
+      uint32_t fontoutline;
 
-    fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
+      fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
 
-    if (useHalocolor) {
-      bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
-      fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
-    }
-
-    int current_xstart = xstart; // leftmost can be chopped
-
-    for (int i = 0; i < len; i++) {
-      for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
-        const bool lightIt = fontline & 0x8000;
-        LightOnePixelYUY2<fadeBackground>(lightIt, dp, val_color, val_color_U, val_color_V);
-        if (useHalocolor) {
-          if (!lightIt) // it can be outline
-            LightOnePixelYUY2<fadeBackground>(fontoutline & 0x8000, dp, val_color_outline, val_color_U_outline, val_color_V_outline);
-        }
-        dp += 2;
-        fontline <<= 1; // next pixel to the left
-        if (useHalocolor)
-          fontoutline <<= 1;
+      if (useHalocolor) {
+        bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
+        fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
       }
 
-      current_xstart = 0;
+      int current_xstart = xstart; // leftmost can be chopped
 
-      if (i + 1 < len)
-      {
-        num = s[i + 1];
-        if (useHalocolor) {
-          bmfont->generateOutline(current_outlined_char.data(), num);
-          fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+      for (int i = 0; i < len; i++) {
+        for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+          const bool lightIt = fontline & FONTMASK_HIBIT;
+          LightOnePixelYUY2<fadeBackground>(lightIt, dp, val_color, val_color_U, val_color_V);
+          if (useHalocolor) {
+            if (!lightIt) // it can be outline
+              LightOnePixelYUY2<fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_outline, val_color_U_outline, val_color_V_outline);
+          }
+          dp += 2;
+          fontline <<= 1; // next pixel to the left
+          if (useHalocolor)
+            fontoutline <<= 1;
         }
-        fontline = fonts[num * FONT_HEIGHT + ty];
+
+        current_xstart = 0;
+
+        if (i + 1 < len)
+        {
+          num = s[i + 1];
+          if (useHalocolor) {
+            bmfont->generateOutline(current_outlined_char.data(), num);
+            fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+          }
+          fontline = fonts[num * FONT_HEIGHT + ty];
+        }
       }
     }
-  }
+  };
+
+  if (bmfont->fontover16)
+    Render1(fonts_large);
+  else
+    Render1(fonts);
 }
 
 template<int bits_per_pixel, int rgbstep, bool fadeBackground>
@@ -1250,9 +1323,12 @@ static void do_DrawStringPackedRGB(const int width, const int height, BYTE* _dst
     return (pixel_t)(color / 255.0f); // 0..255 -> 0..1.0
   };
 
-
-  std::vector<uint16_t> current_outlined_char(bmfont->height);
+  std::vector<uint32_t> current_outlined_char(bmfont->height);
   const uint16_t* fonts = bmfont->font_bitmaps.data();
+  const uint32_t* fonts_large = bmfont->font_bitmaps_large.data();
+
+  const uint32_t FONTMASK_HIBIT = bmfont->fontover16 ? 0x80000000 : 0x8000;
+
   const int FONT_WIDTH = bmfont->width;
   const int FONT_HEIGHT = bmfont->height;
 
@@ -1281,51 +1357,60 @@ static void do_DrawStringPackedRGB(const int width, const int height, BYTE* _dst
   // upside down
   BYTE* dstp = _dstp + x * rgbstep + (height - 1 - y) * pitch;;
 
-  // Start rendering
-  for (int ty = ystart; ty < yend; ty++, dstp -= pitch) {
-    BYTE* dp = dstp;
+  // moved to lambda, we have two kinds of font vector base sizes
+  auto Render1 = [&](auto fonts) {
+    // Start rendering
+    for (int ty = ystart; ty < yend; ty++, dstp -= pitch) {
+      BYTE* dp = dstp;
 
-    int num = s[0];
+      int num = s[0];
 
-    unsigned int fontline;
-    unsigned int fontoutline;
+      uint32_t fontline; // max supported size is 32 for a character line
+      uint32_t fontoutline;
 
-    fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
+      fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
 
-    if (useHalocolor) {
-      bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
-      fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
-    }
-
-    int current_xstart = xstart; // leftmost can be chopped
-
-    for (int i = 0; i < len; i++) {
-      for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
-        const bool lightIt = fontline & 0x8000;
-        LightOnePixelRGB<pixel_t, fadeBackground>(lightIt, dp, val_color_R, val_color_G, val_color_B);
-        if (useHalocolor) {
-          if (!lightIt) // it can be outline
-            LightOnePixelRGB<pixel_t, fadeBackground>(fontoutline & 0x8000, dp, val_color_R_outline, val_color_G_outline, val_color_B_outline);
-        }
-        dp += rgbstep;
-        fontline <<= 1; // next pixel to the left
-        if (useHalocolor)
-          fontoutline <<= 1;
+      if (useHalocolor) {
+        bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
+        fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
       }
 
-      current_xstart = 0;
+      int current_xstart = xstart; // leftmost can be chopped
 
-      if (i + 1 < len)
-      {
-        num = s[i + 1];
-        if (useHalocolor) {
-          bmfont->generateOutline(current_outlined_char.data(), num);
-          fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+      for (int i = 0; i < len; i++) {
+        for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+          const bool lightIt = fontline & FONTMASK_HIBIT;
+          LightOnePixelRGB<pixel_t, fadeBackground>(lightIt, dp, val_color_R, val_color_G, val_color_B);
+          if (useHalocolor) {
+            if (!lightIt) // it can be outline
+              LightOnePixelRGB<pixel_t, fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_R_outline, val_color_G_outline, val_color_B_outline);
+          }
+          dp += rgbstep;
+          fontline <<= 1; // next pixel to the left
+          if (useHalocolor)
+            fontoutline <<= 1;
         }
-        fontline = fonts[num * FONT_HEIGHT + ty];
+
+        current_xstart = 0;
+
+        if (i + 1 < len)
+        {
+          num = s[i + 1];
+          if (useHalocolor) {
+            bmfont->generateOutline(current_outlined_char.data(), num);
+            fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+          }
+          fontline = fonts[num * FONT_HEIGHT + ty];
+        }
       }
     }
-  }
+  };
+
+  if (bmfont->fontover16)
+    Render1(fonts_large);
+  else
+    Render1(fonts);
+
 }
 
 static bool strequals_i(const std::string& a, const std::string& b)
@@ -1357,6 +1442,7 @@ std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold,
       current_font = new BitmapFont(
         fi->charcount,
         font_bitmaps[i],
+        nullptr, // no large, 32 bit wide internal bitmap
         font_codepoints[i],
         fi->width,
         fi->height,
@@ -1393,6 +1479,7 @@ std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold,
       current_font = new BitmapFont(
         fi->charcount,
         font_bitmaps[found_index],
+        nullptr, // no large, 32 bit wide internal bitmap
         font_codepoints[found_index],
         fi->width,
         fi->height,
@@ -1414,6 +1501,7 @@ std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold,
     current_font = new BitmapFont(
       bdf.font_info.chars,
       bdf.font_bitmaps.data(),
+      bdf.font_bitmaps_large.data(), // external bitmaps can be >16 wide
       bdf.codepoints_array.data(),
       bdf.font_info.font_bounding_box_x,
       bdf.font_info.font_bounding_box_y,
@@ -1501,7 +1589,6 @@ static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, P
     if (isRGB) {
       switch (bits_per_pixel)
       {
-        // FIXME: we have outline inside there, pass halocolor and an option: bool outline
       case 8: do_DrawStringPlanar<8, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
       case 10: do_DrawStringPlanar<10, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
       case 12: do_DrawStringPlanar<12, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
