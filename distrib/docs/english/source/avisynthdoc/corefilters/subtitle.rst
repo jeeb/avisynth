@@ -374,7 +374,12 @@ Changelog
 |                 || "Text" Fix: ``halo_color`` needs only MSB=$FF and not the exact         |
 |                 |   $FF000000 constant for fade                                            |
 |                 || "Text" ``halo_color`` allows to have both halo and shaded background    |
-|                 || "Text" much nicer rendering of subsampled formats                       |
+|                 || "Text" much nicer rendering of subsampled formats (#308)                |
+|                 || Fix: "Subtitle" and "Text" filter to respect the explicitely (#293)     |
+|                 |  given coorditanes for y=-1 or x=-1, instead of applying                 |
+|                 |  vertical/horizontal center alignment.                                   |
+|                 || Fix: "Text" to throw proper error message if the specified font (#293)  |
+|                 |  name (e.g. Arial) is not found among internal bitmap fonts.             |
 +-----------------+--------------------------------------------------------------------------+
 | AviSynth+ 3.7.1 | Fix: "Text" filter would crash when y coord is odd and format has        |
 |                 | vertical subsampling.                                                    |
