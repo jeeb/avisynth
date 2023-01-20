@@ -212,6 +212,16 @@ void BitmapFont::SaveAsC(const uint16_t* _codepoints)
 typedef struct CharInfo { // STARTCHAR charname
   std::string friendly_name;
   uint16_t encoding;
+  int offset_x, offset_y;
+  // DWIDTH not supported, same as main PIXELSIZE
+  // font properties can be overridden.
+  int font_bounding_box_x;
+  int font_bounding_box_y;
+  int font_bounding_box_bottomleft_x;
+  int font_bounding_box_bottomleft_y;
+  int empty_lines_bottom;
+  int empty_lines_top;
+  int bits_to_shift;
 } CharDef;
 
 typedef struct FontProperties {
@@ -227,11 +237,12 @@ typedef struct FontProperties {
 
 typedef struct FontInfo {
   std::string font; // n/a
-  int sizeA, sizeB, sizeC; // n/a
+  int size_points, size_dpi_x, size_dpi_y; // n/a
+  // these may be overridden by individual fonts.
   int font_bounding_box_x;
   int font_bounding_box_y;
-  int font_bounding_box_what;
-  int font_bounding_box_what2; // -4 e.g. baseline?
+  int font_bounding_box_bottomleft_x;
+  int font_bounding_box_bottomleft_y; // -4 e.g. baseline
   int chars; // number of characters
 } FontInfo;
 
@@ -305,31 +316,35 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         state = ls_Init;
       }
       else if (token == "FONT") {
-        // FONT - xos4 - Terminus - Bold - R - Normal--16 - 160 - 72 - 72 - C - 80 - ISO10646 - 1
+        // FONT-xos4-Terminus-Bold-R-Normal--16-160-72-72-C-80-ISO10646-1
         std::getline(ssline, token, ' ');
         fnt.font_info.font = UnQuote(token);
       }
       else if (token == "SIZE") {
         // SIZE 16 72 72
+        // size in points, X and Y-axis resolution
         std::getline(ssline, token, ' ');
-        fnt.font_info.sizeA = std::stoi(token);
+        fnt.font_info.size_points = std::stoi(token);
         std::getline(ssline, token, ' ');
-        fnt.font_info.sizeB = std::stoi(token);
+        fnt.font_info.size_dpi_x = std::stoi(token);
         std::getline(ssline, token, ' ');
-        fnt.font_info.sizeC = std::stoi(token);
+        fnt.font_info.size_dpi_y = std::stoi(token);
       }
       else if (token == "FONTBOUNDINGBOX") {
-        // FONTBOUNDINGBOX 8 16 0 - 4
+        // FONTBOUNDINGBOX 8 16 0 -4
+        // bounding box of 8 pixels wide and 16 pixels high
+        // lower left hand corner starting at x=0, y=-4. Note that although the bounding box is defined to be a 8x16 cell,
+        // this can be overridden for individual glyphs.
         std::getline(ssline, token, ' ');
         fnt.font_info.font_bounding_box_x = std::stoi(token);
         std::getline(ssline, token, ' ');
         fnt.font_info.font_bounding_box_y = std::stoi(token);
         std::getline(ssline, token, ' ');
-        fnt.font_info.font_bounding_box_what = std::stoi(token);
+        fnt.font_info.font_bounding_box_bottomleft_x = std::stoi(token);
         std::getline(ssline, token, ' ');
-        fnt.font_info.font_bounding_box_what2 = std::stoi(token);
+        fnt.font_info.font_bounding_box_bottomleft_y = std::stoi(token);
 
-        // using uint32_t array instead of uint16_t internally
+        // in case of using uint32_t array instead of uint16_t internally
         fnt.width_over_16 = fnt.font_info.font_bounding_box_x > 16;
       }
       else if (token == "STARTPROPERTIES") {
@@ -352,6 +367,16 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         std::getline(ssline, token);
         current_char.friendly_name = token;
         current_char.encoding = 0;
+        current_char.offset_x = 0;
+        current_char.offset_y = 0;
+        current_char.font_bounding_box_x = fnt.font_info.font_bounding_box_x;
+        current_char.font_bounding_box_y = fnt.font_info.font_bounding_box_y;
+        current_char.font_bounding_box_bottomleft_x = fnt.font_info.font_bounding_box_bottomleft_x;
+        current_char.font_bounding_box_bottomleft_y = fnt.font_info.font_bounding_box_bottomleft_y;
+        current_char.bits_to_shift = 0;
+        current_char.empty_lines_bottom = 0;
+        current_char.empty_lines_top = 0;
+
         state = ls_Char;
       }
       else {
@@ -400,17 +425,18 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         fnt.font_properties.Weight_name = UnQuote(token);
       }
       else if (token == "PIXEL_SIZE") {
-        //FAMILY_NAME "Terminus"
         std::getline(ssline, token, ' ');
         fnt.font_properties.pixel_size = std::stoi(token);
       }
       else if (token == "FONT_ASCENT") {
         // FONT_ASCENT 12
+        // 12 of the 16 pixels in height are above the baseline.
         std::getline(ssline, token, ' ');
         fnt.font_properties.font_ascent = std::stoi(token);
       }
       else if (token == "FONT_DESCENT") {
-        //FONT_DESCENT 4
+        // FONT_DESCENT 4
+        // 4 of the 16 pixels in height are below the baseline
         std::getline(ssline, token, ' ');
         fnt.font_properties.font_descent = std::stoi(token);
       }
@@ -425,24 +451,57 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         // add to vector
         state = ls_StartFont;
       }
+      else if (token == "DWIDTH") {
+        // DWIDTH 9 0
+        // declares the Device Width of a glyph. After the glyph is rendered, the start of the next glyph is 
+        // offset 9 pixels on the X-axis and 
+        // offset 0 pixels on the Y-axis from the current glyph origin.
+        // They are not necessarily equal to the width of the glyph. 
+        // It is simply the offset on the X-axis to move the current point to the start of the next glyph. 
+        // not used in Avisynth, fonts are of fixed width
+        std::getline(ssline, token, ' ');
+        current_char.offset_x = std::stoi(token);
+        std::getline(ssline, token, ' ');
+        current_char.offset_y = std::stoi(token);
+      }
       else if (token == "ENCODING") {
         // ENCODING 32
         std::getline(ssline, token, ' ');
         current_char.encoding = std::stoi(token);
       }
       else if (token == "BBX") {
-        // BBX 8 16 0 - 4
+        // BBX 8 16 0 -4 bounding box. 8 pixels wide and 16 pixels tall;
+        // lower left corner is offset by 0 on the X and -4 pixels on the Y axis.
         std::getline(ssline, token, ' ');
-        int w = std::stoi(token);
+        current_char.font_bounding_box_x = std::stoi(token);
         std::getline(ssline, token, ' ');
-        int h = std::stoi(token);
-        if (w != fnt.font_info.font_bounding_box_x || h != fnt.font_info.font_bounding_box_y)
-        {
-          // bitmap dimensions do not match, we are handling fixed fonts where
-        }
+        current_char.font_bounding_box_y = std::stoi(token);
+        std::getline(ssline, token, ' ');
+        current_char.font_bounding_box_bottomleft_x = std::stoi(token);
+        std::getline(ssline, token, ' ');
+        current_char.font_bounding_box_bottomleft_y = std::stoi(token);
+        current_char.empty_lines_bottom = current_char.font_bounding_box_bottomleft_y - fnt.font_info.font_bounding_box_bottomleft_y;
+        current_char.empty_lines_top = fnt.font_info.font_bounding_box_y - (current_char.empty_lines_bottom + current_char.font_bounding_box_y);
+        const int bits_to_shift_xpos = current_char.font_bounding_box_bottomleft_x - fnt.font_info.font_bounding_box_bottomleft_x;
+        // 1 bytes to 2 bytes. 3 bytes to 4 bytes, Avisynth internal storage is either uint16_t or uint32_t per line
+        const int bits_to_shift_storage =
+          current_char.font_bounding_box_x <= 8 ||
+          (current_char.font_bounding_box_x > 16 && current_char.font_bounding_box_x <= 24) ? -8 : 0;
+        current_char.bits_to_shift = bits_to_shift_xpos + bits_to_shift_storage;
       }
       else if (token == "BITMAP") {
-        /* 6x12:
+        /* space:
+          STARTCHAR space
+          ENCODING 32
+          SWIDTH 692 0
+          DWIDTH 9 0
+          BBX 0 0 0 0
+          BITMAP
+          ENDCHAR
+
+          or
+
+          6x12:
           BITMAP
           00
           00
@@ -483,25 +542,50 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         fnt.codepoints_array[char_counter] = current_char.encoding;
         fnt.charnames_array[char_counter] = current_char.friendly_name;
         char_counter++;
-        for(int count = 0; count < fnt.font_info.font_bounding_box_y; count++)
+
+        // by spec: charlines are left aligned within byte boundaries
+        // They wil be left aligned to 16 or 32 bits
+        uint32_t charline;
+
+        // fill empty top lines
+        for (int count = 0; count < current_char.empty_lines_top; count++) {
+          if (fnt.width_over_16) {
+            fnt.font_bitmaps_large[line_counter++] = 0;
+          }
+          else {
+            fnt.font_bitmaps[line_counter++] = 0;
+          }
+        }
+
+        for(int count = 0; count < current_char.font_bounding_box_y; count++)
         {
           std::getline(ss, temp);
           std::stringstream sss(temp);
-          // charlines are left aligned.
+          sss >> std::hex >> charline;
+
+          if (current_char.bits_to_shift < 0)
+            charline <<= -current_char.bits_to_shift;
+          else
+            charline >>= current_char.bits_to_shift;
+
           if (fnt.width_over_16) {
-            uint32_t charline;
-            sss >> std::hex >> charline;
             fnt.font_bitmaps_large[line_counter++] = charline;
           }
           else {
-            uint16_t charline;
-            sss >> std::hex >> charline;
-            // Over 8 bits they come on 2 bytes
-            if (fnt.font_info.font_bounding_box_x <= 8)
-              charline <<= 8; // less than 8 bits is on a single byte. Make it uint16_t left aligned
             fnt.font_bitmaps[line_counter++] = charline;
           }
         }
+
+        // fill empty bottom lines
+        for (int count = 0; count < current_char.empty_lines_bottom; count++) {
+          if (fnt.width_over_16) {
+            fnt.font_bitmaps_large[line_counter++] = 0;
+          }
+          else {
+            fnt.font_bitmaps[line_counter++] = 0;
+          }
+        }
+
       }
       break;
     }
@@ -547,21 +631,7 @@ static BdfFont LoadBMF(std::string name, bool bold) {
       DWIDTH 8 0
       BBX 8 16 0 -4
       BITMAP
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
-      00
+      ...
       00
     ENDCHAR
 
