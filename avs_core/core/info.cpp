@@ -1289,6 +1289,68 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
     RenderUV(fonts);
 }
 
+template<typename fontline_t, bool fadeBackground>
+static void RenderYUY2(const fontline_t* fonts, int xstart, int ystart, int yend,
+  BYTE* dstp, int pitch,
+  const BitmapFont* bmfont,
+  std::vector<int>& s, std::vector<uint32_t>& current_outlined_char,
+  const uint32_t FONTMASK_HIBIT, const int FONT_WIDTH, const int FONT_HEIGHT,
+  int len, int color, int halocolor, bool useHalocolor
+)
+{
+  int val_color = getColorForPlane(PLANAR_Y, color);
+  int val_color_outline = getColorForPlane(PLANAR_Y, halocolor);
+  int val_color_U = getColorForPlane(PLANAR_U, color);
+  int val_color_U_outline = getColorForPlane(PLANAR_U, halocolor);
+  int val_color_V = getColorForPlane(PLANAR_V, color);
+  int val_color_V_outline = getColorForPlane(PLANAR_V, halocolor);
+
+  for (int ty = ystart; ty < yend; ty++, dstp += pitch) {
+    BYTE* dp = dstp;
+
+    int num = s[0];
+
+    uint32_t fontline; // max supported size is 32 for a character line
+    uint32_t fontoutline;
+
+    fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
+
+    if (useHalocolor) {
+      bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
+      fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
+    }
+
+    int current_xstart = xstart; // leftmost can be chopped
+
+    for (int i = 0; i < len; i++) {
+      for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+        const bool lightIt = fontline & FONTMASK_HIBIT;
+        LightOnePixelYUY2<fadeBackground>(lightIt, dp, val_color, val_color_U, val_color_V);
+        if (useHalocolor) {
+          if (!lightIt) // it can be outline
+            LightOnePixelYUY2<fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_outline, val_color_U_outline, val_color_V_outline);
+        }
+        dp += 2;
+        fontline <<= 1; // next pixel to the left
+        if (useHalocolor)
+          fontoutline <<= 1;
+      }
+
+      current_xstart = 0;
+
+      if (i + 1 < len)
+      {
+        num = s[i + 1];
+        if (useHalocolor) {
+          bmfont->generateOutline(current_outlined_char.data(), num);
+          fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+        }
+        fontline = fonts[num * FONT_HEIGHT + ty];
+      }
+    }
+  }
+}
+
 template<bool fadeBackground>
 static void do_DrawStringYUY2(const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont* bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
 {
@@ -1315,69 +1377,26 @@ static void do_DrawStringYUY2(const int width, const int height, BYTE* _dstp, in
   if (len <= 0)
     return;
 
-  int val_color = getColorForPlane(PLANAR_Y, color);
-  int val_color_outline = getColorForPlane(PLANAR_Y, halocolor);
-  int val_color_U = getColorForPlane(PLANAR_U, color);
-  int val_color_U_outline = getColorForPlane(PLANAR_U, halocolor);
-  int val_color_V = getColorForPlane(PLANAR_V, color);
-  int val_color_V_outline = getColorForPlane(PLANAR_V, halocolor);
-
   BYTE* dstp = _dstp + x * 2 + y * pitch;
 
-  // moved to lambda, we have two kinds of font vector base sizes
-  auto Render1 = [&](auto fonts) {
-    // Start rendering
-    for (int ty = ystart; ty < yend; ty++, dstp += pitch) {
-      BYTE* dp = dstp;
-
-      int num = s[0];
-
-      uint32_t fontline; // max supported size is 32 for a character line
-      uint32_t fontoutline;
-
-      fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
-
-      if (useHalocolor) {
-        bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
-        fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
-      }
-
-      int current_xstart = xstart; // leftmost can be chopped
-
-      for (int i = 0; i < len; i++) {
-        for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
-          const bool lightIt = fontline & FONTMASK_HIBIT;
-          LightOnePixelYUY2<fadeBackground>(lightIt, dp, val_color, val_color_U, val_color_V);
-          if (useHalocolor) {
-            if (!lightIt) // it can be outline
-              LightOnePixelYUY2<fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_outline, val_color_U_outline, val_color_V_outline);
-          }
-          dp += 2;
-          fontline <<= 1; // next pixel to the left
-          if (useHalocolor)
-            fontoutline <<= 1;
-        }
-
-        current_xstart = 0;
-
-        if (i + 1 < len)
-        {
-          num = s[i + 1];
-          if (useHalocolor) {
-            bmfont->generateOutline(current_outlined_char.data(), num);
-            fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
-          }
-          fontline = fonts[num * FONT_HEIGHT + ty];
-        }
-      }
-    }
-  };
-
   if (bmfont->fontover16)
-    Render1(fonts_large);
+    RenderYUY2<uint32_t, fadeBackground>(fonts_large, xstart, ystart, yend,
+      dstp, pitch,
+      bmfont,
+      s, current_outlined_char,
+      FONTMASK_HIBIT, FONT_WIDTH, FONT_HEIGHT,
+      len, color, halocolor, useHalocolor
+      );
   else
-    Render1(fonts);
+    RenderYUY2<uint16_t, fadeBackground>(fonts, xstart, ystart, yend,
+      dstp, pitch,
+      bmfont,
+      s, current_outlined_char,
+      FONTMASK_HIBIT, FONT_WIDTH, FONT_HEIGHT,
+      len, color, halocolor, useHalocolor
+      );
 }
+
 
 template<int bits_per_pixel, int rgbstep, bool fadeBackground>
 static void do_DrawStringPackedRGB(const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont *bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
