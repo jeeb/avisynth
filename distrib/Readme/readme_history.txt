@@ -5,12 +5,14 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230118 3.7.3 WIP
+20230120 3.7.3 WIP
 ------------------
+- "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
+- "Text": support 17-32 pixel wide external BDF fonts (issue #310)
 - Fix: "Text" filter negative x or y coordinates (e.g. 0 instead of -1)
 - Fix: "Text" filter would omit last character when x<0
 - Fix: "Text" halo_color needs only MSB=$FF and not the exact $FF000000 constant for fade
-- "Text" ``halo_color`` allows to have both halo and shaded background
+- "Text" ``halo_color`` allows to have both halo and shaded background when halo_color MSB=$FE
 - "Text" much nicer rendering of subsampled formats
 - Address Issue #305: Support for non-decorated avisynth_c_plugin_init in 32 bit C-plugins
 - Huge documentation update by Real-Deal
