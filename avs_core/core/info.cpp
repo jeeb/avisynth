@@ -883,8 +883,10 @@ static void adjustWriteLimits(std::vector<int>& s, const int width, const int he
   }
 }
 
-template<int bits_per_pixel, bool fadeBackground, bool isRGB>
-void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* pitches, const int logXRatioUV, const int logYRatioUV, const int planeCount,
+template<typename fontline_t, int bits_per_pixel, bool fadeBackground, bool isRGB>
+void do_DrawStringPlanar(
+  const fontline_t* fonts,
+  const int width, const int height, BYTE** dstps, int* pitches, const int logXRatioUV, const int logYRatioUV, const int planeCount,
   const BitmapFont* bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
 {
 
@@ -945,8 +947,6 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
   const bool is444 = !isRGB && (planeCount >= 3) && (logXRatioUV == 0) && (logYRatioUV == 0);
 
   std::vector<uint32_t> current_outlined_char(bmfont->height);
-  const uint16_t* fonts = bmfont->font_bitmaps.data();
-  const uint32_t* fonts_large = bmfont->font_bitmaps_large.data();
 
   const uint32_t FONTMASK_HIBIT = bmfont->fontover16 ? 0x80000000 : 0x8000;
 
@@ -975,60 +975,51 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
     const int pitch = pitches[p];
     BYTE* dstp = dstps[p] + x * pixelsize + y * pitch;
 
-    // moved to lambda, we have two kinds of font vector base sizes
-    auto Render1 = [&](auto fonts) {
-      // Start rendering
-      for (int ty = ystart; ty < yend; ty++) {
-        int num = s[0];
+    // Start rendering
+    for (int ty = ystart; ty < yend; ty++) {
+      int num = s[0];
 
-        uint32_t fontline; // max supported size is 32 for a character line
-        uint32_t fontoutline;
+      uint32_t fontline; // max supported size is 32 for a character line
+      uint32_t fontoutline;
 
-        fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
+      fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
 
-        if (useHalocolor) {
-          bmfont->generateOutline(current_outlined_char.data(), num);
-          fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
-        }
-
-        int current_xstart = xstart; // leftmost can be chopped
-        int j = 0;
-        pixel_t* _dstp = reinterpret_cast<pixel_t*>(dstp);
-
-        for (int i = 0; i < len; i++) {
-          for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
-            const bool lightIt = fontline & FONTMASK_HIBIT;
-            LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(lightIt, _dstp, j, val_color);
-            if (useHalocolor) {
-              if (!lightIt) // it can be outline
-                LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(fontoutline & FONTMASK_HIBIT, _dstp, j, val_color_outline);
-            }
-            j += 1;
-            fontline <<= 1; // next pixel to the left
-            if (useHalocolor)
-              fontoutline <<= 1;
-          }
-          current_xstart = 0; // further characters are not chopped
-
-          if (i + 1 < len)
-          {
-            num = s[i + 1];
-            if (useHalocolor) {
-              bmfont->generateOutline(current_outlined_char.data(), num);
-              fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
-            }
-            fontline = fonts[num * FONT_HEIGHT + ty];
-          }
-        }
-        dstp += pitch;
+      if (useHalocolor) {
+        bmfont->generateOutline(current_outlined_char.data(), num);
+        fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
       }
-    };
 
-    if (bmfont->fontover16)
-      Render1(fonts_large);
-    else
-      Render1(fonts);
+      int current_xstart = xstart; // leftmost can be chopped
+      int j = 0;
+      pixel_t* _dstp = reinterpret_cast<pixel_t*>(dstp);
 
+      for (int i = 0; i < len; i++) {
+        for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+          const bool lightIt = fontline & FONTMASK_HIBIT;
+          LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(lightIt, _dstp, j, val_color);
+          if (useHalocolor) {
+            if (!lightIt) // it can be outline
+              LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(fontoutline & FONTMASK_HIBIT, _dstp, j, val_color_outline);
+          }
+          j += 1;
+          fontline <<= 1; // next pixel to the left
+          if (useHalocolor)
+            fontoutline <<= 1;
+        }
+        current_xstart = 0; // further characters are not chopped
+
+        if (i + 1 < len)
+        {
+          num = s[i + 1];
+          if (useHalocolor) {
+            bmfont->generateOutline(current_outlined_char.data(), num);
+            fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
+          }
+          fontline = fonts[num * FONT_HEIGHT + ty];
+        }
+      }
+      dstp += pitch;
+    }
   }
 
   if constexpr (isRGB)
@@ -1092,212 +1083,223 @@ void do_DrawStringPlanar(const int width, const int height, BYTE** dstps, int* p
   //       001111                     font mask for 411 when x mod 4 == 2
   //       0001111                    font mask for 411 when x mod 4 == 3
 
-  auto RenderUV = [&](auto fonts) {
+  typedef typename std::conditional<sizeof(*fonts) == 2, uint32_t, uint64_t>::type doublefontline_t;
+  constexpr int MASKSHIFT = sizeof(doublefontline_t) == 8 ? 32 : 0; // shift to get a byte for bitcount
 
-    typedef typename std::conditional<sizeof(*fonts) == 2, uint32_t, uint64_t>::type doublefontline_t;
-    constexpr int MASKSHIFT = sizeof(doublefontline_t) == 8 ? 32 : 0; // shift to get a byte for bitcount
+  doublefontline_t fontmask = 0;
+  doublefontline_t fontmask_first = 0; // used when unaligned_x_start
+  for (int i = 0; i < xSubS; i++) {
+    fontmask >>= 1;
+    fontmask |= (doublefontline_t)FONTMASK_HIBIT << FONT_WIDTH;
+  }
 
-    doublefontline_t fontmask = 0;
-    doublefontline_t fontmask_first = 0; // used when unaligned_x_start
-    for (int i = 0; i < xSubS; i++) {
+  // position the mask on chroma-aligned X coordinates
+  // compute a special font mask for the leftmost font pixels which cover a chroma area only partially
+  if (unaligned_x_start) {
+    fontmask_first = 0;
+    for (int i = 0; i < xSubS - (x % xSubS); i++) {
+      fontmask_first >>= 1;
+      fontmask_first |= ((doublefontline_t)FONTMASK_HIBIT << FONT_WIDTH);
       fontmask >>= 1;
-      fontmask |= (doublefontline_t)FONTMASK_HIBIT << FONT_WIDTH;
     }
+  }
 
-    // position the mask on chroma-aligned X coordinates
-    // compute a special font mask for the leftmost font pixels which cover a chroma area only partially
-    if (unaligned_x_start) {
-      fontmask_first = 0;
-      for (int i = 0; i < xSubS - (x % xSubS); i++) {
-        fontmask_first >>= 1;
-        fontmask_first |= ((doublefontline_t)FONTMASK_HIBIT << FONT_WIDTH);
-        fontmask >>= 1;
+  for (int ty = ystart; ty < yend; ty += ySubS) {
+    int i, j, num;
+
+    // vertical subsampling, at most 2
+    doublefontline_t fontlines[2] = { 0,0 };
+    doublefontline_t fontoutlines[2] = { 0,0 };
+
+    int _xs = xstart; // possible beginning left crop, later it'll be 0
+
+    pixel_t* _dstpU = reinterpret_cast<pixel_t*>(dstpU);
+    pixel_t* _dstpV = reinterpret_cast<pixel_t*>(dstpV);
+
+    // Two characters at a time because one chroma pixel may consist of two neighboring fonts.
+    // Important, when we have horizontal subsampling.
+    // Note: extremely ugly for 411!
+
+    // preload first character
+    num = s[0];
+    if (useHalocolor)
+      bmfont->generateOutline(current_outlined_char.data(), num);
+
+    if (odd_y_start && ty == ystart) {
+      // when vertically subsampled 420, if font is displayed on odd y coordinate
+      // top font line on odd y position
+      fontlines[0] = 0;
+      fontlines[1] = fonts[num * FONT_HEIGHT + ty];
+      if (useHalocolor) {
+        fontoutlines[0] = 0;
+        fontoutlines[1] = current_outlined_char[ty];
       }
     }
-
-    for (int ty = ystart; ty < yend; ty += ySubS) {
-      int i, j, num;
-
-      // vertical subsampling, at most 2
-      doublefontline_t fontlines[2] = { 0,0 };
-      doublefontline_t fontoutlines[2] = { 0,0 };
-
-      int _xs = xstart; // possible beginning left crop, later it'll be 0
-
-      pixel_t* _dstpU = reinterpret_cast<pixel_t*>(dstpU);
-      pixel_t* _dstpV = reinterpret_cast<pixel_t*>(dstpV);
-
-      // Two characters at a time because one chroma pixel may consist of two neighboring fonts.
-      // Important, when we have horizontal subsampling.
-      // Note: extremely ugly for 411!
-
-      // preload first character
-      num = s[0];
-      if (useHalocolor)
-        bmfont->generateOutline(current_outlined_char.data(), num);
-
-      if (odd_y_start && ty == ystart) {
-        // when vertically subsampled 420, if font is displayed on odd y coordinate
-        // top font line on odd y position
-        fontlines[0] = 0;
-        fontlines[1] = fonts[num * FONT_HEIGHT + ty];
-        if (useHalocolor) {
-          fontoutlines[0] = 0;
-          fontoutlines[1] = current_outlined_char[ty];
-        }
+    else if (ty + 1 - yshift >= FONT_HEIGHT) {
+      // bottom font line on even y position
+      fontlines[0] = fonts[num * FONT_HEIGHT + ty - yshift];
+      fontlines[1] = 0;
+      if (useHalocolor) {
+        fontoutlines[0] = current_outlined_char[ty - yshift];
+        fontoutlines[1] = 0;
       }
-      else if (ty + 1 - yshift >= FONT_HEIGHT) {
-        // bottom font line on even y position
-        fontlines[0] = fonts[num * FONT_HEIGHT + ty - yshift];
-        fontlines[1] = 0;
-        if (useHalocolor) {
-          fontoutlines[0] = current_outlined_char[ty - yshift];
-          fontoutlines[1] = 0;
-        }
-      }
-      else {
-        // all font lines can safely be used
+    }
+    else {
+      // all font lines can safely be used
+      for (int m = 0; m < ySubS; m++)
+        fontlines[m] = fonts[num * FONT_HEIGHT + ty + m - yshift];
+
+      if (useHalocolor) {
         for (int m = 0; m < ySubS; m++)
-          fontlines[m] = fonts[num * FONT_HEIGHT + ty + m - yshift];
-
-        if (useHalocolor) {
-          for (int m = 0; m < ySubS; m++)
-            fontoutlines[m] = current_outlined_char[ty + m - yshift];
-        }
+          fontoutlines[m] = current_outlined_char[ty + m - yshift];
       }
+    }
 
-      // shift left, to make place for the next character bitmap
-      for (int m = 0; m < ySubS; m++) {
-        fontlines[m] <<= FONT_WIDTH;;
+    // shift left, to make place for the next character bitmap
+    for (int m = 0; m < ySubS; m++) {
+      fontlines[m] <<= FONT_WIDTH;;
+      if (useHalocolor)
+        fontoutlines[m] <<= FONT_WIDTH;
+    }
+
+    // render
+    // fontlines and fontoutlines always contains two characters at a time
+    for (i = 0, j = 0; i < len; i += 1) {
+      // merge next char on the right side LSB bits
+      // using bitwise "or" for filling the lines
+      if (i + 1 < len) {
+        num = s[i + 1];
         if (useHalocolor)
-          fontoutlines[m] <<= FONT_WIDTH;
-      }
+          bmfont->generateOutline(current_outlined_char.data(), num);
 
-      // render
-      // fontlines and fontoutlines always contains two characters at a time
-      for (i = 0, j = 0; i < len; i += 1) {
-        // merge next char on the right side LSB bits
-        // using bitwise "or" for filling the lines
-        if (i + 1 < len) {
-          num = s[i + 1];
-          if (useHalocolor)
-            bmfont->generateOutline(current_outlined_char.data(), num);
-
-          if (odd_y_start && ty == ystart) {
-            // when vertically subsampled 420, if font is displayed on odd y coordinate
-            // top font line on odd y position
-            fontlines[0] |= 0;
-            fontlines[1] |= fonts[num * FONT_HEIGHT + ty];
-            if (useHalocolor) {
-              fontoutlines[0] |= 0;
-              fontoutlines[1] |= current_outlined_char[ty];
-            }
-          }
-          else if (ty + 1 - yshift >= FONT_HEIGHT) {
-            // bottom font line on even y position
-            fontlines[0] |= fonts[num * FONT_HEIGHT + ty - yshift];
-            fontlines[1] |= 0;
-            if (useHalocolor) {
-              fontoutlines[0] |= current_outlined_char[ty - yshift];
-              fontoutlines[1] |= 0;
-            }
-          }
-          else {
-            // all font lines can safely be used
-            for (int m = 0; m < ySubS; m++)
-              fontlines[m] |= fonts[num * FONT_HEIGHT + ty + m - yshift];
-
-            if (useHalocolor) {
-              for (int m = 0; m < ySubS; m++)
-                fontoutlines[m] |= current_outlined_char[ty + m - yshift];
-            }
+        if (odd_y_start && ty == ystart) {
+          // when vertically subsampled 420, if font is displayed on odd y coordinate
+          // top font line on odd y position
+          fontlines[0] |= 0;
+          fontlines[1] |= fonts[num * FONT_HEIGHT + ty];
+          if (useHalocolor) {
+            fontoutlines[0] |= 0;
+            fontoutlines[1] |= current_outlined_char[ty];
           }
         }
-
-        // special case: first character would start out-of-screen on the left
-        if (i == 0) {
-          // Cope with left crop of glyph
+        else if (ty + 1 - yshift >= FONT_HEIGHT) {
+          // bottom font line on even y position
+          fontlines[0] |= fonts[num * FONT_HEIGHT + ty - yshift];
+          fontlines[1] |= 0;
+          if (useHalocolor) {
+            fontoutlines[0] |= current_outlined_char[ty - yshift];
+            fontoutlines[1] |= 0;
+          }
+        }
+        else {
+          // all font lines can safely be used
           for (int m = 0; m < ySubS; m++)
-            fontlines[m] <<= xstart;
+            fontlines[m] |= fonts[num * FONT_HEIGHT + ty + m - yshift];
 
           if (useHalocolor) {
             for (int m = 0; m < ySubS; m++)
-              fontoutlines[m] <<= xstart;
+              fontoutlines[m] |= current_outlined_char[ty + m - yshift];
           }
         }
-
-        // horizontal line
-        int plus = 0;
-        // 420, 422 horizontal subsampling: one more loop because of the leftmost orphan pixel(s)
-        if (unaligned_x_start && i == 0)
-          plus = xSubS;
-
-        for (int tx = _xs; tx < FONT_WIDTH + plus; tx += xSubS) {
-          int fontpixels = 0;
-          int halopixels = 0;
-          int backgroundpixels = 0; // totalpixels - fontpixels - halopixels
-
-          if (unaligned_x_start && i == 0 && tx == _xs) {
-            // leftmost pixel on odd position
-            fontpixels = (int)std::bitset<32>((fontlines[0] & fontmask_first) >> MASKSHIFT).count();
-            if (ySubS == 2) fontpixels += (int)std::bitset<32>((fontlines[1] & fontmask_first) >> MASKSHIFT).count();
-
-            if (useHalocolor) {
-              halopixels = (int)std::bitset<32>((fontoutlines[0] & fontmask_first) >> MASKSHIFT).count();
-              if (ySubS == 2) halopixels += (int)std::bitset<32>((fontoutlines[1] & fontmask_first) >> MASKSHIFT).count();
-            }
-            // no shift, fontmask was shifted in the initialization phase instead
-          }
-          else {
-            fontpixels = (int)std::bitset<32>((fontlines[0] & fontmask) >> MASKSHIFT).count();
-            if (ySubS == 2) fontpixels += (int)std::bitset<32>((fontlines[1] & fontmask) >> MASKSHIFT).count();
-
-            if (useHalocolor) {
-              halopixels = (int)std::bitset<32>((fontoutlines[0] & fontmask) >> MASKSHIFT).count();
-              if (ySubS == 2) halopixels += (int)std::bitset<32>((fontoutlines[1] & fontmask) >> MASKSHIFT).count();
-            }
-
-            for (int m = 0; m < ySubS; m++)
-              fontlines[m] <<= xSubS;
-
-            if (useHalocolor) {
-              for (int m = 0; m < ySubS; m++)
-                fontoutlines[m] <<= xSubS;
-            }
-          }
-
-          LightOneUVPixel<pixel_t, bits_per_pixel, fadeBackground>(_dstpU, j, _dstpV,
-            color_u, color_v, color_outline_u, color_outline_v, fontpixels, halopixels,
-            logXRatioUV, logYRatioUV
-            );
-
-          j += 1;
-        }
-
-        // next char, the rendering starts on the leftmost pixel
-        _xs = 0;
       }
 
-      dstpU += pitchUV;
-      dstpV += pitchUV;
-    }
-  };
+      // special case: first character would start out-of-screen on the left
+      if (i == 0) {
+        // Cope with left crop of glyph
+        for (int m = 0; m < ySubS; m++)
+          fontlines[m] <<= xstart;
 
-  if (bmfont->fontover16)
-    RenderUV(fonts_large);
-  else
-    RenderUV(fonts);
+        if (useHalocolor) {
+          for (int m = 0; m < ySubS; m++)
+            fontoutlines[m] <<= xstart;
+        }
+      }
+
+      // horizontal line
+      int plus = 0;
+      // 420, 422 horizontal subsampling: one more loop because of the leftmost orphan pixel(s)
+      if (unaligned_x_start && i == 0)
+        plus = xSubS;
+
+      for (int tx = _xs; tx < FONT_WIDTH + plus; tx += xSubS) {
+        int fontpixels = 0;
+        int halopixels = 0;
+        int backgroundpixels = 0; // totalpixels - fontpixels - halopixels
+
+        if (unaligned_x_start && i == 0 && tx == _xs) {
+          // leftmost pixel on odd position
+          fontpixels = (int)std::bitset<32>((fontlines[0] & fontmask_first) >> MASKSHIFT).count();
+          if (ySubS == 2) fontpixels += (int)std::bitset<32>((fontlines[1] & fontmask_first) >> MASKSHIFT).count();
+
+          if (useHalocolor) {
+            halopixels = (int)std::bitset<32>((fontoutlines[0] & fontmask_first) >> MASKSHIFT).count();
+            if (ySubS == 2) halopixels += (int)std::bitset<32>((fontoutlines[1] & fontmask_first) >> MASKSHIFT).count();
+          }
+          // no shift, fontmask was shifted in the initialization phase instead
+        }
+        else {
+          fontpixels = (int)std::bitset<32>((fontlines[0] & fontmask) >> MASKSHIFT).count();
+          if (ySubS == 2) fontpixels += (int)std::bitset<32>((fontlines[1] & fontmask) >> MASKSHIFT).count();
+
+          if (useHalocolor) {
+            halopixels = (int)std::bitset<32>((fontoutlines[0] & fontmask) >> MASKSHIFT).count();
+            if (ySubS == 2) halopixels += (int)std::bitset<32>((fontoutlines[1] & fontmask) >> MASKSHIFT).count();
+          }
+
+          for (int m = 0; m < ySubS; m++)
+            fontlines[m] <<= xSubS;
+
+          if (useHalocolor) {
+            for (int m = 0; m < ySubS; m++)
+              fontoutlines[m] <<= xSubS;
+          }
+        }
+
+        LightOneUVPixel<pixel_t, bits_per_pixel, fadeBackground>(_dstpU, j, _dstpV,
+          color_u, color_v, color_outline_u, color_outline_v, fontpixels, halopixels,
+          logXRatioUV, logYRatioUV
+          );
+
+        j += 1;
+      }
+
+      // next char, the rendering starts on the leftmost pixel
+      _xs = 0;
+    }
+
+    dstpU += pitchUV;
+    dstpV += pitchUV;
+  }
 }
 
+
 template<typename fontline_t, bool fadeBackground>
-static void RenderYUY2(const fontline_t* fonts, int xstart, int ystart, int yend,
-  BYTE* dstp, int pitch,
-  const BitmapFont* bmfont,
-  std::vector<int>& s, std::vector<uint32_t>& current_outlined_char,
-  const uint32_t FONTMASK_HIBIT, const int FONT_WIDTH, const int FONT_HEIGHT,
-  int len, int color, int halocolor, bool useHalocolor
-)
+static void do_DrawStringYUY2(const fontline_t* fonts,
+  const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont* bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
 {
+  std::vector<uint32_t> current_outlined_char(bmfont->height);
+
+  const uint32_t FONTMASK_HIBIT = bmfont->fontover16 ? 0x80000000 : 0x8000;
+
+  const int FONT_WIDTH = bmfont->width;
+  const int FONT_HEIGHT = bmfont->height;
+
+  // Default string length
+  int len = (int)s.size();
+  int startindex;
+  int xstart;
+  int ystart;
+  int yend;
+
+  adjustWriteLimits(s, width, height, FONT_WIDTH, FONT_HEIGHT, align,
+    // adjusted parameters
+    x, y, len, startindex, xstart, ystart, yend);
+
+  if (len <= 0)
+    return;
+
+  BYTE* dstp = _dstp + x * 2 + y * pitch;
+
   int val_color = getColorForPlane(PLANAR_Y, color);
   int val_color_outline = getColorForPlane(PLANAR_Y, halocolor);
   int val_color_U = getColorForPlane(PLANAR_U, color);
@@ -1316,7 +1318,7 @@ static void RenderYUY2(const fontline_t* fonts, int xstart, int ystart, int yend
     fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
 
     if (useHalocolor) {
-      bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
+      bmfont->generateOutline(current_outlined_char.data(), num);
       fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
     }
 
@@ -1351,55 +1353,10 @@ static void RenderYUY2(const fontline_t* fonts, int xstart, int ystart, int yend
   }
 }
 
-template<bool fadeBackground>
-static void do_DrawStringYUY2(const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont* bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
-{
-  std::vector<uint32_t> current_outlined_char(bmfont->height);
-  const uint16_t* fonts = bmfont->font_bitmaps.data();
-  const uint32_t* fonts_large = bmfont->font_bitmaps_large.data();
 
-  const uint32_t FONTMASK_HIBIT = bmfont->fontover16 ? 0x80000000 : 0x8000;
-
-  const int FONT_WIDTH = bmfont->width;
-  const int FONT_HEIGHT = bmfont->height;
-
-  // Default string length
-  int len = (int)s.size();
-  int startindex;
-  int xstart;
-  int ystart;
-  int yend;
-
-  adjustWriteLimits(s, width, height, FONT_WIDTH, FONT_HEIGHT, align,
-    // adjusted parameters
-    x, y, len, startindex, xstart, ystart, yend);
-
-  if (len <= 0)
-    return;
-
-  BYTE* dstp = _dstp + x * 2 + y * pitch;
-
-  if (bmfont->fontover16)
-    RenderYUY2<uint32_t, fadeBackground>(fonts_large, xstart, ystart, yend,
-      dstp, pitch,
-      bmfont,
-      s, current_outlined_char,
-      FONTMASK_HIBIT, FONT_WIDTH, FONT_HEIGHT,
-      len, color, halocolor, useHalocolor
-      );
-  else
-    RenderYUY2<uint16_t, fadeBackground>(fonts, xstart, ystart, yend,
-      dstp, pitch,
-      bmfont,
-      s, current_outlined_char,
-      FONTMASK_HIBIT, FONT_WIDTH, FONT_HEIGHT,
-      len, color, halocolor, useHalocolor
-      );
-}
-
-
-template<int bits_per_pixel, int rgbstep, bool fadeBackground>
-static void do_DrawStringPackedRGB(const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont *bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
+template<typename fontline_t, int bits_per_pixel, int rgbstep, bool fadeBackground>
+static void do_DrawStringPackedRGB(const fontline_t* fonts,
+  const int width, const int height, BYTE* _dstp, int pitch, const BitmapFont* bmfont, int x, int y, std::vector<int>& s, int color, int halocolor, int align, bool useHalocolor)
 {
   // define pixel_t as uint8_t, uint16_t or float, based on bits_per_pixel
   typedef typename std::conditional<bits_per_pixel == 8, uint8_t, typename std::conditional < bits_per_pixel <= 16, uint16_t, float > ::type >::type pixel_t;
@@ -1413,8 +1370,6 @@ static void do_DrawStringPackedRGB(const int width, const int height, BYTE* _dst
   };
 
   std::vector<uint32_t> current_outlined_char(bmfont->height);
-  const uint16_t* fonts = bmfont->font_bitmaps.data();
-  const uint32_t* fonts_large = bmfont->font_bitmaps_large.data();
 
   const uint32_t FONTMASK_HIBIT = bmfont->fontover16 ? 0x80000000 : 0x8000;
 
@@ -1446,60 +1401,51 @@ static void do_DrawStringPackedRGB(const int width, const int height, BYTE* _dst
   // upside down
   BYTE* dstp = _dstp + x * rgbstep + (height - 1 - y) * pitch;;
 
-  // moved to lambda, we have two kinds of font vector base sizes
-  auto Render1 = [&](auto fonts) {
-    // Start rendering
-    for (int ty = ystart; ty < yend; ty++, dstp -= pitch) {
-      BYTE* dp = dstp;
+  // Start rendering
+  for (int ty = ystart; ty < yend; ty++, dstp -= pitch) {
+    BYTE* dp = dstp;
 
-      int num = s[0];
+    int num = s[0];
 
-      uint32_t fontline; // max supported size is 32 for a character line
-      uint32_t fontoutline;
+    uint32_t fontline; // max supported size is 32 for a character line
+    uint32_t fontoutline;
 
-      fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
+    fontline = fonts[num * FONT_HEIGHT + ty] << xstart; // shift some pixels if leftmost is chopped
 
-      if (useHalocolor) {
-        bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
-        fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
+    if (useHalocolor) {
+      bmfont->generateOutline(current_outlined_char.data(), num); // on the fly, can be
+      fontoutline = current_outlined_char[ty] << xstart; // shift some pixels if leftmost is chopped
+    }
+
+    int current_xstart = xstart; // leftmost can be chopped
+
+    for (int i = 0; i < len; i++) {
+      for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+        const bool lightIt = fontline & FONTMASK_HIBIT;
+        LightOnePixelRGB<pixel_t, fadeBackground>(lightIt, dp, val_color_R, val_color_G, val_color_B);
+        if (useHalocolor) {
+          if (!lightIt) // it can be outline
+            LightOnePixelRGB<pixel_t, fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_R_outline, val_color_G_outline, val_color_B_outline);
+        }
+        dp += rgbstep;
+        fontline <<= 1; // next pixel to the left
+        if (useHalocolor)
+          fontoutline <<= 1;
       }
 
-      int current_xstart = xstart; // leftmost can be chopped
+      current_xstart = 0;
 
-      for (int i = 0; i < len; i++) {
-        for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
-          const bool lightIt = fontline & FONTMASK_HIBIT;
-          LightOnePixelRGB<pixel_t, fadeBackground>(lightIt, dp, val_color_R, val_color_G, val_color_B);
-          if (useHalocolor) {
-            if (!lightIt) // it can be outline
-              LightOnePixelRGB<pixel_t, fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_R_outline, val_color_G_outline, val_color_B_outline);
-          }
-          dp += rgbstep;
-          fontline <<= 1; // next pixel to the left
-          if (useHalocolor)
-            fontoutline <<= 1;
+      if (i + 1 < len)
+      {
+        num = s[i + 1];
+        if (useHalocolor) {
+          bmfont->generateOutline(current_outlined_char.data(), num);
+          fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
         }
-
-        current_xstart = 0;
-
-        if (i + 1 < len)
-        {
-          num = s[i + 1];
-          if (useHalocolor) {
-            bmfont->generateOutline(current_outlined_char.data(), num);
-            fontoutline = current_outlined_char[ty]; // shift some pixels if leftmost is chopped
-          }
-          fontline = fonts[num * FONT_HEIGHT + ty];
-        }
+        fontline = fonts[num * FONT_HEIGHT + ty];
       }
     }
-  };
-
-  if (bmfont->fontover16)
-    Render1(fonts_large);
-  else
-    Render1(fonts);
-
+  }
 }
 
 static bool strequals_i(const std::string& a, const std::string& b)
@@ -1602,7 +1548,7 @@ std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char *name, bool bold,
   return std::unique_ptr<BitmapFont>(current_font);
 }
 
-static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, PVideoFrame& dst, int x, int y, std::wstring &s16, int color, int halocolor, bool useHalocolor, int align, bool fadeBackground)
+static void DrawString_internal(BitmapFont* current_font, const VideoInfo& vi, PVideoFrame& dst, int x, int y, std::wstring& s16, int color, int halocolor, bool useHalocolor, int align, bool fadeBackground)
 {
   //static BitmapFont_10_20 infoFont1020; // constructor runs once, single instance
 
@@ -1640,11 +1586,20 @@ static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, P
 
   const int bits_per_pixel = vi.BitsPerComponent();
 
+  // planar and Y
+  const uint16_t* fonts = current_font->font_bitmaps.data();
+  const uint32_t* fonts_large = current_font->font_bitmaps_large.data();
+  const bool over16 = current_font->fontover16;
+
   if (vi.IsYUY2()) {
     if (fadeBackground)
-      do_DrawStringYUY2<true>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+      over16 ?
+      do_DrawStringYUY2<uint32_t, true>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+      : do_DrawStringYUY2<uint16_t, true>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
     else
-      do_DrawStringYUY2<false>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+      over16 ?
+      do_DrawStringYUY2<uint32_t, false>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+      : do_DrawStringYUY2<uint16_t, false>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
     return;
   }
 
@@ -1652,49 +1607,112 @@ static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, P
   if (isRGB && !vi.IsPlanar()) {
     if (fadeBackground) {
       if (vi.IsRGB24())
-        do_DrawStringPackedRGB<8, 3, true>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 8, 3, true>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 8, 3, true>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
       else if (vi.IsRGB32())
-        do_DrawStringPackedRGB<8, 4, true>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 8, 4, true>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 8, 4, true>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
       else if (vi.IsRGB48())
-        do_DrawStringPackedRGB<16, 6, true>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 16, 6, true>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 16, 6, true>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
       else if (vi.IsRGB64())
-        do_DrawStringPackedRGB<16, 8, true>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 16, 8, true>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 16, 8, true>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
     }
     else {
       if (vi.IsRGB24())
-        do_DrawStringPackedRGB<8, 3, false>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 8, 3, false>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 8, 3, false>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
       else if (vi.IsRGB32())
-        do_DrawStringPackedRGB<8, 4, false>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 8, 4, false>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 8, 3, false>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
       else if (vi.IsRGB48())
-        do_DrawStringPackedRGB<16, 6, false>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 16, 6, false>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 16, 6, false>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
       else if (vi.IsRGB64())
-        do_DrawStringPackedRGB<16, 8, false>(width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        over16 ?
+        do_DrawStringPackedRGB<uint32_t, 16, 8, false>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+        : do_DrawStringPackedRGB<uint16_t, 16, 8, false>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
     }
     return;
   }
 
-  // planar and Y
   if (fadeBackground) {
     if (isRGB) {
       switch (bits_per_pixel)
       {
-      case 8: do_DrawStringPlanar<8, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 10: do_DrawStringPlanar<10, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 12: do_DrawStringPlanar<12, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 14: do_DrawStringPlanar<14, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 16: do_DrawStringPlanar<16, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 32: do_DrawStringPlanar<32, true, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
+      case 8:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 8, true, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 8, true, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 10:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 10, true, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 10, true, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 12:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 12, true, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 12, true, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 14:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 14, true, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 14, true, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 16:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 16, true, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 16, true, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 32:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 32, true, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 32, true, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
       }
     }
     else {
       switch (bits_per_pixel)
       {
-      case 8: do_DrawStringPlanar<8, true, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 10: do_DrawStringPlanar<10, true, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 12: do_DrawStringPlanar<12, true, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 14: do_DrawStringPlanar<14, true, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 16: do_DrawStringPlanar<16, true, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 32: do_DrawStringPlanar<32, true, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
+      case 8:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 8, true, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 8, true, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 10:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 10, true, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 10, true, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 12:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 12, true, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 12, true, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 14:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 14, true, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 14, true, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 16:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 16, true, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 16, true, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 32:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 32, true, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 32, true, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
       }
     }
   }
@@ -1702,23 +1720,71 @@ static void DrawString_internal(BitmapFont *current_font, const VideoInfo& vi, P
     if (isRGB) {
       switch (bits_per_pixel)
       {
-      case 8: do_DrawStringPlanar<8, false, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 10: do_DrawStringPlanar<10, false, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 12: do_DrawStringPlanar<12, false, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 14: do_DrawStringPlanar<14, false, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 16: do_DrawStringPlanar<16, false, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 32: do_DrawStringPlanar<32, false, true>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
+      case 8:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 8, false, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 8, false, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 10:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 10, false, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 10, false, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 12:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 12, false, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 12, false, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 14:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 14, false, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 14, false, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 16:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 16, false, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 16, false, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 32:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 32, false, true>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 32, false, true>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
       }
     }
     else {
       switch (bits_per_pixel)
       {
-      case 8: do_DrawStringPlanar<8, false, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 10: do_DrawStringPlanar<10, false, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 12: do_DrawStringPlanar<12, false, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 14: do_DrawStringPlanar<14, false, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 16: do_DrawStringPlanar<16, false, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
-      case 32: do_DrawStringPlanar<32, false, false>(width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor); break;
+      case 8:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 8, false, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 8, false, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 10:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 10, false, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 10, false, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 12:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 12, false, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 12, false, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 14:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 14, false, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 14, false, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 16:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 16, false, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 16, false, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
+      case 32:
+        over16 ?
+          do_DrawStringPlanar<uint32_t, 32, false, false>(fonts_large, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
+          : do_DrawStringPlanar<uint16_t, 32, false, false>(fonts, width, height, dstps, pitches, logXRatioUV, logYRatioUV, planecount, current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        break;
       }
     }
   }
