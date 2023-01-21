@@ -483,10 +483,10 @@ static BdfFont LoadBMF(std::string name, bool bold) {
         current_char.empty_lines_bottom = current_char.font_bounding_box_bottomleft_y - fnt.font_info.font_bounding_box_bottomleft_y;
         current_char.empty_lines_top = fnt.font_info.font_bounding_box_y - (current_char.empty_lines_bottom + current_char.font_bounding_box_y);
         const int bits_to_shift_xpos = current_char.font_bounding_box_bottomleft_x - fnt.font_info.font_bounding_box_bottomleft_x;
-        // 1 bytes to 2 bytes. 3 bytes to 4 bytes, Avisynth internal storage is either uint16_t or uint32_t per line
-        const int bits_to_shift_storage =
-          current_char.font_bounding_box_x <= 8 ||
-          (current_char.font_bounding_box_x > 16 && current_char.font_bounding_box_x <= 24) ? -8 : 0;
+        // shift definition width to actual storage width. Avisynth internal storage is either uint16_t or uint32_t per line
+        const int bytes_current_char = (current_char.font_bounding_box_x + 7) / 8;
+        const int bytes_storage = fnt.width_over_16 ? 4 : 2;
+        const int bits_to_shift_storage = -8 * (bytes_storage - bytes_current_char);
         current_char.bits_to_shift = bits_to_shift_xpos + bits_to_shift_storage;
       }
       else if (token == "BITMAP") {
