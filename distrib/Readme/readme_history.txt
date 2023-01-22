@@ -5,8 +5,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230120 3.7.3 WIP
+20230122 3.7.3 WIP
 ------------------
+- "Text": draw rightmost on-screen character even if only partially visible (was: not drawn at all)
 - "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
 - "Text": support 17-32 pixel wide external BDF fonts (issue #310)
 - Fix: "Text" filter negative x or y coordinates (e.g. 0 instead of -1)
