@@ -851,9 +851,9 @@ static void adjustWriteLimits(std::vector<int>& s, const int width, const int he
     y -= (FONT_HEIGHT - 1);
 
   // Chop text if exceed right margin
-  // fixme: keep characters that can be seen partially
+  // keep last character of which at least one pixel can be drawn
   if (len * FONT_WIDTH > width - x)
-    len = (width - x) / FONT_WIDTH;
+    len = (width - x + FONT_WIDTH - 1) / FONT_WIDTH;
 
   startindex = 0;
   xstart = 0;
@@ -990,11 +990,13 @@ void do_DrawStringPlanar(
       }
 
       int current_xstart = xstart; // leftmost can be chopped
+      int actual_x = x;
       int j = 0;
       pixel_t* _dstp = reinterpret_cast<pixel_t*>(dstp);
 
       for (int i = 0; i < len; i++) {
-        for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+         for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+          if (actual_x >= width) break;
           const bool lightIt = fontline & FONTMASK_HIBIT;
           LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(lightIt, _dstp, j, val_color);
           if (useHalocolor) {
@@ -1002,6 +1004,7 @@ void do_DrawStringPlanar(
               LightOnePixel<pixel_t, bits_per_pixel, fadeBackground, isRGB>(fontoutline & FONTMASK_HIBIT, _dstp, j, val_color_outline);
           }
           j += 1;
+          actual_x++;
           fontline <<= 1; // next pixel to the left
           if (useHalocolor)
             fontoutline <<= 1;
@@ -1112,6 +1115,7 @@ void do_DrawStringPlanar(
     doublefontline_t fontoutlines[2] = { 0,0 };
 
     int _xs = xstart; // possible beginning left crop, later it'll be 0
+    int actual_x = x;
 
     pixel_t* _dstpU = reinterpret_cast<pixel_t*>(dstpU);
     pixel_t* _dstpV = reinterpret_cast<pixel_t*>(dstpV);
@@ -1222,6 +1226,7 @@ void do_DrawStringPlanar(
         plus = xSubS;
 
       for (int tx = _xs; tx < FONT_WIDTH + plus; tx += xSubS) {
+        if (actual_x >= width) break;
         int fontpixels = 0;
         int halopixels = 0;
         int backgroundpixels = 0; // totalpixels - fontpixels - halopixels
@@ -1261,6 +1266,7 @@ void do_DrawStringPlanar(
           );
 
         j += 1;
+        actual_x += xSubS;
       }
 
       // next char, the rendering starts on the leftmost pixel
@@ -1323,9 +1329,11 @@ static void do_DrawStringYUY2(const fontline_t* fonts,
     }
 
     int current_xstart = xstart; // leftmost can be chopped
+    int actual_x = x;
 
     for (int i = 0; i < len; i++) {
       for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+        if (actual_x >= width) break;
         const bool lightIt = fontline & FONTMASK_HIBIT;
         LightOnePixelYUY2<fadeBackground>(lightIt, dp, val_color, val_color_U, val_color_V);
         if (useHalocolor) {
@@ -1333,6 +1341,7 @@ static void do_DrawStringYUY2(const fontline_t* fonts,
             LightOnePixelYUY2<fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_outline, val_color_U_outline, val_color_V_outline);
         }
         dp += 2;
+        actual_x++;
         fontline <<= 1; // next pixel to the left
         if (useHalocolor)
           fontoutline <<= 1;
@@ -1418,9 +1427,11 @@ static void do_DrawStringPackedRGB(const fontline_t* fonts,
     }
 
     int current_xstart = xstart; // leftmost can be chopped
+    int actual_x = x;
 
     for (int i = 0; i < len; i++) {
       for (int tx = current_xstart; tx < FONT_WIDTH; tx++) {
+        if (actual_x >= width) break;
         const bool lightIt = fontline & FONTMASK_HIBIT;
         LightOnePixelRGB<pixel_t, fadeBackground>(lightIt, dp, val_color_R, val_color_G, val_color_B);
         if (useHalocolor) {
@@ -1428,6 +1439,7 @@ static void do_DrawStringPackedRGB(const fontline_t* fonts,
             LightOnePixelRGB<pixel_t, fadeBackground>(fontoutline & FONTMASK_HIBIT, dp, val_color_R_outline, val_color_G_outline, val_color_B_outline);
         }
         dp += rgbstep;
+        actual_x++;
         fontline <<= 1; // next pixel to the left
         if (useHalocolor)
           fontoutline <<= 1;
@@ -1631,7 +1643,7 @@ static void DrawString_internal(BitmapFont* current_font, const VideoInfo& vi, P
       else if (vi.IsRGB32())
         over16 ?
         do_DrawStringPackedRGB<uint32_t, 8, 4, false>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
-        : do_DrawStringPackedRGB<uint16_t, 8, 3, false>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
+        : do_DrawStringPackedRGB<uint16_t, 8, 4, false>(fonts, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor);
       else if (vi.IsRGB48())
         over16 ?
         do_DrawStringPackedRGB<uint32_t, 16, 6, false>(fonts_large, width, height, dstps[0], pitches[0], current_font, x, y, s_remapped, color, halocolor, align, useHalocolor)
