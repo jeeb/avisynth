@@ -243,7 +243,7 @@ int VideoInfo::GetPlaneHeightSubsampling(int plane) const {  // Subsampling in b
     else
       throw AvisynthError("Filter error: GetPlaneHeightSubsampling called with unsupported pixel type.");
   }
-  throw AvisynthError("Filter error: GetPlaneHeightSubsampling called with supported plane.");
+  throw AvisynthError("Filter error: GetPlaneHeightSubsampling called with unsupported plane.");
 }
 
 int VideoInfo::BitsPerPixel() const {
