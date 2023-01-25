@@ -626,8 +626,8 @@ enum {
     //  CS_I420  = 1<<4  Reserved
     CS_RAW32 = 1<<5 | CS_INTERLEAVED,
 
-    //  YV12 must be 0xA000008 2.5 Baked API will see all new planar as YV12
-    //  I420 must be 0xA000010
+    //  YV12 must be 0xA0000008. v2.5 Baked API will see all new planar as YV12.
+    //  I420 must be 0xA0000010.
 
     CS_GENERIC_YUV420  = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // 4:2:0 planar
     CS_GENERIC_YUV422  = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2,  // 4:2:2 planar
