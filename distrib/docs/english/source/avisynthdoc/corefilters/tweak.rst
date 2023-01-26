@@ -156,8 +156,8 @@ Syntax and Parameters
 
     Control the dithering amount. For example, ``dither_strength=1.0`` adds a
     ±0.5 amplitude dither for all bit depths. As the bit depth increases the
-    less noticiable the dithering strength is. To get the same visual output for
-    8-bit and ``dither_strength=1.0``, the strength needs to be set to 4 for
+    less noticiable the dithering strength is. To get the same visual output as
+    in 8-bit and ``dither_strength=1.0``, the strength needs to be set to 4 for
     10-bit, 16 for 12-bit, 64 for 14-bit and 256 for 16-bit.
 
     Default: 1.0
@@ -323,7 +323,7 @@ Changelog
     | AviSynth 2.5.3  | Added ``coring`` parameter.                           |
     +-----------------+-------------------------------------------------------+
 
-$Date: 2022/03/08 15:28:44 $
+$Date: 2022/09/17 15:28:44 $
 
 .. _autoscaling:
     http://avisynth.nl/index.php/Autoscale_parameter

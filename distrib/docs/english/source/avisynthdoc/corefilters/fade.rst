@@ -109,26 +109,26 @@ Fade in the first 15 frames from black on a 8-bit clip (either RGB or YUV)::
 
     # RGB
     Fade(15, color=$000000)
-    Fade(15, colors=[0,0,0]
+    Fade(15, colors=[0,0,0])
 
     # YUV
     Fade(15, color=$000000)       # limited range
     Fade(15, color_yuv=$108080)   # limited range
-    Fade(15, colors=[16,128,128]  # limited range
-    Fade(15, colors=[0,128,128]   # full range
+    Fade(15, colors=[16,128,128]) # limited range
+    Fade(15, colors=[0,128,128])  # full range
     Fade(15, color_yuv=$008080)   # full range
 
 Fade out the last 15 frames to white on a 8-bit clip (either RGB or YUV)::
 
     # RGB
     Fade(15, color=$FFFFFF)
-    Fade(15, colors=[255,255,255]
+    Fade(15, colors=[255,255,255])
 
     # YUV
-    Fade(15, color=$FFFFFF)       # limited range
-    Fade(15, color_yuv=$EB8080)   # limited range
-    Fade(15, colors=[235,128,128] # limited range
-    Fade(15, colors=[255,128,128) # full range
+    Fade(15, color=$FFFFFF)        # limited range
+    Fade(15, color_yuv=$EB8080)    # limited range
+    Fade(15, colors=[235,128,128]) # limited range
+    Fade(15, colors=[255,128,128)) # full range
     Fade(15, color_yuv=$FF8080)   # full range
 
 
@@ -147,7 +147,7 @@ Changelog
 |                 || Added the ``color`` parameter to all fade functions.               |
 +-----------------+---------------------------------------------------------------------+
 
-$Date: 2022/04/17 11:43:32 $
+$Date: 2022/09/17 11:43:32 $
 
 .. _Rec.601:
     https://en.wikipedia.org/wiki/Rec._601

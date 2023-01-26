@@ -65,8 +65,8 @@ Syntax and Parameters
 
     By default, **MaskHS** uses a `LUT`_ for 8/10/12 bits. For bit depths greater
     than 12, the calculation for each pixel is always done in realtime. When
-    ``realcalc=true``, it overrides using a LUT for 10-12 bits and calculates
-    each pixel on-the-fly.
+    ``realcalc=true``, it overrides using a LUT and calculates each pixel
+    on-the-fly.
 
     Default: false
 
@@ -141,7 +141,7 @@ Changelog
     | AviSynth 2.6.0  | Initial Release.                                            |
     +-----------------+-------------------------------------------------------------+
 
-$Date: 2022/03/06 20:09:50 $
+$Date: 2023/01/19 20:09:50 $
 
 .. _LUT:
     https://en.wikipedia.org/wiki/Lookup_table

@@ -1,20 +1,20 @@
-
+=====================
 BlankClip / Blackness
 =====================
 
 The **BlankClip** filter produces a solid color, silent video clip of the
 specified length (in frames). The *clip* passed as an argument is used as a
 *template* for frame rate, image size, and so on, but you can specify all clip
-properties without having to provide a template. Without any arguments specified, 
-**BlankClip** will produce a pitch-black 10 seconds clip (RGB32), 640x480, 24 
+properties without having to provide a template. Without any arguments specified,
+**BlankClip** will produce a pitch-black 10 seconds clip (RGB32), 640x480, 24
 fps, 16 bit 44100 Hz mono.
 
-When supplying a template, **BlankClip** returns a clip with 
-:doc:`properties <../syntax/syntax_clip_properties>` copied from that template. 
-If the template is audio-only, you get a blank audio-only clip, and if it's 
-video-only you get a blank video-only clip. If you start to add parameters that 
-force a video track (i.e. width, height or pixel_type) or audio track 
-(i.e. audio_rate, channels or sample_type), the remaining parameters 
+When supplying a template, **BlankClip** returns a clip with
+:doc:`properties <../syntax/syntax_clip_properties>` copied from that template.
+If the template is audio-only, you get a blank audio-only clip, and if it's
+video-only you get a blank video-only clip. If you start to add parameters that
+force a video track (i.e. width, height or pixel_type) or audio track
+(i.e. audio_rate, channels or sample_type), the remaining parameters
 for that track will be the defaults.
 
 **Blackness** is an alias for **BlankClip**. The parameters are the same, minus
@@ -36,25 +36,25 @@ Syntax and Parameters
     Blackness ( ...same parameters as BlankClip )
 
 .. describe:: clip
-    
+
     If present, the resulting clip will have the clip-properties of the
     template, except for the properties you define explicitly.
 
-.. describe:: length 
-    
+.. describe:: length
+
     Length of the resulting clip (in frames).
-    
+
     Default: 240
 
-.. describe:: width, height 
-    
+.. describe:: width, height
+
     Width and height of the resulting clip.
-    
+
     Default: 640, 480
 
-.. describe:: pixel_type 
-    
-    Pixel type of the resulting clip. Valid color formats are listed in the 
+.. describe:: pixel_type
+
+    Pixel type of the resulting clip. Valid color formats are listed in the
     following table.
 
     +--------+---------+------------+-------------+------------+--------+
@@ -98,91 +98,91 @@ Syntax and Parameters
     +--------+---------+------------+-------------+------------+--------+
     | **32** | RGBAPS  | YUVA444PS  | YUVA422PS   | YUVA420PS  |        |
     +--------+---------+------------+-------------+------------+--------+
-    | **Note**: 8-bit color formats (``YV411, YUV411, YUV411P8``) were  | 
+    | **Note**: 8-bit color formats (``YV411, YUV411, YUV411P8``) were  |
     | omitted from the table.                                           |
     +--------+---------+------------+-------------+------------+--------+
 
     Default: "RGB32"
 
 .. describe:: fps
-    
+
     The framerate of the resulting clip.
-    
+
     Default: 24
 
 .. describe:: fps_denominator
-    
-    | You can use this option if "fps" is not accurate enough. 
-    | For example: ``fps = 30000, fps_denominator = 1001`` (ratio = 29.97) or 
+
+    | You can use this option if "fps" is not accurate enough.
+    | For example: ``fps = 30000, fps_denominator = 1001`` (ratio = 29.97) or
       ``fps = 24000, fps_denominator = 1001`` (ratio = 23.976).
-    
-    *Note* – if ``fps_denominator`` is given (even if it is "1"), ``fps`` is 
-    **rounded to the nearest integer**. 
-    
+
+    *Note* – if ``fps_denominator`` is given (even if it is "1"), ``fps`` is
+    **rounded to the nearest integer**.
+
     Default: 1
 
 .. describe:: audio_rate
-    
+
     | Sample rate of the (silent) audio.
-    | *Note* – ``BlankClip(audio_rate=0)`` produces the same result as 
-      ``BlankClip.KillAudio()``. 
-    
-    Default: 44100 
+    | *Note* – ``BlankClip(audio_rate=0)`` produces the same result as
+      ``BlankClip.KillAudio()``.
+
+    Default: 44100
 
 .. describe:: channels
-    
+
     Specifies the number of audio channels of silent audio added to the blank clip.
-    
+
     Default: 1
 
 .. describe:: stereo
-    
-    | **Deprecated!** Use should the ``channels`` parameter instead.
+
+    | **Deprecated!** Use the ``channels`` parameter instead.
     | If true, the (silent) audio is in stereo: ``channels=2``.
-    
+
     Default: false
 
 .. describe:: sample_type
-    
-    Specifies the audio sample type of the resulting clip. It can be "8bit", 
+
+    Specifies the audio sample type of the resulting clip. It can be "8bit",
     "16bit", "24bit", "32bit" or "float".
-    
+
     Default: "16bit"
 
 .. describe:: sixteen_bit
-    
+
     | **Deprecated!** Use the ``sample_type`` parameter instead.
     | True returns 16-bit audio, *false* returns 32-bit float.
-    
+
     Default: true
 
 .. describe:: color
-    
-    | Specifies the color of the clip. Color is specified as an RGB value in 
+
+    | Specifies the color of the clip. Color is specified as an RGB value in
       either hexadecimal or decimal notation.
     | Hex numbers must be preceded with a $. See the
-      :doc:`colors <../syntax/syntax_colors>` page for more information on 
+      :doc:`colors <../syntax/syntax_colors>` page for more information on
       specifying colors.
-    
-    * For YUV clips, colors are converted from full range (0–255) to limited 
+
+    * For YUV clips, colors are converted from full range (0–255) to limited
       range (16–235) `Rec.601`_.
-    * Use ``color_yuv`` to specify full range YUV values or a color with a 
+    * Use ``color_yuv`` to specify full range YUV values or a color with a
       different matrix.
-    
+
     Default: $000000
 
-.. describe:: color_yuv 
-    
-    Specifies the color of the clip using YUV values. ``pixel_type`` must be 
-    set to one of the YUV formats or a YUV reference clip provided; otherwise 
-    an error is raised. See the :ref:`YUV colors <yuv-colors>` for more 
+.. describe:: color_yuv
+
+    Specifies the color of the clip using YUV values. ``pixel_type`` must be
+    set to one of the YUV formats or a YUV reference clip provided; otherwise
+    an error is raised. See the :ref:`YUV colors <yuv-colors>` for more
     information.
-    
+
 .. describe:: colors
-    
-    Specify the color of the clip using an array. Use this to pass exact, 
+
+    Specify the color of the clip using an array. Use this to pass exact,
     unscaled color values.
-    
+
     Color order: Y,U,V,A or R,G,B,A
 
 
@@ -196,7 +196,7 @@ Examples
 
     BlankClip(length=3000, width=720, height=576, fps=25, channels=2, color=$000000)
 
-* Produces a black clip (3000 frames) with the remaining clip properties of the 
+* Produces a black clip (3000 frames) with the remaining clip properties of the
   reference clip:
 
  .. code-block:: c++
@@ -211,7 +211,7 @@ Examples
     video = AviSource("E:\pdwork\DO-Heaven.AVI")
     audio = BlankClip(video, audio_rate=48000)
     AudioDub(video, audio)
-    
+
 * Create an RGB64 clip and specify the colors using an array:
 
  .. code-block:: c++
@@ -252,7 +252,7 @@ Changelog
 | AviSynth 2.5.5  | Added ``color_yuv`` parameter.                               |
 +-----------------+--------------------------------------------------------------+
 
-$Date: 2022/02/14 20:09:50 $
+$Date: 2022/09/17 20:09:50 $
 
 .. _Rec.601:
     https://en.wikipedia.org/wiki/Rec._601
