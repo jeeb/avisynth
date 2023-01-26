@@ -550,7 +550,7 @@ Code Bits Remark
 
 General
 Code Bits Remark
-  S 16-18 Sample resolution bits
+  S  16-18 Sample resolution bits
           000 => 8
           001 => 16
           010 => 32 (float)
@@ -560,8 +560,8 @@ Code Bits Remark
           111 => 14 bits
 for packed RGB(A): only 8 and 16 bits are valid
 
-Other YV12 specific (not used?)
-  C 20-22 Chroma Placement values 0-4 see CS_xxx_CHROMA_PLACEMENT
+Other YV12 specific (will never be used)
+  C  20-23 Chroma Placement values 0-4; see CS_xxx_CHROMA_PLACEMENT
 
 Color family and layout
                        Packed      Planar               Planar  Planar
