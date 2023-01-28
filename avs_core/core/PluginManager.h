@@ -37,7 +37,7 @@ private:
   bool AutoloadExecuted;
   bool Autoloading;
 
-  bool TryAsAvs26(PluginFile &plugin, AVSValue *result);
+  bool TryAsAvs26(PluginFile &plugin, AVSValue *result, std::string& avsexception_message);
   bool TryAsAvs25(PluginFile &plugin, AVSValue *result);
   bool TryAsAvsC(PluginFile &plugin, AVSValue *result);
 

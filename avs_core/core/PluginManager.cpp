@@ -964,7 +964,8 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
 #endif
 
   // Try to load various plugin interfaces
-  if (!TryAsAvs26(plugin, result))
+  std::string avsexception26_message;
+  if (!TryAsAvs26(plugin, result, avsexception26_message))
   {
     if (!TryAsAvsC(plugin, result))
     {
@@ -974,7 +975,10 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
         plugin.Library = NULL;
 
         if (throwOnError)
-          Env->ThrowError("'%s' cannot be used as a plugin for AviSynth.", plugin.FilePath.c_str());
+          if (avsexception26_message.empty())
+            Env->ThrowError("'%s' cannot be used as a plugin for AviSynth.", plugin.FilePath.c_str());
+          else
+            Env->ThrowError("'%s' plugin loading error: %s", plugin.FilePath.c_str(), avsexception26_message.c_str());
         else
           return false;
       }
@@ -1107,7 +1111,7 @@ std::string PluginManager::PluginLoading() const
         return PluginInLoad->BaseName;
 }
 
-bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
+bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result, std::string &avsexception_message)
 {
   extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
 #ifdef AVS_POSIX
@@ -1123,6 +1127,7 @@ bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
 #endif
 
   bool success = true;
+  avsexception_message = "";
   if (AvisynthPluginInit3 == NULL)
     return false;
   else
@@ -1131,6 +1136,10 @@ bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
     // a bad plugin can kill everything if it uses e.g. an old IScriptEnvironment2
     try {
       *result = AvisynthPluginInit3(Env, AVS_linkage);
+    }
+    catch (const AvisynthError& error) {
+      avsexception_message = error.msg;
+      success = false;
     }
     catch (...)
     {
