@@ -5,8 +5,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230122 3.7.3 WIP
+20230128 3.7.3 WIP
 ------------------
+- Show exception message as well if a 2.6-style plugin throws Avisynth exception in its AvisynthPluginInit3
+  instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
 - "Text": draw rightmost on-screen character even if only partially visible (was: not drawn at all)
 - "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
 - "Text": support 17-32 pixel wide external BDF fonts (issue #310)
