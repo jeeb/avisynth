@@ -5,18 +5,24 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230128 3.7.3 WIP
+20230201 3.7.3 WIP
 ------------------
+- "Text": Almost fully rewritten. 
+  (#310) Support any width of bdf fonts (but still of fixed width)
+  Render in YUY2 is as nice as in YV16
+  Halo is not limited to original character matrix boundaries
+  Halo is not character based, but rendered on the displayed string as a whole.
+  Some speed enhancements, mainly for subsampled formats and outlined (with halo) styles
 - Show exception message as well if a 2.6-style plugin throws Avisynth exception in its AvisynthPluginInit3
   instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
 - "Text": draw rightmost on-screen character even if only partially visible (was: not drawn at all)
 - "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
-- "Text": support 17-32 pixel wide external BDF fonts (issue #310)
+- "Text" (#310): support 17-32 pixel wide external BDF fonts (issue #310)
 - Fix: "Text" filter negative x or y coordinates (e.g. 0 instead of -1)
 - Fix: "Text" filter would omit last character when x<0
 - Fix: "Text" halo_color needs only MSB=$FF and not the exact $FF000000 constant for fade
 - "Text" ``halo_color`` allows to have both halo and shaded background when halo_color MSB=$FE
-- "Text" much nicer rendering of subsampled formats
+- "Text" much nicer rendering of subsampled formats (#308)
 - Address Issue #305: Support for non-decorated avisynth_c_plugin_init in 32 bit C-plugins
 - Huge documentation update by Real-Deal
 - Fix (#304): ColorYUV analyze=true was displaying wrong min-max values for YUY2
