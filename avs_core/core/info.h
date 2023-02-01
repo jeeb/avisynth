@@ -1,23 +1,36 @@
-// original IT0051 by thejam79
-// add YV12 mode by minamina 2003/05/01
+// Avisynth+
+// https://avs-plus.net
 //
-// Borrowed from the author of IT.dll, whose name I
-// could not determine. Modified for YV12 by Donald Graft.
-// RGB32 Added by Klaus Post
-// Converted to generic planar, and now using exact coordinates - NOT character coordinates by Klaus Post
-// Refactor, DrawString...() is the primative, Oct 2010 Ian Brabham
-// TO DO: Clean up - and move functions to a .c file.
-
-// pinterf:
-// planar high bit depth, planar RGB, RGB48/64
-// utf8 option, internally unicode, Latin-1 Supplement 00A0-00FF
-// Original hexadecimal bitmap definitions changed to binary literals
-// Add some new characters from Latin Extended A
-// Configurable color
-// Configurable halocolor (text outline)
-// Configurable background fading
-// Alignment
-// multiline
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
+// http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 #ifndef __INFO_H__
 #define __INFO_H__
@@ -33,14 +46,43 @@
 #include <vector>
 #include <cstring>
 
+template<typename fontline_t>
+class PreRendered {
+  const bool useHalocolor;
+  const int width;
+  const int height;
+
+public:
+  int x, y;
+  int len;
+  int xstart;
+  int text_width; // draw this amount of pixels starting from horizontal index xstart
+  int ystart; // vertical visibility: starting row in stringbitmap
+  int yend;   // vertical visibility: ending row in stringbitmap
+  int stringbitmap_height; // font height plus optinally added top/bottom line
+  const int safety_bits_x; // extra left and right playground for chroma rendering
+
+  std::vector<std::vector<uint8_t>> stringbitmap;
+  std::vector<std::vector<uint8_t>> stringbitmap_outline;
+
+  PreRendered(
+    const fontline_t* fonts,
+    const int _width, const int _height,
+    int _x, int _y, // they may change
+    std::vector<int>& s, // it may get shortened
+    const int align,
+    const bool _useHalocolor,
+    const int FONT_WIDTH, const int FONT_HEIGHT,
+    const int _safety_bits_x);
+
+  void make_outline();
+};
+
 class BitmapFont {
 
   int number_of_chars;
   std::string font_name;
   std::string font_filename;
-
-  template<typename fontline_t>
-  void do_generateOutline(uint32_t* outlined, int fontindex) const;
 
 public:
   const int width;
@@ -85,8 +127,6 @@ public:
   // helper function for remapping a wchar_t string to font index entry list
   std::vector<int> remap(const std::wstring& s16);
 
-  // generate outline on-the-fly
-  void generateOutline(uint32_t* outlined, int fontindex) const;
 };
 
 std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char* name, bool bold, bool debugSave);
