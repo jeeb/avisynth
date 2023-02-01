@@ -132,7 +132,8 @@ endif()
       message("MSVC_IDE support found, reported CMAKE_GENERATOR_TOOLSET is: ${CMAKE_GENERATOR_TOOLSET}")
       string( TOLOWER "${CMAKE_GENERATOR_TOOLSET}" cmake_gentoolset_lower)
 
-      IF(cmake_gentoolset_lower STREQUAL "intel c++ compiler 2021")
+      IF(cmake_gentoolset_lower STREQUAL "intel c++ compiler 2021" OR
+      cmake_gentoolset_lower STREQUAL "intel c++ compiler 2022")
         # IntelLLVM
         set(IntelLLVM_IN_VS "1")
       ELSEIF(cmake_gentoolset_lower STREQUAL "intel c++ compiler 19.2")

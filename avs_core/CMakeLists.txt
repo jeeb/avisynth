@@ -43,7 +43,8 @@ foreach(FILE ${AvsCore_Sources})
 endforeach()
 
 if (MSVC_IDE)
-  IF(CLANG_IN_VS STREQUAL "1")
+  IF(CLANG_IN_VS STREQUAL "1" OR
+  IntelLLVM_IN_VS STREQUAL "1")
       # special SSSE3 option for source files with *_ssse3.cpp pattern
       file(GLOB_RECURSE SRCS_SSSE3 "*_ssse3.cpp")
       set_source_files_properties(${SRCS_SSSE3} PROPERTIES COMPILE_FLAGS " -mssse3 ")
@@ -166,7 +167,8 @@ if (MSVC_IDE)
     POST_BUILD
     COMMAND xcopy /Y \"$(TargetPath)\" \"${CMAKE_BINARY_DIR}/Output\"
   )
-  IF(NOT CLANG_IN_VS STREQUAL "1")
+  IF(NOT CLANG_IN_VS STREQUAL "1" AND
+  NOT IntelLLVM_IN_VS STREQUAL "1")
     # LLVM does not generate exp or don't know how to do it
     add_custom_command(
       TARGET AvsCore
