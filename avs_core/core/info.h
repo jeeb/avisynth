@@ -46,7 +46,6 @@
 #include <vector>
 #include <cstring>
 
-template<typename fontline_t>
 class PreRendered {
   const bool useHalocolor;
   const int width;
@@ -66,7 +65,8 @@ public:
   std::vector<std::vector<uint8_t>> stringbitmap_outline;
 
   PreRendered(
-    const fontline_t* fonts,
+    const uint8_t* fonts,
+    const int fontline_bytes,
     const int _width, const int _height,
     int _x, int _y, // they may change
     std::vector<int>& s, // it may get shortened
@@ -88,32 +88,44 @@ public:
   const int width;
   const int height;
   const bool bold;
-  std::vector<uint16_t> font_bitmaps;
-  // memory considerations, keep small fonts in 16 bit array
-  std::vector<uint32_t> font_bitmaps_large;
-  bool fontover16;
+
+  std::vector<uint8_t> font_bitmaps;
+  const int fontline_bytes;
 
   std::unordered_map<uint16_t, int> charReMap; // unicode code point vs. font image index
 
   void SaveAsC(const uint16_t* _codepoints);
 
-  BitmapFont(int _number_of_chars, const uint16_t* _src_font_bitmaps, const uint32_t* _src_font_bitmaps_large, const uint16_t* _codepoints, int _w, int _h, std::string _font_name, std::string _font_filename, bool _bold, bool debugSave) :
+  BitmapFont(int _number_of_chars,
+    const uint16_t* _src_font_bitmaps_internaluint16, 
+    const uint8_t* _src_font_bitmaps, 
+    const int _fontline_bytes, 
+    const uint16_t* _codepoints, 
+    int _w, int _h, std::string _font_name, std::string _font_filename, bool _bold, bool debugSave) :
     number_of_chars(_number_of_chars),
     font_name(_font_name),
     font_filename(_font_filename),
     width(_w), height(_h),
-    fontover16(_w > 16),
+    fontline_bytes(_fontline_bytes),
     bold(_bold)
     //font_bitmaps(_font_bitmaps),
   {
     //fixme: do not copy data
-    if (fontover16) {
-      font_bitmaps_large.resize(height * number_of_chars);
-      std::memcpy(font_bitmaps_large.data(), _src_font_bitmaps_large, font_bitmaps_large.size() * sizeof(uint32_t));
-    }
+    const int charline_count = height * number_of_chars;
+    font_bitmaps.resize(charline_count * fontline_bytes);
+    if (_src_font_bitmaps != nullptr) 
+      std::memcpy(font_bitmaps.data(), _src_font_bitmaps, font_bitmaps.size());
     else {
-      font_bitmaps.resize(height * number_of_chars);
-      std::memcpy(font_bitmaps.data(), _src_font_bitmaps, font_bitmaps.size() * sizeof(uint16_t));
+      // this must be an internal, predefined array
+      // copy uint16_t array to byte array MSB-LSB order 
+      // fontline_bytes is 2
+      const uint16_t* src = _src_font_bitmaps_internaluint16;
+      uint8_t* dst = font_bitmaps.data();
+      for (auto i = 0; i < charline_count; i++) {
+        uint16_t one_fontline = src[i];
+        dst[i * 2] = (uint8_t)(one_fontline >> 8);
+        dst[i * 2 + 1] = (uint8_t)(one_fontline & 0xFF);
+      }
     }
 
     for (int i = 0; i < _number_of_chars; i++) {
