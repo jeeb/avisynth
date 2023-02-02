@@ -1505,7 +1505,7 @@ NewVideoFrameP, v8
 
 ::
 
-    virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
+    virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, const PVideoFrame* prop_src, int align = FRAME_ALIGN) = 0;
 
 NewVideoFrame with frame property source.
 

@@ -1503,7 +1503,7 @@ public:
   virtual void __stdcall clearMap(AVSMap* map) = 0;
 
   // NewVideoFrame with frame property source.
-  virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, PVideoFrame* propSrc, int align = FRAME_ALIGN) = 0;
+  virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, const PVideoFrame* prop_src, int align = FRAME_ALIGN) = 0;
 
   // Note: do not declare existing names like 'NewVideoFrame' again with different parameters since MSVC will reorder it
   // in the vtable and group it together with the first NewVideoFrame variant.
@@ -1787,8 +1787,8 @@ public:
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi) = 0; // current device is used
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device) = 0;
   // as above but with property sources
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, PVideoFrame *propSrc) = 0; // current device is used + frame property source
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device, PVideoFrame* propSrc) = 0; // current device is used + frame property source
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PVideoFrame *prop_src) = 0; // current device is used + frame property source
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, const PDevice& device, const PVideoFrame* prop_src) = 0; // current device is used + frame property source
 
   // Frame related operations
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;

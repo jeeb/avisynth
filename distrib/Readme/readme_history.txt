@@ -7,6 +7,8 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230202 3.7.3 WIP
 ------------------
+
+- Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
 - Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
 - "Text": Almost fully rewritten. 
   (#310) Support any width of bdf fonts (but still of fixed width)
