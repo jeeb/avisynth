@@ -458,7 +458,8 @@ VideoFrameBuffer::VideoFrameBuffer(int size, int margin, Device* device) :
 {
 }
 
-VideoFrameBuffer::~VideoFrameBuffer() {
+VideoFrameBuffer::~VideoFrameBuffer() { DESTRUCTOR(); }
+void VideoFrameBuffer::DESTRUCTOR() {
   //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   if (data) device->Free(data);
