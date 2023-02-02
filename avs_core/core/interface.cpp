@@ -1176,7 +1176,8 @@ static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
 
   &VideoFrame::IsPropertyWritable,          //   V9
 
-  NULL,                                     //   reserved for AviSynth+
+  &VideoFrameBuffer::DESTRUCTOR,            //   void (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+

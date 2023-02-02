@@ -412,9 +412,11 @@ struct AVS_Linkage {
   // V9: VideoFrame helper
   bool              (VideoFrame::* IsPropertyWritable)() const;
 
+  void (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
+
   /**********************************************************************/
   // Reserve pointer space for Avisynth+
-  void          (VideoInfo::* reserved2[64 - 24])();
+  void          (VideoInfo::* reserved2[64 - 25])();
   /**********************************************************************/
 
   // AviSynth Neo additions
@@ -892,9 +894,10 @@ class VideoFrameBuffer {
 protected:
   VideoFrameBuffer(int size, int margin, Device* device);
   VideoFrameBuffer();
-  ~VideoFrameBuffer();
 
 public:
+  ~VideoFrameBuffer() AVS_BakedCode(AVS_LinkCall_Void(VideoFrameBuffer_DESTRUCTOR)())
+
   const BYTE* GetReadPtr() const AVS_BakedCode( return AVS_LinkCall(VFBGetReadPtr)() )
   BYTE* GetWritePtr() AVS_BakedCode( return AVS_LinkCall(VFBGetWritePtr)() )
   int GetDataSize() const AVS_BakedCode( return AVS_LinkCall(GetDataSize)() )
@@ -905,6 +908,10 @@ public:
 private:
     VideoFrameBuffer& operator=(const VideoFrameBuffer&);
 
+#ifdef BUILDING_AVSCORE
+public:
+    void DESTRUCTOR();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
+#endif
 }; // end class VideoFrameBuffer
 
 
