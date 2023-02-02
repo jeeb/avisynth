@@ -846,19 +846,6 @@ PopContext
 ?
 
 
-.. _cplusplus_popcontextglobal:
-
-PopContextGlobal
-^^^^^^^^^^^^^^^^
-
-::
-
-    virtual void __stdcall PopContextGlobal() = 0;
-
-
-?
-
-
 .. _cplusplus_newvideoframe:
 
 NewVideoFrame
