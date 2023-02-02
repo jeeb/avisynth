@@ -7,6 +7,7 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230202 3.7.3 WIP
 ------------------
+- Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
 - Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
 - "Text": Almost fully rewritten. 
   (#310) Support any width of bdf fonts (but still of fixed width)
