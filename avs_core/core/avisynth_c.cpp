@@ -1132,11 +1132,11 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const 
 // with frame properties, and alignment
 // note: in general there is no need for alignment specificationm use avs_new_video_frame_p
 extern "C"
-AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame * propSrc, int align)
+AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, const AVS_VideoFrame * prop_src, int align)
 {
   p->error = 0;
   try {
-    PVideoFrame f0 = p->env->NewVideoFrameP(*(const VideoInfo*)vi, (PVideoFrame*)&propSrc, align);
+    PVideoFrame f0 = p->env->NewVideoFrameP(*(const VideoInfo*)vi, (const PVideoFrame*)&prop_src, align);
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
     return f;
@@ -1149,11 +1149,11 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_p_a(AVS_ScriptEnvironment * p, cons
 
 // with frame properties, no extra alignment requirement
 extern "C"
-AVS_VideoFrame * AVSC_CC avs_new_video_frame_p(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, AVS_VideoFrame * propSrc)
+AVS_VideoFrame * AVSC_CC avs_new_video_frame_p(AVS_ScriptEnvironment * p, const AVS_VideoInfo * vi, const AVS_VideoFrame * prop_src)
 {
   p->error = 0;
   try {
-    PVideoFrame f0 = p->env->NewVideoFrameP(*(const VideoInfo*)vi, (PVideoFrame*)&propSrc, AVS_FRAME_ALIGN);
+    PVideoFrame f0 = p->env->NewVideoFrameP(*(const VideoInfo*)vi, (const PVideoFrame*)&prop_src, AVS_FRAME_ALIGN);
     AVS_VideoFrame* f;
     new((PVideoFrame*)&f) PVideoFrame(f0);
     return f;

@@ -1083,11 +1083,11 @@ AVSC_API(void, avs_clear_map)(AVS_ScriptEnvironment* p, AVS_Map* map);
 
 // with frame property source
 AVSC_API(AVS_VideoFrame*, avs_new_video_frame_p)(AVS_ScriptEnvironment*,
-  const AVS_VideoInfo* vi, AVS_VideoFrame* propSrc);
+  const AVS_VideoInfo* vi, const AVS_VideoFrame* prop_src);
 
 // with frame property source
 AVSC_API(AVS_VideoFrame*, avs_new_video_frame_p_a)(AVS_ScriptEnvironment*,
-  const AVS_VideoInfo* vi, AVS_VideoFrame* propSrc, int align);
+  const AVS_VideoInfo* vi, const AVS_VideoFrame* prop_src, int align);
 
 // Generic query to ask for various system properties, see AVS_AEP_xxx enums
 AVSC_API(size_t, avs_get_env_property)(AVS_ScriptEnvironment*, int avs_aep_prop);

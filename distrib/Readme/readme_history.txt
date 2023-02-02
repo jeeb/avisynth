@@ -5,8 +5,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230201 3.7.3 WIP
+20230202 3.7.3 WIP
 ------------------
+- Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
 - "Text": Almost fully rewritten. 
   (#310) Support any width of bdf fonts (but still of fixed width)
   Render in YUY2 is as nice as in YV16

@@ -225,7 +225,7 @@ public:
   virtual Device* __stdcall GetCurrentDevice() const = 0;
   // replacement of NewVideoFrame
   virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device) = 0;
-  virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, PVideoFrame *propSrc) = 0;
+  virtual PVideoFrame __stdcall NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, const PVideoFrame *prop_src) = 0;
   virtual PVideoFrame __stdcall GetOnDeviceFrame(const PVideoFrame& src, Device* device) = 0;
 
   using INeoEnv::SetMemoryMax;
