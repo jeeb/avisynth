@@ -149,6 +149,7 @@ enum {
 };
 
 enum {
+  DEFAULT_PLANE = 0,
   PLANAR_Y = 1 << 0,
   PLANAR_U = 1 << 1,
   PLANAR_V = 1 << 2,
@@ -783,7 +784,7 @@ struct VideoInfo {
   bool IsVPlaneFirst() const AVS_BakedCode(return AVS_LinkCall(IsVPlaneFirst)())  // Don't use this
   // Will not work on planar images, but will return only luma planes
   int BytesFromPixels(int pixels) const AVS_BakedCode(return AVS_LinkCall(BytesFromPixels)(pixels))
-  int RowSize(int plane = 0) const AVS_BakedCode(return AVS_LinkCall(RowSize)(plane))
+  int RowSize(int plane = DEFAULT_PLANE) const AVS_BakedCode(return AVS_LinkCall(RowSize)(plane))
   int BMPSize() const AVS_BakedCode(return AVS_LinkCall(BMPSize)())
 
   int64_t AudioSamplesFromFrames(int frames) const AVS_BakedCode(return AVS_LinkCall(AudioSamplesFromFrames)(frames))
@@ -980,13 +981,13 @@ class VideoFrame {
   void* operator new(size_t size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
 public:
-  int GetPitch(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetPitch)(plane) )
-  int GetRowSize(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetRowSize)(plane) )
-  int GetHeight(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetHeight)(plane) )
+  int GetPitch(int plane = DEFAULT_PLANE) const AVS_BakedCode( return AVS_LinkCall(GetPitch)(plane) )
+  int GetRowSize(int plane = DEFAULT_PLANE) const AVS_BakedCode( return AVS_LinkCall(GetRowSize)(plane) )
+  int GetHeight(int plane = DEFAULT_PLANE) const AVS_BakedCode( return AVS_LinkCall(GetHeight)(plane) )
 
   // generally you shouldn't use these three
   VideoFrameBuffer* GetFrameBuffer() const AVS_BakedCode( return AVS_LinkCall(GetFrameBuffer)() )
-  int GetOffset(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetOffset)(plane) )
+  int GetOffset(int plane = DEFAULT_PLANE) const AVS_BakedCode( return AVS_LinkCall(GetOffset)(plane) )
 
   // in plugins use env->SubFrame() -- because implementation code is only available inside avisynth.dll. Doh!
   VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const;
@@ -994,9 +995,9 @@ public:
   // for Alpha
   VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int pitchUV, int rel_offsetA) const;
 
-  const BYTE* GetReadPtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetReadPtr)(plane) )
+  const BYTE* GetReadPtr(int plane = DEFAULT_PLANE) const AVS_BakedCode( return AVS_LinkCall(VFGetReadPtr)(plane) )
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
-  BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
+  BYTE* GetWritePtr(int plane = DEFAULT_PLANE) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
   AVSMap& getProperties() AVS_BakedCode(return AVS_LinkCallOptDefault(getProperties, (AVSMap&)*(AVSMap*)0))
   const AVSMap& getConstProperties() AVS_BakedCode(return AVS_LinkCallOptDefault(getConstProperties, (const AVSMap&)*(const AVSMap*)0))
@@ -1406,17 +1407,17 @@ public:
 
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
   virtual bool __stdcall FunctionExists(const char* name) = 0;
-  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0) = 0;
+  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
 
   virtual AVSValue __stdcall GetVar(const char* name) = 0;
   virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;
   virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) = 0;
 
-  virtual void __stdcall PushContext(int level=0) = 0;
+  virtual void __stdcall PushContext(int level = 0) = 0;
   virtual void __stdcall PopContext() = 0;
 
   // note v8: deprecated in most cases, use NewVideoFrameP is possible
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align=FRAME_ALIGN) = 0;
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) = 0;
 
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
 

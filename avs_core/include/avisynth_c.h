@@ -102,6 +102,7 @@ enum {
 };
 
 enum {
+  AVS_DEFAULT_PLANE = 0,
   AVS_PLANAR_Y = 1 << 0,
   AVS_PLANAR_U = 1 << 1,
   AVS_PLANAR_V = 1 << 2,
