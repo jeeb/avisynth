@@ -90,7 +90,7 @@
 //         and use it:
 //           if (has_at_least_v8) dst = env->NewVideoFrameP(vi, &src); else dst = env->NewVideoFrame(vi);
 
-enum {
+enum AvsVersion {
   AVISYNTH_CLASSIC_INTERFACE_VERSION_25 = 3,
   AVISYNTH_CLASSIC_INTERFACE_VERSION_26BETA = 5,
   AVISYNTH_CLASSIC_INTERFACE_VERSION = 6,
@@ -140,7 +140,7 @@ enum {
 // information that does not depend on the frame number).  The GetVideoInfo
 // method in IClip returns this struct.
 
-enum {
+enum AvsSampleType {
   SAMPLE_INT8  = 1 << 0,
   SAMPLE_INT16 = 1 << 1,
   SAMPLE_INT24 = 1 << 2,  // Int24 is a very stupid thing to code, but it's supported by some hardware.
@@ -148,7 +148,7 @@ enum {
   SAMPLE_FLOAT = 1 << 4
 };
 
-enum {
+enum AvsPlane {
   DEFAULT_PLANE = 0,
   PLANAR_Y = 1 << 0,
   PLANAR_U = 1 << 1,
@@ -580,7 +580,7 @@ struct VideoInfo {
       P  31   Planar          0          1    0      1        1        1
     * Planar RGB plane order: G,B,R(,A)
   */
-  enum {
+  enum AvsColorFormat {
     CS_YUVA        = 1 << 27,
     CS_BGR         = 1 << 28,
     CS_YUV         = 1 << 29,
@@ -740,15 +740,14 @@ struct VideoInfo {
 
   int image_type;
 
-  // Image type bit flags
-  enum {
+  enum AvsImageTypeFlags {
     IT_BFF        = 1 << 0,
     IT_TFF        = 1 << 1,
     IT_FIELDBASED = 1 << 2
   };
 
   // Chroma placement bits 20 -> 23  ::FIXME:: Really want a Class to support this
-  enum {
+  enum AvsChromaPlacement {
     CS_UNKNOWN_CHROMA_PLACEMENT = 0 << 20,
     CS_MPEG1_CHROMA_PLACEMENT   = 1 << 20,
     CS_MPEG2_CHROMA_PLACEMENT   = 2 << 20,
@@ -1376,7 +1375,7 @@ enum AvsEnvProperty {
   AEP_GETFRAME_RECURSIVE = 922,
 };
 
-// IScriptEnvironment Allocate
+// IScriptEnvironment::Allocate()
 enum AvsAllocType {
   AVS_NORMAL_ALLOC = 1,
   AVS_POOLED_ALLOC = 2
