@@ -312,10 +312,10 @@ const BYTE * AVSC_CC avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane)
 {
   switch (plane) {
   case AVS_PLANAR_U: case AVS_PLANAR_B: return p->vfb->data + p->offsetU; // G is first. Then B,R order like U,V
-  case AVS_PLANAR_V: case PLANAR_R:     return p->vfb->data + p->offsetV;
-  case PLANAR_A: return p->vfb->data + p->offsetA;
+  case AVS_PLANAR_V: case AVS_PLANAR_R: return p->vfb->data + p->offsetV;
+  case AVS_PLANAR_A: return p->vfb->data + p->offsetA;
   default:           return p->vfb->data + p->offset;
-  } // PLANAR Y, PLANAR_G
+  } // AVS_PLANAR Y, AVS_PLANAR_G
 }
 
 extern "C"
