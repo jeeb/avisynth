@@ -912,6 +912,8 @@ void AVSValue::Assign2(const AVSValue* src, bool init, bool c_arrays) {
     ((IFunction *)prev_pointer_to_release)->Release();
 }
 
+AvsValueType AVSValue::GetType() const { return (AvsValueType)type; }
+
 // end class AVSValue
 
 /**********************************************************************/
@@ -1178,7 +1180,8 @@ static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
 
   &VideoFrameBuffer::DESTRUCTOR,            //   void (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
 
-  NULL,                                     //   reserved for AviSynth+
+  &AVSValue::GetType,                       //   AvsValueType (AVSValue::*AVSValue_GetType)() const;
+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+

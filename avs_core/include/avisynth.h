@@ -184,6 +184,19 @@ enum AvsDeviceType {
   DEV_TYPE_ANY = 0xFFFF
 };
 
+enum AvsValueType {
+  VALUE_TYPE_UNDEFINED = 'v',
+  VALUE_TYPE_BOOL = 'b',
+  VALUE_TYPE_INT = 'i',
+  VALUE_TYPE_LONG = 'l',
+  VALUE_TYPE_FLOAT = 'f',
+  VALUE_TYPE_DOUBLE = 'd',
+  VALUE_TYPE_STRING = 's',
+  VALUE_TYPE_CLIP = 'c',
+  VALUE_TYPE_FUNCTION = 'n',
+  VALUE_TYPE_ARRAY = 'a'
+};
+
 /* Forward references */
 #if defined(MSVC)
     #define SINGLE_INHERITANCE __single_inheritance
@@ -413,13 +426,15 @@ struct AVS_Linkage {
   // end class PDevice
 
   // V9: VideoFrame helper
-  bool              (VideoFrame::* IsPropertyWritable)() const;
+  bool          (VideoFrame::*IsPropertyWritable)() const;
 
-  void (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
+  void          (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
+
+  AvsValueType  (AVSValue::*AVSValue_GetType)() const;
 
   /**********************************************************************/
   // Reserve pointer space for Avisynth+
-  void          (VideoInfo::* reserved2[64 - 25])();
+  void          (VideoInfo::* reserved2[64 - 26])();
   /**********************************************************************/
 
   // AviSynth Neo additions
@@ -1215,7 +1230,7 @@ public:
 //  bool IsLong() const;
   bool IsFloat() const AVS_BakedCode( return AVS_LinkCall(IsFloat)() )
   bool IsString() const AVS_BakedCode( return AVS_LinkCall(IsString)() )
-  bool IsArray() const AVS_BakedCode(return AVS_LinkCall(IsArray)())
+  bool IsArray() const AVS_BakedCode( return AVS_LinkCall(IsArray)() )
   bool IsFunction() const AVS_BakedCode( return AVS_LinkCall(IsFunction)() )
 
   PClip AsClip() const AVS_BakedCode( return AVS_LinkCall(AsClip)() )
@@ -1258,6 +1273,10 @@ private:
   };
 
   void Assign(const AVSValue* src, bool init);
+
+public:
+  AvsValueType GetType() const AVS_BakedCode( return AVS_LinkCallOptDefault(AVSValue_GetType, VALUE_TYPE_UNDEFINED) )
+
 #ifdef BUILDING_AVSCORE
 public:
   void            CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
