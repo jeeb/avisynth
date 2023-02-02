@@ -828,6 +828,33 @@ PushContext
 
     virtual void __stdcall PushContext(int level=0) = 0;
 
+Usage:
+
+PushContext and PopContext are used to implement local script function
+name space contexts. A plugin could use these to create a new local name 
+space before Invoke'ing or Eval'ing script expressions in order to avoid 
+clashes with similarly named variables in the calling script.
+
+PushContext() and PopContext() should always be used in matched pairs, and 
+the code region of interest be try/catch protected with a PopContext() in 
+the catch case.
+
+Example from ``ScriptFunction::Execute``:
+::
+
+    env->PushContext();
+    for (int i=0; i<args.ArraySize(); ++i)
+      env->SetVar(self->param_names[i], // Force float args that are actually int to be float
+        (self->param_floats[i] && args[i].IsInt()) ? float(args[i].AsInt()) : args[i]);
+    AVSValue result;
+    try {
+      result = self->body->Evaluate(env);
+    }
+    catch (...) {
+      env->PopContext();
+      throw;
+    }
+    env->PopContext();
 
 | // TODO - see (also similar functions)
 | http://forum.doom9.org/showthread.php?p=1595750#post1595750
@@ -842,21 +869,9 @@ PopContext
 
     virtual void __stdcall PopContext() = 0;
 
+Usage:
 
-?
-
-
-.. _cplusplus_popcontextglobal:
-
-PopContextGlobal
-^^^^^^^^^^^^^^^^
-
-::
-
-    virtual void __stdcall PopContextGlobal() = 0;
-
-
-?
+See PopContext
 
 
 .. _cplusplus_newvideoframe:
