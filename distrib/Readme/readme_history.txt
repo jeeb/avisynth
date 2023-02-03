@@ -16,8 +16,8 @@ The "rst" version of the documentation just lists changes in brief.
   Halo is not limited to original character matrix boundaries
   Halo is not character based, but rendered on the displayed string as a whole.
   Some speed enhancements, mainly for subsampled formats and outlined (with halo) styles
-- Show exception message as well if a 2.6-style plugin throws Avisynth exception in its AvisynthPluginInit3
-  instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
+- Fix (#315): Show exception message as well if a v2.6-style plugin throws AvisynthError in its
+  AvisynthPluginInit3() instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
 - "Text": draw rightmost on-screen character even if only partially visible (was: not drawn at all)
 - "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
 - "Text" (#310): support 17-32 pixel wide external BDF fonts (issue #310)
