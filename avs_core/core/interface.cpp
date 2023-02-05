@@ -527,6 +527,9 @@ int VideoFrame::GetHeight(int plane) const {
   return height;
 }
 
+int VideoFrame::GetPixelType() const { return pixel_type; }
+void VideoFrame::AmendPixelType(int new_pixel_type) { pixel_type = new_pixel_type; }
+
 // Generally you should not be using these two
 VideoFrameBuffer* VideoFrame::GetFrameBuffer() const { return vfb; }
 int VideoFrame::GetOffset(int plane) const {
@@ -1178,12 +1181,12 @@ static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
 
   &VideoFrame::IsPropertyWritable,          //   V9
 
-  &VideoFrameBuffer::DESTRUCTOR,            //   void (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
-
+  // V10
+  &VideoFrame::GetPixelType,                //   int          (VideoFrame::*VideoFrame_GetPixelType)() const;
+  &VideoFrame::AmendPixelType,              //   void         (VideoFrame::*VideoFrame_AmendPixelType)();
+  &VideoFrameBuffer::DESTRUCTOR,            //   void         (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
   &AVSValue::GetType,                       //   AvsValueType (AVSValue::*AVSValue_GetType)() const;
 
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+

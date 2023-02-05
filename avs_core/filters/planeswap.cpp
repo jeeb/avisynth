@@ -877,17 +877,23 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
       //  3010       2010        1010       10      new offsets inside
     }
 
+    PVideoFrame dst;
     if (vi.NumComponents() == 4) {
-      return env->SubframePlanarA(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
+      dst = env->SubframePlanarA(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
         RelOffsets[1], RelOffsets[2], NewPitches[1], RelOffsets[3]);
     }
     else if (vi.NumComponents() == 3) {
-      return env->SubframePlanar(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
+      dst = env->SubframePlanar(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight(),
         RelOffsets[1], RelOffsets[2], NewPitches[1]);
     }
     else {
-      return env->Subframe(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight());
+      dst = env->Subframe(src, RelOffsets[0], NewPitches[0], NewRowSizes[0], src->GetHeight());
     }
+
+    // RGB(A)<->YUV(A) color space conversion can't be caught by Subframe...()
+    dst->AmendPixelType(vi.pixel_type);
+
+    return dst;
   }
 
   // check if first clip could be used as the target clip
@@ -900,6 +906,8 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
     // luma (Y) comes w/o BitBlt. Only U and V (and optionally A) is copied.
     if (src->IsWritable()) // we are the only one
     {
+      src->AmendPixelType(vi.pixel_type);
+
       PVideoFrame src_other = nullptr;
       bool writeptr_obtained = false;
       for (int i = 1; i < planecount; i++) {
@@ -946,6 +954,8 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
     {
       if (src1->IsWritable()) // we are the only one
       {
+        src1->AmendPixelType(vi.pixel_type);
+
         src1->GetWritePtr(PLANAR_Y); //Must be requested BUT only if we actually do something
         int target_plane = target_planes[0];
         int source_plane = source_planes[0];

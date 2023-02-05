@@ -303,7 +303,10 @@ public:
 
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override
     {
-        return child->GetFrame(n, env);
+        PVideoFrame frame = child->GetFrame(n, env);
+        env->MakeWritable(&frame);
+        frame->AmendPixelType(vi.pixel_type);
+        return frame;
     }
 
     int __stdcall SetCacheHints(int cachehints, int frame_range) override
@@ -341,7 +344,10 @@ public:
 
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override
     {
-        return child->GetFrame(n, env);
+        PVideoFrame frame = child->GetFrame(n, env);
+        env->MakeWritable(&frame);
+        frame->AmendPixelType(vi.pixel_type);
+        return frame;
     }
 
     int __stdcall SetCacheHints(int cachehints, int frame_range) override

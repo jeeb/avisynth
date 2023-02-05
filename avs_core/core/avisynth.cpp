@@ -391,28 +391,34 @@ void* VideoFrame::operator new(size_t size) {
   return ::operator new(size);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height)
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _pixel_type)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-  offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
-  , offsetA(0), pitchA(0), row_sizeA(0), properties(avsmap)
+  offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0),  // PitchUV=0 so this doesn't take up additional space
+  offsetA(0), pitchA(0), row_sizeA(0),
+  pixel_type(_pixel_type),
+  properties(avsmap)
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
-  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
+  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _pixel_type)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-  , offsetA(0), pitchA(0), row_sizeA(0), properties(avsmap)
+  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV),
+  offsetA(0), pitchA(0), row_sizeA(0),
+  pixel_type(_pixel_type),
+  properties(avsmap)
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height,
-  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA)
+  int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA, int _pixel_type)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
-  , offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size), properties(avsmap)
+  offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV),
+  offsetA(_offsetA), pitchA(_pitch), row_sizeA(_row_size),
+  pixel_type(_pixel_type),
+  properties(avsmap)
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -421,7 +427,15 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int 
 // P.F. ?? so far it works automatically
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
-  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height);
+  // Change planar color formats to Y-only, which is quasi-interleaved
+  int new_pixel_type;
+  if (pixel_type & VideoInfo::CS_PLANAR)
+    new_pixel_type = VideoInfo::CS_GENERIC_Y | (pixel_type & VideoInfo::CS_Sample_Bits_Mask);
+  else
+    new_pixel_type = pixel_type;
+
+  return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
+    new_pixel_type);
 }
 
 
@@ -431,8 +445,18 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
     const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
     const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
+    // Remove alpha from color format
+    int new_pixel_type;
+    if (pixel_type & VideoInfo::CS_YUVA)
+      new_pixel_type = (pixel_type & ~VideoInfo::CS_YUVA) | VideoInfo::CS_YUV;
+    else if (pixel_type & VideoInfo::CS_RGBA_TYPE)
+      new_pixel_type = (pixel_type & ~VideoInfo::CS_RGBA_TYPE) | VideoInfo::CS_RGB_TYPE;
+    else
+      new_pixel_type = pixel_type;
+
     return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
-      rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
+      rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV,
+      new_pixel_type);
 }
 
 // alpha support
@@ -443,7 +467,8 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
   const int new_heightUV = !height ? 0 : MulDiv(new_height, heightUV, height);
 
   return new VideoFrame(vfb, new AVSMap(), offset + rel_offset, new_pitch, new_row_size, new_height,
-    rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA);
+    rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV, rel_offsetA + offsetA,
+    pixel_type);
 }
 
 VideoFrameBuffer::VideoFrameBuffer() : data(NULL), data_size(0), sequence_number(0), refcount(1) {}
@@ -698,16 +723,16 @@ public:
   void AddFunction25(const char* name, const char* params, INeoEnv::ApplyFunc apply, void* user_data = 0);
   bool FunctionExists(const char* name);
   PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device);
-  PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, Device* device);
+  PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, int pixel_type, Device* device);
   PVideoFrame NewVideoFrame(const VideoInfo& vi, const PDevice& device);
   // variant #3, with frame property source
   PVideoFrame NewVideoFrameOnDevice(const VideoInfo& vi, int align, Device* device, const PVideoFrame *prop_src);
   // variant #1, with frame property source
-  PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, Device* device, const PVideoFrame* prop_src);
+  PVideoFrame NewVideoFrameOnDevice(int row_size, int height, int align, int pixel_type, Device* device, const PVideoFrame* prop_src);
   // variant #2, with frame property source
   PVideoFrame NewVideoFrame(const VideoInfo& vi, const PDevice& device, const PVideoFrame* prop_src);
 
-  PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, Device* device);
+  PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, int pixel_type, Device* device);
 
   bool MakeWritable(PVideoFrame* pvf);
   void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
@@ -724,7 +749,7 @@ public:
   const AVS_Linkage* GetAVSLinkage();
 
   // alpha support
-  PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha, Device* device);
+  PVideoFrame NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha, int pixel_type, Device* device);
   PVideoFrame SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
   PVideoFrame SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA);
 
@@ -3046,7 +3071,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
   VideoFrame *newFrame = NULL;
   try
   {
-    newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0);
+    newFrame = new VideoFrame(vfb, new AVSMap(), 0, 0, 0, 0, VideoInfo::CS_UNKNOWN);
   }
   catch(const std::bad_alloc&)
   {
@@ -3516,13 +3541,13 @@ void ScriptEnvironment::ShrinkCache(Device *device)
 }
 
 // no alpha
-PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, Device* device)
+PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, int pixel_type, Device* device)
 {
-  return NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, align, U_first, false, device); // no alpha
+  return NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, align, U_first, false, pixel_type, device); // no alpha
 }
 
 // with alpha support
-PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha, Device* device)
+PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first, bool alpha, int pixel_type, Device* device)
 {
   if (align < 0)
   {
@@ -3575,11 +3600,12 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   res->row_sizeA = alpha ? row_size : 0;
   res->pitchA = alpha ? pitchY : 0;
 
+  res->pixel_type = pixel_type;
   return PVideoFrame(res);
 }
 
 // Variant #1.no frame property source
-PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, int align, Device* device)
+PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, int align, int pixel_type, Device* device)
 {
   if (align < 0)
   {
@@ -3610,13 +3636,14 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, i
   res->row_sizeA = 0;
   res->pitchA = 0;
 
+  res->pixel_type = pixel_type;
   return PVideoFrame(res);
 }
 
 // Variant #1. with frame property source
-PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, int align, Device* device, const PVideoFrame* prop_src)
+PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(int row_size, int height, int align, int pixel_type, Device* device, const PVideoFrame* prop_src)
 {
-  PVideoFrame result = NewVideoFrameOnDevice(row_size, height, align, device);
+  PVideoFrame result = NewVideoFrameOnDevice(row_size, height, align, pixel_type, device);
 
   if (prop_src)
     copyFrameProps(*prop_src, result);
@@ -3734,17 +3761,17 @@ PVideoFrame ScriptEnvironment::NewVideoFrameOnDevice(const VideoInfo & vi, int a
 
         const int heightUV = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      retval = NewPlanarVideoFrame(vi.RowSize(PLANAR_Y), vi.height, vi.RowSize(PLANAR_U), heightUV, align, !vi.IsVPlaneFirst(), vi.IsYUVA(), device);
+      retval = NewPlanarVideoFrame(vi.RowSize(PLANAR_Y), vi.height, vi.RowSize(PLANAR_U), heightUV, align, !vi.IsVPlaneFirst(), vi.IsYUVA(), vi.pixel_type, device);
     } else {
       // plane order: G,B,R
-      retval = NewPlanarVideoFrame(vi.RowSize(PLANAR_G), vi.height, vi.RowSize(PLANAR_G), vi.height, align, !vi.IsVPlaneFirst(), vi.IsPlanarRGBA(), device);
+      retval = NewPlanarVideoFrame(vi.RowSize(PLANAR_G), vi.height, vi.RowSize(PLANAR_G), vi.height, align, !vi.IsVPlaneFirst(), vi.IsPlanarRGBA(), vi.pixel_type, device);
     }
   }
   else {
     if ((vi.width&1)&&(vi.IsYUY2()))
       ThrowError("Filter Error: Attempted to request an YUY2 frame that wasn't mod2 in width.");
 
-    retval= NewVideoFrameOnDevice(vi.RowSize(), vi.height, align, device);
+    retval= NewVideoFrameOnDevice(vi.RowSize(), vi.height, align, vi.pixel_type, device);
   }
 
   return retval;
@@ -3792,10 +3819,10 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
     if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we assume that it is Planar if it has a U plane.
       const int row_sizeUV = vf->GetRowSize(PLANAR_U); // for Planar RGB this returns row_sizeUV which is the same for all planes
       const int heightUV = vf->GetHeight(PLANAR_U);
-      dst = NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, frame_align, false, alpha, device);  // Always V first on internal images
+      dst = NewPlanarVideoFrame(row_size, height, row_sizeUV, heightUV, frame_align, false, alpha, vf->pixel_type, device);  // Always V first on internal images
     }
     else {
-      dst = NewVideoFrameOnDevice(row_size, height, frame_align, device);
+      dst = NewVideoFrameOnDevice(row_size, height, frame_align, vf->pixel_type, device);
     }
 
     BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
@@ -5174,6 +5201,7 @@ PVideoFrame ScriptEnvironment::GetOnDeviceFrame(const PVideoFrame& src, Device* 
   res->offsetA = src->pitchA ? (src->offsetA + diff) : 0;
   res->pitchA = src->pitchA;
   res->row_sizeA = src->row_sizeA;
+  res->pixel_type = src->pixel_type;
   *res->properties = *src->properties;
   return PVideoFrame(res);
 }

@@ -7,6 +7,9 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230205 3.7.3 WIP
 ------------------
+- Feature (#317): The color format of a VideoFrame can now be retrieved with its GetPixelType()
+  function. Before, there was no reliable way of knowing it on a frame from propGetFrame().
+  (Also added AmendPixelType() for rare cases.)
 - Feature (#314): Added AVSValue::GetType()
 - "Text" new parameter: "placement" for chroma location hint
   - Used in subsampled YUV formats, otherwise ignored.
