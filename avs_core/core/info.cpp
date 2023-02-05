@@ -58,7 +58,7 @@
 #include <cassert>
 #include "fonts/fixedfonts.h"
 #include "strings.h"
-#include "..\convert\convert_helper.h"
+#include "../convert/convert_helper.h"
 
 // helper function for remapping a wchar_t string to font index entry list
 std::vector<int> BitmapFont::remap(const std::wstring& ws)
