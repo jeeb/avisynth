@@ -7,6 +7,7 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230205 3.7.3 WIP
 ------------------
+- Feature (#314): Added AVSValue::GetType()
 - "Text" new parameter: "placement" for chroma location hint
   - Used in subsampled YUV formats, otherwise ignored.
   - Valid values for "placement" are the same as in ChromaInPlacement and 
@@ -21,9 +22,9 @@ The "rst" version of the documentation just lists changes in brief.
   - Only "center" and "left" is implemented. (center is known as jpeg or mpeg1, left is known as mpeg2)
     If "center" is given directly or read from frame property, it will be used.
     Otherwise "Text" renders chroma as "left" (mpeg2)
-- Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
-- Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
-- Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
+- Fix (#314): Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
+- Fix (#314): Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
+- Fix (#314): Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
 - "Text": Almost fully rewritten. 
   (#310) Support any width of bdf fonts (but still of fixed width)
   Render in YUY2 is as nice as in YV16
