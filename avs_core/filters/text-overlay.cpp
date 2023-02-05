@@ -44,6 +44,7 @@
 #include "intel/text-overlay_sse.h"
 #endif
 #include "../convert/convert_matrix.h"  // for RGB2YUV_Rec601
+#include "../convert/convert_helper.h"  // chroma location
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -105,7 +106,7 @@ extern const AVSFunction Text_filters[] = {
 
   { "Text",BUILTIN_FUNC_PREFIX,
   "cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
-  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b[bold]b",
+  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b[bold]b[placement]s",
     SimpleText::Create },
 
   { 0 }
@@ -1091,6 +1092,7 @@ ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x
   // internal font
   const bool bold = false;
   current_font = GetBitmapFont(size, "Terminus", bold, false);
+  chromaplacement = ChromaLocation_e::AVS_CHROMA_LEFT;
   if (current_font == nullptr)
   {
     // size
@@ -1130,7 +1132,7 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     TextOut(hdc, x+16, y+16, text, (int)strlen(text));
 #else
     std::wstring ws = charToWstring(text, true);
-    SimpleTextOutW(current_font.get(), vi, frame, x, y, ws, false, textcolor, halocolor, true, 1);
+    SimpleTextOutW(current_font.get(), vi, frame, x, y, ws, false, textcolor, halocolor, true, 1, chromaplacement);
 #endif
   } else if (scroll) {
     int n1 = vi.IsFieldBased() ? (n/2) : n;
@@ -1142,9 +1144,9 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     int y2 = size + size * (n1 % (vi.height / size));
     std::wstring ws = charToWstring(text, true);
     if(child->GetParity(n))
-      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
+      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1, chromaplacement); // left
     else
-      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
+      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3, chromaplacement); // right
 #endif
 
   }
@@ -1159,9 +1161,9 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     // size-1 because of bottom alignment
     for (int y2 = size - 1; y2 < vi.height; y2 += size) {
       if (child->GetParity(n))
-        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // bottom-left
+        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1, chromaplacement); // bottom-left
       else
-        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // bottom-right
+        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3,chromaplacement); // bottom-right
     }
 #endif
   }
@@ -1232,6 +1234,7 @@ ShowCRC32::ShowCRC32(PClip _child, bool _scroll, int _offset, int _x, int _y, co
   // internal font
   const bool bold = false;
   current_font = GetBitmapFont(size, "Terminus", bold, false);
+  chromaplacement = ChromaLocation_e::AVS_CHROMA_LEFT;
   if (current_font == nullptr)
   {
     // size
@@ -1303,7 +1306,7 @@ PVideoFrame ShowCRC32::GetFrame(int n, IScriptEnvironment* env) {
     TextOut(hdc, x + 16, y + 16, text, (int)strlen(text));
 #else
     std::wstring ws = charToWstring(text, true);
-    SimpleTextOutW(current_font.get(), vi, frame, x, y, ws, false, textcolor, halocolor, true, 1);
+    SimpleTextOutW(current_font.get(), vi, frame, x, y, ws, false, textcolor, halocolor, true, 1, chromaplacement);
 #endif
   }
   else if (scroll) {
@@ -1316,9 +1319,9 @@ PVideoFrame ShowCRC32::GetFrame(int n, IScriptEnvironment* env) {
     int y2 = size + size * (n1 % (vi.height / size));
     std::wstring ws = charToWstring(text, true);
     if (child->GetParity(n))
-      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
+      SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1, chromaplacement); // left
     else
-      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
+      SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3, chromaplacement); // right
 #endif
 
   }
@@ -1332,9 +1335,9 @@ PVideoFrame ShowCRC32::GetFrame(int n, IScriptEnvironment* env) {
     std::wstring ws = charToWstring(text, true);
     for (int y2 = size; y2 < vi.height; y2 += size) {
       if (child->GetParity(n))
-        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1); // left
+        SimpleTextOutW(current_font.get(), vi, frame, 4, y2, ws, false, textcolor, halocolor, true, 1, chromaplacement); // left
       else
-        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3); // right
+        SimpleTextOutW(current_font.get(), vi, frame, vi.width - 1, y2, ws, false, textcolor, halocolor, true, 3, chromaplacement); // right
     }
 #endif
   }
@@ -1550,7 +1553,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 #else
   const bool utf8 = true;
   auto ws = charToWstring(text, utf8);
-  SimpleTextOutW(current_font.get(), vi, frame, x + 2, y + 2, ws, true, textcolor, halocolor, false, 5);
+  SimpleTextOutW(current_font.get(), vi, frame, x + 2, y + 2, ws, true, textcolor, halocolor, false, 5, chromaplacement);
 #endif
 
   return frame;
@@ -1932,7 +1935,9 @@ static int CalcFontSizeForInfo(int w, int h, bool autolarge, int upper_limit)
 SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _firstframe,
   int _lastframe, const char _fontname[], int _size, int _textcolor,
   int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
-  int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, const bool _bold, IScriptEnvironment* env)
+  int _font_width, int _font_angle, bool _interlaced, const char _font_filename[],
+  const bool _utf8, const bool _bold, const int _chromalocation,
+  IScriptEnvironment* env)
   : GenericVideoFilter(_child),
   x(_x), y(_y),
   firstframe(_firstframe), lastframe(_lastframe), size(_size), lsp(_lsp),
@@ -1945,7 +1950,8 @@ SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _fi
   text(_text),
   // spc(_spc), font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced),
   font_filename(_font_filename), utf8(_utf8),
-  bold(_bold)
+  bold(_bold),
+  chromalocation(_chromalocation)
 {
 
   if (*font_filename) {
@@ -2028,7 +2034,7 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
       halocolor_msb == 0xFF || halocolor_msb == 0xFE, // fadeIt, special halocolor, when MSB byte is FF or FE
       textcolor, halocolor,
       halocolor_msb == 0x00 || halocolor_msb == 0xFE, // use halocolor when MSB byte is 00 or FE
-      align, lsp);
+      align, lsp, chromalocation);
   }
 
   return frame;
@@ -2037,9 +2043,11 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
+  VideoInfo vi = clip->GetVideoInfo();
+
   const char* text = args[1].AsString();
   const int first_frame = args[4].AsInt(0);
-  const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames - 1);
+  const int last_frame = args[5].AsInt(vi.num_frames - 1);
   const char* font = args[6].AsString("Terminus"); // Terminus, info_h are embedded
   const int size = int(args[7].AsFloat(18)); // height 12, 14, 16, 18, 20, 24, 28, 32
   const int text_color = args[8].AsInt(0xFFFF00);
@@ -2058,6 +2066,8 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   const char* font_filename = args[16].AsString("");
   const bool utf8 = args[17].AsBool(false); // linux: n/a
   const bool bold = args.ArraySize() >= 19 ? args[18].AsBool(false) : false; // different from SubTitle, guard array access of extra parameter
+  // "placement" as chroma location
+  const char* placement_name = args.ArraySize() >= 20 ? args[19].AsString(nullptr) : nullptr; // different from SubTitle, guard array access of extra parameter
 
   // parameters marked with n/a are ignored; parameter list is currently the same as SubTitle
 
@@ -2103,8 +2113,25 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   if (!isYdefined && y_center)
     real_y = (clip->GetVideoInfo().height >> 1) /* * 8 */; // no mul 8 like in SubTitle
 
+  // anyway, we accept any chroma location here.
+  // "Text" filter will ignore invalid/not used definitions and use its defaults
+  int ChromaLocation_In = -1; // invalid
+
+  if (vi.IsYV411()) {
+    // placement parameter exists, but not valid for YV411 (default none/-1) + input frame properties
+    auto frame0 = clip->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
+    chromaloc_parse_merge_with_props(vi, placement_name, props, /* ref*/ChromaLocation_In, -1 /*default none chromaloc */, env);
+  }
+  else if (vi.Is420() || vi.Is422() || vi.IsYUY2()) {
+    // placement parameter is valid + input frame properties
+    auto frame0 = clip->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
+    chromaloc_parse_merge_with_props(vi, placement_name, props, /* ref*/ChromaLocation_In, ChromaLocation_e::AVS_CHROMA_LEFT /*default*/, env);
+  }
+
   return new SimpleText(clip, text, real_x, real_y, first_frame, last_frame, font, size, text_color,
-    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, bold, env);
+    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, bold, ChromaLocation_In, env);
 }
 
 
@@ -2128,6 +2155,7 @@ FilterInfo::FilterInfo( PClip _child, const char _fontname[], int _size, int _te
 #else
   // internal font
   const bool bold = true; // bold looks better
+  chromaplacement = ChromaLocation_e::AVS_CHROMA_LEFT;
   current_font = GetBitmapFont(size, "Terminus", bold, false);
   if (current_font == nullptr)
   {
@@ -2451,7 +2479,8 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     int x = 4;
     int y = 2;
 
-    SimpleTextOutW_multi(current_font.get(), vi, frame, x, y, ws, false, text_color, halo_color, true, align, lsp);
+    const int chromaplacement = ChromaLocation_e::AVS_CHROMA_LEFT;
+    SimpleTextOutW_multi(current_font.get(), vi, frame, x, y, ws, false, text_color, halo_color, true, align, lsp, chromaplacement);
 #endif
   return frame;
 }
@@ -2614,6 +2643,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
   const bool bold = false;
   const int size = 16;
   current_font = GetBitmapFont(size, "Terminus", bold, false);
+  chromaplacement = ChromaLocation_e::AVS_CHROMA_LEFT;
   if (current_font == nullptr)
   {
     // size
@@ -2967,7 +2997,8 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 #else
         bool utf8 = true;
         auto ws = charToWstring(text, utf8);
-        SimpleTextOutW_multi(current_font.get(), vi, f1, 2, 1, ws, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/);
+        const int chromaplacement = ChromaLocation_e::AVS_CHROMA_LEFT;
+        SimpleTextOutW_multi(current_font.get(), vi, f1, 2, 1, ws, true, text_color, halo_color, false, 0 /* no align */, 0 /*lsp*/, chromaplacement);
 #endif
     }
 
@@ -3256,7 +3287,8 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   int x = 4;
   int y = 4;
 
-  SimpleTextOutW_multi(current_font.get(), vi, *frame, x, y, ws, false, textcolor, halocolor, true, align, lsp);
+  const int chromaplacement = ChromaLocation_e::AVS_CHROMA_LEFT;
+  SimpleTextOutW_multi(current_font.get(), vi, *frame, x, y, ws, false, textcolor, halocolor, true, align, lsp, chromaplacement);
 
 #endif
 }

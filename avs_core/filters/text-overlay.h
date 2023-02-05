@@ -116,6 +116,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   const bool scroll;
   const int offset;
@@ -150,6 +151,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   const bool scroll;
   const int offset;
@@ -183,6 +185,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   int rate;
   int offset_f;
@@ -236,7 +239,9 @@ class SimpleText : public GenericVideoFilter
 public:
   SimpleText(PClip _child, const char _text[], int _x, int _y, int _firstframe, int _lastframe,
     const char _fontname[], int _size, int _textcolor, int _halocolor, int _align,
-    int _spc, bool _multiline, int _lsp, int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, const bool _bold, IScriptEnvironment* env);
+    int _spc, bool _multiline, int _lsp, int _font_width, int _font_angle, bool _interlaced, const char _font_filename[],
+    const bool _utf8, const bool _bold, const int _chromalocation,
+    IScriptEnvironment* env);
   virtual ~SimpleText(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
@@ -262,6 +267,7 @@ private:
   const char* const font_filename; // .BDF files
   const bool utf8;
   const bool bold;
+  const int chromalocation;
   std::unique_ptr<BitmapFont> current_font;
 };
 
@@ -296,6 +302,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
 };
 
@@ -327,6 +334,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   PClip child2;
   uint32_t mask;

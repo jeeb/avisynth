@@ -978,7 +978,8 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
           if (avsexception26_message.empty())
             Env->ThrowError("'%s' cannot be used as a plugin for AviSynth.", plugin.FilePath.c_str());
           else
-            Env->ThrowError("'%s' plugin loading error: %s", plugin.FilePath.c_str(), avsexception26_message.c_str());
+            // Message could be from plugin author or, e.g., from env->AddFunction()
+            Env->ThrowError("'%s' plugin loading error:\n%s", plugin.FilePath.c_str(), avsexception26_message.c_str());
         else
           return false;
       }

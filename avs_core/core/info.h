@@ -46,6 +46,14 @@
 #include <vector>
 #include <cstring>
 
+enum ChromaLocationMode {
+  CENTER_411,
+  CENTER_420,
+  LEFT_420,
+  CENTER_422,
+  LEFT_422
+};
+
 class PreRendered {
   const bool useHalocolor;
   const int width;
@@ -59,7 +67,8 @@ public:
   int ystart; // vertical visibility: starting row in stringbitmap
   int yend;   // vertical visibility: ending row in stringbitmap
   int stringbitmap_height; // font height plus optinally added top/bottom line
-  const int safety_bits_x; // extra left and right playground for chroma rendering
+  const int safety_bits_x_left; // extra leftside playground for chroma rendering
+  const int safety_bits_x_right; // extra rightside playground for chroma rendering
 
   std::vector<std::vector<uint8_t>> stringbitmap;
   std::vector<std::vector<uint8_t>> stringbitmap_outline;
@@ -73,7 +82,9 @@ public:
     const int align,
     const bool _useHalocolor,
     const int FONT_WIDTH, const int FONT_HEIGHT,
-    const int _safety_bits_x);
+    const int _safety_bits_x_left,
+    const int _safety_bits_x_right
+    );
 
   void make_outline();
 };
@@ -143,8 +154,10 @@ public:
 
 std::unique_ptr<BitmapFont> GetBitmapFont(int size, const char* name, bool bold, bool debugSave);
 
-void SimpleTextOutW(BitmapFont* current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::wstring& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align);
-void SimpleTextOutW_multi(BitmapFont* current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::wstring& text, bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align, int lsp);
+void SimpleTextOutW(BitmapFont* current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::wstring& text,
+  bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align, int chromaplacement);
+void SimpleTextOutW_multi(BitmapFont* current_font, const VideoInfo& vi, PVideoFrame& frame, int real_x, int real_y, std::wstring& text,
+  bool fadeBackground, int textcolor, int halocolor, bool useHaloColor, int align, int lsp, int chromaplacement);
 
 // legacy function w/o outline, originally with ASCII input, background fading
 void DrawStringPlanar(VideoInfo& vi, PVideoFrame& dst, int x, int y, const char* s);

@@ -5,9 +5,23 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230202 3.7.3 WIP
+20230205 3.7.3 WIP
 ------------------
 - Feature (#314): Added AVSValue::GetType()
+- "Text" new parameter: "placement" for chroma location hint
+  - Used in subsampled YUV formats, otherwise ignored.
+  - Valid values for "placement" are the same as in ChromaInPlacement and 
+    ChromaOutPlacement in the Convert functions.
+  - Meaningful values: "center", "left", "auto" at the moment
+  - Default value is 
+    - read from "_ChromaLocation" frame property, otherwise "left"
+    - override or set from "placement" parameter if parameter is other than "auto"
+    - if "auto" + have frame property -> use frame property
+    - if "auto" + no frame property -> use "left"
+    - no frame property and no parameter -> use "left"
+  - Only "center" and "left" is implemented. (center is known as jpeg or mpeg1, left is known as mpeg2)
+    If "center" is given directly or read from frame property, it will be used.
+    Otherwise "Text" renders chroma as "left" (mpeg2)
 - Fix (#314): Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
 - Fix (#314): Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
 - Fix (#314): Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
@@ -17,8 +31,8 @@ The "rst" version of the documentation just lists changes in brief.
   Halo is not limited to original character matrix boundaries
   Halo is not character based, but rendered on the displayed string as a whole.
   Some speed enhancements, mainly for subsampled formats and outlined (with halo) styles
-- Show exception message as well if a 2.6-style plugin throws Avisynth exception in its AvisynthPluginInit3
-  instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
+- Fix (#315): Show exception message as well if a v2.6-style plugin throws AvisynthError in its
+  AvisynthPluginInit3() instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
 - "Text": draw rightmost on-screen character even if only partially visible (was: not drawn at all)
 - "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
 - "Text" (#310): support 17-32 pixel wide external BDF fonts (issue #310)
