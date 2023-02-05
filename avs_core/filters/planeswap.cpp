@@ -328,7 +328,7 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env)
     int dst_pitch = dst->GetPitch();
     int pos = (mode == YUY2UToY8 || mode == UToY) ? 1 : 3; // YUYV U=offset#1 V=offset#3
 
-    if (vi.IsYUY2()) {  // YUY2 To YUY2
+    if (vi.IsYUY2()) {  // YUY2 to YUY2
       int rowsize = dst->GetRowSize();
 #ifdef INTEL_INTRINSICS
       if (env->GetCPUFlags() & CPUF_SSE2) {
@@ -910,27 +910,31 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
 
       PVideoFrame src_other = nullptr;
       bool writeptr_obtained = false;
+
       for (int i = 1; i < planecount; i++) {
         int target_plane = target_planes[i];
         int source_plane = source_planes[i];
+
         if (clips[i]) { // source clips can be less than defined planes
           if (!writeptr_obtained) {
             src->GetWritePtr(PLANAR_Y); //Must be requested BUT only if we actually do something
             writeptr_obtained = true;
           }
+
           if (i == 1)
             src_other = src1; // already requested
           else
             src_other = clips[i]->GetFrame(n, env); // last defined clip is used for the others
         }
+
         if (src_other) {
           env->BitBlt(src->GetWritePtr(target_plane), src->GetPitch(target_plane),
             src_other->GetReadPtr(source_plane), src_other->GetPitch(source_plane), src_other->GetRowSize(source_plane), src_other->GetHeight(source_plane));
-        }
-        else {
+        } else {
           // we are still at the first (master) clip, no need for plane copy
         }
       }
+
       return src;
     }
   }
@@ -957,12 +961,16 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
         src1->AmendPixelType(vi.pixel_type);
 
         src1->GetWritePtr(PLANAR_Y); //Must be requested BUT only if we actually do something
+
         int target_plane = target_planes[0];
         int source_plane = source_planes[0];
+
         // Copy from first clip
         env->BitBlt(src1->GetWritePtr(target_plane), src1->GetPitch(target_plane),
           src->GetReadPtr(source_plane), src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
+
         env->copyFrameProps(src, src1);
+
         return src1;
       }
     }
@@ -973,22 +981,25 @@ PVideoFrame __stdcall CombinePlanes::GetFrame(int n, IScriptEnvironment* env) {
 
   for (int i = 0; i < planecount; i++) {
     if (clips[i]) { // source clips can be less than defined planes
-      if (i > 0) // clip #0 was already requested
-      {
+      if (i > 0) { // clip #0 was already requested
         if (i == 1) // clip #1 was already requested
           src = src1;
         else
           src = clips[i]->GetFrame(n, env); // last defined clip is used for the others
       }
+  
       if (!propCopied) {
         env->copyFrameProps(src, dst);
         propCopied = true;
       }
     }
+
     int target_plane = target_planes[i];
     int source_plane = source_planes[i];
+
     env->BitBlt(dst->GetWritePtr(target_plane), dst->GetPitch(target_plane),
       src->GetReadPtr(source_plane), src->GetPitch(source_plane), src->GetRowSize(source_plane), src->GetHeight(source_plane));
   }
+
   return dst;
 }

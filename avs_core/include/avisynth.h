@@ -444,7 +444,7 @@ struct AVS_Linkage {
   // As of V8 most PDevice, PFunction linkage entries are moved to standard avs+ place.
   /**********************************************************************/
 
-  // this part should be identical with AVS_Linkage entries in interface.cpp
+  // This part should be identical with AVS_Linkage entries in interface.cpp
 };
 
 #if defined(BUILDING_AVSCORE) || defined(AVS_STATIC_LIB)
@@ -519,7 +519,7 @@ struct VideoInfo {
   int width, height;    // width 0 means no video
   unsigned fps_numerator, fps_denominator;
   int num_frames;
-  // This is more extensible than previous versions. More properties can be added seeminglesly.
+  // This is more extensible than previous versions. More properties can be added seamlessly.
 
   // Colorspace properties.
   /*
@@ -919,7 +919,7 @@ public:
 
 // Ensure VideoFrameBuffer cannot be publicly assigned
 private:
-    VideoFrameBuffer& operator=(const VideoFrameBuffer&);
+  VideoFrameBuffer& operator=(const VideoFrameBuffer&);
 
 #ifdef BUILDING_AVSCORE
 public:

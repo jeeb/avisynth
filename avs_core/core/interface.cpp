@@ -973,7 +973,7 @@ PNeoEnv::operator IScriptEnvironment2* () { return static_cast<InternalEnvironme
 
 /**********************************************************************/
 
-static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
+static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
 
   sizeof(AVS_Linkage),                      //   int Size;
 
@@ -1162,11 +1162,11 @@ static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
   &PFunction::DESTRUCTOR,
   // end PFunction
 
-  // Videoframe extras (Neo)
+  // VideoFrame extras (Neo)
   &VideoFrame::CheckMemory,
   &VideoFrame::GetDevice,
 
-    // class PDevice (Neo)
+  // class PDevice (Neo)
   &PDevice::CONSTRUCTOR0,
   &PDevice::CONSTRUCTOR1,
   &PDevice::CONSTRUCTOR2,
@@ -1179,7 +1179,8 @@ static const AVS_Linkage avs_linkage = {   // struct AVS_Linkage {
   &PDevice::GetName,
   // end class PDevice
 
-  &VideoFrame::IsPropertyWritable,          //   V9
+  // V9
+  &VideoFrame::IsPropertyWritable,
 
   // V10
   &VideoFrame::GetPixelType,                //   int          (VideoFrame::*VideoFrame_GetPixelType)() const;

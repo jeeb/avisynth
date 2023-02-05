@@ -1145,9 +1145,9 @@ typedef struct AVS_Library AVS_Library;
 // e.g. "AVSC_DECLARE_FUNC(avs_add_function);"
 // is a shortcut for "avs_add_function_func avs_add_function;"
 
-// Note: AVSC_INLINE functions which call into API,
-// are guarded by #ifndef AVSC_NO_DECLSPEC
-// They should call the appropriate library-> API entry
+// Note: AVSC_INLINE functions, which call into API,
+// are guarded by #ifndef AVSC_NO_DECLSPEC.
+// They should call the appropriate library-> API entry.
 
 struct AVS_Library {
   HMODULE handle;
