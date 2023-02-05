@@ -116,6 +116,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   const bool scroll;
   const int offset;
@@ -150,6 +151,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   const bool scroll;
   const int offset;
@@ -183,6 +185,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   int rate;
   int offset_f;
@@ -299,6 +302,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
 };
 
@@ -330,6 +334,7 @@ private:
   Antialiaser antialiaser;
 #else
   std::unique_ptr<BitmapFont> current_font;
+  int chromaplacement;
 #endif
   PClip child2;
   uint32_t mask;
