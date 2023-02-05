@@ -44,6 +44,7 @@
 #include "intel/text-overlay_sse.h"
 #endif
 #include "../convert/convert_matrix.h"  // for RGB2YUV_Rec601
+#include "../convert/convert_helper.h"  // chroma location
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -105,7 +106,7 @@ extern const AVSFunction Text_filters[] = {
 
   { "Text",BUILTIN_FUNC_PREFIX,
   "cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
-  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b[bold]b",
+  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b[bold]b[placement]s",
     SimpleText::Create },
 
   { 0 }
@@ -1932,7 +1933,9 @@ static int CalcFontSizeForInfo(int w, int h, bool autolarge, int upper_limit)
 SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _firstframe,
   int _lastframe, const char _fontname[], int _size, int _textcolor,
   int _halocolor, int _align, int _spc, bool _multiline, int _lsp,
-  int _font_width, int _font_angle, bool _interlaced, const char _font_filename[], const bool _utf8, const bool _bold, IScriptEnvironment* env)
+  int _font_width, int _font_angle, bool _interlaced, const char _font_filename[],
+  const bool _utf8, const bool _bold, const int _chromalocation,
+  IScriptEnvironment* env)
   : GenericVideoFilter(_child),
   x(_x), y(_y),
   firstframe(_firstframe), lastframe(_lastframe), size(_size), lsp(_lsp),
@@ -1945,7 +1948,8 @@ SimpleText::SimpleText(PClip _child, const char _text[], int _x, int _y, int _fi
   text(_text),
   // spc(_spc), font_width(_font_width), font_angle(_font_angle), interlaced(_interlaced),
   font_filename(_font_filename), utf8(_utf8),
-  bold(_bold)
+  bold(_bold),
+  chromalocation(_chromalocation)
 {
 
   if (*font_filename) {
@@ -2028,7 +2032,7 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
       halocolor_msb == 0xFF || halocolor_msb == 0xFE, // fadeIt, special halocolor, when MSB byte is FF or FE
       textcolor, halocolor,
       halocolor_msb == 0x00 || halocolor_msb == 0xFE, // use halocolor when MSB byte is 00 or FE
-      align, lsp);
+      align, lsp, chromalocation);
   }
 
   return frame;
@@ -2037,9 +2041,11 @@ PVideoFrame SimpleText::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
+  VideoInfo vi = clip->GetVideoInfo();
+
   const char* text = args[1].AsString();
   const int first_frame = args[4].AsInt(0);
-  const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames - 1);
+  const int last_frame = args[5].AsInt(vi.num_frames - 1);
   const char* font = args[6].AsString("Terminus"); // Terminus, info_h are embedded
   const int size = int(args[7].AsFloat(18)); // height 12, 14, 16, 18, 20, 24, 28, 32
   const int text_color = args[8].AsInt(0xFFFF00);
@@ -2058,6 +2064,8 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   const char* font_filename = args[16].AsString("");
   const bool utf8 = args[17].AsBool(false); // linux: n/a
   const bool bold = args.ArraySize() >= 19 ? args[18].AsBool(false) : false; // different from SubTitle, guard array access of extra parameter
+  // "placement" as chroma location
+  const char* placement_name = args.ArraySize() >= 20 ? args[19].AsString(nullptr) : nullptr; // different from SubTitle, guard array access of extra parameter
 
   // parameters marked with n/a are ignored; parameter list is currently the same as SubTitle
 
@@ -2103,8 +2111,25 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   if (!isYdefined && y_center)
     real_y = (clip->GetVideoInfo().height >> 1) /* * 8 */; // no mul 8 like in SubTitle
 
+  // anyway, we accept any chroma location here.
+  // "Text" filter will ignore invalid/not used definitions and use its defaults
+  int ChromaLocation_In = -1; // invalid
+
+  if (vi.IsYV411()) {
+    // placement parameter exists, but not valid for YV411 (default none/-1) + input frame properties
+    auto frame0 = clip->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
+    chromaloc_parse_merge_with_props(vi, placement_name, props, /* ref*/ChromaLocation_In, -1 /*default none chromaloc */, env);
+  }
+  else if (vi.Is420() || vi.Is422() || vi.IsYUY2()) {
+    // placement parameter is valid + input frame properties
+    auto frame0 = clip->GetFrame(0, env);
+    const AVSMap* props = env->getFramePropsRO(frame0);
+    chromaloc_parse_merge_with_props(vi, placement_name, props, /* ref*/ChromaLocation_In, ChromaLocation_e::AVS_CHROMA_LEFT /*default*/, env);
+  }
+
   return new SimpleText(clip, text, real_x, real_y, first_frame, last_frame, font, size, text_color,
-    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, bold, env);
+    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, bold, ChromaLocation_In, env);
 }
 
 
