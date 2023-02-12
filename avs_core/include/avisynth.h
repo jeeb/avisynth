@@ -428,13 +428,15 @@ struct AVS_Linkage {
   // V9: VideoFrame helper
   bool          (VideoFrame::*IsPropertyWritable)() const;
 
+  // V10
+  int           (VideoFrame::*VideoFrame_GetPixelType)() const;
+  void          (VideoFrame::*VideoFrame_AmendPixelType)(int new_pixel_type);
   void          (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
-
   AvsValueType  (AVSValue::*AVSValue_GetType)() const;
 
   /**********************************************************************/
   // Reserve pointer space for Avisynth+
-  void          (VideoInfo::* reserved2[64 - 26])();
+  void          (VideoInfo::* reserved2[64 - 28])();
   /**********************************************************************/
 
   // AviSynth Neo additions
@@ -442,7 +444,7 @@ struct AVS_Linkage {
   // As of V8 most PDevice, PFunction linkage entries are moved to standard avs+ place.
   /**********************************************************************/
 
-  // this part should be identical with AVS_Linkage entries in interface.cpp
+  // This part should be identical with AVS_Linkage entries in interface.cpp
 };
 
 #if defined(BUILDING_AVSCORE) || defined(AVS_STATIC_LIB)
@@ -517,7 +519,7 @@ struct VideoInfo {
   int width, height;    // width 0 means no video
   unsigned fps_numerator, fps_denominator;
   int num_frames;
-  // This is more extensible than previous versions. More properties can be added seeminglesly.
+  // This is more extensible than previous versions. More properties can be added seamlessly.
 
   // Colorspace properties.
   /*
@@ -917,7 +919,7 @@ public:
 
 // Ensure VideoFrameBuffer cannot be publicly assigned
 private:
-    VideoFrameBuffer& operator=(const VideoFrameBuffer&);
+  VideoFrameBuffer& operator=(const VideoFrameBuffer&);
 
 #ifdef BUILDING_AVSCORE
 public:
@@ -981,6 +983,8 @@ class VideoFrame {
 
   AVSMap *properties;
 
+  int pixel_type; // Copy from VideoInfo
+
   friend class PVideoFrame;
   void AddRef();
   void Release();
@@ -988,10 +992,10 @@ class VideoFrame {
   friend class ScriptEnvironment;
   friend class Cache;
 
-  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height);
-  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _pixel_type);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _pixel_type);
   // for Alpha
-  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA);
+  VideoFrame(VideoFrameBuffer* _vfb, AVSMap* avsmap, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int _offsetA, int _pixel_type);
   void* operator new(size_t size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
 public:
@@ -1025,6 +1029,13 @@ public:
   bool IsPropertyWritable() const AVS_BakedCode(return AVS_LinkCall(IsPropertyWritable)())
 
   ~VideoFrame() AVS_BakedCode( AVS_LinkCall_Void(VideoFrame_DESTRUCTOR)() )
+
+  int GetPixelType() const AVS_BakedCode(return AVS_LinkCall(VideoFrame_GetPixelType)())
+  // Changes the color format metadata on this frame. Using it on a frame that isn't writable leads
+  // to an inconsistent state, because other filters depend on it. So, use MakeWritable() before.
+  // Only for rare cases where a plugin makes frame bytes pose as another color format.
+  void AmendPixelType(int new_pixel_type) AVS_BakedCode(return AVS_LinkCall_Void(VideoFrame_AmendPixelType)(new_pixel_type))
+
 #ifdef BUILDING_AVSCORE
 public:
   void DESTRUCTOR();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */

@@ -505,7 +505,6 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   return dst;
-
 }
 
 
@@ -774,7 +773,7 @@ PVideoFrame RemoveAlphaPlane::GetFrame(int n, IScriptEnvironment* env)
   int planes_r[4] = { PLANAR_G, PLANAR_B, PLANAR_R, PLANAR_A };
   int *planes = (vi.IsYUV() || vi.IsYUVA()) ? planes_y : planes_r;
   // Abuse Subframe to snatch the YUV/GBR planes
-  return env->SubframePlanar(src, 0, src->GetPitch(planes[0]), src->GetRowSize(planes[0]), src->GetHeight(planes[0]),0,0,src->GetPitch(planes[1]));
+  return env->SubframePlanar(src, 0, src->GetPitch(planes[0]), src->GetRowSize(planes[0]), src->GetHeight(planes[0]), 0, 0, src->GetPitch(planes[1]));
 
 #if 0
   // BitBlt version. Kept for reference

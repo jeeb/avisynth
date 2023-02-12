@@ -47,7 +47,6 @@ public:
 
     ConvertToStacked(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src)
     {
-
         if (vi.IsColorSpace(VideoInfo::CS_YUV420P16)) vi.pixel_type = VideoInfo::CS_YV12;
         else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16)) vi.pixel_type = VideoInfo::CS_YV16;
         else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16)) vi.pixel_type = VideoInfo::CS_YV24;
@@ -303,7 +302,10 @@ public:
 
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override
     {
-        return child->GetFrame(n, env);
+        PVideoFrame frame = child->GetFrame(n, env);
+        env->MakeWritable(&frame);
+        frame->AmendPixelType(vi.pixel_type);
+        return frame;
     }
 
     int __stdcall SetCacheHints(int cachehints, int frame_range) override
@@ -341,7 +343,10 @@ public:
 
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override
     {
-        return child->GetFrame(n, env);
+        PVideoFrame frame = child->GetFrame(n, env);
+        env->MakeWritable(&frame);
+        frame->AmendPixelType(vi.pixel_type);
+        return frame;
     }
 
     int __stdcall SetCacheHints(int cachehints, int frame_range) override

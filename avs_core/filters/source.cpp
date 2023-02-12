@@ -507,13 +507,13 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
                          IScriptEnvironment* env) {
   int size;
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
-    // MessageClip produces a clip containing a text message.Used internally for error reporting.
-    // The font face is "Arial".
-    // The font size is between 24 points and 9 points - chosen to fit, if possible,
-    // in the width by height clip.
-    // The pixeltype is RGB32.
+  // MessageClip produces a clip containing a text message.Used internally for error reporting.
+  // The font face is "Arial".
+  // The font size is between 24 points and 9 points - chosen to fit, if possible,
+  // in the width by height clip.
+  // The pixeltype is RGB32.
 
-    for (size = 24*8; /*size>=9*8*/; size-=4) {
+  for (size = 24*8; /*size>=9*8*/; size-=4) {
     int text_width, text_height;
     GetTextBoundingBox(message, "Arial", size, true, false, TA_TOP | TA_CENTER, &text_width, &text_height);
     text_width = ((text_width>>3)+8+7) & ~7; // mod 8

@@ -1278,6 +1278,8 @@ PVideoFrame __stdcall ConvertBits::GetFrame(int n, IScriptEnvironment* env) {
   if (format_change_only)
   {
     // for 10-16 bit: simple format override in constructor
+    env->MakeWritable(&src);
+    src->AmendPixelType(vi.pixel_type);
     return src;
   }
 

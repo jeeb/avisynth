@@ -665,7 +665,7 @@ typedef struct AVS_VideoFrameBuffer {
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.
 
-// AVS_VideoFrame is laid out identically to IVideoFrame
+// AVS_VideoFrame is laid out identically to VideoFrame
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrame {
   volatile long refcount;
@@ -681,6 +681,7 @@ typedef struct AVS_VideoFrame {
   int offsetA;
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
   void* properties; // frame properties
+  int pixel_type; // Copy from VideoInfo
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
@@ -1144,9 +1145,9 @@ typedef struct AVS_Library AVS_Library;
 // e.g. "AVSC_DECLARE_FUNC(avs_add_function);"
 // is a shortcut for "avs_add_function_func avs_add_function;"
 
-// Note: AVSC_INLINE functions which call into API,
-// are guarded by #ifndef AVSC_NO_DECLSPEC
-// They should call the appropriate library-> API entry
+// Note: AVSC_INLINE functions, which call into API,
+// are guarded by #ifndef AVSC_NO_DECLSPEC.
+// They should call the appropriate library-> API entry.
 
 struct AVS_Library {
   HMODULE handle;
