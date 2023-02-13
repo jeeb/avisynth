@@ -79,6 +79,7 @@ public:
 private:
   Mode mode;
   int deg15c[24], deg15s[24];
+  double color2_innerF;
   PClip aud_clip;
   AVSValue option;
   int pixelsize;

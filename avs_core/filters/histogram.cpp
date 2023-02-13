@@ -58,8 +58,8 @@
 #include <stdint.h>
 
 
-#define PI        3.141592653589793
-
+constexpr double PI = 3.14159265358979323846; 
+// until c++20 <numbers> std::numbers::pi
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -167,8 +167,13 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, int _show_bits,
       vi.width = (1 << show_bits); // 256 for 8 bit
       vi.height = (1 << show_bits); // yes, height can change
     }
-    int half = 1 << (show_bits - 1); // 127
-    int R = half - 1; // 126
+
+    // precalculate 15 degree marker dots
+    const int half = (1 << (show_bits - 1)) - 1; // 127
+    // dots are placed somewhat inside to the colorful circle, which is thicker for higher show_bits
+    color2_innerF = 124.9;  // .9 is for better visuals in subsampled mode
+    int R = (int)(1 + color2_innerF * (1 << (show_bits - 8)) + 0.5); // 126 for 8 bits
+
     for (int y=0; y<24; y++) { // just inside the big circle
       deg15c[y] = (int) ( R*cos(y*PI/12.) + 0.5) + half;
       deg15s[y] = (int) (-R*sin(y*PI/12.) + 0.5) + half;
@@ -651,7 +656,9 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
   uint8_t* dstp8, uint8_t* dstp8_u, uint8_t* dstp8_v,
   int pitch, int pitchUV,
   int height, int heightUV,
-  int show_bits, int swidth, int sheight)
+  int show_bits, int swidth, int sheight,
+  double innerF
+)
 {
   pixel_t black;
   pixel_t middle_chroma;
@@ -704,12 +711,12 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
   // 240 +---------+
 
   // plot valid grey ccir601 square
-  const int size = (240 - 16 + 1) << show_bit_shift; // original 8 bit: 225 
+  const int size = 1 + ((240 - 16) << show_bit_shift); // original 8 bit: 225 
   std::fill_n(&dstp[(16 << show_bit_shift) * pitch + (16 << show_bit_shift)], size, luma128);
   std::fill_n(&dstp[(240 << show_bit_shift) * pitch + (16 << show_bit_shift)], size, luma128);
 
   // vertical lines left and right side
-  for (int y = 17 << show_bit_shift; y < 240 << show_bit_shift; y++) {
+  for (int y = 1 + (16 << show_bit_shift); y < 240 << show_bit_shift; y++) {
     dstp[(16 << show_bit_shift) + y * pitch] = luma128;
     dstp[(240 << show_bit_shift) + y * pitch] = luma128;
   }
@@ -768,7 +775,7 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
   // similar for the other hues.
   // luma
 
-  double innerF = 124.9;  // .9 is for better visuals in subsampled mode
+  // innerF is used for 15 degree markers as well
   double thicknessF = 1.5;
   double oneOverThicknessF = 1.0 / thicknessF;
   double outerF = innerF + thicknessF * 2.0;
@@ -974,21 +981,24 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
       pdstb, pdstbU, pdstbV,
       dst_pitch, dst_pitchUV,
       dst_height, dst_heightUV,
-      show_bits, swidth, sheight
+      show_bits, swidth, sheight,
+      color2_innerF
       );
   else if (bits_per_pixel <= 16)
     DrawModeColor2_draw_misc<uint16_t>(bits_per_pixel,
       pdstb, pdstbU, pdstbV,
       dst_pitch, dst_pitchUV,
       dst_height, dst_heightUV,
-      show_bits, swidth, sheight
+      show_bits, swidth, sheight,
+      color2_innerF
       );
   else
     DrawModeColor2_draw_misc<float>(bits_per_pixel,
       pdstb, pdstbU, pdstbV,
       dst_pitch, dst_pitchUV,
       dst_height, dst_heightUV,
-      show_bits, swidth, sheight
+      show_bits, swidth, sheight,
+      color2_innerF
       );
 
   // plot white 15 degree marks
