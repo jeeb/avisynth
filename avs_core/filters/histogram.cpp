@@ -648,7 +648,7 @@ void DrawModeColor2_erase_area(int bits_per_pixel,
 
 template<typename pixel_t>
 void DrawModeColor2_draw_misc(int bits_per_pixel,
-  uint8_t* dstp, uint8_t* dstp_u, uint8_t* dstp_v,
+  uint8_t* dstp8, uint8_t* dstp8_u, uint8_t* dstp8_v,
   int pitch, int pitchUV,
   int height, int heightUV,
   int show_bits, int swidth, int sheight)
@@ -656,6 +656,14 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
   pixel_t black;
   pixel_t middle_chroma;
   pixel_t luma128;
+
+  pitch /= sizeof(pixel_t);
+  pitchUV /= sizeof(pixel_t);
+  pixel_t* dstp = reinterpret_cast<pixel_t*>(dstp8);
+  pixel_t* dstp_u = reinterpret_cast<pixel_t*>(dstp8_u);
+  pixel_t* dstp_v = reinterpret_cast<pixel_t*>(dstp8_v);
+
+
 
   if constexpr (std::is_integral<pixel_t>::value) {
     black = 16 << (bits_per_pixel - 8);
@@ -673,30 +681,37 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
 
   // Erase all - luma
   for (int y = 0; y < height; y++) {
-    uint8_t* ptr = dstp + y * pitch;
-    std::fill_n((pixel_t *)ptr, showsize, black);
+    pixel_t* ptr = dstp + y * pitch;
+    std::fill_n(ptr, showsize, black);
   }
 
   // Erase all - chroma
   for (int y = 0; y < heightUV; y++) {
-    uint8_t* ptrU = dstp_u + y * pitchUV;
-    uint8_t* ptrV = dstp_v + y * pitchUV;
-    std::fill_n((pixel_t*)ptrU, showsizeUV, middle_chroma);
-    std::fill_n((pixel_t*)ptrV, showsizeUV, middle_chroma);
+    pixel_t* ptrU = dstp_u + y * pitchUV;
+    pixel_t* ptrV = dstp_v + y * pitchUV;
+    std::fill_n(ptrU, showsizeUV, middle_chroma);
+    std::fill_n(ptrV, showsizeUV, middle_chroma);
   }
 
-  // possible to display 10 bit data stuffed into 8 bit size
+  // possible to display >8 bit data stuffed into 8 bit size
   const int show_bit_shift = show_bits - 8;
+
+  //    16       240
+  // 16  +---------+
+  // 17  |         |
+  // ..  |         |
+  // 239 |         |
+  // 240 +---------+
 
   // plot valid grey ccir601 square
   const int size = (240 - 16 + 1) << show_bit_shift; // original 8 bit: 225 
-  std::fill_n((pixel_t*)(&dstp[((16 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, luma128);
-  std::fill_n((pixel_t*)(&dstp[((240 << show_bit_shift) * pitch) + (16 << show_bit_shift) * sizeof(pixel_t)]), size, luma128);
+  std::fill_n(&dstp[(16 << show_bit_shift) * pitch + (16 << show_bit_shift)], size, luma128);
+  std::fill_n(&dstp[(240 << show_bit_shift) * pitch + (16 << show_bit_shift)], size, luma128);
 
   // vertical lines left and right side
   for (int y = 17 << show_bit_shift; y < 240 << show_bit_shift; y++) {
-    ((pixel_t*)dstp)[(16 << show_bit_shift) + y * pitch / sizeof(pixel_t)] = luma128;
-    ((pixel_t*)dstp)[(240 << show_bit_shift) + y * pitch / sizeof(pixel_t)] = luma128;
+    dstp[(16 << show_bit_shift) + y * pitch] = luma128;
+    dstp[(240 << show_bit_shift) + y * pitch] = luma128;
   }
 
   // plot circles
@@ -783,14 +798,10 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
           int xP = limit + x;
           int yP = limit + y;
 
-          pixel_t* pdstb = (pixel_t*)dstp;
-          pixel_t* pdstbU = (pixel_t*)dstp_u;
-          pixel_t* pdstbV = (pixel_t*)dstp_v;
-
-          pdstb[xP + yP * pitch / sizeof(pixel_t)] =
+          dstp[xP + yP * pitch] =
             (pixel_t)((interp * (LC[3 * activeY] << factorshift)) >> 8); // left upper half
 
-          pdstb[limit_showwidth - xP + yP * pitch / sizeof(pixel_t)] =
+          dstp[limit_showwidth - xP + yP * pitch] =
             (pixel_t)((interp * (RC[3 * activeY] << factorshift)) >> 8); // right upper half
 
           xP = (xP + xRounder) >> swidth;
@@ -800,15 +811,15 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
           int invInt = (MAXINTERP - interp);
           
           int p_uv;
-          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
-          pdstbU[p_uv] = (pixel_t)((pdstbU[p_uv] * invInt + interp * (LC[3 * activeY + 1] << factorshift)) >> 8); // left half
-          pdstbV[p_uv] = (pixel_t)((pdstbV[p_uv] * invInt + interp * (LC[3 * activeY + 2] << factorshift)) >> 8); // left half
+          p_uv = xP + yP * pitchUV;
+          dstp_u[p_uv] = (pixel_t)((dstp_u[p_uv] * invInt + interp * (LC[3 * activeY + 1] << factorshift)) >> 8); // left half
+          dstp_v[p_uv] = (pixel_t)((dstp_v[p_uv] * invInt + interp * (LC[3 * activeY + 2] << factorshift)) >> 8); // left half
 
           xP = ((limit_showwidth) >> swidth) - xP;
-          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
+          p_uv = xP + yP * pitchUV;
 
-          pdstbU[p_uv] = (pixel_t)((pdstbU[p_uv] * invInt + interp * (RC[3 * activeY + 1] << factorshift)) >> 8); // right half
-          pdstbV[p_uv] = (pixel_t)((pdstbV[p_uv] * invInt + interp * (RC[3 * activeY + 2] << factorshift)) >> 8); // right half
+          dstp_u[p_uv] = (pixel_t)((dstp_u[p_uv] * invInt + interp * (RC[3 * activeY + 1] << factorshift)) >> 8); // right half
+          dstp_v[p_uv] = (pixel_t)((dstp_v[p_uv] * invInt + interp * (RC[3 * activeY + 2] << factorshift)) >> 8); // right half
         }
         else {
           // 32 bit float
@@ -820,14 +831,10 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
           int xP = limit + x;
           int yP = limit + y;
 
-          pixel_t* pdstb = (pixel_t*)dstp;
-          pixel_t* pdstbU = (pixel_t*)dstp_u;
-          pixel_t* pdstbV = (pixel_t*)dstp_v;
-
-          pdstb[xP + yP * pitch / sizeof(pixel_t)] =
+          dstp[xP + yP * pitch] =
             (pixel_t)(interp * LC_f[3 * activeY]); // left upper half
 
-          pdstb[limit_showwidth - xP + yP * pitch / sizeof(pixel_t)] =
+          dstp[limit_showwidth - xP + yP * pitch] =
             (pixel_t)(interp * RC_f[3 * activeY]); // right upper half
 
           xP = (xP + xRounder) >> swidth;
@@ -837,15 +844,15 @@ void DrawModeColor2_draw_misc(int bits_per_pixel,
           float invInt = (MAXINTERP - interp);
 
           int p_uv;
-          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
-          pdstbU[p_uv] = (pixel_t)(pdstbU[p_uv] * invInt + interp * LC_f[3 * activeY + 1]); // left half
-          pdstbV[p_uv] = (pixel_t)(pdstbV[p_uv] * invInt + interp * LC_f[3 * activeY + 2]); // left half
+          p_uv = xP + yP * pitchUV;
+          dstp_u[p_uv] = (pixel_t)(dstp_u[p_uv] * invInt + interp * LC_f[3 * activeY + 1]); // left half
+          dstp_v[p_uv] = (pixel_t)(dstp_v[p_uv] * invInt + interp * LC_f[3 * activeY + 2]); // left half
 
           xP = ((limit_showwidth) >> swidth) - xP;
 
-          p_uv = xP + yP * pitchUV / sizeof(pixel_t);
-          pdstbU[p_uv] = (pixel_t)(pdstbU[p_uv] * invInt + interp * RC_f[3 * activeY + 1]); // right half
-          pdstbV[p_uv] = (pixel_t)(pdstbV[p_uv] * invInt + interp * RC_f[3 * activeY + 2]); // right half
+          p_uv = xP + yP * pitchUV;
+          dstp_u[p_uv] = (pixel_t)(dstp_u[p_uv] * invInt + interp * RC_f[3 * activeY + 1]); // right half
+          dstp_v[p_uv] = (pixel_t)(dstp_v[p_uv] * invInt + interp * RC_f[3 * activeY + 2]); // right half
         }
       }
     }
