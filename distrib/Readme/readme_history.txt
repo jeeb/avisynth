@@ -5,8 +5,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230205 3.7.3 WIP
+20230213 3.7.3 WIP
 ------------------
+- Fix (#327) Histogram "color2" markers. Fix right shifted 15 degree dots, fix square for bits>8
 - Feature (#317): The color format of a VideoFrame can now be retrieved with its GetPixelType()
   function. Before, there was no reliable way of knowing it on a frame from propGetFrame().
   (Also added AmendPixelType() for rare cases.)
