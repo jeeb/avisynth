@@ -53,24 +53,34 @@
 //         Example#1: e.g. avs_is_444 will call the existing avs_is_yv24 instead
 //         Example#2: avs_bits_per_component will return 8 for all colorspaces (Classic Avisynth supports only 8 bits/pixel)
 //         Thus the Avisynth+ specific API functions are safely callable even when connected to classic Avisynth DLL
-// 202002xx  non-Windows friendly additions
-// 20200305  avs_vsprintf parameter type change: (void *) to va_list
-// 20200330: (remove test SIZETMOD define for clarity)
-// 20200513: user must use explicite #define AVS26_FALLBACK_SIMULATION for having fallback helpers in dynamic loaded library section
-// 20200513: Follow AviSynth+ V8 interface additions
-//           AVS_VideoFrame struct extended with placeholder for frame property pointer
-//           avs_subframe_planar_a
-//           avs_copy_frame_props
-//           avs_get_frame_props_ro, avs_get_frame_props_rw
-//           avs_prop_num_keys, avs_prop_get_key, avs_prop_num_elements, avs_prop_get_type, avs_prop_get_data_size
-//           avs_prop_get_int, avs_prop_get_float, avs_prop_get_data, avs_prop_get_clip, avs_prop_get_frame, avs_prop_get_int_array, avs_prop_get_float_array
-//           avs_prop_set_int, avs_prop_set_float, avs_prop_set_data, avs_prop_set_clip, avs_prop_set_frame, avs_prop_set_int_array, avs_prop_set_float_array
-//           avs_prop_delete_key, avs_clear_map
-//           avs_new_video_frame_p, avs_new_video_frame_p_a
-//           avs_get_env_property (internal system properties), AVS_AEP_xxx (AvsEnvProperty) enums
-//           avs_get_var_try, avs_get_var_bool, avs_get_var_int, avs_get_var_double, avs_get_var_string, avs_get_var_long
-//           avs_pool_allocate, avs_pool_free
-
+// 2002xx  non-Windows friendly additions
+// 200305  avs_vsprintf parameter type change: (void *) to va_list
+// 200330: (remove test SIZETMOD define for clarity)
+// 200513: user must use explicite #define AVS26_FALLBACK_SIMULATION for having fallback helpers in dynamic loaded library section
+// 200513: Follow AviSynth+ V8 interface additions
+//         AVS_VideoFrame struct extended with placeholder for frame property pointer
+//         avs_subframe_planar_a
+//         avs_copy_frame_props
+//         avs_get_frame_props_ro, avs_get_frame_props_rw
+//         avs_prop_num_keys, avs_prop_get_key, avs_prop_num_elements, avs_prop_get_type, avs_prop_get_data_size
+//         avs_prop_get_int, avs_prop_get_float, avs_prop_get_data, avs_prop_get_clip, avs_prop_get_frame, avs_prop_get_int_array, avs_prop_get_float_array
+//         avs_prop_set_int, avs_prop_set_float, avs_prop_set_data, avs_prop_set_clip, avs_prop_set_frame, avs_prop_set_int_array, avs_prop_set_float_array
+//         avs_prop_delete_key, avs_clear_map
+//         avs_new_video_frame_p, avs_new_video_frame_p_a
+//         avs_get_env_property (internal system properties), AVS_AEP_xxx (AvsEnvProperty) enums
+//         avs_get_var_try, avs_get_var_bool, avs_get_var_int, avs_get_var_double, avs_get_var_string, avs_get_var_long
+//         avs_pool_allocate, avs_pool_free
+// 2021:   Follow AviSynth+ V9 interface additions
+//         avs_is_property_writable, avs_make_property_writable
+//         Add enum AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION (AVISYNTH_INTERFACE_VERSION still exists)
+//         Add enum AVS_AEP_HOST_SYSTEM_ENDIANNESS to system property request types (avs_get_env_property)
+//         Add enums AVS_AEP_INTERFACE_VERSION and AVS_AEP_INTERFACE_BUGFIX for direct interface version system property request types (avs_get_env_property)
+//         Bugfix 9.1: fix avs_prop_get_data
+// 2023:   Follow AviSynth+ V10 interface additions
+//         Add enum AVS_DEFAULT_PLANE (as 0) to plane constants 
+//         prop_src argument now const in avs_new_video_frame_p and avs_new_video_frame_p_a (no change in use)
+//         Add pixel_type to struct AVS_VideoFrame
+//         Add avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type for getting and setting AVS_VideoFrame pixel_type
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -672,6 +682,8 @@ typedef struct AVS_VideoFrame {
   volatile long refcount;
   AVS_VideoFrameBuffer * vfb;
   int offset;
+  // DO NOT USE THEM DIRECTLY
+  // Use avs_get_pitch_p, avs_get_row_size_p, avs_get_height_p
   int pitch, row_size, height;
   int offsetU, offsetV;
   int pitchUV;  // U&V offsets are from top of picture.
@@ -681,8 +693,10 @@ typedef struct AVS_VideoFrame {
   // AVS+ extension, avisynth.h: class does not break plugins if appended here
   int offsetA;
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
-  void* properties; // frame properties
-  int pixel_type; // Copy from VideoInfo
+  void* properties; // interface V8: frame properties
+  // DO NOT USE DIRECTLY
+  // Use avs_video_frame_get_pixel_type (and avs_video_frame_amend_pixel_type in special cases)
+  int pixel_type; // Interface V10: an automatically maintained copy from AVS_VideoInfo
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
@@ -704,6 +718,11 @@ AVSC_API(BYTE *, avs_get_write_ptr_p)(const AVS_VideoFrame * p, int plane);
 AVSC_API(void, avs_release_video_frame)(AVS_VideoFrame *);
 // makes a shallow copy of a video frame
 AVSC_API(AVS_VideoFrame *, avs_copy_video_frame)(AVS_VideoFrame *);
+
+// V10
+AVSC_API(int, avs_video_frame_get_pixel_type)(const AVS_VideoFrame* p);
+// V10
+AVSC_API(void, avs_video_frame_amend_pixel_type)(AVS_VideoFrame* p, int new_pixel_type);
 
 // no API for these, inline helper functions
 #ifndef AVSC_NO_DECLSPEC
@@ -1067,6 +1086,7 @@ AVSC_API(char, avs_prop_get_type)(AVS_ScriptEnvironment* p, const AVS_Map* map, 
 // see AVS_GETPROPERROR_... enums
 AVSC_API(int64_t, avs_prop_get_int)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int* error);
 AVSC_API(double, avs_prop_get_float)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int* error);
+// Note: avs_prop_get_data was fixed in interface V9.1
 AVSC_API(const char*, avs_prop_get_data)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int* error);
 AVSC_API(int, avs_prop_get_data_size)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int* error);
 AVSC_API(AVS_Clip*, avs_prop_get_clip)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int* error);
@@ -1287,6 +1307,10 @@ struct AVS_Library {
   // V9
   AVSC_DECLARE_FUNC(avs_is_property_writable);
   AVSC_DECLARE_FUNC(avs_make_property_writable);
+
+  // V10
+  AVSC_DECLARE_FUNC(avs_video_frame_get_pixel_type);
+  AVSC_DECLARE_FUNC(avs_video_frame_amend_pixel_type);
 };
 
 #undef AVSC_DECLARE_FUNC
@@ -1524,6 +1548,14 @@ avs_bits_per_component    constant 8 (8 bits/component)
 
   AVSC_LOAD_FUNC(avs_pool_allocate);
   AVSC_LOAD_FUNC(avs_pool_free);
+
+  // V9
+  AVSC_LOAD_FUNC(avs_make_property_writable);
+  AVSC_LOAD_FUNC(avs_is_property_writable);
+
+  // V10
+  AVSC_LOAD_FUNC(avs_video_frame_get_pixel_type);
+  AVSC_LOAD_FUNC(avs_video_frame_amend_pixel_type);
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY

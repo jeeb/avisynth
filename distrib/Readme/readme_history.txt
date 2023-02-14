@@ -5,8 +5,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230213 3.7.3 WIP
+20230214 3.7.3 WIP
 ------------------
+- Add avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type to C interface as well 
 - Fix (#327) Histogram "color2" markers. Fix right shifted 15 degree dots, fix square for bits>8
 - Feature (#317): The color format of a VideoFrame can now be retrieved with its GetPixelType()
   function. Before, there was no reliable way of knowing it on a frame from propGetFrame().
@@ -28,6 +29,7 @@ The "rst" version of the documentation just lists changes in brief.
     Otherwise "Text" renders chroma as "left" (mpeg2)
 - Fix (#314): Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
 - Fix (#314): Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
+  Fixed in C interface as well: avs_new_video_frame_p and avs_new_video_frame_p_a: prop_src argument now const (no change in use)
 - Fix (#314): Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
 - "Text": Almost fully rewritten. 
   (#310) Support any width of bdf fonts (but still of fixed width)

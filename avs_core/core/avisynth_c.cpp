@@ -338,6 +338,19 @@ int AVSC_CC avs_is_property_writable(const AVS_VideoFrame * p)
   return 0;
 }
 
+// V10
+extern "C"
+int AVSC_CC avs_video_frame_get_pixel_type(const AVS_VideoFrame * p)
+{
+  return (*(const PVideoFrame*)&p)->GetPixelType();
+}
+
+// V10
+void AVSC_CC avs_video_frame_amend_pixel_type(AVS_VideoFrame* p, int new_pixel_type)
+{
+  (*(PVideoFrame*)&p)->AmendPixelType(new_pixel_type);
+}
+
 extern "C"
 BYTE * AVSC_CC avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane)
 {
