@@ -88,7 +88,8 @@ deleted until SetMemoryMax is satisfied.
 VideoFrame
 ~~~~~~~~~~
 
-VideoFrame holds a "window" into a VideoFrameBuffer. Operator new is
+VideoFrame holds a "window" into a VideoFrameBuffer, and since v10 it can
+store the exact underlying video format as well. Operator new is
 overloaded to recycle class instances. Its members can be called by:
 ::
 
@@ -97,14 +98,30 @@ overloaded to recycle class instances. Its members can be called by:
 
 
 VideoFrame has the following members: GetPitch, GetRowSize, GetHeight,
-GetReadPtr, GetWritePtr, IsWritable and IsPropertyWritable
+GetReadPtr, GetWritePtr, IsWritable, IsPropertyWritable (v9),
+GetPixelType (v10) and AmendPixelType (v10).
 
-All those filters (except IsWritable and IsPropertyWritable) will give you a property (pitch,
+The getter functions (except GetPixelType) will give you a property (pitch,
 rowsize, etc ...) of a plane (of the frame it points to). The
 interleaved formats (BGR(A) or YUY2) consist of one plane, and the
-planar formats consists of one (Y) or three (YUV) planes. The default
-plane is just the first plane (which is plane Y for the planar
-formats).
+planar formats consists of one (Y), three (YUV, planar RGB) or four 
+(YUVA, planar RGBA) planes. The default plane is just the first plane
+which is plane Y for the planar YUV formats (and G for planar RGB).
+
+GetPixelType was introduced in v10, the exact video format of the frame
+is now stored in VideoFrame::pixel_type. Before, there was no reliable way
+of knowing it on a frame from propGetFrame.
+
+The pixel_type is automatically maintained behind the scenes.
+
+pixel_type is set on calling NewVideoFrame, and is kept with MakeWritable.
+Calling SubFrame will automatically convert the format to a single plane
+greyscale Y8-Y32 from planar origins. Calling SubframePlanar will strip
+alpha from the format specifier.
+
+AmendPixelType can be used in special cases, to override the pixel_type.
+E.g. when a filter just overrides the format of VideoInfo in its constructor
+but would return the frame unaltered, which would inherit a wrong pixel_type.
 
 
 .. _cplusplus_getpitch:
@@ -305,6 +322,66 @@ See also :ref:`getFramePropsRW <cplusplus_getframepropsrw>`.
     }
     AVSMap *props = env->getFramePropsRW(dst);
 
+
+.. _cplusplus_getpixeltype:
+
+GetPixelType V10
+^^^^^^^^^^^^^^^^
+
+::
+
+    int GetPixelType() const;
+
+
+Since v10 a Videoframe can store the exact underlying video format in 
+VideoFrame::pixel_type. Before, there was no reliable way of knowing it on a 
+frame from :ref:`propGetFrame <cplusplus_propgetframe>`.
+
+The pixel_type is automatically maintained behind the scenes.
+
+pixel_type is set on calling :ref:`NewVideoFrame <cplusplus_newvideoframe>` or 
+:ref:`NewVideoFrameP <cplusplus_newvideoframep>`, and is kept with
+:ref:`MakeWritable <cplusplus_makewritable>`.
+
+Calling :ref:`SubFrame <cplusplus_subframe>` will automatically convert 
+the format to a single plane greyscale Y8-Y32 from planar origins.
+
+Calling :ref:`SubFramePlanar <cplusplus_subframeplanar>` will strip alpha
+from the format specifier.
+
+
+.. _cplusplus_amendpixeltype:
+
+AmendPixelType V10
+^^^^^^^^^^^^^^^^^^
+
+::
+
+    void AmendPixelType(int new_pixel_type);
+
+
+AmendPixelType can be used in special cases, to override the pixel_type.
+E.g. when a filter just overrides the format (VideoInfo::pixel_type) in its constructor
+but otherwise would return the frame unaltered, this results in an inconsistent
+format between the actual VideoFrame and VideoInfo.
+(Filters which are now using AmendPixelType are ConvertFromDoubleWidth, ConvertToDoubleWidth,
+ConvertBits and CombinePlanes)
+
+
+Changes the color format metadata on this frame. Using it on a frame that isn't
+writable leads to an inconsistent state, because other filters depend on it.
+So, use :ref:`MakeWritable <cplusplus_makewritable>` before.
+
+::
+
+    PVideoFrame src = child->GetFrame(n, env);
+    if (format_change_only)
+    {
+      // for 10-16 bit: simple format override in constructor
+      env->MakeWritable(&src);
+      src->AmendPixelType(vi.pixel_type);
+      return src;
+    }
 
 
 .. _cplusplus_alignplanar:
@@ -2094,6 +2171,42 @@ Also Invoke returns an AVSValue (see its declaration) which in that
 case is a PClip.
 
 
+.. _cplusplus_avsvaluegettype:
+
+GetType V10
+^^^^^^^^^^^
+
+::
+
+    AvsValueType GetType() const;
+
+
+AVSValue::GetType returns the underlying type of the variant.
+
+Returns an ``AvsValueType`` enum directly, one can use it instead of calling
+all IsXXX functions to establish the exact type.
+
+Note that although 'l'ong and 'd'ouble are defined, 64 bit data is not
+(and in 32 bit Avisynth will never be) supported.
+(Unlike frame properties, which support them by design).
+
+::
+
+    enum AvsValueType {
+      VALUE_TYPE_UNDEFINED = 'v',
+      VALUE_TYPE_BOOL = 'b',
+      VALUE_TYPE_INT = 'i',
+      VALUE_TYPE_LONG = 'l',
+      VALUE_TYPE_FLOAT = 'f',
+      VALUE_TYPE_DOUBLE = 'd',
+      VALUE_TYPE_STRING = 's',
+      VALUE_TYPE_CLIP = 'c',
+      VALUE_TYPE_FUNCTION = 'n',
+      VALUE_TYPE_ARRAY = 'a'
+    };
+
+
+
 .. _cplusplus_structures:
 
 Structures
@@ -2102,7 +2215,7 @@ Structures
 The following structure is available: VideoInfo structure. It holds
 global information about a clip (i.e. information that does not depend
 on the framenumber). The GetVideoInfo method in IClip returns this
-structure. A description (for AVISYNTH_INTERFACE_VERSION=6, 8 and 9) of it can
+structure. A description (for AVISYNTH_INTERFACE_VERSION=6, 8 and above) of it can
 be found :doc:`here <VideoInfo>`.
 
 
@@ -2120,34 +2233,35 @@ The following constants are defined in avisynth.h:
 
 ::
 
-    enum { // sample types
-        SAMPLE_INT8 = 1<<0,
-        SAMPLE_INT16 = 1<<1,
-        SAMPLE_INT24 = 1<<2,
-        SAMPLE_INT32 = 1<<3,
-        SAMPLE_FLOAT = 1<<4
+    enum AvsSampleType {
+      SAMPLE_INT8  = 1 << 0,
+      SAMPLE_INT16 = 1 << 1,
+      SAMPLE_INT24 = 1 << 2,  // Int24 is a very stupid thing to code, but it's supported by some hardware.
+      SAMPLE_INT32 = 1 << 3,
+      SAMPLE_FLOAT = 1 << 4
     };
 
 
 ::
 
-    enum {
-       PLANAR_Y=1<<0,
-       PLANAR_U=1<<1,
-       PLANAR_V=1<<2,
-       PLANAR_ALIGNED=1<<3,
-       PLANAR_Y_ALIGNED=PLANAR_Y|PLANAR_ALIGNED,
-       PLANAR_U_ALIGNED=PLANAR_U|PLANAR_ALIGNED,
-       PLANAR_V_ALIGNED=PLANAR_V|PLANAR_ALIGNED,
-       PLANAR_A=1<<4,
-       PLANAR_R=1<<5,
-       PLANAR_G=1<<6,
-       PLANAR_B=1<<7,
-       PLANAR_A_ALIGNED=PLANAR_A|PLANAR_ALIGNED,
-       PLANAR_R_ALIGNED=PLANAR_R|PLANAR_ALIGNED,
-       PLANAR_G_ALIGNED=PLANAR_G|PLANAR_ALIGNED,
-       PLANAR_B_ALIGNED=PLANAR_B|PLANAR_ALIGNED,
-      };
+    enum AvsPlane {
+      DEFAULT_PLANE = 0,
+      PLANAR_Y = 1 << 0,
+      PLANAR_U = 1 << 1,
+      PLANAR_V = 1 << 2,
+      PLANAR_ALIGNED = 1 << 3,
+      PLANAR_Y_ALIGNED = PLANAR_Y | PLANAR_ALIGNED,
+      PLANAR_U_ALIGNED = PLANAR_U | PLANAR_ALIGNED,
+      PLANAR_V_ALIGNED = PLANAR_V | PLANAR_ALIGNED,
+      PLANAR_A = 1 << 4,
+      PLANAR_R = 1 << 5,
+      PLANAR_G = 1 << 6,
+      PLANAR_B = 1 << 7,
+      PLANAR_A_ALIGNED = PLANAR_A | PLANAR_ALIGNED,
+      PLANAR_R_ALIGNED = PLANAR_R | PLANAR_ALIGNED,
+      PLANAR_G_ALIGNED = PLANAR_G | PLANAR_ALIGNED,
+      PLANAR_B_ALIGNED = PLANAR_B | PLANAR_ALIGNED,
+    };
 
 
 ::

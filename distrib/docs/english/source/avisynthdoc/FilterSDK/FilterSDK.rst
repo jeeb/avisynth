@@ -291,7 +291,7 @@ What's new in the api V8
         - Important note: frame property access in V8 is broken. Safely available since V8.1
 
 - C API (AVISYNTH_INTERFACE_VERSION = 8, AVISYNTH_INTERFACE_BUGFIX = 1):
-        - working frame property access (see 9.1 comments for fixes)
+        - working frame property access (see v9 comments for fixes)
 
 What's new in the API V9
 ------------------------
@@ -305,6 +305,23 @@ What's new in the API V9
         - Fix: C interface crash when using avs_new_video_frame_p(_a)
         - Fix: C interface avs_prop_get_data behave like C++ counterpart.
 
+- C API (AVISYNTH_INTERFACE_VERSION = 9, AVISYNTH_INTERFACE_BUGFIX = 2):
+        - Fix: C API undefined behavior when upstream throw runtime error
+
+What's new in the API V10
+-------------------------
+
+- C and C++ API (AVISYNTH_INTERFACE_VERSION = 10):
+        - Technical fix: made ``VideoFrameBuffer`` destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
+        - New: :ref:`VideoFrame <cplusplus_videoframe>` (c++) and AVS_VideoFrame (c) now have its own pixel_type field. Before, there was no reliable way of knowing it on a frame from :ref:`propGetFrame <cplusplus_propgetframe>`.
+        - New: :ref:`VideoFrame::GetPixelType <cplusplus_getpixeltype>` (avs_video_frame_get_pixel_type) returns the video format of a VideoFrame, ideally kept in sync with VideoInfo::pixel_type.
+        - New: :ref:`VideoFrame::AmendPixelType <cplusplus_amendpixeltype>` (avs_video_frame_amend_pixel_type) changes the pixel_type field of a VideoFrame (special cases)
+          C interface equivalents: avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type
+        - New: :ref:`AVSValue::GetType <cplusplus_avsvaluegettype>` returns the underlying type directly
+        - Added ``AvsValueType`` enum for the above case to avisynth.h
+        - Added DEFAULT_PLANE and AVS_DEFAULT_PLANE to plane enum (avisynth.h, avisynth_c.h)
+        - Gave all enums of public C++ API a name (avisynth.h): AvsVersion, AvsSampleType, AvsPlane, AvsColorFormat, AvsImageTypeFlags, AvsChromaPlacement
+        - prop_src argument of :ref:`NewVideoFrameP <cplusplus_newvideoframep>` (avs_new_video_frame_p) is now const
 
 Some history
 ------------
