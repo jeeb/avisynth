@@ -117,3 +117,6 @@ EXPORTS
   avs_get_var_long
   avs_is_property_writable
   avs_make_property_writable
+  avs_video_frame_get_pixel_type
+  avs_video_frame_amend_pixel_type
+
