@@ -9,10 +9,14 @@ The "rst" version of the documentation just lists changes in brief.
 ------------------
 - Add avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type to C interface as well 
 - Fix (#327) Histogram "color2" markers. Fix right shifted 15 degree dots, fix square for bits>8
-- Feature (#317): The color format of a VideoFrame can now be retrieved with its GetPixelType()
+- Feature (#317): (V10 interface) The color format of a VideoFrame can now be retrieved with its GetPixelType()
   function. Before, there was no reliable way of knowing it on a frame from propGetFrame().
-  (Also added AmendPixelType() for rare cases.)
+  The internally stored pixel_type in VideoFrame is properly converted upon a Subframe (Y8-32), SubframePlanar (strip alpha).
+- Feature (#317): (V10 interface) added ``VideoFrame::AmendPixelType`` and ``avs_video_frame_amend_pixel_type``.
+  Introduced in order to keep VideoInfo and VideoFrame pixel_type synchronized for special cases:
+  when filter constructor would just change ``VideoInfo::pixel_type``, but the frame would be passed w/o any change, like in ``ConvertFromDoubleWidth`` or ``CombinePlanes``.
 - Feature (#314): Added AVSValue::GetType()
+  Returns an AvsValueType enum directly, one can use it instead of calling all IsXXX functions to establish the type. (Rust use case)
 - "Text" new parameter: "placement" for chroma location hint
   - Used in subsampled YUV formats, otherwise ignored.
   - Valid values for "placement" are the same as in ChromaInPlacement and 
@@ -27,17 +31,17 @@ The "rst" version of the documentation just lists changes in brief.
   - Only "center" and "left" is implemented. (center is known as jpeg or mpeg1, left is known as mpeg2)
     If "center" is given directly or read from frame property, it will be used.
     Otherwise "Text" renders chroma as "left" (mpeg2)
-- Fix (#314): Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
+- Enhancement (#314): Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
 - Fix (#314): Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
   Fixed in C interface as well: avs_new_video_frame_p and avs_new_video_frame_p_a: prop_src argument now const (no change in use)
-- Fix (#314): Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
+- Enhancement (#314): Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
 - "Text": Almost fully rewritten. 
   (#310) Support any width of bdf fonts (but still of fixed width)
   Render in YUY2 is as nice as in YV16
   Halo is not limited to original character matrix boundaries
   Halo is not character based, but rendered on the displayed string as a whole.
   Some speed enhancements, mainly for subsampled formats and outlined (with halo) styles
-- Fix (#315): Show exception message as well if a v2.6-style plugin throws AvisynthError in its
+- Enhancement (#315): Show exception message as well if a v2.6-style plugin throws AvisynthError in its
   AvisynthPluginInit3() instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
 - "Text": draw rightmost on-screen character even if only partially visible (was: not drawn at all)
 - "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
