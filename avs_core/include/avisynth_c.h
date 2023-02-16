@@ -2,6 +2,7 @@
 // Copyright 2003 Kevin Atkinson
 
 // Copyright 2020 AviSynth+ project
+// Actual C Interface version follows the global Avisynth+ IF version numbers.
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -95,11 +96,11 @@
 // Constants
 //
 
-#ifndef __AVISYNTH_9_H__
+#ifndef __AVISYNTH_10_H__
 enum {
   AVISYNTH_INTERFACE_CLASSIC_VERSION = 6,
-  AVISYNTH_INTERFACE_VERSION = 9,
-  AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 2 // reset to zero whenever the normal interface version bumps
+  AVISYNTH_INTERFACE_VERSION = 10,
+  AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 0 // reset to zero whenever the normal interface version bumps
 };
 #endif
 
