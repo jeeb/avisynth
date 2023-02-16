@@ -1412,6 +1412,15 @@ enum AvsAllocType {
 };
 
 
+// Important note (Windows, MSVC): 
+// When extending IScriptEnvironment, do not declare existing names again
+// with different parameters. Methods with the same name will be grouped 
+// together in the vtable. This results in shifting all vtable method pointers
+// after such grouping and breaks all plugins who expect the old order.
+// E.g. ApplyMessage will be called instead of GetAVSLinkage.
+// As long as the declaration is compatible with COM interop, the order of 
+// declaration is sequential. But if not, overloads in the same class are grouped
+// together in the vtable in the reverse order of declaration.
 class IScriptEnvironment {
 public:
   virtual ~IScriptEnvironment() {}
@@ -1529,11 +1538,6 @@ public:
   // NewVideoFrame with frame property source.
   virtual PVideoFrame __stdcall NewVideoFrameP(const VideoInfo& vi, const PVideoFrame* prop_src, int align = FRAME_ALIGN) = 0;
 
-  // Note: do not declare existing names like 'NewVideoFrame' again with different parameters since MSVC will reorder it
-  // in the vtable and group it together with the first NewVideoFrame variant.
-  // This results in shifting all vtable method pointers after NewVideoFrame and breaks all plugins who expect the old order.
-  // E.g. ApplyMessage will be called instead of GetAVSLinkage
-
   // Generic query to ask for various system properties
   virtual size_t  __stdcall GetEnvProperty(AvsEnvProperty prop) = 0;
 
@@ -1569,7 +1573,7 @@ public:
   // V9
   virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
 
-}; // end class IScriptEnvironment. Order is important.
+}; // end class IScriptEnvironment. Order is important. Avoid overloads with the same name.
 
 // used internally
 class IScriptEnvironment_Avs25 {
