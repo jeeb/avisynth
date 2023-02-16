@@ -23,7 +23,15 @@
 //           Interface Version to 8 (classic 2.6 = 6)
 // 20200527  Add IScriptEnvironment_Avs25, used internally
 // 20200607  AVS frame property enums to match existing Avisynth enum style
-// 202112xx  pre V9-MakePropertyWritable, IsPropertyWritable
+// 202112xx  V9-MakePropertyWritable, IsPropertyWritable
+// 2023      V10
+//           prop_src parameter made as const in NewVideoFrameP (non-breaking cosmetics)
+//           Add all enums of public C++ API a name
+//           Add DEFAULT_PLANE as 0 to AvsPlane enum
+//           Made `VideoFrameBuffer` destructor public
+//           Introduce pixel_type to VideoFrame struct
+//           VideoFrame::GetPixelType,VideoFrame::AmendPixelType
+//           AVSValue::GetType
 
 // http://www.avisynth.org
 
@@ -983,7 +991,8 @@ class VideoFrame {
 
   AVSMap *properties;
 
-  int pixel_type; // Copy from VideoInfo
+  // this one is changable by AmendPixelType in rare cases
+  int pixel_type; // V10 - Copy from VideoInfo
 
   friend class PVideoFrame;
   void AddRef();
@@ -1454,7 +1463,7 @@ public:
   virtual void __stdcall PushContext(int level = 0) = 0;
   virtual void __stdcall PopContext() = 0;
 
-  // note v8: deprecated in most cases, use NewVideoFrameP is possible
+  // note v8: use NewVideoFrameP is possible
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) = 0;
 
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
