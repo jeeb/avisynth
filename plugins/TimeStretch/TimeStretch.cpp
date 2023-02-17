@@ -64,7 +64,7 @@ static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 static AVSValue __cdecl CreateRational(AVSValue args, void*, IScriptEnvironment* env);
 
 
-AVSsoundtouch(PClip _child, float _tempo, float _rate, float _pitch, const AVSValue* args, IScriptEnvironment* env)
+AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, const AVSValue* args, IScriptEnvironment* env)
 : GenericVideoFilter(_child)
 {
   dstbuffer = new SFLOAT[BUFFERSIZE * vi.AudioChannels()];

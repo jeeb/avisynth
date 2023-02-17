@@ -484,7 +484,10 @@ static void do_convert_ordered_dither_uint_sse41(const BYTE* srcp8, BYTE* dstp8,
         src_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x + 8));
       }
 
-      __m128i src_lo_lo, src_lo_hi, src_hi_lo, src_hi_hi;
+      [[maybe_unused]] __m128i src_lo_lo;
+      [[maybe_unused]] __m128i src_lo_hi;
+      [[maybe_unused]] __m128i src_hi_lo;
+      [[maybe_unused]] __m128i src_hi_hi;
       if constexpr (fulls != fulld) {
         // goint to 32 float
         // const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;

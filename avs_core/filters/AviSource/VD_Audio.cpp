@@ -1708,7 +1708,7 @@ void *AudioCompressor::Compress(long lInputSamples, long *lplSrcInputSamples, lo
 		// fill the input buffer up!
 
 		if (ashBuffer.cbSrcLength < INPUT_BUFFER_SIZE) {
-			LONG lBytes=0;
+			//LONG lBytes=0;
 			long lSamplesToRead;
 
 			do {
@@ -1719,7 +1719,7 @@ void *AudioCompressor::Compress(long lInputSamples, long *lplSrcInputSamples, lo
 
 				ashBuffer.cbSrcLength += ltActualBytes;
 
-				lBytes += ltActualBytes;
+				//lBytes += ltActualBytes;
 
 				lInputSamples -= ltActualSamples;
 				lActualSrcSamples += ltActualSamples;

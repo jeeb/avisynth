@@ -1060,11 +1060,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
   const int pitch = src->GetPitch();
   const int rowsize = src->GetRowSize();
 
-  const int width = rowsize / pixelsize;
-
   const float chroma_center_f = 0.0f;
-
-  const int max_pixel_value = (1 << bits_per_pixel) - 1;
 
   if (input_type_is_packed_rgb) {
     PVideoFrame dst = env->NewVideoFrameP(vi, &src);
@@ -1295,7 +1291,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
       {
         BYTE* dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
-        int dstwidth = dst->GetRowSize() / pixelsize;
 
         // copy source plane to luma
         env->BitBlt(dstp, dstpitch, srcp, pitch, width * pixelsize, height);

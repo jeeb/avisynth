@@ -163,7 +163,6 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
   }
   case MT_MULTI_INSTANCE:
   {
-    auto myThreadID = envI->GetThreadId();
     // When called from thread pool then thread IDs are one-to-one mapped to ChildFilters array.
     // 'binary and' mask (old method) or 'modulo' method ensures that no over-addressing can happen.
     // The number of filter instances are created in EnableMT as such.
@@ -176,6 +175,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
     //   E.g. when mapping a thread on a CPU with 8 logical cores 
     //   to a instance count of 3 (nThread=3) the mapping is uneven (modulo example): [0,3,6]->[0] [1,4,7]->[1] [2,5]->[2]
 #ifdef OLD_PREFETCH
+    auto myThreadID = envI->GetThreadId();
     assert((nThreads & (nThreads - 1)) == 0); // must be 2^n
     size_t clipIndex = myThreadID & (nThreads - 1);
 #else

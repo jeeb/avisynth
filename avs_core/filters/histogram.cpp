@@ -1408,8 +1408,6 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   const int max_pixel_value = (1 << bits_per_pixel) - 1;
   const float color_shift_factor = isFloat ? 1.0f / 255.0f : max_pixel_value / 255.0f;
 
-  const float middle_chroma_f = uv8tof(128);
-
   int plane_default_black[3] = {
     RGB ? 0 : (16 << color_shift),
     RGB ? 0 : (128 << color_shift),
@@ -1528,7 +1526,6 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
             }
             else {
               // src_offset and dst_offset is 0
-              const int max_src_pixel = (1 << bits_per_pixel) - 1;
               for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
                   hist[min((int)(srcp8[x] * d.mul_factor + 0.5f), max_show_pixel_value)]++;
@@ -1575,7 +1572,6 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
             }
             else {
               // src_offset and dst_offset is 0
-              const int max_src_pixel = (1 << bits_per_pixel) - 1;
               for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
                   hist[min((int)(srcp16[x] * d.mul_factor + 0.5f), max_show_pixel_value)]++;

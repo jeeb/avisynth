@@ -554,7 +554,8 @@ static void do_convert_ordered_dither_uint_avx2(const BYTE* srcp8, BYTE* dstp8, 
         src= _mm256_load_si256(reinterpret_cast<const __m256i*>(srcp + x)); // 16* uint16
       }
 
-      __m256i src_lo, src_hi;
+      [[maybe_unused]] __m256i src_lo;
+      [[maybe_unused]] __m256i src_hi;
       if constexpr (fulls != fulld) {
         // goint to 32 float
         // const float val = (srcp[x] - src_offset) * mul_factor + dst_offset_plus_round;

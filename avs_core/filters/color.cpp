@@ -336,7 +336,7 @@ static std::string coloryuv_create_lut_expr(const ColorYUVPlaneConfig* config, i
   // For gamma pre-post correction. we are in [0..1) working range
   const double tv_range_lo_normalized = 16.0 / 256.0;
 
-  const double source_max = f32 ? 1.0 : (double)((1 << bits_per_pixel) - 1);
+  //const double source_max = f32 ? 1.0 : (double)((1 << bits_per_pixel) - 1);
   const bool fulls = config->range == COLORYUV_RANGE_PC_TV;
   const bool fulld = config->range == COLORYUV_RANGE_TV_PC;
   // when COLORYUV_RANGE_NONE both are the same false

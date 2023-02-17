@@ -230,7 +230,7 @@ std::string UnQuote(std::string s) {
 }
 
 static void vector_shl(uint8_t* buf, const size_t size, const size_t bits) {
-  const auto whole_chunks = bits / 8;
+  const size_t whole_chunks = bits / 8;
 
   // more bits that size
   if (whole_chunks >= size) {
@@ -247,8 +247,8 @@ static void vector_shl(uint8_t* buf, const size_t size, const size_t bits) {
 
   if (final_shift) {
     const auto right = 8 - final_shift;
-    const auto len = size - whole_chunks - 1;
-    for (auto i = 0; i < len; i++) {
+    const size_t len = size - whole_chunks - 1;
+    for (size_t i = 0; i < len; i++) {
       buf[i] = (buf[i] << final_shift) | (buf[i + 1] >> right);
     }
     buf[len] = buf[len] << final_shift;
@@ -256,7 +256,7 @@ static void vector_shl(uint8_t* buf, const size_t size, const size_t bits) {
 }
 
 static void vector_shr(uint8_t* buf, const size_t size, const size_t bits) {
-  const auto whole_chunks = bits / 8;
+  const size_t whole_chunks = bits / 8;
 
   // more bits that size
   if (whole_chunks >= size) {
@@ -273,9 +273,9 @@ static void vector_shr(uint8_t* buf, const size_t size, const size_t bits) {
 
   if (final_shift) {
     const auto left = 8 - final_shift;
-    const auto len = size - whole_chunks - 1;
+    const size_t len = size - whole_chunks - 1;
     auto index = size - 1;
-    for (auto i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
       buf[index] = (buf[index] >> final_shift) | (buf[index - 1] << left);
       index--;
     }
@@ -564,7 +564,7 @@ static BdfFont LoadBMF(std::string name, bool bold) {
 
         // one character line is of (almost) arbitrary length, not limited to 16 or 32 bits
         std::vector<uint8_t> charline_buffer(fnt.font_info.fontline_bytes);
-        const auto linebuf_len = fnt.font_info.fontline_bytes;
+        const size_t linebuf_len = fnt.font_info.fontline_bytes;
 
         for(int count = 0; count < current_char.font_bounding_box_y; count++)
         {
@@ -584,7 +584,7 @@ static BdfFont LoadBMF(std::string name, bool bold) {
           }
           size_t buf_ctr = 0;
           // two hex characters by two character then put into byte buffer
-          for (auto i = 0; i < len; i += 2) {
+          for (size_t i = 0; i < len; i += 2) {
             auto ssss = temp.substr(i, 2); // next two hex chars
             charline_buffer[buf_ctr++] = (uint8_t)std::stoul(ssss, nullptr, 16);;
           }
@@ -918,7 +918,6 @@ static void insert_from_msb_bit(uint8_t *dst, int bitposition, const uint8_t* fo
 {
   int pos = bitposition / 8;
   int bitindex = bitposition % 8;
-  const int SHIFT_COUNT = (fontlinebuf_size - 1) * 8;
   if (bitindex > 0) {
     const int usable_msb_count = 8 - bitindex;
     //                     mask       FF >> (bitindex)
@@ -999,7 +998,7 @@ void PreRendered::make_outline() {
     dst++;
     src++;
     // middle
-    for (int i = 1; i < w - 1; ++i)
+    for (size_t i = 1; i < w - 1; ++i)
     {
       left = (src[0] << 1) | (src[1] >> (8 - 1));
       right = (src[-1] << (8 - 1)) | (src[0] >> 1);
@@ -1023,13 +1022,13 @@ void PreRendered::make_outline() {
   uint8_t* next_line_LR = buf3.data();
 
   // line 0, no previous line
-  int y = 0;
+  size_t y = 0;
   dst = stringbitmap_outline[y].data();
   src = stringbitmap[y].data();
   src_next = stringbitmap[y + 1].data();
   make_dizzyLR(curr_line_LR, src, w);
   make_dizzyLR(next_line_LR, src_next, w);
-  for (int x = 0; x < w; x++) {
+  for (size_t x = 0; x < w; x++) {
     dst[x] = (curr_line_LR[x] | next_line_LR[x] | src_next[x]) & ~src[x];
   }
   tmp_line = prev_line_LR;
@@ -1047,7 +1046,7 @@ void PreRendered::make_outline() {
     dst = stringbitmap_outline[y].data();
     src_next = stringbitmap[y + 1].data();
     make_dizzyLR(next_line_LR, src_next, w);
-    for (int x = 0; x < w; x++) {
+    for (size_t x = 0; x < w; x++) {
       dst[x] = (prev_line_LR[x] | curr_line_LR[x] | next_line_LR[x] | src_prev[x] | src_next[x]) & ~src[x];
     }
     tmp_line = prev_line_LR;
@@ -1059,7 +1058,7 @@ void PreRendered::make_outline() {
   }
   // last one, no next line
   dst = stringbitmap_outline[y].data();
-  for (int x = 0; x < w; x++) {
+  for (size_t x = 0; x < w; x++) {
     dst[x] = (prev_line_LR[x] | curr_line_LR[x] | src_prev[x]) & ~src[x];
   }
 }
@@ -1264,7 +1263,7 @@ void Render1by1Planes(int bits_per_pixel, int color, int halocolor, int* pitches
     for (int ty = pre.ystart; ty < pre.yend; ty++) {
       pixel_t* _dstp = reinterpret_cast<pixel_t*>(dstp);
       uint8_t* fontline_ptr = pre.stringbitmap[ty].data();
-      uint8_t* fontoutline_ptr;
+      [[maybe_unused]] uint8_t* fontoutline_ptr;
       if constexpr(useHalocolor)
         fontoutline_ptr = pre.stringbitmap_outline[ty].data();
       int j = 0;
@@ -1593,7 +1592,7 @@ void RenderYUY2(int color, int halocolor, int pitch, BYTE* _dstp, PreRendered& p
     BYTE* dp = dstp;
     BYTE* dpUV = dstpUV;
     uint8_t* fontline_ptr = pre.stringbitmap[ty].data();
-    uint8_t* fontoutline_ptr;
+    [[maybe_unused]] uint8_t* fontoutline_ptr;
     if constexpr (useHalocolor)
       fontoutline_ptr = pre.stringbitmap_outline[ty].data();
 
@@ -1737,7 +1736,7 @@ static void RenderPackedRGB(int color, int halocolor, BYTE* _dstp, int pitch, in
   for (int ty = pre.ystart; ty < pre.yend; ty++) {
     uint8_t* dp = dstp;
     uint8_t* fontline_ptr = pre.stringbitmap[ty].data();
-    uint8_t* fontoutline_ptr;
+    [[maybe_unused]] uint8_t* fontoutline_ptr;
     if constexpr(useHalocolor)
       fontoutline_ptr = pre.stringbitmap_outline[ty].data();
 

@@ -1388,7 +1388,7 @@ bool AVIReadHandler::AppendFile(const wchar_t *pszFile_w) {
 		pasn_old = listStreams.AtHead();
 		pasn_new = newstreams.AtHead();
 
-		while(!!(pasn_old_next = pasn_old->NextFromHead()) & !!(pasn_new_next = pasn_new->NextFromHead())) {
+		while(!!(pasn_old_next = pasn_old->NextFromHead()) && !!(pasn_new_next = pasn_new->NextFromHead())) {
 			const char *szPrefix;
 
 			switch(pasn_old->hdr.fccType) {

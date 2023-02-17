@@ -1195,7 +1195,6 @@ PVideoFrame __stdcall DeleteProperty::GetFrame(int n, IScriptEnvironment* env)
   }
   */
   // delete selected names
-  AVSMap* mapv = env->getFramePropsRW(frame);
   for (auto &s : propNames) {
     const char* key = s.c_str();
     env->propDeleteKey(avsmap, key); // 0 is success, ignored

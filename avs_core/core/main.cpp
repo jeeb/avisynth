@@ -60,7 +60,7 @@
 #ifdef MSVC
 constexpr uint32_t FP_STATE = 0x9001f;
 #ifdef _M_X64
-constexpr uint32_t FP_MASK = 0xffffffff & !(_MCW_PC || _MCW_IC);
+constexpr uint32_t FP_MASK = 0xffffffff & !(_MCW_PC | _MCW_IC);
 // x64 ignores _MCW_PC and _MCW_IC, Debug CRT library actually asserts when these are passed.
 // https ://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/control87-controlfp-control87-2?redirectedfrom=MSDN&view=msvc-170
 #else
