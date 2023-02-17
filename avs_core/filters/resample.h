@@ -168,6 +168,12 @@ public:
   static AVSValue __cdecl Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create_SincResize(AVSValue args, void*, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create_SinPowerResize(AVSValue args, void*, IScriptEnvironment* env);
+  
+  static AVSValue __cdecl Create_SincLin2Resize(AVSValue args, void*, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create_UserDefined2Resize(AVSValue args, void*, IScriptEnvironment* env);
 };
 
 

@@ -1613,6 +1613,12 @@ static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironme
       return new GaussianFilter(30.0); // Parse out optional P= from string
     else if (!lstrcmpi(resampler, "sinc"))
       return new SincFilter(4); // Parse out optional Taps= from string
+    else if (!lstrcmpi(resampler, "sinpow"))
+      return new SinPowerFilter(2.5); // Parse out optional P= from string.
+    else if (!lstrcmpi(resampler, "sinclin2"))
+      return new SincLin2Filter(15); // Parse out optional Taps= from string
+    else if (!lstrcmpi(resampler, "userdefined2"))
+      return new UserDefined2Filter(121.0, 19.0); // Parse out optional B= and C= from string
     else
       env->ThrowError("Convert: Unknown chroma resampler, '%s'", resampler);
   }

@@ -226,6 +226,9 @@ extern const AVSFunction Resample_filters[] = {
   { "Spline64Resize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline64Resize},
   { "GaussResize",    BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", FilteredResize::Create_GaussianResize},
   { "SincResize",     BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_SincResize},
+  { "SinPowerResize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", FilteredResize::Create_SinPowerResize},
+  { "SincLin2Resize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_SincLin2Resize},
+  { "UserDefined2Resize", BUILTIN_FUNC_PREFIX, "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_UserDefined2Resize},
   /**
     * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
     *
@@ -1090,5 +1093,26 @@ AVSValue __cdecl FilteredResize::Create_SincResize(AVSValue args, void*, IScript
 {
   auto f = SincFilter(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
+}
+
+// like GaussianFilter(); optional P
+AVSValue __cdecl FilteredResize::Create_SinPowerResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  auto f = SinPowerFilter(args[7].AsFloat(2.5f));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
+}
+
+// like SincFilter or LanczosFilter: optional Taps
+AVSValue __cdecl FilteredResize::Create_SincLin2Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  auto f = SincLin2Filter(args[7].AsInt(15));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
+}
+
+// like bicubic: optional B and C
+AVSValue __cdecl FilteredResize::Create_UserDefined2Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  auto f = UserDefined2Filter(args[3].AsFloat(121.0), args[4].AsFloat(19.0));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5], &f, env);
 }
 

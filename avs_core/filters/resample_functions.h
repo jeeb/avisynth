@@ -91,7 +91,8 @@ struct ResamplingProgram {
     else
       pixel_coefficient_float = (float*)Env->Allocate(sizeof(float) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
 
-    if (!pixel_offset || (!pixel_coefficient && bits_per_pixel < 32) || (!pixel_coefficient_float && bits_per_pixel == 32)) {
+    if ((pixel_offset == nullptr) || (pixel_coefficient == nullptr && bits_per_pixel < 32) || 
+        (pixel_coefficient_float == nullptr && bits_per_pixel == 32)) {
       Env->Free(pixel_offset);
       Env->Free(pixel_coefficient);
       Env->Free(pixel_coefficient_float);
@@ -263,5 +264,46 @@ private:
   double taps;
 };
 
+class SinPowerFilter : public ResamplingFunction
+  // SinPow kernel, used in SinPowResize
+{
+public:
+  SinPowerFilter(double p = 2.5);
+  double f(double x);
+  double support() { return 2.0; }; // 2 very important, 4 cause bugs
+
+private:
+  double param;
+};
+
+class SincLin2Filter : public ResamplingFunction
+  /**
+  * SincLin2 filter, used in SincLin2Resize
+  **/
+{
+public:
+  SincLin2Filter(int _taps = 15);
+  double f(double x);
+  double support() { return taps; };
+
+private:
+  double sinc(double value);
+  double taps;
+};
+
+class UserDefined2Filter : public ResamplingFunction
+	/**
+	  * User-defined by 2 samples filter, used in UDef2Resize
+	 **/
+{
+public:
+	UserDefined2Filter(double _b = 121.0, double _c = 19.0);
+	double f(double x);
+	double support() { return 2.0; }
+
+private:
+	double sinc(double value);
+	double a, b, c;
+};
 
 #endif  // __Reample_Functions_H__

@@ -213,11 +213,11 @@ double GaussianFilter::f(double value) {
  *** Sinc filter ***
  ***********************/
 SincFilter::SincFilter(int _taps) {
-   taps = (double)clamp(_taps, 1, 20);
+   taps = (double)clamp(_taps, 1, 150);
 }
 
 double SincFilter::f(double value) {
-   value = fabs(value);
+  value = fabs(value);
 
   if (value > 0.000001) {
     value *= M_PI;
@@ -225,6 +225,92 @@ double SincFilter::f(double value) {
   } else {
     return 1.0;
   }
+}
+
+
+/**********************
+*** SinPower filter ***
+***********************/
+
+SinPowerFilter::SinPowerFilter(double p) {
+  param = clamp(p, 1.0, 10.0);
+}
+
+double SinPowerFilter::f(double value) {
+  value = fabs(value);
+  value *= M_PI / param;
+
+  if (value < (M_PI / 2)) return pow(cos(value), 1.8);
+  else
+  {
+    if (value < M_PI) return -(cos(value) * cos(value)) / (0.9 * value);
+    else return 0;
+  }
+}
+
+/***********************
+*** SincLin2 filter ***
+***********************/
+
+SincLin2Filter::SincLin2Filter(int _taps)
+{
+  taps = (double)clamp(_taps, 1, 30);
+}
+
+double SincLin2Filter::sinc(double value)
+{
+  if (value > 0.000001)
+  {
+    value *= M_PI;
+    return sin(value) / value;
+  }
+  else return 1.0;
+}
+
+double SincLin2Filter::f(double value)
+{
+  value = fabs(value);
+
+  if (value < (taps / 2.0)) return sinc(value);
+  else return sinc(value) * ((2.0 - (2.0 * value / taps)));
+
+}
+
+
+/*********************************
+ *** UserDefined2 filter ***
+ *********************************/
+
+UserDefined2Filter::UserDefined2Filter(double _b, double _c)
+{
+  a = 1.0; // 0 sample = 1
+  b = (double)clamp(_b, -50.0, 250.0); // 1 and -1  sample
+  c = (double)clamp(_c, -50.0, 250.0); // 2 and -2 sample
+  b = (b - 16.0) / 219.0;
+  c = (c - 16.0) / 219.0;
+}
+
+double UserDefined2Filter::sinc(double value)
+{
+
+  if (fabs(value) > 0.000001)
+  {
+    value *= M_PI;
+    return sin(value) / value;
+  }
+  else return 1.0;
+}
+
+double UserDefined2Filter::f(double x)
+{
+  x = fabs(x);
+
+  if (x <= 3) // ?
+  {
+    return c * sinc(x + 2) + b * sinc(x + 1) + a * sinc(x) + b * sinc(x - 1) + c * sinc(x - 2);
+  }
+  else return 0;
+
 }
 
 
@@ -313,7 +399,8 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
       for (int k = 0; k < fir_filter_size; ++k) {
         double new_value = value + f((start_pos + k - ok_pos) * filter_step) / total;
         // FIXME: is it correct to round negative values upwards?
-        program->pixel_coefficient[i*fir_filter_size + k] = short(int(new_value*current_FPScale + 0.5) - int(value*current_FPScale + 0.5)); // to make it round across pixels
+        // Answer : No with int cast, yes with floor() instead.
+        program->pixel_coefficient[i*fir_filter_size + k] = (short)((int)(new_value*current_FPScale + 0.5) - int(value*current_FPScale + 0.5)); // to make it round across pixels
         value = new_value;
       }
     }
