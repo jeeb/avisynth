@@ -148,7 +148,8 @@ class ConvertToPlanarGeneric : public GenericVideoFilter
 {
 public:
   ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
-                         int _ChromaLocation_In, const AVSValue& ChromaResampler,
+                         int _ChromaLocation_In, 
+                         const AVSValue& ChromaResampler, const AVSValue& param1, const AVSValue& param2,
                          int _ChromaLocation_Out, IScriptEnvironment* env);
   ~ConvertToPlanarGeneric() {}
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;

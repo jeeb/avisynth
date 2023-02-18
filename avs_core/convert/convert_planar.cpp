@@ -58,7 +58,7 @@
 #include <algorithm>
 #include <string>
 
-static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
+static ResamplingFunction* getResampler( const char* resampler, AVSValue param1, AVSValue param2, IScriptEnvironment* env);
 
 template <typename pixel_t>
 void fill_chroma(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, pixel_t val)
@@ -1093,17 +1093,19 @@ AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironm
 /**********************************************
  * Converter between arbitrary planar formats
  *
- * This uses plane copy for luma, and the
- * bicubic resizer for chroma (could be
- * customizable later)
+ * This uses plane copy for luma, and a custom
+ * resizer for chroma
  *
  * (c) Klaus Post, 2005
  * (c) Ian Brabham, 2011
  **********************************************/
 
-ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
-                                               int _ChromaLocation_In, const AVSValue& chromaResampler,
-                                               int _ChromaLocation_Out, IScriptEnvironment* env) : 
+ConvertToPlanarGeneric::ConvertToPlanarGeneric(
+  PClip src, int dst_space, bool interlaced,
+  int _ChromaLocation_In, 
+  const AVSValue& chromaResampler, const AVSValue& param1, const AVSValue& param2,
+  int _ChromaLocation_Out,
+  IScriptEnvironment* env) : 
   GenericVideoFilter(src), ChromaLocation_In(_ChromaLocation_In), ChromaLocation_Out(_ChromaLocation_Out)
 {
   Yinput = vi.NumComponents() == 1;
@@ -1286,7 +1288,7 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   int uv_width  = vi.width  >> vi.GetPlaneWidthSubsampling(PLANAR_U);
   int uv_height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-  ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), env);
+  ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), param1, param2, env);
 
   bool P = !lstrcmpi(chromaResampler.AsString(""), "point");
 
@@ -1401,8 +1403,9 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   if (vi.IsRGB()) { // packed or planar
     if (vi.IsRGB48() || vi.IsRGB64()) {
       // we convert to intermediate PlanarRGB, RGB48/64->YUV444 is slow C, planarRGB  is fast
-      AVSValue new_args[5] = { clip, AVSValue(), AVSValue(), AVSValue(), AVSValue() };
-      clip = ConvertToRGB::Create(AVSValue(new_args, 5), (void *)-1, env).AsClip();
+      AVSValue new_args[7] = { clip, AVSValue(), AVSValue(), AVSValue(), AVSValue(), AVSValue(), AVSValue() };
+      // clip, matrix,  interlaced, chromainplacement, chromaresample, param1, param2
+      clip = ConvertToRGB::Create(AVSValue(new_args, 7), (void *)-1, env).AsClip();
       vi = clip->GetVideoInfo();
     }
 
@@ -1444,10 +1447,20 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     const AVSMap* props = env->getFramePropsRO(frame0);
     chromaloc_parse_merge_with_props(vi, args[3].AsString(nullptr), props, /* ref*/ChromaLocation_In, ChromaLocation_e::AVS_CHROMA_LEFT /*default*/, env);
   }
+
+  AVSValue param1;
+  AVSValue param2;
   if (to_420 || to_422) {
     // ChromaOutPlacement parameter is valid
     chromaloc_parse_merge_with_props(vi, args[5].AsString(nullptr), nullptr, /* ref*/ChromaLocation_Out, ChromaLocation_e::AVS_CHROMA_LEFT /*default*/, env);
+    param1 = args[6];
+    param2 = args[7];
   }
+  else {
+    param1 = args[5];
+    param2 = args[6];
+  }
+
 
   if (to_420) {
     if (vi.Is420()) {
@@ -1525,7 +1538,10 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   if (converted)
     clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
 
-  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), ChromaLocation_In, args[4], ChromaLocation_Out, env);
+  return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), ChromaLocation_In, 
+    args[4], // chromaresample
+    param1, param2,
+    ChromaLocation_Out, env);
 }
 
 AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -1589,20 +1605,20 @@ static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
 */
 
 
-static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env) {
+static ResamplingFunction* getResampler(const char* resampler, AVSValue param1, AVSValue param2, IScriptEnvironment* env) {
   if (resampler) {
-    if      (!lstrcmpi(resampler, "point"))
+    if (!lstrcmpi(resampler, "point"))
       return new PointFilter();
     else if (!lstrcmpi(resampler, "bilinear"))
       return new TriangleFilter();
     else if (!lstrcmpi(resampler, "bicubic"))
-      return new MitchellNetravaliFilter(1./3,1./3); // Parse out optional B= and C= from string
+      return new MitchellNetravaliFilter(param1.AsDblDef(1.0/3), param2.AsDblDef(1.0/3)); // optional B and C as param1 and param2
     else if (!lstrcmpi(resampler, "lanczos"))
-      return new LanczosFilter(3); // Parse out optional Taps= from string
+      return new LanczosFilter((int)param1.AsFloat(3)); // optional Taps as param1
     else if (!lstrcmpi(resampler, "lanczos4"))
       return new LanczosFilter(4);
     else if (!lstrcmpi(resampler, "blackman"))
-      return new BlackmanFilter(4);
+      return new BlackmanFilter((int)param1.AsFloat(4)); // optional Taps as param1
     else if (!lstrcmpi(resampler, "spline16"))
       return new Spline16Filter();
     else if (!lstrcmpi(resampler, "spline36"))
@@ -1610,17 +1626,17 @@ static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironme
     else if (!lstrcmpi(resampler, "spline64"))
       return new Spline64Filter();
     else if (!lstrcmpi(resampler, "gauss"))
-      return new GaussianFilter(30.0); // Parse out optional P= from string
+      return new GaussianFilter(param1.AsDblDef(30.0)); // optional P as param1
     else if (!lstrcmpi(resampler, "sinc"))
-      return new SincFilter(4); // Parse out optional Taps= from string
+      return new SincFilter((int)param1.AsFloat(4)); // optional Taps as param1
     else if (!lstrcmpi(resampler, "sinpow"))
-      return new SinPowerFilter(2.5); // Parse out optional P= from string.
+      return new SinPowerFilter(param1.AsDblDef(2.5)); // optional P as param1
     else if (!lstrcmpi(resampler, "sinclin2"))
-      return new SincLin2Filter(15); // Parse out optional Taps= from string
+      return new SincLin2Filter((int)param1.AsFloat(15)); // optional Taps= as param1
     else if (!lstrcmpi(resampler, "userdefined2"))
-      return new UserDefined2Filter(121.0, 19.0); // Parse out optional B= and C= from string
+      return new UserDefined2Filter(param1.AsDblDef(121.0), param2.AsDblDef(19.0)); // optional B and C as param1 and param2
     else
       env->ThrowError("Convert: Unknown chroma resampler, '%s'", resampler);
   }
-  return new MitchellNetravaliFilter(1./3,1./3); // Default colorspace conversion for AviSynth
+  return new MitchellNetravaliFilter(param1.AsDblDef(1.0/3), param2.AsDblDef(1.0/3)); // Default colorspace conversion for AviSynth
 }
