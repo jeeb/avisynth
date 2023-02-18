@@ -5,11 +5,35 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-Check the online documentation at https://avisynthplus.readthedocs.io/en/latest/
-
-20230216 3.7.3 WIP
+20230218 3.7.3 WIP
 ------------------
-- Bump AviSynth interface version to 10.0
+- (#337) Add more resizers types by jpsdr's and DTL's idea: backport from https://github.com/jpsdr/ResampleMT
+  
+  SinPowerResize "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f"
+  parameters like GaussResize: optional "p"
+  Default: p=2.5
+  
+  SincLin2Resize "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i"
+  parameters like SincFilter or LanczosFilter: optional "taps"
+  Default taps=15
+  
+  UserDefined2Resize "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f"
+  parameters like BicubicResize: Optional "b" and "c"
+  Default b=121.0, c=19.0
+  
+  and their equivalent for the ConvertToXXXX family:
+  "sinpow",  "sinclin2" and "userdefined2"
+
+  - Add "param1" and "param2" to ConvertToXXXX where "chromaresample" parameter exists.
+  Now it is possible to use chromaresample with nondefault settings.
+  
+  param1 will set 'taps', 'b', or 'p', while param2 sets 'c' parameter for resizers where applicable.
+
+  b,c: bicubic (1/3.0, 1/3.0), userdefined2 (121.0, 19.0)
+  taps: lanczos (3), blackman (4), sinc (4), sinclin2 (15)
+  p: gauss (30.0), sinpow (2.5)
+  'param1' and 'param2' are always float. For 'taps' 'param1' is truncated to integer internally.
+  When a resizer does not use parameters they are simply ignored.
 - Add avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type to C interface as well 
 - Fix (#327) Histogram "color2" markers. Fix right shifted 15 degree dots, fix square for bits>8
 - Feature (#317): (V10 interface) The color format of a VideoFrame can now be retrieved with its GetPixelType()
@@ -20,6 +44,10 @@ Check the online documentation at https://avisynthplus.readthedocs.io/en/latest/
   when filter constructor would just change ``VideoInfo::pixel_type``, but the frame would be passed w/o any change, like in ``ConvertFromDoubleWidth`` or ``CombinePlanes``.
 - Feature (#314): Added AVSValue::GetType()
   Returns an AvsValueType enum directly, one can use it instead of calling all IsXXX functions to establish the type. (Rust use case)
+- Enhancement (#314): (avisynth.h) Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
+- Fix (#314): (avisynth.h) Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
+  Fixed in C interface as well: avs_new_video_frame_p and avs_new_video_frame_p_a: prop_src argument now const (no change in use)
+- Enhancement (#314): Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
 - "Text" new parameter: "placement" for chroma location hint
   - Used in subsampled YUV formats, otherwise ignored.
   - Valid values for "placement" are the same as in ChromaInPlacement and 
@@ -34,10 +62,6 @@ Check the online documentation at https://avisynthplus.readthedocs.io/en/latest/
   - Only "center" and "left" is implemented. (center is known as jpeg or mpeg1, left is known as mpeg2)
     If "center" is given directly or read from frame property, it will be used.
     Otherwise "Text" renders chroma as "left" (mpeg2)
-- Enhancement (#314): Gave all enums of public C++ API a name, and added DEFAULT_PLANE to AvsPlane (also in C API).
-- Fix (#314): Changed NewVideoFrameP() property source argument to const in accordance with copyFrameProps(), since it's not meant to be written
-  Fixed in C interface as well: avs_new_video_frame_p and avs_new_video_frame_p_a: prop_src argument now const (no change in use)
-- Enhancement (#314): Made VideoFrameBuffer destructor public like in other classes of the public API to prevent compiler errors downstream when calling non-const member functions
 - "Text": Almost fully rewritten. 
   (#310) Support any width of bdf fonts (but still of fixed width)
   Render in YUY2 is as nice as in YV16
@@ -49,22 +73,22 @@ Check the online documentation at https://avisynthplus.readthedocs.io/en/latest/
 - "Text": draw rightmost on-screen character even if only partially visible (was: not drawn at all)
 - "Text": support more from the BDF standard (issue #310): per-character boundary boxes and shifts
 - "Text" (#310): support 17-32 pixel wide external BDF fonts (issue #310)
-- Fix: "Text" filter negative x or y coordinates (e.g. 0 instead of -1)
-- Fix: "Text" filter would omit last character when x<0
+- Fix: "Text" rounding negative x or y coordinates (e.g. x=-1 resulted in 0 instead of -1)
+- Fix: "Text" would omit last character when x<0
 - Fix: "Text" halo_color needs only MSB=$FF and not the exact $FF000000 constant for fade
 - "Text" ``halo_color`` allows to have both halo and shaded background when halo_color MSB=$FE
 - "Text" much nicer rendering of subsampled formats (#308)
+- CMakeLists.txt: add support for Intel C++ Compiler 2022
 - Address Issue #305: Support for non-decorated avisynth_c_plugin_init in 32 bit C-plugins
-- Huge documentation update by Real-Deal
+- Huge documentation update by Reel-Deal
 - Fix (#304): ColorYUV analyze=true was displaying wrong min-max values for YUY2
-- Fix: C API undefined behavior when upstream throw runtime error
+- Fix: C API undefined behavior when upstream throw runtime error 
+  (released in test2, fixed in test6 - ffdshow crash)
 - Mute compilation warnings in avisynth.h
 - CMakeLists.txt: fix clang-cl/intel with ninja generator
 - Fix (#293): "Text" to throw proper error message if the specified font name (e.g. Arial) is not found among internal bitmap fonts.
 - Fix (#293): "Subtitle" and "Text" filter to respect the explicitely given coorditanes for y=-1 or x=-1, 
   instead of applying vertical/horizontal center alignment.
-- CMakeLists.txt: add support for Intel C++ Compiler 2022
-- Fix: C interface avs_prop_get_data behave like C++ counterpart. Interim version for this fix is 9.2
 - Fix: C interface crash when using avs_new_video_frame_p(_a)
 - Fix (#283): broken runtime functions min/max/minmaxdifference when threshold is not 0 (returned -1). Regression in 3.7.2
 - New: add a sixth array element to PlaneMinMaxStats: average. Defines variable "PlaneStats_average" as well if setting variables is required.

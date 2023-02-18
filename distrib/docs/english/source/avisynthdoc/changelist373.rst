@@ -20,6 +20,10 @@ Additions, changes
 - "TimeStretch" (#278) add TimeStretch overload with rational pair arguments and update SoundTouch library to v2.3.1.
 - Enhancement (#315): Show exception message as well if a v2.6-style plugin throws AvisynthError in its ``AvisynthPluginInit3`` instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
 - Fix (#327) Histogram "color2" markers. Fix right shifted 15 degree dots, fix square for bits>8
+- Feature #317: add more resizers:
+  - filters: SinPowerResize, SincLin2Resize, UserDefined2Resize
+  - and their equivalent for the ConvertToXXXX family 'chromaresample': "sinpow",  "sinclin2" and "userdefined2"
+- Feature #317: add "param1" and "param2" to ConvertToXXXX where 'chromaresample' exists (b,c,taps and p parameters can be set).
 
 Build environment, Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
