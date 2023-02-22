@@ -460,7 +460,7 @@ static void prepare_luma_shift6_sse2(uint8_t* pdst, int dstpitch, const uint8_t 
         y = _mm_slli_epi16(y, 6); // make 10->16 bits
       else
         y = _mm_srli_epi16(y, 6); // make 16->10 bits
-      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint16_t *>(pdst) + x), y);
+      _mm_storeu_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint16_t *>(pdst) + x), y);
     }
 
     for (int x = modw; x < width; x++) {
@@ -513,9 +513,9 @@ static void prepare_to_interleaved_uv_sse2(uint8_t* pdst, int dstpitch, const ui
       }
       __m128i uv;
       uv = _mm_unpacklo_epi16(u, v); // (v << 16) | u;
-      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint32_t *>(pdst) + x), uv);
+      _mm_storeu_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint32_t *>(pdst) + x), uv);
       uv = _mm_unpackhi_epi16(u, v); // (v << 16) | u;
-      _mm_store_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint32_t *>(pdst) + x + 4), uv);
+      _mm_storeu_si128(reinterpret_cast<__m128i *>(reinterpret_cast<uint32_t *>(pdst) + x + 4), uv);
     }
 
     for (int x = modw; x < width; x++) {
