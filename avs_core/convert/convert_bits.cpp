@@ -227,12 +227,17 @@ static AVS_FORCEINLINE void diffuse_floyd_f(float err, float& nextError, float* 
 }
 #endif
 
-// fixme: use bool chroma, bool fulls, bool fulld
 // optimization helper: TEMPLATE_DITHER_BIT_DIFF if not <0 then hold value for frequently used differences from 16->8
-// 1nd helper: TEMPLATE_LOW_DITHER_BITDEPTH
-template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld, int TEMPLATE_DITHER_BIT_DIFF, bool TEMPLATE_LOW_DITHER_BITDEPTH>
+// 2nd helper: TEMPLATE_LOW_DITHER_BITDEPTH
+// 3rd helper: source_bitdepth_special
+template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld, int TEMPLATE_DITHER_BIT_DIFF, bool TEMPLATE_LOW_DITHER_BITDEPTH, int SOURCE_BITDEPTH_SPECIAL>
 static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
 {
+  if constexpr (SOURCE_BITDEPTH_SPECIAL > 0) {
+    // called with >0 values only for special cases like 16 to 8, 16 to 10 and 10 to 8
+    // Hugely helps the optimizers
+    source_bitdepth = SOURCE_BITDEPTH_SPECIAL;
+  }
   if constexpr (TEMPLATE_DITHER_BIT_DIFF > 0) {
     assert(TEMPLATE_DITHER_BIT_DIFF == (source_bitdepth - dither_target_bitdepth));
     assert(target_bitdepth == dither_target_bitdepth);
@@ -367,29 +372,40 @@ static void convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rowsize
   // extra internal template makes it quicker for ordinary non-artistic cases
   // do not make templates for all 1-16 target bit combinations
   if (low_dither_bitdepth) {
-    do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, true>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+    do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, true, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
   }
   else {
     if (target_bitdepth == dither_target_bitdepth) {
+      // Specifically when source_bitdepth is known as well, it hugely helps optimization
+      // We treat special use cases 10->8, 16->10 and 16->8
       switch (dither_bit_diff) {
       case 2: // e.g. 10->8
-        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        if (source_bitdepth == 10)
+          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false, 10>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        else
+          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false, 0>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         break;
       case 4: // e.g. 12->8
-        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 4, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 4, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         break;
       case 6: // e.g. 16->10
-        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        if (source_bitdepth == 16)
+          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false, 16>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        else
+          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         break;
       case 8: // e.g. 16->8
-        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 8, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        if (source_bitdepth == 16)
+          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 8, false, 16>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        else
+          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 8, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         break;
       default: // difference is more than 8 or exotic dither to less than 8 bits, we accept 10-15% speed minus
-        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
       }
     }
     else {
-      do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, false>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+      do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, -1, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
     }
   }
 }
