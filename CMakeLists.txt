@@ -5,19 +5,22 @@
 # "Visual Studio 15 2017" optional platform generator Win32 and x64
 # "Visual Studio 16 2019" optional platform generator Win32 and x64. optional toolset "v141_xp"
 # "Visual Studio 17 2022" optional platform generator Win32 and x64. optional toolset "v141_xp"
+# "Visual Studio 17 2022" optional platform generator Win32 and x64. optional toolset "clangcl"
 
-# Intel C++ Compilers (Cmake 3.20 minimum):
+# Intel C++ Compilers
+# Minimum Cmake version for Intel C++ Compiler 2023: 3.22.3 (Win) 3.20 (Linux)
 # Howto: https://www.intel.com/content/www/us/en/developer/articles/technical/using-oneapi-compilers-with-cmake-in-visual-studio.html
-# "Intel(R) oneAPI DPC++ Compiler", two flavours. DPCPP is not compatible.
-# Intel® NextGen Compiler (in base kit, LLVM based): TOOLSET = "Intel C++ Compiler 2021", COMPILER EXE NAME = icx.exe
-# Intel® Classic Compiler (in extra HPC kit): TOOLSET = "Intel C++ Compiler 19.2", COMPILER EXE NAME = icl.exe
-# CMake support files (info from: c:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\cmake\SYCL\)
-#   copy c:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\cmake\SYCL\FindIntelDPCPP.cmake to c:\Program Files\CMake\share\cmake-3.20\Modules\
+# "Intel(R) oneAPI DPC++ Compiler", two flavours. DPCPP is not compatible with Avisynth.
+# - Intel® NextGen Compiler (in base kit, LLVM based): TOOLSET = "Intel C++ Compiler 2023", COMPILER EXE NAME = icx.exe
+# - Intel® Classic Compiler (in extra HPC kit): TOOLSET = "Intel C++ Compiler 19.2", COMPILER EXE NAME = icl.exe
+# CMake support files.
+# - Info from: c:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\IntelDPCPP\ReadMe.txt
+# - copy c:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\IntelDPCPP\IntelDPCPPConfig.cmake to c:\Program Files\CMake\share\cmake-3.20\Modules\
 # CMake GUI: 
-# - Generator: "Visual Studio 16 2019"
+# - Generator: "Visual Studio 17 2022"
 # - Optional toolset to use (-T option): 
-#   For LLVM based icx: Intel C++ Compiler 2021
-#   For classic 19.2 icl: Intel C++ Compiler 19.2
+#   For LLVM based icx: Intel C++ Compiler 2023 (or earlier 2022, 2021)
+#   For classic icl: Intel C++ Compiler 19.2
 # - Specify native compilers: browse for the appropriate compiler executable path.
 #   icx: C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\icx.exe
 #   icl: C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\intel64\icl.exe
@@ -25,6 +28,9 @@
 # as a workaround you must copy clang.exe (by default it is located in C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin)
 # to the folder beside xilink (for x64 configuration it is in C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\bin\intel64).
 # Successful log looks like:
+#   The CXX compiler identification is IntelLLVM 2023.0.0 with MSVC-like command-line
+#   Check for working CXX compiler: C:/Program Files (x86)/Intel/oneAPI/compiler/2023.0.0/windows/bin/icx.exe - skipped
+# or
 #   The CXX compiler identification is IntelLLVM 2021.4.0 with MSVC-like command-line
 #   Check for working CXX compiler: C:/Program Files (x86)/Intel/oneAPI/compiler/2021.4.0/windows/bin/icx.exe
 # or
@@ -33,14 +39,15 @@
 #
 # command line:
 #   run "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"   to configure the environment
-#   cmake -T "Intel C++ Compiler 2021" -DCMAKE_CXX_COMPILER="icx.exe" ../ 
+#   cmake -T "Intel C++ Compiler 2023" -DCMAKE_CXX_COMPILER="icx.exe" ../ 
+#   or 
 #   cmake -T "Intel C++ Compiler 19.2" -DCMAKE_CXX_COMPILER="icl.exe" ../ 
 
 # "Visual Studio 16 2019" + LLVM 8.0 (clang) optional platform generator Win32 and x64
 
 CMAKE_MINIMUM_REQUIRED( VERSION 3.6.2 )
 # VS2019: 3.14.1
-# Intel 2021: 3.20
+# Intel 2023: 3.22.3 (Win) 3.20 (Linux)
 # VS2022: 3.21
 
 # Get PROJECT_VERSION property from 'avs_core/core/version.h.in'
@@ -133,7 +140,8 @@ endif()
       string( TOLOWER "${CMAKE_GENERATOR_TOOLSET}" cmake_gentoolset_lower)
 
       IF(cmake_gentoolset_lower STREQUAL "intel c++ compiler 2021" OR
-      cmake_gentoolset_lower STREQUAL "intel c++ compiler 2022")
+      cmake_gentoolset_lower STREQUAL "intel c++ compiler 2022" OR
+      cmake_gentoolset_lower STREQUAL "intel c++ compiler 2023")
         # IntelLLVM
         set(IntelLLVM_IN_VS "1")
       ELSEIF(cmake_gentoolset_lower STREQUAL "intel c++ compiler 19.2")
@@ -206,7 +214,7 @@ endif()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-inconsistent-missing-override")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
     ELSEIF(IntelLLVM_IN_VS STREQUAL "1")
-        # The CXX compiler identification is IntelLLVM 2021.4.0 with MSVC-like command-line
+        # The CXX compiler identification is IntelLLVM 2021.4.0 or 2023.0.0 with MSVC-like command-line
         message("IntelLLVM in VS environment chosen, setting additional flags")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-inconsistent-missing-override")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
@@ -216,7 +224,7 @@ endif()
         # for some reason, this was not set
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
     ELSEIF(IntelClassic_IN_VS STREQUAL "1")
-        # Intel C++ Compiler 19.2 # The CXX compiler identification is Intel 2021.4.0.20210910
+        # Intel C++ Compiler 19.2
         message("Intel Classic chosen, setting additional flags")
         set(DELETE_THIS "/std:c++17") # if it would co-exist with /Qstd=c++17
         STRING( REPLACE "${DELETE_THIS}" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
