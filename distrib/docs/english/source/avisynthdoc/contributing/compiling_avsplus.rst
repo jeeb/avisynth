@@ -25,10 +25,12 @@ Note that AviSynth+ is not restricted to Windows.
 
 AviSynth+ can be built by a few different compilers:
 
-* Visual Studio 2019 or higher. (May work for VS2017)
+* Visual Studio 2019, 2022 or higher. (May work for VS2017)
   - native msvc or clang-cl
 * Clang 7.0.1 or higher.
 * GCC 7 or higher.
+* Intel C++ Compiler 2023 (ICX: LLVM based NextGen)
+* Intel C++ Compiler 2022 (ICX: LLVM based NextGen)
 * Intel C++ Compiler 2021 (ICX: LLVM based NextGen)
 * Intel C++ Compiler 19.2 (ICL: classic)
 
@@ -399,56 +401,89 @@ Config (--config parameter) can be Debug, Release, RelWithDebInfo.
 
 
 
-Building with Intel C++ Compiler ICX or ICL (Windows)
------------------------------------------------------
+Building with Intel C++ Compiler ICX (IntelLLVM) or ICL (Windows)
+-----------------------------------------------------------------
 
 Prerequisites:
 ~~~~~~~~~~~~~~
 
 Useful link:
 
-https://www.intel.com/content/www/us/en/developer/articles/news/free-intel-software-developer-tools.html
+`<https://www.intel.com/content/www/us/en/developer/articles/news/free-intel-software-developer-tools.html>`_
 
-We need Intel oneAPI Base Kit and optionally oneAPI HPC Toolkit
+We need Intel oneAPI Base Kit for LLVM based compiler and optionally oneAPI HPC Toolkit for the classic C++ compiler.
 
 - Download Intel® oneAPI DPC++/C++ Compiler
 
-  - https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html#base-kit
-  - Includes C++ 2021.4 (we need Intel C++ 2021; DPC++ is not suitable for Avisynth+)
-  - Save disk space: No Python, No Math kernel Library, No Video Processing, No Deep Neural
+  - `<https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html#base-kit>`_
 
-- Download component for C++
+    Download the base kit.
 
-  - https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html#hpc-kit
-  - Intel® oneAPI HPC Toolkit for Windows*
-  - Why: Intel® C++ Compiler Classic
+    `<https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html>`_
+
+    Choose online or offline installer.
+
+    DPC++/C++ is compulsory (we need then only Intel C++; DPC++ is not suitable for Avisynth)
+
+    Save disk space: No Math kernel Library, No Video Processing, No Deep Neural
+
+  - Choose IDE Integration: Visual Studio 2022 (or 2019)
+
+- Optionally: download component for C++
+
+  - `<https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html#hpc-kit>`_
+  - Intel® oneAPI HPC Toolkit for Windows
+  - Why: Intel® C++ Compiler Classic 19.2 (will be discontinued)
   - Choose Custom Installation (Fortran support not needed)
 
-Howto: https://www.intel.com/content/www/us/en/developer/articles/technical/using-oneapi-compilers-with-cmake-in-visual-studio.html
+Howto: `<https://www.intel.com/content/www/us/en/developer/articles/technical/using-oneapi-compilers-with-cmake-in-visual-studio.html>`_
 
-Choose "Intel(R) oneAPI DPC++ Compiler", there are two flavours (DPCPP is not compatible with Avisynth)
+There are two main flavours which we can use (DPC++ is not compatible with Avisynth)
 
 - Intel® NextGen Compiler (in base kit, LLVM based)
 
-  TOOLSET = "Intel C++ Compiler 2021", COMPILER EXE NAME = icx.exe
+  - TOOLSET = "Intel C++ Compiler 2023", COMPILER EXE NAME = icx.exe
+  - TOOLSET = "Intel C++ Compiler 2022", COMPILER EXE NAME = icx.exe
+  - TOOLSET = "Intel C++ Compiler 2021", COMPILER EXE NAME = icx.exe
 
 - Intel® Classic Compiler (in extra HPC kit)
 
-  TOOLSET = "Intel C++ Compiler 19.2", COMPILER EXE NAME = icl.exe
+  - TOOLSET = "Intel C++ Compiler 19.2", COMPILER EXE NAME = icl.exe
+
+  Note that this classic compiler will get discontinued, as of late 2023.
 
 Once installed first one or both, check some files.
 
-There are CMake support files (info from: c:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\cmake\\SYCL\\)
+CMake integration and support files
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Copy
+1. For Intel C++ Compiler 2023:
 
-  c:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\cmake\\SYCL\\FindIntelDPCPP.cmake
+   Info from: c:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\IntelDPCPP\\ReadMe.txt
 
-to
+   Copy
 
-  c:\\Program Files\\CMake\\share\\cmake-3.20\\Modules\\
+     c:\\Program Files (x86)\\Intel\oneAPI\\compiler\\latest\\windows\\IntelDPCPP\\IntelDPCPPConfig.cmake
 
-Note: Intel C++ Compilers need Cmake 3.20 as a minimum.
+   to
+
+    c:\\Program Files\\CMake\\share\\cmake-3.25\\Modules\\
+
+
+2. For Intel C++ Compiler 2021:
+
+   Info from: c:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\cmake\\SYCL\\
+
+   Copy
+
+     c:\\Program Files (x86)\\Intel\\oneAPI\\compiler\\latest\\windows\\cmake\\SYCL\\FindIntelDPCPP.cmake
+
+   to
+
+     c:\\Program Files\\CMake\\share\\cmake-3.20\\Modules\\
+
+Note: Intel C++ Compilers need Cmake 3.22.3 (Windows) or 3.20 (Linux) as a minimum (as of Intel 2023)
+
 
 From CMake GUI:
 ~~~~~~~~~~~~~~~
@@ -457,13 +492,22 @@ From CMake GUI:
 2. ``Where is source code`` and ``Where to build binaries``: git project folder e.g. C:/Github/AviSynthPlus
 3. Press Configure
 4. Choose an available generator:
-   - `Visual Studio 17 2022` (solution will be generated for VS2022)
-   - `Visual Studio 16 2019` (solution will be generated for VS2019)
+
+  - `Visual Studio 17 2022` (solution will be generated for VS2022)
+  - `Visual Studio 16 2019` (solution will be generated for VS2019)
+
 5. Choose optional platform generator: default is `x64` when left empty, `Win32` is another option
 6. Set ``Optional toolset to use (-T option)``:
 
-  - For LLVM based icx: `Intel C++ Compiler 2021`
-  - For classic 19.2 icl: `Intel C++ Compiler 19.2`
+  - For LLVM based icx:
+  
+    - `Intel C++ Compiler 2023` or
+    - `Intel C++ Compiler 2022` or
+    - `Intel C++ Compiler 2021`
+
+  - For classic icl:
+
+    - `Intel C++ Compiler 19.2`
 
 7. Specify native compilers (checkbox): browse for the appropriate compiler executable path.
 
@@ -476,12 +520,28 @@ to the folder beside xilink (for x64 configuration it is in C:\\Program Files (x
 
 Successful log looks like:
 
+(Note: If CXX compiler is not the Intel one, then you probably missed step #7.)
+
+::
+
+      The CXX compiler identification is IntelLLVM 2023.0.0 with MSVC-like command-line
+      Check for working CXX compiler: C:/Program Files (x86)/Intel/oneAPI/compiler/2023.0.0/windows/bin/icx.exe
+
+or
+
 ::
 
       The CXX compiler identification is IntelLLVM 2021.4.0 with MSVC-like command-line
       Check for working CXX compiler: C:/Program Files (x86)/Intel/oneAPI/compiler/2021.4.0/windows/bin/icx.exe
 
-or
+or (classic 19.2 version downloaded in 2023)
+
+::
+
+      The CXX compiler identification is Intel 2021.8.0.20221119
+      Check for working CXX compiler: C:/Program Files (x86)/Intel/oneAPI/compiler/2023.0.0/windows/bin/intel64/icl.exe - skipped
+
+or (classic 19.2 version downloaded in 2021)
 
 ::
 
@@ -490,6 +550,10 @@ or
 
 8. Fill options, Generate
 9. Open the generated solution with Visual Studio GUI, build/debug
+10. Note that the built program would need Intel redistributable components or else you may face errors that dependencies
+    could not be loaded: svml_dispmd.dll and libmmd.dll. Check Intel OneAPI Redistributable package at:
+
+    `<https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html>`_
 
 
 Command line
@@ -514,7 +578,7 @@ Examples (assuming we are in ``avisynth-build`` folder). Config can be Debug, Re
       @rem cd avisynth-build
       del .\CMakeCache.txt
       C:\Program Files (x86)\Intel\oneAPI\setvars.bat
-      cmake ../ -T "Intel C++ Compiler 2021" -DCMAKE_CXX_COMPILER="icx.exe" -DBUILD_DIRECTSHOWSOURCE:bool=off -DENABLE_PLUGINS:bool=on -DENABLE_INTEL_SIMD:bool=ON
+      cmake ../ -T "Intel C++ Compiler 2023" -DCMAKE_CXX_COMPILER="icx.exe" -DBUILD_DIRECTSHOWSOURCE:bool=off -DENABLE_PLUGINS:bool=on -DENABLE_INTEL_SIMD:bool=ON
       cmake --build . --config Debug --clean-first
 
 ``x_icx_cleanfirst_no_simd.bat``
@@ -525,7 +589,7 @@ This one will build only Avisynth.dll, no external plugins, plain C code (no SIM
       @rem cd avisynth-build
       del .\CMakeCache.txt
       C:\Program Files (x86)\Intel\oneAPI\setvars.bat
-      cmake ../ -T "Intel C++ Compiler 2021" -DCMAKE_CXX_COMPILER="icx.exe" -DBUILD_DIRECTSHOWSOURCE:bool=off -DENABLE_PLUGINS:bool=OFF -DENABLE_INTEL_SIMD:bool=OFF
+      cmake ../ -T "Intel C++ Compiler 2023" -DCMAKE_CXX_COMPILER="icx.exe" -DBUILD_DIRECTSHOWSOURCE:bool=off -DENABLE_PLUGINS:bool=OFF -DENABLE_INTEL_SIMD:bool=OFF
       cmake --build . --config Debug --clean-first
 
 
@@ -544,21 +608,22 @@ Using Cmake GUI:
 
    - `Visual Studio 17 2022` (solution will be generated for VS2022)
    - `Visual Studio 16 2019` (solution will be generated for VS2019)
+
 5. Choose optional platform generator: default is `x64` when left empty, `Win32` is another option
 6. Set ``Optional toolset to use (-T option)``:
 
   Type ``llvm`` or ``clangcl``
 
   clangcl (Clang-cl) comes with Visual Studio.
-  
+
   for native LLVM you may need to specify native compilers (checkbox): browse for the appropriate compiler executable path.
 
-Hint: How to install Clang-cl in Visual Studio: as it appears in VS2019/2022:
+  Hint: How to install Clang-cl in Visual Studio: as it appears in VS2019/2022:
 
-    Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes
-    
-        [X] C++ Clang compiler for Windows
-        [X] C++ Clang-cl for v142/v143 build tools (x64/x86)
+  Tools|Get Tools and Features|Add Individual Components|Compilers, build tools, and runtimes
+
+    - [X] C++ Clang compiler for Windows
+    - [X] C++ Clang-cl for v142/v143 build tools (x64/x86)
 
 7. Fill options, Generate
 8. Open the generated solution with Visual Studio GUI, build/debug
@@ -677,4 +742,4 @@ Packaging:
 
 Back to the :doc:`main page <../../index>`
 
-$ Date: 2021-12-08 12:12:00 +01:00 $
+$ Date: 2023-02-23 15:37:00 +01:00 $
