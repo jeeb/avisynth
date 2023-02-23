@@ -5,8 +5,17 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230218 3.7.3 WIP
+20230223 3.7.3 WIP
 ------------------
+- Update build documentation with 2023 Intel C++ tools. See Compiling Avisynth+ 
+  https://avisynthplus.readthedocs.io/en/latest/avisynthdoc/contributing/compiling_avsplus.html
+- CMakeLists.txt: add support for Intel C++ Compiler 2023.
+- Enhanced performance in ConvertBits Floyd dither (dither=1) for 10->8, 16->8 and 16->10 bit cases
+  by providing special function templates to allow compilers to optimize them much better.
+  (Both Microsoft and Intel Classic 19.2 benefits, LLVM based clangCL and IntelLLVM compilers not)
+- Fix crash when outputting VfW (e.g. VirtualDub) for YUV422P16, or P10 in Intel SSE2 optimization
+  due to aligned SIMD write to an unaligned pointer - did not affect Microsoft builds.
+  As seen in https://forum.doom9.org/showthread.php?p=1983343#post1983343
 - (#337) Add more resizers types by jpsdr's and DTL's idea: backport from https://github.com/jpsdr/ResampleMT
   
   SinPowerResize "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f"
