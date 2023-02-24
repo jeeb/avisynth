@@ -591,12 +591,6 @@ PVideoFrame __stdcall ConvertRGBToYUV444::GetFrame(int n, IScriptEnvironment* en
   return dst;
 }
 
-AVSValue __cdecl ConvertRGBToYUV444::Create(AVSValue args, void*, IScriptEnvironment* env) {
-  PClip clip = args[0].AsClip();
-  if (clip->GetVideoInfo().Is444())
-    return clip;
-  return new ConvertRGBToYUV444(clip, args[1].AsString(0), env);
-}
 
 
 /*****************************************************
