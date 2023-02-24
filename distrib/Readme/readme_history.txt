@@ -5,8 +5,13 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230223 3.7.3 WIP
+20230224 3.7.3 WIP
 ------------------
+- #306: Add ConvertToYUVA420, ConvertToYUVA422 and ConvertToYUVA444.
+  Resulting clip is always YUVA:
+  Alpha plane is kept if exists (even from packed RGB formats like RGB32/64), 
+  otherwise filled with maximum transparency mask value.
+  Parameters are the same like in ConvertToYUVYUVxxx versions.
 - Update build documentation with 2023 Intel C++ tools. See Compiling Avisynth+ 
   https://avisynthplus.readthedocs.io/en/latest/avisynthdoc/contributing/compiling_avsplus.html
 - CMakeLists.txt: add support for Intel C++ Compiler 2023.

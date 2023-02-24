@@ -277,8 +277,8 @@ void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, siz
 
 
 
-
-void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix &matrix) {
+template<bool copyalpha>
+void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, BYTE* dstA, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t Apitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix &matrix) {
   srcp += src_pitch * (height-1);
 
   __m128i matrix_y = _mm_set_epi16(0, matrix.y_r, matrix.y_g, matrix.y_b, 0, matrix.y_r, matrix.y_g, matrix.y_b);
@@ -294,6 +294,13 @@ void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*s
     for (size_t x = 0; x < width; x += 8) {
       __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //pixels 0, 1, 2 and 3
       __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16));//pixels 4, 5, 6 and 7
+
+      if constexpr (copyalpha) {
+        // All compilers do that as byte to byte copy, no quick SIMD for extracting every 4th byte
+        auto tmp_srcp = srcp + x * 4 + 3;
+        for (int alphas = 0; alphas < 8; alphas++)
+          dstA[x + alphas] = tmp_srcp[alphas * 4];
+      }
 
       __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero);
       __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero);
@@ -313,8 +320,14 @@ void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*s
     dstY += dst_pitch_y;
     dstU += UVpitch;
     dstV += UVpitch;
+    if constexpr (copyalpha)
+      dstA += Apitch;
   }
 }
+
+// instantiate
+template void convert_rgb32_to_yv24_sse2<false>(BYTE* dstY, BYTE* dstU, BYTE* dstV, BYTE* dstA, const BYTE* srcp, size_t dst_pitch_y, size_t UVpitch, size_t Apitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix);
+template void convert_rgb32_to_yv24_sse2<true>(BYTE* dstY, BYTE* dstU, BYTE* dstV, BYTE* dstA, const BYTE* srcp, size_t dst_pitch_y, size_t UVpitch, size_t Apitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix);
 
 void convert_rgb24_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix &matrix) {
   srcp += src_pitch * (height-1);
@@ -381,7 +394,8 @@ void convert_rgb24_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*s
 
 #ifdef X86_32
 
-void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix) {
+template<bool copyalpha>
+void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, BYTE* dstA, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t Apitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix) {
   srcp += src_pitch * (height-1);
 
   __m64 matrix_y = _mm_set_pi16(0, matrix.y_r, matrix.y_g, matrix.y_b);
@@ -398,6 +412,13 @@ void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*sr
       __m64 src01 = *reinterpret_cast<const __m64*>(srcp+x*4); //pixels 0 and 1
       __m64 src23 = *reinterpret_cast<const __m64*>(srcp+x*4+8);//pixels 2 and 3
 
+      if constexpr (copyalpha) {
+        // All compilers do that as byte to byte copy, no quick SIMD for extracting every 4th byte
+        auto tmp_srcp = srcp + x * 4 + 3;
+        for (int alphas = 0; alphas < 4; alphas++)
+          dstA[x + alphas] = tmp_srcp[alphas * 4];
+      }
+
       __m64 pixel0 = _mm_unpacklo_pi8(src01, zero); //a0 r0 g0 b0
       __m64 pixel1 = _mm_unpackhi_pi8(src01, zero); //a1 r1 g1 b1
       __m64 pixel2 = _mm_unpacklo_pi8(src23, zero); //a2 r2 g2 b2
@@ -412,9 +433,15 @@ void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*sr
     dstY += dst_pitch_y;
     dstU += UVpitch;
     dstV += UVpitch;
+    if constexpr (copyalpha)
+      dstA += Apitch;
   }
   _mm_empty();
 }
+
+// instantiate
+template void convert_rgb32_to_yv24_mmx<false>(BYTE* dstY, BYTE* dstU, BYTE* dstV, BYTE* dstA, const BYTE* srcp, size_t dst_pitch_y, size_t UVpitch, size_t Apitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix);
+template void convert_rgb32_to_yv24_mmx<true>(BYTE* dstY, BYTE* dstU, BYTE* dstV, BYTE* dstA, const BYTE* srcp, size_t dst_pitch_y, size_t UVpitch, size_t Apitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix& matrix);
 
 void convert_rgb24_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, const ConversionMatrix &matrix) {
   srcp += src_pitch * (height-1);

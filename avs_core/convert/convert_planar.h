@@ -77,7 +77,7 @@ private:
 class ConvertRGBToYUV444 : public GenericVideoFilter
 {
 public:
-  ConvertRGBToYUV444(PClip src, const char *matrix_name, IScriptEnvironment* env);
+  ConvertRGBToYUV444(PClip src, const char *matrix_name, bool keep_packedrgb_alpha, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -164,7 +164,7 @@ public:
   static AVSValue __cdecl CreateYUV444(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
-  static AVSValue Create(AVSValue& args, const char* filter, bool strip_alpha_legacy_8bit, IScriptEnvironment* env);
+  static AVSValue Create(AVSValue& args, const char* filter, bool strip_alpha_legacy_8bit, bool to_yuva, IScriptEnvironment* env);
   bool Yinput;
   int pixelsize;
   int ChromaLocation_In;
