@@ -7,6 +7,7 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230224 3.7.3 WIP
 ------------------
+- Expr: Add remaining stack element count to "Unbalanced stack..." error message.
 - #306: Add ConvertToYUVA420, ConvertToYUVA422 and ConvertToYUVA444.
   Resulting clip is always YUVA:
   Alpha plane is kept if exists (even from packed RGB formats like RGB32/64), 

@@ -5415,7 +5415,7 @@ static size_t parseExpression(const std::string &expr, std::vector<ExprOp> &ops,
 
     if (tokens.size() > 0) {
         if (stackSize != 1)
-            env->ThrowError("Expr: Stack unbalanced at end of expression. Need to have exactly one value on the stack to return.");
+            env->ThrowError("Expr: Stack unbalanced at end of expression (size=%zu). Need to have exactly one value on the stack to return.", stackSize);
 
         // When scale_inputs option was used for scaling input to a common internal range,
         // we have to scale pixels before storing them back
