@@ -1575,29 +1575,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void* user_d
 }
 
 
-/*
-static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
-  const char* placement = _placement.AsString(0);
-
-  if (placement) {
-    if (!lstrcmpi(placement, "mpeg2") || !lstrcmpi(placement, "left"))
-      return PLACEMENT_MPEG2;
-
-    if (!lstrcmpi(placement, "mpeg1") || !lstrcmpi(placement, "jpeg") || !lstrcmpi(placement, "center"))
-      return PLACEMENT_MPEG1;
-
-    if (!lstrcmpi(placement, "dv"))
-      return PLACEMENT_DV;
-
-    if (!lstrcmpi(placement, "top_left"))
-      return PLACEMENT_TOP_LEFT;
-
-    env->ThrowError("Convert: Unknown chromaplacement");
-  }
-  return PLACEMENT_MPEG2;
-}
-*/
-
 
 static ResamplingFunction* getResampler(const char* resampler, AVSValue param1, AVSValue param2, IScriptEnvironment* env) {
   if (resampler) {
