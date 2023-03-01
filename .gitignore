@@ -17,6 +17,11 @@ distrib/Prerequisites/VC_redist_14.27.29114.0.x64.exe
 avs_core/CMakeCache.txt
 avs_core/CMakeFiles/*
 
+# Intel Profiler
+avs_core/VTune Profiler Results/*
+GPUCache/*
+*.db3
+
 avs_core/core/version.h
 
 plugins/CMakeCache.txt
