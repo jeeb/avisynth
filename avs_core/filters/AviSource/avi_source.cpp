@@ -193,6 +193,10 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
       pitch = -pitch;
     }
 
+    // From TemporalBuffer only frame->GetPtr() points to a proper Avisynth-aligned 
+    // memory location. Other field like frame->GetPitch or frame->GetPtr(PLANAR_U)
+    // may not be mod16 aligned values!
+
     switch(specf) {
     case AVI_SpecialFormats::v210:
       v210_to_yuv422p10(dstp, pitch, result->GetWritePtr(PLANAR_U), result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_U),
@@ -251,7 +255,7 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
       // BGRA <-> big endian ARGB with byte swap
       uint8_t* pdst = dstp;
 
-      int srcpitch = frame->GetPitch();
+      int srcpitch = frame->GetPitch(); // may not be mod16
       const BYTE* src = frame->GetPtr();
 #ifdef INTEL_INTRINSICS
       const bool ssse3 = (env->GetCPUFlags() & CPUF_SSSE3) != 0;

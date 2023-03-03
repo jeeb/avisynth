@@ -110,6 +110,7 @@ int AviHelper_ImageSize(const VideoInfo *vi, bool AVIPadScanlines, bool v210, bo
 template<bool hasAlpha>
 void ToY416_sse2(uint8_t *outbuf, int out_pitch, const uint8_t *yptr, int ypitch, const uint8_t *uptr, const uint8_t *vptr, int uvpitch, const uint8_t *aptr, int apitch, int width, int height)
 {
+  // out_pitch may not be mod16
   const int wmod4 = (width / 4) * 4;
 
   // UYVA
@@ -380,12 +381,13 @@ __attribute__((__target__("ssse3")))
 #endif
 void bgra_to_argbBE_ssse3(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
 {
+  // srcpitch or dstpitch may not be mod16
   const int wmod2 = (width / 2) * 2; // 2x64bit
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wmod2; x += 2) {
       __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i *>(src + 8 * x));
       a = _mm_bswap_epi64_ssse3(a);
-      _mm_store_si128(reinterpret_cast<__m128i *>(pdst + 8 * x), a);
+      _mm_storeu_si128(reinterpret_cast<__m128i *>(pdst + 8 * x), a);
     }
     if (wmod2 < width) {
       __m128i a = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(src + 8 * wmod2));
@@ -399,12 +401,13 @@ void bgra_to_argbBE_ssse3(uint8_t* pdst, int dstpitch, const uint8_t *src, int s
 
 void bgra_to_argbBE_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
 {
+  // dstpitch may not be mod16
   const int wmod2 = (width / 2) * 2; // 2x64bit
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < wmod2; x += 2) {
       __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i *>(src + 8 * x));
       a = _mm_bswap_epi64_sse2(a);
-      _mm_store_si128(reinterpret_cast<__m128i *>(pdst + 8 * x), a);
+      _mm_storeu_si128(reinterpret_cast<__m128i *>(pdst + 8 * x), a);
     }
     if (wmod2 < width) {
       __m128i a = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(src + 8 * wmod2));
@@ -452,10 +455,11 @@ static void prepare_luma_shift6_c(uint8_t* pdst, int dstpitch, const uint8_t *sr
 template<bool before>
 static void prepare_luma_shift6_sse2(uint8_t* pdst, int dstpitch, const uint8_t *src, int srcpitch, int width, int height)
 {
+  // srcpitch or dstpitch may not be mod16
   const int modw = (width / 8) * 8; // 8 uv pairs at a time
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < modw; x += 8) {
-      __m128i y = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint16_t *>(src) + x));
+      __m128i y = _mm_loadu_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint16_t *>(src) + x));
       if (before)
         y = _mm_slli_epi16(y, 6); // make 10->16 bits
       else
@@ -502,6 +506,7 @@ static void prepare_to_interleaved_uv_c(uint8_t* pdst, int dstpitch, const uint8
 template<bool shift6>
 static void prepare_to_interleaved_uv_sse2(uint8_t* pdst, int dstpitch, const uint8_t *srcu, const uint8_t *srcv, int pitchUV, int width, int height)
 {
+  // dstpitch may not be mod16
   const int modw = (width / 8) * 8; // 8 uv pairs at a time
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < modw; x += 8) {
@@ -563,12 +568,13 @@ static void prepare_from_interleaved_uv_c(uint8_t* pdstu, uint8_t* pdstv, int pi
 template<bool shift6>
 static void prepare_from_interleaved_uv_sse2(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
 {
+  // srcpitch may not be mod16
   const int modw = (width / 8) * 8;
   auto mask0000FFFF = _mm_set1_epi32(0x0000FFFF);
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < modw; x += 8) {
-      auto uv_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x));
-      auto uv_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x + 4));
+      auto uv_lo = _mm_loadu_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x));
+      auto uv_hi = _mm_loadu_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x + 4));
       if (shift6) {
         uv_lo = _mm_srli_epi16(uv_lo, 6);
         uv_hi = _mm_srli_epi16(uv_hi, 6);
@@ -608,12 +614,13 @@ __attribute__((__target__("sse4.1")))
 #endif
 static void prepare_from_interleaved_uv_sse41(uint8_t* pdstu, uint8_t* pdstv, int pitchUV, const uint8_t *src, int srcpitch, int width, int height)
 {
+  // srcpitch may not be mod16
   const int modw = (width / 8) * 8;
   auto mask0000FFFF = _mm_set1_epi32(0x0000FFFF);
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < modw; x += 8) {
-      auto uv_lo = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x));
-      auto uv_hi = _mm_load_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x + 4));
+      auto uv_lo = _mm_loadu_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x));
+      auto uv_hi = _mm_loadu_si128(reinterpret_cast<const __m128i *>(reinterpret_cast<const uint32_t*>(src) + x + 4));
       if (shift6) {
         uv_lo = _mm_srli_epi16(uv_lo, 6);
         uv_hi = _mm_srli_epi16(uv_hi, 6);
@@ -879,6 +886,8 @@ void yuv42xp10_16_to_Px10_16(BYTE *dstp, int dstpitch, const BYTE *srcp_y, int s
   const bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
 #endif
 
+  // dstpitch may not be mod16
+
   // luma
   if (semi_packed_p16) {
     // no shift, native copy
@@ -926,6 +935,8 @@ void Px10_16_to_yuv42xp10_16(BYTE *dstp_y, int dstpitch, BYTE *dstp_u, BYTE *dst
   const bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   const bool sse41 = !!(env->GetCPUFlags() & CPUF_SSE4_1);
 #endif
+
+  // srcpitch may not be mod16
 
   // convert P010, P016, P210 and P216 formats back to Avisynth YUV420P10 and P16 or YUV422P10 and P16 formats
 
