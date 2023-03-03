@@ -2,121 +2,122 @@ LIBRARY AviSynth.dll
 EXPORTS
   DllGetClassObject PRIVATE
   DllCanUnloadNow PRIVATE
-  CreateScriptEnvironment
-  avs_add_function
-  avs_at_exit
-  avs_bit_blt
-  avs_check_version
-  avs_clip_get_error
-  avs_copy_clip
-  avs_copy_value
-  avs_copy_video_frame
-  avs_create_script_environment
-  avs_function_exists
-  avs_get_audio
-  avs_get_cpu_flags
-  avs_get_frame
-  avs_get_parity
-  avs_get_var
-  avs_get_version
-  avs_get_video_info
-  avs_invoke
-  avs_make_writable
-  avs_new_c_filter
-  avs_new_video_frame_a
-  avs_release_clip
-  avs_release_value
-  avs_release_video_frame
-  avs_save_string
-  avs_set_cache_hints
-  avs_set_global_var
-  avs_set_memory_max
-  avs_set_to_clip
-  avs_set_var
-  avs_set_working_dir
-  avs_subframe
-  avs_take_clip
-  avs_vsprintf
+  CreateScriptEnvironment = _CreateScriptEnvironment@4
+  CreateScriptEnvironment2 = _CreateScriptEnvironment2@4
+  avs_add_function = _avs_add_function@20
+  avs_at_exit = _avs_at_exit@12
+  avs_bit_blt = _avs_bit_blt@28
+  avs_check_version = _avs_check_version@8
+  avs_clip_get_error = _avs_clip_get_error@4
+  avs_copy_clip = _avs_copy_clip@4
+  avs_copy_value = _avs_copy_value@12
+  avs_copy_video_frame = _avs_copy_video_frame@4
+  avs_create_script_environment = _avs_create_script_environment@4
+  avs_function_exists = _avs_function_exists@8
+  avs_get_audio = _avs_get_audio@24
+  avs_get_cpu_flags = _avs_get_cpu_flags@4
+  avs_get_frame = _avs_get_frame@8
+  avs_get_parity = _avs_get_parity@8
+  avs_get_var = _avs_get_var@8
+  avs_get_version = _avs_get_version@4
+  avs_get_video_info = _avs_get_video_info@4
+  avs_invoke = _avs_invoke@20
+  avs_make_writable = _avs_make_writable@8
+  avs_new_c_filter = _avs_new_c_filter@20
+  avs_new_video_frame_a = _avs_new_video_frame_a@12
+  avs_release_clip = _avs_release_clip@4
+  avs_release_value = _avs_release_value@8
+  avs_release_video_frame = _avs_release_video_frame@4
+  avs_save_string = _avs_save_string@12
+  avs_set_cache_hints = _avs_set_cache_hints@12
+  avs_set_global_var = _avs_set_global_var@16
+  avs_set_memory_max = _avs_set_memory_max@8
+  avs_set_to_clip = _avs_set_to_clip@8
+  avs_set_var = _avs_set_var@16
+  avs_set_working_dir = _avs_set_working_dir@8
+  avs_subframe = _avs_subframe@24
+  avs_take_clip = _avs_take_clip@12
+  avs_vsprintf = _avs_vsprintf@12
   avs_sprintf
-  avs_delete_script_environment
-  avs_subframe_planar
-  avs_get_error
-  avs_is_yv24
-  avs_is_yv16
-  avs_is_yv12
-  avs_is_yv411
-  avs_is_y8
-  avs_is_color_space
-  avs_get_plane_width_subsampling
-  avs_get_plane_height_subsampling
-  avs_bits_per_pixel
-  avs_bytes_from_pixels
-  avs_row_size
-  avs_bmp_size
-  avs_get_pitch_p
-  avs_get_row_size_p
-  avs_get_height_p
-  avs_get_read_ptr_p
-  avs_is_writable
-  avs_get_write_ptr_p
-  avs_is_yuv444p16
-  avs_is_yuv422p16
-  avs_is_yuv420p16
-  avs_is_y16
-  avs_is_yuv444ps
-  avs_is_yuv422ps
-  avs_is_yuv420ps
-  avs_is_y32
-  avs_num_components
-  avs_component_size
-  avs_bits_per_component
-  avs_is_444
-  avs_is_422
-  avs_is_420
-  avs_is_y
-  avs_is_yuva
-  avs_is_planar_rgb
-  avs_is_planar_rgba
-  avs_is_rgb48
-  avs_is_rgb64
-  avs_subframe_planar_a
-  avs_copy_frame_props
-  avs_get_frame_props_ro
-  avs_get_frame_props_rw
-  avs_prop_num_keys
-  avs_prop_get_key
-  avs_prop_num_elements
-  avs_prop_get_type
-  avs_prop_get_int
-  avs_prop_get_float
-  avs_prop_get_data
-  avs_prop_get_data_size
-  avs_prop_get_clip
-  avs_prop_get_frame
-  avs_prop_delete_key
-  avs_prop_set_int
-  avs_prop_set_float
-  avs_prop_set_data
-  avs_prop_set_clip
-  avs_prop_set_frame
-  avs_prop_get_int_array
-  avs_prop_get_float_array
-  avs_prop_set_int_array
-  avs_prop_set_float_array
-  avs_clear_map
-  avs_new_video_frame_p
-  avs_new_video_frame_p_a
-  avs_get_env_property
-  avs_pool_allocate
-  avs_pool_free
-  avs_get_var_try
-  avs_get_var_bool
-  avs_get_var_int
-  avs_get_var_double
-  avs_get_var_string
-  avs_get_var_long
-  avs_is_property_writable
-  avs_make_property_writable
-  avs_video_frame_get_pixel_type
-  avs_video_frame_amend_pixel_type
+  avs_delete_script_environment = _avs_delete_script_environment@4
+  avs_subframe_planar = _avs_subframe_planar@36
+  avs_get_error = _avs_get_error@4
+  avs_is_yv24 = _avs_is_yv24@4
+  avs_is_yv16 = _avs_is_yv16@4
+  avs_is_yv12 = _avs_is_yv12@4
+  avs_is_yv411 = _avs_is_yv411@4
+  avs_is_y8 = _avs_is_y8@4
+  avs_is_color_space = _avs_is_color_space@8
+  avs_get_plane_width_subsampling = _avs_get_plane_width_subsampling@8
+  avs_get_plane_height_subsampling = _avs_get_plane_height_subsampling@8
+  avs_bits_per_pixel = _avs_bits_per_pixel@4
+  avs_bytes_from_pixels = _avs_bytes_from_pixels@8
+  avs_row_size = _avs_row_size@8
+  avs_bmp_size = _avs_bmp_size@4
+  avs_get_pitch_p = _avs_get_pitch_p@8
+  avs_get_row_size_p = _avs_get_row_size_p@8
+  avs_get_height_p = _avs_get_height_p@8
+  avs_get_read_ptr_p = _avs_get_read_ptr_p@8
+  avs_is_writable = _avs_is_writable@4
+  avs_get_write_ptr_p = _avs_get_write_ptr_p@8
+  avs_is_yuv444p16 = _avs_is_yuv444p16@4
+  avs_is_yuv422p16 = _avs_is_yuv422p16@4
+  avs_is_yuv420p16 = _avs_is_yuv420p16@4
+  avs_is_y16 = _avs_is_y16@4
+  avs_is_yuv444ps = _avs_is_yuv444ps@4
+  avs_is_yuv422ps = _avs_is_yuv422ps@4
+  avs_is_yuv420ps = _avs_is_yuv420ps@4
+  avs_is_y32 = _avs_is_y32@4
+  avs_num_components = _avs_num_components@4
+  avs_component_size = _avs_component_size@4
+  avs_bits_per_component = _avs_bits_per_component@4
+  avs_is_444 = _avs_is_444@4
+  avs_is_422 = _avs_is_422@4
+  avs_is_420 = _avs_is_420@4
+  avs_is_y = _avs_is_y@4
+  avs_is_yuva = _avs_is_yuva@4
+  avs_is_planar_rgb = _avs_is_planar_rgb@4
+  avs_is_planar_rgba = _avs_is_planar_rgba@4
+  avs_is_rgb48 = _avs_is_rgb48@4
+  avs_is_rgb64 = _avs_is_rgb64@4
+  avs_subframe_planar_a = _avs_subframe_planar_a@40
+  avs_copy_frame_props = _avs_copy_frame_props@12
+  avs_get_frame_props_ro = _avs_get_frame_props_ro@8
+  avs_get_frame_props_rw = _avs_get_frame_props_rw@8
+  avs_prop_num_keys = _avs_prop_num_keys@8
+  avs_prop_get_key = _avs_prop_get_key@12
+  avs_prop_num_elements = _avs_prop_num_elements@12
+  avs_prop_get_type = _avs_prop_get_type@12
+  avs_prop_get_int = _avs_prop_get_int@20
+  avs_prop_get_float = _avs_prop_get_float@20
+  avs_prop_get_data = _avs_prop_get_data@20
+  avs_prop_get_data_size = _avs_prop_get_data_size@20
+  avs_prop_get_clip = _avs_prop_get_clip@20
+  avs_prop_get_frame = _avs_prop_get_frame@20
+  avs_prop_delete_key = _avs_prop_delete_key@12
+  avs_prop_set_int = _avs_prop_set_int@24
+  avs_prop_set_float = _avs_prop_set_float@24
+  avs_prop_set_data = _avs_prop_set_data@24
+  avs_prop_set_clip = _avs_prop_set_clip@20
+  avs_prop_set_frame = _avs_prop_set_frame@20
+  avs_prop_get_int_array = _avs_prop_get_int_array@16
+  avs_prop_get_float_array = _avs_prop_get_float_array@16
+  avs_prop_set_int_array = _avs_prop_set_int_array@20
+  avs_prop_set_float_array = _avs_prop_set_float_array@20
+  avs_clear_map = _avs_clear_map@8
+  avs_new_video_frame_p = _avs_new_video_frame_p@12
+  avs_new_video_frame_p_a = _avs_new_video_frame_p_a@16
+  avs_get_env_property = _avs_get_env_property@8
+  avs_pool_allocate = _avs_pool_allocate@16
+  avs_pool_free = _avs_pool_free@8
+  avs_get_var_try = _avs_get_var_try@12
+  avs_get_var_bool = _avs_get_var_bool@12
+  avs_get_var_int = _avs_get_var_int@12
+  avs_get_var_double = _avs_get_var_double@16
+  avs_get_var_string = _avs_get_var_string@12
+  avs_get_var_long = _avs_get_var_long@16
+  avs_is_property_writable = _avs_is_property_writable@4
+  avs_make_property_writable = _avs_make_property_writable@8
+  avs_video_frame_get_pixel_type = _avs_video_frame_get_pixel_type@4
+  avs_video_frame_amend_pixel_type = _avs_video_frame_amend_pixel_type@8
 
