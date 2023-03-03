@@ -478,9 +478,11 @@ void VideoFrame::Release() {
   VideoFrameBuffer* _vfb = vfb;
 
   if (!InterlockedDecrement(&refcount)) {
-    if (properties)
-      properties->clear();
     InterlockedDecrement(&_vfb->refcount);
+  }
+  if (refcount == 0 && properties != nullptr) {
+    delete properties; // if needed, frame registry will re-create
+    properties = nullptr;
   }
 }
 
@@ -604,7 +606,14 @@ int VideoFrame::CheckMemory() const {
 VideoFrame::~VideoFrame() { InterlockedDecrement(&vfb->refcount); }
    Baked ********************/
 VideoFrame::~VideoFrame()     { DESTRUCTOR(); }
-void VideoFrame::DESTRUCTOR() { Release(); }
+void VideoFrame::DESTRUCTOR() { 
+  Release(); 
+  // finally destroyed when removed from FrameRegistry
+  if (properties) {
+    delete properties;
+    properties = nullptr;
+  }
+}
 
 // end class VideoFrame
 

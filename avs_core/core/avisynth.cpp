@@ -812,7 +812,7 @@ public:
   AVSMap* createMap() AVS_NOEXCEPT;
   void freeMap(AVSMap* map) AVS_NOEXCEPT;
   void clearMap(AVSMap* map) AVS_NOEXCEPT;
-
+  
   PVideoFrame NewVideoFrame(const VideoInfo& vi, const PVideoFrame* prop_src, int align = FRAME_ALIGN);
 
   bool MakePropertyWritable(PVideoFrame* pvf); // V9
@@ -906,18 +906,13 @@ private:
   struct DebugTimestampedFrame
   {
     VideoFrame* frame;
-    AVSMap* properties;
 
 #ifdef _DEBUG
     std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
 #endif
 
-    DebugTimestampedFrame(VideoFrame* _frame,
-      AVSMap* _properties
-    )
+    DebugTimestampedFrame(VideoFrame* _frame)
       : frame(_frame)
-      , properties(_properties)
-
 #ifdef _DEBUG
       , timestamp(std::chrono::high_resolution_clock::now())
 #endif
@@ -2504,19 +2499,6 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
 #endif
 
-  // delete avsmap
-  for (auto &it: FrameRegistry2)
-  {
-    for (auto &it2: it.second)
-  {
-      for (auto &it3: it2.second)
-      {
-        delete it3.properties;
-        it3.properties = 0;
-        it3.frame->properties = 0; // fixme ??
-      }
-    }
-  }
 
 #ifdef _DEBUG
   // LogMsg(LOGLEVEL_DEBUG, "We are before FrameRegistryCleanup");
@@ -3123,9 +3105,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size, size_t margin, Dev
 
   // automatically inserts keys if they not exist!
   // no locking here, calling method have done it already
-  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(new_frame,
-    new_frame->properties
-  ));
+  FrameRegistry2[vfb_size][vfb].push_back(DebugTimestampedFrame(new_frame));
 
   //_RPT1(0, "ScriptEnvironment::AllocateFrame %zu frame=%p vfb=%p %" PRIu64 "\n", vfb_size, newFrame, newFrame->vfb, memory_used);
 
@@ -3260,8 +3240,8 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
       if (device == vfb->device && 0 == vfb->refcount) // vfb device and refcount check
       {
         size_t videoFrameListSize = it2.second.size();
+        // size is more than one if SubFrame was used to create a new frame
         VideoFrame *frame_found;
-        AVSMap* properties_found;
         bool found = false;
         for (VideoFrameArrayType::iterator it3 = it2.second.begin(), end_it3 = it2.second.end();
           it3 != end_it3;
@@ -3272,7 +3252,9 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           // sanity check if its refcount is zero
           // because when a vfb is free (refcount==0) then all its parent frames should also be free
           assert(0 == frame->refcount);
-          assert(nullptr != frame->properties);
+
+          // refcount == 0 implies that 'properties' was deleted and nullified
+          assert(nullptr == frame->properties);
 
           if (!found)
           {
@@ -3287,6 +3269,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             _RPT0(0, buf);
             _RPT5(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset());
 #endif
+            frame->properties = new AVSMap();
             // only 1 frame in list -> no delete
             if (videoFrameListSize <= 1)
             {
@@ -3298,7 +3281,6 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             }
             // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
             frame_found = frame;
-            properties_found = it3->properties;
             found = true;
             ++it3;
           }
@@ -3307,7 +3289,6 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
             // Benefit: no 4-5k frame list count per a single vfb.
             //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset());
             delete frame;
-            delete it3->properties;
             ++it3;
           }
         } // for it3
@@ -3316,9 +3297,7 @@ VideoFrame* ScriptEnvironment::GetFrameFromRegistry(size_t vfb_size, Device* dev
           _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. clearing frames. List count: it2->second.size(): %7zu \n", it2.second.size());
           it2.second.clear();
           it2.second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
-          it2.second.push_back(DebugTimestampedFrame(frame_found,
-            properties_found
-          )); // keep only the first
+          it2.second.push_back(DebugTimestampedFrame(frame_found)); // keep only the first
           return frame_found;
         }
       }
@@ -3431,8 +3410,6 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size, size_t margin, Devic
           VideoFrame *currentframe = it3.frame;
           assert(0 == currentframe->refcount);
           delete currentframe;
-          delete it3.properties;
-
         }
         // delete array belonging to this vfb in one step
         it2->second.clear(); // clear frame list
@@ -3557,7 +3534,6 @@ void ScriptEnvironment::ShrinkCache(Device *device)
             if (0 == frame->refcount)
             {
               delete frame;
-              delete it3.properties;
               ++freed_frame_count;
             }
             else {
@@ -3900,17 +3876,18 @@ PVideoFrame ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new
 
   VideoFrame* subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
 
-  subframe->setProperties(src->getConstProperties());
+  const AVSMap &avsmap = src->getConstProperties();
+  if (propNumKeys(&avsmap) > 0)
+    subframe->setProperties(src->getConstProperties());
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
-  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
-  // automatically inserts if not exists!
+  // vector and maps needs locking
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
   assert(NULL != subframe);
 
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
-    subframe->properties
-  )); // insert with timestamp!
+  // automatically inserts if not exists
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe));
 
   return subframe;
 }
@@ -3924,17 +3901,18 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
 
   VideoFrame *subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
 
-  subframe->setProperties(src->getConstProperties());
+  const AVSMap& avsmap = src->getConstProperties();
+  if (propNumKeys(&avsmap) > 0)
+    subframe->setProperties(src->getConstProperties());
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
+  // vector and maps needs locking
   std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
-  // automatically inserts if not exists!
   assert(subframe != NULL);
 
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
-    subframe->properties
-  )); // insert with timestamp!
+  // automatically inserts if not exists
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe));
 
   return subframe;
 }
@@ -3948,17 +3926,18 @@ PVideoFrame ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, i
   VideoFrame* subframe;
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV, rel_offsetA);
 
-  subframe->setProperties(src->getConstProperties());
+  const AVSMap& avsmap = src->getConstProperties();
+  if (propNumKeys(&avsmap) > 0)
+    subframe->setProperties(src->getConstProperties());
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
-  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex); // vector needs locking!
-                                                       // automatically inserts if not exists!
+  // vector and maps needs locking
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
   assert(subframe != NULL);
 
-  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe,
-    subframe->properties
-  )); // insert with timestamp!
+  // automatically inserts if not exists
+  FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(DebugTimestampedFrame(subframe));
 
   return subframe;
 }
@@ -4970,7 +4949,7 @@ bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf)
 
   // Otherwise, allocate a new frame (using Subframe)
   // Thus we avoid the frame-content copy overhead and still get a new frame with its unique frameprop
-  PVideoFrame dst;
+  VideoFrame *dst;
   if (vf->GetPitch(PLANAR_A)) {
     // planar + alpha
     dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight(), 0, 0, vf->GetPitch(PLANAR_U), 0);
@@ -4984,7 +4963,19 @@ bool ScriptEnvironment::MakePropertyWritable(PVideoFrame* pvf)
     dst = vf->Subframe(0, vf->GetPitch(), vf->GetRowSize(), vf->GetHeight());
   }
 
-  copyFrameProps(vf, dst);
+  const AVSMap& avsmap = vf->getConstProperties();
+  if (propNumKeys(&avsmap) > 0)
+    dst->setProperties(vf->getConstProperties());
+
+  size_t vfb_size = vf->GetFrameBuffer()->GetDataSize();
+
+  // vector and maps needs locking!
+  std::unique_lock<std::recursive_mutex> env_lock(memory_mutex);
+  assert(dst != NULL);
+
+  // automatically inserts if not exists
+  FrameRegistry2[vfb_size][vf->GetFrameBuffer()].push_back(DebugTimestampedFrame(dst));
+
   *pvf = dst;
   return true;
 }
