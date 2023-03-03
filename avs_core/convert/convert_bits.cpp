@@ -267,10 +267,8 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
   const int BITDIFF_BETWEEN_DITHER_AND_TARGET = DITHER_BIT_DIFF - (source_bitdepth - target_bitdepth);
   const int max_pixel_value_dithered = (1 << dither_target_bitdepth) - 1;
 
-  auto error_ptr_safe = new int[1 + src_width + 1]; // accumulated errors
-  std::fill_n(error_ptr_safe, 1 + src_width + 1, 0);
-
-  int error_ptr = 1;
+  std::vector<int> error_ptr_safe(1 + src_width + 1); // accumulated errors
+  int *error_ptr = &error_ptr_safe[1];
 
   const int ROUNDER = 1 << (DITHER_BIT_DIFF - 1); // rounding
   const int source_max = (1 << source_bitdepth) - 1;
@@ -283,9 +281,10 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
   const auto src_pixel_max = source_max;
   const float mul_factor_backfromlowdither = (float)max_pixel_value_target / max_pixel_value_dithered;
 
+  int nextError = 0; // zero
+
   for (int y = 0; y < src_height; y++)
   {
-    int nextError = error_ptr_safe[error_ptr];
     // serpentine forward
     if ((y & 1) == 0)
     {
@@ -295,7 +294,7 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
         int src_pixel = srcp[x];
 
         if constexpr (fulls != fulld) {
-          const float val = (srcp[x] - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
+          const float val = (src_pixel - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
           src_pixel = clamp((int)val, src_pixel_min, src_pixel_max);
         }
 
@@ -319,7 +318,7 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
         }
         int pix = max(min(max_pixel_value_target, quantized), 0); // clamp to target bit
         dstp[x] = (pixel_t_d)pix;
-        diffuse_floyd<1>(err, nextError, &error_ptr_safe[error_ptr + x]);
+        diffuse_floyd<1>(err, nextError, &error_ptr[x]);
       }
     }
     else {
@@ -330,7 +329,7 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
         int src_pixel = srcp[x];
 
         if constexpr (fulls != fulld) {
-          const float val = (srcp[x] - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
+          const float val = (src_pixel - d.src_offset_i) * d.mul_factor + dst_offset_plus_round;
           src_pixel = clamp((int)val, src_pixel_min, src_pixel_max);
         }
 
@@ -354,15 +353,14 @@ static void do_convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rows
         }
         int pix = max(min(max_pixel_value_target, quantized), 0); // clamp to target bit
         dstp[x] = (pixel_t_d)pix;
-        diffuse_floyd<-1>(err, nextError, &error_ptr_safe[error_ptr + x]);
+        diffuse_floyd<-1>(err, nextError, &error_ptr[x]);
       }
     }
-    error_ptr_safe[error_ptr] = nextError;
     dstp += dst_pitch;
     srcp += src_pitch;
   }
-  delete[]error_ptr_safe;
 }
+
 
 template<typename pixel_t_s, typename pixel_t_d, bool chroma, bool fulls, bool fulld>
 static void convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rowsize, int src_height, int src_pitch, int dst_pitch, int source_bitdepth, int target_bitdepth, int dither_target_bitdepth)
@@ -383,19 +381,24 @@ static void convert_uint_floyd_c(const BYTE* srcp8, BYTE* dstp8, int src_rowsize
         if (source_bitdepth == 10)
           do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false, 10>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         else
-          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false, 0>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 2, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         break;
       case 4: // e.g. 12->8
         do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 4, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         break;
-      case 6: // e.g. 16->10
-        if (source_bitdepth == 16)
-          do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false, 16>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
-        else
+      case 6: // e.g. 16->10, 14->8
+        // prevent invalid templates to generate
+        // like do_convert_uint_floyd_c<unsigned short,unsigned char,0,0,1,6,0,16> which would do 16->8 but dither to 10 bit.
+        if constexpr (sizeof(pixel_t_s) == 2 && sizeof(pixel_t_d) == 2) {
+          if (source_bitdepth == 16)
+            do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false, 16>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+          else
+            do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
+        } else
           do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 6, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         break;
       case 8: // e.g. 16->8
-        if (source_bitdepth == 16)
+        if (sizeof(pixel_t_s) == 2 && source_bitdepth == 16)
           do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 8, false, 16>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
         else
           do_convert_uint_floyd_c<pixel_t_s, pixel_t_d, chroma, fulls, fulld, 8, false, -1>(srcp8, dstp8, src_rowsize, src_height, src_pitch, dst_pitch, source_bitdepth, target_bitdepth, dither_target_bitdepth);
@@ -839,7 +842,7 @@ static void get_convert_uintN_to_uintN_floyd_dither_functions(int source_bitdept
     break;
   }
 
-#undef convert_uintN_to_uintN_ordered_dither_functions
+#undef convert_uintN_to_uintN_floyd_dither_functions
 }
 
 
