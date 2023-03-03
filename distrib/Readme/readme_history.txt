@@ -5,8 +5,13 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230224 3.7.3 WIP
+20230303 3.7.3 WIP
 ------------------
+- Fix Clang build AviSource crash on yuv422p10le UTVideo at specific widths (SSE2 or SSE4.1)
+- #340: stop memory leak on propSet / MakePropertyWritable;
+  A bit less memory/processing overhead in internal FrameRegistry as a side effect.
+- #282: make 32-bit MSVC build to generate both decorated and undecorated export function names for C plugins
+  C plugins built with mingw possibly expect decorated names.
 - Expr: Add remaining stack element count to "Unbalanced stack..." error message.
 - #306: Add ConvertToYUVA420, ConvertToYUVA422 and ConvertToYUVA444.
   Resulting clip is always YUVA:
