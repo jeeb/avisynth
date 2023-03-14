@@ -5,8 +5,37 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230303 3.7.3 WIP
+20230314 3.7.3 WIP
 ------------------
+- Set automatic MT mode MT_SERIALIZED to 
+  ConvertToMono, EnsureVBRMP3Sync, MergeChannels, GetChannel, Normalize, MixAudio, ResampleAudio
+- Add back audio cache from classic Avisynth 2.6.
+  Believe it or not, audio cache was never ported to Avisynth+
+  - Make use of avisynth.h constants: CACHE_GETCHILD_AUDIO_MODE and CACHE_GETCHILD_AUDIO_SIZE: 
+    Filters are queryed about their desired audio cache mode through their SetCacheHints (similarly to CACHE_GET_MTMODE).
+  - Filters can answer CACHE_GETCHILD_AUDIO_MODE with 
+    CACHE_AUDIO: Explicitly cache audio, X byte cache.
+    CACHE_AUDIO_NOTHING: Explicitly do not cache audio.
+    CACHE_AUDIO_AUTO_START_OFF: Audio cache off (auto mode), X byte initial cache.
+    CACHE_AUDIO_AUTO_START_ON: Audio cache on (auto mode), X byte initial cache.
+  - Default value is CACHE_AUDIO_AUTO_START_OFF.
+  - Filters can specify the required cache size by returning CACHE_GETCHILD_AUDIO_SIZE.
+    Default cache size is 256kB.
+  - For custom audio cache querying example see EnsureVBRMP3Sync::SetCacheHints in source.
+  How it works: 
+  - Modes CACHE_AUDIO_AUTO_START_OFF (default) and CACHE_AUDIO_AUTO_START_ON are automatic modes.
+    The decision whether the stream benefits caching or not - and how big the cache 
+    size should be - is made upon continously gathering some statistics on the audio 
+    stream requests (an internal score is maintained).
+    - when strict linear reading is detected. why bother with a cache, 
+      mode would finally changed to CACHE_AUDIO_AUTO_START_OFF.
+    - When the requests are continously skipping chunks - a cache might not help; 
+      go with CACHE_AUDIO_AUTO_START_OFF as well.
+    - When the next sample request is within the cache size, a cache could help: 
+      if audio cache was swithed off Avisynth would turn it into active caching by changing 
+      the working mode to CACHE_AUDIO_AUTO_START_ON.
+  - Modes CACHE_AUDIO and CACHE_AUDIO_NOTHING are explicitely enable/disable audio cache at a give size.
+
 - Fix Clang build AviSource crash on yuv422p10le UTVideo at specific widths (SSE2 or SSE4.1)
 - #340: stop memory leak on propSet / MakePropertyWritable;
   A bit less memory/processing overhead in internal FrameRegistry as a side effect.
