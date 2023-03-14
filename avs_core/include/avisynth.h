@@ -1070,46 +1070,53 @@ enum CachePolicyHint {
   CACHE_GET_WINDOW = 31, // Get the current window h_span.
   CACHE_GET_RANGE = 32, // Get the current generic frame range.
 
+  // Set Audio cache mode and answers to CACHE_GETCHILD_AUDIO_MODE
   CACHE_AUDIO = 50, // Explicitly cache audio, X byte cache.
   CACHE_AUDIO_NOTHING = 51, // Explicitly do not cache audio.
-  CACHE_AUDIO_NONE = 52, // Audio cache off (auto mode), X byte intial cache.
-  CACHE_AUDIO_AUTO = 53, // Audio cache on (auto mode), X byte intial cache.
+  CACHE_AUDIO_NONE = 52, // Audio cache off (auto mode), X byte initial cache.
+  CACHE_AUDIO_AUTO_START_OFF = 52, // synonym
+  CACHE_AUDIO_AUTO = 53, // Audio cache on (auto mode), X byte initial cache.
+  CACHE_AUDIO_AUTO_START_ON = 53, // synonym
 
+  // These just returns actual value if clip is cached
   CACHE_GET_AUDIO_POLICY = 70, // Get the current audio policy.
   CACHE_GET_AUDIO_SIZE = 71, // Get the current audio cache size.
 
-  CACHE_PREFETCH_FRAME = 100, // Queue request to prefetch frame N.
-  CACHE_PREFETCH_GO = 101, // Action video prefetches.
+  CACHE_PREFETCH_FRAME = 100, // n/a Queue request to prefetch frame N.
+  CACHE_PREFETCH_GO = 101, // n/a Action video prefetches.
 
-  CACHE_PREFETCH_AUDIO_BEGIN = 120, // Begin queue request transaction to prefetch audio (take critical section).
-  CACHE_PREFETCH_AUDIO_STARTLO = 121, // Set low 32 bits of start.
-  CACHE_PREFETCH_AUDIO_STARTHI = 122, // Set high 32 bits of start.
-  CACHE_PREFETCH_AUDIO_COUNT = 123, // Set low 32 bits of length.
-  CACHE_PREFETCH_AUDIO_COMMIT = 124, // Enqueue request transaction to prefetch audio (release critical section).
-  CACHE_PREFETCH_AUDIO_GO = 125, // Action audio prefetches.
+  CACHE_PREFETCH_AUDIO_BEGIN = 120, // n/a Begin queue request transaction to prefetch audio (take critical section).
+  CACHE_PREFETCH_AUDIO_STARTLO = 121, // n/a Set low 32 bits of start.
+  CACHE_PREFETCH_AUDIO_STARTHI = 122, // n/a Set high 32 bits of start.
+  CACHE_PREFETCH_AUDIO_COUNT = 123, // n/a Set low 32 bits of length.
+  CACHE_PREFETCH_AUDIO_COMMIT = 124, // n/a Enqueue request transaction to prefetch audio (release critical section).
+  CACHE_PREFETCH_AUDIO_GO = 125, // n/a Action audio prefetches.
 
-  CACHE_GETCHILD_CACHE_MODE = 200, // Cache ask Child for desired video cache mode.
-  CACHE_GETCHILD_CACHE_SIZE = 201, // Cache ask Child for desired video cache size.
+  CACHE_GETCHILD_CACHE_MODE = 200, // n/a Cache ask Child for desired video cache mode.
+  CACHE_GETCHILD_CACHE_SIZE = 201, // n/a Cache ask Child for desired video cache size.
+
+  // Filters are queryed about their desired audio cache mode.
+  // Child can answer them with CACHE_AUDIO_xxx
   CACHE_GETCHILD_AUDIO_MODE = 202, // Cache ask Child for desired audio cache mode.
   CACHE_GETCHILD_AUDIO_SIZE = 203, // Cache ask Child for desired audio cache size.
 
-  CACHE_GETCHILD_COST = 220, // Cache ask Child for estimated processing cost.
-    CACHE_COST_ZERO = 221, // Child response of zero cost (ptr arithmetic only).
-    CACHE_COST_UNIT = 222, // Child response of unit cost (less than or equal 1 full frame blit).
-    CACHE_COST_LOW = 223, // Child response of light cost. (Fast)
-    CACHE_COST_MED = 224, // Child response of medium cost. (Real time)
-    CACHE_COST_HI = 225, // Child response of heavy cost. (Slow)
+  CACHE_GETCHILD_COST = 220, // n/a Cache ask Child for estimated processing cost.
+    CACHE_COST_ZERO = 221, // n/a Child response of zero cost (ptr arithmetic only).
+    CACHE_COST_UNIT = 222, // n/a Child response of unit cost (less than or equal 1 full frame blit).
+    CACHE_COST_LOW = 223, // n/a Child response of light cost. (Fast)
+    CACHE_COST_MED = 224, // n/a Child response of medium cost. (Real time)
+    CACHE_COST_HI = 225, // n/a Child response of heavy cost. (Slow)
 
-  CACHE_GETCHILD_THREAD_MODE = 240, // Cache ask Child for thread safetyness.
-    CACHE_THREAD_UNSAFE = 241, // Only 1 thread allowed for all instances. 2.5 filters default!
-    CACHE_THREAD_CLASS = 242, // Only 1 thread allowed for each instance. 2.6 filters default!
-    CACHE_THREAD_SAFE = 243, //  Allow all threads in any instance.
-    CACHE_THREAD_OWN = 244, // Safe but limit to 1 thread, internally threaded.
+  CACHE_GETCHILD_THREAD_MODE = 240, // n/a Cache ask Child for thread safetyness.
+    CACHE_THREAD_UNSAFE = 241, // n/a Only 1 thread allowed for all instances. 2.5 filters default!
+    CACHE_THREAD_CLASS = 242, // n/a Only 1 thread allowed for each instance. 2.6 filters default!
+    CACHE_THREAD_SAFE = 243, // n/a Allow all threads in any instance.
+    CACHE_THREAD_OWN = 244, // n/a Safe but limit to 1 thread, internally threaded.
 
-  CACHE_GETCHILD_ACCESS_COST = 260, // Cache ask Child for preferred access pattern.
-    CACHE_ACCESS_RAND = 261, // Filter is access order agnostic.
-    CACHE_ACCESS_SEQ0 = 262, // Filter prefers sequential access (low cost)
-    CACHE_ACCESS_SEQ1 = 263, // Filter needs sequential access (high cost)
+  CACHE_GETCHILD_ACCESS_COST = 260, // n/a Cache ask Child for preferred access pattern.
+    CACHE_ACCESS_RAND = 261, // n/a Filter is access order agnostic.
+    CACHE_ACCESS_SEQ0 = 262, // n/a Filter prefers sequential access (low cost)
+    CACHE_ACCESS_SEQ1 = 263, // n/a Filter needs sequential access (high cost)
 
   CACHE_AVSPLUS_CONSTANTS = 500,    // Smaller values are reserved for classic Avisynth
 
@@ -1121,17 +1128,19 @@ enum CachePolicyHint {
   CACHE_GET_SIZE,
   CACHE_GET_REQUESTED_CAP,
   CACHE_GET_CAPACITY,
-  CACHE_GET_MTMODE,
+  CACHE_GET_MTMODE,                 // Filters specify their desired MT mode, see enum MtMode
 
+  // By returning IS_CACHE_ANS to IS_CACHE_REQ, we tell the caller we are a cache
   CACHE_IS_CACHE_REQ,
   CACHE_IS_CACHE_ANS,
+  // By returning IS_MTGUARD_ANS to IS_MTGUARD_REQ, we tell the caller we are an mt guard
   CACHE_IS_MTGUARD_REQ,
   CACHE_IS_MTGUARD_ANS,
 
   CACHE_AVSPLUS_CUDA_CONSTANTS = 600,
 
-  CACHE_GET_DEV_TYPE,           // Device types a filter can return
-  CACHE_GET_CHILD_DEV_TYPE,    // Device types a fitler can receive
+  CACHE_GET_DEV_TYPE,          // Device types a filter can return
+  CACHE_GET_CHILD_DEV_TYPE,    // Device types a filter can receive
 
   CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
 };

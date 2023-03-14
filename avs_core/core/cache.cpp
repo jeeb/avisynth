@@ -44,6 +44,13 @@
 #include <mmintrin.h>
 #endif
 
+#include <avs/config.h>
+#ifdef AVS_WINDOWS
+#include <avs/win.h>
+#else
+#include <avs/posix.h>
+#endif
+
 
 extern const AVSFunction Cache_filters[] = {
   { "Cache", BUILTIN_FUNC_PREFIX, "c[name]s", CacheGuard::Create },
@@ -78,15 +85,25 @@ struct CachePimpl
   char* AudioCache;
   size_t SampleSize;
   size_t MaxSampleCount;
+  int64_t AudioCacheStart;
+  size_t CacheCount;
+  int64_t ac_expected_next;
+  int ac_too_small_count;
+  long ac_currentscore;
 
   CachePimpl(const PClip& _child, CacheMode mode) :
     child(_child),
     vi(_child->GetVideoInfo()),
     VideoCache(std::make_shared<LruCache<size_t, PVideoFrame> >(0, mode)),
-    AudioPolicy(CACHE_AUDIO),
+    AudioPolicy(vi.HasAudio() ? CACHE_AUDIO_AUTO_START_OFF : CACHE_AUDIO_NOTHING),  // Don't cache audio per default, auto mode.
     AudioCache(NULL),
     SampleSize(0),
-    MaxSampleCount(0)
+    MaxSampleCount(0),
+    AudioCacheStart(0),
+    CacheCount(0),
+    ac_expected_next(0),
+    ac_too_small_count(0),
+    ac_currentscore(20)
   {
     SampleSize = vi.BytesPerAudioSample();
   }
@@ -99,14 +116,36 @@ struct CachePimpl
 };
 
 
-Cache::Cache(const PClip& _child, Device* device, InternalEnvironment* env) :
+Cache::Cache(const PClip& _child, Device* device, std::mutex& CacheGuardMutex, InternalEnvironment* env) :
   Env(env),
   _pimpl(NULL),
-  device(device)
+  device(device),
+  CacheGuardMutex(CacheGuardMutex)
 {
   _pimpl = new CachePimpl(_child, env->GetCacheMode());
   env->ManageCache(MC_RegisterCache, reinterpret_cast<void*>(this));
-  _RPT5(0, "Cache::Cache registered. cache_id=%p child=%p w=%d h=%d VideoCacheSize=%Iu\n", (void *)this, (void *)_child, _pimpl->vi.width, _pimpl->vi.height, _pimpl->VideoCache->size()); // P.F.
+  _RPT5(0, "Cache::Cache registered. cache_id=%p child=%p w=%d h=%d VideoCacheSize=%Iu\n", (void*)this, (void*)_child, _pimpl->vi.width, _pimpl->vi.height, _pimpl->VideoCache->size());
+
+  const int dummy = 0;
+  // child is usually MTGuard, which forwards this request to its child filter - the real one
+  CachePolicyHint childAudioPolicy = (CachePolicyHint)_child->SetCacheHints(CACHE_GETCHILD_AUDIO_MODE, dummy);
+  // if not set by the plugin, get default (set in CachePimpl ctor)
+  if (childAudioPolicy == 0)
+    childAudioPolicy = (CachePolicyHint)this->SetCacheHints(CACHE_GET_AUDIO_POLICY, dummy);
+  switch (childAudioPolicy) {
+  case 0: break; // n/a
+  case CACHE_AUDIO:          // Explicitly do cache audio, X byte cache.
+  case CACHE_AUDIO_NOTHING:  // Explicitly do not cache audio.
+  case CACHE_AUDIO_AUTO_START_OFF: // Audio cache off (auto mode), X byte initial cache.
+  case CACHE_AUDIO_AUTO_START_ON:  // Audio cache on (auto mode), X byte initial cache.
+    // ask child for desired audio cache size
+    // e.g. EnsureVBRMP3Sync explicitely requests CACHE_AUDIO and 1024*1024
+    // This will create cache only if clip has audio
+    this->SetCacheHints(childAudioPolicy, _child->SetCacheHints(CACHE_GETCHILD_AUDIO_SIZE, dummy)); // if size=0 remains the default
+    break;
+  default:
+    env->ThrowError("Cache: Filter returned invalid response to CACHE_GETCHILD_AUDIO_MODE. %d", childAudioPolicy);
+  }
 }
 
 Cache::~Cache()
@@ -260,42 +299,139 @@ void Cache::FillAudioZeros(void* buf, int start_offset, int count) {
 
 void __stdcall Cache::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
-    if (count <= 0)
-        return;
+  if (count <= 0)
+    return;
 
-    // -----------------------------------------------------------
-    //          Enforce audio bounds
-    // -----------------------------------------------------------
+  // -----------------------------------------------------------
+  //          Enforce audio bounds
+  // -----------------------------------------------------------
 
-    VideoInfo * vi = &(_pimpl->vi);
+  VideoInfo * vi = &(_pimpl->vi);
 
-    if ((!vi->HasAudio()) || (start + count <= 0) || (start >= vi->num_audio_samples)) {
-        // Completely skip.
-        FillAudioZeros(buf, 0, (int)count);
-        count = 0;
-        return;
-    }
+  if ((!vi->HasAudio()) || (start + count <= 0) || (start >= vi->num_audio_samples)) {
+    // Completely skip.
+    FillAudioZeros(buf, 0, (int)count);
+    count = 0;
+    return;
+  }
 
-    if (start < 0) {  // Partial initial skip
-        FillAudioZeros(buf, 0, (int)-start);  // Fill all samples before 0 with silence.
-        count += start;  // Subtract start bytes from count.
-        buf = ((BYTE*)buf) - (int)(start*vi->BytesPerAudioSample());
-        start = 0;
-    }
+  if (start < 0) {  // Partial initial skip
+    FillAudioZeros(buf, 0, (int)-start);  // Fill all samples before 0 with silence.
+    count += start;  // Subtract start bytes from count.
+    buf = ((BYTE*)buf) - (int)(start*vi->BytesPerAudioSample());
+    start = 0;
+  }
 
-    if (start + count > vi->num_audio_samples) {  // Partial ending skip
-        FillAudioZeros(buf, (int)(vi->num_audio_samples - start), (int)(count - (vi->num_audio_samples - start)));  // Fill end samples
-        count = (vi->num_audio_samples - start);
-    }
+  if (start + count > vi->num_audio_samples) {  // Partial ending skip
+    FillAudioZeros(buf, (int)(vi->num_audio_samples - start), (int)(count - (vi->num_audio_samples - start)));  // Fill end samples
+    count = (vi->num_audio_samples - start);
+  }
 
-    // -----------------------------------------------------------
-    //          Caching
-    // -----------------------------------------------------------
+  // -----------------------------------------------------------
+  //          Caching
+  // -----------------------------------------------------------
 
-    // TODO: implement audio cache
+  long _cs = _pimpl->ac_currentscore;
+  if (start < _pimpl->ac_expected_next)
+    _cs = InterlockedExchangeAdd(&_pimpl->ac_currentscore, -5) - 5;  // revisiting old ground - a cache could help
+  else if (start > _pimpl->ac_expected_next)
+    _cs = InterlockedDecrement(&_pimpl->ac_currentscore);            // skipping chunks - a cache might not help
+  else // (start == ac_expected_next)
+    _cs = InterlockedIncrement(&_pimpl->ac_currentscore);            // strict linear reading - why bother with a cache
 
+  if (_cs < -2000000)
+    _pimpl->ac_currentscore = -2000000;
+  else if (_cs > 90)
+    _pimpl->ac_currentscore = 90;
 
+  // Change from AUTO_OFF to AUTO_ON
+  if (_pimpl->AudioPolicy == CACHE_AUDIO_AUTO_START_OFF && _pimpl->ac_currentscore <= 0) {
+    int new_size = (int)(_pimpl->vi.BytesFromAudioSamples(count) + 8191) & -8192;
+    new_size = min(4096 * 1024, new_size);
+    _RPT2(0, "CA:%x: Automatically adding %d byte audiocache!\n", this, new_size);
+    SetCacheHints(CACHE_AUDIO_AUTO_START_ON, new_size);
+  }
+
+  // Change from AUTO_ON to AUTO_OFF
+  if (_pimpl->AudioPolicy == CACHE_AUDIO_AUTO_START_ON && (_pimpl->ac_currentscore > 80)) {
+    _RPT1(0, "CA:%x: Automatically deleting cache!\n", this);
+    SetCacheHints(CACHE_AUDIO_AUTO_START_OFF, 0);
+  }
+
+  _pimpl->ac_expected_next = start + count;
+
+  if (_pimpl->AudioPolicy == CACHE_AUDIO_AUTO_START_OFF || _pimpl->AudioPolicy == CACHE_AUDIO_NOTHING) {
     _pimpl->child->GetAudio(buf, start, count, env);
+    return;  // We are ok to return now!
+  }
+
+  std::unique_lock<std::mutex> global_lock(CacheGuardMutex);
+
+  while (count > _pimpl->MaxSampleCount) {    //is cache big enough?
+    _RPT1(0, "CA:%x:Cache too small->caching last audio\n", this);
+    _pimpl->ac_too_small_count++;
+
+    // But the current cache might have 99% of what was requested??
+
+    if (_pimpl->ac_too_small_count > 2 && _pimpl->MaxSampleCount < _pimpl->vi.AudioSamplesFromBytes(8192 * 1024)) {  // Max size = 8MB!
+      //automatically upsize cache!
+      int new_size = (int)(_pimpl->vi.BytesFromAudioSamples(std::max(count, _pimpl->AudioCacheStart + (int64_t)_pimpl->CacheCount - start)) + 8192) & -8192; // Yes +1 to +8192 bytes
+      new_size = std::min(8192 * 1024, new_size);
+      _RPT2(0, "CA:%x: Autoupsizing buffer to %d bytes!\n", this, new_size);
+      SetCacheHints(_pimpl->AudioPolicy, new_size); // updates maxsamplecount!!
+      _pimpl->ac_too_small_count = 0;
+    }
+    else {
+      global_lock.unlock();
+      _pimpl->child->GetAudio(buf, start, count, env);
+      global_lock.lock();
+
+      _pimpl->CacheCount = std::min((size_t)count, _pimpl->MaxSampleCount); // Remember maxsamplecount gets updated
+      _pimpl->AudioCacheStart = start + count - _pimpl->CacheCount;
+      BYTE* buff = (BYTE*)buf;
+      buff += _pimpl->vi.BytesFromAudioSamples(_pimpl->AudioCacheStart - start);
+      memcpy(_pimpl->AudioCache, buff, (size_t)_pimpl->vi.BytesFromAudioSamples(_pimpl->CacheCount));
+
+      global_lock.unlock();
+
+      return;
+    }
+  }
+
+  if ((start < _pimpl->AudioCacheStart) || (start > _pimpl->AudioCacheStart + _pimpl->MaxSampleCount)) { //first sample is before cache or beyond linear reach -> restart cache
+    _RPT1(0, "CA:%x: Restart\n", this);
+
+    _pimpl->CacheCount = std::min((size_t)count, _pimpl->MaxSampleCount);
+    _pimpl->AudioCacheStart = start;
+    _pimpl->child->GetAudio(_pimpl->AudioCache, _pimpl->AudioCacheStart, _pimpl->CacheCount, env);
+  }
+  else {
+    if (start + count > _pimpl->AudioCacheStart + _pimpl->CacheCount) { // Does the cache fail to cover the request?
+      if (start + count > _pimpl->AudioCacheStart + _pimpl->MaxSampleCount) {  // Is cache shifting necessary?
+        int shiftsamples = (int)((start + count) - (_pimpl->AudioCacheStart + _pimpl->MaxSampleCount)); // Align end of cache with end of request
+
+        if ((start - _pimpl->AudioCacheStart) / 2 > shiftsamples) {  //shift half cache if possible
+          shiftsamples = (int)((start - _pimpl->AudioCacheStart) / 2);
+        }
+        if (shiftsamples >= (int)_pimpl->CacheCount) { // Can we save any existing data
+          _pimpl->AudioCacheStart = start + count - _pimpl->MaxSampleCount; // Maximise linear access
+          _pimpl->CacheCount = 0;
+        }
+        else {
+          memmove(_pimpl->AudioCache, _pimpl->AudioCache + shiftsamples * _pimpl->SampleSize, (size_t)((_pimpl->CacheCount - shiftsamples) * _pimpl->SampleSize));
+          _pimpl->AudioCacheStart = _pimpl->AudioCacheStart + shiftsamples;
+          _pimpl->CacheCount = _pimpl->CacheCount - shiftsamples;
+        }
+      }
+      // Read just enough to complete the current request, append it to the cache
+      _pimpl->child->GetAudio(_pimpl->AudioCache + _pimpl->CacheCount * _pimpl->SampleSize, _pimpl->AudioCacheStart + _pimpl->CacheCount, start + count - (_pimpl->AudioCacheStart + _pimpl->CacheCount), env);
+      _pimpl->CacheCount += (size_t)(start + count - (_pimpl->AudioCacheStart + _pimpl->CacheCount));
+    }
+  }
+
+  //copy cache to buf
+  memcpy(buf, _pimpl->AudioCache + (size_t)(start - _pimpl->AudioCacheStart) * _pimpl->SampleSize, (size_t)(count * _pimpl->SampleSize));
+
 }
 
 const VideoInfo& __stdcall Cache::GetVideoInfo()
@@ -390,11 +526,11 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
       break;
 
     /*********************************************
-        TODO AUDIO
+        AUDIO
     *********************************************/
 
     case CACHE_AUDIO:
-    case CACHE_AUDIO_AUTO:
+    case CACHE_AUDIO_AUTO_START_ON:
       if (!_pimpl->vi.HasAudio())
         break;
 
@@ -402,13 +538,16 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
       // 0 == Create a default buffer (256kb).
       // Positive. Allocate X bytes for cache.
       if (frame_range == 0) {
-        if (_pimpl->AudioPolicy != CACHE_AUDIO_NONE)   // We already have a policy - no need for a default one.
+        if (_pimpl->AudioPolicy != CACHE_AUDIO_AUTO_START_OFF)   // We already have a policy - no need for a default one.
           break;
 
-        frame_range=256*1024;
+        frame_range = 256 * 1024;
       }
 
       if (frame_range/_pimpl->SampleSize > _pimpl->MaxSampleCount) { // Only make bigger
+        const bool audio_cache_existed = _pimpl->AudioCache != nullptr;
+        // keep content, newly added bytes are undefined on increase
+        // but CacheCount keeps track on that fact
         char * NewAudioCache = (char*)realloc(_pimpl->AudioCache, frame_range);
         if (NewAudioCache == NULL)
         {
@@ -417,16 +556,24 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
         _pimpl->AudioCache = NewAudioCache;
 
         _pimpl->MaxSampleCount = frame_range/_pimpl->SampleSize;
+        if(audio_cache_existed)
+          _pimpl->CacheCount = std::min(_pimpl->CacheCount, _pimpl->MaxSampleCount);
+        else {
+          _pimpl->AudioCacheStart = 0;
+          _pimpl->CacheCount = 0;
+        }
       }
 
       _pimpl->AudioPolicy = (CachePolicyHint)cachehints;
       break;
 
-    case CACHE_AUDIO_NONE:
+    case CACHE_AUDIO_AUTO_START_OFF:
     case CACHE_AUDIO_NOTHING:
       free(_pimpl->AudioCache);
       _pimpl->AudioCache = NULL;
       _pimpl->MaxSampleCount = 0;
+      _pimpl->AudioCacheStart = 0;
+      _pimpl->CacheCount = 0;
       _pimpl->AudioPolicy = (CachePolicyHint)cachehints;
       break;
 
@@ -436,6 +583,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     case CACHE_GET_AUDIO_SIZE: // Get the current audio cache size.
       return (int)(_pimpl->SampleSize * _pimpl->MaxSampleCount);
 
+    // n/a ignore them, not implemented even in 2.6
     case CACHE_PREFETCH_AUDIO_BEGIN:    // Begin queue request to prefetch audio (take critical section).
     case CACHE_PREFETCH_AUDIO_STARTLO:  // Set low 32 bits of start.
     case CACHE_PREFETCH_AUDIO_STARTHI:  // Set high 32 bits of start.
@@ -458,6 +606,11 @@ CacheGuard::CacheGuard(const PClip& child, const char *name, IScriptEnvironment*
 {
   if (name)
     this->name = name;
+
+  // other fields are set OK already
+  hints.AudioPolicy = vi.HasAudio() ? CACHE_AUDIO_AUTO_START_OFF : CACHE_AUDIO_NOTHING;
+  hints.default_AudioPolicy = hints.AudioPolicy;
+
 }
 
 CacheGuard::~CacheGuard()
@@ -465,29 +618,32 @@ CacheGuard::~CacheGuard()
 
 PClip CacheGuard::GetCache(IScriptEnvironment* env_)
 {
-    std::unique_lock<std::mutex> global_lock(mutex);
+  std::unique_lock<std::mutex> global_lock(mutex);
 
   InternalEnvironment* env = static_cast<InternalEnvironment*>(env_);
 
-    Device* device = env->GetCurrentDevice();
+  Device* device = env->GetCurrentDevice();
 
-    for (auto entry : deviceCaches) {
-        if (entry.first == device) {
-            return entry.second;
-        }
+  for (auto entry : deviceCaches) {
+    if (entry.first == device) {
+      return entry.second;
     }
+  }
 
-    // not found for current device, create it
-  Cache* cache = new Cache(child, device, static_cast<InternalEnvironment*>(globalEnv));
+  // not found for current device, create it
+  Cache* cache = new Cache(child, device, /*ref*/mutex, static_cast<InternalEnvironment*>(globalEnv));
 
-    // apply cache hints if it is changed
-    if(hints.min != 0)
-      cache->SetCacheHints(CACHE_SET_MIN_CAPACITY, (int)hints.min);
-    if(hints.max != std::numeric_limits<size_t>::max())
-      cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, (int)hints.max);
+  // apply cache hints if it is changed
+  if (hints.min != hints.default_min)
+    cache->SetCacheHints(CACHE_SET_MIN_CAPACITY, (int)hints.min);
+  if (hints.max != hints.default_max)
+    cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, (int)hints.max);
 
-    deviceCaches.emplace_back(device, cache);
-      return deviceCaches.back().second;
+  if (hints.AudioPolicy != hints.default_AudioPolicy || hints.AudioSize != hints.default_AudioSize)
+    cache->SetCacheHints(hints.AudioPolicy, hints.AudioSize);
+
+  deviceCaches.emplace_back(device, cache);
+  return deviceCaches.back().second;
 }
 
 void CacheGuard::ApplyHints(int cachehints, int frame_range)
@@ -650,14 +806,18 @@ int __stdcall CacheGuard::SetCacheHints(int cachehints, int frame_range)
     break;
 
     /*********************************************
-    TODO AUDIO
+    AUDIO
     *********************************************/
+  case CACHE_GETCHILD_AUDIO_MODE:
+  case CACHE_GETCHILD_AUDIO_SIZE:
+    return child->SetCacheHints(cachehints, 0);
 
   case CACHE_AUDIO:
-  case CACHE_AUDIO_AUTO:
-  case CACHE_AUDIO_NONE:
+  case CACHE_AUDIO_AUTO_START_ON: // auto mode, initially cache
+  case CACHE_AUDIO_AUTO_START_OFF: // auto mode, initially don't cache
   case CACHE_AUDIO_NOTHING:
     hints.AudioPolicy = (CachePolicyHint)cachehints;
+    hints.AudioSize = frame_range;
     ApplyHints(cachehints, frame_range);
     break;
 
@@ -707,6 +867,8 @@ AVSValue __cdecl CacheGuard::Create(AVSValue args, void*, IScriptEnvironment* en
       && (p->SetCacheHints(CACHE_DONT_CACHE_ME, 0) != 0) )
     {
       // Don't create cache instance if the child doesn't want to be cached
+      // DONT_CACHE_ME is disabling audio cache as well, even if filter
+      // would specify it by CACHE_GETCHILD_AUDIO_MODE
       return p; /* This is op, not args! */
     }
     else

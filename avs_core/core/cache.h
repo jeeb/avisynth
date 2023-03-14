@@ -52,13 +52,15 @@ private:
   IScriptEnvironment* Env;
   CachePimpl* _pimpl;
   Device* device;
+  std::mutex& CacheGuardMutex; // just reference!
+
   void FillAudioZeros(void* buf, int start_offset, int count);
 
 public:
 #ifdef _DEBUG
   std::string FuncName = ""; // P.F. Invoked function's name whose queue owns the cache object
 #endif
-  Cache(const PClip& child, Device* device, InternalEnvironment* env);
+  Cache(const PClip& child, Device* device, std::mutex &CacheGuardMutex, InternalEnvironment* env);
   ~Cache();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
@@ -76,37 +78,42 @@ public:
 class CacheGuard : public IClip
 {
 private:
-	struct CacheHints {
-		size_t min, max;
-		CachePolicyHint AudioPolicy;
+  struct CacheHints {
+    size_t min, max;
+    size_t default_min, default_max;
+    CachePolicyHint AudioPolicy, default_AudioPolicy;
+    int AudioSize, default_AudioSize;
 
-		CacheHints() :
-			min(0), max(std::numeric_limits<size_t>::max()), AudioPolicy(CACHE_AUDIO)
-		{ }
-	};
+    CacheHints() :
+      min(0), max(std::numeric_limits<size_t>::max()),
+      default_min(min), default_max(max),
+      AudioPolicy(CACHE_AUDIO), default_AudioPolicy(AudioPolicy),
+      AudioSize(0), default_AudioSize(AudioSize)
+    { }
+  };
 
-    PClip child;
-    VideoInfo vi;
-		IScriptEnvironment* globalEnv;
+  PClip child;
+  VideoInfo vi;
+  IScriptEnvironment* globalEnv;
 
-    std::vector<std::pair<Device*, PClip>> deviceCaches;
-	CacheHints hints;
-    mutable std::mutex mutex;
+  std::vector<std::pair<Device*, PClip>> deviceCaches;
+  CacheHints hints;
+  mutable std::mutex mutex;
 
-    PClip GetCache(IScriptEnvironment* env);
+  PClip GetCache(IScriptEnvironment* env);
 
-	void ApplyHints(int cachehints, int frame_range);
+  void ApplyHints(int cachehints, int frame_range);
 
-	int GetOrDefault(int cachehints, int frame_range, int def);
+  int GetOrDefault(int cachehints, int frame_range, int def);
 
 public:
-    CacheGuard(const PClip& child, const char *name, IScriptEnvironment* env);
-    ~CacheGuard();
-    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-    void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
-    const VideoInfo& __stdcall GetVideoInfo();
-    bool __stdcall GetParity(int n);
-    int __stdcall SetCacheHints(int cachehints, int frame_range);
+  CacheGuard(const PClip& child, const char *name, IScriptEnvironment* env);
+  ~CacheGuard();
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
+  const VideoInfo& __stdcall GetVideoInfo();
+  bool __stdcall GetParity(int n);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static bool __stdcall IsCache(const PClip& c);

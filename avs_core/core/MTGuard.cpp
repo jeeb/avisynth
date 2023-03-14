@@ -294,6 +294,11 @@ int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
   if (CACHE_IS_MTGUARD_REQ == cachehints) {
     return CACHE_IS_MTGUARD_ANS;
   }
+  // Filter-MTGuard-CacheGuard(Cache or nothing)
+  // MTGuard is just a helper over real filters, we pass these requests upstream
+  if (CACHE_GET_AUDIO_POLICY == cachehints || CACHE_GET_AUDIO_SIZE == cachehints ||
+    CACHE_GETCHILD_AUDIO_MODE == cachehints || CACHE_GETCHILD_AUDIO_SIZE == cachehints)
+    return (ChildFilters[0].filter->GetVersion() >= 5) ? ChildFilters[0].filter->SetCacheHints(cachehints, 0) : 0;
   if (CACHE_GET_DEV_TYPE == cachehints || CACHE_GET_CHILD_DEV_TYPE == cachehints) {
     return (ChildFilters[0].filter->GetVersion() >= 5) ? ChildFilters[0].filter->SetCacheHints(cachehints, 0) : 0;
   }
