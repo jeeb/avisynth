@@ -174,6 +174,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
     //   the mapping is not ideal. It can be less or more than the actual instance count.
     //   E.g. when mapping a thread on a CPU with 8 logical cores 
     //   to a instance count of 3 (nThread=3) the mapping is uneven (modulo example): [0,3,6]->[0] [1,4,7]->[1] [2,5]->[2]
+    // Resolution: do not use OLD_PREFETCH source part (kept just for knowledge)
 #ifdef OLD_PREFETCH
     auto myThreadID = envI->GetThreadId();
     assert((nThreads & (nThreads - 1)) == 0); // must be 2^n
@@ -234,12 +235,13 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
 {
   assert(nThreads > 0);
 
+  /* commented out, see MTGuard::GetFrame comments for MT_SERIALIZED
   if (nThreads == 1)
   {
     ChildFilters[0].filter->GetAudio(buf, start, count, env);
     return;
   }
-
+  */
   InternalEnvironment *envI = static_cast<InternalEnvironment*>(env);
 
   switch (MTMode)
@@ -251,7 +253,14 @@ void __stdcall MTGuard::GetAudio(void* buf, int64_t start, int64_t count, IScrip
     }
   case MT_MULTI_INSTANCE:
     {
-      auto& child = ChildFilters[envI->GetThreadId() & (nThreads - 1)];
+#ifdef OLD_PREFETCH
+      auto myThreadID = envI->GetThreadId();
+      assert((nThreads & (nThreads - 1)) == 0); // must be 2^n
+      size_t clipIndex = myThreadID & (nThreads - 1);
+#else
+      size_t clipIndex = envI->GetThreadId() % nThreads;
+#endif
+      auto& child = ChildFilters[clipIndex];
       std::lock_guard<std::mutex> lock(child.mutex);
       child.filter->GetAudio(buf, start, count, env);
       break;
