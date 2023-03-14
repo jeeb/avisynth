@@ -107,6 +107,7 @@ public:
   {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   static PClip Create(PClip clip);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 
@@ -142,6 +143,7 @@ public:
   ~MergeChannels();
 
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 
 private:
@@ -168,6 +170,7 @@ public:
   }
 
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   static PClip Create_left(PClip clip);
   static PClip Create_right(PClip clip);
   static PClip Create_n(PClip clip, int* n, int numchannels);
@@ -260,6 +263,7 @@ class Normalize : public GenericVideoFilter
 public:
   Normalize(PClip _child, float _max_factor, bool _showvalues);
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -280,7 +284,7 @@ class MixAudio : public GenericVideoFilter
 public:
   MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
-
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   virtual ~MixAudio() {if (tempbuffer_size) delete[] tempbuffer;tempbuffer_size=0;}
 
@@ -305,7 +309,7 @@ public:
     { delete[]  srcbuffer;
       delete[] fsrcbuffer; }
   void __stdcall GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env);
-
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
   enum { Nwing = 8192, Nmult = 65 };   // Number of filter points, (Nwing>>Nhc)*2+1

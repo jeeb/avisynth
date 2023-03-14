@@ -231,6 +231,17 @@ void __stdcall ConvertToMono::GetAudio(void* buf, int64_t start, int64_t count, 
   }
 }
 
+int __stdcall ConvertToMono::SetCacheHints(int cachehints, int frame_range) {
+  AVS_UNUSED(frame_range);
+
+  switch (cachehints) {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    break;
+  }
+  return 0;
+}
 
 PClip ConvertToMono::Create(PClip clip) {
   if (!clip->GetVideoInfo().HasAudio())
@@ -301,6 +312,9 @@ int __stdcall EnsureVBRMP3Sync::SetCacheHints(int cachehints, int frame_range) {
   // Enable CACHE_AUDIO on parent cache and juice it up to 1Mb
 
   switch (cachehints) {
+    case CACHE_GET_MTMODE:
+      return MT_SERIALIZED;
+
     case CACHE_GETCHILD_AUDIO_MODE: // Parent Cache asking Child for desired audio cache mode
       return CACHE_AUDIO;
 
@@ -351,7 +365,7 @@ MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array
 MergeChannels::~MergeChannels() {
   if (tempbuffer_size) {
     delete[] tempbuffer;
-	tempbuffer_size=0;
+    tempbuffer_size=0;
   }
   delete[] clip_channels;
   delete[] clip_offset;
@@ -457,6 +471,17 @@ void __stdcall MergeChannels::GetAudio(void* buf, int64_t start, int64_t count, 
   }
 }
 
+int __stdcall MergeChannels::SetCacheHints(int cachehints, int frame_range) {
+  AVS_UNUSED(frame_range);
+
+  switch (cachehints) {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    break;
+  }
+  return 0;
+}
 
 AVSValue __cdecl MergeChannels::Create(AVSValue args, void*, IScriptEnvironment* env) {
   int num_args;
@@ -559,6 +584,17 @@ void __stdcall GetChannel::GetAudio(void* buf, int64_t start, int64_t count, ISc
   }
 }
 
+int __stdcall GetChannel::SetCacheHints(int cachehints, int frame_range) {
+  AVS_UNUSED(frame_range);
+
+  switch (cachehints) {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    break;
+  }
+  return 0;
+}
 
 PClip GetChannel::Create_left(PClip clip) {
 
@@ -1037,6 +1073,18 @@ saturate2:
   }
 }
 
+int __stdcall Normalize::SetCacheHints(int cachehints, int frame_range) {
+  AVS_UNUSED(frame_range);
+
+  switch (cachehints) {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    break;
+  }
+  return 0;
+}
+
 PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
   if (showvalues) {
     PVideoFrame src = child->GetFrame(n, env);
@@ -1165,7 +1213,17 @@ saturate3:
   }
 }
 
+int __stdcall MixAudio::SetCacheHints(int cachehints, int frame_range) {
+  AVS_UNUSED(frame_range);
 
+  switch (cachehints) {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    break;
+  }
+  return 0;
+}
 
 AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env) {
   double track1_factor = args[2].AsDblDef(0.5);
@@ -1474,6 +1532,17 @@ nofix:
   }
 }
 
+int __stdcall ResampleAudio::SetCacheHints(int cachehints, int frame_range) {
+  AVS_UNUSED(frame_range);
+
+  switch (cachehints) {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    break;
+  }
+  return 0;
+}
 
 AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment* env) {
   return new ResampleAudio(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(1), env);
