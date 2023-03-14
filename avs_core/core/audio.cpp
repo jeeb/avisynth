@@ -251,6 +251,9 @@ AVSValue __cdecl ConvertToMono::Create(AVSValue args, void*, IScriptEnvironment*
  *******    sequencial.              ******
  *****************************************/
 
+// EnsureVBRMP3Sync adds a 1MB audio cache and causes a high penalty for any out of order
+// accesses outside the audio cache: a seek to zero plus a linear read up to the new position.
+
 EnsureVBRMP3Sync::EnsureVBRMP3Sync(PClip _clip)
     : GenericVideoFilter(_clip) {
   last_end = 0;
