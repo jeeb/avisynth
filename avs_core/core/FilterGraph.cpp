@@ -32,9 +32,9 @@ static AVSValue DeepCopyValue(std::vector<std::unique_ptr<AVSValue[]>>& arrays, 
 
 FilterGraphNode::FilterGraphNode(PClip child, const char* name,
   const AVSValue& last_, const AVSValue& args_, const char* const* argnames_,
-	IScriptEnvironment* env)
+  IScriptEnvironment* env)
   : Env(env)
-	, child(child)
+  , child(child)
   , name(name)
   , memory(new GraphMemoryNode())
 {
@@ -59,23 +59,23 @@ FilterGraphNode::FilterGraphNode(PClip child, const char* name,
     }
   }
 
-	Env->ManageCache(MC_RegisterGraphNode, this);
+  Env->ManageCache(MC_RegisterGraphNode, this);
 }
 
 FilterGraphNode::~FilterGraphNode()
 {
-	Env->ManageCache(MC_UnRegisterGraphNode, this);
+  Env->ManageCache(MC_UnRegisterGraphNode, this);
 }
 
 struct ScopedGraphNode {
-	FilterGraphNode*& target;
+  FilterGraphNode*& target;
   FilterGraphNode* prev;
   ScopedGraphNode(FilterGraphNode*& target, FilterGraphNode* node) : target(target) {
     prev = target;
-		target = node;
+    target = node;
   }
   ~ScopedGraphNode() {
-		target = prev;
+    target = prev;
   }
 };
 
@@ -230,16 +230,16 @@ public:
     nodeMap.clear();
     return DoClip(root);
   }
-	void Construct(const std::vector<FilterGraphNode*>& roots, IScriptEnvironment* env_)
-	{
-		env = env_;
-		nodeMap.clear();
-		for (auto node : roots) {
-			if (node != nullptr) {
-				DoClip(node);
-			}
-		}
-	}
+  void Construct(const std::vector<FilterGraphNode*>& roots, IScriptEnvironment* env_)
+  {
+    env = env_;
+    nodeMap.clear();
+    for (auto node : roots) {
+      if (node != nullptr) {
+        DoClip(node);
+      }
+    }
+  }
 };
 
 static void ReplaceAll(std::string& str, const std::string& from, const std::string& to) {
@@ -396,14 +396,14 @@ public:
     ss << "}" << std::endl;
   }
 
-	void Construct(const std::vector<FilterGraphNode*>& roots, bool enableArgs, bool enableMemory, IScriptEnvironment* env) {
-		this->enableArgs = enableArgs;
-		this->enableMemory = enableMemory;
-		ss << "digraph avs_filter_graph {" << std::endl;
-		ss << "node [ shape = box ];" << std::endl;
-		FilterGraph::Construct(roots, env);
-		ss << "}" << std::endl;
-	}
+  void Construct(const std::vector<FilterGraphNode*>& roots, bool enableArgs, bool enableMemory, IScriptEnvironment* env) {
+    this->enableArgs = enableArgs;
+    this->enableMemory = enableMemory;
+    ss << "digraph avs_filter_graph {" << std::endl;
+    ss << "node [ shape = box ];" << std::endl;
+    FilterGraph::Construct(roots, env);
+    ss << "}" << std::endl;
+  }
 
   std::string GetOutput() {
     return ss.str();
@@ -412,16 +412,16 @@ public:
 
 void DoDumpGraph(const std::vector<FilterGraphNode*>& roots, const char* path, IScriptEnvironment* env)
 {
-	DotFilterGraph graph;
-	graph.Construct(roots, true, true, env);
-	std::string ret = graph.GetOutput();
+  DotFilterGraph graph;
+  graph.Construct(roots, true, true, env);
+  std::string ret = graph.GetOutput();
 
-	FILE* fp = fopen(path, "w");
-	if (fp == nullptr) {
-		env->ThrowError("Could not open output file ...");
-	}
-	fwrite(ret.data(), ret.size(), 1, fp);
-	fclose(fp);
+  FILE* fp = fopen(path, "w");
+  if (fp == nullptr) {
+    env->ThrowError("Could not open output file ...");
+  }
+  fwrite(ret.data(), ret.size(), 1, fp);
+  fclose(fp);
 }
 
 static void DoDumpGraph(PClip clip, int mode, const char* path, IScriptEnvironment* env)

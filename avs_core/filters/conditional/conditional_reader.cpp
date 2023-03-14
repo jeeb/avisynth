@@ -58,55 +58,55 @@
 static char *
 readline(FILE *f)
 {
-	char *buffer = NULL;
-	int buffer_size = 0;
-	int pos = 0;
+  char *buffer = NULL;
+  int buffer_size = 0;
+  int pos = 0;
 
-	for (;;) {
-		int c;
+  for (;;) {
+    int c;
 
-		/* Read a character from the stream */
-		c = fgetc(f);
+    /* Read a character from the stream */
+    c = fgetc(f);
 
-		/* Is that EOF or new line ? */
-		if(c == EOF || c == '\n')
-			break;
+    /* Is that EOF or new line ? */
+    if(c == EOF || c == '\n')
+      break;
 
-		/* Do we have to update buffer ? */
-		if(pos >= buffer_size - 1) {
-			buffer_size += BUF_SZ;
-			char *tmpbuffer = (char*)realloc(buffer, buffer_size);
-			if (tmpbuffer == NULL) {
-				free(buffer);
-				return(NULL);
-		    }
-			buffer = tmpbuffer;
-		}
+    /* Do we have to update buffer ? */
+    if(pos >= buffer_size - 1) {
+      buffer_size += BUF_SZ;
+      char *tmpbuffer = (char*)realloc(buffer, buffer_size);
+      if (tmpbuffer == NULL) {
+        free(buffer);
+        return(NULL);
+        }
+      buffer = tmpbuffer;
+    }
 
-		buffer[pos] = (char)c;
-		pos++;
-	}
+    buffer[pos] = (char)c;
+    pos++;
+  }
 
-	/* Read \n or EOF */
-	if (buffer == NULL) {
-		/* EOF, so we reached the end of the file, return NULL */
-		if(feof(f))
-			return(NULL);
+  /* Read \n or EOF */
+  if (buffer == NULL) {
+    /* EOF, so we reached the end of the file, return NULL */
+    if(feof(f))
+      return(NULL);
 
-		/* Just an empty line with just a newline, allocate a 1 byte buffer to
-		 * store a zero length string */
-		buffer = (char*)malloc(1);
-		if(buffer == NULL)
-			return(NULL);
-	}
+    /* Just an empty line with just a newline, allocate a 1 byte buffer to
+     * store a zero length string */
+    buffer = (char*)malloc(1);
+    if(buffer == NULL)
+      return(NULL);
+  }
 
-	/* Zero terminated string */
-	if (pos && buffer[pos-1] == '\r')
-		buffer[pos-1] = '\0';
-	else
-		buffer[pos] = '\0';
+  /* Zero terminated string */
+  if (pos && buffer[pos-1] == '\r')
+    buffer[pos-1] = '\0';
+  else
+    buffer[pos] = '\0';
 
-	return(buffer);
+  return(buffer);
 }
 
 /* This function returns a pointer to the first non space char in the given
@@ -115,14 +115,14 @@ readline(FILE *f)
 static char *
 skipspaces(char *string)
 {
-	if (string == NULL) return(NULL);
+  if (string == NULL) return(NULL);
 
-	while (*string != '\0') {
-		/* Test against space chars */
-		if (!isspace(*string)) return(string);
-		string++;
-	}
-	return(string);
+  while (*string != '\0') {
+    /* Test against space chars */
+    if (!isspace(*string)) return(string);
+    string++;
+  }
+  return(string);
 }
 
 /* This function returns a pointer to the first space char in the given
@@ -131,14 +131,14 @@ skipspaces(char *string)
 static char *
 findspace(char *string)
 {
-	if (string == NULL) return(NULL);
+  if (string == NULL) return(NULL);
 
-	while (*string != '\0') {
-		/* Test against space chars */
-		if (isspace(*string)) return(string);
-		string++;
-	}
-	return(string);
+  while (*string != '\0') {
+    /* Test against space chars */
+    if (isspace(*string)) return(string);
+    string++;
+  }
+  return(string);
 }
 
 /* This function returns a boolean that tells if the string is only a
@@ -146,26 +146,26 @@ findspace(char *string)
 static int
 iscomment(char *string)
 {
-	const char comments[] =
-		{
-			'#',';', '%', '\0'
-		};
-	const char *cmtchar = comments;
-	int iscomment = 0;
+  const char comments[] =
+    {
+      '#',';', '%', '\0'
+    };
+  const char *cmtchar = comments;
+  int iscomment = 0;
 
-	if (string == NULL) return(1);
+  if (string == NULL) return(1);
 
-	string = skipspaces(string);
+  string = skipspaces(string);
 
-	while(*cmtchar != '\0') {
-		if(*string == *cmtchar) {
-			iscomment = 1;
-			break;
-		}
-		cmtchar++;
-	}
+  while(*cmtchar != '\0') {
+    if(*string == *cmtchar) {
+      iscomment = 1;
+      break;
+    }
+    cmtchar++;
+  }
 
-	return(iscomment);
+  return(iscomment);
 }
 
 
@@ -707,43 +707,43 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 };
 
 Write::~Write(void) {
-	if (linecheck == -2) {	//write at end
-		Write::FileOut(0, append ? AplusT : WplusT); // Allow for retruncating at actual end
-	}
-	if (!flush) fclose(fout);
+  if (linecheck == -2) {	//write at end
+    Write::FileOut(0, append ? AplusT : WplusT); // Allow for retruncating at actual end
+  }
+  if (!flush) fclose(fout);
 
-	delete[] arglist;
+  delete[] arglist;
 };
 
 void Write::FileOut(IScriptEnvironment* env, const char* mode) {
-	int i;
-	if (flush) {
-		fout = fopen(filename, mode);
-		if (!fout) {
-			if (env) env->ThrowError("Write: File '%s' cannot be opened.", filename);
-			return;
-		}
-	}
-	for (i= ( (linecheck==1) ? 1 : 0) ; i<arrsize; i++ ) {
-		fputs(arglist[i].string, fout);
-	}
-	fputs("\n", fout);
-	if (flush) {
-		fclose(fout);
-	}
+  int i;
+  if (flush) {
+    fout = fopen(filename, mode);
+    if (!fout) {
+      if (env) env->ThrowError("Write: File '%s' cannot be opened.", filename);
+      return;
+    }
+  }
+  for (i= ( (linecheck==1) ? 1 : 0) ; i<arrsize; i++ ) {
+    fputs(arglist[i].string, fout);
+  }
+  fputs("\n", fout);
+  if (flush) {
+    fclose(fout);
+  }
 }
 
 bool Write::DoEval( IScriptEnvironment* env) {
-	bool keep_this_line = true;
-	int i;
-	AVSValue expr;
-	AVSValue result;
+  bool keep_this_line = true;
+  int i;
+  AVSValue expr;
+  AVSValue result;
 
-	for (i=0; i<arrsize; i++) {
-		expr = arglist[i].expression;
+  for (i=0; i<arrsize; i++) {
+    expr = arglist[i].expression;
 
-		if ( (linecheck==1) && (i==0)) {
-			try {
+    if ( (linecheck==1) && (i==0)) {
+      try {
         if (expr.IsFunction()) {
           result = env->Invoke3(child, expr.AsFunction(), AVSValue(nullptr, 0));
         }
@@ -751,15 +751,15 @@ bool Write::DoEval( IScriptEnvironment* env) {
           expr = expr.AsString(EMPTY);
           result = env->Invoke("Eval", expr);
         }
-				if (!result.AsBool(true)) {
-					keep_this_line = false;
-					break;
-				}
-			} catch (const AvisynthError&) {
+        if (!result.AsBool(true)) {
+          keep_this_line = false;
+          break;
+        }
+      } catch (const AvisynthError&) {
 //				env->ThrowError("Write: Can't eval linecheck expression!"); // results in KEEPING the line
-			}
-		} else {
-			try {
+      }
+    } else {
+      try {
         if (expr.IsFunction()) {
           result = env->Invoke3(child, expr.AsFunction(), AVSValue(nullptr, 0));
         }
@@ -767,14 +767,14 @@ bool Write::DoEval( IScriptEnvironment* env) {
           expr = expr.AsString(EMPTY);
           result = env->Invoke("Eval", expr);
         }
-				result = env->Invoke("string",result);	//convert all results to a string
-				arglist[i].string = result.AsString(EMPTY);
-			} catch (const AvisynthError &error) {
-				arglist[i].string = env->SaveString(error.msg);
-			}
-		}
-	}
-	return keep_this_line;
+        result = env->Invoke("string",result);	//convert all results to a string
+        arglist[i].string = result.AsString(EMPTY);
+      } catch (const AvisynthError &error) {
+        arglist[i].string = env->SaveString(error.msg);
+      }
+    }
+  }
+  return keep_this_line;
 }
 
 int __stdcall Write::SetCacheHints(int cachehints, int frame_range)
@@ -795,7 +795,7 @@ AVSValue __cdecl Write::Create(AVSValue args, void*, IScriptEnvironment* env)
     runtime_local_default = true;
   // Avisynth compatibility: false, Neo: true. functions are legacy Neo
 
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 0, args[3].AsBool(true),args[4].AsBool(true), args[5].AsBool(runtime_local_default), env);
+  return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 0, args[3].AsBool(true),args[4].AsBool(true), args[5].AsBool(runtime_local_default), env);
 }
 
 AVSValue __cdecl Write::Create_If(AVSValue args, void*, IScriptEnvironment* env)
@@ -806,7 +806,7 @@ AVSValue __cdecl Write::Create_If(AVSValue args, void*, IScriptEnvironment* env)
     runtime_local_default = true;
   // Avisynth compatibility: false, Neo: true. functions are legacy Neo
 
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 1, args[3].AsBool(true),args[4].AsBool(true), args[5].AsBool(runtime_local_default), env);
+  return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], 1, args[3].AsBool(true),args[4].AsBool(true), args[5].AsBool(runtime_local_default), env);
 }
 
 AVSValue __cdecl Write::Create_Start(AVSValue args, void*, IScriptEnvironment* env)
@@ -818,7 +818,7 @@ AVSValue __cdecl Write::Create_Start(AVSValue args, void*, IScriptEnvironment* e
   */
   // Avisynth compatibility: false, Neo: also false as of 2020.03.28
 
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -1, args[3].AsBool(false), true, args[4].AsBool(runtime_local_default), env);
+  return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -1, args[3].AsBool(false), true, args[4].AsBool(runtime_local_default), env);
 }
 
 AVSValue __cdecl Write::Create_End(AVSValue args, void*, IScriptEnvironment* env)
@@ -831,7 +831,7 @@ AVSValue __cdecl Write::Create_End(AVSValue args, void*, IScriptEnvironment* env
   */
   // Avisynth compatibility: false, Neo: also false as of 2020.03.28
 
-	return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -2, args[3].AsBool(true), args[4].AsBool(runtime_local_default), true, env);
+  return new Write(args[0].AsClip(), args[1].AsString(EMPTY), args[2], -2, args[3].AsBool(true), args[4].AsBool(runtime_local_default), true, env);
 }
 
 

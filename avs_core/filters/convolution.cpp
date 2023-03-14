@@ -56,7 +56,7 @@
 
 extern const AVSFunction Convolution_filters[] = {
 // Please when adding parameters try not to break the legacy order - IanB July 2004
-	{ "GeneralConvolution", BUILTIN_FUNC_PREFIX, "c[bias]f[matrix]s[divisor]f[auto]b[luma]b[chroma]b[alpha]b", GeneralConvolution::Create },
+  { "GeneralConvolution", BUILTIN_FUNC_PREFIX, "c[bias]f[matrix]s[divisor]f[auto]b[luma]b[chroma]b[alpha]b", GeneralConvolution::Create },
     /**
       * GeneralConvolution(PClip clip, int divisor=1, int bias=0, string matrix)
       * clip     =  input video

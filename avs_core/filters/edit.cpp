@@ -71,8 +71,8 @@ extern const AVSFunction Edit_filters[] = {
   { "DuplicateFrame",  BUILTIN_FUNC_PREFIX, "ci+", DuplicateFrame::Create },      // frame #
   { "UnalignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateUnaligned },    // clips
   { "AlignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateAligned },        // clips
-	{ "UnalignedSplice", BUILTIN_FUNC_PREFIX, "cci", Splice::CreateUnalignedNoCache },    // clips
-	{ "AlignedSplice", BUILTIN_FUNC_PREFIX, "cci", Splice::CreateAlignedNoCache },        // clips
+  { "UnalignedSplice", BUILTIN_FUNC_PREFIX, "cci", Splice::CreateUnalignedNoCache },    // clips
+  { "AlignedSplice", BUILTIN_FUNC_PREFIX, "cci", Splice::CreateAlignedNoCache },        // clips
   { "Dissolve",   BUILTIN_FUNC_PREFIX, "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
   { "AudioDub",   BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)0},          // video src, audio src
   { "AudioDubEx", BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)1},        // video! src, audio! src
@@ -136,49 +136,49 @@ Trim::Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, boo
 
   switch (mode) {
     case Default:
-	  if (endtime == 0.0)
-		esampleno = vi.num_audio_samples;
-	  else if (endtime < 0.0)
-		esampleno = int64_t((starttime-endtime)*vi.audio_samples_per_second + 0.5);
-	  else
-		esampleno = int64_t(endtime*vi.audio_samples_per_second + 0.5);
+    if (endtime == 0.0)
+    esampleno = vi.num_audio_samples;
+    else if (endtime < 0.0)
+    esampleno = int64_t((starttime-endtime)*vi.audio_samples_per_second + 0.5);
+    else
+    esampleno = int64_t(endtime*vi.audio_samples_per_second + 0.5);
 
-	  break;
-	case Length:
-	  if (endtime < 0.0)
-		env->ThrowError("AudioTrim: Length must be >= 0");
+    break;
+  case Length:
+    if (endtime < 0.0)
+    env->ThrowError("AudioTrim: Length must be >= 0");
 
-	  esampleno = int64_t((starttime+endtime)*vi.audio_samples_per_second + 0.5);
+    esampleno = int64_t((starttime+endtime)*vi.audio_samples_per_second + 0.5);
 
-	  break;
-	case End:
-	  if (endtime < starttime)
-		env->ThrowError("AudioTrim: End must be >= Start");
+    break;
+  case End:
+    if (endtime < starttime)
+    env->ThrowError("AudioTrim: End must be >= Start");
 
-	  esampleno = int64_t(endtime*vi.audio_samples_per_second + 0.5);
+    esampleno = int64_t(endtime*vi.audio_samples_per_second + 0.5);
 
-	  break;
-	default:
-	  env->ThrowError("Script error: Invalid arguments to function \"AudioTrim\"");
+    break;
+  default:
+    env->ThrowError("Script error: Invalid arguments to function \"AudioTrim\"");
   }
 
   if (esampleno > vi.num_audio_samples)
-	esampleno = vi.num_audio_samples;
+  esampleno = vi.num_audio_samples;
 
   vi.num_audio_samples = esampleno - audio_offset;
 
   if (vi.num_audio_samples < 0)
-	vi.num_audio_samples = 0;
+  vi.num_audio_samples = 0;
 
   firstframe= vi.FramesFromAudioSamples(audio_offset); // Floor
 
   if (endtime == 0.0 && mode == Default)
-	vi.num_frames -= firstframe;
+  vi.num_frames -= firstframe;
   else
-	vi.num_frames = vi.FramesFromAudioSamples(vi.num_audio_samples + vi.AudioSamplesFromFrames(1) - 1); // Ceil
+  vi.num_frames = vi.FramesFromAudioSamples(vi.num_audio_samples + vi.AudioSamplesFromFrames(1) - 1); // Ceil
 
   if (vi.num_frames < 0)
-	vi.num_frames = 0;
+  vi.num_frames = 0;
 
 }
 
@@ -211,41 +211,41 @@ Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_m
 
   switch (mode) {
     case Default:
-	  if (_lastframe == 0)
-		lastframe = vi.num_frames-1;
-	  else if (_lastframe < 0)
-		lastframe = firstframe - _lastframe - 1;
-	  else
-		lastframe = _lastframe;
+    if (_lastframe == 0)
+    lastframe = vi.num_frames-1;
+    else if (_lastframe < 0)
+    lastframe = firstframe - _lastframe - 1;
+    else
+    lastframe = _lastframe;
 
-	  lastframe = clamp(lastframe, firstframe, vi.num_frames-1);
+    lastframe = clamp(lastframe, firstframe, vi.num_frames-1);
 
-	  break;
+    break;
 
-	case Length:
-	  if (_lastframe < 0)
-		env->ThrowError("Trim: Length must be >= 0");
+  case Length:
+    if (_lastframe < 0)
+    env->ThrowError("Trim: Length must be >= 0");
 
-	  lastframe = firstframe + _lastframe - 1;
+    lastframe = firstframe + _lastframe - 1;
 
-	  if (lastframe > vi.num_frames-1)
-	    lastframe = vi.num_frames-1;
+    if (lastframe > vi.num_frames-1)
+      lastframe = vi.num_frames-1;
 
-	  break;
+    break;
 
-	case End:
-	  if (_lastframe < firstframe)
-		env->ThrowError("Trim: End must be >= Start");
+  case End:
+    if (_lastframe < firstframe)
+    env->ThrowError("Trim: End must be >= Start");
 
-	  lastframe = _lastframe;
+    lastframe = _lastframe;
 
-	  if (lastframe > vi.num_frames-1)
-	    lastframe = vi.num_frames-1;
+    if (lastframe > vi.num_frames-1)
+      lastframe = vi.num_frames-1;
 
-	  break;
+    break;
 
-	default:
-	  env->ThrowError("Script error: Invalid arguments to function \"Trim\"");
+  default:
+    env->ThrowError("Script error: Invalid arguments to function \"Trim\"");
   }
 
   vi.num_frames = lastframe+1 - firstframe;
@@ -254,15 +254,15 @@ Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_m
   if (_padaudio)
     vi.num_audio_samples = vi.AudioSamplesFromFrames(lastframe+1) - audio_offset;
   else {
-	int64_t samples;
+  int64_t samples;
 
     if (_lastframe == 0 && mode == Default)
       samples = vi.num_audio_samples;
-	else {
-	  samples = vi.AudioSamplesFromFrames(lastframe+1);
-	  if (samples > vi.num_audio_samples)
-		samples = vi.num_audio_samples;
-	}
+  else {
+    samples = vi.AudioSamplesFromFrames(lastframe+1);
+    if (samples > vi.num_audio_samples)
+    samples = vi.num_audio_samples;
+  }
     if (audio_offset >= samples)
       vi.num_audio_samples = 0;
     else
@@ -579,12 +579,12 @@ AVSValue __cdecl Splice::CreateAligned(AVSValue args, void*, IScriptEnvironment*
 
 AVSValue __cdecl Splice::CreateUnalignedNoCache(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Splice(args[0].AsClip(), args[1].AsClip(), false, true, env);
+  return new Splice(args[0].AsClip(), args[1].AsClip(), false, true, env);
 }
 
 AVSValue __cdecl Splice::CreateAlignedNoCache(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Splice(args[0].AsClip(), args[1].AsClip(), true, true, env);
+  return new Splice(args[0].AsClip(), args[1].AsClip(), true, true, env);
 }
 
 
@@ -665,11 +665,11 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScri
     audio_fade_end = vi.AudioSamplesFromFrames(video_fade_end+1)-1;
   }
   else {
-	video_fade_start = 0;
-	video_fade_end = 0;
+  video_fade_start = 0;
+  video_fade_end = 0;
 
-	audio_fade_start = vi.num_audio_samples - int64_t(Int32x32To64(vi.SamplesPerSecond(), overlap)/fps+0.5);
-	audio_fade_end = vi.num_audio_samples-1;
+  audio_fade_start = vi.num_audio_samples - int64_t(Int32x32To64(vi.SamplesPerSecond(), overlap)/fps+0.5);
+  audio_fade_end = vi.num_audio_samples-1;
   }
   audio_overlap = int(audio_fade_end - audio_fade_start);
 
@@ -728,9 +728,9 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
     int weight_i;
     int invweight_i;
 #ifdef INTEL_INTRINSICS
-	  MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, env->GetCPUFlags(), a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
+    MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, env->GetCPUFlags(), a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
 #else
-	  MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
+    MergeFuncPtr weighted_merge_planar = getMergeFunc(bits_per_pixel, a_data, b_data, weight, /*out*/weight_i, /*out*/invweight_i);
 #endif
     weighted_merge_planar(a_data, b_data, a_pitch, b_pitch, row_size, height, weight, weight_i, invweight_i);
   }
@@ -770,7 +770,7 @@ void Dissolve::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironm
     const short *const b = (short*)audbuffer;
 
     int i;
-	for (i=0; i<countXnch; i+=nch) {
+  for (i=0; i<countXnch; i+=nch) {
       if (numerator <= 0) {                          // Past end of dissolve
         break;
       }
@@ -792,7 +792,7 @@ void Dissolve::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironm
     const SFLOAT *const b = (SFLOAT*)audbuffer;
 
     int i;
-	for (i=0; i<countXnch; i+=nch) {
+  for (i=0; i<countXnch; i+=nch) {
       if (numerator <= 0) {                          // Past end of dissolve
         break;
       }
@@ -831,19 +831,19 @@ AudioDub::AudioDub(PClip child1, PClip child2, int mode, IScriptEnvironment* env
   const VideoInfo& vi2 = child2->GetVideoInfo();
   const VideoInfo *vi_video=0, *vi_audio=0;
   if (mode) { // Unconditionally accept audio and video
-	vchild = child1; achild = child2;
-	vi_video = &vi1; vi_audio = &vi2;
+  vchild = child1; achild = child2;
+  vi_video = &vi1; vi_audio = &vi2;
   }
   else {
-	if (vi1.HasVideo() && vi2.HasAudio()) {
-	  vchild = child1; achild = child2;
-	  vi_video = &vi1, vi_audio = &vi2;
-	} else if (vi2.HasVideo() && vi1.HasAudio()) {
-	  vchild = child2; achild = child1;
-	  vi_video = &vi2, vi_audio = &vi1;
-	} else {
-	  env->ThrowError("AudioDub: need an audio and a video track");
-	}
+  if (vi1.HasVideo() && vi2.HasAudio()) {
+    vchild = child1; achild = child2;
+    vi_video = &vi1, vi_audio = &vi2;
+  } else if (vi2.HasVideo() && vi1.HasAudio()) {
+    vchild = child2; achild = child1;
+    vi_video = &vi2, vi_audio = &vi1;
+  } else {
+    env->ThrowError("AudioDub: need an audio and a video track");
+  }
   }
 
   vi = *vi_video;
@@ -965,19 +965,19 @@ Loop::Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* en
   if (times<0) { // Loop nearly forever
     vi.num_frames = 10000000;
     end = vi.num_frames;
-	if (vi.HasAudio()) {
-	  if (vi.HasVideo()) {
-		aud_start = vi.AudioSamplesFromFrames(start);
-		aud_end = vi.AudioSamplesFromFrames(end+1) - 1; // This is the output end sample
-		aud_count = vi.AudioSamplesFromFrames(frames); // length of each loop in samples
-	  } else {
-		// start and end frame numbers are meaningless without video
-		aud_start = 0;
-		aud_count = vi.num_audio_samples;
-		aud_end = Int32x32To64(400000, vi.audio_samples_per_second);
-	  }
-	  vi.num_audio_samples = aud_end+1;
-	}
+  if (vi.HasAudio()) {
+    if (vi.HasVideo()) {
+    aud_start = vi.AudioSamplesFromFrames(start);
+    aud_end = vi.AudioSamplesFromFrames(end+1) - 1; // This is the output end sample
+    aud_count = vi.AudioSamplesFromFrames(frames); // length of each loop in samples
+    } else {
+    // start and end frame numbers are meaningless without video
+    aud_start = 0;
+    aud_count = vi.num_audio_samples;
+    aud_end = Int32x32To64(400000, vi.audio_samples_per_second);
+    }
+    vi.num_audio_samples = aud_end+1;
+  }
   }
   else {
     vi.num_frames += (times-1) * frames;
@@ -986,19 +986,19 @@ Loop::Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* en
       env->ThrowError("Loop: Maximum number of frames exceeded.");
 
     end = start + times * frames - 1;
-	if (vi.HasAudio()) {
-	  if (vi.HasVideo()) {
-		aud_start = vi.AudioSamplesFromFrames(start);
-		aud_end = vi.AudioSamplesFromFrames(end+1) - 1; // This is the output end sample
-		aud_count = vi.AudioSamplesFromFrames(frames); // length of each loop in samples
-	  } else {
-		// start and end frame numbers are meaningless without video
-		aud_start = 0;
-		aud_count = vi.num_audio_samples;
-		aud_end = vi.num_audio_samples * times;
-	  }
-	  vi.num_audio_samples += (times-1) * aud_count;
-	}
+  if (vi.HasAudio()) {
+    if (vi.HasVideo()) {
+    aud_start = vi.AudioSamplesFromFrames(start);
+    aud_end = vi.AudioSamplesFromFrames(end+1) - 1; // This is the output end sample
+    aud_count = vi.AudioSamplesFromFrames(frames); // length of each loop in samples
+    } else {
+    // start and end frame numbers are meaningless without video
+    aud_start = 0;
+    aud_count = vi.num_audio_samples;
+    aud_end = vi.num_audio_samples * times;
+    }
+    vi.num_audio_samples += (times-1) * aud_count;
+  }
   }
 }
 
@@ -1020,31 +1020,31 @@ void Loop::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment*
   char* samples = (char*)buf;
 
   while (count > 0) {
-	if (start > aud_end) {   // tail of clip
-	  get_start = aud_start + aud_count + start - (aud_end+1);
-	  get_count = count;
-	}
-	else {
-	  if (start > aud_start) // loop part of clip
-		get_start = (start - aud_start) % aud_count + aud_start;
-	  else                   // head of clip
-		get_start = start;
+  if (start > aud_end) {   // tail of clip
+    get_start = aud_start + aud_count + start - (aud_end+1);
+    get_count = count;
+  }
+  else {
+    if (start > aud_start) // loop part of clip
+    get_start = (start - aud_start) % aud_count + aud_start;
+    else                   // head of clip
+    get_start = start;
 
-	  get_count = aud_count - (get_start - aud_start); // count to end of next iteration
+    get_count = aud_count - (get_start - aud_start); // count to end of next iteration
 
-	  if (get_start+get_count > aud_end+1) // loop(0) case
-		get_count = aud_end+1 - get_start;
-	  else if (start+get_count > aud_end)
-		get_count = count; // if is last iteration do all of remainder
+    if (get_start+get_count > aud_end+1) // loop(0) case
+    get_count = aud_end+1 - get_start;
+    else if (start+get_count > aud_end)
+    get_count = count; // if is last iteration do all of remainder
 
-	  if (get_count > count) get_count = count;
-	}
+    if (get_count > count) get_count = count;
+  }
 
-	child->GetAudio(samples, get_start, get_count, env);
+  child->GetAudio(samples, get_start, get_count, env);
 
-	samples += get_count * bpas;  // update dest start pointer
-	start   += get_count;
-	count   -= get_count;
+  samples += get_count * bpas;  // update dest start pointer
+  start   += get_count;
+  count   -= get_count;
   }
 }
 
@@ -1062,7 +1062,7 @@ AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
        (args[2].Defined() || args[3].Defined())) {
     env->ThrowError("Loop: cannot use start or end frame numbers without a video track");
   }
-	return new Loop(args[0].AsClip(), args[1].AsInt(-1), args[2].AsInt(0), args[3].AsInt(10000000),env);
+  return new Loop(args[0].AsClip(), args[1].AsInt(-1), args[2].AsInt(0), args[3].AsInt(10000000),env);
 }
 
 

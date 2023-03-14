@@ -333,8 +333,8 @@ private:
   int64_t last_start, last_samples;
 
   union { // Share storage
-	SFLOAT fImp[Nwing+1];
-	short Imp[Nwing+1];
+  SFLOAT fImp[Nwing+1];
+  short Imp[Nwing+1];
   };
 };
 

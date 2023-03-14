@@ -59,29 +59,29 @@ private:
 public:
   PlanarLegacyAlignment( PClip _child, const bool _mode, IScriptEnvironment* env )
     : GenericVideoFilter(_child),
-	  mode(_mode ?  IScriptEnvironment::PlanarChromaAlignmentOff  // Legacy PLANAR_Y alignment
-			      : IScriptEnvironment::PlanarChromaAlignmentOn)  // New PLANAR_UV priority alignment
+    mode(_mode ?  IScriptEnvironment::PlanarChromaAlignmentOff  // Legacy PLANAR_Y alignment
+            : IScriptEnvironment::PlanarChromaAlignmentOn)  // New PLANAR_UV priority alignment
   {
     AVS_UNUSED(env);
   }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
   {
-	const IScriptEnvironment::PlanarChromaAlignmentMode
-	  oldmode = env->PlanarChromaAlignment(mode)            // Set the PLANAR alignement mode
-	          ? IScriptEnvironment::PlanarChromaAlignmentOn
-	          : IScriptEnvironment::PlanarChromaAlignmentOff;
+  const IScriptEnvironment::PlanarChromaAlignmentMode
+    oldmode = env->PlanarChromaAlignment(mode)            // Set the PLANAR alignement mode
+            ? IScriptEnvironment::PlanarChromaAlignmentOn
+            : IScriptEnvironment::PlanarChromaAlignmentOff;
 
-	PVideoFrame src = child->GetFrame(n, env);              // run the GetFrame chain
+  PVideoFrame src = child->GetFrame(n, env);              // run the GetFrame chain
 
-	env->PlanarChromaAlignment(oldmode);                    // reset the PLANAR alignement mode
+  env->PlanarChromaAlignment(oldmode);                    // reset the PLANAR alignement mode
 
-	return src;
+  return src;
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
   {
-	return new PlanarLegacyAlignment(args[0].AsClip(), args[1].AsBool(), env);
+  return new PlanarLegacyAlignment(args[0].AsClip(), args[1].AsBool(), env);
   }
 
 };
@@ -116,7 +116,7 @@ public:
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
 
-	PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame src = child->GetFrame(n, env);
 
     for (int i=0; i < ClipCount; i++)
       clips[i]->GetFrame(n, env);           // run the GetFrame chains

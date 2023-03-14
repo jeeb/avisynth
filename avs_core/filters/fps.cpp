@@ -348,58 +348,58 @@ void FloatToFPS(const char *name, float n, uint32_t &num, uint32_t &den, IScript
 
 void PresetToFPS(const char *name, const char *p, uint32_t &num, uint32_t &den, IScriptEnvironment* env)
 {
-	if (lstrcmpi(p, "ntsc_film"        ) == 0) { num = 24000; den = 1001; }
-	else if (lstrcmpi(p, "ntsc_video"       ) == 0) { num = 30000; den = 1001; }
-	else if (lstrcmpi(p, "ntsc_double"      ) == 0) { num = 60000; den = 1001; }
-	else if (lstrcmpi(p, "ntsc_quad"        ) == 0) { num =120000; den = 1001; }
+  if (lstrcmpi(p, "ntsc_film"        ) == 0) { num = 24000; den = 1001; }
+  else if (lstrcmpi(p, "ntsc_video"       ) == 0) { num = 30000; den = 1001; }
+  else if (lstrcmpi(p, "ntsc_double"      ) == 0) { num = 60000; den = 1001; }
+  else if (lstrcmpi(p, "ntsc_quad"        ) == 0) { num =120000; den = 1001; }
 
-	else if (lstrcmpi(p, "ntsc_round_film"  ) == 0) { num =  2997; den =  125; }
-	else if (lstrcmpi(p, "ntsc_round_video" ) == 0) { num =  2997; den =  100; }
-	else if (lstrcmpi(p, "ntsc_round_double") == 0) { num =  2997; den =   50; }
-	else if (lstrcmpi(p, "ntsc_round_quad"  ) == 0) { num =  2997; den =   25; }
+  else if (lstrcmpi(p, "ntsc_round_film"  ) == 0) { num =  2997; den =  125; }
+  else if (lstrcmpi(p, "ntsc_round_video" ) == 0) { num =  2997; den =  100; }
+  else if (lstrcmpi(p, "ntsc_round_double") == 0) { num =  2997; den =   50; }
+  else if (lstrcmpi(p, "ntsc_round_quad"  ) == 0) { num =  2997; den =   25; }
 
-	else if (lstrcmpi(p, "film"             ) == 0) { num =    24; den =    1; }
+  else if (lstrcmpi(p, "film"             ) == 0) { num =    24; den =    1; }
 
-	else if (lstrcmpi(p, "pal_film"         ) == 0) { num =    25; den =    1; }
-	else if (lstrcmpi(p, "pal_video"        ) == 0) { num =    25; den =    1; }
-	else if (lstrcmpi(p, "pal_double"       ) == 0) { num =    50; den =    1; }
-	else if (lstrcmpi(p, "pal_quad"         ) == 0) { num =   100; den =    1; }
+  else if (lstrcmpi(p, "pal_film"         ) == 0) { num =    25; den =    1; }
+  else if (lstrcmpi(p, "pal_video"        ) == 0) { num =    25; den =    1; }
+  else if (lstrcmpi(p, "pal_double"       ) == 0) { num =    50; den =    1; }
+  else if (lstrcmpi(p, "pal_quad"         ) == 0) { num =   100; den =    1; }
 
-	else if (lstrcmpi(p, "drop24"           ) == 0) { num = 24000; den = 1001; }
-	else if (lstrcmpi(p, "drop30"           ) == 0) { num = 30000; den = 1001; }
-	else if (lstrcmpi(p, "drop60"           ) == 0) { num = 60000; den = 1001; }
-	else if (lstrcmpi(p, "drop120"          ) == 0) { num =120000; den = 1001; }
+  else if (lstrcmpi(p, "drop24"           ) == 0) { num = 24000; den = 1001; }
+  else if (lstrcmpi(p, "drop30"           ) == 0) { num = 30000; den = 1001; }
+  else if (lstrcmpi(p, "drop60"           ) == 0) { num = 60000; den = 1001; }
+  else if (lstrcmpi(p, "drop120"          ) == 0) { num =120000; den = 1001; }
 /*
-	else if (lstrcmpi(p, "drop25"           ) == 0) { num = 25000; den = 1001; }
-	else if (lstrcmpi(p, "drop50"           ) == 0) { num = 50000; den = 1001; }
-	else if (lstrcmpi(p, "drop100"          ) == 0) { num =100000; den = 1001; }
+  else if (lstrcmpi(p, "drop25"           ) == 0) { num = 25000; den = 1001; }
+  else if (lstrcmpi(p, "drop50"           ) == 0) { num = 50000; den = 1001; }
+  else if (lstrcmpi(p, "drop100"          ) == 0) { num =100000; den = 1001; }
 
-	else if (lstrcmpi(p, "nondrop24"        ) == 0) { num =    24; den =    1; }
-	else if (lstrcmpi(p, "nondrop25"        ) == 0) { num =    25; den =    1; }
-	else if (lstrcmpi(p, "nondrop30"        ) == 0) { num =    30; den =    1; }
-	else if (lstrcmpi(p, "nondrop50"        ) == 0) { num =    50; den =    1; }
-	else if (lstrcmpi(p, "nondrop60"        ) == 0) { num =    60; den =    1; }
-	else if (lstrcmpi(p, "nondrop100"       ) == 0) { num =   100; den =    1; }
-	else if (lstrcmpi(p, "nondrop120"       ) == 0) { num =   120; den =    1; }
+  else if (lstrcmpi(p, "nondrop24"        ) == 0) { num =    24; den =    1; }
+  else if (lstrcmpi(p, "nondrop25"        ) == 0) { num =    25; den =    1; }
+  else if (lstrcmpi(p, "nondrop30"        ) == 0) { num =    30; den =    1; }
+  else if (lstrcmpi(p, "nondrop50"        ) == 0) { num =    50; den =    1; }
+  else if (lstrcmpi(p, "nondrop60"        ) == 0) { num =    60; den =    1; }
+  else if (lstrcmpi(p, "nondrop100"       ) == 0) { num =   100; den =    1; }
+  else if (lstrcmpi(p, "nondrop120"       ) == 0) { num =   120; den =    1; }
 
-	else if (lstrcmpi(p, "23.976"           ) == 0) { num = 24000; den = 1001; }
-	else if (lstrcmpi(p, "23.976!"          ) == 0) { num =  2997; den =  125; }
-	else if (lstrcmpi(p, "24.0"             ) == 0) { num =    24; den =    1; }
-	else if (lstrcmpi(p, "25.0"             ) == 0) { num =    25; den =    1; }
-	else if (lstrcmpi(p, "29.97"            ) == 0) { num = 30000; den = 1001; }
-	else if (lstrcmpi(p, "29.97!"           ) == 0) { num =  2997; den =  100; }
-	else if (lstrcmpi(p, "30.0"             ) == 0) { num =    30; den =    1; }
-	else if (lstrcmpi(p, "59.94"            ) == 0) { num = 60000; den = 1001; }
-	else if (lstrcmpi(p, "59.94!"           ) == 0) { num =  2997; den =   50; }
-	else if (lstrcmpi(p, "60.0"             ) == 0) { num =    60; den =    1; }
-	else if (lstrcmpi(p, "100.0"            ) == 0) { num =   100; den =    1; }
-	else if (lstrcmpi(p, "119.88"           ) == 0) { num =120000; den = 1001; }
-	else if (lstrcmpi(p, "119.88!"          ) == 0) { num =  2997; den =   25; }
-	else if (lstrcmpi(p, "120.0"            ) == 0) { num =   120; den =    1; }
+  else if (lstrcmpi(p, "23.976"           ) == 0) { num = 24000; den = 1001; }
+  else if (lstrcmpi(p, "23.976!"          ) == 0) { num =  2997; den =  125; }
+  else if (lstrcmpi(p, "24.0"             ) == 0) { num =    24; den =    1; }
+  else if (lstrcmpi(p, "25.0"             ) == 0) { num =    25; den =    1; }
+  else if (lstrcmpi(p, "29.97"            ) == 0) { num = 30000; den = 1001; }
+  else if (lstrcmpi(p, "29.97!"           ) == 0) { num =  2997; den =  100; }
+  else if (lstrcmpi(p, "30.0"             ) == 0) { num =    30; den =    1; }
+  else if (lstrcmpi(p, "59.94"            ) == 0) { num = 60000; den = 1001; }
+  else if (lstrcmpi(p, "59.94!"           ) == 0) { num =  2997; den =   50; }
+  else if (lstrcmpi(p, "60.0"             ) == 0) { num =    60; den =    1; }
+  else if (lstrcmpi(p, "100.0"            ) == 0) { num =   100; den =    1; }
+  else if (lstrcmpi(p, "119.88"           ) == 0) { num =120000; den = 1001; }
+  else if (lstrcmpi(p, "119.88!"          ) == 0) { num =  2997; den =   25; }
+  else if (lstrcmpi(p, "120.0"            ) == 0) { num =   120; den =    1; }
 */
-	else {
-	  env->ThrowError("%s: invalid preset value used.\n", name);
-	}
+  else {
+    env->ThrowError("%s: invalid preset value used.\n", name);
+  }
 }
 
 
@@ -465,8 +465,8 @@ AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
 {
   uint32_t num, den;
 
-	FloatToFPS("AssumeFPS", args[1].AsFloatf(), num, den, env);
-	return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
+  FloatToFPS("AssumeFPS", args[1].AsFloatf(), num, den, env);
+  return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
 }
 
 // Tritical Jan 2006
@@ -474,8 +474,8 @@ AVSValue __cdecl AssumeFPS::CreatePreset(AVSValue args, void*, IScriptEnvironmen
 {
   uint32_t num, den;
 
-	PresetToFPS("AssumeFPS", args[1].AsString(), num, den, env);
-	return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
+  PresetToFPS("AssumeFPS", args[1].AsString(), num, den, env);
+  return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
 }
 
 AVSValue __cdecl AssumeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
@@ -685,88 +685,88 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 
   }
   else {
-	// Mode 2: Switch to next frame at the scan line corresponding to the source frame's timing.
-	// If zone > 0, perform a gradual transition, i.e. blend one frame into the next
-	// over the given number of lines.
+  // Mode 2: Switch to next frame at the scan line corresponding to the source frame's timing.
+  // If zone > 0, perform a gradual transition, i.e. blend one frame into the next
+  // over the given number of lines.
 
-		PVideoFrame a = child->GetFrame(nsrc, env);
-		PVideoFrame b = child->GetFrame(nsrc+1, env);
-		const BYTE*  b_data   = b->GetReadPtr();
-		int          b_pitch  = b->GetPitch();
-		const int    row_size = a->GetRowSize();
-		const int    height   = a->GetHeight();
+    PVideoFrame a = child->GetFrame(nsrc, env);
+    PVideoFrame b = child->GetFrame(nsrc+1, env);
+    const BYTE*  b_data   = b->GetReadPtr();
+    int          b_pitch  = b->GetPitch();
+    const int    row_size = a->GetRowSize();
+    const int    height   = a->GetHeight();
 
 
-		BYTE *pd;
-		const BYTE *pa, *pb, *a_data = a->GetReadPtr();
-		int   a_pitch = a->GetPitch();
+    BYTE *pd;
+    const BYTE *pa, *pb, *a_data = a->GetReadPtr();
+    int   a_pitch = a->GetPitch();
 
-		int switch_line = (int)(lps * (1.0 - frac_f));
-		int top = switch_line - (zone>>1);
-		int bottom = switch_line + (zone>>1) - lps;
-		if( bottom > 0 && nsrc > 0 ) {
-		// Finish the transition from the previous frame
-			switch_line -= lps;
-			top -= lps;
-			nsrc--;
-			b = a;
-			a = child->GetFrame( nsrc, env );
-			b_pitch = a_pitch;
-			b_data  = a_data;
-			a_data  = a->GetReadPtr();
-			a_pitch = a->GetPitch();
-		} else if( top >= height )
-			return a;
+    int switch_line = (int)(lps * (1.0 - frac_f));
+    int top = switch_line - (zone>>1);
+    int bottom = switch_line + (zone>>1) - lps;
+    if( bottom > 0 && nsrc > 0 ) {
+    // Finish the transition from the previous frame
+      switch_line -= lps;
+      top -= lps;
+      nsrc--;
+      b = a;
+      a = child->GetFrame( nsrc, env );
+      b_pitch = a_pitch;
+      b_data  = a_data;
+      a_data  = a->GetReadPtr();
+      a_pitch = a->GetPitch();
+    } else if( top >= height )
+      return a;
 
-		// Result goes into a new buffer since it can be made up of a number of source frames
+    // Result goes into a new buffer since it can be made up of a number of source frames
     PVideoFrame d = env->NewVideoFrameP(vi, &a);
-		BYTE* data   = d->GetWritePtr();
-		const int      pitch  = d->GetPitch();
-		if( top > 0 )
-			env->BitBlt( data, pitch, a_data, a_pitch, row_size, top );
+    BYTE* data   = d->GetWritePtr();
+    const int      pitch  = d->GetPitch();
+    if( top > 0 )
+      env->BitBlt( data, pitch, a_data, a_pitch, row_size, top );
 loop:
-		bottom = min( switch_line + (zone>>1), height );
-		int safe_top = max(top,0);
-		pd = data   + safe_top * pitch;
-		pa = a_data + safe_top * a_pitch;
-		pb = b_data + safe_top * b_pitch;
-		for( int y = safe_top; y < bottom; y++ ) {
-			int scale = y - top;
-			for( int x = 0; x < row_size; x++ )
-				pd[x] = BYTE(pa[x] + ((pb[x] - pa[x]) * scale + (zone>>1)) / zone);
-			pd += pitch;
-			pa += a_pitch;
-			pb += b_pitch;
-		}
-		switch_line += lps;
-		top = switch_line - (zone>>1);
-		int limit = min(height,top);
-		if( bottom < limit ) {
-			pd = data   + bottom * pitch;
-			pb = b_data + bottom * b_pitch;
-			env->BitBlt( pd, pitch, pb, b_pitch, row_size, limit-bottom );
-		}
-		if( top < height ) {
-			nsrc++;
-			a = b;
-			b = child->GetFrame(nsrc+1, env);
-			a_pitch = b_pitch;
-			b_pitch = b->GetPitch();
-			a_data  = b_data;
-			b_data  = b->GetReadPtr();
-			goto loop;
-		}
-		return d;
-	}
+    bottom = min( switch_line + (zone>>1), height );
+    int safe_top = max(top,0);
+    pd = data   + safe_top * pitch;
+    pa = a_data + safe_top * a_pitch;
+    pb = b_data + safe_top * b_pitch;
+    for( int y = safe_top; y < bottom; y++ ) {
+      int scale = y - top;
+      for( int x = 0; x < row_size; x++ )
+        pd[x] = BYTE(pa[x] + ((pb[x] - pa[x]) * scale + (zone>>1)) / zone);
+      pd += pitch;
+      pa += a_pitch;
+      pb += b_pitch;
+    }
+    switch_line += lps;
+    top = switch_line - (zone>>1);
+    int limit = min(height,top);
+    if( bottom < limit ) {
+      pd = data   + bottom * pitch;
+      pb = b_data + bottom * b_pitch;
+      env->BitBlt( pd, pitch, pb, b_pitch, row_size, limit-bottom );
+    }
+    if( top < height ) {
+      nsrc++;
+      a = b;
+      b = child->GetFrame(nsrc+1, env);
+      a_pitch = b_pitch;
+      b_pitch = b->GetPitch();
+      a_data  = b_data;
+      b_data  = b->GetReadPtr();
+      goto loop;
+    }
+    return d;
+  }
 }
 
 
 bool __stdcall ConvertFPS::GetParity(int n)
 {
-	if( vi.IsFieldBased())
-		return child->GetParity(0) ^ (n&1);
-	else
-		return child->GetParity(0);
+  if( vi.IsFieldBased())
+    return child->GetParity(0) ^ (n&1);
+  else
+    return child->GetParity(0);
 }
 
 AVSValue __cdecl ConvertFPS::Create(AVSValue args, void*, IScriptEnvironment* env)
@@ -780,8 +780,8 @@ AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironmen
 {
   uint32_t num, den;
 
-	FloatToFPS("ConvertFPS", (float)args[1].AsFloat(), num, den, env);
-	return new ConvertFPS( args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env );
+  FloatToFPS("ConvertFPS", (float)args[1].AsFloat(), num, den, env);
+  return new ConvertFPS( args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env );
 }
 
 // Tritical Jan 2006
@@ -789,8 +789,8 @@ AVSValue __cdecl ConvertFPS::CreatePreset(AVSValue args, void*, IScriptEnvironme
 {
   uint32_t num, den;
 
-	PresetToFPS("ConvertFPS", args[1].AsString(), num, den, env);
-	return new ConvertFPS(args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env);
+  PresetToFPS("ConvertFPS", args[1].AsString(), num, den, env);
+  return new ConvertFPS(args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env);
 }
 
 AVSValue __cdecl ConvertFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)

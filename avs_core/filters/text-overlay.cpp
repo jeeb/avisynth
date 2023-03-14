@@ -73,26 +73,26 @@ static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int w
 
 extern const AVSFunction Text_filters[] = {
   { "ShowFrameNumber",BUILTIN_FUNC_PREFIX,
-	"c[scroll]b[offset]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
-	ShowFrameNumber::Create },
+  "c[scroll]b[offset]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
+  ShowFrameNumber::Create },
 
   { "ShowCRC32",BUILTIN_FUNC_PREFIX,
         "c[scroll]b[offset]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
         ShowCRC32::Create },
 
   { "ShowSMPTE",BUILTIN_FUNC_PREFIX,
-	"c[fps]f[offset]s[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
-	ShowSMPTE::CreateSMTPE },
+  "c[fps]f[offset]s[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
+  ShowSMPTE::CreateSMTPE },
 
   { "ShowTime",BUILTIN_FUNC_PREFIX,
-	"c[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
-	ShowSMPTE::CreateTime },
+  "c[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
+  ShowSMPTE::CreateTime },
 
   { "Info", BUILTIN_FUNC_PREFIX, "c[font]s[size]f[text_color]i[halo_color]i", FilterInfo::Create },  // clip
 
   { "Subtitle",BUILTIN_FUNC_PREFIX,
-	"cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
-	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b",
+  "cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
+  "[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b[font_filename]s[utf8]b",
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
     Subtitle::Create
 #else
@@ -101,8 +101,8 @@ extern const AVSFunction Text_filters[] = {
 },       // see docs!
 
   { "Compare",BUILTIN_FUNC_PREFIX,
-	"cc[channels]s[logfile]s[show_graph]b",
-	Compare::Create },
+  "cc[channels]s[logfile]s[show_graph]b",
+  Compare::Create },
 
   { "Text",BUILTIN_FUNC_PREFIX,
   "cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
@@ -145,25 +145,25 @@ Antialiaser::Antialiaser(int width, int height, const char fontname[], int size,
 
   hdcAntialias = CreateCompatibleDC(NULL);
   if (hdcAntialias) {
-	hbmAntialias = CreateDIBSection
-	  ( hdcAntialias,
-		(BITMAPINFO *)&b,
-		DIB_RGB_COLORS,
-		&lpAntialiasBits,
-		NULL,
-		0 );
-	if (hbmAntialias) {
-	  hbmDefault = (HBITMAP)SelectObject(hdcAntialias, hbmAntialias);
-	  HFONT newfont = LoadFont(fontname, size, true, false, font_width, font_angle);
-	  hfontDefault = newfont ? (HFONT)SelectObject(hdcAntialias, newfont) : 0;
+  hbmAntialias = CreateDIBSection
+    ( hdcAntialias,
+    (BITMAPINFO *)&b,
+    DIB_RGB_COLORS,
+    &lpAntialiasBits,
+    NULL,
+    0 );
+  if (hbmAntialias) {
+    hbmDefault = (HBITMAP)SelectObject(hdcAntialias, hbmAntialias);
+    HFONT newfont = LoadFont(fontname, size, true, false, font_width, font_angle);
+    hfontDefault = newfont ? (HFONT)SelectObject(hdcAntialias, newfont) : 0;
 
-	  SetMapMode(hdcAntialias, MM_TEXT);
-	  SetTextColor(hdcAntialias, 0xffffff);
-	  SetBkColor(hdcAntialias, 0);
+    SetMapMode(hdcAntialias, MM_TEXT);
+    SetTextColor(hdcAntialias, 0xffffff);
+    SetBkColor(hdcAntialias, 0);
 
-	  alpha_calcs = new(std::nothrow) unsigned short[width*height*4];
-	  if (!alpha_calcs) FreeDC();
-	}
+    alpha_calcs = new(std::nothrow) unsigned short[width*height*4];
+    if (!alpha_calcs) FreeDC();
+  }
   }
 }
 
@@ -183,13 +183,13 @@ HDC Antialiaser::GetDC() {
 void Antialiaser::FreeDC() {
   if (hdcAntialias) { // :FIXME: Interlocked
     if (hbmDefault) {
-	  DeleteObject(SelectObject(hdcAntialias, hbmDefault));
-	  hbmDefault = 0;
-	}
+    DeleteObject(SelectObject(hdcAntialias, hbmDefault));
+    hbmDefault = 0;
+  }
     if (hfontDefault) {
-	  DeleteObject(SelectObject(hdcAntialias, hfontDefault));
-	  hfontDefault = 0;
-	}
+    DeleteObject(SelectObject(hdcAntialias, hfontDefault));
+    hfontDefault = 0;
+  }
     DeleteDC(hdcAntialias);
     hdcAntialias = 0;
   }
@@ -238,8 +238,8 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
 void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV) {
   if (dirty) {
     GetAlphaRect();
-	xl &= -2; xr |= 1;
-	yb &= -2; yt |= 1;
+  xl &= -2; xr |= 1;
+  yb &= -2; yt |= 1;
   }
   const int w4 = w*4;
   unsigned short* alpha = alpha_calcs + yb*w4;
@@ -680,7 +680,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
 void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
   if (dirty) {
     GetAlphaRect();
-	xl &= -2; xr |= 1;
+  xl &= -2; xr |= 1;
   }
   unsigned short* alpha = alpha_calcs + yb*w*4;
   buf += pitch*yb;
@@ -803,7 +803,7 @@ void Antialiaser::GetAlphaRect()
       gamma[i]=uint16_t(sqrt((double)i) * scale + 0.5); // Gamma = 2.0
     }
 
-	{for(int i=0; i<256; i++) {
+  {for(int i=0; i<256; i++) {
       BYTE b=0, l=0, r=0;
 
       if (i&  1) { b=1; l|=0x01; r|=0xFF; }
@@ -1043,10 +1043,10 @@ void Antialiaser::GetAlphaRect()
         alpha1 *= Atext;
         // Pre calulate table for quick use  --  Pc = (Pc * dest[0] + dest[c]) >> 8;
 
-		dest[0] = (unsigned short)((64*516*255 - alpha1 -          alpha2)>>15);
-		dest[1] = (unsigned short)((    BVtext * alpha1 + BVhalo * alpha2)>>15);
-		dest[2] = (unsigned short)((    GUtext * alpha1 + GUhalo * alpha2)>>15);
-		dest[3] = (unsigned short)((    RYtext * alpha1 + RYhalo * alpha2)>>15);
+    dest[0] = (unsigned short)((64*516*255 - alpha1 -          alpha2)>>15);
+    dest[1] = (unsigned short)((    BVtext * alpha1 + BVhalo * alpha2)>>15);
+    dest[2] = (unsigned short)((    GUtext * alpha1 + GUhalo * alpha2)>>15);
+    dest[3] = (unsigned short)((    RYtext * alpha1 + RYhalo * alpha2)>>15);
       }
       else {
         dest[0] = 256;
@@ -1199,7 +1199,7 @@ AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironmen
   const int font_angle = int(args[10].AsFloat(0) * 10 + 0.5);
 
   if ((x==DefXY) ^ (y==DefXY))
-	env->ThrowError("ShowFrameNumber: both x and y position must be specified");
+  env->ThrowError("ShowFrameNumber: both x and y position must be specified");
 
   return new ShowFrameNumber(clip, scroll, offset, x, y, font, size, text_color, halo_color, font_width, font_angle, env);
 }
@@ -1442,45 +1442,45 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
   }
 
   if (offset) {
-	if (strlen(offset)!=11 || offset[2] != ':' || offset[5] != ':' || offset[8] != ':')
-	  env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
-	if (!isdigit(offset[0]) || !isdigit(offset[1]) || !isdigit(offset[3]) || !isdigit(offset[4])
-	 || !isdigit(offset[6]) || !isdigit(offset[7]) || !isdigit(offset[9]) || !isdigit(offset[10]))
-	  env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
+  if (strlen(offset)!=11 || offset[2] != ':' || offset[5] != ':' || offset[8] != ':')
+    env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
+  if (!isdigit(offset[0]) || !isdigit(offset[1]) || !isdigit(offset[3]) || !isdigit(offset[4])
+   || !isdigit(offset[6]) || !isdigit(offset[7]) || !isdigit(offset[9]) || !isdigit(offset[10]))
+    env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
 
-	off_hour = atoi(offset);
+  off_hour = atoi(offset);
 
-	off_min = atoi(offset+3);
-	if (off_min > 59)
-	  env->ThrowError("ShowSMPTE:  make sure that the number of minutes in the offset is in the range 0..59");
+  off_min = atoi(offset+3);
+  if (off_min > 59)
+    env->ThrowError("ShowSMPTE:  make sure that the number of minutes in the offset is in the range 0..59");
 
-	off_sec = atoi(offset+6);
-	if (off_sec > 59)
-	  env->ThrowError("ShowSMPTE:  make sure that the number of seconds in the offset is in the range 0..59");
+  off_sec = atoi(offset+6);
+  if (off_sec > 59)
+    env->ThrowError("ShowSMPTE:  make sure that the number of seconds in the offset is in the range 0..59");
 
-	off_f = atoi(offset+9);
-	if (off_f >= rate)
-	  env->ThrowError("ShowSMPTE:  make sure that the number of frames in the offset is in the range 0..%d", rate-1);
+  off_f = atoi(offset+9);
+  if (off_f >= rate)
+    env->ThrowError("ShowSMPTE:  make sure that the number of frames in the offset is in the range 0..%d", rate-1);
 
-	offset_f = off_f + rate*(off_sec + 60*off_min + 3600*off_hour);
-	if (dropframe) {
-	  if (rate == 30) {
-		int c = 0;
-		c = off_min + 60*off_hour;  // number of drop events
-		c -= c/10; // less non-drop events on 10 minutes
-		c *=2; // drop 2 frames per drop event
-		offset_f -= c;
-	  }
-	  else {
+  offset_f = off_f + rate*(off_sec + 60*off_min + 3600*off_hour);
+  if (dropframe) {
+    if (rate == 30) {
+    int c = 0;
+    c = off_min + 60*off_hour;  // number of drop events
+    c -= c/10; // less non-drop events on 10 minutes
+    c *=2; // drop 2 frames per drop event
+    offset_f -= c;
+    }
+    else {
 //  Need to cogitate with the guys about this
 //  gotta drop 86.3 counts per hour. So until
 //  a proper formula is found, just wing it!
-		offset_f -= 2 * ((offset_f+1001)/2002);
-	  }
-	}
+    offset_f -= 2 * ((offset_f+1001)/2002);
+    }
+  }
   }
   else {
-	offset_f = _offset_f;
+  offset_f = _offset_f;
   }
 }
 
@@ -1503,23 +1503,23 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 
   if (dropframe) {
     if ((rate == 30) || (rate == 60) || (rate == 120)) {
-	// at 10:00, 20:00, 30:00, etc. nothing should happen if offset=0
-	  const int f = rate/30;
-	  const int r = n % f;
-	  n /= f;
+  // at 10:00, 20:00, 30:00, etc. nothing should happen if offset=0
+    const int f = rate/30;
+    const int r = n % f;
+    n /= f;
 
-	  const int high = n / 17982;
-	  int low = n % 17982;
-	  if (low>=2)
-		low += 2 * ((low-2) / 1798);
-	  n = high * 18000 + low;
+    const int high = n / 17982;
+    int low = n % 17982;
+    if (low>=2)
+    low += 2 * ((low-2) / 1798);
+    n = high * 18000 + low;
 
-	  n = f*n + r;
-	}
-	else {
+    n = f*n + r;
+  }
+  else {
 //  Needs some cogitating
-	  n += 2 * ((n+1001)/2002);
-	}
+    n += 2 * ((n+1001)/2002);
+  }
   }
 
   char text[16];
@@ -1676,19 +1676,19 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
   if (n >= firstframe && n <= lastframe) {
     env->MakeWritable(&frame);
     if (!antialiaser) // :FIXME: CriticalSection
-	  InitAntialiaser(env);
+    InitAntialiaser(env);
     if (antialiaser) {
-	  antialiaser->Apply(vi, &frame, frame->GetPitch());
-	  // Release all the windows drawing stuff
-	  // and just keep the alpha calcs
-	  antialiaser->FreeDC();
-	}
+    antialiaser->Apply(vi, &frame, frame->GetPitch());
+    // Release all the windows drawing stuff
+    // and just keep the alpha calcs
+    antialiaser->FreeDC();
+  }
   }
   // if we get far enough away from the frames we're supposed to
   // subtitle, then junk the buffered drawing information
   if (antialiaser && (n < firstframe-10 || n > lastframe+10 || n == vi.num_frames-1)) {
-	delete antialiaser;
-	antialiaser = 0; // :FIXME: CriticalSection
+  delete antialiaser;
+  antialiaser = 0; // :FIXME: CriticalSection
   }
 
   return frame;
@@ -1754,7 +1754,7 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
       y = (clip->GetVideoInfo().height >> 1) * 8;
 
     return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color,
-	                    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, env);
+                      halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced, font_filename, utf8, env);
 }
 
 void Subtitle::InitAntialiaser(IScriptEnvironment* env)
@@ -2632,7 +2632,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     } else
       env->ThrowError("Compare: unable to create file %s", fname);
   } else {
-	  psnrs = new(std::nothrow) int[vi.num_frames];
+    psnrs = new(std::nothrow) int[vi.num_frames];
     if (psnrs)
       for (int i = 0; i < vi.num_frames; i++)
         psnrs[i] = 0;
@@ -3027,7 +3027,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
             dstp -= dst_pitch;
           } // for y
         }
-		else if (vi.IsPlanar()) {
+    else if (vi.IsPlanar()) {
             if (vi.IsPlanarRGB() || vi.IsPlanarRGBA())
             {
                 BYTE* dstp_RGBP[3] = { f1->GetWritePtr(PLANAR_G), f1->GetWritePtr(PLANAR_B),f1->GetWritePtr(PLANAR_R) };
@@ -3152,7 +3152,7 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
     return false;
   HDC hdc = GetDC(NULL);
   if (hdc == NULL)
-	return false;
+  return false;
   HFONT hfontDefault = (HFONT)SelectObject(hdc, hfont);
   int old_map_mode = SetMapMode(hdc, MM_TEXT);
   UINT old_text_align = SetTextAlign(hdc, align);
@@ -3251,10 +3251,10 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   HDC hdcAntialias = antialiaser.GetDC();
   if  (hdcAntialias)
   {
-	RECT r = { 4*8, 4*8, vi.width*8, vi.height*8 };
-	DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
-	GdiFlush();
-	antialiaser.Apply(vi, frame, (*frame)->GetPitch());
+  RECT r = { 4*8, 4*8, vi.width*8, vi.height*8 };
+  DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
+  GdiFlush();
+  antialiaser.Apply(vi, frame, (*frame)->GetPitch());
   }
 #else
   std::unique_ptr<BitmapFont> current_font;

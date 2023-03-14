@@ -799,7 +799,7 @@ AVSValue __cdecl SelectEvery::Create(AVSValue args, void*, IScriptEnvironment* e
 {
   const int num_vals = args[2].ArraySize();
   if (num_vals <= 1)
-	return new SelectEvery(args[0].AsClip(), args[1].AsInt(), num_vals>0 ? args[2][0].AsInt() : 0, env);
+  return new SelectEvery(args[0].AsClip(), args[1].AsInt(), num_vals>0 ? args[2][0].AsInt() : 0, env);
   else {
     PClip* child_array = new PClip[num_vals];
     for (int i=0; i<num_vals; ++i)
@@ -1015,7 +1015,7 @@ static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment
 static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new SelectEvery(new DoubleWeaveFields(new ComplementParity(
-	  new SeparateFields(args[0].AsClip(), env))), 2, 0, env);
+    new SeparateFields(args[0].AsClip(), env))), 2, 0, env);
 }
 
 
@@ -1077,7 +1077,7 @@ bool __stdcall SelectRangeEvery::GetParity(int n)
 void __stdcall SelectRangeEvery::GetAudio(void* buf, int64_t start, int64_t count, IScriptEnvironment* env)
 {
   if (!audio) {
-	// Use original unTrim'd child
+  // Use original unTrim'd child
     achild->GetAudio(buf, start, count, env);
     return;
   }

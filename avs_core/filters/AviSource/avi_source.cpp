@@ -302,41 +302,41 @@ static PVideoFrame AdjustFrameAlignment(TemporalBuffer* frame, const VideoInfo& 
 static __inline LRESULT
 ICDecompressEx(HIC hic,DWORD dwFlags,LPBITMAPINFOHEADER lpbiSrc,LPVOID lpSrc,INT xSrc,INT ySrc,INT dxSrc,INT dySrc,LPBITMAPINFOHEADER lpbiDst,LPVOID lpDst,INT xDst,INT yDst,INT dxDst,INT dyDst)
 {
-	ICDECOMPRESSEX ic;
-	ic.dwFlags = dwFlags;
-	ic.lpbiSrc = lpbiSrc;
-	ic.lpSrc = lpSrc;
-	ic.xSrc = xSrc;
-	ic.ySrc = ySrc;
-	ic.dxSrc = dxSrc;
-	ic.dySrc = dySrc;
-	ic.lpbiDst = lpbiDst;
-	ic.lpDst = lpDst;
-	ic.xDst = xDst;
-	ic.yDst = yDst;
-	ic.dxDst = dxDst;
-	ic.dyDst = dyDst;
-	return ICSendMessage(hic,ICM_DECOMPRESSEX,(DWORD_PTR)&ic,sizeof(ic));
+  ICDECOMPRESSEX ic;
+  ic.dwFlags = dwFlags;
+  ic.lpbiSrc = lpbiSrc;
+  ic.lpSrc = lpSrc;
+  ic.xSrc = xSrc;
+  ic.ySrc = ySrc;
+  ic.dxSrc = dxSrc;
+  ic.dySrc = dySrc;
+  ic.lpbiDst = lpbiDst;
+  ic.lpDst = lpDst;
+  ic.xDst = xDst;
+  ic.yDst = yDst;
+  ic.dxDst = dxDst;
+  ic.dyDst = dyDst;
+  return ICSendMessage(hic,ICM_DECOMPRESSEX,(DWORD_PTR)&ic,sizeof(ic));
 }
 
 static __inline LRESULT
 ICDecompressExBegin(HIC hic,DWORD dwFlags,LPBITMAPINFOHEADER lpbiSrc,LPVOID lpSrc,INT xSrc,INT ySrc,INT dxSrc,INT dySrc,LPBITMAPINFOHEADER lpbiDst,LPVOID lpDst,INT xDst,INT yDst,INT dxDst,INT dyDst)
 {
-	ICDECOMPRESSEX ic;
-	ic.dwFlags = dwFlags;
-	ic.lpbiSrc = lpbiSrc;
-	ic.lpSrc = lpSrc;
-	ic.xSrc = xSrc;
-	ic.ySrc = ySrc;
-	ic.dxSrc = dxSrc;
-	ic.dySrc = dySrc;
-	ic.lpbiDst = lpbiDst;
-	ic.lpDst = lpDst;
-	ic.xDst = xDst;
-	ic.yDst = yDst;
-	ic.dxDst = dxDst;
-	ic.dyDst = dyDst;
-	return ICSendMessage(hic,ICM_DECOMPRESSEX_BEGIN,(DWORD_PTR)&ic,sizeof(ic));
+  ICDECOMPRESSEX ic;
+  ic.dwFlags = dwFlags;
+  ic.lpbiSrc = lpbiSrc;
+  ic.lpSrc = lpSrc;
+  ic.xSrc = xSrc;
+  ic.ySrc = ySrc;
+  ic.dxSrc = dxSrc;
+  ic.dySrc = dySrc;
+  ic.lpbiDst = lpbiDst;
+  ic.lpDst = lpDst;
+  ic.xDst = xDst;
+  ic.yDst = yDst;
+  ic.dxDst = dxDst;
+  ic.dyDst = dyDst;
+  return ICSendMessage(hic,ICM_DECOMPRESSEX_BEGIN,(DWORD_PTR)&ic,sizeof(ic));
 }
 #endif // MSVC
 
@@ -795,16 +795,16 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode == MODE_AVIFILE || mode == MODE_WAV) {    // AVIFile mode
       PAVIFILE paf = NULL;
       try { // The damn .WAV clsid handler has only a 48 byte buffer to parse the filename and GPF's
-		if (FAILED(AVIFileOpenW(&paf, filename_w.get(), OF_READ, 0)))
-		  env->ThrowError("AVIFileSource: couldn't open file '%s'", filename);
+    if (FAILED(AVIFileOpenW(&paf, filename_w.get(), OF_READ, 0)))
+      env->ThrowError("AVIFileSource: couldn't open file '%s'", filename);
       }
-	  catch (AvisynthError) {
-		throw;
-	  }
-	  catch (...) {
-		env->ThrowError("AVIFileSource: VFW failure, AVIFileOpen(%s), length of filename part must be < 48", filename);
-	  }
-	  pfile = CreateAVIReadHandler(paf);
+    catch (AvisynthError) {
+    throw;
+    }
+    catch (...) {
+    env->ThrowError("AVIFileSource: VFW failure, AVIFileOpen(%s), length of filename part must be < 48", filename);
+    }
+    pfile = CreateAVIReadHandler(paf);
     } else {              // OpenDML mode
       pfile = CreateAVIReadHandler(filename_w.get());
     }

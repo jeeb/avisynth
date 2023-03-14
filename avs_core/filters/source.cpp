@@ -1589,14 +1589,14 @@ public:
     }
     update_Matrix_and_ColorRange(props, theMatrix, theColorRange, env);
 
-	// HD colorbars arib_std_b28
-	// Rec709 yuv values calculated by jmac698, Jan 2010, for Midzuki
-	if (type) { // ColorbarsHD
-		BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
-		BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
-		BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
-		const int pitchY  = frame->GetPitch(PLANAR_Y);
-		const int pitchUV = frame->GetPitch(PLANAR_U);
+  // HD colorbars arib_std_b28
+  // Rec709 yuv values calculated by jmac698, Jan 2010, for Midzuki
+  if (type) { // ColorbarsHD
+    BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
+    BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+    BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+    const int pitchY  = frame->GetPitch(PLANAR_Y);
+    const int pitchUV = frame->GetPitch(PLANAR_U);
 
     switch (bits_per_pixel) {
     case 8: draw_colorbarsHD_444<uint8_t, 8>(pY, pU, pV, pitchY, pitchUV, w, h); break;
@@ -1607,8 +1607,8 @@ public:
     case 32: draw_colorbarsHD_444<float, 8 /* n/a */>(pY, pU, pV, pitchY, pitchUV, w, h); break;
     }
 
-	}
-	// Rec. ITU-R BT.801-1
+  }
+  // Rec. ITU-R BT.801-1
   else if (vi.Is444()) {
     BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
     BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
@@ -1624,7 +1624,7 @@ public:
     case 16: draw_colorbars_444<uint16_t, 16>(pY, pU, pV, pitchY, pitchUV, w, h); break;
     case 32: draw_colorbars_444<float, 8 /* n/a */>(pY, pU, pV, pitchY, pitchUV, w, h); break;
     }
-	}
+  }
   else if (vi.IsRGB() && vi.IsPlanar()) {
     BYTE* pG = (BYTE*)frame->GetWritePtr(PLANAR_G);
     BYTE* pB = (BYTE*)frame->GetWritePtr(PLANAR_B);
@@ -1646,7 +1646,7 @@ public:
     case 8: draw_colorbars_rgb3264<uint8_t>((uint8_t *)p, pitch, w, h); break;
     case 16: draw_colorbars_rgb3264<uint16_t>((uint8_t *)p, pitch, w, h); break;
     }
-	}
+  }
   else if (vi.IsRGB24() || vi.IsRGB48()) {
     const int pitch = frame->GetPitch();
     switch (bits_per_pixel) {
@@ -1843,19 +1843,19 @@ public:
       count = (vi.num_audio_samples - start);
     }
 
-	const int d_mod = vi.audio_samples_per_second*2;
-	float* samples = (float*)buf;
+  const int d_mod = vi.audio_samples_per_second*2;
+  float* samples = (float*)buf;
 
-	unsigned j = (unsigned)(start % nsamples);
-	for (int i=0;i<count;i++) {
-	  samples[i*2]=audio[j];
-	  if (((start+i)%d_mod)>vi.audio_samples_per_second) {
-		samples[i*2+1]=audio[j];
-	  } else {
-		samples[i*2+1]=0;
-	  }
-	  if (++j >= nsamples) j = 0;
-	}
+  unsigned j = (unsigned)(start % nsamples);
+  for (int i=0;i<count;i++) {
+    samples[i*2]=audio[j];
+    if (((start+i)%d_mod)>vi.audio_samples_per_second) {
+    samples[i*2+1]=audio[j];
+    } else {
+    samples[i*2+1]=0;
+    }
+    if (++j >= nsamples) j = 0;
+  }
 #else
     int64_t Hz=440;
     // Calculate what start equates in cycles.
@@ -2118,7 +2118,7 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
   {
-	  return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
+    return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
           args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloatf(1.0f), env);
   }
 

@@ -35,23 +35,23 @@ List::List() {
 }
 
 ListNode *List::RemoveHead() {
-	if (head.prev->prev) {
-		ListNode *t = head.prev;
+  if (head.prev->prev) {
+    ListNode *t = head.prev;
 
-		head.prev->Remove();
-		return t;
-	}
+    head.prev->Remove();
+    return t;
+  }
 
-	return 0;
+  return 0;
 }
 
 ListNode *List::RemoveTail() {
-	if (tail.next->next) {
-		ListNode *t = tail.next;
+  if (tail.next->next) {
+    ListNode *t = tail.next;
 
-		tail.next->Remove();
-		return t;
-	}
+    tail.next->Remove();
+    return t;
+  }
 
-	return 0;
+  return 0;
 }
