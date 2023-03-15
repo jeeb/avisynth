@@ -146,8 +146,9 @@ struct IAvisynthClipInfo : IUnknown {
   virtual bool __stdcall IsFieldBased() = 0;
 };
 
-
-class CAVIFileSynth: public IAVIFile, public IPersistFile, public IClassFactory, public IAvisynthClipInfo {
+// final is used to silence warning:
+// delete called on non-final 'CAVIFileSynth' that has virtual functions but non-virtual destructor [-Wdelete-non-abstract-non-virtual-dtor]
+class CAVIFileSynth final: public IAVIFile, public IPersistFile, public IClassFactory, public IAvisynthClipInfo {
   friend class CAVIStreamSynth;
 private:
   long m_refs;
@@ -189,6 +190,10 @@ public:
 
   //////////// IUnknown
 
+  // 2023: Lots of clang-cl LLVM warning:
+  // "exception specification of overriding function is more lax than base version[-Wmicrosoft-exception-spec]"
+  // it's because STDMETHOD and STDMETHODIMP is differing by COM_DECLSPEC_NOTHROW that is __declspec(nothrow).
+  // Cannot do anything against that, this is by MS design
   STDMETHODIMP QueryInterface(const IID& iid, void** ppv);
   STDMETHODIMP_(ULONG) AddRef();
   STDMETHODIMP_(ULONG) Release();
@@ -234,7 +239,9 @@ public:
 
 class CAVIStreamSynth;
 
-class CAVIStreamSynth: public IAVIStream, public IAVIStreaming {
+// final is used to silence warning:
+// warning : delete called on non-final 'CAVIStreamSynth' that has virtual functions but non-virtual destructor
+class CAVIStreamSynth final: public IAVIStream, public IAVIStreaming {
 public:
 
   //////////// IUnknown
