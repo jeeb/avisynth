@@ -478,11 +478,11 @@ void VideoFrame::Release() {
   VideoFrameBuffer* _vfb = vfb;
 
   if (!InterlockedDecrement(&refcount)) {
+    if (properties != nullptr) {
+      delete properties; // if needed, frame registry will re-create
+      properties = nullptr;
+    }
     InterlockedDecrement(&_vfb->refcount);
-  }
-  if (refcount == 0 && properties != nullptr) {
-    delete properties; // if needed, frame registry will re-create
-    properties = nullptr;
   }
 }
 
