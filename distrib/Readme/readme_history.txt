@@ -5,8 +5,87 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230314 3.7.3 WIP
+20230316 3.7.3 WIP
 ------------------
+- Add initial audio channel mask support (CPP and C interface, script function)
+  It's still belongs to V10 changes (there were only tests since then), but it can be discussed if not.
+  Technically it is done by using another 18+2 bits in the Clip's VideoInfo.image_type field.
+  Due to lack of enough bits in this VideoInfo field, the mapping between the original dwChannelMask 
+  and Avisynth's internal values are not 1:1, but all information is kept however.
+  This is because not 32 but only 18 (strictly: 18+1) bits are defining speaker locations, so
+  the remaining bits of our existing 'image_type' field can be used for this purpose.
+  Thus 20 new bits are occupied.
+  - 1 bit: marks if channel mask is valid or not
+  - 18 bits for the actually defined WAVE_FORMAT_EXTENSIBLE dwChannelMask definitions 
+    (https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveformatextensible)
+  - 1 bit for the special SPEAKER_ALL value
+
+  Programmers can check AvsChannelMask and AvsImageTypeFlags in avisynth.h and avisynth_c.h
+
+  - new C++ interface functions
+    - Check for existence:
+        bool VideoInfo::IsChannelMaskKnown()
+    - Setting:
+        void VideoInfo::SetChannelMask(bool isChannelMaskKnown, unsigned int dwChannelMask)
+      Re-maps and stores channel mask into image_type, sets the 'has channel mask' flag as well
+      Note: this data can be set independently from the actual NumChannels number!
+    - Retrieving:
+        unsigned int VideoInfo::GetChannelMask()
+   
+   - new C interface functions
+       bool avs_is_channel_mask_known(const AVS_VideoInfo * p);
+       void avs_set_channel_mask(const AVS_VideoInfo * p, bool isChannelMaskKnown, unsigned int dwChannelMask);
+       unsigned int avs_get_channel_mask(const AVS_VideoInfo * p);
+       
+       Like when establishing BFF, TFF and fieldbased flags from 'image_type', technically 'image_type' can 
+       be manipulated directly. See SetChannelMask and GetChannelMask in Avisynth source for 
+       image_type <-> dwChannelMask conversion.
+       
+       I guess once ffmpeg will support it, it will read (or not read) channel masks such a way.
+
+   - new Script functions
+       bool IsChannelMaskKnown(clip)
+       int GetChannelMask(clip)
+       SetChannelMask(clip, bool known, int dwChannelMask) (parameters compulsory, no names must be set)
+       dwChannelMask must contain the combination of up to 18 positions or 0x80000000 for SPEAKER_ALL.
+
+   VfW export rules (included the existing sequence)
+     1.) OPT_UseWaveExtensible global variable must be 'true'
+         or
+         *new*new*new*
+         if VideoInfo::IsChannelMaskKnown is true, then fill WAVEFORMATEXTENSIBLE struct
+     2.) *new*new*new*
+         Is channel mask defined in Avisynth's VideoInfo? (VideoInfo::IsChannelMaskKnown() is true)
+         Yes -> return VideoInfo::GetChannelMask()
+     3.) No-> (Channel mask not defined in VideoInfo, guess it or set from variable)
+     3.1)Guess channel layout:
+         For 0 to 8 channels there is a predefined 'guess map':
+           #of channels dwChannelMask
+           0            0,
+           1            0x00004, // 1   -- -- Cf
+           2            0x00003, // 2   Lf Rf
+           3            0x00007, // 3   Lf Rf Cf
+           4            0x00033, // 4   Lf Rf -- -- Lr Rr
+           5            0x00037, // 5   Lf Rf Cf -- Lr Rr
+           6            0x0003F, // 5.1 Lf Rf Cf Sw Lr Rr
+           7            0x0013F, // 6.1 Lf Rf Cf Sw Lr Rr -- -- Cr
+           8            0x0063F, // 7.1 Lf Rf Cf Sw Lr Rr -- -- -- Ls Rs
+         
+         For 9-18 channels: 
+           sets first 9-18 bits in dwChannelMask
+         Above:
+           SPEAKER_ALL (dword msb bit is 1)
+      3.2) if OPT_dwChannelMask global variable is defined and is different from 0, then use it.
+
+      E.g. VirtualDub2 is using VfW, so after opening the script, ended with SetChannelMask(true, $0063F),
+      one can check the value File|File Info menü, under "compression" line (e.g.PCM, chmask 63f).
+      SetChannels does not check against NumChannels, so you can set the 7.1 constant for a stereo
+      if you wish. Microsoft's documentation mentions the cases of what can do az application with 
+      less or more than necessary defined speaker bits.
+      
+  - What to do about GetChannels, MixAudio, ConvertToMono? To be discussed.
+    KillAudio will call SetChannelMask(false, 0), nevertheless.
+
 - Set automatic MT mode MT_SERIALIZED to 
   ConvertToMono, EnsureVBRMP3Sync, MergeChannels, GetChannel, Normalize, MixAudio, ResampleAudio
 - Add back audio cache from classic Avisynth 2.6.
