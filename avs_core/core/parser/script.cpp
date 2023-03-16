@@ -183,6 +183,10 @@ extern const AVSFunction Script_functions[] = {
   { "audiobits",     BUILTIN_FUNC_PREFIX, "c", AudioBits },
   { "IsAudioFloat",  BUILTIN_FUNC_PREFIX, "c", IsAudioFloat },
   { "IsAudioInt",    BUILTIN_FUNC_PREFIX, "c", IsAudioInt },
+
+  { "IsChannelMaskKnown",  BUILTIN_FUNC_PREFIX, "c", IsChannelMaskKnown },
+  { "GetChannelMask",  BUILTIN_FUNC_PREFIX, "c", GetChannelMask }, // SetChannelMask: see in audio.cpp
+
   { "IsRGB",    BUILTIN_FUNC_PREFIX, "c", IsRGB },
   { "IsYUY2",   BUILTIN_FUNC_PREFIX, "c", IsYUY2 },
   { "IsYUV",    BUILTIN_FUNC_PREFIX, "c", IsYUV },
@@ -313,6 +317,7 @@ extern const AVSFunction Script_functions[] = {
   { "ArrayAdd",  BUILTIN_FUNC_PREFIX, "..i*", ArrayIns, (void*)1 },
   { "ArraySet",  BUILTIN_FUNC_PREFIX, "..i+", ArrayIns, (void*)2 },
   { "ArrayDel",  BUILTIN_FUNC_PREFIX, ".i+", ArrayIns, (void*)3 },
+
   /*
   { "IsArrayOf", BUILTIN_FUNC_PREFIX, ".s", IsArrayOf },
   */
@@ -1385,6 +1390,8 @@ AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment*) {  return VI(a
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).BytesPerChannelSample()*8; }
 AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
 AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsSampleType(SAMPLE_INT8 | SAMPLE_INT16 | SAMPLE_INT24 | SAMPLE_INT32 ); }
+AVSValue IsChannelMaskKnown(AVSValue args, void*, IScriptEnvironment*) { return VI(args[0]).IsChannelMaskKnown(); }
+AVSValue GetChannelMask(AVSValue args, void*, IScriptEnvironment*) { return (int)VI(args[0]).GetChannelMask(); }
 
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB(); }
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment*) {  return VI(args[0]).IsRGB24(); }

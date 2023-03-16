@@ -1548,7 +1548,10 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
   if (!lpcbFormat) return E_POINTER;
 
-  const bool UseWaveExtensible = parent->env->GetVarBool(VARNAME_UseWaveExtensible, false);
+  const VideoInfo* const vi = parent->vi;
+
+  const bool UseWaveExtDefault = vi->IsChannelMaskKnown();
+  const bool UseWaveExtensible = parent->env->GetVarBool(VARNAME_UseWaveExtensible, UseWaveExtDefault);
 
   if (!lpFormat) {
     *lpcbFormat = fAudio ? ( UseWaveExtensible ? sizeof(WAVEFORMATEXTENSIBLE)
@@ -1558,8 +1561,6 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
   }
 
   memset(lpFormat, 0, *lpcbFormat);
-
-  const VideoInfo* const vi = parent->vi;
 
   if (fAudio) {
     if (UseWaveExtensible) {  // Use WAVE_FORMAT_EXTENSIBLE audio output format
@@ -1581,7 +1582,11 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       wfxt.Format.cbSize = sizeof(wfxt) - sizeof(wfxt.Format);
       wfxt.Samples.wValidBitsPerSample = wfxt.Format.wBitsPerSample;
 
-      const int SpeakerMasks[9] = { 0,
+      // If is set, then let's use it.
+      if (vi->IsChannelMaskKnown())
+        wfxt.dwChannelMask = vi->GetChannelMask();
+      else {
+        const int SpeakerMasks[9] = { 0,
         0x00004, // 1   -- -- Cf
         0x00003, // 2   Lf Rf
         0x00007, // 3   Lf Rf Cf
@@ -1590,14 +1595,15 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         0x0003F, // 5.1 Lf Rf Cf Sw Lr Rr
         0x0013F, // 6.1 Lf Rf Cf Sw Lr Rr -- -- Cr
         0x0063F, // 7.1 Lf Rf Cf Sw Lr Rr -- -- -- Ls Rs
-      };
-      wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 8 ? SpeakerMasks[vi->AudioChannels()]
-        : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
-        : SPEAKER_ALL;
+        };
+        wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 8 ? SpeakerMasks[vi->AudioChannels()]
+          : (unsigned)vi->AudioChannels() <= 18 ? DWORD(-1) >> (32 - vi->AudioChannels())
+          : SPEAKER_ALL;
 
-      unsigned int userChannelMask = (unsigned)(parent->env->GetVarInt(VARNAME_dwChannelMask, 0));
-      if (userChannelMask != 0)
-        wfxt.dwChannelMask = userChannelMask;
+        unsigned int userChannelMask = (unsigned)(parent->env->GetVarInt(VARNAME_dwChannelMask, 0));
+        if (userChannelMask != 0)
+          wfxt.dwChannelMask = userChannelMask;
+      }
 
       wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
       *lpcbFormat = min(*lpcbFormat, (LONG)sizeof(wfxt));

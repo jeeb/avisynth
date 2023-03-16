@@ -82,6 +82,9 @@
 //         prop_src argument now const in avs_new_video_frame_p and avs_new_video_frame_p_a (no change in use)
 //         Add pixel_type to struct AVS_VideoFrame
 //         Add avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type for getting and setting AVS_VideoFrame pixel_type
+//         Additional AviSynth+ V10 interface additions:
+//         Add enum AVS_SPEAKER_xxx, AVS_IT_SPEAKER_xxx
+//         audio channel mask support avs_is_channel_mask_known, avs_set_channel_mask, avs_get_channel_mask
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -277,10 +280,72 @@ enum {
   AVS_CS_YUVA420PS  = AVS_CS_GENERIC_YUVA420 | AVS_CS_SAMPLE_BITS_32,  // YUVA 4:2:0 32bit samples
 };
 
+// AvsChannelMask enum: Unshifted channel mask constants like in WAVEFORMATEXTENSIBLE
+// in AvsImageTypeFlags they are shifted by 4 bits
+enum {
+  AVS_SPEAKER_FRONT_LEFT = 0x1,
+  AVS_SPEAKER_FRONT_RIGHT = 0x2,
+  AVS_SPEAKER_FRONT_CENTER = 0x4,
+  AVS_SPEAKER_LOW_FREQUENCY = 0x8,
+  AVS_SPEAKER_BACK_LEFT = 0x10,
+  AVS_SPEAKER_BACK_RIGHT = 0x20,
+  AVS_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40,
+  AVS_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80,
+  AVS_SPEAKER_BACK_CENTER = 0x100,
+  AVS_SPEAKER_SIDE_LEFT = 0x200,
+  AVS_SPEAKER_SIDE_RIGHT = 0x400,
+  AVS_SPEAKER_TOP_CENTER = 0x800,
+  AVS_SPEAKER_TOP_FRONT_LEFT = 0x1000,
+  AVS_SPEAKER_TOP_FRONT_CENTER = 0x2000,
+  AVS_SPEAKER_TOP_FRONT_RIGHT = 0x4000,
+  AVS_SPEAKER_TOP_BACK_LEFT = 0x8000,
+  AVS_SPEAKER_TOP_BACK_CENTER = 0x10000,
+  AVS_SPEAKER_TOP_BACK_RIGHT = 0x20000,
+  // Bit mask locations used up for the above positions
+  AVS_SPEAKER_DEFINED = 0x0003FFFF,
+  // Bit mask locations reserved for future use
+  AVS_SPEAKER_RESERVED = 0x7FFC0000,
+  // Used to specify that any possible permutation of speaker configurations
+  // Due to lack of available bits this one is put differently into image_type
+  AVS_SPEAKER_ALL = 0x80000000
+};
+
+// AvsImageTypeFlags
 enum {
   AVS_IT_BFF = 1 << 0,
   AVS_IT_TFF = 1 << 1,
-  AVS_IT_FIELDBASED = 1 << 2
+  AVS_IT_FIELDBASED = 1 << 2,
+
+  // Audio channel mask support
+  AVS_IT_HAS_CHANNELMASK = 1 << 3,
+  // shifted by 4 bits compared to WAVEFORMATEXTENSIBLE dwChannelMask
+  // otherwise same as AvsChannelMask
+  AVS_IT_SPEAKER_FRONT_LEFT = 0x1 << 4,
+  AVS_IT_SPEAKER_FRONT_RIGHT = 0x2 << 4,
+  AVS_IT_SPEAKER_FRONT_CENTER = 0x4 << 4,
+  AVS_IT_SPEAKER_LOW_FREQUENCY = 0x8 << 4,
+  AVS_IT_SPEAKER_BACK_LEFT = 0x10 << 4,
+  AVS_IT_SPEAKER_BACK_RIGHT = 0x20 << 4,
+  AVS_IT_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40 << 4,
+  AVS_IT_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80 << 4,
+  AVS_IT_SPEAKER_BACK_CENTER = 0x100 << 4,
+  AVS_IT_SPEAKER_SIDE_LEFT = 0x200 << 4,
+  AVS_IT_SPEAKER_SIDE_RIGHT = 0x400 << 4,
+  AVS_IT_SPEAKER_TOP_CENTER = 0x800 << 4,
+  AVS_IT_SPEAKER_TOP_FRONT_LEFT = 0x1000 << 4,
+  AVS_IT_SPEAKER_TOP_FRONT_CENTER = 0x2000 << 4,
+  AVS_IT_SPEAKER_TOP_FRONT_RIGHT = 0x4000 << 4,
+  AVS_IT_SPEAKER_TOP_BACK_LEFT = 0x8000 << 4,
+  AVS_IT_SPEAKER_TOP_BACK_CENTER = 0x10000 << 4,
+  AVS_IT_SPEAKER_TOP_BACK_RIGHT = 0x20000 << 4,
+  // End of officially defined speaker bits
+  // The next one is special, since cannot shift SPEAKER_ALL 0x80000000 further.
+  // Set mask and get mask handles it.
+  AVS_IT_SPEAKER_ALL = 0x40000 << 4,
+  // Mask for the defined 18 bits + SPEAKER_ALL
+  AVS_IT_SPEAKER_BITS_MASK = (AVS_SPEAKER_DEFINED << 4) | AVS_IT_SPEAKER_ALL,
+  AVS_IT_NEXT_AVAILABLE = 1 << 23
+
 };
 
 enum {
@@ -476,7 +541,8 @@ typedef struct AVS_VideoInfo {
   int nchannels;
 
   // Image type properties
-
+  // BFF, TFF, FIELDBASED. Also used for storing Channel Mask
+  // Manipulate it through the channelmask interface calls 
   int image_type;
 } AVS_VideoInfo;
 
@@ -656,6 +722,13 @@ AVSC_API(int, avs_num_components)(const AVS_VideoInfo * p);
 AVSC_API(int, avs_component_size)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_bits_per_component)(const AVS_VideoInfo * p);
+
+// V10
+AVSC_API(bool, avs_is_channel_mask_known)(const AVS_VideoInfo* p);
+
+AVSC_API(void, avs_set_channel_mask)(const AVS_VideoInfo* p, bool isChannelMaskKnown, unsigned int dwChannelMask);
+
+AVSC_API(unsigned int, avs_get_channel_mask)(const AVS_VideoInfo* p);
 
 // end of Avisynth+ specific
 
@@ -1321,6 +1394,12 @@ struct AVS_Library {
   // V10
   AVSC_DECLARE_FUNC(avs_video_frame_get_pixel_type);
   AVSC_DECLARE_FUNC(avs_video_frame_amend_pixel_type);
+
+  // V10
+  AVSC_DECLARE_FUNC(avs_is_channel_mask_known);
+  AVSC_DECLARE_FUNC(avs_set_channel_mask);
+  AVSC_DECLARE_FUNC(avs_get_channel_mask);
+
 };
 
 #undef AVSC_DECLARE_FUNC
@@ -1566,6 +1645,11 @@ avs_bits_per_component    constant 8 (8 bits/component)
   // V10
   AVSC_LOAD_FUNC(avs_video_frame_get_pixel_type);
   AVSC_LOAD_FUNC(avs_video_frame_amend_pixel_type);
+
+  // V10
+  AVSC_LOAD_FUNC(avs_is_channel_mask_known);
+  AVSC_LOAD_FUNC(avs_set_channel_mask);
+  AVSC_LOAD_FUNC(avs_get_channel_mask);
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY

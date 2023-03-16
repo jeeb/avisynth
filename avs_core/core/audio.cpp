@@ -110,6 +110,7 @@ extern const AVSFunction Audio_filters[] = {
                                 { "ConvertAudioTo32bit", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_32bit },
                                 { "ConvertAudioToFloat", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_float },
                                 { "ConvertAudio", BUILTIN_FUNC_PREFIX, "cii", ConvertAudio::Create_Any }, // For plugins to Invoke()
+                                { "SetChannelMask", BUILTIN_FUNC_PREFIX, "cbi", SetChannelMask::Create },
                                 { 0 }
                               };
 
@@ -671,10 +672,24 @@ KillAudio::KillAudio(PClip _clip)
   vi.sample_type = 0;
   vi.num_audio_samples = 0;
   vi.nchannels = 0;
+  vi.SetChannelMask(false, 0);
 }
 
 AVSValue __cdecl KillAudio::Create(AVSValue args, void*, IScriptEnvironment*) {
   return new KillAudio(args[0].AsClip());
+}
+
+/******************************
+ ****** Set Channel Mask ******
+ ******************************/
+
+SetChannelMask::SetChannelMask(PClip _clip, bool IsChannelMaskKnown, unsigned int dwChannelMask)
+  : NonCachedGenericVideoFilter(_clip) {
+  vi.SetChannelMask(IsChannelMaskKnown, dwChannelMask);
+}
+
+AVSValue __cdecl SetChannelMask::Create(AVSValue args, void*, IScriptEnvironment*) {
+  return new SetChannelMask(args[0].AsClip(), args[1].AsBool(false), args[2].AsInt(0));
 }
 
 

@@ -138,6 +138,8 @@ AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsChannelMaskKnown(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue GetChannelMask(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsY8(AVSValue args, void*, IScriptEnvironment* env);

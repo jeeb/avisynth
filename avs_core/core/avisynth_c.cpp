@@ -399,6 +399,25 @@ int AVSC_CC avs_bits_per_component(const AVS_VideoInfo * p)
   return ((VideoInfo*)p)->BitsPerComponent();
 }
 
+// V10.1
+extern "C"
+bool AVSC_CC avs_is_channel_mask_known(const AVS_VideoInfo * p)
+{
+  return ((VideoInfo*)p)->IsChannelMaskKnown();
+}
+
+extern "C"
+void AVSC_CC avs_set_channel_mask(const AVS_VideoInfo * p, bool isChannelMaskKnown, unsigned int dwChannelMask)
+{
+  ((VideoInfo*)p)->SetChannelMask(isChannelMaskKnown, dwChannelMask);
+}
+
+extern "C"
+unsigned int AVSC_CC avs_get_channel_mask(const AVS_VideoInfo * p)
+{
+  return ((VideoInfo*)p)->GetChannelMask();
+}
+
 //////////////////////////////////////////////////////////
 //
 // frame properties

@@ -32,6 +32,10 @@
 //           Introduce pixel_type to VideoFrame struct
 //           VideoFrame::GetPixelType,VideoFrame::AmendPixelType
 //           AVSValue::GetType
+//           Add enum AvsChannelMask::AVS_SPEAKER_xxx, AvsImageTypeFlags::IT_SPEAKER_xxx
+//           Audio channel mask support for VideoInfo: 
+//           Use 20 bits in VideoInfo::image_type for channel mask mapping
+//           IsChannelMaskKnown, SetChannelMask, GetChannelMask in VideoInfo
 
 // http://www.avisynth.org
 
@@ -442,9 +446,14 @@ struct AVS_Linkage {
   void          (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
   AvsValueType  (AVSValue::*AVSValue_GetType)() const;
 
+  // V10.1
+  bool          (VideoInfo::* IsChannelMaskKnown)() const;
+  void          (VideoInfo::* SetChannelMask)(bool isChannelMaskKnown, unsigned int dwChannelMask);
+  unsigned int  (VideoInfo::* GetChannelMask)() const;
+
   /**********************************************************************/
   // Reserve pointer space for Avisynth+
-  void          (VideoInfo::* reserved2[64 - 28])();
+  void          (VideoInfo::* reserved2[64 - 31])();
   /**********************************************************************/
 
   // AviSynth Neo additions
@@ -763,12 +772,73 @@ struct VideoInfo {
   int64_t num_audio_samples;      // changed as of 2.5
   int nchannels;                  // as of 2.5
 
+  // BFF, TFF, FIELDBASED. Also used for storing Channel Mask
   int image_type;
 
+  // Unshifted channel mask constants like in WAVEFORMATEXTENSIBLE
+  // in AvsImageTypeFlags they are shifted by 4 bits
+  enum AvsChannelMask {
+    AVS_SPEAKER_FRONT_LEFT = 0x1,
+    AVS_SPEAKER_FRONT_RIGHT = 0x2,
+    AVS_SPEAKER_FRONT_CENTER = 0x4,
+    AVS_SPEAKER_LOW_FREQUENCY = 0x8,
+    AVS_SPEAKER_BACK_LEFT = 0x10,
+    AVS_SPEAKER_BACK_RIGHT = 0x20,
+    AVS_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40,
+    AVS_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80,
+    AVS_SPEAKER_BACK_CENTER = 0x100,
+    AVS_SPEAKER_SIDE_LEFT = 0x200,
+    AVS_SPEAKER_SIDE_RIGHT = 0x400,
+    AVS_SPEAKER_TOP_CENTER = 0x800,
+    AVS_SPEAKER_TOP_FRONT_LEFT = 0x1000,
+    AVS_SPEAKER_TOP_FRONT_CENTER = 0x2000,
+    AVS_SPEAKER_TOP_FRONT_RIGHT = 0x4000,
+    AVS_SPEAKER_TOP_BACK_LEFT = 0x8000,
+    AVS_SPEAKER_TOP_BACK_CENTER = 0x10000,
+    AVS_SPEAKER_TOP_BACK_RIGHT = 0x20000,
+    // Bit mask locations used up for the above positions
+    AVS_SPEAKER_DEFINED = 0x0003FFFF,
+    // Bit mask locations reserved for future use
+    AVS_SPEAKER_RESERVED = 0x7FFC0000,
+    // Used to specify that any possible permutation of speaker configurations
+    // Due to lack of available bits this one is put differently into image_type
+    AVS_SPEAKER_ALL = 0x80000000
+  };
+
   enum AvsImageTypeFlags {
-    IT_BFF        = 1 << 0,
-    IT_TFF        = 1 << 1,
-    IT_FIELDBASED = 1 << 2
+    IT_BFF = 1 << 0,
+    IT_TFF = 1 << 1,
+    IT_FIELDBASED = 1 << 2,
+
+    // Audio channel mask support
+    IT_HAS_CHANNELMASK = 1 << 3,
+    // shifted by 4 bits compared to WAVEFORMATEXTENSIBLE dwChannelMask
+    // otherwise same as AvsChannelMask
+    IT_SPEAKER_FRONT_LEFT = 0x1 << 4,
+    IT_SPEAKER_FRONT_RIGHT = 0x2 << 4,
+    IT_SPEAKER_FRONT_CENTER = 0x4 << 4,
+    IT_SPEAKER_LOW_FREQUENCY = 0x8 << 4,
+    IT_SPEAKER_BACK_LEFT = 0x10 << 4,
+    IT_SPEAKER_BACK_RIGHT = 0x20 << 4,
+    IT_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40 << 4,
+    IT_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80 << 4,
+    IT_SPEAKER_BACK_CENTER = 0x100 << 4,
+    IT_SPEAKER_SIDE_LEFT = 0x200 << 4,
+    IT_SPEAKER_SIDE_RIGHT = 0x400 << 4,
+    IT_SPEAKER_TOP_CENTER = 0x800 << 4,
+    IT_SPEAKER_TOP_FRONT_LEFT = 0x1000 << 4,
+    IT_SPEAKER_TOP_FRONT_CENTER = 0x2000 << 4,
+    IT_SPEAKER_TOP_FRONT_RIGHT = 0x4000 << 4,
+    IT_SPEAKER_TOP_BACK_LEFT = 0x8000 << 4,
+    IT_SPEAKER_TOP_BACK_CENTER = 0x10000 << 4,
+    IT_SPEAKER_TOP_BACK_RIGHT = 0x20000 << 4,
+    // End of officially defined speaker bits
+    // The next one is special, since cannot shift SPEAKER_ALL 0x80000000 further.
+    // Set mask and get mask handles it.
+    IT_SPEAKER_ALL = 0x40000 << 4,
+    // Mask for the defined 18 bits + SPEAKER_ALL
+    IT_SPEAKER_BITS_MASK = (AvsChannelMask::AVS_SPEAKER_DEFINED << 4) | IT_SPEAKER_ALL,
+    IT_NEXT_AVAILABLE = 1 << 23
   };
 
   // Chroma placement bits 20 -> 23  ::FIXME:: Really want a Class to support this
@@ -886,6 +956,12 @@ struct VideoInfo {
 
   // Planar RGBA?
   bool IsPlanarRGBA() const AVS_BakedCode( return AVS_LinkCallOptDefault(IsPlanarRGBA, false) )
+
+  // v10.1 interface: audio channel masks
+  bool IsChannelMaskKnown() const AVS_BakedCode(return AVS_LinkCallOptDefault(IsChannelMaskKnown, false) )
+  void SetChannelMask(bool isChannelMaskKnown, unsigned int dwChannelMask) AVS_BakedCode(AVS_LinkCall_Void(SetChannelMask)(isChannelMaskKnown, dwChannelMask))
+  unsigned int GetChannelMask() const AVS_BakedCode(return AVS_LinkCallOptDefault(GetChannelMask, 0) )
+
 }; // end struct VideoInfo
 
 
@@ -1095,7 +1171,7 @@ enum CachePolicyHint {
   CACHE_GETCHILD_CACHE_MODE = 200, // n/a Cache ask Child for desired video cache mode.
   CACHE_GETCHILD_CACHE_SIZE = 201, // n/a Cache ask Child for desired video cache size.
 
-  // Filters are queryed about their desired audio cache mode.
+  // Filters are queried about their desired audio cache mode.
   // Child can answer them with CACHE_AUDIO_xxx
   CACHE_GETCHILD_AUDIO_MODE = 202, // Cache ask Child for desired audio cache mode.
   CACHE_GETCHILD_AUDIO_SIZE = 203, // Cache ask Child for desired audio cache size.

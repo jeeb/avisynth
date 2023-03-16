@@ -402,6 +402,33 @@ bool VideoInfo::IsRGB64()   const { return ((pixel_type & CS_BGR32) == CS_BGR32)
 bool VideoInfo::IsYUVA() const { return !!(pixel_type&CS_YUVA ); }
 bool VideoInfo::IsPlanarRGB() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_RGB_TYPE); }
 bool VideoInfo::IsPlanarRGBA() const { return !!(pixel_type&CS_PLANAR) && !!(pixel_type&CS_BGR) && !!(pixel_type&CS_RGBA_TYPE); }
+bool VideoInfo::IsChannelMaskKnown() const { return !!(image_type & IT_HAS_CHANNELMASK); }
+// Re-maps and stores channel mask into image_type, sets the 'has channel mask' flag as well
+void VideoInfo::SetChannelMask(bool isChannelMaskKnown, unsigned int dwChannelMask)
+{
+  if (isChannelMaskKnown) image_type |= IT_HAS_CHANNELMASK; else image_type &= ~IT_HAS_CHANNELMASK;
+  if (!isChannelMaskKnown) dwChannelMask = 0;
+  if (dwChannelMask & AvsChannelMask::AVS_SPEAKER_ALL) // special mapping due to lack of bits in image_type
+    dwChannelMask = AvsImageTypeFlags::IT_SPEAKER_ALL;
+  else {
+    dwChannelMask <<= 4;
+    dwChannelMask &= AvsChannelMask::AVS_SPEAKER_DEFINED;
+  }
+  image_type &= ~AvsImageTypeFlags::IT_SPEAKER_BITS_MASK;
+  image_type |= dwChannelMask;
+}
+
+unsigned int VideoInfo::GetChannelMask() const
+{
+  // returns zero if not defined
+  if (!IsChannelMaskKnown()) return 0;
+  unsigned int dwChannelMask = image_type & AvsImageTypeFlags::IT_SPEAKER_BITS_MASK;
+  // returns the original SPEAKER_ALL constant
+  if (dwChannelMask == AvsImageTypeFlags::IT_SPEAKER_ALL)
+    return AvsChannelMask::AVS_SPEAKER_ALL;
+  // other SPEAKER bits were simply shifted by 4 bits
+  return dwChannelMask >> 4;
+}
 
 
 // end struct VideoInfo
@@ -1197,9 +1224,11 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoFrameBuffer::DESTRUCTOR,            //   void         (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
   &AVSValue::GetType,                       //   AvsValueType (AVSValue::*AVSValue_GetType)() const;
 
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
-  NULL,                                     //   reserved for AviSynth+
+  // V10.1
+  &VideoInfo::IsChannelMaskKnown,           //   bool    (VideoInfo::*IsChannelMaskKnown)()  const;
+  &VideoInfo::SetChannelMask,               //   void    (VideoInfo::*SetChannelMask)();
+  &VideoInfo::GetChannelMask,               //   int     (VideoInfo::*GetChannelMask)()  const;
+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+
   NULL,                                     //   reserved for AviSynth+

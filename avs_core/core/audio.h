@@ -211,6 +211,15 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
 
+class SetChannelMask : public NonCachedGenericVideoFilter
+  /**
+    * Sets/remove Audio Channel Mask from VideoInfo
+   **/
+{
+public:
+  SetChannelMask(PClip _clip, bool IsChannelMaskKnown, unsigned int dwChannelMask);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+};
 
 class DelayAudio : public GenericVideoFilter
 /**

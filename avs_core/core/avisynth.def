@@ -120,4 +120,6 @@ EXPORTS
   avs_make_property_writable = _avs_make_property_writable@8
   avs_video_frame_get_pixel_type = _avs_video_frame_get_pixel_type@4
   avs_video_frame_amend_pixel_type = _avs_video_frame_amend_pixel_type@8
-
+  avs_is_channel_mask_known = _avs_is_channel_mask_known@4
+  avs_set_channel_mask = _avs_set_channel_mask@12
+  avs_get_channel_mask = _avs_get_channel_mask@4
