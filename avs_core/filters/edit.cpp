@@ -851,6 +851,7 @@ AudioDub::AudioDub(PClip child1, PClip child2, int mode, IScriptEnvironment* env
   vi.num_audio_samples = vi_audio->num_audio_samples;
   vi.sample_type = vi_audio->sample_type;
   vi.nchannels = vi_audio->nchannels;
+  vi.SetChannelMask(vi_audio->IsChannelMaskKnown(), vi_audio->GetChannelMask());
 }
 
 

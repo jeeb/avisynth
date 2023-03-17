@@ -53,7 +53,7 @@
 #include <cstdio>
 #include <new>
 #include "AviHelper.h"
-
+#include "audio.h"
 
 #include <float.h>
 
@@ -1586,17 +1586,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       if (vi->IsChannelMaskKnown())
         wfxt.dwChannelMask = vi->GetChannelMask();
       else {
-        const int SpeakerMasks[9] = { 0,
-        0x00004, // 1   -- -- Cf
-        0x00003, // 2   Lf Rf
-        0x00007, // 3   Lf Rf Cf
-        0x00033, // 4   Lf Rf -- -- Lr Rr
-        0x00037, // 5   Lf Rf Cf -- Lr Rr
-        0x0003F, // 5.1 Lf Rf Cf Sw Lr Rr
-        0x0013F, // 6.1 Lf Rf Cf Sw Lr Rr -- -- Cr
-        0x0063F, // 7.1 Lf Rf Cf Sw Lr Rr -- -- -- Ls Rs
-        };
-        wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 8 ? SpeakerMasks[vi->AudioChannels()]
+        wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 8 ? GetDefaultChannelLayout(vi->AudioChannels())
           : (unsigned)vi->AudioChannels() <= 18 ? DWORD(-1) >> (32 - vi->AudioChannels())
           : SPEAKER_ALL;
 

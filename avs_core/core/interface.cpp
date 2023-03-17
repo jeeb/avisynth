@@ -408,11 +408,11 @@ void VideoInfo::SetChannelMask(bool isChannelMaskKnown, unsigned int dwChannelMa
 {
   if (isChannelMaskKnown) image_type |= IT_HAS_CHANNELMASK; else image_type &= ~IT_HAS_CHANNELMASK;
   if (!isChannelMaskKnown) dwChannelMask = 0;
-  if (dwChannelMask & AvsChannelMask::AVS_SPEAKER_ALL) // special mapping due to lack of bits in image_type
+  if (dwChannelMask & AvsChannelMask::MASK_SPEAKER_ALL) // special mapping due to lack of bits in image_type
     dwChannelMask = AvsImageTypeFlags::IT_SPEAKER_ALL;
   else {
     dwChannelMask <<= 4;
-    dwChannelMask &= AvsChannelMask::AVS_SPEAKER_DEFINED;
+    dwChannelMask &= AvsChannelMask::MASK_SPEAKER_DEFINED;
   }
   image_type &= ~AvsImageTypeFlags::IT_SPEAKER_BITS_MASK;
   image_type |= dwChannelMask;
@@ -425,7 +425,7 @@ unsigned int VideoInfo::GetChannelMask() const
   unsigned int dwChannelMask = image_type & AvsImageTypeFlags::IT_SPEAKER_BITS_MASK;
   // returns the original SPEAKER_ALL constant
   if (dwChannelMask == AvsImageTypeFlags::IT_SPEAKER_ALL)
-    return AvsChannelMask::AVS_SPEAKER_ALL;
+    return AvsChannelMask::MASK_SPEAKER_ALL;
   // other SPEAKER bits were simply shifted by 4 bits
   return dwChannelMask >> 4;
 }

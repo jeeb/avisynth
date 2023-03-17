@@ -82,6 +82,170 @@ static int64_t signed_saturated_add64(int64_t x, int64_t y) {
   return ret;
 }
 
+// ----------- Channels
+// ffmpeg extras are not handled, only the first 18 bits
+
+struct channel_name_t {
+  const char* name;
+  const char* description;
+};
+
+static const struct channel_name_t channel_names[] = {
+    { "FL",  "front left"            },
+    { "FR",  "front right"           },
+    { "FC",  "front center"          },
+    { "LFE", "low frequency"         },
+    { "BL",  "back left"             },
+    { "BR",  "back right"            },
+    { "FLC", "front left-of-center"  },
+    { "FRC", "front right-of-center" },
+    { "BC",  "back center"           },
+    { "SL",  "side left"             },
+    { "SR",  "side right"            },
+    { "TC",  "top center"            },
+    { "TFL", "top front left"        },
+    { "TFC", "top front center"      },
+    { "TFR", "top front right"       },
+    { "TBL", "top back left"         },
+    { "TBC", "top back center"       },
+    { "TBR", "top back right"        }
+};
+
+static const char* get_channel_name(enum AvsSpeakerChannels channel_id)
+{
+  if ((unsigned)channel_id >= sizeof(channel_names)/sizeof(channel_name_t) ||
+    !channel_names[channel_id].name)
+    return NULL;
+  return channel_names[channel_id].name;
+}
+
+struct channel_layout_name {
+  const char* name;
+  ChannelLayoutDescriptor_t layout;
+};
+
+static const struct channel_layout_name channel_layout_map[] = {
+    { "mono",           AVS_CHANNEL_LAYOUT_MASK_MONO                },
+    { "stereo",         AVS_CHANNEL_LAYOUT_MASK_STEREO              },
+    { "2.1",            AVS_CHANNEL_LAYOUT_MASK_2POINT1             },
+    { "3.0",            AVS_CHANNEL_LAYOUT_MASK_SURROUND            },
+    { "3.0(back)",      AVS_CHANNEL_LAYOUT_MASK_2_1                 },
+    { "4.0",            AVS_CHANNEL_LAYOUT_MASK_4POINT0             },
+    { "quad",           AVS_CHANNEL_LAYOUT_MASK_QUAD                },
+    { "quad(side)",     AVS_CHANNEL_LAYOUT_MASK_2_2                 },
+    { "3.1",            AVS_CHANNEL_LAYOUT_MASK_3POINT1             },
+    { "5.0",            AVS_CHANNEL_LAYOUT_MASK_5POINT0_BACK        },
+    { "5.0(side)",      AVS_CHANNEL_LAYOUT_MASK_5POINT0             },
+    { "4.1",            AVS_CHANNEL_LAYOUT_MASK_4POINT1             },
+    { "5.1",            AVS_CHANNEL_LAYOUT_MASK_5POINT1_BACK        },
+    { "5.1(side)",      AVS_CHANNEL_LAYOUT_MASK_5POINT1             },
+    { "6.0",            AVS_CHANNEL_LAYOUT_MASK_6POINT0             },
+    { "6.0(front)",     AVS_CHANNEL_LAYOUT_MASK_6POINT0_FRONT       },
+    { "hexagonal",      AVS_CHANNEL_LAYOUT_MASK_HEXAGONAL           },
+    { "6.1",            AVS_CHANNEL_LAYOUT_MASK_6POINT1             },
+    { "6.1(back)",      AVS_CHANNEL_LAYOUT_MASK_6POINT1_BACK        },
+    { "6.1(front)",     AVS_CHANNEL_LAYOUT_MASK_6POINT1_FRONT       },
+    { "7.0",            AVS_CHANNEL_LAYOUT_MASK_7POINT0             },
+    { "7.0(front)",     AVS_CHANNEL_LAYOUT_MASK_7POINT0_FRONT       },
+    { "7.1",            AVS_CHANNEL_LAYOUT_MASK_7POINT1             },
+    { "7.1(wide)",      AVS_CHANNEL_LAYOUT_MASK_7POINT1_WIDE_BACK   },
+    { "7.1(wide-side)", AVS_CHANNEL_LAYOUT_MASK_7POINT1_WIDE        },
+    { "7.1(top)",       AVS_CHANNEL_LAYOUT_MASK_7POINT1_TOP_BACK    },
+    { "octagonal",      AVS_CHANNEL_LAYOUT_MASK_OCTAGONAL           },
+    { "cube",           AVS_CHANNEL_LAYOUT_MASK_CUBE                },
+    //{ "hexadecagonal",  AV_CHANNEL_LAYOUT_HEXADECAGONAL       }
+    //{ "downmix",        AV_CHANNEL_LAYOUT_STEREO_DOWNMIX,     },
+    //{ "22.2",           AV_CHANNEL_LAYOUT_22POINT2,           },
+};
+
+static unsigned int get_channel_layout_single(const char* name, size_t name_len)
+{
+  int i;
+  // combined layout name
+  for (i = 0; i < sizeof(channel_layout_map) / sizeof(channel_layout_name); i++) {
+    if (strlen(channel_layout_map[i].name) == name_len &&
+      !memcmp(channel_layout_map[i].name, name, name_len))
+      return channel_layout_map[i].layout.mask;
+  }
+  // individual channel name
+  for (i = 0; i < sizeof(channel_names) / sizeof(channel_name_t); i++)
+    if (channel_names[i].name &&
+      strlen(channel_names[i].name) == name_len &&
+      !memcmp(channel_names[i].name, name, name_len))
+      return (int64_t)1 << i;
+
+  /* not used in Avisynth+
+  //get default by number of channels, syntax: number ending with 'c'
+  char* end;
+  errno = 0;
+  i = strtol(name, &end, 10);
+
+  if (!errno && (end + 1 - name == name_len && *end == 'c'))
+    return av_get_default_channel_layout(i);
+
+  // return the directly given index
+  unsigned int layout;
+  errno = 0;
+  layout = strtoll(name, &end, 0);
+  if (!errno && end - name == name_len)
+    return FFMAX(layout, 0);
+  */
+  return 0;
+}
+
+unsigned int av_get_channel_layout(const char* name)
+{
+  const char* n, * e;
+  const char* name_end = name + strlen(name);
+  unsigned int layout = 0, layout_single;
+
+  for (n = name; n < name_end; n = e + 1) {
+    for (e = n; e < name_end && *e != '+' && *e != '|'; e++);
+    layout_single = get_channel_layout_single(n, e - n);
+    if (!layout_single)
+      return 0;
+    layout |= layout_single;
+  }
+  return layout;
+}
+
+static unsigned int av_get_default_channel_layout(int nb_channels) {
+  for (int i = 0; i < sizeof(channel_layout_map) / sizeof(channel_layout_name); i++)
+    if (nb_channels == channel_layout_map[i].layout.nb_channels)
+      return channel_layout_map[i].layout.mask;
+  return 0;
+}
+
+unsigned int GetDefaultChannelLayout(int nChannels) {
+  if (nChannels < 1 || nChannels > 8)
+    return 0;
+  return av_get_default_channel_layout(nChannels);
+
+  /* old one:
+  // Called from VfW export as well
+  // 3.7.3 changes some defaults to match ffmpeg
+  // 3 channels: Surround to 2.1
+  // 4 channels: Quad to 4.0
+  // 6 channels: 6.1(back) to 6.1
+  const int SpeakerMasks[9] =
+  { 0,
+    //           chnls name      layout                             ffmpeg
+    0x00004,     // 1  mono      -- -- FC                           AV_CH_LAYOUT_MONO              (AV_CH_FRONT_CENTER)
+    0x00003,     // 2  stereo    FL FR                              AV_CH_LAYOUT_STEREO            (AV_CH_FRONT_LEFT|AV_CH_FRONT_RIGHT)
+    0x0000B,     // 3  2.1       FL FR    LFE                       AV_CH_LAYOUT_2POINT1           (AV_CH_LAYOUT_STEREO|AV_CH_LOW_FREQUENCY)
+    // 0x00007,  // 3  3.0       FL FR FC                           AV_CH_LAYOUT_SURROUND          (AV_CH_LAYOUT_STEREO|AV_CH_FRONT_CENTER)
+    0x00107,     // 4  4.0       FL FR FC --  -- -- -- -- BC        AV_CH_LAYOUT_4POINT0           (AV_CH_LAYOUT_SURROUND|AV_CH_BACK_CENTER)
+    // 0x00033,  // 4  quad      FL FR -- --  BL BR                 AV_CH_LAYOUT_QUAD              (AV_CH_LAYOUT_STEREO|AV_CH_BACK_LEFT|AV_CH_BACK_RIGHT)
+    0x00037,     // 5  5.0       FL FR FC --  BL BR                 AV_CH_LAYOUT_5POINT0_BACK      (AV_CH_LAYOUT_SURROUND|AV_CH_BACK_LEFT|AV_CH_BACK_RIGHT)
+    0x0003F,     // 6  5.1       FL FR FC LFE BL BR                 AV_CH_LAYOUT_5POINT1_BACK      (AV_CH_LAYOUT_5POINT0_BACK|AV_CH_LOW_FREQUENCY)
+    0x0070F,     // 7  6.1       FL FR FC LFE -- -- -- -- BC SL SR  AV_CH_LAYOUT_6POINT1           (AV_CH_LAYOUT_5POINT1|AV_CH_BACK_CENTER)
+    // 0x0013F,  // 7  6.1(back) FL FR FC LFE BL BR -- -- BC        AV_CH_LAYOUT_6POINT1_BACK      (AV_CH_LAYOUT_5POINT1_BACK|AV_CH_BACK_CENTER)
+    0x0063F,     // 8  7.1       FL FR FC LFE BL BR -- -- -- SL SR  AV_CH_LAYOUT_7POINT1           (AV_CH_LAYOUT_5POINT1|AV_CH_BACK_LEFT|AV_CH_BACK_RIGHT)
+  };
+  return SpeakerMasks[nChannels];
+  */
+}
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -111,6 +275,7 @@ extern const AVSFunction Audio_filters[] = {
                                 { "ConvertAudioToFloat", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_float },
                                 { "ConvertAudio", BUILTIN_FUNC_PREFIX, "cii", ConvertAudio::Create_Any }, // For plugins to Invoke()
                                 { "SetChannelMask", BUILTIN_FUNC_PREFIX, "cbi", SetChannelMask::Create },
+                                { "SetChannelMask", BUILTIN_FUNC_PREFIX, "cbs", SetChannelMask::Create },
                                 { 0 }
                               };
 
@@ -188,6 +353,7 @@ ConvertToMono::ConvertToMono(PClip _clip) :
 {
   channels = vi.AudioChannels();
   vi.nchannels = 1;
+  vi.SetChannelMask(true, AvsChannelMask::MASK_SPEAKER_FRONT_CENTER);
   tempbuffer_size = 0;
 }
 
@@ -360,6 +526,11 @@ MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array
     vi.nchannels += vi2.AudioChannels();
   }
 
+  if (vi.AudioChannels() <= 8)
+    vi.SetChannelMask(true, GetDefaultChannelLayout(vi.AudioChannels()));
+  else
+    vi.SetChannelMask(false, 0); // over 8: no guess
+
   tempbuffer_size = 0;
 }
 
@@ -524,6 +695,11 @@ GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels) :
   vi.nchannels = numchannels;
   tempbuffer_size = 0;
   dst_bps = vi.BytesPerAudioSample();
+
+  if (vi.AudioChannels() <= 8)
+    vi.SetChannelMask(true, GetDefaultChannelLayout(vi.AudioChannels()));
+  else
+    vi.SetChannelMask(false, 0); // over 8: no guess
 }
 
 
@@ -599,21 +775,24 @@ int __stdcall GetChannel::SetCacheHints(int cachehints, int frame_range) {
 
 PClip GetChannel::Create_left(PClip clip) {
 
-  if (clip->GetVideoInfo().AudioChannels() == 1)
-    return clip;
-
-  int* ch = new int[1];
-  ch[0] = 0;
-  return new GetChannel(clip, ch, 1);
+  if (clip->GetVideoInfo().AudioChannels() != 1) {
+    int* ch = new int[1];
+    ch[0] = 0;
+    clip = new GetChannel(clip, ch, 1);
+  }
+  // do not preserve 'left'ness
+  return new SetChannelMask(clip, true, AvsChannelMask::MASK_SPEAKER_FRONT_CENTER);
 }
 
 PClip GetChannel::Create_right(PClip clip) {
-  if (clip->GetVideoInfo().AudioChannels() == 1)
-    return clip;
-
-  int* ch = new int[1];
-  ch[0] = 1;
-  return new GetChannel(clip, ch, 1);
+  if (clip->GetVideoInfo().AudioChannels() != 1)
+  {
+    int* ch = new int[1];
+    ch[0] = 1;
+    clip = new GetChannel(clip, ch, 1);
+  }
+  // do not preserve 'right'ness
+  return new SetChannelMask(clip, true, AvsChannelMask::MASK_SPEAKER_FRONT_CENTER);
 }
 
 PClip GetChannel::Create_n(PClip clip, int* n, int numchannels) {
@@ -688,8 +867,20 @@ SetChannelMask::SetChannelMask(PClip _clip, bool IsChannelMaskKnown, unsigned in
   vi.SetChannelMask(IsChannelMaskKnown, dwChannelMask);
 }
 
-AVSValue __cdecl SetChannelMask::Create(AVSValue args, void*, IScriptEnvironment*) {
-  return new SetChannelMask(args[0].AsClip(), args[1].AsBool(false), args[2].AsInt(0));
+AVSValue __cdecl SetChannelMask::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  const bool known = args[1].AsBool(false);
+  if (!known)
+    return new SetChannelMask(args[0].AsClip(), false, 0);
+
+  if (args[2].IsString()) {
+    const char* channelName = args[2].AsString("");
+    unsigned int channelMask = av_get_channel_layout(channelName);
+    if (channelMask == 0)
+      env->ThrowError("SetChannelMask: could not find channel descriptor '%s'\n", channelName);
+    return new SetChannelMask(args[0].AsClip(), true, channelMask);
+  }
+  else
+    return new SetChannelMask(args[0].AsClip(), true, args[2].AsInt(0));
 }
 
 

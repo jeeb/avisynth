@@ -32,7 +32,7 @@
 //           Introduce pixel_type to VideoFrame struct
 //           VideoFrame::GetPixelType,VideoFrame::AmendPixelType
 //           AVSValue::GetType
-//           Add enum AvsChannelMask::AVS_SPEAKER_xxx, AvsImageTypeFlags::IT_SPEAKER_xxx
+//           Add enum AvsChannelMask::MASK_SPEAKER_xxx, AvsImageTypeFlags::IT_SPEAKER_xxx
 //           Audio channel mask support for VideoInfo: 
 //           Use 20 bits in VideoInfo::image_type for channel mask mapping
 //           IsChannelMaskKnown, SetChannelMask, GetChannelMask in VideoInfo
@@ -532,6 +532,37 @@ public:
   void DESTRUCTOR();
 #endif
 };
+
+// Unshifted channel mask constants like in WAVEFORMATEXTENSIBLE
+// in AvsImageTypeFlags they are shifted by 4 bits
+enum AvsChannelMask {
+  MASK_SPEAKER_FRONT_LEFT = 0x1,
+  MASK_SPEAKER_FRONT_RIGHT = 0x2,
+  MASK_SPEAKER_FRONT_CENTER = 0x4,
+  MASK_SPEAKER_LOW_FREQUENCY = 0x8,
+  MASK_SPEAKER_BACK_LEFT = 0x10,
+  MASK_SPEAKER_BACK_RIGHT = 0x20,
+  MASK_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40,
+  MASK_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80,
+  MASK_SPEAKER_BACK_CENTER = 0x100,
+  MASK_SPEAKER_SIDE_LEFT = 0x200,
+  MASK_SPEAKER_SIDE_RIGHT = 0x400,
+  MASK_SPEAKER_TOP_CENTER = 0x800,
+  MASK_SPEAKER_TOP_FRONT_LEFT = 0x1000,
+  MASK_SPEAKER_TOP_FRONT_CENTER = 0x2000,
+  MASK_SPEAKER_TOP_FRONT_RIGHT = 0x4000,
+  MASK_SPEAKER_TOP_BACK_LEFT = 0x8000,
+  MASK_SPEAKER_TOP_BACK_CENTER = 0x10000,
+  MASK_SPEAKER_TOP_BACK_RIGHT = 0x20000,
+  // Bit mask locations used up for the above positions
+  MASK_SPEAKER_DEFINED = 0x0003FFFF,
+  // Bit mask locations reserved for future use
+  MASK_SPEAKER_RESERVED = 0x7FFC0000,
+  // Used to specify that any possible permutation of speaker configurations
+  // Due to lack of available bits this one is put differently into image_type
+  MASK_SPEAKER_ALL = 0x80000000
+};
+
 struct VideoInfo {
   int width, height;    // width 0 means no video
   unsigned fps_numerator, fps_denominator;
@@ -775,36 +806,6 @@ struct VideoInfo {
   // BFF, TFF, FIELDBASED. Also used for storing Channel Mask
   int image_type;
 
-  // Unshifted channel mask constants like in WAVEFORMATEXTENSIBLE
-  // in AvsImageTypeFlags they are shifted by 4 bits
-  enum AvsChannelMask {
-    AVS_SPEAKER_FRONT_LEFT = 0x1,
-    AVS_SPEAKER_FRONT_RIGHT = 0x2,
-    AVS_SPEAKER_FRONT_CENTER = 0x4,
-    AVS_SPEAKER_LOW_FREQUENCY = 0x8,
-    AVS_SPEAKER_BACK_LEFT = 0x10,
-    AVS_SPEAKER_BACK_RIGHT = 0x20,
-    AVS_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40,
-    AVS_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80,
-    AVS_SPEAKER_BACK_CENTER = 0x100,
-    AVS_SPEAKER_SIDE_LEFT = 0x200,
-    AVS_SPEAKER_SIDE_RIGHT = 0x400,
-    AVS_SPEAKER_TOP_CENTER = 0x800,
-    AVS_SPEAKER_TOP_FRONT_LEFT = 0x1000,
-    AVS_SPEAKER_TOP_FRONT_CENTER = 0x2000,
-    AVS_SPEAKER_TOP_FRONT_RIGHT = 0x4000,
-    AVS_SPEAKER_TOP_BACK_LEFT = 0x8000,
-    AVS_SPEAKER_TOP_BACK_CENTER = 0x10000,
-    AVS_SPEAKER_TOP_BACK_RIGHT = 0x20000,
-    // Bit mask locations used up for the above positions
-    AVS_SPEAKER_DEFINED = 0x0003FFFF,
-    // Bit mask locations reserved for future use
-    AVS_SPEAKER_RESERVED = 0x7FFC0000,
-    // Used to specify that any possible permutation of speaker configurations
-    // Due to lack of available bits this one is put differently into image_type
-    AVS_SPEAKER_ALL = 0x80000000
-  };
-
   enum AvsImageTypeFlags {
     IT_BFF = 1 << 0,
     IT_TFF = 1 << 1,
@@ -837,7 +838,7 @@ struct VideoInfo {
     // Set mask and get mask handles it.
     IT_SPEAKER_ALL = 0x40000 << 4,
     // Mask for the defined 18 bits + SPEAKER_ALL
-    IT_SPEAKER_BITS_MASK = (AvsChannelMask::AVS_SPEAKER_DEFINED << 4) | IT_SPEAKER_ALL,
+    IT_SPEAKER_BITS_MASK = (AvsChannelMask::MASK_SPEAKER_DEFINED << 4) | IT_SPEAKER_ALL,
     IT_NEXT_AVAILABLE = 1 << 23
   };
 
