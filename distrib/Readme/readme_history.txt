@@ -5,10 +5,88 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230316 3.7.3 WIP
+20230317 3.7.3 WIP
 ------------------
-- Add initial audio channel mask support (CPP and C interface, script function)
-  It's still belongs to V10 changes (there were only tests since then), but it can be discussed if not.
+- ConvertToMono, GetLeftChannel, GetRightChannel: sets channel layout AVS_SPEAKER_FRONT_CENTER (mono)
+- GetChannel, GetChannels, MergeChannels will set default channel layout if channel count is 1 to 8
+  For defaults see VfW section below
+- New Script function: SetChannelMask: string version. 
+
+    SetChannelMask(clip, bool known, string ChannelDescriptor) (parameters compulsory, no names must be set) (test10)
+
+  Accepts predefined channel string or channel layout names or their combination, in ffmpeg style.
+  Unlike ffmpeg, numerical indexes or channel counts are not allowed.
+  String is case sensitive!
+  E.g. "stereo+LFE+TC" or "FL+LR" or "5.1(side)"
+    "mono",
+    "stereo",
+    "2.1",
+    "3.0",
+    "3.0(back)",
+    "4.0",
+    "quad",
+    "quad(side)",
+    "3.1",
+    "5.0",
+    "5.0(side)",
+    "4.1",
+    "5.1",
+    "5.1(side)",
+    "6.0",
+    "6.0(front)",
+    "hexagonal",
+    "6.1",
+    "6.1(back)",
+    "6.1(front)",
+    "7.0",
+    "7.0(front)",
+    "7.1",
+    "7.1(wide)",
+    "7.1(wide-side)",
+    "7.1(top)",
+    "octagonal",
+    "cube"
+  Individual Speaker Channels:
+    "FL",  front left
+    "FR",  front right
+    "FC",  front center
+    "LFE", low frequency
+    "BL",  back left
+    "BR",  back right
+    "FLC", front left-of-center
+    "FRC", front right-of-center
+    "BC",  back center
+    "SL",  side left
+    "SR",  side right
+    "TC",  top center
+    "TFL", top front left
+    "TFC", top front center
+    "TFR", top front right
+    "TBL", top back left
+    "TBC", top back center
+    "TBR", top back right
+    
+- AudioDub will inherit channel layout setting from the audio clip.
+- VfW output channel guess (when ChannelMask is not specified) changed at some points.
+  Default number of channels to channel layout guess was modified to match of ffmpeg
+    3 channels: Surround to 2.1
+    4 channels: Quad to 4.0
+    6 channels: 6.1(back) to 6.1
+  This follows ffmpeg defaults
+  Present rules:
+    const   chnls  name    layout
+    0x00004 1      mono    -- -- FC
+    0x00003 2      stereo  FL FR
+    0x0000B 3      2.1     FL FR    LFE
+    0x00107 4      4.0     FL FR FC --  -- -- -- -- BC
+    0x00037 5      5.0     FL FR FC --  BL BR
+    0x0003F 6      5.1     FL FR FC LFE BL BR
+    0x0070F 7      6.1     FL FR FC LFE -- -- -- -- BC SL SR
+    0x0063F 8      7.1     FL FR FC LFE BL BR -- -- -- SL SR
+
+**test9**
+- Add initial audio channel mask (channel layout) support (CPP and C interface, script function)
+  It still belongs to V10 changes (there were only tests since then), but it can be discussed if not.
   Technically it is done by using another 18+2 bits in the Clip's VideoInfo.image_type field.
   Due to lack of enough bits in this VideoInfo field, the mapping between the original dwChannelMask 
   and Avisynth's internal values are not 1:1, but all information is kept however.
@@ -47,6 +125,7 @@ The "rst" version of the documentation just lists changes in brief.
        bool IsChannelMaskKnown(clip)
        int GetChannelMask(clip)
        SetChannelMask(clip, bool known, int dwChannelMask) (parameters compulsory, no names must be set)
+       SetChannelMask(clip, bool known, string ChannelDescriptor) (parameters compulsory, no names must be set) (test10)
        dwChannelMask must contain the combination of up to 18 positions or 0x80000000 for SPEAKER_ALL.
 
    VfW export rules (included the existing sequence)
@@ -78,14 +157,15 @@ The "rst" version of the documentation just lists changes in brief.
       3.2) if OPT_dwChannelMask global variable is defined and is different from 0, then use it.
 
       E.g. VirtualDub2 is using VfW, so after opening the script, ended with SetChannelMask(true, $0063F),
-      one can check the value File|File Info menü, under "compression" line (e.g.PCM, chmask 63f).
+      one can check the value File|File Info menu, under "compression" line (e.g.PCM, chmask 63f).
       SetChannels does not check against NumChannels, so you can set the 7.1 constant for a stereo
-      if you wish. Microsoft's documentation mentions the cases of what can do az application with 
+      if you wish. Microsoft's documentation mentions the cases of what an application can do with 
       less or more than necessary defined speaker bits.
       
   - What to do about GetChannels, MixAudio, ConvertToMono? To be discussed.
     KillAudio will call SetChannelMask(false, 0), nevertheless.
 
+**test8**
 - Set automatic MT mode MT_SERIALIZED to 
   ConvertToMono, EnsureVBRMP3Sync, MergeChannels, GetChannel, Normalize, MixAudio, ResampleAudio
 - Add back audio cache from classic Avisynth 2.6.
@@ -115,6 +195,7 @@ The "rst" version of the documentation just lists changes in brief.
       the working mode to CACHE_AUDIO_AUTO_START_ON.
   - Modes CACHE_AUDIO and CACHE_AUDIO_NOTHING are explicitely enable/disable audio cache at a give size.
 
+**test7**
 - Fix Clang build AviSource crash on yuv422p10le UTVideo at specific widths (SSE2 or SSE4.1)
 - #340: stop memory leak on propSet / MakePropertyWritable;
   A bit less memory/processing overhead in internal FrameRegistry as a side effect.
@@ -135,6 +216,8 @@ The "rst" version of the documentation just lists changes in brief.
 - Fix crash when outputting VfW (e.g. VirtualDub) for YUV422P16, or P10 in Intel SSE2 optimization
   due to aligned SIMD write to an unaligned pointer - did not affect Microsoft builds.
   As seen in https://forum.doom9.org/showthread.php?p=1983343#post1983343
+
+**test6**
 - (#337) Add more resizers types by jpsdr's and DTL's idea: backport from https://github.com/jpsdr/ResampleMT
   
   SinPowerResize "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f"
@@ -162,6 +245,8 @@ The "rst" version of the documentation just lists changes in brief.
   p: gauss (30.0), sinpow (2.5)
   'param1' and 'param2' are always float. For 'taps' 'param1' is truncated to integer internally.
   When a resizer does not use parameters they are simply ignored.
+
+**test5**
 - Add avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type to C interface as well 
 - Fix (#327) Histogram "color2" markers. Fix right shifted 15 degree dots, fix square for bits>8
 - Feature (#317): (V10 interface) The color format of a VideoFrame can now be retrieved with its GetPixelType()
