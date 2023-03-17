@@ -111,7 +111,7 @@ static const struct channel_name_t channel_names[] = {
     { "TBR", "top back right"        }
 };
 
-static const char* get_channel_name(enum AvsSpeakerChannels channel_id)
+static const char* get_channel_name(unsigned int channel_id)
 {
   if ((unsigned)channel_id >= sizeof(channel_names)/sizeof(channel_name_t) ||
     !channel_names[channel_id].name)
@@ -160,19 +160,18 @@ static const struct channel_layout_name channel_layout_map[] = {
 
 static unsigned int get_channel_layout_single(const char* name, size_t name_len)
 {
-  int i;
   // combined layout name
-  for (i = 0; i < sizeof(channel_layout_map) / sizeof(channel_layout_name); i++) {
+  for (int i = 0; i < sizeof(channel_layout_map) / sizeof(channel_layout_name); i++) {
     if (strlen(channel_layout_map[i].name) == name_len &&
       !memcmp(channel_layout_map[i].name, name, name_len))
       return channel_layout_map[i].layout.mask;
   }
   // individual channel name
-  for (i = 0; i < sizeof(channel_names) / sizeof(channel_name_t); i++)
+  for (int i = 0; i < sizeof(channel_names) / sizeof(channel_name_t); i++)
     if (channel_names[i].name &&
       strlen(channel_names[i].name) == name_len &&
       !memcmp(channel_names[i].name, name, name_len))
-      return (int64_t)1 << i;
+      return (unsigned int)1 << i;
 
   /* not used in Avisynth+
   //get default by number of channels, syntax: number ending with 'c'
