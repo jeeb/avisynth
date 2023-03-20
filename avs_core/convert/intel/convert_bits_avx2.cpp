@@ -500,10 +500,10 @@ static void do_convert_ordered_dither_uint_avx2(const BYTE* srcp8, BYTE* dstp8, 
   // 16->8: 0x0F (16x16)
   const BYTE* matrix;
   switch (dither_order) {
-  case 1: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither2x2a.data_sse2 : dither2x2.data_sse2); break;
-  case 2: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither4x4a.data_sse2 : dither4x4.data_sse2); break;
-  case 3: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither8x8a.data_sse2 : dither8x8.data_sse2); break;
-  case 4: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither16x16a.data : dither16x16.data); break; // no spec sse, already 16 bytes long
+  case 1: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither2x2a_data_sse2 : dither2x2_data_sse2); break;
+  case 2: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither4x4a_data_sse2 : dither4x4_data_sse2); break;
+  case 3: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither8x8a_data_sse2 : dither8x8_data_sse2); break;
+  case 4: matrix = reinterpret_cast<const BYTE*>(odd_diff ? dither16x16a_data : dither16x16_data); break; // no spec sse, already 16 bytes long
   default: return; // n/a
   }
 
