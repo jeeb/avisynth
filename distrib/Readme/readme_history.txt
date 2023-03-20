@@ -7,6 +7,27 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230318 3.7.3 WIP
 ------------------
+- "Info": if channel mask exists, then 
+  - its friendly name
+  - otherwise the number of channels and the channel combinations
+  is displayed under "AudioLength: x".
+
+  e.g.
+  SetChannelMask("stereo") --> "Channel mask: stereo"
+  SetChannelMask("stereo+LFE") --> "Channel mask: 2.1"  because the combination resulted in another known channel combo name
+  SetChannelMask("mono+LFE") --> "Channel mask: 2 channels (FC+LFE)" because the combination is unknown
+
+- Add SetChannel parameter: channel string syntax: (similar to ffmpeg)
+  a channel number followed by "c" for getting the default layout for a given number of channels.
+  E.g. SetChannelMask("3c") will set "2.1" because this is the default choice for 3 channels
+- Add SetChannel parameter: channel string syntax:
+  a simple number is treated as the actual numeric mask.
+  E.g. SetChannelMask("3") will set "stereo" because 3=1+2 that is "FL+FR" that is "stereo"
+- SetChannelMask string version: If string is other than "" then its set to known. It has a single string parameter.
+  SetChannelMask("mono") -> mask is known: "mono"
+  SetChannelMask("")  -> mask is unknown
+- Add "speaker_all" to accepted layout mask strings
+
 - Fix possible crash of LLVM builds (clang-cl, Intel nextgen) on pre-AVX (SSE4-only) CPUs.
   (Prevent static initialization from avx2 source modules, which cause running AVX instructions on DLL load)
 - ConvertToMono, GetLeftChannel, GetRightChannel: sets channel layout AVS_SPEAKER_FRONT_CENTER (mono)
@@ -14,7 +35,7 @@ The "rst" version of the documentation just lists changes in brief.
   For defaults see VfW section below
 - New Script function: SetChannelMask: string version. 
 
-    SetChannelMask(clip, bool known, string ChannelDescriptor) (parameters compulsory, no names must be set) (test10)
+    SetChannelMask(clip, string ChannelDescriptor) (parameters compulsory, no names must be set) (test10)
 
   Accepts predefined channel string or channel layout names or their combination, in ffmpeg style.
   Unlike ffmpeg, numerical indexes or channel counts are not allowed.
@@ -48,6 +69,7 @@ The "rst" version of the documentation just lists changes in brief.
     "7.1(top)",
     "octagonal",
     "cube"
+    "speaker_all"
   Individual Speaker Channels:
     "FL",  front left
     "FR",  front right
