@@ -326,7 +326,7 @@ public:
 
 class AVIStreamNode;
 
-class AVIReadHandler : public IAVIReadHandler, private File64 {
+class AVIReadHandler final: public IAVIReadHandler, private File64 {
 public:
 	bool		fDisableFastIO;
 
