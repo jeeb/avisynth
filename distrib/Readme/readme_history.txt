@@ -5,8 +5,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230317 3.7.3 WIP
+20230318 3.7.3 WIP
 ------------------
+- Fix possible crash of LLVM builds (clang-cl, Intel nextgen) on pre-AVX (SSE4-only) CPUs.
+  (Prevent static initialization from avx2 source modules, which cause running AVX instructions on DLL load)
 - ConvertToMono, GetLeftChannel, GetRightChannel: sets channel layout AVS_SPEAKER_FRONT_CENTER (mono)
 - GetChannel, GetChannels, MergeChannels will set default channel layout if channel count is 1 to 8
   For defaults see VfW section below
