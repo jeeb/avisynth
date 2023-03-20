@@ -37,7 +37,28 @@
 #include <avisynth.h>
 #include <cmath>
 
-// ------- Channels
+// ------- Channels, only 0..17, SPEAKER_ALL not handled here
+enum AVSChannel {
+  AVS_CHAN_IDX_NONE = -1, // Invalid channel index
+  AVS_CHAN_IDX_FRONT_LEFT,
+  AVS_CHAN_IDX_FRONT_RIGHT,
+  AVS_CHAN_IDX_FRONT_CENTER,
+  AVS_CHAN_IDX_LOW_FREQUENCY,
+  AVS_CHAN_IDX_BACK_LEFT,
+  AVS_CHAN_IDX_BACK_RIGHT,
+  AVS_CHAN_IDX_FRONT_LEFT_OF_CENTER,
+  AVS_CHAN_IDX_FRONT_RIGHT_OF_CENTER,
+  AVS_CHAN_IDX_BACK_CENTER,
+  AVS_CHAN_IDX_SIDE_LEFT,
+  AVS_CHAN_IDX_SIDE_RIGHT,
+  AVS_CHAN_IDX_TOP_CENTER,
+  AVS_CHAN_IDX_TOP_FRONT_LEFT,
+  AVS_CHAN_IDX_TOP_FRONT_CENTER,
+  AVS_CHAN_IDX_TOP_FRONT_RIGHT,
+  AVS_CHAN_IDX_TOP_BACK_LEFT,
+  AVS_CHAN_IDX_TOP_BACK_CENTER,
+  AVS_CHAN_IDX_TOP_BACK_RIGHT
+};
 
 // similarly to ffmpeg
 #define AVS_CHANNEL_LAYOUT_MONO              (AvsChannelMask::MASK_SPEAKER_FRONT_CENTER)
@@ -112,7 +133,7 @@ typedef struct ChannelLayoutDescriptor_t {
 
 unsigned int av_get_channel_layout(const char* name);
 unsigned int GetDefaultChannelLayout(int nChannels);
-
+std::string channel_layout_to_str(const unsigned int channel_layout_mask);
 
 /******* Helper stuff *******/
 
@@ -136,7 +157,7 @@ unsigned int GetDefaultChannelLayout(int nChannels);
 
 #define IzeroEPSILON 1E-21               /* Max error acceptable in Izero */
 
-static const double PI = 3.14159265358979323846;
+static constexpr double PI = 3.14159265358979323846;
 
 static __inline short IntToShort(int v, const int scl)
 {

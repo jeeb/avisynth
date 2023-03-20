@@ -46,7 +46,9 @@
 #include "audio.h"
 #include "../convert/convert_audio.h"
 #include <cstdio>
+#include <cstdlib>
 #include <new>
+#include <algorithm>
 
 #define BIGBUFFSIZE (2048*1024) // Use a 2Mb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
 
@@ -84,6 +86,7 @@ static int64_t signed_saturated_add64(int64_t x, int64_t y) {
 
 // ----------- Channels
 // ffmpeg extras are not handled, only the first 18 bits
+// which is defined in WAVEFORMATEXTENSIBLE and Avisynth.h AvsChannelMask
 
 struct channel_name_t {
   const char* name;
@@ -111,13 +114,7 @@ static const struct channel_name_t channel_names[] = {
     { "TBR", "top back right"        }
 };
 
-static const char* get_channel_name(unsigned int channel_id)
-{
-  if ((unsigned)channel_id >= sizeof(channel_names)/sizeof(channel_name_t) ||
-    !channel_names[channel_id].name)
-    return NULL;
-  return channel_names[channel_id].name;
-}
+constexpr auto channel_names_size = sizeof(channel_names) / sizeof(channel_name_t);
 
 struct channel_layout_name {
   const char* name;
@@ -158,45 +155,60 @@ static const struct channel_layout_name channel_layout_map[] = {
     //{ "22.2",           AV_CHANNEL_LAYOUT_22POINT2,           },
 };
 
+constexpr auto channel_layout_map_size = sizeof(channel_layout_map) / sizeof(channel_layout_name);
+
+static unsigned int av_get_default_channel_layout(int nb_channels) {
+  for (int i = 0; i < channel_layout_map_size; i++)
+    if (nb_channels == channel_layout_map[i].layout.nb_channels)
+      return channel_layout_map[i].layout.mask;
+  return 0;
+}
+
+// similar to old ffmpeg method
 static unsigned int get_channel_layout_single(const char* name, size_t name_len)
 {
   // combined layout name
-  for (int i = 0; i < sizeof(channel_layout_map) / sizeof(channel_layout_name); i++) {
+  for (int i = 0; i < channel_layout_map_size; i++) {
     if (strlen(channel_layout_map[i].name) == name_len &&
       !memcmp(channel_layout_map[i].name, name, name_len))
       return channel_layout_map[i].layout.mask;
   }
   // individual channel name
-  for (int i = 0; i < sizeof(channel_names) / sizeof(channel_name_t); i++)
+  for (int i = 0; i < channel_names_size; i++)
     if (channel_names[i].name &&
       strlen(channel_names[i].name) == name_len &&
       !memcmp(channel_names[i].name, name, name_len))
       return (unsigned int)1 << i;
 
-  /* not used in Avisynth+
   //get default by number of channels, syntax: number ending with 'c'
   char* end;
   errno = 0;
-  i = strtol(name, &end, 10);
+  long i = std::strtol(name, &end, 10);
 
   if (!errno && (end + 1 - name == name_len && *end == 'c'))
     return av_get_default_channel_layout(i);
 
-  // return the directly given index
-  unsigned int layout;
+  // return the directly given mask
   errno = 0;
-  layout = strtoll(name, &end, 0);
-  if (!errno && end - name == name_len)
-    return FFMAX(layout, 0);
-  */
+  long long layout = std::strtoll(name, &end, 0);
+  if (!errno && end - name == name_len) {
+    if (layout > std::numeric_limits<unsigned int>::max())
+      return 0;
+    return (unsigned int)std::max(layout, 0LL);
+  }
   return 0;
 }
 
+// returns layout mask from the layout name or channel name
+// or from their combinations
 unsigned int av_get_channel_layout(const char* name)
 {
   const char* n, * e;
   const char* name_end = name + strlen(name);
   unsigned int layout = 0, layout_single;
+
+  if(!_stricmp(name, "speaker_all"))
+    return AvsChannelMask::MASK_SPEAKER_ALL;
 
   for (n = name; n < name_end; n = e + 1) {
     for (e = n; e < name_end && *e != '+' && *e != '|'; e++);
@@ -206,13 +218,6 @@ unsigned int av_get_channel_layout(const char* name)
     layout |= layout_single;
   }
   return layout;
-}
-
-static unsigned int av_get_default_channel_layout(int nb_channels) {
-  for (int i = 0; i < sizeof(channel_layout_map) / sizeof(channel_layout_name); i++)
-    if (nb_channels == channel_layout_map[i].layout.nb_channels)
-      return channel_layout_map[i].layout.mask;
-  return 0;
 }
 
 unsigned int GetDefaultChannelLayout(int nChannels) {
@@ -245,6 +250,76 @@ unsigned int GetDefaultChannelLayout(int nChannels) {
   */
 }
 
+// popcount
+static int channelcount_from_mask(unsigned int mask)
+{
+  unsigned long long y;
+  y = mask * 0x0002000400080010ULL;
+  y = y & 0x1111111111111111ULL;
+  y = y * 0x1111111111111111ULL;
+  y = y >> 60;
+  return y;
+}
+
+// gets the 'idx'th bit=1 from layout_mask and returns its bit index 
+// or -1 if not found
+// index can be used to channel_names
+enum AVSChannel av_channel_layout_channel_from_index(const unsigned int channel_layout_mask,
+    unsigned int idx)
+{
+  const int nb_channels = channelcount_from_mask(channel_layout_mask);
+  if (idx >= nb_channels)
+    return AVSChannel::AVS_CHAN_IDX_NONE;
+
+  for (int i = 0; i < 32; i++) { // unsigned int 32 bits
+    if ((1ULL << i) & channel_layout_mask && !idx--)
+      return (enum AVSChannel)i;
+  }
+
+  return AVSChannel::AVS_CHAN_IDX_NONE;
+}
+
+std::string channel_layout_to_str(const unsigned int channel_layout_mask)
+{
+  // special
+  if (channel_layout_mask == AvsChannelMask::MASK_SPEAKER_ALL)
+    return "speaker_all";
+
+  // find direct match
+  for (int i = 0; i < channel_layout_map_size; i++) {
+    if (channel_layout_mask == channel_layout_map[i].layout.mask) {
+      return channel_layout_map[i].name;
+    }
+  }
+
+  // return channel combo:
+  // e.g. "2 channels (FC+LFE)"
+
+  const int nb_channels = channelcount_from_mask(channel_layout_mask);
+
+  std::string bp;
+
+  if (nb_channels)
+    bp = std::to_string(nb_channels) + " channels (";
+  for (int i = 0; i < nb_channels; i++) {
+    enum AVSChannel ch = av_channel_layout_channel_from_index(channel_layout_mask, i);
+
+    if (i)
+      bp += "+";
+
+    if (ch == AVSChannel::AVS_CHAN_IDX_NONE)
+      bp += "NONE";
+    else if ((unsigned int)ch < channel_names_size)
+      bp += channel_names[(unsigned int)ch].name;
+  }
+  if (nb_channels) {
+    bp += ")";
+    return bp;
+  }
+  bp = "(Error. Mask=" + std::to_string(channel_layout_mask) + ")";
+  return bp;
+}
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -274,7 +349,7 @@ extern const AVSFunction Audio_filters[] = {
                                 { "ConvertAudioToFloat", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_float },
                                 { "ConvertAudio", BUILTIN_FUNC_PREFIX, "cii", ConvertAudio::Create_Any }, // For plugins to Invoke()
                                 { "SetChannelMask", BUILTIN_FUNC_PREFIX, "cbi", SetChannelMask::Create },
-                                { "SetChannelMask", BUILTIN_FUNC_PREFIX, "cbs", SetChannelMask::Create },
+                                { "SetChannelMask", BUILTIN_FUNC_PREFIX, "cs", SetChannelMask::Create },
                                 { 0 }
                               };
 
@@ -867,19 +942,22 @@ SetChannelMask::SetChannelMask(PClip _clip, bool IsChannelMaskKnown, unsigned in
 }
 
 AVSValue __cdecl SetChannelMask::Create(AVSValue args, void*, IScriptEnvironment* env) {
-  const bool known = args[1].AsBool(false);
-  if (!known)
-    return new SetChannelMask(args[0].AsClip(), false, 0);
-
-  if (args[2].IsString()) {
-    const char* channelName = args[2].AsString("");
-    unsigned int channelMask = av_get_channel_layout(channelName);
-    if (channelMask == 0)
-      env->ThrowError("SetChannelMask: could not find channel descriptor '%s'\n", channelName);
-    return new SetChannelMask(args[0].AsClip(), true, channelMask);
+  if (args[1].IsString()) {
+    const char* channelName = args[1].AsString("");
+    if (*channelName) {
+      unsigned int channelMask = av_get_channel_layout(channelName);
+      if (channelMask == 0)
+        env->ThrowError("SetChannelMask: could not find channel descriptor/combo '%s'\n", channelName);
+      return new SetChannelMask(args[0].AsClip(), true, channelMask);
+    }
+    // fallthrough, "" given -> unknown
   }
-  else
-    return new SetChannelMask(args[0].AsClip(), true, args[2].AsInt(0));
+  else {
+    const bool known = args[1].AsBool(false);
+    if (known)
+      return new SetChannelMask(args[0].AsClip(), true, args[2].AsInt(0));
+  }
+  return new SetChannelMask(args[0].AsClip(), false, 0);
 }
 
 
