@@ -55,6 +55,7 @@
 #include "../core/internal.h"
 #include "../core/info.h"
 #include "../core/strings.h"
+#include "../core/audio.h"
 
 
 #if defined(AVS_WINDOWS) && !defined(NO_WIN_GDI)
@@ -2309,6 +2310,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     const char* s_parity;
     char text[1024];
     int tlen;
+    std::string chn_layout_str;
 
     if (vii.HasVideo()) {
       c_space = GetPixelTypeName(vii.pixel_type);
@@ -2386,6 +2388,11 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
         , vii.num_audio_samples,
         (aLenInMsecs / (60 * 60 * 1000)), (aLenInMsecs / (60 * 1000)) % 60, (aLenInMsecs / 1000) % 60, aLenInMsecs % 1000
       );
+      if (vi.IsChannelMaskKnown()) {
+        chn_layout_str = channel_layout_to_str(vi.GetChannelMask());
+        tlen += snprintf(text + tlen, sizeof(text) - tlen,
+          "Channel mask: %s\n", chn_layout_str.c_str());
+      }
     }
     else {
       strcpy(text + tlen, "\n");
