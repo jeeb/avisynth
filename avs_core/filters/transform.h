@@ -42,15 +42,6 @@
 ********************************************************************/
 
 
-class FillBorder : public GenericVideoFilter
-{
-public:
-  FillBorder(PClip _clip);
-  static PClip Create(PClip clip);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-};
-
-
 class FlipVertical : public GenericVideoFilter
 /**
   * Class to vertically flip a video
