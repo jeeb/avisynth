@@ -20,10 +20,39 @@ Additions, changes
 - "TimeStretch" (#278) add TimeStretch overload with rational pair arguments and update SoundTouch library to v2.3.1.
 - Enhancement (#315): Show exception message as well if a v2.6-style plugin throws AvisynthError in its ``AvisynthPluginInit3`` instead of only "'xy.dll' cannot be used as a plugin for AviSynth."
 - Fix (#327) Histogram "color2" markers. Fix right shifted 15 degree dots, fix square for bits>8
-- Feature #317: add more resizers:
+- Feature #337: add more resizers
+
   - filters: SinPowerResize, SincLin2Resize, UserDefined2Resize
   - and their equivalent for the ConvertToXXXX family 'chromaresample': "sinpow",  "sinclin2" and "userdefined2"
-- Feature #317: add "param1" and "param2" to ConvertToXXXX where 'chromaresample' exists (b,c,taps and p parameters can be set).
+
+- Feature #337: add "param1" and "param2" to ConvertToXXXX where 'chromaresample' exists (b,c,taps and p parameters can be set).
+- #306: Add ConvertToYUVA420, ConvertToYUVA422 and ConvertToYUVA444
+- Expr: Add remaining stack element count to "Unbalanced stack..." error message
+- Add back audio cache from classic Avisynth 2.6. Handle modes and hints on cache audio:
+  CACHE_AUDIO, CACHE_AUDIO_NOTHING, CACHE_AUDIO_AUTO_START_OFF, CACHE_AUDIO_AUTO_START_ON,
+  CACHE_GETCHILD_AUDIO_MODE and CACHE_GETCHILD_AUDIO_SIZE
+- Set automatic MT mode MT_SERIALIZED to ConvertToMono, EnsureVBRMP3Sync, MergeChannels, GetChannel, Normalize, MixAudio, ResampleAudio
+- Alter default VfW export (e.g. VirtualDub2) channel layout mask for 3 channels (Surround to 2.1), 4 channels (Quad to 4.0) and 6 channels (6.1(back) to 6.1)
+- Add audio channel (speaker layout) support
+
+  - Implemented by using 20 bits from VideoInfo struct image_type flag
+  - Follow layout definition from WAVEFORMATEXTENSIBLE
+  - Add Script functions for audio layout support:
+
+    - bool IsChannelMaskKnown(clip)
+    - int GetChannelMask(clip)
+    - SetChannelMask(clip, bool known, int dwChannelMask)
+    - SetChannelMask(clip, string ChannelDescriptor)
+
+  - Add friendly names for the 18 speaker positions (e.g. "FL" for front left)
+  - Add friendly names for their frequently used combinations (e.g. "stereo" for "FL+FR")
+    to be used in SetChannelMask.
+
+  - GetChannel, GetChannels, MergeChannels: set default channel layout if channel count is 1 to 8
+  - ConvertToMono, GetLeftChannel, GetRightChannel: sets channel layout to "mono"
+  - AudioDub will inherit channel layout setting from the audio clip.
+  - KillAudio calls SetChannelMask(false, 0)
+  - "Info": displays channel mask info in the audio section when exists
 
 Build environment, Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,9 +72,26 @@ Build environment, Interface
 - Fix: C interface crash when using avs_new_video_frame_p(_a)
 - Fix: C interface avs_prop_get_data behave like C++ counterpart. Interface version is dor this fix is 9.2
 - CMakeLists.txt: add support for Intel C++ Compiler 2022
+- CMakeLists.txt: add support for Intel C++ Compiler 2023
 - Bump Interface version. Interface version is 10.0
   AVISYNTH_INTERFACE_VERSION = 10,
   AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 0
+- Address #282: make 32-bit MSVC build to generate both decorated and undecorated export function names for C plugins
+- (v10) Add audio channel support to C++ interface by using 18+2 VideoInfo.image_type bits
+
+  - Check for existence: bool VideoInfo::IsChannelMaskKnown()
+  - Setting: void VideoInfo::SetChannelMask(bool isChannelMaskKnown, unsigned int dwChannelMask)
+  - Retrieving: unsigned int VideoInfo::GetChannelMask()
+  - enums AvsChannelMask and AvsImageTypeFlags 
+
+- (v10) Add audio channel support to C interface
+
+  - Check for existence: bool avs_is_channel_mask_known(const AVS_VideoInfo * p);
+  - Setting: void avs_set_channel_mask(const AVS_VideoInfo * p, bool isChannelMaskKnown, unsigned int dwChannelMask);
+  - Retrieving: unsigned int avs_get_channel_mask(const AVS_VideoInfo * p);
+  - supporting enums
+
+
 
 Bugfixes
 ~~~~~~~~
@@ -60,18 +106,25 @@ Bugfixes
 - Fix (#282): ConvertToRGB
   - do check for exact 8 or 16 bit input, because packed RGB formats exist only for 8 and 16 bits
   - keep alpha for RGBA planar - convert RGBAP8/16 to RGB32/64, while RGBP8/16 is still RGB24/48
+- Fix crash when outputting VfW (e.g. VirtualDub) for YUV422P16, or P10 in Intel SSE2 clang builds
+- Fix Clang build AviSource crash on yuv422p10le UTVideo at specific widths (SSE2 or SSE4.1)
+- Fix: (#340): stop memory leak on propSet / MakePropertyWritable
+- Fix. (#347): possible crash of LLVM builds (clang-cl, Intel NextGen) on pre-AVX (SSE4-only) CPUs.
 
 Optimizations
 ~~~~~~~~~~~~~
+- Enhanced performance in ConvertBits Floyd dither (dither=1) for 10->8, 16->8 and 16->10
 
 Documentation
 ~~~~~~~~~~~~~
 - Internal plugins, syntax, ...: almost fully revised and made up-to-date. Big thanks to Reel-Deal!
+- Update build documentation with 2023 Intel C++ tools. See Compiling Avisynth+ 
+
 
 Please report bugs at `github AviSynthPlus page`_ - or - `Doom9's AviSynth+
 forum`_
 
-$Date: 2023/02/15 10:10:00 $
+$Date: 2023/03/21 10:10:00 $
 
 .. _github AviSynthPlus page:
     https://github.com/AviSynth/AviSynthPlus
