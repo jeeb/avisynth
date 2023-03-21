@@ -244,6 +244,8 @@ converted to 16 bit, since float cannot be passed as valid AVI data.
 - :doc:`TimeStretch <corefilters/timestretch>` This filter can change speed of the sound without changing the
   pitch, and change the pitch of a sound without changing the length of a
   sound.
+- :doc:`SetChannelMask, GetChannelMask, IsChannelMaskKnown <corefilters/setchannelmask>` 
+  This filter help you with setting and getting the audio channel layout of the audio stream.
 
 .. _Meta filters:
 

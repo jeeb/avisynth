@@ -90,6 +90,14 @@ Returns true if the audio format of the clip is an integer type (type: bool).
 
 Returns true if the clip is `RGB`_, false otherwise (type: bool).
 
+-   IsPlanarRGB (clip)
+
+Returns true if the clip is planar RGB, false otherwise (type: bool).
+
+-   IsPlanarRGBA (clip)
+
+Returns true if the clip is planar RGBA, false otherwise (type: bool).
+
 -   IsRGB24 (clip) (v2.07)
 
 Returns true if the clip is `RGB24`_, false otherwise (type: bool).
@@ -98,13 +106,31 @@ Returns true if the clip is `RGB24`_, false otherwise (type: bool).
 
 Returns true if the clip is `RGB32`_, false otherwise (type: bool).
 
+-   IsRGB48 (clip) (Avisynth+)
+
+Returns true if the clip is RGB48, false otherwise (type: bool).
+
+-   IsRGB64 (clip) (Avisynth+)
+
+Returns true if the clip is RGB64, false otherwise (type: bool).
+
 -   IsYUV (clip) (v2.54)
 
 Returns true if the clip is `YUV`_, false otherwise (type: bool).
 
+-   IsYUVA (clip) (Avisynth+)
+
+Returns true if the clip is YUVA (YUV + alpha channel), false 
+otherwise (type: bool).
+
 -   IsY8 (clip) (2.60)
 
 Returns true if the clip is `Y8`_, false otherwise (type: bool).
+
+-   IsY (clip) (Avisynth+)
+
+Returns true if the clip is Y (like Y8, but bit depth independent)
+grey scale, false otherwise (type: bool).
 
 -   IsYUY2 (clip)
 
@@ -114,13 +140,28 @@ Returns true if the clip is `YUY2`_, false otherwise (type: bool).
 
 Returns true if the clip is `YV12`_, false otherwise (type: bool).
 
+-   Is420 (clip) (Avisynth+)
+
+Returns true if the clip is 4:2:0 (like IsYV12, but bit depth 
+independently), false otherwise (type: bool).
+
 -   IsYV16 (clip) (v2.60)
 
 Returns true if the clip is `YV16`_, false otherwise (type: bool).
 
+-   Is422 (clip) (Avisynth+)
+
+Returns true if the clip is 4:2:2 (like Is YV16, but bit depth
+independently), false otherwise (type: bool).
+
 -   IsYV24 (clip) (v2.60)
 
 Returns true if the clip is `YV24`_, false otherwise (type: bool).
+
+-   Is444 (clip) (Avisynth+)
+
+Returns true if the clip is 4:4:4 (like IsYV24, but bit depth
+independently), false otherwise (type: bool).
 
 -   IsYV411 (clip) (v2.60)
 
@@ -162,11 +203,51 @@ Returns true if the clip has audio, false otherwise (type: bool).
 
 Returns true if the clip has video, false otherwise (type: bool).
 
+-   HasVideo (clip) (v2.56)
+
+Returns true if the clip has video, false otherwise (type: bool).
+
+-   ComponentSize (clip) (Avisynth+)
+
+Returns 1 for 8 bit, 2 for 10-16 bits, 4 for 32 bit float pixel 
+formats (type: int).
+
+-   BitsPerComponent (clip) (Avisynth+)
+
+Returns 8, 10, 12, 14, 16 or 32: the actual bit depth of the video format
+(type: int).
+
+-   NumComponents (clip) (Avisynth+)
+
+Returns 1 for greyscale, 3 for alpha-less RGB and YUV formats, 4 for formats
+with alpha channel: YUVA, planar RGBA, RGB32 or RGB64 (type: int).
+
+-   HasAlpha (clip) (Avisynth+)
+
+Returns true if video format has alpha channel (type: bool).
+
+-   IsPackedRGB (clip) (Avisynth+)
+
+Returns true if video format is one of the packed (not planar) RGB formats:
+RGB24, RGB32, RGB48 or RGB64 (type: bool).
+
+-   IsChannelMaskKnown (clip) (Avisynth+ v3.7.3)
+
+Returns true if the clip has audio channel mask defined (type: bool).
+
+-   GetChannelMask (clip) (Avisynth+ v3.7.3)
+
+Returns the channel mask (a 32 bit number), if audio channel mask is 
+defined, 0 otherwise. Channel mask bits - speaker bits - follow
+WAVE_FORMAT_EXTENSIBLE dwChannelMask speaker position definitions, see
+https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveformatextensible
+(type: int)
+
 --------
 
 Back to :doc:`AviSynth Syntax <syntax_ref>`.
 
-$Date: 2013/01/06 13:38:34 $
+$Date: 2023/03/21 13:56:00 $
 
 .. _rgb: http://avisynth.org/mediawiki/RGB
 .. _rgb24: http://avisynth.org/mediawiki/RGB24

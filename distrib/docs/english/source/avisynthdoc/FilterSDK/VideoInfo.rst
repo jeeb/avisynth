@@ -261,7 +261,7 @@ Properties and constants
     };
 
 
-**Image_type properties and constants:**
+**Image_type and audio channel layout properties and constants:**
 ::
 
     int image_type;
@@ -270,6 +270,36 @@ Properties and constants
       IT_BFF        = 1 << 0,
       IT_TFF        = 1 << 1,
       IT_FIELDBASED = 1 << 2
+      
+      // Audio channel mask support
+      IT_HAS_CHANNELMASK = 1 << 3,
+      // shifted by 4 bits compared to WAVEFORMATEXTENSIBLE dwChannelMask
+      // otherwise same as AvsChannelMask
+      IT_SPEAKER_FRONT_LEFT = 0x1 << 4,
+      IT_SPEAKER_FRONT_RIGHT = 0x2 << 4,
+      IT_SPEAKER_FRONT_CENTER = 0x4 << 4,
+      IT_SPEAKER_LOW_FREQUENCY = 0x8 << 4,
+      IT_SPEAKER_BACK_LEFT = 0x10 << 4,
+      IT_SPEAKER_BACK_RIGHT = 0x20 << 4,
+      IT_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40 << 4,
+      IT_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80 << 4,
+      IT_SPEAKER_BACK_CENTER = 0x100 << 4,
+      IT_SPEAKER_SIDE_LEFT = 0x200 << 4,
+      IT_SPEAKER_SIDE_RIGHT = 0x400 << 4,
+      IT_SPEAKER_TOP_CENTER = 0x800 << 4,
+      IT_SPEAKER_TOP_FRONT_LEFT = 0x1000 << 4,
+      IT_SPEAKER_TOP_FRONT_CENTER = 0x2000 << 4,
+      IT_SPEAKER_TOP_FRONT_RIGHT = 0x4000 << 4,
+      IT_SPEAKER_TOP_BACK_LEFT = 0x8000 << 4,
+      IT_SPEAKER_TOP_BACK_CENTER = 0x10000 << 4,
+      IT_SPEAKER_TOP_BACK_RIGHT = 0x20000 << 4,
+      // End of officially defined speaker bits
+      // The next one is special, since cannot shift SPEAKER_ALL 0x80000000 further.
+      // Set mask and get mask handles it.
+      IT_SPEAKER_ALL = 0x40000 << 4,
+      // Mask for the defined 18 bits + SPEAKER_ALL
+      IT_SPEAKER_BITS_MASK = (AvsChannelMask::MASK_SPEAKER_DEFINED << 4) | IT_SPEAKER_ALL,
+      IT_NEXT_AVAILABLE = 1 << 23
     };
 
 
@@ -716,28 +746,28 @@ AudioSamplesFromFrames / FramesFromAudioSamples / AudioSamplesFromBytes / BytesF
 
 ::
 
-    __int64 AudioSamplesFromFrames(__int64 frames);
+    int64_t AudioSamplesFromFrames(int64_t frames);
 
 
 This returns the number of audiosamples from the first *frames* frames.
 
 ::
 
-    int FramesFromAudioSamples(__int64 samples);
+    int FramesFromAudioSamples(int64_t samples);
 
 
 This returns the number of frames from the first *samples* audiosamples.
 
 ::
 
-    __int64 AudioSamplesFromBytes(__int64 bytes);
+    int64_t AudioSamplesFromBytes(int64_t bytes);
 
 
 This returns the number of audiosamples from the first *bytes* bytes.
 
 ::
 
-    __int64 BytesFromAudioSamples(__int64 samples);
+    int64_t BytesFromAudioSamples(int64_t samples);
 
 
 This returns the number of bytes from the first *samples* audiosamples.
@@ -745,6 +775,44 @@ This returns the number of bytes from the first *samples* audiosamples.
 There is some other useful information in VideoInfo structure
 (audio_samples_per_second, sample_type, num_audio_samples and nchannels). See
 'avisynth.h' header file.
+
+IsChannelMaskKnown / SetChannelMask / GetChannelMask (Avisynth+ 3.7.3)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+    bool IsChannelMaskKnown();
+
+This returns if channel layout info is set or not.
+
+
+::
+
+    void SetChannelMask(bool isChannelMaskKnown, unsigned int dwChannelMask);
+
+This sets the channel layout validity and the layout mask.
+
+Validity bit occupies the 3rd bit of image_type (starting from 0).
+Actual mask is stored on 4-21 bits, "speaker all" case is on bit 22.
+
+Note that this mask is stuffed into 'image_type', which had already some
+bits used in it.
+
+The given value thus will be stored differently: shifted by 4 bits, while special 
+0x80000000 "speaker all" case is handled on a separate bit. Valid dwChannelMask values are 
+using 0-17 lsb bits, or is set to 0x80000000 to mask "speaker all".
+
+Input bit mask is following the specification of WAVE_FORMAT_EXTENSIBLE speaker bits.
+See https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveformatextensible)
+
+
+::
+
+    unsigned int GetChannelMask();
+
+Returns the channel mask (same as it was set by SetChannelMask) if mask is valid, 0 otherwise.
+
+
 
 
 NumComponents (AviSynth+)

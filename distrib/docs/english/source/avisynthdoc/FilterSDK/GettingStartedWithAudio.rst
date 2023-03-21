@@ -3,7 +3,7 @@ Getting started with audio
 ==========================
 
 The best filters to take a look at if you are searching for a way to get
-started with an audio filter is the `internal audio filters`_ of AviSynth.
+started with an audio filter is the internal audio filters of AviSynth.
 Mainly `audio.cpp`_ is interesting.
 
 Basically you override GetAudio(...) instead of GetFrame, and fill the buffer
@@ -112,10 +112,8 @@ __________________________________________________________________
 
 Back to :doc:`FilterSDK`
 
-$Date: 2015/09/14 20:23:59 $
+$Date: 2023/03/21 14:46:51 $
 
-.. _internal audio filters:
-    http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/
-.. _audio.cpp: http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/audio.cpp?view=markup
-.. _ConvertAudio.cpp: http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/convertaudio.cpp?view=markup
+.. _audio.cpp: https://github.com/AviSynth/AviSynthPlus/blob/master/avs_core/core/audio.cpp
+.. _ConvertAudio.cpp: https://github.com/AviSynth/AviSynthPlus/blob/master/avs_core/convert/convert_audio.cpp
 .. _discussion here: http://forum.doom9.org/showthread.php?s=&threadid=72760&highlight=ConvertAudiohere

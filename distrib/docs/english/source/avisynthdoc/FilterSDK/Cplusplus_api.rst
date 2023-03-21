@@ -405,42 +405,6 @@ AlignPlanar filters needs to be applied on all frames when using
 AviSource.
 
 
-.. _cplusplus_fillborder:
-
-FillBorder
-~~~~~~~~~~
-
-::
-
-    FillBorder(PClip _clip);
-
-
-This function fills up the right side of the picture on planar images
-with duplicates of the rightmost pixel if the planes are not aligned.
-That is, if src->GetRowSize(PLANAR_Y) !=
-src->GetRowSize(PLANAR_Y_ALIGNED).
-
-
-.. _cplusplus_convertaudio:
-
-ConvertAudio
-~~~~~~~~~~~~
-
-::
-
-    ConvertAudio(PClip _clip, int prefered_format);
-
-
-ConvertAudio converts the sample type of the audio to one of the
-following sample types: SAMPLE_INT8 (8 bits), SAMPLE_INT16 (16 bits),
-SAMPLE_INT24 (24 bits), SAMPLE_INT32 (32 bits) or SAMPLE_FLOAT (float).
-
-The following example converts the sample type of the clip child to
-SAMPLE_INT16 (16 bit) if the input isn't 16 bit.
-::
-
-    ConvertAudio(child, SAMPLE_INT16);
-
 
 .. _cplusplus_iscriptenvironment:
 
