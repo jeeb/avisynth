@@ -701,13 +701,13 @@ AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* ) { return args[0].
 AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* ) { return int(unsigned(args[0].AsInt()) >> unsigned(args[1].AsInt())); }
 AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* ) { return args[0].AsInt() >> args[1].AsInt(); }
 
-static int a_rol(int value, int shift) {
+static unsigned int a_rol(unsigned int value, int shift) {
   if ((shift &= sizeof(value)*8 - 1) == 0)
       return value;
   return (value << shift) | (value >> (sizeof(value)*8 - shift));
 }
 
-static int a_ror(int value, int shift) {
+static unsigned int a_ror(unsigned int value, int shift) {
   if ((shift &= sizeof(value)*8 - 1) == 0)
       return value;
   return (value >> shift) | (value << (sizeof(value)*8 - shift));
@@ -732,8 +732,8 @@ static bool a_bt (int value, int bit) {
   return (value & (1 << bit)) ? true : false;
 }
 
-AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* ) { return a_rol(args[0].AsInt(), args[1].AsInt()); }
-AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* ) { return a_ror(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* ) { return (int)a_rol((unsigned int)args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* ) { return (int)a_ror((unsigned int)args[0].AsInt(), args[1].AsInt()); }
 
 AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* ) { return a_btc(args[0].AsInt(), args[1].AsInt()); }
 AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* ) { return a_btr(args[0].AsInt(), args[1].AsInt()); }
