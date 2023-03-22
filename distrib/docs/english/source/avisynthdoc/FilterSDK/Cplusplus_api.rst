@@ -9,7 +9,7 @@ a plugin. All external plugins should #include it:
     #include "avisynth.h"
 
 Note, sometimes there is a reference to a version number of the plugin
-api (for example v3, v6, v8). This refers to the value of
+api (for example v3, v6, v8, v10). This refers to the value of
 :doc:`AVISYNTH_INTERFACE_VERSION <AviSynthInterfaceVersion>`. The
 classes and miscellaneous constants are described below.
 
@@ -2168,7 +2168,6 @@ Note that although 'l'ong and 'd'ouble are defined, 64 bit data is not
       VALUE_TYPE_FUNCTION = 'n',
       VALUE_TYPE_ARRAY = 'a'
     };
-
 
 
 .. _cplusplus_structures:

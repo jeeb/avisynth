@@ -6,11 +6,11 @@ You must have some compatible development tool
 ----------------------------------------------
 
 - Historically there were Microsoft Visual C/C++ 9 (2008), 10 (2010),
-  11 (2012), 12 (2013) and 14 (2017) versions.
+  11 (2012), 12 (2013), 14 (2017), 15 (2019) versions.
 - Actual source requires c++ 17. (or c++1z for gcc 7.0)
 - Microsoft compilers:
 
-  As of December 2021 the latest one is Microsoft Visual C++ 2022 (v16) and 
+  As of March 2023 the latest one is Microsoft Visual C++ 2022 (v16) and 
   Microsoft Visual C++ 2019 (v15)
 
   Community Edition is free for open source development.
@@ -20,11 +20,11 @@ You must have some compatible development tool
   Both 2019 and 2022 versions still support Windows XP when you include Visual Studio 2017 XP (v141_xp) platform toolset in the customized installation.
   (Though user must not update their VC++ redistributables after a specific version point, when XP support has been stopped)
   
-- Intel ICX NextGen 2021.4 or ICL 2021.4 (19.2 Classic)
+- Intel ICX NextGen 2023, 2021.4 or ICL 2021.4 (19.2 Classic)
 
   You need either or both Intel C++ compiler engine:
   
-  - Intel C++ 2021 (ICX: LLVM based NextGen) in Base Kit
+  - Intel C++ 2021 or 2023 (ICX: LLVM based NextGen) in Base Kit
   
     Intel oneAPI Base Kit `download <https://www.intel.com/content/www/us/en/developer/articles/news/free-intel-software-developer-tools.html>`__
 
@@ -120,6 +120,9 @@ From AviSynth+ version 3.7.1.test.32 new interface functions arrived
 ``AVISYNTH_INTERFACE_VERSION = 8`` ``AVISYNTH_INTERFACE_BUGFIX = 1``
 or ``AVISYNTH_INTERFACE_VERSION = 9``
 
+From AviSynth+ version 3.7.3 new interface functions arrived
+``AVISYNTH_INTERFACE_VERSION = 10``
+
 Generally good start is to take some similar plugin source code as a draft
 for improving or own development. Attention: there are many old plugins
 source code packages with older avisynth.h included. Simply replace it by new one.
@@ -134,7 +137,7 @@ multi-threaded DLL (MD)) without MFC. Latter is recommended in general and
 requires the actual Microsoft Visual C++ redistributables.
 
 In Visual Studio Windows XP builds require v141_xp platform toolset 
-(Visual Studio 2019's default is v142) along 
+(Visual Studio 2022's default is v143, Visual Studio 2019's default is v142) along 
 with compiler option /Zc:threadSafeInit-
 
 Note that GCC and the other builds cannot be mixed due to the different ABI.
@@ -173,7 +176,7 @@ language) by SAPikachu, see `discussion`_
 
 Back to :doc:`FilterSDK <FilterSDK>`
 
-$Date: 2020/04/22 06:08:10 $
+$Date: 2023/03/22 16:54:10 $
 
 .. _[1]:
    http://www.google.nl/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&ved=0CCoQFjAA&url=http://go.microsoft.com/?linkid=7729279&ei=HfWhUuTjL8Og0wW7wYDwBw&usg=AFQjCNEulTGchEeozkLGRH8LZELiTKlC5A&sig2=Mi7Rwn_jNL5Qffi7LiGS3w&bvm=bv.57752919,d.d2k

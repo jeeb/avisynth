@@ -321,7 +321,10 @@ What's new in the API V10
         - Added ``AvsValueType`` enum for the above case to avisynth.h
         - Added DEFAULT_PLANE and AVS_DEFAULT_PLANE to plane enum (avisynth.h, avisynth_c.h)
         - Gave all enums of public C++ API a name (avisynth.h): AvsVersion, AvsSampleType, AvsPlane, AvsColorFormat, AvsImageTypeFlags, AvsChromaPlacement
-        - prop_src argument of :ref:`NewVideoFrameP <cplusplus_newvideoframep>` (avs_new_video_frame_p) is now const
+        - prop_src argument of :ref:`NewVideoFrameP <cplusplus_newvideoframep>` (c++) and of 'avs_new_video_frame_p' (c) is now const
+        - New: :ref:`VideoInfo::GetChannelMask <videoinfo_getchannelmask>` (c++) and 'avs_get_channel_mask' (c) Audio channel layout support. returns the channel mask stored in VideoInfo struct
+        - New: :ref:`VideoInfo::SetChannelMask <videoinfo_setchannelmask>` (c++) and 'avs_set_channel_mask' Audio channel layout support. sets the validity and the layout mask value into VideoInfo
+        - New: :ref:`VideoInfo::IsChannelMaskKnown <videoinfo_ischannelmaskknown>` (c++) and 'avs_is_channel_mask_known' (c) Audio channel layout support. Returns if clip has valid channel mask in its VideoInfo
 
 Some history
 ------------
@@ -350,7 +353,10 @@ License terms
 
 Note: Avisynth Filter SDK parts are under specific :doc:`SDK license <SDKLicense>` terms.
 
-$Date: 2020/04/22 20:23:59 $
+$Date: 2023/03/22 20:23:11 $
+
+Latest online Avisynth+ version is at https://avisynthplus.readthedocs.io/en/latest/avisynthdoc/FilterSDK/FilterSDK.html
+This one is maintained properly.
 
 Latest online mediaWiki version is at http://avisynth.nl/Filter_SDK
 

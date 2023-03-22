@@ -776,6 +776,10 @@ There is some other useful information in VideoInfo structure
 (audio_samples_per_second, sample_type, num_audio_samples and nchannels). See
 'avisynth.h' header file.
 
+.. _videoinfo_getchannelmask:
+.. _videoinfo_setchannelmask:
+.. _videoinfo_ischannelmaskknown:
+
 IsChannelMaskKnown / SetChannelMask / GetChannelMask (Avisynth+ 3.7.3)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -812,7 +816,59 @@ See https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveforma
 
 Returns the channel mask (same as it was set by SetChannelMask) if mask is valid, 0 otherwise.
 
+**Channel layout mask constants**
 
+avisynth.h and avisynth_c.h contain the mask bit descriptions. In the actual layout they are or'd together.
+The AvsChannelMask enum values are the channel mask constants similar to  
+WAVE_FORMAT_EXTENSIBLE speaker bits. 18 bits starting from MASK_SPEAKER_FRONT_LEFT to MASK_SPEAKER_TOP_BACK_RIGHT.
+
++------------------------------------+----------------------+
+| MASK_SPEAKER_FRONT_LEFT            | 0x1                  |
++------------------------------------+----------------------+
+| MASK_SPEAKER_FRONT_RIGHT           | 0x2                  |
++------------------------------------+----------------------+
+| MASK_SPEAKER_FRONT_CENTER          | 0x4                  |
++------------------------------------+----------------------+
+| MASK_SPEAKER_LOW_FREQUENCY         | 0x8                  |
++------------------------------------+----------------------+
+| MASK_SPEAKER_BACK_LEFT             | 0x10                 |
++------------------------------------+----------------------+
+| MASK_SPEAKER_BACK_RIGHT            | 0x20                 |
++------------------------------------+----------------------+
+| MASK_SPEAKER_FRONT_LEFT_OF_CENTER  | 0x40                 |
++------------------------------------+----------------------+
+| MASK_SPEAKER_FRONT_RIGHT_OF_CENTER | 0x80                 |
++------------------------------------+----------------------+
+| MASK_SPEAKER_BACK_CENTER           | 0x100                |
++------------------------------------+----------------------+
+| MASK_SPEAKER_SIDE_LEFT             | 0x200                |
++------------------------------------+----------------------+
+| MASK_SPEAKER_SIDE_RIGHT            | 0x400                |
++------------------------------------+----------------------+
+| MASK_SPEAKER_TOP_CENTER            | 0x800                |
++------------------------------------+----------------------+
+| MASK_SPEAKER_TOP_FRONT_LEFT        | 0x1000               |
++------------------------------------+----------------------+
+| MASK_SPEAKER_TOP_FRONT_CENTER      | 0x2000               |
++------------------------------------+----------------------+
+| MASK_SPEAKER_TOP_FRONT_RIGHT       | 0x4000               |
++------------------------------------+----------------------+
+| MASK_SPEAKER_TOP_BACK_LEFT         | 0x8000               |
++------------------------------------+----------------------+
+| MASK_SPEAKER_TOP_BACK_CENTER       | 0x10000              |
++------------------------------------+----------------------+
+| MASK_SPEAKER_TOP_BACK_RIGHT        | 0x20000              |
++------------------------------------+----------------------+
+| MASK_SPEAKER_DEFINED               | 0x0003FFFF           |
++------------------------------------+----------------------+
+| MASK_SPEAKER_RESERVED              | 0x7FFC0000           |
++------------------------------------+----------------------+
+| MASK_SPEAKER_ALL                   | 0x80000000           |
++------------------------------------+----------------------+
+
+In the actual storage, in VideoInfo::image_type, they are shifted by 4 bits, except MASK_SPEAKER_ALL,
+which is handled specially, due to lack of available bits.
+See VideoInfo::AvsImageTypeFlags enum in Avisynth.h .
 
 
 NumComponents (AviSynth+)
