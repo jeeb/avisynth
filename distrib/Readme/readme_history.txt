@@ -5,8 +5,10 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230318 3.7.3 WIP
+20230322 3.7.3 WIP
 ------------------
+- Fix #348 bitrol/bitror functions return incorrect results when first argument is negative.
+  Regression since the asm code of Avisynth 2.6 classic was ported to C in Avisynth+ project.
 - "Info": if channel mask exists, then 
   - its friendly name
   - otherwise the number of channels and the channel combinations
@@ -38,7 +40,7 @@ The "rst" version of the documentation just lists changes in brief.
     SetChannelMask(clip, string ChannelDescriptor) (parameters compulsory, no names must be set) (test10)
 
   Accepts predefined channel string or channel layout names or their combination, in ffmpeg style.
-  Unlike ffmpeg, numerical indexes or channel counts are not allowed.
+  Numerical indexes or channel counts are not allowed.
   String is case sensitive!
   E.g. "stereo+LFE+TC" or "FL+LR" or "5.1(side)"
     "mono",
@@ -149,7 +151,7 @@ The "rst" version of the documentation just lists changes in brief.
        bool IsChannelMaskKnown(clip)
        int GetChannelMask(clip)
        SetChannelMask(clip, bool known, int dwChannelMask) (parameters compulsory, no names must be set)
-       SetChannelMask(clip, bool known, string ChannelDescriptor) (parameters compulsory, no names must be set) (test10)
+       SetChannelMask(clip, string ChannelDescriptor) (parameters compulsory, no names must be set) (test10)
        dwChannelMask must contain the combination of up to 18 positions or 0x80000000 for SPEAKER_ALL.
 
    VfW export rules (included the existing sequence)

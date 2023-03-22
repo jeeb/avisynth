@@ -109,7 +109,8 @@ Bugfixes
 - Fix crash when outputting VfW (e.g. VirtualDub) for YUV422P16, or P10 in Intel SSE2 clang builds
 - Fix Clang build AviSource crash on yuv422p10le UTVideo at specific widths (SSE2 or SSE4.1)
 - Fix: (#340): stop memory leak on propSet / MakePropertyWritable
-- Fix. (#347): possible crash of LLVM builds (clang-cl, Intel NextGen) on pre-AVX (SSE4-only) CPUs.
+- Fix: (#347): possible crash of LLVM builds (clang-cl, Intel NextGen) on pre-AVX (SSE4-only) CPUs.
+- Fix: (#348): bitrol/bitror script functions return incorrect results when argument is negative (regression since ported from Avisynth 2.6 to plus)
 
 Optimizations
 ~~~~~~~~~~~~~
