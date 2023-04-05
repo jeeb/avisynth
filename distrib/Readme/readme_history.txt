@@ -7,6 +7,7 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230322 3.7.3 WIP
 ------------------
+- Reject BlankClip() length values less than one.
 - Fix #348 bitrol/bitror functions return incorrect results when first argument is negative.
   Regression since the asm code of Avisynth 2.6 classic was ported to C in Avisynth+ project.
 - "Info": if channel mask exists, then 
