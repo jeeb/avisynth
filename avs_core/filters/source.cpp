@@ -433,7 +433,12 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
     vi_default.num_frames = int((vi_default.num_audio_samples * vi.fps_numerator + denom - 1) / denom); // ceiling
   }
 
-  vi.num_frames = args[1].AsInt(vi_default.num_frames);
+  // BlankClip(length=0) shouldn't be treated as valid
+  // Negative lengths also shouldn't be accepted
+  if (args[1].AsInt(vi_default.num_frames) < 1)
+    env->ThrowError("BlankClip() length must be greater than 0 frames!");
+  else
+    vi.num_frames = args[1].AsInt(vi_default.num_frames);
 
   vi.width++; // cheat HasVideo() call for Audio Only clips
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
