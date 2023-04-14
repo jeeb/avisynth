@@ -58,7 +58,7 @@
 #include <algorithm>
 #include <string>
 
-static ResamplingFunction* getResampler( const char* resampler, AVSValue param1, AVSValue param2, IScriptEnvironment* env);
+static ResamplingFunction* getResampler( const char* resampler, AVSValue param1, AVSValue param2, AVSValue param3, IScriptEnvironment* env);
 
 template <typename pixel_t>
 void fill_chroma(uint8_t * dstp_u, uint8_t * dstp_v, int height, int pitch, pixel_t val)
@@ -1145,7 +1145,7 @@ AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironm
 ConvertToPlanarGeneric::ConvertToPlanarGeneric(
   PClip src, int dst_space, bool interlaced,
   int _ChromaLocation_In, 
-  const AVSValue& chromaResampler, const AVSValue& param1, const AVSValue& param2,
+  const AVSValue& chromaResampler, const AVSValue& param1, const AVSValue& param2, const AVSValue& param3,
   int _ChromaLocation_Out,
   IScriptEnvironment* env) : 
   GenericVideoFilter(src), ChromaLocation_In(_ChromaLocation_In), ChromaLocation_Out(_ChromaLocation_Out)
@@ -1341,7 +1341,7 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(
   int uv_width  = vi.width  >> vi.GetPlaneWidthSubsampling(PLANAR_U);
   int uv_height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-  ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), param1, param2, env);
+  ResamplingFunction *filter = getResampler(chromaResampler.AsString("bicubic"), param1, param2, param3, env);
 
   bool P = !lstrcmpi(chromaResampler.AsString(""), "point");
 
@@ -1458,11 +1458,11 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
     const bool keep_packedrgb_alpha = to_yuva && (vi.IsRGB32() || vi.IsRGB64());
     if (vi.IsRGB48() || vi.IsRGB64()) {
       // we convert to intermediate PlanarRGB, RGB48/64->YUV444 is slow C, planarRGB  is fast
-      AVSValue new_args[7] = { clip, AVSValue(), AVSValue(), AVSValue(), AVSValue(), AVSValue(), AVSValue() };
-      // clip, matrix,  interlaced, chromainplacement, chromaresample, param1, param2
+      AVSValue new_args[8] = { clip, AVSValue(), AVSValue(), AVSValue(), AVSValue(), AVSValue(), AVSValue(), AVSValue() };
+      // clip, matrix,  interlaced, chromainplacement, chromaresample, param1, param2, param3
       // convert to planar RGBA only if RGB64 and target is YUVA (need to keep alpha)
       const intptr_t planar_rgb_type = keep_packedrgb_alpha ? -2 : -1;
-      clip = ConvertToRGB::Create(AVSValue(new_args, 7), (void *)planar_rgb_type, env).AsClip();
+      clip = ConvertToRGB::Create(AVSValue(new_args, 8), (void *)planar_rgb_type, env).AsClip();
       vi = clip->GetVideoInfo();
     }
 
@@ -1509,15 +1509,18 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
 
   AVSValue param1;
   AVSValue param2;
+  AVSValue param3;
   if (to_420 || to_422) {
     // ChromaOutPlacement parameter is valid
     chromaloc_parse_merge_with_props(vi, args[5].AsString(nullptr), nullptr, /* ref*/ChromaLocation_Out, ChromaLocation_e::AVS_CHROMA_LEFT /*default*/, env);
     param1 = args[6];
     param2 = args[7];
+    param3 = args[8];
   }
   else {
     param1 = args[5];
     param2 = args[6];
+    param3 = args[7];
   }
 
 
@@ -1615,7 +1618,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   // ConvertToPlanarGeneric's GetFrame will recognize if alpha copy or fill-with-defaults needed
   return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), ChromaLocation_In, 
     args[4], // chromaresample
-    param1, param2,
+    param1, param2, param3,
     ChromaLocation_Out, env);
 }
 
@@ -1685,7 +1688,7 @@ static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
 */
 
 
-static ResamplingFunction* getResampler(const char* resampler, AVSValue param1, AVSValue param2, IScriptEnvironment* env) {
+static ResamplingFunction* getResampler(const char* resampler, AVSValue param1, AVSValue param2, AVSValue param3, IScriptEnvironment* env) {
   if (resampler) {
     if (!lstrcmpi(resampler, "point"))
       return new PointFilter();
@@ -1714,7 +1717,7 @@ static ResamplingFunction* getResampler(const char* resampler, AVSValue param1, 
     else if (!lstrcmpi(resampler, "sinclin2"))
       return new SincLin2Filter((int)param1.AsFloat(15)); // optional Taps= as param1
     else if (!lstrcmpi(resampler, "userdefined2"))
-      return new UserDefined2Filter(param1.AsDblDef(121.0), param2.AsDblDef(19.0)); // optional B and C as param1 and param2
+      return new UserDefined2Filter(param1.AsDblDef(121.0), param2.AsDblDef(19.0), param3.AsDblDef(2.3)); // optional B and C and S as param1, param2, param3
     else
       env->ThrowError("Convert: Unknown chroma resampler, '%s'", resampler);
   }

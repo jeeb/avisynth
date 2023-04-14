@@ -493,8 +493,8 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
   if (clip->GetVideoInfo().IsYUY2())
     return clip;
 
-  // chromain, chromaresample, param1, param2
-  const bool haveOpts = args[3].Defined() || args[4].Defined() || args[5].Defined() || args[6].Defined();
+  // chromain, chromaresample, param1, param2, param3
+  const bool haveOpts = args[3].Defined() || args[4].Defined() || args[5].Defined() || args[6].Defined() || args[7].Defined();
 
   if (clip->GetVideoInfo().BitsPerComponent() != 8) {
     env->ThrowError("ConvertToYUY2: only 8 bit sources are supported");
@@ -503,8 +503,8 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
   if (clip->GetVideoInfo().IsPlanar()) {
     if (haveOpts || !clip->GetVideoInfo().IsYV12()) {
       // We have no direct conversions. Go to YV16.
-      AVSValue new_args[7] = { clip, args[1], args[2], args[3], args[4], args[5], args[6]};
-      clip = ConvertToPlanarGeneric::CreateYUV422(AVSValue(new_args, 7), (void *)0,  env).AsClip(); // (void *)0: restricted to 8 bits
+      AVSValue new_args[8] = { clip, args[1], args[2], args[3], args[4], args[5], args[6], args[7] };
+      clip = ConvertToPlanarGeneric::CreateYUV422(AVSValue(new_args, 8), (void *)0,  env).AsClip(); // (void *)0: restricted to 8 bits
     }
   }
 
@@ -512,7 +512,7 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
     return new ConvertYV16ToYUY2(clip,  env);
 
   if (haveOpts)
-    env->ThrowError("ConvertToYUY2: ChromaPlacement, ChromaResample, param1 and param2 options are not supported.");
+    env->ThrowError("ConvertToYUY2: ChromaPlacement, ChromaResample, param1, param2 or param3 options are not supported.");
 
   const bool i=args[1].AsBool(false);
   return new ConvertToYUY2(clip, false, i, args[2].AsString(0), env);
