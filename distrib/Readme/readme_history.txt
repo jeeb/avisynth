@@ -7,6 +7,31 @@ The "rst" version of the documentation just lists changes in brief.
 
 20230414 3.7.3 WIP
 ------------------
+- UserDefined2Resize got an 's' parameter (to the existing b and c): support, default value = 2.3
+  (following DTL2020's addition in jpsdr's MT resizer repo, UserDefined2ResizeMT filter)
+  
+  Now, as we have already three variable parameters to the optional chroma resamplers in ConvertToXX 
+  converters, ConvertToXX family got a new float 'param3' parameter which is passed to UV resizer as 
+  's', if "userdefined2" is specified as chroma resampler.
+  If param3 is not used in a resizer but is defined, then it is simply ignored.
+  Such as "ConvertToYV24" parameter signature: c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[param1]f[param2]f[param3]f
+  e.g.: ConvertToYV24(chromaresample="userdefined2", param1=126, param2=22, param3=2.25)
+  
+  see also description at **test6**, which was updated with this parameter as well.
+  
+  s (support) param - controls the 'support' of filter to use by resampler engine. Float value in valid range from
+  1.5 to 15. Default 2.3. It allows to fine tune resampling result between partially non-linear but more sharper and less
+  residual ringing (at low b and c values) and more linear processing with wider 'peaking' used. Setting too high 
+  in common use cases (about > 5) may visibly degrade resampler performance (fps) without any visible output changes.
+  Recommended adjustment range - between 2 and 3.
+  
+  Examples: 
+  b=126 c=22 - medium soft, almost no ringing.
+  b=102 c=2 - sharper, small local peaking.
+  b=70 c=-30 s=2 - sharper, thinner 'peaking'.
+  b=70 c=-30 s=2.5 - a bit softer, more thick 'peaking'. 
+  b=82 c=20 - sharp but lots of far ringing. Not for using.
+
 - Fix #350 ConvertXXX to accept YV411 clip's frame property _ChromaLocation set to 'left' 
   (and 'topleft' and 'bottomleft' which give the same result) instead of giving an error message.
 - Reject BlankClip() length values less than one.
@@ -257,23 +282,26 @@ The "rst" version of the documentation just lists changes in brief.
   parameters like SincFilter or LanczosFilter: optional "taps"
   Default taps=15
   
-  UserDefined2Resize "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f"
-  parameters like BicubicResize: Optional "b" and "c"
-  Default b=121.0, c=19.0
+  UserDefined2Resize "cii[b]f[c]f[s]f[src_left]f[src_top]f[src_width]f[src_height]f"
+  parameters like BicubicResize, plus an 's' - support: Optional "b", "c" and "s"
+  Default b=121.0, c=19.0, s=2.3
+  ("s" parameter is available from 3.7.3 test10)
   
   and their equivalent for the ConvertToXXXX family:
   "sinpow",  "sinclin2" and "userdefined2"
 
-  - Add "param1" and "param2" to ConvertToXXXX where "chromaresample" parameter exists.
+  - Add "param1", "param2" and "param3" (since test10) to ConvertToXXXX where "chromaresample" parameter exists.
   Now it is possible to use chromaresample with nondefault settings.
   
   param1 will set 'taps', 'b', or 'p', while param2 sets 'c' parameter for resizers where applicable.
+  param3 (since test10) sets 's' parameter for userdefined2 (UserDefined2Resize)
 
-  b,c: bicubic (1/3.0, 1/3.0), userdefined2 (121.0, 19.0)
+  b,c: bicubic (1/3.0, 1/3.0)
+  b,c,s: userdefined2 (121.0, 19.0, 2.3)
   taps: lanczos (3), blackman (4), sinc (4), sinclin2 (15)
   p: gauss (30.0), sinpow (2.5)
-  'param1' and 'param2' are always float. For 'taps' 'param1' is truncated to integer internally.
-  When a resizer does not use parameters they are simply ignored.
+  'param1', 'param2' and "param3" are always float. For 'taps' 'param1' is truncated to integer internally.
+  When a resizer does not use one or more parameters they are simply ignored.
 
 **test5**
 - Add avs_video_frame_get_pixel_type and avs_video_frame_amend_pixel_type to C interface as well 
