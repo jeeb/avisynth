@@ -1246,8 +1246,19 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(
       env->ThrowError("Convert: not supported ChromaPlacement for 4:2:2 input.");
     }
   }
+  else if (vi.IsYV411()) {
+    if (ChromaLocation_In >= 0
+      && ChromaLocation_In != ChromaLocation_e::AVS_CHROMA_TOP_LEFT
+      && ChromaLocation_In != ChromaLocation_e::AVS_CHROMA_LEFT
+      && ChromaLocation_In != ChromaLocation_e::AVS_CHROMA_BOTTOM_LEFT
+      )
+    {
+      // if given, only the 'left'-ish versions are accepted, this is how it is treated
+      env->ThrowError("Convert: not supported ChromaPlacement for 4:1:1 input. Only 'left'-style is allowed if given.");
+    }
+  }
   else if (ChromaLocation_In >= 0)
-    env->ThrowError("Convert: Input ChromaPlacement only available with 4:2:0 or 4:2:2 sources.");
+    env->ThrowError("Convert: Input ChromaPlacement is invalid for this format.");
 
   const int xsIn = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
   const int ysIn = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -1484,7 +1495,7 @@ AVSValue ConvertToPlanarGeneric::Create(AVSValue& args, const char* filter, bool
   const bool to_444 = strcmp(filter, "ConvertToYUV444") == 0;
 
   if (vi.IsYV411()) {
-    // ChromaInPlacement parameter exists, but not valid for YV411 (default none/-1) + input frame properties
+    // ChromaInPlacement parameter exists, (default none/-1) + input frame properties; 'left'-ish _ChromaLocation is allowed, checked later
     auto frame0 = clip->GetFrame(0, env);
     const AVSMap* props = env->getFramePropsRO(frame0);
     chromaloc_parse_merge_with_props(vi, args[3].AsString(nullptr), props, /* ref*/ChromaLocation_In, -1 /*default none chromaloc */, env);

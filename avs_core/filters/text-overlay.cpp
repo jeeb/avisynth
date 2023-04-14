@@ -2119,7 +2119,7 @@ AVSValue __cdecl SimpleText::Create(AVSValue args, void*, IScriptEnvironment* en
   int ChromaLocation_In = -1; // invalid
 
   if (vi.IsYV411()) {
-    // placement parameter exists, but not valid for YV411 (default none/-1) + input frame properties
+    // placement parameter exists, (default none/-1) + input frame properties; 'left'-ish _ChromaLocation is allowed, checked later
     auto frame0 = clip->GetFrame(0, env);
     const AVSMap* props = env->getFramePropsRO(frame0);
     chromaloc_parse_merge_with_props(vi, placement_name, props, /* ref*/ChromaLocation_In, -1 /*default none chromaloc */, env);
