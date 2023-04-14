@@ -228,7 +228,7 @@ extern const AVSFunction Resample_filters[] = {
   { "SincResize",     BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_SincResize},
   { "SinPowerResize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", FilteredResize::Create_SinPowerResize},
   { "SincLin2Resize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_SincLin2Resize},
-  { "UserDefined2Resize", BUILTIN_FUNC_PREFIX, "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_UserDefined2Resize},
+  { "UserDefined2Resize", BUILTIN_FUNC_PREFIX, "cii[b]f[c]f[s]f[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_UserDefined2Resize},
   /**
     * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
     *
@@ -1109,10 +1109,10 @@ AVSValue __cdecl FilteredResize::Create_SincLin2Resize(AVSValue args, void*, ISc
   return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], &f, env);
 }
 
-// like bicubic: optional B and C
+// like bicubic, plus 's'upport: optional B and C and S
 AVSValue __cdecl FilteredResize::Create_UserDefined2Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
-  auto f = UserDefined2Filter(args[3].AsFloat(121.0), args[4].AsFloat(19.0));
-  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5], &f, env);
+  auto f = UserDefined2Filter(args[3].AsFloat(121.0), args[4].AsFloat(19.0), args[5].AsFloat(2.3));
+  return CreateResize(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[6], &f, env);
 }
 

@@ -281,13 +281,14 @@ double SincLin2Filter::f(double value)
  *** UserDefined2 filter ***
  *********************************/
 
-UserDefined2Filter::UserDefined2Filter(double _b, double _c)
+UserDefined2Filter::UserDefined2Filter(double _b, double _c, double _s)
 {
   a = 1.0; // 0 sample = 1
   b = (double)clamp(_b, -50.0, 250.0); // 1 and -1  sample
   c = (double)clamp(_c, -50.0, 250.0); // 2 and -2 sample
   b = (b - 16.0) / 219.0;
   c = (c - 16.0) / 219.0;
+  s = (double)clamp(_s, 1.5, 15.0); // filter support for resampler
 }
 
 double UserDefined2Filter::sinc(double value)
@@ -305,12 +306,7 @@ double UserDefined2Filter::f(double x)
 {
   x = fabs(x);
 
-  if (x <= 3) // ?
-  {
-    return c * sinc(x + 2) + b * sinc(x + 1) + a * sinc(x) + b * sinc(x - 1) + c * sinc(x - 2);
-  }
-  else return 0;
-
+  return c * sinc(x + 2) + b * sinc(x + 1) + a * sinc(x) + b * sinc(x - 1) + c * sinc(x - 2);
 }
 
 
