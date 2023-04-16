@@ -11,8 +11,8 @@ jobs:
         config:
         - {name: "Windows Latest x64", os: windows-latest, cmake-parameters: "-A x64"}
         - {name: "Windows Latest x86", os: windows-latest, cmake-parameters: "-A Win32"}
-        - {name: "Ubuntu 18.04 x64 (fs compat)", os: ubuntu-18.04, checkout-submodules: true}
         - {name: "Ubuntu 20.04 x64", os: ubuntu-20.04}
+        - {name: "Ubuntu 22.04 x64", os: ubuntu-22.04}
         - {name: "macOS Latest x64", os: macos-latest}
 
     steps:
