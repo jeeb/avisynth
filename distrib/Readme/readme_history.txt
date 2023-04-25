@@ -34,7 +34,6 @@ The "rst" version of the documentation just lists changes in brief.
 
 - Fix #350 ConvertXXX to accept YV411 clip's frame property _ChromaLocation set to 'left' 
   (and 'topleft' and 'bottomleft' which give the same result) instead of giving an error message.
-- Reject BlankClip() length values less than one.
 - Fix #348 bitrol/bitror functions return incorrect results when first argument is negative.
   Regression since the asm code of Avisynth 2.6 classic was ported to C in Avisynth+ project.
 - "Info": if channel mask exists, then 
