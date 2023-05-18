@@ -719,10 +719,24 @@ PVideoFrame __stdcall ConvertYUV444ToRGB::GetFrame(int n, IScriptEnvironment* en
 
 
 #ifdef INTEL_INTRINSICS
-  // todo: SSE for not only 8 bit RGB
+  // todo: SIMD for not only 8 bit RGB
   // packed RGB24 and RGB32
-  if ((env->GetCPUFlags() & CPUF_SSE2) && (pixel_step==3 || pixel_step==4)) {
-    //we load using movq so no need to check for alignment
+
+  if ((env->GetCPUFlags() & CPUF_AVX2) && (pixel_step == 3 || pixel_step == 4)) {
+    if (pixel_step == 4) {
+      // RGB32
+      if (src_pitch_a) // move alpha channel from YUVA
+        convert_yv24_to_rgb_avx2<4, true>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+      else
+        convert_yv24_to_rgb_avx2<4, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+    }
+    else {
+      // RGB24
+      convert_yv24_to_rgb_avx2<3, false>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);
+    }
+    return dst;
+  }
+  else if ((env->GetCPUFlags() & CPUF_SSE2) && (pixel_step==3 || pixel_step==4)) {
     if (pixel_step == 4) {
       if(src_pitch_a) // move alpha channel from YUVA
         convert_yv24_to_rgb_sse2<4, true>(dstp, srcY, srcU, srcV, srcA, dst_pitch, src_pitch_y, src_pitch_uv, src_pitch_a, vi.width, vi.height, matrix);

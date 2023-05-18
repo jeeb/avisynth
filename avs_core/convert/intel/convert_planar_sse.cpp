@@ -1467,7 +1467,7 @@ void convert_yv24_to_rgb_sse2(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, co
         _mm_store_si128(reinterpret_cast<__m128i*>(temp), result_lo);
         _mm_store_si128(reinterpret_cast<__m128i*>(temp + 16), result_hi);
 
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < 7; ++i) {
           *reinterpret_cast<int*>(dstp + (x + i) * 3) = *reinterpret_cast<int*>(temp + i * 4);
         }
         //last pixel
