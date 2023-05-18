@@ -25,7 +25,7 @@ Additions, changes
   - filters: SinPowerResize, SincLin2Resize, UserDefined2Resize
   - and their equivalent for the ConvertToXXXX family 'chromaresample': "sinpow",  "sinclin2" and "userdefined2"
 
-- Feature #337: add "param1" and "param2" to ConvertToXXXX where 'chromaresample' exists (b,c,taps and p parameters can be set).
+- Feature #337: add "param1", "param2" and "param3" to ConvertToXXXX where 'chromaresample' exists (b,c,s,taps and p parameters can be set, depending on the resizer).
 - #306: Add ConvertToYUVA420, ConvertToYUVA422 and ConvertToYUVA444
 - Expr: Add remaining stack element count to "Unbalanced stack..." error message
 - Add back audio cache from classic Avisynth 2.6. Handle modes and hints on cache audio:
@@ -111,10 +111,12 @@ Bugfixes
 - Fix: (#340): stop memory leak on propSet / MakePropertyWritable
 - Fix: (#347): possible crash of LLVM builds (clang-cl, Intel NextGen) on pre-AVX (SSE4-only) CPUs.
 - Fix: (#348): bitrol/bitror script functions return incorrect results when argument is negative (regression since ported from Avisynth 2.6 to plus)
+- Fix: (#350): ConvertXXX to accept YV411 clip's frame property _ChromaLocation set to 'left','topleft' and 'bottomleft' instead of giving an error message.
 
 Optimizations
 ~~~~~~~~~~~~~
 - Enhanced performance in ConvertBits Floyd dither (dither=1) for 10->8, 16->8 and 16->10
+- Added AVX2 code path for YV24 to RGB24/32 conversions (+50% fps)
 
 Documentation
 ~~~~~~~~~~~~~

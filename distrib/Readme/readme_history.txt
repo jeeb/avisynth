@@ -5,8 +5,9 @@ Source: https://github.com/AviSynth/AviSynthPlus
 This file contains all change log, with detailed examples and explanations.
 The "rst" version of the documentation just lists changes in brief.
 
-20230414 3.7.3 WIP
+20230518 3.7.3 WIP
 ------------------
+- Enhancement: much quicker YV24 to RGB32/RGB24 conversion when AVX2 instruction set is supported. (+50% fps at i7-11700)
 - UserDefined2Resize got an 's' parameter (to the existing b and c): support, default value = 2.3
   (following DTL2020's addition in jpsdr's MT resizer repo, UserDefined2ResizeMT filter)
   
